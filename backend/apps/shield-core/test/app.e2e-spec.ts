@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
-import * as request from 'supertest';
+import request from 'supertest';
 import { ShieldCoreModule } from './../src/shield-core.module';
 
 describe('ShieldCoreController (e2e)', () => {
