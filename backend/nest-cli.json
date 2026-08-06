@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json.schemastore.org/nest-cli",
+  "collection": "@nestjs/schematics",
+  "sourceRoot": "apps/zoikoshield-backend/src",
+  "compilerOptions": {
+    "deleteOutDir": true,
+    "webpack": true,
+    "tsConfigPath": "apps/zoikoshield-backend/tsconfig.app.json"
+  },
+  "monorepo": true,
+  "root": "apps/zoikoshield-backend",
+  "projects": {
+    "shield-core": {
+      "type": "application",
+      "root": "apps/shield-core",
+      "entryFile": "main",
+      "sourceRoot": "apps/shield-core/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/shield-core/tsconfig.app.json"
+      }
+    },
+    "zoikoshield-backend": {
+      "type": "application",
+      "root": "apps/zoikoshield-backend",
+      "entryFile": "main",
+      "sourceRoot": "apps/zoikoshield-backend/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/zoikoshield-backend/tsconfig.app.json"
+      }
+    }
+  }
+}
