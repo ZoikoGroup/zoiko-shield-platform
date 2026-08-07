@@ -1,0 +1,164 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ConnectorState {
+  NOT_CONNECTED
+  AWAITING_ADMIN_CONSENT
+  CONNECTED
+  SYNCING
+  HEALTHY
+  DEGRADED
+  RATE_LIMITED
+  PERMISSION_REVOKED
+  AUTHENTICATION_FAILED
+  CHECKPOINT_INVALID
+  DISCONNECTED
+}
+
+model ConnectorDefinition {
+  id              String   @id @default(uuid())
+  provider        String   @unique // e.g., 'microsoft-entra'
+  name            String
+  description     String?
+  supportedEvents String[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  instances       ConnectorInstance[]
+}
+
+model ConnectorInstance {
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  connectorDefId     String
+  definition         ConnectorDefinition @relation(fields: [connectorDefId], references: [id])
+  name               String
+  state              ConnectorState @default(NOT_CONNECTED)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  deletedAt          DateTime?
+  
+  credentials        ConnectorCredentialReference[]
+  checkpoints        ConnectorCheckpoint[]
+  syncRuns           ConnectorSynchronizationRun[]
+  errors             ConnectorError[]
+  webhookSubs        WebhookSubscription[]
+  eventHubChecks     EventHubConsumerCheckpoint[]
+  quarantinedEvents  QuarantinedEvent[]
+
+  @@index([tenant_id])
+}
+
+model ConnectorPermission {
+  id                 String   @id @default(uuid())
+  provider           String
+  permissionName     String
+  grantedAt          DateTime @default(now())
+}
+
+model ConnectorCredentialReference {
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  instanceId         String
+  instance           ConnectorInstance @relation(fields: [instanceId], references: [id])
+  vaultReferenceId   String   @unique
+  expiresAt          DateTime?
+  createdAt          DateTime @default(now())
+  
+  @@index([tenant_id])
+}
+
+model ConnectorCheckpoint {
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  instanceId         String
+  instance           ConnectorInstance @relation(fields: [instanceId], references: [id])
+  resourceType       String
+  checkpointValue    String
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  @@unique([instanceId, resourceType])
+  @@index([tenant_id])
+}
+
+model ConnectorSynchronizationRun {
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  instanceId         String
+  instance           ConnectorInstance @relation(fields: [instanceId], references: [id])
+  status             String
+  startedAt          DateTime @default(now())
+  completedAt        DateTime?
+  recordsProcessed   Int      @default(0)
+  
+  @@index([tenant_id])
+}
+
+model ConnectorHealthStatus {
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  instanceId         String   @unique
+  state              ConnectorState
+  lastMessage        String?
+  updatedAt          DateTime @updatedAt
+
+  @@index([tenant_id])
+}
+
+model ConnectorError {
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  instanceId         String
+  instance           ConnectorInstance @relation(fields: [instanceId], references: [id])
+  errorCode          String
+  message            String
+  createdAt          DateTime @default(now())
+  
+  @@index([tenant_id])
+}
+
+model WebhookSubscription {
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  instanceId         String
+  instance           ConnectorInstance @relation(fields: [instanceId], references: [id])
+  subscriptionId     String
+  clientState        String   @unique
+  resource           String
+  expiresAt          DateTime
+  createdAt          DateTime @default(now())
+
+  @@index([tenant_id])
+}
+
+model EventHubConsumerCheckpoint {
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  instanceId         String
+  instance           ConnectorInstance @relation(fields: [instanceId], references: [id])
+  partitionId        String
+  offset             String
+  sequenceNumber     BigInt
+  updatedAt          DateTime @updatedAt
+
+  @@unique([instanceId, partitionId])
+  @@index([tenant_id])
+}
+
+model QuarantinedEvent {
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  instanceId         String
+  instance           ConnectorInstance @relation(fields: [instanceId], references: [id])
+  rawPayload         String
+  reason             String
+  createdAt          DateTime @default(now())
+  
+  @@index([tenant_id])
+}

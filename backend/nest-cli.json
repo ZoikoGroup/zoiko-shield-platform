@@ -18,6 +18,15 @@
       "compilerOptions": {
         "tsConfigPath": "apps/shield-core/tsconfig.app.json"
       }
+    },
+    "shield-ingest": {
+      "type": "application",
+      "root": "apps/shield-ingest",
+      "entryFile": "main",
+      "sourceRoot": "apps/shield-ingest/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/shield-ingest/tsconfig.app.json"
+      }
     }
   }
 }
