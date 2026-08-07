@@ -27,6 +27,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       return;
     }
     const oauthProfile: OAuthProfile = {
+      issuer: 'https://accounts.google.com',
       providerUserId: profile.id,
       email,
       fullName: profile.displayName,

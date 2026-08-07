@@ -1,9 +1,19 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { In, IsNull, Repository } from 'typeorm';
+import { createHash, randomBytes } from 'crypto';
+import { In, IsNull, MoreThan, Repository } from 'typeorm';
 import { Permission } from './entities/permission.entity';
 import { Role, RoleLevel } from './entities/role.entity';
 import { TenantMembership } from './entities/tenant-membership.entity';
+import { Invitation } from './entities/invitation.entity';
+
+const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 @Injectable()
 export class AuthorizationService {
@@ -14,6 +24,8 @@ export class AuthorizationService {
     private readonly roleRepository: Repository<Role>,
     @InjectRepository(TenantMembership)
     private readonly membershipRepository: Repository<TenantMembership>,
+    @InjectRepository(Invitation)
+    private readonly invitationRepository: Repository<Invitation>,
   ) {}
 
   async createPermission(code: string, description?: string): Promise<Permission> {
@@ -66,35 +78,9 @@ export class AuthorizationService {
     return this.roleRepository.save(role);
   }
 
-  async ensureMembership(tenantId: string, userId: string): Promise<TenantMembership> {
-    let membership = await this.membershipRepository.findOne({
-      where: { tenantId, userId },
-      relations: { roles: { permissions: true } },
-    });
-    if (!membership) {
-      membership = await this.membershipRepository.save(
-        this.membershipRepository.create({ tenantId, userId, status: 'ACTIVE', roles: [] }),
-      );
-    }
-    return membership;
-  }
-
-  async assignRole(tenantId: string, userId: string, roleId: string): Promise<TenantMembership> {
-    const membership = await this.ensureMembership(tenantId, userId);
-    const role = await this.roleRepository.findOne({ where: { id: roleId } });
-    if (!role) {
-      throw new NotFoundException(`Role ${roleId} not found`);
-    }
-    if (!membership.roles.some((r) => r.id === role.id)) {
-      membership.roles.push(role);
-      await this.membershipRepository.save(membership);
-    }
-    return membership;
-  }
-
-  async getPermissionCodesForUser(tenantId: string, userId: string): Promise<string[]> {
+  async getPermissionCodesForPrincipal(tenantId: string, principalId: string): Promise<string[]> {
     const membership = await this.membershipRepository.findOne({
-      where: { tenantId, userId, status: 'ACTIVE' },
+      where: { tenantId, principalId, status: 'ACTIVE' },
       relations: { roles: { permissions: true } },
     });
     if (!membership) {
@@ -107,5 +93,91 @@ export class AuthorizationService {
       }
     }
     return [...codes];
+  }
+
+  // ── Invitations ──────────────────────────────────────────────
+  // Replaces self-assigned tenant membership: only an inviter holding
+  // member:invite may create an invitation, and the accepting principal
+  // never chooses their own tenant/role — both come from the token.
+
+  private hashToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
+  }
+
+  async createInvitation(data: {
+    tenantId: string;
+    invitedEmail: string;
+    roleId: string;
+    invitedById: string;
+  }): Promise<{ invitation: Invitation; token: string }> {
+    const role = await this.roleRepository.findOne({ where: { id: data.roleId } });
+    if (!role) {
+      throw new NotFoundException(`Role ${data.roleId} not found`);
+    }
+    if (role.roleLevel === 'PLATFORM') {
+      throw new ForbiddenException('Cannot invite a member with a PLATFORM-level role');
+    }
+    if (role.tenantId && role.tenantId !== data.tenantId) {
+      throw new ForbiddenException('Role does not belong to the target tenant');
+    }
+
+    const token = randomBytes(32).toString('hex');
+    const invitation = await this.invitationRepository.save(
+      this.invitationRepository.create({
+        tokenHash: this.hashToken(token),
+        tenantId: data.tenantId,
+        invitedEmail: data.invitedEmail,
+        roleId: data.roleId,
+        invitedById: data.invitedById,
+        status: 'PENDING',
+        expiresAt: new Date(Date.now() + INVITATION_TTL_MS),
+      }),
+    );
+    return { invitation, token };
+  }
+
+  async acceptInvitation(
+    token: string,
+    acceptingPrincipalId: string,
+    acceptingPrincipalEmail: string,
+  ): Promise<TenantMembership> {
+    const invitation = await this.invitationRepository.findOne({
+      where: { tokenHash: this.hashToken(token), status: 'PENDING', expiresAt: MoreThan(new Date()) },
+    });
+    if (!invitation) {
+      throw new NotFoundException('Invitation not found, expired or already used');
+    }
+    if (invitation.invitedEmail.toLowerCase() !== acceptingPrincipalEmail.toLowerCase()) {
+      throw new ForbiddenException('This invitation was issued to a different email address');
+    }
+
+    let membership = await this.membershipRepository.findOne({
+      where: { tenantId: invitation.tenantId, principalId: acceptingPrincipalId },
+      relations: { roles: true },
+    });
+    if (!membership) {
+      membership = this.membershipRepository.create({
+        tenantId: invitation.tenantId,
+        principalId: acceptingPrincipalId,
+        status: 'ACTIVE',
+        source: 'INVITATION',
+        roles: [],
+      });
+    }
+    const role = await this.roleRepository.findOne({ where: { id: invitation.roleId } });
+    if (!role) {
+      throw new BadRequestException('Invitation role no longer exists');
+    }
+    if (!membership.roles.some((r) => r.id === role.id)) {
+      membership.roles.push(role);
+    }
+    await this.membershipRepository.save(membership);
+
+    invitation.status = 'ACCEPTED';
+    invitation.acceptedAt = new Date();
+    invitation.acceptedById = acceptingPrincipalId;
+    await this.invitationRepository.save(invitation);
+
+    return membership;
   }
 }

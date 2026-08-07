@@ -12,7 +12,7 @@ import { Role } from './role.entity';
 export type MembershipStatus = 'ACTIVE' | 'SUSPENDED' | 'REMOVED';
 
 @Entity({ name: 'tenant_memberships', schema: 'authorization' })
-@Index(['tenantId', 'userId'], { unique: true })
+@Index(['tenantId', 'principalId'], { unique: true })
 export class TenantMembership {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -21,10 +21,14 @@ export class TenantMembership {
   tenantId: string;
 
   @Column({ type: 'uuid' })
-  userId: string;
+  principalId: string;
 
   @Column({ type: 'varchar', default: 'ACTIVE' })
   status: MembershipStatus;
+
+  // "INVITATION" | "SCIM" | "BOOTSTRAP" — how this membership was established.
+  @Column({ type: 'varchar', default: 'INVITATION' })
+  source: string;
 
   @ManyToMany(() => Role)
   @JoinTable({

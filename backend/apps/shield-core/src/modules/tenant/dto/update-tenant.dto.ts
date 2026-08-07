@@ -1,7 +1,11 @@
-import { CanonicalContext } from '../interfaces/canonical-context.interface';
+import { IsIn, IsOptional, IsString } from 'class-validator';
 
 export class UpdateTenantDto {
+  @IsOptional()
+  @IsString()
   name?: string;
+
+  @IsOptional()
+  @IsIn(['active', 'suspended', 'offboarded'])
   status?: 'active' | 'suspended' | 'offboarded';
-  context: CanonicalContext; // Context must be provided for audit tracking on update
 }

@@ -8,14 +8,16 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { VerifyEmailDto } from './dto/verify-email.dto';
 import { ResendVerificationDto } from './dto/resend-verification.dto';
-import { ForgotPasswordDto } from './dto/forgot-password.dto';
-import { ResetPasswordDto } from './dto/reset-password.dto';
+import { PasswordRecoveryRequestDto } from './dto/password-recovery-request.dto';
+import { PasswordRecoveryVerifyDto } from './dto/password-recovery-verify.dto';
+import { PasswordRecoveryResetDto } from './dto/password-recovery-reset.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { MicrosoftAuthGuard } from './guards/microsoft-auth.guard';
@@ -23,7 +25,14 @@ import { CurrentUser } from './decorators/current-user.decorator';
 import type { AuthenticatedUser } from './interfaces/jwt-payload.interface';
 import type { OAuthProfile } from './interfaces/oauth-profile.interface';
 import type { SessionMetadata } from './session.service';
-import { REFRESH_TOKEN_COOKIE, clearAuthCookies, setAuthCookies } from './auth-cookies';
+import {
+  REFRESH_TOKEN_COOKIE,
+  RECOVERY_GRANT_COOKIE,
+  clearAuthCookies,
+  clearRecoveryGrantCookie,
+  setAuthCookies,
+  setRecoveryGrantCookie,
+} from './auth-cookies';
 
 function sessionMetadataFrom(req: Request): SessionMetadata {
   return {
@@ -40,13 +49,22 @@ function refreshTokenFrom(req: Request): string {
   return token;
 }
 
+function recoveryGrantFrom(req: Request): string {
+  const token = req.cookies?.[RECOVERY_GRANT_COOKIE];
+  if (!token) {
+    throw new UnauthorizedException('No recovery grant cookie present');
+  }
+  return token;
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('register')
-  register(@Body() dto: RegisterDto) {
-    return this.authService.register(dto);
+  register(@Body() dto: RegisterDto, @Req() req: Request) {
+    return this.authService.register(dto, sessionMetadataFrom(req));
   }
 
   @Post('verify-email')
@@ -60,21 +78,37 @@ export class AuthController {
     return { user };
   }
 
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post('resend-verification')
-  resendVerification(@Body() dto: ResendVerificationDto) {
-    return this.authService.resendVerification(dto);
+  resendVerification(@Body() dto: ResendVerificationDto, @Req() req: Request) {
+    return this.authService.resendVerification(dto, sessionMetadataFrom(req));
   }
 
-  @Post('forgot-password')
-  forgotPassword(@Body() dto: ForgotPasswordDto) {
-    return this.authService.forgotPassword(dto);
+  @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @Post('password-recovery/request')
+  requestPasswordRecovery(@Body() dto: PasswordRecoveryRequestDto, @Req() req: Request) {
+    return this.authService.requestPasswordRecovery(dto, sessionMetadataFrom(req));
   }
 
-  @Post('reset-password')
-  resetPassword(@Body() dto: ResetPasswordDto) {
-    return this.authService.resetPassword(dto);
+  @Post('password-recovery/verify')
+  async verifyPasswordRecovery(@Body() dto: PasswordRecoveryVerifyDto, @Res({ passthrough: true }) res: Response) {
+    const { recoveryToken } = await this.authService.verifyPasswordRecovery(dto);
+    setRecoveryGrantCookie(res, recoveryToken);
+    return { message: 'Code verified. You may now set a new password.' };
   }
 
+  @Post('password-recovery/reset')
+  async resetPassword(
+    @Body() dto: PasswordRecoveryResetDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.resetPasswordWithGrant(recoveryGrantFrom(req), dto);
+    clearRecoveryGrantCookie(res);
+    return result;
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('login')
   async login(@Body() dto: LoginDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const { user, ...tokens } = await this.authService.login(dto, sessionMetadataFrom(req));
@@ -117,9 +151,16 @@ export class AuthController {
   @Get('google/callback')
   async googleCallback(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const profile = req.user as OAuthProfile;
-    const { user, ...tokens } = await this.authService.loginWithOAuthProfile(
+    const { user, ...tokens } = await this.authService.loginWithOAuthAssertion(
       'GOOGLE',
-      profile,
+      {
+        issuer: profile.issuer,
+        subject: profile.providerUserId,
+        email: profile.email,
+        fullName: profile.fullName,
+        avatarUrl: profile.avatarUrl,
+        claimProfile: profile.claimProfile,
+      },
       sessionMetadataFrom(req),
     );
     setAuthCookies(res, tokens);
@@ -136,9 +177,16 @@ export class AuthController {
   @Get('microsoft/callback')
   async microsoftCallback(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const profile = req.user as OAuthProfile;
-    const { user, ...tokens } = await this.authService.loginWithOAuthProfile(
+    const { user, ...tokens } = await this.authService.loginWithOAuthAssertion(
       'MICROSOFT',
-      profile,
+      {
+        issuer: profile.issuer,
+        subject: profile.providerUserId,
+        email: profile.email,
+        fullName: profile.fullName,
+        avatarUrl: profile.avatarUrl,
+        claimProfile: profile.claimProfile,
+      },
       sessionMetadataFrom(req),
     );
     setAuthCookies(res, tokens);

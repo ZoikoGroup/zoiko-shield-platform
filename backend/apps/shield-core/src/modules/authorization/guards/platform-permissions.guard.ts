@@ -1,16 +1,12 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  ForbiddenException,
-  Injectable,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthorizationService } from '../authorization.service';
-import { PERMISSIONS_KEY } from '../decorators/require-permissions.decorator';
+import { PLATFORM_PERMISSIONS_KEY } from '../decorators/require-platform-permissions.decorator';
+import { PLATFORM_SCOPE } from '../constants';
 import type { AuthenticatedUser } from '../../identity-adapter/interfaces/jwt-payload.interface';
 
 @Injectable()
-export class PermissionsGuard implements CanActivate {
+export class PlatformPermissionsGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly authorizationService: AuthorizationService,
@@ -18,7 +14,7 @@ export class PermissionsGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const requiredPermissions = this.reflector.getAllAndOverride<string[]>(
-      PERMISSIONS_KEY,
+      PLATFORM_PERMISSIONS_KEY,
       [context.getHandler(), context.getClass()],
     );
     if (!requiredPermissions || requiredPermissions.length === 0) {
@@ -27,18 +23,17 @@ export class PermissionsGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest();
     const user: AuthenticatedUser | undefined = request.user;
-    const tenantId = request.headers['x-tenant-id'];
-    if (!user || !tenantId || typeof tenantId !== 'string') {
-      throw new ForbiddenException('X-Tenant-Id header and authentication are required');
+    if (!user) {
+      throw new ForbiddenException('Authentication required');
     }
 
     const grantedPermissions = await this.authorizationService.getPermissionCodesForPrincipal(
-      tenantId,
+      PLATFORM_SCOPE,
       user.id,
     );
     const hasAll = requiredPermissions.every((permission) => grantedPermissions.includes(permission));
     if (!hasAll) {
-      throw new ForbiddenException('Insufficient tenant permissions');
+      throw new ForbiddenException('Insufficient platform permissions');
     }
     return true;
   }

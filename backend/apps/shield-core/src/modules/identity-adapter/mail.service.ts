@@ -1,11 +1,11 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createTransport, Transporter } from 'nodemailer';
-import { OtpPurpose } from './otp-code.entity';
+import { ChallengePurpose } from './verification-challenge.entity';
 
-const OTP_SUBJECT: Record<OtpPurpose, string> = {
+const OTP_SUBJECT: Record<ChallengePurpose, string> = {
   EMAIL_VERIFICATION: 'Verify your ZoikoShield email',
-  PASSWORD_RESET: 'Reset your ZoikoShield password',
+  PASSWORD_RECOVERY: 'Reset your ZoikoShield password',
 };
 
 /**
@@ -37,7 +37,7 @@ export class MailService implements OnModuleInit {
     });
   }
 
-  async sendOtp(email: string, code: string, purpose: OtpPurpose): Promise<void> {
+  async sendOtp(email: string, code: string, purpose: ChallengePurpose): Promise<void> {
     if (!this.transporter) {
       this.logger.log(`OTP for ${email} [${purpose}]: ${code} (valid 10 minutes)`);
       return;

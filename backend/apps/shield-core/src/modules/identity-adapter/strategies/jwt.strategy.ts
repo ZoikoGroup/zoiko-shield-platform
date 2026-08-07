@@ -3,7 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import type { Request } from 'express';
-import { UserService } from '../user.service';
+import { PrincipalService } from '../principal.service';
+import { SessionService } from '../session.service';
 import { ACCESS_TOKEN_COOKIE } from '../auth-cookies';
 import {
   AuthenticatedUser,
@@ -18,7 +19,8 @@ function fromCookie(req: Request): string | null {
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     config: ConfigService,
-    private readonly userService: UserService,
+    private readonly principalService: PrincipalService,
+    private readonly sessionService: SessionService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
@@ -31,18 +33,27 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
-    if (!payload.sub) {
+    if (!payload.sub || !payload.sid) {
       throw new UnauthorizedException('Invalid token payload');
     }
-    const user = await this.userService.findById(payload.sub);
-    if (!user || user.status !== 'ACTIVE') {
+
+    const session = await this.sessionService.findById(payload.sid);
+    if (!session || session.principalId !== payload.sub || !this.sessionService.isActive(session)) {
+      throw new UnauthorizedException('Session has been revoked or expired');
+    }
+
+    const principal = await this.principalService.findById(payload.sub);
+    if (!principal || principal.status !== 'ACTIVE') {
       throw new UnauthorizedException('Invalid credentials');
     }
+
     return {
-      id: user.id,
-      email: user.email,
-      fullName: user.fullName,
-      emailVerified: user.emailVerified,
+      id: principal.id,
+      sessionId: session.id,
+      email: principal.email ?? '',
+      fullName: principal.fullName,
+      emailVerified: principal.emailVerified,
+      assurance: session.assurance,
     };
   }
 }

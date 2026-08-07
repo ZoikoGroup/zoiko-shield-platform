@@ -3,12 +3,21 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { User } from './user.entity';
+import { Principal } from './principal.entity';
+import { LocalCredential } from './local-credential.entity';
+import { ExternalIdentity } from './external-identity.entity';
 import { Session } from './session.entity';
-import { OtpCode } from './otp-code.entity';
-import { UserService } from './user.service';
+import { VerificationChallenge } from './verification-challenge.entity';
+import { RecoveryGrant } from './recovery-grant.entity';
+import { PolicyDocument } from './policy-document.entity';
+import { PolicyAcceptance } from './policy-acceptance.entity';
+import { IdentityEvent } from './identity-event.entity';
+import { PrincipalService } from './principal.service';
 import { SessionService } from './session.service';
-import { OtpService } from './otp.service';
+import { VerificationChallengeService } from './verification-challenge.service';
+import { RecoveryGrantService } from './recovery-grant.service';
+import { PolicyService } from './policy.service';
+import { IdentityEventService } from './identity-event.service';
 import { MailService } from './mail.service';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
@@ -18,7 +27,17 @@ import { MicrosoftStrategy } from './strategies/microsoft.strategy';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Session, OtpCode]),
+    TypeOrmModule.forFeature([
+      Principal,
+      LocalCredential,
+      ExternalIdentity,
+      Session,
+      VerificationChallenge,
+      RecoveryGrant,
+      PolicyDocument,
+      PolicyAcceptance,
+      IdentityEvent,
+    ]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -33,15 +52,18 @@ import { MicrosoftStrategy } from './strategies/microsoft.strategy';
   ],
   controllers: [AuthController],
   providers: [
-    UserService,
+    PrincipalService,
     SessionService,
-    OtpService,
+    VerificationChallengeService,
+    RecoveryGrantService,
+    PolicyService,
+    IdentityEventService,
     MailService,
     AuthService,
     JwtStrategy,
     GoogleStrategy,
     MicrosoftStrategy,
   ],
-  exports: [UserService],
+  exports: [PrincipalService, IdentityEventService],
 })
 export class IdentityAdapterModule {}

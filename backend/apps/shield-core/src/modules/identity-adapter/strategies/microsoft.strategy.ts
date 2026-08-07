@@ -14,14 +14,18 @@ type VerifyDone = (err: Error | null, user?: OAuthProfile | false) => void;
 
 @Injectable()
 export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
+  private readonly tenantId: string;
+
   constructor(config: ConfigService) {
+    const tenantId = config.get<string>('MICROSOFT_TENANT_ID') || 'common';
     super({
       clientID: config.get<string>('MICROSOFT_CLIENT_ID') || 'unconfigured',
       clientSecret: config.get<string>('MICROSOFT_CLIENT_SECRET') || 'unconfigured',
       callbackURL: config.get<string>('MICROSOFT_CALLBACK_URL') || '/auth/microsoft/callback',
-      tenant: config.get<string>('MICROSOFT_TENANT_ID') || 'common',
+      tenant: tenantId,
       scope: ['user.read'],
     });
+    this.tenantId = tenantId;
   }
 
   validate(
@@ -36,6 +40,7 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
       return;
     }
     done(null, {
+      issuer: `https://login.microsoftonline.com/${this.tenantId}/v2.0`,
       providerUserId: profile.id,
       email,
       fullName: profile.displayName,

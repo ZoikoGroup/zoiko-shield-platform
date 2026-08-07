@@ -3,9 +3,11 @@ import { TokenPair } from './auth.service';
 
 export const ACCESS_TOKEN_COOKIE = 'access_token';
 export const REFRESH_TOKEN_COOKIE = 'refresh_token';
+export const RECOVERY_GRANT_COOKIE = 'recovery_grant';
 
 const ACCESS_TOKEN_MAX_AGE_MS = 15 * 60 * 1000; // matches default JWT_EXPIRES_IN
-const REFRESH_TOKEN_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // matches Session TTL
+const REFRESH_TOKEN_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // matches Session rolling TTL
+const RECOVERY_GRANT_MAX_AGE_MS = 10 * 60 * 1000; // matches RecoveryGrant TTL
 
 function baseOptions(): CookieOptions {
   return {
@@ -31,4 +33,20 @@ export function setAuthCookies(res: Response, tokens: TokenPair): void {
 export function clearAuthCookies(res: Response): void {
   res.clearCookie(ACCESS_TOKEN_COOKIE, { ...baseOptions(), path: '/' });
   res.clearCookie(REFRESH_TOKEN_COOKIE, { ...baseOptions(), path: '/auth' });
+}
+
+// Scoped to the password-recovery path only — it must never be sent to, or
+// confused with, the normal access_token/refresh_token cookies.
+const RECOVERY_PATH = '/auth/password-recovery';
+
+export function setRecoveryGrantCookie(res: Response, token: string): void {
+  res.cookie(RECOVERY_GRANT_COOKIE, token, {
+    ...baseOptions(),
+    path: RECOVERY_PATH,
+    maxAge: RECOVERY_GRANT_MAX_AGE_MS,
+  });
+}
+
+export function clearRecoveryGrantCookie(res: Response): void {
+  res.clearCookie(RECOVERY_GRANT_COOKIE, { ...baseOptions(), path: RECOVERY_PATH });
 }

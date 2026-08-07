@@ -1,4 +1,4 @@
-import { Equals, IsEmail, IsString, MinLength } from 'class-validator';
+import { IsString, IsEmail, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @IsString()
@@ -14,6 +14,6 @@ export class RegisterDto {
   @IsString()
   confirmPassword: string;
 
-  @Equals(true, { message: 'acceptTerms must be true' })
-  acceptTerms: boolean;
+  @IsString()
+  termsOfServiceVersion: string;
 }
