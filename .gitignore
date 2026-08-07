@@ -1,0 +1,21 @@
+# Env files (never commit secrets)
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+dist/
+
+# OS
+.DS_Store
+
+# IDEs
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.idea/
+
+
