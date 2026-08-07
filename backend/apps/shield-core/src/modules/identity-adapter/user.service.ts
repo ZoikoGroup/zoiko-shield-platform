@@ -47,4 +47,12 @@ export class UserService {
   async recordLogin(userId: string): Promise<void> {
     await this.userRepository.update({ id: userId }, { lastLoginAt: new Date() });
   }
+
+  async markEmailVerified(userId: string): Promise<void> {
+    await this.userRepository.update({ id: userId }, { emailVerified: true });
+  }
+
+  async updatePassword(userId: string, passwordHash: string): Promise<void> {
+    await this.userRepository.update({ id: userId }, { passwordHash });
+  }
 }

@@ -1,6 +1,7 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -9,8 +10,14 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { VerifyEmailDto } from './dto/verify-email.dto';
+import { ResendVerificationDto } from './dto/resend-verification.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UserService } from './user.service';
 import { SessionMetadata, SessionService } from './session.service';
+import { OtpService } from './otp.service';
+import { MailService } from './mail.service';
 import { AuthenticatedUser, JwtPayload } from './interfaces/jwt-payload.interface';
 import { AuthenticationProvider, User } from './user.entity';
 
@@ -27,11 +34,13 @@ export class AuthService {
   constructor(
     private readonly userService: UserService,
     private readonly sessionService: SessionService,
+    private readonly otpService: OtpService,
+    private readonly mailService: MailService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
 
-  async register(dto: RegisterDto, metadata: SessionMetadata): Promise<{ user: AuthenticatedUser } & TokenPair> {
+  async register(dto: RegisterDto): Promise<{ userId: string; email: string; message: string }> {
     if (dto.password !== dto.confirmPassword) {
       throw new BadRequestException('password and confirmPassword must match');
     }
@@ -49,8 +58,35 @@ export class AuthService {
       authenticationProvider: 'LOCAL',
     });
 
+    await this.sendVerificationCode(user);
+    return {
+      userId: user.id,
+      email: user.email,
+      message: 'Registered. Check your email for a verification code.',
+    };
+  }
+
+  async verifyEmail(dto: VerifyEmailDto, metadata: SessionMetadata): Promise<{ user: AuthenticatedUser } & TokenPair> {
+    const user = await this.userService.findByEmail(dto.email);
+    if (!user) {
+      throw new UnauthorizedException('Invalid or expired code');
+    }
+
+    await this.otpService.verify(user.id, 'EMAIL_VERIFICATION', dto.otp);
+    await this.userService.markEmailVerified(user.id);
+    user.emailVerified = true;
+
+    await this.userService.recordLogin(user.id);
     const tokens = await this.issueTokenPair(user, metadata);
     return { user: this.toAuthenticatedUser(user), ...tokens };
+  }
+
+  async resendVerification(dto: ResendVerificationDto): Promise<{ message: string }> {
+    const user = await this.userService.findByEmail(dto.email);
+    if (user && !user.emailVerified) {
+      await this.sendVerificationCode(user);
+    }
+    return { message: 'If that account needs verification, a new code has been sent.' };
   }
 
   async login(dto: LoginDto, metadata: SessionMetadata): Promise<{ user: AuthenticatedUser } & TokenPair> {
@@ -64,9 +100,46 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    if (!user.emailVerified) {
+      throw new ForbiddenException('Email not verified');
+    }
+
     await this.userService.recordLogin(user.id);
     const tokens = await this.issueTokenPair(user, metadata);
     return { user: this.toAuthenticatedUser(user), ...tokens };
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto): Promise<{ message: string }> {
+    const user = await this.userService.findByEmail(dto.email);
+    if (user && user.passwordHash) {
+      const code = await this.otpService.generate(user.id, 'PASSWORD_RESET');
+      await this.mailService.sendOtp(user.email, code, 'PASSWORD_RESET');
+    }
+    return { message: 'If that account exists, a reset code has been sent.' };
+  }
+
+  async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
+    if (dto.newPassword !== dto.confirmNewPassword) {
+      throw new BadRequestException('newPassword and confirmNewPassword must match');
+    }
+
+    const user = await this.userService.findByEmail(dto.email);
+    if (!user) {
+      throw new UnauthorizedException('Invalid or expired code');
+    }
+
+    await this.otpService.verify(user.id, 'PASSWORD_RESET', dto.otp);
+
+    const passwordHash = await bcrypt.hash(dto.newPassword, SALT_ROUNDS);
+    await this.userService.updatePassword(user.id, passwordHash);
+    await this.sessionService.revokeAllForUser(user.id);
+
+    return { message: 'Password reset. All sessions have been signed out.' };
+  }
+
+  private async sendVerificationCode(user: User): Promise<void> {
+    const code = await this.otpService.generate(user.id, 'EMAIL_VERIFICATION');
+    await this.mailService.sendOtp(user.email, code, 'EMAIL_VERIFICATION');
   }
 
   async loginWithOAuthProfile(

@@ -5,8 +5,11 @@ import { PassportModule } from '@nestjs/passport';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './user.entity';
 import { Session } from './session.entity';
+import { OtpCode } from './otp-code.entity';
 import { UserService } from './user.service';
 import { SessionService } from './session.service';
+import { OtpService } from './otp.service';
+import { MailService } from './mail.service';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -15,7 +18,7 @@ import { MicrosoftStrategy } from './strategies/microsoft.strategy';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User, Session]),
+    TypeOrmModule.forFeature([User, Session, OtpCode]),
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -29,7 +32,16 @@ import { MicrosoftStrategy } from './strategies/microsoft.strategy';
     }),
   ],
   controllers: [AuthController],
-  providers: [UserService, SessionService, AuthService, JwtStrategy, GoogleStrategy, MicrosoftStrategy],
+  providers: [
+    UserService,
+    SessionService,
+    OtpService,
+    MailService,
+    AuthService,
+    JwtStrategy,
+    GoogleStrategy,
+    MicrosoftStrategy,
+  ],
   exports: [UserService],
 })
 export class IdentityAdapterModule {}

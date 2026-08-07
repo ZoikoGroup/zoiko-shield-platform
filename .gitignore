@@ -18,4 +18,6 @@ dist/
 !.vscode/extensions.json
 .idea/
 
+# Docs
+zoikoshield.postman_collection.json
 

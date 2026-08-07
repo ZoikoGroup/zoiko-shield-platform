@@ -1,0 +1,772 @@
+openapi: 3.0.3
+info:
+  title: ZoikoShield - Shield Core API
+  version: 1.0.0
+  description: API documentation for the ZoikoShield platform shield-core service.
+  contact:
+    name: ZoikoShield Team
+
+servers:
+  - url: http://localhost:3001
+    description: Local development
+
+tags:
+  - name: Auth
+    description: Identity adapter – registration, login, OAuth, sessions
+  - name: RBAC
+    description: Authorization – permissions, roles, tenant memberships
+  - name: Tenant
+    description: Tenant CRUD (in-memory)
+  - name: Customer
+    description: Customer CRUD (in-memory)
+  - name: Organization
+    description: Organization CRUD (in-memory)
+  - name: LegalEntity
+    description: Legal Entity CRUD (in-memory)
+  - name: Environment
+    description: Environment CRUD (in-memory)
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # ── Auth ──
+    RegisterRequest:
+      type: object
+      required: [fullName, email, password, confirmPassword, acceptTerms]
+      properties:
+        fullName: { type: string, example: "Test User" }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 12 }
+        confirmPassword: { type: string, minLength: 12 }
+        acceptTerms: { type: boolean, enum: [true] }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+
+    VerifyEmailRequest:
+      type: object
+      required: [email, otp]
+      properties:
+        email: { type: string, format: email }
+        otp: { type: string, minLength: 6, maxLength: 6 }
+
+    EmailOnlyRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+
+    ResetPasswordRequest:
+      type: object
+      required: [email, otp, newPassword, confirmNewPassword]
+      properties:
+        email: { type: string, format: email }
+        otp: { type: string, minLength: 6, maxLength: 6 }
+        newPassword: { type: string, minLength: 12 }
+        confirmNewPassword: { type: string, minLength: 12 }
+
+    UserResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string }
+        fullName: { type: string }
+        avatarUrl: { type: string, nullable: true }
+        authenticationProvider: { type: string, enum: [LOCAL, GOOGLE, MICROSOFT] }
+        emailVerified: { type: boolean }
+        status: { type: string, enum: [ACTIVE, DISABLED] }
+        lastLoginAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    AuthResponse:
+      type: object
+      properties:
+        user: { $ref: "#/components/schemas/UserResponse" }
+
+    SuccessResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+
+    MessageResponse:
+      type: object
+      properties:
+        message: { type: string }
+
+    # ── RBAC ──
+    CreatePermissionRequest:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string, example: "case:create" }
+        description: { type: string, example: "Create a case" }
+
+    Permission:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string }
+        description: { type: string, nullable: true }
+
+    CreateRoleRequest:
+      type: object
+      required: [code, name, roleLevel]
+      properties:
+        tenantId: { type: string, format: uuid }
+        code: { type: string, example: SECURITY_ANALYST }
+        name: { type: string, example: Security Analyst }
+        roleLevel: { type: string, enum: [PLATFORM, TENANT] }
+        permissionCodes: { type: array, items: { type: string } }
+
+    UpdateRolePermissionsRequest:
+      type: object
+      required: [permissionCodes]
+      properties:
+        permissionCodes: { type: array, items: { type: string } }
+
+    Role:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        tenantId: { type: string, format: uuid, nullable: true }
+        code: { type: string }
+        name: { type: string }
+        roleLevel: { type: string, enum: [PLATFORM, TENANT] }
+        permissions: { type: array, items: { $ref: "#/components/schemas/Permission" } }
+        createdAt: { type: string, format: date-time }
+
+    JoinTenantRequest:
+      type: object
+      required: [roleId]
+      properties:
+        roleId: { type: string, format: uuid }
+
+    TenantMembership:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        tenantId: { type: string, format: uuid }
+        userId: { type: string, format: uuid }
+        status: { type: string, enum: [ACTIVE, SUSPENDED, REMOVED] }
+        roles: { type: array, items: { $ref: "#/components/schemas/Role" } }
+        joinedAt: { type: string, format: date-time }
+
+    # ── Canonical Context ──
+    CanonicalContext:
+      type: object
+      required: [tenantId, legalEntityId, environmentId, region, correlationId, traceId, requestId, purpose, dataClass, policyVersion, contractId, contractVersion, recordedAt]
+      properties:
+        tenantId: { type: string, format: uuid }
+        legalEntityId: { type: string, format: uuid }
+        environmentId: { type: string, format: uuid }
+        region: { type: string, example: us-east-1 }
+        actorId: { type: string }
+        workloadId: { type: string }
+        correlationId: { type: string, format: uuid }
+        causationId: { type: string }
+        traceId: { type: string, format: uuid }
+        requestId: { type: string, format: uuid }
+        idempotencyKey: { type: string }
+        purpose: { type: string, example: security-monitoring }
+        dataClass: { type: string, example: internal }
+        policyVersion: { type: string }
+        contractId: { type: string }
+        contractVersion: { type: string }
+        occurredAt: { type: string, format: date-time }
+        observedAt: { type: string, format: date-time }
+        recordedAt: { type: string, format: date-time }
+
+    # ── Tenant ──
+    CreateTenantRequest:
+      type: object
+      required: [name, context]
+      properties:
+        name: { type: string, example: Acme Corp }
+        context: { $ref: "#/components/schemas/CanonicalContext" }
+
+    UpdateTenantRequest:
+      type: object
+      required: [context]
+      properties:
+        name: { type: string }
+        status: { type: string, enum: [active, suspended, offboarded] }
+        context: { $ref: "#/components/schemas/CanonicalContext" }
+
+    Tenant:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        status: { type: string, enum: [active, suspended, offboarded] }
+        context: { $ref: "#/components/schemas/CanonicalContext" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    # ── Customer ──
+    CreateCustomerRequest:
+      type: object
+      required: [party_id, customer_type]
+      properties:
+        party_id: { type: string }
+        customer_type: { type: string, example: enterprise }
+        segment: { type: string, example: mid-market }
+
+    UpdateCustomerRequest:
+      type: object
+      properties:
+        party_id: { type: string }
+        customer_type: { type: string }
+        lifecycle_status: { type: string }
+        kyc_status: { type: string }
+        segment: { type: string }
+
+    Customer:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        party_id: { type: string }
+        customer_type: { type: string }
+        lifecycle_status: { type: string }
+        kyc_status: { type: string }
+        segment: { type: string }
+        context: { $ref: "#/components/schemas/CanonicalContext" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    CustomerListResponse:
+      type: object
+      properties:
+        customers: { type: array, items: { $ref: "#/components/schemas/Customer" } }
+        total: { type: integer }
+
+    # ── Generic name-based entity ──
+    CreateNameRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+
+    UpdateNameRequest:
+      type: object
+      properties:
+        name: { type: string }
+        status: { type: string }
+
+    Organization:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        status: { type: string }
+        context: { $ref: "#/components/schemas/CanonicalContext" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    LegalEntity:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        status: { type: string }
+        context: { $ref: "#/components/schemas/CanonicalContext" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    Environment:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        status: { type: string }
+        context: { $ref: "#/components/schemas/CanonicalContext" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    DataListResponse:
+      type: object
+      properties:
+        data: { type: array, items: { type: object } }
+        total: { type: integer }
+
+paths:
+  # ═══════════════ AUTH ═══════════════
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      description: No tokens returned. A 6-digit OTP is emailed — call Verify Email next.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterRequest" }
+      responses:
+        "201": { description: Registration successful, content: { application/json: { schema: { $ref: "#/components/schemas/MessageResponse" } } } }
+        "400": { description: Validation error }
+        "409": { description: Email already registered }
+
+  /auth/verify-email:
+    post:
+      tags: [Auth]
+      summary: Verify email with OTP
+      description: Consumes the registration OTP, marks user verified, logs them in (sets auth cookies).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VerifyEmailRequest" }
+      responses:
+        "200": { description: Email verified and logged in, content: { application/json: { schema: { $ref: "#/components/schemas/AuthResponse" } } } }
+        "400": { description: Invalid or expired OTP }
+
+  /auth/resend-verification:
+    post:
+      tags: [Auth]
+      summary: Resend verification OTP
+      description: Always returns a generic message — avoids user enumeration.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmailOnlyRequest" }
+      responses:
+        "200": { description: Generic success, content: { application/json: { schema: { $ref: "#/components/schemas/MessageResponse" } } } }
+
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Request password reset OTP
+      description: Always returns a generic message. Sends a PASSWORD_RESET OTP if the account exists.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EmailOnlyRequest" }
+      responses:
+        "200": { description: Generic success, content: { application/json: { schema: { $ref: "#/components/schemas/MessageResponse" } } } }
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Reset password with OTP
+      description: Consumes the reset OTP, updates the password, and revokes all existing sessions.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResetPasswordRequest" }
+      responses:
+        "200": { description: Password reset successful, content: { application/json: { schema: { $ref: "#/components/schemas/MessageResponse" } } } }
+        "400": { description: Invalid or expired OTP }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with email and password
+      description: Returns user profile and sets auth cookies (accessToken, refreshToken).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LoginRequest" }
+      responses:
+        "200": { description: Login successful, content: { application/json: { schema: { $ref: "#/components/schemas/AuthResponse" } } } }
+        "401": { description: Invalid credentials }
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh token (rotates)
+      description: Reads refreshToken from cookie, rotates the token pair, sets new cookies.
+      responses:
+        "200": { description: Tokens rotated, content: { application/json: { schema: { $ref: "#/components/schemas/SuccessResponse" } } } }
+        "401": { description: No or invalid refresh token }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout current session
+      description: Revokes the current refresh token and clears auth cookies.
+      responses:
+        "200": { description: Logged out, content: { application/json: { schema: { $ref: "#/components/schemas/SuccessResponse" } } } }
+
+  /auth/logout-all:
+    post:
+      tags: [Auth]
+      summary: Logout all sessions
+      security: [{ BearerAuth: [] }]
+      responses:
+        "200": { description: All sessions revoked, content: { application/json: { schema: { $ref: "#/components/schemas/SuccessResponse" } } } }
+        "401": { description: Unauthorized }
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user profile
+      security: [{ BearerAuth: [] }]
+      responses:
+        "200": { description: Current user, content: { application/json: { schema: { $ref: "#/components/schemas/UserResponse" } } } }
+        "401": { description: Unauthorized }
+
+  /auth/google:
+    get:
+      tags: [Auth]
+      summary: Google OAuth login (browser redirect)
+      description: Redirects to Google's consent screen.
+      responses:
+        "302": { description: Redirect to Google }
+
+  /auth/google/callback:
+    get:
+      tags: [Auth]
+      summary: Google OAuth callback
+      responses:
+        "200": { description: OAuth login successful, content: { application/json: { schema: { $ref: "#/components/schemas/AuthResponse" } } } }
+
+  /auth/microsoft:
+    get:
+      tags: [Auth]
+      summary: Microsoft OAuth login (browser redirect)
+      description: Redirects to Microsoft's consent screen.
+      responses:
+        "302": { description: Redirect to Microsoft }
+
+  /auth/microsoft/callback:
+    get:
+      tags: [Auth]
+      summary: Microsoft OAuth callback
+      responses:
+        "200": { description: OAuth login successful, content: { application/json: { schema: { $ref: "#/components/schemas/AuthResponse" } } } }
+
+  # ═══════════════ RBAC ═══════════════
+  /permissions:
+    post:
+      tags: [RBAC]
+      summary: Create a permission
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreatePermissionRequest" }
+      responses:
+        "201": { description: Permission created, content: { application/json: { schema: { $ref: "#/components/schemas/Permission" } } } }
+        "401": { description: Unauthorized }
+
+  /roles:
+    get:
+      tags: [RBAC]
+      summary: List roles
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: tenantId
+          in: query
+          schema: { type: string, format: uuid }
+          description: Filter by tenant ID
+      responses:
+        "200": { description: List of roles, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Role" } } } } }
+        "401": { description: Unauthorized }
+    post:
+      tags: [RBAC]
+      summary: Create a role
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateRoleRequest" }
+      responses:
+        "201": { description: Role created, content: { application/json: { schema: { $ref: "#/components/schemas/Role" } } } }
+        "401": { description: Unauthorized }
+
+  /roles/{roleId}/permissions:
+    patch:
+      tags: [RBAC]
+      summary: Update role permissions
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateRolePermissionsRequest" }
+      responses:
+        "200": { description: Permissions updated, content: { application/json: { schema: { $ref: "#/components/schemas/Role" } } } }
+        "401": { description: Unauthorized }
+        "404": { description: Role not found }
+
+  /tenants/{tenantId}/memberships/self:
+    post:
+      tags: [RBAC]
+      summary: Join tenant (self-bootstrap)
+      description: Lets the current user join a tenant with a given role. Stands in for the invitation flow.
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/JoinTenantRequest" }
+      responses:
+        "201": { description: Membership created, content: { application/json: { schema: { $ref: "#/components/schemas/TenantMembership" } } } }
+        "401": { description: Unauthorized }
+
+  # ═══════════════ TENANT ═══════════════
+  /tenant:
+    post:
+      tags: [Tenant]
+      summary: Create tenant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateTenantRequest" }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Tenant" } } } }
+    get:
+      tags: [Tenant]
+      summary: List tenants
+      responses:
+        "200": { description: All tenants, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Tenant" } } } } }
+
+  /tenant/{id}:
+    get:
+      tags: [Tenant]
+      summary: Get tenant by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Tenant found, content: { application/json: { schema: { $ref: "#/components/schemas/Tenant" } } } }
+        "404": { description: Not found }
+    patch:
+      tags: [Tenant]
+      summary: Update tenant
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateTenantRequest" }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/Tenant" } } } }
+        "404": { description: Not found }
+    delete:
+      tags: [Tenant]
+      summary: Delete tenant
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200": { description: Deleted }
+        "404": { description: Not found }
+
+  # ═══════════════ CUSTOMER ═══════════════
+  /v1/customers:
+    post:
+      tags: [Customer]
+      summary: Create customer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateCustomerRequest" }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Customer" } } } }
+    get:
+      tags: [Customer]
+      summary: List customers
+      responses:
+        "200": { description: Customer list, content: { application/json: { schema: { $ref: "#/components/schemas/CustomerListResponse" } } } }
+
+  /v1/customers/{id}:
+    get:
+      tags: [Customer]
+      summary: Get customer by ID
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: Found, content: { application/json: { schema: { $ref: "#/components/schemas/Customer" } } } }
+        "404": { description: Not found }
+    patch:
+      tags: [Customer]
+      summary: Update customer
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateCustomerRequest" }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/Customer" } } } }
+        "404": { description: Not found }
+    delete:
+      tags: [Customer]
+      summary: Delete customer
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: Deleted }
+        "404": { description: Not found }
+
+  # ═══════════════ ORGANIZATION ═══════════════
+  /v1/organizations:
+    post:
+      tags: [Organization]
+      summary: Create organization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateNameRequest" }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Organization" } } } }
+    get:
+      tags: [Organization]
+      summary: List organizations
+      responses:
+        "200": { description: Organization list, content: { application/json: { schema: { $ref: "#/components/schemas/DataListResponse" } } } }
+
+  /v1/organizations/{id}:
+    get:
+      tags: [Organization]
+      summary: Get organization by ID
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: Found, content: { application/json: { schema: { $ref: "#/components/schemas/Organization" } } } }
+        "404": { description: Not found }
+    patch:
+      tags: [Organization]
+      summary: Update organization
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateNameRequest" }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/Organization" } } } }
+        "404": { description: Not found }
+    delete:
+      tags: [Organization]
+      summary: Delete organization
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: Deleted }
+        "404": { description: Not found }
+
+  # ═══════════════ LEGAL ENTITY ═══════════════
+  /v1/legal-entitys:
+    post:
+      tags: [LegalEntity]
+      summary: Create legal entity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateNameRequest" }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/LegalEntity" } } } }
+    get:
+      tags: [LegalEntity]
+      summary: List legal entities
+      responses:
+        "200": { description: Legal entity list, content: { application/json: { schema: { $ref: "#/components/schemas/DataListResponse" } } } }
+
+  /v1/legal-entitys/{id}:
+    get:
+      tags: [LegalEntity]
+      summary: Get legal entity by ID
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: Found, content: { application/json: { schema: { $ref: "#/components/schemas/LegalEntity" } } } }
+        "404": { description: Not found }
+    patch:
+      tags: [LegalEntity]
+      summary: Update legal entity
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateNameRequest" }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/LegalEntity" } } } }
+        "404": { description: Not found }
+    delete:
+      tags: [LegalEntity]
+      summary: Delete legal entity
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: Deleted }
+        "404": { description: Not found }
+
+  # ═══════════════ ENVIRONMENT ═══════════════
+  /v1/environments:
+    post:
+      tags: [Environment]
+      summary: Create environment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateNameRequest" }
+      responses:
+        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Environment" } } } }
+    get:
+      tags: [Environment]
+      summary: List environments
+      responses:
+        "200": { description: Environment list, content: { application/json: { schema: { $ref: "#/components/schemas/DataListResponse" } } } }
+
+  /v1/environments/{id}:
+    get:
+      tags: [Environment]
+      summary: Get environment by ID
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: Found, content: { application/json: { schema: { $ref: "#/components/schemas/Environment" } } } }
+        "404": { description: Not found }
+    patch:
+      tags: [Environment]
+      summary: Update environment
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UpdateNameRequest" }
+      responses:
+        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/Environment" } } } }
+        "404": { description: Not found }
+    delete:
+      tags: [Environment]
+      summary: Delete environment
+      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+      responses:
+        "200": { description: Deleted }
+        "404": { description: Not found }
