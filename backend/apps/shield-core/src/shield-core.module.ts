@@ -11,6 +11,10 @@ import { EnvironmentModule } from './modules/environment/environment.module';
 import { IdentityAdapterModule } from './modules/identity-adapter/identity-adapter.module';
 import { AuthorizationModule } from './modules/authorization/authorization.module';
 import { User } from './modules/identity-adapter/user.entity';
+import { Session } from './modules/identity-adapter/session.entity';
+import { Permission } from './modules/authorization/entities/permission.entity';
+import { Role } from './modules/authorization/entities/role.entity';
+import { TenantMembership } from './modules/authorization/entities/tenant-membership.entity';
 
 @Module({
   imports: [
@@ -18,7 +22,7 @@ import { User } from './modules/identity-adapter/user.entity';
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL,
-      entities: [User],
+      entities: [User, Session, Permission, Role, TenantMembership],
       synchronize: process.env.NODE_ENV !== 'production',
       ssl: process.env.DATABASE_URL?.includes('sslmode=require')
         ? { rejectUnauthorized: false }

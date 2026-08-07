@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { User } from './user.entity';
+import { AuthenticationProvider, User } from './user.entity';
 
 @Injectable()
 export class UserService {
@@ -10,24 +10,41 @@ export class UserService {
     private readonly userRepository: Repository<User>,
   ) {}
 
-  findByTenantAndEmail(tenantId: string, email: string): Promise<User | null> {
-    return this.userRepository.findOne({ where: { tenantId, email } });
+  findByEmail(email: string): Promise<User | null> {
+    return this.userRepository.findOne({ where: { email } });
   }
 
   findById(id: string): Promise<User | null> {
     return this.userRepository.findOne({ where: { id } });
   }
 
+  findByProvider(provider: AuthenticationProvider, providerUserId: string): Promise<User | null> {
+    return this.userRepository.findOne({ where: { authenticationProvider: provider, providerUserId } });
+  }
+
   create(data: {
-    tenantId: string;
     email: string;
-    passwordHash: string;
-    roles: string[];
+    fullName?: string;
+    passwordHash?: string | null;
+    avatarUrl?: string;
+    authenticationProvider?: AuthenticationProvider;
+    providerUserId?: string | null;
+    emailVerified?: boolean;
   }): Promise<User> {
     const user = this.userRepository.create({
-      ...data,
-      status: 'active',
+      email: data.email,
+      fullName: data.fullName,
+      passwordHash: data.passwordHash ?? null,
+      avatarUrl: data.avatarUrl,
+      authenticationProvider: data.authenticationProvider ?? 'LOCAL',
+      providerUserId: data.providerUserId ?? null,
+      emailVerified: data.emailVerified ?? false,
+      status: 'ACTIVE',
     });
     return this.userRepository.save(user);
+  }
+
+  async recordLogin(userId: string): Promise<void> {
+    await this.userRepository.update({ id: userId }, { lastLoginAt: new Date() });
   }
 }

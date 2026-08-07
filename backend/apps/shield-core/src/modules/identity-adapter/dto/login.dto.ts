@@ -1,9 +1,6 @@
-import { IsEmail, IsString, IsUUID } from 'class-validator';
+import { IsEmail, IsString } from 'class-validator';
 
 export class LoginDto {
-  @IsUUID()
-  tenantId: string;
-
   @IsEmail()
   email: string;
 

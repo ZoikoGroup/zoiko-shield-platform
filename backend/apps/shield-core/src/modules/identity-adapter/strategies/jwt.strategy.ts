@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
+import { UserService } from '../user.service';
 import {
   AuthenticatedUser,
   JwtPayload,
@@ -9,7 +10,10 @@ import {
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(config: ConfigService) {
+  constructor(
+    config: ConfigService,
+    private readonly userService: UserService,
+  ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
@@ -17,15 +21,19 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  validate(payload: JwtPayload): AuthenticatedUser {
-    if (!payload.sub || !payload.tenantId) {
+  async validate(payload: JwtPayload): Promise<AuthenticatedUser> {
+    if (!payload.sub) {
       throw new UnauthorizedException('Invalid token payload');
     }
+    const user = await this.userService.findById(payload.sub);
+    if (!user || user.status !== 'ACTIVE') {
+      throw new UnauthorizedException('Invalid credentials');
+    }
     return {
-      id: payload.sub,
-      tenantId: payload.tenantId,
-      email: payload.email,
-      roles: payload.roles ?? [],
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      emailVerified: user.emailVerified,
     };
   }
 }

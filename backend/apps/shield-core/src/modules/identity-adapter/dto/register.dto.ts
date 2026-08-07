@@ -1,8 +1,8 @@
-import { IsArray, IsEmail, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { Equals, IsEmail, IsString, MinLength } from 'class-validator';
 
 export class RegisterDto {
-  @IsUUID()
-  tenantId: string;
+  @IsString()
+  fullName: string;
 
   @IsEmail()
   email: string;
@@ -11,8 +11,9 @@ export class RegisterDto {
   @MinLength(12)
   password: string;
 
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  roles?: string[];
+  @IsString()
+  confirmPassword: string;
+
+  @Equals(true, { message: 'acceptTerms must be true' })
+  acceptTerms: boolean;
 }
