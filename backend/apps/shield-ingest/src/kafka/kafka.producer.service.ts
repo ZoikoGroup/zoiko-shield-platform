@@ -37,9 +37,31 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Publishes a generic event payload to a Kafka topic.
+   */
+  async emit(topic: string, payload: any) {
+    try {
+      const key = payload.tenantId || payload.tenant_id || 'default-key';
+      await this.producer.send({
+        topic,
+        messages: [
+          {
+            key,
+            value: JSON.stringify(payload),
+          },
+        ],
+      });
+      this.logger.debug(`Successfully emitted event to Kafka topic ${topic}`);
+    } catch (error: any) {
+      this.logger.error(`Failed to emit event to Kafka topic ${topic}: ${error.message}`);
+    }
+  }
+
+  /**
    * Publishes a canonical event to the specified Kafka topic.
    */
   async publishCanonicalEvent(event: ZoikoShieldCanonicalEvent) {
+
     const topic =
       process.env.KAFKA_CANONICAL_EVENTS_TOPIC || 'zoiko.events.canonical.v1';
 
