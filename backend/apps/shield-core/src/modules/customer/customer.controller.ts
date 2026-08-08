@@ -32,4 +32,6 @@ export class CustomerController {
   remove(@Param('id') id: string) {
     return this.customerService.remove(id);
   }
+
+  
 }
