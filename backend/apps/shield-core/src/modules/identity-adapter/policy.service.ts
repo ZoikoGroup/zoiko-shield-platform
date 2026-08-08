@@ -8,6 +8,11 @@ import { PolicyAcceptance } from './policy-acceptance.entity';
 const TERMS_OF_SERVICE_V1_TEXT =
   'ZoikoShield Terms of Service v1 (placeholder — replace with the approved, legally reviewed text before production use).';
 
+// W06 "Tenant onboarding wizard": access disclosure must be shown and
+// accepted, with generated evidence, before a tenant is activated.
+const ACCESS_DISCLOSURE_V1_TEXT =
+  'ZoikoShield Access Disclosure v1 (placeholder — replace with the approved data-processing/access-disclosure text before production use).';
+
 @Injectable()
 export class PolicyService implements OnModuleInit {
   constructor(
@@ -17,18 +22,21 @@ export class PolicyService implements OnModuleInit {
     private readonly policyAcceptanceRepository: Repository<PolicyAcceptance>,
   ) {}
 
-  /** Seeds the v1 Terms of Service on boot if it doesn't already exist, so registration always has an active policy to reference. */
+  /** Seeds v1 policy documents on boot if they don't already exist, so registration/onboarding always has an active policy to reference. */
   async onModuleInit(): Promise<void> {
-    const existing = await this.policyDocumentRepository.findOne({
-      where: { kind: 'TERMS_OF_SERVICE', version: '1' },
-    });
+    await this.seedIfMissing('TERMS_OF_SERVICE', '1', TERMS_OF_SERVICE_V1_TEXT);
+    await this.seedIfMissing('ACCESS_DISCLOSURE', '1', ACCESS_DISCLOSURE_V1_TEXT);
+  }
+
+  private async seedIfMissing(kind: string, version: string, text: string): Promise<void> {
+    const existing = await this.policyDocumentRepository.findOne({ where: { kind, version } });
     if (!existing) {
       await this.policyDocumentRepository.save(
         this.policyDocumentRepository.create({
-          kind: 'TERMS_OF_SERVICE',
-          version: '1',
+          kind,
+          version,
           publishedAt: new Date(),
-          contentHash: createHash('sha256').update(TERMS_OF_SERVICE_V1_TEXT).digest('hex'),
+          contentHash: createHash('sha256').update(text).digest('hex'),
           active: true,
         }),
       );

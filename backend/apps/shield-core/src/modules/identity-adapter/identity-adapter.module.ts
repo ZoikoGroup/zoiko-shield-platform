@@ -64,6 +64,6 @@ import { MicrosoftStrategy } from './strategies/microsoft.strategy';
     GoogleStrategy,
     MicrosoftStrategy,
   ],
-  exports: [PrincipalService, IdentityEventService],
+  exports: [PrincipalService, IdentityEventService, PolicyService],
 })
 export class IdentityAdapterModule {}
