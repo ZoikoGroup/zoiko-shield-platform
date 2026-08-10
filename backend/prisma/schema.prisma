@@ -33,36 +33,27 @@ model ConnectorDefinition {
 }
 
 model ConnectorInstance {
-  id                   String              @id @default(uuid())
-  tenant_id            String
-  environment_id       String              @default("default-env")
-  connectorDefId       String
-  definition           ConnectorDefinition @relation(fields: [connectorDefId], references: [id])
-  name                 String
-  state                ConnectorState      @default(NOT_CONNECTED)
-  authentication_type  String              @default("API_KEY")
-  source_region        String?
-  // Provider-side tenant identifier (e.g. the customer's Azure AD directory
-  // ID) — distinct from source_region. Required to call back into the
-  // provider's API again after initial consent.
-  externalTenantId     String?
-  region               String?
-  configurationVersion Int                 @default(1)
-  createdBy            String?
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
-  deletedAt            DateTime?
-
-  credentials       ConnectorCredentialReference[]
-  permissions       ConnectorPermission[]
-  checkpoints       ConnectorCheckpoint[]
-  syncRuns          ConnectorSynchronizationRun[]
-  health            ConnectorHealthStatus?
-  errors            ConnectorError[]
-  webhookSubs       WebhookSubscription[]
-  eventHubChecks    EventHubConsumerCheckpoint[]
-  quarantinedEvents QuarantinedEvent[]
-  rawEvents         RawEvent[]
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  environment_id     String   @default("default-env")
+  connectorDefId     String
+  definition         ConnectorDefinition @relation(fields: [connectorDefId], references: [id])
+  name               String
+  state              ConnectorState @default(NOT_CONNECTED)
+  authentication_type String  @default("API_KEY")
+  source_region      String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  deletedAt          DateTime?
+  
+  credentials        ConnectorCredentialReference[]
+  checkpoints        ConnectorCheckpoint[]
+  syncRuns           ConnectorSynchronizationRun[]
+  errors             ConnectorError[]
+  webhookSubs        WebhookSubscription[]
+  eventHubChecks     EventHubConsumerCheckpoint[]
+  quarantinedEvents  QuarantinedEvent[]
+  rawEvents          RawEvent[]
 
   @@index([tenant_id])
 }
@@ -2494,3 +2485,394 @@ model TenantOffboardingRun {
 
   @@index([tenant_id])
 }
+
+model RawEvent {
+  id                  String   @id @default(uuid())
+  tenant_id           String
+  environment_id      String   @default("default-env")
+  connector_id        String
+  connector           ConnectorInstance @relation(fields: [connector_id], references: [id])
+  source_type         String
+  source_event_id     String?
+  source_region       String?
+  occurred_at         DateTime?
+  received_at         DateTime @default(now())
+  payload_hash        String
+  raw_payload_reference String
+  schema_version      String   @default("v1.0")
+  processing_status   String   @default("ACCEPTED")
+  created_at          DateTime @default(now())
+
+  normalizedEvents    NormalizedEvent[]
+
+  @@unique([tenant_id, connector_id, source_event_id])
+  @@index([tenant_id])
+  @@index([connector_id])
+  @@index([payload_hash])
+}
+
+model NormalizedEvent {
+  id                    String   @id @default(uuid())
+  tenant_id             String
+  environment_id        String   @default("default-env")
+  connector_id          String
+  raw_event_id          String
+  rawEvent              RawEvent @relation(fields: [raw_event_id], references: [id])
+  asset_id              String?
+  asset                 Asset?   @relation(fields: [asset_id], references: [id])
+  identity_id           String?
+  identity              IdentityEntity? @relation(fields: [identity_id], references: [id])
+  event_class           String
+  event_category        String?
+  event_activity        String?
+  severity              String   @default("INFORMATIONAL")
+  actor_user_id         String?
+  actor_email           String?
+  source_ip             String?
+  destination_ip        String?
+  resource_id           String?
+  resource_type         String?
+  action                String?
+  outcome               String?
+  occurred_at           DateTime?
+  observed_at           DateTime?
+  recorded_at           DateTime @default(now())
+  mapping_version       String   @default("1.0")
+  normalization_status  String   @default("NORMALIZED")
+
+  detectionRuns         DetectionRun[]
+
+  @@index([tenant_id])
+  @@index([connector_id])
+  @@index([raw_event_id])
+  @@index([asset_id])
+  @@index([identity_id])
+}
+
+model Asset {
+  id               String   @id @default(uuid())
+  tenant_id        String
+  environment_id   String   @default("default-env")
+  external_id      String?
+  asset_type       String
+  name             String
+  criticality      String   @default("MEDIUM")
+  status           String   @default("ACTIVE")
+  first_seen_at    DateTime @default(now())
+  last_seen_at     DateTime @default(now())
+  created_at       DateTime @default(now())
+
+  normalizedEvents NormalizedEvent[]
+
+  @@unique([tenant_id, external_id, asset_type])
+  @@index([tenant_id])
+  @@index([criticality])
+}
+
+model IdentityEntity {
+  id               String   @id @default(uuid())
+  tenant_id        String
+  external_id      String?
+  email            String?
+  display_name     String?
+  identity_type    String   @default("USER")
+  first_seen_at    DateTime @default(now())
+  last_seen_at     DateTime @default(now())
+  created_at       DateTime @default(now())
+
+  normalizedEvents NormalizedEvent[]
+
+  @@unique([tenant_id, email])
+  @@index([tenant_id])
+  @@index([email])
+}
+
+model DetectionRule {
+  id                   String   @id @default(uuid())
+  tenant_id            String?
+  name                 String
+  description          String?
+  rule_type            String   @default("MATCH")
+  severity             String   @default("HIGH")
+  condition_definition String
+  required_fields      String   @default("[]")
+  status               String   @default("ACTIVE")
+  current_version      Int      @default(1)
+  created_by           String?
+  created_at           DateTime @default(now())
+  updated_at           DateTime @updatedAt
+
+  detectionRuns        DetectionRun[]
+
+  @@index([tenant_id])
+  @@index([status])
+}
+
+model DetectionRun {
+  id                String        @id @default(uuid())
+  tenant_id         String
+  rule_id           String
+  rule              DetectionRule @relation(fields: [rule_id], references: [id])
+  event_id          String
+  event             NormalizedEvent @relation(fields: [event_id], references: [id])
+  rule_version      Int           @default(1)
+  result            String
+  execution_details String
+  executed_at       DateTime      @default(now())
+
+  @@index([tenant_id])
+  @@index([rule_id])
+  @@index([event_id])
+  @@index([result])
+}
+
+model Alert {
+  id                   String        @id @default(uuid())
+  tenant_id            String
+  environment_id       String        @default("default-env")
+  detection_rule_id    String
+  detection_rule_version Int         @default(1)
+  title                String
+  description          String?
+  severity             String        @default("HIGH")
+  priority             String        @default("P2")
+  confidence           Float         @default(0.9)
+  status               String        @default("NEW")
+  source_event_ids     String        @default("[]")
+  affected_assets      String        @default("[]")
+  affected_identities  String        @default("[]")
+  assigned_to          String?
+  created_at           DateTime      @default(now())
+  updated_at           DateTime      @updatedAt
+
+  @@index([tenant_id])
+  @@index([status])
+  @@index([severity])
+}
+
+model ResourceObservation {
+  id                    String   @id @default(uuid())
+  tenant_id             String
+  environment_id        String   @default("default-env")
+  canonical_resource_id String
+  resource_type         String
+  source_connector_id   String
+  first_seen_at         DateTime @default(now())
+  last_seen_at          DateTime @default(now())
+  coverage_state        String   @default("DISCOVERED")
+  billable_state        String   @default("NON_BILLABLE")
+  exclusion_reason      String?
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+
+  @@unique([tenant_id, canonical_resource_id, resource_type])
+  @@index([tenant_id])
+  @@index([coverage_state])
+}
+
+model UsageRecord {
+  id                     String   @id @default(uuid())
+  tenant_id              String
+  environment_id         String   @default("default-env")
+  meter_version          String   @default("v1.0")
+  source_type            String
+  raw_event_id           String?
+  unit                   String   @default("EVENTS")
+  accepted_quantity      Int      @default(1)
+  billable_quantity      Int      @default(0)
+  usage_state            String   @default("ACCEPTED")
+  billing_classification String   @default("COMMERCIAL_DIRECT")
+  recorded_at            DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([usage_state])
+  @@index([recorded_at])
+}
+
+model CommercialAccount {
+  id                     String   @id @default(uuid())
+  name                   String
+  billing_source         String   @default("DIRECT")
+  billing_classification String   @default("COMMERCIAL_DIRECT")
+  status                 String   @default("ACTIVE")
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+
+  entitlements           Entitlement[]
+  contracts              Contract[]
+  invoices               CommercialInvoice[]
+
+  @@index([status])
+  @@index([billing_classification])
+}
+
+model Entitlement {
+  id                    String            @id @default(uuid())
+  commercial_account_id String
+  commercialAccount     CommercialAccount @relation(fields: [commercial_account_id], references: [id])
+  tenant_id             String
+  offer_type            String
+  status                String            @default("ACTIVE")
+  effective_from        DateTime          @default(now())
+  effective_to          DateTime?
+  created_at            DateTime          @default(now())
+  updated_at            DateTime          @updatedAt
+
+  @@index([tenant_id])
+  @@index([offer_type])
+  @@index([status])
+}
+
+model ClaimRegister {
+  id                String   @id @default(uuid())
+  claim_key         String   @unique
+  approved_wording  String
+  status            String   @default("APPROVED")
+  requires_evidence Boolean  @default(true)
+  created_at        DateTime @default(now())
+}
+
+model CatalogVersion {
+  id             String      @id @default(uuid())
+  version_label  String      @unique
+  status         String      @default("DRAFT")
+  effective_from DateTime    @default(now())
+  effective_to   DateTime?
+  approved_by    String?
+  approved_at    DateTime?
+  created_at     DateTime    @default(now())
+
+  products       Product[]
+  priceBooks     PriceBook[]
+  contracts      Contract[]
+
+  @@index([status])
+}
+
+model Product {
+  id                 String         @id @default(uuid())
+  catalog_version_id String
+  catalogVersion     CatalogVersion @relation(fields: [catalog_version_id], references: [id])
+  sku                String
+  offer_family       String
+  display_name       String
+  metric_family      String
+  requires           String         @default("[]")
+  incompatible_with  String         @default("[]")
+  region_scope       String         @default("[]")
+  created_at         DateTime       @default(now())
+
+  priceBooks         PriceBook[]
+
+  @@unique([catalog_version_id, sku])
+  @@index([sku])
+}
+
+model PriceBook {
+  id                 String         @id @default(uuid())
+  catalog_version_id String
+  catalogVersion     CatalogVersion @relation(fields: [catalog_version_id], references: [id])
+  product_id         String
+  product            Product        @relation(fields: [product_id], references: [id])
+  region             String         @default("GLOBAL")
+  currency           String         @default("USD")
+  channel            String         @default("DIRECT")
+  unit_price         Float          @default(0.0)
+  minimum_commit     Float          @default(0.0)
+  overage_rate       Float          @default(0.0)
+  status             String         @default("DRAFT")
+  effective_from     DateTime       @default(now())
+  effective_to       DateTime?
+  margin_gate_passed Boolean        @default(false)
+  created_at         DateTime       @default(now())
+
+  @@index([status])
+  @@index([product_id])
+}
+
+model Contract {
+  id                    String            @id @default(uuid())
+  commercial_account_id String
+  commercialAccount     CommercialAccount @relation(fields: [commercial_account_id], references: [id])
+  catalog_version_id    String
+  catalogVersion        CatalogVersion    @relation(fields: [catalog_version_id], references: [id])
+  term_start            DateTime          @default(now())
+  term_end              DateTime
+  status                String            @default("DRAFT")
+  snapshot_hash         String            @default("sha256-snapshot")
+  created_at            DateTime          @default(now())
+  updated_at            DateTime          @updatedAt
+
+  serviceObligations    ServiceObligation[]
+  commercialInvoices    CommercialInvoice[]
+
+  @@index([commercial_account_id])
+  @@index([status])
+}
+
+model ProtectedResourceDefinition {
+  id                 String   @id @default(uuid())
+  resource_type      String
+  version            Int      @default(1)
+  identity_key_spec  String   @default("{}")
+  ephemeral_policy   String   @default("{}")
+  created_at         DateTime @default(now())
+
+  @@unique([resource_type, version])
+}
+
+model ServiceObligation {
+  id              String   @id @default(uuid())
+  contract_id     String
+  contract        Contract @relation(fields: [contract_id], references: [id])
+  obligation_type String
+  coverage_window String?
+  status          String   @default("NOT_DUE")
+  due_at          DateTime?
+  delivered_at    DateTime?
+  evidence_ref    String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  @@index([contract_id])
+  @@index([status])
+}
+
+model CommercialInvoice {
+  id                    String            @id @default(uuid())
+  commercial_account_id String
+  commercialAccount     CommercialAccount @relation(fields: [commercial_account_id], references: [id])
+  contract_id           String
+  contract              Contract          @relation(fields: [contract_id], references: [id])
+  status                String            @default("DRAFT")
+  currency              String            @default("USD")
+  total_amount          Float             @default(0.0)
+  issued_at             DateTime?
+  immutable_snapshot    String            @default("{}")
+  created_at            DateTime          @default(now())
+  updated_at            DateTime          @updatedAt
+
+  @@index([commercial_account_id])
+  @@index([contract_id])
+  @@index([status])
+}
+
+model CommercialEvent {
+  id              String    @id @default(uuid())
+  event_type      String
+  tenant_id       String?
+  actor           String?
+  payload         String
+  idempotency_key String    @unique
+  created_at      DateTime  @default(now())
+  published_at    DateTime?
+
+  @@index([idempotency_key])
+  @@index([event_type])
+}
+
+
+
+
+
+
