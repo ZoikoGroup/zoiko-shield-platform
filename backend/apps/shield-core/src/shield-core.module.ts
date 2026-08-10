@@ -25,6 +25,35 @@ import { Permission } from './modules/authorization/entities/permission.entity';
 import { Role } from './modules/authorization/entities/role.entity';
 import { TenantMembership } from './modules/authorization/entities/tenant-membership.entity';
 import { Invitation } from './modules/authorization/entities/invitation.entity';
+import { Tenant } from './modules/tenant/tenant.entity';
+import { LegalEntity } from './modules/legal-entity/legal-entity.entity';
+import { Environment } from './modules/environment/environment.entity';
+import { OnboardingModule } from './modules/onboarding/onboarding.module';
+import { CommercialModule } from './modules/commercial/commercial.module';
+import { CatalogModule } from './modules/catalog/catalog.module';
+import { CommerceModule } from './modules/commerce/commerce.module';
+import { ObligationsModule } from './modules/obligations/obligations.module';
+import { BillingModule } from './modules/billing/billing.module';
+import { KafkaModule } from './kafka/kafka.module';
+import { CaseManagementModule } from './modules/case-management/case-management.module';
+import { EvidenceModule } from './modules/evidence/evidence.module';
+import { SecurityContextModule } from './modules/security-context/security-context.module';
+import { DetectionModule } from './modules/detection/detection.module';
+import { AuthorizationDecisionModule } from './modules/authorization-decision/authorization-decision.module';
+import { ResponseProposalModule } from './modules/response-proposal/response-proposal.module';
+import { ControlsModule } from './modules/controls/controls.module';
+import { AssessmentsModule } from './modules/assessments/assessments.module';
+import { RiskModule } from './modules/risk/risk.module';
+import { AuditPackageModule } from './modules/audit-package/audit-package.module';
+import { ReportingModule } from './modules/reporting/reporting.module';
+import { NotificationModule } from './modules/notification/notification.module';
+import { DeveloperApiModule } from './modules/developer-api/developer-api.module';
+import { WebhookModule } from './modules/webhook/webhook.module';
+import { ExportModule } from './modules/export/export.module';
+import { OffboardingModule } from './modules/offboarding/offboarding.module';
+import { OutboxPublisherService } from './outbox/outbox-publisher.service';
+import { PrismaModule } from './prisma/prisma.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -49,6 +78,9 @@ import { Invitation } from './modules/authorization/entities/invitation.entity';
         Role,
         TenantMembership,
         Invitation,
+        Tenant,
+        LegalEntity,
+        Environment,
       ],
       synchronize: process.env.NODE_ENV !== 'production',
       ssl: process.env.DATABASE_URL?.includes('sslmode=require')
@@ -62,8 +94,33 @@ import { Invitation } from './modules/authorization/entities/invitation.entity';
     EnvironmentModule,
     IdentityAdapterModule,
     AuthorizationModule,
+    OnboardingModule,
+    CommercialModule,
+    CatalogModule,
+    CommerceModule,
+    ObligationsModule,
+    BillingModule,
+    ScheduleModule.forRoot(),
+    PrismaModule,
+    KafkaModule,
+    EvidenceModule,
+    SecurityContextModule,
+    DetectionModule,
+    AuthorizationDecisionModule,
+    ResponseProposalModule,
+    CaseManagementModule,
+    ControlsModule,
+    AssessmentsModule,
+    RiskModule,
+    AuditPackageModule,
+    ReportingModule,
+    NotificationModule,
+    DeveloperApiModule,
+    WebhookModule,
+    ExportModule,
+    OffboardingModule,
   ],
   controllers: [ShieldCoreController],
-  providers: [ShieldCoreService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [ShieldCoreService, OutboxPublisherService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class ShieldCoreModule {}
