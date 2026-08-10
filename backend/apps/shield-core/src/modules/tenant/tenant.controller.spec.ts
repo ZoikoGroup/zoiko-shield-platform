@@ -5,13 +5,25 @@ import { AuthorizationService } from '../authorization/authorization.service';
 
 describe('TenantController', () => {
   let controller: TenantController;
+  let tenantServiceMock: any;
+  let authServiceMock: any;
 
   beforeEach(async () => {
+    tenantServiceMock = {
+      findAll: jest.fn(),
+      findOne: jest.fn(),
+      transitionStatus: jest.fn(),
+    };
+
+    authServiceMock = {
+      getPermissionCodesForPrincipal: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [TenantController],
       providers: [
-        { provide: TenantService, useValue: {} },
-        { provide: AuthorizationService, useValue: {} },
+        { provide: TenantService, useValue: tenantServiceMock },
+        { provide: AuthorizationService, useValue: authServiceMock },
       ],
     }).compile();
 

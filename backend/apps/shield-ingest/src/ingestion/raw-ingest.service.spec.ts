@@ -2,14 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { RawIngestService } from './raw-ingest.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { KafkaProducerService } from '../kafka/kafka.producer.service';
-import { DeduplicationService } from './deduplication.service';
 import { NotFoundException } from '@nestjs/common';
 
 describe('RawIngestService', () => {
   let service: RawIngestService;
   let prismaMock: any;
   let kafkaMock: any;
-  let dedupMock: any;
 
   const mockConnector = {
     id: 'conn-123',
@@ -25,17 +23,13 @@ describe('RawIngestService', () => {
         findUnique: jest.fn(),
       },
       rawEvent: {
+        findFirst: jest.fn(),
         create: jest.fn(),
       },
     };
 
     kafkaMock = {
       emit: jest.fn().mockResolvedValue(true),
-      publishEvent: jest.fn().mockResolvedValue(true),
-    };
-
-    dedupMock = {
-      findExisting: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -43,7 +37,6 @@ describe('RawIngestService', () => {
         RawIngestService,
         { provide: PrismaService, useValue: prismaMock },
         { provide: KafkaProducerService, useValue: kafkaMock },
-        { provide: DeduplicationService, useValue: dedupMock },
       ],
     }).compile();
 
@@ -60,7 +53,7 @@ describe('RawIngestService', () => {
 
   it('should ingest valid payload and create raw event with payload hash', async () => {
     prismaMock.connectorInstance.findUnique.mockResolvedValue(mockConnector);
-    dedupMock.findExisting.mockResolvedValue(null);
+    prismaMock.rawEvent.findFirst.mockResolvedValue(null);
     prismaMock.rawEvent.create.mockResolvedValue({
       id: 'raw-1',
       tenant_id: 'tenant-001',
@@ -87,7 +80,7 @@ describe('RawIngestService', () => {
 
   it('should return DUPLICATE_IGNORED if sourceEventId has already been processed', async () => {
     prismaMock.connectorInstance.findUnique.mockResolvedValue(mockConnector);
-    dedupMock.findExisting.mockResolvedValue({
+    prismaMock.rawEvent.findFirst.mockResolvedValue({
       id: 'raw-1',
       tenant_id: 'tenant-001',
       environment_id: 'prod-env',
@@ -106,62 +99,5 @@ describe('RawIngestService', () => {
 
     expect(result.processingStatus).toBe('DUPLICATE_IGNORED');
     expect(prismaMock.rawEvent.create).not.toHaveBeenCalled();
-  });
-
-  describe('ingestRawEvent (internal connector-runtime entrypoint)', () => {
-    it('quarantines an empty payload and publishes to connector.event.quarantined.v1', async () => {
-      dedupMock.findExisting.mockResolvedValue(null);
-      prismaMock.rawEvent.create.mockResolvedValue({
-        id: 'raw-2',
-        tenant_id: 'tenant-001',
-        environment_id: 'default-env',
-        connector_id: 'conn-123',
-        source_event_id: 'evt-002',
-        payload_hash: 'mock-hash-2',
-        processing_status: 'QUARANTINED',
-        received_at: new Date(),
-      });
-
-      const result = await service.ingestRawEvent({
-        tenantId: 'tenant-001',
-        environmentId: 'default-env',
-        connectorId: 'conn-123',
-        sourceType: 'microsoft-entra',
-        sourceEventId: 'evt-002',
-        payload: {},
-      });
-
-      expect(result.processingStatus).toBe('QUARANTINED');
-      expect(kafkaMock.publishEvent).toHaveBeenCalledWith(
-        'connector.event.quarantined.v1',
-        'connector.event.quarantined',
-        expect.objectContaining({ tenantId: 'tenant-001', rawEventId: 'raw-2' }),
-      );
-    });
-
-    it('short-circuits on a duplicate without creating a new RawEvent or publishing quarantine', async () => {
-      dedupMock.findExisting.mockResolvedValue({
-        id: 'raw-1',
-        tenant_id: 'tenant-001',
-        environment_id: 'default-env',
-        connector_id: 'conn-123',
-        source_event_id: 'evt-003',
-        payload_hash: 'mock-hash',
-        received_at: new Date(),
-      });
-
-      const result = await service.ingestRawEvent({
-        tenantId: 'tenant-001',
-        environmentId: 'default-env',
-        connectorId: 'conn-123',
-        sourceType: 'microsoft-entra',
-        sourceEventId: 'evt-003',
-        payload: { id: 'evt-003' },
-      });
-
-      expect(result.processingStatus).toBe('DUPLICATE_IGNORED');
-      expect(prismaMock.rawEvent.create).not.toHaveBeenCalled();
-      expect(kafkaMock.publishEvent).not.toHaveBeenCalled();
-    });
   });
 });

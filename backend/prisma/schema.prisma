@@ -33,36 +33,29 @@ model ConnectorDefinition {
 }
 
 model ConnectorInstance {
-  id                   String              @id @default(uuid())
-  tenant_id            String
-  environment_id       String              @default("default-env")
-  connectorDefId       String
-  definition           ConnectorDefinition @relation(fields: [connectorDefId], references: [id])
-  name                 String
-  state                ConnectorState      @default(NOT_CONNECTED)
-  authentication_type  String              @default("API_KEY")
-  source_region        String?
-  // Provider-side tenant identifier (e.g. the customer's Azure AD directory
-  // ID) — distinct from source_region. Required to call back into the
-  // provider's API again after initial consent.
-  externalTenantId     String?
-  region               String?
-  configurationVersion Int                 @default(1)
-  createdBy            String?
-  createdAt            DateTime            @default(now())
-  updatedAt            DateTime            @updatedAt
-  deletedAt            DateTime?
+  id                  String              @id @default(uuid())
+  tenant_id           String
+  environment_id      String              @default("default-env")
+  connectorDefId      String
+  definition          ConnectorDefinition @relation(fields: [connectorDefId], references: [id])
+  name                String
+  state               ConnectorState      @default(NOT_CONNECTED)
+  authentication_type String              @default("API_KEY")
+  source_region       String?
+  createdAt           DateTime            @default(now())
+  updatedAt           DateTime            @updatedAt
+  deletedAt           DateTime?
 
-  credentials       ConnectorCredentialReference[]
-  permissions       ConnectorPermission[]
-  checkpoints       ConnectorCheckpoint[]
-  syncRuns          ConnectorSynchronizationRun[]
-  health            ConnectorHealthStatus?
-  errors            ConnectorError[]
-  webhookSubs       WebhookSubscription[]
-  eventHubChecks    EventHubConsumerCheckpoint[]
-  quarantinedEvents QuarantinedEvent[]
-  rawEvents         RawEvent[]
+  credentials           ConnectorCredentialReference[]
+  checkpoints           ConnectorCheckpoint[]
+  syncRuns              ConnectorSynchronizationRun[]
+  errors                ConnectorError[]
+  webhookSubs           WebhookSubscription[]
+  eventHubChecks        EventHubConsumerCheckpoint[]
+  quarantinedEvents     QuarantinedEvent[]
+  rawEvents             RawEvent[]
+  connectorPermissions  ConnectorPermission[]
+  connectorHealthStatus ConnectorHealthStatus?
 
   @@index([tenant_id])
 }

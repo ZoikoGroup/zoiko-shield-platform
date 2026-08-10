@@ -94,42 +94,6 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Publishes a payload wrapped in the canonical envelope
-   * (eventId/eventType/eventVersion/correlationId/causationId/traceId/payload)
-   * to one of CANONICAL_TOPICS, partitioned by tenantId.
-   */
-  async publishEvent<T extends { tenantId: string }>(
-    topic: string,
-    eventType: string,
-    payload: T,
-    context?: { correlationId?: string; causationId?: string; traceId?: string; occurredAt?: Date },
-  ) {
-    const producedAt = new Date();
-    const envelope: EventEnvelope<T> = {
-      eventId: randomUUID(),
-      eventType,
-      eventVersion: '1',
-      tenantId: payload.tenantId,
-      correlationId: context?.correlationId ?? randomUUID(),
-      causationId: context?.causationId,
-      traceId: context?.traceId ?? randomUUID(),
-      occurredAt: (context?.occurredAt ?? producedAt).toISOString(),
-      producedAt: producedAt.toISOString(),
-      payload,
-    };
-
-    try {
-      await this.producer.send({
-        topic,
-        messages: [{ key: payload.tenantId, value: JSON.stringify(envelope) }],
-      });
-      this.logger.debug(`Published ${eventType} to ${topic}`);
-    } catch (error: any) {
-      this.logger.error(`Failed to publish ${eventType} to ${topic}: ${error.message}`);
-    }
-  }
-
-  /**
    * Publishes a canonical event to the specified Kafka topic.
    */
   async publishCanonicalEvent(event: ZoikoShieldCanonicalEvent) {

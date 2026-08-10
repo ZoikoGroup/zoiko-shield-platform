@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { NormalizationService } from './normalization.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { KafkaProducerService } from '../kafka/kafka.producer.service';
-import { OutboxService } from '../outbox/outbox.service';
 import { NotFoundException } from '@nestjs/common';
 
 describe('NormalizationService', () => {
@@ -15,9 +14,6 @@ describe('NormalizationService', () => {
     tenant_id: 'tenant-001',
     environment_id: 'prod-env',
     connector_id: 'conn-123',
-    source_type: 'generic',
-    source_region: 'us',
-    schema_version: 'v1.0',
     raw_payload_reference: JSON.stringify({
       eventId: 'evt-100',
       eventType: 'user.login',
@@ -32,7 +28,7 @@ describe('NormalizationService', () => {
     prismaMock = {
       rawEvent: {
         findUnique: jest.fn(),
-        update: jest.fn().mockResolvedValue({}),
+        update: jest.fn(),
         findMany: jest.fn(),
       },
       normalizedEvent: {
@@ -46,18 +42,10 @@ describe('NormalizationService', () => {
         findUnique: jest.fn(),
         delete: jest.fn(),
       },
-      connectorHealthStatus: {
-        findUnique: jest.fn().mockResolvedValue({ state: 'HEALTHY' }),
-      },
-      outboxEvent: {
-        create: jest.fn().mockResolvedValue({}),
-      },
-      $transaction: jest.fn().mockImplementation((ops: any[]) => Promise.all(ops)),
     };
 
     kafkaMock = {
       emit: jest.fn().mockResolvedValue(true),
-      publishEvent: jest.fn().mockResolvedValue(undefined),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -65,7 +53,6 @@ describe('NormalizationService', () => {
         NormalizationService,
         { provide: PrismaService, useValue: prismaMock },
         { provide: KafkaProducerService, useValue: kafkaMock },
-        { provide: OutboxService, useValue: new OutboxService() },
       ],
     }).compile();
 
@@ -77,7 +64,7 @@ describe('NormalizationService', () => {
     await expect(service.normalizeRawEvent('invalid-id')).rejects.toThrow(NotFoundException);
   });
 
-  it('should successfully normalize a valid raw event and write event.normalized.v1 to the outbox transactionally', async () => {
+  it('should successfully normalize a valid raw event', async () => {
     prismaMock.rawEvent.findUnique.mockResolvedValue(mockRawEvent);
     prismaMock.normalizedEvent.create.mockResolvedValue({
       id: 'norm-1',
@@ -89,22 +76,16 @@ describe('NormalizationService', () => {
       severity: 'INFORMATIONAL',
       actor_email: 'alice@example.com',
       outcome: 'SUCCESS',
-      occurred_at: new Date(),
-      mapping_version: '1.0',
     });
 
     const result = await service.normalizeRawEvent('raw-100');
 
     expect(result).toHaveProperty('id', 'norm-1');
-    expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
     expect(prismaMock.normalizedEvent.create).toHaveBeenCalled();
     expect(prismaMock.rawEvent.update).toHaveBeenCalledWith({
       where: { id: 'raw-100' },
       data: { processing_status: 'NORMALIZED' },
     });
-    expect(prismaMock.outboxEvent.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ topic: 'event.normalized.v1' }) }),
-    );
     expect(kafkaMock.emit).toHaveBeenCalledWith('telemetry.normalized', expect.any(Object));
   });
 
