@@ -1,31 +1,93 @@
 openapi: 3.0.3
 info:
-  title: ZoikoShield - Shield Core API
+  title: ZoikoShield - Enterprise Cyber Security Platform API
   version: 1.0.0
   description: >
-    Auth is cookie-based (httpOnly access_token / refresh_token, Secure, SameSite=Lax).
-    Postman's built-in cookie jar handles this automatically once you've called Login or
-    Verify Email on {{baseUrl}}. If a protected request returns 401, check Postman's
-    Cookies drawer — the Secure flag means cookies only attach when baseUrl is exactly
-    http://localhost:... (not 127.0.0.1).
+    Complete OpenAPI specification for ZoikoShield Platform Services: Shield Core, Ingest, Anchor, Action, and AI microservices.
+    Auth is primary cookie-based (httpOnly access_token / refresh_token, Secure, SameSite=Lax) or Bearer token for API clients / OAuth2.
 servers:
   - url: http://localhost:3001
-    description: Local development
+    description: Local development (Shield Core Gateway)
+  - url: http://localhost:3002
+    description: Ingest Microservice
+  - url: http://localhost:3003
+    description: Anchor Microservice
+  - url: http://localhost:3004
+    description: Action Microservice
+  - url: http://localhost:3005
+    description: AI Gateway Microservice
+
 tags:
   - name: Auth
-    description: Identity adapter – registration, login, OAuth, sessions
+    description: Identity adapter – registration, login, OAuth, sessions, invitations
   - name: RBAC
-    description: Authorization – permissions, roles, invitations (platform-gated)
+    description: Authorization – permissions, roles, tenant membership
   - name: Tenant
-    description: Tenant CRUD (in-memory)
+    description: Tenant lifecycle and metadata management
+  - name: Onboarding
+    description: Tenant onboarding workflow
+  - name: Offboarding
+    description: Tenant offboarding, legal hold, data freeze and deletion attestations
   - name: Customer
-    description: Customer CRUD (in-memory)
+    description: Customer account & segment management
   - name: Organization
-    description: Organization CRUD (in-memory)
+    description: Organization management
   - name: LegalEntity
-    description: Legal Entity CRUD (in-memory)
+    description: Legal entity boundaries and governance
   - name: Environment
-    description: Environment CRUD (in-memory)
+    description: Deployment environment management
+  - name: Commercial
+    description: Commercial accounts, offer entitlements, and claim verification
+  - name: CommerceContracts
+    description: Commercial contracts and state machine transitions
+  - name: ServiceObligations
+    description: Contractual service obligations and evidence delivery
+  - name: Billing
+    description: Commercial invoice skeletons and financial lock enforcement
+  - name: Catalog
+    description: Product SKUs, price books, and version approvals
+  - name: DeveloperAPI
+    description: API client management, scopes, rotation, and rate limits
+  - name: OAuth
+    description: Public OAuth2 token issuance (client_credentials)
+  - name: PublicAlerts
+    description: Scoped public alerts API endpoint
+  - name: ConnectorCatalog
+    description: Security connector catalog and instance management
+  - name: WebhookIngestion
+    description: Ingestion pipeline webhooks for security event streams
+  - name: Metering
+    description: Telemetry usage breakdown, audits, and resource observations
+  - name: SecurityContext
+    description: Security assets, identities, context resolution, and snapshots
+  - name: Controls
+    description: Compliance control objectives, implementations, and scopes
+  - name: AuditPackages
+    description: Immutable audit package creation, validation, freeze, and proofs
+  - name: Evidence
+    description: Immutable evidence collection, verification, and lineage graph
+  - name: Exports
+    description: Asynchronous data export jobs, manifests, and secure downloads
+  - name: Reporting
+    description: Security summary, assurance, operational, and executive reporting
+  - name: Detections
+    description: Detection definitions, rule versions, matches, and replay
+  - name: Alerts
+    description: Security alert management, triage, assignment, and escalation
+  - name: CaseManagement
+    description: Incident case management, timeline, evidence links, and decisions
+  - name: CaseAI
+    description: AI-assisted case summarization, hypotheses, and next queries
+  - name: RiskManagement
+    description: Risk register, factor scoring, treatments, acceptances, and exceptions
+  - name: OutboundWebhooks
+    description: Outbound webhook subscriptions, delivery tracking, and replay
+  - name: Notifications
+    description: Multi-channel notifications, preferences, and acknowledgements
+  - name: ResponseProposals
+    description: Security response proposals, human-in-the-loop approvals, and execution
+  - name: InternalMicroservices
+    description: Inter-service communication endpoints (Anchor, AI, Action)
 
 components:
   securitySchemes:
@@ -33,16 +95,12 @@ components:
       type: apiKey
       in: cookie
       name: access_token
-      description: >
-        Primary auth mechanism — httpOnly, Secure, SameSite=Lax. Set automatically
-        by login/verify-email/refresh; never exposed in a response body.
+      description: Primary auth mechanism — httpOnly, Secure, SameSite=Lax. Set automatically by login/verify-email/refresh.
     BearerAuth:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: >
-        Fallback extractor for API tooling (e.g. Postman with manual header).
-        The web app uses CookieAuth exclusively.
+      description: Bearer extractor for API clients, OAuth2 tokens, and inter-service calls.
 
   schemas:
     RegisterRequest:
@@ -53,7 +111,7 @@ components:
         email: { type: string, format: email }
         password: { type: string, minLength: 12 }
         confirmPassword: { type: string, minLength: 12 }
-        termsOfServiceVersion: { type: string, example: "1", description: Must match the currently active TERMS_OF_SERVICE PolicyDocument version. }
+        termsOfServiceVersion: { type: string, example: "1" }
     LoginRequest:
       type: object
       required: [email, password]
@@ -74,7 +132,6 @@ components:
     PasswordRecoveryResetRequest:
       type: object
       required: [newPassword, confirmNewPassword]
-      description: Authorized by the recovery_grant cookie from /auth/password-recovery/verify.
       properties:
         newPassword: { type: string, minLength: 12 }
         confirmNewPassword: { type: string, minLength: 12 }
@@ -99,320 +156,311 @@ components:
       type: object
       properties:
         message: { type: string }
-    CreatePermissionRequest:
-      type: object
-      required: [code]
-      properties:
-        code: { type: string, example: "case:create" }
-        description: { type: string, example: "Create a case" }
-    Permission:
-      type: object
-      properties:
-        id: { type: string, format: uuid }
-        code: { type: string }
-        description: { type: string, nullable: true }
-    CreateRoleRequest:
-      type: object
-      required: [code, name, roleLevel]
-      properties:
-        tenantId: { type: string, format: uuid }
-        code: { type: string, example: SECURITY_ANALYST }
-        name: { type: string, example: Security Analyst }
-        roleLevel: { type: string, enum: [PLATFORM, TENANT] }
-        permissionCodes: { type: array, items: { type: string } }
-    UpdateRolePermissionsRequest:
-      type: object
-      required: [permissionCodes]
-      properties:
-        permissionCodes: { type: array, items: { type: string } }
-    Role:
-      type: object
-      properties:
-        id: { type: string, format: uuid }
-        tenantId: { type: string, format: uuid, nullable: true }
-        code: { type: string }
-        name: { type: string }
-        roleLevel: { type: string, enum: [PLATFORM, TENANT] }
-        permissions: { type: array, items: { $ref: "#/components/schemas/Permission" } }
-        createdAt: { type: string, format: date-time }
-    CreateInvitationRequest:
-      type: object
-      required: [invitedEmail, roleId]
-      properties:
-        invitedEmail: { type: string, format: email }
-        roleId: { type: string, format: uuid }
-    InvitationResponse:
-      type: object
-      properties:
-        id: { type: string, format: uuid }
-        tenantId: { type: string, format: uuid }
-        invitedEmail: { type: string }
-        roleId: { type: string, format: uuid }
-        token: { type: string, description: One-time invitation token }
-        createdAt: { type: string, format: date-time }
-    TenantMembership:
-      type: object
-      properties:
-        id: { type: string, format: uuid }
-        tenantId: { type: string, format: uuid }
-        userId: { type: string, format: uuid }
-        status: { type: string, enum: [ACTIVE, SUSPENDED, REMOVED] }
-        roles: { type: array, items: { $ref: "#/components/schemas/Role" } }
-        joinedAt: { type: string, format: date-time }
-    # ── Canonical Context ──
+    
     CanonicalContext:
       type: object
-      description: >
-        Immutable audit envelope attached to every domain record. Most fields are
-        server-generated on create; the client cannot forge tenantId, correlationId,
-        traceId, requestId, policyVersion or recordedAt.
       required: [tenantId, legalEntityId, environmentId, region, correlationId, traceId, requestId, purpose, dataClass, policyVersion, contractId, contractVersion, recordedAt]
       properties:
-        tenantId: { type: string, format: uuid, description: Owning tenant — server-assigned on creation }
-        legalEntityId: { type: string, format: uuid, description: Legal entity under which this record falls }
-        environmentId: { type: string, format: uuid, description: Deployment environment (prod, staging, etc.) }
-        region: { type: string, example: us-east-1, description: Cloud region or data residency zone }
-        actorId: { type: string, description: User or service account that caused the mutation (optional) }
-        workloadId: { type: string, description: Originating workload/microservice identifier (optional) }
-        correlationId: { type: string, format: uuid, description: Links related events across services — server-generated }
-        causationId: { type: string, description: ID of the event that directly caused this one (optional) }
-        traceId: { type: string, format: uuid, description: Distributed tracing span root — server-generated }
-        requestId: { type: string, format: uuid, description: Per-request unique ID — server-generated }
-        idempotencyKey: { type: string, description: Client-supplied idempotency key for safe retries (optional) }
-        purpose: { type: string, example: security-monitoring, description: GDPR/privacy purpose tag }
-        dataClass: { type: string, example: internal, description: Data classification level }
-        policyVersion: { type: string, description: Version of the governing policy — server-generated }
-        contractId: { type: string, description: Commercial contract reference }
-        contractVersion: { type: string, description: Version of the contract }
-        occurredAt: { type: string, format: date-time, description: When the real-world event occurred (optional) }
-        observedAt: { type: string, format: date-time, description: When the system observed the event (optional) }
-        recordedAt: { type: string, format: date-time, description: When the record was persisted — server-generated }
+        tenantId: { type: string, format: uuid }
+        legalEntityId: { type: string, format: uuid }
+        environmentId: { type: string, format: uuid }
+        region: { type: string }
+        actorId: { type: string }
+        workloadId: { type: string }
+        correlationId: { type: string, format: uuid }
+        traceId: { type: string, format: uuid }
+        requestId: { type: string, format: uuid }
+        purpose: { type: string }
+        dataClass: { type: string }
+        policyVersion: { type: string }
+        contractId: { type: string }
+        contractVersion: { type: string }
+        recordedAt: { type: string, format: date-time }
 
-    # ── Tenant ──
     CreateTenantRequest:
       type: object
       required: [name]
-      description: >
-        Context fields (tenantId, correlationId, traceId, requestId, policyVersion,
-        recordedAt) are all server-generated now — the client can no longer forge them.
       properties:
-        name: { type: string, example: Acme Corp }
+        name: { type: string, example: "Acme Corp" }
     UpdateTenantRequest:
       type: object
       properties:
-        name: { type: string, example: Acme Corp Renamed }
+        name: { type: string }
         status: { type: string, enum: [active, suspended, offboarded] }
     Tenant:
       type: object
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
-        status: { type: string, enum: [active, suspended, offboarded] }
-        context: { $ref: "#/components/schemas/CanonicalContext" }
-        createdAt: { type: string, format: date-time }
-        updatedAt: { type: string, format: date-time }
-    CreateCustomerRequest:
-      type: object
-      required: [party_id, customer_type]
-      properties:
-        party_id: { type: string }
-        customer_type: { type: string, example: enterprise }
-        segment: { type: string, example: mid-market }
-    UpdateCustomerRequest:
-      type: object
-      properties:
-        party_id: { type: string }
-        customer_type: { type: string }
-        lifecycle_status: { type: string }
-        kyc_status: { type: string }
-        segment: { type: string }
-    Customer:
-      type: object
-      properties:
-        id: { type: string, format: uuid }
-        party_id: { type: string }
-        customer_type: { type: string }
-        lifecycle_status: { type: string }
-        kyc_status: { type: string }
-        segment: { type: string }
-        context: { $ref: "#/components/schemas/CanonicalContext" }
-        createdAt: { type: string, format: date-time }
-        updatedAt: { type: string, format: date-time }
-    CustomerListResponse:
-      type: object
-      properties:
-        customers: { type: array, items: { $ref: "#/components/schemas/Customer" } }
-        total: { type: integer }
-    CreateNameRequest:
-      type: object
-      required: [name]
-      properties:
-        name: { type: string }
-    UpdateNameRequest:
-      type: object
-      properties:
-        name: { type: string }
-        status: { type: string }
-    Organization:
-      type: object
-      properties:
-        id: { type: string, format: uuid }
-        name: { type: string }
         status: { type: string }
         context: { $ref: "#/components/schemas/CanonicalContext" }
         createdAt: { type: string, format: date-time }
-        updatedAt: { type: string, format: date-time }
-    LegalEntity:
+
+    CreateCommercialAccountRequest:
       type: object
+      required: [name, billingEmail]
       properties:
-        id: { type: string, format: uuid }
+        tenantId: { type: string, format: uuid }
         name: { type: string }
-        status: { type: string }
-        context: { $ref: "#/components/schemas/CanonicalContext" }
-        createdAt: { type: string, format: date-time }
-        updatedAt: { type: string, format: date-time }
-    Environment:
+        billingEmail: { type: string, format: email }
+        currency: { type: string, example: "USD" }
+    GrantEntitlementRequest:
       type: object
+      required: [commercialAccountId, offerType]
       properties:
-        id: { type: string, format: uuid }
+        commercialAccountId: { type: string, format: uuid }
+        offerType: { type: string, example: "ENTERPRISE_SHIELD" }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+    RegisterClaimRequest:
+      type: object
+      required: [claimKey, wording]
+      properties:
+        claimKey: { type: string, example: "ISO27001_COMPLIANT" }
+        wording: { type: string }
+
+    CreateServiceObligationRequest:
+      type: object
+      required: [contractId, description]
+      properties:
+        contractId: { type: string, format: uuid }
+        description: { type: string }
+        dueAt: { type: string, format: date-time }
+
+    CreateContractRequest:
+      type: object
+      required: [commercialAccountId, title]
+      properties:
+        commercialAccountId: { type: string, format: uuid }
+        title: { type: string }
+        effectiveDate: { type: string, format: date-time }
+
+    CreateDraftInvoiceRequest:
+      type: object
+      required: [commercialAccountId, amount]
+      properties:
+        commercialAccountId: { type: string, format: uuid }
+        amount: { type: number }
+        currency: { type: string, example: "USD" }
+
+    CreateCatalogVersionRequest:
+      type: object
+      required: [versionName]
+      properties:
+        versionName: { type: string, example: "2026.1" }
+    CreateProductRequest:
+      type: object
+      required: [sku, name]
+      properties:
+        sku: { type: string, example: "SHIELD-ENT-001" }
         name: { type: string }
-        status: { type: string }
-        context: { $ref: "#/components/schemas/CanonicalContext" }
-        createdAt: { type: string, format: date-time }
-        updatedAt: { type: string, format: date-time }
-    DataListResponse:
+    CreatePriceBookRequest:
+      type: object
+      required: [sku, unitPrice]
+      properties:
+        sku: { type: string }
+        unitPrice: { type: number }
+        currency: { type: string }
+
+    CreateApiClientRequest:
+      type: object
+      required: [name, purpose]
+      properties:
+        name: { type: string }
+        purpose: { type: string }
+        environmentScope: { type: string }
+    GrantScopeRequest:
+      type: object
+      required: [scope]
+      properties:
+        scope: { type: string, example: "alerts:read" }
+
+    CreateConnectorRequest:
+      type: object
+      required: [connectorType, name]
+      properties:
+        tenantId: { type: string, format: uuid }
+        connectorType: { type: string, example: "MICROSOFT_ENTRA" }
+        name: { type: string }
+        configuration: { type: object }
+
+    ResolveAssetRequest:
+      type: object
+      required: [externalId, assetType]
+      properties:
+        externalId: { type: string }
+        assetType: { type: string, example: "VIRTUAL_MACHINE" }
+        hostname: { type: string }
+    ResolveIdentityRequest:
       type: object
       properties:
-        data: { type: array, items: { type: object } }
-        total: { type: integer }
+        externalId: { type: string }
+        email: { type: string, format: email }
+        displayName: { type: string }
+
+    CreateControlImplementationRequest:
+      type: object
+      required: [controlObjectiveId, title, ownerId]
+      properties:
+        controlObjectiveId: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        ownerId: { type: string }
+        implementationType: { type: string }
+
+    CreateAuditPackageRequest:
+      type: object
+      required: [purpose, frameworkScope, periodStart, periodEnd]
+      properties:
+        purpose: { type: string }
+        frameworkScope: { type: array, items: { type: string } }
+        periodStart: { type: string, format: date-time }
+        periodEnd: { type: string, format: date-time }
+
+    CreateExportJobRequest:
+      type: object
+      required: [purpose, exportType, requestedScope]
+      properties:
+        purpose: { type: string }
+        exportType: { type: string }
+        requestedScope: { type: array, items: { type: string } }
+
+    CreateDetectionDefinitionRequest:
+      type: object
+      required: [key, name]
+      properties:
+        key: { type: string, example: "SUSPICIOUS_LOGIN" }
+        name: { type: string }
+        description: { type: string }
+    CreateDetectionVersionRequest:
+      type: object
+      required: [version]
+      properties:
+        version: { type: integer, example: 1 }
+        severity: { type: string, enum: [CRITICAL, HIGH, MEDIUM, LOW] }
+
+    UpdateAlertStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [NEW, IN_TRIAGE, INVESTIGATING, ESCALATED, CLOSED_FALSE_POSITIVE, CLOSED_RESOLVED] }
+    AssignAlertRequest:
+      type: object
+      properties:
+        principalId: { type: string }
+        queueId: { type: string }
+        reason: { type: string }
+
+    CreateCaseRequest:
+      type: object
+      required: [alertId]
+      properties:
+        alertId: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+    TransitionCaseRequest:
+      type: object
+      required: [toState, reason]
+      properties:
+        toState: { type: string }
+        reason: { type: string }
+    AddNoteRequest:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string }
+        classification: { type: string }
+    RecordDecisionRequest:
+      type: object
+      required: [decisionType, decision, rationale]
+      properties:
+        decisionType: { type: string }
+        decision: { type: string }
+        rationale: { type: string }
+
+    CreateRiskRequest:
+      type: object
+      required: [title, description, likelihood, impact, ownerId]
+      properties:
+        title: { type: string }
+        description: { type: string }
+        likelihood: { type: string }
+        impact: { type: string }
+        ownerId: { type: string }
+    AcceptRiskRequest:
+      type: object
+      required: [acceptedBy, authority, rationale, expiresAt]
+      properties:
+        acceptedBy: { type: string }
+        authority: { type: string }
+        rationale: { type: string }
+        expiresAt: { type: string, format: date-time }
+
+    CreateWebhookSubscriptionRequest:
+      type: object
+      required: [endpointUrl, eventTypes]
+      properties:
+        endpointUrl: { type: string, format: uri }
+        eventTypes: { type: array, items: { type: string } }
+
+    CreateResponseProposalRequest:
+      type: object
+      required: [targetType, targetId, actionType, reason, recommendationSource]
+      properties:
+        targetType: { type: string }
+        targetId: { type: string }
+        actionType: { type: string }
+        reason: { type: string }
+        recommendationSource: { type: string }
 
 paths:
+  # ── Identity & Auth ──
   /auth/register:
     post:
       tags: [Auth]
       summary: Register a new user
-      description: >
-        No tokens returned. termsOfServiceVersion must match the currently active
-        TERMS_OF_SERVICE policy document (seeded as "1" on first boot). A 6-digit OTP
-        is emailed. 403 if LOCAL_REGISTRATION_ENABLED=false.
       requestBody:
         required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/RegisterRequest" }
+        content: { application/json: { schema: { $ref: "#/components/schemas/RegisterRequest" } } }
       responses:
-        "201": { description: Registration successful, content: { application/json: { schema: { $ref: "#/components/schemas/MessageResponse" } } } }
+        "201": { description: Registration successful }
         "400": { description: Validation error }
-        "403": { description: Local registration disabled }
         "409": { description: Email already registered }
 
   /auth/verify-email:
     post:
       tags: [Auth]
       summary: Verify email with OTP
-      description: Consumes the registration OTP, marks user verified, logs them in — access_token/refresh_token are set as httpOnly cookies, not returned in the body.
       requestBody:
         required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/VerifyEmailRequest" }
+        content: { application/json: { schema: { $ref: "#/components/schemas/VerifyEmailRequest" } } }
       responses:
-        "200": { description: Email verified and logged in (cookies set), content: { application/json: { schema: { $ref: "#/components/schemas/AuthResponse" } } } }
-        "400": { description: Invalid or expired OTP }
-
-  /auth/resend-verification:
-    post:
-      tags: [Auth]
-      summary: Resend verification OTP
-      description: Always returns a generic message — avoids user enumeration.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/EmailOnlyRequest" }
-      responses:
-        "200": { description: Generic success, content: { application/json: { schema: { $ref: "#/components/schemas/MessageResponse" } } } }
-
-  /auth/password-recovery/request:
-    post:
-      tags: [Auth]
-      summary: Password Recovery – Request OTP
-      description: Always returns a generic message. Sends a PASSWORD_RECOVERY OTP only if the account exists AND has a local password (never for federated-only accounts).
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/EmailOnlyRequest" }
-      responses:
-        "200": { description: Generic success, content: { application/json: { schema: { $ref: "#/components/schemas/MessageResponse" } } } }
-
-  /auth/password-recovery/verify:
-    post:
-      tags: [Auth]
-      summary: Password Recovery – Verify OTP
-      description: Consumes the OTP and sets a short-lived, single-use recovery_grant cookie (scoped to /auth/password-recovery only — does NOT log you in or grant normal access).
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/VerifyEmailRequest" }
-      responses:
-        "200": { description: OTP verified – recovery_grant cookie set, content: { application/json: { schema: { $ref: "#/components/schemas/MessageResponse" } } } }
-        "400": { description: Invalid or expired OTP }
-
-  /auth/password-recovery/reset:
-    post:
-      tags: [Auth]
-      summary: Password Recovery – Reset password
-      description: Reads the recovery_grant cookie from the Verify step (no email/otp needed). Updates password and revokes ALL existing sessions — must log in fresh afterward.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/PasswordRecoveryResetRequest" }
-      responses:
-        "200": { description: Password reset successful, content: { application/json: { schema: { $ref: "#/components/schemas/MessageResponse" } } } }
-        "401": { description: Missing or invalid recovery_grant cookie }
+        "200": { description: Email verified and logged in }
 
   /auth/login:
     post:
       tags: [Auth]
-      summary: Login with email and password
-      description: 401 if the account isn't verified yet. On success, sets access_token/refresh_token httpOnly cookies.
+      summary: Login with credentials
       requestBody:
         required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/LoginRequest" }
+        content: { application/json: { schema: { $ref: "#/components/schemas/LoginRequest" } } }
       responses:
-        "200": { description: Login successful (cookies set), content: { application/json: { schema: { $ref: "#/components/schemas/AuthResponse" } } } }
-        "401": { description: Invalid credentials or unverified account }
+        "200": { description: Login successful }
+        "401": { description: Invalid credentials }
 
   /auth/refresh:
     post:
       tags: [Auth]
-      summary: Refresh token (rotates)
-      description: Reads refresh_token from the cookie jar (no body needed), revokes it, and sets a new cookie pair.
+      summary: Refresh authentication cookies
       responses:
-        "200": { description: Tokens rotated (cookies set), content: { application/json: { schema: { $ref: "#/components/schemas/SuccessResponse" } } } }
-        "401": { description: No or invalid refresh token }
+        "200": { description: Tokens refreshed }
 
   /auth/logout:
     post:
       tags: [Auth]
       summary: Logout current session
-      description: Reads refresh_token from the cookie jar, revokes that session, and clears both cookies.
       responses:
-        "200": { description: Logged out, content: { application/json: { schema: { $ref: "#/components/schemas/SuccessResponse" } } } }
-
-  /auth/logout-all:
-    post:
-      tags: [Auth]
-      summary: Logout all sessions
-      security: [{ CookieAuth: [] }]
-      responses:
-        "200": { description: All sessions revoked, content: { application/json: { schema: { $ref: "#/components/schemas/SuccessResponse" } } } }
-        "401": { description: Unauthorized }
+        "200": { description: Logged out }
 
   /auth/me:
     get:
@@ -420,361 +468,432 @@ paths:
       summary: Get current user profile
       security: [{ CookieAuth: [] }]
       responses:
-        "200": { description: Current user, content: { application/json: { schema: { $ref: "#/components/schemas/UserResponse" } } } }
-        "401": { description: Unauthorized }
+        "200": { description: User details }
 
-  /auth/google:
-    get:
-      tags: [Auth]
-      summary: Google OAuth login (browser redirect)
-      responses:
-        "302": { description: Redirect to Google }
-
-  /auth/google/callback:
-    get:
-      tags: [Auth]
-      summary: Google OAuth callback
-      responses:
-        "200": { description: OAuth login successful (cookies set), content: { application/json: { schema: { $ref: "#/components/schemas/AuthResponse" } } } }
-
-  /auth/microsoft:
-    get:
-      tags: [Auth]
-      summary: Microsoft OAuth login (browser redirect)
-      responses:
-        "302": { description: Redirect to Microsoft }
-
-  /auth/microsoft/callback:
-    get:
-      tags: [Auth]
-      summary: Microsoft OAuth callback
-      responses:
-        "200": { description: OAuth login successful (cookies set), content: { application/json: { schema: { $ref: "#/components/schemas/AuthResponse" } } } }
-
-  /auth/invitations/{invitationToken}/accept:
+  # ── Commercial & Entitlements ──
+  /api/v1/commercial/accounts:
     post:
-      tags: [Auth]
-      summary: Accept invitation
-      description: Must be called while authenticated (cookie) as the exact email the invitation was sent to — enforced server-side.
-      security: [{ CookieAuth: [] }]
-      parameters:
-        - name: invitationToken
-          in: path
-          required: true
-          schema: { type: string }
-          description: One-time invitation token from the Create Invitation response
-      responses:
-        "200": { description: Invitation accepted, content: { application/json: { schema: { $ref: "#/components/schemas/TenantMembership" } } } }
-        "401": { description: Unauthorized }
-        "403": { description: Authenticated email does not match invited email }
-        "404": { description: Invalid or expired token }
-
-  /permissions:
-    post:
-      tags: [RBAC]
-      summary: Create permission (platform-gated)
-      description: Requires platform:permission:manage. Run `npm run seed:platform-admin -- <email>` first. Otherwise 403.
-      security: [{ CookieAuth: [] }]
+      tags: [Commercial]
+      summary: Create commercial account
       requestBody:
         required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/CreatePermissionRequest" }
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateCommercialAccountRequest" } } }
       responses:
-        "201": { description: Permission created, content: { application/json: { schema: { $ref: "#/components/schemas/Permission" } } } }
-        "401": { description: Unauthorized }
-        "403": { description: Missing platform:permission:manage }
+        "201": { description: Commercial account created }
 
-  /roles:
+  /api/v1/commercial/accounts/{accountId}:
     get:
-      tags: [RBAC]
-      summary: List roles
-      security: [{ CookieAuth: [] }]
-      parameters:
-        - name: tenantId
-          in: query
-          schema: { type: string, format: uuid }
+      tags: [Commercial]
+      summary: Get commercial account details
+      parameters: [{ name: accountId, in: path, required: true, schema: { type: string } }]
       responses:
-        "200": { description: List of roles, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Role" } } } } }
-        "401": { description: Unauthorized }
+        "200": { description: Account details }
+
+  /api/v1/commercial/entitlements:
     post:
-      tags: [RBAC]
-      summary: Create role (platform-gated)
-      description: Requires platform:role:manage.
-      security: [{ CookieAuth: [] }]
+      tags: [Commercial]
+      summary: Grant commercial entitlement
       requestBody:
         required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/CreateRoleRequest" }
+        content: { application/json: { schema: { $ref: "#/components/schemas/GrantEntitlementRequest" } } }
       responses:
-        "201": { description: Role created, content: { application/json: { schema: { $ref: "#/components/schemas/Role" } } } }
-        "401": { description: Unauthorized }
-        "403": { description: Missing platform:role:manage }
+        "201": { description: Entitlement granted }
+    get:
+      tags: [Commercial]
+      summary: List tenant active entitlements
+      responses:
+        "200": { description: Active entitlements }
 
-  /roles/{roleId}/permissions:
+  /api/v1/commercial/entitlements/check:
+    get:
+      tags: [Commercial]
+      summary: Check active offer entitlement (ADR-06 fail-closed)
+      parameters: [{ name: offerType, in: query, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Entitlement status }
+
+  /api/v1/commercial/claims/register:
+    post:
+      tags: [Commercial]
+      summary: Register approved claim wording
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/RegisterClaimRequest" } } }
+      responses:
+        "200": { description: Claim registered }
+
+  /api/v1/commercial/claims/check:
+    get:
+      tags: [Commercial]
+      summary: Verify claim eligibility
+      parameters: [{ name: claimKey, in: query, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Claim verification result }
+
+  # ── Obligations & Commerce Contracts ──
+  /api/v1/obligations:
+    post:
+      tags: [ServiceObligations]
+      summary: Create service obligation
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateServiceObligationRequest" } } }
+      responses:
+        "201": { description: Obligation created }
+    get:
+      tags: [ServiceObligations]
+      summary: Get obligations by contract ID
+      parameters: [{ name: contractId, in: query, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Obligations list }
+
+  /api/v1/obligations/{id}/status:
     patch:
-      tags: [RBAC]
-      summary: Update role permissions (platform-gated)
-      security: [{ CookieAuth: [] }]
-      parameters:
-        - name: roleId
-          in: path
-          required: true
-          schema: { type: string, format: uuid }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/UpdateRolePermissionsRequest" }
+      tags: [ServiceObligations]
+      summary: Update obligation status & link evidence
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
       responses:
-        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/Role" } } } }
-        "401": { description: Unauthorized }
-        "404": { description: Role not found }
+        "200": { description: Obligation status updated }
 
-  /tenants/{tenantId}/invitations:
+  /api/v1/commerce/contracts:
     post:
-      tags: [RBAC]
-      summary: Create invitation (tenant-gated)
-      description: Requires tenant:member:invite within the tenant. The inviter picks the tenant and role. Response includes a one-time token.
-      security: [{ CookieAuth: [] }]
-      parameters:
-        - name: tenantId
-          in: path
-          required: true
-          schema: { type: string, format: uuid }
+      tags: [CommerceContracts]
+      summary: Create contract in DRAFT state
       requestBody:
         required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/CreateInvitationRequest" }
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateContractRequest" } } }
       responses:
-        "201": { description: Invitation created, content: { application/json: { schema: { $ref: "#/components/schemas/InvitationResponse" } } } }
-        "401": { description: Unauthorized }
-        "403": { description: Missing tenant:member:invite }
+        "201": { description: Contract created }
 
-  /tenant:
-    post:
-      tags: [Tenant]
-      summary: Create tenant
-      description: Context fields (tenantId, correlationId, traceId, requestId, policyVersion, recordedAt) are all server-generated — the client can no longer forge them.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/CreateTenantRequest" }
-      responses:
-        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Tenant" } } } }
+  /api/v1/commerce/contracts/{id}:
     get:
-      tags: [Tenant]
-      summary: List tenants
+      tags: [CommerceContracts]
+      summary: Get contract details
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
       responses:
-        "200": { description: All tenants, content: { application/json: { schema: { type: array, items: { $ref: "#/components/schemas/Tenant" } } } } }
+        "200": { description: Contract details }
 
-  /tenant/{id}:
-    get:
-      tags: [Tenant]
-      summary: Get tenant by ID
-      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
-      responses:
-        "200": { description: Found, content: { application/json: { schema: { $ref: "#/components/schemas/Tenant" } } } }
-        "404": { description: Not found }
+  /api/v1/commerce/contracts/{id}/transition:
     patch:
-      tags: [Tenant]
-      summary: Update tenant
-      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/UpdateTenantRequest" }
+      tags: [CommerceContracts]
+      summary: Transition contract status
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
       responses:
-        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/Tenant" } } } }
-        "404": { description: Not found }
-    delete:
-      tags: [Tenant]
-      summary: Delete tenant
-      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
-      responses:
-        "200": { description: Deleted }
-        "404": { description: Not found }
+        "200": { description: Transition successful }
 
-  /v1/customers:
+  # ── Billing & Catalog ──
+  /api/v1/billing/invoices:
     post:
-      tags: [Customer]
-      summary: Create customer
+      tags: [Billing]
+      summary: Create draft invoice
       requestBody:
         required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/CreateCustomerRequest" }
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateDraftInvoiceRequest" } } }
       responses:
-        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Customer" } } } }
+        "201": { description: Invoice created }
     get:
-      tags: [Customer]
-      summary: List customers
+      tags: [Billing]
+      summary: List account invoices
+      parameters: [{ name: accountId, in: query, required: true, schema: { type: string } }]
       responses:
-        "200": { description: Customer list, content: { application/json: { schema: { $ref: "#/components/schemas/CustomerListResponse" } } } }
+        "200": { description: Invoices list }
 
-  /v1/customers/{id}:
-    get:
-      tags: [Customer]
-      summary: Get customer by ID
-      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
-      responses:
-        "200": { description: Found, content: { application/json: { schema: { $ref: "#/components/schemas/Customer" } } } }
-        "404": { description: Not found }
+  /api/v1/billing/invoices/{id}/issue:
     patch:
-      tags: [Customer]
-      summary: Update customer
-      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/UpdateCustomerRequest" }
+      tags: [Billing]
+      summary: Issue invoice (FIN-02 lock)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
       responses:
-        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/Customer" } } } }
-        "404": { description: Not found }
-    delete:
-      tags: [Customer]
-      summary: Delete customer
-      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
-      responses:
-        "200": { description: Deleted }
-        "404": { description: Not found }
+        "200": { description: Invoice issued and locked }
 
-  /v1/organizations:
+  /api/v1/catalog/versions:
     post:
-      tags: [Organization]
-      summary: Create organization
+      tags: [Catalog]
+      summary: Create catalog version
       requestBody:
         required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/CreateNameRequest" }
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateCatalogVersionRequest" } } }
       responses:
-        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Organization" } } } }
-    get:
-      tags: [Organization]
-      summary: List organizations
-      responses:
-        "200": { description: Organization list, content: { application/json: { schema: { $ref: "#/components/schemas/DataListResponse" } } } }
+        "201": { description: Catalog version created }
 
-  /v1/organizations/{id}:
-    get:
-      tags: [Organization]
-      summary: Get organization by ID
-      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
-      responses:
-        "200": { description: Found, content: { application/json: { schema: { $ref: "#/components/schemas/Organization" } } } }
-        "404": { description: Not found }
-    patch:
-      tags: [Organization]
-      summary: Update organization
-      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/UpdateNameRequest" }
-      responses:
-        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/Organization" } } } }
-        "404": { description: Not found }
-    delete:
-      tags: [Organization]
-      summary: Delete organization
-      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
-      responses:
-        "200": { description: Deleted }
-        "404": { description: Not found }
-
-  /v1/legal-entitys:
+  /api/v1/catalog/products:
     post:
-      tags: [LegalEntity]
-      summary: Create legal entity
+      tags: [Catalog]
+      summary: Register product SKU
       requestBody:
         required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/CreateNameRequest" }
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateProductRequest" } } }
       responses:
-        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/LegalEntity" } } } }
+        "201": { description: Product registered }
     get:
-      tags: [LegalEntity]
-      summary: List legal entities
+      tags: [Catalog]
+      summary: List approved catalog products
       responses:
-        "200": { description: Legal entity list, content: { application/json: { schema: { $ref: "#/components/schemas/DataListResponse" } } } }
+        "200": { description: Product list }
 
-  /v1/legal-entitys/{id}:
-    get:
-      tags: [LegalEntity]
-      summary: Get legal entity by ID
-      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
-      responses:
-        "200": { description: Found, content: { application/json: { schema: { $ref: "#/components/schemas/LegalEntity" } } } }
-        "404": { description: Not found }
-    patch:
-      tags: [LegalEntity]
-      summary: Update legal entity
-      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/UpdateNameRequest" }
-      responses:
-        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/LegalEntity" } } } }
-        "404": { description: Not found }
-    delete:
-      tags: [LegalEntity]
-      summary: Delete legal entity
-      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
-      responses:
-        "200": { description: Deleted }
-        "404": { description: Not found }
-
-  /v1/environments:
+  # ── Developer API & OAuth ──
+  /api/v1/api-clients:
     post:
-      tags: [Environment]
-      summary: Create environment
+      tags: [DeveloperAPI]
+      summary: Create developer API client
       requestBody:
         required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/CreateNameRequest" }
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateApiClientRequest" } } }
       responses:
-        "201": { description: Created, content: { application/json: { schema: { $ref: "#/components/schemas/Environment" } } } }
-    get:
-      tags: [Environment]
-      summary: List environments
-      responses:
-        "200": { description: Environment list, content: { application/json: { schema: { $ref: "#/components/schemas/DataListResponse" } } } }
+        "201": { description: API client created }
 
-  /v1/environments/{id}:
-    get:
-      tags: [Environment]
-      summary: Get environment by ID
-      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+  /oauth/token:
+    post:
+      tags: [OAuth]
+      summary: Issue OAuth2 access token
       responses:
-        "200": { description: Found, content: { application/json: { schema: { $ref: "#/components/schemas/Environment" } } } }
-        "404": { description: Not found }
-    patch:
-      tags: [Environment]
-      summary: Update environment
-      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+        "200": { description: Token issued }
+
+  /api/v1/public/alerts:
+    get:
+      tags: [PublicAlerts]
+      summary: List scoped public alerts
+      security: [{ BearerAuth: [] }]
+      responses:
+        "200": { description: Public alerts list }
+
+  # ── Connectors & Webhook Ingestion ──
+  /api/v1/connector-types:
+    get:
+      tags: [ConnectorCatalog]
+      summary: List supported connector types
+      responses:
+        "200": { description: Connector types }
+
+  /api/v1/connectors:
+    post:
+      tags: [ConnectorCatalog]
+      summary: Create security tool connector instance
       requestBody:
         required: true
-        content:
-          application/json:
-            schema: { $ref: "#/components/schemas/UpdateNameRequest" }
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateConnectorRequest" } } }
       responses:
-        "200": { description: Updated, content: { application/json: { schema: { $ref: "#/components/schemas/Environment" } } } }
-        "404": { description: Not found }
-    delete:
-      tags: [Environment]
-      summary: Delete environment
-      parameters: [{ name: id, in: path, required: true, schema: { type: string, format: uuid } }]
+        "201": { description: Connector created }
+    get:
+      tags: [ConnectorCatalog]
+      summary: List tenant connectors
       responses:
-        "200": { description: Deleted }
-        "404": { description: Not found }
+        "200": { description: Connectors list }
+
+  /api/v1/ingestion/webhooks/{connectorId}:
+    post:
+      tags: [WebhookIngestion]
+      summary: Receive connector event webhook stream
+      parameters: [{ name: connectorId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "202": { description: Webhook accepted }
+
+  /api/v1/metering/usage:
+    get:
+      tags: [Metering]
+      summary: Get telemetry usage breakdown
+      responses:
+        "200": { description: Telemetry usage summary }
+
+  # ── Security Context & Controls ──
+  /api/v1/context/assets:
+    get:
+      tags: [SecurityContext]
+      summary: List security assets
+      responses:
+        "200": { description: Assets list }
+
+  /api/v1/context/assets/resolve:
+    post:
+      tags: [SecurityContext]
+      summary: Resolve asset entity
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ResolveAssetRequest" } } }
+      responses:
+        "200": { description: Asset resolved }
+
+  /api/v1/controls:
+    get:
+      tags: [Controls]
+      summary: List compliance control objectives
+      responses:
+        "200": { description: Control objectives list }
+
+  /api/v1/control-implementations:
+    get:
+      tags: [Controls]
+      summary: List control implementations
+      responses:
+        "200": { description: Implementations list }
+    post:
+      tags: [Controls]
+      summary: Create control implementation
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateControlImplementationRequest" } } }
+      responses:
+        "201": { description: Implementation created }
+
+  # ── Audit Packages, Evidence & Exports ──
+  /api/v1/audit-packages:
+    get:
+      tags: [AuditPackages]
+      summary: List audit packages
+      responses:
+        "200": { description: Audit packages list }
+    post:
+      tags: [AuditPackages]
+      summary: Create immutable audit package
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateAuditPackageRequest" } } }
+      responses:
+        "201": { description: Audit package created }
+
+  /api/v1/audit-packages/{packageId}/freeze:
+    post:
+      tags: [AuditPackages]
+      summary: Freeze audit package & generate cryptographic proof envelope
+      parameters: [{ name: packageId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Audit package frozen }
+
+  /api/v1/evidence/{evidenceId}:
+    get:
+      tags: [Evidence]
+      summary: Get evidence details
+      parameters: [{ name: evidenceId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Evidence details }
+
+  /api/v1/evidence/{evidenceId}/verify:
+    post:
+      tags: [Evidence]
+      summary: Verify evidence hash & cryptographic integrity
+      parameters: [{ name: evidenceId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Verification result }
+
+  /api/v1/exports:
+    post:
+      tags: [Exports]
+      summary: Request data export job
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateExportJobRequest" } } }
+      responses:
+        "201": { description: Export job created }
+
+  # ── Reporting & Detections ──
+  /api/v1/reporting/operational:
+    get:
+      tags: [Reporting]
+      summary: Get security operational summary
+      responses:
+        "200": { description: Operational report }
+
+  /api/v1/detections/definitions:
+    get:
+      tags: [Detections]
+      summary: List detection rule definitions
+      responses:
+        "200": { description: Definitions list }
+    post:
+      tags: [Detections]
+      summary: Create detection definition
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateDetectionDefinitionRequest" } } }
+      responses:
+        "201": { description: Definition created }
+
+  # ── Alerts & Case Management ──
+  /api/v1/alerts:
+    get:
+      tags: [Alerts]
+      summary: List security alerts
+      responses:
+        "200": { description: Alerts list }
+
+  /api/v1/alerts/{alertId}/triage:
+    post:
+      tags: [Alerts]
+      summary: Triage security alert
+      parameters: [{ name: alertId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Alert triaged }
+
+  /api/v1/cases:
+    get:
+      tags: [CaseManagement]
+      summary: List incident cases
+      responses:
+        "200": { description: Cases list }
+    post:
+      tags: [CaseManagement]
+      summary: Create case from alert
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateCaseRequest" } } }
+      responses:
+        "201": { description: Case created }
+
+  /api/v1/cases/{caseId}/ai/summary:
+    post:
+      tags: [CaseAI]
+      summary: Generate AI case summary
+      parameters: [{ name: caseId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: AI case summary }
+
+  # ── Risk & Outbound Webhooks ──
+  /api/v1/risks:
+    get:
+      tags: [RiskManagement]
+      summary: List risks in register
+      responses:
+        "200": { description: Risks list }
+    post:
+      tags: [RiskManagement]
+      summary: Register new risk
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateRiskRequest" } } }
+      responses:
+        "201": { description: Risk registered }
+
+  /api/v1/webhooks:
+    get:
+      tags: [OutboundWebhooks]
+      summary: List outbound webhook subscriptions
+      responses:
+        "200": { description: Subscriptions list }
+    post:
+      tags: [OutboundWebhooks]
+      summary: Create outbound webhook subscription
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateWebhookSubscriptionRequest" } } }
+      responses:
+        "201": { description: Subscription created }
+
+  # ── Response Proposals & Internal Microservices ──
+  /api/v1/cases/{caseId}/response-proposals:
+    post:
+      tags: [ResponseProposals]
+      summary: Create response action proposal
+      parameters: [{ name: caseId, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateResponseProposalRequest" } } }
+      responses:
+        "201": { description: Proposal created }
+
+  /internal/v1/checkpoints:
+    post:
+      tags: [InternalMicroservices]
+      summary: Request Merkle anchor checkpoint (Shield Anchor)
+      security: [{ BearerAuth: [] }]
+      responses:
+        "200": { description: Proof envelope generated }
