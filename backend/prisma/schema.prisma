@@ -552,6 +552,184 @@ model CommercialEvent {
   @@index([event_type])
 }
 
+model Case {
+  id                   String         @id @default(uuid())
+  tenant_id            String
+  environment_id       String         @default("default-env")
+  title                String
+  description          String?
+  severity             String         @default("HIGH")
+  priority             String         @default("P2")
+  status               String         @default("NEW")
+  owner_id             String?
+  queue                String?        @default("DEFAULT")
+  source_alert_ids     String         @default("[]")
+  affected_assets      String         @default("[]")
+  affected_identities  String         @default("[]")
+  created_by           String         @default("system")
+  sla_started_at       DateTime       @default(now())
+  created_at           DateTime       @default(now())
+  updated_at           DateTime       @updatedAt
+  resolved_at          DateTime?
+  closed_at            DateTime?
+
+  caseTimelines        CaseTimeline[]
+  caseDecisions        CaseDecision[]
+  evidenceRecords      EvidenceRecord[]
+
+  @@index([tenant_id])
+  @@index([status])
+  @@index([severity])
+  @@index([owner_id])
+}
+
+model CaseTimeline {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  case_id    String
+  case       Case     @relation(fields: [case_id], references: [id])
+  event_type String
+  actor_id   String   @default("system")
+  details    String   @default("{}")
+  created_at DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([case_id])
+  @@index([event_type])
+}
+
+model CaseDecision {
+  id                  String   @id @default(uuid())
+  tenant_id           String
+  case_id             String
+  case                Case     @relation(fields: [case_id], references: [id])
+  decision_type       String
+  decision            String
+  reason              String?
+  evidence_ids        String   @default("[]")
+  ai_run_id           String?
+  accepted_ai_content Boolean  @default(false)
+  actor_id            String   @default("system")
+  created_at          DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([case_id])
+  @@index([decision_type])
+}
+
+model EvidenceRecord {
+  id               String   @id @default(uuid())
+  tenant_id        String
+  case_id          String?
+  case             Case?    @relation(fields: [case_id], references: [id])
+  evidence_type    String
+  title            String
+  description      String?
+  file_name        String?
+  file_size_bytes  Int      @default(0)
+  sha256_hash      String
+  raw_content      String
+  retention_days   Int      @default(365)
+  created_by       String   @default("system")
+  created_at       DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([case_id])
+  @@index([evidence_type])
+  @@index([sha256_hash])
+}
+
+model ControlObjective {
+  id               String   @id @default(uuid())
+  tenant_id        String
+  code             String
+  name             String
+  framework        String   @default("SOC2")
+  description      String?
+  severity         String   @default("HIGH")
+  created_at       DateTime @default(now())
+
+  testRuns         ControlTestRun[]
+
+  @@unique([tenant_id, code])
+  @@index([tenant_id])
+  @@index([framework])
+}
+
+model ControlTestRun {
+  id                   String           @id @default(uuid())
+  tenant_id            String
+  control_objective_id String
+  controlObjective     ControlObjective @relation(fields: [control_objective_id], references: [id])
+  result               String
+  evidence_ids         String           @default("[]")
+  evaluated_events_count Int            @default(0)
+  failure_reason       String?
+  executed_at          DateTime         @default(now())
+
+  @@index([tenant_id])
+  @@index([control_objective_id])
+  @@index([result])
+}
+
+model AssuranceReview {
+  id                    String            @id @default(uuid())
+  tenant_id             String
+  period_name           String
+  status                String            @default("DRAFT")
+  overall_score         Float             @default(100.0)
+  passed_controls_count Int               @default(0)
+  failed_controls_count Int               @default(0)
+  summary               String?
+  reviewed_by            String            @default("system")
+  created_at            DateTime          @default(now())
+  published_at          DateTime?
+
+  reflections           vCISOReflection[]
+
+  @@index([tenant_id])
+  @@index([status])
+}
+
+model vCISOReflection {
+  id                  String           @id @default(uuid())
+  tenant_id           String
+  assurance_review_id String?
+  assuranceReview     AssuranceReview? @relation(fields: [assurance_review_id], references: [id])
+  category            String
+  title               String
+  notes               String
+  action_items        String           @default("[]")
+  author_id           String           @default("vCISO")
+  created_at          DateTime         @default(now())
+
+  @@index([tenant_id])
+  @@index([assurance_review_id])
+  @@index([category])
+}
+
+model ClaimEvaluation {
+  id                    String   @id @default(uuid())
+  tenant_id             String
+  claim_key             String
+  status                String   @default("QUALIFIED")
+  case_id               String?
+  response_time_minutes Float?
+  evidence_ids          String   @default("[]")
+  justification         String?
+  evaluated_at          DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([claim_key])
+  @@index([status])
+}
+
+
+
+
+
+
+
 
 
 

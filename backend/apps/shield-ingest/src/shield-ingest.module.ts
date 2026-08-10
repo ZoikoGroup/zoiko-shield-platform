@@ -30,6 +30,30 @@ import { AlertGeneratorService } from './alerts/alert-generator.service';
 import { MeteringController } from './metering/metering.controller';
 import { MeteringService } from './metering/metering.service';
 
+import { CaseManagementController } from './cases/case-management.controller';
+import { CaseManagementService } from './cases/case-management.service';
+
+import { HumanDecisionController } from './decisions/human-decision.controller';
+import { HumanDecisionService } from './decisions/human-decision.service';
+
+import { DashboardController } from './dashboard/dashboard.controller';
+import { DashboardService } from './dashboard/dashboard.service';
+
+import { ReplayEngineService } from './normalization/replay-engine.service';
+import { AlertThrottlerService } from './alerts/alert-throttler.service';
+
+import { EvidenceController } from './evidence/evidence.controller';
+import { EvidenceService } from './evidence/evidence.service';
+
+import { ControlTestingController } from './controls/control-testing.controller';
+import { ControlTestingService } from './controls/control-testing.service';
+
+import { AssuranceReviewController } from './assurance/assurance-review.controller';
+import { AssuranceReviewService } from './assurance/assurance-review.service';
+
+import { SLAClaimController } from './sla/sla-claim.controller';
+import { SLAClaimService } from './sla/sla-claim.service';
+
 @Module({
   imports: [PrismaModule, KafkaModule],
   controllers: [
@@ -43,6 +67,13 @@ import { MeteringService } from './metering/metering.service';
     DetectionEngineController,
     AlertGeneratorController,
     MeteringController,
+    CaseManagementController,
+    HumanDecisionController,
+    DashboardController,
+    EvidenceController,
+    ControlTestingController,
+    AssuranceReviewController,
+    SLAClaimController,
   ],
 
   providers: [
@@ -59,6 +90,15 @@ import { MeteringService } from './metering/metering.service';
     DetectionEngineService,
     AlertGeneratorService,
     MeteringService,
+    CaseManagementService,
+    HumanDecisionService,
+    DashboardService,
+    ReplayEngineService,
+    AlertThrottlerService,
+    EvidenceService,
+    ControlTestingService,
+    AssuranceReviewService,
+    SLAClaimService,
   ],
 })
 export class ShieldIngestModule {}
