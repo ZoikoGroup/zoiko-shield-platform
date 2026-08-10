@@ -5,6 +5,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { ShieldCoreController } from './shield-core.controller';
 import { ShieldCoreService } from './shield-core.service';
+import { OutboxPublisherService } from './outbox/outbox-publisher.service';
 import { TenantModule } from './modules/tenant/tenant.module';
 import { CustomerModule } from './modules/customer/customer.module';
 import { OrganizationModule } from './modules/organization/organization.module';
@@ -25,24 +26,8 @@ import { BillingModule } from './modules/billing/billing.module';
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL,
-      entities: [
-        Principal,
-        LocalCredential,
-        ExternalIdentity,
-        Session,
-        VerificationChallenge,
-        RecoveryGrant,
-        PolicyDocument,
-        PolicyAcceptance,
-        IdentityEvent,
-        Permission,
-        Role,
-        TenantMembership,
-        Invitation,
-        Tenant,
-        LegalEntity,
-        Environment,
-      ],
+      autoLoadEntities: true,
+      entities: [__dirname + '/**/*.entity{.ts,.js}'],
       synchronize: process.env.NODE_ENV !== 'production',
       ssl: process.env.DATABASE_URL?.includes('sslmode=require')
         ? { rejectUnauthorized: false }
