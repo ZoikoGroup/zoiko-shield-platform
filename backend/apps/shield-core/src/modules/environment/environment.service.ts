@@ -1,59 +1,48 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { Environment } from './environment.entity';
 import { CreateEnvironmentDto } from './dto/create-environment.dto';
 import { UpdateEnvironmentDto } from './dto/update-environment.dto';
-import * as crypto from 'crypto';
 
 @Injectable()
 export class EnvironmentService {
-  private environments: Environment[] = [];
+  constructor(
+    @InjectRepository(Environment)
+    private readonly environmentRepository: Repository<Environment>,
+  ) {}
 
-  findAll(): Environment[] {
-    return this.environments;
+  findAllForTenant(tenantId: string): Promise<Environment[]> {
+    return this.environmentRepository.find({ where: { tenantId } });
   }
 
-  findOne(id: string): Environment {
-    const item = this.environments.find((c) => c.id === id);
-    if (!item) throw new NotFoundException(`Environment with ID ${id} not found`);
+  async findOne(tenantId: string, id: string): Promise<Environment> {
+    const item = await this.environmentRepository.findOne({ where: { id, tenantId } });
+    if (!item) {
+      throw new NotFoundException(`Environment ${id} not found for tenant ${tenantId}`);
+    }
     return item;
   }
 
-  create(createDto: CreateEnvironmentDto): Environment {
-    const newItem: Environment = {
-      id: crypto.randomUUID(),
-      name: createDto.name,
-      status: 'ACTIVE',
-      context: {
-        tenantId: 'default-tenant',
-        legalEntityId: 'default-entity',
-        environmentId: 'dev',
-        region: 'us-east-1',
-        correlationId: crypto.randomUUID(),
-        traceId: crypto.randomUUID(),
-        requestId: crypto.randomUUID(),
-        purpose: 'environment-creation',
-        dataClass: 'restricted',
-        policyVersion: '1.0',
-        contractId: 'environment-api',
-        contractVersion: '1.0',
-        recordedAt: new Date().toISOString(),
-      },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    this.environments.push(newItem);
-    return newItem;
+  create(tenantId: string, dto: CreateEnvironmentDto, defaultRegion: string): Promise<Environment> {
+    return this.environmentRepository.save(
+      this.environmentRepository.create({
+        tenantId,
+        name: dto.name,
+        environmentType: dto.environmentType,
+        region: dto.region ?? defaultRegion,
+      }),
+    );
   }
 
-  update(id: string, updateDto: UpdateEnvironmentDto): Environment {
-    const item = this.findOne(id);
-    const updated = { ...item, ...updateDto, updatedAt: new Date().toISOString() };
-    this.environments = this.environments.map((c) => (c.id === id ? updated : c));
-    return updated;
+  async update(tenantId: string, id: string, dto: UpdateEnvironmentDto): Promise<Environment> {
+    const item = await this.findOne(tenantId, id);
+    Object.assign(item, dto);
+    return this.environmentRepository.save(item);
   }
 
-  remove(id: string): void {
-    this.findOne(id);
-    this.environments = this.environments.filter((c) => c.id !== id);
+  async remove(tenantId: string, id: string): Promise<void> {
+    const item = await this.findOne(tenantId, id);
+    await this.environmentRepository.remove(item);
   }
 }

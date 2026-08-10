@@ -1,4 +1,19 @@
+import { IsOptional, IsString } from 'class-validator';
+
 export class UpdateLegalEntityDto {
-  name?: string;
-  status?: string;
+  @IsOptional()
+  @IsString()
+  legalName?: string;
+
+  @IsOptional()
+  @IsString()
+  registrationNumber?: string;
+
+  @IsOptional()
+  @IsString()
+  countryOfRegistration?: string;
+
+  @IsOptional()
+  @IsString()
+  registeredAddress?: string;
 }

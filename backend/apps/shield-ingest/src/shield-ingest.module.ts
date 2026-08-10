@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { ShieldIngestController } from './shield-ingest.controller';
 import { ShieldIngestService } from './shield-ingest.service';
 import { EntraConnectorController } from './connectors/microsoft-entra/entra.connector';
@@ -55,7 +56,7 @@ import { SLAClaimController } from './sla/sla-claim.controller';
 import { SLAClaimService } from './sla/sla-claim.service';
 
 @Module({
-  imports: [PrismaModule, KafkaModule],
+  imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
   controllers: [
     ShieldIngestController,
     EntraConnectorController,
@@ -78,10 +79,20 @@ import { SLAClaimService } from './sla/sla-claim.service';
 
   providers: [
     ShieldIngestService,
+
+    ConnectorRegistry,
+    CredentialService,
+    PermissionService,
+    ConnectorCheckpointService,
+    ConnectorHealthService,
+    ConnectorSyncService,
+
+    EntraConnectorService,
     EntraAuthService,
+    EntraTokenService,
     EntraGraphClient,
-    EntraDeltaSyncService,
-    EntraPollerService,
+    EntraUserSyncService,
+    EntraSignInSyncService,
     EntraNormalizerService,
     RawIngestService,
     ConnectorCatalogService,

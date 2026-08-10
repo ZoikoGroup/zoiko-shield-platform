@@ -6,7 +6,43 @@ import {
   OnModuleDestroy,
 } from '@nestjs/common';
 import { Kafka, Producer } from 'kafkajs';
-import { ZoikoShieldCanonicalEvent } from '../connectors/microsoft-entra/entra.types';
+import { randomUUID } from 'crypto';
+import { ZoikoShieldCanonicalEvent } from '../connectors/providers/microsoft-entra/entra.types';
+
+/**
+ * Canonical topic names shield-ingest owns/publishes. detection.* and
+ * alert.* moved to shield-core's own CANONICAL_TOPICS when those modules
+ * moved there — no longer published from this app.
+ */
+export const CANONICAL_TOPICS = {
+  EVENT_NORMALIZED: 'event.normalized.v1',
+  IDENTITY_DIRECTORY_SYNC: 'identity.directory-sync.v1',
+  IDENTITY_SIGNIN: 'identity.signin.v1',
+  CONNECTOR_SYNC_COMPLETED: 'connector.sync.completed.v1',
+  CONNECTOR_HEALTH_CHANGED: 'connector.health.changed.v1',
+  CONNECTOR_PERMISSION_CHANGED: 'connector.permission.changed.v1',
+  CONNECTOR_EVENT_QUARANTINED: 'connector.event.quarantined.v1',
+} as const;
+
+/**
+ * eventId is the inbox dedup key on the consuming side — Kafka redelivery
+ * of the same eventId must never re-run a handler (see
+ * KafkaConsumerService.handleMessage in shield-core). tenantId/occurredAt
+ * are promoted to top level (not just inside payload) so the consumer can
+ * make inbox/partitioning/staleness decisions without parsing payload.
+ */
+export interface EventEnvelope<T = unknown> {
+  eventId: string;
+  eventType: string;
+  eventVersion: string;
+  tenantId: string;
+  correlationId: string;
+  causationId?: string;
+  traceId: string;
+  occurredAt: string;
+  producedAt: string;
+  payload: T;
+}
 
 @Injectable()
 export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {

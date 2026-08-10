@@ -1,16 +1,19 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import { TenantService } from './tenant.service';
-import { CreateTenantDto } from './dto/create-tenant.dto';
-import { UpdateTenantDto } from './dto/update-tenant.dto';
+import { UpdateTenantStatusDto } from './dto/update-tenant-status.dto';
+import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { AuthorizationService } from '../authorization/authorization.service';
+import { CurrentUser } from '../identity-adapter/decorators/current-user.decorator';
+import { PERMISSION_CODES } from '../authorization/constants';
+import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
 
+@UseGuards(JwtAuthGuard)
 @Controller('tenant')
 export class TenantController {
-  constructor(private readonly tenantService: TenantService) {}
-
-  @Post()
-  create(@Body() createTenantDto: CreateTenantDto) {
-    return this.tenantService.create(createTenantDto);
-  }
+  constructor(
+    private readonly tenantService: TenantService,
+    private readonly authorizationService: AuthorizationService,
+  ) {}
 
   @Get()
   findAll() {
@@ -22,14 +25,16 @@ export class TenantController {
     return this.tenantService.findOne(id);
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateTenantDto: UpdateTenantDto) {
-    return this.tenantService.update(id, updateTenantDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.tenantService.remove(id);
+  @Patch(':id/status')
+  async updateStatus(
+    @Param('id') id: string,
+    @Body() dto: UpdateTenantStatusDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const granted = await this.authorizationService.getPermissionCodesForPrincipal(id, user.id);
+    if (!granted.includes(PERMISSION_CODES.TENANT_MANAGE)) {
+      throw new ForbiddenException('Missing tenant:manage permission for this tenant');
+    }
+    return this.tenantService.transitionStatus(id, dto.status, user.id);
   }
 }
-

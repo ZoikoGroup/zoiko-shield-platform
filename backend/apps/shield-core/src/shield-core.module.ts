@@ -1,4 +1,8 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { APP_GUARD } from '@nestjs/core';
 import { ShieldCoreController } from './shield-core.controller';
 import { ShieldCoreService } from './shield-core.service';
 import { TenantModule } from './modules/tenant/tenant.module';
@@ -14,7 +18,37 @@ import { BillingModule } from './modules/billing/billing.module';
 
 @Module({
   imports: [
-    TenantModule, 
+    ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env', '../.env'] }),
+    ThrottlerModule.forRoot({
+      throttlers: [{ ttl: 60_000, limit: 60 }],
+    }),
+    TypeOrmModule.forRoot({
+      type: 'postgres',
+      url: process.env.DATABASE_URL,
+      entities: [
+        Principal,
+        LocalCredential,
+        ExternalIdentity,
+        Session,
+        VerificationChallenge,
+        RecoveryGrant,
+        PolicyDocument,
+        PolicyAcceptance,
+        IdentityEvent,
+        Permission,
+        Role,
+        TenantMembership,
+        Invitation,
+        Tenant,
+        LegalEntity,
+        Environment,
+      ],
+      synchronize: process.env.NODE_ENV !== 'production',
+      ssl: process.env.DATABASE_URL?.includes('sslmode=require')
+        ? { rejectUnauthorized: false }
+        : false,
+    }),
+    TenantModule,
     CustomerModule,
     OrganizationModule,
     LegalEntityModule,
@@ -26,6 +60,6 @@ import { BillingModule } from './modules/billing/billing.module';
     BillingModule,
   ],
   controllers: [ShieldCoreController],
-  providers: [ShieldCoreService],
+  providers: [ShieldCoreService, OutboxPublisherService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class ShieldCoreModule {}

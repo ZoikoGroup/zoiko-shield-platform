@@ -1,0 +1,899 @@
+openapi: 3.0.3
+info:
+  title: ZoikoShield - Enterprise Cyber Security Platform API
+  version: 1.0.0
+  description: >
+    Complete OpenAPI specification for ZoikoShield Platform Services: Shield Core, Ingest, Anchor, Action, and AI microservices.
+    Auth is primary cookie-based (httpOnly access_token / refresh_token, Secure, SameSite=Lax) or Bearer token for API clients / OAuth2.
+servers:
+  - url: http://localhost:3001
+    description: Local development (Shield Core Gateway)
+  - url: http://localhost:3002
+    description: Ingest Microservice
+  - url: http://localhost:3003
+    description: Anchor Microservice
+  - url: http://localhost:3004
+    description: Action Microservice
+  - url: http://localhost:3005
+    description: AI Gateway Microservice
+
+tags:
+  - name: Auth
+    description: Identity adapter – registration, login, OAuth, sessions, invitations
+  - name: RBAC
+    description: Authorization – permissions, roles, tenant membership
+  - name: Tenant
+    description: Tenant lifecycle and metadata management
+  - name: Onboarding
+    description: Tenant onboarding workflow
+  - name: Offboarding
+    description: Tenant offboarding, legal hold, data freeze and deletion attestations
+  - name: Customer
+    description: Customer account & segment management
+  - name: Organization
+    description: Organization management
+  - name: LegalEntity
+    description: Legal entity boundaries and governance
+  - name: Environment
+    description: Deployment environment management
+  - name: Commercial
+    description: Commercial accounts, offer entitlements, and claim verification
+  - name: CommerceContracts
+    description: Commercial contracts and state machine transitions
+  - name: ServiceObligations
+    description: Contractual service obligations and evidence delivery
+  - name: Billing
+    description: Commercial invoice skeletons and financial lock enforcement
+  - name: Catalog
+    description: Product SKUs, price books, and version approvals
+  - name: DeveloperAPI
+    description: API client management, scopes, rotation, and rate limits
+  - name: OAuth
+    description: Public OAuth2 token issuance (client_credentials)
+  - name: PublicAlerts
+    description: Scoped public alerts API endpoint
+  - name: ConnectorCatalog
+    description: Security connector catalog and instance management
+  - name: WebhookIngestion
+    description: Ingestion pipeline webhooks for security event streams
+  - name: Metering
+    description: Telemetry usage breakdown, audits, and resource observations
+  - name: SecurityContext
+    description: Security assets, identities, context resolution, and snapshots
+  - name: Controls
+    description: Compliance control objectives, implementations, and scopes
+  - name: AuditPackages
+    description: Immutable audit package creation, validation, freeze, and proofs
+  - name: Evidence
+    description: Immutable evidence collection, verification, and lineage graph
+  - name: Exports
+    description: Asynchronous data export jobs, manifests, and secure downloads
+  - name: Reporting
+    description: Security summary, assurance, operational, and executive reporting
+  - name: Detections
+    description: Detection definitions, rule versions, matches, and replay
+  - name: Alerts
+    description: Security alert management, triage, assignment, and escalation
+  - name: CaseManagement
+    description: Incident case management, timeline, evidence links, and decisions
+  - name: CaseAI
+    description: AI-assisted case summarization, hypotheses, and next queries
+  - name: RiskManagement
+    description: Risk register, factor scoring, treatments, acceptances, and exceptions
+  - name: OutboundWebhooks
+    description: Outbound webhook subscriptions, delivery tracking, and replay
+  - name: Notifications
+    description: Multi-channel notifications, preferences, and acknowledgements
+  - name: ResponseProposals
+    description: Security response proposals, human-in-the-loop approvals, and execution
+  - name: InternalMicroservices
+    description: Inter-service communication endpoints (Anchor, AI, Action)
+
+components:
+  securitySchemes:
+    CookieAuth:
+      type: apiKey
+      in: cookie
+      name: access_token
+      description: Primary auth mechanism — httpOnly, Secure, SameSite=Lax. Set automatically by login/verify-email/refresh.
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Bearer extractor for API clients, OAuth2 tokens, and inter-service calls.
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [fullName, email, password, confirmPassword, termsOfServiceVersion]
+      properties:
+        fullName: { type: string, example: "Test User" }
+        email: { type: string, format: email }
+        password: { type: string, minLength: 12 }
+        confirmPassword: { type: string, minLength: 12 }
+        termsOfServiceVersion: { type: string, example: "1" }
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+    VerifyEmailRequest:
+      type: object
+      required: [email, otp]
+      properties:
+        email: { type: string, format: email }
+        otp: { type: string, minLength: 6, maxLength: 6 }
+    EmailOnlyRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, format: email }
+    PasswordRecoveryResetRequest:
+      type: object
+      required: [newPassword, confirmNewPassword]
+      properties:
+        newPassword: { type: string, minLength: 12 }
+        confirmNewPassword: { type: string, minLength: 12 }
+    UserResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        sessionId: { type: string, format: uuid }
+        email: { type: string }
+        fullName: { type: string }
+        emailVerified: { type: boolean }
+        assurance: { type: string, enum: [PASSWORD, PASSWORD_MFA, FEDERATED, FEDERATED_MFA, PASSKEY, RECOVERY] }
+    AuthResponse:
+      type: object
+      properties:
+        user: { $ref: "#/components/schemas/UserResponse" }
+    SuccessResponse:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+    MessageResponse:
+      type: object
+      properties:
+        message: { type: string }
+    
+    CanonicalContext:
+      type: object
+      required: [tenantId, legalEntityId, environmentId, region, correlationId, traceId, requestId, purpose, dataClass, policyVersion, contractId, contractVersion, recordedAt]
+      properties:
+        tenantId: { type: string, format: uuid }
+        legalEntityId: { type: string, format: uuid }
+        environmentId: { type: string, format: uuid }
+        region: { type: string }
+        actorId: { type: string }
+        workloadId: { type: string }
+        correlationId: { type: string, format: uuid }
+        traceId: { type: string, format: uuid }
+        requestId: { type: string, format: uuid }
+        purpose: { type: string }
+        dataClass: { type: string }
+        policyVersion: { type: string }
+        contractId: { type: string }
+        contractVersion: { type: string }
+        recordedAt: { type: string, format: date-time }
+
+    CreateTenantRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, example: "Acme Corp" }
+    UpdateTenantRequest:
+      type: object
+      properties:
+        name: { type: string }
+        status: { type: string, enum: [active, suspended, offboarded] }
+    Tenant:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        status: { type: string }
+        context: { $ref: "#/components/schemas/CanonicalContext" }
+        createdAt: { type: string, format: date-time }
+
+    CreateCommercialAccountRequest:
+      type: object
+      required: [name, billingEmail]
+      properties:
+        tenantId: { type: string, format: uuid }
+        name: { type: string }
+        billingEmail: { type: string, format: email }
+        currency: { type: string, example: "USD" }
+    GrantEntitlementRequest:
+      type: object
+      required: [commercialAccountId, offerType]
+      properties:
+        commercialAccountId: { type: string, format: uuid }
+        offerType: { type: string, example: "ENTERPRISE_SHIELD" }
+        startsAt: { type: string, format: date-time }
+        endsAt: { type: string, format: date-time }
+    RegisterClaimRequest:
+      type: object
+      required: [claimKey, wording]
+      properties:
+        claimKey: { type: string, example: "ISO27001_COMPLIANT" }
+        wording: { type: string }
+
+    CreateServiceObligationRequest:
+      type: object
+      required: [contractId, description]
+      properties:
+        contractId: { type: string, format: uuid }
+        description: { type: string }
+        dueAt: { type: string, format: date-time }
+
+    CreateContractRequest:
+      type: object
+      required: [commercialAccountId, title]
+      properties:
+        commercialAccountId: { type: string, format: uuid }
+        title: { type: string }
+        effectiveDate: { type: string, format: date-time }
+
+    CreateDraftInvoiceRequest:
+      type: object
+      required: [commercialAccountId, amount]
+      properties:
+        commercialAccountId: { type: string, format: uuid }
+        amount: { type: number }
+        currency: { type: string, example: "USD" }
+
+    CreateCatalogVersionRequest:
+      type: object
+      required: [versionName]
+      properties:
+        versionName: { type: string, example: "2026.1" }
+    CreateProductRequest:
+      type: object
+      required: [sku, name]
+      properties:
+        sku: { type: string, example: "SHIELD-ENT-001" }
+        name: { type: string }
+    CreatePriceBookRequest:
+      type: object
+      required: [sku, unitPrice]
+      properties:
+        sku: { type: string }
+        unitPrice: { type: number }
+        currency: { type: string }
+
+    CreateApiClientRequest:
+      type: object
+      required: [name, purpose]
+      properties:
+        name: { type: string }
+        purpose: { type: string }
+        environmentScope: { type: string }
+    GrantScopeRequest:
+      type: object
+      required: [scope]
+      properties:
+        scope: { type: string, example: "alerts:read" }
+
+    CreateConnectorRequest:
+      type: object
+      required: [connectorType, name]
+      properties:
+        tenantId: { type: string, format: uuid }
+        connectorType: { type: string, example: "MICROSOFT_ENTRA" }
+        name: { type: string }
+        configuration: { type: object }
+
+    ResolveAssetRequest:
+      type: object
+      required: [externalId, assetType]
+      properties:
+        externalId: { type: string }
+        assetType: { type: string, example: "VIRTUAL_MACHINE" }
+        hostname: { type: string }
+    ResolveIdentityRequest:
+      type: object
+      properties:
+        externalId: { type: string }
+        email: { type: string, format: email }
+        displayName: { type: string }
+
+    CreateControlImplementationRequest:
+      type: object
+      required: [controlObjectiveId, title, ownerId]
+      properties:
+        controlObjectiveId: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        ownerId: { type: string }
+        implementationType: { type: string }
+
+    CreateAuditPackageRequest:
+      type: object
+      required: [purpose, frameworkScope, periodStart, periodEnd]
+      properties:
+        purpose: { type: string }
+        frameworkScope: { type: array, items: { type: string } }
+        periodStart: { type: string, format: date-time }
+        periodEnd: { type: string, format: date-time }
+
+    CreateExportJobRequest:
+      type: object
+      required: [purpose, exportType, requestedScope]
+      properties:
+        purpose: { type: string }
+        exportType: { type: string }
+        requestedScope: { type: array, items: { type: string } }
+
+    CreateDetectionDefinitionRequest:
+      type: object
+      required: [key, name]
+      properties:
+        key: { type: string, example: "SUSPICIOUS_LOGIN" }
+        name: { type: string }
+        description: { type: string }
+    CreateDetectionVersionRequest:
+      type: object
+      required: [version]
+      properties:
+        version: { type: integer, example: 1 }
+        severity: { type: string, enum: [CRITICAL, HIGH, MEDIUM, LOW] }
+
+    UpdateAlertStatusRequest:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string, enum: [NEW, IN_TRIAGE, INVESTIGATING, ESCALATED, CLOSED_FALSE_POSITIVE, CLOSED_RESOLVED] }
+    AssignAlertRequest:
+      type: object
+      properties:
+        principalId: { type: string }
+        queueId: { type: string }
+        reason: { type: string }
+
+    CreateCaseRequest:
+      type: object
+      required: [alertId]
+      properties:
+        alertId: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+    TransitionCaseRequest:
+      type: object
+      required: [toState, reason]
+      properties:
+        toState: { type: string }
+        reason: { type: string }
+    AddNoteRequest:
+      type: object
+      required: [content]
+      properties:
+        content: { type: string }
+        classification: { type: string }
+    RecordDecisionRequest:
+      type: object
+      required: [decisionType, decision, rationale]
+      properties:
+        decisionType: { type: string }
+        decision: { type: string }
+        rationale: { type: string }
+
+    CreateRiskRequest:
+      type: object
+      required: [title, description, likelihood, impact, ownerId]
+      properties:
+        title: { type: string }
+        description: { type: string }
+        likelihood: { type: string }
+        impact: { type: string }
+        ownerId: { type: string }
+    AcceptRiskRequest:
+      type: object
+      required: [acceptedBy, authority, rationale, expiresAt]
+      properties:
+        acceptedBy: { type: string }
+        authority: { type: string }
+        rationale: { type: string }
+        expiresAt: { type: string, format: date-time }
+
+    CreateWebhookSubscriptionRequest:
+      type: object
+      required: [endpointUrl, eventTypes]
+      properties:
+        endpointUrl: { type: string, format: uri }
+        eventTypes: { type: array, items: { type: string } }
+
+    CreateResponseProposalRequest:
+      type: object
+      required: [targetType, targetId, actionType, reason, recommendationSource]
+      properties:
+        targetType: { type: string }
+        targetId: { type: string }
+        actionType: { type: string }
+        reason: { type: string }
+        recommendationSource: { type: string }
+
+paths:
+  # ── Identity & Auth ──
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/RegisterRequest" } } }
+      responses:
+        "201": { description: Registration successful }
+        "400": { description: Validation error }
+        "409": { description: Email already registered }
+
+  /auth/verify-email:
+    post:
+      tags: [Auth]
+      summary: Verify email with OTP
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/VerifyEmailRequest" } } }
+      responses:
+        "200": { description: Email verified and logged in }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with credentials
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/LoginRequest" } } }
+      responses:
+        "200": { description: Login successful }
+        "401": { description: Invalid credentials }
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh authentication cookies
+      responses:
+        "200": { description: Tokens refreshed }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout current session
+      responses:
+        "200": { description: Logged out }
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current user profile
+      security: [{ CookieAuth: [] }]
+      responses:
+        "200": { description: User details }
+
+  # ── Commercial & Entitlements ──
+  /api/v1/commercial/accounts:
+    post:
+      tags: [Commercial]
+      summary: Create commercial account
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateCommercialAccountRequest" } } }
+      responses:
+        "201": { description: Commercial account created }
+
+  /api/v1/commercial/accounts/{accountId}:
+    get:
+      tags: [Commercial]
+      summary: Get commercial account details
+      parameters: [{ name: accountId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Account details }
+
+  /api/v1/commercial/entitlements:
+    post:
+      tags: [Commercial]
+      summary: Grant commercial entitlement
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/GrantEntitlementRequest" } } }
+      responses:
+        "201": { description: Entitlement granted }
+    get:
+      tags: [Commercial]
+      summary: List tenant active entitlements
+      responses:
+        "200": { description: Active entitlements }
+
+  /api/v1/commercial/entitlements/check:
+    get:
+      tags: [Commercial]
+      summary: Check active offer entitlement (ADR-06 fail-closed)
+      parameters: [{ name: offerType, in: query, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Entitlement status }
+
+  /api/v1/commercial/claims/register:
+    post:
+      tags: [Commercial]
+      summary: Register approved claim wording
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/RegisterClaimRequest" } } }
+      responses:
+        "200": { description: Claim registered }
+
+  /api/v1/commercial/claims/check:
+    get:
+      tags: [Commercial]
+      summary: Verify claim eligibility
+      parameters: [{ name: claimKey, in: query, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Claim verification result }
+
+  # ── Obligations & Commerce Contracts ──
+  /api/v1/obligations:
+    post:
+      tags: [ServiceObligations]
+      summary: Create service obligation
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateServiceObligationRequest" } } }
+      responses:
+        "201": { description: Obligation created }
+    get:
+      tags: [ServiceObligations]
+      summary: Get obligations by contract ID
+      parameters: [{ name: contractId, in: query, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Obligations list }
+
+  /api/v1/obligations/{id}/status:
+    patch:
+      tags: [ServiceObligations]
+      summary: Update obligation status & link evidence
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Obligation status updated }
+
+  /api/v1/commerce/contracts:
+    post:
+      tags: [CommerceContracts]
+      summary: Create contract in DRAFT state
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateContractRequest" } } }
+      responses:
+        "201": { description: Contract created }
+
+  /api/v1/commerce/contracts/{id}:
+    get:
+      tags: [CommerceContracts]
+      summary: Get contract details
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Contract details }
+
+  /api/v1/commerce/contracts/{id}/transition:
+    patch:
+      tags: [CommerceContracts]
+      summary: Transition contract status
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Transition successful }
+
+  # ── Billing & Catalog ──
+  /api/v1/billing/invoices:
+    post:
+      tags: [Billing]
+      summary: Create draft invoice
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateDraftInvoiceRequest" } } }
+      responses:
+        "201": { description: Invoice created }
+    get:
+      tags: [Billing]
+      summary: List account invoices
+      parameters: [{ name: accountId, in: query, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Invoices list }
+
+  /api/v1/billing/invoices/{id}/issue:
+    patch:
+      tags: [Billing]
+      summary: Issue invoice (FIN-02 lock)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Invoice issued and locked }
+
+  /api/v1/catalog/versions:
+    post:
+      tags: [Catalog]
+      summary: Create catalog version
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateCatalogVersionRequest" } } }
+      responses:
+        "201": { description: Catalog version created }
+
+  /api/v1/catalog/products:
+    post:
+      tags: [Catalog]
+      summary: Register product SKU
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateProductRequest" } } }
+      responses:
+        "201": { description: Product registered }
+    get:
+      tags: [Catalog]
+      summary: List approved catalog products
+      responses:
+        "200": { description: Product list }
+
+  # ── Developer API & OAuth ──
+  /api/v1/api-clients:
+    post:
+      tags: [DeveloperAPI]
+      summary: Create developer API client
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateApiClientRequest" } } }
+      responses:
+        "201": { description: API client created }
+
+  /oauth/token:
+    post:
+      tags: [OAuth]
+      summary: Issue OAuth2 access token
+      responses:
+        "200": { description: Token issued }
+
+  /api/v1/public/alerts:
+    get:
+      tags: [PublicAlerts]
+      summary: List scoped public alerts
+      security: [{ BearerAuth: [] }]
+      responses:
+        "200": { description: Public alerts list }
+
+  # ── Connectors & Webhook Ingestion ──
+  /api/v1/connector-types:
+    get:
+      tags: [ConnectorCatalog]
+      summary: List supported connector types
+      responses:
+        "200": { description: Connector types }
+
+  /api/v1/connectors:
+    post:
+      tags: [ConnectorCatalog]
+      summary: Create security tool connector instance
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateConnectorRequest" } } }
+      responses:
+        "201": { description: Connector created }
+    get:
+      tags: [ConnectorCatalog]
+      summary: List tenant connectors
+      responses:
+        "200": { description: Connectors list }
+
+  /api/v1/ingestion/webhooks/{connectorId}:
+    post:
+      tags: [WebhookIngestion]
+      summary: Receive connector event webhook stream
+      parameters: [{ name: connectorId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "202": { description: Webhook accepted }
+
+  /api/v1/metering/usage:
+    get:
+      tags: [Metering]
+      summary: Get telemetry usage breakdown
+      responses:
+        "200": { description: Telemetry usage summary }
+
+  # ── Security Context & Controls ──
+  /api/v1/context/assets:
+    get:
+      tags: [SecurityContext]
+      summary: List security assets
+      responses:
+        "200": { description: Assets list }
+
+  /api/v1/context/assets/resolve:
+    post:
+      tags: [SecurityContext]
+      summary: Resolve asset entity
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ResolveAssetRequest" } } }
+      responses:
+        "200": { description: Asset resolved }
+
+  /api/v1/controls:
+    get:
+      tags: [Controls]
+      summary: List compliance control objectives
+      responses:
+        "200": { description: Control objectives list }
+
+  /api/v1/control-implementations:
+    get:
+      tags: [Controls]
+      summary: List control implementations
+      responses:
+        "200": { description: Implementations list }
+    post:
+      tags: [Controls]
+      summary: Create control implementation
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateControlImplementationRequest" } } }
+      responses:
+        "201": { description: Implementation created }
+
+  # ── Audit Packages, Evidence & Exports ──
+  /api/v1/audit-packages:
+    get:
+      tags: [AuditPackages]
+      summary: List audit packages
+      responses:
+        "200": { description: Audit packages list }
+    post:
+      tags: [AuditPackages]
+      summary: Create immutable audit package
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateAuditPackageRequest" } } }
+      responses:
+        "201": { description: Audit package created }
+
+  /api/v1/audit-packages/{packageId}/freeze:
+    post:
+      tags: [AuditPackages]
+      summary: Freeze audit package & generate cryptographic proof envelope
+      parameters: [{ name: packageId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Audit package frozen }
+
+  /api/v1/evidence/{evidenceId}:
+    get:
+      tags: [Evidence]
+      summary: Get evidence details
+      parameters: [{ name: evidenceId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Evidence details }
+
+  /api/v1/evidence/{evidenceId}/verify:
+    post:
+      tags: [Evidence]
+      summary: Verify evidence hash & cryptographic integrity
+      parameters: [{ name: evidenceId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Verification result }
+
+  /api/v1/exports:
+    post:
+      tags: [Exports]
+      summary: Request data export job
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateExportJobRequest" } } }
+      responses:
+        "201": { description: Export job created }
+
+  # ── Reporting & Detections ──
+  /api/v1/reporting/operational:
+    get:
+      tags: [Reporting]
+      summary: Get security operational summary
+      responses:
+        "200": { description: Operational report }
+
+  /api/v1/detections/definitions:
+    get:
+      tags: [Detections]
+      summary: List detection rule definitions
+      responses:
+        "200": { description: Definitions list }
+    post:
+      tags: [Detections]
+      summary: Create detection definition
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateDetectionDefinitionRequest" } } }
+      responses:
+        "201": { description: Definition created }
+
+  # ── Alerts & Case Management ──
+  /api/v1/alerts:
+    get:
+      tags: [Alerts]
+      summary: List security alerts
+      responses:
+        "200": { description: Alerts list }
+
+  /api/v1/alerts/{alertId}/triage:
+    post:
+      tags: [Alerts]
+      summary: Triage security alert
+      parameters: [{ name: alertId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Alert triaged }
+
+  /api/v1/cases:
+    get:
+      tags: [CaseManagement]
+      summary: List incident cases
+      responses:
+        "200": { description: Cases list }
+    post:
+      tags: [CaseManagement]
+      summary: Create case from alert
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateCaseRequest" } } }
+      responses:
+        "201": { description: Case created }
+
+  /api/v1/cases/{caseId}/ai/summary:
+    post:
+      tags: [CaseAI]
+      summary: Generate AI case summary
+      parameters: [{ name: caseId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: AI case summary }
+
+  # ── Risk & Outbound Webhooks ──
+  /api/v1/risks:
+    get:
+      tags: [RiskManagement]
+      summary: List risks in register
+      responses:
+        "200": { description: Risks list }
+    post:
+      tags: [RiskManagement]
+      summary: Register new risk
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateRiskRequest" } } }
+      responses:
+        "201": { description: Risk registered }
+
+  /api/v1/webhooks:
+    get:
+      tags: [OutboundWebhooks]
+      summary: List outbound webhook subscriptions
+      responses:
+        "200": { description: Subscriptions list }
+    post:
+      tags: [OutboundWebhooks]
+      summary: Create outbound webhook subscription
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateWebhookSubscriptionRequest" } } }
+      responses:
+        "201": { description: Subscription created }
+
+  # ── Response Proposals & Internal Microservices ──
+  /api/v1/cases/{caseId}/response-proposals:
+    post:
+      tags: [ResponseProposals]
+      summary: Create response action proposal
+      parameters: [{ name: caseId, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateResponseProposalRequest" } } }
+      responses:
+        "201": { description: Proposal created }
+
+  /internal/v1/checkpoints:
+    post:
+      tags: [InternalMicroservices]
+      summary: Request Merkle anchor checkpoint (Shield Anchor)
+      security: [{ BearerAuth: [] }]
+      responses:
+        "200": { description: Proof envelope generated }
