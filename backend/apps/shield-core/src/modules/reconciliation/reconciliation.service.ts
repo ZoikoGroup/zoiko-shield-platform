@@ -115,6 +115,128 @@ export class ReconciliationService {
     return { checked: issuedInvoices.length, issuesFound: issues };
   }
 
+  /** Domain: SERVICE_OBLIGATION — an obligation past due_at that is neither DELIVERED nor WAIVED is drift, not silently marked delivered. */
+  async reconcileServiceObligations(runId: string) {
+    const now = new Date();
+    const overdue = await this.prisma.serviceObligation.findMany({
+      where: { due_at: { lte: now }, status: { notIn: ['DELIVERED', 'WAIVED', 'CANCELLED'] } },
+    });
+
+    for (const obligation of overdue) {
+      await this.recordIssue(
+        runId,
+        'SERVICE_OBLIGATION',
+        'ServiceObligation',
+        obligation.id,
+        'DELIVERED or WAIVED by due_at',
+        obligation.status,
+        'HIGH',
+        `Obligation '${obligation.id}' (${obligation.obligation_type}) is past due_at but still '${obligation.status}'`,
+      );
+    }
+    return { checked: overdue.length, issuesFound: overdue.length };
+  }
+
+  /** Domain: SERVICE_CREDIT — an SLA breach with no proposed credit is drift; a credit is never auto-created to "fix" it. */
+  async reconcileServiceCredits(runId: string) {
+    const breaches = await this.prisma.slaMeasurement.findMany({
+      where: { breached: true },
+      include: { serviceCredits: true },
+    });
+    let issues = 0;
+
+    for (const breach of breaches) {
+      if (breach.serviceCredits.length === 0) {
+        await this.recordIssue(
+          runId,
+          'SERVICE_CREDIT',
+          'SlaMeasurement',
+          breach.id,
+          'at least one proposed ServiceCredit',
+          'none',
+          'MEDIUM',
+          `SLA measurement '${breach.id}' is breached but no service credit has been proposed against it`,
+        );
+        issues++;
+      }
+    }
+    return { checked: breaches.length, issuesFound: issues };
+  }
+
+  /** Domain: PARTNER_COST — a settlement's commission must match agreement rate * gross; never silently recomputed. */
+  async reconcilePartnerCosts(runId: string) {
+    const settlements = await this.prisma.partnerSettlement.findMany({ where: { status: { not: 'CANCELLED' } } });
+    let issues = 0;
+
+    for (const settlement of settlements) {
+      const agreement = await this.prisma.partnerAgreement.findFirst({
+        where: { partner_id: settlement.partner_id, status: 'APPROVED' },
+        orderBy: { created_at: 'desc' },
+      });
+      if (!agreement) {
+        await this.recordIssue(
+          runId,
+          'PARTNER_COST',
+          'PartnerSettlement',
+          settlement.id,
+          'an approved PartnerAgreement backing this settlement',
+          'none',
+          'HIGH',
+          `Settlement '${settlement.id}' exists for partner '${settlement.partner_id}' with no approved agreement on record`,
+        );
+        issues++;
+        continue;
+      }
+
+      const expectedCommission = Number(settlement.gross_amount) * (Number(agreement.commission_percent) / 100);
+      if (Math.abs(expectedCommission - Number(settlement.commission_amount)) > 0.01) {
+        await this.recordIssue(
+          runId,
+          'PARTNER_COST',
+          'PartnerSettlement',
+          settlement.id,
+          String(expectedCommission),
+          String(settlement.commission_amount),
+          'HIGH',
+          `Settlement '${settlement.id}' commission ${settlement.commission_amount} does not match agreement rate applied to gross (expected ${expectedCommission})`,
+        );
+        issues++;
+      }
+    }
+    return { checked: settlements.length, issuesFound: issues };
+  }
+
+  /**
+   * Domain: CLAIM_ELIGIBILITY — an entitlement still marked ACTIVE whose
+   * backing commercial account has been SUSPENDED/TERMINATED means any
+   * claim relying on it has silently degraded (Claims must fail closed
+   * when eligibility becomes false) without anyone being notified.
+   */
+  async reconcileClaimEligibility(runId: string) {
+    const activeEntitlements = await this.prisma.entitlement.findMany({
+      where: { status: 'ACTIVE' },
+      include: { commercialAccount: true },
+    });
+    let issues = 0;
+
+    for (const entitlement of activeEntitlements) {
+      if (['SUSPENDED', 'TERMINATED'].includes(entitlement.commercialAccount.status)) {
+        await this.recordIssue(
+          runId,
+          'CLAIM_ELIGIBILITY',
+          'Entitlement',
+          entitlement.id,
+          'commercial account ACTIVE',
+          entitlement.commercialAccount.status,
+          'HIGH',
+          `Entitlement '${entitlement.id}' is still 'ACTIVE' but its commercial account is '${entitlement.commercialAccount.status}' — any claim relying on this entitlement has silently degraded and must fail closed`,
+        );
+        issues++;
+      }
+    }
+    return { checked: activeEntitlements.length, issuesFound: issues };
+  }
+
   async completeRun(runId: string) {
     const issueCount = await this.prisma.reconciliationIssue.count({ where: { run_id: runId } });
     return this.prisma.reconciliationRun.update({

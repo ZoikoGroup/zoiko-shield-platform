@@ -31,6 +31,30 @@ export class ReconciliationController {
     return { statusCode: HttpStatus.OK, data: result };
   }
 
+  @Post('runs/:id/checks/service-obligations')
+  async checkServiceObligations(@Param('id') id: string) {
+    const result = await this.reconciliationService.reconcileServiceObligations(id);
+    return { statusCode: HttpStatus.OK, data: result };
+  }
+
+  @Post('runs/:id/checks/service-credits')
+  async checkServiceCredits(@Param('id') id: string) {
+    const result = await this.reconciliationService.reconcileServiceCredits(id);
+    return { statusCode: HttpStatus.OK, data: result };
+  }
+
+  @Post('runs/:id/checks/partner-costs')
+  async checkPartnerCosts(@Param('id') id: string) {
+    const result = await this.reconciliationService.reconcilePartnerCosts(id);
+    return { statusCode: HttpStatus.OK, data: result };
+  }
+
+  @Post('runs/:id/checks/claim-eligibility')
+  async checkClaimEligibility(@Param('id') id: string) {
+    const result = await this.reconciliationService.reconcileClaimEligibility(id);
+    return { statusCode: HttpStatus.OK, data: result };
+  }
+
   @Patch('runs/:id/complete')
   async completeRun(@Param('id') id: string) {
     const run = await this.reconciliationService.completeRun(id);

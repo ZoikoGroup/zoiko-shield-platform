@@ -3,6 +3,7 @@ import { IsArray, IsISO8601, IsInt, IsNumber, IsOptional, IsPositive, IsString, 
 import { PrismaService } from '../../prisma/prisma.service';
 import { TaxRuleService } from '../tax/tax-rule.service';
 import { NON_COMMERCIAL_CLASSIFICATIONS } from '../commercial/commercial-entitlement.service';
+import { CommercialKillSwitchService } from '../kill-switch/commercial-kill-switch.service';
 
 export class CreateDraftInvoiceDto {
   @IsUUID()
@@ -69,6 +70,7 @@ export class InvoiceSkeletonService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly taxRuleService: TaxRuleService,
+    private readonly killSwitchService: CommercialKillSwitchService,
   ) {}
 
   /**
@@ -96,6 +98,8 @@ export class InvoiceSkeletonService {
    * a rate. Only permitted while the invoice is still DRAFT.
    */
   async addInvoiceLine(invoiceId: string, dto: AddInvoiceLineDto) {
+    await this.killSwitchService.assertNotBlocked('USAGE_BILLING_EXPORT');
+
     const invoice = await this.prisma.commercialInvoice.findUnique({ where: { id: invoiceId } });
     if (!invoice) {
       throw new NotFoundException(`Invoice '${invoiceId}' not found`);
@@ -162,6 +166,8 @@ export class InvoiceSkeletonService {
    * real, immutable, payable invoice.
    */
   async issueInvoice(invoiceId: string) {
+    await this.killSwitchService.assertNotBlocked('INVOICE_FINALIZATION');
+
     const invoice = await this.prisma.commercialInvoice.findUnique({
       where: { id: invoiceId },
       include: { lines: true, commercialAccount: true },

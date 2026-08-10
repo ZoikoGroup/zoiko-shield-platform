@@ -5,6 +5,7 @@ import { IdempotencyService } from '../idempotency/idempotency.service';
 import { assertTransition } from '../commerce/state-machine.util';
 import { PAYMENT_PROVIDER } from './payment-provider.interface';
 import type { PaymentProvider } from './payment-provider.interface';
+import { CommercialKillSwitchService } from '../kill-switch/commercial-kill-switch.service';
 
 /** ZS-COM-BILL-001 Part 9 canonical payment lifecycle. */
 const PAYMENT_TRANSITIONS: Record<string, string[]> = {
@@ -70,6 +71,7 @@ export class PaymentService {
     private readonly prisma: PrismaService,
     private readonly idempotencyService: IdempotencyService,
     @Inject(PAYMENT_PROVIDER) private readonly provider: PaymentProvider,
+    private readonly killSwitchService: CommercialKillSwitchService,
   ) {}
 
   async getPaymentById(paymentId: string) {
@@ -85,6 +87,8 @@ export class PaymentService {
    * the price/tax/invoice basis must already be frozen.
    */
   async createPayment(dto: CreatePaymentDto, idempotencyKey: string) {
+    await this.killSwitchService.assertNotBlocked('AUTOMATIC_CHARGING');
+
     const invoice = await this.prisma.commercialInvoice.findUnique({ where: { id: dto.invoiceId } });
     if (!invoice) {
       throw new NotFoundException(`Invoice '${dto.invoiceId}' not found`);

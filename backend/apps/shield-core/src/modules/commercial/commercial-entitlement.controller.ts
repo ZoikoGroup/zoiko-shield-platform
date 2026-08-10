@@ -35,6 +35,14 @@ export class CheckClaimQueryDto {
 
   @IsString()
   claimKey!: string;
+
+  @IsOptional()
+  @IsString()
+  sectorPackKey?: string;
+
+  @IsOptional()
+  @IsString()
+  region?: string;
 }
 
 @Controller('api/v1/commercial')
@@ -174,6 +182,8 @@ export class CommercialEntitlementController {
     const result = await this.commercialService.verifyClaimEligibility(
       tenantId,
       query.claimKey,
+      query.sectorPackKey,
+      query.region,
     );
     return {
       statusCode: HttpStatus.OK,

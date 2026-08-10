@@ -5,6 +5,7 @@ import { QuoteService } from './quote.service';
 import { ContractStateService } from '../commerce/contract-state.service';
 import { SubscriptionService } from './subscription.service';
 import { IdempotencyService } from '../idempotency/idempotency.service';
+import { CommercialKillSwitchService } from '../kill-switch/commercial-kill-switch.service';
 
 describe('OrderService.provisionOrder (atomic Order -> Contract -> Subscription)', () => {
   let service: OrderService;
@@ -12,15 +13,24 @@ describe('OrderService.provisionOrder (atomic Order -> Contract -> Subscription)
   let quoteMock: any;
   let contractMock: any;
   let subscriptionMock: any;
+  let idempotencyMock: any;
+  let killSwitchMock: any;
 
   beforeEach(async () => {
     prismaMock = {
-      commercialOrder: { findUnique: jest.fn(), update: jest.fn() },
+      commercialOrder: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
       $transaction: jest.fn().mockImplementation((cb) => cb(prismaMock)),
     };
-    quoteMock = { getQuoteById: jest.fn() };
+    quoteMock = { getQuoteById: jest.fn(), markConverted: jest.fn() };
     contractMock = { createContract: jest.fn() };
     subscriptionMock = { createSubscription: jest.fn() };
+    idempotencyMock = {
+      run: jest.fn().mockImplementation(async (_p, fn) => {
+        const result = await fn();
+        return { ...result, replayed: false };
+      }),
+    };
+    killSwitchMock = { assertNotBlocked: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -29,11 +39,21 @@ describe('OrderService.provisionOrder (atomic Order -> Contract -> Subscription)
         { provide: QuoteService, useValue: quoteMock },
         { provide: ContractStateService, useValue: contractMock },
         { provide: SubscriptionService, useValue: subscriptionMock },
-        { provide: IdempotencyService, useValue: { run: jest.fn() } },
+        { provide: IdempotencyService, useValue: idempotencyMock },
+        { provide: CommercialKillSwitchService, useValue: killSwitchMock },
       ],
     }).compile();
 
     service = module.get<OrderService>(OrderService);
+  });
+
+  it('OPS-01: refuses to create an order while the kill switch blocks ORDER_CREATION', async () => {
+    killSwitchMock.assertNotBlocked.mockRejectedValue(new Error('blocked'));
+
+    await expect(
+      service.createOrderFromQuote({ quoteId: 'q-1', createdBy: 'alice' }, 'key-1'),
+    ).rejects.toThrow('blocked');
+    expect(quoteMock.getQuoteById).not.toHaveBeenCalled();
   });
 
   it('creates the Contract and Subscription inside the same $transaction as the order update', async () => {

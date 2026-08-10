@@ -2,12 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { InvoiceSkeletonService } from './invoice-skeleton.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TaxRuleService } from '../tax/tax-rule.service';
+import { CommercialKillSwitchService } from '../kill-switch/commercial-kill-switch.service';
 import { ConflictException } from '@nestjs/common';
 
 describe('InvoiceSkeletonService (FIN-02 Immutability)', () => {
   let service: InvoiceSkeletonService;
   let prismaMock: any;
   let taxRuleMock: any;
+  let killSwitchMock: any;
 
   beforeEach(async () => {
     prismaMock = {
@@ -22,12 +24,14 @@ describe('InvoiceSkeletonService (FIN-02 Immutability)', () => {
       commercialDebitNote: { create: jest.fn() },
     };
     taxRuleMock = { resolveTax: jest.fn() };
+    killSwitchMock = { assertNotBlocked: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         InvoiceSkeletonService,
         { provide: PrismaService, useValue: prismaMock },
         { provide: TaxRuleService, useValue: taxRuleMock },
+        { provide: CommercialKillSwitchService, useValue: killSwitchMock },
       ],
     }).compile();
 
@@ -138,5 +142,30 @@ describe('InvoiceSkeletonService (FIN-02 Immutability)', () => {
     prismaMock.commercialInvoice.findUnique.mockResolvedValue({ id: 'inv-1', status: 'DRAFT' });
 
     await expect(service.issueCreditNote('inv-1', 50, 'x')).rejects.toThrow(ConflictException);
+  });
+
+  it('OPS-01: refuses to finalize an invoice while the kill switch blocks INVOICE_FINALIZATION', async () => {
+    killSwitchMock.assertNotBlocked.mockRejectedValue(new ConflictException('blocked'));
+
+    await expect(service.issueInvoice('inv-1')).rejects.toThrow(ConflictException);
+    expect(prismaMock.commercialInvoice.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('OPS-01: refuses to add an invoice line while the kill switch blocks USAGE_BILLING_EXPORT', async () => {
+    killSwitchMock.assertNotBlocked.mockRejectedValue(new ConflictException('blocked'));
+
+    await expect(
+      service.addInvoiceLine('inv-1', {
+        sku: 'DEFENSE',
+        contractId: 'cnt-1',
+        servicePeriodStart: new Date(),
+        servicePeriodEnd: new Date(),
+        quantity: 1,
+        unitPrice: 100,
+        jurisdiction: 'US-CA',
+        productTaxClass: 'SAAS',
+      }),
+    ).rejects.toThrow(ConflictException);
+    expect(prismaMock.commercialInvoiceLine.create).not.toHaveBeenCalled();
   });
 });

@@ -5,6 +5,7 @@ import { ContractStateService } from '../commerce/contract-state.service';
 import { QuoteService } from './quote.service';
 import { SubscriptionService } from './subscription.service';
 import { IdempotencyService } from '../idempotency/idempotency.service';
+import { CommercialKillSwitchService } from '../kill-switch/commercial-kill-switch.service';
 import { assertTransition } from '../commerce/state-machine.util';
 
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
@@ -32,6 +33,7 @@ export class OrderService {
     private readonly contractService: ContractStateService,
     private readonly subscriptionService: SubscriptionService,
     private readonly idempotencyService: IdempotencyService,
+    private readonly killSwitchService: CommercialKillSwitchService,
   ) {}
 
   async getOrderById(orderId: string) {
@@ -51,6 +53,8 @@ export class OrderService {
    * client-supplied header.
    */
   async createOrderFromQuote(dto: CreateOrderDto, idempotencyKey?: string) {
+    await this.killSwitchService.assertNotBlocked('ORDER_CREATION');
+
     const key = idempotencyKey || `order-from-quote-${dto.quoteId}`;
 
     const result = await this.idempotencyService.run(

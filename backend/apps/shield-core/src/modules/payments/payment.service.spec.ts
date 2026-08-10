@@ -4,12 +4,14 @@ import { PaymentService } from './payment.service';
 import { PrismaService } from '../../prisma/prisma.service';
 import { IdempotencyService } from '../idempotency/idempotency.service';
 import { PAYMENT_PROVIDER } from './payment-provider.interface';
+import { CommercialKillSwitchService } from '../kill-switch/commercial-kill-switch.service';
 
 describe('PaymentService (ZS-COM-BILL-001 Part 9)', () => {
   let service: PaymentService;
   let prismaMock: any;
   let idempotencyMock: any;
   let providerMock: any;
+  let killSwitchMock: any;
 
   beforeEach(async () => {
     prismaMock = {
@@ -30,6 +32,7 @@ describe('PaymentService (ZS-COM-BILL-001 Part 9)', () => {
       refundPayment: jest.fn(),
       verifyWebhookSignature: jest.fn(),
     };
+    killSwitchMock = { assertNotBlocked: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -37,6 +40,7 @@ describe('PaymentService (ZS-COM-BILL-001 Part 9)', () => {
         { provide: PrismaService, useValue: prismaMock },
         { provide: IdempotencyService, useValue: idempotencyMock },
         { provide: PAYMENT_PROVIDER, useValue: providerMock },
+        { provide: CommercialKillSwitchService, useValue: killSwitchMock },
       ],
     }).compile();
 
@@ -65,6 +69,13 @@ describe('PaymentService (ZS-COM-BILL-001 Part 9)', () => {
     const payment = await service.createPayment(dto, 'idem-1');
 
     expect(payment.status).toBe('AUTHORIZED');
+  });
+
+  it('OPS-01: refuses to charge while the kill switch blocks AUTOMATIC_CHARGING', async () => {
+    killSwitchMock.assertNotBlocked.mockRejectedValue(new ConflictException('blocked'));
+
+    await expect(service.createPayment(dto, 'idem-1')).rejects.toThrow(ConflictException);
+    expect(prismaMock.commercialInvoice.findUnique).not.toHaveBeenCalled();
   });
 
   it('rejects an illegal payment transition (e.g. PENDING straight to SETTLED)', async () => {

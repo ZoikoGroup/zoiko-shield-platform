@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpStatus, Param, Patch, Post, Query, UseGuards
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { CreatePartnerDto, CreatePartnerAgreementDto, PartnerService } from './partner.service';
 import { GrantDelegationDto, PartnerDelegationService } from './partner-delegation.service';
+import { CalculateSettlementDto, PartnerSettlementService } from './partner-settlement.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('api/v1/partners')
@@ -52,5 +53,35 @@ export class PartnerDelegationController {
   ) {
     const allowed = await this.delegationService.checkDelegation(partnerId, commercialAccountId, scope);
     return { statusCode: HttpStatus.OK, data: { allowed } };
+  }
+}
+
+@UseGuards(JwtAuthGuard)
+@Controller('api/v1/partners/settlements')
+export class PartnerSettlementController {
+  constructor(private readonly settlementService: PartnerSettlementService) {}
+
+  @Post()
+  async calculate(@Body() dto: CalculateSettlementDto) {
+    const settlement = await this.settlementService.calculateSettlement(dto);
+    return { statusCode: HttpStatus.CREATED, data: settlement };
+  }
+
+  @Get(':id')
+  async get(@Param('id') id: string) {
+    const settlement = await this.settlementService.getSettlementById(id);
+    return { statusCode: HttpStatus.OK, data: settlement };
+  }
+
+  @Patch(':id/approve')
+  async approve(@Param('id') id: string) {
+    const settlement = await this.settlementService.approveSettlement(id);
+    return { statusCode: HttpStatus.OK, data: settlement };
+  }
+
+  @Patch(':id/mark-paid')
+  async markPaid(@Param('id') id: string) {
+    const settlement = await this.settlementService.markPaid(id);
+    return { statusCode: HttpStatus.OK, data: settlement };
   }
 }
