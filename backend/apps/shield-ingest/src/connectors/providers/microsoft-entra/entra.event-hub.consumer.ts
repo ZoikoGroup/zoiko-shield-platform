@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable, Logger } from '@nestjs/common';
-import { KafkaProducerService } from '../../kafka/kafka.producer.service';
+import { KafkaProducerService } from '../../../kafka/kafka.producer.service';
 import { EntraNormalizerService } from './entra.normalizer';
 
 @Injectable()

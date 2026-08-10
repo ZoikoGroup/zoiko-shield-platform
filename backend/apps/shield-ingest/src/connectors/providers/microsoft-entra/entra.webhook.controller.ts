@@ -12,8 +12,8 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { EntraNormalizerService } from './entra.normalizer';
-import { PrismaService } from '../../prisma/prisma.service';
-import { KafkaProducerService } from '../../kafka/kafka.producer.service';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { KafkaProducerService } from '../../../kafka/kafka.producer.service';
 
 @Controller('v1/webhooks/microsoft-graph')
 export class EntraWebhookController {
@@ -27,7 +27,6 @@ export class EntraWebhookController {
 
   /**
    * Endpoint for Microsoft Graph to push Change Notifications.
-   * Required by Section 9 of the PDF.
    */
   @Post()
   async handleGraphWebhook(

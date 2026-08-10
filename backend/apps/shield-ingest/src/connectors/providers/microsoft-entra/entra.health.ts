@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument */
 import { Injectable, Logger } from '@nestjs/common';
-import { EntraGraphClient } from './entra.graph-client';
-import { ConnectorHealthService } from '../common/connector-health.service';
-import { ConnectorAuthenticationError } from '../common/connector-errors';
+import { EntraGraphClient } from './entra.client';
+import { ConnectorHealthService } from '../../services/health.service';
+import { ConnectorAuthenticationError } from '../../core/connector-errors';
 
 @Injectable()
 export class EntraHealthService {

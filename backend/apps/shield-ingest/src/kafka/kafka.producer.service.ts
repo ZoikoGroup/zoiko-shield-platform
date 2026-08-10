@@ -6,7 +6,43 @@ import {
   OnModuleDestroy,
 } from '@nestjs/common';
 import { Kafka, Producer } from 'kafkajs';
-import { ZoikoShieldCanonicalEvent } from '../connectors/microsoft-entra/entra.types';
+import { randomUUID } from 'crypto';
+import { ZoikoShieldCanonicalEvent } from '../connectors/providers/microsoft-entra/entra.types';
+
+/**
+ * Canonical topic names shield-ingest owns/publishes. detection.* and
+ * alert.* moved to shield-core's own CANONICAL_TOPICS when those modules
+ * moved there — no longer published from this app.
+ */
+export const CANONICAL_TOPICS = {
+  EVENT_NORMALIZED: 'event.normalized.v1',
+  IDENTITY_DIRECTORY_SYNC: 'identity.directory-sync.v1',
+  IDENTITY_SIGNIN: 'identity.signin.v1',
+  CONNECTOR_SYNC_COMPLETED: 'connector.sync.completed.v1',
+  CONNECTOR_HEALTH_CHANGED: 'connector.health.changed.v1',
+  CONNECTOR_PERMISSION_CHANGED: 'connector.permission.changed.v1',
+  CONNECTOR_EVENT_QUARANTINED: 'connector.event.quarantined.v1',
+} as const;
+
+/**
+ * eventId is the inbox dedup key on the consuming side — Kafka redelivery
+ * of the same eventId must never re-run a handler (see
+ * KafkaConsumerService.handleMessage in shield-core). tenantId/occurredAt
+ * are promoted to top level (not just inside payload) so the consumer can
+ * make inbox/partitioning/staleness decisions without parsing payload.
+ */
+export interface EventEnvelope<T = unknown> {
+  eventId: string;
+  eventType: string;
+  eventVersion: string;
+  tenantId: string;
+  correlationId: string;
+  causationId?: string;
+  traceId: string;
+  occurredAt: string;
+  producedAt: string;
+  payload: T;
+}
 
 @Injectable()
 export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
@@ -37,9 +73,67 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Publishes a generic event payload to a Kafka topic.
+   */
+  async emit(topic: string, payload: any) {
+    try {
+      const key = payload.tenantId || payload.tenant_id || 'default-key';
+      await this.producer.send({
+        topic,
+        messages: [
+          {
+            key,
+            value: JSON.stringify(payload),
+          },
+        ],
+      });
+      this.logger.debug(`Successfully emitted event to Kafka topic ${topic}`);
+    } catch (error: any) {
+      this.logger.error(`Failed to emit event to Kafka topic ${topic}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Publishes a payload wrapped in the canonical envelope
+   * (eventId/eventType/eventVersion/correlationId/causationId/traceId/payload)
+   * to one of CANONICAL_TOPICS, partitioned by tenantId.
+   */
+  async publishEvent<T extends { tenantId: string }>(
+    topic: string,
+    eventType: string,
+    payload: T,
+    context?: { correlationId?: string; causationId?: string; traceId?: string; occurredAt?: Date },
+  ) {
+    const producedAt = new Date();
+    const envelope: EventEnvelope<T> = {
+      eventId: randomUUID(),
+      eventType,
+      eventVersion: '1',
+      tenantId: payload.tenantId,
+      correlationId: context?.correlationId ?? randomUUID(),
+      causationId: context?.causationId,
+      traceId: context?.traceId ?? randomUUID(),
+      occurredAt: (context?.occurredAt ?? producedAt).toISOString(),
+      producedAt: producedAt.toISOString(),
+      payload,
+    };
+
+    try {
+      await this.producer.send({
+        topic,
+        messages: [{ key: payload.tenantId, value: JSON.stringify(envelope) }],
+      });
+      this.logger.debug(`Published ${eventType} to ${topic}`);
+    } catch (error: any) {
+      this.logger.error(`Failed to publish ${eventType} to ${topic}: ${error.message}`);
+    }
+  }
+
+  /**
    * Publishes a canonical event to the specified Kafka topic.
    */
   async publishCanonicalEvent(event: ZoikoShieldCanonicalEvent) {
+
     const topic =
       process.env.KAFKA_CANONICAL_EVENTS_TOPIC || 'zoiko.events.canonical.v1';
 

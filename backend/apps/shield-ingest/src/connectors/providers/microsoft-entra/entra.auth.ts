@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ENTRA_REQUIRED_PERMISSIONS } from './entra.permissions';
 
 @Injectable()
 export class EntraAuthService {
@@ -17,11 +18,7 @@ export class EntraAuthService {
    * This is what the customer clicks to grant ZoikoShield access.
    */
   generateAuthUrl(customerTenantId: string, state: string): string {
-    const scopes = [
-      'User.Read.All',
-      'AuditLog.Read.All',
-      'Directory.Read.All',
-    ].join(' ');
+    const scopes = ENTRA_REQUIRED_PERMISSIONS.join(' ');
 
     const authUrl = new URL(
       `https://login.microsoftonline.com/${this.tenantId}/adminconsent`,
