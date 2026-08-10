@@ -28,8 +28,8 @@ model ConnectorDefinition {
   supportedEvents String[]
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-  
-  instances       ConnectorInstance[]
+
+  instances ConnectorInstance[]
 }
 
 model ConnectorInstance {
@@ -59,111 +59,2430 @@ model ConnectorInstance {
 }
 
 model ConnectorPermission {
-  id                 String   @id @default(uuid())
-  provider           String
-  permissionName     String
-  grantedAt          DateTime @default(now())
+  id                    String            @id @default(uuid())
+  tenant_id             String
+  instanceId            String
+  instance              ConnectorInstance @relation(fields: [instanceId], references: [id])
+  provider              String
+  permission            String
+  permissionType        String            @default("READ")
+  granted               Boolean           @default(false)
+  requiredForCapability String?
+  verifiedAt            DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  @@unique([instanceId, permission])
+  @@index([tenant_id])
 }
 
 model ConnectorCredentialReference {
-  id                 String   @id @default(uuid())
-  tenant_id          String
-  instanceId         String
-  instance           ConnectorInstance @relation(fields: [instanceId], references: [id])
-  vaultReferenceId   String   @unique
-  expiresAt          DateTime?
-  createdAt          DateTime @default(now())
-  
+  id               String            @id @default(uuid())
+  tenant_id        String
+  instanceId       String
+  instance         ConnectorInstance @relation(fields: [instanceId], references: [id])
+  credentialType   String            @default("CLIENT_SECRET")
+  vaultReferenceId String            @unique
+  status           String            @default("ACTIVE")
+  expiresAt        DateTime?
+  rotatedAt        DateTime?
+  createdAt        DateTime          @default(now())
+
   @@index([tenant_id])
 }
 
 model ConnectorCheckpoint {
-  id                 String   @id @default(uuid())
-  tenant_id          String
-  instanceId         String
-  instance           ConnectorInstance @relation(fields: [instanceId], references: [id])
-  resourceType       String
-  checkpointValue    String
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id              String            @id @default(uuid())
+  tenant_id       String
+  instanceId      String
+  instance        ConnectorInstance @relation(fields: [instanceId], references: [id])
+  resourceType    String
+  checkpointValue String
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
 
   @@unique([instanceId, resourceType])
   @@index([tenant_id])
 }
 
 model ConnectorSynchronizationRun {
-  id                 String   @id @default(uuid())
+  id                 String            @id @default(uuid())
   tenant_id          String
   instanceId         String
   instance           ConnectorInstance @relation(fields: [instanceId], references: [id])
+  syncType           String?
   status             String
-  startedAt          DateTime @default(now())
+  startedAt          DateTime          @default(now())
   completedAt        DateTime?
-  recordsProcessed   Int      @default(0)
-  
+  recordsReceived    Int               @default(0)
+  recordsProcessed   Int               @default(0)
+  recordsDuplicated  Int               @default(0)
+  recordsQuarantined Int               @default(0)
+  checkpointBefore   String?
+  checkpointAfter    String?
+  errorCode          String?
+
   @@index([tenant_id])
 }
 
 model ConnectorHealthStatus {
-  id                 String   @id @default(uuid())
-  tenant_id          String
-  instanceId         String   @unique
-  state              ConnectorState
-  lastMessage        String?
-  updatedAt          DateTime @updatedAt
+  id                         String            @id @default(uuid())
+  tenant_id                  String
+  instanceId                 String            @unique
+  instance                   ConnectorInstance @relation(fields: [instanceId], references: [id])
+  state                      ConnectorState
+  lastMessage                String?
+  permissionStatus           String            @default("UNKNOWN")
+  credentialStatus           String            @default("UNKNOWN")
+  consecutiveFailures        Int               @default(0)
+  sourceLagSeconds           Int?
+  lastSuccessfulConnectionAt DateTime?
+  lastSuccessfulSyncAt       DateTime?
+  lastErrorCode              String?
+  updatedAt                  DateTime          @updatedAt
 
   @@index([tenant_id])
 }
 
 model ConnectorError {
-  id                 String   @id @default(uuid())
-  tenant_id          String
-  instanceId         String
-  instance           ConnectorInstance @relation(fields: [instanceId], references: [id])
-  errorCode          String
-  message            String
-  createdAt          DateTime @default(now())
-  
+  id         String            @id @default(uuid())
+  tenant_id  String
+  instanceId String
+  instance   ConnectorInstance @relation(fields: [instanceId], references: [id])
+  errorCode  String
+  message    String
+  createdAt  DateTime          @default(now())
+
   @@index([tenant_id])
 }
 
 model WebhookSubscription {
-  id                 String   @id @default(uuid())
-  tenant_id          String
-  instanceId         String
-  instance           ConnectorInstance @relation(fields: [instanceId], references: [id])
-  subscriptionId     String
-  clientState        String   @unique
-  resource           String
-  expiresAt          DateTime
-  createdAt          DateTime @default(now())
+  id             String            @id @default(uuid())
+  tenant_id      String
+  instanceId     String
+  instance       ConnectorInstance @relation(fields: [instanceId], references: [id])
+  subscriptionId String
+  clientState    String            @unique
+  resource       String
+  expiresAt      DateTime
+  createdAt      DateTime          @default(now())
 
   @@index([tenant_id])
 }
 
 model EventHubConsumerCheckpoint {
-  id                 String   @id @default(uuid())
-  tenant_id          String
-  instanceId         String
-  instance           ConnectorInstance @relation(fields: [instanceId], references: [id])
-  partitionId        String
-  offset             String
-  sequenceNumber     BigInt
-  updatedAt          DateTime @updatedAt
+  id             String            @id @default(uuid())
+  tenant_id      String
+  instanceId     String
+  instance       ConnectorInstance @relation(fields: [instanceId], references: [id])
+  partitionId    String
+  offset         String
+  sequenceNumber BigInt
+  updatedAt      DateTime          @updatedAt
 
   @@unique([instanceId, partitionId])
   @@index([tenant_id])
 }
 
 model QuarantinedEvent {
+  id         String            @id @default(uuid())
+  tenant_id  String
+  instanceId String
+  instance   ConnectorInstance @relation(fields: [instanceId], references: [id])
+  rawPayload String
+  reason     String
+  createdAt  DateTime          @default(now())
+
+  @@index([tenant_id])
+}
+
+model RawEvent {
+  id                    String            @id @default(uuid())
+  tenant_id             String
+  environment_id        String            @default("default-env")
+  connector_id          String
+  connector             ConnectorInstance @relation(fields: [connector_id], references: [id])
+  source_type           String
+  source_event_id       String?
+  source_region         String?
+  occurred_at           DateTime?
+  received_at           DateTime          @default(now())
+  payload_hash          String
+  raw_payload_reference String
+  schema_version        String            @default("v1.0")
+  processing_status     String            @default("ACCEPTED")
+  created_at            DateTime          @default(now())
+
+  normalizedEvents NormalizedEvent[]
+
+  @@unique([tenant_id, connector_id, source_event_id])
+  @@index([tenant_id])
+  @@index([connector_id])
+  @@index([payload_hash])
+}
+
+model NormalizedEvent {
+  id                   String          @id @default(uuid())
+  tenant_id            String
+  environment_id       String          @default("default-env")
+  connector_id         String
+  raw_event_id         String
+  rawEvent             RawEvent        @relation(fields: [raw_event_id], references: [id])
+  asset_id             String?
+  asset                Asset?          @relation(fields: [asset_id], references: [id])
+  identity_id          String?
+  identity             IdentityEntity? @relation(fields: [identity_id], references: [id])
+  event_class          String
+  event_category       String?
+  event_activity       String?
+  severity             String          @default("INFORMATIONAL")
+  actor_user_id        String?
+  actor_email          String?
+  source_ip            String?
+  destination_ip       String?
+  resource_id          String?
+  resource_type        String?
+  action               String?
+  outcome              String?
+  occurred_at          DateTime?
+  observed_at          DateTime?
+  recorded_at          DateTime        @default(now())
+  mapping_version      String          @default("1.0")
+  normalization_status String          @default("NORMALIZED")
+
+  @@index([tenant_id])
+  @@index([connector_id])
+  @@index([raw_event_id])
+  @@index([asset_id])
+  @@index([identity_id])
+}
+
+model Asset {
+  id             String   @id @default(uuid())
+  tenant_id      String
+  environment_id String   @default("default-env")
+  external_id    String?
+  asset_type     String
+  name           String
+  criticality    String   @default("MEDIUM")
+  status         String   @default("ACTIVE")
+  first_seen_at  DateTime @default(now())
+  last_seen_at   DateTime @default(now())
+  created_at     DateTime @default(now())
+
+  normalizedEvents NormalizedEvent[]
+  aliases          AssetAlias[]
+
+  @@unique([tenant_id, external_id, asset_type])
+  @@index([tenant_id])
+  @@index([criticality])
+}
+
+model AssetAlias {
+  id                String   @id @default(uuid())
+  tenant_id         String
+  asset_id          String
+  asset             Asset    @relation(fields: [asset_id], references: [id])
+  source_system     String
+  source_account_id String?
+  external_type     String
+  external_id       String
+  first_seen_at     DateTime @default(now())
+  last_seen_at      DateTime @default(now())
+  created_at        DateTime @default(now())
+
+  @@unique([tenant_id, source_system, source_account_id, external_type, external_id])
+  @@index([tenant_id])
+  @@index([asset_id])
+}
+
+model IdentityEntity {
+  id            String   @id @default(uuid())
+  tenant_id     String
+  external_id   String?
+  email         String?
+  display_name  String?
+  identity_type String   @default("USER")
+  status        String   @default("ACTIVE")
+  confidence    Float    @default(1.0)
+  first_seen_at DateTime @default(now())
+  last_seen_at  DateTime @default(now())
+  created_at    DateTime @default(now())
+
+  normalizedEvents NormalizedEvent[]
+  aliases          IdentityAlias[]
+
+  @@unique([tenant_id, email])
+  @@index([tenant_id])
+  @@index([email])
+}
+
+model IdentityAlias {
+  id                 String         @id @default(uuid())
+  tenant_id          String
+  identity_entity_id String
+  identityEntity     IdentityEntity @relation(fields: [identity_entity_id], references: [id])
+  source_system      String
+  source_account_id  String?
+  external_type      String
+  external_id        String
+  normalized_value   String?
+  first_seen_at      DateTime       @default(now())
+  last_seen_at       DateTime       @default(now())
+  created_at         DateTime       @default(now())
+
+  @@unique([tenant_id, source_system, source_account_id, external_type, external_id])
+  @@index([tenant_id])
+  @@index([identity_entity_id])
+}
+
+model Relationship {
+  id             String    @id @default(uuid())
+  tenant_id      String
+  environment_id String    @default("default-env")
+  subject_type   String
+  subject_id     String
+  relation       String
+  object_type    String
+  object_id      String
+  source         String
+  confidence     Float     @default(1.0)
+  first_seen_at  DateTime  @default(now())
+  last_seen_at   DateTime  @default(now())
+  valid_from     DateTime?
+  valid_until    DateTime?
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  @@unique([tenant_id, subject_type, subject_id, relation, object_type, object_id])
+  @@index([tenant_id])
+  @@index([subject_type, subject_id])
+  @@index([object_type, object_id])
+}
+
+model ResolutionDecision {
   id                 String   @id @default(uuid())
   tenant_id          String
-  instanceId         String
-  instance           ConnectorInstance @relation(fields: [instanceId], references: [id])
-  rawPayload         String
+  entity_type        String
+  source_system      String
+  external_id        String
+  resolved_entity_id String?
+  decision           String
+  confidence         Float    @default(1.0)
+  resolver_version   String   @default("1.0")
   reason             String
-  createdAt          DateTime @default(now())
-  
+  created_at         DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([entity_type])
+}
+
+model ContextSnapshot {
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  environment_id     String   @default("default-env")
+  event_id           String
+  identity_entity_id String?
+  asset_id           String?
+  relationship_refs  String   @default("[]")
+  identity_risk      String?
+  asset_criticality  String?
+  source_versions    String   @default("{}")
+  resolver_version   String   @default("1.0")
+  context_health     String   @default("UNRESOLVED")
+  created_at         DateTime @default(now())
+
+  detectionEvaluations DetectionEvaluation[]
+
+  @@index([tenant_id])
+  @@index([event_id])
+}
+
+model DetectionDefinition {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  name        String
+  description String?
+  owner       String?
+  category    String   @default("IDENTITY")
+  status      String   @default("ACTIVE")
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  versions DetectionVersion[]
+
+  @@index([status])
+}
+
+model DetectionVersion {
+  id                            String              @id @default(uuid())
+  detection_definition_id       String
+  detectionDefinition           DetectionDefinition @relation(fields: [detection_definition_id], references: [id])
+  version                       Int
+  status                        String              @default("DRAFT")
+  severity                      String              @default("MEDIUM")
+  rule_type                     String              @default("POINT")
+  configuration                 String              @default("{}")
+  required_event_types          String              @default("[]")
+  required_fields               String              @default("[]")
+  required_context              String              @default("[]")
+  allowed_missing_data_behavior String              @default("INDETERMINATE")
+  effective_from                DateTime?
+  published_at                  DateTime?
+  created_at                    DateTime            @default(now())
+
+  evaluations DetectionEvaluation[]
+  matches     DetectionMatch[]
+  replays     DetectionReplay[]
+
+  @@unique([detection_definition_id, version])
+  @@index([status])
+}
+
+model DetectionEvaluation {
+  id                     String           @id @default(uuid())
+  tenant_id              String
+  environment_id         String           @default("default-env")
+  detection_version_id   String
+  detectionVersion       DetectionVersion @relation(fields: [detection_version_id], references: [id])
+  // Plain scalar reference, deliberately not a Prisma relation — shield-core
+  // never queries the shield-ingest-owned NormalizedEvent table directly.
+  event_id               String
+  context_snapshot_id    String?
+  contextSnapshot        ContextSnapshot? @relation(fields: [context_snapshot_id], references: [id])
+  evaluated_at           DateTime         @default(now())
+  result                 String
+  factor_snapshot        String           @default("[]")
+  confidence             Float?
+  incomplete_data        Boolean          @default(false)
+  reason_code            String?
+  correlation_id         String
+  created_at             DateTime         @default(now())
+  // Frozen event.normalized.v1 payload as consumed — replay reconstructs
+  // from this, never from a live NormalizedEvent read (shield-core does
+  // not query shield-ingest-owned tables).
+  event_payload_snapshot String           @default("{}")
+
+  replays DetectionReplay[]
+
+  @@index([tenant_id])
+  @@index([detection_version_id])
+  @@index([event_id])
+  @@index([result])
+}
+
+model DetectionMatch {
+  id                      String           @id @default(uuid())
+  tenant_id               String
+  environment_id          String           @default("default-env")
+  detection_definition_id String
+  detection_version_id    String
+  detectionVersion        DetectionVersion @relation(fields: [detection_version_id], references: [id])
+  primary_event_id        String
+  supporting_event_refs   String           @default("[]")
+  context_snapshot_id     String?
+  severity                String
+  confidence              Float?
+  factor_contributions    String           @default("[]")
+  incomplete_data         Boolean          @default(false)
+  occurred_at             DateTime
+  detected_at             DateTime         @default(now())
+  correlation_id          String
+  created_at              DateTime         @default(now())
+
+  @@unique([tenant_id, detection_version_id, primary_event_id, context_snapshot_id])
+  @@index([tenant_id])
+  @@index([detection_definition_id])
+}
+
+model DetectionReplay {
+  id                     String              @id @default(uuid())
+  tenant_id              String
+  original_evaluation_id String
+  originalEvaluation     DetectionEvaluation @relation(fields: [original_evaluation_id], references: [id])
+  detection_version_id   String
+  detectionVersion       DetectionVersion    @relation(fields: [detection_version_id], references: [id])
+  replayed_at            DateTime            @default(now())
+  original_result        String
+  replay_result          String
+  divergence             Boolean             @default(false)
+  reason                 String?
+  created_at             DateTime            @default(now())
+
+  @@index([tenant_id])
+  @@index([original_evaluation_id])
+}
+
+model Alert {
+  id                      String    @id @default(uuid())
+  tenant_id               String
+  environment_id          String    @default("default-env")
+  region                  String    @default("unspecified")
+  detection_definition_id String
+  detection_version_id    String
+  detection_match_id      String
+  title                   String
+  description             String?
+  severity                String    @default("HIGH")
+  priority                String    @default("P2")
+  confidence              Float     @default(0.9)
+  status                  String    @default("NEW")
+  source_event_ids        String    @default("[]")
+  affected_assets         String    @default("[]")
+  affected_identities     String    @default("[]")
+  primary_identity_id     String?
+  primary_asset_id        String?
+  context_snapshot_id     String?
+  incomplete_data         Boolean   @default(false)
+  coverage_state          String    @default("UNKNOWN")
+  assigned_to             String?
+  assigned_queue          String?
+  correlation_id          String?
+  created_by              String    @default("system")
+  acknowledged_at         DateTime?
+  resolved_at             DateTime?
+  created_at              DateTime  @default(now())
+  updated_at              DateTime  @updatedAt
+
+  assignments AlertAssignment[]
+
+  @@unique([tenant_id, detection_match_id])
+  @@index([tenant_id])
+  @@index([status])
+  @@index([severity])
+}
+
+model AlertAssignment {
+  id           String   @id @default(uuid())
+  tenant_id    String
+  alert_id     String
+  alert        Alert    @relation(fields: [alert_id], references: [id])
+  queue_id     String?
+  principal_id String?
+  assigned_by  String
+  assigned_at  DateTime @default(now())
+  reason       String?
+
+  @@index([tenant_id])
+  @@index([alert_id])
+}
+
+model AlertSuppressionRule {
+  id                      String    @id @default(uuid())
+  tenant_id               String
+  detection_definition_id String?
+  identity_id             String?
+  asset_id                String?
+  condition               String    @default("{}")
+  reason                  String
+  starts_at               DateTime  @default(now())
+  expires_at              DateTime?
+  approved_by             String
+  status                  String    @default("ACTIVE")
+  created_at              DateTime  @default(now())
+
+  @@index([tenant_id])
+  @@index([detection_definition_id])
+  @@index([status])
+}
+
+model OutboxEvent {
+  id             String    @id @default(uuid())
+  tenant_id      String
+  topic          String
+  event_type     String
+  payload        String
+  correlation_id String?
+  created_at     DateTime  @default(now())
+  published_at   DateTime?
+
+  @@index([tenant_id])
+  @@index([published_at])
+}
+
+model InboxEvent {
+  id           String   @id @default(uuid())
+  event_id     String   @unique
+  topic        String
+  tenant_id    String
+  processed_at DateTime @default(now())
+
+  @@index([tenant_id])
+}
+
+model Case {
+  id                  String    @id @default(uuid())
+  tenant_id           String
+  environment_id      String    @default("default-env")
+  region              String    @default("unspecified")
+  title               String
+  description         String?
+  severity            String    @default("HIGH")
+  priority            String    @default("P2")
+  status              String    @default("NEW")
+  owner_id            String?
+  queue_id            String?
+  primary_identity_id String?
+  primary_asset_id    String?
+  sla_started_at      DateTime?
+  acknowledged_at     DateTime?
+  resolved_at         DateTime?
+  closed_at           DateTime?
+  disposition         String?
+  incident_id         String?
+  correlation_id      String?
+  created_by          String
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+
+  alerts          CaseAlert[]
+  transitions     CaseTransition[]
+  timelineEntries CaseTimelineEntry[]
+  notes           CaseNote[]
+  hypotheses      InvestigationHypothesis[]
+  decisions       CaseDecision[]
+  evidenceLinks   CaseEvidence[]
+
+  @@index([tenant_id])
+  @@index([status])
+}
+
+model CaseAlert {
+  tenant_id         String
+  case_id           String
+  case              Case     @relation(fields: [case_id], references: [id])
+  alert_id          String
+  linked_at         DateTime @default(now())
+  linked_by         String
+  relationship_type String   @default("PRIMARY")
+
+  @@id([case_id, alert_id])
+  @@index([tenant_id])
+  @@index([alert_id])
+}
+
+model CaseTransition {
+  id                        String   @id @default(uuid())
+  tenant_id                 String
+  case_id                   String
+  case                      Case     @relation(fields: [case_id], references: [id])
+  from_state                String
+  to_state                  String
+  actor_id                  String
+  reason                    String
+  occurred_at               DateTime @default(now())
+  authorization_decision_id String?
+  correlation_id            String?
+
+  @@index([tenant_id])
+  @@index([case_id])
+}
+
+model CaseTimelineEntry {
+  id             String   @id @default(uuid())
+  tenant_id      String
+  case_id        String
+  case           Case     @relation(fields: [case_id], references: [id])
+  entry_type     String
+  actor_id       String
+  occurred_at    DateTime @default(now())
+  title          String
+  summary        String
+  source_ref     String?
+  evidence_ref   String?
+  correlation_id String?
+  created_at     DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([case_id])
+}
+
+model CaseNote {
+  id             String   @id @default(uuid())
+  tenant_id      String
+  case_id        String
+  case           Case     @relation(fields: [case_id], references: [id])
+  author_id      String
+  content        String
+  classification String   @default("INTERNAL")
+  created_at     DateTime @default(now())
+  supersedes_id  String?
+
+  @@index([tenant_id])
+  @@index([case_id])
+}
+
+model InvestigationHypothesis {
+  id                          String    @id @default(uuid())
+  tenant_id                   String
+  case_id                     String
+  case                        Case      @relation(fields: [case_id], references: [id])
+  statement                   String
+  status                      String    @default("OPEN")
+  created_by                  String
+  supporting_evidence_refs    String    @default("[]")
+  contradicting_evidence_refs String    @default("[]")
+  created_at                  DateTime  @default(now())
+  resolved_at                 DateTime?
+
+  @@index([tenant_id])
+  @@index([case_id])
+}
+
+model CaseDecision {
+  id             String   @id @default(uuid())
+  tenant_id      String
+  case_id        String
+  case           Case     @relation(fields: [case_id], references: [id])
+  decision_type  String
+  decision       String
+  rationale      String
+  actor_id       String
+  evidence_refs  String   @default("[]")
+  policy_version String?
+  created_at     DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([case_id])
+}
+
+model EvidenceRecord {
+  id                       String    @id @default(uuid())
+  tenant_id                String
+  environment_id           String    @default("default-env")
+  legal_entity_id          String?
+  region                   String    @default("unspecified")
+  evidence_type            String
+  producing_service        String
+  source_system_id         String
+  source_object_id         String
+  collector_id             String?
+  collector_version        String?
+  source_observed_at       DateTime?
+  received_at              DateTime  @default(now())
+  period_start             DateTime?
+  period_end               DateTime?
+  purpose                  String
+  data_class               String    @default("INTERNAL")
+  content_hash             String
+  hash_algorithm           String    @default("SHA-256")
+  canonicalization_profile String    @default("zs-json-v1")
+  media_type               String    @default("application/json")
+  size_bytes               Int?
+  vault_reference          String?
+  integrity_state          String    @default("PENDING")
+  freshness_state          String    @default("CURRENT")
+  completeness_state       String    @default("UNKNOWN")
+  retention_profile        String    @default("STANDARD")
+  superseded_by_id         String?
+  created_at               DateTime  @default(now())
+
+  caseLinks     CaseEvidence[]
+  alertLinks    AlertEvidence[]
+  ledgerEntries EvidenceLedgerEntry[]
+
+  @@index([tenant_id])
+  @@index([source_system_id])
+}
+
+model CaseEvidence {
+  id           String         @id @default(uuid())
+  tenant_id    String
+  case_id      String
+  case         Case           @relation(fields: [case_id], references: [id])
+  evidence_id  String
+  evidence     EvidenceRecord @relation(fields: [evidence_id], references: [id])
+  relationship String         @default("SOURCE")
+  added_by     String
+  added_at     DateTime       @default(now())
+  note         String?
+
+  @@index([tenant_id])
+  @@index([case_id])
+  @@index([evidence_id])
+}
+
+model AlertEvidence {
+  tenant_id    String
+  alert_id     String
+  evidence_id  String
+  evidence     EvidenceRecord @relation(fields: [evidence_id], references: [id])
+  relationship String         @default("SOURCE")
+  created_at   DateTime       @default(now())
+
+  @@id([alert_id, evidence_id])
+  @@index([tenant_id])
+  @@index([evidence_id])
+}
+
+model EvidenceLineage {
+  id                     String   @id @default(uuid())
+  tenant_id              String
+  evidence_id            String
+  parent_evidence_id     String
+  relationship           String
+  transformation_type    String?
+  transformation_version String?
+  created_at             DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([evidence_id])
+  @@index([parent_evidence_id])
+}
+
+model EvidenceLedgerEntry {
+  id                       String         @id @default(uuid())
+  tenant_id                String
+  sequence                 Int
+  evidence_id              String
+  evidence                 EvidenceRecord @relation(fields: [evidence_id], references: [id])
+  previous_entry_hash      String?
+  entry_hash               String
+  canonicalization_profile String         @default("zs-ledger-v1")
+  created_at               DateTime       @default(now())
+
+  @@unique([tenant_id, sequence])
+  @@index([tenant_id])
+  @@index([evidence_id])
+}
+
+model ResourceObservation {
+  id                    String   @id @default(uuid())
+  tenant_id             String
+  environment_id        String   @default("default-env")
+  canonical_resource_id String
+  resource_type         String
+  source_connector_id   String
+  first_seen_at         DateTime @default(now())
+  last_seen_at          DateTime @default(now())
+  coverage_state        String   @default("DISCOVERED")
+  billable_state        String   @default("NON_BILLABLE")
+  exclusion_reason      String?
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+
+  @@unique([tenant_id, canonical_resource_id, resource_type])
+  @@index([tenant_id])
+  @@index([coverage_state])
+}
+
+model UsageRecord {
+  id                     String   @id @default(uuid())
+  tenant_id              String
+  environment_id         String   @default("default-env")
+  meter_version          String   @default("v1.0")
+  source_type            String
+  raw_event_id           String?
+  unit                   String   @default("EVENTS")
+  accepted_quantity      Int      @default(1)
+  billable_quantity      Int      @default(0)
+  usage_state            String   @default("ACCEPTED")
+  billing_classification String   @default("COMMERCIAL_DIRECT")
+  recorded_at            DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([usage_state])
+  @@index([recorded_at])
+}
+
+model CommercialAccount {
+  id                     String   @id @default(uuid())
+  name                   String
+  billing_source         String   @default("DIRECT")
+  billing_classification String   @default("COMMERCIAL_DIRECT")
+  status                 String   @default("ACTIVE")
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+
+  entitlements Entitlement[]
+  contracts    Contract[]
+  invoices     CommercialInvoice[]
+
+  @@index([status])
+  @@index([billing_classification])
+}
+
+model Entitlement {
+  id                    String            @id @default(uuid())
+  commercial_account_id String
+  commercialAccount     CommercialAccount @relation(fields: [commercial_account_id], references: [id])
+  tenant_id             String
+  offer_type            String
+  status                String            @default("ACTIVE")
+  effective_from        DateTime          @default(now())
+  effective_to          DateTime?
+  created_at            DateTime          @default(now())
+  updated_at            DateTime          @updatedAt
+
+  @@index([tenant_id])
+  @@index([offer_type])
+  @@index([status])
+}
+
+model ClaimRegister {
+  id                String   @id @default(uuid())
+  claim_key         String   @unique
+  approved_wording  String
+  status            String   @default("APPROVED")
+  requires_evidence Boolean  @default(true)
+  created_at        DateTime @default(now())
+}
+
+model CatalogVersion {
+  id             String    @id @default(uuid())
+  version_label  String    @unique
+  status         String    @default("DRAFT")
+  effective_from DateTime  @default(now())
+  effective_to   DateTime?
+  approved_by    String?
+  approved_at    DateTime?
+  created_at     DateTime  @default(now())
+
+  products   Product[]
+  priceBooks PriceBook[]
+  contracts  Contract[]
+
+  @@index([status])
+}
+
+model Product {
+  id                 String         @id @default(uuid())
+  catalog_version_id String
+  catalogVersion     CatalogVersion @relation(fields: [catalog_version_id], references: [id])
+  sku                String
+  offer_family       String
+  display_name       String
+  metric_family      String
+  requires           String         @default("[]")
+  incompatible_with  String         @default("[]")
+  region_scope       String         @default("[]")
+  created_at         DateTime       @default(now())
+
+  priceBooks PriceBook[]
+
+  @@unique([catalog_version_id, sku])
+  @@index([sku])
+}
+
+model PriceBook {
+  id                 String         @id @default(uuid())
+  catalog_version_id String
+  catalogVersion     CatalogVersion @relation(fields: [catalog_version_id], references: [id])
+  product_id         String
+  product            Product        @relation(fields: [product_id], references: [id])
+  region             String         @default("GLOBAL")
+  currency           String         @default("USD")
+  channel            String         @default("DIRECT")
+  unit_price         Float          @default(0.0)
+  minimum_commit     Float          @default(0.0)
+  overage_rate       Float          @default(0.0)
+  status             String         @default("DRAFT")
+  effective_from     DateTime       @default(now())
+  effective_to       DateTime?
+  margin_gate_passed Boolean        @default(false)
+  created_at         DateTime       @default(now())
+
+  @@index([status])
+  @@index([product_id])
+}
+
+model Contract {
+  id                    String            @id @default(uuid())
+  commercial_account_id String
+  commercialAccount     CommercialAccount @relation(fields: [commercial_account_id], references: [id])
+  catalog_version_id    String
+  catalogVersion        CatalogVersion    @relation(fields: [catalog_version_id], references: [id])
+  term_start            DateTime          @default(now())
+  term_end              DateTime
+  status                String            @default("DRAFT")
+  snapshot_hash         String            @default("sha256-snapshot")
+  created_at            DateTime          @default(now())
+  updated_at            DateTime          @updatedAt
+
+  serviceObligations ServiceObligation[]
+  commercialInvoices CommercialInvoice[]
+
+  @@index([commercial_account_id])
+  @@index([status])
+}
+
+model ProtectedResourceDefinition {
+  id                String   @id @default(uuid())
+  resource_type     String
+  version           Int      @default(1)
+  identity_key_spec String   @default("{}")
+  ephemeral_policy  String   @default("{}")
+  created_at        DateTime @default(now())
+
+  @@unique([resource_type, version])
+}
+
+model ServiceObligation {
+  id              String    @id @default(uuid())
+  contract_id     String
+  contract        Contract  @relation(fields: [contract_id], references: [id])
+  obligation_type String
+  coverage_window String?
+  status          String    @default("NOT_DUE")
+  due_at          DateTime?
+  delivered_at    DateTime?
+  evidence_ref    String?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+
+  @@index([contract_id])
+  @@index([status])
+}
+
+model CommercialInvoice {
+  id                    String            @id @default(uuid())
+  commercial_account_id String
+  commercialAccount     CommercialAccount @relation(fields: [commercial_account_id], references: [id])
+  contract_id           String
+  contract              Contract          @relation(fields: [contract_id], references: [id])
+  status                String            @default("DRAFT")
+  currency              String            @default("USD")
+  total_amount          Float             @default(0.0)
+  issued_at             DateTime?
+  immutable_snapshot    String            @default("{}")
+  created_at            DateTime          @default(now())
+  updated_at            DateTime          @updatedAt
+
+  @@index([commercial_account_id])
+  @@index([contract_id])
+  @@index([status])
+}
+
+model CommercialEvent {
+  id              String    @id @default(uuid())
+  event_type      String
+  tenant_id       String?
+  actor           String?
+  payload         String
+  idempotency_key String    @unique
+  created_at      DateTime  @default(now())
+  published_at    DateTime?
+
+  @@index([idempotency_key])
+  @@index([event_type])
+}
+
+// ============================================================
+// Part 9+10: Controlled AI Investigation + Governed Response
+// ============================================================
+
+// --- shield-core-owned: real authorization decisions (spec correction #2) ---
+model AuthorizationDecision {
+  id             String   @id @default(uuid())
+  tenant_id      String
+  actor_id       String
+  action         String
+  resource_type  String
+  resource_id    String?
+  decision       String // ALLOW | DENY
+  policy_version String   @default("1.0")
+  reason         String
+  correlation_id String?
+  created_at     DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([actor_id])
+}
+
+// --- shield-ai-owned ---
+model AiUseCase {
+  id                    String    @id @default(uuid())
+  key                   String    @unique
+  name                  String
+  description           String?
+  risk_class            String    @default("STANDARD")
+  allowed_data_classes  String    @default("[]")
+  allowed_tools         String    @default("[]")
+  human_review_required Boolean   @default(true)
+  prohibited_actions    String    @default("[]")
+  max_input_tokens      Int?
+  max_output_tokens     Int?
+  status                String    @default("ACTIVE")
+  expires_at            DateTime?
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+
+  @@index([status])
+}
+
+model ModelProfile {
+  id                    String   @id @default(uuid())
+  provider              String
+  model                 String
+  model_version         String?
+  region                String
+  approved_data_classes String   @default("[]")
+  retention_policy      String   @default("NONE")
+  training_allowed      Boolean  @default(false)
+  fallback_profile_id   String?
+  evaluation_version    String   @default("1.0")
+  status                String   @default("ACTIVE")
+  created_at            DateTime @default(now())
+  updated_at            DateTime @updatedAt
+
+  @@index([status])
+}
+
+model PromptProfile {
+  id                    String    @id @default(uuid())
+  key                   String
+  version               Int
+  system_prompt_ref     String
+  output_schema         String    @default("{}")
+  allowed_sources       String    @default("[]")
+  safety_policy_version String    @default("1.0")
+  status                String    @default("DRAFT")
+  published_at          DateTime?
+  created_at            DateTime  @default(now())
+
+  @@unique([key, version])
+  @@index([status])
+}
+
+model AiOutput {
+  id                        String   @id @default(uuid())
+  tenant_id                 String
+  environment_id            String   @default("default-env")
+  use_case_id               String
+  model_profile_id          String
+  prompt_profile_id         String
+  retrieval_bundle_id       String?
+  output_type               String
+  content                   String
+  citations                 String   @default("[]")
+  limitations               String   @default("[]")
+  safety_result             String   @default("PENDING")
+  review_status             String   @default("UNREVIEWED")
+  authorization_decision_id String
+  correlation_id            String
+  created_at                DateTime @default(now())
+
+  humanReviews AiHumanReview[]
+
+  @@index([tenant_id])
+  @@index([use_case_id])
+}
+
+model AiHumanReview {
+  id               String   @id @default(uuid())
+  tenant_id        String
+  ai_output_id     String
+  aiOutput         AiOutput @relation(fields: [ai_output_id], references: [id])
+  reviewer_id      String
+  decision         String
+  rationale        String?
+  modified_content String?
+  reviewed_at      DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([ai_output_id])
+}
+
+model RetrievalBundle {
+  id                     String   @id @default(uuid())
+  tenant_id              String
+  environment_id         String   @default("default-env")
+  purpose                String
+  case_id                String?
+  source_refs            String   @default("[]")
+  evidence_refs          String   @default("[]")
+  source_versions        String   @default("{}")
+  freshness_state        String   @default("CURRENT")
+  completeness_state     String   @default("UNKNOWN")
+  acl_snapshot           String   @default("{}")
+  index_version          String?
+  poisoning_check_result String?
+  created_at             DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([case_id])
+}
+
+model AiToolCall {
+  id                        String    @id @default(uuid())
+  tenant_id                 String
+  agent_run_id              String?
+  tool_name                 String
+  tool_version              String    @default("1.0")
+  arguments_hash            String
+  authorization_decision_id String
+  idempotency_key           String?
+  result_ref                String?
+  status                    String    @default("PENDING")
+  error_code                String?
+  started_at                DateTime  @default(now())
+  completed_at              DateTime?
+
+  @@index([tenant_id])
+  @@index([tool_name])
+}
+
+// --- shield-core-owned: response governance (spec §20/§22, correction #3) ---
+model ActionProposal {
+  id                        String   @id @default(uuid())
+  tenant_id                 String
+  environment_id            String
+  case_id                   String?
+  alert_id                  String?
+  target_type               String
+  target_id                 String
+  action_type               String
+  reason                    String
+  authority_level           String   @default("R1")
+  requested_by              String
+  recommendation_source     String
+  policy_version            String   @default("1.0")
+  reversible                Boolean  @default(true)
+  rollback_action_type      String?
+  residual_risk             String?
+  version                   Int      @default(1)
+  authorization_decision_id String
+  correlation_id            String
+  status                    String   @default("PROPOSED")
+  expires_at                DateTime
+  created_at                DateTime @default(now())
+
+  approvals ActionApproval[]
+
+  @@index([tenant_id])
+  @@index([case_id])
+  @@index([status])
+}
+
+model ActionApproval {
+  id                        String         @id @default(uuid())
+  tenant_id                 String
+  proposal_id               String
+  proposal                  ActionProposal @relation(fields: [proposal_id], references: [id])
+  approver_id               String
+  decision                  String
+  authority                 String         @default("R1")
+  scope                     String         @default("{}")
+  reason                    String?
+  // Binds this approval to the exact proposal material approved (correction #3) —
+  // shield-action recomputes this hash during reauthorization and fails closed on mismatch.
+  proposal_version          Int
+  action_type               String
+  target_type               String
+  target_id                 String
+  approved_material_hash    String
+  authorization_decision_id String
+  approved_at               DateTime       @default(now())
+  expires_at                DateTime
+
+  @@index([tenant_id])
+  @@index([proposal_id])
+}
+
+// --- shield-action-owned ---
+model ActionCommand {
+  id                      String   @id @default(uuid())
+  tenant_id               String
+  environment_id          String
+  proposal_id             String
+  action_type             String
+  target                  String   @default("{}")
+  authority_level         String   @default("R1")
+  approval_refs           String   @default("[]")
+  policy_version          String   @default("1.0")
+  nonce                   String   @unique
+  expires_at              DateTime
+  rate_class              String   @default("DEFAULT")
+  expected_receipt_schema String?
+  signature               String?
+  correlation_id          String
+  created_at              DateTime @default(now())
+
+  receipts ActionReceipt[]
+
+  @@index([tenant_id])
+  @@index([proposal_id])
+}
+
+model ActionReceipt {
+  id                  String        @id @default(uuid())
+  tenant_id           String
+  action_command_id   String
+  actionCommand       ActionCommand @relation(fields: [action_command_id], references: [id])
+  provider            String        @default("SIMULATION")
+  provider_receipt_id String?
+  status              String // ACCEPTED | EXECUTED | VERIFIED | FAILED | PARTIALLY_EXECUTED | UNKNOWN | SIMULATED
+  accepted_at         DateTime?
+  executed_at         DateTime?
+  verified_at         DateTime?
+  observed_state      String        @default("{}")
+  error_code          String?
+  signature_verified  Boolean?
+  correlation_id      String
+  created_at          DateTime      @default(now())
+
+  reconciliations ActionReconciliation[]
+
+  @@index([tenant_id])
+  @@index([action_command_id])
+}
+
+model ActionReconciliation {
+  id                String         @id @default(uuid())
+  tenant_id         String
+  action_command_id String
+  action_receipt_id String?
+  actionReceipt     ActionReceipt? @relation(fields: [action_receipt_id], references: [id])
+  expected_state    String         @default("{}")
+  observed_state    String         @default("{}")
+  result            String // VERIFIED | FAILED | UNKNOWN
+  checked_at        DateTime       @default(now())
+  evidence_ref      String?
+
+  @@index([tenant_id])
+  @@index([action_command_id])
+}
+
+model ActionRateLimit {
+  id           String @id @default(uuid())
+  tenant_id    String
+  action_type  String
+  target_class String @default("DEFAULT")
+  window       String @default("1h")
+  maximum      Int    @default(10)
+
+  @@unique([tenant_id, action_type, target_class, window])
+}
+
+model Freeze {
+  id           String    @id @default(uuid())
+  tenant_id    String?
+  scope        String // GLOBAL | TENANT | CONNECTOR | ACTION_TYPE
+  scope_ref    String?
+  reason       String
+  active_from  DateTime  @default(now())
+  active_until DateTime?
+  created_by   String
+  created_at   DateTime  @default(now())
+
+  @@index([tenant_id])
+  @@index([scope])
+}
+
+model PlaybookDefinition {
+  id         String   @id @default(uuid())
+  key        String   @unique
+  owner      String
+  created_at DateTime @default(now())
+
+  versions PlaybookVersion[]
+}
+
+model PlaybookVersion {
+  id                 String             @id @default(uuid())
+  playbook_id        String
+  playbook           PlaybookDefinition @relation(fields: [playbook_id], references: [id])
+  version            Int
+  mode               String             @default("SIMULATION")
+  inputs             String             @default("{}")
+  steps              String             @default("[]")
+  required_authority String             @default("R1")
+  compensation       String?
+  status             String             @default("DRAFT")
+  published_at       DateTime?
+
+  runs PlaybookRun[]
+
+  @@unique([playbook_id, version])
+}
+
+model PlaybookRun {
+  id                  String          @id @default(uuid())
+  tenant_id           String
+  case_id             String
+  playbook_version_id String
+  playbookVersion     PlaybookVersion @relation(fields: [playbook_version_id], references: [id])
+  mode                String          @default("SIMULATION")
+  triggered_by        String
+  status              String          @default("RUNNING")
+  started_at          DateTime        @default(now())
+  completed_at        DateTime?
+  termination_reason  String?
+
+  @@index([tenant_id])
+  @@index([case_id])
+}
+
+// ============================================================
+// Part 11+12: Controls / Assessments / Risk + Audit Package / Independent Verification
+// ============================================================
+
+// --- shield-core-owned: control library ---
+model Framework {
+  id             String    @id @default(uuid())
+  key            String    @unique
+  name           String
+  version        String
+  edition        String?
+  publisher      String?
+  status         String    @default("ACTIVE")
+  effective_from DateTime?
+  retired_at     DateTime?
+  created_at     DateTime  @default(now())
+
+  versions FrameworkVersion[]
+}
+
+model FrameworkVersion {
+  id             String    @id @default(uuid())
+  framework_id   String
+  framework      Framework @relation(fields: [framework_id], references: [id])
+  version        String
+  effective_from DateTime
+  content_hash   String
+  status         String    @default("DRAFT") // DRAFT | PUBLISHED | SUPERSEDED | RETIRED
+  created_at     DateTime  @default(now())
+
+  requirements Requirement[]
+
+  @@unique([framework_id, version])
+}
+
+model Requirement {
+  id                   String           @id @default(uuid())
+  framework_version_id String
+  frameworkVersion     FrameworkVersion @relation(fields: [framework_version_id], references: [id])
+  external_reference   String
+  title                String
+  description          String?
+  applicability_rule   String?
+  status               String           @default("ACTIVE")
+  created_at           DateTime         @default(now())
+
+  @@index([framework_version_id])
+}
+
+model Obligation {
+  id                 String    @id @default(uuid())
+  tenant_id          String?
+  source             String
+  external_reference String?
+  title              String
+  description        String
+  effective_from     DateTime
+  expires_at         DateTime?
+  status             String    @default("ACTIVE")
+
+  @@index([tenant_id])
+}
+
+model ControlObjective {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  title       String
+  description String
+  category    String
+  owner       String
+  version     String   @default("1.0")
+  status      String   @default("ACTIVE")
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+}
+
+// Immutable version rows (bitemporal) — a correction is a new row with
+// supersedes_id set; the row it supersedes is never written to again.
+// validFrom/validTo describe business-time validity as understood by this
+// row; recorded_at (set once, immutable) is the system/transaction-time
+// axis. "What was effective as of business-time T, as known as of
+// system-time S" = recorded_at <= S AND valid_from <= T AND (valid_to IS
+// NULL OR valid_to > T), latest recorded_at among matches.
+model ControlMapping {
+  id                   String    @id @default(uuid())
+  control_objective_id String
+  framework_version_id String
+  requirement_id       String
+  mapping_type         String // FULL | PARTIAL | RELATED
+  mapping_version      String
+  rationale            String?
+  valid_from           DateTime
+  valid_to             DateTime?
+  recorded_at          DateTime  @default(now())
+  supersedes_id        String?
+  created_at           DateTime  @default(now())
+
+  @@index([control_objective_id])
+  @@index([framework_version_id])
+  @@index([requirement_id])
+}
+
+model ControlImplementation {
+  id                        String    @id @default(uuid())
+  tenant_id                 String
+  environment_id            String?
+  control_objective_id      String
+  implementation_version    Int       @default(1)
+  title                     String
+  description               String
+  owner_id                  String
+  implementation_type       String
+  status                    String    @default("PLANNED") // PLANNED|IMPLEMENTED|PARTIAL|NOT_IMPLEMENTED|NOT_APPLICABLE|RETIRED
+  not_applicable_rationale  String?
+  authorization_decision_id String?
+  effective_from            DateTime  @default(now())
+  reviewed_at               DateTime?
+  created_at                DateTime  @default(now())
+  updated_at                DateTime  @updatedAt
+
+  scopes ControlScope[]
+
+  @@index([tenant_id])
+  @@index([control_objective_id])
+}
+
+model ControlScope {
+  id                        String                @id @default(uuid())
+  tenant_id                 String
+  control_implementation_id String
+  controlImplementation     ControlImplementation @relation(fields: [control_implementation_id], references: [id])
+  legal_entity_id           String?
+  environment_id            String?
+  business_unit_id          String?
+  asset_scope               String?
+  identity_scope            String?
+  effective_from            DateTime              @default(now())
+  expires_at                DateTime?
+
+  @@index([tenant_id])
+  @@index([control_implementation_id])
+}
+
+model ControlTest {
+  id                   String   @id @default(uuid())
+  control_objective_id String
+  key                  String
+  title                String
+  description          String
+  test_type            String // AUTOMATED | MANUAL | HYBRID
+  status               String   @default("DRAFT")
+  owner                String
+  created_at           DateTime @default(now())
+
+  versions ControlTestVersion[]
+
+  @@unique([control_objective_id, key])
+}
+
+model ControlTestVersion {
+  id                   String      @id @default(uuid())
+  control_test_id      String
+  controlTest          ControlTest @relation(fields: [control_test_id], references: [id])
+  version              Int
+  input_schema         String      @default("{}")
+  evaluator_version_id String?
+  evaluation_policy    String      @default("{}")
+  effective_from       DateTime    @default(now())
+  published_at         DateTime?
+  status               String      @default("DRAFT")
+
+  expectedEvidenceRules ExpectedEvidenceRule[]
+
+  @@unique([control_test_id, version])
+}
+
+// --- shield-core-owned: assessment & evidence evaluation ---
+model ExpectedEvidenceRule {
+  id                      String             @id @default(uuid())
+  tenant_id               String?
+  control_test_version_id String
+  controlTestVersion      ControlTestVersion @relation(fields: [control_test_version_id], references: [id])
+  version                 Int                @default(1)
+  evidence_type           String
+  expected_source         String
+  expected_population     String
+  expected_period         String
+  freshness_threshold     String
+  minimum_coverage        Float?
+  required_permissions    String?
+  status                  String             @default("ACTIVE")
+  created_at              DateTime           @default(now())
+
+  @@index([control_test_version_id])
+}
+
+model ExpectedEvidenceResult {
+  id                      String   @id @default(uuid())
+  tenant_id               String
+  rule_id                 String
+  assessment_period_start DateTime
+  assessment_period_end   DateTime
+  expected_count          Int?
+  observed_count          Int?
+  coverage_state          String // COMPLETE|PARTIAL|MISSING|STALE|COLLECTOR_UNHEALTHY|PERMISSION_CHANGED|UNKNOWN
+  freshness_state         String
+  integrity_state         String
+  gap_count               Int      @default(0)
+  evaluated_at            DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([rule_id])
+}
+
+model EvidenceGap {
+  id                        String    @id @default(uuid())
+  tenant_id                 String
+  expected_evidence_rule_id String
+  control_test_version_id   String?
+  reason                    String // MISSING_SOURCE|STALE_SOURCE|PERMISSION_REVOKED|CONNECTOR_UNHEALTHY|PARTIAL_POPULATION|EVALUATOR_FAILED
+  scope                     String    @default("{}")
+  period_start              DateTime
+  period_end                DateTime
+  severity                  String?
+  source_health_state       String?
+  status                    String    @default("OPEN")
+  detected_at               DateTime  @default(now())
+  resolved_at               DateTime?
+
+  @@index([tenant_id])
+  @@index([expected_evidence_rule_id])
+}
+
+model Evaluator {
+  id            String   @id @default(uuid())
+  key           String   @unique
+  owner         String
+  control_scope String   @default("{}")
+  status        String   @default("ACTIVE")
+  created_at    DateTime @default(now())
+
+  versions EvaluatorVersion[]
+}
+
+model EvaluatorVersion {
+  id                        String    @id @default(uuid())
+  evaluator_id              String
+  evaluator                 Evaluator @relation(fields: [evaluator_id], references: [id])
+  version                   Int
+  accepted_evidence_schemas String    @default("[]")
+  required_fields           String    @default("[]")
+  runtime_profile           String    @default("node")
+  configuration             String    @default("{}")
+  content_hash              String
+  status                    String    @default("DRAFT")
+  published_at              DateTime?
+
+  @@unique([evaluator_id, version])
+}
+
+model EvidenceBundle {
+  id                          String   @id @default(uuid())
+  tenant_id                   String
+  purpose                     String
+  control_test_version_id     String
+  expected_evidence_result_id String?
+  evidence_refs               String   @default("[]")
+  evidence_hashes             String   @default("[]")
+  mapping_versions            String   @default("[]")
+  context_versions            String   @default("[]")
+  bundle_hash                 String
+  created_at                  DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([control_test_version_id])
+}
+
+model EvaluationRun {
+  id                      String    @id @default(uuid())
+  tenant_id               String
+  control_test_version_id String
+  evaluator_version_id    String
+  evidence_bundle_id      String
+  input_bundle_hash       String
+  output_hash             String?
+  context_snapshot_id     String?
+  started_at              DateTime  @default(now())
+  completed_at            DateTime?
+  result                  String // PASS|FAIL|PARTIAL|UNKNOWN|ERROR|NON_DETERMINISTIC
+  rationale               String
+  limitations             String    @default("[]")
+  confidence              Float?
+  replayable              Boolean   @default(true)
+  replay_of_id            String?
+  deterministic_profile   String    @default("zs-eval-v1")
+  correlation_id          String
+
+  @@index([tenant_id])
+  @@index([control_test_version_id])
+}
+
+model ManualTestRun {
+  id                      String    @id @default(uuid())
+  tenant_id               String
+  control_test_version_id String
+  performer_id            String
+  reviewer_id             String?
+  procedure_version       String
+  sampled_population      String?
+  evidence_refs           String    @default("[]")
+  result                  String
+  rationale               String
+  limitations             String    @default("[]")
+  performed_at            DateTime  @default(now())
+  reviewed_at             DateTime?
+
+  @@index([tenant_id])
+  @@index([control_test_version_id])
+}
+
+model Assessment {
+  id                        String    @id @default(uuid())
+  tenant_id                 String
+  control_implementation_id String
+  control_test_version_id   String
+  assessment_period_start   DateTime
+  assessment_period_end     DateTime
+  evidence_bundle_id        String?
+  evaluation_run_id         String?
+  status                    String    @default("PENDING") // PENDING|EVIDENCE_INCOMPLETE|READY_FOR_EVALUATION|EVALUATED|REVIEW_REQUIRED|APPROVED|SUPERSEDED
+  effectiveness             String    @default("UNKNOWN") // EFFECTIVE|PARTIALLY_EFFECTIVE|INEFFECTIVE|UNKNOWN
+  completeness_state        String    @default("UNKNOWN")
+  freshness_state           String    @default("UNKNOWN")
+  integrity_state           String    @default("UNKNOWN")
+  performer_id              String?
+  reviewer_id               String?
+  reviewed_at               DateTime?
+  limitations               String    @default("[]")
+  version                   Int       @default(1)
+  created_at                DateTime  @default(now())
+
+  @@index([tenant_id])
+  @@index([control_implementation_id])
+}
+
+// --- shield-core-owned: risk & exception management ---
+model ControlDeficiency {
+  id                   String    @id @default(uuid())
+  tenant_id            String
+  assessment_id        String
+  control_objective_id String
+  type                 String // DESIGN_GAP|IMPLEMENTATION_GAP|OPERATING_FAILURE|EVIDENCE_GAP|COVERAGE_GAP
+  severity             String
+  description          String
+  evidence_refs        String    @default("[]")
+  owner_id             String
+  status               String    @default("OPEN")
+  detected_at          DateTime  @default(now())
+  due_at               DateTime?
+  resolved_at          DateTime?
+
+  @@index([tenant_id])
+  @@index([assessment_id])
+}
+
+model Risk {
+  id            String   @id @default(uuid())
+  tenant_id     String
+  title         String
+  description   String
+  source_type   String
+  source_id     String
+  likelihood    String
+  impact        String
+  inherent_risk String?
+  residual_risk String?
+  status        String   @default("OPEN")
+  owner_id      String
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  factors     RiskFactor[]
+  treatments  RiskTreatment[]
+  acceptances RiskAcceptance[]
+
+  @@index([tenant_id])
+}
+
+model RiskFactor {
+  id                String   @id @default(uuid())
+  tenant_id         String
+  risk_id           String
+  risk              Risk     @relation(fields: [risk_id], references: [id])
+  factor            String
+  value             String
+  contribution      Float
+  source_ref        String
+  evaluator_version String?
+  created_at        DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([risk_id])
+}
+
+model RiskTreatment {
+  id             String    @id @default(uuid())
+  tenant_id      String
+  risk_id        String
+  risk           Risk      @relation(fields: [risk_id], references: [id])
+  treatment_type String // MITIGATE|TRANSFER|AVOID|ACCEPT
+  plan           String
+  owner_id       String
+  due_at         DateTime?
+  status         String    @default("PLANNED")
+  created_at     DateTime  @default(now())
+
+  @@index([tenant_id])
+  @@index([risk_id])
+}
+
+// Immutable version rows (bitemporal) — same shape/semantics as ControlMapping.
+model RiskAcceptance {
+  id                    String    @id @default(uuid())
+  tenant_id             String
+  risk_id               String
+  risk                  Risk      @relation(fields: [risk_id], references: [id])
+  accepted_by           String
+  authority             String
+  rationale             String
+  compensating_controls String    @default("[]")
+  valid_from            DateTime
+  valid_to              DateTime?
+  recorded_at           DateTime  @default(now())
+  supersedes_id         String?
+  expires_at            DateTime
+  review_at             DateTime
+  status                String    @default("ACTIVE")
+
+  @@index([tenant_id])
+  @@index([risk_id])
+}
+
+model Exception {
+  id                        String   @id @default(uuid())
+  tenant_id                 String
+  control_objective_id      String?
+  control_implementation_id String?
+  requirement_id            String?
+  risk_id                   String?
+  reason                    String
+  scope                     String   @default("{}")
+  compensating_controls     String   @default("[]")
+  requested_by              String
+  approved_by               String?
+  starts_at                 DateTime
+  expires_at                DateTime
+  status                    String   @default("REQUESTED") // REQUESTED|APPROVED|REJECTED|EXPIRED|REVOKED
+  created_at                DateTime @default(now())
+
+  @@index([tenant_id])
+}
+
+// --- shield-core-owned: audit package ---
+model AuditPackage {
+  id                    String    @id @default(uuid())
+  tenant_id             String
+  version               Int       @default(1)
+  purpose               String
+  framework_scope       String    @default("[]")
+  legal_entity_scope    String?
+  environment_scope     String?
+  period_start          DateTime
+  period_end            DateTime
+  status                String    @default("DRAFT") // DRAFT|BUILDING|VALIDATING|INCOMPLETE|READY_FOR_REVIEW|APPROVED|REAPPROVAL_REQUIRED|FROZEN|SUPERSEDED|FAILED
+  created_by            String
+  created_at            DateTime  @default(now())
+  frozen_at             DateTime?
+  approved_by           String?
+  approved_at           DateTime?
+  supersedes_package_id String?
+
+  manifest  AuditPackageManifest?
+  approvals AuditPackageApproval[]
+
+  @@index([tenant_id])
+}
+
+// The exact manifestCoreHash a human approved — immutable once written.
+model AuditPackageApproval {
+  id                        String       @id @default(uuid())
+  tenant_id                 String
+  package_id                String
+  package                   AuditPackage @relation(fields: [package_id], references: [id])
+  package_version           Int
+  approver_id               String
+  manifest_core_hash        String
+  authorization_decision_id String
+  approved_at               DateTime     @default(now())
+
+  @@index([tenant_id])
+  @@index([package_id])
+}
+
+model AuditPackageManifest {
+  id                       String       @id @default(uuid())
+  package_id               String       @unique
+  package                  AuditPackage @relation(fields: [package_id], references: [id])
+  package_version          Int
+  manifest_core_content    String // JSON: ManifestCore (see plan) — everything except the anchor proof
+  manifest_core_hash       String?
+  proof_envelope_content   String? // JSON: checkpoint/merkle/signature/witnesses, filled only at freeze
+  manifest_content         String? // JSON: core + proof merged, the final exported envelope
+  package_envelope_hash    String?
+  canonicalization_profile String       @default("zs-manifest-v1")
+  created_at               DateTime     @default(now())
+}
+
+// --- shield-anchor-owned: cryptographic checkpointing ---
+// Its own strictly-increasing per-tenant sequence, independent of the
+// evidence ledger's own sequence — anchoring is not the ledger sequencer.
+model TenantAnchorHead {
+  tenant_id            String  @id
+  last_anchor_sequence Int     @default(0)
+  last_checkpoint_id   String?
+  last_checkpoint_hash String?
+  version              Int     @default(0)
+}
+
+model Checkpoint {
+  id                       String    @id @default(uuid())
+  tenant_id                String
+  anchor_sequence          Int
+  ledger_sequence          Int
+  ledger_head_hash         String
+  package_id               String?
+  package_version          Int?
+  manifest_core_hash       String?
+  leaf_hashes              String // JSON array
+  merkle_root              String
+  tree_profile             String    @default("ZS-MERKLE-V1")
+  hash_algorithm           String    @default("SHA-256")
+  canonicalization_profile String    @default("zs-checkpoint-v1")
+  signing_key_id           String
+  signature                String
+  witness_assurance_state  String    @default("TEST_ONLY") // TEST_ONLY|WITNESS_PARTIAL|WITNESS_FULL
+  status                   String    @default("PENDING") // PENDING|SIGNED|PUBLISHED|FAILED
+  created_at               DateTime  @default(now())
+  published_at             DateTime?
+
+  witnessReceipts WitnessReceipt[]
+
+  @@unique([tenant_id, anchor_sequence])
+  @@index([tenant_id])
+}
+
+model SigningKey {
+  id         String   @id @default(uuid())
+  key_id     String   @unique
+  algorithm  String   @default("Ed25519")
+  public_key String
+  status     String   @default("ACTIVE") // ACTIVE|RETIRED
+  created_at DateTime @default(now())
+}
+
+model WitnessReceipt {
+  id            String     @id @default(uuid())
+  checkpoint_id String
+  checkpoint    Checkpoint @relation(fields: [checkpoint_id], references: [id])
+  witness_id    String
+  witness_type  String     @default("MOCK")
+  receipt_hash  String
+  received_at   DateTime   @default(now())
+  status        String     @default("RECEIVED")
+
+  @@index([checkpoint_id])
+}
+
+// ============================================================
+// Part 13+14: Reporting/Notifications + Developer API/Webhooks/Export/Offboarding
+// ============================================================
+
+// --- shield-core-owned: reporting (non-authoritative projections only) ---
+model ReportDefinition {
+  id                  String   @id @default(uuid())
+  key                 String   @unique
+  name                String
+  report_type         String // OPERATIONAL|SECURITY|ASSURANCE|EXECUTIVE|BOARD|CUSTOMER_SERVICE
+  version             String   @default("1.0")
+  purpose             String
+  audience            String
+  source_requirements String   @default("[]")
+  metric_definitions  String   @default("[]")
+  status              String   @default("ACTIVE")
+  created_at          DateTime @default(now())
+}
+
+model ReportingProjection {
+  id                 String    @id @default(uuid())
+  tenant_id          String
+  environment_id     String?
+  projection_type    String // SECURITY_POSTURE|CASE_POSTURE|CONNECTOR_HEALTH|CONTROL_POSTURE|RISK_POSTURE|AUDIT_PACKAGE_POSTURE|SERVICE_HEALTH|EXECUTIVE_POSTURE
+  source_domain      String
+  source_object_id   String
+  source_version     String?
+  source_occurred_at DateTime?
+  source_recorded_at DateTime?
+  freshness_state    String    @default("UNKNOWN")
+  completeness_state String    @default("UNKNOWN")
+  health_state       String    @default("UNKNOWN") // HEALTHY|PARTIAL|STALE|DEGRADED|UNKNOWN|UNAVAILABLE
+  projection_version Int       @default(1)
+  payload            String    @default("{}")
+  last_reconciled_at DateTime?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  @@index([tenant_id])
+  @@index([projection_type])
+  @@index([source_domain, source_object_id])
+}
+
+model ReportSnapshot {
+  id                        String   @id @default(uuid())
+  tenant_id                 String
+  environment_id            String?
+  report_definition_id      String
+  report_definition_version String
+  period_start              DateTime
+  period_end                DateTime
+  generated_by              String
+  source_snapshot_refs      String   @default("[]")
+  source_versions           String   @default("[]")
+  freshness_state           String   @default("UNKNOWN")
+  completeness_state        String   @default("UNKNOWN")
+  limitations               String   @default("[]")
+  // Frozen payload the snapshot is hashed over — a snapshot must be
+  // independently renderable without re-querying live domain tables.
+  payload                   String   @default("{}")
+  snapshot_hash             String
+  status                    String   @default("BUILDING") // BUILDING|READY|PARTIAL|FAILED|SUPERSEDED
+  generated_at              DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([report_definition_id])
+}
+
+model ExecutiveReportSnapshot {
+  id                 String    @id @default(uuid())
+  tenant_id          String
+  report_snapshot_id String
+  reporting_period   String
+  metrics            String    @default("[]") // each entry: {key,value,factors[],weights,unknownInputs,sourceRefs,definitionRef}
+  known_limitations  String    @default("[]")
+  source_refs        String    @default("[]")
+  approved_by        String?
+  approved_at        DateTime?
+  created_at         DateTime  @default(now())
+
+  @@index([tenant_id])
+  @@index([report_snapshot_id])
+}
+
+// --- shield-core-owned: notification ---
+model NotificationPolicy {
+  id                       String   @id @default(uuid())
+  key                      String   @unique
+  event_type               String
+  audience_type            String
+  severity                 String?
+  mandatory                Boolean  @default(false)
+  allowed_channels         String   @default("[]")
+  acknowledgement_required Boolean  @default(false)
+  escalation_policy        String?
+  version                  Int      @default(1)
+  status                   String   @default("ACTIVE")
+  created_at               DateTime @default(now())
+}
+
+model NotificationTemplate {
+  id               String    @id @default(uuid())
+  key              String
+  channel          String
+  locale           String    @default("en-US")
+  version          Int
+  subject_template String?
+  body_template    String
+  status           String    @default("DRAFT")
+  published_at     DateTime?
+  created_at       DateTime  @default(now())
+
+  @@unique([key, channel, locale, version])
+}
+
+model NotificationPreference {
+  id                     String   @id @default(uuid())
+  tenant_id              String
+  principal_id           String
+  notification_policy_id String
+  channel                String
+  enabled                Boolean  @default(true)
+  quiet_hours            String?
+  locale                 String?
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+
+  @@unique([tenant_id, principal_id, notification_policy_id, channel])
+}
+
+model NotificationChannelConfig {
+  id                String   @id @default(uuid())
+  tenant_id         String
+  channel_type      String // IN_APP|EMAIL
+  enabled           Boolean  @default(true)
+  configuration_ref String?
+  status            String   @default("ACTIVE")
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@unique([tenant_id, channel_type])
+}
+
+// Idempotency key = eventId + recipientPrincipalId + channel + notificationPolicyVersion (spec §18).
+model NotificationDelivery {
+  id                     String    @id @default(uuid())
+  tenant_id              String
+  event_id               String
+  policy_id              String
+  policy_version         Int
+  recipient_principal_id String
+  channel                String
+  template_version       Int
+  status                 String    @default("PENDING") // PENDING|PROCESSING|DELIVERED|FAILED|DEAD_LETTERED|CANCELLED
+  attempt_count          Int       @default(0)
+  first_attempt_at       DateTime?
+  last_attempt_at        DateTime?
+  delivered_at           DateTime?
+  error_code             String?
+  correlation_id         String
+  created_at             DateTime  @default(now())
+
+  acknowledgements NotificationAcknowledgement[]
+
+  @@unique([event_id, recipient_principal_id, channel, policy_version])
+  @@index([tenant_id])
+}
+
+model NotificationAcknowledgement {
+  id                       String               @id @default(uuid())
+  tenant_id                String
+  notification_delivery_id String
+  delivery                 NotificationDelivery @relation(fields: [notification_delivery_id], references: [id])
+  principal_id             String
+  acknowledgement_type     String // SEEN|ACKNOWLEDGED|ACCEPTED|DECLINED
+  acknowledged_at          DateTime             @default(now())
+  correlation_id           String
+
+  @@index([tenant_id])
+  @@index([notification_delivery_id])
+}
+
+// --- shield-core-owned: developer API (foundation built now, public surface G2-gated) ---
+model ApiClient {
+  id                String    @id @default(uuid())
+  tenant_id         String
+  name              String
+  client_id         String    @unique
+  principal_id      String    @unique
+  status            String    @default("PENDING") // PENDING|ACTIVE|SUSPENDED|REVOKED|EXPIRED
+  environment_scope String?
+  purpose           String
+  created_by        String
+  expires_at        DateTime?
+  last_used_at      DateTime?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  credentials ApiClientCredential[]
+  scopeGrants ApiScopeGrant[]
+
+  @@index([tenant_id])
+}
+
+// Raw secret is generated once, returned once, never stored — only a strong hash + fingerprint (spec §29).
+model ApiClientCredential {
+  id              String    @id @default(uuid())
+  tenant_id       String
+  api_client_id   String
+  apiClient       ApiClient @relation(fields: [api_client_id], references: [id])
+  secret_version  Int
+  secret_hash     String
+  fingerprint     String
+  status          String    @default("ACTIVE") // ACTIVE|RETIRING|REVOKED
+  issued_at       DateTime  @default(now())
+  expires_at      DateTime?
+  revoked_at      DateTime?
+  rotated_from_id String?
+
+  @@unique([api_client_id, secret_version])
+  @@index([tenant_id])
+}
+
+model ApiScopeGrant {
+  id                        String    @id @default(uuid())
+  tenant_id                 String
+  api_client_id             String
+  apiClient                 ApiClient @relation(fields: [api_client_id], references: [id])
+  scope                     String
+  environment_id            String?
+  granted_by                String
+  authorization_decision_id String
+  effective_from            DateTime  @default(now())
+  expires_at                DateTime?
+  revoked_at                DateTime?
+  created_at                DateTime  @default(now())
+
+  @@index([tenant_id])
+  @@index([api_client_id])
+}
+
+// --- shield-core-owned: webhooks ---
+model OutboundWebhookSubscription {
+  id                        String    @id @default(uuid())
+  tenant_id                 String
+  api_client_id             String?
+  endpoint_url              String
+  event_types               String    @default("[]")
+  payload_version           String    @default("1.0")
+  data_minimization_profile String    @default("default")
+  status                    String    @default("PENDING_VERIFICATION") // PENDING_VERIFICATION|ACTIVE|DEGRADED|SUSPENDED|REVOKED
+  created_by                String
+  verified_at               DateTime?
+  suspended_at              DateTime?
+  created_at                DateTime  @default(now())
+  updated_at                DateTime  @updatedAt
+
+  secretVersions WebhookSecretVersion[]
+  deliveries     WebhookDelivery[]
+
+  @@index([tenant_id])
+}
+
+// Actual secret lives in vault only — this row is metadata + a vault reference (spec §44).
+model WebhookSecretVersion {
+  id                      String                      @id @default(uuid())
+  tenant_id               String
+  webhook_subscription_id String
+  subscription            OutboundWebhookSubscription @relation(fields: [webhook_subscription_id], references: [id])
+  version                 Int
+  secret_ref              String
+  fingerprint             String
+  status                  String                      @default("ACTIVE") // ACTIVE|RETIRING|REVOKED
+  created_at              DateTime                    @default(now())
+  expires_at              DateTime?
+  revoked_at              DateTime?
+
+  @@unique([webhook_subscription_id, version])
+  @@index([tenant_id])
+}
+
+model WebhookDelivery {
+  id                      String                      @id @default(uuid())
+  tenant_id               String
+  webhook_subscription_id String
+  subscription            OutboundWebhookSubscription @relation(fields: [webhook_subscription_id], references: [id])
+  event_id                String
+  event_type              String
+  payload_version         String
+  payload_hash            String
+  // Frozen exact bytes sent on the first attempt — retries and replay must
+  // resend the identical body, never a reconstructed approximation.
+  payload                 String                      @default("{}")
+  status                  String                      @default("PENDING") // PENDING|DELIVERING|DELIVERED|FAILED|DEAD_LETTERED
+  attempt_count           Int                         @default(0)
+  first_attempt_at        DateTime?
+  last_attempt_at         DateTime?
+  delivered_at            DateTime?
+  response_status         Int?
+  replay_of_delivery_id   String?
+  correlation_id          String
+  created_at              DateTime                    @default(now())
+
+  attempts WebhookDeliveryAttempt[]
+
+  @@index([tenant_id])
+  @@index([webhook_subscription_id])
+}
+
+model WebhookDeliveryAttempt {
+  id              String          @id @default(uuid())
+  tenant_id       String
+  delivery_id     String
+  delivery        WebhookDelivery @relation(fields: [delivery_id], references: [id])
+  attempt_number  Int
+  started_at      DateTime        @default(now())
+  completed_at    DateTime?
+  response_status Int?
+  error_class     String?
+  retryable       Boolean         @default(true)
+  duration_ms     Int?
+
+  @@index([delivery_id])
+}
+
+// --- shield-core-owned: export ---
+model ExportJob {
+  id                        String    @id @default(uuid())
+  tenant_id                 String
+  environment_id            String?
+  requested_by              String
+  purpose                   String
+  export_type               String
+  requested_scope           String    @default("[]")
+  formats                   String    @default("[\"JSON\"]")
+  status                    String    @default("REQUESTED") // REQUESTED|VALIDATING|QUEUED|RUNNING|VERIFYING|READY|PARTIAL|FAILED|EXPIRED|CANCELLED
+  authorization_decision_id String
+  idempotency_key           String?
+  progress                  Int       @default(0)
+  failure_code              String?
+  created_at                DateTime  @default(now())
+  started_at                DateTime?
+  completed_at              DateTime?
+  expires_at                DateTime?
+
+  artifacts ExportArtifact[]
+  manifest  ExportManifest?
+
+  @@unique([tenant_id, idempotency_key])
+  @@index([tenant_id])
+}
+
+model ExportArtifact {
+  id                 String    @id @default(uuid())
+  tenant_id          String
+  export_job_id      String
+  exportJob          ExportJob @relation(fields: [export_job_id], references: [id])
+  artifact_type      String
+  schema_id          String
+  schema_version     String
+  object_count       Int       @default(0)
+  content_hash       String
+  media_type         String    @default("application/json")
+  object_storage_ref String?
+  size_bytes         Int?
+  created_at         DateTime  @default(now())
+
+  @@index([export_job_id])
+}
+
+model ExportManifest {
+  id                  String    @id @default(uuid())
+  tenant_id           String
+  export_job_id       String    @unique
+  exportJob           ExportJob @relation(fields: [export_job_id], references: [id])
+  manifest_version    String    @default("1.0")
+  scope               String    @default("[]")
+  purpose             String
+  generated_at        DateTime  @default(now())
+  schema_versions     String    @default("[]")
+  artifacts           String    @default("[]")
+  counts              String    @default("{}")
+  hashes              String    @default("{}")
+  evidence_proof_refs String    @default("[]")
+  audit_package_refs  String    @default("[]")
+  known_limitations   String    @default("[]")
+  legal_hold_state    String    @default("NONE")
+  completeness_state  String    @default("UNKNOWN")
+  manifest_hash       String
+
+  @@index([tenant_id])
+}
+
+// --- shield-core-owned: legal hold / deletion / offboarding ---
+model LegalHold {
+  id                        String    @id @default(uuid())
+  tenant_id                 String
+  scope                     String    @default("{}")
+  authority                 String
+  reason                    String
+  status                    String    @default("ACTIVE") // ACTIVE|RELEASED|EXPIRED
+  starts_at                 DateTime  @default(now())
+  ends_at                   DateTime?
+  review_at                 DateTime
+  created_by                String
+  authorization_decision_id String
+  created_at                DateTime  @default(now())
+
+  @@index([tenant_id])
+}
+
+model DeletionRequest {
+  id                        String    @id @default(uuid())
+  tenant_id                 String
+  requested_by              String
+  reason                    String
+  scope                     String    @default("{}")
+  status                    String    @default("REQUESTED") // REQUESTED|VALIDATING|BLOCKED_BY_HOLD|APPROVED|RUNNING|RECONCILING|BACKUP_EXPIRY_PENDING|COMPLETED|FAILED
+  legal_hold_state          String    @default("NONE")
+  authorization_decision_id String
+  created_at                DateTime  @default(now())
+  approved_at               DateTime?
+  started_at                DateTime?
+  completed_at              DateTime?
+
+  tasks        DeletionTask[]
+  backupExpiry BackupExpiryRecord[]
+  attestation  DeletionAttestation?
+
+  @@index([tenant_id])
+}
+
+model DeletionTask {
+  id                  String          @id @default(uuid())
+  tenant_id           String
+  deletion_request_id String
+  request             DeletionRequest @relation(fields: [deletion_request_id], references: [id])
+  store_type          String // POSTGRES_AUTHORITY|OBJECT_STORAGE|SEARCH|CACHE|ANALYTICS|AI_MEMORY|EMBEDDINGS|EXPORT_CACHE|CONNECTOR_STATE
+  object_type         String
+  scope               String          @default("{}")
+  status              String          @default("PENDING") // PENDING|RUNNING|COMPLETED|FAILED
+  started_at          DateTime?
+  completed_at        DateTime?
+  verification_result String?
+  error_code          String?
+
+  @@index([deletion_request_id])
+}
+
+model BackupExpiryRecord {
+  id                       String          @id @default(uuid())
+  tenant_id                String
+  deletion_request_id      String
+  request                  DeletionRequest @relation(fields: [deletion_request_id], references: [id])
+  backup_class             String
+  retained_until           DateTime
+  final_expiry_expected_at DateTime
+  verified_expired_at      DateTime?
+  status                   String          @default("PENDING") // PENDING|EXPIRED_VERIFIED|EXCEPTION|FAILED_VERIFICATION
+  created_at               DateTime        @default(now())
+
+  @@index([deletion_request_id])
+}
+
+model DeletionAttestation {
+  id                    String          @id @default(uuid())
+  tenant_id             String
+  deletion_request_id   String          @unique
+  request               DeletionRequest @relation(fields: [deletion_request_id], references: [id])
+  deleted_scopes        String          @default("[]")
+  retained_scopes       String          @default("[]")
+  legal_hold_refs       String          @default("[]")
+  backup_expiry_refs    String          @default("[]")
+  derived_store_results String          @default("[]")
+  evidence_refs         String          @default("[]")
+  limitations           String          @default("[]")
+  attestation_hash      String
+  issued_by             String
+  issued_at             DateTime        @default(now())
+}
+
+model TenantOffboardingRun {
+  id                        String    @id @default(uuid())
+  tenant_id                 String
+  requested_by              String
+  reason                    String
+  status                    String    @default("REQUESTED") // REQUESTED|VALIDATING|EXPORT_REQUIRED|EXPORTING|EXPORT_READY|ACCESS_FREEZE_PENDING|ACCESS_FROZEN|CONNECTOR_REVOCATION|DELETION_PENDING|DELETING|BACKUP_EXPIRY_PENDING|COMPLETED|BLOCKED|FAILED
+  export_job_id             String?
+  deletion_request_id       String?
+  initiated_at              DateTime  @default(now())
+  completed_at              DateTime?
+  authorization_decision_id String
+
   @@index([tenant_id])
 }
 

@@ -27,6 +27,33 @@
       "compilerOptions": {
         "tsConfigPath": "apps/shield-ingest/tsconfig.app.json"
       }
+    },
+    "shield-ai": {
+      "type": "application",
+      "root": "apps/shield-ai",
+      "entryFile": "main",
+      "sourceRoot": "apps/shield-ai/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/shield-ai/tsconfig.app.json"
+      }
+    },
+    "shield-action": {
+      "type": "application",
+      "root": "apps/shield-action",
+      "entryFile": "main",
+      "sourceRoot": "apps/shield-action/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/shield-action/tsconfig.app.json"
+      }
+    },
+    "shield-anchor": {
+      "type": "application",
+      "root": "apps/shield-anchor",
+      "entryFile": "main",
+      "sourceRoot": "apps/shield-anchor/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/shield-anchor/tsconfig.app.json"
+      }
     }
   }
 }

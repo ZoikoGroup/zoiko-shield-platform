@@ -1,1 +1,0 @@
-// Credential provider interface

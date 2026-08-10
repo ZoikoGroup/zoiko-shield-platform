@@ -1,59 +1,41 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { LegalEntity } from './legal-entity.entity';
 import { CreateLegalEntityDto } from './dto/create-legal-entity.dto';
 import { UpdateLegalEntityDto } from './dto/update-legal-entity.dto';
-import * as crypto from 'crypto';
 
 @Injectable()
 export class LegalEntityService {
-  private legalEntitys: LegalEntity[] = [];
+  constructor(
+    @InjectRepository(LegalEntity)
+    private readonly legalEntityRepository: Repository<LegalEntity>,
+  ) {}
 
-  findAll(): LegalEntity[] {
-    return this.legalEntitys;
+  findAllForTenant(tenantId: string): Promise<LegalEntity[]> {
+    return this.legalEntityRepository.find({ where: { tenantId } });
   }
 
-  findOne(id: string): LegalEntity {
-    const item = this.legalEntitys.find((c) => c.id === id);
-    if (!item) throw new NotFoundException(`LegalEntity with ID ${id} not found`);
+  async findOne(tenantId: string, id: string): Promise<LegalEntity> {
+    const item = await this.legalEntityRepository.findOne({ where: { id, tenantId } });
+    if (!item) {
+      throw new NotFoundException(`Legal entity ${id} not found for tenant ${tenantId}`);
+    }
     return item;
   }
 
-  create(createDto: CreateLegalEntityDto): LegalEntity {
-    const newItem: LegalEntity = {
-      id: crypto.randomUUID(),
-      name: createDto.name,
-      status: 'ACTIVE',
-      context: {
-        tenantId: 'default-tenant',
-        legalEntityId: 'default-entity',
-        environmentId: 'dev',
-        region: 'us-east-1',
-        correlationId: crypto.randomUUID(),
-        traceId: crypto.randomUUID(),
-        requestId: crypto.randomUUID(),
-        purpose: 'legal-entity-creation',
-        dataClass: 'restricted',
-        policyVersion: '1.0',
-        contractId: 'legal-entity-api',
-        contractVersion: '1.0',
-        recordedAt: new Date().toISOString(),
-      },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    this.legalEntitys.push(newItem);
-    return newItem;
+  create(tenantId: string, dto: CreateLegalEntityDto): Promise<LegalEntity> {
+    return this.legalEntityRepository.save(this.legalEntityRepository.create({ tenantId, ...dto }));
   }
 
-  update(id: string, updateDto: UpdateLegalEntityDto): LegalEntity {
-    const item = this.findOne(id);
-    const updated = { ...item, ...updateDto, updatedAt: new Date().toISOString() };
-    this.legalEntitys = this.legalEntitys.map((c) => (c.id === id ? updated : c));
-    return updated;
+  async update(tenantId: string, id: string, dto: UpdateLegalEntityDto): Promise<LegalEntity> {
+    const item = await this.findOne(tenantId, id);
+    Object.assign(item, dto);
+    return this.legalEntityRepository.save(item);
   }
 
-  remove(id: string): void {
-    this.findOne(id);
-    this.legalEntitys = this.legalEntitys.filter((c) => c.id !== id);
+  async remove(tenantId: string, id: string): Promise<void> {
+    const item = await this.findOne(tenantId, id);
+    await this.legalEntityRepository.remove(item);
   }
 }
