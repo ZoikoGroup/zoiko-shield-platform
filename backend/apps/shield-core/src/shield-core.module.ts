@@ -34,6 +34,22 @@ import { CatalogModule } from './modules/catalog/catalog.module';
 import { CommerceModule } from './modules/commerce/commerce.module';
 import { ObligationsModule } from './modules/obligations/obligations.module';
 import { BillingModule } from './modules/billing/billing.module';
+import { IdempotencyModule } from './modules/idempotency/idempotency.module';
+import { ApprovalsModule } from './modules/approvals/approvals.module';
+import { CpqModule } from './modules/cpq/cpq.module';
+import { ResourcesModule } from './modules/resources/resources.module';
+import { MeteringModule } from './modules/metering/metering.module';
+import { TaxModule } from './modules/tax/tax.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { DunningModule } from './modules/dunning/dunning.module';
+import { SlaModule } from './modules/sla/sla.module';
+import { IrWorkOrdersModule } from './modules/ir-work-orders/ir-work-orders.module';
+import { PartnersModule } from './modules/partners/partners.module';
+import { SectorPacksModule } from './modules/sector-packs/sector-packs.module';
+import { AiGovernanceModule } from './modules/ai-governance/ai-governance.module';
+import { CostRecordsModule } from './modules/cost-records/cost-records.module';
+import { ReconciliationModule } from './modules/reconciliation/reconciliation.module';
+import { KillSwitchModule } from './modules/kill-switch/kill-switch.module';
 import { KafkaModule } from './kafka/kafka.module';
 import { CaseManagementModule } from './modules/case-management/case-management.module';
 import { EvidenceModule } from './modules/evidence/evidence.module';
@@ -100,6 +116,22 @@ import { ScheduleModule } from '@nestjs/schedule';
     CommerceModule,
     ObligationsModule,
     BillingModule,
+    IdempotencyModule,
+    ApprovalsModule,
+    CpqModule,
+    ResourcesModule,
+    MeteringModule,
+    TaxModule,
+    PaymentsModule,
+    DunningModule,
+    SlaModule,
+    IrWorkOrdersModule,
+    PartnersModule,
+    SectorPacksModule,
+    AiGovernanceModule,
+    CostRecordsModule,
+    ReconciliationModule,
+    KillSwitchModule,
     ScheduleModule.forRoot(),
     PrismaModule,
     KafkaModule,

@@ -2,12 +2,16 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
   Param,
   Query,
   Headers,
   Body,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
+import { IsOptional, IsString } from 'class-validator';
+import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import {
   CommercialEntitlementService,
   CreateCommercialAccountDto,
@@ -16,12 +20,20 @@ import {
 } from './commercial-entitlement.service';
 
 export class CheckEntitlementQueryDto {
+  @IsOptional()
+  @IsString()
   tenantId?: string;
+
+  @IsString()
   offerType!: string;
 }
 
 export class CheckClaimQueryDto {
+  @IsOptional()
+  @IsString()
   tenantId?: string;
+
+  @IsString()
   claimKey!: string;
 }
 
@@ -35,6 +47,7 @@ export class CommercialEntitlementController {
    * POST /api/v1/commercial/accounts
    * Create commercial account
    */
+  @UseGuards(JwtAuthGuard)
   @Post('accounts')
   async createCommercialAccount(@Body() dto: CreateCommercialAccountDto) {
     const account = await this.commercialService.createCommercialAccount(dto);
@@ -49,6 +62,7 @@ export class CommercialEntitlementController {
    * GET /api/v1/commercial/accounts/:accountId
    * Get single commercial account details
    */
+  @UseGuards(JwtAuthGuard)
   @Get('accounts/:accountId')
   async getCommercialAccountById(@Param('accountId') accountId: string) {
     const account = await this.commercialService.getCommercialAccountById(accountId);
@@ -62,6 +76,7 @@ export class CommercialEntitlementController {
    * POST /api/v1/commercial/entitlements
    * Issue versioned offer entitlement
    */
+  @UseGuards(JwtAuthGuard)
   @Post('entitlements')
   async grantEntitlement(@Body() dto: GrantEntitlementDto) {
     const entitlement = await this.commercialService.grantEntitlement(dto);
@@ -73,9 +88,27 @@ export class CommercialEntitlementController {
   }
 
   /**
+   * PATCH /api/v1/commercial/entitlements/:id/status
+   * Guarded status transition (Part 20 state-machine hardening)
+   */
+  @UseGuards(JwtAuthGuard)
+  @Patch('entitlements/:id/status')
+  async updateEntitlementStatus(
+    @Param('id') id: string,
+    @Body('status') status: string,
+  ) {
+    const entitlement = await this.commercialService.updateEntitlementStatus(id, status);
+    return {
+      statusCode: HttpStatus.OK,
+      data: entitlement,
+    };
+  }
+
+  /**
    * GET /api/v1/commercial/entitlements
    * List active entitlements for tenant
    */
+  @UseGuards(JwtAuthGuard)
   @Get('entitlements')
   async getEntitlements(
     @Headers('x-tenant-id') headerTenantId: string,
@@ -117,6 +150,7 @@ export class CommercialEntitlementController {
    * POST /api/v1/commercial/claims/register
    * Register approved claim wording in ClaimRegister
    */
+  @UseGuards(JwtAuthGuard)
   @Post('claims/register')
   async registerClaim(@Body() dto: RegisterClaimDto) {
     const claim = await this.commercialService.registerClaim(dto);

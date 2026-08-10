@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CommercialEntitlementService } from './commercial-entitlement.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 
 describe('CommercialEntitlementService (ZS-COM-BILL-001)', () => {
   let service: CommercialEntitlementService;
@@ -17,10 +17,15 @@ describe('CommercialEntitlementService (ZS-COM-BILL-001)', () => {
         create: jest.fn(),
         findFirst: jest.fn(),
         findMany: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
       },
       claimRegister: {
         upsert: jest.fn(),
         findUnique: jest.fn(),
+      },
+      commercialApproval: {
+        findFirst: jest.fn(),
       },
     };
 
@@ -92,5 +97,75 @@ describe('CommercialEntitlementService (ZS-COM-BILL-001)', () => {
 
     expect(result.eligible).toBe(true);
     expect(result.approvedWording).toBe('24/7 Managed SOC Response');
+  });
+
+  it('allows ACTIVE -> SUSPENDED (Part 20 state-machine hardening)', async () => {
+    prismaMock.entitlement.findUnique.mockResolvedValue({ id: 'ent-1', status: 'ACTIVE' });
+    prismaMock.entitlement.update.mockResolvedValue({ id: 'ent-1', status: 'SUSPENDED' });
+
+    const updated = await service.updateEntitlementStatus('ent-1', 'SUSPENDED');
+
+    expect(updated.status).toBe('SUSPENDED');
+  });
+
+  it('rejects an illegal entitlement transition EXPIRED -> ACTIVE', async () => {
+    prismaMock.entitlement.findUnique.mockResolvedValue({ id: 'ent-1', status: 'EXPIRED' });
+
+    await expect(service.updateEntitlementStatus('ent-1', 'ACTIVE')).rejects.toThrow(
+      ConflictException,
+    );
+  });
+
+  describe('ONE-01: Zoiko One vs direct charging collision prevention', () => {
+    it('blocks activating a direct entitlement over an existing Zoiko-One-bundled entitlement for the same tenant/capability', async () => {
+      prismaMock.commercialAccount.findUnique.mockResolvedValue({ id: 'acct-direct', billing_source: 'DIRECT' });
+      prismaMock.entitlement.findMany.mockResolvedValue([
+        { commercial_account_id: 'acct-bundle', commercialAccount: { billing_source: 'ZOIKO_ONE_BUNDLE' } },
+      ]);
+      prismaMock.commercialApproval.findFirst.mockResolvedValue(null);
+
+      await expect(
+        service.grantEntitlement({
+          commercialAccountId: 'acct-direct',
+          tenantId: 't-1',
+          offerType: 'MANAGED_DEFENSE',
+        }),
+      ).rejects.toThrow(ConflictException);
+      expect(prismaMock.entitlement.create).not.toHaveBeenCalled();
+    });
+
+    it('allows the activation when an approved split-billing exception exists for that tenant/capability', async () => {
+      prismaMock.commercialAccount.findUnique.mockResolvedValue({ id: 'acct-direct', billing_source: 'DIRECT' });
+      prismaMock.entitlement.findMany.mockResolvedValue([
+        { commercial_account_id: 'acct-bundle', commercialAccount: { billing_source: 'ZOIKO_ONE_BUNDLE' } },
+      ]);
+      prismaMock.commercialApproval.findFirst.mockResolvedValue({ id: 'appr-1', status: 'APPROVED' });
+      prismaMock.entitlement.create.mockResolvedValue({ id: 'ent-new' });
+
+      await service.grantEntitlement({
+        commercialAccountId: 'acct-direct',
+        tenantId: 't-1',
+        offerType: 'MANAGED_DEFENSE',
+      });
+
+      expect(prismaMock.entitlement.create).toHaveBeenCalled();
+    });
+
+    it('does not block a second entitlement from the same billing_source (no collision when sources match)', async () => {
+      prismaMock.commercialAccount.findUnique.mockResolvedValue({ id: 'acct-direct-2', billing_source: 'DIRECT' });
+      prismaMock.entitlement.findMany.mockResolvedValue([
+        { commercial_account_id: 'acct-direct-1', commercialAccount: { billing_source: 'DIRECT' } },
+      ]);
+      prismaMock.entitlement.create.mockResolvedValue({ id: 'ent-new' });
+
+      await service.grantEntitlement({
+        commercialAccountId: 'acct-direct-2',
+        tenantId: 't-1',
+        offerType: 'MANAGED_DEFENSE',
+      });
+
+      expect(prismaMock.entitlement.create).toHaveBeenCalled();
+      expect(prismaMock.commercialApproval.findFirst).not.toHaveBeenCalled();
+    });
   });
 });

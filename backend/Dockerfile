@@ -3,25 +3,33 @@
 FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
+COPY prisma ./prisma
 RUN npm ci
 
 FROM node:22-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npm run build
+RUN npx prisma generate && npm run build
+
+FROM build AS migrate
+CMD ["npx", "prisma", "migrate", "deploy"]
 
 FROM node:22-alpine AS runtime
 ENV NODE_ENV=production
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+COPY --from=deps /app/node_modules ./node_modules
+RUN npm prune --omit=dev && npm cache clean --force
 
 COPY --from=build /app/dist ./dist
+COPY --from=build /app/prisma ./prisma
+COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 
 RUN addgroup -S shield && adduser -S shield -G shield
 USER shield
 
 EXPOSE 3001
 CMD ["node", "dist/apps/shield-core/main.js"]
+

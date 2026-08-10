@@ -1,33 +1,86 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { IsArray, IsIn, IsISO8601, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export class CreateCatalogVersionDto {
+  @IsString()
   versionLabel!: string;
+
+  @IsOptional()
+  @IsISO8601()
   effectiveFrom?: Date;
+
+  @IsOptional()
+  @IsISO8601()
   effectiveTo?: Date;
 }
 
 export class CreateProductDto {
+  @IsUUID()
   catalogVersionId!: string;
+
+  @IsString()
   sku!: string;
+
+  @IsIn(['MANAGED_DEFENSE', 'CONTINUOUS_ASSURANCE', 'EXPANSION_MODULE', 'PROFESSIONAL_SERVICE'])
   offerFamily!: 'MANAGED_DEFENSE' | 'CONTINUOUS_ASSURANCE' | 'EXPANSION_MODULE' | 'PROFESSIONAL_SERVICE';
+
+  @IsString()
   displayName!: string;
+
+  @IsIn(['protected_resource', 'telemetry', 'module', 'service'])
   metricFamily!: 'protected_resource' | 'telemetry' | 'module' | 'service';
+
+  @IsOptional()
+  @IsArray()
   requires?: string[];
+
+  @IsOptional()
+  @IsArray()
   incompatibleWith?: string[];
+
+  @IsOptional()
+  @IsArray()
   regionScope?: string[];
 }
 
 export class CreatePriceBookDto {
+  @IsUUID()
   catalogVersionId!: string;
+
+  @IsUUID()
   productId!: string;
+
+  @IsOptional()
+  @IsString()
   region?: string;
+
+  @IsOptional()
+  @IsString()
   currency?: string;
+
+  @IsOptional()
+  @IsIn(['DIRECT', 'RESELLER', 'ZOIKO_ONE'])
   channel?: 'DIRECT' | 'RESELLER' | 'ZOIKO_ONE';
+
+  @IsOptional()
+  @IsNumber()
   unitPrice?: number;
+
+  @IsOptional()
+  @IsNumber()
   minimumCommit?: number;
+
+  @IsOptional()
+  @IsNumber()
   overageRate?: number;
+
+  @IsOptional()
+  @IsISO8601()
   effectiveFrom?: Date;
+
+  @IsOptional()
+  @IsISO8601()
   effectiveTo?: Date;
 }
 

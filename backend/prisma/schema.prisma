@@ -900,12 +900,19 @@ model CommercialAccount {
   billing_source         String   @default("DIRECT")
   billing_classification String   @default("COMMERCIAL_DIRECT")
   status                 String   @default("ACTIVE")
+  group_account_id       String?
+  legal_entity_id        String?
+  business_unit_id       String?
+  environment_id         String?
+  region                 String   @default("GLOBAL")
+  residency_policy       String?
   created_at             DateTime @default(now())
   updated_at             DateTime @updatedAt
 
   entitlements Entitlement[]
   contracts    Contract[]
   invoices     CommercialInvoice[]
+  quotes       CommercialQuote[]
 
   @@index([status])
   @@index([billing_classification])
@@ -950,6 +957,7 @@ model CatalogVersion {
   products   Product[]
   priceBooks PriceBook[]
   contracts  Contract[]
+  quotes     CommercialQuote[]
 
   @@index([status])
 }
@@ -1016,14 +1024,18 @@ model Contract {
 }
 
 model ProtectedResourceDefinition {
-  id                String   @id @default(uuid())
+  id                String    @id @default(uuid())
   resource_type     String
-  version           Int      @default(1)
-  identity_key_spec String   @default("{}")
-  ephemeral_policy  String   @default("{}")
-  created_at        DateTime @default(now())
+  version           Int       @default(1)
+  identity_key_spec String    @default("{}")
+  ephemeral_policy  String    @default("{}")
+  status            String    @default("DRAFT")
+  approved_by       String?
+  approved_at       DateTime?
+  created_at        DateTime  @default(now())
 
   @@unique([resource_type, version])
+  @@index([status])
 }
 
 model ServiceObligation {
@@ -1054,12 +1066,144 @@ model CommercialInvoice {
   total_amount          Float             @default(0.0)
   issued_at             DateTime?
   immutable_snapshot    String            @default("{}")
+  // Part 10/11: FX + tax result are captured at issue time and never
+  // rewritten afterward — original legal invoice values stay frozen.
+  fx_rate               Decimal?          @db.Decimal(18, 8)
+  fx_source              String?
+  fx_effective_at        DateTime?
+  tax_result             String           @default("{}")
   created_at            DateTime          @default(now())
   updated_at            DateTime          @updatedAt
+
+  lines       CommercialInvoiceLine[]
+  creditNotes CommercialCreditNote[]
+  debitNotes  CommercialDebitNote[]
+  payments    Payment[]
 
   @@index([commercial_account_id])
   @@index([contract_id])
   @@index([status])
+}
+
+model CommercialInvoiceLine {
+  id                    String   @id @default(uuid())
+  invoice_id            String
+  invoice               CommercialInvoice @relation(fields: [invoice_id], references: [id])
+  sku                   String
+  contract_id           String
+  subscription_id       String?
+  service_period_start  DateTime
+  service_period_end    DateTime
+  quantity              Int      @default(1)
+  unit_price            Decimal  @db.Decimal(14, 4)
+  discount_percent      Decimal  @default(0) @db.Decimal(5, 2)
+  tax_amount            Decimal  @default(0) @db.Decimal(14, 4)
+  tax_rule_id           String?
+  currency              String   @default("USD")
+  source_version        String   @default("v1")
+  created_at            DateTime @default(now())
+
+  @@index([invoice_id])
+}
+
+/** Part 12: corrections to an issued invoice are append-only, never edits. */
+model CommercialCreditNote {
+  id         String    @id @default(uuid())
+  invoice_id String
+  invoice    CommercialInvoice @relation(fields: [invoice_id], references: [id])
+  amount     Decimal   @db.Decimal(14, 4)
+  currency   String    @default("USD")
+  reason     String
+  status     String    @default("DRAFT")
+  issued_at  DateTime?
+  created_at DateTime  @default(now())
+
+  @@index([invoice_id])
+}
+
+model CommercialDebitNote {
+  id         String    @id @default(uuid())
+  invoice_id String
+  invoice    CommercialInvoice @relation(fields: [invoice_id], references: [id])
+  amount     Decimal   @db.Decimal(14, 4)
+  currency   String    @default("USD")
+  reason     String
+  status     String    @default("DRAFT")
+  issued_at  DateTime?
+  created_at DateTime  @default(now())
+
+  @@index([invoice_id])
+}
+
+/** Part 10: fail-closed tax resolution — never a hardcoded global rate. */
+model TaxRule {
+  id                String    @id @default(uuid())
+  jurisdiction      String
+  product_tax_class String
+  rate_percent      Decimal   @db.Decimal(6, 4)
+  reverse_charge    Boolean   @default(false)
+  status            String    @default("DRAFT")
+  effective_from    DateTime  @default(now())
+  effective_to      DateTime?
+  approved_by       String?
+  approved_at       DateTime?
+  created_at        DateTime  @default(now())
+
+  @@index([jurisdiction, product_tax_class])
+  @@index([status])
+}
+
+// ============================================================
+// ZS-COM-BILL-001 P0.3 Part 9: payment domain. No raw PAN/CVC is ever
+// stored — payment_method_reference holds only a provider-issued token.
+// ============================================================
+
+model PaymentMethodReference {
+  id                     String   @id @default(uuid())
+  commercial_account_id  String
+  provider               String
+  provider_token         String
+  brand                  String?
+  last4                  String?
+  status                 String   @default("ACTIVE")
+  created_at             DateTime @default(now())
+
+  @@index([commercial_account_id])
+}
+
+model Payment {
+  id                            String    @id @default(uuid())
+  commercial_account_id         String
+  invoice_id                    String
+  invoice                       CommercialInvoice @relation(fields: [invoice_id], references: [id])
+  provider                      String
+  provider_payment_id           String?
+  payment_method_reference_id   String?
+  amount                        Decimal   @db.Decimal(14, 4)
+  currency                      String    @default("USD")
+  status                        String    @default("PENDING")
+  idempotency_key               String    @unique
+  created_at                    DateTime  @default(now())
+  updated_at                    DateTime  @updatedAt
+
+  refunds Refund[]
+
+  @@index([commercial_account_id])
+  @@index([invoice_id])
+  @@index([status])
+}
+
+model Refund {
+  id         String   @id @default(uuid())
+  payment_id String
+  payment    Payment  @relation(fields: [payment_id], references: [id])
+  amount     Decimal  @db.Decimal(14, 4)
+  currency   String   @default("USD")
+  reason     String
+  status     String   @default("PENDING")
+  created_at DateTime @default(now())
+
+  @@index([payment_id])
 }
 
 model CommercialEvent {
@@ -1074,6 +1218,593 @@ model CommercialEvent {
 
   @@index([idempotency_key])
   @@index([event_type])
+}
+
+// ============================================================
+// ZS-COM-BILL-001 P0.1: CPQ chain (Quote -> Order -> Subscription),
+// maker-checker commercial approvals, and a reusable idempotency ledger.
+// ============================================================
+
+model CommercialQuote {
+  id                     String    @id @default(uuid())
+  commercial_account_id  String
+  commercialAccount      CommercialAccount @relation(fields: [commercial_account_id], references: [id])
+  catalog_version_id     String
+  catalogVersion         CatalogVersion    @relation(fields: [catalog_version_id], references: [id])
+  status                 String    @default("DRAFT")
+  currency               String    @default("USD")
+  region                 String    @default("GLOBAL")
+  term_months            Int       @default(12)
+  requires_approval      Boolean   @default(false)
+  approval_id            String?
+  snapshot               String    @default("{}")
+  requested_by           String
+  approved_by            String?
+  approved_at            DateTime?
+  rejected_reason        String?
+  expires_at             DateTime?
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
+
+  lines  CommercialQuoteLine[]
+  orders CommercialOrder[]
+
+  @@index([commercial_account_id])
+  @@index([status])
+}
+
+model CommercialQuoteLine {
+  id                     String   @id @default(uuid())
+  quote_id               String
+  quote                  CommercialQuote @relation(fields: [quote_id], references: [id])
+  product_id             String
+  price_book_id          String
+  quantity               Int      @default(1)
+  unit_price             Decimal  @db.Decimal(14, 4)
+  line_discount_percent  Decimal  @default(0) @db.Decimal(5, 2)
+  created_at             DateTime @default(now())
+
+  @@index([quote_id])
+}
+
+model CommercialOrder {
+  id                     String   @id @default(uuid())
+  quote_id               String
+  quote                  CommercialQuote @relation(fields: [quote_id], references: [id])
+  commercial_account_id  String
+  status                 String   @default("CREATED")
+  contract_id            String?  @unique
+  idempotency_key        String   @unique
+  created_by             String
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+
+  lines CommercialOrderLine[]
+
+  @@index([commercial_account_id])
+  @@index([status])
+}
+
+model CommercialOrderLine {
+  id         String   @id @default(uuid())
+  order_id   String
+  order      CommercialOrder @relation(fields: [order_id], references: [id])
+  product_id String
+  quantity   Int      @default(1)
+  unit_price Decimal  @db.Decimal(14, 4)
+  created_at DateTime @default(now())
+
+  @@index([order_id])
+}
+
+model CommercialSubscription {
+  id                     String    @id @default(uuid())
+  order_id               String    @unique
+  commercial_account_id  String
+  contract_id            String
+  status                 String    @default("PENDING")
+  effective_from         DateTime?
+  effective_to           DateTime?
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
+
+  amendments CommercialAmendment[]
+
+  @@index([commercial_account_id])
+  @@index([status])
+}
+
+model CommercialAmendment {
+  id                 String    @id @default(uuid())
+  subscription_id    String
+  subscription       CommercialSubscription @relation(fields: [subscription_id], references: [id])
+  amendment_type     String
+  status             String    @default("REQUESTED")
+  effective_at       DateTime?
+  before_snapshot    String    @default("{}")
+  proposed_snapshot  String    @default("{}")
+  requested_by       String
+  approved_by        String?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  @@index([subscription_id])
+  @@index([status])
+}
+
+model CommercialApproval {
+  id                      String    @id @default(uuid())
+  change_type             String
+  object_type             String
+  object_id               String
+  requested_by            String
+  requested_at            DateTime  @default(now())
+  reason                  String
+  before_snapshot         String    @default("{}")
+  proposed_snapshot       String    @default("{}")
+  financial_impact        Decimal?  @db.Decimal(14, 4)
+  margin_impact           Decimal?  @db.Decimal(6, 4)
+  required_approval_role  String    @default("BILLING_ADMIN")
+  status                  String    @default("PENDING_APPROVAL")
+  approved_by             String?
+  approved_at             DateTime?
+  decision_reason         String?
+  expires_at              DateTime?
+  applied_at              DateTime?
+  idempotency_key         String?   @unique
+
+  @@index([object_type, object_id])
+  @@index([status])
+}
+
+model IdempotencyRecord {
+  id                   String    @id @default(uuid())
+  idempotency_key      String
+  operation            String
+  tenant_id            String?
+  actor_id             String?
+  request_fingerprint  String
+  status               String    @default("IN_PROGRESS")
+  response_code        Int?
+  response_body        String?
+  created_at           DateTime  @default(now())
+  expires_at           DateTime?
+
+  @@unique([idempotency_key, operation])
+}
+
+// ============================================================
+// ZS-COM-BILL-001 P0.2: resource dedup / protected-resource coverage engine
+// and telemetry metering engine (accepted != billable).
+// ============================================================
+
+model MeterDefinition {
+  id                 String    @id @default(uuid())
+  meter_key          String
+  version            Int       @default(1)
+  unit               String    @default("EVENTS")
+  source_scope       String    @default("[]")
+  aggregation_window String    @default("DAILY")
+  dedupe_policy      String    @default("SOURCE_EVENT_ID")
+  included_quantity  Int       @default(0)
+  billable_policy    String    @default("STANDARD")
+  status             String    @default("DRAFT")
+  effective_from     DateTime  @default(now())
+  effective_to       DateTime?
+  approved_by        String?
+  approved_at        DateTime?
+  created_at         DateTime  @default(now())
+
+  events MeterEvent[]
+
+  @@unique([meter_key, version])
+  @@index([status])
+}
+
+model MeterEvent {
+  id                    String   @id @default(uuid())
+  tenant_id             String
+  meter_definition_id   String
+  meterDefinition       MeterDefinition @relation(fields: [meter_definition_id], references: [id])
+  source                String
+  source_event_id       String
+  occurred_at           DateTime
+  received_at           DateTime @default(now())
+  quantity              Int      @default(1)
+  unit                  String   @default("EVENTS")
+  accepted_state        String   @default("RECEIVED")
+  billable_state        String   @default("NON_BILLABLE")
+  dedupe_key            String
+  is_platform_generated Boolean  @default(false)
+  correction_of_event_id String?
+  created_at            DateTime @default(now())
+
+  @@index([tenant_id, meter_definition_id, dedupe_key])
+  @@index([tenant_id])
+  @@index([accepted_state])
+}
+
+// ============================================================
+// ZS-COM-BILL-001 P0.4 Part 18: dunning engine. Policy-driven, versioned,
+// fail-closed — no hardcoded grace/restriction/suspension timings.
+// Deliberately has zero knowledge of evidence/incidents/exports: payment
+// failure must never be able to touch those domains from here.
+// ============================================================
+
+model DunningPolicy {
+  id                   String    @id @default(uuid())
+  policy_key           String
+  version              Int       @default(1)
+  grace_period_days    Int       @default(7)
+  restrict_after_days  Int       @default(14)
+  suspend_after_days   Int       @default(30)
+  terminate_after_days Int       @default(60)
+  status               String    @default("DRAFT")
+  approved_by          String?
+  approved_at          DateTime?
+  created_at           DateTime  @default(now())
+
+  @@unique([policy_key, version])
+  @@index([status])
+}
+
+model DunningCase {
+  id                  String    @id @default(uuid())
+  contract_id         String
+  dunning_policy_id   String
+  status              String    @default("ACTIVE")
+  triggered_at        DateTime  @default(now())
+  last_action_at      DateTime  @default(now())
+  resolved_at         DateTime?
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+
+  @@index([contract_id])
+  @@index([status])
+}
+
+// ============================================================
+// ZS-COM-BILL-001 P1 Part 13: SLA / service credit engine. SVC-04/FIN-04 —
+// credits are evidence-linked, approved through the generic maker-checker
+// engine, and posted only as an append-only credit note against an
+// already-issued invoice. Never rewrites security/incident history.
+// ============================================================
+
+model SlaDefinition {
+  id                  String    @id @default(uuid())
+  sla_key             String
+  version             Int       @default(1)
+  metric              String
+  /** MIN: measured value must be >= target (e.g. uptime). MAX: measured value must be <= target (e.g. response time). */
+  comparison          String    @default("MIN")
+  target_value        Decimal   @db.Decimal(10, 4)
+  service_tier        String    @default("STANDARD")
+  region              String    @default("GLOBAL")
+  measurement_window  String    @default("MONTHLY")
+  credit_formula      String    @default("{}")
+  dispute_window_days Int       @default(30)
+  status              String    @default("DRAFT")
+  approved_by         String?
+  approved_at         DateTime?
+  effective_from      DateTime  @default(now())
+  effective_to        DateTime?
+  created_at          DateTime  @default(now())
+
+  measurements SlaMeasurement[]
+
+  @@unique([sla_key, version])
+  @@index([status])
+}
+
+model SlaMeasurement {
+  id                  String   @id @default(uuid())
+  sla_definition_id   String
+  slaDefinition       SlaDefinition @relation(fields: [sla_definition_id], references: [id])
+  contract_id         String
+  period_start        DateTime
+  period_end          DateTime
+  measured_value      Decimal  @db.Decimal(10, 4)
+  breached            Boolean  @default(false)
+  evidence_ref        String?
+  measurement_source  String   @default("SYSTEM")
+  created_at          DateTime @default(now())
+
+  serviceCredits ServiceCredit[]
+
+  @@index([contract_id])
+  @@index([sla_definition_id])
+}
+
+model ServiceCredit {
+  id                  String    @id @default(uuid())
+  sla_measurement_id  String
+  slaMeasurement      SlaMeasurement @relation(fields: [sla_measurement_id], references: [id])
+  contract_id         String
+  amount              Decimal   @db.Decimal(14, 4)
+  currency            String    @default("USD")
+  status              String    @default("PROPOSED")
+  approval_id         String?
+  credit_note_id      String?
+  posted_at           DateTime?
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+
+  @@index([contract_id])
+  @@index([status])
+}
+
+// ============================================================
+// ZS-COM-BILL-001 P1 Part 15: IR retainer work orders. Consumption is
+// tracked continuously; overage past included_hours never silently bills
+// — it is either capped, blocked, or gated on an approved OVERAGE_OVERRIDE
+// commercial approval, per overage_policy.
+// ============================================================
+
+model IncidentWorkOrder {
+  id                 String    @id @default(uuid())
+  contract_id        String
+  incident_reference String
+  activation_reason  String
+  response_authority String    @default("R1")
+  activated_at       DateTime  @default(now())
+  authorized_by      String
+  included_hours     Decimal   @default(0) @db.Decimal(8, 2)
+  consumed_hours     Decimal   @default(0) @db.Decimal(8, 2)
+  overage_policy     String    @default("REQUIRE_APPROVAL")
+  overage_cap_hours  Decimal?  @db.Decimal(8, 2)
+  third_party_costs  Decimal   @default(0) @db.Decimal(14, 4)
+  customer_contact   String?
+  evidence_refs      String    @default("[]")
+  status             String    @default("ACTIVE")
+  closed_at          DateTime?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  @@index([contract_id])
+  @@index([status])
+}
+
+// ============================================================
+// ZS-COM-BILL-001 P1 Part 21: Partner/Reseller/MSP domain. Operational
+// access (delegation) never implies commercial authority — pricing is
+// never mutable through a delegation regardless of scope, and
+// entitlement always derives from the accepted order, never the partner
+// relationship directly.
+// ============================================================
+
+model Partner {
+  id          String   @id @default(uuid())
+  legal_name  String
+  partner_type String
+  status      String   @default("ACTIVE")
+  created_at  DateTime @default(now())
+
+  @@index([status])
+}
+
+model PartnerAgreement {
+  id                      String    @id @default(uuid())
+  partner_id              String
+  commission_percent      Decimal   @default(0) @db.Decimal(5, 2)
+  margin_percent          Decimal   @default(0) @db.Decimal(5, 2)
+  invoice_responsibility  String    @default("ZOIKOSHIELD")
+  tax_responsibility      String    @default("ZOIKOSHIELD")
+  support_responsibility  String    @default("ZOIKOSHIELD")
+  renewal_rights          String    @default("ZOIKOSHIELD")
+  status                  String    @default("DRAFT")
+  approved_by             String?
+  approved_at             DateTime?
+  effective_from          DateTime  @default(now())
+  effective_to            DateTime?
+  created_at              DateTime  @default(now())
+
+  @@index([partner_id])
+  @@index([status])
+}
+
+/** Explicit, tenant-scoped, revocable, expiring, non-transitive. Never grants pricing authority. */
+model PartnerDelegation {
+  id                     String    @id @default(uuid())
+  partner_id             String
+  commercial_account_id  String
+  scope                  String    @default("[]")
+  status                 String    @default("ACTIVE")
+  granted_by             String
+  expires_at             DateTime?
+  revoked_at             DateTime?
+  created_at             DateTime  @default(now())
+
+  @@index([partner_id])
+  @@index([commercial_account_id])
+  @@index([status])
+}
+
+model PartnerSettlement {
+  id                String   @id @default(uuid())
+  partner_id        String
+  period_start      DateTime
+  period_end        DateTime
+  gross_amount      Decimal  @db.Decimal(14, 4)
+  commission_amount Decimal  @db.Decimal(14, 4)
+  currency          String   @default("USD")
+  status            String   @default("DRAFT")
+  created_at        DateTime @default(now())
+
+  @@index([partner_id])
+  @@index([status])
+}
+
+// ============================================================
+// ZS-COM-BILL-001 P1 Part 23 / REG-01: sector & framework packs. A pack is
+// a support capability, never an automatic certification claim.
+// Unsupported region/pack combinations fail closed.
+// ============================================================
+
+model SectorPack {
+  id                     String    @id @default(uuid())
+  pack_key               String
+  version                Int       @default(1)
+  jurisdiction           String
+  content_license_status String    @default("PENDING")
+  display_rights         Boolean   @default(false)
+  required_connectors    String    @default("[]")
+  approved_claim_wording String?
+  release_status         String    @default("DRAFT")
+  approved_by            String?
+  approved_at            DateTime?
+  effective_from         DateTime  @default(now())
+  effective_to           DateTime?
+  created_at             DateTime  @default(now())
+
+  marketAvailability MarketAvailability[]
+
+  @@unique([pack_key, version])
+  @@index([release_status])
+}
+
+model MarketAvailability {
+  id             String   @id @default(uuid())
+  sector_pack_id String
+  sectorPack     SectorPack @relation(fields: [sector_pack_id], references: [id])
+  region         String
+  available      Boolean  @default(false)
+  created_at     DateTime @default(now())
+
+  @@unique([sector_pack_id, region])
+  @@index([region])
+}
+
+// ============================================================
+// ZS-COM-BILL-001 P1 Part 12 / AI-01: internal AI cost != customer
+// billable usage. Every AI action is logged with its true internal cost;
+// it becomes customer-billable only through the same accepted-vs-billable
+// MeteringService pipeline used everywhere else, gated on an explicit
+// customer authorization (active AI_SECURITY entitlement).
+// ============================================================
+
+model AiUsageRecord {
+  id             String   @id @default(uuid())
+  tenant_id      String
+  workflow       String
+  provider       String
+  model          String
+  input_tokens   Int      @default(0)
+  output_tokens  Int      @default(0)
+  tool_calls     Int      @default(0)
+  retrieval_calls Int     @default(0)
+  internal_cost  Decimal  @default(0) @db.Decimal(14, 6)
+  billable       Boolean  @default(false)
+  meter_event_id String?
+  occurred_at    DateTime @default(now())
+  created_at     DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([occurred_at])
+}
+
+model AiBudget {
+  id              String   @id @default(uuid())
+  tenant_id       String
+  period_start    DateTime
+  period_end      DateTime
+  budget_amount   Decimal  @db.Decimal(14, 4)
+  consumed_amount Decimal  @default(0) @db.Decimal(14, 4)
+  status          String   @default("ACTIVE")
+  created_at      DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([status])
+}
+
+// ============================================================
+// ZS-COM-BILL-001 P1 Part 26: internal unit economics. Never automatically
+// exposed as customer price — used for margin analysis / approval gating.
+// ============================================================
+
+model CostRecord {
+  id                String   @id @default(uuid())
+  tenant_id         String?
+  usage_class       String
+  provider          String
+  period_start      DateTime
+  period_end        DateTime
+  quantity          Decimal  @default(0) @db.Decimal(14, 4)
+  unit_cost         Decimal  @default(0) @db.Decimal(14, 6)
+  total_cost        Decimal  @default(0) @db.Decimal(14, 4)
+  allocation_method String   @default("DIRECT")
+  source            String
+  created_at        DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([usage_class])
+  @@index([period_start])
+}
+
+// ============================================================
+// ZS-COM-BILL-001 P1 Part 27 / REC-01: reconciliation engine. Unknown
+// state must never automatically become PAID/BILLABLE/COVERED/DELIVERED/
+// ENTITLED — it routes here as an issue instead of a silent correction.
+// ============================================================
+
+model ReconciliationRun {
+  id           String    @id @default(uuid())
+  run_type     String    @default("ON_DEMAND")
+  started_at   DateTime  @default(now())
+  completed_at DateTime?
+  status       String    @default("RUNNING")
+  issue_count  Int       @default(0)
+  created_at   DateTime  @default(now())
+
+  issues ReconciliationIssue[]
+
+  @@index([status])
+}
+
+model ReconciliationIssue {
+  id             String    @id @default(uuid())
+  run_id         String
+  run            ReconciliationRun @relation(fields: [run_id], references: [id])
+  domain         String
+  object_type    String
+  object_id      String
+  expected_value String
+  actual_value   String
+  severity       String    @default("MEDIUM")
+  reason         String
+  status         String    @default("OPEN")
+  detected_at    DateTime  @default(now())
+  resolved_at    DateTime?
+  resolution     String?
+
+  @@index([run_id])
+  @@index([status])
+  @@index([domain])
+}
+
+// ============================================================
+// ZS-COM-BILL-001 P1 Part 28 / OPS-01: commercial kill switch. Strictly
+// scoped to commercial actions — never disables security monitoring or
+// touches evidence. Kept structurally separate from any security-response
+// kill switch (none of this model's fields can reach detection/response
+// code paths).
+// ============================================================
+
+model CommercialKillSwitch {
+  id              String    @id @default(uuid())
+  scope_type      String
+  scope_value     String?
+  blocked_actions String    @default("[]")
+  reason          String
+  activated_by    String
+  activated_at    DateTime  @default(now())
+  review_at       DateTime?
+  status          String    @default("ACTIVE")
+  deactivated_by  String?
+  deactivated_at  DateTime?
+  created_at      DateTime  @default(now())
+
+  @@index([scope_type, scope_value])
+  @@index([status])
 }
 
 // ============================================================

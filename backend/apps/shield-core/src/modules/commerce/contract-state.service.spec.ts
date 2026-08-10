@@ -1,11 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ContractStateService } from './contract-state.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { IdempotencyService } from '../idempotency/idempotency.service';
 import { ConflictException } from '@nestjs/common';
 
 describe('ContractStateService (Section 28 State Machine)', () => {
   let service: ContractStateService;
   let prismaMock: any;
+  let idempotencyMock: any;
 
   beforeEach(async () => {
     prismaMock = {
@@ -19,11 +21,18 @@ describe('ContractStateService (Section 28 State Machine)', () => {
       },
       $transaction: jest.fn().mockImplementation((cb) => cb(prismaMock)),
     };
+    idempotencyMock = {
+      run: jest.fn().mockImplementation(async (_params, fn) => {
+        const result = await fn();
+        return { ...result, replayed: false };
+      }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ContractStateService,
         { provide: PrismaService, useValue: prismaMock },
+        { provide: IdempotencyService, useValue: idempotencyMock },
       ],
     }).compile();
 

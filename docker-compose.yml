@@ -90,6 +90,17 @@ services:
     volumes:
       - opensearch_data:/usr/share/opensearch/data
 
+  shield-core-migrate:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
+
   shield-core:
     build:
       context: ./backend
@@ -104,7 +115,10 @@ services:
         condition: service_healthy
       minio:
         condition: service_healthy
+      shield-core-migrate:
+        condition: service_completed_successfully
     environment:
+      NODE_ENV: development
       PORT: 3001
       DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
       REDIS_URL: redis://redis:6379
