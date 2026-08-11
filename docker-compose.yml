@@ -138,6 +138,8 @@ services:
       MICROSOFT_CALLBACK_URL: ${MICROSOFT_CALLBACK_URL:-}
       EMAIL_USER: ${EMAIL_USER:-}
       EMAIL_APP_PASSWORD: ${EMAIL_APP_PASSWORD:-}
+    volumes:
+      - ./docs:/app/docs:ro
     ports:
       - "${SHIELD_CORE_PORT:-3001}:3001"
 
