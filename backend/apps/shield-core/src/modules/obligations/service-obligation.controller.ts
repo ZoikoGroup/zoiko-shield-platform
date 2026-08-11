@@ -7,14 +7,22 @@ import {
   Query,
   Body,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
+import { IsOptional, IsString } from 'class-validator';
+import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { ServiceObligationService, CreateServiceObligationDto } from './service-obligation.service';
 
 export class UpdateObligationStatusDto {
+  @IsString()
   status!: string;
+
+  @IsOptional()
+  @IsString()
   evidenceRef?: string;
 }
 
+@UseGuards(JwtAuthGuard)
 @Controller('api/v1/obligations')
 export class ServiceObligationController {
   constructor(private readonly obligationService: ServiceObligationService) {}

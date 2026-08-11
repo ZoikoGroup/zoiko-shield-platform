@@ -1,5 +1,8 @@
 import { Injectable, Logger, ConflictException, NotFoundException } from '@nestjs/common';
+import { IsISO8601, IsObject, IsString, IsUUID } from 'class-validator';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
+import { IdempotencyService } from '../idempotency/idempotency.service';
 import * as crypto from 'crypto';
 
 const ALLOWED_TRANSITIONS: Record<string, string[]> = {
@@ -16,10 +19,19 @@ const ALLOWED_TRANSITIONS: Record<string, string[]> = {
 };
 
 export class CreateContractDto {
+  @IsUUID()
   commercialAccountId!: string;
+
+  @IsUUID()
   catalogVersionId!: string;
+
+  @IsISO8601()
   termStart!: Date;
+
+  @IsISO8601()
   termEnd!: Date;
+
+  @IsObject()
   orderConfig!: Record<string, any>;
 }
 
@@ -27,16 +39,22 @@ export class CreateContractDto {
 export class ContractStateService {
   private readonly logger = new Logger(ContractStateService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly idempotencyService: IdempotencyService,
+  ) {}
 
   /**
-   * Create new contract in DRAFT state
+   * Create new contract in DRAFT state. Accepts an optional transaction
+   * client so callers (e.g. OrderService.provisionOrder) can fold contract
+   * creation into a single atomic transaction with sibling writes.
    */
-  async createContract(dto: CreateContractDto) {
+  async createContract(dto: CreateContractDto, tx?: Prisma.TransactionClient) {
+    const client = tx ?? this.prisma;
     const configString = JSON.stringify(dto.orderConfig);
     const snapshotHash = crypto.createHash('sha256').update(configString).digest('hex');
 
-    return this.prisma.contract.create({
+    return client.contract.create({
       data: {
         commercial_account_id: dto.commercialAccountId,
         catalog_version_id: dto.catalogVersionId,
@@ -79,41 +97,60 @@ export class ContractStateService {
     actor = 'system',
     idempotencyKey?: string,
   ) {
-    const contract = await this.getContractById(contractId);
-    const currentStatus = contract.status;
+    const doTransition = async () => {
+      const contract = await this.getContractById(contractId);
+      const currentStatus = contract.status;
 
-    const allowed = ALLOWED_TRANSITIONS[currentStatus] || [];
-    if (!allowed.includes(targetStatus)) {
-      throw new ConflictException(
-        `Illegal contract transition from '${currentStatus}' to '${targetStatus}'`,
-      );
+      const allowed = ALLOWED_TRANSITIONS[currentStatus] || [];
+      if (!allowed.includes(targetStatus)) {
+        throw new ConflictException(
+          `Illegal contract transition from '${currentStatus}' to '${targetStatus}'`,
+        );
+      }
+
+      // Execute state transition and outbox entry in single transaction
+      return this.prisma.$transaction(async (tx) => {
+        const updatedContract = await tx.contract.update({
+          where: { id: contractId },
+          data: { status: targetStatus },
+        });
+
+        await tx.commercialEvent.create({
+          data: {
+            event_type: 'contract.state_changed',
+            tenant_id: contract.commercial_account_id,
+            actor,
+            payload: JSON.stringify({
+              contractId,
+              previousStatus: currentStatus,
+              newStatus: targetStatus,
+              updatedAt: new Date(),
+            }),
+            idempotency_key: `contract-transition-${contractId}-${targetStatus}-${Date.now()}-${crypto.randomUUID()}`,
+          },
+        });
+
+        return updatedContract;
+      });
+    };
+
+    if (!idempotencyKey) {
+      return doTransition();
     }
 
-    const key = idempotencyKey || `contract-transition-${contractId}-${targetStatus}-${Date.now()}`;
+    // ZS-COM-BILL-001 Part 4: same key + same request replays the prior
+    // response; same key + different request is a 409, never a raw
+    // unique-constraint error.
+    const result = await this.idempotencyService.run(
+      {
+        key: idempotencyKey,
+        operation: 'commerce.contract.transition',
+        actorId: actor,
+        requestPayload: { contractId, targetStatus },
+      },
+      async () => ({ statusCode: 200, body: await doTransition() }),
+    );
 
-    // Execute state transition and outbox entry in single transaction
-    return this.prisma.$transaction(async (tx) => {
-      const updatedContract = await tx.contract.update({
-        where: { id: contractId },
-        data: { status: targetStatus },
-      });
-
-      await tx.commercialEvent.create({
-        data: {
-          event_type: 'contract.state_changed',
-          tenant_id: contract.commercial_account_id,
-          actor,
-          payload: JSON.stringify({
-            contractId,
-            previousStatus: currentStatus,
-            newStatus: targetStatus,
-            updatedAt: new Date(),
-          }),
-          idempotency_key: key,
-        },
-      });
-
-      return updatedContract;
-    });
+    return result.body;
   }
 }

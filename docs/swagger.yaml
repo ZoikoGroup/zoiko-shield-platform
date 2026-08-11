@@ -88,6 +88,12 @@ tags:
     description: Security response proposals, human-in-the-loop approvals, and execution
   - name: InternalMicroservices
     description: Inter-service communication endpoints (Anchor, AI, Action)
+  - name: Normalization
+    description: Normalized event replay, quarantine review, and reprocessing (Shield Ingest)
+  - name: MicrosoftEntraConnector
+    description: Microsoft Entra ID connector OAuth flow, sync, and Graph webhook intake
+  - name: Health
+    description: Per-service liveness checks
 
 components:
   securitySchemes:
@@ -101,6 +107,28 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Bearer extractor for API clients, OAuth2 tokens, and inter-service calls.
+    InternalServiceAuth:
+      type: apiKey
+      in: header
+      name: x-internal-service-token
+      description: >
+        Shared-secret header (INTERNAL_SERVICE_TOKEN) required by InternalAuthGuard.
+        Restricted to service-to-service calls between shield-core/shield-ai/shield-action/shield-anchor —
+        never issued to customers or developer-API clients.
+
+  parameters:
+    TenantIdHeader:
+      name: x-tenant-id
+      in: header
+      required: false
+      description: Resolved tenant context for this request. Defaults to "default-tenant" when omitted (dev convenience — production deployments resolve this from session/token, not client-supplied trust).
+      schema: { type: string }
+    ActorIdHeader:
+      name: x-actor-id
+      in: header
+      required: false
+      description: Resolved actor/principal performing this request, used for authorization decisions and attribution. Defaults to "unknown-actor" when omitted.
+      schema: { type: string }
 
   schemas:
     RegisterRequest:
@@ -462,6 +490,82 @@ paths:
       responses:
         "200": { description: Logged out }
 
+  /auth/logout-all:
+    post:
+      tags: [Auth]
+      summary: Logout all sessions for the current user
+      security: [{ CookieAuth: [] }]
+      responses:
+        "200": { description: All sessions revoked }
+
+  /auth/resend-verification:
+    post:
+      tags: [Auth]
+      summary: Resend email verification OTP
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/EmailOnlyRequest" } } }
+      responses:
+        "200": { description: Verification email resent }
+
+  /auth/password-recovery/request:
+    post:
+      tags: [Auth]
+      summary: Request a password recovery code
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/EmailOnlyRequest" } } }
+      responses:
+        "200": { description: Recovery code sent if the account exists }
+
+  /auth/password-recovery/verify:
+    post:
+      tags: [Auth]
+      summary: Verify a password recovery code
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/VerifyEmailRequest" } } }
+      responses:
+        "200": { description: Recovery grant issued }
+
+  /auth/password-recovery/reset:
+    post:
+      tags: [Auth]
+      summary: Reset password using a recovery grant
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/PasswordRecoveryResetRequest" } } }
+      responses:
+        "200": { description: Password reset, all sessions revoked }
+
+  /auth/google:
+    get:
+      tags: [Auth]
+      summary: Start Google OAuth federated login
+      responses:
+        "302": { description: Redirect to Google consent screen }
+
+  /auth/google/callback:
+    get:
+      tags: [Auth]
+      summary: Google OAuth callback
+      responses:
+        "200": { description: Login completed, cookies set }
+
+  /auth/microsoft:
+    get:
+      tags: [Auth]
+      summary: Start Microsoft OAuth federated login
+      responses:
+        "302": { description: Redirect to Microsoft consent screen }
+
+  /auth/microsoft/callback:
+    get:
+      tags: [Auth]
+      summary: Microsoft OAuth callback
+      responses:
+        "200": { description: Login completed, cookies set }
+
   /auth/me:
     get:
       tags: [Auth]
@@ -695,6 +799,13 @@ paths:
       responses:
         "200": { description: Telemetry usage summary }
 
+  /api/v1/metering/resources:
+    get:
+      tags: [Metering]
+      summary: Get metered resource observations
+      responses:
+        "200": { description: Resource observations }
+
   # ── Security Context & Controls ──
   /api/v1/context/assets:
     get:
@@ -751,6 +862,14 @@ paths:
       responses:
         "201": { description: Audit package created }
 
+  /api/v1/audit-packages/{packageId}/build:
+    post:
+      tags: [AuditPackages]
+      summary: Build the package manifest (ManifestCore only — no anchor proof yet)
+      parameters: [{ name: packageId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: AuditPackage advances to VALIDATING }
+
   /api/v1/audit-packages/{packageId}/freeze:
     post:
       tags: [AuditPackages]
@@ -758,6 +877,7 @@ paths:
       parameters: [{ name: packageId, in: path, required: true, schema: { type: string } }]
       responses:
         "200": { description: Audit package frozen }
+        "409": { description: PACKAGE_CHANGED_AFTER_APPROVAL — manifest no longer matches the approved hash, reapproval required }
 
   /api/v1/evidence/{evidenceId}:
     get:
@@ -766,6 +886,14 @@ paths:
       parameters: [{ name: evidenceId, in: path, required: true, schema: { type: string } }]
       responses:
         "200": { description: Evidence details }
+
+  /api/v1/evidence/{evidenceId}/lineage:
+    get:
+      tags: [Evidence]
+      summary: Get evidence lineage graph (bounded 20-hop parent/child reconstruction)
+      parameters: [{ name: evidenceId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Lineage chain }
 
   /api/v1/evidence/{evidenceId}/verify:
     post:
@@ -784,6 +912,11 @@ paths:
         content: { application/json: { schema: { $ref: "#/components/schemas/CreateExportJobRequest" } } }
       responses:
         "201": { description: Export job created }
+    get:
+      tags: [Exports]
+      summary: List export jobs
+      responses:
+        "200": { description: Export jobs list }
 
   # ── Reporting & Detections ──
   /api/v1/reporting/operational:
@@ -890,10 +1023,1231 @@ paths:
       responses:
         "201": { description: Proposal created }
 
+  /api/v1/response-proposals/{proposalId}:
+    get:
+      tags: [ResponseProposals]
+      summary: Get response proposal
+      parameters: [{ name: proposalId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: ActionProposal }
+
+  /api/v1/response-proposals/{proposalId}/approve:
+    post:
+      tags: [ResponseProposals]
+      summary: Approve a response proposal (creates ActionApproval, binds approved_material_hash, publishes action.approved.v1)
+      parameters: [{ name: proposalId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "201": { description: Proposal approved }
+
+  /api/v1/response-proposals/{proposalId}/reject:
+    post:
+      tags: [ResponseProposals]
+      summary: Reject a response proposal
+      parameters: [{ name: proposalId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Proposal rejected }
+
   /internal/v1/checkpoints:
     post:
       tags: [InternalMicroservices]
       summary: Request Merkle anchor checkpoint (Shield Anchor)
-      security: [{ BearerAuth: [] }]
+      security: [{ InternalServiceAuth: [] }]
       responses:
         "200": { description: Proof envelope generated }
+
+  # ── Alerts (remaining routes) ──
+  /api/v1/alerts/{alertId}:
+    get:
+      tags: [Alerts]
+      summary: Get alert details
+      parameters: [{ name: alertId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Alert details }
+        "404": { description: Alert not found }
+
+  /api/v1/alerts/{alertId}/status:
+    patch:
+      tags: [Alerts]
+      summary: Update alert status
+      parameters: [{ name: alertId, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/UpdateAlertStatusRequest" } } }
+      responses:
+        "200": { description: Status updated }
+
+  /api/v1/alerts/{alertId}/acknowledge:
+    post:
+      tags: [Alerts]
+      summary: Acknowledge alert
+      parameters: [{ name: alertId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Alert acknowledged }
+
+  /api/v1/alerts/{alertId}/assign:
+    post:
+      tags: [Alerts]
+      summary: Assign alert to an analyst
+      parameters: [{ name: alertId, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AssignAlertRequest" } } }
+      responses:
+        "200": { description: Alert assigned }
+
+  /api/v1/alerts/{alertId}/escalate:
+    post:
+      tags: [Alerts]
+      summary: Escalate alert
+      parameters: [{ name: alertId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Alert escalated }
+
+  /api/v1/alerts/{alertId}/close:
+    post:
+      tags: [Alerts]
+      summary: Close alert
+      parameters: [{ name: alertId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Alert closed }
+
+  # ── Case Management (remaining routes) ──
+  /api/v1/cases/{caseId}:
+    get:
+      tags: [CaseManagement]
+      summary: Get case details
+      parameters: [{ name: caseId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Case details }
+    patch:
+      tags: [CaseManagement]
+      summary: Update case fields
+      parameters: [{ name: caseId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Case updated }
+
+  /api/v1/cases/{caseId}/transition:
+    post:
+      tags: [CaseManagement]
+      summary: Transition case state (state-machine gated)
+      parameters: [{ name: caseId, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/TransitionCaseRequest" } } }
+      responses:
+        "200": { description: Case transitioned }
+        "400": { description: Invalid transition }
+
+  /api/v1/cases/{caseId}/alerts:
+    post:
+      tags: [CaseManagement]
+      summary: Link an alert to a case
+      parameters: [{ name: caseId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "201": { description: Alert linked }
+
+  /api/v1/cases/{caseId}/timeline:
+    get:
+      tags: [CaseManagement]
+      summary: Get case timeline
+      parameters: [{ name: caseId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Timeline entries }
+
+  /api/v1/cases/{caseId}/notes:
+    post:
+      tags: [CaseManagement]
+      summary: Add analyst note to case
+      parameters: [{ name: caseId, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AddNoteRequest" } } }
+      responses:
+        "201": { description: Note added }
+
+  /api/v1/cases/{caseId}/evidence:
+    get:
+      tags: [CaseManagement]
+      summary: List evidence linked to a case
+      parameters: [{ name: caseId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Linked evidence }
+
+  /api/v1/cases/{caseId}/decisions:
+    post:
+      tags: [CaseManagement]
+      summary: Record an investigation decision
+      parameters: [{ name: caseId, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/RecordDecisionRequest" } } }
+      responses:
+        "201": { description: Decision recorded }
+
+  # ── Case AI (remaining routes) ──
+  /api/v1/cases/{caseId}/ai/hypotheses:
+    post:
+      tags: [CaseAI]
+      summary: Generate AI investigation hypotheses
+      parameters: [{ name: caseId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: AI hypotheses (advisory only, evidence-cited) }
+
+  /api/v1/cases/{caseId}/ai/next-queries:
+    post:
+      tags: [CaseAI]
+      summary: Generate AI-suggested next investigation queries
+      parameters: [{ name: caseId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Suggested next queries }
+
+  /api/v1/cases/{caseId}/ai/response-recommendation:
+    post:
+      tags: [CaseAI]
+      summary: Generate AI response recommendation (advisory — creates no authority by itself)
+      parameters: [{ name: caseId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: AI response recommendation, human acceptance required before any ActionProposal }
+
+  /api/v1/ai/outputs/{outputId}/review:
+    post:
+      tags: [CaseAI]
+      summary: Record human review of an AI output (proxies to Shield AI's internal review endpoint)
+      parameters: [{ name: outputId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Review recorded }
+
+  # ── Risk Management (remaining routes) ──
+  /api/v1/risks/{riskId}:
+    get:
+      tags: [RiskManagement]
+      summary: Get risk with transparent factor breakdown
+      parameters: [{ name: riskId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Risk with factors (never a bare score) }
+    patch:
+      tags: [RiskManagement]
+      summary: Get/assert risk (tenant ownership check)
+      parameters: [{ name: riskId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Risk }
+
+  /api/v1/risks/{riskId}/treatments:
+    post:
+      tags: [RiskManagement]
+      summary: Add a risk treatment plan (MITIGATE/TRANSFER/AVOID/ACCEPT)
+      parameters: [{ name: riskId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "201": { description: Treatment created }
+
+  /api/v1/risks/{riskId}/accept:
+    post:
+      tags: [RiskManagement]
+      summary: Record a risk acceptance (named authority, rationale, expiry required — never silent/permanent)
+      parameters: [{ name: riskId, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/AcceptRiskRequest" } } }
+      responses:
+        "201": { description: Risk accepted }
+        "400": { description: Missing authority/rationale/compensating controls/expiry }
+
+  /api/v1/exceptions:
+    get:
+      tags: [RiskManagement]
+      summary: List exceptions
+      responses:
+        "200": { description: Exceptions list }
+    post:
+      tags: [RiskManagement]
+      summary: Request a control/requirement/risk exception
+      responses:
+        "201": { description: Exception requested (status REQUESTED) }
+
+  /api/v1/exceptions/{id}/approve:
+    post:
+      tags: [RiskManagement]
+      summary: Approve a requested exception
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Exception approved }
+
+  /api/v1/exceptions/{id}/revoke:
+    post:
+      tags: [RiskManagement]
+      summary: Revoke an exception before its natural expiry
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Exception revoked }
+
+  # ── Outbound Webhooks (remaining routes) ──
+  /api/v1/webhooks/{id}:
+    get:
+      tags: [OutboundWebhooks]
+      summary: Get webhook subscription
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Subscription details }
+    patch:
+      tags: [OutboundWebhooks]
+      summary: Update webhook subscription (e.g. suspend)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Subscription updated }
+    delete:
+      tags: [OutboundWebhooks]
+      summary: Revoke webhook subscription
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Subscription revoked }
+
+  /api/v1/webhooks/{id}/test:
+    post:
+      tags: [OutboundWebhooks]
+      summary: Send a synthetic test event (test=true, non-sensitive payload)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Test delivery queued }
+
+  /api/v1/webhooks/{id}/rotate-secret:
+    post:
+      tags: [OutboundWebhooks]
+      summary: Rotate signing secret (overlap rotation — vault-managed, never logged)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: New secret version issued }
+
+  /api/v1/webhooks/{id}/deliveries:
+    get:
+      tags: [OutboundWebhooks]
+      summary: List delivery attempts for a subscription
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Deliveries list }
+
+  /api/v1/webhooks/{id}/deliveries/{deliveryId}:
+    get:
+      tags: [OutboundWebhooks]
+      summary: Get delivery detail with attempt history
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: deliveryId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Delivery with attempts }
+
+  /api/v1/webhooks/{id}/deliveries/{deliveryId}/replay:
+    post:
+      tags: [OutboundWebhooks]
+      summary: Manually replay a delivery (authorized, audited, bounded — retains original eventId, re-signs with current secret, never re-triggers response actions)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: deliveryId, in: path, required: true, schema: { type: string } }
+      responses:
+        "201": { description: New delivery created with replayOfDeliveryId set }
+
+  # ── Audit Packages (remaining routes) ──
+  /api/v1/audit-packages/{packageId}:
+    get:
+      tags: [AuditPackages]
+      summary: Get audit package
+      parameters: [{ name: packageId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Audit package }
+
+  /api/v1/audit-packages/{packageId}/validate:
+    post:
+      tags: [AuditPackages]
+      summary: Run pre-freeze validation checklist
+      parameters: [{ name: packageId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: "{ ready, blockingIssues[], limitations[] }" }
+
+  /api/v1/audit-packages/{packageId}/approve:
+    post:
+      tags: [AuditPackages]
+      summary: Approve package (binds approver to the exact manifestCoreHash; rejects approver == creator/evaluator-author/manual-test performer)
+      parameters: [{ name: packageId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "201": { description: AuditPackageApproval recorded }
+        "403": { description: Segregation-of-duties violation }
+
+  /api/v1/audit-packages/{packageId}/manifest:
+    get:
+      tags: [AuditPackages]
+      summary: Get the package manifest (core-only pre-freeze, full envelope post-freeze)
+      parameters: [{ name: packageId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Manifest }
+
+  /api/v1/audit-packages/{packageId}/evidence:
+    get:
+      tags: [AuditPackages]
+      summary: Get the package's evidence index
+      parameters: [{ name: packageId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Evidence index entries }
+
+  /api/v1/audit-packages/{packageId}/proofs:
+    get:
+      tags: [AuditPackages]
+      summary: Get the anchor proof envelope (checkpoint, Merkle proofs, signature, witness receipts)
+      parameters: [{ name: packageId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Proof envelope, or NOT_FROZEN_YET before freeze }
+
+  /api/v1/audit-packages/{packageId}/supersede:
+    post:
+      tags: [AuditPackages]
+      summary: Correct a frozen package by superseding it (never mutates the frozen original — it remains independently verifiable)
+      parameters: [{ name: packageId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "201": { description: New DRAFT package created with supersedesPackageId set }
+        "400": { description: Original package is not FROZEN }
+
+  # ── Reporting (remaining routes) ──
+  /api/v1/reporting/security:
+    get:
+      tags: [Reporting]
+      summary: Get security posture summary (live counts — openAlerts, criticalAlerts, openCases)
+      responses:
+        "200": { description: Security summary }
+
+  /api/v1/reporting/assurance:
+    get:
+      tags: [Reporting]
+      summary: Get assurance summary (control effectiveness, evidence gaps, active risks/exceptions)
+      responses:
+        "200": { description: Assurance summary — PARTIAL/UNKNOWN inputs always disclosed, never rendered as healthy }
+
+  /api/v1/reporting/service-health:
+    get:
+      tags: [Reporting]
+      summary: Get platform service-health summary (connector/AI/action-simulation/ledger/anchor health)
+      responses:
+        "200": { description: Service health — outputHealth never exceeds the weakest material input }
+
+  /api/v1/reporting/snapshots:
+    post:
+      tags: [Reporting]
+      summary: Build an immutable, versioned ReportSnapshot (never assembled from live queries at render time)
+      responses:
+        "201": { description: Snapshot created with snapshotHash }
+
+  /api/v1/reporting/snapshots/{snapshotId}:
+    get:
+      tags: [Reporting]
+      summary: Get a report snapshot
+      parameters: [{ name: snapshotId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Snapshot }
+
+  /api/v1/reporting/executive/snapshots:
+    post:
+      tags: [Reporting]
+      summary: Build an ExecutiveReportSnapshot from a frozen ReportSnapshot (every composite metric exposes its factors)
+      responses:
+        "201": { description: Executive snapshot created }
+
+  # ── Exports (remaining routes) ──
+  /api/v1/exports/{exportId}:
+    get:
+      tags: [Exports]
+      summary: Get export job status
+      parameters: [{ name: exportId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Export job }
+
+  /api/v1/exports/{exportId}/cancel:
+    post:
+      tags: [Exports]
+      summary: Cancel an in-progress export job
+      parameters: [{ name: exportId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Export job cancelled }
+        "409": { description: Job is already terminal }
+
+  /api/v1/exports/{exportId}/manifest:
+    get:
+      tags: [Exports]
+      summary: Get the export manifest (schema versions, counts, hashes, legal-hold state, known limitations)
+      parameters: [{ name: exportId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Export manifest }
+
+  /api/v1/exports/{exportId}/download:
+    get:
+      tags: [Exports]
+      summary: Issue a short-lived signed download token (object storage is never exposed directly)
+      parameters: [{ name: exportId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: "{ token, expiresAt }" }
+        "403": { description: Job is not in a downloadable state }
+
+  # ── Security Context (remaining routes) ──
+  /api/v1/context/assets/{assetId}:
+    get:
+      tags: [SecurityContext]
+      summary: Get resolved asset context
+      parameters: [{ name: assetId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Asset context }
+
+  /api/v1/context/identities:
+    get:
+      tags: [SecurityContext]
+      summary: List resolved identities
+      responses:
+        "200": { description: Identities list }
+
+  /api/v1/context/identities/{identityId}:
+    get:
+      tags: [SecurityContext]
+      summary: Get resolved identity context
+      parameters: [{ name: identityId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Identity context }
+
+  /api/v1/context/snapshots/{snapshotId}:
+    get:
+      tags: [SecurityContext]
+      summary: Get a context resolution snapshot
+      parameters: [{ name: snapshotId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Context snapshot }
+
+  /api/v1/context/identities/resolve:
+    post:
+      tags: [SecurityContext]
+      summary: Resolve identity context from a normalized event
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/ResolveIdentityRequest" } } }
+      responses:
+        "200": { description: Resolved identity context }
+
+  # ── Detections (remaining routes) ──
+  /api/v1/detections/definitions/{definitionId}/versions:
+    post:
+      tags: [Detections]
+      summary: Create a new draft detection rule version
+      parameters: [{ name: definitionId, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreateDetectionVersionRequest" } } }
+      responses:
+        "201": { description: Draft version created }
+
+  /api/v1/detections/versions/{versionId}/publish:
+    post:
+      tags: [Detections]
+      summary: Publish a detection version (immutable once published — only one PUBLISHED version per definition)
+      parameters: [{ name: versionId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Version published }
+        "409": { description: Already published, or another version is already active }
+
+  /api/v1/detections/matches:
+    get:
+      tags: [Detections]
+      summary: List detection matches
+      responses:
+        "200": { description: Matches list }
+
+  /api/v1/detections/evaluations/{evaluationId}:
+    get:
+      tags: [Detections]
+      summary: Get a detection evaluation
+      parameters: [{ name: evaluationId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Evaluation record }
+
+  /api/v1/detections/evaluations/{evaluationId}/replay:
+    post:
+      tags: [Detections]
+      summary: Replay a detection evaluation against its original frozen event snapshot
+      parameters: [{ name: evaluationId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Replay result }
+
+  # ── Controls (remaining routes) ──
+  /api/v1/controls/{controlId}:
+    get:
+      tags: [Controls]
+      summary: Get control objective
+      parameters: [{ name: controlId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Control objective }
+
+  /api/v1/control-implementations/{id}:
+    patch:
+      tags: [Controls]
+      summary: Transition control implementation status (state-machine gated; NOT_APPLICABLE requires rationale + authorization)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Implementation updated }
+        "400": { description: Invalid transition, or NOT_APPLICABLE without rationale }
+
+  /api/v1/control-implementations/{id}/scopes:
+    post:
+      tags: [Controls]
+      summary: Declare control scope (legal entity / environment / business unit / asset / identity scope)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "201": { description: Scope declared }
+
+  # ── Catalog (remaining routes) ──
+  /api/v1/catalog/versions/{id}/approve:
+    patch:
+      tags: [Catalog]
+      summary: Approve a catalog version
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Version approved }
+
+  /api/v1/catalog/price-books:
+    post:
+      tags: [Catalog]
+      summary: Create a price book
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/CreatePriceBookRequest" } } }
+      responses:
+        "201": { description: Price book created }
+
+  /api/v1/catalog/price-books/{id}/approve:
+    patch:
+      tags: [Catalog]
+      summary: Approve a price book
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Price book approved }
+
+  /api/v1/catalog/price-books/active:
+    get:
+      tags: [Catalog]
+      summary: Get the active price book
+      responses:
+        "200": { description: Active price book }
+
+  # ── Developer API (remaining routes) ──
+  /api/v1/api-clients/{id}/suspend:
+    post:
+      tags: [DeveloperAPI]
+      summary: Suspend an API client
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Client suspended }
+
+  /api/v1/api-clients/{id}/revoke:
+    post:
+      tags: [DeveloperAPI]
+      summary: Revoke an API client and all its credentials
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Client and credentials revoked }
+
+  /api/v1/api-clients/{id}/rotate-credential:
+    post:
+      tags: [DeveloperAPI]
+      summary: Rotate API client credential (overlap rotation — old version RETIRING, then REVOKED)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "201": { description: New credential issued (raw secret returned once, never stored plaintext) }
+
+  /api/v1/api-clients/{id}/scopes:
+    post:
+      tags: [DeveloperAPI]
+      summary: Grant an API scope to a client (authorized, recorded, no permanent hidden elevation)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody:
+        required: true
+        content: { application/json: { schema: { $ref: "#/components/schemas/GrantScopeRequest" } } }
+      responses:
+        "201": { description: Scope grant recorded }
+
+  # ── RBAC ──
+  /permissions:
+    post:
+      tags: [RBAC]
+      summary: Create a permission
+      security: [{ CookieAuth: [] }]
+      responses:
+        "201": { description: Permission created }
+
+  /roles:
+    get:
+      tags: [RBAC]
+      summary: List roles (optionally scoped by tenant)
+      security: [{ CookieAuth: [] }]
+      responses:
+        "200": { description: Roles list }
+    post:
+      tags: [RBAC]
+      summary: Create a role with permission codes
+      security: [{ CookieAuth: [] }]
+      responses:
+        "201": { description: Role created }
+
+  /roles/{roleId}/permissions:
+    patch:
+      tags: [RBAC]
+      summary: Update a role's permission set
+      security: [{ CookieAuth: [] }]
+      parameters: [{ name: roleId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Role permissions updated }
+
+  /tenants/{tenantId}/invitations:
+    post:
+      tags: [RBAC]
+      summary: Invite a principal to a tenant with a role (only an inviter holding member:invite)
+      security: [{ CookieAuth: [] }]
+      parameters: [{ name: tenantId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "201": { description: Invitation created, token issued out-of-band }
+
+  /auth/invitations/{token}/accept:
+    post:
+      tags: [RBAC]
+      summary: Accept a tenant invitation (creates/updates TenantMembership — role/tenant come from the token, never self-chosen)
+      parameters: [{ name: token, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Membership granted }
+        "403": { description: Invitation email mismatch }
+        "404": { description: Invitation not found, expired, or already used }
+
+  # ── Onboarding ──
+  /onboarding:
+    post:
+      tags: [Onboarding]
+      summary: Run tenant onboarding workflow
+      security: [{ CookieAuth: [] }]
+      responses:
+        "201": { description: Onboarding completed — tenant/organization/environment provisioned }
+
+  # ── Tenant ──
+  /tenant:
+    get:
+      tags: [Tenant]
+      summary: List tenants visible to the current principal
+      security: [{ CookieAuth: [] }]
+      responses:
+        "200": { description: Tenants list }
+
+  /tenant/{id}:
+    get:
+      tags: [Tenant]
+      summary: Get tenant
+      security: [{ CookieAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Tenant, schema: { $ref: "#/components/schemas/Tenant" } }
+
+  /tenant/{id}/status:
+    patch:
+      tags: [Tenant]
+      summary: Update tenant lifecycle status
+      security: [{ CookieAuth: [] }]
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Tenant status updated }
+
+  # ── Environment ──
+  /tenant/{tenantId}/environments:
+    post:
+      tags: [Environment]
+      summary: Create environment
+      security: [{ CookieAuth: [] }]
+      parameters: [{ name: tenantId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "201": { description: Environment created }
+    get:
+      tags: [Environment]
+      summary: List environments for a tenant
+      security: [{ CookieAuth: [] }]
+      parameters: [{ name: tenantId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Environments list }
+
+  /tenant/{tenantId}/environments/{id}:
+    get:
+      tags: [Environment]
+      summary: Get environment
+      security: [{ CookieAuth: [] }]
+      parameters:
+        - { name: tenantId, in: path, required: true, schema: { type: string } }
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Environment }
+    patch:
+      tags: [Environment]
+      summary: Update environment
+      security: [{ CookieAuth: [] }]
+      parameters:
+        - { name: tenantId, in: path, required: true, schema: { type: string } }
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Environment updated }
+    delete:
+      tags: [Environment]
+      summary: Delete environment
+      security: [{ CookieAuth: [] }]
+      parameters:
+        - { name: tenantId, in: path, required: true, schema: { type: string } }
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Environment deleted }
+
+  # ── Legal Entity ──
+  /tenant/{tenantId}/legal-entities:
+    post:
+      tags: [LegalEntity]
+      summary: Create legal entity
+      security: [{ CookieAuth: [] }]
+      parameters: [{ name: tenantId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "201": { description: Legal entity created }
+    get:
+      tags: [LegalEntity]
+      summary: List legal entities for a tenant
+      security: [{ CookieAuth: [] }]
+      parameters: [{ name: tenantId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Legal entities list }
+
+  /tenant/{tenantId}/legal-entities/{id}:
+    get:
+      tags: [LegalEntity]
+      summary: Get legal entity
+      security: [{ CookieAuth: [] }]
+      parameters:
+        - { name: tenantId, in: path, required: true, schema: { type: string } }
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Legal entity }
+    patch:
+      tags: [LegalEntity]
+      summary: Update legal entity
+      security: [{ CookieAuth: [] }]
+      parameters:
+        - { name: tenantId, in: path, required: true, schema: { type: string } }
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Legal entity updated }
+    delete:
+      tags: [LegalEntity]
+      summary: Delete legal entity
+      security: [{ CookieAuth: [] }]
+      parameters:
+        - { name: tenantId, in: path, required: true, schema: { type: string } }
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Legal entity deleted }
+
+  # ── Organization ──
+  /v1/organizations:
+    post:
+      tags: [Organization]
+      summary: Create organization
+      responses:
+        "201": { description: Organization created }
+    get:
+      tags: [Organization]
+      summary: List organizations
+      responses:
+        "200": { description: Organizations list }
+
+  /v1/organizations/{id}:
+    get:
+      tags: [Organization]
+      summary: Get organization
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Organization }
+    patch:
+      tags: [Organization]
+      summary: Update organization
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Organization updated }
+    delete:
+      tags: [Organization]
+      summary: Delete organization
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Organization deleted }
+
+  # ── Customer ──
+  /v1/customers:
+    post:
+      tags: [Customer]
+      summary: Create customer account
+      responses:
+        "201": { description: Customer created }
+    get:
+      tags: [Customer]
+      summary: List customers
+      responses:
+        "200": { description: Customers list }
+
+  /v1/customers/{id}:
+    get:
+      tags: [Customer]
+      summary: Get customer
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Customer }
+    patch:
+      tags: [Customer]
+      summary: Update customer
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Customer updated }
+    delete:
+      tags: [Customer]
+      summary: Delete customer
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Customer deleted }
+
+  # ── Assessments ──
+  /api/v1/assessments:
+    get:
+      tags: [Controls]
+      summary: List open evidence gaps for the tenant (assessment overview)
+      parameters: [{ $ref: "#/components/parameters/TenantIdHeader" }]
+      responses:
+        "200": { description: Open evidence gaps }
+    post:
+      tags: [Controls]
+      summary: Run an assessment for a control implementation + test version over a period (incomplete evidence stops at EVIDENCE_INCOMPLETE — never proceeds to evaluation on partial evidence)
+      parameters: [{ $ref: "#/components/parameters/TenantIdHeader" }, { $ref: "#/components/parameters/ActorIdHeader" }]
+      responses:
+        "201": { description: Assessment produced (status/effectiveness/completeness/freshness/integrity kept as separate fields) }
+
+  /api/v1/assessments/{id}:
+    get:
+      tags: [Controls]
+      summary: Get assessment
+      parameters:
+        - { $ref: "#/components/parameters/TenantIdHeader" }
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Assessment }
+
+  /api/v1/assessments/{id}/review:
+    post:
+      tags: [Controls]
+      summary: Record human review of an assessment (reviewer must differ from performer — an automated result never self-approves)
+      parameters:
+        - { $ref: "#/components/parameters/TenantIdHeader" }
+        - { $ref: "#/components/parameters/ActorIdHeader" }
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Assessment reviewed }
+        "400": { description: Reviewer is the same identity as the performer }
+
+  /api/v1/assessments/{id}/gaps:
+    get:
+      tags: [Controls]
+      summary: List open evidence gaps for the tenant
+      parameters: [{ $ref: "#/components/parameters/TenantIdHeader" }]
+      responses:
+        "200": { description: Evidence gaps (never filtered out of any report) }
+
+  # ── Notifications ──
+  /api/v1/notifications:
+    get:
+      tags: [Notifications]
+      summary: List notifications delivered to the current actor
+      parameters: [{ $ref: "#/components/parameters/TenantIdHeader" }, { $ref: "#/components/parameters/ActorIdHeader" }]
+      responses:
+        "200": { description: Deliveries list }
+
+  /api/v1/notifications/{notificationId}:
+    get:
+      tags: [Notifications]
+      summary: Get a notification delivery
+      parameters:
+        - { $ref: "#/components/parameters/TenantIdHeader" }
+        - { name: notificationId, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: NotificationDelivery }
+
+  /api/v1/notifications/{notificationId}/acknowledge:
+    post:
+      tags: [Notifications]
+      summary: Acknowledge a notification (SEEN/ACKNOWLEDGED/ACCEPTED/DECLINED — delivery is never treated as acknowledgement, and SEEN is never treated as APPROVED)
+      parameters:
+        - { $ref: "#/components/parameters/TenantIdHeader" }
+        - { $ref: "#/components/parameters/ActorIdHeader" }
+        - { name: notificationId, in: path, required: true, schema: { type: string } }
+      responses:
+        "201": { description: Acknowledgement recorded }
+        "403": { description: Only the recipient may acknowledge }
+
+  /api/v1/notification-preferences:
+    get:
+      tags: [Notifications]
+      summary: List the current actor's notification preferences
+      parameters: [{ $ref: "#/components/parameters/TenantIdHeader" }, { $ref: "#/components/parameters/ActorIdHeader" }]
+      responses:
+        "200": { description: Preferences list }
+
+  /api/v1/notification-preferences/{id}:
+    patch:
+      tags: [Notifications]
+      summary: Set a channel preference (mandatory policies can never be suppressed by preference)
+      parameters:
+        - { $ref: "#/components/parameters/TenantIdHeader" }
+        - { $ref: "#/components/parameters/ActorIdHeader" }
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200": { description: Preference set }
+
+  /api/v1/notification-policies:
+    get:
+      tags: [Notifications]
+      summary: List active notification policies (admin-controlled)
+      responses:
+        "200": { description: Policies list }
+
+  /api/v1/notification-deliveries/{id}:
+    get:
+      tags: [Notifications]
+      summary: Get a delivery with acknowledgement history (admin-controlled)
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Delivery with acknowledgements }
+
+  # ── Offboarding ──
+  /api/v1/tenants/{tenantId}/offboarding:
+    post:
+      tags: [Offboarding]
+      summary: Start tenant offboarding (privileged; idempotent — a repeated command returns the in-flight run)
+      parameters: [{ name: tenantId, in: path, required: true, schema: { type: string } }, { $ref: "#/components/parameters/ActorIdHeader" }]
+      responses:
+        "201": { description: TenantOffboardingRun created (status EXPORT_REQUIRED) }
+        "403": { description: Actor is not authorized to start offboarding }
+    get:
+      tags: [Offboarding]
+      summary: Get the latest offboarding run for a tenant
+      parameters: [{ name: tenantId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: TenantOffboardingRun }
+
+  /api/v1/tenants/{tenantId}/offboarding/validate:
+    post:
+      tags: [Offboarding]
+      summary: Check active legal holds before proceeding
+      parameters: [{ name: tenantId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: "{ legalHolds[], ready }" }
+
+  /api/v1/tenants/{tenantId}/offboarding/start-export:
+    post:
+      tags: [Offboarding]
+      summary: Generate and verify the final tenant export (deletion is never allowed before this completes — spec correction, no shortcuts)
+      parameters: [{ name: tenantId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Run advances to EXPORT_READY }
+        "409": { description: Final export did not complete }
+
+  /api/v1/tenants/{tenantId}/offboarding/freeze-access:
+    post:
+      tags: [Offboarding]
+      summary: Freeze tenant access and revoke all active API clients
+      parameters: [{ name: tenantId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Run advances to ACCESS_FROZEN; API clients suspended then revoked }
+
+  /api/v1/tenants/{tenantId}/offboarding/start-deletion:
+    post:
+      tags: [Offboarding]
+      summary: Revoke connectors and run the deletion workflow (blocked by any intersecting active legal hold — explicit BLOCKED_BY_HOLD state, never silently retained or silently deleted)
+      parameters: [{ name: tenantId, in: path, required: true, schema: { type: string } }, { $ref: "#/components/parameters/ActorIdHeader" }]
+      responses:
+        "200": { description: Run advances to BACKUP_EXPIRY_PENDING, or BLOCKED if a legal hold intersects the deletion scope }
+
+  /api/v1/tenants/{tenantId}/offboarding/deletion-attestation:
+    get:
+      tags: [Offboarding]
+      summary: Get the deletion attestation (discloses retained scopes, legal holds, and pending backup expiry — never claims immediate/complete deletion unless verified)
+      parameters: [{ name: tenantId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: DeletionAttestation }
+
+  # ── Internal Microservices (additional) ──
+  /internal/v1/cases/{caseId}:
+    get:
+      tags: [InternalMicroservices]
+      summary: Get case (Shield AI's only window into case data)
+      security: [{ InternalServiceAuth: [] }]
+      parameters: [{ name: caseId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Case }
+
+  /internal/v1/cases/{caseId}/timeline:
+    get:
+      tags: [InternalMicroservices]
+      summary: Get case timeline (internal)
+      security: [{ InternalServiceAuth: [] }]
+      parameters: [{ name: caseId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Timeline entries }
+
+  /internal/v1/cases/{caseId}/evidence:
+    get:
+      tags: [InternalMicroservices]
+      summary: Get case evidence (internal)
+      security: [{ InternalServiceAuth: [] }]
+      parameters: [{ name: caseId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Evidence records }
+
+  /internal/v1/action-proposals/{proposalId}/authorization-context:
+    get:
+      tags: [InternalMicroservices]
+      summary: Get a freshly re-evaluated ActionAuthorizationContext (Shield Action's only window into proposal/approval data — never trusts the triggering Kafka payload)
+      security: [{ InternalServiceAuth: [] }]
+      parameters: [{ name: proposalId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: ActionAuthorizationContext }
+
+  /internal/v1/use-cases/{key}/invoke:
+    post:
+      tags: [InternalMicroservices]
+      summary: Invoke an AI use case (Shield AI — policy/residency/redaction enforced before any model call; never customer-facing directly)
+      security: [{ InternalServiceAuth: [] }]
+      parameters: [{ name: key, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: AiOutput (UNREVIEWED, citations validated against the retrieval bundle) }
+        "403": { description: POLICY_DENIED — region/data-class/model policy mismatch }
+        "503": { description: AI_UNAVAILABLE }
+
+  /internal/v1/ai/outputs/{outputId}:
+    get:
+      tags: [InternalMicroservices]
+      summary: Get an AI output (Shield AI, internal only)
+      security: [{ InternalServiceAuth: [] }]
+      parameters: [{ name: outputId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: AiOutput }
+
+  /internal/v1/ai/outputs/{outputId}/review:
+    post:
+      tags: [InternalMicroservices]
+      summary: Record human review of an AI output (Shield AI, internal only — proxied from shield-core's public review endpoint)
+      security: [{ InternalServiceAuth: [] }]
+      parameters: [{ name: outputId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "201": { description: AiHumanReview recorded }
+
+  # ── Normalization (Shield Ingest) ──
+  /api/v1/events:
+    get:
+      tags: [Normalization]
+      summary: List normalized events
+      responses:
+        "200": { description: Normalized events list }
+
+  /api/v1/events/{eventId}:
+    get:
+      tags: [Normalization]
+      summary: Get a normalized event
+      parameters: [{ name: eventId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Normalized event }
+
+  /api/v1/quarantine:
+    get:
+      tags: [Normalization]
+      summary: List quarantined (failed-normalization) raw events
+      responses:
+        "200": { description: Quarantine list }
+
+  /api/v1/quarantine/{eventId}/reprocess:
+    post:
+      tags: [Normalization]
+      summary: Reprocess a quarantined event
+      parameters: [{ name: eventId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Reprocessing result }
+
+  /api/v1/events/replay:
+    post:
+      tags: [Normalization]
+      summary: Replay normalized events through detection (uses the original frozen event, never live re-derivation)
+      responses:
+        "200": { description: Replay result }
+
+  # ── Connector Catalog (additional) ──
+  /api/v1/connectors/{connectorId}:
+    get:
+      tags: [ConnectorCatalog]
+      summary: Get connector instance
+      parameters: [{ name: connectorId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Connector instance }
+
+  /api/v1/connectors/{connectorId}/activate:
+    post:
+      tags: [ConnectorCatalog]
+      summary: Activate a connector instance
+      parameters: [{ name: connectorId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Connector activated }
+
+  /api/v1/connectors/{connectorId}/disable:
+    post:
+      tags: [ConnectorCatalog]
+      summary: Disable a connector instance
+      parameters: [{ name: connectorId, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Connector disabled }
+
+  # ── Microsoft Entra Connector ──
+  /v1/connectors/entra/connect:
+    post:
+      tags: [MicrosoftEntraConnector]
+      summary: Start Microsoft Entra OAuth admin-consent flow
+      responses:
+        "200": { description: Redirect/consent URL issued }
+
+  /v1/connectors/entra/callback:
+    get:
+      tags: [MicrosoftEntraConnector]
+      summary: OAuth callback — completes connector provisioning
+      responses:
+        "200": { description: Connector provisioned }
+
+  /v1/connectors/entra/{id}/test:
+    post:
+      tags: [MicrosoftEntraConnector]
+      summary: Test Entra connector credentials/permissions
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "200": { description: Test result }
+
+  /v1/connectors/entra/{id}/sync:
+    post:
+      tags: [MicrosoftEntraConnector]
+      summary: Trigger an Entra directory sync
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      responses:
+        "202": { description: Sync started }
+
+  /v1/webhooks/microsoft-graph:
+    post:
+      tags: [MicrosoftEntraConnector]
+      summary: Microsoft Graph change-notification webhook intake
+      responses:
+        "200": { description: Validation token echoed, or notification accepted }
+
+  # ── Health ──
+  /:
+    get:
+      tags: [Health]
+      summary: Liveness check (present on every app — Shield Core, Ingest, AI, Action, Anchor)
+      responses:
+        "200": { description: "{ service, status }" }

@@ -1,4 +1,6 @@
+import { randomUUID } from 'crypto';
 import {
+  BeforeInsert,
   Column,
   CreateDateColumn,
   Entity,
@@ -13,6 +15,13 @@ export type PrincipalStatus = 'ACTIVE' | 'SUSPENDED' | 'TERMINATED';
 export class Principal {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @BeforeInsert()
+  generateId() {
+    if (!this.id) {
+      this.id = randomUUID();
+    }
+  }
 
   @Column({ type: 'varchar', default: 'HUMAN' })
   principalType: PrincipalType;

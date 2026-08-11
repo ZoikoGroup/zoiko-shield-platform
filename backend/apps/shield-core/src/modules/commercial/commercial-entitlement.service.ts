@@ -1,23 +1,102 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
+import { IsBoolean, IsIn, IsISO8601, IsOptional, IsString } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
+import { SectorPackService } from '../sector-packs/sector-pack.service';
+import { CommercialKillSwitchService } from '../kill-switch/commercial-kill-switch.service';
+import { assertTransition } from '../commerce/state-machine.util';
+
+/**
+ * ZS-COM-BILL-001 Part 20: entitlements are granted directly into ACTIVE
+ * (existing, tested behavior — preserved), all subsequent moves must go
+ * through this map rather than an arbitrary status string.
+ */
+const ENTITLEMENT_TRANSITIONS: Record<string, string[]> = {
+  ACTIVE: ['SUSPENDED', 'EXPIRED', 'REVOKED'],
+  SUSPENDED: ['ACTIVE', 'REVOKED'],
+  EXPIRED: [],
+  REVOKED: [],
+};
+
+const BILLING_CLASSIFICATIONS = [
+  'COMMERCIAL_DIRECT',
+  'COMMERCIAL_ZOIKO_ONE',
+  'COMMERCIAL_RESELLER',
+  'DESIGN_PARTNER',
+  'PILOT',
+  'EVALUATION',
+  'INTERNAL',
+  'DEMO',
+  'SANDBOX',
+  'PARTNER_MANAGED',
+] as const;
+/** Part 1: never accidentally billable. */
+export const NON_COMMERCIAL_CLASSIFICATIONS = ['INTERNAL', 'DEMO', 'SANDBOX', 'EVALUATION', 'PILOT'];
 
 export class CreateCommercialAccountDto {
+  @IsString()
   name!: string;
+
+  @IsOptional()
+  @IsIn(['DIRECT', 'ZOIKO_ONE_BUNDLE', 'RESELLER'])
   billingSource?: 'DIRECT' | 'ZOIKO_ONE_BUNDLE' | 'RESELLER';
-  billingClassification?: 'COMMERCIAL_DIRECT' | 'COMMERCIAL_ZOIKO_ONE' | 'COMMERCIAL_RESELLER' | 'DESIGN_PARTNER' | 'PILOT' | 'INTERNAL' | 'DEMO' | 'SANDBOX';
+
+  @IsOptional()
+  @IsIn(BILLING_CLASSIFICATIONS)
+  billingClassification?: (typeof BILLING_CLASSIFICATIONS)[number];
+
+  @IsOptional()
+  @IsString()
+  groupAccountId?: string;
+
+  @IsOptional()
+  @IsString()
+  legalEntityId?: string;
+
+  @IsOptional()
+  @IsString()
+  businessUnitId?: string;
+
+  @IsOptional()
+  @IsString()
+  environmentId?: string;
+
+  @IsOptional()
+  @IsString()
+  region?: string;
+
+  @IsOptional()
+  @IsString()
+  residencyPolicy?: string;
 }
 
 export class GrantEntitlementDto {
+  @IsString()
   commercialAccountId!: string;
+
+  @IsString()
   tenantId!: string;
+
+  @IsIn(['MANAGED_DEFENSE', 'CONTINUOUS_ASSURANCE', 'EXPOSURE_MANAGEMENT', 'AI_SECURITY'])
   offerType!: 'MANAGED_DEFENSE' | 'CONTINUOUS_ASSURANCE' | 'EXPOSURE_MANAGEMENT' | 'AI_SECURITY';
+
+  @IsOptional()
+  @IsISO8601()
   effectiveFrom?: Date;
+
+  @IsOptional()
+  @IsISO8601()
   effectiveTo?: Date;
 }
 
 export class RegisterClaimDto {
+  @IsString()
   claimKey!: string;
+
+  @IsString()
   approvedWording!: string;
+
+  @IsOptional()
+  @IsBoolean()
   requiresEvidence?: boolean;
 }
 
@@ -25,20 +104,36 @@ export class RegisterClaimDto {
 export class CommercialEntitlementService {
   private readonly logger = new Logger(CommercialEntitlementService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly sectorPackService: SectorPackService,
+    private readonly killSwitchService: CommercialKillSwitchService,
+  ) {}
 
   /**
    * Create a new commercial account (Plane 1)
    */
   async createCommercialAccount(dto: CreateCommercialAccountDto) {
-    this.logger.log(`Creating Commercial Account '${dto.name}' with classification ${dto.billingClassification || 'COMMERCIAL_DIRECT'}`);
+    const classification = dto.billingClassification || 'COMMERCIAL_DIRECT';
+    this.logger.log(`Creating Commercial Account '${dto.name}' with classification ${classification}`);
 
+    // Part 1: the account itself may be created before its legal entity is
+    // finalized (e.g. during sales cycle). The hard gate is enforced at
+    // quote-creation time (QuoteService.assertProductionReadyAccount) for
+    // every classification outside NON_COMMERCIAL_CLASSIFICATIONS, so a
+    // production account can never actually be quoted without one.
     return this.prisma.commercialAccount.create({
       data: {
         name: dto.name,
         billing_source: dto.billingSource || 'DIRECT',
-        billing_classification: dto.billingClassification || 'COMMERCIAL_DIRECT',
+        billing_classification: classification,
         status: 'ACTIVE',
+        group_account_id: dto.groupAccountId,
+        legal_entity_id: dto.legalEntityId,
+        business_unit_id: dto.businessUnitId,
+        environment_id: dto.environmentId,
+        region: dto.region || 'GLOBAL',
+        residency_policy: dto.residencyPolicy,
       },
     });
   }
@@ -63,7 +158,9 @@ export class CommercialEntitlementService {
    * Issue an explicit versioned offer entitlement
    */
   async grantEntitlement(dto: GrantEntitlementDto) {
+    await this.killSwitchService.assertNotBlocked('ENTITLEMENT_EXPANSION');
     await this.getCommercialAccountById(dto.commercialAccountId);
+    await this.assertNoSourceCollision(dto.tenantId, dto.offerType, dto.commercialAccountId);
 
     this.logger.log(`Granting '${dto.offerType}' entitlement to tenant ${dto.tenantId}`);
 
@@ -76,6 +173,49 @@ export class CommercialEntitlementService {
         effective_from: dto.effectiveFrom || new Date(),
         effective_to: dto.effectiveTo,
       },
+    });
+  }
+
+  /**
+   * ZS-COM-BILL-001 ONE-01: for the same tenant + capability (offer_type),
+   * only one authoritative charging source may be active at a time. A
+   * second ACTIVE entitlement for the same tenant/offer from a
+   * commercial account with a *different* billing_source (e.g. a direct
+   * subscription activated over an existing Zoiko One bundle) is a
+   * collision, unless an approved split-billing exception is on record.
+   */
+  async assertNoSourceCollision(tenantId: string, offerType: string, newAccountId: string) {
+    const newAccount = await this.getCommercialAccountById(newAccountId);
+
+    const collidingEntitlements = await this.prisma.entitlement.findMany({
+      where: {
+        tenant_id: tenantId,
+        offer_type: offerType,
+        status: 'ACTIVE',
+        commercial_account_id: { not: newAccountId },
+      },
+      include: { commercialAccount: true },
+    });
+
+    const collision = collidingEntitlements.find(
+      (e) => e.commercialAccount.billing_source !== newAccount.billing_source,
+    );
+    if (!collision) {
+      return;
+    }
+
+    const exceptionKey = `${tenantId}:${offerType}`;
+    const approvedSplit = await this.prisma.commercialApproval.findFirst({
+      where: { object_type: 'ZOIKO_ONE_SPLIT_BILLING', object_id: exceptionKey, status: 'APPROVED' },
+    });
+    if (approvedSplit) {
+      return;
+    }
+
+    throw new ConflictException({
+      statusCode: 409,
+      error: 'COMMERCIAL_SOURCE_COLLISION',
+      message: `Tenant '${tenantId}' already has an ACTIVE '${offerType}' entitlement charged via '${collision.commercialAccount.billing_source}'; activating from '${newAccount.billing_source}' would double-charge the same capability/period without an approved split-billing exception`,
     });
   }
 
@@ -133,7 +273,20 @@ export class CommercialEntitlementService {
   /**
    * Reconciles purchased SKU, active entitlements, and claim register rules before allowing claims.
    */
-  async verifyClaimEligibility(tenantId: string, claimKey: string) {
+  /**
+   * ZS-COM-BILL-001 REG-01 wiring: a framework/sector claim (e.g. "DORA
+   * Ready") requires BOTH the backing entitlement AND that the sector
+   * pack itself be APPROVED/LICENSED/available in the tenant's region —
+   * a pack is a support capability, not automatic certification, so a
+   * claim tied to one fails closed the moment the pack's availability
+   * lapses, exactly like an expired entitlement does.
+   */
+  async verifyClaimEligibility(
+    tenantId: string,
+    claimKey: string,
+    sectorPackKey?: string,
+    region?: string,
+  ) {
     const claim = await this.prisma.claimRegister.findUnique({
       where: { claim_key: claimKey },
     });
@@ -164,11 +317,39 @@ export class CommercialEntitlementService {
       };
     }
 
+    if (sectorPackKey) {
+      const packAvailable = await this.sectorPackService.isAvailable(sectorPackKey, region || 'GLOBAL');
+      if (!packAvailable) {
+        return {
+          eligible: false,
+          reason: `Sector pack '${sectorPackKey}' is not approved/licensed/available in region '${region || 'GLOBAL'}'; claim '${claimKey}' cannot rely on it`,
+          approvedWording: null,
+        };
+      }
+    }
+
     return {
       eligible: true,
       reason: `Tenant '${tenantId}' is eligible for claim '${claimKey}'`,
       approvedWording: claim.approved_wording,
     };
+  }
+
+  /**
+   * Guarded entitlement status transition (Part 20). Illegal moves throw
+   * 409 INVALID_STATE_TRANSITION instead of writing an arbitrary status.
+   */
+  async updateEntitlementStatus(entitlementId: string, targetStatus: string) {
+    const entitlement = await this.prisma.entitlement.findUnique({ where: { id: entitlementId } });
+    if (!entitlement) {
+      throw new NotFoundException(`Entitlement '${entitlementId}' not found`);
+    }
+    assertTransition(ENTITLEMENT_TRANSITIONS, entitlement.status, targetStatus, 'entitlement');
+
+    return this.prisma.entitlement.update({
+      where: { id: entitlementId },
+      data: { status: targetStatus },
+    });
   }
 
   /**

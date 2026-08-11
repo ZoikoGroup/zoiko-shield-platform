@@ -1,4 +1,5 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { randomUUID } from 'crypto';
+import { BeforeInsert, Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 /**
  * Short-lived, single-use, single-purpose proof that a password-recovery OTP
@@ -9,6 +10,13 @@ import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeor
 export class RecoveryGrant {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @BeforeInsert()
+  generateId() {
+    if (!this.id) {
+      this.id = randomUUID();
+    }
+  }
 
   @Column({ type: 'uuid' })
   principalId: string;

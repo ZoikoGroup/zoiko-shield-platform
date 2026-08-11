@@ -7,7 +7,10 @@ import {
   Query,
   Body,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
+import { IsOptional, IsString } from 'class-validator';
+import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import {
   CatalogService,
   CreateCatalogVersionDto,
@@ -16,14 +19,22 @@ import {
 } from './catalog.service';
 
 export class QueryPriceBookDto {
+  @IsString()
   sku!: string;
+
+  @IsOptional()
+  @IsString()
   region?: string;
+
+  @IsOptional()
+  @IsString()
   currency?: string;
 }
 
+@UseGuards(JwtAuthGuard)
 @Controller('api/v1/catalog')
 export class CatalogController {
-  constructor(private readonly catalogService: CatalogService) {}
+  constructor(private readonly catalogService: CatalogService) { }
 
   /**
    * POST /api/v1/catalog/versions
