@@ -84,4 +84,36 @@ export class DashboardController {
       data: metrics,
     };
   }
+
+  /**
+   * GET /api/v1/dashboard/control-health
+   */
+  @Get('control-health')
+  async getControlHealth(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Query('tenantId') queryTenantId?: string,
+  ) {
+    const tenantId = headerTenantId || queryTenantId || 'default-tenant';
+    const health = await this.dashboardService.getControlHealth(tenantId);
+    return {
+      statusCode: HttpStatus.OK,
+      data: health,
+    };
+  }
+
+  /**
+   * GET /api/v1/dashboard/evidence-health
+   */
+  @Get('evidence-health')
+  async getEvidenceHealth(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Query('tenantId') queryTenantId?: string,
+  ) {
+    const tenantId = headerTenantId || queryTenantId || 'default-tenant';
+    const health = await this.dashboardService.getEvidenceHealth(tenantId);
+    return {
+      statusCode: HttpStatus.OK,
+      data: health,
+    };
+  }
 }

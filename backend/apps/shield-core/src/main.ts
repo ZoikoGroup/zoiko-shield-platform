@@ -7,11 +7,14 @@ import cookieParser from 'cookie-parser';
 import { load as loadYaml } from 'js-yaml';
 import * as swaggerUi from 'swagger-ui-express';
 import { ShieldCoreModule } from './shield-core.module';
+import { TraceIdMiddleware } from './observability/trace-id.middleware';
+import { HttpLoggingInterceptor } from './observability/http-logging.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(ShieldCoreModule);
 
   app.use(cookieParser());
+  app.use(new TraceIdMiddleware().use.bind(new TraceIdMiddleware()));
   app.enableCors({
     origin: process.env.CORS_ORIGIN?.split(',') ?? true,
     credentials: true,
@@ -19,6 +22,7 @@ async function bootstrap() {
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, transform: true }),
   );
+  app.useGlobalInterceptors(new HttpLoggingInterceptor('shield-core'));
 
   const candidatePaths = [
     resolve(process.cwd(), '..', 'docs', 'swagger.yaml'),

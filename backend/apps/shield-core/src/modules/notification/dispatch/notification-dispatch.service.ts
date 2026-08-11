@@ -6,6 +6,8 @@ import { NotificationPreferenceService } from '../preferences/notification-prefe
 import { NotificationTemplateService } from '../templates/notification-template.service';
 import { InAppChannelService } from '../channels/in-app-channel.service';
 import { EmailChannelService } from '../channels/email-channel.service';
+import { SlackChannelService } from '../channels/slack-channel.service';
+import { TeamsChannelService } from '../channels/teams-channel.service';
 import { NotificationChannel } from '../channels/notification-channel.interface';
 
 export interface DispatchInput {
@@ -19,15 +21,6 @@ export interface DispatchInput {
 
 const PRISMA_UNIQUE_CONSTRAINT_ERROR = 'P2002';
 
-/**
- * Domain Event -> Inbox dedup (handled by the Kafka consumer layer) ->
- * NotificationPolicy lookup -> resolve recipient -> mandatory/preference
- * resolution -> minimize content -> render published template -> create
- * NotificationDelivery -> send -> record result (spec §21). The DB unique
- * constraint on (event_id, recipient, channel, policy_version) is the
- * actual idempotency enforcement — a Kafka redelivery racing this method
- * twice can never create two deliveries (spec §18).
- */
 @Injectable()
 export class NotificationDispatchService {
   private readonly logger = new Logger(NotificationDispatchService.name);
@@ -40,8 +33,15 @@ export class NotificationDispatchService {
     private readonly templateService: NotificationTemplateService,
     inAppChannel: InAppChannelService,
     emailChannel: EmailChannelService,
+    slackChannel: SlackChannelService,
+    teamsChannel: TeamsChannelService,
   ) {
-    this.channels = new Map<string, NotificationChannel>([[inAppChannel.channelType, inAppChannel], [emailChannel.channelType, emailChannel]]);
+    this.channels = new Map<string, NotificationChannel>([
+      [inAppChannel.channelType, inAppChannel],
+      [emailChannel.channelType, emailChannel],
+      [slackChannel.channelType, slackChannel],
+      [teamsChannel.channelType, teamsChannel],
+    ]);
   }
 
   async dispatch(input: DispatchInput): Promise<void> {

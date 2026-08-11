@@ -7,6 +7,8 @@ import { NotificationTemplateService } from './templates/notification-template.s
 import { NotificationPreferenceService } from './preferences/notification-preference.service';
 import { InAppChannelService } from './channels/in-app-channel.service';
 import { EmailChannelService } from './channels/email-channel.service';
+import { SlackChannelService } from './channels/slack-channel.service';
+import { TeamsChannelService } from './channels/teams-channel.service';
 import { NotificationDispatchService } from './dispatch/notification-dispatch.service';
 import { NotificationAcknowledgementService } from './acknowledgement/notification-acknowledgement.service';
 import { DomainEventNotificationConsumer } from './consumers/domain-event-notification.consumer';
@@ -20,10 +22,18 @@ import { DomainEventNotificationConsumer } from './consumers/domain-event-notifi
     NotificationPreferenceService,
     InAppChannelService,
     EmailChannelService,
+    SlackChannelService,
+    TeamsChannelService,
     NotificationDispatchService,
     NotificationAcknowledgementService,
     DomainEventNotificationConsumer,
   ],
-  exports: [NotificationPolicyService, NotificationTemplateService, NotificationDispatchService],
+  exports: [
+    NotificationPolicyService,
+    NotificationTemplateService,
+    NotificationDispatchService,
+    SlackChannelService,
+    TeamsChannelService,
+  ],
 })
 export class NotificationModule {}

@@ -13,6 +13,7 @@ export class DashboardService {
    */
   async getOverview(tenantId: string) {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
     const [
       totalConnectors,
@@ -24,6 +25,12 @@ export class DashboardService {
       criticalAlerts,
       openCases,
       investigatingCases,
+      effectiveControls,
+      partialControls,
+      unknownControls,
+      currentEvidence,
+      staleEvidence,
+      missingEvidence,
     ] = await Promise.all([
       this.prisma.connectorInstance.count({ where: { tenant_id: tenantId } }),
       this.prisma.connectorInstance.count({ where: { tenant_id: tenantId, state: 'HEALTHY' } }),
@@ -34,6 +41,14 @@ export class DashboardService {
       this.prisma.alert.count({ where: { tenant_id: tenantId, severity: 'CRITICAL', status: { in: ['NEW', 'ACKNOWLEDGED', 'INVESTIGATING'] } } }),
       this.prisma.case.count({ where: { tenant_id: tenantId, status: { notIn: ['RESOLVED', 'CLOSED', 'DUPLICATE', 'FALSE_POSITIVE'] } } }),
       this.prisma.case.count({ where: { tenant_id: tenantId, status: 'INVESTIGATING' } }),
+      // Control health counts
+      this.prisma.controlImplementation.count({ where: { tenant_id: tenantId, effectiveness: 'EFFECTIVE' } }),
+      this.prisma.controlImplementation.count({ where: { tenant_id: tenantId, effectiveness: 'PARTIAL' } }),
+      this.prisma.controlImplementation.count({ where: { tenant_id: tenantId, effectiveness: 'UNKNOWN' } }),
+      // Evidence health counts
+      this.prisma.evidenceRecord.count({ where: { tenant_id: tenantId, collected_at: { gte: thirtyDaysAgo } } }),
+      this.prisma.evidenceRecord.count({ where: { tenant_id: tenantId, collected_at: { lt: thirtyDaysAgo } } }),
+      this.prisma.evidenceGap.count({ where: { tenant_id: tenantId, resolved_at: null } }),
     ]);
 
     return {
@@ -53,6 +68,16 @@ export class DashboardService {
       cases: {
         open: openCases,
         investigating: investigatingCases,
+      },
+      controls: {
+        effective: effectiveControls,
+        partial: partialControls,
+        unknown: unknownControls,
+      },
+      evidence: {
+        current: currentEvidence,
+        stale: staleEvidence,
+        missing: missingEvidence,
       },
     };
   }
@@ -141,6 +166,78 @@ export class DashboardService {
       total: cases.length,
       bySeverity,
       byStatus,
+    };
+  }
+
+  /**
+   * GET /api/v1/dashboard/control-health
+   * Control effectiveness breakdown and deficiency count
+   */
+  async getControlHealth(tenantId: string) {
+    const [implementations, deficiencies, tests] = await Promise.all([
+      this.prisma.controlImplementation.findMany({
+        where: { tenant_id: tenantId },
+        select: { effectiveness: true, status: true },
+      }),
+      this.prisma.controlDeficiency.count({
+        where: { tenant_id: tenantId, remediated_at: null },
+      }),
+      this.prisma.controlTest.findMany({
+        where: { tenant_id: tenantId },
+        orderBy: { created_at: 'desc' },
+        take: 5,
+        select: { id: true, result: true, created_at: true },
+      }),
+    ]);
+
+    const byEffectiveness: Record<string, number> = {};
+    const byStatus: Record<string, number> = {};
+
+    implementations.forEach((c) => {
+      byEffectiveness[c.effectiveness] = (byEffectiveness[c.effectiveness] || 0) + 1;
+      byStatus[c.status] = (byStatus[c.status] || 0) + 1;
+    });
+
+    return {
+      total: implementations.length,
+      openDeficiencies: deficiencies,
+      byEffectiveness,
+      byStatus,
+      recentTests: tests,
+    };
+  }
+
+  /**
+   * GET /api/v1/dashboard/evidence-health
+   * Evidence coverage status: current, stale, and missing gaps
+   */
+  async getEvidenceHealth(tenantId: string) {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const [currentEvidence, staleEvidence, openGaps, recentRecords] = await Promise.all([
+      this.prisma.evidenceRecord.count({
+        where: { tenant_id: tenantId, collected_at: { gte: thirtyDaysAgo } },
+      }),
+      this.prisma.evidenceRecord.count({
+        where: { tenant_id: tenantId, collected_at: { lt: thirtyDaysAgo } },
+      }),
+      this.prisma.evidenceGap.count({
+        where: { tenant_id: tenantId, resolved_at: null },
+      }),
+      this.prisma.evidenceRecord.findMany({
+        where: { tenant_id: tenantId },
+        orderBy: { collected_at: 'desc' },
+        take: 5,
+        select: { id: true, source_type: true, integrity_state: true, collected_at: true },
+      }),
+    ]);
+
+    return {
+      current: currentEvidence,
+      stale: staleEvidence,
+      missing: openGaps,
+      total: currentEvidence + staleEvidence,
+      recentRecords,
     };
   }
 }
