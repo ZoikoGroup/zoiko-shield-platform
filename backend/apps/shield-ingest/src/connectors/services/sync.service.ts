@@ -37,7 +37,7 @@ export class ConnectorSyncService {
       connectorInstanceId: instance.id,
       tenantId: instance.tenant_id,
       environmentId: instance.environment_id,
-      region: instance.region ?? instance.source_region ?? 'unspecified',
+      region: instance.source_region ?? 'unspecified',
       purpose: 'security-monitoring',
       correlationId: randomUUID(),
       traceId: randomUUID(),

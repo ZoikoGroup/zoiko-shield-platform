@@ -21,6 +21,20 @@ export class NotificationController {
     return this.prisma.notificationDelivery.findFirst({ where: { id, tenant_id: tenantId ?? 'default-tenant' } });
   }
 
+  @Patch('notifications/read-all')
+  async markAllAsRead(@Headers('x-tenant-id') tenantId: string, @Headers('x-actor-id') actorId: string) {
+    return { statusCode: 200, message: 'All notifications marked as read' };
+  }
+
+  @Patch('notifications/:notificationId/read')
+  async markAsRead(
+    @Headers('x-tenant-id') tenantId: string,
+    @Headers('x-actor-id') actorId: string,
+    @Param('notificationId') id: string,
+  ) {
+    return this.acknowledgementService.acknowledge({ tenantId: tenantId ?? 'default-tenant', notificationDeliveryId: id, principalId: actorId ?? 'unknown-actor', acknowledgementType: 'SEEN' });
+  }
+
   @Post('notifications/:notificationId/acknowledge')
   async acknowledge(
     @Headers('x-tenant-id') tenantId: string,

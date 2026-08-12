@@ -41,27 +41,22 @@ export class HumanDecisionService {
         case_id: caseId,
         decision_type: dto.decisionType,
         decision: dto.decision,
-        reason: dto.reason,
-        evidence_ids: JSON.stringify(dto.evidenceIds || []),
-        ai_run_id: dto.aiRunId,
-        accepted_ai_content: dto.acceptedAiContent || false,
+        rationale: dto.reason || dto.decision,
+        evidence_refs: JSON.stringify(dto.evidenceIds || []),
         actor_id: actorId,
       },
     });
 
-    // Automatically append DECISION_RECORDED event to CaseTimeline
-    await this.prisma.caseTimeline.create({
+    // Automatically append DECISION_RECORDED event to CaseTimelineEntry
+    const timelineDelegate = this.prisma.caseTimelineEntry || (this.prisma as any).caseTimeline;
+    await timelineDelegate.create({
       data: {
         tenant_id: caseRecord.tenant_id,
         case_id: caseId,
-        event_type: 'DECISION_RECORDED',
+        entry_type: 'DECISION_RECORDED',
         actor_id: actorId,
-        details: JSON.stringify({
-          decisionId: decisionRecord.id,
-          decisionType: dto.decisionType,
-          decision: dto.decision,
-          acceptedAiContent: dto.acceptedAiContent || false,
-        }),
+        title: 'Decision Recorded',
+        summary: dto.decision,
       },
     });
 

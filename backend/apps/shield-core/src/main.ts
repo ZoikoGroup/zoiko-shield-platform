@@ -4,8 +4,6 @@ import { resolve } from 'path';
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
-import { load as loadYaml } from 'js-yaml';
-import * as swaggerUi from 'swagger-ui-express';
 import { ShieldCoreModule } from './shield-core.module';
 import { TraceIdMiddleware } from './observability/trace-id.middleware';
 import { HttpLoggingInterceptor } from './observability/http-logging.interceptor';
@@ -32,10 +30,16 @@ async function bootstrap() {
   ];
   const swaggerDocPath = candidatePaths.find((p) => existsSync(p));
   if (swaggerDocPath) {
-    const swaggerDocument = loadYaml(
-      readFileSync(swaggerDocPath, 'utf8'),
-    ) as Record<string, unknown>;
-    app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+    try {
+      const jsYaml = eval('require')('js-yaml');
+      const swaggerUi = eval('require')('swagger-ui-express');
+      const swaggerDocument = jsYaml.load(
+        readFileSync(swaggerDocPath, 'utf8'),
+      ) as Record<string, unknown>;
+      app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+    } catch (e) {
+      // Swagger docs optional if dependency missing in bundle
+    }
   }
 
   await app.listen(process.env.PORT ?? 3001, '0.0.0.0');

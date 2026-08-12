@@ -22,8 +22,8 @@ export class AlertThrottlerService {
     const recentAlert = await this.prisma.alert.findFirst({
       where: {
         tenant_id: tenantId,
-        detection_rule_id: ruleId,
-        affected_entity_id: entityId,
+        detection_version_id: ruleId,
+        affected_assets: { contains: entityId },
         created_at: { gte: windowStart },
       },
     });

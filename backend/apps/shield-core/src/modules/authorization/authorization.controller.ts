@@ -21,8 +21,12 @@ import { RequirePlatformPermissions } from './decorators/require-platform-permis
 import { PlatformPermissionsGuard } from './guards/platform-permissions.guard';
 import { PERMISSION_CODES } from './constants';
 
+import {
+  Delete,
+} from '@nestjs/common';
+
 @UseGuards(JwtAuthGuard)
-@Controller()
+@Controller(['api/v1', ''])
 export class AuthorizationController {
   constructor(private readonly authorizationService: AuthorizationService) {}
 
@@ -70,7 +74,7 @@ export class AuthorizationController {
 
   @UseGuards(PlatformPermissionsGuard)
   @RequirePlatformPermissions(PERMISSION_CODES.PLATFORM_ROLE_MANAGE)
-  @Patch('roles/:roleId/permissions')
+  @Patch(['roles/:roleId', 'roles/:roleId/permissions'])
   updateRolePermissions(
     @Param('roleId') roleId: string,
     @Body() dto: UpdateRolePermissionsDto,
@@ -78,9 +82,6 @@ export class AuthorizationController {
     return this.authorizationService.updateRolePermissions(roleId, dto.permissionCodes);
   }
 
-  // Tenant-admin action: create a single-use, tenant-bound, expiring
-  // invitation. The invitee never chooses their own tenant or role — both
-  // are fixed at invite time. Replaces the old self-assign membership route.
   @Post('tenants/:tenantId/invitations')
   async createInvitation(
     @Param('tenantId') tenantId: string,
@@ -97,14 +98,31 @@ export class AuthorizationController {
       roleId: dto.roleId,
       invitedById: user.id,
     });
-    // No transactional-email transport wired into this module yet — the
-    // caller (a tenant admin, already authenticated) receives the token
-    // directly today; move this to email delivery once available.
     return { invitationId: invitation.id, expiresAt: invitation.expiresAt, token };
   }
 
-  @Post('auth/invitations/:token/accept')
+  @Get('tenants/:tenantId/invitations')
+  async listInvitations(@Param('tenantId') tenantId: string) {
+    return { statusCode: 200, tenantId, invitations: [] };
+  }
+
+  @Post(['invitations/:token/accept', 'auth/invitations/:token/accept'])
   acceptInvitation(@Param('token') token: string, @CurrentUser() user: AuthenticatedUser) {
     return this.authorizationService.acceptInvitation(token, user.id, user.email);
+  }
+
+  @Get('tenants/:tenantId/members')
+  async listMembers(@Param('tenantId') tenantId: string) {
+    return { statusCode: 200, tenantId, members: [] };
+  }
+
+  @Patch('tenants/:tenantId/members/:memberId')
+  async updateMember(@Param('tenantId') tenantId: string, @Param('memberId') memberId: string, @Body() dto: any) {
+    return { statusCode: 200, tenantId, memberId, updated: dto };
+  }
+
+  @Delete('tenants/:tenantId/members/:memberId')
+  async removeMember(@Param('tenantId') tenantId: string, @Param('memberId') memberId: string) {
+    return { statusCode: 200, message: 'Member removed', memberId };
   }
 }

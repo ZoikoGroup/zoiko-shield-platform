@@ -52,19 +52,25 @@ export class AuditPackageController {
     return this.builderService.build(tenantId ?? 'default-tenant', packageId);
   }
 
-  @Post(':packageId/validate')
-  async validate(@Headers('x-tenant-id') tenantId: string, @Param('packageId') packageId: string) {
-    return this.validatorService.validate(tenantId ?? 'default-tenant', packageId);
-  }
-
-  @Post(':packageId/approve')
-  async approve(@Headers('x-tenant-id') tenantId: string, @Headers('x-actor-id') actorId: string, @Param('packageId') packageId: string) {
-    return this.approvalService.approve(tenantId ?? 'default-tenant', packageId, actorId ?? 'unknown-actor');
-  }
-
-  @Post(':packageId/freeze')
+  @Post([':packageId/freeze', ':packageId/finalize'])
   async freeze(@Headers('x-tenant-id') tenantId: string, @Param('packageId') packageId: string) {
     return this.freezeService.freeze(tenantId ?? 'default-tenant', packageId);
+  }
+
+  @Get(':packageId/export')
+  async exportPackage(@Headers('x-tenant-id') tenantId: string, @Param('packageId') packageId: string) {
+    const manifest = await this.exportService.exportManifest(tenantId ?? 'default-tenant', packageId);
+    return {
+      statusCode: 200,
+      filename: `audit-package-${packageId}.zip`,
+      manifest,
+      downloadUrl: `/api/v1/audit-packages/${packageId}/manifest`,
+    };
+  }
+
+  @Post([':packageId/validate', ':packageId/verify'])
+  async validate(@Headers('x-tenant-id') tenantId: string, @Param('packageId') packageId: string) {
+    return this.validatorService.validate(tenantId ?? 'default-tenant', packageId);
   }
 
   @Get(':packageId/manifest')

@@ -51,12 +51,12 @@ export class OutboxPublisherService {
 
       for (const event of pending) {
         try {
-          await this.kafkaProducer.publishEvent(
-            event.topic,
-            event.event_type,
-            { tenantId: event.tenant_id, ...JSON.parse(event.payload) },
-            { correlationId: event.correlation_id ?? undefined },
-          );
+          await this.kafkaProducer.emit(event.topic, {
+            eventType: event.event_type,
+            tenantId: event.tenant_id,
+            correlationId: event.correlation_id ?? undefined,
+            ...JSON.parse(event.payload),
+          });
           await this.prisma.outboxEvent.update({ where: { id: event.id }, data: { published_at: new Date() } });
         } catch (err) {
           this.logger.error(`Failed to publish outbox event ${event.id}: ${(err as Error).message}`);

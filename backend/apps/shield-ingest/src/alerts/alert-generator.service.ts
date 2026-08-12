@@ -33,7 +33,7 @@ export class AlertGeneratorService {
   async createAlertFromDetectionRun(detectionRunId: string) {
     const run = await this.prisma.detectionRun.findUnique({
       where: { id: detectionRunId },
-      include: { rule: true, event: true },
+      include: { rule: true },
     });
 
     if (!run) {
@@ -48,9 +48,7 @@ export class AlertGeneratorService {
     const existing = await this.prisma.alert.findFirst({
       where: {
         tenant_id: run.tenant_id,
-        detection_rule_id: run.rule_id,
-        detection_rule_version: run.rule_version,
-        source_event_ids: { contains: run.event_id },
+        detection_version_id: run.rule_id,
       },
     });
 
@@ -59,33 +57,23 @@ export class AlertGeneratorService {
       return existing;
     }
 
-    // Extract affected assets and identities from event
     const sourceEventIds = [run.event_id];
-    const affectedAssets = run.event.resource_id ? [run.event.resource_id] : [];
-    const affectedIdentities = run.event.actor_email
-      ? [run.event.actor_email]
-      : run.event.actor_user_id
-      ? [run.event.actor_user_id]
-      : [];
-
-    const title = `Alert: ${run.rule.name}`;
-    const description = `Security alert triggered by detection rule '${run.rule.name}' on event '${run.event_id}'`;
+    const title = `Alert: ${run.rule?.name || 'Detection Match'}`;
+    const description = `Security alert triggered by detection rule '${run.rule?.name || run.rule_id}' on event '${run.event_id}'`;
 
     const alert = await this.prisma.alert.create({
       data: {
         tenant_id: run.tenant_id,
-        environment_id: run.event.environment_id || 'default-env',
-        detection_rule_id: run.rule_id,
-        detection_rule_version: run.rule_version,
+        detection_definition_id: run.rule_id,
+        detection_version_id: run.rule_id,
+        detection_match_id: run.id,
         title,
         description,
-        severity: run.rule.severity || 'HIGH',
-        priority: run.rule.severity === 'CRITICAL' ? 'P1' : run.rule.severity === 'HIGH' ? 'P2' : 'P3',
+        severity: run.rule?.severity || 'HIGH',
+        priority: run.rule?.severity === 'CRITICAL' ? 'P1' : run.rule?.severity === 'HIGH' ? 'P2' : 'P3',
         confidence: 0.9,
         status: 'NEW',
         source_event_ids: JSON.stringify(sourceEventIds),
-        affected_assets: JSON.stringify(affectedAssets),
-        affected_identities: JSON.stringify(affectedIdentities),
       },
     });
 

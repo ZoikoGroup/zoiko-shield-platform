@@ -60,11 +60,15 @@ export class CaseManagementService {
 
   constructor(private readonly prisma: PrismaService) {}
 
+  private get timelineDelegate() {
+    return this.prisma.caseTimelineEntry || (this.prisma as any).caseTimeline;
+  }
+
   /**
    * Create a new investigation case and log initial CREATED timeline event
    */
   async createCase(dto: CreateCaseDto) {
-    const tenantId = dto.tenantId || 'default-tenant';
+    const tenantId = dto.tenantId || '';
     const environmentId = dto.environmentId || 'default-env';
 
     this.logger.log(`Creating case '${dto.title}' for tenant ${tenantId}`);
@@ -78,22 +82,21 @@ export class CaseManagementService {
         severity: dto.severity || 'HIGH',
         priority: dto.priority || 'P2',
         status: 'NEW',
-        queue: dto.queue || 'DEFAULT',
-        source_alert_ids: JSON.stringify(dto.sourceAlertIds || []),
-        affected_assets: JSON.stringify(dto.affectedAssets || []),
-        affected_identities: JSON.stringify(dto.affectedIdentities || []),
+        queue_id: dto.queue || 'DEFAULT',
+        ...(dto as any).queue ? { queue: dto.queue } : {},
         created_by: dto.createdBy || 'system',
       },
     });
 
     // Record initial CREATED timeline entry
-    await this.prisma.caseTimeline.create({
+    await this.timelineDelegate.create({
       data: {
         tenant_id: tenantId,
         case_id: caseRecord.id,
-        event_type: 'CREATED',
+        entry_type: 'CREATED',
         actor_id: dto.createdBy || 'system',
-        details: JSON.stringify({ message: `Case '${dto.title}' created in NEW state` }),
+        title: 'Case Created',
+        summary: `Case '${dto.title}' created in NEW state`,
       },
     });
 
@@ -107,9 +110,7 @@ export class CaseManagementService {
     const caseRecord = await this.prisma.case.findUnique({
       where: { id: caseId },
       include: {
-        caseTimelines: {
-          orderBy: { created_at: 'asc' },
-        },
+        timelineEntries: true,
       },
     });
 
@@ -133,7 +134,7 @@ export class CaseManagementService {
       where,
       orderBy: { created_at: 'desc' },
       include: {
-        caseTimelines: { take: 3, orderBy: { created_at: 'desc' } },
+        timelineEntries: { take: 3, orderBy: { created_at: 'desc' } },
       },
     });
   }
@@ -144,9 +145,19 @@ export class CaseManagementService {
   async updateCase(caseId: string, dto: UpdateCaseDto) {
     await this.getCaseById(caseId);
 
+    const updateData: any = {};
+    if (dto.title) updateData.title = dto.title;
+    if (dto.description) updateData.description = dto.description;
+    if (dto.severity) updateData.severity = dto.severity;
+    if (dto.priority) updateData.priority = dto.priority;
+    if (dto.queue) {
+      updateData.queue_id = dto.queue;
+      updateData.queue = dto.queue;
+    }
+
     return this.prisma.case.update({
       where: { id: caseId },
-      data: dto,
+      data: updateData,
     });
   }
 
@@ -161,13 +172,14 @@ export class CaseManagementService {
       data: { owner_id: ownerId },
     });
 
-    await this.prisma.caseTimeline.create({
+    await this.timelineDelegate.create({
       data: {
         tenant_id: caseRecord.tenant_id,
         case_id: caseId,
-        event_type: 'ASSIGNED',
+        entry_type: 'ASSIGNED',
         actor_id: actorId,
-        details: JSON.stringify({ ownerId, message: `Assigned case to owner '${ownerId}'` }),
+        title: 'Case Assigned',
+        summary: `Assigned case to owner '${ownerId}'`,
       },
     });
 
@@ -203,17 +215,14 @@ export class CaseManagementService {
       data: dataToUpdate,
     });
 
-    await this.prisma.caseTimeline.create({
+    await this.timelineDelegate.create({
       data: {
         tenant_id: caseRecord.tenant_id,
         case_id: caseId,
-        event_type: 'STATE_TRANSITION',
+        entry_type: 'STATE_TRANSITION',
         actor_id: actorId,
-        details: JSON.stringify({
-          previousStatus: currentStatus,
-          newStatus: targetStatus,
-          reason: reason || 'Analyst transition',
-        }),
+        title: 'State Transition',
+        summary: `Transitioned from '${currentStatus}' to '${targetStatus}': ${reason || 'Analyst transition'}`,
       },
     });
 
@@ -230,13 +239,14 @@ export class CaseManagementService {
       throw new BadRequestException('Note text cannot be empty');
     }
 
-    return this.prisma.caseTimeline.create({
+    return this.timelineDelegate.create({
       data: {
         tenant_id: caseRecord.tenant_id,
         case_id: caseId,
-        event_type: 'NOTE_ADDED',
+        entry_type: 'NOTE_ADDED',
         actor_id: actorId,
-        details: JSON.stringify({ note: noteText }),
+        title: 'Note Added',
+        summary: noteText,
       },
     });
   }
@@ -247,13 +257,15 @@ export class CaseManagementService {
   async linkEvidence(caseId: string, evidenceId: string, actorId = 'system') {
     const caseRecord = await this.getCaseById(caseId);
 
-    return this.prisma.caseTimeline.create({
+    return this.timelineDelegate.create({
       data: {
         tenant_id: caseRecord.tenant_id,
         case_id: caseId,
-        event_type: 'EVIDENCE_LINKED',
+        entry_type: 'EVIDENCE_LINKED',
         actor_id: actorId,
-        details: JSON.stringify({ evidenceId }),
+        title: 'Evidence Linked',
+        summary: `Linked evidence '${evidenceId}'`,
+        evidence_ref: evidenceId,
       },
     });
   }
@@ -264,7 +276,7 @@ export class CaseManagementService {
   async getCaseTimeline(caseId: string) {
     await this.getCaseById(caseId);
 
-    return this.prisma.caseTimeline.findMany({
+    return this.timelineDelegate.findMany({
       where: { case_id: caseId },
       orderBy: { created_at: 'asc' },
     });

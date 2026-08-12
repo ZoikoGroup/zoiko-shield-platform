@@ -6,4 +6,19 @@ export class ShieldActionController {
   getHello(): string {
     return 'shield-action online';
   }
+
+  @Get('health')
+  getHealth() {
+    return { status: 'healthy', service: 'shield-action', timestamp: new Date().toISOString() };
+  }
+
+  @Get('health/ready')
+  getHealthReady() {
+    return { status: 'ready', service: 'shield-action', timestamp: new Date().toISOString() };
+  }
+
+  @Get('health/live')
+  getHealthLive() {
+    return { status: 'live', service: 'shield-action', timestamp: new Date().toISOString() };
+  }
 }

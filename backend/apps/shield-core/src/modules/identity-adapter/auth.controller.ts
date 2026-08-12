@@ -57,7 +57,7 @@ function recoveryGrantFrom(req: Request): string {
   return token;
 }
 
-@Controller('auth')
+@Controller(['api/v1/auth', 'auth'])
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
@@ -85,7 +85,7 @@ export class AuthController {
   }
 
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
-  @Post('password-recovery/request')
+  @Post(['password-recovery/request', 'forgot-password'])
   requestPasswordRecovery(@Body() dto: PasswordRecoveryRequestDto, @Req() req: Request) {
     return this.authService.requestPasswordRecovery(dto, sessionMetadataFrom(req));
   }
@@ -97,7 +97,7 @@ export class AuthController {
     return { message: 'Code verified. You may now set a new password.' };
   }
 
-  @Post('password-recovery/reset')
+  @Post(['password-recovery/reset', 'reset-password'])
   async resetPassword(
     @Body() dto: PasswordRecoveryResetDto,
     @Req() req: Request,
@@ -194,7 +194,7 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('me')
+  @Get(['me', '/api/v1/me'])
   me(@CurrentUser() user: AuthenticatedUser) {
     return user;
   }

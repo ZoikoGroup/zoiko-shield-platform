@@ -30,6 +30,6 @@ COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 RUN addgroup -S shield && adduser -S shield -G shield
 USER shield
 
-EXPOSE 3001
-CMD ["node", "dist/apps/shield-core/main.js"]
+ENV SERVICE_NAME=shield-core
+CMD ["sh", "-c", "node dist/apps/${SERVICE_NAME}/main.js"]
 

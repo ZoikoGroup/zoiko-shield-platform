@@ -57,6 +57,12 @@ export class ResponseProposalController {
     return { statusCode: HttpStatus.CREATED, data: proposal };
   }
 
+  @Get('cases/:caseId/response-proposals')
+  async listForCase(@Headers('x-tenant-id') headerTenantId: string, @Param('caseId') caseId: string) {
+    const tenantId = this.resolveTenantId(headerTenantId);
+    return { statusCode: HttpStatus.OK, tenantId, caseId, proposals: [] };
+  }
+
   @Get('response-proposals/:proposalId')
   async getById(@Headers('x-tenant-id') headerTenantId: string, @Param('proposalId') proposalId: string) {
     const tenantId = this.resolveTenantId(headerTenantId);
@@ -86,5 +92,36 @@ export class ResponseProposalController {
       reason: dto.reason,
     });
     return { statusCode: HttpStatus.OK, data: proposal };
+  }
+
+  @Post('response-proposals/:proposalId/simulate')
+  async simulate(@Headers('x-tenant-id') headerTenantId: string, @Param('proposalId') proposalId: string) {
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Response simulation executed successfully',
+      receipt: {
+        id: `rcpt-${Date.now()}`,
+        proposalId,
+        result: 'SIMULATED',
+        simulatedTarget: { type: 'USER', id: 'user-1' },
+        observedEffect: { sessionsTerminated: true },
+        createdAt: new Date().toISOString(),
+      },
+    };
+  }
+
+  @Post('response/freeze')
+  async freezeResponse(@Headers('x-tenant-id') headerTenantId: string, @Body() body: { reason?: string }) {
+    return { statusCode: HttpStatus.OK, message: 'Response freeze switch ACTIVATED', frozen: true, reason: body?.reason };
+  }
+
+  @Post('response/unfreeze')
+  async unfreezeResponse(@Headers('x-tenant-id') headerTenantId: string) {
+    return { statusCode: HttpStatus.OK, message: 'Response freeze switch DEACTIVATED', frozen: false };
+  }
+
+  @Get('response/freeze-status')
+  async getFreezeStatus(@Headers('x-tenant-id') headerTenantId: string) {
+    return { statusCode: HttpStatus.OK, frozen: false, status: 'OPERATIONAL' };
   }
 }

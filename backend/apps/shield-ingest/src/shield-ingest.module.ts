@@ -2,13 +2,23 @@ import { Module } from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ShieldIngestController } from './shield-ingest.controller';
 import { ShieldIngestService } from './shield-ingest.service';
-import { EntraConnectorController } from './connectors/microsoft-entra/entra.connector';
-import { EntraAuthService } from './connectors/microsoft-entra/entra.auth';
-import { EntraGraphClient } from './connectors/microsoft-entra/entra.graph-client';
-import { EntraDeltaSyncService } from './connectors/microsoft-entra/entra.delta-sync';
-import { EntraPollerService } from './connectors/microsoft-entra/entra.poller';
-import { EntraNormalizerService } from './connectors/microsoft-entra/entra.normalizer';
-import { EntraWebhookController } from './connectors/microsoft-entra/entra.webhook.controller';
+import { EntraConnectorController } from './connectors/providers/microsoft-entra/entra.connector.controller';
+import { EntraConnectorService } from './connectors/providers/microsoft-entra/entra.connector';
+import { EntraAuthService } from './connectors/providers/microsoft-entra/entra.auth';
+import { EntraTokenService } from './connectors/providers/microsoft-entra/entra.token.service';
+import { EntraGraphClient } from './connectors/providers/microsoft-entra/entra.client';
+import { EntraUserSyncService } from './connectors/providers/microsoft-entra/entra.user-sync';
+import { EntraSignInSyncService } from './connectors/providers/microsoft-entra/entra.signin-sync';
+import { EntraNormalizerService } from './connectors/providers/microsoft-entra/entra.normalizer';
+import { EntraWebhookController } from './connectors/providers/microsoft-entra/entra.webhook.controller';
+
+import { ConnectorRegistry } from './connectors/core/connector-registry';
+import { CredentialService } from './connectors/services/credential.service';
+import { PermissionService } from './connectors/services/permission.service';
+import { ConnectorCheckpointService } from './connectors/services/checkpoint.service';
+import { ConnectorHealthService } from './connectors/services/health.service';
+import { ConnectorSyncService } from './connectors/services/sync.service';
+
 import { WebhookIngestController } from './ingestion/webhook-ingest.controller';
 import { RawIngestService } from './ingestion/raw-ingest.service';
 import { ConnectorCatalogController } from './connectors/connector-catalog.controller';
@@ -55,6 +65,8 @@ import { AssuranceReviewService } from './assurance/assurance-review.service';
 import { SLAClaimController } from './sla/sla-claim.controller';
 import { SLAClaimService } from './sla/sla-claim.service';
 
+import { AiInvestigationController } from './ai/ai-investigation.controller';
+
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
   controllers: [
@@ -75,6 +87,7 @@ import { SLAClaimService } from './sla/sla-claim.service';
     ControlTestingController,
     AssuranceReviewController,
     SLAClaimController,
+    AiInvestigationController,
   ],
 
   providers: [
@@ -113,4 +126,3 @@ import { SLAClaimService } from './sla/sla-claim.service';
   ],
 })
 export class ShieldIngestModule {}
-
