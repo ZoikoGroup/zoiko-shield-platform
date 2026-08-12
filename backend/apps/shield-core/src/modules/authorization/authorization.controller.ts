@@ -26,6 +26,23 @@ import { PERMISSION_CODES } from './constants';
 export class AuthorizationController {
   constructor(private readonly authorizationService: AuthorizationService) {}
 
+  // ── Self-service: any authenticated user can inspect their own access ──
+
+  /** Returns all tenant memberships for the caller, with roles and permissions. */
+  @Get('me/roles')
+  getMyRoles(@CurrentUser() user: AuthenticatedUser) {
+    return this.authorizationService.getMembershipsForPrincipal(user.id);
+  }
+
+  /** Returns effective permission codes for the caller within a specific tenant. */
+  @Get('me/permissions')
+  getMyPermissions(
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('tenantId') tenantId: string,
+  ) {
+    return this.authorizationService.getPermissionCodesForPrincipal(tenantId, user.id);
+  }
+
   @UseGuards(PlatformPermissionsGuard)
   @RequirePlatformPermissions(PERMISSION_CODES.PLATFORM_PERMISSION_MANAGE)
   @Post('permissions')

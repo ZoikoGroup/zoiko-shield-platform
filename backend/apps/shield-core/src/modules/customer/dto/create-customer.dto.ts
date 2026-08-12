@@ -1,5 +1,13 @@
+import { IsOptional, IsString, IsUUID } from 'class-validator';
+
 export class CreateCustomerDto {
-  party_id: string;
-  customer_type: string;
+  @IsUUID()
+  partyId: string;
+
+  @IsString()
+  customerType: string;
+
+  @IsOptional()
+  @IsString()
   segment?: string;
 }

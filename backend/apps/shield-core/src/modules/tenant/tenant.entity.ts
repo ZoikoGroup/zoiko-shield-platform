@@ -39,6 +39,12 @@ export class Tenant {
   @Column()
   timezone: string;
 
+  @Column({ default: 'UNCLASSIFIED' })
+  dataClass: string;
+
+  @Column({ default: 'default' })
+  retentionPolicyRef: string;
+
   @Column({ type: 'timestamptz', nullable: true })
   onboardingCompletedAt: Date | null;
 

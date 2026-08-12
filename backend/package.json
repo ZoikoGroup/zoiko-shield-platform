@@ -18,7 +18,8 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./apps/zoikoshield-backend/test/jest-e2e.json",
-    "seed:platform-admin": "ts-node -r tsconfig-paths/register scripts/seed-platform-admin.ts"
+    "seed:platform-admin": "ts-node -r tsconfig-paths/register scripts/seed-platform-admin.ts",
+    "check:platform-admin": "ts-node -r tsconfig-paths/register scripts/check-super-admin.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1106.0",
@@ -37,6 +38,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "cookie-parser": "^1.4.7",
+    "js-yaml": "^5.2.3",
     "kafkajs": "^2.2.4",
     "nodemailer": "^9.0.5",
     "passport": "^0.7.0",
@@ -46,6 +48,7 @@
     "pg": "^8.22.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "swagger-ui-express": "^5.0.1",
     "typeorm": "^1.1.0"
   },
   "devDependencies": {
@@ -58,12 +61,14 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
     "@types/jest": "^30.0.0",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^24.0.0",
     "@types/nodemailer": "^8.0.1",
     "@types/passport-google-oauth20": "^2.0.17",
     "@types/passport-jwt": "^4.0.1",
     "@types/passport-microsoft": "^2.1.1",
     "@types/supertest": "^7.0.0",
+    "@types/swagger-ui-express": "^4.1.8",
     "eslint": "^9.18.0",
     "eslint-config-prettier": "^10.0.1",
     "eslint-plugin-prettier": "^5.2.2",
