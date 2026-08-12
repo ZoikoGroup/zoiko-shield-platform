@@ -82,6 +82,8 @@ export class OnboardingService implements OnModuleInit {
           homeRegion: dto.homeRegion,
           dataResidencyRegion: dto.dataResidencyRegion ?? dto.homeRegion,
           timezone: dto.timezone,
+          dataClass: dto.dataClass,
+          retentionPolicyRef: dto.retentionPolicyRef,
           onboardingCompletedAt: null,
           createdByPrincipalId: principalId,
         }),

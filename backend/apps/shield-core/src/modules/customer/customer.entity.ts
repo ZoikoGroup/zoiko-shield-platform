@@ -1,16 +1,42 @@
-import { CanonicalContext } from '../tenant/interfaces/canonical-context.interface';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  PrimaryGeneratedColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
+export type CustomerLifecycleStatus = 'ACTIVE' | 'SUSPENDED' | 'OFFBOARDED';
+export type CustomerKycStatus = 'PENDING' | 'VERIFIED' | 'REJECTED';
+
+@Entity({ name: 'customers', schema: 'tenant' })
 export class Customer {
+  @PrimaryGeneratedColumn('uuid')
   id: string;
-  party_id: string;
-  customer_type: string;
-  lifecycle_status: string;
-  kyc_status: string;
+
+  @Column({ type: 'uuid' })
+  @Index()
+  tenantId: string;
+
+  @Column({ type: 'uuid' })
+  partyId: string;
+
+  @Column()
+  customerType: string;
+
+  @Column({ type: 'varchar', default: 'ACTIVE' })
+  lifecycleStatus: CustomerLifecycleStatus;
+
+  @Column({ type: 'varchar', default: 'PENDING' })
+  kycStatus: CustomerKycStatus;
+
+  @Column({ type: 'varchar', nullable: true })
   segment?: string;
 
-  // The context associated with the creation/modification of this record
-  context: CanonicalContext;
+  @CreateDateColumn()
+  createdAt: Date;
 
-  createdAt: string;
-  updatedAt: string;
+  @UpdateDateColumn()
+  updatedAt: Date;
 }

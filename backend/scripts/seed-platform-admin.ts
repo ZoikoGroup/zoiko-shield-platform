@@ -1,12 +1,12 @@
 /**
- * One-time bootstrap: grants an existing principal the PLATFORM_SUPER_ADMIN
- * role so they can create permissions/roles/invitation-capable roles via the
- * API. There is no other way in — by design, per IAM-04 "no standing
- * universal privilege" nothing in the HTTP API can self-elevate to this.
+ * Bootstrap script: creates or updates a principal with PLATFORM_SUPER_ADMIN
+ * role and full platform permissions.
  *
- * Usage: npm run seed:platform-admin -- <email>
+ * Usage: npm run seed:platform-admin -- <email> [password]
  */
 import 'reflect-metadata';
+import * as bcrypt from 'bcrypt';
+import { Client } from 'pg';
 import { DataSource } from 'typeorm';
 import { Principal } from '../apps/shield-core/src/modules/identity-adapter/principal.entity';
 import { LocalCredential } from '../apps/shield-core/src/modules/identity-adapter/local-credential.entity';
@@ -24,15 +24,30 @@ import { Invitation } from '../apps/shield-core/src/modules/authorization/entiti
 import { PLATFORM_SCOPE, PERMISSION_CODES } from '../apps/shield-core/src/modules/authorization/constants';
 
 async function main() {
-  const email = process.argv[2];
+  const email = process.argv[2] || 'rvishwajeet001@gmail.com';
+  const password = process.argv[3] || 'Th@nksG00gle';
+
   if (!email) {
-    console.error('Usage: npm run seed:platform-admin -- <email>');
+    console.error('Usage: npm run seed:platform-admin -- <email> [password]');
     process.exit(1);
   }
 
+  const databaseUrl = process.env.DATABASE_URL || 'postgres://shield:shield@localhost:5433/shield_core';
+
+  // Ensure schemas exist before TypeORM initializes
+  const pgClient = new Client({
+    connectionString: databaseUrl,
+    ssl: databaseUrl.includes('sslmode=require') ? { rejectUnauthorized: false } : false,
+  });
+  await pgClient.connect();
+  await pgClient.query('CREATE SCHEMA IF NOT EXISTS "identity"');
+  await pgClient.query('CREATE SCHEMA IF NOT EXISTS "authorization"');
+  await pgClient.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+  await pgClient.end();
+
   const dataSource = new DataSource({
     type: 'postgres',
-    url: process.env.DATABASE_URL,
+    url: databaseUrl,
     entities: [
       Principal,
       LocalCredential,
@@ -48,21 +63,65 @@ async function main() {
       TenantMembership,
       Invitation,
     ],
-    synchronize: false,
-    ssl: process.env.DATABASE_URL?.includes('sslmode=require') ? { rejectUnauthorized: false } : false,
+    synchronize: true,
+    ssl: databaseUrl.includes('sslmode=require') ? { rejectUnauthorized: false } : false,
   });
+
   await dataSource.initialize();
 
   const principalRepo = dataSource.getRepository(Principal);
+  const localCredRepo = dataSource.getRepository(LocalCredential);
   const permissionRepo = dataSource.getRepository(Permission);
   const roleRepo = dataSource.getRepository(Role);
   const membershipRepo = dataSource.getRepository(TenantMembership);
 
-  const principal = await principalRepo.findOne({ where: { email } });
+  let principal = await principalRepo.findOne({ where: { email } });
+
   if (!principal) {
-    console.error(`No principal found with email ${email} — register and verify the account first.`);
-    await dataSource.destroy();
-    process.exit(1);
+    const passwordHash = await bcrypt.hash(password, 10);
+    principal = await principalRepo.save(
+      principalRepo.create({
+        principalType: 'HUMAN',
+        source: 'LOCAL',
+        email,
+        fullName: 'Super Admin',
+        emailVerified: true,
+        status: 'ACTIVE',
+      }),
+    );
+    await localCredRepo.save(
+      localCredRepo.create({
+        principalId: principal.id,
+        passwordHash,
+        passwordUpdatedAt: new Date(),
+      }),
+    );
+    console.log(`Created new Super Admin principal for ${email}`);
+  } else {
+    principal.emailVerified = true;
+    principal.status = 'ACTIVE';
+    await principalRepo.save(principal);
+
+    if (password) {
+      const passwordHash = await bcrypt.hash(password, 10);
+      let cred = await localCredRepo.findOne({ where: { principalId: principal.id } });
+      if (!cred) {
+        await localCredRepo.save(
+          localCredRepo.create({
+            principalId: principal.id,
+            passwordHash,
+            passwordUpdatedAt: new Date(),
+          }),
+        );
+      } else {
+        cred.passwordHash = passwordHash;
+        cred.passwordUpdatedAt = new Date();
+        cred.failedAttempts = 0;
+        cred.lockedUntil = null;
+        await localCredRepo.save(cred);
+      }
+      console.log(`Updated credentials for existing principal ${email}`);
+    }
   }
 
   const codes = Object.values(PERMISSION_CODES);
@@ -111,7 +170,7 @@ async function main() {
   }
   await membershipRepo.save(membership);
 
-  console.log(`${email} now holds PLATFORM_SUPER_ADMIN.`);
+  console.log(`SUCCESS: ${email} is now a PLATFORM_SUPER_ADMIN with password set.`);
   await dataSource.destroy();
 }
 

@@ -95,6 +95,14 @@ export class AuthorizationService {
     return [...codes];
   }
 
+  /** Returns all active memberships for a principal, with roles and permissions eagerly loaded. */
+  async getMembershipsForPrincipal(principalId: string): Promise<TenantMembership[]> {
+    return this.membershipRepository.find({
+      where: { principalId, status: 'ACTIVE' },
+      relations: { roles: { permissions: true } },
+    });
+  }
+
   // ── Invitations ──────────────────────────────────────────────
   // Replaces self-assigned tenant membership: only an inviter holding
   // member:invite may create an invitation, and the accepting principal

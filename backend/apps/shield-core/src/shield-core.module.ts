@@ -28,6 +28,8 @@ import { Invitation } from './modules/authorization/entities/invitation.entity';
 import { Tenant } from './modules/tenant/tenant.entity';
 import { LegalEntity } from './modules/legal-entity/legal-entity.entity';
 import { Environment } from './modules/environment/environment.entity';
+import { Customer } from './modules/customer/customer.entity';
+import { Organization } from './modules/organization/organization.entity';
 import { OnboardingModule } from './modules/onboarding/onboarding.module';
 import { CommercialModule } from './modules/commercial/commercial.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
@@ -97,6 +99,8 @@ import { ScheduleModule } from '@nestjs/schedule';
         Tenant,
         LegalEntity,
         Environment,
+        Customer,
+        Organization,
       ],
       synchronize: process.env.NODE_ENV !== 'production',
       ssl: process.env.DATABASE_URL?.includes('sslmode=require')

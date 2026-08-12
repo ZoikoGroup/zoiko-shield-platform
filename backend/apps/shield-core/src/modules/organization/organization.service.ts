@@ -1,59 +1,41 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { Organization } from './organization.entity';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
-import * as crypto from 'crypto';
 
 @Injectable()
 export class OrganizationService {
-  private organizations: Organization[] = [];
+  constructor(
+    @InjectRepository(Organization)
+    private readonly organizationRepository: Repository<Organization>,
+  ) {}
 
-  findAll(): Organization[] {
-    return this.organizations;
+  findAllForTenant(tenantId: string): Promise<Organization[]> {
+    return this.organizationRepository.find({ where: { tenantId } });
   }
 
-  findOne(id: string): Organization {
-    const item = this.organizations.find((c) => c.id === id);
-    if (!item) throw new NotFoundException(`Organization with ID ${id} not found`);
+  async findOne(tenantId: string, id: string): Promise<Organization> {
+    const item = await this.organizationRepository.findOne({ where: { id, tenantId } });
+    if (!item) {
+      throw new NotFoundException(`Organization ${id} not found for tenant ${tenantId}`);
+    }
     return item;
   }
 
-  create(createDto: CreateOrganizationDto): Organization {
-    const newItem: Organization = {
-      id: crypto.randomUUID(),
-      name: createDto.name,
-      status: 'ACTIVE',
-      context: {
-        tenantId: 'default-tenant',
-        legalEntityId: 'default-entity',
-        environmentId: 'dev',
-        region: 'us-east-1',
-        correlationId: crypto.randomUUID(),
-        traceId: crypto.randomUUID(),
-        requestId: crypto.randomUUID(),
-        purpose: 'organization-creation',
-        dataClass: 'restricted',
-        policyVersion: '1.0',
-        contractId: 'organization-api',
-        contractVersion: '1.0',
-        recordedAt: new Date().toISOString(),
-      },
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    this.organizations.push(newItem);
-    return newItem;
+  create(tenantId: string, dto: CreateOrganizationDto): Promise<Organization> {
+    return this.organizationRepository.save(this.organizationRepository.create({ tenantId, ...dto }));
   }
 
-  update(id: string, updateDto: UpdateOrganizationDto): Organization {
-    const item = this.findOne(id);
-    const updated = { ...item, ...updateDto, updatedAt: new Date().toISOString() };
-    this.organizations = this.organizations.map((c) => (c.id === id ? updated : c));
-    return updated;
+  async update(tenantId: string, id: string, dto: UpdateOrganizationDto): Promise<Organization> {
+    const item = await this.findOne(tenantId, id);
+    Object.assign(item, dto);
+    return this.organizationRepository.save(item);
   }
 
-  remove(id: string): void {
-    this.findOne(id);
-    this.organizations = this.organizations.filter((c) => c.id !== id);
+  async remove(tenantId: string, id: string): Promise<void> {
+    const item = await this.findOne(tenantId, id);
+    await this.organizationRepository.remove(item);
   }
 }
