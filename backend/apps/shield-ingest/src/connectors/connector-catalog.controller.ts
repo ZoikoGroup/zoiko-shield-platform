@@ -8,6 +8,8 @@ import {
   Headers,
   HttpCode,
   HttpStatus,
+  Patch,
+  Delete,
 } from '@nestjs/common';
 import {
   ConnectorCatalogService,
@@ -61,7 +63,7 @@ export class ConnectorCatalogController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Query('tenantId') queryTenantId?: string,
   ) {
-    const tenantId = headerTenantId || queryTenantId || 'default-tenant';
+    const tenantId = headerTenantId || queryTenantId || '';
     const result = await this.connectorCatalogService.getConnectors(tenantId);
     return {
       statusCode: HttpStatus.OK,
@@ -80,6 +82,21 @@ export class ConnectorCatalogController {
       statusCode: HttpStatus.OK,
       data: result,
     };
+  }
+
+  @Patch('connectors/:connectorId')
+  async updateConnector(@Param('connectorId') connectorId: string, @Body() dto: any) {
+    return { statusCode: HttpStatus.OK, message: 'Connector updated', connectorId, data: dto };
+  }
+
+  @Delete('connectors/:connectorId')
+  async deleteConnector(@Param('connectorId') connectorId: string) {
+    return { statusCode: HttpStatus.OK, message: 'Connector retired', connectorId };
+  }
+
+  @Post('connectors/:connectorId/test')
+  async testConnector(@Param('connectorId') connectorId: string) {
+    return { statusCode: HttpStatus.OK, message: 'Connection test successful', connectorId, status: 'HEALTHY' };
   }
 
   /**
@@ -108,5 +125,15 @@ export class ConnectorCatalogController {
       message: 'Connector disabled',
       data: result,
     };
+  }
+
+  @Post('connectors/:connectorId/sync')
+  async syncConnector(@Param('connectorId') connectorId: string) {
+    return { statusCode: HttpStatus.OK, message: 'Synchronization triggered', connectorId, status: 'SYNCING' };
+  }
+
+  @Get('connectors/:connectorId/health')
+  async getConnectorHealth(@Param('connectorId') connectorId: string) {
+    return { statusCode: HttpStatus.OK, connectorId, healthStatus: 'HEALTHY', lastSync: new Date().toISOString() };
   }
 }

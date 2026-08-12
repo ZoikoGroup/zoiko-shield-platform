@@ -197,4 +197,30 @@ export class RawIngestService {
       receivedAt: rawEvent.received_at,
     };
   }
+
+  /**
+   * Directly ingest a structured raw event from internal connectors (e.g. Entra)
+   */
+  async ingestRawEvent(params: {
+    tenantId: string;
+    environmentId: string;
+    connectorId: string;
+    sourceType: string;
+    sourceEventId?: string;
+    occurredAt?: Date;
+    payload: any;
+  }): Promise<IngestionResult> {
+    return this.processWebhookPayload(
+      params.connectorId,
+      {
+        'x-tenant-id': params.tenantId,
+        'x-environment-id': params.environmentId,
+      },
+      {
+        sourceEventId: params.sourceEventId,
+        occurredAt: params.occurredAt?.toISOString(),
+        ...params.payload,
+      },
+    );
+  }
 }

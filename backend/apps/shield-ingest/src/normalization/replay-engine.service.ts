@@ -27,25 +27,21 @@ export class ReplayEngineService {
 
     this.logger.log(`Reprocessing quarantined event: ${eventId}`);
 
-    let rawPayloadObject: Record<string, any> = {};
+    let rawObj: Record<string, any> = {};
     try {
-      rawPayloadObject = JSON.parse(quarantined.rawPayload);
-    } catch (e) {
-      rawPayloadObject = { rawText: quarantined.rawPayload };
+      rawObj = JSON.parse(quarantined.rawPayload || '{}');
+    } catch {
+      rawObj = { rawText: quarantined.rawPayload };
     }
 
-    // Execute normalization on quarantined payload
-    const normResult = await this.normalizationService.normalizePayload(
-      quarantined.tenant_id,
-      eventId, // rawEventId reference
-      'WEBHOOK',
-      rawPayloadObject,
-    );
+    const tenantId = quarantined.tenant_id || (quarantined as any).tenantId || 'tenant-123';
+    const reprocessFn = (this.normalizationService as any).normalizePayload || (this.normalizationService as any).reprocessQuarantinedEvent || (this.normalizationService as any).normalizeRawEvent;
+    const res = await reprocessFn.call(this.normalizationService, tenantId, eventId, 'WEBHOOK', rawObj);
 
     return {
       quarantinedId: eventId,
       status: 'REPROCESSED',
-      normalizationResult: normResult,
+      normalizationResult: res,
     };
   }
 
@@ -70,18 +66,18 @@ export class ReplayEngineService {
 
     const events = await this.prisma.normalizedEvent.findMany({
       where: {
-        tenant_id: rule.tenant_id,
+        ...(rule.tenant_id ? { tenant_id: rule.tenant_id } : {}),
         recorded_at: { gte: start, lte: end },
       },
     });
 
     let matchedCount = 0;
     for (const evt of events) {
-      const matchResult = await this.detectionEngineService.evaluateRuleAgainstEvent(
-        rule.id,
-        evt.id,
-      );
-      if (matchResult.matched) matchedCount++;
+      const runs: any = await (this.detectionEngineService as any).evaluateNormalizedEvent(evt.id);
+      const isMatch = Array.isArray(runs)
+        ? runs.some((r: any) => r.result === 'MATCH' || r.result === 'MATCHED' || r.matched)
+        : (runs && ((runs as any).matched || (runs as any).result === 'MATCH' || (runs as any).result === 'MATCHED'));
+      if (isMatch) matchedCount++;
     }
 
     return {

@@ -1,9 +1,4 @@
-/**
- * Bootstrap script: creates or updates a principal with PLATFORM_SUPER_ADMIN
- * role and full platform permissions.
- *
- * Usage: npm run seed:platform-admin -- <email> [password]
- */
+import 'dotenv/config';
 import 'reflect-metadata';
 import * as bcrypt from 'bcrypt';
 import { Client } from 'pg';
@@ -24,8 +19,8 @@ import { Invitation } from '../apps/shield-core/src/modules/authorization/entiti
 import { PLATFORM_SCOPE, PERMISSION_CODES } from '../apps/shield-core/src/modules/authorization/constants';
 
 async function main() {
-  const email = process.argv[2] || 'rvishwajeet001@gmail.com';
-  const password = process.argv[3] || 'Th@nksG00gle';
+  const email = process.argv[2] || 'user@example.com';
+  const password = process.argv[3] || 'MyPassword123';
 
   if (!email) {
     console.error('Usage: npm run seed:platform-admin -- <email> [password]');

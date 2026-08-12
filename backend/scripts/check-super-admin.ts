@@ -1,8 +1,4 @@
-/**
- * Check script: inspects a principal's status, roles, permissions, and credential status in the database.
- *
- * Usage: npm run check:platform-admin -- [email] [password]
- */
+import 'dotenv/config';
 import 'reflect-metadata';
 import * as bcrypt from 'bcrypt';
 import { DataSource } from 'typeorm';
@@ -21,8 +17,8 @@ import { TenantMembership } from '../apps/shield-core/src/modules/authorization/
 import { Invitation } from '../apps/shield-core/src/modules/authorization/entities/invitation.entity';
 
 async function main() {
-  const email = process.argv[2] || 'rvishwajeet001@gmail.com';
-  const testPassword = process.argv[3] || 'Th@nksG00gle';
+  const email = process.argv[2] || 'user@example.com';
+  const testPassword = process.argv[3] || 'MyPassword123';
 
   const databaseUrl = process.env.DATABASE_URL || 'postgres://shield:shield@localhost:5433/shield_core';
 

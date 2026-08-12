@@ -8,8 +8,11 @@ import {
   HttpStatus,
   Logger,
 } from '@nestjs/common';
+import { UseGuards } from '@nestjs/common';
 import { RawIngestService, IngestPayloadDto, IngestionResult } from './raw-ingest.service';
+import { WebhookSignatureGuard } from './guards/webhook-signature.guard';
 
+@UseGuards(WebhookSignatureGuard)
 @Controller('api/v1/ingestion/webhooks')
 export class WebhookIngestController {
   private readonly logger = new Logger(WebhookIngestController.name);

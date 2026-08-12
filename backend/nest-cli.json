@@ -54,6 +54,15 @@
       "compilerOptions": {
         "tsConfigPath": "apps/shield-anchor/tsconfig.app.json"
       }
+    },
+    "verifier-cli": {
+      "type": "application",
+      "root": "apps/verifier-cli",
+      "entryFile": "main",
+      "sourceRoot": "apps/verifier-cli/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/verifier-cli/tsconfig.app.json"
+      }
     }
   }
 }

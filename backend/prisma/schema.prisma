@@ -3218,3 +3218,68 @@ model TenantOffboardingRun {
 
   @@index([tenant_id])
 }
+
+model DetectionRule {
+  id                   String         @id @default(uuid())
+  tenant_id            String?
+  name                 String
+  description          String?
+  rule_type            String         @default("MATCH")
+  severity             String         @default("HIGH")
+  condition_definition String         @default("{}")
+  required_fields      String         @default("[]")
+  status               String         @default("ACTIVE")
+  current_version      Int            @default(1)
+  created_by           String?
+  created_at           DateTime       @default(now())
+
+  detectionRuns        DetectionRun[]
+
+  @@map("detection_rules")
+}
+
+model DetectionRun {
+  id                String        @id @default(uuid())
+  tenant_id         String
+  rule_id           String
+  rule              DetectionRule @relation(fields: [rule_id], references: [id])
+  event_id          String
+  rule_version      Int           @default(1)
+  result            String
+  execution_details String?       @default("{}")
+  executed_at       DateTime      @default(now())
+
+  @@map("detection_runs")
+}
+
+model ControlTestRun {
+  id           String   @id @default(uuid())
+  tenant_id    String
+  objective_id String
+  result       String   @default("UNKNOWN")
+  details      String?  @default("{}")
+  executed_at  DateTime @default(now())
+
+  @@map("control_test_runs")
+}
+
+model AssuranceReview {
+  id          String   @id @default(uuid())
+  tenant_id   String
+  title       String   @default("Assurance Review")
+  score       Float    @default(0)
+  status      String   @default("NOT_EVALUATED")
+  created_at  DateTime @default(now())
+
+  @@map("assurance_reviews")
+}
+
+model ClaimEvaluation {
+  id           String   @id @default(uuid())
+  tenant_id    String
+  claim_type   String
+  result       String   @default("UNKNOWN")
+  evaluated_at DateTime @default(now())
+
+  @@map("claim_evaluations")
+}

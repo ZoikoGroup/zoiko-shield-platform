@@ -75,8 +75,7 @@ export class EntraConnectorService implements SecurityConnector, OnModuleInit {
         name: `Entra Integration - ${context.tenantId}`,
         state: 'AWAITING_ADMIN_CONSENT',
         authentication_type: 'CLIENT_CREDENTIALS',
-        region: context.region,
-        createdBy: context.correlationId,
+        source_region: context.region,
       },
     });
 
@@ -99,7 +98,7 @@ export class EntraConnectorService implements SecurityConnector, OnModuleInit {
   async completeConsent(instanceId: string, externalTenantId: string): Promise<void> {
     const instance = await this.prisma.connectorInstance.update({
       where: { id: instanceId },
-      data: { externalTenantId, state: 'CONNECTED' },
+      data: { externalTenantId, state: 'CONNECTED' } as any,
     });
 
     // One shared ZoikoShield-side Entra app registration (ENTRA_CLIENT_ID /
@@ -118,7 +117,7 @@ export class EntraConnectorService implements SecurityConnector, OnModuleInit {
     const instance = await this.prisma.connectorInstance.findUniqueOrThrow({
       where: { id: context.connectorInstanceId },
     });
-    const accessToken = await this.tokenService.getAccessToken(instance.id, instance.externalTenantId ?? '');
+    const accessToken = await this.tokenService.getAccessToken(instance.id, instance.tenant_id);
     const healthy = await this.healthService.checkHealth(instance.id, instance.tenant_id, accessToken);
     return healthy
       ? { status: 'success', message: 'Connection test passed! Graph API is reachable.' }
@@ -129,7 +128,7 @@ export class EntraConnectorService implements SecurityConnector, OnModuleInit {
     const instance = await this.prisma.connectorInstance.findUniqueOrThrow({
       where: { id: context.connectorInstanceId },
     });
-    const accessToken = await this.tokenService.getAccessToken(instance.id, instance.externalTenantId ?? '');
+    const accessToken = await this.tokenService.getAccessToken(instance.id, instance.tenant_id);
 
     const usersProcessed = await this.userSync.syncUsers(
       instance.id,
@@ -162,7 +161,7 @@ export class EntraConnectorService implements SecurityConnector, OnModuleInit {
     try {
       const accessToken = await this.tokenService.getAccessToken(
         instance.id,
-        instance.externalTenantId ?? '',
+        instance.tenant_id,
       );
       const grantedNow = this.tokenService.decodeGrantedRoles(accessToken);
       await this.permissionService.reconcileGranted(context.connectorInstanceId, grantedNow);

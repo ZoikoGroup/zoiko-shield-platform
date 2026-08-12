@@ -77,9 +77,8 @@ export class EntraSignInSyncService {
         // External consumers (e.g. shield-ai) expect the richer canonical
         // shape too — publish it alongside the internal NormalizedEvent.
         const canonicalEvent = this.normalizer.normalizeSignInLog(log, tenantId);
-        await this.kafkaProducer.publishEvent(
+        await this.kafkaProducer.emit(
           CANONICAL_TOPICS.IDENTITY_SIGNIN,
-          'identity.signin',
           { tenantId, instanceId, ...canonicalEvent },
         );
       }

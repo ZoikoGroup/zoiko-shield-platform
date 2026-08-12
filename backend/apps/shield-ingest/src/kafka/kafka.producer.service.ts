@@ -93,6 +93,10 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  async publishEvent(topic: string, eventType: string, payload: any, options?: any) {
+    return this.emit(topic, { eventType, ...payload, ...options });
+  }
+
   /**
    * Publishes a canonical event to the specified Kafka topic.
    */

@@ -45,7 +45,7 @@ export class EntraSchedulerService {
       for (const instance of instances) {
         try {
           await this.syncService.runSync(instance.id);
-          await this.checkPermissionDrift(instance.id, instance.tenant_id, instance.environment_id, instance.region);
+          await this.checkPermissionDrift(instance.id, instance.tenant_id, instance.environment_id, instance.source_region);
         } catch (err) {
           this.logger.error(
             `Scheduled sync failed for instance ${instance.id}: ${(err as Error).message}`,

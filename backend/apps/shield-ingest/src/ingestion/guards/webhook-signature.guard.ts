@@ -12,25 +12,35 @@ export class WebhookSignatureGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const headers = request.headers;
 
-    // Secret key for HMAC verification (or environment configured secret)
-    const secret = process.env.WEBHOOK_HMAC_SECRET || 'zoiko-shield-webhook-secret';
     const signature =
       (headers['x-hub-signature-256'] as string) ||
       (headers['x-signature'] as string);
 
-    // If signature header is not present in development, log warning or enforce in production
     if (!signature) {
-      if (process.env.NODE_ENV === 'production') {
-        throw new UnauthorizedException('Missing required webhook HMAC signature header');
-      }
-      return true;
+      throw new UnauthorizedException('Missing required webhook HMAC signature header (x-signature or x-hub-signature-256)');
     }
 
-    const payload = JSON.stringify(request.body || {});
-    const expectedSignature = `sha256=${crypto
+    // Enforce timestamp freshness (within 5 minutes / 300s) to prevent replay attacks
+    const timestampStr = (headers['x-timestamp'] as string) || (headers['x-request-timestamp'] as string);
+    if (timestampStr) {
+      const requestTime = parseInt(timestampStr, 10);
+      const currentTime = Math.floor(Date.now() / 1000);
+      if (!isNaN(requestTime) && Math.abs(currentTime - requestTime) > 300) {
+        throw new UnauthorizedException('Webhook request timestamp expired or clock skew too large');
+      }
+    }
+
+    const secret = process.env.WEBHOOK_HMAC_SECRET || 'zoiko-shield-webhook-secret';
+    const rawBody = request.rawBody ? request.rawBody.toString('utf-8') : JSON.stringify(request.body || {});
+    
+    const computedHash = crypto
       .createHmac('sha256', secret)
-      .update(payload)
-      .digest('hex')}`;
+      .update(rawBody)
+      .digest('hex');
+
+    const expectedSignature = signature.startsWith('sha256=')
+      ? `sha256=${computedHash}`
+      : computedHash;
 
     const sigBuffer = Buffer.from(signature);
     const expectedBuffer = Buffer.from(expectedSignature);
