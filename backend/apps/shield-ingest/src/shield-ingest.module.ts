@@ -12,6 +12,7 @@ import { EntraSignInSyncService } from './connectors/providers/microsoft-entra/e
 import { EntraNormalizerService } from './connectors/providers/microsoft-entra/entra.normalizer';
 import { EntraEventHubConsumer } from './connectors/providers/microsoft-entra/entra.event-hub.consumer';
 import { EntraWebhookController } from './connectors/providers/microsoft-entra/entra.webhook.controller';
+import { EntraHealthService } from './connectors/providers/microsoft-entra/entra.health';
 
 import { ConnectorRegistry } from './connectors/core/connector-registry';
 import { CredentialService } from './connectors/services/credential.service';
@@ -81,6 +82,7 @@ import { EvidenceLineageService } from '../../shield-core/src/modules/evidence/l
 import { ContentHashService } from '../../shield-core/src/modules/evidence/hashing/content-hash.service';
 import { ObjectStorageService } from '../../shield-core/src/modules/evidence/storage/object-storage.service';
 import { OutboxService as CoreOutboxService } from '../../shield-core/src/outbox/outbox.service';
+import { IdempotencyService } from '../../shield-core/src/modules/idempotency/idempotency.service';
 
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
@@ -120,6 +122,7 @@ import { OutboxService as CoreOutboxService } from '../../shield-core/src/outbox
     EntraGraphClient,
     EntraUserSyncService,
     EntraSignInSyncService,
+    EntraHealthService,
     EntraNormalizerService,
     EntraEventHubConsumer,
     RawIngestService,
@@ -140,6 +143,7 @@ import { OutboxService as CoreOutboxService } from '../../shield-core/src/outbox
     SLAClaimService,
     OutboxService,
     OutboxPublisherService,
+    IdempotencyService,
     { provide: CorePrismaService, useExisting: IngestPrismaService },
     CoreOutboxService,
     ContentHashService,

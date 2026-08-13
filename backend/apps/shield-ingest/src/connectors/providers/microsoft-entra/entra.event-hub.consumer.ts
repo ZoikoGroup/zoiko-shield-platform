@@ -79,15 +79,15 @@ export class EntraEventHubConsumer implements OnModuleDestroy {
         checkpoints.map((checkpoint) => [checkpoint.partitionId, checkpoint]),
       );
 
-      const subscriptions = partitionIds.map((partitionId) => {
+      const subscriptions = partitionIds.map((partitionId: string) => {
         const checkpoint = checkpointByPartition.get(partitionId);
         return client.subscribe(
           partitionId,
           {
-            processEvents: async (events) => {
+            processEvents: async (events: ReceivedEventData[]) => {
               await this.processEvents(instance, partitionId, events);
             },
-            processError: async (error) => {
+            processError: async (error: Error) => {
               await this.recordConsumerError(instance.id, instance.tenant_id, error);
             },
           },
