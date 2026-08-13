@@ -47,11 +47,21 @@ export class AlertCreationService {
     private readonly alertRepository: AlertRepository,
   ) {}
 
-  async createFromMatch(input: CreateAlertFromMatchInput): Promise<{ alertId: string; suppressed: boolean }> {
-    const existing = await this.alertRepository.findByDetectionMatch(input.tenantId, input.detectionMatchId);
+  async createFromMatch(
+    input: CreateAlertFromMatchInput,
+  ): Promise<{ alertId: string; suppressed: boolean }> {
+    const existing = await this.alertRepository.findByDetectionMatch(
+      input.tenantId,
+      input.detectionMatchId,
+    );
     if (existing) {
-      this.logger.debug(`Alert already exists for detection match ${input.detectionMatchId} — dedup, not creating a second Alert.`);
-      return { alertId: existing.id, suppressed: existing.status === 'SUPPRESSED' };
+      this.logger.debug(
+        `Alert already exists for detection match ${input.detectionMatchId} — dedup, not creating a second Alert.`,
+      );
+      return {
+        alertId: existing.id,
+        suppressed: existing.status === 'SUPPRESSED',
+      };
     }
 
     const suppressionMatch = await this.suppression.findActiveMatch({
@@ -61,7 +71,12 @@ export class AlertCreationService {
       assetId: input.assetId,
     });
 
-    const priority = input.severity === 'CRITICAL' ? 'P1' : input.severity === 'HIGH' ? 'P2' : 'P3';
+    const priority =
+      input.severity === 'CRITICAL'
+        ? 'P1'
+        : input.severity === 'HIGH'
+          ? 'P2'
+          : 'P3';
     const alertId = randomUUID();
 
     const [alert] = await this.prisma.$transaction([
@@ -82,7 +97,9 @@ export class AlertCreationService {
           status: suppressionMatch ? 'SUPPRESSED' : 'NEW',
           source_event_ids: JSON.stringify([input.primaryEventId]),
           affected_assets: JSON.stringify(input.assetId ? [input.assetId] : []),
-          affected_identities: JSON.stringify(input.identityEntityId ? [input.identityEntityId] : []),
+          affected_identities: JSON.stringify(
+            input.identityEntityId ? [input.identityEntityId] : [],
+          ),
           primary_identity_id: input.identityEntityId,
           primary_asset_id: input.assetId,
           context_snapshot_id: input.contextSnapshotId,
@@ -95,7 +112,9 @@ export class AlertCreationService {
       this.prisma.outboxEvent.create({
         data: this.outbox.build({
           tenantId: input.tenantId,
-          topic: suppressionMatch ? ALERT_TOPICS.ALERT_SUPPRESSED : ALERT_TOPICS.ALERT_CREATED,
+          topic: suppressionMatch
+            ? ALERT_TOPICS.ALERT_SUPPRESSED
+            : ALERT_TOPICS.ALERT_CREATED,
           eventType: suppressionMatch ? 'alert.suppressed' : 'alert.created',
           payload: {
             alertId,
@@ -111,9 +130,13 @@ export class AlertCreationService {
     ]);
 
     if (suppressionMatch) {
-      this.logger.log(`Alert ${alert.id} created but SUPPRESSED by rule ${suppressionMatch.id}: ${suppressionMatch.reason}`);
+      this.logger.log(
+        `Alert ${alert.id} created but SUPPRESSED by rule ${suppressionMatch.id}: ${suppressionMatch.reason}`,
+      );
     } else {
-      this.logger.log(`Alert ${alert.id} created from detection match ${input.detectionMatchId}`);
+      this.logger.log(
+        `Alert ${alert.id} created from detection match ${input.detectionMatchId}`,
+      );
     }
 
     return { alertId: alert.id, suppressed: !!suppressionMatch };

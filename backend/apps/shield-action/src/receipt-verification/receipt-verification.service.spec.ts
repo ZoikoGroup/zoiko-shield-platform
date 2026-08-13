@@ -11,14 +11,20 @@ function makePrisma(receipt: any) {
 
 describe('ReceiptVerificationService', () => {
   it('verifies a SIMULATED receipt with a verified signature', async () => {
-    const prisma = makePrisma({ status: 'SIMULATED', signature_verified: true });
+    const prisma = makePrisma({
+      status: 'SIMULATED',
+      signature_verified: true,
+    });
     const service = new ReceiptVerificationService(prisma);
     const result = await service.verify('rcpt1');
     expect(result.verified).toBe(true);
   });
 
   it('does not verify when signature_verified is not true — HTTP-success-alone never becomes VERIFIED', async () => {
-    const prisma = makePrisma({ status: 'SIMULATED', signature_verified: false });
+    const prisma = makePrisma({
+      status: 'SIMULATED',
+      signature_verified: false,
+    });
     const service = new ReceiptVerificationService(prisma);
     const result = await service.verify('rcpt1');
     expect(result.verified).toBe(false);

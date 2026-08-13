@@ -8,8 +8,14 @@ import { RedactionService } from '../redaction/redaction.service';
 import { UsageControlService } from '../usage-control/usage-control.service';
 import { MemoryPolicyService } from '../memory-policy/memory-policy.service';
 import { AiOutputService } from '../outputs/ai-output.service';
-import { AiUnavailableException, PolicyDeniedException } from './fallback/fallback.exceptions';
-import { KafkaProducerService, CANONICAL_TOPICS } from '../kafka/kafka-producer.service';
+import {
+  AiUnavailableException,
+  PolicyDeniedException,
+} from './fallback/fallback.exceptions';
+import {
+  KafkaProducerService,
+  CANONICAL_TOPICS,
+} from '../kafka/kafka-producer.service';
 
 export interface GatewayRequestContext {
   tenantId: string;
@@ -47,12 +53,21 @@ export class AiGatewayService {
     private readonly kafkaProducer: KafkaProducerService,
   ) {}
 
-  async invoke(useCaseKey: string, promptKey: string, context: GatewayRequestContext) {
-    this.memoryPolicy.assertRequestScoped({ tenantId: context.tenantId, caseId: context.caseId });
+  async invoke(
+    useCaseKey: string,
+    promptKey: string,
+    context: GatewayRequestContext,
+  ) {
+    this.memoryPolicy.assertRequestScoped({
+      tenantId: context.tenantId,
+      caseId: context.caseId,
+    });
 
     const usage = this.usageControl.checkAndIncrement(context.tenantId);
     if (!usage.allowed) {
-      throw new AiUnavailableException('Per-tenant AI request budget exceeded for this window');
+      throw new AiUnavailableException(
+        'Per-tenant AI request budget exceeded for this window',
+      );
     }
 
     const policyResult = await this.policyService.evaluate(useCaseKey, context);
@@ -60,11 +75,18 @@ export class AiGatewayService {
       await this.kafkaProducer.publishEvent(
         CANONICAL_TOPICS.AI_FAILED,
         'ai.failed',
-        { tenantId: context.tenantId, useCaseKey, code: policyResult.denialCode, reason: policyResult.reason },
+        {
+          tenantId: context.tenantId,
+          useCaseKey,
+          code: policyResult.denialCode,
+          reason: policyResult.reason,
+        },
         { correlationId: context.correlationId },
       );
       if (policyResult.denialCode === 'AI_UNAVAILABLE') {
-        throw new AiUnavailableException(policyResult.reason ?? 'AI unavailable');
+        throw new AiUnavailableException(
+          policyResult.reason ?? 'AI unavailable',
+        );
       }
       throw new PolicyDeniedException(policyResult.reason ?? 'Policy denied');
     }
@@ -73,17 +95,21 @@ export class AiGatewayService {
     const prompt = await this.promptRegistry.getActiveForKey(promptKey);
 
     if (!context.caseId) {
-      throw new PolicyDeniedException('This use case requires a caseId for retrieval scoping');
+      throw new PolicyDeniedException(
+        'This use case requires a caseId for retrieval scoping',
+      );
     }
 
-    const { bundle, sourceRefs, retrievalContext } = await this.retrievalBroker.build({
-      tenantId: context.tenantId,
-      environmentId: context.environmentId,
-      purpose: context.purpose,
-      caseId: context.caseId,
-    });
+    const { bundle, sourceRefs, retrievalContext } =
+      await this.retrievalBroker.build({
+        tenantId: context.tenantId,
+        environmentId: context.environmentId,
+        purpose: context.purpose,
+        caseId: context.caseId,
+      });
 
-    const { redacted: redactedContext } = this.redactionService.redact(retrievalContext);
+    const { redacted: redactedContext } =
+      this.redactionService.redact(retrievalContext);
 
     await this.kafkaProducer.publishEvent(
       CANONICAL_TOPICS.AI_REQUESTED,

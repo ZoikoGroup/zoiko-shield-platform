@@ -22,7 +22,9 @@ export class ManualTestRunService {
 
   async create(input: CreateManualTestRunInput) {
     if (input.reviewerId && input.reviewerId === input.performerId) {
-      throw new BadRequestException('A manual test reviewer must be a different identity than the performer');
+      throw new BadRequestException(
+        'A manual test reviewer must be a different identity than the performer',
+      );
     }
     return this.prisma.manualTestRun.create({
       data: {

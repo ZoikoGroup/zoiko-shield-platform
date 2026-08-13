@@ -17,14 +17,20 @@ describe('AssetResolutionService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [AssetResolutionService, { provide: AssetRepository, useValue: repoMock }],
+      providers: [
+        AssetResolutionService,
+        { provide: AssetRepository, useValue: repoMock },
+      ],
     }).compile();
 
     service = module.get<AssetResolutionService>(AssetResolutionService);
   });
 
   it('resolves via an existing alias instead of creating a duplicate asset', async () => {
-    repoMock.findAliasByKey.mockResolvedValue({ id: 'alias-1', asset_id: 'asset-1' });
+    repoMock.findAliasByKey.mockResolvedValue({
+      id: 'alias-1',
+      asset_id: 'asset-1',
+    });
 
     const result = await service.resolve({
       tenantId: 'tenant-a',
@@ -41,8 +47,12 @@ describe('AssetResolutionService', () => {
   });
 
   it('creates a new asset when two different aliases share the same hostname (spec §11 — no hostname-only merge)', async () => {
-    repoMock.findAliasByKey.mockResolvedValueOnce(null).mockResolvedValueOnce(null);
-    repoMock.createAsset.mockResolvedValueOnce({ id: 'asset-crowdstrike' }).mockResolvedValueOnce({ id: 'asset-entra' });
+    repoMock.findAliasByKey
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce(null);
+    repoMock.createAsset
+      .mockResolvedValueOnce({ id: 'asset-crowdstrike' })
+      .mockResolvedValueOnce({ id: 'asset-entra' });
 
     const first = await service.resolve({
       tenantId: 'tenant-a',
@@ -83,6 +93,12 @@ describe('AssetResolutionService', () => {
       assetType: 'ENDPOINT',
     });
 
-    expect(repoMock.findAliasByKey).toHaveBeenCalledWith('tenant-b', 'crowdstrike', 'conn-1', 'DEVICE_ID', 'device-abc');
+    expect(repoMock.findAliasByKey).toHaveBeenCalledWith(
+      'tenant-b',
+      'crowdstrike',
+      'conn-1',
+      'DEVICE_ID',
+      'device-abc',
+    );
   });
 });

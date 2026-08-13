@@ -27,7 +27,9 @@ describe('AlertCreationService', () => {
 
   beforeEach(async () => {
     prismaMock = {
-      $transaction: jest.fn().mockImplementation((ops: any[]) => Promise.all(ops)),
+      $transaction: jest
+        .fn()
+        .mockImplementation((ops: any[]) => Promise.all(ops)),
       alert: { create: jest.fn().mockResolvedValue({ id: 'alert-1' }) },
       outboxEvent: { create: jest.fn().mockResolvedValue({ id: 'outbox-1' }) },
     };
@@ -52,15 +54,25 @@ describe('AlertCreationService', () => {
 
     expect(result).toEqual({ alertId: 'alert-1', suppressed: false });
     expect(prismaMock.alert.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ status: 'NEW', detection_match_id: 'match-1' }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: 'NEW',
+          detection_match_id: 'match-1',
+        }),
+      }),
     );
     expect(prismaMock.outboxEvent.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ topic: 'alert.created.v1' }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ topic: 'alert.created.v1' }),
+      }),
     );
   });
 
   it('dedups on the (tenant, detectionMatchId) key — a redelivered match never creates a second Alert (spec §5)', async () => {
-    alertRepoMock.findByDetectionMatch.mockResolvedValue({ id: 'alert-existing', status: 'NEW' });
+    alertRepoMock.findByDetectionMatch.mockResolvedValue({
+      id: 'alert-existing',
+      status: 'NEW',
+    });
 
     const result = await service.createFromMatch(baseInput);
 
@@ -69,16 +81,23 @@ describe('AlertCreationService', () => {
   });
 
   it('creates the Alert as SUPPRESSED (not silently dropped) when an active suppression rule matches (spec §6)', async () => {
-    suppressionMock.findActiveMatch.mockResolvedValue({ id: 'rule-1', reason: 'known benign automation account' });
+    suppressionMock.findActiveMatch.mockResolvedValue({
+      id: 'rule-1',
+      reason: 'known benign automation account',
+    });
 
     const result = await service.createFromMatch(baseInput);
 
     expect(result).toEqual({ alertId: 'alert-1', suppressed: true });
     expect(prismaMock.alert.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ status: 'SUPPRESSED' }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'SUPPRESSED' }),
+      }),
     );
     expect(prismaMock.outboxEvent.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ topic: 'alert.suppressed.v1' }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ topic: 'alert.suppressed.v1' }),
+      }),
     );
   });
 });

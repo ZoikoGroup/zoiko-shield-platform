@@ -41,7 +41,9 @@ describe('CatalogService (ADR-06 & P0 Blockers)', () => {
       status: 'DRAFT',
     });
 
-    const result = await service.createCatalogVersion({ versionLabel: 'v1.0-design-partner' });
+    const result = await service.createCatalogVersion({
+      versionLabel: 'v1.0-design-partner',
+    });
 
     expect(result.status).toBe('DRAFT');
     expect(prismaMock.catalogVersion.create).toHaveBeenCalled();

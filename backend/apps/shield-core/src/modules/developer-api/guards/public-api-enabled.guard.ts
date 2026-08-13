@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 
 /**
  * Public developer API stays disabled behind this flag until the G2
@@ -11,7 +16,9 @@ import { CanActivate, ExecutionContext, Injectable, ServiceUnavailableException 
 export class PublicApiEnabledGuard implements CanActivate {
   canActivate(_context: ExecutionContext): boolean {
     if (process.env.PUBLIC_DEVELOPER_API_ENABLED !== 'true') {
-      throw new ServiceUnavailableException('Public developer API is not yet enabled (G2 release gate pending)');
+      throw new ServiceUnavailableException(
+        'Public developer API is not yet enabled (G2 release gate pending)',
+      );
     }
     return true;
   }

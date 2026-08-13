@@ -1,4 +1,10 @@
-import { CanActivate, ExecutionContext, Injectable, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  HttpException,
+  HttpStatus,
+} from '@nestjs/common';
 import { AuthContext } from '../oauth/oauth-token.service';
 
 const WINDOW_MS = 60_000;
@@ -14,12 +20,17 @@ const MAX_REQUESTS_PER_CLIENT = 120;
  */
 @Injectable()
 export class ApiRateLimitGuard implements CanActivate {
-  private readonly counters = new Map<string, { count: number; windowStart: number }>();
+  private readonly counters = new Map<
+    string,
+    { count: number; windowStart: number }
+  >();
 
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
     const authContext: AuthContext | undefined = request.authContext;
-    const key = authContext ? `${authContext.tenantId}:${authContext.principalId}` : 'anonymous';
+    const key = authContext
+      ? `${authContext.tenantId}:${authContext.principalId}`
+      : 'anonymous';
 
     const now = Date.now();
     const entry = this.counters.get(key);
@@ -30,7 +41,16 @@ export class ApiRateLimitGuard implements CanActivate {
 
     entry.count += 1;
     if (entry.count > MAX_REQUESTS_PER_CLIENT) {
-      throw new HttpException({ error: { code: 'RATE_LIMITED', message: 'Rate limit exceeded', retryable: true } }, HttpStatus.TOO_MANY_REQUESTS);
+      throw new HttpException(
+        {
+          error: {
+            code: 'RATE_LIMITED',
+            message: 'Rate limit exceeded',
+            retryable: true,
+          },
+        },
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
     }
     return true;
   }

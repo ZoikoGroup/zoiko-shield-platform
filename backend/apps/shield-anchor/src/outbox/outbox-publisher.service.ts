@@ -4,7 +4,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { KafkaProducerService } from '../kafka/kafka-producer.service';
 
 /** shield-anchor owns checkpoint./witness./anchor. — zero overlap with any other app's owned prefixes. */
-const SHIELD_ANCHOR_OWNED_TOPIC_PREFIXES = ['checkpoint.', 'witness.', 'anchor.'];
+const SHIELD_ANCHOR_OWNED_TOPIC_PREFIXES = [
+  'checkpoint.',
+  'witness.',
+  'anchor.',
+];
 
 @Injectable()
 export class OutboxPublisherService {
@@ -25,7 +29,9 @@ export class OutboxPublisherService {
       const pending = await this.prisma.outboxEvent.findMany({
         where: {
           published_at: null,
-          OR: SHIELD_ANCHOR_OWNED_TOPIC_PREFIXES.map((prefix) => ({ topic: { startsWith: prefix } })),
+          OR: SHIELD_ANCHOR_OWNED_TOPIC_PREFIXES.map((prefix) => ({
+            topic: { startsWith: prefix },
+          })),
         },
         orderBy: { created_at: 'asc' },
         take: 100,
@@ -39,9 +45,14 @@ export class OutboxPublisherService {
             { tenantId: event.tenant_id, ...JSON.parse(event.payload) },
             { correlationId: event.correlation_id ?? undefined },
           );
-          await this.prisma.outboxEvent.update({ where: { id: event.id }, data: { published_at: new Date() } });
+          await this.prisma.outboxEvent.update({
+            where: { id: event.id },
+            data: { published_at: new Date() },
+          });
         } catch (err) {
-          this.logger.error(`Failed to publish outbox event ${event.id}: ${(err as Error).message}`);
+          this.logger.error(
+            `Failed to publish outbox event ${event.id}: ${(err as Error).message}`,
+          );
         }
       }
     } finally {

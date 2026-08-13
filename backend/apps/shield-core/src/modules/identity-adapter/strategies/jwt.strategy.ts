@@ -38,7 +38,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     }
 
     const session = await this.sessionService.findById(payload.sid);
-    if (!session || session.principalId !== payload.sub || !this.sessionService.isActive(session)) {
+    if (
+      !session ||
+      session.principalId !== payload.sub ||
+      !this.sessionService.isActive(session)
+    ) {
       throw new UnauthorizedException('Session has been revoked or expired');
     }
 

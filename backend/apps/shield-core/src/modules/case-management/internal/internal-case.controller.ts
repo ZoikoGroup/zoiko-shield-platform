@@ -1,4 +1,11 @@
-import { Controller, Get, Param, Query, UseGuards, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Query,
+  UseGuards,
+  HttpStatus,
+} from '@nestjs/common';
 import { InternalAuthGuard } from '../../../internal-client/internal-auth.guard';
 import { CaseService } from '../services/case.service';
 import { CaseTimelineService } from '../timeline/case-timeline.service';
@@ -18,19 +25,28 @@ export class InternalCaseController {
   ) {}
 
   @Get(':caseId')
-  async getCase(@Param('caseId') caseId: string, @Query('tenantId') tenantId: string) {
+  async getCase(
+    @Param('caseId') caseId: string,
+    @Query('tenantId') tenantId: string,
+  ) {
     const caseRow = await this.caseService.getById(tenantId, caseId);
     return { statusCode: HttpStatus.OK, data: caseRow };
   }
 
   @Get(':caseId/timeline')
-  async getTimeline(@Param('caseId') caseId: string, @Query('tenantId') tenantId: string) {
+  async getTimeline(
+    @Param('caseId') caseId: string,
+    @Query('tenantId') tenantId: string,
+  ) {
     const entries = await this.timeline.listForCase(tenantId, caseId);
     return { statusCode: HttpStatus.OK, data: entries };
   }
 
   @Get(':caseId/evidence')
-  async getEvidence(@Param('caseId') caseId: string, @Query('tenantId') tenantId: string) {
+  async getEvidence(
+    @Param('caseId') caseId: string,
+    @Query('tenantId') tenantId: string,
+  ) {
     const links = await this.caseService.getEvidenceLinks(tenantId, caseId);
     return { statusCode: HttpStatus.OK, data: links };
   }

@@ -1,5 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnModuleInit,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { Kafka, Producer } from 'kafkajs';
 import { randomUUID } from 'crypto';
 
@@ -141,7 +146,12 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
     topic: string,
     eventType: string,
     payload: T,
-    context?: { correlationId?: string; causationId?: string; traceId?: string; occurredAt?: Date },
+    context?: {
+      correlationId?: string;
+      causationId?: string;
+      traceId?: string;
+      occurredAt?: Date;
+    },
   ) {
     const producedAt = new Date();
     const envelope: EventEnvelope<T> = {
@@ -164,7 +174,9 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
       });
       this.logger.debug(`Published ${eventType} to ${topic}`);
     } catch (error: any) {
-      this.logger.error(`Failed to publish ${eventType} to ${topic}: ${error.message}`);
+      this.logger.error(
+        `Failed to publish ${eventType} to ${topic}: ${error.message}`,
+      );
       throw error;
     }
   }

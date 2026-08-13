@@ -7,7 +7,10 @@ import {
   Body,
   HttpStatus,
 } from '@nestjs/common';
-import { HumanDecisionService, RecordHumanDecisionDto } from './human-decision.service';
+import {
+  HumanDecisionService,
+  RecordHumanDecisionDto,
+} from './human-decision.service';
 import { requireTenantId } from '../security/tenant-context';
 
 @Controller('api/v1/cases/:caseId/decisions')

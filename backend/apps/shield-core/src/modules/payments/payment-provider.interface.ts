@@ -15,8 +15,15 @@ export interface RefundResult {
 }
 
 export interface PaymentProvider {
-  createPayment(amount: number, currency: string, paymentMethodToken: string): Promise<CreatePaymentResult>;
-  refundPayment(providerPaymentId: string, amount: number): Promise<RefundResult>;
+  createPayment(
+    amount: number,
+    currency: string,
+    paymentMethodToken: string,
+  ): Promise<CreatePaymentResult>;
+  refundPayment(
+    providerPaymentId: string,
+    amount: number,
+  ): Promise<RefundResult>;
   verifyWebhookSignature(payload: string, signature: string): boolean;
 }
 

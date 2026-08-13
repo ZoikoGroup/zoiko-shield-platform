@@ -12,11 +12,14 @@ export class OnboardingController {
   constructor(private readonly onboardingService: OnboardingService) {}
 
   @Post()
-  onboard(@Body() dto: OnboardTenantDto, @CurrentUser() user: AuthenticatedUser, @Req() req: Request) {
+  onboard(
+    @Body() dto: OnboardTenantDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Req() req: Request,
+  ) {
     return this.onboardingService.onboard(dto, user.id, {
       ipAddress: req.ip,
       userAgent: req.headers['user-agent'],
     });
   }
-
 }

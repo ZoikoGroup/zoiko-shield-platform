@@ -56,7 +56,9 @@ export class EvidenceBundleService {
   }
 
   async getById(bundleId: string) {
-    const bundle = await this.prisma.evidenceBundle.findUnique({ where: { id: bundleId } });
+    const bundle = await this.prisma.evidenceBundle.findUnique({
+      where: { id: bundleId },
+    });
     if (!bundle) {
       throw new NotFoundException(`EvidenceBundle '${bundleId}' not found`);
     }

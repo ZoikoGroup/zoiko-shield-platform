@@ -1,7 +1,18 @@
-import { Body, Controller, HttpStatus, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { InternalAuthGuard } from '../../internal-client/internal-auth.guard';
-import { CreateMeterDefinitionDto, MeterDefinitionService } from './meter-definition.service';
+import {
+  CreateMeterDefinitionDto,
+  MeterDefinitionService,
+} from './meter-definition.service';
 import { MeteringService, RecordMeterEventDto } from './metering.service';
 
 /** Admin-curated: humans define and approve meters before any event can be classified against them. */
@@ -17,8 +28,14 @@ export class MeterDefinitionController {
   }
 
   @Patch(':id/approve')
-  async approve(@Param('id') id: string, @Body('approvedBy') approvedBy: string) {
-    const definition = await this.definitionService.approveDefinition(id, approvedBy || 'system');
+  async approve(
+    @Param('id') id: string,
+    @Body('approvedBy') approvedBy: string,
+  ) {
+    const definition = await this.definitionService.approveDefinition(
+      id,
+      approvedBy || 'system',
+    );
     return { statusCode: HttpStatus.OK, data: definition };
   }
 }

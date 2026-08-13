@@ -10,7 +10,12 @@ import { ActionSimulatedConsumer } from './consumers/action-simulated.consumer';
 import { OutboxService } from '../../outbox/outbox.service';
 
 @Module({
-  imports: [PrismaModule, EvidenceModule, AuthorizationDecisionModule, CaseManagementModule],
+  imports: [
+    PrismaModule,
+    EvidenceModule,
+    AuthorizationDecisionModule,
+    CaseManagementModule,
+  ],
   controllers: [ResponseProposalController, ActionAuthorizationController],
   providers: [ResponseProposalService, ActionSimulatedConsumer, OutboxService],
   exports: [ResponseProposalService],

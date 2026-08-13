@@ -10,15 +10,29 @@ function makePrisma() {
         rows.push(row);
         return row;
       }),
-      findUnique: jest.fn(async ({ where }: any) => rows.find((r) => r.id === where.id) ?? null),
+      findUnique: jest.fn(
+        async ({ where }: any) => rows.find((r) => r.id === where.id) ?? null,
+      ),
       findMany: jest.fn(async ({ where }: any) => {
-        return rows.filter((r) => {
-          if (where.control_objective_id && r.control_objective_id !== where.control_objective_id) return false;
-          if (where.recorded_at?.lte && r.recorded_at > where.recorded_at.lte) return false;
-          if (where.valid_from?.lte && r.valid_from > where.valid_from.lte) return false;
-          const validToOk = where.OR.some((clause: any) => (clause.valid_to === null ? r.valid_to == null : r.valid_to > clause.valid_to.gt));
-          return validToOk;
-        }).sort((a, b) => b.recorded_at - a.recorded_at);
+        return rows
+          .filter((r) => {
+            if (
+              where.control_objective_id &&
+              r.control_objective_id !== where.control_objective_id
+            )
+              return false;
+            if (where.recorded_at?.lte && r.recorded_at > where.recorded_at.lte)
+              return false;
+            if (where.valid_from?.lte && r.valid_from > where.valid_from.lte)
+              return false;
+            const validToOk = where.OR.some((clause: any) =>
+              clause.valid_to === null
+                ? r.valid_to == null
+                : r.valid_to > clause.valid_to.gt,
+            );
+            return validToOk;
+          })
+          .sort((a, b) => b.recorded_at - a.recorded_at);
       }),
     },
   } as any;
@@ -48,7 +62,9 @@ describe('ControlMappingService bitemporal semantics', () => {
 
     expect(corrected.supersedes_id).toBe(original.id);
     // The original row's own fields must be byte-for-byte unchanged — never rewritten.
-    expect(prisma.rows.find((r: any) => r.id === original.id)).toEqual(originalSnapshot);
+    expect(prisma.rows.find((r: any) => r.id === original.id)).toEqual(
+      originalSnapshot,
+    );
   });
 
   it('resolveAsOf reconstructs what was known at an earlier point, unaffected by a later correction', async () => {
@@ -67,12 +83,24 @@ describe('ControlMappingService bitemporal semantics', () => {
     const beforeCorrection = new Date();
     await new Promise((r) => setTimeout(r, 5));
 
-    await service.correct(original.id, { mappingType: 'PARTIAL', mappingVersion: '1.1', validFrom: new Date('2026-01-01') });
+    await service.correct(original.id, {
+      mappingType: 'PARTIAL',
+      mappingVersion: '1.1',
+      validFrom: new Date('2026-01-01'),
+    });
 
-    const asOfBeforeCorrection = await service.resolveAsOf('co1', new Date('2026-01-15'), beforeCorrection);
+    const asOfBeforeCorrection = await service.resolveAsOf(
+      'co1',
+      new Date('2026-01-15'),
+      beforeCorrection,
+    );
     expect(asOfBeforeCorrection[0]?.mapping_type).toBe('FULL');
 
-    const asOfNow = await service.resolveAsOf('co1', new Date('2026-01-15'), new Date());
+    const asOfNow = await service.resolveAsOf(
+      'co1',
+      new Date('2026-01-15'),
+      new Date(),
+    );
     expect(asOfNow[0]?.mapping_type).toBe('PARTIAL');
   });
 });

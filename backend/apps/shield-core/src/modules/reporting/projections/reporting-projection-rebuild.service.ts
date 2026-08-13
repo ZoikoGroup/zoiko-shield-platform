@@ -20,16 +20,32 @@ export class ReportingProjectionRebuildService {
   ) {}
 
   /** Rebuilds CASE_POSTURE projections for a tenant from live Case rows — the one concrete rebuildable projection type implemented this pass. */
-  async rebuildCasePosture(tenantId: string): Promise<{ rebuilt: number; mismatches: number }> {
-    const cases = await this.prisma.case.findMany({ where: { tenant_id: tenantId } });
+  async rebuildCasePosture(
+    tenantId: string,
+  ): Promise<{ rebuilt: number; mismatches: number }> {
+    const cases = await this.prisma.case.findMany({
+      where: { tenant_id: tenantId },
+    });
     let mismatches = 0;
 
     for (const c of cases) {
-      const before = await this.prisma.reportingProjection.findFirst({ where: { tenant_id: tenantId, projection_type: 'CASE_POSTURE', source_object_id: c.id } });
-      const expectedPayload = JSON.stringify({ status: c.status, severity: c.severity, priority: c.priority });
+      const before = await this.prisma.reportingProjection.findFirst({
+        where: {
+          tenant_id: tenantId,
+          projection_type: 'CASE_POSTURE',
+          source_object_id: c.id,
+        },
+      });
+      const expectedPayload = JSON.stringify({
+        status: c.status,
+        severity: c.severity,
+        priority: c.priority,
+      });
       if (before && before.payload !== expectedPayload) {
         mismatches++;
-        this.logger.warn(`Reconciliation mismatch for CASE_POSTURE/${c.id}: projection was stale relative to authoritative Case row`);
+        this.logger.warn(
+          `Reconciliation mismatch for CASE_POSTURE/${c.id}: projection was stale relative to authoritative Case row`,
+        );
       }
       await this.projectionService.upsert({
         tenantId,
@@ -40,8 +56,15 @@ export class ReportingProjectionRebuildService {
         sourceOccurredAt: c.updated_at,
         freshnessState: 'CURRENT',
         completenessState: 'COMPLETE',
-        healthState: c.status === 'CLOSED' || c.status === 'RESOLVED' ? 'HEALTHY' : 'PARTIAL',
-        payload: { status: c.status, severity: c.severity, priority: c.priority },
+        healthState:
+          c.status === 'CLOSED' || c.status === 'RESOLVED'
+            ? 'HEALTHY'
+            : 'PARTIAL',
+        payload: {
+          status: c.status,
+          severity: c.severity,
+          priority: c.priority,
+        },
       });
     }
 

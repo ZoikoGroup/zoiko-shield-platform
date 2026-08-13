@@ -5,7 +5,13 @@ import { PrismaService } from '../../../prisma/prisma.service';
 export interface CreateReportDefinitionInput {
   key: string;
   name: string;
-  reportType: 'OPERATIONAL' | 'SECURITY' | 'ASSURANCE' | 'EXECUTIVE' | 'BOARD' | 'CUSTOMER_SERVICE';
+  reportType:
+    | 'OPERATIONAL'
+    | 'SECURITY'
+    | 'ASSURANCE'
+    | 'EXECUTIVE'
+    | 'BOARD'
+    | 'CUSTOMER_SERVICE';
   purpose: string;
   audience: string;
   sourceRequirements?: string[];
@@ -33,9 +39,13 @@ export class ReportDefinitionService {
   }
 
   async getById(reportDefinitionId: string) {
-    const def = await this.prisma.reportDefinition.findUnique({ where: { id: reportDefinitionId } });
+    const def = await this.prisma.reportDefinition.findUnique({
+      where: { id: reportDefinitionId },
+    });
     if (!def) {
-      throw new NotFoundException(`ReportDefinition '${reportDefinitionId}' not found`);
+      throw new NotFoundException(
+        `ReportDefinition '${reportDefinitionId}' not found`,
+      );
     }
     return def;
   }

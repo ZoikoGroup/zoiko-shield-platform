@@ -1,4 +1,15 @@
-import { Body, Controller, Get, Headers, HttpStatus, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { IsInt, IsPositive, IsString } from 'class-validator';
 import { InternalAuthGuard } from '../../internal-client/internal-auth.guard';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
@@ -22,21 +33,39 @@ export class AiUsageController {
   constructor(private readonly usageService: AiUsageService) {}
 
   @Post()
-  async record(@Headers('x-tenant-id') headerTenantId: string, @Body() dto: RecordAiUsageDto) {
+  async record(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Body() dto: RecordAiUsageDto,
+  ) {
     const tenantId = requireTenantId(headerTenantId, dto.tenantId);
     const usage = await this.usageService.recordUsage({ ...dto, tenantId });
     return { statusCode: HttpStatus.CREATED, data: usage };
   }
 
   @Get(':id')
-  async get(@Headers('x-tenant-id') headerTenantId: string, @Param('id') id: string) {
-    const usage = await this.usageService.getUsageById(requireTenantId(headerTenantId), id);
+  async get(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('id') id: string,
+  ) {
+    const usage = await this.usageService.getUsageById(
+      requireTenantId(headerTenantId),
+      id,
+    );
     return { statusCode: HttpStatus.OK, data: usage };
   }
 
   @Patch(':id/mark-billable')
-  async markBillable(@Headers('x-tenant-id') headerTenantId: string, @Param('id') id: string, @Body() dto: MarkBillableDto) {
-    const usage = await this.usageService.markBillable(requireTenantId(headerTenantId), id, dto.meterKey, dto.quantity);
+  async markBillable(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('id') id: string,
+    @Body() dto: MarkBillableDto,
+  ) {
+    const usage = await this.usageService.markBillable(
+      requireTenantId(headerTenantId),
+      id,
+      dto.meterKey,
+      dto.quantity,
+    );
     return { statusCode: HttpStatus.OK, data: usage };
   }
 }

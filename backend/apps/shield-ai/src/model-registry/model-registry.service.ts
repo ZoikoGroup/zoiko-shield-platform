@@ -5,7 +5,13 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ModelRegistryService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: { provider: string; model: string; region: string; approvedDataClasses: string[]; trainingAllowed?: boolean }) {
+  async create(data: {
+    provider: string;
+    model: string;
+    region: string;
+    approvedDataClasses: string[];
+    trainingAllowed?: boolean;
+  }) {
     return this.prisma.modelProfile.create({
       data: {
         provider: data.provider,
@@ -19,7 +25,9 @@ export class ModelRegistryService {
   }
 
   async getById(id: string) {
-    const profile = await this.prisma.modelProfile.findUnique({ where: { id } });
+    const profile = await this.prisma.modelProfile.findUnique({
+      where: { id },
+    });
     if (!profile) {
       throw new NotFoundException(`ModelProfile '${id}' not found`);
     }

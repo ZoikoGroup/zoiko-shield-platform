@@ -23,16 +23,13 @@ import { PERMISSION_CODES } from './constants';
 import { PermissionsGuard } from './guards/permissions.guard';
 import { RequirePermissions } from './decorators/require-permissions.decorator';
 
-import {
-  Delete,
-} from '@nestjs/common';
+import { Delete } from '@nestjs/common';
 
 @UseGuards(JwtAuthGuard)
 @Controller(['api/v1', ''])
 export class AuthorizationController {
-  constructor(private readonly authorizationService: AuthorizationService) {}
+  constructor(private readonly authorizationService: AuthorizationService) { }
 
-  // ── Self-service: any authenticated user can inspect their own access ──
 
   /** Returns all tenant memberships for the caller, with roles and permissions. */
   @Get('me/roles')
@@ -46,14 +43,20 @@ export class AuthorizationController {
     @CurrentUser() user: AuthenticatedUser,
     @Query('tenantId') tenantId: string,
   ) {
-    return this.authorizationService.getPermissionCodesForPrincipal(tenantId, user.id);
+    return this.authorizationService.getPermissionCodesForPrincipal(
+      tenantId,
+      user.id,
+    );
   }
 
   @UseGuards(PlatformPermissionsGuard)
   @RequirePlatformPermissions(PERMISSION_CODES.PLATFORM_PERMISSION_MANAGE)
   @Post('permissions')
   createPermission(@Body() dto: CreatePermissionDto) {
-    return this.authorizationService.createPermission(dto.code, dto.description);
+    return this.authorizationService.createPermission(
+      dto.code,
+      dto.description,
+    );
   }
 
   @Get('roles')
@@ -81,7 +84,10 @@ export class AuthorizationController {
     @Param('roleId') roleId: string,
     @Body() dto: UpdateRolePermissionsDto,
   ) {
-    return this.authorizationService.updateRolePermissions(roleId, dto.permissionCodes);
+    return this.authorizationService.updateRolePermissions(
+      roleId,
+      dto.permissionCodes,
+    );
   }
 
   @Post('tenants/:tenantId/invitations')
@@ -90,17 +96,28 @@ export class AuthorizationController {
     @Body() dto: CreateInvitationDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    const granted = await this.authorizationService.getPermissionCodesForPrincipal(tenantId, user.id);
+    const granted =
+      await this.authorizationService.getPermissionCodesForPrincipal(
+        tenantId,
+        user.id,
+      );
     if (!granted.includes(PERMISSION_CODES.TENANT_MEMBER_INVITE)) {
-      throw new ForbiddenException('Missing tenant:member:invite permission for this tenant');
+      throw new ForbiddenException(
+        'Missing tenant:member:invite permission for this tenant',
+      );
     }
-    const { invitation, token } = await this.authorizationService.createInvitation({
-      tenantId,
-      invitedEmail: dto.invitedEmail,
-      roleId: dto.roleId,
-      invitedById: user.id,
-    });
-    return { invitationId: invitation.id, expiresAt: invitation.expiresAt, token };
+    const { invitation, token } =
+      await this.authorizationService.createInvitation({
+        tenantId,
+        invitedEmail: dto.invitedEmail,
+        roleId: dto.roleId,
+        invitedById: user.id,
+      });
+    return {
+      invitationId: invitation.id,
+      expiresAt: invitation.expiresAt,
+      token,
+    };
   }
 
   @UseGuards(PermissionsGuard)
@@ -111,8 +128,15 @@ export class AuthorizationController {
   }
 
   @Post(['invitations/:token/accept', 'auth/invitations/:token/accept'])
-  acceptInvitation(@Param('token') token: string, @CurrentUser() user: AuthenticatedUser) {
-    return this.authorizationService.acceptInvitation(token, user.id, user.email);
+  acceptInvitation(
+    @Param('token') token: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.authorizationService.acceptInvitation(
+      token,
+      user.id,
+      user.email,
+    );
   }
 
   @UseGuards(PermissionsGuard)
@@ -135,7 +159,10 @@ export class AuthorizationController {
   @UseGuards(PermissionsGuard)
   @RequirePermissions(PERMISSION_CODES.TENANT_MANAGE)
   @Delete('tenants/:tenantId/members/:memberId')
-  async removeMember(@Param('tenantId') tenantId: string, @Param('memberId') memberId: string) {
+  async removeMember(
+    @Param('tenantId') tenantId: string,
+    @Param('memberId') memberId: string,
+  ) {
     return this.authorizationService.removeMember(tenantId, memberId);
   }
 }

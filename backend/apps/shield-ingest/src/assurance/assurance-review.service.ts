@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { requireTenantId } from '../security/tenant-context';
 
@@ -12,7 +17,11 @@ export class CreateAssuranceReviewDto {
 export class CreateVCISOReflectionDto {
   tenantId?: string;
   assuranceReviewId?: string;
-  category!: 'STRATEGIC_RISK' | 'POLICY_REMEDIATION' | 'SECURITY_ROADMAP' | 'AUDIT_READINESS';
+  category!:
+    | 'STRATEGIC_RISK'
+    | 'POLICY_REMEDIATION'
+    | 'SECURITY_ROADMAP'
+    | 'AUDIT_READINESS';
   title!: string;
   notes!: string;
   actionItems?: string[];
@@ -54,7 +63,10 @@ export class AssuranceReviewService {
     }
 
     const totalControls = passedCount + failedCount;
-    const overallScore = totalControls > 0 ? Number(((passedCount / totalControls) * 100).toFixed(1)) : 0.0;
+    const overallScore =
+      totalControls > 0
+        ? Number(((passedCount / totalControls) * 100).toFixed(1))
+        : 0.0;
     const status = totalControls > 0 ? 'PUBLISHED' : 'NOT_EVALUATED';
 
     const review = await this.prisma.assuranceReview.create({
@@ -66,7 +78,9 @@ export class AssuranceReviewService {
       },
     });
 
-    this.logger.log(`Created AssuranceReview '${review.id}' for '${tenantId}' (Score: ${overallScore}%)`);
+    this.logger.log(
+      `Created AssuranceReview '${review.id}' for '${tenantId}' (Score: ${overallScore}%)`,
+    );
 
     return {
       ...review,
@@ -76,7 +90,9 @@ export class AssuranceReviewService {
       periodName: dto.periodName,
       passedControlsCount: passedCount,
       failedControlsCount: failedCount,
-      summary: dto.summary || `Automated posture assessment for ${dto.periodName} with ${overallScore}% control compliance.`,
+      summary:
+        dto.summary ||
+        `Automated posture assessment for ${dto.periodName} with ${overallScore}% control compliance.`,
       reviewedBy: actorId,
     };
   }
@@ -144,7 +160,9 @@ export class AssuranceReviewService {
         select: { id: true },
       });
       if (!review) {
-        throw new NotFoundException(`Assurance review '${dto.assuranceReviewId}' not found`);
+        throw new NotFoundException(
+          `Assurance review '${dto.assuranceReviewId}' not found`,
+        );
       }
     }
 
@@ -163,7 +181,12 @@ export class AssuranceReviewService {
 
   async getVCISOReflections(tenantId: string, assuranceReviewId?: string) {
     return this.prisma.vCISOReflection.findMany({
-      where: { tenant_id: tenantId, ...(assuranceReviewId ? { assurance_review_id: assuranceReviewId } : {}) },
+      where: {
+        tenant_id: tenantId,
+        ...(assuranceReviewId
+          ? { assurance_review_id: assuranceReviewId }
+          : {}),
+      },
       orderBy: { created_at: 'desc' },
     });
   }

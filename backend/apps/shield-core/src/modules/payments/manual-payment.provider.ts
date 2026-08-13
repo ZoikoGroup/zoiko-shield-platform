@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
-import { CreatePaymentResult, PaymentProvider, RefundResult } from './payment-provider.interface';
+import {
+  CreatePaymentResult,
+  PaymentProvider,
+  RefundResult,
+} from './payment-provider.interface';
 
 /**
  * Deterministic, no-network payment provider used until a real processor
@@ -18,7 +22,11 @@ export class ManualPaymentProvider implements PaymentProvider {
     );
   }
 
-  async createPayment(amount: number, currency: string, paymentMethodToken: string): Promise<CreatePaymentResult> {
+  async createPayment(
+    amount: number,
+    currency: string,
+    paymentMethodToken: string,
+  ): Promise<CreatePaymentResult> {
     const providerPaymentId = `manual-pay-${crypto.randomUUID()}`;
     // Deterministic test failure mode so callers can exercise FAILED paths.
     if (paymentMethodToken === 'token-declined') {
@@ -27,8 +35,14 @@ export class ManualPaymentProvider implements PaymentProvider {
     return { providerPaymentId, status: 'AUTHORIZED' };
   }
 
-  async refundPayment(providerPaymentId: string, _amount: number): Promise<RefundResult> {
-    return { providerRefundId: `manual-refund-${crypto.randomUUID()}`, status: 'SUCCEEDED' };
+  async refundPayment(
+    providerPaymentId: string,
+    _amount: number,
+  ): Promise<RefundResult> {
+    return {
+      providerRefundId: `manual-refund-${crypto.randomUUID()}`,
+      status: 'SUCCEEDED',
+    };
   }
 
   verifyWebhookSignature(payload: string, signature: string): boolean {

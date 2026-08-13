@@ -32,15 +32,27 @@ describe('ConnectorHealthService', () => {
   });
 
   it('resets consecutiveFailures to 0 on a healthy state transition and publishes connector.health.changed.v1', async () => {
-    await service.updateHealth('instance-1', 'tenant-a', 'HEALTHY', 'Sync completed');
+    await service.updateHealth(
+      'instance-1',
+      'tenant-a',
+      'HEALTHY',
+      'Sync completed',
+    );
 
     expect(prismaMock.connectorHealthStatus.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({ update: expect.objectContaining({ consecutiveFailures: 0 }) }),
+      expect.objectContaining({
+        update: expect.objectContaining({ consecutiveFailures: 0 }),
+      }),
     );
     expect(kafkaMock.publishEvent).toHaveBeenCalledWith(
       'connector.health.changed.v1',
       'connector.health.changed',
-      { tenantId: 'tenant-a', instanceId: 'instance-1', state: 'HEALTHY', message: 'Sync completed' },
+      {
+        tenantId: 'tenant-a',
+        instanceId: 'instance-1',
+        state: 'HEALTHY',
+        message: 'Sync completed',
+      },
     );
   });
 
@@ -48,19 +60,29 @@ describe('ConnectorHealthService', () => {
     await service.updateHealth('instance-1', 'tenant-a', 'DEGRADED', 'boom');
 
     expect(prismaMock.connectorHealthStatus.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({ update: expect.objectContaining({ consecutiveFailures: { increment: 1 } }) }),
+      expect.objectContaining({
+        update: expect.objectContaining({
+          consecutiveFailures: { increment: 1 },
+        }),
+      }),
     );
   });
 
   it('maps a ConnectorRateLimitError to RATE_LIMITED and persists the error record', async () => {
-    await service.handleConnectorError('instance-1', 'tenant-a', new ConnectorRateLimitError(30, 'too many requests'));
+    await service.handleConnectorError(
+      'instance-1',
+      'tenant-a',
+      new ConnectorRateLimitError(30, 'too many requests'),
+    );
 
     expect(prismaMock.connectorInstance.update).toHaveBeenCalledWith({
       where: { id: 'instance-1' },
       data: { state: 'RATE_LIMITED' },
     });
     expect(prismaMock.connectorError.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ errorCode: 'RATE_LIMITED' }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ errorCode: 'RATE_LIMITED' }),
+      }),
     );
   });
 });

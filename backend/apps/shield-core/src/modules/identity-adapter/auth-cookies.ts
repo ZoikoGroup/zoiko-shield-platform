@@ -48,5 +48,8 @@ export function setRecoveryGrantCookie(res: Response, token: string): void {
 }
 
 export function clearRecoveryGrantCookie(res: Response): void {
-  res.clearCookie(RECOVERY_GRANT_COOKIE, { ...baseOptions(), path: RECOVERY_PATH });
+  res.clearCookie(RECOVERY_GRANT_COOKIE, {
+    ...baseOptions(),
+    path: RECOVERY_PATH,
+  });
 }

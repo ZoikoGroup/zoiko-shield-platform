@@ -16,5 +16,8 @@ export interface SignedCommand {
  * DevSimulationSigner later without touching the pipeline around it.
  */
 export interface CommandSigner {
-  sign(command: SignableCommand, executionMode: 'SIMULATION' | 'LIVE'): SignedCommand;
+  sign(
+    command: SignableCommand,
+    executionMode: 'SIMULATION' | 'LIVE',
+  ): SignedCommand;
 }

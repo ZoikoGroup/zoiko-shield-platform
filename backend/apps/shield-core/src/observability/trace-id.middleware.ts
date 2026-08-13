@@ -17,7 +17,8 @@ export const REQUEST_ID_HEADER = 'x-request-id';
 @Injectable()
 export class TraceIdMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction): void {
-    const traceId = (req.headers[TRACE_ID_HEADER] as string | undefined) ?? randomUUID();
+    const traceId =
+      (req.headers[TRACE_ID_HEADER] as string | undefined) ?? randomUUID();
     const requestId = randomUUID();
 
     (req as any).traceId = traceId;

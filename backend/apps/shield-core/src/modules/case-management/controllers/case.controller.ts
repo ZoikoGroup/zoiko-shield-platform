@@ -1,9 +1,26 @@
-import { Controller, Get, Post, Patch, Param, Query, Headers, Body, HttpStatus, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Param,
+  Query,
+  Headers,
+  Body,
+  HttpStatus,
+  UseGuards,
+} from '@nestjs/common';
 import { CaseService } from '../services/case.service';
 import { CaseTimelineService } from '../timeline/case-timeline.service';
 import { CaseNoteService } from '../notes/case-note.service';
-import { CaseDecisionService, DecisionType } from '../decisions/case-decision.service';
-import { CaseStatus, CaseDisposition } from '../state-machine/case-state-machine.service';
+import {
+  CaseDecisionService,
+  DecisionType,
+} from '../decisions/case-decision.service';
+import {
+  CaseStatus,
+  CaseDisposition,
+} from '../state-machine/case-state-machine.service';
 import { JwtAuthGuard } from '../../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../authorization/guards/permissions.guard';
 import { CurrentUser } from '../../identity-adapter/decorators/current-user.decorator';
@@ -60,14 +77,26 @@ export class CaseController {
   }
 
   @Get()
-  async list(@Headers('x-tenant-id') headerTenantId: string, @Query('status') status?: string, @Query('limit') limit?: number) {
+  async list(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Query('status') status?: string,
+    @Query('limit') limit?: number,
+  ) {
     const tenantId = this.resolveTenantId(headerTenantId);
-    const cases = await this.caseService.list(tenantId, status, limit ? Number(limit) : 50);
+    const cases = await this.caseService.list(
+      tenantId,
+      status,
+      limit ? Number(limit) : 50,
+    );
     return { statusCode: HttpStatus.OK, data: cases };
   }
 
   @Post()
-  async create(@Headers('x-tenant-id') headerTenantId: string, @Body() dto: CreateCaseDto, @CurrentUser() user: AuthenticatedUser) {
+  async create(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Body() dto: CreateCaseDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     const tenantId = this.resolveTenantId(headerTenantId);
     const createdCase = await this.caseService.createFromAlert({
       tenantId,
@@ -80,7 +109,10 @@ export class CaseController {
   }
 
   @Get(':caseId')
-  async getById(@Headers('x-tenant-id') headerTenantId: string, @Param('caseId') caseId: string) {
+  async getById(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+  ) {
     const tenantId = this.resolveTenantId(headerTenantId);
     await this.caseService.assertTenantOwnership(tenantId, caseId);
     const caseRow = await this.caseService.getById(tenantId, caseId);
@@ -88,14 +120,22 @@ export class CaseController {
   }
 
   @Patch(':caseId')
-  async update(@Headers('x-tenant-id') headerTenantId: string, @Param('caseId') caseId: string) {
+  async update(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+  ) {
     const tenantId = this.resolveTenantId(headerTenantId);
     const caseRow = await this.caseService.getById(tenantId, caseId);
     return { statusCode: HttpStatus.OK, data: caseRow };
   }
 
   @Post(':caseId/transition')
-  async transition(@Headers('x-tenant-id') headerTenantId: string, @Param('caseId') caseId: string, @Body() dto: TransitionCaseDto, @CurrentUser() user: AuthenticatedUser) {
+  async transition(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+    @Body() dto: TransitionCaseDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     const tenantId = this.resolveTenantId(headerTenantId);
     const transition = await this.caseService.transition({
       tenantId,
@@ -109,7 +149,12 @@ export class CaseController {
   }
 
   @Post(':caseId/alerts')
-  async linkAlert(@Headers('x-tenant-id') headerTenantId: string, @Param('caseId') caseId: string, @Body() dto: LinkAlertDto, @CurrentUser() user: AuthenticatedUser) {
+  async linkAlert(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+    @Body() dto: LinkAlertDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     const tenantId = this.resolveTenantId(headerTenantId);
     const link = await this.caseService.linkAlert({
       tenantId,
@@ -122,7 +167,10 @@ export class CaseController {
   }
 
   @Get(':caseId/timeline')
-  async getTimeline(@Headers('x-tenant-id') headerTenantId: string, @Param('caseId') caseId: string) {
+  async getTimeline(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+  ) {
     const tenantId = this.resolveTenantId(headerTenantId);
     await this.caseService.assertTenantOwnership(tenantId, caseId);
     const timeline = await this.timelineService.listForCase(tenantId, caseId);
@@ -130,7 +178,12 @@ export class CaseController {
   }
 
   @Post(':caseId/notes')
-  async addNote(@Headers('x-tenant-id') headerTenantId: string, @Param('caseId') caseId: string, @Body() dto: AddNoteDto, @CurrentUser() user: AuthenticatedUser) {
+  async addNote(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+    @Body() dto: AddNoteDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     const tenantId = this.resolveTenantId(headerTenantId);
     const note = dto.supersedesId
       ? await this.noteService.correct({
@@ -152,7 +205,10 @@ export class CaseController {
   }
 
   @Get(':caseId/evidence')
-  async getEvidence(@Headers('x-tenant-id') headerTenantId: string, @Param('caseId') caseId: string) {
+  async getEvidence(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+  ) {
     const tenantId = this.resolveTenantId(headerTenantId);
     await this.caseService.assertTenantOwnership(tenantId, caseId);
     const evidence = await this.caseService.getEvidenceLinks(tenantId, caseId);
@@ -160,7 +216,12 @@ export class CaseController {
   }
 
   @Post(':caseId/decisions')
-  async recordDecision(@Headers('x-tenant-id') headerTenantId: string, @Param('caseId') caseId: string, @Body() dto: RecordDecisionDto, @CurrentUser() user: AuthenticatedUser) {
+  async recordDecision(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+    @Body() dto: RecordDecisionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     const tenantId = this.resolveTenantId(headerTenantId);
     const decision = await this.decisionService.record({
       tenantId,

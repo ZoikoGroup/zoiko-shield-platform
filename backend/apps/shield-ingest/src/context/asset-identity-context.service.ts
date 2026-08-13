@@ -42,14 +42,18 @@ export class AssetIdentityContextService {
     });
 
     if (existing) {
-      this.logger.debug(`Updating last_seen_at for asset ${existing.id} (${existing.name})`);
+      this.logger.debug(
+        `Updating last_seen_at for asset ${existing.id} (${existing.name})`,
+      );
       return this.prisma.asset.update({
         where: { id: existing.id },
         data: { last_seen_at: new Date() },
       });
     }
 
-    this.logger.log(`Creating new ${dto.assetType} asset '${name}' for tenant ${dto.tenantId}`);
+    this.logger.log(
+      `Creating new ${dto.assetType} asset '${name}' for tenant ${dto.tenantId}`,
+    );
     return this.prisma.asset.create({
       data: {
         tenant_id: dto.tenantId,
@@ -90,14 +94,18 @@ export class AssetIdentityContextService {
     }
 
     if (existing) {
-      this.logger.debug(`Updating last_seen_at for identity ${existing.id} (${existing.email || existing.external_id})`);
+      this.logger.debug(
+        `Updating last_seen_at for identity ${existing.id} (${existing.email || existing.external_id})`,
+      );
       return this.prisma.identityEntity.update({
         where: { id: existing.id },
         data: { last_seen_at: new Date() },
       });
     }
 
-    this.logger.log(`Creating new identity entity '${email || dto.externalId}' for tenant ${dto.tenantId}`);
+    this.logger.log(
+      `Creating new identity entity '${email || dto.externalId}' for tenant ${dto.tenantId}`,
+    );
     return this.prisma.identityEntity.create({
       data: {
         tenant_id: dto.tenantId,
@@ -120,7 +128,9 @@ export class AssetIdentityContextService {
     });
 
     if (!event) {
-      throw new NotFoundException(`Normalized event '${normalizedEventId}' not found`);
+      throw new NotFoundException(
+        `Normalized event '${normalizedEventId}' not found`,
+      );
     }
 
     let assetId: string | undefined;
@@ -129,7 +139,8 @@ export class AssetIdentityContextService {
     // Resolve Asset if resource_id or source_ip exists
     const resourceId = event.resource_id || event.source_ip;
     if (resourceId) {
-      const assetType = event.resource_type || (event.source_ip ? 'IP' : 'CLOUD_RESOURCE');
+      const assetType =
+        event.resource_type || (event.source_ip ? 'IP' : 'CLOUD_RESOURCE');
       const resolvedAsset = await this.resolveAsset({
         tenantId: event.tenant_id,
         environmentId: event.environment_id,
@@ -187,7 +198,9 @@ export class AssetIdentityContextService {
   async getAssetById(tenantId: string, assetId: string) {
     const asset = await this.prisma.asset.findFirst({
       where: { id: assetId, tenant_id: tenantId },
-      include: { normalizedEvents: { take: 10, orderBy: { recorded_at: 'desc' } } },
+      include: {
+        normalizedEvents: { take: 10, orderBy: { recorded_at: 'desc' } },
+      },
     });
 
     if (!asset) {
@@ -214,7 +227,9 @@ export class AssetIdentityContextService {
   async getIdentityById(tenantId: string, identityId: string) {
     const identity = await this.prisma.identityEntity.findFirst({
       where: { id: identityId, tenant_id: tenantId },
-      include: { normalizedEvents: { take: 10, orderBy: { recorded_at: 'desc' } } },
+      include: {
+        normalizedEvents: { take: 10, orderBy: { recorded_at: 'desc' } },
+      },
     });
 
     if (!identity) {

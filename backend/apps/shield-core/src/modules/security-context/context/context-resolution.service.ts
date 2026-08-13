@@ -25,8 +25,12 @@ export class ContextResolutionService {
     private readonly snapshotService: ContextSnapshotService,
   ) {}
 
-  async resolveFromEvent(payload: NormalizedEventContract): Promise<ResolvedContext> {
-    const observedAt = payload.occurredAt ? new Date(payload.occurredAt) : new Date();
+  async resolveFromEvent(
+    payload: NormalizedEventContract,
+  ): Promise<ResolvedContext> {
+    const observedAt = payload.occurredAt
+      ? new Date(payload.occurredAt)
+      : new Date();
 
     let identityEntityId: string | undefined;
     if (payload.actorEmail || payload.actorUserId) {
@@ -47,7 +51,8 @@ export class ContextResolutionService {
     let assetId: string | undefined;
     const resourceId = payload.resourceId || payload.sourceIp;
     if (resourceId) {
-      const assetType = payload.resourceType || (payload.sourceIp ? 'IP' : 'CLOUD_RESOURCE');
+      const assetType =
+        payload.resourceType || (payload.sourceIp ? 'IP' : 'CLOUD_RESOURCE');
       const resolved = await this.assetResolution.resolve({
         tenantId: payload.tenantId,
         environmentId: payload.environmentId,
@@ -89,6 +94,12 @@ export class ContextResolutionService {
       `Resolved context for event ${payload.normalizedEventId}: identity=${identityEntityId ?? 'none'} asset=${assetId ?? 'none'} health=${contextHealth}`,
     );
 
-    return { eventId: payload.normalizedEventId, identityEntityId, assetId, contextSnapshotId: snapshotId, contextHealth };
+    return {
+      eventId: payload.normalizedEventId,
+      identityEntityId,
+      assetId,
+      contextSnapshotId: snapshotId,
+      contextHealth,
+    };
   }
 }

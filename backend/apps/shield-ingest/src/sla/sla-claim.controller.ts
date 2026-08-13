@@ -47,7 +47,10 @@ export class SLAClaimController {
     @Query('claimKey') claimKey?: string,
   ) {
     const tenantId = requireTenantId(headerTenantId, queryTenantId);
-    const evaluations = await this.slaService.getClaimEvaluations(tenantId, claimKey);
+    const evaluations = await this.slaService.getClaimEvaluations(
+      tenantId,
+      claimKey,
+    );
     return {
       statusCode: HttpStatus.OK,
       data: evaluations,

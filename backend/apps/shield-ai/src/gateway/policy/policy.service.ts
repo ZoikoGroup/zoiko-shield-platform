@@ -40,41 +40,88 @@ export class PolicyService {
     private readonly useCaseRegistry: AiUseCaseRegistryService,
   ) {}
 
-  async evaluate(useCaseKey: string, input: PolicyCheckInput): Promise<PolicyCheckResult> {
+  async evaluate(
+    useCaseKey: string,
+    input: PolicyCheckInput,
+  ): Promise<PolicyCheckResult> {
     let useCase;
     try {
       useCase = await this.useCaseRegistry.getByKey(useCaseKey);
     } catch {
-      return { allowed: false, denialCode: 'POLICY_DENIED', reason: `Unknown AiUseCase '${useCaseKey}'` };
+      return {
+        allowed: false,
+        denialCode: 'POLICY_DENIED',
+        reason: `Unknown AiUseCase '${useCaseKey}'`,
+      };
     }
 
     if (useCase.status !== 'ACTIVE') {
-      return { allowed: false, denialCode: 'POLICY_DENIED', reason: `AiUseCase '${useCaseKey}' is disabled (kill switch)` };
+      return {
+        allowed: false,
+        denialCode: 'POLICY_DENIED',
+        reason: `AiUseCase '${useCaseKey}' is disabled (kill switch)`,
+      };
     }
     if (useCase.expires_at && useCase.expires_at < new Date()) {
-      return { allowed: false, denialCode: 'POLICY_DENIED', reason: `AiUseCase '${useCaseKey}' has expired` };
+      return {
+        allowed: false,
+        denialCode: 'POLICY_DENIED',
+        reason: `AiUseCase '${useCaseKey}' has expired`,
+      };
     }
 
-    const allowedDataClasses: string[] = JSON.parse(useCase.allowed_data_classes || '[]');
-    if (allowedDataClasses.length > 0 && !allowedDataClasses.includes(input.dataClass)) {
-      return { allowed: false, denialCode: 'POLICY_DENIED', reason: `Data class '${input.dataClass}' not approved for use case '${useCaseKey}'` };
+    const allowedDataClasses: string[] = JSON.parse(
+      useCase.allowed_data_classes || '[]',
+    );
+    if (
+      allowedDataClasses.length > 0 &&
+      !allowedDataClasses.includes(input.dataClass)
+    ) {
+      return {
+        allowed: false,
+        denialCode: 'POLICY_DENIED',
+        reason: `Data class '${input.dataClass}' not approved for use case '${useCaseKey}'`,
+      };
     }
 
-    const modelProfile = await this.modelRegistry.findEligible({ region: input.region });
+    const modelProfile = await this.modelRegistry.findEligible({
+      region: input.region,
+    });
     if (!modelProfile) {
-      return { allowed: false, denialCode: 'AI_UNAVAILABLE', reason: `No eligible ModelProfile for region '${input.region}'` };
+      return {
+        allowed: false,
+        denialCode: 'AI_UNAVAILABLE',
+        reason: `No eligible ModelProfile for region '${input.region}'`,
+      };
     }
     if (modelProfile.status !== 'ACTIVE') {
-      return { allowed: false, denialCode: 'AI_UNAVAILABLE', reason: `ModelProfile '${modelProfile.id}' is disabled (kill switch)` };
+      return {
+        allowed: false,
+        denialCode: 'AI_UNAVAILABLE',
+        reason: `ModelProfile '${modelProfile.id}' is disabled (kill switch)`,
+      };
     }
     // Residency: the model must run in the same region the request is
     // scoped to — never silently reroute to a different region/provider.
     if (modelProfile.region !== input.region) {
-      return { allowed: false, denialCode: 'POLICY_DENIED', reason: `ModelProfile region '${modelProfile.region}' does not match requested region '${input.region}'` };
+      return {
+        allowed: false,
+        denialCode: 'POLICY_DENIED',
+        reason: `ModelProfile region '${modelProfile.region}' does not match requested region '${input.region}'`,
+      };
     }
-    const approvedDataClasses: string[] = JSON.parse(modelProfile.approved_data_classes || '[]');
-    if (approvedDataClasses.length > 0 && !approvedDataClasses.includes(input.dataClass)) {
-      return { allowed: false, denialCode: 'POLICY_DENIED', reason: `Data class '${input.dataClass}' not approved for ModelProfile '${modelProfile.id}'` };
+    const approvedDataClasses: string[] = JSON.parse(
+      modelProfile.approved_data_classes || '[]',
+    );
+    if (
+      approvedDataClasses.length > 0 &&
+      !approvedDataClasses.includes(input.dataClass)
+    ) {
+      return {
+        allowed: false,
+        denialCode: 'POLICY_DENIED',
+        reason: `Data class '${input.dataClass}' not approved for ModelProfile '${modelProfile.id}'`,
+      };
     }
 
     return { allowed: true, useCase, modelProfile };

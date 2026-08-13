@@ -11,7 +11,12 @@ describe('DevSimulationSigner', () => {
     process.env.NODE_ENV = 'test';
     const signer = new DevSimulationSigner();
     const signed = signer.sign(
-      { tenantId: 't1', actionCommandId: 'cmd1', nonce: 'n1', payload: { actionType: 'REVOKE_SESSIONS' } },
+      {
+        tenantId: 't1',
+        actionCommandId: 'cmd1',
+        nonce: 'n1',
+        payload: { actionType: 'REVOKE_SESSIONS' },
+      },
       'SIMULATION',
     );
     expect(signed.signature).toMatch(/^dev-sim:[0-9a-f]{64}$/);
@@ -22,7 +27,10 @@ describe('DevSimulationSigner', () => {
     process.env.NODE_ENV = 'test';
     const signer = new DevSimulationSigner();
     expect(() =>
-      signer.sign({ tenantId: 't1', actionCommandId: 'cmd1', nonce: 'n1', payload: {} }, 'LIVE'),
+      signer.sign(
+        { tenantId: 't1', actionCommandId: 'cmd1', nonce: 'n1', payload: {} },
+        'LIVE',
+      ),
     ).toThrow('DevSimulationSigner cannot sign live commands');
   });
 
@@ -30,7 +38,10 @@ describe('DevSimulationSigner', () => {
     process.env.NODE_ENV = 'production';
     const signer = new DevSimulationSigner();
     expect(() =>
-      signer.sign({ tenantId: 't1', actionCommandId: 'cmd1', nonce: 'n1', payload: {} }, 'SIMULATION'),
+      signer.sign(
+        { tenantId: 't1', actionCommandId: 'cmd1', nonce: 'n1', payload: {} },
+        'SIMULATION',
+      ),
     ).toThrow('DevSimulationSigner is prohibited in production');
   });
 });

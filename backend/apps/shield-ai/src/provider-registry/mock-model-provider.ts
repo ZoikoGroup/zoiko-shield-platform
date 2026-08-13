@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { ModelProvider, ModelInvocationInput, ModelInvocationResult } from './model-provider.interface';
+import {
+  ModelProvider,
+  ModelInvocationInput,
+  ModelInvocationResult,
+} from './model-provider.interface';
 
 /**
  * Deterministic, no-network provider — the only provider wired this pass
@@ -21,7 +25,10 @@ export class MockModelProvider implements ModelProvider {
       sourceRefs = [];
     }
 
-    const citedSourceRefs = sourceRefs.slice(0, Math.max(1, Math.min(3, sourceRefs.length)));
+    const citedSourceRefs = sourceRefs.slice(
+      0,
+      Math.max(1, Math.min(3, sourceRefs.length)),
+    );
     const content =
       sourceRefs.length > 0
         ? `Deterministic mock summary based on ${sourceRefs.length} retrieved source(s). This is not a real model output — no live provider is configured this milestone.`

@@ -13,7 +13,11 @@ describe('PartnerSettlementService (ZS-COM-BILL-001 Part 21: commission never in
     prismaMock = {
       partnerDelegation: { findMany: jest.fn() },
       commercialInvoice: { findMany: jest.fn() },
-      partnerSettlement: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+      partnerSettlement: {
+        create: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+      },
     };
     partnerMock = { getActiveAgreement: jest.fn() };
 
@@ -32,13 +36,19 @@ describe('PartnerSettlementService (ZS-COM-BILL-001 Part 21: commission never in
     partnerMock.getActiveAgreement.mockResolvedValue(null);
 
     await expect(
-      service.calculateSettlement({ partnerId: 'p-1', periodStart: new Date(), periodEnd: new Date() }),
+      service.calculateSettlement({
+        partnerId: 'p-1',
+        periodStart: new Date(),
+        periodEnd: new Date(),
+      }),
     ).rejects.toThrow(ConflictException);
     expect(prismaMock.partnerSettlement.create).not.toHaveBeenCalled();
   });
 
   it('computes commission from the approved agreement rate applied to delegated-account gross revenue only', async () => {
-    partnerMock.getActiveAgreement.mockResolvedValue({ commission_percent: 10 });
+    partnerMock.getActiveAgreement.mockResolvedValue({
+      commission_percent: 10,
+    });
     prismaMock.partnerDelegation.findMany.mockResolvedValue([
       { commercial_account_id: 'acct-1' },
       { commercial_account_id: 'acct-2' },
@@ -47,7 +57,9 @@ describe('PartnerSettlementService (ZS-COM-BILL-001 Part 21: commission never in
       { total_amount: 1000 },
       { total_amount: 500 },
     ]);
-    prismaMock.partnerSettlement.create.mockImplementation(({ data }: any) => Promise.resolve(data));
+    prismaMock.partnerSettlement.create.mockImplementation(({ data }: any) =>
+      Promise.resolve(data),
+    );
 
     const settlement = await service.calculateSettlement({
       partnerId: 'p-1',
@@ -59,16 +71,23 @@ describe('PartnerSettlementService (ZS-COM-BILL-001 Part 21: commission never in
     expect(settlement.commission_amount).toBe(150);
     expect(prismaMock.commercialInvoice.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({ commercial_account_id: { in: ['acct-1', 'acct-2'] }, status: 'ISSUED' }),
+        where: expect.objectContaining({
+          commercial_account_id: { in: ['acct-1', 'acct-2'] },
+          status: 'ISSUED',
+        }),
       }),
     );
   });
 
   it('only counts ISSUED invoices for accounts actually delegated to this partner, never partner-reported figures', async () => {
-    partnerMock.getActiveAgreement.mockResolvedValue({ commission_percent: 20 });
+    partnerMock.getActiveAgreement.mockResolvedValue({
+      commission_percent: 20,
+    });
     prismaMock.partnerDelegation.findMany.mockResolvedValue([]);
     prismaMock.commercialInvoice.findMany.mockResolvedValue([]);
-    prismaMock.partnerSettlement.create.mockImplementation(({ data }: any) => Promise.resolve(data));
+    prismaMock.partnerSettlement.create.mockImplementation(({ data }: any) =>
+      Promise.resolve(data),
+    );
 
     const settlement = await service.calculateSettlement({
       partnerId: 'p-1',
@@ -81,18 +100,33 @@ describe('PartnerSettlementService (ZS-COM-BILL-001 Part 21: commission never in
   });
 
   it('rejects marking a DRAFT settlement paid without approval first', async () => {
-    prismaMock.partnerSettlement.findUnique.mockResolvedValue({ id: 's-1', status: 'DRAFT' });
+    prismaMock.partnerSettlement.findUnique.mockResolvedValue({
+      id: 's-1',
+      status: 'DRAFT',
+    });
 
     await expect(service.markPaid('s-1')).rejects.toThrow(ConflictException);
   });
 
   it('allows the DRAFT -> APPROVED -> PAID path', async () => {
-    prismaMock.partnerSettlement.findUnique.mockResolvedValueOnce({ id: 's-1', status: 'DRAFT' });
-    prismaMock.partnerSettlement.update.mockResolvedValueOnce({ id: 's-1', status: 'APPROVED' });
+    prismaMock.partnerSettlement.findUnique.mockResolvedValueOnce({
+      id: 's-1',
+      status: 'DRAFT',
+    });
+    prismaMock.partnerSettlement.update.mockResolvedValueOnce({
+      id: 's-1',
+      status: 'APPROVED',
+    });
     await service.approveSettlement('s-1');
 
-    prismaMock.partnerSettlement.findUnique.mockResolvedValueOnce({ id: 's-1', status: 'APPROVED' });
-    prismaMock.partnerSettlement.update.mockResolvedValueOnce({ id: 's-1', status: 'PAID' });
+    prismaMock.partnerSettlement.findUnique.mockResolvedValueOnce({
+      id: 's-1',
+      status: 'APPROVED',
+    });
+    prismaMock.partnerSettlement.update.mockResolvedValueOnce({
+      id: 's-1',
+      status: 'PAID',
+    });
     const paid = await service.markPaid('s-1');
 
     expect(paid.status).toBe('PAID');

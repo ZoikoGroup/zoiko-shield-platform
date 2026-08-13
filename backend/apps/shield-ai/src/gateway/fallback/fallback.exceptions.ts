@@ -1,4 +1,7 @@
-import { ServiceUnavailableException, ForbiddenException } from '@nestjs/common';
+import {
+  ServiceUnavailableException,
+  ForbiddenException,
+} from '@nestjs/common';
 
 /** No approved fallback exists this pass — thrown instead of silently switching provider/region/model (spec §18). */
 export class AiUnavailableException extends ServiceUnavailableException {

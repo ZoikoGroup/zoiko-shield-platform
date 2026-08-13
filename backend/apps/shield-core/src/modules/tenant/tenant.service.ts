@@ -1,4 +1,8 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Tenant, TenantStatus } from './tenant.entity';
@@ -41,11 +45,17 @@ export class TenantService {
     return tenant;
   }
 
-  async transitionStatus(id: string, targetStatus: TenantStatus, actorPrincipalId: string): Promise<Tenant> {
+  async transitionStatus(
+    id: string,
+    targetStatus: TenantStatus,
+    actorPrincipalId: string,
+  ): Promise<Tenant> {
     const tenant = await this.findOne(id);
     const allowed = ALLOWED_TRANSITIONS[tenant.status] ?? [];
     if (!allowed.includes(targetStatus)) {
-      throw new ConflictException(`Illegal tenant transition from '${tenant.status}' to '${targetStatus}'`);
+      throw new ConflictException(
+        `Illegal tenant transition from '${tenant.status}' to '${targetStatus}'`,
+      );
     }
 
     const previousStatus = tenant.status;

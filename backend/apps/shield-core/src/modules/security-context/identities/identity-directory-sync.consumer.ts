@@ -1,6 +1,9 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { KafkaConsumerService } from '../../../kafka/kafka-consumer.service';
-import { EventEnvelope, CANONICAL_TOPICS } from '../../../kafka/kafka-producer.service';
+import {
+  EventEnvelope,
+  CANONICAL_TOPICS,
+} from '../../../kafka/kafka-producer.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OutboxService } from '../../../outbox/outbox.service';
 import { IdentityResolutionService } from './identity-resolution.service';
@@ -38,24 +41,37 @@ export class IdentityDirectorySyncConsumer implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.kafkaConsumer.registerHandler(IDENTITY_DIRECTORY_SYNC_TOPIC, this.handle.bind(this));
+    this.kafkaConsumer.registerHandler(
+      IDENTITY_DIRECTORY_SYNC_TOPIC,
+      this.handle.bind(this),
+    );
   }
 
-  private async handle(envelope: EventEnvelope<DirectorySyncPayload>): Promise<void> {
+  private async handle(
+    envelope: EventEnvelope<DirectorySyncPayload>,
+  ): Promise<void> {
     const payload = envelope.payload;
     if (!payload?.tenantId || !payload?.externalId) {
-      this.logger.warn(`Malformed identity.directory-sync.v1 payload, skipping: ${JSON.stringify(payload)}`);
+      this.logger.warn(
+        `Malformed identity.directory-sync.v1 payload, skipping: ${JSON.stringify(payload)}`,
+      );
       return;
     }
 
     if (payload.removed) {
-      await this.identityResolution.markRemoved(payload.tenantId, payload.externalId);
+      await this.identityResolution.markRemoved(
+        payload.tenantId,
+        payload.externalId,
+      );
       await this.prisma.outboxEvent.create({
         data: this.outbox.build({
           tenantId: payload.tenantId,
           topic: CANONICAL_TOPICS.IDENTITY_USER_REMOVED,
           eventType: 'identity.user.removed',
-          payload: { instanceId: payload.instanceId, externalId: payload.externalId },
+          payload: {
+            instanceId: payload.instanceId,
+            externalId: payload.externalId,
+          },
         }),
       });
       return;
@@ -77,7 +93,12 @@ export class IdentityDirectorySyncConsumer implements OnModuleInit {
         tenantId: payload.tenantId,
         topic: CANONICAL_TOPICS.IDENTITY_USER_UPSERTED,
         eventType: 'identity.user.upserted',
-        payload: { instanceId: payload.instanceId, externalId: payload.externalId, email: payload.email, displayName: payload.displayName },
+        payload: {
+          instanceId: payload.instanceId,
+          externalId: payload.externalId,
+          email: payload.email,
+          displayName: payload.displayName,
+        },
       }),
     });
   }

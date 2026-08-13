@@ -34,44 +34,85 @@ export class EvaluationRunService {
   ) {}
 
   async run(input: RunEvaluationInput) {
-    const bundle = await this.evidenceBundleService.getById(input.evidenceBundleId);
-    const evaluatorVersion = await this.evaluatorRegistry.getVersionWithEvaluator(input.evaluatorVersionId);
+    const bundle = await this.evidenceBundleService.getById(
+      input.evidenceBundleId,
+    );
+    const evaluatorVersion =
+      await this.evaluatorRegistry.getVersionWithEvaluator(
+        input.evaluatorVersionId,
+      );
     if (evaluatorVersion.status !== 'PUBLISHED') {
-      throw new NotFoundException(`EvaluatorVersion '${input.evaluatorVersionId}' is not PUBLISHED`);
+      throw new NotFoundException(
+        `EvaluatorVersion '${input.evaluatorVersionId}' is not PUBLISHED`,
+      );
     }
 
     const evidenceRefs: string[] = JSON.parse(bundle.evidence_refs);
-    const records = await this.prisma.evidenceRecord.findMany({ where: { id: { in: evidenceRefs }, tenant_id: input.tenantId } });
+    const records = await this.prisma.evidenceRecord.findMany({
+      where: { id: { in: evidenceRefs }, tenant_id: input.tenantId },
+    });
 
     const evidenceWithContent = await Promise.all(
       records.map(async (r) => {
         let content: Record<string, unknown> = {};
         if (r.vault_reference) {
           try {
-            const bytes = await this.storageService.getObject(r.vault_reference);
+            const bytes = await this.storageService.getObject(
+              r.vault_reference,
+            );
             content = JSON.parse(bytes.toString('utf-8'));
           } catch (err) {
-            this.logger.warn(`Failed to load evidence content for ${r.id}: ${(err as Error).message}`);
+            this.logger.warn(
+              `Failed to load evidence content for ${r.id}: ${(err as Error).message}`,
+            );
           }
         }
-        return { id: r.id, content_hash: r.content_hash, source_object_id: r.source_object_id, period_start: r.period_start, period_end: r.period_end, content };
+        return {
+          id: r.id,
+          content_hash: r.content_hash,
+          source_object_id: r.source_object_id,
+          period_start: r.period_start,
+          period_end: r.period_end,
+          content,
+        };
       }),
     );
 
     const configuration = JSON.parse(evaluatorVersion.configuration);
-    const { contentHash: inputBundleHash } = this.hashService.hashCanonicalJson({ bundleHash: bundle.bundle_hash, configuration });
+    const { contentHash: inputBundleHash } = this.hashService.hashCanonicalJson(
+      { bundleHash: bundle.bundle_hash, configuration },
+    );
 
     const startedAt = new Date();
-    let outcome: { result: string; rationale: string; limitations: string[]; confidence?: number };
+    let outcome: {
+      result: string;
+      rationale: string;
+      limitations: string[];
+      confidence?: number;
+    };
     try {
-      const runner = this.evaluatorRegistry.getRunner(evaluatorVersion.evaluator.key);
-      outcome = await runner.run({ evidenceRecords: evidenceWithContent, configuration });
+      const runner = this.evaluatorRegistry.getRunner(
+        evaluatorVersion.evaluator.key,
+      );
+      outcome = await runner.run({
+        evidenceRecords: evidenceWithContent,
+        configuration,
+      });
     } catch (err) {
-      this.logger.error(`Evaluator '${evaluatorVersion.evaluator.key}' threw during run: ${(err as Error).message}`);
-      outcome = { result: 'ERROR', rationale: `Evaluator threw: ${(err as Error).message}`, limitations: ['evaluator execution failed'] };
+      this.logger.error(
+        `Evaluator '${evaluatorVersion.evaluator.key}' threw during run: ${(err as Error).message}`,
+      );
+      outcome = {
+        result: 'ERROR',
+        rationale: `Evaluator threw: ${(err as Error).message}`,
+        limitations: ['evaluator execution failed'],
+      };
     }
 
-    const { contentHash: outputHash } = this.hashService.hashCanonicalJson({ result: outcome.result, rationale: outcome.rationale });
+    const { contentHash: outputHash } = this.hashService.hashCanonicalJson({
+      result: outcome.result,
+      rationale: outcome.rationale,
+    });
 
     return this.prisma.evaluationRun.create({
       data: {

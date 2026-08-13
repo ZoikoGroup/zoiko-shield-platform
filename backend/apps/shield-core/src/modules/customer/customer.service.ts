@@ -17,18 +17,28 @@ export class CustomerService {
   }
 
   async findOne(tenantId: string, id: string): Promise<Customer> {
-    const item = await this.customerRepository.findOne({ where: { id, tenantId } });
+    const item = await this.customerRepository.findOne({
+      where: { id, tenantId },
+    });
     if (!item) {
-      throw new NotFoundException(`Customer ${id} not found for tenant ${tenantId}`);
+      throw new NotFoundException(
+        `Customer ${id} not found for tenant ${tenantId}`,
+      );
     }
     return item;
   }
 
   create(tenantId: string, dto: CreateCustomerDto): Promise<Customer> {
-    return this.customerRepository.save(this.customerRepository.create({ tenantId, ...dto }));
+    return this.customerRepository.save(
+      this.customerRepository.create({ tenantId, ...dto }),
+    );
   }
 
-  async update(tenantId: string, id: string, dto: UpdateCustomerDto): Promise<Customer> {
+  async update(
+    tenantId: string,
+    id: string,
+    dto: UpdateCustomerDto,
+  ): Promise<Customer> {
     const item = await this.findOne(tenantId, id);
     Object.assign(item, dto);
     return this.customerRepository.save(item);

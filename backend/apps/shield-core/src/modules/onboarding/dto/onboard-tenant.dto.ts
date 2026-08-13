@@ -5,14 +5,32 @@ import {
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUUID,
   Matches,
   ValidateNested,
 } from 'class-validator';
 import type { EnvironmentType } from '../../environment/environment.entity';
 
-const ENVIRONMENT_TYPES: EnvironmentType[] = ['PRODUCTION', 'STAGING', 'DEVELOPMENT', 'TEST', 'SIMULATION'];
-export const DATA_REGIONS = ['us-east-1', 'us-west-2', 'eu-west-1', 'eu-central-1', 'ap-south-1'] as const;
-export const DATA_CLASSES = ['PUBLIC', 'INTERNAL', 'CONFIDENTIAL', 'RESTRICTED'] as const;
+const ENVIRONMENT_TYPES: EnvironmentType[] = [
+  'PRODUCTION',
+  'STAGING',
+  'DEVELOPMENT',
+  'TEST',
+  'SIMULATION',
+];
+export const DATA_REGIONS = [
+  'us-east-1',
+  'us-west-2',
+  'eu-west-1',
+  'eu-central-1',
+  'ap-south-1',
+] as const;
+export const DATA_CLASSES = [
+  'PUBLIC',
+  'INTERNAL',
+  'CONFIDENTIAL',
+  'RESTRICTED',
+] as const;
 
 export class OnboardLegalEntityDto {
   @IsString()
@@ -44,12 +62,20 @@ export class OnboardEnvironmentDto {
 }
 
 export class OnboardTenantDto {
+  // The approved, provisioned CommercialOrder this tenant is being created
+  // for (spec §7.2: PROVISIONING requires "Approved order/entitlement" as
+  // evidence). One order can back exactly one tenant.
+  @IsUUID()
+  orderId: string;
+
   @IsString()
   @IsNotEmpty()
   tenantName: string;
 
   // Lowercase, hyphenated, URL-safe — matches the Tenant.slug unique column.
-  @Matches(/^[a-z0-9-]+$/, { message: 'tenantSlug must be lowercase letters, digits and hyphens only' })
+  @Matches(/^[a-z0-9-]+$/, {
+    message: 'tenantSlug must be lowercase letters, digits and hyphens only',
+  })
   tenantSlug: string;
 
   @IsIn(DATA_REGIONS)
@@ -60,7 +86,9 @@ export class OnboardTenantDto {
   dataResidencyRegion?: string;
 
   @IsString()
-  @Matches(/^[A-Za-z_]+\/[A-Za-z_]+(?:\/[A-Za-z_]+)?$/, { message: 'timezone must be an IANA timezone identifier' })
+  @Matches(/^[A-Za-z_]+\/[A-Za-z_]+(?:\/[A-Za-z_]+)?$/, {
+    message: 'timezone must be an IANA timezone identifier',
+  })
   timezone: string;
 
   @IsIn(DATA_CLASSES)

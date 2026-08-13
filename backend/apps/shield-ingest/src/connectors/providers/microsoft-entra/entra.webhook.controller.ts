@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument, @typescript-eslint/require-await */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-argument */
 import {
   Controller,
   Post,
@@ -63,17 +63,28 @@ export class EntraWebhookController {
     throw new HttpException('Invalid payload', HttpStatus.BAD_REQUEST);
   }
 
-  private async validateNotifications(notifications: any[]): Promise<Array<{ notification: any; subscription: any }>> {
+  private async validateNotifications(
+    notifications: any[],
+  ): Promise<Array<{ notification: any; subscription: any }>> {
     if (!Array.isArray(notifications) || notifications.length === 0) {
-      throw new HttpException('Notification batch is empty', HttpStatus.BAD_REQUEST);
+      throw new HttpException(
+        'Notification batch is empty',
+        HttpStatus.BAD_REQUEST,
+      );
     }
     const validated: Array<{ notification: any; subscription: any }> = [];
     for (const notification of notifications) {
       if (!notification?.id || !notification?.clientState) {
-        throw new HttpException('Every notification must include id and clientState', HttpStatus.UNAUTHORIZED);
+        throw new HttpException(
+          'Every notification must include id and clientState',
+          HttpStatus.UNAUTHORIZED,
+        );
       }
       const subscription = await this.prisma.webhookSubscription.findFirst({
-        where: { clientState: notification.clientState, subscriptionId: notification.subscriptionId },
+        where: {
+          clientState: notification.clientState,
+          subscriptionId: notification.subscriptionId,
+        },
         include: {
           instance: {
             select: {
@@ -83,9 +94,15 @@ export class EntraWebhookController {
           },
         },
       });
-      if (!subscription) throw new HttpException('Unknown Microsoft Graph subscription', HttpStatus.UNAUTHORIZED);
+      if (!subscription)
+        throw new HttpException(
+          'Unknown Microsoft Graph subscription',
+          HttpStatus.UNAUTHORIZED,
+        );
 
-      const nonceHash = createHash('sha256').update(`${notification.subscriptionId}:${notification.id}`).digest('hex');
+      const nonceHash = createHash('sha256')
+        .update(`${notification.subscriptionId}:${notification.id}`)
+        .digest('hex');
       try {
         await this.prisma.webhookReplayNonce.create({
           data: {
@@ -95,7 +112,10 @@ export class EntraWebhookController {
           },
         });
       } catch {
-        throw new HttpException('Microsoft Graph notification replay detected', HttpStatus.CONFLICT);
+        throw new HttpException(
+          'Microsoft Graph notification replay detected',
+          HttpStatus.CONFLICT,
+        );
       }
       validated.push({ notification, subscription });
     }
@@ -105,13 +125,14 @@ export class EntraWebhookController {
   /**
    * Processes the notifications asynchronously.
    */
-  private async processNotifications(validated: Array<{ notification: any; subscription: any }>) {
+  private async processNotifications(
+    validated: Array<{ notification: any; subscription: any }>,
+  ) {
     this.logger.debug(
       `Processing ${validated.length} notifications from Microsoft Graph.`,
     );
 
     for (const { notification, subscription } of validated) {
-
       if (notification.lifecycleEvent) {
         this.logger.log(
           `Received lifecycle event: ${notification.lifecycleEvent} for subscription ${subscription.subscriptionId}`,

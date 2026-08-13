@@ -45,7 +45,9 @@ export class CaseStateMachineService {
       throw new BadRequestException(`Unknown target case status '${to}'`);
     }
     if (!ALLOWED_TRANSITIONS[fromState].includes(toState)) {
-      throw new BadRequestException(`Invalid case transition '${from}' -> '${to}'`);
+      throw new BadRequestException(
+        `Invalid case transition '${from}' -> '${to}'`,
+      );
     }
   }
 }

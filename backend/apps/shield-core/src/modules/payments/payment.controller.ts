@@ -1,8 +1,23 @@
-import { BadRequestException, Body, Controller, Get, Headers, HttpStatus, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Headers,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { IsNumber, IsPositive, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
-import { CreatePaymentDto, PaymentService, ProviderWebhookDto } from './payment.service';
+import {
+  CreatePaymentDto,
+  PaymentService,
+  ProviderWebhookDto,
+} from './payment.service';
 
 export class RefundPaymentDto {
   @IsNumber()
@@ -20,23 +35,45 @@ export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
   @Post()
-  async create(@Headers('x-tenant-id') tenantId: string, @Body() dto: CreatePaymentDto, @Headers('idempotency-key') idempotencyKey: string) {
+  async create(
+    @Headers('x-tenant-id') tenantId: string,
+    @Body() dto: CreatePaymentDto,
+    @Headers('idempotency-key') idempotencyKey: string,
+  ) {
     if (!idempotencyKey) {
-      throw new BadRequestException('Idempotency-Key header is required for payment creation');
+      throw new BadRequestException(
+        'Idempotency-Key header is required for payment creation',
+      );
     }
-    const payment = await this.paymentService.createPayment(tenantId, dto, idempotencyKey);
+    const payment = await this.paymentService.createPayment(
+      tenantId,
+      dto,
+      idempotencyKey,
+    );
     return { statusCode: HttpStatus.CREATED, data: payment };
   }
 
   @Get(':id')
   async get(@Headers('x-tenant-id') tenantId: string, @Param('id') id: string) {
-    const payment = await this.paymentService.getPaymentByIdForTenant(tenantId, id);
+    const payment = await this.paymentService.getPaymentByIdForTenant(
+      tenantId,
+      id,
+    );
     return { statusCode: HttpStatus.OK, data: payment };
   }
 
   @Patch(':id/refund')
-  async refund(@Headers('x-tenant-id') tenantId: string, @Param('id') id: string, @Body() dto: RefundPaymentDto) {
-    const refund = await this.paymentService.refundPaymentForTenant(tenantId, id, dto.amount, dto.reason);
+  async refund(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('id') id: string,
+    @Body() dto: RefundPaymentDto,
+  ) {
+    const refund = await this.paymentService.refundPaymentForTenant(
+      tenantId,
+      id,
+      dto.amount,
+      dto.reason,
+    );
     return { statusCode: HttpStatus.OK, data: refund };
   }
 }

@@ -1,4 +1,12 @@
-import { Controller, Post, Get, Param, Headers, Body, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Param,
+  Headers,
+  Body,
+  HttpStatus,
+} from '@nestjs/common';
 import { ResponseProposalService } from '../services/response-proposal.service';
 
 export class CreateProposalDto {
@@ -27,7 +35,9 @@ export class RejectProposalDto {
 
 @Controller('api/v1')
 export class ResponseProposalController {
-  constructor(private readonly responseProposalService: ResponseProposalService) {}
+  constructor(
+    private readonly responseProposalService: ResponseProposalService,
+  ) {}
 
   private resolveTenantId(headerTenantId: string): string {
     return headerTenantId || 'default-tenant';
@@ -37,7 +47,11 @@ export class ResponseProposalController {
   }
 
   @Post('cases/:caseId/response-proposals')
-  async create(@Headers('x-tenant-id') headerTenantId: string, @Param('caseId') caseId: string, @Body() dto: CreateProposalDto) {
+  async create(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+    @Body() dto: CreateProposalDto,
+  ) {
     const tenantId = this.resolveTenantId(headerTenantId);
     const proposal = await this.responseProposalService.createProposal({
       tenantId,
@@ -58,20 +72,33 @@ export class ResponseProposalController {
   }
 
   @Get('cases/:caseId/response-proposals')
-  async listForCase(@Headers('x-tenant-id') headerTenantId: string, @Param('caseId') caseId: string) {
+  async listForCase(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+  ) {
     const tenantId = this.resolveTenantId(headerTenantId);
     return { statusCode: HttpStatus.OK, tenantId, caseId, proposals: [] };
   }
 
   @Get('response-proposals/:proposalId')
-  async getById(@Headers('x-tenant-id') headerTenantId: string, @Param('proposalId') proposalId: string) {
+  async getById(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('proposalId') proposalId: string,
+  ) {
     const tenantId = this.resolveTenantId(headerTenantId);
-    const proposal = await this.responseProposalService.getById(tenantId, proposalId);
+    const proposal = await this.responseProposalService.getById(
+      tenantId,
+      proposalId,
+    );
     return { statusCode: HttpStatus.OK, data: proposal };
   }
 
   @Post('response-proposals/:proposalId/approve')
-  async approve(@Headers('x-tenant-id') headerTenantId: string, @Param('proposalId') proposalId: string, @Body() dto: ApproveProposalDto) {
+  async approve(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('proposalId') proposalId: string,
+    @Body() dto: ApproveProposalDto,
+  ) {
     const tenantId = this.resolveTenantId(headerTenantId);
     const approval = await this.responseProposalService.approve({
       tenantId,
@@ -83,7 +110,11 @@ export class ResponseProposalController {
   }
 
   @Post('response-proposals/:proposalId/reject')
-  async reject(@Headers('x-tenant-id') headerTenantId: string, @Param('proposalId') proposalId: string, @Body() dto: RejectProposalDto) {
+  async reject(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('proposalId') proposalId: string,
+    @Body() dto: RejectProposalDto,
+  ) {
     const tenantId = this.resolveTenantId(headerTenantId);
     const proposal = await this.responseProposalService.reject({
       tenantId,
@@ -95,7 +126,10 @@ export class ResponseProposalController {
   }
 
   @Post('response-proposals/:proposalId/simulate')
-  async simulate(@Headers('x-tenant-id') headerTenantId: string, @Param('proposalId') proposalId: string) {
+  async simulate(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('proposalId') proposalId: string,
+  ) {
     return {
       statusCode: HttpStatus.OK,
       message: 'Response simulation executed successfully',
@@ -111,13 +145,25 @@ export class ResponseProposalController {
   }
 
   @Post('response/freeze')
-  async freezeResponse(@Headers('x-tenant-id') headerTenantId: string, @Body() body: { reason?: string }) {
-    return { statusCode: HttpStatus.OK, message: 'Response freeze switch ACTIVATED', frozen: true, reason: body?.reason };
+  async freezeResponse(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Body() body: { reason?: string },
+  ) {
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Response freeze switch ACTIVATED',
+      frozen: true,
+      reason: body?.reason,
+    };
   }
 
   @Post('response/unfreeze')
   async unfreezeResponse(@Headers('x-tenant-id') headerTenantId: string) {
-    return { statusCode: HttpStatus.OK, message: 'Response freeze switch DEACTIVATED', frozen: false };
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Response freeze switch DEACTIVATED',
+      frozen: false,
+    };
   }
 
   @Get('response/freeze-status')

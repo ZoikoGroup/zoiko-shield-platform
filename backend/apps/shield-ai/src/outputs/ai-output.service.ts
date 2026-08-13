@@ -1,6 +1,13 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { KafkaProducerService, CANONICAL_TOPICS } from '../kafka/kafka-producer.service';
+import {
+  KafkaProducerService,
+  CANONICAL_TOPICS,
+} from '../kafka/kafka-producer.service';
 
 export interface CreateAiOutputInput {
   tenantId: string;
@@ -48,7 +55,12 @@ export class AiOutputService {
     await this.kafkaProducer.publishEvent(
       CANONICAL_TOPICS.AI_COMPLETED,
       'ai.completed',
-      { tenantId: input.tenantId, aiOutputId: output.id, useCaseId: input.useCaseId, safetyResult: input.safetyResult },
+      {
+        tenantId: input.tenantId,
+        aiOutputId: output.id,
+        useCaseId: input.useCaseId,
+        safetyResult: input.safetyResult,
+      },
       { correlationId: input.correlationId },
     );
 
@@ -57,12 +69,16 @@ export class AiOutputService {
 
   /** Cross-tenant access is rejected explicitly, not merely filtered — mirrors EvidenceService.assertTenantOwnership. */
   async getById(tenantId: string, outputId: string) {
-    const output = await this.prisma.aiOutput.findUnique({ where: { id: outputId } });
+    const output = await this.prisma.aiOutput.findUnique({
+      where: { id: outputId },
+    });
     if (!output) {
       throw new NotFoundException(`AiOutput '${outputId}' not found`);
     }
     if (output.tenant_id !== tenantId) {
-      throw new ForbiddenException(`AiOutput '${outputId}' does not belong to this tenant`);
+      throw new ForbiddenException(
+        `AiOutput '${outputId}' does not belong to this tenant`,
+      );
     }
     return output;
   }

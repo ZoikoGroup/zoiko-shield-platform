@@ -36,6 +36,9 @@ jobs:
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
 
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
       - name: TypeScript type check
         run: npx tsc --noEmit
 
@@ -64,6 +67,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
 
       - name: Run unit tests
         run: npx jest --no-coverage --passWithNoTests --forceExit
@@ -98,6 +104,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
 
       - name: Run cross-tenant isolation tests
         run: npx jest apps/shield-core/src/security --no-coverage --forceExit
@@ -196,6 +205,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci --legacy-peer-deps
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
 
       - name: Run offline verifier CLI smoke test
         run: |

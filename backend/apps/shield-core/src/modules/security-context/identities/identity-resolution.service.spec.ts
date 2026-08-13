@@ -19,14 +19,20 @@ describe('IdentityResolutionService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [IdentityResolutionService, { provide: IdentityRepository, useValue: repoMock }],
+      providers: [
+        IdentityResolutionService,
+        { provide: IdentityRepository, useValue: repoMock },
+      ],
     }).compile();
 
     service = module.get<IdentityResolutionService>(IdentityResolutionService);
   });
 
   it('returns MATCHED and does not create a new identity when a trusted alias already exists', async () => {
-    repoMock.findAliasByKey.mockResolvedValue({ id: 'alias-1', identity_entity_id: 'identity-1' });
+    repoMock.findAliasByKey.mockResolvedValue({
+      id: 'alias-1',
+      identity_entity_id: 'identity-1',
+    });
 
     const result = await service.resolve({
       tenantId: 'tenant-a',
@@ -37,9 +43,14 @@ describe('IdentityResolutionService', () => {
       email: 'user@example.com',
     });
 
-    expect(result).toEqual({ identityEntityId: 'identity-1', decision: 'MATCHED' });
+    expect(result).toEqual({
+      identityEntityId: 'identity-1',
+      decision: 'MATCHED',
+    });
     expect(repoMock.createIdentity).not.toHaveBeenCalled();
-    expect(repoMock.recordDecision).toHaveBeenCalledWith(expect.objectContaining({ decision: 'MATCHED' }));
+    expect(repoMock.recordDecision).toHaveBeenCalledWith(
+      expect.objectContaining({ decision: 'MATCHED' }),
+    );
   });
 
   it('creates a new canonical identity and alias when no trusted alias exists (spec §9 — no auto-merge on email alone)', async () => {
@@ -55,11 +66,19 @@ describe('IdentityResolutionService', () => {
       email: 'shared@example.com',
     });
 
-    expect(result).toEqual({ identityEntityId: 'identity-new', decision: 'CREATED' });
+    expect(result).toEqual({
+      identityEntityId: 'identity-new',
+      decision: 'CREATED',
+    });
     expect(repoMock.createAlias).toHaveBeenCalledWith(
-      expect.objectContaining({ identityEntityId: 'identity-new', externalId: 'entra-user-2' }),
+      expect.objectContaining({
+        identityEntityId: 'identity-new',
+        externalId: 'entra-user-2',
+      }),
     );
-    expect(repoMock.recordDecision).toHaveBeenCalledWith(expect.objectContaining({ decision: 'CREATED' }));
+    expect(repoMock.recordDecision).toHaveBeenCalledWith(
+      expect.objectContaining({ decision: 'CREATED' }),
+    );
   });
 
   it('scopes alias lookup by tenant — the same external id under a different tenant never matches (cross-tenant isolation)', async () => {
@@ -77,11 +96,20 @@ describe('IdentityResolutionService', () => {
       externalId: 'entra-user-1',
     });
 
-    expect(repoMock.findAliasByKey).toHaveBeenCalledWith('tenant-b', 'microsoft-entra', 'conn-1', 'OBJECT_ID', 'entra-user-1');
+    expect(repoMock.findAliasByKey).toHaveBeenCalledWith(
+      'tenant-b',
+      'microsoft-entra',
+      'conn-1',
+      'OBJECT_ID',
+      'entra-user-1',
+    );
   });
 
   it('re-activates a previously removed identity to ACTIVE when it is observed again (idempotent duplicate handling)', async () => {
-    repoMock.findAliasByKey.mockResolvedValue({ id: 'alias-1', identity_entity_id: 'identity-1' });
+    repoMock.findAliasByKey.mockResolvedValue({
+      id: 'alias-1',
+      identity_entity_id: 'identity-1',
+    });
 
     await service.resolve({
       tenantId: 'tenant-a',
@@ -105,7 +133,9 @@ describe('IdentityResolutionService', () => {
   it('markRemoved is a no-op (does not throw) when no identity exists for the external id', async () => {
     repoMock.findByExternalId.mockResolvedValue(null);
 
-    await expect(service.markRemoved('tenant-a', 'unknown-user')).resolves.toBeUndefined();
+    await expect(
+      service.markRemoved('tenant-a', 'unknown-user'),
+    ).resolves.toBeUndefined();
     expect(repoMock.markRemoved).not.toHaveBeenCalled();
   });
 });

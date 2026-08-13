@@ -32,7 +32,12 @@ function sha256(buf: Buffer): Buffer {
 @Injectable()
 export class MerkleTreeService {
   hashLeaf(canonicalLeafBytes: string): Buffer {
-    return sha256(Buffer.concat([Buffer.from([0x00]), Buffer.from(canonicalLeafBytes, 'utf-8')]));
+    return sha256(
+      Buffer.concat([
+        Buffer.from([0x00]),
+        Buffer.from(canonicalLeafBytes, 'utf-8'),
+      ]),
+    );
   }
 
   hashBranch(left: Buffer, right: Buffer): Buffer {
@@ -62,10 +67,16 @@ export class MerkleTreeService {
 
         for (let leafIdx = 0; leafIdx < indexMap.length; leafIdx++) {
           if (indexMap[leafIdx] === i) {
-            path[leafIdx].push({ siblingHash: right.toString('hex'), position: 'RIGHT' });
+            path[leafIdx].push({
+              siblingHash: right.toString('hex'),
+              position: 'RIGHT',
+            });
             nextIndexMap[leafIdx] = parentIndex;
           } else if (indexMap[leafIdx] === i + 1 && i + 1 < level.length) {
-            path[leafIdx].push({ siblingHash: left.toString('hex'), position: 'LEFT' });
+            path[leafIdx].push({
+              siblingHash: left.toString('hex'),
+              position: 'LEFT',
+            });
             nextIndexMap[leafIdx] = parentIndex;
           }
         }
@@ -80,15 +91,27 @@ export class MerkleTreeService {
       proofs[i] = path[i];
     });
 
-    return { root: level[0].toString('hex'), proofs, treeProfile: TREE_PROFILE, hashAlgorithm: HASH_ALGORITHM };
+    return {
+      root: level[0].toString('hex'),
+      proofs,
+      treeProfile: TREE_PROFILE,
+      hashAlgorithm: HASH_ALGORITHM,
+    };
   }
 
   /** Recomputes the root from a leaf's canonical bytes + its proof path — used both here and duplicated in the independent verifier. */
-  verifyInclusion(canonicalLeafBytes: string, proof: MerkleProofStep[], expectedRoot: string): boolean {
+  verifyInclusion(
+    canonicalLeafBytes: string,
+    proof: MerkleProofStep[],
+    expectedRoot: string,
+  ): boolean {
     let current = this.hashLeaf(canonicalLeafBytes);
     for (const step of proof) {
       const sibling = Buffer.from(step.siblingHash, 'hex');
-      current = step.position === 'RIGHT' ? this.hashBranch(current, sibling) : this.hashBranch(sibling, current);
+      current =
+        step.position === 'RIGHT'
+          ? this.hashBranch(current, sibling)
+          : this.hashBranch(sibling, current);
     }
     return current.toString('hex') === expectedRoot;
   }

@@ -32,7 +32,10 @@ export class IdempotencyService {
   constructor(private readonly prisma: PrismaService) {}
 
   private fingerprint(payload: unknown): string {
-    return crypto.createHash('sha256').update(JSON.stringify(payload ?? null)).digest('hex');
+    return crypto
+      .createHash('sha256')
+      .update(JSON.stringify(payload ?? null))
+      .digest('hex');
   }
 
   async run<T>(
@@ -68,16 +71,22 @@ export class IdempotencyService {
       }
 
       if (existing.status === 'COMPLETED') {
-        this.logger.log(`Idempotent replay for '${params.operation}' key '${params.key}'`);
+        this.logger.log(
+          `Idempotent replay for '${params.operation}' key '${params.key}'`,
+        );
         return {
           statusCode: existing.response_code ?? 200,
-          body: existing.response_body ? JSON.parse(existing.response_body) : (undefined as unknown as T),
+          body: existing.response_body
+            ? JSON.parse(existing.response_body)
+            : (undefined as unknown as T),
           replayed: true,
         };
       }
 
       // FAILED -> safe to retry; fall through after clearing the stale record.
-      await this.prisma.idempotencyRecord.delete({ where: { id: existing.id } });
+      await this.prisma.idempotencyRecord.delete({
+        where: { id: existing.id },
+      });
     }
 
     try {

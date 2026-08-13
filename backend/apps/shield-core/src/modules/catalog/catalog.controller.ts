@@ -35,7 +35,7 @@ export class QueryPriceBookDto {
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/catalog')
 export class CatalogController {
-  constructor(private readonly catalogService: CatalogService) { }
+  constructor(private readonly catalogService: CatalogService) {}
 
   /**
    * POST /api/v1/catalog/versions
@@ -59,7 +59,10 @@ export class CatalogController {
     @Param('id') id: string,
     @Body('approvedBy') approvedBy: string,
   ) {
-    const version = await this.catalogService.approveCatalogVersion(id, approvedBy || 'system');
+    const version = await this.catalogService.approveCatalogVersion(
+      id,
+      approvedBy || 'system',
+    );
     return {
       statusCode: HttpStatus.OK,
       message: 'Catalog version approved',

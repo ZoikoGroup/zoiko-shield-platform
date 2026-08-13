@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { IsArray, IsIn, IsInt, IsOptional, IsString } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -66,17 +71,25 @@ export class MeterDefinitionService {
   }
 
   async approveDefinition(id: string, approvedBy: string) {
-    const definition = await this.prisma.meterDefinition.findUnique({ where: { id } });
+    const definition = await this.prisma.meterDefinition.findUnique({
+      where: { id },
+    });
     if (!definition) {
       throw new NotFoundException(`Meter definition '${id}' not found`);
     }
     if (definition.status !== 'DRAFT') {
-      throw new ConflictException(`Meter definition '${id}' is '${definition.status}', not DRAFT`);
+      throw new ConflictException(
+        `Meter definition '${id}' is '${definition.status}', not DRAFT`,
+      );
     }
 
     return this.prisma.meterDefinition.update({
       where: { id },
-      data: { status: 'APPROVED', approved_by: approvedBy, approved_at: new Date() },
+      data: {
+        status: 'APPROVED',
+        approved_by: approvedBy,
+        approved_at: new Date(),
+      },
     });
   }
 
@@ -93,7 +106,9 @@ export class MeterDefinitionService {
     });
 
     if (!definition) {
-      this.logger.warn(`Meter definition query FAILED CLOSED for key '${meterKey}'`);
+      this.logger.warn(
+        `Meter definition query FAILED CLOSED for key '${meterKey}'`,
+      );
       return null;
     }
     return definition;

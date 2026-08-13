@@ -26,7 +26,9 @@ export class MailService implements OnModuleInit {
     const appPassword = this.configService.get<string>('EMAIL_APP_PASSWORD');
 
     if (!user || !appPassword) {
-      this.logger.warn('EMAIL_USER/EMAIL_APP_PASSWORD not set — OTP codes will be logged, not emailed.');
+      this.logger.warn(
+        'EMAIL_USER/EMAIL_APP_PASSWORD not set — OTP codes will be logged, not emailed.',
+      );
       return;
     }
 
@@ -37,9 +39,15 @@ export class MailService implements OnModuleInit {
     });
   }
 
-  async sendOtp(email: string, code: string, purpose: ChallengePurpose): Promise<void> {
+  async sendOtp(
+    email: string,
+    code: string,
+    purpose: ChallengePurpose,
+  ): Promise<void> {
     if (!this.transporter) {
-      this.logger.log(`OTP for ${email} [${purpose}]: ${code} (valid 10 minutes)`);
+      this.logger.log(
+        `OTP for ${email} [${purpose}]: ${code} (valid 10 minutes)`,
+      );
       return;
     }
 

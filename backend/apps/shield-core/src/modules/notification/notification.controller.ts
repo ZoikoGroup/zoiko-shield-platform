@@ -1,4 +1,14 @@
-import { BadRequestException, Body, Controller, Get, Headers, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { NotificationAcknowledgementService } from './acknowledgement/notification-acknowledgement.service';
 import { NotificationPreferenceService } from './preferences/notification-preference.service';
@@ -18,13 +28,27 @@ export class NotificationController {
   ) {}
 
   @Get('notifications')
-  async list(@Headers('x-tenant-id') tenantId: string, @CurrentUser() user: AuthenticatedUser) {
-    return this.prisma.notificationDelivery.findMany({ where: { tenant_id: requireTenantId(tenantId), recipient_principal_id: user.id }, orderBy: { created_at: 'desc' } });
+  async list(
+    @Headers('x-tenant-id') tenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.prisma.notificationDelivery.findMany({
+      where: {
+        tenant_id: requireTenantId(tenantId),
+        recipient_principal_id: user.id,
+      },
+      orderBy: { created_at: 'desc' },
+    });
   }
 
   @Get('notifications/:notificationId')
-  async getById(@Headers('x-tenant-id') tenantId: string, @Param('notificationId') id: string) {
-    return this.prisma.notificationDelivery.findFirst({ where: { id, tenant_id: requireTenantId(tenantId) } });
+  async getById(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('notificationId') id: string,
+  ) {
+    return this.prisma.notificationDelivery.findFirst({
+      where: { id, tenant_id: requireTenantId(tenantId) },
+    });
   }
 
   @Post('notifications/:notificationId/acknowledge')
@@ -32,14 +56,27 @@ export class NotificationController {
     @Headers('x-tenant-id') tenantId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Param('notificationId') id: string,
-    @Body() body: { acknowledgementType: 'SEEN' | 'ACKNOWLEDGED' | 'ACCEPTED' | 'DECLINED' },
+    @Body()
+    body: {
+      acknowledgementType: 'SEEN' | 'ACKNOWLEDGED' | 'ACCEPTED' | 'DECLINED';
+    },
   ) {
-    return this.acknowledgementService.acknowledge({ tenantId: requireTenantId(tenantId), notificationDeliveryId: id, principalId: user.id, acknowledgementType: body.acknowledgementType });
+    return this.acknowledgementService.acknowledge({
+      tenantId: requireTenantId(tenantId),
+      notificationDeliveryId: id,
+      principalId: user.id,
+      acknowledgementType: body.acknowledgementType,
+    });
   }
 
   @Get('notification-preferences')
-  async listPreferences(@Headers('x-tenant-id') tenantId: string, @CurrentUser() user: AuthenticatedUser) {
-    return this.prisma.notificationPreference.findMany({ where: { tenant_id: requireTenantId(tenantId), principal_id: user.id } });
+  async listPreferences(
+    @Headers('x-tenant-id') tenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.prisma.notificationPreference.findMany({
+      where: { tenant_id: requireTenantId(tenantId), principal_id: user.id },
+    });
   }
 
   @Patch('notification-preferences/:id')
@@ -47,21 +84,43 @@ export class NotificationController {
     @Headers('x-tenant-id') tenantId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
-    @Body() body: { notificationPolicyId: string; channel: string; enabled: boolean; quietHours?: string; locale?: string },
+    @Body()
+    body: {
+      notificationPolicyId: string;
+      channel: string;
+      enabled: boolean;
+      quietHours?: string;
+      locale?: string;
+    },
   ) {
     if (body.notificationPolicyId && body.notificationPolicyId !== id) {
-      throw new BadRequestException('Path and body notification policy identifiers conflict');
+      throw new BadRequestException(
+        'Path and body notification policy identifiers conflict',
+      );
     }
-    return this.preferenceService.setPreference({ tenantId: requireTenantId(tenantId), principalId: user.id, notificationPolicyId: id, channel: body.channel, enabled: body.enabled, quietHours: body.quietHours, locale: body.locale });
+    return this.preferenceService.setPreference({
+      tenantId: requireTenantId(tenantId),
+      principalId: user.id,
+      notificationPolicyId: id,
+      channel: body.channel,
+      enabled: body.enabled,
+      quietHours: body.quietHours,
+      locale: body.locale,
+    });
   }
 
   @Get('notification-policies')
   async listPolicies() {
-    return this.prisma.notificationPolicy.findMany({ where: { status: 'ACTIVE' } });
+    return this.prisma.notificationPolicy.findMany({
+      where: { status: 'ACTIVE' },
+    });
   }
 
   @Get('notification-deliveries/:id')
-  async getDelivery(@Headers('x-tenant-id') tenantId: string, @Param('id') id: string) {
+  async getDelivery(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('id') id: string,
+  ) {
     return this.prisma.notificationDelivery.findFirst({
       where: { id, tenant_id: requireTenantId(tenantId) },
       include: { acknowledgements: true },

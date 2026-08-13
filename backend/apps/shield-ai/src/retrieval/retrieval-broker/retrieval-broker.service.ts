@@ -47,7 +47,8 @@ export class RetrievalBrokerService {
 
     // Completeness/freshness propagate from what was actually retrievable
     // — never silently reported as fully healthy.
-    const completenessState = evidenceLinks.length === 0 ? 'PARTIAL' : 'COMPLETE';
+    const completenessState =
+      evidenceLinks.length === 0 ? 'PARTIAL' : 'COMPLETE';
     const freshnessState = 'CURRENT';
 
     const bundle = await this.prisma.retrievalBundle.create({
@@ -61,7 +62,10 @@ export class RetrievalBrokerService {
         source_versions: JSON.stringify({ case: caseRow.updated_at ?? null }),
         freshness_state: freshnessState,
         completeness_state: completenessState,
-        acl_snapshot: JSON.stringify({ tenantId: input.tenantId, caseId: input.caseId }),
+        acl_snapshot: JSON.stringify({
+          tenantId: input.tenantId,
+          caseId: input.caseId,
+        }),
       },
     });
 
@@ -72,6 +76,10 @@ export class RetrievalBrokerService {
       `Linked evidence: ${evidenceLinks.length}.`,
     ].join(' ');
 
-    return { bundle, sourceRefs, retrievalContext: JSON.stringify({ sourceRefs, summaryText }) };
+    return {
+      bundle,
+      sourceRefs,
+      retrievalContext: JSON.stringify({ sourceRefs, summaryText }),
+    };
   }
 }

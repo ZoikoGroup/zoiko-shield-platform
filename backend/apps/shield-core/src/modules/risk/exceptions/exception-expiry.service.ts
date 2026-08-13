@@ -25,26 +25,49 @@ export class ExceptionExpiryService {
     this.running = true;
     try {
       const due = await this.prisma.exception.findMany({
-        where: { status: { in: ['REQUESTED', 'APPROVED'] }, expires_at: { lte: new Date() } },
+        where: {
+          status: { in: ['REQUESTED', 'APPROVED'] },
+          expires_at: { lte: new Date() },
+        },
       });
 
       for (const exception of due) {
         try {
           await this.prisma.$transaction([
-            this.prisma.exception.update({ where: { id: exception.id }, data: { status: 'EXPIRED' } }),
+            this.prisma.exception.update({
+              where: { id: exception.id },
+              data: { status: 'EXPIRED' },
+            }),
             this.prisma.outboxEvent.create({
-              data: this.outbox.build({ tenantId: exception.tenant_id, topic: CANONICAL_TOPICS.EXCEPTION_EXPIRED, eventType: 'exception.expired', payload: { exceptionId: exception.id, riskId: exception.risk_id } }),
+              data: this.outbox.build({
+                tenantId: exception.tenant_id,
+                topic: CANONICAL_TOPICS.EXCEPTION_EXPIRED,
+                eventType: 'exception.expired',
+                payload: {
+                  exceptionId: exception.id,
+                  riskId: exception.risk_id,
+                },
+              }),
             }),
           ]);
           if (exception.risk_id) {
-            const risk = await this.prisma.risk.findUnique({ where: { id: exception.risk_id } });
+            const risk = await this.prisma.risk.findUnique({
+              where: { id: exception.risk_id },
+            });
             if (risk && risk.status !== 'OPEN') {
-              await this.prisma.risk.update({ where: { id: risk.id }, data: { status: 'OPEN' } });
-              this.logger.warn(`Risk ${risk.id} re-opened — its exception ${exception.id} expired`);
+              await this.prisma.risk.update({
+                where: { id: risk.id },
+                data: { status: 'OPEN' },
+              });
+              this.logger.warn(
+                `Risk ${risk.id} re-opened — its exception ${exception.id} expired`,
+              );
             }
           }
         } catch (err) {
-          this.logger.error(`Failed to expire exception ${exception.id}: ${(err as Error).message}`);
+          this.logger.error(
+            `Failed to expire exception ${exception.id}: ${(err as Error).message}`,
+          );
         }
       }
     } finally {

@@ -1,4 +1,9 @@
-import { Injectable, ForbiddenException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ForbiddenException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { AuthorizationDecisionService } from '../../authorization-decision/authorization-decision.service';
@@ -11,7 +16,17 @@ export interface CreateDeletionRequestInput {
   scope: Record<string, unknown>;
 }
 
-const STORE_TYPES = ['POSTGRES_AUTHORITY', 'OBJECT_STORAGE', 'SEARCH', 'CACHE', 'ANALYTICS', 'AI_MEMORY', 'EMBEDDINGS', 'EXPORT_CACHE', 'CONNECTOR_STATE'];
+const STORE_TYPES = [
+  'POSTGRES_AUTHORITY',
+  'OBJECT_STORAGE',
+  'SEARCH',
+  'CACHE',
+  'ANALYTICS',
+  'AI_MEMORY',
+  'EMBEDDINGS',
+  'EXPORT_CACHE',
+  'CONNECTOR_STATE',
+];
 
 /**
  * A deletion conflicting with an active legal hold is an explicit
@@ -27,19 +42,29 @@ export class DeletionRequestService {
   ) {}
 
   async request(input: CreateDeletionRequestInput) {
-    const { authorizationDecisionId, decision } = await this.authorizationDecisionService.evaluate({
-      actorId: input.requestedBy,
-      tenantId: input.tenantId,
-      action: 'deletion:request',
-      resourceType: 'Tenant',
-      resourceId: input.tenantId,
-    });
+    const { authorizationDecisionId, decision } =
+      await this.authorizationDecisionService.evaluate({
+        actorId: input.requestedBy,
+        tenantId: input.tenantId,
+        action: 'deletion:request',
+        resourceType: 'Tenant',
+        resourceId: input.tenantId,
+      });
     if (decision === 'DENY') {
-      throw new ForbiddenException('Actor is not authorized to request deletion');
+      throw new ForbiddenException(
+        'Actor is not authorized to request deletion',
+      );
     }
 
-    const activeHolds = await this.legalHoldService.getActiveForTenant(input.tenantId);
-    const conflictingHold = activeHolds.find((hold) => this.legalHoldService.scopeIntersects(JSON.parse(hold.scope), input.scope));
+    const activeHolds = await this.legalHoldService.getActiveForTenant(
+      input.tenantId,
+    );
+    const conflictingHold = activeHolds.find((hold) =>
+      this.legalHoldService.scopeIntersects(
+        JSON.parse(hold.scope),
+        input.scope,
+      ),
+    );
     const status = conflictingHold ? 'BLOCKED_BY_HOLD' : 'APPROVED';
     const legalHoldState = conflictingHold ? 'BLOCKED' : 'NONE';
 
@@ -75,17 +100,26 @@ export class DeletionRequestService {
   }
 
   async assertTenantOwnership(tenantId: string, deletionRequestId: string) {
-    const request = await this.prisma.deletionRequest.findFirst({ where: { id: deletionRequestId, tenant_id: tenantId } });
+    const request = await this.prisma.deletionRequest.findFirst({
+      where: { id: deletionRequestId, tenant_id: tenantId },
+    });
     if (!request) {
-      throw new NotFoundException(`DeletionRequest '${deletionRequestId}' not found`);
+      throw new NotFoundException(
+        `DeletionRequest '${deletionRequestId}' not found`,
+      );
     }
     return request;
   }
 
   async assertNotBlocked(tenantId: string, deletionRequestId: string) {
-    const request = await this.assertTenantOwnership(tenantId, deletionRequestId);
+    const request = await this.assertTenantOwnership(
+      tenantId,
+      deletionRequestId,
+    );
     if (request.status === 'BLOCKED_BY_HOLD') {
-      throw new ConflictException(`DeletionRequest '${deletionRequestId}' is blocked by an active legal hold`);
+      throw new ConflictException(
+        `DeletionRequest '${deletionRequestId}' is blocked by an active legal hold`,
+      );
     }
     return request;
   }

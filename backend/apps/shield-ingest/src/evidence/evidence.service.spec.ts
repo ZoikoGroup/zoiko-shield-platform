@@ -33,7 +33,10 @@ describe('EvidenceService (Step 12)', () => {
   });
 
   it('routes evidence creation through the canonical object-store, ledger, and outbox write path', async () => {
-    canonicalEvidenceMock.createEvidence.mockResolvedValue({ id: 'ev-1', content_hash: 'sha256' });
+    canonicalEvidenceMock.createEvidence.mockResolvedValue({
+      id: 'ev-1',
+      content_hash: 'sha256',
+    });
 
     const result = await service.createEvidence({
       tenantId: 'tenant-1',
@@ -52,7 +55,9 @@ describe('EvidenceService (Step 12)', () => {
         environmentId: 'env-1',
         region: 'eu-west-1',
         caseId: 'case-1',
-        content: expect.objectContaining({ rawContent: 'User auth failure at 2026-08-10T12:00:00Z' }),
+        content: expect.objectContaining({
+          rawContent: 'User auth failure at 2026-08-10T12:00:00Z',
+        }),
       }),
     );
   });
@@ -64,7 +69,10 @@ describe('EvidenceService (Step 12)', () => {
       storedHash: 'expected-hash',
     });
 
-    const verifyResult = await service.verifyEvidenceIntegrity('tenant-1', 'ev-1');
+    const verifyResult = await service.verifyEvidenceIntegrity(
+      'tenant-1',
+      'ev-1',
+    );
     expect(verifyResult.isIntegrityValid).toBe(true);
     expect(verifyResult.recomputedHash).toBe('expected-hash');
     expect(verificationMock.verify).toHaveBeenCalledWith('tenant-1', 'ev-1');

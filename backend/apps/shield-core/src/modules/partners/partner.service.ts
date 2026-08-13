@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { IsIn, IsNumber, IsOptional, IsString } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -59,7 +64,11 @@ export class PartnerService {
 
   async createPartner(dto: CreatePartnerDto) {
     return this.prisma.partner.create({
-      data: { legal_name: dto.legalName, partner_type: dto.partnerType, status: 'ACTIVE' },
+      data: {
+        legal_name: dto.legalName,
+        partner_type: dto.partnerType,
+        status: 'ACTIVE',
+      },
     });
   }
 
@@ -79,16 +88,24 @@ export class PartnerService {
   }
 
   async approveAgreement(id: string, approvedBy: string) {
-    const agreement = await this.prisma.partnerAgreement.findUnique({ where: { id } });
+    const agreement = await this.prisma.partnerAgreement.findUnique({
+      where: { id },
+    });
     if (!agreement) {
       throw new NotFoundException(`Partner agreement '${id}' not found`);
     }
     if (agreement.status !== 'DRAFT') {
-      throw new ConflictException(`Partner agreement '${id}' is '${agreement.status}', not DRAFT`);
+      throw new ConflictException(
+        `Partner agreement '${id}' is '${agreement.status}', not DRAFT`,
+      );
     }
     return this.prisma.partnerAgreement.update({
       where: { id },
-      data: { status: 'APPROVED', approved_by: approvedBy, approved_at: new Date() },
+      data: {
+        status: 'APPROVED',
+        approved_by: approvedBy,
+        approved_at: new Date(),
+      },
     });
   }
 
@@ -104,7 +121,9 @@ export class PartnerService {
       orderBy: { created_at: 'desc' },
     });
     if (!agreement) {
-      this.logger.warn(`Partner agreement query FAILED CLOSED for partner '${partnerId}'`);
+      this.logger.warn(
+        `Partner agreement query FAILED CLOSED for partner '${partnerId}'`,
+      );
     }
     return agreement;
   }

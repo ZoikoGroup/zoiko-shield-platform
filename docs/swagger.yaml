@@ -771,6 +771,7 @@ components:
     OnboardTenantRequest:
       type: object
       required:
+      - orderId
       - tenantName
       - tenantSlug
       - homeRegion
@@ -780,6 +781,15 @@ components:
       - legalEntity
       - accessDisclosureVersion
       properties:
+        orderId:
+          type: string
+          format: uuid
+          description: An approved, PROVISIONED CommercialOrder (spec §7.2 —
+            tenant PROVISIONING requires an approved order/entitlement as
+            evidence). The order must not already be linked to another
+            tenant; one order provisions exactly one tenant. The tenant's
+            entitlements are derived from the order's own product lines —
+            never self-granted.
         tenantName:
           type: string
           example: Acme Corp
@@ -892,7 +902,7 @@ components:
           example: 1
     OnboardingResponse:
       type: object
-      description: Full result of the onboarding transaction
+      description: Full result of tenant onboarding
       properties:
         tenant:
           $ref: '#/components/schemas/TenantFull'
@@ -902,6 +912,22 @@ components:
           $ref: '#/components/schemas/EnvironmentResponse'
         membership:
           $ref: '#/components/schemas/MembershipResponse'
+        orderId:
+          type: string
+          format: uuid
+          description: The CommercialOrder that was validated and claimed to
+            provision this tenant
+        commercialAccountId:
+          type: string
+          format: uuid
+          description: The order's existing CommercialAccount — the tenant's
+            entitlements are granted against this account, not a newly
+            created one
+        acceptanceEvidenceId:
+          type: string
+          format: uuid
+          description: Evidence record capturing the ACCESS_DISCLOSURE policy
+            acceptance
     TenantOffboardingRunResponse:
       type: object
       description: "Raw TenantOffboardingRun record \u2014 field names are snake_case,\
@@ -28382,13 +28408,25 @@ paths:
       tags:
       - Onboarding
       summary: Run tenant onboarding workflow
-      description: 'Provisions a new tenant in a single atomic transaction: creates
-        the Tenant record, a LegalEntity, an Environment (defaults to Production),
-        activates the tenant, assigns the calling principal as TENANT_OWNER with tenant:member:invite
-        and tenant:manage permissions, records ACCESS_DISCLOSURE policy acceptance,
-        and emits a tenant_onboarded identity event. The tenantSlug must be unique
-        and URL-safe. The accessDisclosureVersion must match the currently active
-        ACCESS_DISCLOSURE policy version.'
+      description: 'Provisions a new tenant against an approved, PROVISIONED
+        commercial order (spec \u00a77.2 \u2014 PROVISIONING requires an approved
+        order/entitlement as evidence; there is no self-service tenant
+        creation). Validates and claims the order first \u2014 fails closed
+        before any tenant row is created if it does not exist, is not
+        PROVISIONED, or was already claimed by another tenant. Then creates
+        the Tenant, a LegalEntity, an Environment (defaults to Production),
+        assigns the calling principal as TENANT_OWNER with tenant:member:invite
+        and tenant:manage permissions, records ACCESS_DISCLOSURE policy
+        acceptance, grants one Entitlement per distinct offer family present
+        on the order''s product lines (against the order''s existing
+        CommercialAccount \u2014 never a self-granted account/entitlement),
+        activates the tenant, and emits tenant_provisioning_started and
+        tenant_onboarded identity events. The tenantSlug must be unique and
+        URL-safe. The accessDisclosureVersion must match the currently
+        active ACCESS_DISCLOSURE policy version. Note: this spans multiple
+        transactions (order validation, tenant provisioning, order
+        claim/entitlement grant, evidence creation, activation) rather than
+        one single atomic transaction.'
       security:
       - CookieAuth: []
       - BearerAuth: []
@@ -28401,14 +28439,14 @@ paths:
       responses:
         '201':
           description: "Onboarding completed \u2014 tenant, legal entity, environment,\
-            \ and TENANT_OWNER membership provisioned"
+            \ TENANT_OWNER membership, and order-derived entitlements provisioned"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/OnboardingResponse'
         '400':
           description: accessDisclosureVersion does not match the currently active
-            ACCESS_DISCLOSURE policy version
+            ACCESS_DISCLOSURE policy version, or the request failed validation
           content:
             application/json:
               schema:
@@ -28419,8 +28457,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: orderId does not reference an existing CommercialOrder
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: Tenant slug is already in use
+          description: "Tenant slug is already in use, the order is not PROVISIONED,\
+            \ the order has no product lines to derive an entitlement from,\
+            \ or the order was already claimed by another tenant (including\
+            \ concurrently)"
           content:
             application/json:
               schema:

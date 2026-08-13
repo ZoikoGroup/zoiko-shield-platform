@@ -25,21 +25,31 @@ describe('SuspiciousLoginRule', () => {
     const result = rule.evaluate({
       tenantId: 'tenant-a',
       event: baseEvent,
-      identity: { id: 'identity-1', status: 'ACTIVE', identity_type: 'MANAGED_IDENTITY' },
+      identity: {
+        id: 'identity-1',
+        status: 'ACTIVE',
+        identity_type: 'MANAGED_IDENTITY',
+      },
       asset: null,
       contextHealth: 'RESOLVED',
       configuration: {},
     });
 
     expect(result.result).toBe('MATCH');
-    expect(result.factors.find((f) => f.name === 'FAILED_OUTCOME')?.contribution).toBeGreaterThan(0);
+    expect(
+      result.factors.find((f) => f.name === 'FAILED_OUTCOME')?.contribution,
+    ).toBeGreaterThan(0);
   });
 
   it('does NOT match a successful sign-in (known negative)', () => {
     const result = rule.evaluate({
       tenantId: 'tenant-a',
       event: { ...baseEvent, outcome: 'SUCCESS' },
-      identity: { id: 'identity-1', status: 'ACTIVE', identity_type: 'MANAGED_IDENTITY' },
+      identity: {
+        id: 'identity-1',
+        status: 'ACTIVE',
+        identity_type: 'MANAGED_IDENTITY',
+      },
       asset: null,
       contextHealth: 'RESOLVED',
       configuration: {},
@@ -60,7 +70,10 @@ describe('SuspiciousLoginRule', () => {
 
     expect(result.result).toBe('INDETERMINATE');
     expect(result.incompleteData).toBe(true);
-    expect(result.factors.find((f) => f.name === 'PRIVILEGED_IDENTITY')?.indeterminate).toBe(true);
+    expect(
+      result.factors.find((f) => f.name === 'PRIVILEGED_IDENTITY')
+        ?.indeterminate,
+    ).toBe(true);
   });
 
   it('does not match a failed sign-in for a non-privileged identity', () => {
@@ -80,7 +93,11 @@ describe('SuspiciousLoginRule', () => {
     const result = rule.evaluate({
       tenantId: 'tenant-a',
       event: baseEvent,
-      identity: { id: 'identity-1', status: 'ACTIVE', identity_type: 'MANAGED_IDENTITY' },
+      identity: {
+        id: 'identity-1',
+        status: 'ACTIVE',
+        identity_type: 'MANAGED_IDENTITY',
+      },
       asset: null,
       contextHealth: 'PARTIAL',
       configuration: {},

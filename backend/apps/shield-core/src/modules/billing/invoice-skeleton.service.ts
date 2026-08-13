@@ -1,5 +1,19 @@
-import { Injectable, Logger, NotFoundException, ConflictException } from '@nestjs/common';
-import { IsArray, IsISO8601, IsInt, IsNumber, IsOptional, IsPositive, IsString, IsUUID } from 'class-validator';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
+import {
+  IsArray,
+  IsISO8601,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TaxRuleService } from '../tax/tax-rule.service';
 import { NON_COMMERCIAL_CLASSIFICATIONS } from '../commercial/commercial-entitlement.service';
@@ -77,7 +91,10 @@ export class InvoiceSkeletonService {
    * Create draft invoice
    */
   async createDraftInvoice(dto: CreateDraftInvoiceDto) {
-    const totalAmount = dto.lineItems.reduce((sum, item) => sum + item.amount, 0);
+    const totalAmount = dto.lineItems.reduce(
+      (sum, item) => sum + item.amount,
+      0,
+    );
 
     return this.prisma.commercialInvoice.create({
       data: {
@@ -100,18 +117,27 @@ export class InvoiceSkeletonService {
   async addInvoiceLine(invoiceId: string, dto: AddInvoiceLineDto) {
     await this.killSwitchService.assertNotBlocked('USAGE_BILLING_EXPORT');
 
-    const invoice = await this.prisma.commercialInvoice.findUnique({ where: { id: invoiceId } });
+    const invoice = await this.prisma.commercialInvoice.findUnique({
+      where: { id: invoiceId },
+    });
     if (!invoice) {
       throw new NotFoundException(`Invoice '${invoiceId}' not found`);
     }
     if (invoice.status !== 'DRAFT') {
-      throw new ConflictException(`Invoice '${invoiceId}' is '${invoice.status}', not DRAFT`);
+      throw new ConflictException(
+        `Invoice '${invoiceId}' is '${invoice.status}', not DRAFT`,
+      );
     }
 
     const discountPercent = dto.discountPercent || 0;
-    const taxableAmount = dto.quantity * dto.unitPrice * (1 - discountPercent / 100);
+    const taxableAmount =
+      dto.quantity * dto.unitPrice * (1 - discountPercent / 100);
 
-    const taxResult = await this.taxRuleService.resolveTax(dto.jurisdiction, dto.productTaxClass, taxableAmount);
+    const taxResult = await this.taxRuleService.resolveTax(
+      dto.jurisdiction,
+      dto.productTaxClass,
+      taxableAmount,
+    );
     if (!taxResult) {
       throw new ConflictException({
         statusCode: 409,
@@ -140,17 +166,25 @@ export class InvoiceSkeletonService {
 
   /** Part 11: FX is recorded, never used to rewrite the transaction currency values. */
   async recordFxRate(invoiceId: string, dto: RecordFxRateDto) {
-    const invoice = await this.prisma.commercialInvoice.findUnique({ where: { id: invoiceId } });
+    const invoice = await this.prisma.commercialInvoice.findUnique({
+      where: { id: invoiceId },
+    });
     if (!invoice) {
       throw new NotFoundException(`Invoice '${invoiceId}' not found`);
     }
     if (invoice.status !== 'DRAFT') {
-      throw new ConflictException(`Invoice '${invoiceId}' is '${invoice.status}', not DRAFT`);
+      throw new ConflictException(
+        `Invoice '${invoiceId}' is '${invoice.status}', not DRAFT`,
+      );
     }
 
     return this.prisma.commercialInvoice.update({
       where: { id: invoiceId },
-      data: { fx_rate: dto.fxRate, fx_source: dto.fxSource, fx_effective_at: new Date() },
+      data: {
+        fx_rate: dto.fxRate,
+        fx_source: dto.fxSource,
+        fx_effective_at: new Date(),
+      },
     });
   }
 
@@ -177,7 +211,11 @@ export class InvoiceSkeletonService {
       throw new NotFoundException(`Invoice '${invoiceId}' not found`);
     }
 
-    if (NON_COMMERCIAL_CLASSIFICATIONS.includes(invoice.commercialAccount.billing_classification)) {
+    if (
+      NON_COMMERCIAL_CLASSIFICATIONS.includes(
+        invoice.commercialAccount.billing_classification,
+      )
+    ) {
       throw new ConflictException({
         statusCode: 409,
         error: 'NON_COMMERCIAL_ACCOUNT_CANNOT_BE_INVOICED',
@@ -186,7 +224,9 @@ export class InvoiceSkeletonService {
     }
 
     if (invoice.status !== 'DRAFT' && invoice.status !== 'APPROVAL_PENDING') {
-      throw new ConflictException(`Invoice '${invoiceId}' is in status '${invoice.status}' and cannot be re-issued (FIN-02 immutability rule)`);
+      throw new ConflictException(
+        `Invoice '${invoiceId}' is in status '${invoice.status}' and cannot be re-issued (FIN-02 immutability rule)`,
+      );
     }
 
     const unresolvedLine = (invoice.lines || []).find((l) => !l.tax_rule_id);
@@ -212,30 +252,52 @@ export class InvoiceSkeletonService {
    * notes — the original issued invoice row is never mutated.
    */
   async issueCreditNote(invoiceId: string, amount: number, reason: string) {
-    const invoice = await this.prisma.commercialInvoice.findUnique({ where: { id: invoiceId } });
+    const invoice = await this.prisma.commercialInvoice.findUnique({
+      where: { id: invoiceId },
+    });
     if (!invoice) {
       throw new NotFoundException(`Invoice '${invoiceId}' not found`);
     }
     if (invoice.status !== 'ISSUED') {
-      throw new ConflictException(`Credit notes can only be issued against an ISSUED invoice, '${invoiceId}' is '${invoice.status}'`);
+      throw new ConflictException(
+        `Credit notes can only be issued against an ISSUED invoice, '${invoiceId}' is '${invoice.status}'`,
+      );
     }
 
     return this.prisma.commercialCreditNote.create({
-      data: { invoice_id: invoiceId, amount, currency: invoice.currency, reason, status: 'ISSUED', issued_at: new Date() },
+      data: {
+        invoice_id: invoiceId,
+        amount,
+        currency: invoice.currency,
+        reason,
+        status: 'ISSUED',
+        issued_at: new Date(),
+      },
     });
   }
 
   async issueDebitNote(invoiceId: string, amount: number, reason: string) {
-    const invoice = await this.prisma.commercialInvoice.findUnique({ where: { id: invoiceId } });
+    const invoice = await this.prisma.commercialInvoice.findUnique({
+      where: { id: invoiceId },
+    });
     if (!invoice) {
       throw new NotFoundException(`Invoice '${invoiceId}' not found`);
     }
     if (invoice.status !== 'ISSUED') {
-      throw new ConflictException(`Debit notes can only be issued against an ISSUED invoice, '${invoiceId}' is '${invoice.status}'`);
+      throw new ConflictException(
+        `Debit notes can only be issued against an ISSUED invoice, '${invoiceId}' is '${invoice.status}'`,
+      );
     }
 
     return this.prisma.commercialDebitNote.create({
-      data: { invoice_id: invoiceId, amount, currency: invoice.currency, reason, status: 'ISSUED', issued_at: new Date() },
+      data: {
+        invoice_id: invoiceId,
+        amount,
+        currency: invoice.currency,
+        reason,
+        status: 'ISSUED',
+        issued_at: new Date(),
+      },
     });
   }
 

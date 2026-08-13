@@ -26,7 +26,10 @@ export interface PermissionResult {
 }
 
 export interface SecurityConnector {
-  connect(context: ConnectorContext, input: ConnectInput): Promise<ConnectionResult>;
+  connect(
+    context: ConnectorContext,
+    input: ConnectInput,
+  ): Promise<ConnectionResult>;
 
   testConnection(context: ConnectorContext): Promise<HealthResult>;
 

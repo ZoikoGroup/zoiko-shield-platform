@@ -1,9 +1,18 @@
-import { Injectable, Logger, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OutboxService } from '../../../outbox/outbox.service';
 import { CaseRepository } from '../repositories/case.repository';
-import { CaseStateMachineService, CaseStatus, CaseDisposition } from '../state-machine/case-state-machine.service';
+import {
+  CaseStateMachineService,
+  CaseStatus,
+  CaseDisposition,
+} from '../state-machine/case-state-machine.service';
 import { CaseTimelineService } from '../timeline/case-timeline.service';
 import { EvidenceService } from '../../evidence/services/evidence.service';
 import { EvidenceAutoCreationService } from '../../evidence/evidence-auto-creation.service';
@@ -28,10 +37,22 @@ export class CaseService {
    * Prisma — same shared schema shield-ingest writes to — rather than
    * requiring the Alert's full payload to be replayed over Kafka.
    */
-  async createFromAlert(params: { tenantId: string; environmentId?: string; alertId: string; actorId: string; title?: string; description?: string }) {
-    const alert = await this.caseRepository.findAlertByTenantAndId(params.tenantId, params.alertId);
+  async createFromAlert(params: {
+    tenantId: string;
+    environmentId?: string;
+    alertId: string;
+    actorId: string;
+    title?: string;
+    description?: string;
+  }) {
+    const alert = await this.caseRepository.findAlertByTenantAndId(
+      params.tenantId,
+      params.alertId,
+    );
     if (!alert) {
-      throw new NotFoundException(`Alert '${params.alertId}' not found for this tenant`);
+      throw new NotFoundException(
+        `Alert '${params.alertId}' not found for this tenant`,
+      );
     }
 
     const caseId = randomUUID();
@@ -45,7 +66,10 @@ export class CaseService {
           environment_id: params.environmentId ?? alert.environment_id,
           region: alert.region,
           title: params.title ?? `Case: ${alert.title}`,
-          description: params.description ?? alert.description ?? `Escalated from alert ${alert.id}`,
+          description:
+            params.description ??
+            alert.description ??
+            `Escalated from alert ${alert.id}`,
           severity: alert.severity,
           priority: alert.priority,
           status: 'NEW',
@@ -104,7 +128,11 @@ export class CaseService {
       sourceSystemId: 'shield-ingest-alert-service',
       sourceObjectId: alert.id,
       purpose: 'INVESTIGATION',
-      content: { alertId: alert.id, detectionMatchId: alert.detection_match_id, caseId },
+      content: {
+        alertId: alert.id,
+        detectionMatchId: alert.detection_match_id,
+        caseId,
+      },
     });
 
     await this.prisma.caseEvidence.create({
@@ -117,12 +145,17 @@ export class CaseService {
       },
     });
 
-    this.logger.log(`Case ${createdCase.id} created from alert ${alert.id} for tenant ${params.tenantId}`);
+    this.logger.log(
+      `Case ${createdCase.id} created from alert ${alert.id} for tenant ${params.tenantId}`,
+    );
     return createdCase;
   }
 
   async getById(tenantId: string, caseId: string) {
-    const caseRow = await this.caseRepository.findByTenantAndId(tenantId, caseId);
+    const caseRow = await this.caseRepository.findByTenantAndId(
+      tenantId,
+      caseId,
+    );
     if (!caseRow) {
       throw new NotFoundException(`Case '${caseId}' not found`);
     }
@@ -130,12 +163,16 @@ export class CaseService {
   }
 
   async assertTenantOwnership(tenantId: string, caseId: string) {
-    const caseRow = await this.prisma.case.findUnique({ where: { id: caseId } });
+    const caseRow = await this.prisma.case.findUnique({
+      where: { id: caseId },
+    });
     if (!caseRow) {
       throw new NotFoundException(`Case '${caseId}' not found`);
     }
     if (caseRow.tenant_id !== tenantId) {
-      throw new ForbiddenException(`Case '${caseId}' does not belong to this tenant`);
+      throw new ForbiddenException(
+        `Case '${caseId}' does not belong to this tenant`,
+      );
     }
     return caseRow;
   }
@@ -156,7 +193,14 @@ export class CaseService {
     });
   }
 
-  async transition(params: { tenantId: string; caseId: string; toState: CaseStatus; actorId: string; reason: string; disposition?: CaseDisposition }) {
+  async transition(params: {
+    tenantId: string;
+    caseId: string;
+    toState: CaseStatus;
+    actorId: string;
+    reason: string;
+    disposition?: CaseDisposition;
+  }) {
     const caseRow = await this.getById(params.tenantId, params.caseId);
     this.stateMachine.assertValidTransition(caseRow.status, params.toState);
 
@@ -166,7 +210,10 @@ export class CaseService {
     if (params.disposition) extra.disposition = params.disposition;
 
     const [, transition] = await this.prisma.$transaction([
-      this.prisma.case.update({ where: { id: params.caseId }, data: { status: params.toState, ...extra } }),
+      this.prisma.case.update({
+        where: { id: params.caseId },
+        data: { status: params.toState, ...extra },
+      }),
       this.prisma.caseTransition.create({
         data: {
           tenant_id: params.tenantId,
@@ -182,7 +229,11 @@ export class CaseService {
           tenantId: params.tenantId,
           topic: CASE_TOPICS.CASE_STATE_CHANGED,
           eventType: 'case.state.changed',
-          payload: { caseId: params.caseId, fromState: caseRow.status, toState: params.toState },
+          payload: {
+            caseId: params.caseId,
+            fromState: caseRow.status,
+            toState: params.toState,
+          },
         }),
       }),
     ]);
@@ -210,11 +261,22 @@ export class CaseService {
     return transition;
   }
 
-  async linkAlert(params: { tenantId: string; caseId: string; alertId: string; actorId: string; relationshipType?: string }) {
+  async linkAlert(params: {
+    tenantId: string;
+    caseId: string;
+    alertId: string;
+    actorId: string;
+    relationshipType?: string;
+  }) {
     await this.getById(params.tenantId, params.caseId);
-    const alert = await this.caseRepository.findAlertByTenantAndId(params.tenantId, params.alertId);
+    const alert = await this.caseRepository.findAlertByTenantAndId(
+      params.tenantId,
+      params.alertId,
+    );
     if (!alert) {
-      throw new NotFoundException(`Alert '${params.alertId}' not found for this tenant`);
+      throw new NotFoundException(
+        `Alert '${params.alertId}' not found for this tenant`,
+      );
     }
 
     const link = await this.prisma.caseAlert.create({

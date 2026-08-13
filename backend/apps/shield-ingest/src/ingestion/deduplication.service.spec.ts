@@ -10,7 +10,10 @@ describe('DeduplicationService', () => {
     prismaMock = { rawEvent: { findFirst: jest.fn() } };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [DeduplicationService, { provide: PrismaService, useValue: prismaMock }],
+      providers: [
+        DeduplicationService,
+        { provide: PrismaService, useValue: prismaMock },
+      ],
     }).compile();
 
     service = module.get<DeduplicationService>(DeduplicationService);
@@ -22,7 +25,11 @@ describe('DeduplicationService', () => {
     await service.findExisting('tenant-a', 'conn-1', 'evt-1');
 
     expect(prismaMock.rawEvent.findFirst).toHaveBeenCalledWith({
-      where: { tenant_id: 'tenant-a', connector_id: 'conn-1', source_event_id: 'evt-1' },
+      where: {
+        tenant_id: 'tenant-a',
+        connector_id: 'conn-1',
+        source_event_id: 'evt-1',
+      },
     });
   });
 
@@ -32,8 +39,16 @@ describe('DeduplicationService', () => {
       where.tenant_id === 'tenant-a' ? { id: 'raw-a' } : null,
     );
 
-    const forTenantA = await service.findExisting('tenant-a', 'conn-1', 'evt-shared');
-    const forTenantB = await service.findExisting('tenant-b', 'conn-1', 'evt-shared');
+    const forTenantA = await service.findExisting(
+      'tenant-a',
+      'conn-1',
+      'evt-shared',
+    );
+    const forTenantB = await service.findExisting(
+      'tenant-b',
+      'conn-1',
+      'evt-shared',
+    );
 
     expect(forTenantA).toEqual({ id: 'raw-a' });
     expect(forTenantB).toBeNull();

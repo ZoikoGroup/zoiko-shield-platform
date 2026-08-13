@@ -1304,6 +1304,10 @@ model CommercialOrder {
   contract_id           String?         @unique
   idempotency_key       String          @unique
   created_by            String
+  // Set once this order backs a provisioned tenant (spec §7.2: PROVISIONING
+  // requires an approved order/entitlement). Unique so an order can never be
+  // claimed by more than one tenant.
+  tenant_id             String?         @unique
   created_at            DateTime        @default(now())
   updated_at            DateTime        @updatedAt
 

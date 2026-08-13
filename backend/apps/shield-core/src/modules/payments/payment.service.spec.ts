@@ -16,8 +16,15 @@ describe('PaymentService (ZS-COM-BILL-001 Part 9)', () => {
   beforeEach(async () => {
     prismaMock = {
       commercialInvoice: { findUnique: jest.fn() },
-      entitlement: { findFirst: jest.fn().mockResolvedValue({ id: 'entitlement-1' }) },
-      payment: { create: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
+      entitlement: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'entitlement-1' }),
+      },
+      payment: {
+        create: jest.fn(),
+        findUnique: jest.fn(),
+        findFirst: jest.fn(),
+        update: jest.fn(),
+      },
       refund: { create: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
       commercialEvent: { create: jest.fn() },
       $transaction: jest.fn().mockImplementation((cb) => cb(prismaMock)),
@@ -56,16 +63,32 @@ describe('PaymentService (ZS-COM-BILL-001 Part 9)', () => {
   };
 
   it('refuses to accept payment against a non-ISSUED (mutable) invoice', async () => {
-    prismaMock.commercialInvoice.findUnique.mockResolvedValue({ id: 'inv-1', status: 'DRAFT', currency: 'USD' });
+    prismaMock.commercialInvoice.findUnique.mockResolvedValue({
+      id: 'inv-1',
+      status: 'DRAFT',
+      currency: 'USD',
+    });
 
-    await expect(service.createPayment('tenant-a', dto, 'idem-1')).rejects.toThrow(ConflictException);
+    await expect(
+      service.createPayment('tenant-a', dto, 'idem-1'),
+    ).rejects.toThrow(ConflictException);
     expect(providerMock.createPayment).not.toHaveBeenCalled();
   });
 
   it('creates an AUTHORIZED payment against an ISSUED invoice', async () => {
-    prismaMock.commercialInvoice.findUnique.mockResolvedValue({ id: 'inv-1', status: 'ISSUED', currency: 'USD' });
-    providerMock.createPayment.mockResolvedValue({ providerPaymentId: 'p-1', status: 'AUTHORIZED' });
-    prismaMock.payment.create.mockResolvedValue({ id: 'pay-1', status: 'AUTHORIZED' });
+    prismaMock.commercialInvoice.findUnique.mockResolvedValue({
+      id: 'inv-1',
+      status: 'ISSUED',
+      currency: 'USD',
+    });
+    providerMock.createPayment.mockResolvedValue({
+      providerPaymentId: 'p-1',
+      status: 'AUTHORIZED',
+    });
+    prismaMock.payment.create.mockResolvedValue({
+      id: 'pay-1',
+      status: 'AUTHORIZED',
+    });
 
     const payment = await service.createPayment('tenant-a', dto, 'idem-1');
 
@@ -73,38 +96,79 @@ describe('PaymentService (ZS-COM-BILL-001 Part 9)', () => {
   });
 
   it('OPS-01: refuses to charge while the kill switch blocks AUTOMATIC_CHARGING', async () => {
-    killSwitchMock.assertNotBlocked.mockRejectedValue(new ConflictException('blocked'));
+    killSwitchMock.assertNotBlocked.mockRejectedValue(
+      new ConflictException('blocked'),
+    );
 
-    await expect(service.createPayment('tenant-a', dto, 'idem-1')).rejects.toThrow(ConflictException);
+    await expect(
+      service.createPayment('tenant-a', dto, 'idem-1'),
+    ).rejects.toThrow(ConflictException);
     expect(prismaMock.commercialInvoice.findUnique).not.toHaveBeenCalled();
   });
 
   it('rejects an illegal payment transition (e.g. PENDING straight to SETTLED)', async () => {
-    prismaMock.payment.findUnique.mockResolvedValue({ id: 'pay-1', status: 'PENDING', commercial_account_id: 'acct-1' });
+    prismaMock.payment.findUnique.mockResolvedValue({
+      id: 'pay-1',
+      status: 'PENDING',
+      commercial_account_id: 'acct-1',
+    });
 
-    await expect(service.transitionStatus('pay-1', 'SETTLED')).rejects.toThrow(ConflictException);
+    await expect(service.transitionStatus('pay-1', 'SETTLED')).rejects.toThrow(
+      ConflictException,
+    );
   });
 
   it('refuses to refund a payment that is not SETTLED', async () => {
-    prismaMock.payment.findUnique.mockResolvedValue({ id: 'pay-1', status: 'AUTHORIZED', amount: 100 });
+    prismaMock.payment.findUnique.mockResolvedValue({
+      id: 'pay-1',
+      status: 'AUTHORIZED',
+      amount: 100,
+    });
 
-    await expect(service.refundPayment('pay-1', 50, 'customer request')).rejects.toThrow(ConflictException);
+    await expect(
+      service.refundPayment('pay-1', 50, 'customer request'),
+    ).rejects.toThrow(ConflictException);
     expect(providerMock.refundPayment).not.toHaveBeenCalled();
   });
 
   it('refuses to refund more than the original payment amount', async () => {
-    prismaMock.payment.findUnique.mockResolvedValue({ id: 'pay-1', status: 'SETTLED', amount: 100 });
+    prismaMock.payment.findUnique.mockResolvedValue({
+      id: 'pay-1',
+      status: 'SETTLED',
+      amount: 100,
+    });
 
-    await expect(service.refundPayment('pay-1', 150, 'x')).rejects.toThrow(ConflictException);
+    await expect(service.refundPayment('pay-1', 150, 'x')).rejects.toThrow(
+      ConflictException,
+    );
   });
 
   it('a partial refund moves the payment to PARTIALLY_REFUNDED, not REFUNDED', async () => {
     prismaMock.payment.findUnique
-      .mockResolvedValueOnce({ id: 'pay-1', status: 'SETTLED', amount: 100, currency: 'USD', provider_payment_id: 'p-1' })
-      .mockResolvedValueOnce({ id: 'pay-1', status: 'SETTLED', commercial_account_id: 'acct-1' });
-    providerMock.refundPayment.mockResolvedValue({ providerRefundId: 'r-1', status: 'SUCCEEDED' });
-    prismaMock.refund.create.mockResolvedValue({ id: 'refund-1', status: 'SUCCEEDED' });
-    prismaMock.payment.update.mockResolvedValue({ id: 'pay-1', status: 'PARTIALLY_REFUNDED' });
+      .mockResolvedValueOnce({
+        id: 'pay-1',
+        status: 'SETTLED',
+        amount: 100,
+        currency: 'USD',
+        provider_payment_id: 'p-1',
+      })
+      .mockResolvedValueOnce({
+        id: 'pay-1',
+        status: 'SETTLED',
+        commercial_account_id: 'acct-1',
+      });
+    providerMock.refundPayment.mockResolvedValue({
+      providerRefundId: 'r-1',
+      status: 'SUCCEEDED',
+    });
+    prismaMock.refund.create.mockResolvedValue({
+      id: 'refund-1',
+      status: 'SUCCEEDED',
+    });
+    prismaMock.payment.update.mockResolvedValue({
+      id: 'pay-1',
+      status: 'PARTIALLY_REFUNDED',
+    });
 
     await service.refundPayment('pay-1', 40, 'partial issue');
 
@@ -115,12 +179,33 @@ describe('PaymentService (ZS-COM-BILL-001 Part 9)', () => {
 
   it('allows a second partial refund that exactly exhausts the remaining balance, moving to REFUNDED', async () => {
     prismaMock.payment.findUnique
-      .mockResolvedValueOnce({ id: 'pay-1', status: 'PARTIALLY_REFUNDED', amount: 100, currency: 'USD', provider_payment_id: 'p-1' })
-      .mockResolvedValueOnce({ id: 'pay-1', status: 'PARTIALLY_REFUNDED', commercial_account_id: 'acct-1' });
-    prismaMock.refund.findMany.mockResolvedValue([{ amount: 40, status: 'SUCCEEDED' }]);
-    providerMock.refundPayment.mockResolvedValue({ providerRefundId: 'r-2', status: 'SUCCEEDED' });
-    prismaMock.refund.create.mockResolvedValue({ id: 'refund-2', status: 'SUCCEEDED' });
-    prismaMock.payment.update.mockResolvedValue({ id: 'pay-1', status: 'REFUNDED' });
+      .mockResolvedValueOnce({
+        id: 'pay-1',
+        status: 'PARTIALLY_REFUNDED',
+        amount: 100,
+        currency: 'USD',
+        provider_payment_id: 'p-1',
+      })
+      .mockResolvedValueOnce({
+        id: 'pay-1',
+        status: 'PARTIALLY_REFUNDED',
+        commercial_account_id: 'acct-1',
+      });
+    prismaMock.refund.findMany.mockResolvedValue([
+      { amount: 40, status: 'SUCCEEDED' },
+    ]);
+    providerMock.refundPayment.mockResolvedValue({
+      providerRefundId: 'r-2',
+      status: 'SUCCEEDED',
+    });
+    prismaMock.refund.create.mockResolvedValue({
+      id: 'refund-2',
+      status: 'SUCCEEDED',
+    });
+    prismaMock.payment.update.mockResolvedValue({
+      id: 'pay-1',
+      status: 'REFUNDED',
+    });
 
     await service.refundPayment('pay-1', 60, 'remaining balance');
 
@@ -130,10 +215,24 @@ describe('PaymentService (ZS-COM-BILL-001 Part 9)', () => {
   });
 
   it('allows a partial refund that leaves a remaining balance without forcing a state transition', async () => {
-    prismaMock.payment.findUnique.mockResolvedValue({ id: 'pay-1', status: 'PARTIALLY_REFUNDED', amount: 100, currency: 'USD', provider_payment_id: 'p-1' });
-    prismaMock.refund.findMany.mockResolvedValue([{ amount: 40, status: 'SUCCEEDED' }]);
-    providerMock.refundPayment.mockResolvedValue({ providerRefundId: 'r-3', status: 'SUCCEEDED' });
-    prismaMock.refund.create.mockResolvedValue({ id: 'refund-3', status: 'SUCCEEDED' });
+    prismaMock.payment.findUnique.mockResolvedValue({
+      id: 'pay-1',
+      status: 'PARTIALLY_REFUNDED',
+      amount: 100,
+      currency: 'USD',
+      provider_payment_id: 'p-1',
+    });
+    prismaMock.refund.findMany.mockResolvedValue([
+      { amount: 40, status: 'SUCCEEDED' },
+    ]);
+    providerMock.refundPayment.mockResolvedValue({
+      providerRefundId: 'r-3',
+      status: 'SUCCEEDED',
+    });
+    prismaMock.refund.create.mockResolvedValue({
+      id: 'refund-3',
+      status: 'SUCCEEDED',
+    });
 
     await service.refundPayment('pay-1', 20, 'partial again');
 
@@ -141,10 +240,18 @@ describe('PaymentService (ZS-COM-BILL-001 Part 9)', () => {
   });
 
   it('rejects a refund exceeding the remaining refundable balance across multiple partials', async () => {
-    prismaMock.payment.findUnique.mockResolvedValue({ id: 'pay-1', status: 'PARTIALLY_REFUNDED', amount: 100 });
-    prismaMock.refund.findMany.mockResolvedValue([{ amount: 40, status: 'SUCCEEDED' }]);
+    prismaMock.payment.findUnique.mockResolvedValue({
+      id: 'pay-1',
+      status: 'PARTIALLY_REFUNDED',
+      amount: 100,
+    });
+    prismaMock.refund.findMany.mockResolvedValue([
+      { amount: 40, status: 'SUCCEEDED' },
+    ]);
 
-    await expect(service.refundPayment('pay-1', 61, 'too much')).rejects.toThrow(ConflictException);
+    await expect(
+      service.refundPayment('pay-1', 61, 'too much'),
+    ).rejects.toThrow(ConflictException);
     expect(providerMock.refundPayment).not.toHaveBeenCalled();
   });
 

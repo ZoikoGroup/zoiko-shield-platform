@@ -9,7 +9,12 @@ export interface ActionAuthorizationContext {
   targetId: string;
   authorityLevel: string;
   proposalStatus: string;
-  approval: { approvalId: string; decision: string; approverId: string; expiresAt: string } | null;
+  approval: {
+    approvalId: string;
+    decision: string;
+    approverId: string;
+    expiresAt: string;
+  } | null;
   policyVersion: string;
   authorizationDecisionId: string;
   entitlementAllowed: boolean;

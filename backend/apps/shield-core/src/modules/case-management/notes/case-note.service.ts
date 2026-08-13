@@ -10,7 +10,13 @@ import { PrismaService } from '../../../prisma/prisma.service';
 export class CaseNoteService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async add(params: { tenantId: string; caseId: string; authorId: string; content: string; classification?: string }) {
+  async add(params: {
+    tenantId: string;
+    caseId: string;
+    authorId: string;
+    content: string;
+    classification?: string;
+  }) {
     return this.prisma.caseNote.create({
       data: {
         tenant_id: params.tenantId,
@@ -22,10 +28,21 @@ export class CaseNoteService {
     });
   }
 
-  async correct(params: { tenantId: string; caseId: string; authorId: string; content: string; supersedesId: string; classification?: string }) {
-    const original = await this.prisma.caseNote.findFirst({ where: { id: params.supersedesId, tenant_id: params.tenantId } });
+  async correct(params: {
+    tenantId: string;
+    caseId: string;
+    authorId: string;
+    content: string;
+    supersedesId: string;
+    classification?: string;
+  }) {
+    const original = await this.prisma.caseNote.findFirst({
+      where: { id: params.supersedesId, tenant_id: params.tenantId },
+    });
     if (!original) {
-      throw new NotFoundException(`CaseNote '${params.supersedesId}' not found`);
+      throw new NotFoundException(
+        `CaseNote '${params.supersedesId}' not found`,
+      );
     }
 
     return this.prisma.caseNote.create({
@@ -41,6 +58,9 @@ export class CaseNoteService {
   }
 
   async listForCase(tenantId: string, caseId: string) {
-    return this.prisma.caseNote.findMany({ where: { tenant_id: tenantId, case_id: caseId }, orderBy: { created_at: 'asc' } });
+    return this.prisma.caseNote.findMany({
+      where: { tenant_id: tenantId, case_id: caseId },
+      orderBy: { created_at: 'asc' },
+    });
   }
 }

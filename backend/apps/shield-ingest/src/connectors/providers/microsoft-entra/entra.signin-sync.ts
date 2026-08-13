@@ -5,7 +5,10 @@ import { EntraNormalizerService } from './entra.normalizer';
 import { ConnectorCheckpointService } from '../../services/checkpoint.service';
 import { RawIngestService } from '../../../ingestion/raw-ingest.service';
 import { NormalizationService } from '../../../normalization/normalization.service';
-import { KafkaProducerService, CANONICAL_TOPICS } from '../../../kafka/kafka.producer.service';
+import {
+  KafkaProducerService,
+  CANONICAL_TOPICS,
+} from '../../../kafka/kafka.producer.service';
 
 // Delayed Microsoft events can land slightly after their createdDateTime;
 // re-reading a small overlap window on every poll avoids silently missing
@@ -65,7 +68,9 @@ export class EntraSignInSyncService {
           connectorId: instanceId,
           sourceType: 'microsoft-entra',
           sourceEventId: log.id,
-          occurredAt: log.createdDateTime ? new Date(log.createdDateTime) : undefined,
+          occurredAt: log.createdDateTime
+            ? new Date(log.createdDateTime)
+            : undefined,
           payload: log,
         });
 
@@ -97,7 +102,12 @@ export class EntraSignInSyncService {
       endpoint = data['@odata.nextLink'];
     }
 
-    await this.checkpointService.set(tenantId, instanceId, 'signIns', now.toISOString());
+    await this.checkpointService.set(
+      tenantId,
+      instanceId,
+      'signIns',
+      now.toISOString(),
+    );
 
     this.logger.log(
       `Sign-in polling completed. Total processed: ${totalProcessed}`,

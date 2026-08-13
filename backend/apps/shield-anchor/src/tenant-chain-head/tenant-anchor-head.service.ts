@@ -13,7 +13,9 @@ export class TenantAnchorHeadService {
   constructor(private readonly prisma: PrismaService) {}
 
   async readHead(tenantId: string) {
-    const existing = await this.prisma.tenantAnchorHead.findUnique({ where: { tenant_id: tenantId } });
+    const existing = await this.prisma.tenantAnchorHead.findUnique({
+      where: { tenant_id: tenantId },
+    });
     if (existing) return existing;
     // First use for this tenant — create the version:0 row.
     return this.prisma.tenantAnchorHead.upsert({
@@ -24,7 +26,15 @@ export class TenantAnchorHeadService {
   }
 
   /** Optimistic CAS — count !== 1 means a concurrent writer won the race; caller must fail closed, never retry into a fork. */
-  async commitHead(tenantId: string, expectedVersion: number, newHead: { lastAnchorSequence: number; lastCheckpointId: string; lastCheckpointHash: string }): Promise<void> {
+  async commitHead(
+    tenantId: string,
+    expectedVersion: number,
+    newHead: {
+      lastAnchorSequence: number;
+      lastCheckpointId: string;
+      lastCheckpointHash: string;
+    },
+  ): Promise<void> {
     const result = await this.prisma.tenantAnchorHead.updateMany({
       where: { tenant_id: tenantId, version: expectedVersion },
       data: {
@@ -35,7 +45,9 @@ export class TenantAnchorHeadService {
       },
     });
     if (result.count !== 1) {
-      throw new ConflictException(`TenantAnchorHead for '${tenantId}' was concurrently updated — checkpoint creation must retry against the new head, not fork`);
+      throw new ConflictException(
+        `TenantAnchorHead for '${tenantId}' was concurrently updated — checkpoint creation must retry against the new head, not fork`,
+      );
     }
   }
 }

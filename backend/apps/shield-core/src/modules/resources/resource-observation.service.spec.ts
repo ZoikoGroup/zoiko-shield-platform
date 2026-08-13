@@ -24,14 +24,21 @@ describe('ResourceObservationService (ZS-COM-BILL-001 Part 5/6 dedup engine)', (
       providers: [
         ResourceObservationService,
         { provide: PrismaService, useValue: prismaMock },
-        { provide: ProtectedResourceDefinitionService, useValue: definitionMock },
+        {
+          provide: ProtectedResourceDefinitionService,
+          useValue: definitionMock,
+        },
       ],
     }).compile();
 
-    service = module.get<ResourceObservationService>(ResourceObservationService);
+    service = module.get<ResourceObservationService>(
+      ResourceObservationService,
+    );
   });
 
-  const definition = { identity_key_spec: JSON.stringify({ keys: ['externalId'] }) };
+  const definition = {
+    identity_key_spec: JSON.stringify({ keys: ['externalId'] }),
+  };
 
   it('fails closed when no approved resource definition exists for the type', async () => {
     definitionMock.getActiveDefinition.mockResolvedValue(null);
@@ -74,7 +81,10 @@ describe('ResourceObservationService (ZS-COM-BILL-001 Part 5/6 dedup engine)', (
       coverage_state: 'COVERED',
       billable_state: 'NON_BILLABLE',
     });
-    prismaMock.resourceObservation.update.mockResolvedValue({ id: 'obs-1', coverage_state: 'COVERED' });
+    prismaMock.resourceObservation.update.mockResolvedValue({
+      id: 'obs-1',
+      coverage_state: 'COVERED',
+    });
 
     const result = await service.recordObservation({
       tenantId: 't1',
@@ -99,33 +109,51 @@ describe('ResourceObservationService (ZS-COM-BILL-001 Part 5/6 dedup engine)', (
       Promise.resolve({ id: 'obs-1', ...data }),
     );
 
-    const updated = await service.updateCoverageState('t1', 'obs-1', 'REVIEW_REQUIRED');
+    const updated = await service.updateCoverageState(
+      't1',
+      'obs-1',
+      'REVIEW_REQUIRED',
+    );
 
     expect(updated.coverage_state).toBe('REVIEW_REQUIRED');
     expect(updated.billable_state).toBe('NON_BILLABLE');
   });
 
   it('rejects an illegal jump straight from DISCOVERED to BILLABLE', async () => {
-    prismaMock.resourceObservation.findFirst.mockResolvedValue({ id: 'obs-1', coverage_state: 'DISCOVERED' });
+    prismaMock.resourceObservation.findFirst.mockResolvedValue({
+      id: 'obs-1',
+      coverage_state: 'DISCOVERED',
+    });
 
-    await expect(service.updateCoverageState('t1', 'obs-1', 'BILLABLE')).rejects.toThrow(ConflictException);
+    await expect(
+      service.updateCoverageState('t1', 'obs-1', 'BILLABLE'),
+    ).rejects.toThrow(ConflictException);
   });
 
   it('sets billable_state=BILLABLE only on the BILLABLE coverage transition', async () => {
-    prismaMock.resourceObservation.findFirst.mockResolvedValue({ id: 'obs-1', coverage_state: 'COVERED' });
+    prismaMock.resourceObservation.findFirst.mockResolvedValue({
+      id: 'obs-1',
+      coverage_state: 'COVERED',
+    });
     prismaMock.resourceObservation.update.mockImplementation(({ data }: any) =>
       Promise.resolve({ id: 'obs-1', ...data }),
     );
 
-    const updated = await service.updateCoverageState('t1', 'obs-1', 'BILLABLE');
+    const updated = await service.updateCoverageState(
+      't1',
+      'obs-1',
+      'BILLABLE',
+    );
 
     expect(updated.billable_state).toBe('BILLABLE');
   });
 
-  it('does not expose another tenant\'s observation by id', async () => {
+  it("does not expose another tenant's observation by id", async () => {
     prismaMock.resourceObservation.findFirst.mockResolvedValue(null);
 
-    await expect(service.getObservationById('tenant-b', 'obs-1')).rejects.toThrow();
+    await expect(
+      service.getObservationById('tenant-b', 'obs-1'),
+    ).rejects.toThrow();
     expect(prismaMock.resourceObservation.findFirst).toHaveBeenCalledWith({
       where: { id: 'obs-1', tenant_id: 'tenant-b' },
     });

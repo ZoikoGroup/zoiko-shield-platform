@@ -18,7 +18,12 @@ export class ConnectorCheckpointService {
     return checkpoint?.checkpointValue ?? null;
   }
 
-  async set(tenantId: string, instanceId: string, resourceType: string, value: string): Promise<void> {
+  async set(
+    tenantId: string,
+    instanceId: string,
+    resourceType: string,
+    value: string,
+  ): Promise<void> {
     await this.prisma.connectorCheckpoint.upsert({
       where: { instanceId_resourceType: { instanceId, resourceType } },
       update: { checkpointValue: value },

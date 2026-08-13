@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { AuthorizationDecisionService } from '../../authorization-decision/authorization-decision.service';
@@ -12,20 +16,30 @@ export class ApiScopeGrantService {
     private readonly authorizationDecisionService: AuthorizationDecisionService,
   ) {}
 
-  async grant(params: { tenantId: string; apiClientId: string; scope: string; environmentId?: string; grantedBy: string; expiresAt?: Date }) {
+  async grant(params: {
+    tenantId: string;
+    apiClientId: string;
+    scope: string;
+    environmentId?: string;
+    grantedBy: string;
+    expiresAt?: Date;
+  }) {
     if (!isKnownScope(params.scope)) {
       throw new BadRequestException(`Unknown scope '${params.scope}'`);
     }
 
-    const { authorizationDecisionId, decision } = await this.authorizationDecisionService.evaluate({
-      actorId: params.grantedBy,
-      tenantId: params.tenantId,
-      action: 'api_scope:grant',
-      resourceType: 'ApiClient',
-      resourceId: params.apiClientId,
-    });
+    const { authorizationDecisionId, decision } =
+      await this.authorizationDecisionService.evaluate({
+        actorId: params.grantedBy,
+        tenantId: params.tenantId,
+        action: 'api_scope:grant',
+        resourceType: 'ApiClient',
+        resourceId: params.apiClientId,
+      });
     if (decision === 'DENY') {
-      throw new ForbiddenException('Actor is not authorized to grant API scopes');
+      throw new ForbiddenException(
+        'Actor is not authorized to grant API scopes',
+      );
     }
 
     return this.prisma.apiScopeGrant.create({
@@ -42,14 +56,25 @@ export class ApiScopeGrantService {
     });
   }
 
-  async getActiveScopes(tenantId: string, apiClientId: string): Promise<string[]> {
+  async getActiveScopes(
+    tenantId: string,
+    apiClientId: string,
+  ): Promise<string[]> {
     const grants = await this.prisma.apiScopeGrant.findMany({
-      where: { tenant_id: tenantId, api_client_id: apiClientId, revoked_at: null, OR: [{ expires_at: null }, { expires_at: { gt: new Date() } }] },
+      where: {
+        tenant_id: tenantId,
+        api_client_id: apiClientId,
+        revoked_at: null,
+        OR: [{ expires_at: null }, { expires_at: { gt: new Date() } }],
+      },
     });
     return grants.map((g) => g.scope);
   }
 
   async revoke(tenantId: string, scopeGrantId: string) {
-    return this.prisma.apiScopeGrant.update({ where: { id: scopeGrantId }, data: { revoked_at: new Date() } });
+    return this.prisma.apiScopeGrant.update({
+      where: { id: scopeGrantId },
+      data: { revoked_at: new Date() },
+    });
   }
 }

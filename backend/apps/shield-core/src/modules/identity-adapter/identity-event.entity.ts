@@ -1,5 +1,12 @@
 import { randomUUID } from 'crypto';
-import { BeforeInsert, Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  BeforeInsert,
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 
 @Entity({ name: 'identity_events', schema: 'identity' })
 export class IdentityEvent {

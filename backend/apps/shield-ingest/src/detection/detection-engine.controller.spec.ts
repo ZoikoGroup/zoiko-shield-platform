@@ -24,7 +24,9 @@ describe('DetectionEngineController', () => {
       providers: [{ provide: DetectionEngineService, useValue: serviceMock }],
     }).compile();
 
-    controller = module.get<DetectionEngineController>(DetectionEngineController);
+    controller = module.get<DetectionEngineController>(
+      DetectionEngineController,
+    );
   });
 
   it('should return created rule on POST /api/v1/detections', async () => {
@@ -53,10 +55,8 @@ describe('DetectionEngineController', () => {
 
     expect(response.statusCode).toBe(HttpStatus.OK);
     expect(response.data).toBe(testResult);
-    expect(serviceMock.testRule).toHaveBeenCalledWith(
-      'tenant-1',
-      'rule-1',
-      { outcome: 'FAILED' },
-    );
+    expect(serviceMock.testRule).toHaveBeenCalledWith('tenant-1', 'rule-1', {
+      outcome: 'FAILED',
+    });
   });
 });

@@ -48,7 +48,11 @@ describe('InvoiceSkeletonService (FIN-02 Immutability)', () => {
       contractId: 'cnt-1',
       lineItems: [
         { sku: 'DEFENSE', amount: 500.0, description: 'Managed Defense' },
-        { sku: 'ASSURANCE', amount: 300.0, description: 'Continuous Assurance' },
+        {
+          sku: 'ASSURANCE',
+          amount: 300.0,
+          description: 'Continuous Assurance',
+        },
       ],
     });
 
@@ -63,7 +67,9 @@ describe('InvoiceSkeletonService (FIN-02 Immutability)', () => {
       commercialAccount: { billing_classification: 'COMMERCIAL_DIRECT' },
     });
 
-    await expect(service.issueInvoice('inv-1')).rejects.toThrow(ConflictException);
+    await expect(service.issueInvoice('inv-1')).rejects.toThrow(
+      ConflictException,
+    );
   });
 
   it('COM-03: refuses to issue a live invoice for a non-commercial account (DEMO/SANDBOX/INTERNAL/PILOT/EVALUATION)', async () => {
@@ -74,12 +80,18 @@ describe('InvoiceSkeletonService (FIN-02 Immutability)', () => {
       commercialAccount: { billing_classification: 'DEMO' },
     });
 
-    await expect(service.issueInvoice('inv-1')).rejects.toThrow(ConflictException);
+    await expect(service.issueInvoice('inv-1')).rejects.toThrow(
+      ConflictException,
+    );
     expect(prismaMock.commercialInvoice.update).not.toHaveBeenCalled();
   });
 
   it('fails closed adding an invoice line with no approved tax rule (Part 10)', async () => {
-    prismaMock.commercialInvoice.findUnique.mockResolvedValue({ id: 'inv-1', status: 'DRAFT', currency: 'USD' });
+    prismaMock.commercialInvoice.findUnique.mockResolvedValue({
+      id: 'inv-1',
+      status: 'DRAFT',
+      currency: 'USD',
+    });
     taxRuleMock.resolveTax.mockResolvedValue(null);
 
     await expect(
@@ -98,9 +110,20 @@ describe('InvoiceSkeletonService (FIN-02 Immutability)', () => {
   });
 
   it('adds a line with tax resolved and frozen when a rule is approved', async () => {
-    prismaMock.commercialInvoice.findUnique.mockResolvedValue({ id: 'inv-1', status: 'DRAFT', currency: 'USD' });
-    taxRuleMock.resolveTax.mockResolvedValue({ ruleId: 'rule-1', ratePercent: 8.5, reverseCharge: false, taxAmount: 8.5 });
-    prismaMock.commercialInvoiceLine.create.mockImplementation(({ data }: any) => Promise.resolve({ id: 'line-1', ...data }));
+    prismaMock.commercialInvoice.findUnique.mockResolvedValue({
+      id: 'inv-1',
+      status: 'DRAFT',
+      currency: 'USD',
+    });
+    taxRuleMock.resolveTax.mockResolvedValue({
+      ruleId: 'rule-1',
+      ratePercent: 8.5,
+      reverseCharge: false,
+      taxAmount: 8.5,
+    });
+    prismaMock.commercialInvoiceLine.create.mockImplementation(
+      ({ data }: any) => Promise.resolve({ id: 'line-1', ...data }),
+    );
 
     const line = await service.addInvoiceLine('inv-1', {
       sku: 'DEFENSE',
@@ -125,34 +148,59 @@ describe('InvoiceSkeletonService (FIN-02 Immutability)', () => {
       lines: [{ id: 'line-1', tax_rule_id: null }],
     });
 
-    await expect(service.issueInvoice('inv-1')).rejects.toThrow(ConflictException);
+    await expect(service.issueInvoice('inv-1')).rejects.toThrow(
+      ConflictException,
+    );
   });
 
   it('never mutates an issued invoice — corrections go through append-only credit notes', async () => {
-    prismaMock.commercialInvoice.findUnique.mockResolvedValue({ id: 'inv-1', status: 'ISSUED', currency: 'USD' });
-    prismaMock.commercialCreditNote.create.mockResolvedValue({ id: 'cn-1', status: 'ISSUED', amount: 50 });
+    prismaMock.commercialInvoice.findUnique.mockResolvedValue({
+      id: 'inv-1',
+      status: 'ISSUED',
+      currency: 'USD',
+    });
+    prismaMock.commercialCreditNote.create.mockResolvedValue({
+      id: 'cn-1',
+      status: 'ISSUED',
+      amount: 50,
+    });
 
-    const note = await service.issueCreditNote('inv-1', 50, 'billing correction');
+    const note = await service.issueCreditNote(
+      'inv-1',
+      50,
+      'billing correction',
+    );
 
     expect(note.id).toBe('cn-1');
     expect(prismaMock.commercialInvoice.update).not.toHaveBeenCalled();
   });
 
   it('rejects issuing a credit note against a non-ISSUED invoice', async () => {
-    prismaMock.commercialInvoice.findUnique.mockResolvedValue({ id: 'inv-1', status: 'DRAFT' });
+    prismaMock.commercialInvoice.findUnique.mockResolvedValue({
+      id: 'inv-1',
+      status: 'DRAFT',
+    });
 
-    await expect(service.issueCreditNote('inv-1', 50, 'x')).rejects.toThrow(ConflictException);
+    await expect(service.issueCreditNote('inv-1', 50, 'x')).rejects.toThrow(
+      ConflictException,
+    );
   });
 
   it('OPS-01: refuses to finalize an invoice while the kill switch blocks INVOICE_FINALIZATION', async () => {
-    killSwitchMock.assertNotBlocked.mockRejectedValue(new ConflictException('blocked'));
+    killSwitchMock.assertNotBlocked.mockRejectedValue(
+      new ConflictException('blocked'),
+    );
 
-    await expect(service.issueInvoice('inv-1')).rejects.toThrow(ConflictException);
+    await expect(service.issueInvoice('inv-1')).rejects.toThrow(
+      ConflictException,
+    );
     expect(prismaMock.commercialInvoice.findUnique).not.toHaveBeenCalled();
   });
 
   it('OPS-01: refuses to add an invoice line while the kill switch blocks USAGE_BILLING_EXPORT', async () => {
-    killSwitchMock.assertNotBlocked.mockRejectedValue(new ConflictException('blocked'));
+    killSwitchMock.assertNotBlocked.mockRejectedValue(
+      new ConflictException('blocked'),
+    );
 
     await expect(
       service.addInvoiceLine('inv-1', {

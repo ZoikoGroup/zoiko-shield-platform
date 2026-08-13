@@ -12,7 +12,10 @@ import {
 import { IsOptional, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
-import { ServiceObligationService, CreateServiceObligationDto } from './service-obligation.service';
+import {
+  ServiceObligationService,
+  CreateServiceObligationDto,
+} from './service-obligation.service';
 
 export class UpdateObligationStatusDto {
   @IsString()
@@ -47,7 +50,8 @@ export class ServiceObligationController {
    */
   @Get()
   async getObligations(@Query('contractId') contractId: string) {
-    const obligations = await this.obligationService.getObligationsByContract(contractId);
+    const obligations =
+      await this.obligationService.getObligationsByContract(contractId);
     return {
       statusCode: HttpStatus.OK,
       data: obligations,

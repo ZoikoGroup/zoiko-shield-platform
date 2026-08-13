@@ -1,7 +1,15 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OutboxService } from '../outbox/outbox.service';
-import { requireEnvironmentId, requireRegion } from '../security/tenant-context';
+import {
+  requireEnvironmentId,
+  requireRegion,
+} from '../security/tenant-context';
 import { randomUUID } from 'crypto';
 
 export interface PromoteAlertResult {
@@ -55,7 +63,9 @@ export class AlertGeneratorService {
     });
 
     if (existing) {
-      this.logger.debug(`Alert already exists for detection run ${detectionRunId}`);
+      this.logger.debug(
+        `Alert already exists for detection run ${detectionRunId}`,
+      );
       return existing;
     }
 
@@ -68,28 +78,35 @@ export class AlertGeneratorService {
       include: { rawEvent: true },
     });
     if (!sourceEvent) {
-      throw new NotFoundException(`Normalized event '${run.event_id}' not found for detection run`);
+      throw new NotFoundException(
+        `Normalized event '${run.event_id}' not found for detection run`,
+      );
     }
 
     const alertId = randomUUID();
     const [alert] = await this.prisma.$transaction([
       this.prisma.alert.create({
         data: {
-        id: alertId,
-        tenant_id: run.tenant_id,
-        environment_id: requireEnvironmentId(sourceEvent.environment_id),
-        region: requireRegion(sourceEvent.rawEvent.source_region),
-        detection_definition_id: run.rule_id,
-        detection_version_id: run.rule_id,
-        detection_match_id: run.id,
-        title,
-        description,
-        severity: run.rule?.severity || 'HIGH',
-        priority: run.rule?.severity === 'CRITICAL' ? 'P1' : run.rule?.severity === 'HIGH' ? 'P2' : 'P3',
-        confidence: 0.9,
-        status: 'NEW',
-        source_event_ids: JSON.stringify(sourceEventIds),
-      },
+          id: alertId,
+          tenant_id: run.tenant_id,
+          environment_id: requireEnvironmentId(sourceEvent.environment_id),
+          region: requireRegion(sourceEvent.rawEvent.source_region),
+          detection_definition_id: run.rule_id,
+          detection_version_id: run.rule_id,
+          detection_match_id: run.id,
+          title,
+          description,
+          severity: run.rule?.severity || 'HIGH',
+          priority:
+            run.rule?.severity === 'CRITICAL'
+              ? 'P1'
+              : run.rule?.severity === 'HIGH'
+                ? 'P2'
+                : 'P3',
+          confidence: 0.9,
+          status: 'NEW',
+          source_event_ids: JSON.stringify(sourceEventIds),
+        },
       }),
       this.prisma.outboxEvent.create({
         data: this.outbox.build({
@@ -107,7 +124,9 @@ export class AlertGeneratorService {
       }),
     ]);
 
-    this.logger.log(`Created Alert '${alert.id}' for tenant ${alert.tenant_id}`);
+    this.logger.log(
+      `Created Alert '${alert.id}' for tenant ${alert.tenant_id}`,
+    );
 
     return alert;
   }
@@ -115,7 +134,12 @@ export class AlertGeneratorService {
   /**
    * List alerts for a tenant with optional status/severity filtering
    */
-  async getAlerts(tenantId: string, status?: string, severity?: string, limit = 50) {
+  async getAlerts(
+    tenantId: string,
+    status?: string,
+    severity?: string,
+    limit = 50,
+  ) {
     return this.prisma.alert.findMany({
       where: {
         tenant_id: tenantId,
@@ -186,7 +210,10 @@ export class AlertGeneratorService {
   /**
    * Promote alert into a Case candidate payload for Step 11 Case Management
    */
-  async promoteAlertToCase(tenantId: string, alertId: string): Promise<PromoteAlertResult> {
+  async promoteAlertToCase(
+    tenantId: string,
+    alertId: string,
+  ): Promise<PromoteAlertResult> {
     const alert = await this.getAlertById(tenantId, alertId);
 
     let sourceEventIds: string[] = [];
@@ -215,7 +242,8 @@ export class AlertGeneratorService {
         tenantId: alert.tenant_id,
         environmentId: alert.environment_id,
         title: `Case: ${alert.title}`,
-        description: alert.description || `Investigating security alert ${alert.id}`,
+        description:
+          alert.description || `Investigating security alert ${alert.id}`,
         severity: alert.severity,
         priority: alert.priority,
         sourceAlertIds: [alert.id],

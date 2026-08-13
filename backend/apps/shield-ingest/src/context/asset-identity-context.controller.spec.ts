@@ -19,10 +19,14 @@ describe('AssetIdentityContextController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AssetIdentityContextController],
-      providers: [{ provide: AssetIdentityContextService, useValue: serviceMock }],
+      providers: [
+        { provide: AssetIdentityContextService, useValue: serviceMock },
+      ],
     }).compile();
 
-    controller = module.get<AssetIdentityContextController>(AssetIdentityContextController);
+    controller = module.get<AssetIdentityContextController>(
+      AssetIdentityContextController,
+    );
   });
 
   it('should return assets for tenant', async () => {

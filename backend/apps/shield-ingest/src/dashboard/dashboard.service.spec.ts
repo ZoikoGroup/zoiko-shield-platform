@@ -35,14 +35,21 @@ describe('DashboardService (Step 20)', () => {
         count: jest.fn().mockResolvedValue(2),
       },
       controlTest: {
-        findMany: jest.fn().mockResolvedValue([
-          { id: 'test-1', result: 'PASS', created_at: new Date() },
-        ]),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([
+            { id: 'test-1', result: 'PASS', created_at: new Date() },
+          ]),
       },
       evidenceRecord: {
         count: jest.fn().mockResolvedValue(20),
         findMany: jest.fn().mockResolvedValue([
-          { id: 'ev-1', source_type: 'AUTOMATED', integrity_state: 'VERIFIED', collected_at: new Date() },
+          {
+            id: 'ev-1',
+            producing_service: 'AUTOMATED',
+            integrity_state: 'VERIFIED',
+            created_at: new Date(),
+          },
         ]),
       },
       evidenceGap: {
@@ -94,6 +101,6 @@ describe('DashboardService (Step 20)', () => {
     expect(health.missing).toBe(3);
     expect(health.total).toBe(40);
     expect(health.recentRecords).toHaveLength(1);
-    expect(health.recentRecords[0].source_type).toBe('AUTOMATED');
+    expect(health.recentRecords[0].producing_service).toBe('AUTOMATED');
   });
 });

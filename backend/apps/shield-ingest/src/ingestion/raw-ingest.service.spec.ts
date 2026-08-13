@@ -75,7 +75,10 @@ describe('RawIngestService', () => {
     expect(result.processingStatus).toBe('ACCEPTED');
     expect(result.connectorId).toBe('conn-123');
     expect(prismaMock.rawEvent.create).toHaveBeenCalled();
-    expect(kafkaMock.emit).toHaveBeenCalledWith('telemetry.ingested', expect.any(Object));
+    expect(kafkaMock.emit).toHaveBeenCalledWith(
+      'telemetry.ingested',
+      expect.any(Object),
+    );
   });
 
   it('should return DUPLICATE_IGNORED if sourceEventId has already been processed', async () => {

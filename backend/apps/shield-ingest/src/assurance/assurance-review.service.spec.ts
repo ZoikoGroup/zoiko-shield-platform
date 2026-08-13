@@ -41,8 +41,8 @@ describe('AssuranceReviewService (Step 14)', () => {
       { result: 'FAIL' },
     ]);
 
-    prismaMock.assuranceReview.create.mockImplementation(({ data }) =>
-      Promise.resolve({ id: 'rev-1', ...data }),
+    prismaMock.assuranceReview.create.mockImplementation(
+      ({ data }: { data: any }) => Promise.resolve({ id: 'rev-1', ...data }),
     );
 
     const review = await service.createAssuranceReview({
@@ -57,8 +57,8 @@ describe('AssuranceReviewService (Step 14)', () => {
   });
 
   it('should create vCISO strategic reflection', async () => {
-    prismaMock.vCISOReflection.create.mockImplementation(({ data }) =>
-      Promise.resolve({ id: 'ref-1', ...data }),
+    prismaMock.vCISOReflection.create.mockImplementation(
+      ({ data }: { data: any }) => Promise.resolve({ id: 'ref-1', ...data }),
     );
 
     const reflection = await service.createVCISOReflection({

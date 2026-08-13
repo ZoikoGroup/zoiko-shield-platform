@@ -57,7 +57,9 @@ describe('DetectionEngineService', () => {
     };
 
     alertMock = {
-      createAlertFromDetectionRun: jest.fn().mockResolvedValue({ id: 'alert-1' }),
+      createAlertFromDetectionRun: jest
+        .fn()
+        .mockResolvedValue({ id: 'alert-1' }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -73,13 +75,15 @@ describe('DetectionEngineService', () => {
 
   it('should throw NotFoundException if event does not exist during evaluation', async () => {
     prismaMock.normalizedEvent.findUnique.mockResolvedValue(null);
-    await expect(service.evaluateNormalizedEvent('invalid-evt')).rejects.toThrow(
-      NotFoundException,
-    );
+    await expect(
+      service.evaluateNormalizedEvent('invalid-evt'),
+    ).rejects.toThrow(NotFoundException);
   });
 
   it('should return MATCHED when threshold condition is met', async () => {
-    prismaMock.normalizedEvent.findUnique.mockResolvedValue(mockNormalizedEvent);
+    prismaMock.normalizedEvent.findUnique.mockResolvedValue(
+      mockNormalizedEvent,
+    );
     prismaMock.detectionRule.findMany.mockResolvedValue([mockRule]);
     prismaMock.normalizedEvent.count.mockResolvedValue(5); // 5 events > threshold 3
     prismaMock.detectionRun.create.mockResolvedValue({
@@ -100,7 +104,9 @@ describe('DetectionEngineService', () => {
   });
 
   it('should return NO_MATCH when threshold condition is not met', async () => {
-    prismaMock.normalizedEvent.findUnique.mockResolvedValue(mockNormalizedEvent);
+    prismaMock.normalizedEvent.findUnique.mockResolvedValue(
+      mockNormalizedEvent,
+    );
     prismaMock.detectionRule.findMany.mockResolvedValue([mockRule]);
     prismaMock.normalizedEvent.count.mockResolvedValue(1); // 1 event < threshold 3
     prismaMock.detectionRun.create.mockResolvedValue({
@@ -122,10 +128,14 @@ describe('DetectionEngineService', () => {
   it('should test sample event against condition rules correctly', async () => {
     prismaMock.detectionRule.findFirst.mockResolvedValue(mockRule);
 
-    const testResult = await service.testRule('tenant-1', 'rule-001', { outcome: 'FAILED' });
+    const testResult = await service.testRule('tenant-1', 'rule-001', {
+      outcome: 'FAILED',
+    });
     expect(testResult.match).toBe(true);
 
-    const failResult = await service.testRule('tenant-1', 'rule-001', { outcome: 'SUCCESS' });
+    const failResult = await service.testRule('tenant-1', 'rule-001', {
+      outcome: 'SUCCESS',
+    });
     expect(failResult.match).toBe(false);
   });
 });

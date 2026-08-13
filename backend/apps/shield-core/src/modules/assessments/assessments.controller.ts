@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Headers, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { AssessmentService } from './assessments/assessment.service';
 import { AssessmentReviewService } from './review/assessment-review.service';
 import { EvidenceGapService } from './evidence-gaps/evidence-gap.service';
@@ -26,7 +34,13 @@ export class AssessmentsController {
   async create(
     @Headers('x-tenant-id') tenantId: string,
     @CurrentUser() user: AuthenticatedUser,
-    @Body() body: { controlImplementationId: string; controlTestVersionId: string; periodStart: string; periodEnd: string },
+    @Body()
+    body: {
+      controlImplementationId: string;
+      controlTestVersionId: string;
+      periodStart: string;
+      periodEnd: string;
+    },
   ) {
     return this.assessmentService.run({
       tenantId: requireTenantId(tenantId),
@@ -39,7 +53,10 @@ export class AssessmentsController {
   }
 
   @Get(':id')
-  async getById(@Headers('x-tenant-id') tenantId: string, @Param('id') id: string) {
+  async getById(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('id') id: string,
+  ) {
     return this.assessmentService.getById(requireTenantId(tenantId), id);
   }
 
@@ -50,7 +67,12 @@ export class AssessmentsController {
     @Param('id') id: string,
     @Body() body: { approve: boolean },
   ) {
-    return this.assessmentReviewService.review({ tenantId: requireTenantId(tenantId), assessmentId: id, reviewerId: user.id, approve: body.approve });
+    return this.assessmentReviewService.review({
+      tenantId: requireTenantId(tenantId),
+      assessmentId: id,
+      reviewerId: user.id,
+      approve: body.approve,
+    });
   }
 
   @Get(':id/gaps')

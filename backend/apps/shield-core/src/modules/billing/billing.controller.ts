@@ -51,7 +51,10 @@ export class BillingController {
    * Add a structured, tax-resolved invoice line (Part 10/12)
    */
   @Post(':id/lines')
-  async addInvoiceLine(@Param('id') id: string, @Body() dto: AddInvoiceLineDto) {
+  async addInvoiceLine(
+    @Param('id') id: string,
+    @Body() dto: AddInvoiceLineDto,
+  ) {
     const line = await this.invoiceService.addInvoiceLine(id, dto);
     return { statusCode: HttpStatus.CREATED, data: line };
   }
@@ -72,7 +75,11 @@ export class BillingController {
    */
   @Post(':id/credit-notes')
   async issueCreditNote(@Param('id') id: string, @Body() dto: IssueNoteDto) {
-    const note = await this.invoiceService.issueCreditNote(id, dto.amount, dto.reason);
+    const note = await this.invoiceService.issueCreditNote(
+      id,
+      dto.amount,
+      dto.reason,
+    );
     return { statusCode: HttpStatus.CREATED, data: note };
   }
 
@@ -81,7 +88,11 @@ export class BillingController {
    */
   @Post(':id/debit-notes')
   async issueDebitNote(@Param('id') id: string, @Body() dto: IssueNoteDto) {
-    const note = await this.invoiceService.issueDebitNote(id, dto.amount, dto.reason);
+    const note = await this.invoiceService.issueDebitNote(
+      id,
+      dto.amount,
+      dto.reason,
+    );
     return { statusCode: HttpStatus.CREATED, data: note };
   }
 

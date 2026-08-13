@@ -1,4 +1,12 @@
-import { Body, Controller, ForbiddenException, Get, Param, Patch, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  ForbiddenException,
+  Get,
+  Param,
+  Patch,
+  UseGuards,
+} from '@nestjs/common';
 import { TenantService } from './tenant.service';
 import { UpdateTenantStatusDto } from './dto/update-tenant-status.dto';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
@@ -18,14 +26,21 @@ export class TenantController {
 
   @Get()
   async findAll(@CurrentUser() user: AuthenticatedUser) {
-    const tenantIds = await this.authorizationService.getAccessibleTenantIds(user.id);
+    const tenantIds = await this.authorizationService.getAccessibleTenantIds(
+      user.id,
+    );
     return this.tenantService.findAccessible(tenantIds);
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+  async findOne(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
     if (!(await this.authorizationService.hasTenantAccess(id, user.id))) {
-      throw new ForbiddenException('The authenticated principal has no active membership for this tenant');
+      throw new ForbiddenException(
+        'The authenticated principal has no active membership for this tenant',
+      );
     }
     return this.tenantService.findOne(id);
   }
@@ -36,10 +51,20 @@ export class TenantController {
     @Body() dto: UpdateTenantStatusDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    const granted = await this.authorizationService.getPermissionCodesForPrincipal(id, user.id);
+    const granted =
+      await this.authorizationService.getPermissionCodesForPrincipal(
+        id,
+        user.id,
+      );
     if (!granted.includes(PERMISSION_CODES.TENANT_MANAGE)) {
-      throw new ForbiddenException('Missing tenant:manage permission for this tenant');
+      throw new ForbiddenException(
+        'Missing tenant:manage permission for this tenant',
+      );
     }
-    return this.tenantService.transitionStatus(id, dto.status ?? 'ACTIVE', user.id);
+    return this.tenantService.transitionStatus(
+      id,
+      dto.status ?? 'ACTIVE',
+      user.id,
+    );
   }
 }

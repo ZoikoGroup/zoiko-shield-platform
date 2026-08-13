@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Headers, Param, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiClientService } from './clients/api-client.service';
 import { ApiClientCredentialService } from './credentials/api-client-credential.service';
 import { ApiScopeGrantService } from './scopes/api-scope-grant.service';
@@ -29,7 +38,13 @@ export class DeveloperApiController {
   async create(
     @Headers('x-tenant-id') tenantId: string,
     @CurrentUser() user: AuthenticatedUser,
-    @Body() body: { name: string; purpose: string; environmentScope?: string; expiresAt?: string },
+    @Body()
+    body: {
+      name: string;
+      purpose: string;
+      environmentScope?: string;
+      expiresAt?: string;
+    },
   ) {
     return this.apiClientService.create({
       tenantId: requireTenantId(tenantId),
@@ -42,17 +57,26 @@ export class DeveloperApiController {
   }
 
   @Post(':id/suspend')
-  async suspend(@Headers('x-tenant-id') tenantId: string, @Param('id') id: string) {
+  async suspend(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('id') id: string,
+  ) {
     return this.apiClientService.suspend(requireTenantId(tenantId), id);
   }
 
   @Post(':id/revoke')
-  async revoke(@Headers('x-tenant-id') tenantId: string, @Param('id') id: string) {
+  async revoke(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('id') id: string,
+  ) {
     return this.apiClientService.revoke(requireTenantId(tenantId), id);
   }
 
   @Post(':id/rotate-credential')
-  async rotateCredential(@Headers('x-tenant-id') tenantId: string, @Param('id') id: string) {
+  async rotateCredential(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('id') id: string,
+  ) {
     return this.credentialService.rotate(requireTenantId(tenantId), id);
   }
 
@@ -63,7 +87,14 @@ export class DeveloperApiController {
     @Param('id') id: string,
     @Body() body: { scope: string; environmentId?: string; expiresAt?: string },
   ) {
-    return this.scopeGrantService.grant({ tenantId: requireTenantId(tenantId), apiClientId: id, scope: body.scope, environmentId: body.environmentId, grantedBy: user.id, expiresAt: body.expiresAt ? new Date(body.expiresAt) : undefined });
+    return this.scopeGrantService.grant({
+      tenantId: requireTenantId(tenantId),
+      apiClientId: id,
+      scope: body.scope,
+      environmentId: body.environmentId,
+      grantedBy: user.id,
+      expiresAt: body.expiresAt ? new Date(body.expiresAt) : undefined,
+    });
   }
 }
 
@@ -74,8 +105,21 @@ export class OauthController {
   constructor(private readonly oauthTokenService: OauthTokenService) {}
 
   @Post('token')
-  async token(@Body() body: { grant_type: string; client_id: string; client_secret: string; scope?: string }) {
-    return this.oauthTokenService.issueToken({ grantType: body.grant_type, clientId: body.client_id, clientSecret: body.client_secret, scope: body.scope });
+  async token(
+    @Body()
+    body: {
+      grant_type: string;
+      client_id: string;
+      client_secret: string;
+      scope?: string;
+    },
+  ) {
+    return this.oauthTokenService.issueToken({
+      grantType: body.grant_type,
+      clientId: body.client_id,
+      clientSecret: body.client_secret,
+      scope: body.scope,
+    });
   }
 }
 
@@ -87,7 +131,12 @@ export class OauthController {
  * takes no tenant parameter at all, it reads request.authContext.
  */
 @Controller('api/v1/public/alerts')
-@UseGuards(PublicApiEnabledGuard, ApiClientAuthGuard, ApiScopeGuard, ApiRateLimitGuard)
+@UseGuards(
+  PublicApiEnabledGuard,
+  ApiClientAuthGuard,
+  ApiScopeGuard,
+  ApiRateLimitGuard,
+)
 export class PublicAlertsController {
   constructor(private readonly prisma: PrismaService) {}
 
@@ -95,6 +144,10 @@ export class PublicAlertsController {
   @RequireScopes('alerts:read')
   async list(@Req() request: { authContext: AuthContext }) {
     const { tenantId } = request.authContext;
-    return this.prisma.alert.findMany({ where: { tenant_id: tenantId }, take: 50, orderBy: { created_at: 'desc' } });
+    return this.prisma.alert.findMany({
+      where: { tenant_id: tenantId },
+      take: 50,
+      orderBy: { created_at: 'desc' },
+    });
   }
 }

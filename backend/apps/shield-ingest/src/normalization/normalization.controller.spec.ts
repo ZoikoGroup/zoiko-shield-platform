@@ -28,21 +28,38 @@ describe('NormalizationController', () => {
     const mockEvents = [{ id: 'norm-1', event_class: 'AUTHENTICATION' }];
     serviceMock.getNormalizedEvents.mockResolvedValue(mockEvents);
 
-    const response = await controller.getNormalizedEvents('tenant-1', undefined, 10);
+    const response = await controller.getNormalizedEvents(
+      'tenant-1',
+      undefined,
+      10,
+    );
 
     expect(response.statusCode).toBe(HttpStatus.OK);
     expect(response.data).toBe(mockEvents);
-    expect(serviceMock.getNormalizedEvents).toHaveBeenCalledWith('tenant-1', 10);
+    expect(serviceMock.getNormalizedEvents).toHaveBeenCalledWith(
+      'tenant-1',
+      10,
+    );
   });
 
   it('should reprocess quarantined event', async () => {
-    const mockResult = { quarantineId: 'q-1', rawEventId: 'r-1', status: 'REPROCESSED' };
+    const mockResult = {
+      quarantineId: 'q-1',
+      rawEventId: 'r-1',
+      status: 'REPROCESSED',
+    };
     serviceMock.reprocessQuarantinedEvent.mockResolvedValue(mockResult);
 
-    const response = await controller.reprocessQuarantinedEvent('tenant-1', 'q-1');
+    const response = await controller.reprocessQuarantinedEvent(
+      'tenant-1',
+      'q-1',
+    );
 
     expect(response.statusCode).toBe(HttpStatus.OK);
     expect(response.data).toBe(mockResult);
-    expect(serviceMock.reprocessQuarantinedEvent).toHaveBeenCalledWith('tenant-1', 'q-1');
+    expect(serviceMock.reprocessQuarantinedEvent).toHaveBeenCalledWith(
+      'tenant-1',
+      'q-1',
+    );
   });
 });

@@ -3,7 +3,12 @@ import { TraceIdMiddleware } from './trace-id.middleware';
 
 function makeMockReqRes() {
   const req: any = { headers: {} };
-  const res: any = { headers: {}, setHeader(k: string, v: string) { this.headers[k] = v; } };
+  const res: any = {
+    headers: {},
+    setHeader(k: string, v: string) {
+      this.headers[k] = v;
+    },
+  };
   const next = jest.fn();
   return { req, res, next };
 }

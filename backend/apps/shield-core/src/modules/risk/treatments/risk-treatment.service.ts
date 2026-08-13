@@ -36,7 +36,12 @@ export class RiskTreatmentService {
         },
       }),
       this.prisma.outboxEvent.create({
-        data: this.outbox.build({ tenantId: input.tenantId, topic: CANONICAL_TOPICS.RISK_TREATMENT_CREATED, eventType: 'risk.treatment.created', payload: { riskId: input.riskId, treatmentId } }),
+        data: this.outbox.build({
+          tenantId: input.tenantId,
+          topic: CANONICAL_TOPICS.RISK_TREATMENT_CREATED,
+          eventType: 'risk.treatment.created',
+          payload: { riskId: input.riskId, treatmentId },
+        }),
       }),
     ]);
     return treatment;

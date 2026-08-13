@@ -12,7 +12,10 @@ import {
 import { IsOptional, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
-import { ContractStateService, CreateContractDto } from './contract-state.service';
+import {
+  ContractStateService,
+  CreateContractDto,
+} from './contract-state.service';
 
 export class TransitionContractDto {
   @IsString()

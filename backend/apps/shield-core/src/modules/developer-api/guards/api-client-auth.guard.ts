@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  Injectable,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { AuthContext } from '../oauth/oauth-token.service';
@@ -26,14 +31,20 @@ export class ApiClientAuthGuard implements CanActivate {
 
     let payload: { sub: string; tenant: string; scopes: string[]; jti: string };
     try {
-      payload = await this.jwtService.verifyAsync(authHeader.slice('Bearer '.length));
+      payload = await this.jwtService.verifyAsync(
+        authHeader.slice('Bearer '.length),
+      );
     } catch {
       throw new UnauthorizedException('Invalid or expired token');
     }
 
-    const apiClient = await this.prisma.apiClient.findFirst({ where: { principal_id: payload.sub, tenant_id: payload.tenant } });
+    const apiClient = await this.prisma.apiClient.findFirst({
+      where: { principal_id: payload.sub, tenant_id: payload.tenant },
+    });
     if (!apiClient || apiClient.status !== 'ACTIVE') {
-      throw new UnauthorizedException('Client is not active — token authority revoked since issuance');
+      throw new UnauthorizedException(
+        'Client is not active — token authority revoked since issuance',
+      );
     }
     if (apiClient.expires_at && apiClient.expires_at < new Date()) {
       throw new UnauthorizedException('Client has expired');

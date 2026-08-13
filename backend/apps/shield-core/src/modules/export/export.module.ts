@@ -13,7 +13,14 @@ import { ExportDownloadService } from './download/export-download.service';
 @Module({
   imports: [PrismaModule, EvidenceModule, AuthorizationDecisionModule],
   controllers: [ExportController],
-  providers: [OutboxService, ExportJobService, ExportBuilderService, ExportManifestService, ExportWorkerService, ExportDownloadService],
+  providers: [
+    OutboxService,
+    ExportJobService,
+    ExportBuilderService,
+    ExportManifestService,
+    ExportWorkerService,
+    ExportDownloadService,
+  ],
   exports: [ExportJobService, ExportWorkerService],
 })
 export class ExportModule {}

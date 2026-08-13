@@ -9,11 +9,19 @@ describe('TaxRuleService (ZS-COM-BILL-001 Part 10, fail closed)', () => {
 
   beforeEach(async () => {
     prismaMock = {
-      taxRule: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn(), findFirst: jest.fn() },
+      taxRule: {
+        create: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+        findFirst: jest.fn(),
+      },
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [TaxRuleService, { provide: PrismaService, useValue: prismaMock }],
+      providers: [
+        TaxRuleService,
+        { provide: PrismaService, useValue: prismaMock },
+      ],
     }).compile();
 
     service = module.get<TaxRuleService>(TaxRuleService);
@@ -28,15 +36,28 @@ describe('TaxRuleService (ZS-COM-BILL-001 Part 10, fail closed)', () => {
   });
 
   it('computes tax amount from an approved rule', async () => {
-    prismaMock.taxRule.findFirst.mockResolvedValue({ id: 'rule-1', rate_percent: 8.5, reverse_charge: false });
+    prismaMock.taxRule.findFirst.mockResolvedValue({
+      id: 'rule-1',
+      rate_percent: 8.5,
+      reverse_charge: false,
+    });
 
     const result = await service.resolveTax('US-CA', 'SAAS', 1000);
 
-    expect(result).toEqual({ ruleId: 'rule-1', ratePercent: 8.5, reverseCharge: false, taxAmount: 85 });
+    expect(result).toEqual({
+      ruleId: 'rule-1',
+      ratePercent: 8.5,
+      reverseCharge: false,
+      taxAmount: 85,
+    });
   });
 
   it('a reverse-charge rule always resolves to 0 tax amount', async () => {
-    prismaMock.taxRule.findFirst.mockResolvedValue({ id: 'rule-2', rate_percent: 20, reverse_charge: true });
+    prismaMock.taxRule.findFirst.mockResolvedValue({
+      id: 'rule-2',
+      rate_percent: 20,
+      reverse_charge: true,
+    });
 
     const result = await service.resolveTax('EU-DE', 'SAAS', 1000);
 
@@ -44,8 +65,13 @@ describe('TaxRuleService (ZS-COM-BILL-001 Part 10, fail closed)', () => {
   });
 
   it('rejects approving a rule that is not in DRAFT', async () => {
-    prismaMock.taxRule.findUnique.mockResolvedValue({ id: 'rule-1', status: 'APPROVED' });
+    prismaMock.taxRule.findUnique.mockResolvedValue({
+      id: 'rule-1',
+      status: 'APPROVED',
+    });
 
-    await expect(service.approveRule('rule-1', 'finance')).rejects.toThrow(ConflictException);
+    await expect(service.approveRule('rule-1', 'finance')).rejects.toThrow(
+      ConflictException,
+    );
   });
 });

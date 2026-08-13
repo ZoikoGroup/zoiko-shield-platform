@@ -1,15 +1,34 @@
-import { Body, Controller, Get, Headers, HttpStatus, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { InternalAuthGuard } from '../../internal-client/internal-auth.guard';
-import { CreateResourceDefinitionDto, ProtectedResourceDefinitionService } from './protected-resource-definition.service';
-import { RecordObservationDto, ResourceObservationService } from './resource-observation.service';
+import {
+  CreateResourceDefinitionDto,
+  ProtectedResourceDefinitionService,
+} from './protected-resource-definition.service';
+import {
+  RecordObservationDto,
+  ResourceObservationService,
+} from './resource-observation.service';
 import { requireTenantId } from '../../tenant-context';
 
 /** Admin-curated: humans define and approve resource identity/dedup rules. */
 @UseGuards(JwtAuthGuard)
 @Controller('api/v1/resources/definitions')
 export class ResourceDefinitionController {
-  constructor(private readonly definitionService: ProtectedResourceDefinitionService) {}
+  constructor(
+    private readonly definitionService: ProtectedResourceDefinitionService,
+  ) {}
 
   @Post()
   async create(@Body() dto: CreateResourceDefinitionDto) {
@@ -18,8 +37,14 @@ export class ResourceDefinitionController {
   }
 
   @Patch(':id/approve')
-  async approve(@Param('id') id: string, @Body('approvedBy') approvedBy: string) {
-    const definition = await this.definitionService.approveDefinition(id, approvedBy || 'system');
+  async approve(
+    @Param('id') id: string,
+    @Body('approvedBy') approvedBy: string,
+  ) {
+    const definition = await this.definitionService.approveDefinition(
+      id,
+      approvedBy || 'system',
+    );
     return { statusCode: HttpStatus.OK, data: definition };
   }
 }
@@ -33,25 +58,42 @@ export class ResourceDefinitionController {
 @UseGuards(InternalAuthGuard)
 @Controller('api/v1/resources/observations')
 export class ResourceObservationController {
-  constructor(private readonly observationService: ResourceObservationService) {}
+  constructor(
+    private readonly observationService: ResourceObservationService,
+  ) {}
 
   @Post()
-  async record(@Headers('x-tenant-id') headerTenantId: string, @Body() dto: RecordObservationDto) {
+  async record(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Body() dto: RecordObservationDto,
+  ) {
     const tenantId = requireTenantId(headerTenantId, dto.tenantId);
-    const result = await this.observationService.recordObservation({ ...dto, tenantId });
+    const result = await this.observationService.recordObservation({
+      ...dto,
+      tenantId,
+    });
     return { statusCode: HttpStatus.CREATED, data: result };
   }
 
   @Get()
-  async list(@Headers('x-tenant-id') headerTenantId: string, @Query('tenantId') queryTenantId?: string) {
+  async list(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Query('tenantId') queryTenantId?: string,
+  ) {
     const tenantId = requireTenantId(headerTenantId, queryTenantId);
     const observations = await this.observationService.listByTenant(tenantId);
     return { statusCode: HttpStatus.OK, data: observations };
   }
 
   @Get(':id')
-  async get(@Headers('x-tenant-id') headerTenantId: string, @Param('id') id: string) {
-    const observation = await this.observationService.getObservationById(requireTenantId(headerTenantId), id);
+  async get(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('id') id: string,
+  ) {
+    const observation = await this.observationService.getObservationById(
+      requireTenantId(headerTenantId),
+      id,
+    );
     return { statusCode: HttpStatus.OK, data: observation };
   }
 

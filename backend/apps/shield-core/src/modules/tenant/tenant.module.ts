@@ -7,7 +7,11 @@ import { IdentityAdapterModule } from '../identity-adapter/identity-adapter.modu
 import { AuthorizationModule } from '../authorization/authorization.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Tenant]), IdentityAdapterModule, AuthorizationModule],
+  imports: [
+    TypeOrmModule.forFeature([Tenant]),
+    IdentityAdapterModule,
+    AuthorizationModule,
+  ],
   controllers: [TenantController],
   providers: [TenantService],
   exports: [TenantService],

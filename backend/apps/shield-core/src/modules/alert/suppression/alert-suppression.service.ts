@@ -59,8 +59,11 @@ export class AlertSuppressionService {
     });
 
     const match = rules.find((rule) => {
-      const matchesDefinition = !rule.detection_definition_id || rule.detection_definition_id === params.detectionDefinitionId;
-      const matchesIdentity = !rule.identity_id || rule.identity_id === params.identityId;
+      const matchesDefinition =
+        !rule.detection_definition_id ||
+        rule.detection_definition_id === params.detectionDefinitionId;
+      const matchesIdentity =
+        !rule.identity_id || rule.identity_id === params.identityId;
       const matchesAsset = !rule.asset_id || rule.asset_id === params.assetId;
       return matchesDefinition && matchesIdentity && matchesAsset;
     });

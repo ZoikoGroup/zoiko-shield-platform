@@ -1,8 +1,21 @@
-import { Body, Controller, Get, HttpStatus, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { IsString } from 'class-validator';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
-import { ActivateWorkOrderDto, IncidentWorkOrderService, LogHoursDto } from './incident-work-order.service';
+import {
+  ActivateWorkOrderDto,
+  IncidentWorkOrderService,
+  LogHoursDto,
+} from './incident-work-order.service';
 
 export class RequestOverageDto {
   @IsString()
@@ -36,8 +49,15 @@ export class IncidentWorkOrderController {
   }
 
   @Post(':id/overage-approval')
-  async requestOverageApproval(@Param('id') id: string, @Body() dto: RequestOverageDto) {
-    const approval = await this.workOrderService.requestOverageApproval(id, dto.requestedBy, dto.reason);
+  async requestOverageApproval(
+    @Param('id') id: string,
+    @Body() dto: RequestOverageDto,
+  ) {
+    const approval = await this.workOrderService.requestOverageApproval(
+      id,
+      dto.requestedBy,
+      dto.reason,
+    );
     return { statusCode: HttpStatus.CREATED, data: approval };
   }
 

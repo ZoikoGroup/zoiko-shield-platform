@@ -4,7 +4,10 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { DetectionRegistryService } from '../registry/detection-registry.service';
 import { KafkaProducerService } from '../../../kafka/kafka-producer.service';
 import { AlertCreationService } from '../../alert/services/alert-creation.service';
-import { NormalizedEventContract, ResolvedContext } from '../../security-context/context/context.types';
+import {
+  NormalizedEventContract,
+  ResolvedContext,
+} from '../../security-context/context/context.types';
 
 describe('DetectionRuntimeService', () => {
   let service: DetectionRuntimeService;
@@ -44,10 +47,20 @@ describe('DetectionRuntimeService', () => {
 
   beforeEach(async () => {
     prismaMock = {
-      identityEntity: { findUnique: jest.fn().mockResolvedValue({ id: 'identity-1', status: 'ACTIVE', identity_type: 'MANAGED_IDENTITY' }) },
+      identityEntity: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'identity-1',
+          status: 'ACTIVE',
+          identity_type: 'MANAGED_IDENTITY',
+        }),
+      },
       asset: { findUnique: jest.fn().mockResolvedValue(null) },
-      detectionEvaluation: { create: jest.fn().mockResolvedValue({ id: 'eval-1' }) },
-      detectionMatch: { upsert: jest.fn().mockResolvedValue({ id: 'match-1' }) },
+      detectionEvaluation: {
+        create: jest.fn().mockResolvedValue({ id: 'eval-1' }),
+      },
+      detectionMatch: {
+        upsert: jest.fn().mockResolvedValue({ id: 'match-1' }),
+      },
     };
     ruleMock = { key: 'SUSPICIOUS_LOGIN_NEW_LOCATION', evaluate: jest.fn() };
     registryMock = {
@@ -57,13 +70,20 @@ describe('DetectionRuntimeService', () => {
           detection_definition_id: 'def-1',
           severity: 'HIGH',
           configuration: '{}',
-          detectionDefinition: { key: 'SUSPICIOUS_LOGIN_NEW_LOCATION', name: 'Suspicious Login' },
+          detectionDefinition: {
+            key: 'SUSPICIOUS_LOGIN_NEW_LOCATION',
+            name: 'Suspicious Login',
+          },
         },
       ]),
       getRuleImplementation: jest.fn().mockReturnValue(ruleMock),
     };
     kafkaMock = { publishEvent: jest.fn().mockResolvedValue(undefined) };
-    alertCreationMock = { createFromMatch: jest.fn().mockResolvedValue({ alertId: 'alert-1', suppressed: false }) };
+    alertCreationMock = {
+      createFromMatch: jest
+        .fn()
+        .mockResolvedValue({ alertId: 'alert-1', suppressed: false }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -79,26 +99,49 @@ describe('DetectionRuntimeService', () => {
   });
 
   it('resolves identity/asset by id from the resolved context, never reading NormalizedEvent', async () => {
-    ruleMock.evaluate.mockReturnValue({ result: 'MATCH', factors: [], confidence: 0.9, incompleteData: false, reasons: [] });
+    ruleMock.evaluate.mockReturnValue({
+      result: 'MATCH',
+      factors: [],
+      confidence: 0.9,
+      incompleteData: false,
+      reasons: [],
+    });
 
     await service.evaluateFromEvent(payload, resolved);
 
-    expect(prismaMock.identityEntity.findUnique).toHaveBeenCalledWith({ where: { id: 'identity-1' } });
+    expect(prismaMock.identityEntity.findUnique).toHaveBeenCalledWith({
+      where: { id: 'identity-1' },
+    });
     expect(prismaMock.asset.findUnique).not.toHaveBeenCalled();
   });
 
   it('stores the event payload snapshot on the DetectionEvaluation for later replay', async () => {
-    ruleMock.evaluate.mockReturnValue({ result: 'NO_MATCH', factors: [], incompleteData: false, reasons: [] });
+    ruleMock.evaluate.mockReturnValue({
+      result: 'NO_MATCH',
+      factors: [],
+      incompleteData: false,
+      reasons: [],
+    });
 
     await service.evaluateFromEvent(payload, resolved);
 
     expect(prismaMock.detectionEvaluation.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ event_payload_snapshot: JSON.stringify(payload) }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          event_payload_snapshot: JSON.stringify(payload),
+        }),
+      }),
     );
   });
 
   it('on MATCH: creates a DetectionMatch, publishes detection.matched.v1, and calls AlertCreationService in-process', async () => {
-    ruleMock.evaluate.mockReturnValue({ result: 'MATCH', factors: [], confidence: 0.9, incompleteData: false, reasons: [] });
+    ruleMock.evaluate.mockReturnValue({
+      result: 'MATCH',
+      factors: [],
+      confidence: 0.9,
+      incompleteData: false,
+      reasons: [],
+    });
 
     await service.evaluateFromEvent(payload, resolved);
 
@@ -106,16 +149,28 @@ describe('DetectionRuntimeService', () => {
     expect(kafkaMock.publishEvent).toHaveBeenCalledWith(
       'detection.matched.v1',
       'detection.matched',
-      expect.objectContaining({ tenantId: 'tenant-a', primaryEventId: 'evt-1' }),
+      expect.objectContaining({
+        tenantId: 'tenant-a',
+        primaryEventId: 'evt-1',
+      }),
       expect.any(Object),
     );
     expect(alertCreationMock.createFromMatch).toHaveBeenCalledWith(
-      expect.objectContaining({ tenantId: 'tenant-a', detectionMatchId: 'match-1', identityEntityId: 'identity-1' }),
+      expect.objectContaining({
+        tenantId: 'tenant-a',
+        detectionMatchId: 'match-1',
+        identityEntityId: 'identity-1',
+      }),
     );
   });
 
   it('does not create a match or call AlertCreationService on NO_MATCH', async () => {
-    ruleMock.evaluate.mockReturnValue({ result: 'NO_MATCH', factors: [], incompleteData: false, reasons: [] });
+    ruleMock.evaluate.mockReturnValue({
+      result: 'NO_MATCH',
+      factors: [],
+      incompleteData: false,
+      reasons: [],
+    });
 
     await service.evaluateFromEvent(payload, resolved);
 

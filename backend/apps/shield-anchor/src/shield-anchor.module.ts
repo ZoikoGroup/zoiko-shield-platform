@@ -28,9 +28,10 @@ import { HttpWitnessProvider } from './witnesses/http-witness-provider.service';
     MerkleTreeService,
     {
       provide: CHECKPOINT_SIGNER,
-      useFactory: () => process.env.NODE_ENV === 'production'
-        ? new ProductionCheckpointSigner()
-        : new DevCheckpointSigner(),
+      useFactory: () =>
+        process.env.NODE_ENV === 'production'
+          ? new ProductionCheckpointSigner()
+          : new DevCheckpointSigner(),
     },
     SigningKeyService,
     MockWitnessProvider,

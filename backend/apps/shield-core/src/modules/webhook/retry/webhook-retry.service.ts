@@ -27,15 +27,22 @@ export class WebhookRetryService {
     if (this.running) return;
     this.running = true;
     try {
-      const failed = await this.prisma.webhookDelivery.findMany({ where: { status: 'FAILED' }, take: 50 });
+      const failed = await this.prisma.webhookDelivery.findMany({
+        where: { status: 'FAILED' },
+        take: 50,
+      });
       for (const delivery of failed) {
         if (!delivery.last_attempt_at) continue;
-        const dueAt = delivery.last_attempt_at.getTime() + backoffDelayMs(delivery.attempt_count);
+        const dueAt =
+          delivery.last_attempt_at.getTime() +
+          backoffDelayMs(delivery.attempt_count);
         if (Date.now() < dueAt) continue;
         try {
           await this.deliveryService.retryAttempt(delivery.id);
         } catch (err) {
-          this.logger.error(`Retry failed for WebhookDelivery ${delivery.id}: ${(err as Error).message}`);
+          this.logger.error(
+            `Retry failed for WebhookDelivery ${delivery.id}: ${(err as Error).message}`,
+          );
         }
       }
     } finally {

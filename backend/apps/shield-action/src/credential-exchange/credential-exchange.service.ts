@@ -9,7 +9,11 @@ import { Injectable } from '@nestjs/common';
  */
 @Injectable()
 export class CredentialExchangeService {
-  getReference(params: { tenantId: string; connectorCapability?: string }): { credentialRef: string } {
-    return { credentialRef: `vault-ref:simulation:${params.tenantId}:${params.connectorCapability ?? 'default'}` };
+  getReference(params: { tenantId: string; connectorCapability?: string }): {
+    credentialRef: string;
+  } {
+    return {
+      credentialRef: `vault-ref:simulation:${params.tenantId}:${params.connectorCapability ?? 'default'}`,
+    };
   }
 }

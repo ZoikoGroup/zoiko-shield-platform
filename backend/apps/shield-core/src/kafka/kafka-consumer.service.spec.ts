@@ -27,14 +27,21 @@ describe('KafkaConsumerService', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [KafkaConsumerService, { provide: PrismaService, useValue: prismaMock }],
+      providers: [
+        KafkaConsumerService,
+        { provide: PrismaService, useValue: prismaMock },
+      ],
     }).compile();
 
     service = module.get<KafkaConsumerService>(KafkaConsumerService);
   });
 
   const invokeHandleMessage = (topic: string, value: unknown) =>
-    (service as any).handleMessage({ topic, partition: 0, message: { value: Buffer.from(JSON.stringify(value)) } });
+    (service as any).handleMessage({
+      topic,
+      partition: 0,
+      message: { value: Buffer.from(JSON.stringify(value)) },
+    });
 
   it('dispatches to registered handlers and records an InboxEvent after success', async () => {
     const handler = jest.fn().mockResolvedValue(undefined);
@@ -44,12 +51,20 @@ describe('KafkaConsumerService', () => {
 
     expect(handler).toHaveBeenCalledWith(envelope);
     expect(prismaMock.inboxEvent.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ event_id: 'evt-abc', topic: 'test.topic' }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          event_id: 'evt-abc',
+          topic: 'test.topic',
+        }),
+      }),
     );
   });
 
   it('skips dispatch entirely when the eventId was already processed (inbox dedup)', async () => {
-    prismaMock.inboxEvent.findUnique.mockResolvedValue({ id: 'inbox-1', event_id: 'evt-abc' });
+    prismaMock.inboxEvent.findUnique.mockResolvedValue({
+      id: 'inbox-1',
+      event_id: 'evt-abc',
+    });
     const handler = jest.fn();
     service.registerHandler('test.topic', handler);
 
@@ -71,7 +86,11 @@ describe('KafkaConsumerService', () => {
 
   it('does not throw on a malformed (non-JSON) message', async () => {
     await expect(
-      (service as any).handleMessage({ topic: 't', partition: 0, message: { value: Buffer.from('not json') } }),
+      (service as any).handleMessage({
+        topic: 't',
+        partition: 0,
+        message: { value: Buffer.from('not json') },
+      }),
     ).resolves.toBeUndefined();
   });
 });

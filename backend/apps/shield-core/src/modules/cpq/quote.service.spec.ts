@@ -17,10 +17,18 @@ describe('QuoteService (ZS-COM-BILL-001 Part 2 CPQ chain)', () => {
     prismaMock = {
       commercialAccount: { findUnique: jest.fn() },
       catalogVersion: { findUnique: jest.fn() },
-      commercialQuote: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+      commercialQuote: {
+        create: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+      },
     };
     catalogMock = { getActivePriceBook: jest.fn() };
-    approvalMock = { requestApproval: jest.fn(), getApprovalById: jest.fn(), markApplied: jest.fn() };
+    approvalMock = {
+      requestApproval: jest.fn(),
+      getApprovalById: jest.fn(),
+      markApplied: jest.fn(),
+    };
     killSwitchMock = { assertNotBlocked: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -46,7 +54,10 @@ describe('QuoteService (ZS-COM-BILL-001 Part 2 CPQ chain)', () => {
 
   it('fails closed when no approved price book exists for a SKU (draft price cannot be used)', async () => {
     prismaMock.commercialAccount.findUnique.mockResolvedValue(readyAccount);
-    prismaMock.catalogVersion.findUnique.mockResolvedValue({ id: 'cv-1', status: 'APPROVED' });
+    prismaMock.catalogVersion.findUnique.mockResolvedValue({
+      id: 'cv-1',
+      status: 'APPROVED',
+    });
     catalogMock.getActivePriceBook.mockResolvedValue(null);
 
     await expect(
@@ -86,13 +97,19 @@ describe('QuoteService (ZS-COM-BILL-001 Part 2 CPQ chain)', () => {
       region: null,
       billing_source: null,
     });
-    prismaMock.catalogVersion.findUnique.mockResolvedValue({ id: 'cv-1', status: 'APPROVED' });
+    prismaMock.catalogVersion.findUnique.mockResolvedValue({
+      id: 'cv-1',
+      status: 'APPROVED',
+    });
     catalogMock.getActivePriceBook.mockResolvedValue({
       id: 'pb-1',
       product_id: 'prod-1',
       unit_price: 10,
     });
-    prismaMock.commercialQuote.create.mockResolvedValue({ id: 'q-1', status: 'DRAFT' });
+    prismaMock.commercialQuote.create.mockResolvedValue({
+      id: 'q-1',
+      status: 'DRAFT',
+    });
 
     const quote = await service.createQuote({
       commercialAccountId: 'acct-3',
@@ -106,14 +123,22 @@ describe('QuoteService (ZS-COM-BILL-001 Part 2 CPQ chain)', () => {
 
   it('marks requires_approval when any line carries a discount, and routes through the maker-checker engine', async () => {
     prismaMock.commercialAccount.findUnique.mockResolvedValue(readyAccount);
-    prismaMock.catalogVersion.findUnique.mockResolvedValue({ id: 'cv-1', status: 'APPROVED' });
+    prismaMock.catalogVersion.findUnique.mockResolvedValue({
+      id: 'cv-1',
+      status: 'APPROVED',
+    });
     catalogMock.getActivePriceBook.mockResolvedValue({
       id: 'pb-1',
       product_id: 'prod-1',
       unit_price: 10,
     });
     prismaMock.commercialQuote.create.mockImplementation(({ data }: any) =>
-      Promise.resolve({ id: 'q-1', status: 'DRAFT', requires_approval: data.requires_approval, snapshot: data.snapshot }),
+      Promise.resolve({
+        id: 'q-1',
+        status: 'DRAFT',
+        requires_approval: data.requires_approval,
+        snapshot: data.snapshot,
+      }),
     );
 
     const quote = await service.createQuote({
@@ -125,9 +150,19 @@ describe('QuoteService (ZS-COM-BILL-001 Part 2 CPQ chain)', () => {
 
     expect(quote.requires_approval).toBe(true);
 
-    prismaMock.commercialQuote.findUnique.mockResolvedValue({ ...quote, status: 'DRAFT' });
-    approvalMock.requestApproval.mockResolvedValue({ id: 'appr-1', status: 'PENDING_APPROVAL' });
-    prismaMock.commercialQuote.update.mockResolvedValue({ ...quote, status: 'PENDING_APPROVAL', approval_id: 'appr-1' });
+    prismaMock.commercialQuote.findUnique.mockResolvedValue({
+      ...quote,
+      status: 'DRAFT',
+    });
+    approvalMock.requestApproval.mockResolvedValue({
+      id: 'appr-1',
+      status: 'PENDING_APPROVAL',
+    });
+    prismaMock.commercialQuote.update.mockResolvedValue({
+      ...quote,
+      status: 'PENDING_APPROVAL',
+      approval_id: 'appr-1',
+    });
 
     await service.submitForApproval('q-1', 'alice');
     expect(approvalMock.requestApproval).toHaveBeenCalled();
@@ -140,9 +175,14 @@ describe('QuoteService (ZS-COM-BILL-001 Part 2 CPQ chain)', () => {
       requires_approval: true,
       approval_id: 'appr-1',
     });
-    approvalMock.getApprovalById.mockResolvedValue({ id: 'appr-1', status: 'PENDING_APPROVAL' });
+    approvalMock.getApprovalById.mockResolvedValue({
+      id: 'appr-1',
+      status: 'PENDING_APPROVAL',
+    });
 
-    await expect(service.approveQuote('q-1', 'bob')).rejects.toThrow(ConflictException);
+    await expect(service.approveQuote('q-1', 'bob')).rejects.toThrow(
+      ConflictException,
+    );
   });
 
   it('dynamically expires a quote past expires_at on read, before a sweeper ever runs, so approval fails', async () => {
@@ -159,7 +199,9 @@ describe('QuoteService (ZS-COM-BILL-001 Part 2 CPQ chain)', () => {
       expires_at: pastExpiry,
     });
 
-    await expect(service.approveQuote('q-1', 'bob')).rejects.toThrow(ConflictException);
+    await expect(service.approveQuote('q-1', 'bob')).rejects.toThrow(
+      ConflictException,
+    );
     expect(prismaMock.commercialQuote.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: { status: 'EXPIRED' } }),
     );
@@ -180,9 +222,13 @@ describe('QuoteService (ZS-COM-BILL-001 Part 2 CPQ chain)', () => {
   });
 
   it('OPS-01: refuses to approve a quote while the commercial kill switch blocks QUOTE_APPROVAL', async () => {
-    killSwitchMock.assertNotBlocked.mockRejectedValue(new ConflictException('blocked'));
+    killSwitchMock.assertNotBlocked.mockRejectedValue(
+      new ConflictException('blocked'),
+    );
 
-    await expect(service.approveQuote('q-1', 'bob')).rejects.toThrow(ConflictException);
+    await expect(service.approveQuote('q-1', 'bob')).rejects.toThrow(
+      ConflictException,
+    );
     expect(prismaMock.commercialQuote.findUnique).not.toHaveBeenCalled();
   });
 });

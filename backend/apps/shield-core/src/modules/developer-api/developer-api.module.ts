@@ -6,7 +6,11 @@ import { PrismaModule } from '../../prisma/prisma.module';
 import { AuthorizationDecisionModule } from '../authorization-decision/authorization-decision.module';
 import { Principal } from '../identity-adapter/principal.entity';
 import { OutboxService } from '../../outbox/outbox.service';
-import { DeveloperApiController, OauthController, PublicAlertsController } from './developer-api.controller';
+import {
+  DeveloperApiController,
+  OauthController,
+  PublicAlertsController,
+} from './developer-api.controller';
 import { ApiClientService } from './clients/api-client.service';
 import { ApiClientCredentialService } from './credentials/api-client-credential.service';
 import { ApiScopeGrantService } from './scopes/api-scope-grant.service';
@@ -27,8 +31,19 @@ import { ApiClientAuthGuard } from './guards/api-client-auth.guard';
       }),
     }),
   ],
-  controllers: [DeveloperApiController, OauthController, PublicAlertsController],
-  providers: [OutboxService, ApiClientService, ApiClientCredentialService, ApiScopeGrantService, OauthTokenService, ApiClientAuthGuard],
+  controllers: [
+    DeveloperApiController,
+    OauthController,
+    PublicAlertsController,
+  ],
+  providers: [
+    OutboxService,
+    ApiClientService,
+    ApiClientCredentialService,
+    ApiScopeGrantService,
+    OauthTokenService,
+    ApiClientAuthGuard,
+  ],
   exports: [ApiClientService, ApiClientCredentialService, ApiScopeGrantService],
 })
 export class DeveloperApiModule {}

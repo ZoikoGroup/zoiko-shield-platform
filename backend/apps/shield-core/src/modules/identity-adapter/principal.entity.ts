@@ -8,7 +8,8 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-export type PrincipalType = 'HUMAN' | 'WORKLOAD' | 'CLIENT' | 'CONNECTOR' | 'AGENT';
+export type PrincipalType =
+  'HUMAN' | 'WORKLOAD' | 'CLIENT' | 'CONNECTOR' | 'AGENT';
 export type PrincipalStatus = 'ACTIVE' | 'SUSPENDED' | 'TERMINATED';
 
 @Entity({ name: 'principals', schema: 'identity' })

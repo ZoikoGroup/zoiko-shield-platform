@@ -28,7 +28,9 @@ export class DetectionRegistryService {
   getRuleImplementation(key: string): DetectionRule {
     const rule = this.ruleImplementations.get(key);
     if (!rule) {
-      throw new Error(`No DetectionRule implementation registered for key '${key}'`);
+      throw new Error(
+        `No DetectionRule implementation registered for key '${key}'`,
+      );
     }
     return rule;
   }
@@ -41,21 +43,34 @@ export class DetectionRegistryService {
     });
 
     return versions.filter((v) => {
-      if (!this.ruleImplementations.has(v.detectionDefinition.key)) return false;
-      const requiredEventTypes: string[] = JSON.parse(v.required_event_types || '[]');
-      return requiredEventTypes.length === 0 || requiredEventTypes.includes(eventClass);
+      if (!this.ruleImplementations.has(v.detectionDefinition.key))
+        return false;
+      const requiredEventTypes: string[] = JSON.parse(
+        v.required_event_types || '[]',
+      );
+      return (
+        requiredEventTypes.length === 0 ||
+        requiredEventTypes.includes(eventClass)
+      );
     });
   }
 
   /** Publishes a DRAFT version — PUBLISHED versions are immutable from then on (spec §19), enforced here rather than left to callers. */
   async publish(detectionVersionId: string) {
-    const version = await this.prisma.detectionVersion.findUniqueOrThrow({ where: { id: detectionVersionId } });
+    const version = await this.prisma.detectionVersion.findUniqueOrThrow({
+      where: { id: detectionVersionId },
+    });
     if (version.status === 'PUBLISHED') {
-      throw new ConflictException(`DetectionVersion '${detectionVersionId}' is already PUBLISHED and cannot be republished`);
+      throw new ConflictException(
+        `DetectionVersion '${detectionVersionId}' is already PUBLISHED and cannot be republished`,
+      );
     }
 
     const existingActive = await this.prisma.detectionVersion.findFirst({
-      where: { detection_definition_id: version.detection_definition_id, status: 'PUBLISHED' },
+      where: {
+        detection_definition_id: version.detection_definition_id,
+        status: 'PUBLISHED',
+      },
     });
     if (existingActive) {
       throw new ConflictException(

@@ -22,7 +22,9 @@ describe('CommercialEntitlementController', () => {
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [CommercialEntitlementController],
-      providers: [{ provide: CommercialEntitlementService, useValue: serviceMock }],
+      providers: [
+        { provide: CommercialEntitlementService, useValue: serviceMock },
+      ],
     })
       .overrideGuard(JwtAuthGuard)
       .useValue({ canActivate: () => true })
@@ -30,7 +32,9 @@ describe('CommercialEntitlementController', () => {
       .useValue({ canActivate: () => true })
       .compile();
 
-    controller = module.get<CommercialEntitlementController>(CommercialEntitlementController);
+    controller = module.get<CommercialEntitlementController>(
+      CommercialEntitlementController,
+    );
   });
 
   it('should return created commercial account', async () => {

@@ -10,11 +10,16 @@ import { ConnectorProviderKey } from './connector.types';
 @Injectable()
 export class ConnectorRegistry {
   private readonly logger = new Logger(ConnectorRegistry.name);
-  private readonly connectors = new Map<ConnectorProviderKey, SecurityConnector>();
+  private readonly connectors = new Map<
+    ConnectorProviderKey,
+    SecurityConnector
+  >();
 
   register(key: ConnectorProviderKey, connector: SecurityConnector): void {
     if (this.connectors.has(key)) {
-      this.logger.warn(`Connector provider '${key}' registered more than once — overwriting.`);
+      this.logger.warn(
+        `Connector provider '${key}' registered more than once — overwriting.`,
+      );
     }
     this.connectors.set(key, connector);
     this.logger.log(`Registered connector provider '${key}'`);

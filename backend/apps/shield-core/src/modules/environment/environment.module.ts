@@ -7,7 +7,11 @@ import { TenantModule } from '../tenant/tenant.module';
 import { AuthorizationModule } from '../authorization/authorization.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Environment]), TenantModule, AuthorizationModule],
+  imports: [
+    TypeOrmModule.forFeature([Environment]),
+    TenantModule,
+    AuthorizationModule,
+  ],
   controllers: [EnvironmentController],
   providers: [EnvironmentService],
   exports: [EnvironmentService],

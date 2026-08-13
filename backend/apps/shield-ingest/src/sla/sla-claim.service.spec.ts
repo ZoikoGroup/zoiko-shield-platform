@@ -43,8 +43,8 @@ describe('SLAClaimService (Step 15)', () => {
       created_at: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
       caseTimelines: [{ created_at: new Date() }],
     });
-    prismaMock.claimEvaluation.create.mockImplementation(({ data }) =>
-      Promise.resolve({ id: 'eval-1', ...data }),
+    prismaMock.claimEvaluation.create.mockImplementation(
+      ({ data }: { data: any }) => Promise.resolve({ id: 'eval-1', ...data }),
     );
 
     const evaluation = await service.evaluateClaimEligibility({

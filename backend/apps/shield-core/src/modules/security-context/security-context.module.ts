@@ -29,6 +29,10 @@ import { OutboxService } from '../../outbox/outbox.service';
     ContextSnapshotService,
     OutboxService,
   ],
-  exports: [ContextResolutionService, IdentityResolutionService, AssetResolutionService],
+  exports: [
+    ContextResolutionService,
+    IdentityResolutionService,
+    AssetResolutionService,
+  ],
 })
 export class SecurityContextModule {}

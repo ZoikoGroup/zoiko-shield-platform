@@ -11,7 +11,9 @@ import { PlatformPermissionsGuard } from './guards/platform-permissions.guard';
 
 @Global()
 @Module({
-  imports: [TypeOrmModule.forFeature([Permission, Role, TenantMembership, Invitation])],
+  imports: [
+    TypeOrmModule.forFeature([Permission, Role, TenantMembership, Invitation]),
+  ],
   controllers: [AuthorizationController],
   providers: [AuthorizationService, PermissionsGuard, PlatformPermissionsGuard],
   exports: [AuthorizationService, PermissionsGuard, PlatformPermissionsGuard],

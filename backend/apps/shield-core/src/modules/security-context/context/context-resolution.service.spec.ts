@@ -34,10 +34,23 @@ describe('ContextResolutionService', () => {
   };
 
   beforeEach(async () => {
-    identityMock = { resolve: jest.fn().mockResolvedValue({ identityEntityId: 'identity-1', decision: 'MATCHED' }) };
-    assetMock = { resolve: jest.fn().mockResolvedValue({ assetId: 'asset-1', decision: 'MATCHED' }) };
+    identityMock = {
+      resolve: jest.fn().mockResolvedValue({
+        identityEntityId: 'identity-1',
+        decision: 'MATCHED',
+      }),
+    };
+    assetMock = {
+      resolve: jest
+        .fn()
+        .mockResolvedValue({ assetId: 'asset-1', decision: 'MATCHED' }),
+    };
     relationshipMock = { upsert: jest.fn().mockResolvedValue({}) };
-    snapshotMock = { build: jest.fn().mockResolvedValue({ snapshotId: 'snap-1', contextHealth: 'RESOLVED' }) };
+    snapshotMock = {
+      build: jest
+        .fn()
+        .mockResolvedValue({ snapshotId: 'snap-1', contextHealth: 'RESOLVED' }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -63,10 +76,18 @@ describe('ContextResolutionService', () => {
       contextHealth: 'RESOLVED',
     });
     expect(identityMock.resolve).toHaveBeenCalledWith(
-      expect.objectContaining({ tenantId: 'tenant-a', sourceSystem: 'microsoft-entra', externalId: 'user-1' }),
+      expect.objectContaining({
+        tenantId: 'tenant-a',
+        sourceSystem: 'microsoft-entra',
+        externalId: 'user-1',
+      }),
     );
     expect(assetMock.resolve).toHaveBeenCalledWith(
-      expect.objectContaining({ tenantId: 'tenant-a', sourceSystem: 'microsoft-entra', externalId: '203.0.113.5' }),
+      expect.objectContaining({
+        tenantId: 'tenant-a',
+        sourceSystem: 'microsoft-entra',
+        externalId: '203.0.113.5',
+      }),
     );
   });
 
@@ -74,13 +95,21 @@ describe('ContextResolutionService', () => {
     await service.resolveFromEvent(payload);
 
     expect(relationshipMock.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({ subjectId: 'identity-1', relation: 'SIGNED_IN_TO', objectId: 'asset-1' }),
+      expect.objectContaining({
+        subjectId: 'identity-1',
+        relation: 'SIGNED_IN_TO',
+        objectId: 'asset-1',
+      }),
     );
   });
 
   it('does not create a relationship when only identity resolves (no asset)', async () => {
     assetMock.resolve.mockResolvedValue(undefined);
-    const payloadNoAsset = { ...payload, sourceIp: undefined, resourceId: undefined };
+    const payloadNoAsset = {
+      ...payload,
+      sourceIp: undefined,
+      resourceId: undefined,
+    };
 
     await service.resolveFromEvent(payloadNoAsset);
 
@@ -91,7 +120,10 @@ describe('ContextResolutionService', () => {
     await service.resolveFromEvent(payload);
 
     expect(snapshotMock.build).toHaveBeenCalledWith(
-      expect.objectContaining({ sourceHealthState: 'HEALTHY', eventId: 'evt-1' }),
+      expect.objectContaining({
+        sourceHealthState: 'HEALTHY',
+        eventId: 'evt-1',
+      }),
     );
   });
 });

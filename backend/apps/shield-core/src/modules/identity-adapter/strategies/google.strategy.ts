@@ -9,8 +9,10 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor(config: ConfigService) {
     super({
       clientID: config.get<string>('GOOGLE_CLIENT_ID') || 'unconfigured',
-      clientSecret: config.get<string>('GOOGLE_CLIENT_SECRET') || 'unconfigured',
-      callbackURL: config.get<string>('GOOGLE_CALLBACK_URL') || '/auth/google/callback',
+      clientSecret:
+        config.get<string>('GOOGLE_CLIENT_SECRET') || 'unconfigured',
+      callbackURL:
+        config.get<string>('GOOGLE_CALLBACK_URL') || '/auth/google/callback',
       scope: ['email', 'profile'],
     });
   }
@@ -23,7 +25,10 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   ): void {
     const email = profile.emails?.[0]?.value;
     if (!email) {
-      done(new Error('Google profile did not include an email address'), undefined);
+      done(
+        new Error('Google profile did not include an email address'),
+        undefined,
+      );
       return;
     }
     const oauthProfile: OAuthProfile = {

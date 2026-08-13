@@ -31,7 +31,9 @@ describe('DetectionRegistryService', () => {
   });
 
   it('resolves a registered rule implementation by key', () => {
-    expect(service.getRuleImplementation(SUSPICIOUS_LOGIN_KEY)).toBeInstanceOf(SuspiciousLoginRule);
+    expect(service.getRuleImplementation(SUSPICIOUS_LOGIN_KEY)).toBeInstanceOf(
+      SuspiciousLoginRule,
+    );
   });
 
   it('throws for an unregistered detection key rather than returning undefined', () => {
@@ -57,7 +59,10 @@ describe('DetectionRegistryService', () => {
       },
     ]);
 
-    const applicable = await service.findApplicable('tenant-a', 'AUTHENTICATION');
+    const applicable = await service.findApplicable(
+      'tenant-a',
+      'AUTHENTICATION',
+    );
 
     expect(applicable.map((v) => v.id)).toEqual(['v1']);
   });
@@ -68,13 +73,19 @@ describe('DetectionRegistryService', () => {
       detection_definition_id: 'def-1',
       status: 'DRAFT',
     });
-    prismaMock.detectionVersion.findFirst.mockResolvedValue({ id: 'v1', status: 'PUBLISHED' });
+    prismaMock.detectionVersion.findFirst.mockResolvedValue({
+      id: 'v1',
+      status: 'PUBLISHED',
+    });
 
     await expect(service.publish('v2')).rejects.toThrow(ConflictException);
   });
 
   it('rejects re-publishing a version that is already PUBLISHED (immutability)', async () => {
-    prismaMock.detectionVersion.findUniqueOrThrow.mockResolvedValue({ id: 'v1', status: 'PUBLISHED' });
+    prismaMock.detectionVersion.findUniqueOrThrow.mockResolvedValue({
+      id: 'v1',
+      status: 'PUBLISHED',
+    });
 
     await expect(service.publish('v1')).rejects.toThrow(ConflictException);
   });

@@ -1,5 +1,17 @@
-import { Injectable, Logger, NotFoundException, BadRequestException, ConflictException } from '@nestjs/common';
-import { IsBoolean, IsIn, IsISO8601, IsOptional, IsString } from 'class-validator';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+  ConflictException,
+} from '@nestjs/common';
+import {
+  IsBoolean,
+  IsIn,
+  IsISO8601,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SectorPackService } from '../sector-packs/sector-pack.service';
 import { CommercialKillSwitchService } from '../kill-switch/commercial-kill-switch.service';
@@ -30,7 +42,13 @@ const BILLING_CLASSIFICATIONS = [
   'PARTNER_MANAGED',
 ] as const;
 /** Part 1: never accidentally billable. */
-export const NON_COMMERCIAL_CLASSIFICATIONS = ['INTERNAL', 'DEMO', 'SANDBOX', 'EVALUATION', 'PILOT'];
+export const NON_COMMERCIAL_CLASSIFICATIONS = [
+  'INTERNAL',
+  'DEMO',
+  'SANDBOX',
+  'EVALUATION',
+  'PILOT',
+];
 
 export class CreateCommercialAccountDto {
   @IsString()
@@ -76,8 +94,17 @@ export class GrantEntitlementDto {
   @IsString()
   tenantId!: string;
 
-  @IsIn(['MANAGED_DEFENSE', 'CONTINUOUS_ASSURANCE', 'EXPOSURE_MANAGEMENT', 'AI_SECURITY'])
-  offerType!: 'MANAGED_DEFENSE' | 'CONTINUOUS_ASSURANCE' | 'EXPOSURE_MANAGEMENT' | 'AI_SECURITY';
+  @IsIn([
+    'MANAGED_DEFENSE',
+    'CONTINUOUS_ASSURANCE',
+    'EXPOSURE_MANAGEMENT',
+    'AI_SECURITY',
+  ])
+  offerType!:
+    | 'MANAGED_DEFENSE'
+    | 'CONTINUOUS_ASSURANCE'
+    | 'EXPOSURE_MANAGEMENT'
+    | 'AI_SECURITY';
 
   @IsOptional()
   @IsISO8601()
@@ -115,7 +142,9 @@ export class CommercialEntitlementService {
    */
   async createCommercialAccount(dto: CreateCommercialAccountDto) {
     const classification = dto.billingClassification || 'COMMERCIAL_DIRECT';
-    this.logger.log(`Creating Commercial Account '${dto.name}' with classification ${classification}`);
+    this.logger.log(
+      `Creating Commercial Account '${dto.name}' with classification ${classification}`,
+    );
 
     // Part 1: the account itself may be created before its legal entity is
     // finalized (e.g. during sales cycle). The hard gate is enforced at
@@ -148,7 +177,9 @@ export class CommercialEntitlementService {
     });
 
     if (!account) {
-      throw new NotFoundException(`Commercial Account '${accountId}' not found`);
+      throw new NotFoundException(
+        `Commercial Account '${accountId}' not found`,
+      );
     }
 
     return account;
@@ -160,9 +191,15 @@ export class CommercialEntitlementService {
   async grantEntitlement(dto: GrantEntitlementDto) {
     await this.killSwitchService.assertNotBlocked('ENTITLEMENT_EXPANSION');
     await this.getCommercialAccountById(dto.commercialAccountId);
-    await this.assertNoSourceCollision(dto.tenantId, dto.offerType, dto.commercialAccountId);
+    await this.assertNoSourceCollision(
+      dto.tenantId,
+      dto.offerType,
+      dto.commercialAccountId,
+    );
 
-    this.logger.log(`Granting '${dto.offerType}' entitlement to tenant ${dto.tenantId}`);
+    this.logger.log(
+      `Granting '${dto.offerType}' entitlement to tenant ${dto.tenantId}`,
+    );
 
     return this.prisma.entitlement.create({
       data: {
@@ -184,7 +221,11 @@ export class CommercialEntitlementService {
    * subscription activated over an existing Zoiko One bundle) is a
    * collision, unless an approved split-billing exception is on record.
    */
-  async assertNoSourceCollision(tenantId: string, offerType: string, newAccountId: string) {
+  async assertNoSourceCollision(
+    tenantId: string,
+    offerType: string,
+    newAccountId: string,
+  ) {
     const newAccount = await this.getCommercialAccountById(newAccountId);
 
     const collidingEntitlements = await this.prisma.entitlement.findMany({
@@ -206,7 +247,11 @@ export class CommercialEntitlementService {
 
     const exceptionKey = `${tenantId}:${offerType}`;
     const approvedSplit = await this.prisma.commercialApproval.findFirst({
-      where: { object_type: 'ZOIKO_ONE_SPLIT_BILLING', object_id: exceptionKey, status: 'APPROVED' },
+      where: {
+        object_type: 'ZOIKO_ONE_SPLIT_BILLING',
+        object_id: exceptionKey,
+        status: 'APPROVED',
+      },
     });
     if (approvedSplit) {
       return;
@@ -223,7 +268,10 @@ export class CommercialEntitlementService {
    * Evaluate if a tenant has active commercial entitlement for an offer.
    * Per ADR-06 & ZS-COM-BILL-001: Fails closed (returns false) if unapproved or expired.
    */
-  async checkEntitlement(tenantId: string, offerType: string): Promise<boolean> {
+  async checkEntitlement(
+    tenantId: string,
+    offerType: string,
+  ): Promise<boolean> {
     const now = new Date();
 
     const activeEntitlement = await this.prisma.entitlement.findFirst({
@@ -238,12 +286,20 @@ export class CommercialEntitlementService {
     });
 
     if (!activeEntitlement) {
-      this.logger.warn(`Entitlement check FAILED CLOSED for tenant ${tenantId}, offer: ${offerType}`);
+      this.logger.warn(
+        `Entitlement check FAILED CLOSED for tenant ${tenantId}, offer: ${offerType}`,
+      );
       return false;
     }
 
-    if (['SUSPENDED', 'TERMINATED'].includes(activeEntitlement.commercialAccount.status)) {
-      this.logger.warn(`Commercial Account ${activeEntitlement.commercial_account_id} is ${activeEntitlement.commercialAccount.status}`);
+    if (
+      ['SUSPENDED', 'TERMINATED'].includes(
+        activeEntitlement.commercialAccount.status,
+      )
+    ) {
+      this.logger.warn(
+        `Commercial Account ${activeEntitlement.commercial_account_id} is ${activeEntitlement.commercialAccount.status}`,
+      );
       return false;
     }
 
@@ -258,13 +314,15 @@ export class CommercialEntitlementService {
       where: { claim_key: dto.claimKey },
       update: {
         approved_wording: dto.approvedWording,
-        requires_evidence: dto.requiresEvidence !== undefined ? dto.requiresEvidence : true,
+        requires_evidence:
+          dto.requiresEvidence !== undefined ? dto.requiresEvidence : true,
         status: 'APPROVED',
       },
       create: {
         claim_key: dto.claimKey,
         approved_wording: dto.approvedWording,
-        requires_evidence: dto.requiresEvidence !== undefined ? dto.requiresEvidence : true,
+        requires_evidence:
+          dto.requiresEvidence !== undefined ? dto.requiresEvidence : true,
         status: 'APPROVED',
       },
     });
@@ -304,8 +362,8 @@ export class CommercialEntitlementService {
       claimKey === 'CLAIM_24_7_SOC'
         ? 'MANAGED_DEFENSE'
         : claimKey === 'CLAIM_AUDIT_READY'
-        ? 'CONTINUOUS_ASSURANCE'
-        : 'MANAGED_DEFENSE';
+          ? 'CONTINUOUS_ASSURANCE'
+          : 'MANAGED_DEFENSE';
 
     const hasEntitlement = await this.checkEntitlement(tenantId, requiredOffer);
 
@@ -318,7 +376,10 @@ export class CommercialEntitlementService {
     }
 
     if (sectorPackKey) {
-      const packAvailable = await this.sectorPackService.isAvailable(sectorPackKey, region || 'GLOBAL');
+      const packAvailable = await this.sectorPackService.isAvailable(
+        sectorPackKey,
+        region || 'GLOBAL',
+      );
       if (!packAvailable) {
         return {
           eligible: false,
@@ -340,11 +401,18 @@ export class CommercialEntitlementService {
    * 409 INVALID_STATE_TRANSITION instead of writing an arbitrary status.
    */
   async updateEntitlementStatus(entitlementId: string, targetStatus: string) {
-    const entitlement = await this.prisma.entitlement.findUnique({ where: { id: entitlementId } });
+    const entitlement = await this.prisma.entitlement.findUnique({
+      where: { id: entitlementId },
+    });
     if (!entitlement) {
       throw new NotFoundException(`Entitlement '${entitlementId}' not found`);
     }
-    assertTransition(ENTITLEMENT_TRANSITIONS, entitlement.status, targetStatus, 'entitlement');
+    assertTransition(
+      ENTITLEMENT_TRANSITIONS,
+      entitlement.status,
+      targetStatus,
+      'entitlement',
+    );
 
     return this.prisma.entitlement.update({
       where: { id: entitlementId },

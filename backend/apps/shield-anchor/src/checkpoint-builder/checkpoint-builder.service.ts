@@ -43,10 +43,16 @@ export class CheckpointBuilderService {
     const head = await this.tenantAnchorHeadService.readHead(input.tenantId);
     const anchorSequence = head.last_anchor_sequence + 1;
 
-    const leaves = [input.ledgerHeadHash, input.manifestCoreHash].filter((v): v is string => !!v);
+    const leaves = [input.ledgerHeadHash, input.manifestCoreHash].filter(
+      (v): v is string => !!v,
+    );
     const merkleResult = this.merkleTreeService.build(leaves);
     const signResult = await this.signer.sign(merkleResult.root);
-    await this.signingKeyService.recordIfNew(signResult.signingKeyId, signResult.algorithm, signResult.publicKey);
+    await this.signingKeyService.recordIfNew(
+      signResult.signingKeyId,
+      signResult.algorithm,
+      signResult.publicKey,
+    );
 
     const checkpointId = randomUUID();
 
@@ -61,7 +67,9 @@ export class CheckpointBuilderService {
         },
       });
       if (cas.count !== 1) {
-        throw new ConflictException(`TenantAnchorHead for '${input.tenantId}' was concurrently updated — retry, do not fork`);
+        throw new ConflictException(
+          `TenantAnchorHead for '${input.tenantId}' was concurrently updated — retry, do not fork`,
+        );
       }
 
       await tx.checkpoint.create({
@@ -86,10 +94,17 @@ export class CheckpointBuilderService {
       });
     });
 
-    const witnessOutcome = await this.witnessService.collectReceipts(checkpointId, merkleResult.root);
+    const witnessOutcome = await this.witnessService.collectReceipts(
+      checkpointId,
+      merkleResult.root,
+    );
     const checkpoint = await this.prisma.checkpoint.update({
       where: { id: checkpointId },
-      data: { witness_assurance_state: witnessOutcome.witnessAssuranceState, status: 'PUBLISHED', published_at: new Date() },
+      data: {
+        witness_assurance_state: witnessOutcome.witnessAssuranceState,
+        status: 'PUBLISHED',
+        published_at: new Date(),
+      },
     });
 
     const proofsByLeafIndex: Record<string, unknown> = {};
@@ -102,7 +117,12 @@ export class CheckpointBuilderService {
       merkleRoot: merkleResult.root,
       proofsByLeafIndex,
       signature: signResult.signature,
-      signingKey: { keyId: signResult.signingKeyId, publicKey: signResult.publicKey, algorithm: signResult.algorithm, status: 'ACTIVE' },
+      signingKey: {
+        keyId: signResult.signingKeyId,
+        publicKey: signResult.publicKey,
+        algorithm: signResult.algorithm,
+        status: 'ACTIVE',
+      },
       witnessReceipts: witnessOutcome.receipts.map((r) => ({
         witnessId: r.witness_id,
         witnessType: r.witness_type,

@@ -6,7 +6,8 @@ export type IdentityType =
   | 'MANAGED_IDENTITY'
   | 'UNKNOWN';
 
-export type ResolutionDecisionType = 'MATCHED' | 'CREATED' | 'AMBIGUOUS' | 'UNRESOLVED' | 'REJECTED';
+export type ResolutionDecisionType =
+  'MATCHED' | 'CREATED' | 'AMBIGUOUS' | 'UNRESOLVED' | 'REJECTED';
 
 export interface ResolveIdentityInput {
   tenantId: string;

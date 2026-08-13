@@ -36,7 +36,10 @@ describe('ControlTestingController', () => {
     const mockRun = { id: 'run-1', result: 'PASS' };
     serviceMock.evaluateControlObjective.mockResolvedValue(mockRun);
 
-    const response = await controller.evaluateControlObjective('ctrl-1');
+    const response = await controller.evaluateControlObjective(
+      'tenant-1',
+      'ctrl-1',
+    );
     expect(response.statusCode).toBe(HttpStatus.OK);
     expect(response.data).toBe(mockRun);
   });

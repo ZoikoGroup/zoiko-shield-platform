@@ -36,7 +36,9 @@ describe('AssetIdentityContextService', () => {
       ],
     }).compile();
 
-    service = module.get<AssetIdentityContextService>(AssetIdentityContextService);
+    service = module.get<AssetIdentityContextService>(
+      AssetIdentityContextService,
+    );
   });
 
   it('should create new asset if it does not exist', async () => {
@@ -104,9 +106,9 @@ describe('AssetIdentityContextService', () => {
   it('scopes asset detail lookup to the authenticated tenant', async () => {
     prismaMock.asset.findFirst.mockResolvedValue(null);
 
-    await expect(service.getAssetById('tenant-a', 'asset-from-tenant-b')).rejects.toThrow(
-      NotFoundException,
-    );
+    await expect(
+      service.getAssetById('tenant-a', 'asset-from-tenant-b'),
+    ).rejects.toThrow(NotFoundException);
     expect(prismaMock.asset.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
         where: { id: 'asset-from-tenant-b', tenant_id: 'tenant-a' },

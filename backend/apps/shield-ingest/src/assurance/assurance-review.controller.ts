@@ -67,7 +67,8 @@ export class AssuranceReviewController {
     @Query('tenantId') queryTenantId?: string,
   ) {
     const tenantId = requireTenantId(headerTenantId, queryTenantId);
-    const summary = await this.assuranceService.getAssurancePostureSummary(tenantId);
+    const summary =
+      await this.assuranceService.getAssurancePostureSummary(tenantId);
     return {
       statusCode: HttpStatus.OK,
       data: summary,
@@ -105,7 +106,10 @@ export class AssuranceReviewController {
     @Query('assuranceReviewId') reviewId?: string,
   ) {
     const tenantId = requireTenantId(headerTenantId, queryTenantId);
-    const reflections = await this.assuranceService.getVCISOReflections(tenantId, reviewId);
+    const reflections = await this.assuranceService.getVCISOReflections(
+      tenantId,
+      reviewId,
+    );
     return {
       statusCode: HttpStatus.OK,
       data: reflections,

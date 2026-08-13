@@ -1,5 +1,9 @@
 import { Injectable } from '@nestjs/common';
-import { EvaluatorInput, EvaluatorOutput, EvaluatorRunner } from '../evaluator-runner.interface';
+import {
+  EvaluatorInput,
+  EvaluatorOutput,
+  EvaluatorRunner,
+} from '../evaluator-runner.interface';
 
 /**
  * Demo evaluator matching the demo control exactly ("Privileged identities
@@ -13,24 +17,42 @@ export class MfaCoverageEvaluator implements EvaluatorRunner {
   readonly key = 'mfa-coverage-evaluator';
 
   async run(input: EvaluatorInput): Promise<EvaluatorOutput> {
-    const expectedPopulation = (input.configuration.expectedPopulation as string[]) ?? [];
+    const expectedPopulation =
+      (input.configuration.expectedPopulation as string[]) ?? [];
     if (expectedPopulation.length === 0) {
-      return { result: 'UNKNOWN', rationale: 'No expected population configured', limitations: ['expectedPopulation is empty'] };
+      return {
+        result: 'UNKNOWN',
+        rationale: 'No expected population configured',
+        limitations: ['expectedPopulation is empty'],
+      };
     }
 
     const mfaEnabledIdentities = new Set(
-      input.evidenceRecords.filter((r) => r.content?.mfaEnabled === true).map((r) => String(r.content.identityId)),
+      input.evidenceRecords
+        .filter((r) => r.content?.mfaEnabled === true)
+        .map((r) => String(r.content.identityId)),
     );
     const mfaDisabledIdentities = new Set(
-      input.evidenceRecords.filter((r) => r.content?.mfaEnabled === false).map((r) => String(r.content.identityId)),
+      input.evidenceRecords
+        .filter((r) => r.content?.mfaEnabled === false)
+        .map((r) => String(r.content.identityId)),
     );
 
-    const missing = expectedPopulation.filter((id) => !mfaEnabledIdentities.has(id) && !mfaDisabledIdentities.has(id));
-    const nonCompliant = expectedPopulation.filter((id) => mfaDisabledIdentities.has(id));
-    const compliant = expectedPopulation.filter((id) => mfaEnabledIdentities.has(id));
+    const missing = expectedPopulation.filter(
+      (id) => !mfaEnabledIdentities.has(id) && !mfaDisabledIdentities.has(id),
+    );
+    const nonCompliant = expectedPopulation.filter((id) =>
+      mfaDisabledIdentities.has(id),
+    );
+    const compliant = expectedPopulation.filter((id) =>
+      mfaEnabledIdentities.has(id),
+    );
 
     const limitations: string[] = [];
-    if (missing.length > 0) limitations.push(`No MFA evidence found for ${missing.length} of ${expectedPopulation.length} identities: ${missing.join(', ')}`);
+    if (missing.length > 0)
+      limitations.push(
+        `No MFA evidence found for ${missing.length} of ${expectedPopulation.length} identities: ${missing.join(', ')}`,
+      );
 
     if (nonCompliant.length > 0) {
       return {

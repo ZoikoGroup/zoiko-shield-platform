@@ -10,7 +10,10 @@ import { Injectable, Logger } from '@nestjs/common';
 export class RollbackService {
   private readonly logger = new Logger(RollbackService.name);
 
-  describeRollback(params: { reversible: boolean; rollbackActionType?: string | null }): { available: boolean; rollbackActionType?: string } {
+  describeRollback(params: {
+    reversible: boolean;
+    rollbackActionType?: string | null;
+  }): { available: boolean; rollbackActionType?: string } {
     if (!params.reversible || !params.rollbackActionType) {
       return { available: false };
     }

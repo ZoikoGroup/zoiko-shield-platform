@@ -1,5 +1,18 @@
-import { ConflictException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { IsIn, IsISO8601, IsNumber, IsObject, IsOptional, IsString } from 'class-validator';
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  IsIn,
+  IsISO8601,
+  IsNumber,
+  IsObject,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { assertTransition } from '../commerce/state-machine.util';
 
@@ -107,7 +120,10 @@ export class CommercialApprovalService {
           event_type: 'commercial_approval.requested',
           tenant_id: dto.objectType,
           actor: dto.requestedBy,
-          payload: JSON.stringify({ approvalId: approval.id, changeType: dto.changeType }),
+          payload: JSON.stringify({
+            approvalId: approval.id,
+            changeType: dto.changeType,
+          }),
           idempotency_key: `commercial-approval-requested-${approval.id}`,
         },
       });
@@ -117,9 +133,13 @@ export class CommercialApprovalService {
   }
 
   async getApprovalById(approvalId: string) {
-    const approval = await this.prisma.commercialApproval.findUnique({ where: { id: approvalId } });
+    const approval = await this.prisma.commercialApproval.findUnique({
+      where: { id: approvalId },
+    });
     if (!approval) {
-      throw new NotFoundException(`Commercial approval '${approvalId}' not found`);
+      throw new NotFoundException(
+        `Commercial approval '${approvalId}' not found`,
+      );
     }
     return approval;
   }
@@ -131,7 +151,9 @@ export class CommercialApprovalService {
       orderBy: { requested_at: 'desc' },
     });
     if (!approval) {
-      throw new NotFoundException(`No commercial approval found for ${objectType}/${objectId}`);
+      throw new NotFoundException(
+        `No commercial approval found for ${objectType}/${objectId}`,
+      );
     }
     return approval;
   }
@@ -141,9 +163,20 @@ export class CommercialApprovalService {
    * only by a background sweeper — a PENDING_APPROVAL past its expires_at
    * is flipped to EXPIRED in place before the caller's action is evaluated.
    */
-  private async assertNotExpired(approval: { id: string; status: string; expires_at: Date | null }) {
-    if (approval.status === 'PENDING_APPROVAL' && approval.expires_at && approval.expires_at < new Date()) {
-      await this.prisma.commercialApproval.update({ where: { id: approval.id }, data: { status: 'EXPIRED' } });
+  private async assertNotExpired(approval: {
+    id: string;
+    status: string;
+    expires_at: Date | null;
+  }) {
+    if (
+      approval.status === 'PENDING_APPROVAL' &&
+      approval.expires_at &&
+      approval.expires_at < new Date()
+    ) {
+      await this.prisma.commercialApproval.update({
+        where: { id: approval.id },
+        data: { status: 'EXPIRED' },
+      });
       throw new ConflictException({
         statusCode: 409,
         error: 'COMMERCIAL_APPROVAL_EXPIRED',
@@ -171,7 +204,12 @@ export class CommercialApprovalService {
       );
     }
 
-    assertTransition(ALLOWED_TRANSITIONS, approval.status, decision, 'commercial approval');
+    assertTransition(
+      ALLOWED_TRANSITIONS,
+      approval.status,
+      decision,
+      'commercial approval',
+    );
 
     return this.prisma.$transaction(async (tx) => {
       const updated = await tx.commercialApproval.update({
@@ -205,7 +243,12 @@ export class CommercialApprovalService {
    */
   async markApplied(approvalId: string) {
     const approval = await this.getApprovalById(approvalId);
-    assertTransition(ALLOWED_TRANSITIONS, approval.status, 'APPLIED', 'commercial approval');
+    assertTransition(
+      ALLOWED_TRANSITIONS,
+      approval.status,
+      'APPLIED',
+      'commercial approval',
+    );
 
     return this.prisma.commercialApproval.update({
       where: { id: approvalId },

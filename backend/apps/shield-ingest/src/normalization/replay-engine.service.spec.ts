@@ -48,6 +48,9 @@ describe('ReplayEngineService', () => {
 
     const result = await service.reprocessQuarantinedEvent('tenant-1', 'q-1');
     expect(result.status).toBe('NORMALIZED');
-    expect(normServiceMock.reprocessQuarantinedEvent).toHaveBeenCalledWith('tenant-1', 'q-1');
+    expect(normServiceMock.reprocessQuarantinedEvent).toHaveBeenCalledWith(
+      'tenant-1',
+      'q-1',
+    );
   });
 });

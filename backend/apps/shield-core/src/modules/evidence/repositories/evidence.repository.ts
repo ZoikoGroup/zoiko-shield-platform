@@ -10,6 +10,8 @@ export class EvidenceRepository {
   }
 
   findByTenantAndId(tenantId: string, evidenceId: string) {
-    return this.prisma.evidenceRecord.findFirst({ where: { id: evidenceId, tenant_id: tenantId } });
+    return this.prisma.evidenceRecord.findFirst({
+      where: { id: evidenceId, tenant_id: tenantId },
+    });
   }
 }

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { OutboxService } from '../../outbox/outbox.service';
@@ -40,7 +44,12 @@ export class AuditPackageService {
         },
       }),
       this.prisma.outboxEvent.create({
-        data: this.outbox.build({ tenantId: input.tenantId, topic: CANONICAL_TOPICS.AUDIT_PACKAGE_CREATED, eventType: 'audit_package.created', payload: { packageId } }),
+        data: this.outbox.build({
+          tenantId: input.tenantId,
+          topic: CANONICAL_TOPICS.AUDIT_PACKAGE_CREATED,
+          eventType: 'audit_package.created',
+          payload: { packageId },
+        }),
       }),
     ]);
     return pkg;
@@ -50,13 +59,17 @@ export class AuditPackageService {
   async assertMutable(tenantId: string, packageId: string) {
     const pkg = await this.assertTenantOwnership(tenantId, packageId);
     if (pkg.status === 'FROZEN' || pkg.status === 'SUPERSEDED') {
-      throw new ForbiddenException(`AuditPackage '${packageId}' is ${pkg.status} and cannot be mutated — use supersede() to correct it`);
+      throw new ForbiddenException(
+        `AuditPackage '${packageId}' is ${pkg.status} and cannot be mutated — use supersede() to correct it`,
+      );
     }
     return pkg;
   }
 
   async assertTenantOwnership(tenantId: string, packageId: string) {
-    const pkg = await this.prisma.auditPackage.findFirst({ where: { id: packageId, tenant_id: tenantId } });
+    const pkg = await this.prisma.auditPackage.findFirst({
+      where: { id: packageId, tenant_id: tenantId },
+    });
     if (!pkg) {
       throw new NotFoundException(`AuditPackage '${packageId}' not found`);
     }
@@ -64,6 +77,9 @@ export class AuditPackageService {
   }
 
   async list(tenantId: string) {
-    return this.prisma.auditPackage.findMany({ where: { tenant_id: tenantId }, orderBy: { created_at: 'desc' } });
+    return this.prisma.auditPackage.findMany({
+      where: { tenant_id: tenantId },
+      orderBy: { created_at: 'desc' },
+    });
   }
 }

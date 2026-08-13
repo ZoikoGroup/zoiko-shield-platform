@@ -42,7 +42,8 @@ export class SessionService {
       ipAddress: metadata.ipAddress,
       userAgent: metadata.userAgent,
       expiresAt: new Date(now + REFRESH_TOKEN_TTL_MS),
-      absoluteExpiresAt: absoluteExpiresAt ?? new Date(now + ABSOLUTE_SESSION_TTL_MS),
+      absoluteExpiresAt:
+        absoluteExpiresAt ?? new Date(now + ABSOLUTE_SESSION_TTL_MS),
       revokedAt: null,
       revokedReason: null,
     });
@@ -56,23 +57,37 @@ export class SessionService {
 
   /** Any session matching this token hash, active or not — used to detect refresh-token reuse. */
   findByTokenHash(refreshToken: string): Promise<Session | null> {
-    return this.sessionRepository.findOne({ where: { refreshTokenHash: this.hashToken(refreshToken) } });
+    return this.sessionRepository.findOne({
+      where: { refreshTokenHash: this.hashToken(refreshToken) },
+    });
   }
 
   async findActiveByToken(refreshToken: string): Promise<Session | null> {
     const session = await this.findByTokenHash(refreshToken);
-    if (!session || session.revokedAt || session.expiresAt < new Date() || session.absoluteExpiresAt < new Date()) {
+    if (
+      !session ||
+      session.revokedAt ||
+      session.expiresAt < new Date() ||
+      session.absoluteExpiresAt < new Date()
+    ) {
       return null;
     }
     return session;
   }
 
   isActive(session: Session): boolean {
-    return !session.revokedAt && session.expiresAt >= new Date() && session.absoluteExpiresAt >= new Date();
+    return (
+      !session.revokedAt &&
+      session.expiresAt >= new Date() &&
+      session.absoluteExpiresAt >= new Date()
+    );
   }
 
   async revoke(sessionId: string, reason = 'LOGOUT'): Promise<void> {
-    await this.sessionRepository.update({ id: sessionId }, { revokedAt: new Date(), revokedReason: reason });
+    await this.sessionRepository.update(
+      { id: sessionId },
+      { revokedAt: new Date(), revokedReason: reason },
+    );
   }
 
   async revokeFamily(familyId: string, reason: string): Promise<void> {
@@ -82,7 +97,10 @@ export class SessionService {
     );
   }
 
-  async revokeAllForPrincipal(principalId: string, reason = 'LOGOUT_ALL'): Promise<void> {
+  async revokeAllForPrincipal(
+    principalId: string,
+    reason = 'LOGOUT_ALL',
+  ): Promise<void> {
     await this.sessionRepository.update(
       { principalId, revokedAt: IsNull() },
       { revokedAt: new Date(), revokedReason: reason },

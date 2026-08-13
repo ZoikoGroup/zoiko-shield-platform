@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Headers, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { ControlObjectiveService } from './objectives/control-objective.service';
 import { ControlImplementationService } from './implementations/control-implementation.service';
 import { ControlScopeService } from './scopes/control-scope.service';
@@ -37,7 +46,14 @@ export class ControlsController {
     @Headers('x-tenant-id') tenantId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Body()
-    body: { controlObjectiveId: string; environmentId?: string; title: string; description: string; ownerId: string; implementationType: string },
+    body: {
+      controlObjectiveId: string;
+      environmentId?: string;
+      title: string;
+      description: string;
+      ownerId: string;
+      implementationType: string;
+    },
   ) {
     return this.controlImplementationService.create({
       tenantId: requireTenantId(tenantId),
@@ -71,7 +87,15 @@ export class ControlsController {
   async addScope(
     @Headers('x-tenant-id') tenantId: string,
     @Param('id') id: string,
-    @Body() body: { legalEntityId?: string; environmentId?: string; businessUnitId?: string; assetScope?: string; identityScope?: string; expiresAt?: string },
+    @Body()
+    body: {
+      legalEntityId?: string;
+      environmentId?: string;
+      businessUnitId?: string;
+      assetScope?: string;
+      identityScope?: string;
+      expiresAt?: string;
+    },
   ) {
     return this.controlScopeService.create({
       tenantId: requireTenantId(tenantId),

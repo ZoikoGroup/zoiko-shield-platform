@@ -2,7 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConnectorState } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConnectorError } from '../core/connector-errors';
-import { KafkaProducerService, CANONICAL_TOPICS } from '../../kafka/kafka.producer.service';
+import {
+  KafkaProducerService,
+  CANONICAL_TOPICS,
+} from '../../kafka/kafka.producer.service';
 
 @Injectable()
 export class ConnectorHealthService {
@@ -21,7 +24,8 @@ export class ConnectorHealthService {
   ) {
     this.logger.debug(`Updating health for instance ${instanceId} to ${state}`);
 
-    const isSuccess = state === 'HEALTHY' || state === 'CONNECTED' || state === 'SYNCING';
+    const isSuccess =
+      state === 'HEALTHY' || state === 'CONNECTED' || state === 'SYNCING';
 
     await this.prisma.connectorHealthStatus.upsert({
       where: { instanceId },
@@ -54,21 +58,36 @@ export class ConnectorHealthService {
   }
 
   async recordSuccessfulSync(instanceId: string) {
-    await this.prisma.connectorHealthStatus.update({
-      where: { instanceId },
-      data: { lastSuccessfulSyncAt: new Date() },
-    }).catch(() => undefined);
+    await this.prisma.connectorHealthStatus
+      .update({
+        where: { instanceId },
+        data: { lastSuccessfulSyncAt: new Date() },
+      })
+      .catch(() => undefined);
   }
 
-  async updatePermissionStatus(instanceId: string, tenantId: string, status: 'OK' | 'DEGRADED') {
+  async updatePermissionStatus(
+    instanceId: string,
+    tenantId: string,
+    status: 'OK' | 'DEGRADED',
+  ) {
     await this.prisma.connectorHealthStatus.upsert({
       where: { instanceId },
       update: { permissionStatus: status },
-      create: { tenant_id: tenantId, instanceId, state: 'CONNECTED', permissionStatus: status },
+      create: {
+        tenant_id: tenantId,
+        instanceId,
+        state: 'CONNECTED',
+        permissionStatus: status,
+      },
     });
   }
 
-  async handleConnectorError(instanceId: string, tenantId: string, error: Error) {
+  async handleConnectorError(
+    instanceId: string,
+    tenantId: string,
+    error: Error,
+  ) {
     if (error instanceof ConnectorError) {
       this.logger.warn(
         `Connector Error [${error.errorCode}] for instance ${instanceId}: ${error.message}`,
@@ -77,13 +96,16 @@ export class ConnectorHealthService {
       let newState: ConnectorState = 'DEGRADED';
       if (error.errorCode === 'AUTH_FAILED') newState = 'AUTHENTICATION_FAILED';
       if (error.errorCode === 'RATE_LIMITED') newState = 'RATE_LIMITED';
-      if (error.errorCode === 'PERMISSION_REVOKED') newState = 'PERMISSION_REVOKED';
+      if (error.errorCode === 'PERMISSION_REVOKED')
+        newState = 'PERMISSION_REVOKED';
 
       await this.updateHealth(instanceId, tenantId, newState, error.message);
-      await this.prisma.connectorHealthStatus.update({
-        where: { instanceId },
-        data: { lastErrorCode: error.errorCode },
-      }).catch(() => undefined);
+      await this.prisma.connectorHealthStatus
+        .update({
+          where: { instanceId },
+          data: { lastErrorCode: error.errorCode },
+        })
+        .catch(() => undefined);
 
       await this.prisma.connectorError.create({
         data: {
@@ -94,8 +116,15 @@ export class ConnectorHealthService {
         },
       });
     } else {
-      this.logger.error(`Unknown error for instance ${instanceId}: ${error.message}`);
-      await this.updateHealth(instanceId, tenantId, 'DEGRADED', 'Unknown error occurred');
+      this.logger.error(
+        `Unknown error for instance ${instanceId}: ${error.message}`,
+      );
+      await this.updateHealth(
+        instanceId,
+        tenantId,
+        'DEGRADED',
+        'Unknown error occurred',
+      );
     }
   }
 }

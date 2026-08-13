@@ -1,4 +1,9 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
+import {
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+  Injectable,
+} from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthorizationService } from '../authorization.service';
 import { PLATFORM_PERMISSIONS_KEY } from '../decorators/require-platform-permissions.decorator';
@@ -27,11 +32,14 @@ export class PlatformPermissionsGuard implements CanActivate {
       throw new ForbiddenException('Authentication required');
     }
 
-    const grantedPermissions = await this.authorizationService.getPermissionCodesForPrincipal(
-      PLATFORM_SCOPE,
-      user.id,
+    const grantedPermissions =
+      await this.authorizationService.getPermissionCodesForPrincipal(
+        PLATFORM_SCOPE,
+        user.id,
+      );
+    const hasAll = requiredPermissions.every((permission) =>
+      grantedPermissions.includes(permission),
     );
-    const hasAll = requiredPermissions.every((permission) => grantedPermissions.includes(permission));
     if (!hasAll) {
       throw new ForbiddenException('Insufficient platform permissions');
     }

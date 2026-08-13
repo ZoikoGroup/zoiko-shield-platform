@@ -1,4 +1,12 @@
-import { Body, Controller, Get, Headers, Param, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { OperationalReportService } from './operational/operational-report.service';
 import { ReportSnapshotService } from './snapshots/report-snapshot.service';
 import { ExecutiveReportService } from './executive/executive-report.service';
@@ -19,29 +27,43 @@ export class ReportingController {
 
   @Get('operational')
   async operational(@Headers('x-tenant-id') tenantId: string) {
-    return this.operationalReportService.getSecuritySummary(requireTenantId(tenantId));
+    return this.operationalReportService.getSecuritySummary(
+      requireTenantId(tenantId),
+    );
   }
 
   @Get('security')
   async security(@Headers('x-tenant-id') tenantId: string) {
-    return this.operationalReportService.getSecuritySummary(requireTenantId(tenantId));
+    return this.operationalReportService.getSecuritySummary(
+      requireTenantId(tenantId),
+    );
   }
 
   @Get('assurance')
   async assurance(@Headers('x-tenant-id') tenantId: string) {
-    return this.operationalReportService.getAssuranceSummary(requireTenantId(tenantId));
+    return this.operationalReportService.getAssuranceSummary(
+      requireTenantId(tenantId),
+    );
   }
 
   @Get('service-health')
   async serviceHealth(@Headers('x-tenant-id') tenantId: string) {
-    return this.operationalReportService.getServiceHealthSummary(requireTenantId(tenantId));
+    return this.operationalReportService.getServiceHealthSummary(
+      requireTenantId(tenantId),
+    );
   }
 
   @Post('snapshots')
   async createSnapshot(
     @Headers('x-tenant-id') tenantId: string,
     @CurrentUser() user: AuthenticatedUser,
-    @Body() body: { reportDefinitionId: string; periodStart: string; periodEnd: string; environmentId?: string },
+    @Body()
+    body: {
+      reportDefinitionId: string;
+      periodStart: string;
+      periodEnd: string;
+      environmentId?: string;
+    },
   ) {
     return this.reportSnapshotService.build({
       tenantId: requireTenantId(tenantId),
@@ -54,12 +76,25 @@ export class ReportingController {
   }
 
   @Get('snapshots/:snapshotId')
-  async getSnapshot(@Headers('x-tenant-id') tenantId: string, @Param('snapshotId') snapshotId: string) {
-    return this.reportSnapshotService.getById(requireTenantId(tenantId), snapshotId);
+  async getSnapshot(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('snapshotId') snapshotId: string,
+  ) {
+    return this.reportSnapshotService.getById(
+      requireTenantId(tenantId),
+      snapshotId,
+    );
   }
 
   @Post('executive/snapshots')
-  async createExecutiveSnapshot(@Headers('x-tenant-id') tenantId: string, @Body() body: { reportSnapshotId: string; reportingPeriod: string }) {
-    return this.executiveReportService.createFromSnapshot(requireTenantId(tenantId), body.reportSnapshotId, body.reportingPeriod);
+  async createExecutiveSnapshot(
+    @Headers('x-tenant-id') tenantId: string,
+    @Body() body: { reportSnapshotId: string; reportingPeriod: string },
+  ) {
+    return this.executiveReportService.createFromSnapshot(
+      requireTenantId(tenantId),
+      body.reportSnapshotId,
+      body.reportingPeriod,
+    );
   }
 }

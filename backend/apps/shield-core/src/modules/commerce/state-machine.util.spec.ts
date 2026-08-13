@@ -9,7 +9,9 @@ describe('assertTransition', () => {
   };
 
   it('allows a declared transition', () => {
-    expect(() => assertTransition(transitions, 'A', 'B', 'thing')).not.toThrow();
+    expect(() =>
+      assertTransition(transitions, 'A', 'B', 'thing'),
+    ).not.toThrow();
   });
 
   it('rejects an undeclared transition with 409 INVALID_STATE_TRANSITION', () => {
@@ -23,6 +25,8 @@ describe('assertTransition', () => {
   });
 
   it('rejects a transition from a terminal state', () => {
-    expect(() => assertTransition(transitions, 'C', 'A', 'thing')).toThrow(ConflictException);
+    expect(() => assertTransition(transitions, 'C', 'A', 'thing')).toThrow(
+      ConflictException,
+    );
   });
 });

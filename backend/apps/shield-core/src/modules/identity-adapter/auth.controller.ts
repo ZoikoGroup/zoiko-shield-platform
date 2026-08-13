@@ -73,7 +73,10 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { user, ...tokens } = await this.authService.verifyEmail(dto, sessionMetadataFrom(req));
+    const { user, ...tokens } = await this.authService.verifyEmail(
+      dto,
+      sessionMetadataFrom(req),
+    );
     setAuthCookies(res, tokens);
     return { user };
   }
@@ -86,13 +89,23 @@ export class AuthController {
 
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post(['password-recovery/request', 'forgot-password'])
-  requestPasswordRecovery(@Body() dto: PasswordRecoveryRequestDto, @Req() req: Request) {
-    return this.authService.requestPasswordRecovery(dto, sessionMetadataFrom(req));
+  requestPasswordRecovery(
+    @Body() dto: PasswordRecoveryRequestDto,
+    @Req() req: Request,
+  ) {
+    return this.authService.requestPasswordRecovery(
+      dto,
+      sessionMetadataFrom(req),
+    );
   }
 
   @Post('password-recovery/verify')
-  async verifyPasswordRecovery(@Body() dto: PasswordRecoveryVerifyDto, @Res({ passthrough: true }) res: Response) {
-    const { recoveryToken } = await this.authService.verifyPasswordRecovery(dto);
+  async verifyPasswordRecovery(
+    @Body() dto: PasswordRecoveryVerifyDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { recoveryToken } =
+      await this.authService.verifyPasswordRecovery(dto);
     setRecoveryGrantCookie(res, recoveryToken);
     return { message: 'Code verified. You may now set a new password.' };
   }
@@ -103,22 +116,38 @@ export class AuthController {
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const result = await this.authService.resetPasswordWithGrant(recoveryGrantFrom(req), dto);
+    const result = await this.authService.resetPasswordWithGrant(
+      recoveryGrantFrom(req),
+      dto,
+    );
     clearRecoveryGrantCookie(res);
     return result;
   }
 
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @Post('login')
-  async login(@Body() dto: LoginDto, @Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const { user, ...tokens } = await this.authService.login(dto, sessionMetadataFrom(req));
+  async login(
+    @Body() dto: LoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const { user, ...tokens } = await this.authService.login(
+      dto,
+      sessionMetadataFrom(req),
+    );
     setAuthCookies(res, tokens);
     return { user };
   }
 
   @Post('refresh')
-  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
-    const tokens = await this.authService.refresh(refreshTokenFrom(req), sessionMetadataFrom(req));
+  async refresh(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const tokens = await this.authService.refresh(
+      refreshTokenFrom(req),
+      sessionMetadataFrom(req),
+    );
     setAuthCookies(res, tokens);
     return { success: true };
   }
@@ -135,7 +164,10 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('logout-all')
-  async logoutAll(@CurrentUser() user: AuthenticatedUser, @Res({ passthrough: true }) res: Response) {
+  async logoutAll(
+    @CurrentUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     await this.authService.logoutAll(user.id);
     clearAuthCookies(res);
     return { success: true };
@@ -149,7 +181,10 @@ export class AuthController {
 
   @UseGuards(GoogleAuthGuard)
   @Get('google/callback')
-  async googleCallback(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  async googleCallback(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const profile = req.user as OAuthProfile;
     const { user, ...tokens } = await this.authService.loginWithOAuthAssertion(
       'GOOGLE',
@@ -175,7 +210,10 @@ export class AuthController {
 
   @UseGuards(MicrosoftAuthGuard)
   @Get('microsoft/callback')
-  async microsoftCallback(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
+  async microsoftCallback(
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
     const profile = req.user as OAuthProfile;
     const { user, ...tokens } = await this.authService.loginWithOAuthAssertion(
       'MICROSOFT',

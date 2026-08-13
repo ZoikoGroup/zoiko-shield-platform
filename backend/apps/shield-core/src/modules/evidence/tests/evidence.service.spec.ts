@@ -19,9 +19,13 @@ describe('EvidenceService', () => {
 
   beforeEach(async () => {
     prismaMock = {
-      $transaction: jest.fn().mockImplementation((callback: any) => callback(prismaMock)),
+      $transaction: jest
+        .fn()
+        .mockImplementation((callback: any) => callback(prismaMock)),
       evidenceRecord: {
-        create: jest.fn().mockImplementation(({ data }: any) => Promise.resolve(data)),
+        create: jest
+          .fn()
+          .mockImplementation(({ data }: any) => Promise.resolve(data)),
         findFirst: jest.fn().mockResolvedValue({ id: 'evidence-parent' }),
       },
       evidenceLineage: { create: jest.fn().mockResolvedValue({}) },
@@ -32,7 +36,9 @@ describe('EvidenceService', () => {
       putObject: jest.fn().mockResolvedValue(undefined),
       deleteObject: jest.fn().mockResolvedValue(undefined),
     };
-    ledgerMock = { appendInTransaction: jest.fn().mockResolvedValue({ sequence: 1 }) };
+    ledgerMock = {
+      appendInTransaction: jest.fn().mockResolvedValue({ sequence: 1 }),
+    };
     lineageMock = { link: jest.fn().mockResolvedValue(undefined) };
     evidenceRepoMock = { findById: jest.fn(), findByTenantAndId: jest.fn() };
 
@@ -95,14 +101,21 @@ describe('EvidenceService', () => {
   });
 
   it('rejects cross-tenant access — evidence belonging to tenant B is not returned to tenant A, even to answer not-found vs forbidden', async () => {
-    evidenceRepoMock.findById.mockResolvedValue({ id: 'evidence-1', tenant_id: 'tenant-b' });
+    evidenceRepoMock.findById.mockResolvedValue({
+      id: 'evidence-1',
+      tenant_id: 'tenant-b',
+    });
 
-    await expect(service.assertTenantOwnership('tenant-a', 'evidence-1')).rejects.toThrow(ForbiddenException);
+    await expect(
+      service.assertTenantOwnership('tenant-a', 'evidence-1'),
+    ).rejects.toThrow(ForbiddenException);
   });
 
   it('throws NotFoundException for evidence that does not exist at all', async () => {
     evidenceRepoMock.findById.mockResolvedValue(null);
 
-    await expect(service.assertTenantOwnership('tenant-a', 'missing')).rejects.toThrow(NotFoundException);
+    await expect(
+      service.assertTenantOwnership('tenant-a', 'missing'),
+    ).rejects.toThrow(NotFoundException);
   });
 });

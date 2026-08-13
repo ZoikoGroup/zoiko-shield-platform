@@ -22,7 +22,10 @@ export class ApiClientCredentialService {
   ) {}
 
   async rotate(tenantId: string, apiClientId: string) {
-    const current = await this.prisma.apiClientCredential.findFirst({ where: { api_client_id: apiClientId, status: 'ACTIVE' }, orderBy: { secret_version: 'desc' } });
+    const current = await this.prisma.apiClientCredential.findFirst({
+      where: { api_client_id: apiClientId, status: 'ACTIVE' },
+      orderBy: { secret_version: 'desc' },
+    });
     const nextVersion = (current?.secret_version ?? 0) + 1;
 
     const rawSecret = randomBytes(32).toString('base64url');
@@ -31,10 +34,33 @@ export class ApiClientCredentialService {
 
     const [credential] = await this.prisma.$transaction([
       this.prisma.apiClientCredential.create({
-        data: { id: randomUUID(), tenant_id: tenantId, api_client_id: apiClientId, secret_version: nextVersion, secret_hash: secretHash, fingerprint, status: 'ACTIVE', rotated_from_id: current?.id },
+        data: {
+          id: randomUUID(),
+          tenant_id: tenantId,
+          api_client_id: apiClientId,
+          secret_version: nextVersion,
+          secret_hash: secretHash,
+          fingerprint,
+          status: 'ACTIVE',
+          rotated_from_id: current?.id,
+        },
       }),
-      ...(current ? [this.prisma.apiClientCredential.update({ where: { id: current.id }, data: { status: 'RETIRING' } })] : []),
-      this.prisma.outboxEvent.create({ data: this.outbox.build({ tenantId, topic: CANONICAL_TOPICS.API_CLIENT_CREDENTIAL_ROTATED, eventType: 'api_client.credential.rotated', payload: { apiClientId, newVersion: nextVersion } }) }),
+      ...(current
+        ? [
+            this.prisma.apiClientCredential.update({
+              where: { id: current.id },
+              data: { status: 'RETIRING' },
+            }),
+          ]
+        : []),
+      this.prisma.outboxEvent.create({
+        data: this.outbox.build({
+          tenantId,
+          topic: CANONICAL_TOPICS.API_CLIENT_CREDENTIAL_ROTATED,
+          eventType: 'api_client.credential.rotated',
+          payload: { apiClientId, newVersion: nextVersion },
+        }),
+      }),
     ]);
 
     return { credential, rawClientSecret: rawSecret };
@@ -42,7 +68,11 @@ export class ApiClientCredentialService {
 
   async revokeRetired(tenantId: string, apiClientId: string) {
     return this.prisma.apiClientCredential.updateMany({
-      where: { tenant_id: tenantId, api_client_id: apiClientId, status: 'RETIRING' },
+      where: {
+        tenant_id: tenantId,
+        api_client_id: apiClientId,
+        status: 'RETIRING',
+      },
       data: { status: 'REVOKED', revoked_at: new Date() },
     });
   }

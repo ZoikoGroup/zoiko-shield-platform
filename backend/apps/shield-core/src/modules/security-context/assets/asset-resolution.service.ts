@@ -38,7 +38,8 @@ export class AssetResolutionService {
         resolvedEntityId: existingAlias.asset_id,
         decision: 'MATCHED',
         confidence: 1.0,
-        reason: 'Exact trusted alias match on (tenant, sourceSystem, sourceAccountId, externalType, externalId)',
+        reason:
+          'Exact trusted alias match on (tenant, sourceSystem, sourceAccountId, externalType, externalId)',
       });
       return { assetId: existingAlias.asset_id, decision: 'MATCHED' };
     }
@@ -70,7 +71,8 @@ export class AssetResolutionService {
       resolvedEntityId: asset.id,
       decision: 'CREATED',
       confidence: 1.0,
-      reason: 'No existing alias for this (tenant, sourceSystem, externalType, externalId) — created new canonical asset',
+      reason:
+        'No existing alias for this (tenant, sourceSystem, externalType, externalId) — created new canonical asset',
     });
 
     this.logger.log(`Created asset ${asset.id} for tenant ${input.tenantId}`);

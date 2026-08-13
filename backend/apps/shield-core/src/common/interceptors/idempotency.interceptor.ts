@@ -13,12 +13,17 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class IdempotencyInterceptor implements NestInterceptor {
   constructor(private readonly prisma: PrismaService) {}
 
-  async intercept(context: ExecutionContext, next: CallHandler): Promise<Observable<any>> {
+  async intercept(
+    context: ExecutionContext,
+    next: CallHandler,
+  ): Promise<Observable<any>> {
     const req = context.switchToHttp().getRequest();
     const idempotencyKey = req.headers['idempotency-key'];
 
     if (!idempotencyKey) {
-      throw new BadRequestException("Header 'idempotency-key' is required for commercial mutation endpoints");
+      throw new BadRequestException(
+        "Header 'idempotency-key' is required for commercial mutation endpoints",
+      );
     }
 
     const existingEvent = await this.prisma.commercialEvent.findUnique({
@@ -30,7 +35,11 @@ export class IdempotencyInterceptor implements NestInterceptor {
         const cachedResult = JSON.parse(existingEvent.payload);
         return of(cachedResult);
       } catch {
-        return of({ statusCode: 200, message: 'Replayed commercial mutation', data: existingEvent.payload });
+        return of({
+          statusCode: 200,
+          message: 'Replayed commercial mutation',
+          data: existingEvent.payload,
+        });
       }
     }
 

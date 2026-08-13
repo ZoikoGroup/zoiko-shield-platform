@@ -74,7 +74,8 @@ export class CommercialEntitlementController {
    */
   @Get('accounts/:accountId')
   async getCommercialAccountById(@Param('accountId') accountId: string) {
-    const account = await this.commercialService.getCommercialAccountById(accountId);
+    const account =
+      await this.commercialService.getCommercialAccountById(accountId);
     return {
       statusCode: HttpStatus.OK,
       data: account,
@@ -104,7 +105,10 @@ export class CommercialEntitlementController {
     @Param('id') id: string,
     @Body('status') status: string,
   ) {
-    const entitlement = await this.commercialService.updateEntitlementStatus(id, status);
+    const entitlement = await this.commercialService.updateEntitlementStatus(
+      id,
+      status,
+    );
     return {
       statusCode: HttpStatus.OK,
       data: entitlement,
@@ -121,7 +125,8 @@ export class CommercialEntitlementController {
     @Query('tenantId') queryTenantId?: string,
   ) {
     const tenantId = requireTenantId(headerTenantId, queryTenantId);
-    const result = await this.commercialService.getEntitlementsByTenant(tenantId);
+    const result =
+      await this.commercialService.getEntitlementsByTenant(tenantId);
     return {
       statusCode: HttpStatus.OK,
       data: result,

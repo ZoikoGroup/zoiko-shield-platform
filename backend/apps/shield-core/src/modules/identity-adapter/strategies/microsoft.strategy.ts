@@ -20,8 +20,11 @@ export class MicrosoftStrategy extends PassportStrategy(Strategy, 'microsoft') {
     const tenantId = config.get<string>('MICROSOFT_TENANT_ID') || 'common';
     super({
       clientID: config.get<string>('MICROSOFT_CLIENT_ID') || 'unconfigured',
-      clientSecret: config.get<string>('MICROSOFT_CLIENT_SECRET') || 'unconfigured',
-      callbackURL: config.get<string>('MICROSOFT_CALLBACK_URL') || '/auth/microsoft/callback',
+      clientSecret:
+        config.get<string>('MICROSOFT_CLIENT_SECRET') || 'unconfigured',
+      callbackURL:
+        config.get<string>('MICROSOFT_CALLBACK_URL') ||
+        '/auth/microsoft/callback',
       tenant: tenantId,
       scope: ['user.read'],
     });

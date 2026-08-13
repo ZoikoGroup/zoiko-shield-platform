@@ -1,5 +1,11 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { IsISO8601, IsObject, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsISO8601,
+  IsObject,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CommercialApprovalService } from '../approvals/commercial-approval.service';
@@ -64,7 +70,10 @@ export class SubscriptionService {
   ) {}
 
   /** Accepts an optional transaction client so OrderService.provisionOrder can create it atomically alongside the Contract. */
-  async createSubscription(dto: CreateSubscriptionDto, tx?: Prisma.TransactionClient) {
+  async createSubscription(
+    dto: CreateSubscriptionDto,
+    tx?: Prisma.TransactionClient,
+  ) {
     const client = tx ?? this.prisma;
     return client.commercialSubscription.create({
       data: {
@@ -91,7 +100,12 @@ export class SubscriptionService {
 
   async activateSubscription(subscriptionId: string) {
     const subscription = await this.getSubscriptionById(subscriptionId);
-    assertTransition(SUBSCRIPTION_TRANSITIONS, subscription.status, 'ACTIVE', 'subscription');
+    assertTransition(
+      SUBSCRIPTION_TRANSITIONS,
+      subscription.status,
+      'ACTIVE',
+      'subscription',
+    );
     return this.prisma.commercialSubscription.update({
       where: { id: subscriptionId },
       data: { status: 'ACTIVE' },
@@ -100,7 +114,12 @@ export class SubscriptionService {
 
   async cancelSubscription(subscriptionId: string) {
     const subscription = await this.getSubscriptionById(subscriptionId);
-    assertTransition(SUBSCRIPTION_TRANSITIONS, subscription.status, 'CANCELLED', 'subscription');
+    assertTransition(
+      SUBSCRIPTION_TRANSITIONS,
+      subscription.status,
+      'CANCELLED',
+      'subscription',
+    );
     return this.prisma.commercialSubscription.update({
       where: { id: subscriptionId },
       data: { status: 'CANCELLED' },
@@ -149,15 +168,35 @@ export class SubscriptionService {
    * object type. This method only mirrors the outcome onto the amendment
    * row and guards against re-deciding an already-settled amendment.
    */
-  async decideAmendment(amendmentId: string, approverId: string, decision: 'APPROVED' | 'REJECTED', reason: string) {
-    const amendment = await this.prisma.commercialAmendment.findUnique({ where: { id: amendmentId } });
+  async decideAmendment(
+    amendmentId: string,
+    approverId: string,
+    decision: 'APPROVED' | 'REJECTED',
+    reason: string,
+  ) {
+    const amendment = await this.prisma.commercialAmendment.findUnique({
+      where: { id: amendmentId },
+    });
     if (!amendment) {
       throw new NotFoundException(`Amendment '${amendmentId}' not found`);
     }
-    assertTransition(AMENDMENT_TRANSITIONS, amendment.status, decision, 'subscription amendment');
+    assertTransition(
+      AMENDMENT_TRANSITIONS,
+      amendment.status,
+      decision,
+      'subscription amendment',
+    );
 
-    const approval = await this.approvalService.getApprovalByObject('CommercialAmendment', amendmentId);
-    await this.approvalService.decideApproval(approval.id, approverId, decision, reason);
+    const approval = await this.approvalService.getApprovalByObject(
+      'CommercialAmendment',
+      amendmentId,
+    );
+    await this.approvalService.decideApproval(
+      approval.id,
+      approverId,
+      decision,
+      reason,
+    );
 
     return this.prisma.commercialAmendment.update({
       where: { id: amendmentId },

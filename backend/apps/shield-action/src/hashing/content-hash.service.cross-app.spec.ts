@@ -23,8 +23,11 @@ describe('ContentHashService cross-app consistency', () => {
       approvalExpiresAt: '2026-01-01T00:00:00.000Z',
     };
 
-    const shieldActionHash = new ShieldActionContentHashService().hashCanonicalJson(material);
-    const shieldCoreHash = new ShieldCoreContentHashService().hashCanonicalJson(material);
+    const shieldActionHash =
+      new ShieldActionContentHashService().hashCanonicalJson(material);
+    const shieldCoreHash = new ShieldCoreContentHashService().hashCanonicalJson(
+      material,
+    );
 
     expect(shieldActionHash.contentHash).toBe(shieldCoreHash.contentHash);
   });

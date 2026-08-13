@@ -1,5 +1,16 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { IsISO8601, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  IsISO8601,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SlaDefinitionService } from './sla-definition.service';
 
@@ -42,7 +53,10 @@ export class SlaMeasurementService {
     private readonly definitionService: SlaDefinitionService,
   ) {}
 
-  private async assertContractTenant(tenantId: string, contractId: string): Promise<void> {
+  private async assertContractTenant(
+    tenantId: string,
+    contractId: string,
+  ): Promise<void> {
     const contract = await this.prisma.contract.findFirst({
       where: {
         id: contractId,
@@ -57,7 +71,9 @@ export class SlaMeasurementService {
 
   async recordMeasurement(tenantId: string, dto: RecordMeasurementDto) {
     await this.assertContractTenant(tenantId, dto.contractId);
-    const definition = await this.definitionService.getActiveDefinition(dto.slaKey);
+    const definition = await this.definitionService.getActiveDefinition(
+      dto.slaKey,
+    );
     if (!definition) {
       throw new ConflictException({
         statusCode: 409,
@@ -68,7 +84,9 @@ export class SlaMeasurementService {
 
     const target = Number(definition.target_value);
     const breached =
-      definition.comparison === 'MIN' ? dto.measuredValue < target : dto.measuredValue > target;
+      definition.comparison === 'MIN'
+        ? dto.measuredValue < target
+        : dto.measuredValue > target;
 
     return this.prisma.slaMeasurement.create({
       data: {

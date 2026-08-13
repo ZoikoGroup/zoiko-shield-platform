@@ -27,16 +27,24 @@ export class NormalizedEventConsumer implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.kafkaConsumer.registerHandler(EVENT_NORMALIZED_TOPIC, this.handle.bind(this));
+    this.kafkaConsumer.registerHandler(
+      EVENT_NORMALIZED_TOPIC,
+      this.handle.bind(this),
+    );
   }
 
-  private async handle(envelope: EventEnvelope<NormalizedEventContract>): Promise<void> {
+  private async handle(
+    envelope: EventEnvelope<NormalizedEventContract>,
+  ): Promise<void> {
     const payload = envelope.payload;
     if (!payload?.tenantId || !payload?.normalizedEventId) {
-      throw new Error(`Malformed event.normalized.v1 payload: ${JSON.stringify(payload)}`);
+      throw new Error(
+        `Malformed event.normalized.v1 payload: ${JSON.stringify(payload)}`,
+      );
     }
 
-    const resolved = await this.contextResolutionService.resolveFromEvent(payload);
+    const resolved =
+      await this.contextResolutionService.resolveFromEvent(payload);
     await this.detectionRuntimeService.evaluateFromEvent(payload, resolved);
   }
 }

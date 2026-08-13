@@ -7,9 +7,12 @@ import * as crypto from 'crypto';
 import { randomUUID } from 'crypto';
 
 // Mock the signature verification so we don't need real keys for this E2E test
-jest.mock('../../../tools/independent-verifier/src/signatures/verify-signature', () => ({
-  verifyCheckpointSignature: jest.fn().mockReturnValue(true),
-}));
+jest.mock(
+  '../../../tools/independent-verifier/src/signatures/verify-signature',
+  () => ({
+    verifyCheckpointSignature: jest.fn().mockReturnValue(true),
+  }),
+);
 
 // Import verification tools
 import { verifyPackageDirectory } from '../../../tools/independent-verifier/src/verify';
@@ -18,7 +21,15 @@ import { hashCanonicalJson } from '../../../tools/independent-verifier/src/hashi
 import { recomputeRootFromLeaves } from '../../../tools/independent-verifier/src/merkle/merkle';
 
 function hashLeaf(canonicalLeafBytes: string): string {
-  return crypto.createHash('sha256').update(Buffer.concat([Buffer.from([0x00]), Buffer.from(canonicalLeafBytes, 'utf-8')])).digest('hex');
+  return crypto
+    .createHash('sha256')
+    .update(
+      Buffer.concat([
+        Buffer.from([0x00]),
+        Buffer.from(canonicalLeafBytes, 'utf-8'),
+      ]),
+    )
+    .digest('hex');
 }
 
 describe('Anti-Tampering E2E Integration Flow', () => {
@@ -40,7 +51,12 @@ describe('Anti-Tampering E2E Integration Flow', () => {
       schemaBundle: { id: 'schema-1', hash: 'b'.repeat(64) },
       evidenceIndex: [],
       ledgerEntries: [
-        { sequence: 1, evidenceId: 'evt-1', previousEntryHash: null, entryHash: ledgerHeadHash }
+        {
+          sequence: 1,
+          evidenceId: 'evt-1',
+          previousEntryHash: null,
+          entryHash: ledgerHeadHash,
+        },
       ],
       evaluationIndex: [],
       assessmentIndex: [],
@@ -53,16 +69,20 @@ describe('Anti-Tampering E2E Integration Flow', () => {
         verifierSourceVersion: '1.0.0',
         treeProfile: 'ZS-MERKLE-V1',
         hashAlgorithm: 'sha256',
-        canonicalizationProfile: 'zs-checkpoint-v1'
+        canonicalizationProfile: 'zs-checkpoint-v1',
       },
-      exportMetadata: {}
+      exportMetadata: {},
     };
-    
+
     // Hash core payload
-    const { contentHash: manifestCoreHash } = hashCanonicalJson(manifestCoreOnly);
+    const { contentHash: manifestCoreHash } =
+      hashCanonicalJson(manifestCoreOnly);
 
     // Compute valid merkle root for two leaves
-    const merkleRoot = recomputeRootFromLeaves([ledgerHeadHash, manifestCoreHash]);
+    const merkleRoot = recomputeRootFromLeaves([
+      ledgerHeadHash,
+      manifestCoreHash,
+    ]);
     const leaf0Hash = hashLeaf(ledgerHeadHash);
     const leaf1Hash = hashLeaf(manifestCoreHash);
 
@@ -84,23 +104,28 @@ describe('Anti-Tampering E2E Integration Flow', () => {
           signingKeyId: 'key-1',
           signature: 'mock-sig',
           witnessAssuranceState: 'TEST_ONLY',
-          status: 'PUBLISHED'
+          status: 'PUBLISHED',
         },
         proofsByLeafIndex: {
-          "0": [{ siblingHash: leaf1Hash, position: 'RIGHT' }],
-          "1": [{ siblingHash: leaf0Hash, position: 'LEFT' }]
+          '0': [{ siblingHash: leaf1Hash, position: 'RIGHT' }],
+          '1': [{ siblingHash: leaf0Hash, position: 'LEFT' }],
         },
-        signingKey: { keyId: 'key-1', publicKey: 'mock-key', algorithm: 'ed25519', status: 'ACTIVE' },
+        signingKey: {
+          keyId: 'key-1',
+          publicKey: 'mock-key',
+          algorithm: 'ed25519',
+          status: 'ACTIVE',
+        },
         signature: 'mock-sig',
         witnessReceipts: [],
-        witnessAssuranceState: 'TEST_ONLY'
+        witnessAssuranceState: 'TEST_ONLY',
       },
       auditPackageApproval: {
         approverId: 'approver-1',
         manifestCoreHash: manifestCoreHash,
         authorizationDecisionId: 'decision-1',
-        approvedAt: new Date().toISOString()
-      }
+        approvedAt: new Date().toISOString(),
+      },
     };
 
     const { contentHash: envelopeHash } = hashCanonicalJson(manifest);
@@ -109,15 +134,24 @@ describe('Anti-Tampering E2E Integration Flow', () => {
     const envelope = {
       packageId: randomUUID(),
       packageVersion: 1,
-      packageEnvelopeHash: envelopeHash
+      packageEnvelopeHash: envelopeHash,
     };
 
-    fs.writeFileSync(path.join(packagePath, 'manifest.json'), JSON.stringify(manifest, null, 2));
-    fs.writeFileSync(path.join(packagePath, 'envelope.json'), JSON.stringify(envelope, null, 2));
+    fs.writeFileSync(
+      path.join(packagePath, 'manifest.json'),
+      JSON.stringify(manifest, null, 2),
+    );
+    fs.writeFileSync(
+      path.join(packagePath, 'envelope.json'),
+      JSON.stringify(envelope, null, 2),
+    );
 
     fs.mkdirSync(path.join(packagePath, 'ledger'), { recursive: true });
-    fs.writeFileSync(path.join(packagePath, 'ledger', '00000000000000000001.json'), JSON.stringify(manifest.ledgerEntries[0]));
-    
+    fs.writeFileSync(
+      path.join(packagePath, 'ledger', '00000000000000000001.json'),
+      JSON.stringify(manifest.ledgerEntries[0]),
+    );
+
     fs.mkdirSync(path.join(packagePath, 'evidence'), { recursive: true });
   });
 
@@ -128,7 +162,7 @@ describe('Anti-Tampering E2E Integration Flow', () => {
   it('should successfully verify a valid generated audit package', async () => {
     const result = verifyPackageDirectory(packagePath);
     expect(result).toBeDefined();
-    
+
     expect(result.schemaValid).toBe(true);
     expect(result.manifestValid).toBe(true);
     expect(result.ledgerValid).toBe(true);
@@ -139,7 +173,9 @@ describe('Anti-Tampering E2E Integration Flow', () => {
 
     const overall = computeOverallResult(result);
     // Since witness is empty / TEST_ONLY, the highest state is cryptographically verified
-    expect(overall.overallResult).toBe('CRYPTOGRAPHICALLY_VERIFIED_NOT_EXTERNALLY_WITNESSED');
+    expect(overall.overallResult).toBe(
+      'CRYPTOGRAPHICALLY_VERIFIED_NOT_EXTERNALLY_WITNESSED',
+    );
   });
 
   it('should fail verification when evidence payload is tampered', async () => {
@@ -151,10 +187,10 @@ describe('Anti-Tampering E2E Integration Flow', () => {
 
     const result = verifyPackageDirectory(packagePath);
     const overall = computeOverallResult(result);
-    
+
     // Ensure verification fails
     expect(overall.overallResult).toBe('FAILED');
-    
+
     // Ensure the verifier caught the envelope tampering (hash mismatch)
     expect(result.manifestValid).toBe(false);
   });

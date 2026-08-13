@@ -33,22 +33,69 @@ export class DashboardService {
       missingEvidence,
     ] = await Promise.all([
       this.prisma.connectorInstance.count({ where: { tenant_id: tenantId } }),
-      this.prisma.connectorInstance.count({ where: { tenant_id: tenantId, state: 'HEALTHY' } }),
-      this.prisma.connectorInstance.count({ where: { tenant_id: tenantId, state: 'DEGRADED' } }),
-      this.prisma.rawEvent.count({ where: { tenant_id: tenantId, received_at: { gte: twentyFourHoursAgo } } }),
-      this.prisma.rawEvent.count({ where: { tenant_id: tenantId, processing_status: 'QUARANTINED', received_at: { gte: twentyFourHoursAgo } } }),
-      this.prisma.alert.count({ where: { tenant_id: tenantId, status: { in: ['NEW', 'ACKNOWLEDGED', 'INVESTIGATING'] } } }),
-      this.prisma.alert.count({ where: { tenant_id: tenantId, severity: 'CRITICAL', status: { in: ['NEW', 'ACKNOWLEDGED', 'INVESTIGATING'] } } }),
-      this.prisma.case.count({ where: { tenant_id: tenantId, status: { notIn: ['RESOLVED', 'CLOSED', 'DUPLICATE', 'FALSE_POSITIVE'] } } }),
-      this.prisma.case.count({ where: { tenant_id: tenantId, status: 'INVESTIGATING' } }),
+      this.prisma.connectorInstance.count({
+        where: { tenant_id: tenantId, state: 'HEALTHY' },
+      }),
+      this.prisma.connectorInstance.count({
+        where: { tenant_id: tenantId, state: 'DEGRADED' },
+      }),
+      this.prisma.rawEvent.count({
+        where: {
+          tenant_id: tenantId,
+          received_at: { gte: twentyFourHoursAgo },
+        },
+      }),
+      this.prisma.rawEvent.count({
+        where: {
+          tenant_id: tenantId,
+          processing_status: 'QUARANTINED',
+          received_at: { gte: twentyFourHoursAgo },
+        },
+      }),
+      this.prisma.alert.count({
+        where: {
+          tenant_id: tenantId,
+          status: { in: ['NEW', 'ACKNOWLEDGED', 'INVESTIGATING'] },
+        },
+      }),
+      this.prisma.alert.count({
+        where: {
+          tenant_id: tenantId,
+          severity: 'CRITICAL',
+          status: { in: ['NEW', 'ACKNOWLEDGED', 'INVESTIGATING'] },
+        },
+      }),
+      this.prisma.case.count({
+        where: {
+          tenant_id: tenantId,
+          status: {
+            notIn: ['RESOLVED', 'CLOSED', 'DUPLICATE', 'FALSE_POSITIVE'],
+          },
+        },
+      }),
+      this.prisma.case.count({
+        where: { tenant_id: tenantId, status: 'INVESTIGATING' },
+      }),
       // Control health counts
-      this.prisma.controlImplementation.count({ where: { tenant_id: tenantId, status: 'IMPLEMENTED' } }),
-      this.prisma.controlImplementation.count({ where: { tenant_id: tenantId, status: 'PARTIAL' } }),
-      this.prisma.controlImplementation.count({ where: { tenant_id: tenantId, status: 'PLANNED' } }),
+      this.prisma.controlImplementation.count({
+        where: { tenant_id: tenantId, status: 'IMPLEMENTED' },
+      }),
+      this.prisma.controlImplementation.count({
+        where: { tenant_id: tenantId, status: 'PARTIAL' },
+      }),
+      this.prisma.controlImplementation.count({
+        where: { tenant_id: tenantId, status: 'PLANNED' },
+      }),
       // Evidence health counts
-      this.prisma.evidenceRecord.count({ where: { tenant_id: tenantId, created_at: { gte: thirtyDaysAgo } } }),
-      this.prisma.evidenceRecord.count({ where: { tenant_id: tenantId, created_at: { lt: thirtyDaysAgo } } }),
-      this.prisma.evidenceGap.count({ where: { tenant_id: tenantId, resolved_at: null } }),
+      this.prisma.evidenceRecord.count({
+        where: { tenant_id: tenantId, created_at: { gte: thirtyDaysAgo } },
+      }),
+      this.prisma.evidenceRecord.count({
+        where: { tenant_id: tenantId, created_at: { lt: thirtyDaysAgo } },
+      }),
+      this.prisma.evidenceGap.count({
+        where: { tenant_id: tenantId, resolved_at: null },
+      }),
     ]);
 
     return {
@@ -108,12 +155,22 @@ export class DashboardService {
   async getEventMetrics(tenantId: string) {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
-    const [totalRaw, totalAccepted, totalQuarantined, raw24h] = await Promise.all([
-      this.prisma.rawEvent.count({ where: { tenant_id: tenantId } }),
-      this.prisma.rawEvent.count({ where: { tenant_id: tenantId, processing_status: 'ACCEPTED' } }),
-      this.prisma.rawEvent.count({ where: { tenant_id: tenantId, processing_status: 'QUARANTINED' } }),
-      this.prisma.rawEvent.count({ where: { tenant_id: tenantId, received_at: { gte: twentyFourHoursAgo } } }),
-    ]);
+    const [totalRaw, totalAccepted, totalQuarantined, raw24h] =
+      await Promise.all([
+        this.prisma.rawEvent.count({ where: { tenant_id: tenantId } }),
+        this.prisma.rawEvent.count({
+          where: { tenant_id: tenantId, processing_status: 'ACCEPTED' },
+        }),
+        this.prisma.rawEvent.count({
+          where: { tenant_id: tenantId, processing_status: 'QUARANTINED' },
+        }),
+        this.prisma.rawEvent.count({
+          where: {
+            tenant_id: tenantId,
+            received_at: { gte: twentyFourHoursAgo },
+          },
+        }),
+      ]);
 
     return {
       totalRaw,
@@ -174,7 +231,8 @@ export class DashboardService {
    * Control effectiveness breakdown and deficiency count
    */
   async getControlHealth(tenantId: string) {
-    const testDelegate = this.prisma.controlTestRun || (this.prisma as any).controlTest;
+    const testDelegate =
+      this.prisma.controlTestRun || (this.prisma as any).controlTest;
     const [implementations, deficiencies, tests] = await Promise.all([
       this.prisma.controlImplementation.findMany({
         where: { tenant_id: tenantId },
@@ -213,23 +271,29 @@ export class DashboardService {
   async getEvidenceHealth(tenantId: string) {
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
-    const [currentEvidence, staleEvidence, openGaps, recentRecords] = await Promise.all([
-      this.prisma.evidenceRecord.count({
-        where: { tenant_id: tenantId, created_at: { gte: thirtyDaysAgo } },
-      }),
-      this.prisma.evidenceRecord.count({
-        where: { tenant_id: tenantId, created_at: { lt: thirtyDaysAgo } },
-      }),
-      this.prisma.evidenceGap.count({
-        where: { tenant_id: tenantId, resolved_at: null },
-      }),
-      this.prisma.evidenceRecord.findMany({
-        where: { tenant_id: tenantId },
-        orderBy: { created_at: 'desc' },
-        take: 5,
-        select: { id: true, producing_service: true, integrity_state: true, created_at: true },
-      }),
-    ]);
+    const [currentEvidence, staleEvidence, openGaps, recentRecords] =
+      await Promise.all([
+        this.prisma.evidenceRecord.count({
+          where: { tenant_id: tenantId, created_at: { gte: thirtyDaysAgo } },
+        }),
+        this.prisma.evidenceRecord.count({
+          where: { tenant_id: tenantId, created_at: { lt: thirtyDaysAgo } },
+        }),
+        this.prisma.evidenceGap.count({
+          where: { tenant_id: tenantId, resolved_at: null },
+        }),
+        this.prisma.evidenceRecord.findMany({
+          where: { tenant_id: tenantId },
+          orderBy: { created_at: 'desc' },
+          take: 5,
+          select: {
+            id: true,
+            producing_service: true,
+            integrity_state: true,
+            created_at: true,
+          },
+        }),
+      ]);
 
     return {
       current: currentEvidence,

@@ -1,7 +1,12 @@
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { workloadAuthorizationHeaders } from '../../../../libs/security/src/workload-token';
 
-const SHIELD_ANCHOR_BASE_URL = process.env.SHIELD_ANCHOR_BASE_URL || 'http://localhost:3005';
+const SHIELD_ANCHOR_BASE_URL =
+  process.env.SHIELD_ANCHOR_BASE_URL || 'http://localhost:3005';
 
 export interface RequestCheckpointInput {
   tenantId: string;
@@ -31,10 +36,23 @@ export interface ProofEnvelope {
     status: string;
   };
   merkleRoot: string;
-  proofsByLeafIndex: Record<string, Array<{ siblingHash: string; position: 'LEFT' | 'RIGHT' }>>;
+  proofsByLeafIndex: Record<
+    string,
+    Array<{ siblingHash: string; position: 'LEFT' | 'RIGHT' }>
+  >;
   signature: string;
-  signingKey: { keyId: string; publicKey: string; algorithm: string; status: string };
-  witnessReceipts: Array<{ witnessId: string; witnessType: string; receiptHash: string; status: string }>;
+  signingKey: {
+    keyId: string;
+    publicKey: string;
+    algorithm: string;
+    status: string;
+  };
+  witnessReceipts: Array<{
+    witnessId: string;
+    witnessType: string;
+    receiptHash: string;
+    status: string;
+  }>;
   witnessAssuranceState: string;
 }
 
@@ -48,14 +66,22 @@ export interface ProofEnvelope {
 export class ShieldAnchorClient {
   private readonly logger = new Logger(ShieldAnchorClient.name);
 
-  async requestCheckpoint(input: RequestCheckpointInput): Promise<ProofEnvelope> {
+  async requestCheckpoint(
+    input: RequestCheckpointInput,
+  ): Promise<ProofEnvelope> {
     let response: Response;
     try {
-      response = await fetch(`${SHIELD_ANCHOR_BASE_URL}/internal/v1/checkpoints`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...workloadAuthorizationHeaders('shield-anchor') },
-        body: JSON.stringify(input),
-      });
+      response = await fetch(
+        `${SHIELD_ANCHOR_BASE_URL}/internal/v1/checkpoints`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...workloadAuthorizationHeaders('shield-anchor'),
+          },
+          body: JSON.stringify(input),
+        },
+      );
     } catch (err) {
       this.logger.error(`shield-anchor unreachable: ${(err as Error).message}`);
       throw new ServiceUnavailableException('ANCHOR_UNAVAILABLE');
@@ -63,7 +89,9 @@ export class ShieldAnchorClient {
 
     if (!response.ok) {
       const text = await response.text().catch(() => '');
-      this.logger.warn(`shield-anchor returned ${response.status} for checkpoint request: ${text.slice(0, 300)}`);
+      this.logger.warn(
+        `shield-anchor returned ${response.status} for checkpoint request: ${text.slice(0, 300)}`,
+      );
       throw new ServiceUnavailableException('ANCHOR_CHECKPOINT_FAILED');
     }
 

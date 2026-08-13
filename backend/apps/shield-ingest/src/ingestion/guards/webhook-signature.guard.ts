@@ -20,27 +20,50 @@ export class WebhookSignatureGuard implements CanActivate {
       (headers['x-signature'] as string);
 
     if (!signature) {
-      throw new UnauthorizedException('Missing required webhook HMAC signature header (x-signature or x-hub-signature-256)');
+      throw new UnauthorizedException(
+        'Missing required webhook HMAC signature header (x-signature or x-hub-signature-256)',
+      );
     }
 
-    const timestampStr = (headers['x-timestamp'] as string) || (headers['x-request-timestamp'] as string);
+    const timestampStr =
+      (headers['x-timestamp'] as string) ||
+      (headers['x-request-timestamp'] as string);
     const nonce = headers['x-webhook-nonce'] as string;
     if (!timestampStr || !nonce) {
-      throw new UnauthorizedException('Webhook timestamp and nonce are required');
+      throw new UnauthorizedException(
+        'Webhook timestamp and nonce are required',
+      );
     }
     const requestTime = Number(timestampStr);
     const currentTime = Math.floor(Date.now() / 1000);
-    if (!Number.isInteger(requestTime) || Math.abs(currentTime - requestTime) > 300) {
-      throw new UnauthorizedException('Webhook request timestamp expired or invalid');
+    if (
+      !Number.isInteger(requestTime) ||
+      Math.abs(currentTime - requestTime) > 300
+    ) {
+      throw new UnauthorizedException(
+        'Webhook request timestamp expired or invalid',
+      );
     }
 
     const connectorId = request.params?.connectorId;
-    const secretMap = process.env.WEBHOOK_HMAC_SECRETS ? JSON.parse(process.env.WEBHOOK_HMAC_SECRETS) as Record<string, string> : {};
-    const secret = secretMap[connectorId] ?? (process.env.NODE_ENV !== 'production' ? process.env.WEBHOOK_HMAC_SECRET : undefined);
-    if (!secret) throw new UnauthorizedException('No signing secret is configured for this connector');
-    if (!request.rawBody) throw new UnauthorizedException('Raw request bytes are required for signature verification');
+    const secretMap = process.env.WEBHOOK_HMAC_SECRETS
+      ? (JSON.parse(process.env.WEBHOOK_HMAC_SECRETS) as Record<string, string>)
+      : {};
+    const secret =
+      secretMap[connectorId] ??
+      (process.env.NODE_ENV !== 'production'
+        ? process.env.WEBHOOK_HMAC_SECRET
+        : undefined);
+    if (!secret)
+      throw new UnauthorizedException(
+        'No signing secret is configured for this connector',
+      );
+    if (!request.rawBody)
+      throw new UnauthorizedException(
+        'Raw request bytes are required for signature verification',
+      );
     const rawBody = request.rawBody.toString('utf-8');
-    
+
     const computedHash = crypto
       .createHmac('sha256', secret)
       .update(`${timestampStr}.${nonce}.${rawBody}`)
@@ -61,7 +84,9 @@ export class WebhookSignatureGuard implements CanActivate {
     }
 
     const nonceHash = crypto.createHash('sha256').update(nonce).digest('hex');
-    await this.prisma.webhookReplayNonce.deleteMany({ where: { expires_at: { lt: new Date() } } });
+    await this.prisma.webhookReplayNonce.deleteMany({
+      where: { expires_at: { lt: new Date() } },
+    });
     try {
       await this.prisma.webhookReplayNonce.create({
         data: {

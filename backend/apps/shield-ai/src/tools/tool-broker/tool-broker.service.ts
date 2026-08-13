@@ -13,19 +13,32 @@ import { ShieldCoreClient } from '../../internal-client/shield-core.client';
 @Injectable()
 export class ToolBrokerService {
   private readonly logger = new Logger(ToolBrokerService.name);
-  private static readonly ALLOWED_TOOLS = new Set(['getCase', 'getCaseTimeline', 'getCaseEvidence']);
+  private static readonly ALLOWED_TOOLS = new Set([
+    'getCase',
+    'getCaseTimeline',
+    'getCaseEvidence',
+  ]);
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly shieldCoreClient: ShieldCoreClient,
   ) {}
 
-  async call(params: { tenantId: string; toolName: string; args: Record<string, unknown>; authorizationDecisionId: string }) {
+  async call(params: {
+    tenantId: string;
+    toolName: string;
+    args: Record<string, unknown>;
+    authorizationDecisionId: string;
+  }) {
     if (!ToolBrokerService.ALLOWED_TOOLS.has(params.toolName)) {
-      throw new ForbiddenException(`Tool '${params.toolName}' is not on the read-only allowlist`);
+      throw new ForbiddenException(
+        `Tool '${params.toolName}' is not on the read-only allowlist`,
+      );
     }
 
-    const argumentsHash = createHash('sha256').update(JSON.stringify(params.args)).digest('hex');
+    const argumentsHash = createHash('sha256')
+      .update(JSON.stringify(params.args))
+      .digest('hex');
     const call = await this.prisma.aiToolCall.create({
       data: {
         tenant_id: params.tenantId,
@@ -37,19 +50,34 @@ export class ToolBrokerService {
     });
 
     try {
-      const result = await this.dispatch(params.tenantId, params.toolName, params.args);
-      await this.prisma.aiToolCall.update({ where: { id: call.id }, data: { status: 'COMPLETED', completed_at: new Date() } });
+      const result = await this.dispatch(
+        params.tenantId,
+        params.toolName,
+        params.args,
+      );
+      await this.prisma.aiToolCall.update({
+        where: { id: call.id },
+        data: { status: 'COMPLETED', completed_at: new Date() },
+      });
       return result;
     } catch (err) {
       await this.prisma.aiToolCall.update({
         where: { id: call.id },
-        data: { status: 'FAILED', error_code: (err as Error).message, completed_at: new Date() },
+        data: {
+          status: 'FAILED',
+          error_code: (err as Error).message,
+          completed_at: new Date(),
+        },
       });
       throw err;
     }
   }
 
-  private async dispatch(tenantId: string, toolName: string, args: Record<string, unknown>) {
+  private async dispatch(
+    tenantId: string,
+    toolName: string,
+    args: Record<string, unknown>,
+  ) {
     const caseId = args.caseId as string;
     switch (toolName) {
       case 'getCase':

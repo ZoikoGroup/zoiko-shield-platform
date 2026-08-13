@@ -24,17 +24,39 @@ export class PolicyService implements OnModuleInit {
 
   /** Seeds v1 policy documents on boot if they don't already exist, so registration/onboarding always has an active policy to reference. */
   async onModuleInit(): Promise<void> {
-    const termsText = process.env.TERMS_OF_SERVICE_TEXT ?? DEVELOPMENT_TERMS_TEXT;
-    const disclosureText = process.env.ACCESS_DISCLOSURE_TEXT ?? DEVELOPMENT_ACCESS_DISCLOSURE_TEXT;
-    if (process.env.NODE_ENV === 'production' && (!process.env.TERMS_OF_SERVICE_TEXT || !process.env.ACCESS_DISCLOSURE_TEXT)) {
-      throw new Error('Approved TERMS_OF_SERVICE_TEXT and ACCESS_DISCLOSURE_TEXT must be configured in production');
+    const termsText =
+      process.env.TERMS_OF_SERVICE_TEXT ?? DEVELOPMENT_TERMS_TEXT;
+    const disclosureText =
+      process.env.ACCESS_DISCLOSURE_TEXT ?? DEVELOPMENT_ACCESS_DISCLOSURE_TEXT;
+    if (
+      process.env.NODE_ENV === 'production' &&
+      (!process.env.TERMS_OF_SERVICE_TEXT ||
+        !process.env.ACCESS_DISCLOSURE_TEXT)
+    ) {
+      throw new Error(
+        'Approved TERMS_OF_SERVICE_TEXT and ACCESS_DISCLOSURE_TEXT must be configured in production',
+      );
     }
-    await this.seedIfMissing('TERMS_OF_SERVICE', process.env.TERMS_OF_SERVICE_VERSION ?? '1', termsText);
-    await this.seedIfMissing('ACCESS_DISCLOSURE', process.env.ACCESS_DISCLOSURE_VERSION ?? '1', disclosureText);
+    await this.seedIfMissing(
+      'TERMS_OF_SERVICE',
+      process.env.TERMS_OF_SERVICE_VERSION ?? '1',
+      termsText,
+    );
+    await this.seedIfMissing(
+      'ACCESS_DISCLOSURE',
+      process.env.ACCESS_DISCLOSURE_VERSION ?? '1',
+      disclosureText,
+    );
   }
 
-  private async seedIfMissing(kind: string, version: string, text: string): Promise<void> {
-    const existing = await this.policyDocumentRepository.findOne({ where: { kind, version } });
+  private async seedIfMissing(
+    kind: string,
+    version: string,
+    text: string,
+  ): Promise<void> {
+    const existing = await this.policyDocumentRepository.findOne({
+      where: { kind, version },
+    });
     if (!existing) {
       await this.policyDocumentRepository.save(
         this.policyDocumentRepository.create({
@@ -49,10 +71,16 @@ export class PolicyService implements OnModuleInit {
   }
 
   findActive(kind: string): Promise<PolicyDocument | null> {
-    return this.policyDocumentRepository.findOne({ where: { kind, active: true }, order: { publishedAt: 'DESC' } });
+    return this.policyDocumentRepository.findOne({
+      where: { kind, active: true },
+      order: { publishedAt: 'DESC' },
+    });
   }
 
-  findByKindAndVersion(kind: string, version: string): Promise<PolicyDocument | null> {
+  findByKindAndVersion(
+    kind: string,
+    version: string,
+  ): Promise<PolicyDocument | null> {
     return this.policyDocumentRepository.findOne({ where: { kind, version } });
   }
 

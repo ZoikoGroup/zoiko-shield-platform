@@ -8,7 +8,12 @@ import { Injectable } from '@nestjs/common';
  */
 @Injectable()
 export class DispatcherService {
-  dispatchSimulated(params: { actionType: string; targetType: string; targetId: string; authorityLevel: string }) {
+  dispatchSimulated(params: {
+    actionType: string;
+    targetType: string;
+    targetId: string;
+    authorityLevel: string;
+  }) {
     return {
       target: { targetType: params.targetType, targetId: params.targetId },
       expectedAction: params.actionType,

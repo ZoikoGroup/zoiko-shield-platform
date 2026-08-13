@@ -1,5 +1,16 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { IsInt, IsNumber, IsOptional, IsPositive, IsString } from 'class-validator';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+} from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CommercialEntitlementService } from '../commercial/commercial-entitlement.service';
 import { MeteringService } from '../metering/metering.service';
@@ -75,7 +86,9 @@ export class AiUsageService {
   }
 
   async getUsageById(tenantId: string, id: string) {
-    const usage = await this.prisma.aiUsageRecord.findFirst({ where: { id, tenant_id: tenantId } });
+    const usage = await this.prisma.aiUsageRecord.findFirst({
+      where: { id, tenant_id: tenantId },
+    });
     if (!usage) {
       throw new NotFoundException(`AI usage record '${id}' not found`);
     }
@@ -87,13 +100,23 @@ export class AiUsageService {
    * without an active AI_SECURITY entitlement — no catalog authorization,
    * no charge, no matter how much was actually spent with the provider.
    */
-  async markBillable(tenantId: string, usageId: string, meterKey: string, quantity: number) {
+  async markBillable(
+    tenantId: string,
+    usageId: string,
+    meterKey: string,
+    quantity: number,
+  ) {
     const usage = await this.getUsageById(tenantId, usageId);
     if (usage.billable) {
-      throw new ConflictException(`AI usage record '${usageId}' is already billable`);
+      throw new ConflictException(
+        `AI usage record '${usageId}' is already billable`,
+      );
     }
 
-    const entitled = await this.entitlementService.checkEntitlement(usage.tenant_id, 'AI_SECURITY');
+    const entitled = await this.entitlementService.checkEntitlement(
+      usage.tenant_id,
+      'AI_SECURITY',
+    );
     if (!entitled) {
       throw new ConflictException({
         statusCode: 409,

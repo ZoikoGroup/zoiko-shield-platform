@@ -42,21 +42,34 @@ export class SimulationService {
     private readonly dispatcher: DispatcherService,
   ) {}
 
-  async simulate(tenantId: string, proposalId: string, correlationId: string): Promise<SimulationOutcome> {
-    const context = await this.shieldCoreClient.getAuthorizationContext(tenantId, proposalId);
+  async simulate(
+    tenantId: string,
+    proposalId: string,
+    correlationId: string,
+  ): Promise<SimulationOutcome> {
+    const context = await this.shieldCoreClient.getAuthorizationContext(
+      tenantId,
+      proposalId,
+    );
     if (context.tenantId !== tenantId) {
-      throw new Error(`shield-core returned conflicting tenant context for proposal '${proposalId}'`);
+      throw new Error(
+        `shield-core returned conflicting tenant context for proposal '${proposalId}'`,
+      );
     }
 
     const policyResult = this.policy.check(context);
     if (!policyResult.allowed) {
-      this.logger.warn(`Reauthorization denied (policy) for proposal ${proposalId}: ${policyResult.reason}`);
+      this.logger.warn(
+        `Reauthorization denied (policy) for proposal ${proposalId}: ${policyResult.reason}`,
+      );
       return { status: 'REJECTED', reason: policyResult.reason };
     }
 
     const approvalResult = this.approval.check(context);
     if (!approvalResult.allowed) {
-      this.logger.warn(`Reauthorization denied (approval) for proposal ${proposalId}: ${approvalResult.reason}`);
+      this.logger.warn(
+        `Reauthorization denied (approval) for proposal ${proposalId}: ${approvalResult.reason}`,
+      );
       return { status: 'REJECTED', reason: approvalResult.reason };
     }
 
@@ -66,22 +79,37 @@ export class SimulationService {
       connectorScopeRef: context.connectorCapability,
     });
     if (freezeResult.frozen) {
-      this.logger.warn(`Reauthorization denied (freeze) for proposal ${proposalId}: ${freezeResult.reason}`);
+      this.logger.warn(
+        `Reauthorization denied (freeze) for proposal ${proposalId}: ${freezeResult.reason}`,
+      );
       return { status: 'REJECTED', reason: freezeResult.reason };
     }
 
-    const rateResult = await this.rateControl.checkCeiling({ tenantId: context.tenantId, actionType: context.actionType });
+    const rateResult = await this.rateControl.checkCeiling({
+      tenantId: context.tenantId,
+      actionType: context.actionType,
+    });
     if (!rateResult.allowed) {
-      this.logger.warn(`Reauthorization denied (rate ceiling) for proposal ${proposalId}: ${rateResult.reason}`);
+      this.logger.warn(
+        `Reauthorization denied (rate ceiling) for proposal ${proposalId}: ${rateResult.reason}`,
+      );
       return { status: 'REJECTED', reason: rateResult.reason };
     }
 
     const nonce = randomUUID();
     const actionCommandId = randomUUID();
-    const target = { targetType: context.targetType, targetId: context.targetId };
+    const target = {
+      targetType: context.targetType,
+      targetId: context.targetId,
+    };
 
     const signed = this.signer.sign(
-      { tenantId: context.tenantId, actionCommandId, nonce, payload: { actionType: context.actionType, target } },
+      {
+        tenantId: context.tenantId,
+        actionCommandId,
+        nonce,
+        payload: { actionType: context.actionType, target },
+      },
       'SIMULATION',
     );
 
@@ -104,7 +132,9 @@ export class SimulationService {
           action_type: context.actionType,
           target: JSON.stringify(target),
           authority_level: context.authorityLevel,
-          approval_refs: JSON.stringify(context.approval ? [context.approval.approvalId] : []),
+          approval_refs: JSON.stringify(
+            context.approval ? [context.approval.approvalId] : [],
+          ),
           policy_version: context.policyVersion,
           nonce,
           expires_at: new Date(Date.now() + 60 * 60 * 1000),
@@ -148,7 +178,13 @@ export class SimulationService {
       }),
     ]);
 
-    this.logger.log(`Proposal ${proposalId} simulated: actionCommand=${actionCommand.id} actionReceipt=${actionReceipt.id}`);
-    return { status: 'SIMULATED', actionCommandId: actionCommand.id, actionReceiptId: actionReceipt.id };
+    this.logger.log(
+      `Proposal ${proposalId} simulated: actionCommand=${actionCommand.id} actionReceipt=${actionReceipt.id}`,
+    );
+    return {
+      status: 'SIMULATED',
+      actionCommandId: actionCommand.id,
+      actionReceiptId: actionReceipt.id,
+    };
   }
 }

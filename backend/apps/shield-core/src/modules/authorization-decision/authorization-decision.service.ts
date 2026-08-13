@@ -34,10 +34,11 @@ export class AuthorizationDecisionService {
   ) {}
 
   async evaluate(input: EvaluateInput): Promise<AuthorizationDecisionResult> {
-    const grantedPermissions = await this.authorizationService.getPermissionCodesForPrincipal(
-      input.tenantId,
-      input.actorId,
-    );
+    const grantedPermissions =
+      await this.authorizationService.getPermissionCodesForPrincipal(
+        input.tenantId,
+        input.actorId,
+      );
     const allowed = grantedPermissions.includes(input.action);
 
     const decision = await this.prisma.authorizationDecision.create({
@@ -56,9 +57,14 @@ export class AuthorizationDecisionService {
     });
 
     if (!allowed) {
-      this.logger.warn(`AuthorizationDecision DENY: actor=${input.actorId} tenant=${input.tenantId} action=${input.action}`);
+      this.logger.warn(
+        `AuthorizationDecision DENY: actor=${input.actorId} tenant=${input.tenantId} action=${input.action}`,
+      );
     }
 
-    return { authorizationDecisionId: decision.id, decision: allowed ? 'ALLOW' : 'DENY' };
+    return {
+      authorizationDecisionId: decision.id,
+      decision: allowed ? 'ALLOW' : 'DENY',
+    };
   }
 }

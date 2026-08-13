@@ -19,7 +19,10 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
   try {
     const result = verifyPackageDirectory(targetPath);
     printReport(result);
-    return (result.overallResult === 'FAILED' || result.overallResult === 'UNSUPPORTED_VERSION') ? 1 : 0;
+    return result.overallResult === 'FAILED' ||
+      result.overallResult === 'UNSUPPORTED_VERSION'
+      ? 1
+      : 0;
   } catch (err: any) {
     console.error(`Verification failure: ${err.message}`);
     return 1;

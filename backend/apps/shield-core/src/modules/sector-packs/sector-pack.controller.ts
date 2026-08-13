@@ -1,7 +1,21 @@
-import { Body, Controller, Get, HttpStatus, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
-import { CreateSectorPackDto, SectorPackService, SetMarketAvailabilityDto } from './sector-pack.service';
+import {
+  CreateSectorPackDto,
+  SectorPackService,
+  SetMarketAvailabilityDto,
+} from './sector-pack.service';
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/sector-packs')
@@ -21,19 +35,31 @@ export class SectorPackController {
   }
 
   @Patch(':id/approve')
-  async approve(@Param('id') id: string, @Body('approvedBy') approvedBy: string) {
-    const pack = await this.packService.approveRelease(id, approvedBy || 'system');
+  async approve(
+    @Param('id') id: string,
+    @Body('approvedBy') approvedBy: string,
+  ) {
+    const pack = await this.packService.approveRelease(
+      id,
+      approvedBy || 'system',
+    );
     return { statusCode: HttpStatus.OK, data: pack };
   }
 
   @Post(':id/availability')
-  async setAvailability(@Param('id') id: string, @Body() dto: SetMarketAvailabilityDto) {
+  async setAvailability(
+    @Param('id') id: string,
+    @Body() dto: SetMarketAvailabilityDto,
+  ) {
     const availability = await this.packService.setMarketAvailability(id, dto);
     return { statusCode: HttpStatus.OK, data: availability };
   }
 
   @Get('availability')
-  async checkAvailability(@Query('packKey') packKey: string, @Query('region') region: string) {
+  async checkAvailability(
+    @Query('packKey') packKey: string,
+    @Query('region') region: string,
+  ) {
     const available = await this.packService.isAvailable(packKey, region);
     return { statusCode: HttpStatus.OK, data: { packKey, region, available } };
   }

@@ -157,6 +157,10 @@ import { ScheduleModule } from '@nestjs/schedule';
     OffboardingModule,
   ],
   controllers: [ShieldCoreController],
-  providers: [ShieldCoreService, OutboxPublisherService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [
+    ShieldCoreService,
+    OutboxPublisherService,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+  ],
 })
 export class ShieldCoreModule {}

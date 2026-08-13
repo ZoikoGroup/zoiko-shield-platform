@@ -1,10 +1,23 @@
-import { Body, Controller, Get, Headers, HttpStatus, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { IsIn, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { CreateQuoteDto, QuoteService } from './quote.service';
 import { CreateOrderDto, OrderService } from './order.service';
-import { RequestAmendmentDto, SubscriptionService } from './subscription.service';
+import {
+  RequestAmendmentDto,
+  SubscriptionService,
+} from './subscription.service';
 
 export class ApproveQuoteDto {
   @IsString()
@@ -44,7 +57,10 @@ export class QuoteController {
 
   @Patch(':id/submit')
   async submit(@Param('id') id: string, @Body('actor') actor: string) {
-    const quote = await this.quoteService.submitForApproval(id, actor || 'system');
+    const quote = await this.quoteService.submitForApproval(
+      id,
+      actor || 'system',
+    );
     return { statusCode: HttpStatus.OK, data: quote };
   }
 
@@ -73,8 +89,14 @@ export class OrderController {
   constructor(private readonly orderService: OrderService) {}
 
   @Post()
-  async create(@Body() dto: CreateOrderDto, @Headers('idempotency-key') idempotencyKey: string) {
-    const order = await this.orderService.createOrderFromQuote(dto, idempotencyKey);
+  async create(
+    @Body() dto: CreateOrderDto,
+    @Headers('idempotency-key') idempotencyKey: string,
+  ) {
+    const order = await this.orderService.createOrderFromQuote(
+      dto,
+      idempotencyKey,
+    );
     return { statusCode: HttpStatus.CREATED, data: order };
   }
 
@@ -85,7 +107,10 @@ export class OrderController {
   }
 
   @Patch(':id/provision')
-  async provision(@Param('id') id: string, @Body('termMonths') termMonths?: number) {
+  async provision(
+    @Param('id') id: string,
+    @Body('termMonths') termMonths?: number,
+  ) {
     const result = await this.orderService.provisionOrder(id, termMonths);
     return { statusCode: HttpStatus.OK, data: result };
   }
@@ -110,7 +135,8 @@ export class SubscriptionController {
 
   @Patch(':id/activate')
   async activate(@Param('id') id: string) {
-    const subscription = await this.subscriptionService.activateSubscription(id);
+    const subscription =
+      await this.subscriptionService.activateSubscription(id);
     return { statusCode: HttpStatus.OK, data: subscription };
   }
 
@@ -121,13 +147,19 @@ export class SubscriptionController {
   }
 
   @Post(':id/amendments')
-  async requestAmendment(@Param('id') id: string, @Body() dto: RequestAmendmentDto) {
+  async requestAmendment(
+    @Param('id') id: string,
+    @Body() dto: RequestAmendmentDto,
+  ) {
     const amendment = await this.subscriptionService.requestAmendment(id, dto);
     return { statusCode: HttpStatus.CREATED, data: amendment };
   }
 
   @Patch('amendments/:amendmentId/decision')
-  async decideAmendment(@Param('amendmentId') amendmentId: string, @Body() dto: DecideAmendmentDto) {
+  async decideAmendment(
+    @Param('amendmentId') amendmentId: string,
+    @Body() dto: DecideAmendmentDto,
+  ) {
     const amendment = await this.subscriptionService.decideAmendment(
       amendmentId,
       dto.approverId,

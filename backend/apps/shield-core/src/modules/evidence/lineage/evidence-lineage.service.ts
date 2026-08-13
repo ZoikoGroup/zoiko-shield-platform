@@ -35,11 +35,15 @@ export class EvidenceLineageService {
     // if a cycle is ever introduced by a bug.
     for (let hops = 0; hops < 20 && currentId; hops++) {
       const evidenceIdToLookup: string = currentId;
-      const link: { parent_evidence_id: string; relationship: string } | null = await this.prisma.evidenceLineage.findFirst({
-        where: { tenant_id: tenantId, evidence_id: evidenceIdToLookup },
-      });
+      const link: { parent_evidence_id: string; relationship: string } | null =
+        await this.prisma.evidenceLineage.findFirst({
+          where: { tenant_id: tenantId, evidence_id: evidenceIdToLookup },
+        });
       if (!link) break;
-      chain.push({ evidenceId: link.parent_evidence_id, relationship: link.relationship });
+      chain.push({
+        evidenceId: link.parent_evidence_id,
+        relationship: link.relationship,
+      });
       currentId = link.parent_evidence_id;
     }
 

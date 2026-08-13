@@ -26,6 +26,13 @@ import { OutboxService } from '../../outbox/outbox.service';
     EvidenceAutoCreationService,
     OutboxService,
   ],
-  exports: [EvidenceService, EvidenceLedgerService, EvidenceLineageService, EvidenceAutoCreationService, ContentHashService, ObjectStorageService],
+  exports: [
+    EvidenceService,
+    EvidenceLedgerService,
+    EvidenceLineageService,
+    EvidenceAutoCreationService,
+    ContentHashService,
+    ObjectStorageService,
+  ],
 })
 export class EvidenceModule {}

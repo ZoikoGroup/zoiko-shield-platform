@@ -17,7 +17,9 @@ describe('ConnectorRegistry', () => {
   });
 
   it('throws for an unregistered provider key rather than returning undefined', () => {
-    expect(() => registry.get('aws')).toThrow("No connector registered for provider key 'aws'");
+    expect(() => registry.get('aws')).toThrow(
+      "No connector registered for provider key 'aws'",
+    );
   });
 
   it('reports has() as false for a provider that was never registered', () => {

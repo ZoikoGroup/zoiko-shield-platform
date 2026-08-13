@@ -27,10 +27,12 @@ export class CredentialService {
   }
 
   async getActiveCredential(instanceId: string) {
-    const credential = await this.prisma.connectorCredentialReference.findFirst({
-      where: { instanceId, status: 'ACTIVE' },
-      orderBy: { createdAt: 'desc' },
-    });
+    const credential = await this.prisma.connectorCredentialReference.findFirst(
+      {
+        where: { instanceId, status: 'ACTIVE' },
+        orderBy: { createdAt: 'desc' },
+      },
+    );
     if (!credential) {
       throw new ConnectorAuthenticationError(
         `No active credential reference for connector instance '${instanceId}'`,
@@ -50,7 +52,9 @@ export class CredentialService {
     vaultReferenceId: string,
     credentialType = 'CLIENT_SECRET',
   ) {
-    this.logger.log(`Storing credential reference for instance ${instanceId} (${credentialType})`);
+    this.logger.log(
+      `Storing credential reference for instance ${instanceId} (${credentialType})`,
+    );
     return this.prisma.connectorCredentialReference.create({
       data: {
         tenant_id: tenantId,

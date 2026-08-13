@@ -36,8 +36,8 @@ describe('ControlTestingService (Step 13)', () => {
   });
 
   it('should create a tenant-owned control objective', async () => {
-    prismaMock.controlObjective.create.mockImplementation(({ data }) =>
-      Promise.resolve({ id: 'ctrl-1', ...data }),
+    prismaMock.controlObjective.create.mockImplementation(
+      ({ data }: { data: any }) => Promise.resolve({ id: 'ctrl-1', ...data }),
     );
 
     const control = await service.createControlObjective({
@@ -48,7 +48,10 @@ describe('ControlTestingService (Step 13)', () => {
 
     expect(control.owner).toBe('tenant-1');
     expect(prismaMock.controlObjective.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ key: 'tenant-1:MFA_ENFORCED', owner: 'tenant-1' }),
+      data: expect.objectContaining({
+        key: 'tenant-1:MFA_ENFORCED',
+        owner: 'tenant-1',
+      }),
     });
   });
 

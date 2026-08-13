@@ -11,7 +11,13 @@ export interface OutboxEventData {
 /** Same outbox pattern as shield-ingest's — see that file's doc comment for the rationale (spec §38). */
 @Injectable()
 export class OutboxService {
-  build(params: { tenantId: string; topic: string; eventType: string; payload: unknown; correlationId?: string }): OutboxEventData {
+  build(params: {
+    tenantId: string;
+    topic: string;
+    eventType: string;
+    payload: unknown;
+    correlationId?: string;
+  }): OutboxEventData {
     return {
       tenant_id: params.tenantId,
       topic: params.topic,

@@ -22,6 +22,13 @@ import { ExecutiveReportService } from './executive/executive-report.service';
     OperationalReportService,
     ExecutiveReportService,
   ],
-  exports: [ReportingProjectionService, ReportHealthPropagationService, ReportDefinitionService, ReportSnapshotService, OperationalReportService, ExecutiveReportService],
+  exports: [
+    ReportingProjectionService,
+    ReportHealthPropagationService,
+    ReportDefinitionService,
+    ReportSnapshotService,
+    OperationalReportService,
+    ExecutiveReportService,
+  ],
 })
 export class ReportingModule {}

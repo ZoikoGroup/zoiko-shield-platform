@@ -1,5 +1,17 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { IsIn, IsNumber, IsOptional, IsPositive, IsString, IsUUID } from 'class-validator';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CommercialApprovalService } from '../approvals/commercial-approval.service';
 import { assertTransition } from '../commerce/state-machine.util';
@@ -72,7 +84,11 @@ export class IncidentWorkOrderService {
 
   async activate(dto: ActivateWorkOrderDto) {
     const activeIrObligation = await this.prisma.serviceObligation.findFirst({
-      where: { contract_id: dto.contractId, obligation_type: 'IR_RETAINER', status: 'ACTIVE' },
+      where: {
+        contract_id: dto.contractId,
+        obligation_type: 'IR_RETAINER',
+        status: 'ACTIVE',
+      },
     });
     if (!activeIrObligation) {
       throw new ConflictException({
@@ -99,7 +115,9 @@ export class IncidentWorkOrderService {
   }
 
   async getWorkOrderById(id: string) {
-    const workOrder = await this.prisma.incidentWorkOrder.findUnique({ where: { id } });
+    const workOrder = await this.prisma.incidentWorkOrder.findUnique({
+      where: { id },
+    });
     if (!workOrder) {
       throw new NotFoundException(`Incident work order '${id}' not found`);
     }
@@ -115,7 +133,9 @@ export class IncidentWorkOrderService {
   async logHours(workOrderId: string, dto: LogHoursDto) {
     const workOrder = await this.getWorkOrderById(workOrderId);
     if (workOrder.status !== 'ACTIVE') {
-      throw new ConflictException(`Work order '${workOrderId}' is '${workOrder.status}', not ACTIVE`);
+      throw new ConflictException(
+        `Work order '${workOrderId}' is '${workOrder.status}', not ACTIVE`,
+      );
     }
 
     const included = Number(workOrder.included_hours);
@@ -170,7 +190,11 @@ export class IncidentWorkOrderService {
     });
   }
 
-  async requestOverageApproval(workOrderId: string, requestedBy: string, reason: string) {
+  async requestOverageApproval(
+    workOrderId: string,
+    requestedBy: string,
+    reason: string,
+  ) {
     await this.getWorkOrderById(workOrderId);
     return this.approvalService.requestApproval({
       changeType: 'OVERAGE_OVERRIDE',
@@ -183,7 +207,12 @@ export class IncidentWorkOrderService {
 
   async close(workOrderId: string) {
     const workOrder = await this.getWorkOrderById(workOrderId);
-    assertTransition(WORK_ORDER_TRANSITIONS, workOrder.status, 'CLOSED', 'incident work order');
+    assertTransition(
+      WORK_ORDER_TRANSITIONS,
+      workOrder.status,
+      'CLOSED',
+      'incident work order',
+    );
     return this.prisma.incidentWorkOrder.update({
       where: { id: workOrderId },
       data: { status: 'CLOSED', closed_at: new Date() },

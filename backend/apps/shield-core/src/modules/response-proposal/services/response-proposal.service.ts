@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OutboxService } from '../../../outbox/outbox.service';
@@ -42,15 +47,18 @@ export class ResponseProposalService {
   ) {}
 
   async createProposal(input: CreateProposalInput) {
-    const { authorizationDecisionId, decision } = await this.authorizationDecisionService.evaluate({
-      actorId: input.requestedBy,
-      tenantId: input.tenantId,
-      action: 'response_proposal:create',
-      resourceType: input.targetType,
-      resourceId: input.targetId,
-    });
+    const { authorizationDecisionId, decision } =
+      await this.authorizationDecisionService.evaluate({
+        actorId: input.requestedBy,
+        tenantId: input.tenantId,
+        action: 'response_proposal:create',
+        resourceType: input.targetType,
+        resourceId: input.targetId,
+      });
     if (decision === 'DENY') {
-      throw new BadRequestException('Actor is not authorized to create response proposals');
+      throw new BadRequestException(
+        'Actor is not authorized to create response proposals',
+      );
     }
 
     const correlationId = randomUUID();
@@ -85,7 +93,12 @@ export class ResponseProposalService {
           topic: CANONICAL_TOPICS.ACTION_PROPOSED,
           eventType: 'action.proposed',
           correlationId,
-          payload: { caseId: input.caseId, actionType: input.actionType, targetType: input.targetType, targetId: input.targetId },
+          payload: {
+            caseId: input.caseId,
+            actionType: input.actionType,
+            targetType: input.targetType,
+            targetId: input.targetId,
+          },
         }),
       }),
     ]);
@@ -93,39 +106,54 @@ export class ResponseProposalService {
     return proposal;
   }
 
-  async approve(params: { tenantId: string; proposalId: string; approverId: string; reason?: string }) {
-    const proposal = await this.prisma.actionProposal.findFirst({ where: { id: params.proposalId, tenant_id: params.tenantId } });
+  async approve(params: {
+    tenantId: string;
+    proposalId: string;
+    approverId: string;
+    reason?: string;
+  }) {
+    const proposal = await this.prisma.actionProposal.findFirst({
+      where: { id: params.proposalId, tenant_id: params.tenantId },
+    });
     if (!proposal) {
-      throw new NotFoundException(`ActionProposal '${params.proposalId}' not found`);
+      throw new NotFoundException(
+        `ActionProposal '${params.proposalId}' not found`,
+      );
     }
     if (proposal.status !== 'PROPOSED') {
-      throw new BadRequestException(`ActionProposal '${params.proposalId}' is not in a state that can be approved (${proposal.status})`);
+      throw new BadRequestException(
+        `ActionProposal '${params.proposalId}' is not in a state that can be approved (${proposal.status})`,
+      );
     }
 
-    const { authorizationDecisionId, decision } = await this.authorizationDecisionService.evaluate({
-      actorId: params.approverId,
-      tenantId: params.tenantId,
-      action: 'response_proposal:approve',
-      resourceType: proposal.target_type,
-      resourceId: proposal.target_id,
-    });
+    const { authorizationDecisionId, decision } =
+      await this.authorizationDecisionService.evaluate({
+        actorId: params.approverId,
+        tenantId: params.tenantId,
+        action: 'response_proposal:approve',
+        resourceType: proposal.target_type,
+        resourceId: proposal.target_id,
+      });
     if (decision === 'DENY') {
-      throw new BadRequestException('Actor is not authorized to approve response proposals');
+      throw new BadRequestException(
+        'Actor is not authorized to approve response proposals',
+      );
     }
 
     const expiresAt = new Date(Date.now() + APPROVAL_TTL_MS);
-    const { contentHash: approvedMaterialHash } = this.hashService.hashCanonicalJson({
-      tenantId: params.tenantId,
-      environmentId: proposal.environment_id,
-      proposalId: proposal.id,
-      proposalVersion: proposal.version,
-      actionType: proposal.action_type,
-      targetType: proposal.target_type,
-      targetId: proposal.target_id,
-      authorityLevel: proposal.authority_level,
-      policyVersion: proposal.policy_version,
-      approvalExpiresAt: expiresAt.toISOString(),
-    });
+    const { contentHash: approvedMaterialHash } =
+      this.hashService.hashCanonicalJson({
+        tenantId: params.tenantId,
+        environmentId: proposal.environment_id,
+        proposalId: proposal.id,
+        proposalVersion: proposal.version,
+        actionType: proposal.action_type,
+        targetType: proposal.target_type,
+        targetId: proposal.target_id,
+        authorityLevel: proposal.authority_level,
+        policyVersion: proposal.policy_version,
+        approvalExpiresAt: expiresAt.toISOString(),
+      });
 
     const correlationId = randomUUID();
 
@@ -147,14 +175,21 @@ export class ResponseProposalService {
           expires_at: expiresAt,
         },
       }),
-      this.prisma.actionProposal.update({ where: { id: proposal.id }, data: { status: 'APPROVED' } }),
+      this.prisma.actionProposal.update({
+        where: { id: proposal.id },
+        data: { status: 'APPROVED' },
+      }),
       this.prisma.outboxEvent.create({
         data: this.outbox.build({
           tenantId: params.tenantId,
           topic: CANONICAL_TOPICS.ACTION_APPROVED,
           eventType: 'action.approved',
           correlationId,
-          payload: { proposalId: proposal.id, caseId: proposal.case_id, alertId: proposal.alert_id },
+          payload: {
+            proposalId: proposal.id,
+            caseId: proposal.case_id,
+            alertId: proposal.alert_id,
+          },
         }),
       }),
     ]);
@@ -162,22 +197,38 @@ export class ResponseProposalService {
     return approval;
   }
 
-  async reject(params: { tenantId: string; proposalId: string; actorId: string; reason: string }) {
-    const proposal = await this.prisma.actionProposal.findFirst({ where: { id: params.proposalId, tenant_id: params.tenantId } });
+  async reject(params: {
+    tenantId: string;
+    proposalId: string;
+    actorId: string;
+    reason: string;
+  }) {
+    const proposal = await this.prisma.actionProposal.findFirst({
+      where: { id: params.proposalId, tenant_id: params.tenantId },
+    });
     if (!proposal) {
-      throw new NotFoundException(`ActionProposal '${params.proposalId}' not found`);
+      throw new NotFoundException(
+        `ActionProposal '${params.proposalId}' not found`,
+      );
     }
 
     const correlationId = randomUUID();
     const [updated] = await this.prisma.$transaction([
-      this.prisma.actionProposal.update({ where: { id: proposal.id }, data: { status: 'REJECTED' } }),
+      this.prisma.actionProposal.update({
+        where: { id: proposal.id },
+        data: { status: 'REJECTED' },
+      }),
       this.prisma.outboxEvent.create({
         data: this.outbox.build({
           tenantId: params.tenantId,
           topic: CANONICAL_TOPICS.ACTION_REJECTED,
           eventType: 'action.rejected',
           correlationId,
-          payload: { proposalId: proposal.id, actorId: params.actorId, reason: params.reason },
+          payload: {
+            proposalId: proposal.id,
+            actorId: params.actorId,
+            reason: params.reason,
+          },
         }),
       }),
     ]);
@@ -185,7 +236,9 @@ export class ResponseProposalService {
   }
 
   async getById(tenantId: string, proposalId: string) {
-    const proposal = await this.prisma.actionProposal.findFirst({ where: { id: proposalId, tenant_id: tenantId } });
+    const proposal = await this.prisma.actionProposal.findFirst({
+      where: { id: proposalId, tenant_id: tenantId },
+    });
     if (!proposal) {
       throw new NotFoundException(`ActionProposal '${proposalId}' not found`);
     }
@@ -207,16 +260,26 @@ export class ResponseProposalService {
       include: { receipts: { orderBy: { created_at: 'desc' }, take: 1 } },
     });
     return command
-      ? { state: command.receipts[0]?.status ?? 'PROCESSING', actionCommandId: command.id, receipt: command.receipts[0] ?? null }
+      ? {
+          state: command.receipts[0]?.status ?? 'PROCESSING',
+          actionCommandId: command.id,
+          receipt: command.receipts[0] ?? null,
+        }
       : { state: 'QUEUED', actionCommandId: null, receipt: null };
   }
 
   async freezeTenant(tenantId: string, createdBy: string, reason: string) {
-    if (!reason?.trim()) throw new BadRequestException('A response freeze reason is required');
+    if (!reason?.trim())
+      throw new BadRequestException('A response freeze reason is required');
     const existing = await this.getActiveFreeze(tenantId);
     if (existing) return existing;
     return this.prisma.freeze.create({
-      data: { tenant_id: tenantId, scope: 'TENANT', reason: reason.trim(), created_by: createdBy },
+      data: {
+        tenant_id: tenantId,
+        scope: 'TENANT',
+        reason: reason.trim(),
+        created_by: createdBy,
+      },
     });
   }
 
@@ -236,7 +299,11 @@ export class ResponseProposalService {
 
   async getFreezeStatus(tenantId: string) {
     const freeze = await this.getActiveFreeze(tenantId);
-    return { frozen: !!freeze, status: freeze ? 'FROZEN' : 'OPERATIONAL', freeze };
+    return {
+      frozen: !!freeze,
+      status: freeze ? 'FROZEN' : 'OPERATIONAL',
+      freeze,
+    };
   }
 
   private getActiveFreeze(tenantId: string) {

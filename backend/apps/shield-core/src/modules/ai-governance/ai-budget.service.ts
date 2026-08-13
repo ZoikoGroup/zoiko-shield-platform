@@ -42,7 +42,12 @@ export class AiBudgetService {
   async recordSpend(tenantId: string, amount: number) {
     const now = new Date();
     const budget = await this.prisma.aiBudget.findFirst({
-      where: { tenant_id: tenantId, status: 'ACTIVE', period_start: { lte: now }, period_end: { gte: now } },
+      where: {
+        tenant_id: tenantId,
+        status: 'ACTIVE',
+        period_start: { lte: now },
+        period_end: { gte: now },
+      },
     });
     if (!budget) {
       return null;
@@ -53,7 +58,10 @@ export class AiBudgetService {
 
     return this.prisma.aiBudget.update({
       where: { id: budget.id },
-      data: { consumed_amount: newConsumed, status: exhausted ? 'EXHAUSTED' : 'ACTIVE' },
+      data: {
+        consumed_amount: newConsumed,
+        status: exhausted ? 'EXHAUSTED' : 'ACTIVE',
+      },
     });
   }
 
@@ -61,11 +69,17 @@ export class AiBudgetService {
   async isOverBudget(tenantId: string): Promise<boolean> {
     const now = new Date();
     const budget = await this.prisma.aiBudget.findFirst({
-      where: { tenant_id: tenantId, period_start: { lte: now }, period_end: { gte: now } },
+      where: {
+        tenant_id: tenantId,
+        period_start: { lte: now },
+        period_end: { gte: now },
+      },
       orderBy: { created_at: 'desc' },
     });
     if (!budget) {
-      this.logger.warn(`AI budget check FAILED CLOSED for tenant '${tenantId}' (no budget configured)`);
+      this.logger.warn(
+        `AI budget check FAILED CLOSED for tenant '${tenantId}' (no budget configured)`,
+      );
       return true;
     }
     return Number(budget.consumed_amount) >= Number(budget.budget_amount);

@@ -43,9 +43,15 @@ describe('EvidenceController', () => {
     const mockVerify = { isIntegrityValid: true };
     serviceMock.verifyEvidenceIntegrity.mockResolvedValue(mockVerify);
 
-    const response = await controller.verifyEvidenceIntegrity('tenant-1', 'ev-1');
+    const response = await controller.verifyEvidenceIntegrity(
+      'tenant-1',
+      'ev-1',
+    );
     expect(response.statusCode).toBe(HttpStatus.OK);
     expect(response.data).toBe(mockVerify);
-    expect(serviceMock.verifyEvidenceIntegrity).toHaveBeenCalledWith('tenant-1', 'ev-1');
+    expect(serviceMock.verifyEvidenceIntegrity).toHaveBeenCalledWith(
+      'tenant-1',
+      'ev-1',
+    );
   });
 });

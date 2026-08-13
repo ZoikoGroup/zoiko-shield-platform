@@ -16,12 +16,17 @@ class GuardProbeController {
 describe('PermissionsGuard tenant isolation over HTTP', () => {
   it('allows an active membership and denies another tenant with the same JWT principal', async () => {
     const authorization = {
-      hasTenantAccess: jest.fn(async (tenantId: string) => tenantId === 'tenant-a'),
+      hasTenantAccess: jest.fn(
+        async (tenantId: string) => tenantId === 'tenant-a',
+      ),
       getPermissionCodesForPrincipal: jest.fn(async () => []),
     };
     const testingModule = await Test.createTestingModule({
       controllers: [GuardProbeController],
-      providers: [PermissionsGuard, { provide: AuthorizationService, useValue: authorization }],
+      providers: [
+        PermissionsGuard,
+        { provide: AuthorizationService, useValue: authorization },
+      ],
     }).compile();
     const app = testingModule.createNestApplication();
     app.use((req: any, _res: any, next: () => void) => {
@@ -30,8 +35,12 @@ describe('PermissionsGuard tenant isolation over HTTP', () => {
     });
     await app.init();
 
-    await request(app.getHttpServer()).get('/api/v1/tenants/tenant-a/guard-probe').expect(200, { tenantId: 'tenant-a' });
-    await request(app.getHttpServer()).get('/api/v1/tenants/tenant-b/guard-probe').expect(403);
+    await request(app.getHttpServer())
+      .get('/api/v1/tenants/tenant-a/guard-probe')
+      .expect(200, { tenantId: 'tenant-a' });
+    await request(app.getHttpServer())
+      .get('/api/v1/tenants/tenant-b/guard-probe')
+      .expect(403);
     await request(app.getHttpServer())
       .get('/api/v1/tenants/tenant-a/guard-probe')
       .set('x-tenant-id', 'tenant-b')

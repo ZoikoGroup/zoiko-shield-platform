@@ -1,9 +1,29 @@
-import { Body, Controller, Get, HttpStatus, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
-import { CreatePartnerDto, CreatePartnerAgreementDto, PartnerService } from './partner.service';
-import { GrantDelegationDto, PartnerDelegationService } from './partner-delegation.service';
-import { CalculateSettlementDto, PartnerSettlementService } from './partner-settlement.service';
+import {
+  CreatePartnerDto,
+  CreatePartnerAgreementDto,
+  PartnerService,
+} from './partner.service';
+import {
+  GrantDelegationDto,
+  PartnerDelegationService,
+} from './partner-delegation.service';
+import {
+  CalculateSettlementDto,
+  PartnerSettlementService,
+} from './partner-settlement.service';
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/partners')
@@ -23,8 +43,14 @@ export class PartnerController {
   }
 
   @Patch('agreements/:id/approve')
-  async approveAgreement(@Param('id') id: string, @Body('approvedBy') approvedBy: string) {
-    const agreement = await this.partnerService.approveAgreement(id, approvedBy || 'system');
+  async approveAgreement(
+    @Param('id') id: string,
+    @Body('approvedBy') approvedBy: string,
+  ) {
+    const agreement = await this.partnerService.approveAgreement(
+      id,
+      approvedBy || 'system',
+    );
     return { statusCode: HttpStatus.OK, data: agreement };
   }
 }
@@ -52,7 +78,11 @@ export class PartnerDelegationController {
     @Query('commercialAccountId') commercialAccountId: string,
     @Query('scope') scope: string,
   ) {
-    const allowed = await this.delegationService.checkDelegation(partnerId, commercialAccountId, scope);
+    const allowed = await this.delegationService.checkDelegation(
+      partnerId,
+      commercialAccountId,
+      scope,
+    );
     return { statusCode: HttpStatus.OK, data: { allowed } };
   }
 }
