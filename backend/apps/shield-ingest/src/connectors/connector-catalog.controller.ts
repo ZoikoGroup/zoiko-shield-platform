@@ -10,16 +10,21 @@ import {
   HttpStatus,
   Patch,
   Delete,
+  Optional,
 } from '@nestjs/common';
 import {
   ConnectorCatalogService,
   CreateConnectorDto,
 } from './connector-catalog.service';
 import { requireTenantId } from '../security/tenant-context';
+import { IdempotencyService } from '../../../shield-core/src/modules/idempotency/idempotency.service';
 
 @Controller('api/v1')
 export class ConnectorCatalogController {
-  constructor(private readonly connectorCatalogService: ConnectorCatalogService) {}
+  constructor(
+    private readonly connectorCatalogService: ConnectorCatalogService,
+    @Optional() private readonly idempotencyService?: IdempotencyService,
+  ) {}
 
   /**
    * GET /api/v1/connector-types
@@ -35,15 +40,45 @@ export class ConnectorCatalogController {
 
   /**
    * POST /api/v1/connectors
-   * Creates a new security tool connector instance
+   * Creates a new security tool connector instance with optional Idempotency-Key support (P1 & INT-01)
    */
   @Post('connectors')
   @HttpCode(HttpStatus.CREATED)
   async createConnector(
     @Headers('x-tenant-id') headerTenantId: string,
+    @Headers('idempotency-key') headerIdempotencyKey: string | undefined,
+    @Headers('x-idempotency-key') xIdempotencyKey: string | undefined,
     @Body() dto: CreateConnectorDto,
   ) {
     const tenantId = headerTenantId || dto.tenantId;
+    const idempotencyKey = headerIdempotencyKey || xIdempotencyKey;
+
+    if (idempotencyKey && this.idempotencyService) {
+      const res = await this.idempotencyService.run(
+        {
+          key: idempotencyKey,
+          operation: 'connectors.create',
+          tenantId,
+          requestPayload: dto,
+        },
+        async () => {
+          const result = await this.connectorCatalogService.createConnector({
+            ...dto,
+            tenantId,
+          });
+          return {
+            statusCode: HttpStatus.CREATED,
+            body: {
+              statusCode: HttpStatus.CREATED,
+              message: 'Connector created successfully',
+              data: result,
+            },
+          };
+        },
+      );
+      return res.body;
+    }
+
     const result = await this.connectorCatalogService.createConnector({
       ...dto,
       tenantId,
@@ -106,10 +141,40 @@ export class ConnectorCatalogController {
 
   /**
    * POST /api/v1/connectors/:connectorId/activate
-   * Activate a connector
+   * Activate a connector with optional Idempotency-Key support (P1 & INT-01)
    */
   @Post('connectors/:connectorId/activate')
-  async activateConnector(@Headers('x-tenant-id') tenantId: string, @Param('connectorId') connectorId: string) {
+  async activateConnector(
+    @Headers('x-tenant-id') tenantId: string,
+    @Headers('idempotency-key') headerIdempotencyKey: string | undefined,
+    @Headers('x-idempotency-key') xIdempotencyKey: string | undefined,
+    @Param('connectorId') connectorId: string,
+  ) {
+    const idempotencyKey = headerIdempotencyKey || xIdempotencyKey;
+
+    if (idempotencyKey && this.idempotencyService) {
+      const res = await this.idempotencyService.run(
+        {
+          key: idempotencyKey,
+          operation: `connectors.activate:${connectorId}`,
+          tenantId,
+          requestPayload: { connectorId },
+        },
+        async () => {
+          const result = await this.connectorCatalogService.activateConnector(tenantId, connectorId);
+          return {
+            statusCode: HttpStatus.OK,
+            body: {
+              statusCode: HttpStatus.OK,
+              message: 'Connector activated',
+              data: result,
+            },
+          };
+        },
+      );
+      return res.body;
+    }
+
     const result = await this.connectorCatalogService.activateConnector(tenantId, connectorId);
     return {
       statusCode: HttpStatus.OK,
@@ -142,3 +207,4 @@ export class ConnectorCatalogController {
     return { statusCode: HttpStatus.OK, data: await this.connectorCatalogService.getConnectorHealth(tenantId, connectorId) };
   }
 }
+

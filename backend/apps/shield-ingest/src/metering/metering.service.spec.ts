@@ -18,6 +18,15 @@ describe('MeteringService (ZS-COM-BILL-001)', () => {
         update: jest.fn(),
         findMany: jest.fn(),
       },
+      entitlement: {
+        findFirst: jest.fn(),
+      },
+      commercialAccount: {
+        findFirst: jest.fn(),
+      },
+      meterDefinition: {
+        findFirst: jest.fn(),
+      },
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -46,6 +55,63 @@ describe('MeteringService (ZS-COM-BILL-001)', () => {
     expect(record.billable_quantity).toBe(0);
   });
 
+  it('should force NON_BILLABLE when no active contract or approved meter definition exists (Doctrine D1)', async () => {
+    prismaMock.entitlement.findFirst.mockResolvedValue(null);
+    prismaMock.commercialAccount.findFirst.mockResolvedValue(null);
+    prismaMock.meterDefinition.findFirst.mockResolvedValue(null);
+    prismaMock.usageRecord.create.mockImplementation(({ data }: any) => Promise.resolve({ id: 'u-2', ...data }));
+
+    const record = await service.recordUsageObservation({
+      tenantId: 'unauthorized-tenant',
+      environmentId: 'env-1',
+      sourceType: 'WEBHOOK',
+      usageState: 'ACCEPTED',
+      acceptedQuantity: 1,
+      billableQuantity: 1,
+    });
+
+    expect(record.usage_state).toBe('NON_BILLABLE');
+    expect(record.billable_quantity).toBe(0);
+  });
+
+  it('should allow BILLABLE when active contract and approved meter definition exist (Doctrine D1 & D4)', async () => {
+    prismaMock.entitlement.findFirst.mockResolvedValue({ id: 'ent-1', status: 'ACTIVE' });
+    prismaMock.meterDefinition.findFirst.mockResolvedValue({ id: 'm-1', billable_policy: 'STANDARD' });
+    prismaMock.usageRecord.create.mockImplementation(({ data }: any) => Promise.resolve({ id: 'u-3', ...data }));
+
+    const record = await service.recordUsageObservation({
+      tenantId: 'tenant-1',
+      environmentId: 'env-1',
+      sourceType: 'WEBHOOK',
+      usageState: 'ACCEPTED',
+      acceptedQuantity: 1,
+      billableQuantity: 1,
+    });
+
+    expect(record.usage_state).toBe('BILLABLE');
+    expect(record.billable_quantity).toBe(1);
+  });
+
+  it('should return committedQuantity, warningThresholds, projectedForecast, and overageRatePolicy in getUsageSummary (MET-03)', async () => {
+    const now = new Date();
+    const past = new Date(now.getTime() - 3600 * 1000);
+    prismaMock.usageRecord.findMany.mockResolvedValue([
+      { accepted_quantity: 50, billable_quantity: 50, usage_state: 'BILLABLE', recorded_at: now },
+      { accepted_quantity: 50, billable_quantity: 50, usage_state: 'BILLABLE', recorded_at: past },
+    ]);
+
+    const summary = await service.getUsageSummary('tenant-1');
+
+    expect(summary.tenantId).toBe('tenant-1');
+    expect(summary.acceptedTotal).toBe(100);
+    expect(summary.billableTotal).toBe(100);
+    expect(summary.committedQuantity).toBeDefined();
+    expect(summary.projectedForecast).toBeGreaterThanOrEqual(100);
+    expect(summary.warningThresholds).toBeDefined();
+    expect(summary.warningThresholds.status).toBe('NORMAL');
+    expect(summary.overageRatePolicy).toBeDefined();
+  });
+
   it('should create new resource observation with DISCOVERED and NON_BILLABLE state', async () => {
     prismaMock.resourceObservation.findFirst.mockResolvedValue(null);
     prismaMock.resourceObservation.create.mockResolvedValue({
@@ -69,3 +135,4 @@ describe('MeteringService (ZS-COM-BILL-001)', () => {
     expect(prismaMock.resourceObservation.create).toHaveBeenCalled();
   });
 });
+
