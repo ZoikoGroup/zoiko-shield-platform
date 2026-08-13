@@ -4,7 +4,6 @@ import { createTransport, Transporter } from 'nodemailer';
 import { ChallengePurpose } from './verification-challenge.entity';
 
 const OTP_SUBJECT: Record<ChallengePurpose, string> = {
-  EMAIL_VERIFICATION: 'Verify your ZoikoShield email',
   PASSWORD_RECOVERY: 'Reset your ZoikoShield password',
 };
 

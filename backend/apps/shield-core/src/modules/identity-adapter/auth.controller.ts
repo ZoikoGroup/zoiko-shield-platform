@@ -11,10 +11,7 @@ import {
 import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
-import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { VerifyEmailDto } from './dto/verify-email.dto';
-import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { PasswordRecoveryRequestDto } from './dto/password-recovery-request.dto';
 import { PasswordRecoveryVerifyDto } from './dto/password-recovery-verify.dto';
 import { PasswordRecoveryResetDto } from './dto/password-recovery-reset.dto';
@@ -60,32 +57,6 @@ function recoveryGrantFrom(req: Request): string {
 @Controller(['api/v1/auth', 'auth'])
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
-
-  @Throttle({ default: { limit: 5, ttl: 60_000 } })
-  @Post('register')
-  register(@Body() dto: RegisterDto, @Req() req: Request) {
-    return this.authService.register(dto, sessionMetadataFrom(req));
-  }
-
-  @Post('verify-email')
-  async verifyEmail(
-    @Body() dto: VerifyEmailDto,
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    const { user, ...tokens } = await this.authService.verifyEmail(
-      dto,
-      sessionMetadataFrom(req),
-    );
-    setAuthCookies(res, tokens);
-    return { user };
-  }
-
-  @Throttle({ default: { limit: 3, ttl: 60_000 } })
-  @Post('resend-verification')
-  resendVerification(@Body() dto: ResendVerificationDto, @Req() req: Request) {
-    return this.authService.resendVerification(dto, sessionMetadataFrom(req));
-  }
 
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @Post(['password-recovery/request', 'forgot-password'])

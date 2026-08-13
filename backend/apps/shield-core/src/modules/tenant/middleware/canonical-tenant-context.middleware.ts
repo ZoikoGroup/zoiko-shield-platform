@@ -19,7 +19,6 @@ export class CanonicalTenantContextMiddleware implements NestMiddleware {
       '/health/ready',
       '/health/live',
       '/api/v1/auth/login',
-      '/api/v1/auth/register',
     ];
     if (publicPaths.some((p) => req.path.startsWith(p))) {
       return next();

@@ -7,7 +7,7 @@ This document details the complete 22-step verification workflow for the **Zoiko
 ## 🚀 Overview of the Demonstration Flow
 
 ```text
-User registration/login
+Federated or approved fallback login
 → Organization onboarding & tenant creation
 → Security Analyst invitation
 → Webhook connector configuration & activation
@@ -28,9 +28,9 @@ User registration/login
 
 ## 📋 22 Step-by-Step Verification Checklist
 
-### 1. User Registration & Auth
-- [x] Register user via `POST /api/v1/auth/register` (or OAuth).
-- [x] Receive access & refresh tokens.
+### 1. User Authentication
+- [x] Authenticate the approved bootstrap identity through Google/Microsoft federation or an approved password-fallback account.
+- [x] Receive the authenticated session through secure HTTP-only access and refresh cookies.
 
 ### 2. Tenant & Organization Onboarding
 - [x] Submit organization details via `POST /api/v1/onboarding/organization`.

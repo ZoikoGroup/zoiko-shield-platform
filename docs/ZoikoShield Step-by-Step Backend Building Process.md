@@ -311,26 +311,25 @@ CREATE TABLE identity.sessions (
 );
 ```
 
-## Registration fields
+## Bootstrap identity inputs
 
 ```text
-fullName
-email
-password
-confirmPassword
-acceptTerms
+approved invitation or commercial bootstrap authority
+approved identity provider
+issuer and subject
+verified destination
+terms/policy acceptance
 ```
 
-## Registration flow
+## Invitation/bootstrap flow
 
 ```text
-User enters name, email and password
-→ Validate input
-→ Check whether email exists
-→ Hash password
-→ Create user
-→ Send verification email
-→ User verifies email
+Issue a short-lived, tenant-bound invitation or bootstrap grant
+→ Authenticate through an approved identity provider
+→ Validate issuer, audience, signature, timing and subject
+→ Resolve or create the principal by issuer-subject (never email alone)
+→ Validate the invitation/bootstrap authority and policy acceptance
+→ Provision the approved tenant membership and role mapping
 → Create login session
 → Check onboarding state
 → Redirect to organization onboarding
@@ -343,17 +342,16 @@ User selects Google or Microsoft
 → Redirect to OAuth provider
 → Provider authenticates user
 → OAuth callback returns provider identity
-→ Find user by provider ID or verified email
+→ Find user by the approved issuer-subject binding
 → Create user when not found
 → Create session
-→ Check onboarding state
+→ Resolve approved invitation/bootstrap and tenant membership
 → Redirect to onboarding or dashboard
 ```
 
 ## Authentication endpoints
 
 ```http
-POST /api/v1/auth/register
 POST /api/v1/auth/login
 POST /api/v1/auth/refresh
 POST /api/v1/auth/logout
@@ -365,7 +363,6 @@ GET  /api/v1/auth/google/callback
 GET  /api/v1/auth/microsoft
 GET  /api/v1/auth/microsoft/callback
 
-POST /api/v1/auth/verify-email
 POST /api/v1/auth/forgot-password
 POST /api/v1/auth/reset-password
 
@@ -376,16 +373,19 @@ GET  /api/v1/me
 
 ```json
 {
-  "accessToken": "access-token",
-  "refreshToken": "refresh-token",
   "user": {
     "id": "user-id",
+    "sessionId": "session-id",
     "email": "user@example.com",
     "fullName": "User Name",
-    "onboardingStatus": "NOT_STARTED"
+    "emailVerified": true,
+    "assurance": "FEDERATED"
   }
 }
 ```
+
+The access and refresh tokens are set as secure HTTP-only cookies rather than
+returned in the JSON response body.
 
 ## Security rules
 
@@ -401,10 +401,10 @@ GET  /api/v1/me
 ## Done condition
 
 ```text
-User can register with email and password.
-User can log in.
-User can authenticate with Google.
-User can authenticate with Microsoft.
+Open password self-registration is unavailable.
+Approved password-fallback users can log in.
+Users can authenticate through approved Google or Microsoft federation.
+Federated identities are linked by issuer-subject, never email alone.
 Refresh token rotation works.
 Logout works.
 Authentication audit events are recorded.
@@ -715,7 +715,7 @@ Tenant Owner enters email and role
 → Create pending invitation
 → Send invitation email
 → User opens invitation
-→ User logs in or registers
+→ User authenticates through an approved IdP or password fallback
 → Create tenant membership
 → Assign selected role
 → Mark invitation accepted
@@ -2851,7 +2851,7 @@ The team should build the modules in this order:
 The completed ZoikoShield MVP should demonstrate:
 
 ```text
-1. User registers using email/password or OAuth.
+1. The approved bootstrap user authenticates through federation or an approved password-fallback account.
 
 2. User creates an organization.
 

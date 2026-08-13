@@ -1,6 +1,5 @@
 import {
   BadRequestException,
-  ConflictException,
   ForbiddenException,
   Injectable,
   UnauthorizedException,
@@ -8,10 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
-import { VerifyEmailDto } from './dto/verify-email.dto';
-import { ResendVerificationDto } from './dto/resend-verification.dto';
 import { PasswordRecoveryRequestDto } from './dto/password-recovery-request.dto';
 import { PasswordRecoveryVerifyDto } from './dto/password-recovery-verify.dto';
 import { PasswordRecoveryResetDto } from './dto/password-recovery-reset.dto';
@@ -19,7 +15,6 @@ import { PrincipalService } from './principal.service';
 import { SessionMetadata, SessionService } from './session.service';
 import { VerificationChallengeService } from './verification-challenge.service';
 import { RecoveryGrantService } from './recovery-grant.service';
-import { PolicyService } from './policy.service';
 import { IdentityEventService } from './identity-event.service';
 import { MailService } from './mail.service';
 import {
@@ -56,115 +51,11 @@ export class AuthService {
     private readonly sessionService: SessionService,
     private readonly challengeService: VerificationChallengeService,
     private readonly recoveryGrantService: RecoveryGrantService,
-    private readonly policyService: PolicyService,
     private readonly eventService: IdentityEventService,
     private readonly mailService: MailService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
   ) {}
-
-  private localRegistrationEnabled(): boolean {
-    return (
-      this.configService.get<string>('LOCAL_REGISTRATION_ENABLED', 'true') !==
-      'false'
-    );
-  }
-
-  async register(
-    dto: RegisterDto,
-    metadata: SessionMetadata,
-  ): Promise<{ principalId: string; email: string; message: string }> {
-    if (!this.localRegistrationEnabled()) {
-      throw new ForbiddenException(
-        'Local password registration is not enabled',
-      );
-    }
-    if (dto.password !== dto.confirmPassword) {
-      throw new BadRequestException('password and confirmPassword must match');
-    }
-
-    const activeTerms = await this.policyService.findActive('TERMS_OF_SERVICE');
-    if (!activeTerms || activeTerms.version !== dto.termsOfServiceVersion) {
-      throw new BadRequestException(
-        `termsOfServiceVersion must match the currently active version${activeTerms ? ` (${activeTerms.version})` : ''}`,
-      );
-    }
-
-    const existing = await this.principalService.findByEmail(dto.email);
-    if (existing) {
-      throw new ConflictException('A principal with this email already exists');
-    }
-
-    const passwordHash = await bcrypt.hash(dto.password, SALT_ROUNDS);
-    const principal = await this.principalService.createLocal({
-      email: dto.email,
-      fullName: dto.fullName,
-      passwordHash,
-    });
-
-    await this.policyService.recordAcceptance(
-      principal.id,
-      activeTerms.id,
-      metadata,
-    );
-    await this.eventService.record({
-      eventType: 'principal_created',
-      principalId: principal.id,
-      data: { source: 'LOCAL' },
-    });
-    await this.sendVerificationChallenge(principal, metadata);
-
-    return {
-      principalId: principal.id,
-      email: principal.email!,
-      message: 'Registered. Check your email for a verification code.',
-    };
-  }
-
-  async verifyEmail(
-    dto: VerifyEmailDto,
-    metadata: SessionMetadata,
-  ): Promise<{ user: AuthenticatedUser } & TokenPair> {
-    const principal = await this.principalService.findByEmail(dto.email);
-    if (!principal) {
-      throw new UnauthorizedException('Invalid or expired code');
-    }
-
-    await this.challengeService.verify(
-      principal.id,
-      'EMAIL_VERIFICATION',
-      dto.otp,
-    );
-    await this.principalService.markEmailVerified(principal.id);
-    principal.emailVerified = true;
-
-    await this.eventService.record({
-      eventType: 'email_verified',
-      principalId: principal.id,
-    });
-    await this.principalService.recordLogin(principal.id);
-    const tokens = await this.issueTokenPair(principal, 'PASSWORD', metadata);
-    return { user: this.toAuthenticatedUser(principal, tokens), ...tokens };
-  }
-
-  async resendVerification(
-    dto: ResendVerificationDto,
-    metadata: SessionMetadata,
-  ): Promise<{ message: string }> {
-    const principal = await this.principalService.findByEmail(dto.email);
-    if (principal && !principal.emailVerified) {
-      const canSend = await this.challengeService.canGenerate(
-        principal.id,
-        'EMAIL_VERIFICATION',
-      );
-      if (canSend) {
-        await this.sendVerificationChallenge(principal, metadata);
-      }
-    }
-    return {
-      message: 'If that account needs verification, a new code has been sent.',
-    };
-  }
 
   async login(
     dto: LoginDto,
@@ -407,28 +298,6 @@ export class AuthService {
     });
 
     return { message: 'Password reset. All sessions have been signed out.' };
-  }
-
-  private async sendVerificationChallenge(
-    principal: Principal,
-    metadata: SessionMetadata,
-  ): Promise<void> {
-    const { code, correlationId } = await this.challengeService.generate(
-      principal.id,
-      'EMAIL_VERIFICATION',
-      principal.email!,
-      metadata,
-    );
-    await this.mailService.sendOtp(
-      principal.email!,
-      code,
-      'EMAIL_VERIFICATION',
-    );
-    await this.eventService.record({
-      eventType: 'email_verification_requested',
-      principalId: principal.id,
-      correlationId,
-    });
   }
 
   private async issueTokenPair(

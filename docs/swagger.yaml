@@ -1170,90 +1170,6 @@ components:
           type: string
           description: Trace identifier for support and observability.
           format: uuid
-    PostAuthRegisterRequest:
-      type: object
-      properties:
-        fullName:
-          type: string
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-          minLength: 12
-        confirmPassword:
-          type: string
-        termsOfServiceVersion:
-          type: string
-      required:
-      - fullName
-      - email
-      - password
-      - confirmPassword
-      - termsOfServiceVersion
-    PostAuthRegisterResponse:
-      type: object
-      properties:
-        principalId:
-          type: string
-          format: uuid
-        email:
-          type: string
-        message:
-          type: string
-      required:
-      - principalId
-      - email
-      - message
-    PostAuthVerifyEmailRequest:
-      type: object
-      properties:
-        email:
-          type: string
-          format: email
-        otp:
-          type: string
-          minLength: 6
-          maxLength: 6
-      required:
-      - email
-      - otp
-    PostAuthVerifyEmailResponse:
-      type: object
-      properties:
-        user:
-          type: object
-          properties:
-            id:
-              type: string
-              format: uuid
-            sessionId:
-              type: string
-              format: uuid
-            email:
-              type: string
-            fullName:
-              type: string
-              nullable: true
-            emailVerified:
-              type: boolean
-            assurance:
-              type: string
-              enum:
-              - PASSWORD
-              - PASSWORD_MFA
-              - FEDERATED
-              - FEDERATED_MFA
-              - PASSKEY
-              - RECOVERY
-          required:
-          - id
-          - sessionId
-          - email
-          - emailVerified
-          - assurance
-      required:
-      - user
     PostAuthLoginRequest:
       type: object
       properties:
@@ -1322,21 +1238,6 @@ components:
           type: boolean
       required:
       - success
-    PostAuthResendVerificationRequest:
-      type: object
-      properties:
-        email:
-          type: string
-          format: email
-      required:
-      - email
-    PostAuthResendVerificationResponse:
-      type: object
-      properties:
-        message:
-          type: string
-      required:
-      - message
     PostAuthPasswordRecoveryRequestRequest:
       type: object
       properties:
@@ -22349,75 +22250,6 @@ components:
       - justification
       - evaluated_at
 paths:
-  /auth/register:
-    post:
-      tags:
-      - Auth
-      summary: Register a new user
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostAuthRegisterRequest'
-      responses:
-        '400':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: Email already registered
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '201':
-          description: Register a new user successful.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PostAuthRegisterResponse'
-      operationId: postAuthRegister
-      security: []
-      description: Creates an unverified local principal and password credential,
-        records the accepted Terms of Service version, and sends a one-time email
-        verification code. No session is issued until email verification succeeds.
-  /auth/verify-email:
-    post:
-      tags:
-      - Auth
-      summary: Verify email with OTP
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostAuthVerifyEmailRequest'
-      responses:
-        '201':
-          description: Verify email with OTP successful.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PostAuthVerifyEmailResponse'
-          headers:
-            Set-Cookie:
-              description: httpOnly authentication, refresh, or recovery cookie set/cleared
-                by this operation.
-              schema:
-                type: string
-        '400':
-          description: Request validation failed.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      operationId: postAuthVerifyEmail
-      security: []
-      description: Consumes the email verification OTP, marks the principal as verified,
-        creates a session, and sets the httpOnly access and refresh token cookies.
   /auth/login:
     post:
       tags:
@@ -22542,34 +22374,6 @@ paths:
       operationId: postAuthLogoutAll
       description: Revokes every active session belonging to the authenticated principal
         and clears authentication cookies on the current client.
-  /auth/resend-verification:
-    post:
-      tags:
-      - Auth
-      summary: Resend email verification OTP
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostAuthResendVerificationRequest'
-      responses:
-        '201':
-          description: Resend email verification OTP successful.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PostAuthResendVerificationResponse'
-        '400':
-          description: Request validation failed.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      operationId: postAuthResendVerification
-      security: []
-      description: Issues a replacement email-verification OTP for an eligible unverified
-        account. The endpoint is rate limited to prevent email abuse.
   /auth/password-recovery/request:
     post:
       tags:

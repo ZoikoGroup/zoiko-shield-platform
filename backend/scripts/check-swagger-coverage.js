@@ -94,11 +94,8 @@ const documentedOperations = new Set();
 const documentedSecurity = new Map();
 const documentedTenantHeaders = new Map();
 const approvedPublicOperations = new Set([
-  'post:/auth/register',
-  'post:/auth/verify-email',
   'post:/auth/login',
   'post:/auth/logout',
-  'post:/auth/resend-verification',
   'post:/auth/password-recovery/request',
   'post:/auth/password-recovery/verify',
   'get:/auth/google',

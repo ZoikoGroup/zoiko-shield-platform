@@ -42,31 +42,6 @@ export class PrincipalService {
       );
   }
 
-  async createLocal(data: {
-    email: string;
-    fullName?: string;
-    passwordHash: string;
-  }): Promise<Principal> {
-    const principal = await this.principalRepository.save(
-      this.principalRepository.create({
-        principalType: 'HUMAN',
-        source: 'LOCAL',
-        email: data.email,
-        fullName: data.fullName,
-        emailVerified: false,
-        status: 'ACTIVE',
-      }),
-    );
-    await this.localCredentialRepository.save(
-      this.localCredentialRepository.create({
-        principalId: principal.id,
-        passwordHash: data.passwordHash,
-        passwordUpdatedAt: new Date(),
-      }),
-    );
-    return principal;
-  }
-
   async createFederated(data: {
     email: string;
     fullName?: string;
@@ -105,13 +80,6 @@ export class PrincipalService {
     await this.principalRepository.update(
       { id: principalId },
       { lastLoginAt: new Date() },
-    );
-  }
-
-  async markEmailVerified(principalId: string): Promise<void> {
-    await this.principalRepository.update(
-      { id: principalId },
-      { emailVerified: true },
     );
   }
 
