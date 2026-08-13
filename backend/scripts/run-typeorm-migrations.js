@@ -3,6 +3,36 @@ const { readdirSync, readFileSync } = require('fs');
 const { join } = require('path');
 const { Client } = require('pg');
 
+/**
+ * Splits a .sql file into individual statements. Required for pooled
+ * connections (e.g. Neon's PgBouncer-based pooler in transaction mode),
+ * which don't reliably accept a single multi-statement query the way a
+ * direct connection does. Only tracks single/double-quote state — none of
+ * these migrations use dollar-quoted function bodies, so that's sufficient.
+ */
+function splitStatements(sql) {
+  const statements = [];
+  let current = '';
+  let inSingleQuote = false;
+  let inDoubleQuote = false;
+
+  for (let i = 0; i < sql.length; i++) {
+    const char = sql[i];
+    if (char === "'" && !inDoubleQuote) inSingleQuote = !inSingleQuote;
+    else if (char === '"' && !inSingleQuote) inDoubleQuote = !inDoubleQuote;
+
+    if (char === ';' && !inSingleQuote && !inDoubleQuote) {
+      current += char;
+      statements.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  if (current.trim()) statements.push(current.trim());
+  return statements.filter(Boolean);
+}
+
 async function main() {
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required');
   const client = new Client({ connectionString: process.env.DATABASE_URL });
@@ -27,7 +57,9 @@ async function main() {
       }
       await client.query('BEGIN');
       try {
-        await client.query(sql);
+        for (const statement of splitStatements(sql)) {
+          await client.query(statement);
+        }
         await client.query('INSERT INTO public.infra_schema_migrations(name, checksum) VALUES ($1, $2)', [name, checksum]);
         await client.query('COMMIT');
       } catch (error) {
