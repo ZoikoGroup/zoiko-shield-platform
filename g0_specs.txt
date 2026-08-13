@@ -1,0 +1,1520 @@
+| **Companion baselines** | ZS-T0-BE-ARCH-001 v1.2; ZS-T0-DOC-EST-001 v1.2; ZS-A7-ANN-ENG-001 v1.0; ZS-ENG-GOV-001 v1.1; ZS-ENG-SCOPE-001 v1.0; ZS-ENG-REQ-001 v1.0; ZS-ENG-ARCH-001 v1.0; ZS-ENG-DATA-001 v1.0; ZS-ENG-INT-001 v1.0; ZS-ENG-IAM-001 v1.0; ZS-ENG-EVID-001 v1.0; ZS-ENG-DRS-001 v1.0; ZS-ENG-AI-001 v1.0; ZS-ENG-SEC-001 v1.0; ZS-ENG-INFRA-001 v1.0; ZS-ENG-CICD-001 v1.0; ZS-ENG-QA-001 v1.0; ZS-ENG-OPS-001 v1.0 |
+| **Accountable owner**   | CTO / Global Head of Engineering                                                                                                                                                                                                                                                                                                                                                                        |
+| **Operational owners**  | Head of Product Design; Front-End Engineering Lead; Design Systems Lead                                                                                                                                                                                                                                                                                                                                 |
+| **Control co-owners**   | Chief Architect, CISO, AI Risk, Evidence/GRC, SOC, Accessibility, Privacy, Legal/Compliance, Customer Operations, SRE and Quality Engineering                                                                                                                                                                                                                                                           |
+| **Classification**      | EC-2 Engineering Controlled; production topology, customer-specific data, restricted threat findings and privileged operating details remain EC-3                                                                                                                                                                                                                                                       |
+| **Gate relevance**      | G0 Build Authorization; G1 Design-Partner Readiness; G2 Commercial GA; applicable G3/G4 enterprise, sovereign, OT and critical-infrastructure authorization                                                                                                                                                                                                                                             |
+| **Primary registers**   | Product Requirement Traceability; Service and Module Catalog; API/Webhook; Event/Schema; Evidence/Collector/Evaluator; AI Register; Claim/Disclosure Register; SLO/Scale/Unit-Economics; Release Evidence and Production Approval                                                                                                                                                                       |
+| **Review cadence**      | Quarterly and upon material product scope, design-system, accessibility, security, AI, evidence, authority, data, API, state, jurisdiction, localization or supported-device change                                                                                                                                                                                                                     |
+| **Effective date**      | Upon approval                                                                                                                                                                                                                                                                                                                                                                                           |
+
+|     |
+|-----|
+
+**CONTROLLED DOCUMENT \| CONFIDENTIAL \| ENGINEERING DISTRIBUTION**
+
+# Document Control and Navigation
+
+| **Control**              | **Value**                                                                                                                                                                    |
+|--------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Normative language**   | MUST = mandatory; SHOULD = expected unless an approved exception exists; MAY = optional.                                                                                     |
+
+34 Threat Model and Abuse-Case Verification
+
+35 Definitions of Ready and Done
+
+36 Workstream Handoff and G0-G4 Approval Gates
+
+37 Required Document Views, Figures and Tables
+
+38 Controlled Annexes
+
+39 Final Control Sentence
+
+<table>
+<colgroup>
+<col style="width: 100%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th><p><strong>DOCUMENT CONTROL SENTENCE</strong></p>
+
+***Figure 3 - Experience contract derivation and implementation flow.***
+
+| **Contract level**             | **Purpose**                                                            | **Minimum contents**                                                                        |
+|--------------------------------|------------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
+| **ECX-0 Journey**              | End-to-end customer or operator outcome across pages and services      | Actors, entry/exit, stages, dependencies, failure journeys, SLO, evidence and ownership.    |
+| **ECX-1 Page / screen**        | One addressable surface or primary workspace                           | Anatomy, states, data, permissions, actions, AI, audit, accessibility, telemetry and tests. |
+| **ECX-2 Workflow**             | Multi-step create, approve, execute, freeze, export or recover process | State machine, resumability, validation, approvals, rollback, timeout and evidence.         |
+| **ECX-3 Pattern**              | Reusable domain interaction such as evidence status or action proposal | Semantics, slots, states, variants, permissions, keyboard and analytics.                    |
+| **ECX-4 Component**            | Design-system primitive such as button, field, table, dialog or banner | Tokens, states, accessibility, content constraints, events and deprecation.                 |
+| **ECX-5 Content / disclosure** | Controlled terms, status copy, warning, AI notice or claim             | Locale, legal/compliance approval, effective version, fallback and prohibited wording.      |
+
+<table>
+<colgroup>
+<col style="width: 100%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th><p><strong>SOURCE-OF-TRUTH RULE</strong></p>
+<p>The Experience Contract Registry is authoritative for behavior and traceability. The design repository is authoritative for approved visual rendering only. Code, tickets, prototypes and screenshots do not silently override either source.</p></th>
+| **W07** | Connector catalog, setup and credential flow           | Least-privilege scopes before consent; vault reference; test connection; BYO read-only label; vendor/region eligibility.     |
+| **W08** | Connector health and coverage dashboard                | Healthy/degraded/stale/unauthorized/rate-limited/failed; gap timeline; backfill/reconciliation; customer-visible.            |
+| **W09** | Users, roles and segregation-of-duties administration  | Role grants, SoD conflict warning, delegated boundaries, access review, evidence-logged grant/revoke.                        |
+| **W10** | Entitlements, usage, forecast and service obligations  | Usage vs entitlement; forecast; overage notice; hours/retainer/test calendar; delivery evidence links.                       |
+| **W11** | Audit and privileged-activity explorer                 | Tenant-scoped immutable events; filters; integrity-aware export; actor/purpose; no edit affordance.                          |
+| **W12** | Policy/configuration approval, deployment and rollback | Draft/diff, scope, impact, approvers, test/simulation, staged deployment, effective version, rollback and audit record.      |
+
+# 23 \| Security Operations Experience Contracts
+
+| **ID**  | **Experience contract**               | **Gate** | **Defensibility requirements**                                                                                            |
+|---------|---------------------------------------|----------|---------------------------------------------------------------------------------------------------------------------------|
+| **W13** | Alert queue                           | G1       | Severity, transparent factors, confidence, coverage/unknown, SLA clocks, assignment, dedupe/suppression attribution.      |
+| **W14** | Alert detail                          | G1       | Rule/version, input events, enrichment snapshots, ATT&CK, why-fired logic, evidence and disposition rationale.            |
+| **W15** | Detection content management          | G1       | Rule lifecycle, data prerequisites, tests/replay, staged rollout, ownership, performance/cost and signed version history. |
+| **W16** | Case workspace                        | G1       | Unified timeline, tasks, evidence, legal hold, state machine, customer/internal notes, AI contribution and SLA.           |
+| **W17** | Response action proposal and approval | G1       | R0-R4, target, blast radius, approvals, policy, attestation/signing, rollback, simulation/live and receipt.               |
+| **W18** | Playbook run view                     | G1       | Step-by-step human/automated distinction, approvals, inputs/outputs, compensation, errors and version.                    |
+| **W19** | Incident command view                 | G2       | Scope, severity, roles, clocks, decisions, communications, recovery, evidence reconciliation and PIR handoff.             |
+| **W20** | SOC shift handover                    | G2       | Open cases, commitments, watch items, unresolved risk, incoming acknowledgment and quality sampling.                      |
+
+
+| **ID**  | **Experience contract**               | **Gate** | **Defensibility requirements**                                                                                            |
+|---------|---------------------------------------|----------|---------------------------------------------------------------------------------------------------------------------------|
+| **W13** | Alert queue                           | G1       | Severity, transparent factors, confidence, coverage/unknown, SLA clocks, assignment, dedupe/suppression attribution.      |
+| **W14** | Alert detail                          | G1       | Rule/version, input events, enrichment snapshots, ATT&CK, why-fired logic, evidence and disposition rationale.            |
+| **W15** | Detection content management          | G1       | Rule lifecycle, data prerequisites, tests/replay, staged rollout, ownership, performance/cost and signed version history. |
+| **W16** | Case workspace                        | G1       | Unified timeline, tasks, evidence, legal hold, state machine, customer/internal notes, AI contribution and SLA.           |
+| **W17** | Response action proposal and approval | G1       | R0-R4, target, blast radius, approvals, policy, attestation/signing, rollback, simulation/live and receipt.               |
+| **W18** | Playbook run view                     | G1       | Step-by-step human/automated distinction, approvals, inputs/outputs, compensation, errors and version.                    |
+| **W19** | Incident command view                 | G2       | Scope, severity, roles, clocks, decisions, communications, recovery, evidence reconciliation and PIR handoff.             |
+| **W20** | SOC shift handover                    | G2       | Open cases, commitments, watch items, unresolved risk, incoming acknowledgment and quality sampling.                      |
+
+# 24 \| Compliance, Evidence and Assurance Experience Contracts
+
+| **ID**  | **Experience contract**          | **Defensibility requirements**                                                                                                  |
+|---------|----------------------------------|---------------------------------------------------------------------------------------------------------------------------------|
+| **W21** | Framework and control library    | Version/licensing display mode; canonical objectives; mapping rationale/authority; partial/conflict flags.                      |
+| **W22** | Control detail                   | Implementation, owner, tests/evaluators, history, evidence states, gaps, exceptions and remediation; no green without COMPLETE. |
+| **W23** | Evidence object viewer           | Preview, hash, collector/version, period, chain position, retention/hold, lineage and verification result.                      |
+| **W24** | Evidence operations queue        | Expected evidence, collection failures, permission drift, stale/partial, backfill, reassignment, SLA and bulk-safe remediation. |
+|--------------------------------|----------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------|
+| **UX-C0 Editorial**            | Non-material typo with no legal/status effect                                                      | Content owner review; no contract version if semantics unchanged.                             |
+| **UX-C1 Visual non-semantic**  | Spacing or decorative change within tokens                                                         | Design-system test and visual regression.                                                     |
+| **UX-C2 Interaction**          | Navigation, workflow, keyboard, responsive or component behavior                                   | Contract minor version, requirements/test impact and product/engineering approval.            |
+| **UX-C3 Control-semantic**     | Status color/label, evidence, permission, AI disclosure, confirmation or error behavior            | Security/compliance/AI/accessibility review; release evidence; migration plan.                |
+| **UX-C4 Breaking / high risk** | Removed capability, changed authority, data exposure, irreversible action or jurisdiction behavior | ADR, major version, customer impact, staged rollout and executive approval as applicable.     |
+| **Deprecation**                | Pattern/page/API no longer supported                                                               | Successor, usage inventory, notice, migration, telemetry, removal date and archived baseline. |
+
+# 31 \| Controlled Design Repository and Remote-Team Safeguards
+
+| **Control**                 | **Mandatory implementation**                                                                                              |
+|-----------------------------|---------------------------------------------------------------------------------------------------------------------------|
+| **Identity and access**     | Individual SSO, phishing-resistant MFA, workstream groups, EC-3 named access, automatic contractor expiry.                |
+| **Repository separation**   | Controlled design library, prototype workspace, restricted annexes and public/marketing assets remain logically separate. |
+| **Sharing**                 | No anonymous/public links, personal accounts, external email attachments or uncontrolled exports.                         |
+| **Production data**         | Synthetic/anonymized data only; no customer evidence, secrets, credentials or restricted incident content.                |
+| **Version and approval**    | Immutable approved milestone, named reviewers, change history, source-document versions and supersession banner.          |
+| **Component governance**    | Published library packages; local detachment or shadow components prohibited without exception.                           |
+| **Comments and recordings** | No secrets/customer data in comments; meeting recordings/transcription require approved tool and purpose.                 |
+| **Plugins and AI tools**    | Approved plugins/providers only; no uncontrolled design upload or training use; tool activity logged where possible.      |
+| Evidence, audit, AI and action controls mapped.                                    | Performance, telemetry and visual regression meet budget.                           |
+| Accessibility and responsive behavior specified.                                   | Documentation, support and runbook impacts complete.                                |
+| Performance and telemetry contracts defined.                                       | Release evidence, approvals, exceptions and canary result recorded.                 |
+| Prototype/contract reviewed by Product, Engineering and applicable control owners. | Production monitoring confirms expected states and no material drift.               |
+
+# 36 \| Workstream Handoff and G0-G4 Approval Gates
+
+| **Gate**                                        | **Minimum experience evidence**                                                                                                                            | **Approval authority**                                                                    |
+|-------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------|
+| **G0 Build Authorization**                      | C11 foundation; contract schema; design-system architecture; invariants; state model; W01/W02/W08/W22/W23 concept validation; tooling/repository controls. | CTO, Chief Architect, Product, Security, Accessibility and Engineering.                   |
+| **G1 Design-Partner Readiness**                 | 29 G1 contracts approved; all states; evidence/AI/action patterns; accessibility; synthetic data; telemetry/audit; canary and support paths.               | Product, Engineering, CISO, AI Risk, Evidence/GRC, Quality and Design-Partner Authority.  |
+| **G2 Commercial GA**                            | Nine G2 contracts; contractual MDR flows; incident/shift; executive/report/export/developer/trust surfaces; scale and operational evidence.                | Executive Product, CTO, CISO, Service Operations, Legal/Compliance and Release Authority. |
+| **G3 Enterprise / sector scale**                | Dedicated/enterprise variants, sector-pack content, localization, scale, support and procurement assurance without core fork.                              | Architecture Board, Security, Product, Legal/Compliance and Commercial Authority.         |
+| **G4 Sovereign / OT / critical infrastructure** | Offline/constrained variants, sovereign controls, high-impact authorization, device/network/accessibility and operational evidence.                        | Board-delegated authority, CTO, CISO, Legal/Compliance and sector specialists.            |
+
+<table>
+<colgroup>
+<col style="width: 100%" />
+</colgroup>
+<thead>
+
+# 36 \| Workstream Handoff and G0-G4 Approval Gates
+
+| **Gate**                                        | **Minimum experience evidence**                                                                                                                            | **Approval authority**                                                                    |
+|-------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------|
+| **G0 Build Authorization**                      | C11 foundation; contract schema; design-system architecture; invariants; state model; W01/W02/W08/W22/W23 concept validation; tooling/repository controls. | CTO, Chief Architect, Product, Security, Accessibility and Engineering.                   |
+| **G1 Design-Partner Readiness**                 | 29 G1 contracts approved; all states; evidence/AI/action patterns; accessibility; synthetic data; telemetry/audit; canary and support paths.               | Product, Engineering, CISO, AI Risk, Evidence/GRC, Quality and Design-Partner Authority.  |
+| **G2 Commercial GA**                            | Nine G2 contracts; contractual MDR flows; incident/shift; executive/report/export/developer/trust surfaces; scale and operational evidence.                | Executive Product, CTO, CISO, Service Operations, Legal/Compliance and Release Authority. |
+| **G3 Enterprise / sector scale**                | Dedicated/enterprise variants, sector-pack content, localization, scale, support and procurement assurance without core fork.                              | Architecture Board, Security, Product, Legal/Compliance and Commercial Authority.         |
+| **G4 Sovereign / OT / critical infrastructure** | Offline/constrained variants, sovereign controls, high-impact authorization, device/network/accessibility and operational evidence.                        | Board-delegated authority, CTO, CISO, Legal/Compliance and sector specialists.            |
+
+<table>
+<colgroup>
+<col style="width: 100%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th><p><strong>P0 EXPERIENCE RELEASE BLOCKERS</strong></p>
+<p>Any cross-tenant exposure, missing material audit event, non-complete state shown healthy, dead-end assertion, privileged action without visible authority/recovery, AI tool use without reauthorization, inaccessible critical workflow, uncontrolled design-system semantic change, or wireframe-contract drift blocks production release.</p></th>
+</tr>
+| **Annex O** | Visual Regression Baseline Manifest             |
+| **Annex P** | Design-System Change Impact Assessment          |
+| **Annex Q** | Wireframe Review and Approval Record            |
+| **Annex R** | Workstream Handoff Package                      |
+| **Annex S** | Experience Exception and Risk Acceptance        |
+| **Annex T** | G0-G4 Experience Gate Evidence Checklist        |
+
+# 39 \| Final Control Sentence
+
+<table>
+<colgroup>
+<col style="width: 100%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th><p><strong>FINAL CONTROL SENTENCE</strong></p>
+<p>No screen without scope. No state without semantics. No number without derivation. No assertion without evidence. No restricted action without authority, approval and recovery. No AI output without provenance, limits and human control. No design without accessibility. No release without traceability and evidence.</p></th>
+</tr>
+</thead>
+<tbody>
+| **Companion baselines** | ZS-T0-BE-ARCH-001 v1.2; ZS-T0-DOC-EST-001 v1.2; ZS-A7-ANN-ENG-001 v1.0; ZS-ENG-GOV-001 v1.1; ZS-ENG-SCOPE-001 v1.0; ZS-ENG-REQ-001 v1.0; ZS-ENG-ARCH-001 v1.0; ZS-ENG-DATA-001 v1.0; ZS-ENG-INT-001 v1.0; ZS-ENG-IAM-001 v1.0; ZS-ENG-EVID-001 v1.0; ZS-ENG-DRS-001 v1.0; ZS-ENG-AI-001 v1.0; ZS-ENG-SEC-001 v1.0; ZS-ENG-INFRA-001 v1.0; ZS-ENG-CICD-001 v1.0; ZS-ENG-QA-001 v1.0 |
+| **Accountable owner**   | CTO / Global Head of Engineering                                                                                                                                                                                                                                                                                                                                                   |
+| **Operational owners**  | Head of SRE; Platform Operations Lead; Service Operations Lead                                                                                                                                                                                                                                                                                                                     |
+| **Control co-owners**   | Chief Architect, CISO, SOC Lead, Evidence/GRC Lead, AI Systems Lead, Data Platform, Infrastructure, Quality Engineering, Privacy, Customer Operations, Legal/Compliance and FinOps                                                                                                                                                                                                 |
+| **Classification**      | EC-2 Engineering Controlled; production topology, privileged access paths, customer-specific incident data, security detections, unresolved critical weaknesses and restricted forensic material EC-3                                                                                                                                                                              |
+| **Gate relevance**      | G0 Build Authorization; G1 Design-Partner Readiness; G2 Commercial GA; applicable G3/G4 enterprise, sovereign, OT and critical-infrastructure authorization                                                                                                                                                                                                                        |
+| **Primary registers**   | Service and Module Catalog; SLO/Error-Budget/Scale/Unit-Economics Register; Risk/Dependency/Exception Register; API/Event/Schema Register; Evidence/Evaluator Register; AI Register; Release Evidence and Production-Approval Register                                                                                                                                             |
+| **Review cadence**      | Quarterly and upon material architecture, service tier, SLO, deployment, region, provider, data class, AI route, response authority, incident, restore, contract or operating-model change                                                                                                                                                                                         |
+| **Effective date**      | Upon approval                                                                                                                                                                                                                                                                                                                                                                      |
+
+|     |
+|-----|
+
+**CONTROLLED DOCUMENT \| CONFIDENTIAL \| ENGINEERING DISTRIBUTION**
+
+# Document Control and Navigation
+
+| **Control**               | **Value**                                                                                                                              |
+|---------------------------|----------------------------------------------------------------------------------------------------------------------------------------|
+| **Normative language**    | MUST = mandatory; SHOULD = expected unless an approved exception exists; MAY = optional.                                               |
+
+36 Remote-Team Controls and Segregation of Duties
+
+37 Definitions of Ready and Done for Operations
+
+38 Workstream Handoff and G0-G4 Approval Gates
+
+39 Controlled Annexes
+
+40 Standards Alignment and Authoritative Reference Inputs
+
+<table>
+<colgroup>
+<col style="width: 100%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th><p><strong>DOCUMENT CONTROL SENTENCE</strong></p>
+<p>No service without a named owner. No SLO without a reproducible measurement contract. No page without an action path. No recovery claim without reconciliation. No readiness declaration without current evidence and named approval.</p></th>
+</tr>
+| **Release candidate**    | Exact artifact/config, quality gates, capacity, backup/restore, customer impact and canary plan. | ORR approved, deployment complete, production validation and dwell pass, evidence retained.                 |
+| **Service operation**    | On-call staffed, access current, status/support paths ready and dependencies monitored.          | SLO/error budget reviewed, incidents closed/reconciled, obligations delivered and operational debt managed. |
+| **Incident restoration** | Scope, command, evidence, communications and recovery plan established.                          | Customer outcome restored, authoritative state reconciled, communications resolved and CAPA owned.          |
+| **Retirement**           | Replacement/export/retention/contract/dependency plan approved.                                  | Traffic/data/alerts/runbooks/access removed, customers handled and historical evidence retained.            |
+
+# 38 \| Workstream Handoff and G0-G4 Approval Gates
+
+| **Gate**                                    | **Minimum operational evidence**                                                                                                                               |
+|---------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **G0 Build Authorization**                  | Service ownership model, signal standards, SLI/SLO architecture, incident/readiness processes, privacy/security controls and test strategy approved.           |
+| **G1 Design-Partner Readiness**             | Critical journeys, connector/evidence health, tenant-safe views, on-call, runbooks, restore and customer communications demonstrated for design-partner scope. |
+| **G2 Commercial GA**                        | Measured SLOs, error-budget policy, 24/7 operating coverage as sold, incident/DR exercises, status/support, capacity/cost and ORR evidence complete.           |
+| **G3 Enterprise/Sector Scale**              | Dedicated/sector/second-region/provider operating evidence, enterprise support, contractual objectives and isolation/recovery tests.                           |
+| **G4 Sovereign/OT/Critical Infrastructure** | Topology-specific observability, offline/sovereign operations, safety, customer command, independent assurance and no inherited readiness by assumption.       |
+| **Workstream handoff**                      | **Required content**                                                                                                                                           |
+| **Service/domain**                          | Catalog record, owner, dependencies, tier, SLOs, risks and customer impact.                                                                                    |
+| **Instrumentation**                         | Signal contracts, semantic fields, privacy/residency, sampling and cost.                                                                                       |
+| **Operations**                              | Dashboards, alerts, runbooks, on-call, escalation, status and maintenance.                                                                                     |
+| **Recovery**                                | Backup, restore, failover, reconciliation, game-day and rollback evidence.                                                                                     |
+| **AI/security/evidence**                    | Specialized signals, kill/freeze controls, audit reconciliation and restricted handling.                                                                       |
+
+# 38 \| Workstream Handoff and G0-G4 Approval Gates
+
+| **Gate**                                    | **Minimum operational evidence**                                                                                                                               |
+|---------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **G0 Build Authorization**                  | Service ownership model, signal standards, SLI/SLO architecture, incident/readiness processes, privacy/security controls and test strategy approved.           |
+| **G1 Design-Partner Readiness**             | Critical journeys, connector/evidence health, tenant-safe views, on-call, runbooks, restore and customer communications demonstrated for design-partner scope. |
+| **G2 Commercial GA**                        | Measured SLOs, error-budget policy, 24/7 operating coverage as sold, incident/DR exercises, status/support, capacity/cost and ORR evidence complete.           |
+| **G3 Enterprise/Sector Scale**              | Dedicated/sector/second-region/provider operating evidence, enterprise support, contractual objectives and isolation/recovery tests.                           |
+| **G4 Sovereign/OT/Critical Infrastructure** | Topology-specific observability, offline/sovereign operations, safety, customer command, independent assurance and no inherited readiness by assumption.       |
+| **Workstream handoff**                      | **Required content**                                                                                                                                           |
+| **Service/domain**                          | Catalog record, owner, dependencies, tier, SLOs, risks and customer impact.                                                                                    |
+| **Instrumentation**                         | Signal contracts, semantic fields, privacy/residency, sampling and cost.                                                                                       |
+| **Operations**                              | Dashboards, alerts, runbooks, on-call, escalation, status and maintenance.                                                                                     |
+| **Recovery**                                | Backup, restore, failover, reconciliation, game-day and rollback evidence.                                                                                     |
+| **AI/security/evidence**                    | Specialized signals, kill/freeze controls, audit reconciliation and restricted handling.                                                                       |
+| **Release**                                 | Exact artifacts/config, ORR record, canary/dwell, production validation and closure.                                                                           |
+
+# 39 \| Controlled Annexes
+
+| **Companion baselines** | ZS-T0-BE-ARCH-001 v1.2; ZS-T0-DOC-EST-001 v1.2; ZS-ENG-GOV-001 v1.1; ZS-ENG-SCOPE-001 v1.0; ZS-ENG-REQ-001 v1.0; ZS-ENG-ARCH-001 v1.0; ZS-ENG-DATA-001 v1.0; ZS-ENG-INT-001 v1.0; ZS-ENG-IAM-001 v1.0; ZS-ENG-EVID-001 v1.0; ZS-ENG-DRS-001 v1.0; ZS-ENG-AI-001 v1.0; ZS-ENG-SEC-001 v1.0; ZS-ENG-INFRA-001 v1.0; ZS-ENG-CICD-001 v1.0 |
+| **Accountable owner**   | CTO / Global Head of Engineering                                                                                                                                                                                                                                                                                                       |
+| **Operational owners**  | Head of Quality Engineering; Test Architecture Lead; SRE Quality Lead                                                                                                                                                                                                                                                                  |
+| **Control co-owners**   | Chief Architect, CISO, AppSec, Platform, Data, AI Systems, Evidence, Detection and Response, Privacy, Accessibility, Product, Service Operations, Legal/Compliance and FinOps                                                                                                                                                          |
+| **Classification**      | EC-2 Engineering Controlled; exploit corpora, unresolved critical findings, customer-specific test material, production fault-injection details and restricted red-team evidence EC-3                                                                                                                                                  |
+| **Gate relevance**      | G0 Build Authorization; G1 Design-Partner Readiness; G2 Commercial GA; applicable G3/G4 enterprise, sovereign, OT and critical-infrastructure authorization                                                                                                                                                                            |
+| **Primary registers**   | Product Requirement and Acceptance Traceability; ADR/Gate; Risk/Dependency/Exception; API/Event/Schema; Connector; Evidence/Evaluator; AI Evaluation; SLO/Scale/Unit Economics; Release Evidence and Production Approval                                                                                                               |
+| **Review cadence**      | Quarterly and upon material architecture, data, AI, response-authority, test framework, environment, scale envelope, SLO, incident, audit, regulatory or release-control change                                                                                                                                                        |
+| **Effective date**      | Upon approval                                                                                                                                                                                                                                                                                                                          |
+
+|     |
+|-----|
+
+**CONTROLLED DOCUMENT \| CONFIDENTIAL \| ENGINEERING DISTRIBUTION**
+
+# Document Control and Navigation
+
+| **Control**             | **Value**                                                                                                                                                                                |
+|-------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Normative language**  | MUST = mandatory; SHOULD = expected unless an approved exception exists; MAY = optional.                                                                                                 |
+
+| **In scope**                                                                                                                                     | **Out of scope / separate authority**                                                                               |
+|--------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------|
+| Test strategy, risk coverage, automation, environments, data, result evidence, defects, release gates and Definitions of Ready/Done.             | Product prioritization, pricing, employment performance management and legal certification decisions.               |
+| Functional, security, tenancy, privacy, evidence, AI, accessibility, performance, resilience, migration, connector and operational verification. | Penetration-test exploitation details or red-team reports beyond approved engineering disclosure.                   |
+| G0-G2 quality controls and design patterns required for later G3/G4 deployment classes.                                                          | Automatic authorization of sovereign, OT, safety-critical or customer-managed topologies without separate evidence. |
+| Employees, contractors, partners, automation, test agents and approved AI-assisted quality tooling.                                              | Use of real customer data or production actions unless explicitly authorized by a controlled test plan.             |
+
+# 04 \| Binding Quality-Engineering Invariants
+
+| **ID**    | **Invariant**                                 | **Binding consequence**                                                                                               |
+|-----------|-----------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|
+| **QA-01** | Outcome traceability                          | Every material test traces to an approved requirement, invariant, risk, obligation or incident.                       |
+| **QA-02** | Risk-proportionate evidence                   | Verification depth reflects impact, irreversibility, uncertainty and blast radius.                                    |
+| **QA-03** | Independent oracle                            | Expected behavior is defined independently of the code under test.                                                    |
+| **QA-04** | Exact release binding                         | Results bind to artifact digest, configuration, schema, policy, data and environment.                                 |
+| **QA-05** | No silent waiver                              | Failures, skips, retries, quarantines and exceptions remain visible and attributable.                                 |
+| **QA-06** | Fail closed on indeterminate material control | Unavailable or ambiguous security, isolation, evidence or signing checks block release.                               |
+| **QA-07** | Negative paths are mandatory                  | Unauthorized, invalid, partial, stale, replayed and degraded behavior is tested.                                      |
+| **QA-08** | Tenant isolation is a release blocker         | Cross-tenant negative tests cover every relevant storage, interface, cache, queue, search, observability and AI path. |
+| **Windowed correlation**    | Window, ordering, watermark, late/missing data, duplicate and boundary timestamps.                                      |
+| **Sequence rules**          | Out-of-order events, partial sequences, reset, timeout and entity resolution.                                           |
+| **Enrichment**              | Recorded asset/identity/intel/policy versions; mutable current context never silently substituted.                      |
+| **Replay**                  | Bit-for-bit decision reproduction or explicit NON_DETERMINISTIC divergence record.                                      |
+| **Noise / precision**       | Representative benign/adversarial datasets, analyst feedback and customer-specific tuning without cross-tenant leakage. |
+| **Content lifecycle**       | Propose, test, peer review, sign, staged publish, monitor, tune and retire.                                             |
+| **AI-generated candidates** | Sandboxed, adversarially reviewed and deterministically re-expressed before blocking production use.                    |
+
+# 17 \| Case, SOAR, Action-Broker and Response-Safety Testing
+
+<img src="ZoikoShield_Combined_Engineering_Specifications_media/media/image38.png" style="width:6.75in;height:3.97222in" alt="Image: image132.png" />
+
+***Figure 8 - Governed response safety verification.***
+
+| **Control**                 | **Required verification**                                                                                   |
+|-----------------------------|-------------------------------------------------------------------------------------------------------------|
+| **Case state machine**      | Valid/invalid transitions, duplicate/false-positive/accepted-risk/legal-hold paths and audit timeline.      |
+| **Playbook typing**         | Inputs, outputs, version, preconditions, approval gates, timeouts, retries, compensation and simulation.    |
+| **Authority R0-R4**         | Policy resolves correct authority; missing/ambiguous context fails closed.                                  |
+| **Approvals**               | Named authority, step-up, dual control, freshness, revocation and customer approval.                        |
+| **Alternate history**          | Divergence from anchored root detected and declared as integrity incident.                |
+| **SOC/service disruption**     | Queue ownership, overflow, handover and customer commitments remain controlled.           |
+
+# 24 \| Data Migration, Backfill, Upgrade and Rollback Testing
+
+| **Stage**                  | **Required evidence**                                                                                  |
+|----------------------------|--------------------------------------------------------------------------------------------------------|
+| **Design**                 | Forward/backward compatibility, expand-contract sequence, authority and rollback/forward-fix decision. |
+| **Preflight**              | Data shape, null/constraint, volume, tenant/region and expected duration.                              |
+| **Rehearsal**              | Production-representative synthetic copy, checkpoints, failure injection and cost.                     |
+| **Dual-read/write**        | Consistency, ordering, idempotency and divergence monitoring where used.                               |
+| **Backfill**               | Bounded batch, resume, throttling, per-tenant isolation, reconciliation and evidence.                  |
+| **Cutover**                | Version gates, maintenance/customer impact, feature flag and stop criteria.                            |
+| **Rollback / forward fix** | What is reversible, what is compensating and how partial state is reconciled.                          |
+| **Historical assurance**   | Old audit packages, replay and evidence remain verifiable after schema evolution.                      |
+
+# 25 \| Connector, Provider and Partner Certification Testing
+
+| **Certification level**             | **Required evidence**                                                                        |
+|-------------------------------------|----------------------------------------------------------------------------------------------|
+
+# 41 \| Workstream Handoff and Approval Gates
+
+| **Gate**                                    | **Minimum quality evidence**                                                                                                                           |
+|---------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **G0 Build Authorization**                  | Quality strategy, invariants, requirement/test model, environment/data controls, security/AI/evidence test plans and DoR/DoD approved.                 |
+| **G1 Design-Partner Readiness**             | W1-W29 applicable journeys; tenant isolation; ledger verifier; AI transparency; connector health; restore; accessibility; no critical/high unresolved. |
+| **G2 Commercial GA**                        | Measured SLO/scale/cost, 24/7 operating tests, response safety, incident/DR exercises, penetration/red team closure and complete release readiness.    |
+| **G3 Enterprise/Sector Scale**              | Dedicated isolation, sector pack, second-region/provider, contractual scale and enterprise procurement evidence.                                       |
+| **G4 Sovereign/OT/Critical Infrastructure** | Topology-specific threat/safety, offline/sovereign operations, customer acceptance and independent assurance; no inheritance by assumption.            |
+| **Workstream handoff item**                 | **Required content**                                                                                                                                   |
+| **Requirements**                            | IDs, acceptance, risks, exclusions and claims.                                                                                                         |
+| **Architecture/contracts**                  | ADRs, interfaces, data authority, states and dependencies.                                                                                             |
+| **Test assets**                             | Cases, automation, fixtures, corpora, seeds, simulators and environment manifests.                                                                     |
+| **Evidence**                                | Current results, defects, exceptions, provenance and coverage.                                                                                         |
+| **Operations**                              | SLOs, dashboards, alerts, runbooks, recovery and canary checks.                                                                                        |
+| **Ownership**                               | Code, tests, environments, data, defects, release and on-call owners.                                                                                  |
+
+# 42 \| Controlled Annexes
+
+| **Companion baselines** | ZS-T0-BE-ARCH-001 v1.2; ZS-T0-DOC-EST-001 v1.2; ZS-ENG-GOV-001 v1.1; ZS-ENG-SCOPE-001 v1.0; ZS-ENG-REQ-001 v1.0; ZS-ENG-ARCH-001 v1.0; ZS-ENG-DATA-001 v1.0; ZS-ENG-INT-001 v1.0; ZS-ENG-IAM-001 v1.0; ZS-ENG-EVID-001 v1.0; ZS-ENG-DRS-001 v1.0; ZS-ENG-AI-001 v1.0; ZS-ENG-SEC-001 v1.0; ZS-ENG-INFRA-001 v1.0 |
+| **Accountable owner**   | CTO / Global Head of Engineering                                                                                                                                                                                                                                                                                 |
+| **Operational owners**  | Developer Platform Lead; Release Engineering Lead; SRE Lead                                                                                                                                                                                                                                                      |
+| **Control co-owners**   | Chief Architect, CISO, AppSec, Platform, Data, AI Systems, Evidence, Detection and Response, QA, Privacy, Legal/Compliance, FinOps and Service Operations                                                                                                                                                        |
+| **Classification**      | EC-2 Engineering Controlled; signing topology, break-glass procedures, unresolved findings, production deployment identities and sensitive runner/network details EC-3                                                                                                                                           |
+| **Gate relevance**      | G0 Build Authorization; G1 Design-Partner Readiness; G2 Commercial GA; material enterprise, sovereign, OT and critical-infrastructure delivery requires applicable G3/G4 evidence                                                                                                                                |
+| **Primary registers**   | Requirement Traceability; ADR/Gate; Service/Module Catalog; API/Event/Schema; AI Register; Vendor/Subprocessor; Risk/Exception; SLO/Scale/Unit Economics; Release Evidence and Production Approval                                                                                                               |
+| **Review cadence**      | Quarterly and upon material source-control, builder, package, artifact, signing, deployment, AI-assistant, change-authority, incident, provider, regulatory or supply-chain change                                                                                                                               |
+| **Effective date**      | Upon approval                                                                                                                                                                                                                                                                                                    |
+
+|     |
+|-----|
+
+**CONTROLLED DOCUMENT \| CONFIDENTIAL \| ENGINEERING DISTRIBUTION**
+
+# Document Control and Navigation
+
+| **Control**              | **Value**                                                                                                                                                                                                                               |
+|--------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Normative language**   | MUST = mandatory; SHOULD = expected unless an approved exception exists; MAY = optional.                                                                                                                                                |
+| **Build scans without trustworthy builders**           | A compromised runner can fabricate results, replace dependencies or steal signing credentials.                  | Ephemeral isolated runners, pinned toolchains, bounded egress, short-lived identity and independent signing.                   |
+| **SBOM produced as a compliance attachment**           | An unverified SBOM that is not bound to the artifact provides little trust.                                     | SBOM, provenance and policy results are generated during build and cryptographically bound to the exact digest.                |
+| **Artifact rebuilt for each environment**              | Production may differ from what passed tests, invalidating assurance.                                           | Build once and promote by immutable digest with one bound release manifest.                                                    |
+| **AI coding assistant outside SDLC controls**          | Sensitive input leakage, license contamination and insecure generated code can bypass normal ownership.         | Approved gateway/use cases, input minimization, human accountability, AI-use evidence and normal gates.                        |
+| **Emergency path as pipeline bypass**                  | Urgency can create unaudited privilege and unreconciled production drift.                                       | Compressed but controlled emergency workflow with independent review, signed manifest, rollback and post-event reconciliation. |
+| **Dependency automation optimized only for freshness** | Automated upgrades may introduce malicious, incompatible or license-prohibited code.                            | Risk-based dependency intake, internal mirrors, policy, sandboxing, owner/expiry and staged update evidence.                   |
+| **Deployment approval separated from customer impact** | Technically healthy release may breach contract, residency, evidence, AI disclosure or service obligation.      | Release manifest includes customer/tenant scope, obligations, communication and claim impact.                                  |
+| **Remote-team control based on trust statements**      | Shared access or broad production privileges defeat accountability.                                             | Individual identities, managed devices, least privilege, authorship/review/release separation and JIT production custody.      |
+
+# 02 \| Executive Software-Delivery Mandate
+
+<table>
+<colgroup>
+<col style="width: 22%" />
+<col style="width: 77%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th colspan="2"><p><strong>MANDATE</strong></p>
+<p>Create a software-delivery system in which every production change is attributable, independently reviewed, built in a controlled environment, verified against explicit policy, signed outside the build job, promoted by immutable digest, released through bounded rollout, and reconciled to runtime evidence.</p></th>
+
+| **In scope**                                                                                                                                                    | **Out of scope / separate authority**                                                                                               |
+|-----------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
+| Repositories, review, build, test, dependency intake, SBOM, provenance, signing, artifact stores, promotion, deployment, change, rollback and release evidence. | Product prioritization, pricing, customer contracting, provider procurement and production credential issuance.                     |
+| Application, infrastructure, schema, event, policy, detection, playbook, prompt, agent and documentation delivery controls.                                     | Detailed domain behavior, data semantics, model-risk decisions and infrastructure topology already governed by companion documents. |
+| G0-G2 software-delivery controls and design patterns for later enterprise/sovereign delivery.                                                                   | Automatic authorization for private, air-gapped, OT or customer-managed build/deployment systems.                                   |
+| Technical and organizational controls for employees, contractors, automation, bots and approved AI assistants.                                                  | HR disciplinary procedure, legal investigations and Board risk acceptance beyond engineering implementation.                        |
+
+# 04 \| Binding CI/CD, Change and Supply-Chain Invariants
+
+| **ID**      | **Invariant**                      | **Binding consequence**                                                                                    |
+|-------------|------------------------------------|------------------------------------------------------------------------------------------------------------|
+| **CICD-01** | Controlled source only             | Production changes originate from approved repositories and protected merge paths.                         |
+| **CICD-02** | Requirement-linked change          | Every material change links to an approved requirement, defect, risk, incident or ADR.                     |
+| **CICD-03** | Independent review                 | Author, required approver and production releaser are separated for material changes.                      |
+| **CICD-04** | Build once                         | The same immutable artifact digest is tested, signed and promoted to production.                           |
+| **CICD-05** | Ephemeral builders                 | Build runners are disposable, isolated, identity-bound and free of standing production credentials.        |
+| **CICD-06** | Pinned inputs                      | Dependencies, base images, toolchains and generated inputs are versioned and integrity verified.           |
+| **CICD-07** | No builder-held signing key        | Artifact signing occurs through independent policy-gated key use.                                          |
+| **CICD-08** | Provenance before promotion        | No artifact advances without acceptable source/build provenance and SBOM.                                  |
+
+<img src="ZoikoShield_Combined_Engineering_Specifications_media/media/image47.png" style="width:6.75in;height:3.97222in" alt="Image: image112.png" />
+
+***Figure 2 - Trusted software-delivery lifecycle.***
+
+| **Stage**   | **Authoritative input**                      | **Required output / evidence**                                  | **Stop condition**                                            |
+|-------------|----------------------------------------------|-----------------------------------------------------------------|---------------------------------------------------------------|
+| **Plan**    | Approved requirement/risk/incident and scope | Change class, owner, affected domains, tests and rollout intent | No controlled source authority.                               |
+| **Source**  | Protected repository and branch policy       | Reviewed immutable source revision                              | Missing owner/review, stale approval or prohibited secret.    |
+| **Build**   | Pinned source/inputs and trusted runner      | Digest, logs, test results, SBOM and provenance                 | Unknown input, compromised runner or non-reproducible output. |
+| **Verify**  | Security/privacy/AI/quality policies         | Pass/fail decisions, findings and exceptions                    | Blocking finding or indeterminate material policy.            |
+| **Sign**    | Verified digest and approved attestation set | Artifact signature and signed release metadata                  | Builder-controlled key or incomplete evidence.                |
+| **Promote** | Immutable signed candidate                   | Target-specific release manifest and approval                   | Rebuild, mutable tag or unapproved configuration.             |
+| **Deploy**  | Authorized target and rollout policy         | Deployment record, cohort and runtime identity                  | Target mismatch, admission failure or missing rollback.       |
+| **Operate** | Runtime telemetry and release manifest       | Health, drift, incident, rollback and closure evidence          | Unreconciled runtime or breached stop threshold.              |
+
+<img src="ZoikoShield_Combined_Engineering_Specifications_media/media/image48.png" style="width:6.75in;height:4.02569in" alt="Image: image113.png" />
+
+***Figure 3 - Software-supply-chain trust zones.***
+
+| **Integrity**           | Cryptographic digest/signature where available; lockfile/digest pinning; mirror preserves source metadata.      |
+| **Malware / confusion** | Typosquat, dependency-confusion, maintainer-takeover and malicious-package checks proportionate to risk.        |
+| **License / IP**        | Approved license policy, attribution/notice and distribution obligations; prohibited or unknown licenses block. |
+| **Vulnerability**       | Current vulnerability status plus reachability/exploitability and compensating runtime controls.                |
+| **Maintenance health**  | Owner, release activity, support status, bus factor, deprecation and replacement plan.                          |
+| **Update policy**       | Automated proposal allowed; high-risk or breaking updates require sandbox, tests and staged adoption.           |
+| **Transitives**         | Complete graph visible in SBOM; transitive changes receive the same policy evaluation.                          |
+| **Exceptions**          | Specific version/use, owner, rationale, compensating controls, expiry and removal plan.                         |
+| **Retirement**          | Remove unused dependencies, stale mirrors, credentials and associated attack surface.                           |
+
+# 14 \| Build System, Runner and Toolchain Architecture
+
+<img src="ZoikoShield_Combined_Engineering_Specifications_media/media/image54.png" style="width:6.75in;height:4.02569in" alt="Image: image119.png" />
+
+***Figure 9 - Build trust and provenance chain.***
+
+| **Component**           | **Required architecture**                                                                                        |
+|-------------------------|------------------------------------------------------------------------------------------------------------------|
+| **Runner lifecycle**    | Ephemeral per job or verified clean reset; no cross-job workspace, secret or cache contamination.                |
+| **Identity**            | Short-lived workload identity constrained by repository, ref, workflow, environment and intended action.         |
+| **Controlled content**         | **Required delivery controls**                                                                                          |
+|--------------------------------|-------------------------------------------------------------------------------------------------------------------------|
+| **Infrastructure as code**     | Plan/impact, policy, module ownership, non-prod apply, drift, rollback and runtime reconciliation.                      |
+| **Database/schema migrations** | Expand-contract, compatibility window, backup/restore, backfill, validation, rollback/forward fix and tenant isolation. |
+| **Event/API schemas**          | Versioning, consumer compatibility, deprecation, generated clients, contract tests and adoption telemetry.              |
+| **Authorization/policy**       | Typed policy, negative tests, decision explainability, staged rollout, policy version binding and fail-closed behavior. |
+| **Detection content**          | Detection-as-code, data prerequisites, replay, noise/performance, ATT&CK mapping, staged publication and retirement.    |
+| **Playbooks/actions**          | Simulation, R0-R4 authority, approvals, per-tenant signing, compensation, rollback and receipt checks.                  |
+| **Prompts/retrieval/agents**   | Risk classification, prompt/tool versions, evaluation, injection tests, budgets, human oversight and kill switches.     |
+| **Compliance mappings**        | Licensed content mode, SME/legal review, evaluator version and no implied certification.                                |
+| **Configuration**              | Schema, owner, environment/tenant scope, defaults, secrets references, validation and audit history.                    |
+| **Documentation**              | Versioned with release, role-appropriate, limitations explicit and obsolete instructions retired.                       |
+
+# 21 \| Environment Promotion, Deployment Strategies and Release Binding
+
+<img src="ZoikoShield_Combined_Engineering_Specifications_media/media/image57.png" style="width:6.75in;height:3.97222in" alt="Image: image122.png" />
+
+***Figure 12 - Artifact promotion and production rollout.***
+
+| **Strategy**                | **Permitted use**                                        | **Required controls**                                                                            |
+|--------------------------------|-------------------------------------------------------------------------------------------------------------------------|
+| **Infrastructure as code**     | Plan/impact, policy, module ownership, non-prod apply, drift, rollback and runtime reconciliation.                      |
+| **Database/schema migrations** | Expand-contract, compatibility window, backup/restore, backfill, validation, rollback/forward fix and tenant isolation. |
+| **Event/API schemas**          | Versioning, consumer compatibility, deprecation, generated clients, contract tests and adoption telemetry.              |
+| **Authorization/policy**       | Typed policy, negative tests, decision explainability, staged rollout, policy version binding and fail-closed behavior. |
+| **Detection content**          | Detection-as-code, data prerequisites, replay, noise/performance, ATT&CK mapping, staged publication and retirement.    |
+| **Playbooks/actions**          | Simulation, R0-R4 authority, approvals, per-tenant signing, compensation, rollback and receipt checks.                  |
+| **Prompts/retrieval/agents**   | Risk classification, prompt/tool versions, evaluation, injection tests, budgets, human oversight and kill switches.     |
+| **Compliance mappings**        | Licensed content mode, SME/legal review, evaluator version and no implied certification.                                |
+| **Configuration**              | Schema, owner, environment/tenant scope, defaults, secrets references, validation and audit history.                    |
+| **Documentation**              | Versioned with release, role-appropriate, limitations explicit and obsolete instructions retired.                       |
+
+# 21 \| Environment Promotion, Deployment Strategies and Release Binding
+
+<img src="ZoikoShield_Combined_Engineering_Specifications_media/media/image57.png" style="width:6.75in;height:3.97222in" alt="Image: image122.png" />
+
+***Figure 12 - Artifact promotion and production rollout.***
+
+| **Strategy**                | **Permitted use**                                        | **Required controls**                                                                            |
+|-----------------------------|----------------------------------------------------------|--------------------------------------------------------------------------------------------------|
+
+# 37 \| Approval Gates, Decisions and Controlled Annexes
+
+| **Gate**                                    | **Minimum CI/CD and supply-chain evidence**                                                                                                                              |
+|---------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **G0 Build Authorization**                  | Repository classes/owners; protected source; trusted build design; dependency policy; secret controls; test strategy; provenance/signing design; SoD and risk owners.    |
+| **G1 Design-Partner Readiness**             | End-to-end signed release to staging/production canary; SBOM/provenance verification; rollback; release evidence; access review; emergency workflow rehearsal.           |
+| **G2 Commercial GA**                        | Measured pipeline SLOs; production reconciliation; security exercises; provider continuity; release communications; artifact retention; recurring assurance cadence.     |
+| **G3 Enterprise/Sector Scale**              | Dedicated/regulated delivery requirements, stronger customer evidence, extended retention, key/residency controls and enterprise change procedures.                      |
+| **G4 Sovereign/OT/Critical Infrastructure** | Customer/private build and update model, offline verification, restricted supply chain, sovereign key/custody, manual continuity and separate threat/acceptance package. |
+
+## 37.1 Open decisions required before approval
+
+| **Decision**                               | **Owner**                | **Default if unresolved**                                                                                             |
+|--------------------------------------------|--------------------------|-----------------------------------------------------------------------------------------------------------------------|
+| **Source-control and repository platform** | CTO / Developer Platform | Use approved enterprise platform with SSO, protected branches, audit export and organization policy.                  |
+| **CI runner model**                        | Platform / Security      | Ephemeral managed/self-hosted isolated runners; no shared persistent production runner.                               |
+| **Artifact and package registry**          | Platform / Security      | Private immutable registry/mirror with digest, retention, audit and recovery.                                         |
+| **Provenance/signing stack**               | Security / Platform      | Standards-based attestations and HSM/KMS-backed signing with independent verification.                                |
+| **AI coding tools**                        | AI Risk / Security       | No production-source use until provider, data and route approved in AI Register.                                      |
+| **Companion baselines** | ZS-T0-BE-ARCH-001 v1.2; ZS-T0-DOC-EST-001 v1.2; ZS-ENG-GOV-001 v1.1; ZS-ENG-SCOPE-001 v1.0; ZS-ENG-REQ-001 v1.0; ZS-ENG-ARCH-001 v1.0; ZS-ENG-DATA-001 v1.0; ZS-ENG-INT-001 v1.0; ZS-ENG-IAM-001 v1.0; ZS-ENG-EVID-001 v1.0; ZS-ENG-DRS-001 v1.0; ZS-ENG-AI-001 v1.0; ZS-ENG-SEC-001 v1.0                                                                                                          |
+| **Accountable owner**   | CTO / Head of Platform Engineering                                                                                                                                                                                                                                                                                                                                                                 |
+| **Operational owners**  | Platform Engineering Lead; SRE Lead; Cloud Infrastructure Lead                                                                                                                                                                                                                                                                                                                                     |
+| **Control co-owners**   | Chief Architect, CISO, Data, Ingestion, Evidence, Detection and Response, AI Systems, IAM, QA, Privacy, FinOps and Service Operations                                                                                                                                                                                                                                                              |
+| **Classification**      | EC-2 Engineering Controlled; production account topology, management-plane routes, key custody, emergency access, recovery credentials and unresolved infrastructure findings EC-3                                                                                                                                                                                                                 |
+| **Gate relevance**      | G0 Build Authorization; G1 Design-Partner Readiness; G2 Commercial GA; dedicated, sovereign, OT or critical-infrastructure deployment requires applicable G3/G4 evidence                                                                                                                                                                                                                           |
+| **Primary registers**   | ADR/Gate Register; Service and Module Catalog; Data Register; API/Event/Connector Registers; Vendor/Subprocessor Register; SLO/Scale/Unit-Economics Register; Risk/Exception Register; Release Evidence Register                                                                                                                                                                                   |
+| **Review cadence**      | Quarterly and upon material cloud, region, environment, topology, network, data-service, identity, cryptographic, deployment, SLO, cost, resilience, AI-provider, incident or regulatory change                                                                                                                                                                                                    |
+| **Effective date**      | Upon approval                                                                                                                                                                                                                                                                                                                                                                                      |
+
+|     |
+|-----|
+
+**CONTROLLED DOCUMENT \| CONFIDENTIAL \| ENGINEERING DISTRIBUTION**
+
+# Document Control and Navigation
+
+| **Control**                  | **Value**                                                                                                                                                            |
+|------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Normative language**       | MUST = mandatory; SHOULD = expected unless an approved exception exists; MAY = optional.                                                                             |
+<td><strong>Bounded blast radius</strong></td>
+<td>Region, tenant, satellite, management, provider and workload failures do not become uncontrolled fleet compromise.</td>
+</tr>
+<tr class="odd">
+<td><strong>Safe change</strong></td>
+<td>Immutable artifacts, versioned configuration, staged rollout, synthetic tenants, canaries and bounded rollback.</td>
+</tr>
+<tr class="even">
+<td><strong>Explicit degradation</strong></td>
+<td>Dependency or control failure is visible; sensitive paths fail closed; deterministic core functions continue where safe.</td>
+</tr>
+<tr class="odd">
+<td><strong>Portable architecture</strong></td>
+<td>Domain and event contracts remain provider-neutral; data and artifacts have documented export and recovery paths.</td>
+</tr>
+<tr class="even">
+<td><strong>Commercial viability</strong></td>
+<td>Capacity and cost measured by tenant, source, region, store, retention and AI route; guardrails block margin-destructive releases.</td>
+</tr>
+<tr class="odd">
+
+| **In scope**                                                                                                                                                            | **Out of scope / separate authority**                                                                                    |
+|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|
+| Cloud organization, environment classes, regional cells, network, compute, data services, messaging, secrets, observability, deployment, resilience, capacity and cost. | Provider procurement, commercial negotiation, customer-specific private architecture and sovereign commitment approval.  |
+| Infrastructure contracts, IaC modules, policy, GitOps, release manifests, runtime inventory, drift, backup, restore and operational views.                              | Application-domain behavior, detection content, evidence semantics, AI decision rights and API/event contract ownership. |
+| G0-G2 pooled and enhanced deployment foundations and design patterns for later dedicated/sovereign tiers.                                                               | Automatic authorization to build T3/T4, OT, on-premises or air-gapped deployments.                                       |
+| Technical controls required by security, privacy, evidence, AI, managed response and service objectives.                                                                | Production credentials, private keys, exact network addresses and emergency access procedures in the general document.   |
+
+# 04 \| Binding Infrastructure and Deployment Invariants
+
+| **ID**     | **Invariant**                             | **Binding consequence**                                                                                                                    |
+|------------|-------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| **INF-01** | Infrastructure is code                    | Production resources and material configuration originate from reviewed, versioned, testable code and policy.                              |
+| **INF-02** | Regional cell is the operational boundary | Customer telemetry and evidence remain within the approved cell unless an explicit transfer policy permits otherwise.                      |
+| **INF-03** | Global plane is bounded                   | No raw telemetry, evidence content, customer secret or unrestricted personal data in global services.                                      |
+| **INF-04** | Immutable promotion                       | Artifacts, schemas, policies, configuration and infrastructure revisions are promoted by digest/version, never rebuilt or edited in place. |
+| **INF-05** | Environment independence                  | Identity, keys, data, routes and access do not cross environments by default.                                                              |
+| **INF-06** | No standing privilege                     | Human production access is JIT, purpose-bound, approved, logged and time-limited.                                                          |
+| **INF-07** | Default deny                              | Network, egress, identity, admission, data and deployment policies deny unapproved behavior.                                               |
+| **INF-08** | No hidden single point                    | Every critical dependency has an explicit failure mode, owner, detection and recovery strategy.                                            |
+| **LOCAL**            | Developer build, unit tests and isolated component work.       | Synthetic data; no production route, credentials or trust roots.                | Developer-controlled within approved tooling; disposable. |
+| **PREVIEW**          | Per-change integration and UX/API verification.                | Synthetic seeded tenant; no standing secret; internet exposure bounded.         | Automatic create/destroy; hard TTL.                       |
+| **DEV**              | Shared feature integration and engineering validation.         | Synthetic or approved masked fixtures; non-production identity and keys.        | Continuously reconciled; not release evidence by itself.  |
+| **INT**              | Cross-service, contract, connector and migration tests.        | Representative synthetic datasets and test provider accounts.                   | Release candidate begins contract evidence.               |
+| **SEC/PERF**         | Adversarial, scale, chaos, restore and tenant-isolation tests. | Synthetic/high-volume generated data; isolated egress and cost ceiling.         | Time-bounded test campaign; destructive tests permitted.  |
+| **STAGE**            | Production-equivalent topology and promotion process.          | No routine customer data; production-like policies with separate keys/accounts. | Required G1/G2 rehearsal and soak.                        |
+| **PROD**             | Customer contractual operation in approved regional cells.     | Customer data and production identities; strict change/access controls.         | Continuous operation; only approved releases.             |
+| **RECOVERY**         | Regional continuity, restore and failover capability.          | Encrypted replicated/backup data under residency and key policy.                | Exercised on schedule; not assumed ready.                 |
+| **SYNTHETIC CANARY** | Zoiko-owned tenant exercising full production paths.           | Non-customer synthetic data; no privileged bypass.                              | Receives release first; continuous control checks.        |
+
+<table>
+<colgroup>
+<col style="width: 100%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th><p><strong>ENVIRONMENT RULE</strong></p>
+<p>Production data must not be copied to lower environments merely to make testing easier. Where a production defect cannot be reproduced synthetically, use controlled production diagnostics or an exceptional, minimized, time-bounded dataset workflow with Privacy and Security approval.</p></th>
+</tr>
+</thead>
+| **Stabilize** | Maintain safe core functions, explicit degradation and customer/operations communication.                                        |
+| **Eradicate** | Rebuild from trusted source/artifact; rotate trust roots; remove unauthorized resources/configuration.                           |
+| **Restore**   | Restore/replay according to dependency order; verify backups and manifests.                                                      |
+| **Reconcile** | Desired/runtime state, tenant boundaries, data, event offsets, evidence anchors, action queues, identities and release manifest. |
+| **Validate**  | Synthetic transactions, security tests, SLO/control health, customer-specific checks and independent review.                     |
+| **Re-enable** | Named incident/release authority; staged traffic/action/deployment restoration.                                                  |
+| **CAPA**      | Root cause, threat model, requirement, IaC/policy/test/runbook and training updates.                                             |
+| **Claims**    | Assess SLA, Trust Center, audit and customer assurance implications before closure.                                              |
+
+# 29 \| Infrastructure Failure States and Safe Degradation
+
+| **State**                       | **Meaning**                                                             | **Required behavior**                                                       |
+|---------------------------------|-------------------------------------------------------------------------|-----------------------------------------------------------------------------|
+| **INFRA_NOMINAL**               | Desired and runtime state reconcile; controls and dependencies healthy. | Normal operation within approved envelope.                                  |
+| **DRIFT_DETECTED**              | Runtime differs from desired state.                                     | Classify, contain if material, reconcile or approve time-bound exception.   |
+| **REGION_DEGRADED**             | Cell or critical regional dependency impaired.                          | Protect integrity, shed noncritical load, assess failover and notify.       |
+| **ZONE_LOSS**                   | One availability zone unavailable.                                      | Remain operational within tested capacity; replace/rebalance automatically. |
+| **CAPACITY_PRESSURE**           | Headroom or dependency limit below threshold.                           | Throttle/queue/shed by priority; no unbounded autoscale or hidden loss.     |
+| **INGEST_BACKPRESSURE**         | Source volume exceeds safe processing.                                  | Durably queue/throttle; expose lag and coverage; protect other tenants.     |
+| **IDENTITY_POLICY_UNAVAILABLE** | Current access decision cannot be established.                          | Sensitive path denied; bounded approved read only where designed.           |
+shield-evidence-anchor: sha256:&lt;digest&gt;<br />
+schemas: {db: 42, events: ocsf-map-17, api: v1.8}<br />
+policies: {authz: 31, network: 12, action: 17, ai_route: 9}<br />
+configuration_bundle: cfg-2026.08.01-04<br />
+infrastructure_revision: infra-7f9a2c<br />
+environments: [stage-eu, prod-eu-primary]<br />
+rollout: canary<br />
+rollback_manifest: zsr-2026.07.24-03<br />
+approvals: [arch, security, sre, product]<br />
+evidence_ref: R20://zsr-2026.08.01-01</th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+
+**Example 3 - Runtime resource inventory contract**
+
+<table>
+<colgroup>
+
+# 35 \| Approval Gates, Decisions and Controlled Annexes
+
+| **Gate**                                    | **Minimum infrastructure evidence**                                                                                                                                          |
+|---------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **G0 Build Authorization**                  | Environment model, cloud hierarchy, regional-cell blueprint, network/identity/data boundaries, IaC/GitOps control, threat model, test strategy and Gate-0 ADR closure.       |
+| **G1 Design-Partner Readiness**             | Production cell, staging parity, synthetic tenant, P0 integrations, evidence infrastructure, backup/restore, monitoring, access controls, scale and signed readiness review. |
+| **G2 Commercial GA**                        | Measured SLOs/error budgets, 24/7 operations, canary/rollback, DR exercise, cost guardrails, independent security findings resolved and customer claims approved.            |
+| **G3 Enterprise/Sector Scale**              | T2/T3 isolation, additional regions/providers, enterprise capacity, dedicated keys/data services, enhanced support and contracted economics.                                 |
+| **G4 Sovereign/OT/Critical Infrastructure** | Customer/private topology, offline/update chain, customer key custody, restricted operations, sector threat model, recovery and certification package.                       |
+
+## 35.1 Decisions required before approval
+
+| **Decision**                    | **Required result**                                                               |
+|---------------------------------|-----------------------------------------------------------------------------------|
+| **Primary cloud/provider**      | ADR with capability, security, portability, operations, cost and exit analysis.   |
+| **Initial regions**             | Legal entity, customer pipeline, residency, support and recovery decision.        |
+| **Orchestration/runtime**       | Managed orchestration and workload identity approach.                             |
+| **Event backbone**              | Managed Kafka-compatible or approved equivalent with replay/portability evidence. |
+| **Hot analytics/search**        | Benchmark against reference scale and cost envelope.                              |
+| **Companion baselines** | ZS-T0-BE-ARCH-001 v1.2; ZS-T0-DOC-EST-001 v1.2; ZS-ENG-GOV-001 v1.1; ZS-ENG-SCOPE-001 v1.0; ZS-ENG-REQ-001 v1.0; ZS-ENG-ARCH-001 v1.0; ZS-ENG-DATA-001 v1.0; ZS-ENG-INT-001 v1.0; ZS-ENG-IAM-001 v1.0; ZS-ENG-EVID-001 v1.0; ZS-ENG-DRS-001 v1.0; ZS-ENG-AI-001 v1.0                                                                                                            |
+| **Accountable owner**   | CISO / Chief Security Architect                                                                                                                                                                                                                                                                                                                                                 |
+| **Operational owners**  | Platform Security Engineering Lead; Product Security Lead                                                                                                                                                                                                                                                                                                                       |
+| **Control co-owners**   | CTO, Chief Architect, IAM, Data, Evidence, Detection and Response, AI Systems, Platform/SRE, QA, Privacy, Legal/Compliance and Service Operations                                                                                                                                                                                                                               |
+| **Classification**      | EC-2 Engineering Controlled; key hierarchy, production trust topology, red-team exploit chains, management-plane paths, emergency procedures and unresolved critical findings EC-3                                                                                                                                                                                              |
+| **Gate relevance**      | G0 Build Authorization; G1 Design-Partner Readiness; G2 Commercial GA; high-impact response, dedicated deployment or sovereign/OT scope requires applicable G3/G4 evidence                                                                                                                                                                                                      |
+| **Primary registers**   | Risk/Exception Register; Service and Module Catalog; Data Register; API/Event/Connector Registers; AI Register; Vendor/Subprocessor Register; SLO/Scale Register; Release Evidence Register                                                                                                                                                                                     |
+| **Review cadence**      | Quarterly and upon material trust-boundary, data-class, identity, cryptographic, tenant-isolation, AI, connector, action-authority, supply-chain, cloud, vulnerability, incident, external-dependency or regulatory change                                                                                                                                                      |
+| **Effective date**      | Upon approval                                                                                                                                                                                                                                                                                                                                                                   |
+
+|     |
+|-----|
+
+**CONTROLLED DOCUMENT \| CONFIDENTIAL \| ENGINEERING DISTRIBUTION**
+
+# Document Control and Navigation
+
+| **Control**                    | **Value**                                                                                                                                                                        |
+|--------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Normative language**         | MUST = mandatory; SHOULD = expected unless an approved exception exists; MAY = optional.                                                                                         |
+| **Security mixed with infrastructure and CI/CD detail**  | Creates duplication with Documents 12-14 and leaves ownership unclear.                                  | This document defines platform-security invariants and handoffs; later documents specify deployment, pipeline and test implementation. |
+| **Perimeter-centric design**                             | A multi-tenant remote-managed security platform is not protected by network location.                   | Continuous identity, device, workload, tenant, purpose and state decisions at every boundary.                                          |
+| **Threat model treated as a one-time workshop**          | Drifts immediately as connectors, AI, response actions and cloud services change.                       | Threat models are versioned engineering inputs with automated fitness tests and change triggers.                                       |
+| **Cryptography reduced to “encrypt at rest/in transit”** | Omits key separation, signing, independent verification, rotation, compromise and migration.            | Purpose-specific trust hierarchy, per-tenant context, short-lived identity and crypto-agility contracts.                               |
+| **Vulnerability priority based only on CVSS**            | Under-prioritizes exposed, exploited or authority-bearing paths and over-prioritizes unreachable noise. | Risk model includes reachability, exploit maturity, privilege, tenant blast radius, action authority and active exploitation.          |
+| **Supply-chain assurance ends at SBOM**                  | An SBOM does not prove source, build process, artifact integrity or approved deployment.                | Protected source, isolated build, provenance, signing, admission verification, staged release and revocation chain.                    |
+| **AI security isolated in the AI document**              | Prompt injection and tool abuse cross into core, evidence and response systems.                         | AI security becomes a platform-security boundary with target-side authorization and kill controls.                                     |
+| **Remote-team controls framed as distrust**              | Creates adversarial culture without improving security.                                                 | Compartmentalization, least privilege, managed endpoints, segregation of duties and auditable JIT access.                              |
+| **Pen test used as final gate**                          | Late testing cannot compensate for missing design invariants or automation.                             | Design review, automated negative testing, continuous verification and independent adversarial assessment form one assurance stack.    |
+| **Security logs treated as operational logs**            | May be mutable, incomplete, unscoped or unusable for incident reconstruction.                           | Material security events are separately governed, reconciled and evidence-preserved.                                                   |
+| **Recovery defined as service availability**             | A compromised platform can return online with broken trust.                                             | Recovery requires identity, keys, tenant isolation, evidence, action authority and supply-chain integrity to be re-established.        |
+
+<table>
+<colgroup>
+<col style="width: 100%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th><p><strong>REFINED STATUS</strong></p>
+<p>This document is a detailed architecture and content wireframe. It becomes an implementation baseline only after required Gate-0 decisions, component threat models, policies, test controls and repository integrations are approved.</p></th>
+# 03 \| Purpose, Scope and Explicit Exclusions
+
+| **In scope**                                                                                                                                                                                              | **Explicitly out of scope / owned elsewhere**                                                                    |
+|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------|
+| Platform and product security architecture, trust zones, tenant isolation, cryptographic controls, secrets, privileged access, application/API security, AI integration, connector and action boundaries. | Detailed cloud topology and deployment implementation - Document 12.                                             |
+| Secure design workflow, abuse cases, secure coding expectations, supply-chain invariants, dependency and vulnerability control, runtime security and incident handoffs.                                   | Full CI/CD stage implementation, artifact promotion and rollback workflow - Document 13.                         |
+| Required automated, adversarial and independent verification outcomes.                                                                                                                                    | Master test strategy, performance/chaos execution and test management - Document 14.                             |
+| Security observability requirements, metrics and release evidence.                                                                                                                                        | Complete SLO/error-budget and operational-runbook implementation - Document 15.                                  |
+| Security-related experience states and admin/security views.                                                                                                                                              | Pixel-level experience contracts and screen wireframes - Document 16.                                            |
+| Restricted implementation requirements for named engineers.                                                                                                                                               | Production credentials, private keys, customer secrets, active exploit chains and unrestricted red-team reports. |
+
+# 04 \| Binding Security and Secure-Engineering Invariants
+
+| **ID**          | **Invariant**                                       | **Engineering consequence**                                                                                            |
+|-----------------|-----------------------------------------------------|------------------------------------------------------------------------------------------------------------------------|
+| **SEC-INV-001** | Tenant context is mandatory                         | Every request, event, object, cache entry, index, trace, AI context and audit record carries validated tenant context. |
+| **SEC-INV-002** | No standing customer-estate authority               | Core, analysts and AI hold no broad persistent credentials to execute response actions.                                |
+| **SEC-INV-003** | Fail closed for privilege and action                | Identity, policy, key or approval uncertainty blocks privileged or external-change paths.                              |
+| **SEC-INV-004** | No secret in code, prompt or document               | Secrets exist only in approved vaults and are referenced by identity/purpose.                                          |
+| **SEC-INV-005** | Short-lived workload identity                       | Services authenticate using automatically rotated workload credentials, not static shared tokens.                      |
+
+<img src="ZoikoShield_Combined_Engineering_Specifications_media/media/image83.png" style="width:6.75in;height:3.97222in" alt="Image: image92.png" />
+
+***Figure 10 - Software supply-chain trust chain.***
+
+| **Stage**             | **Required controls**                                                                                                                           |
+|-----------------------|-------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Source**            | Protected branch, required reviewers/code owners, signed/attributable commits, no shared accounts, secret scanning and immutable history.       |
+| **Build definition**  | Versioned pipeline and builder image; approved actions/plugins; pinned versions/digests; no unreviewed network fetch.                           |
+| **Build environment** | Ephemeral/isolated where feasible; least privilege; no production credentials; deterministic or reproducible techniques for critical artifacts. |
+| **Dependencies**      | Lock files, approved repositories, integrity verification, dependency confusion defenses and license/security policy.                           |
+| **Testing/scanning**  | Unit/integration/security, SAST, SCA, IaC, secrets, container, malware and policy checks with controlled exceptions.                            |
+| **SBOM**              | CycloneDX or SPDX-class machine-readable inventory for released artifacts; component/version/license/source and relationships.                  |
+| **Provenance**        | SLSA-compatible attestation identifies source, builder, build definition, inputs, outputs and environment.                                      |
+| **Signing**           | Artifact and relevant metadata signed by controlled release identity after gates; developer signatures do not equal release approval.           |
+| **Registry**          | Immutable trusted storage, retention, access, replication, revocation and no unsigned bypass.                                                   |
+| **Admission**         | Verifies digest, signature, provenance, builder/source, environment, vulnerability/exception state and deployment policy.                       |
+| **Promotion**         | Same artifact promoted; no rebuild between environments; staged canary and rollback reference.                                                  |
+| **Revocation**        | Compromised artifact/builder/key can be denied, located fleet-wide and rolled back; customer impact assessed.                                   |
+| **Evidence**          | Every release stores source, tests, SBOM, provenance, signature, approvals, exceptions, deployment and runtime version evidence.                |
+| **SBOM**              | CycloneDX or SPDX-class machine-readable inventory for released artifacts; component/version/license/source and relationships.                  |
+| **Provenance**        | SLSA-compatible attestation identifies source, builder, build definition, inputs, outputs and environment.                                      |
+| **Signing**           | Artifact and relevant metadata signed by controlled release identity after gates; developer signatures do not equal release approval.           |
+| **Registry**          | Immutable trusted storage, retention, access, replication, revocation and no unsigned bypass.                                                   |
+| **Admission**         | Verifies digest, signature, provenance, builder/source, environment, vulnerability/exception state and deployment policy.                       |
+| **Promotion**         | Same artifact promoted; no rebuild between environments; staged canary and rollback reference.                                                  |
+| **Revocation**        | Compromised artifact/builder/key can be denied, located fleet-wide and rolled back; customer impact assessed.                                   |
+| **Evidence**          | Every release stores source, tests, SBOM, provenance, signature, approvals, exceptions, deployment and runtime version evidence.                |
+
+# 21 \| Source Control, Coding and Secure Review Requirements
+
+| **Area**                 | **Mandatory control**                                                                                                                   |
+|--------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
+| **Repository access**    | Individual SSO/MFA, least privilege, managed device for controlled code, contractor expiry and review.                                  |
+| **Branches**             | Protected default/release branches; no force push/delete; required checks and independent reviewers.                                    |
+| **Code ownership**       | Sensitive paths (authorization, tenancy, crypto, evidence, action, AI tools, deployment) require named specialist reviewers.            |
+| **Change traceability**  | Every change links requirement/defect/risk, design/ADR where relevant and test evidence.                                                |
+| **Secure coding**        | Language/framework secure patterns, safe libraries, parameterized access, memory/type safety preference, validation and error handling. |
+| **Generated/AI code**    | Treated as untrusted contribution; approved tool/data use; human review; tests; license and dependency checks; no secret/customer data. |
+| **Secrets**              | Pre-commit/server scanning; block and rotate on discovery; do not merely delete from latest commit.                                     |
+
+# 34 \| Approval Gates, Decisions and Controlled Annexes
+
+| **Gate**                                    | **Minimum security evidence**                                                                                                                                               |
+|---------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **G0 Build Authorization**                  | Approved security doctrine; crown-jewel model; trust zones; identity/tenant/crypto/supply-chain baseline; requirement/test model; owner and risk register.                  |
+| **G1 Design-Partner Readiness**             | Real-data threat models; tenant-isolation suite; product/API/connector security; evidence and AI controls; pen test; incident/access/offboarding readiness; no P0 blockers. |
+| **G2 Commercial GA**                        | Measured security SLOs; 24/7 security operations; action controls/red team as applicable; vulnerability and release evidence; customer assurance and contractual scope.     |
+| **G3 Enterprise/Sector Scale**              | Dedicated isolation, BYOK/enterprise federation, sector controls, enhanced support/access, scale/resilience and independent assurance.                                      |
+| **G4 Sovereign/OT/Critical Infrastructure** | Separate deployment/operations model, customer key custody, offline/controlled updates, OT safety, sovereign staffing/support and specialist independent assessment.        |
+
+## 34.1 Decisions required before approval
+
+| **Decision**                                                               | **Owner**                             | **Default if not closed**                                                                              |
+|----------------------------------------------------------------------------|---------------------------------------|--------------------------------------------------------------------------------------------------------|
+| **Security verification profile by component risk (ASVS level/tailoring)** | CISO / Product Security               | Highest applicable profile for customer-facing/control-plane components; no self-declared lower level. |
+| **Workload identity and certificate model**                                | CTO / Platform Security               | Short-lived workload identity with mTLS for service paths; static service secrets prohibited.          |
+| **Cryptographic profile and HSM/KMS custody**                              | CISO / Data / Platform                | Managed HSM/KMS, purpose-separated keys and no export for high-value signing roots.                    |
+| **Supply-chain target and provenance format**                              | CTO / DevSecOps                       | SLSA v1.2-compatible provenance and signed artifacts; verify at admission.                             |
+| **Security logging and independent retention**                             | CISO / SRE                            | Separate controlled security stream with integrity protection and access separation.                   |
+| **Companion baselines** | ZS-T0-BE-ARCH-001 v1.2; ZS-T0-DOC-EST-001 v1.2; ZS-ENG-GOV-001 v1.1; ZS-ENG-SCOPE-001 v1.0; ZS-ENG-REQ-001 v1.0; ZS-ENG-ARCH-001 v1.0; ZS-ENG-DATA-001 v1.0; ZS-ENG-INT-001 v1.0; ZS-ENG-IAM-001 v1.0; ZS-ENG-EVID-001 v1.0; ZS-ENG-DRS-001 v1.0 |
+| **Accountable owner**   | Chief AI Architect / Chief Architect                                                                                                                                                                                                             |
+| **Operational owners**  | AI Systems Engineering Lead; AI Risk and Assurance Lead                                                                                                                                                                                          |
+| **Control co-owners**   | CISO, Privacy, Legal/Compliance, Evidence and GRC, Detection and Response, SRE, Product, UX, QA and Customer Assurance                                                                                                                           |
+| **Classification**      | EC-2 Engineering Controlled; provider credentials, red-team exploit chains, production prompt details, safety thresholds and kill-switch topology EC-3                                                                                           |
+| **Gate relevance**      | G0 Build Authorization; G1 Design-Partner Readiness; any tool-enabled or customer-visible AI requires applicable G1/G2 release evidence                                                                                                          |
+| **Primary registers**   | AI Register; AI Evaluation and Red-Team Findings Register; Data and Processing-Activity Register; API/Tool Register; Evidence Register; SLO/Scale/Unit-Economics Register; Claim Register; Release Evidence Register                             |
+| **Review cadence**      | Quarterly and upon material model, provider, prompt, retrieval, embedding, memory, agent, tool, data use, region, evaluation, regulation, incident or customer-disclosure change                                                                 |
+| **Effective date**      | Upon approval                                                                                                                                                                                                                                    |
+
+|     |
+|-----|
+
+**CONTROLLED DOCUMENT \| CONFIDENTIAL \| ENGINEERING DISTRIBUTION**
+
+# Document Control and Navigation
+
+| **Control**                  | **Value**                                                                                                                                                                                               |
+|------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Normative language**       | MUST = mandatory; SHOULD = expected unless an approved exception exists; MAY = optional.                                                                                                                |
+
+<img src="ZoikoShield_Combined_Engineering_Specifications_media/media/image94.png" style="width:6.75in;height:3.97222in" alt="Image: image74.png" />
+
+***Figure 7 - Retrieval and knowledge assurance pipeline.***
+
+| **Stage**             | **Required controls**                                                                                                |
+|-----------------------|----------------------------------------------------------------------------------------------------------------------|
+| **Source onboarding** | Owner, authority, license/display rights, purpose, data class, tenant/region, freshness and deletion.                |
+| **Ingestion**         | Malware scan, file validation, parser version, immutable source hash, lineage and quarantine.                        |
+| **Transformation**    | Structure extraction, page/section coordinates, tables, metadata, redaction and quality confidence.                  |
+| **Chunking**          | Versioned policy preserving semantic and citation boundaries; no cross-tenant or cross-purpose mixing.               |
+| **Embedding**         | Approved model, region, version, batch manifest, sensitivity and deletion/reindex behavior.                          |
+| **Indexing**          | Tenant-scoped namespace, ACL propagation, encryption, cache isolation and poisoned-source quarantine.                |
+| **Retrieval**         | Authorization before search; hybrid retrieval/rerank; freshness, diversity, authority and relevance thresholds.      |
+| **Context assembly**  | Bounded source count/tokens; provenance and injection markers; conflict and missing-source behavior.                 |
+| **Citation**          | Output claims map to exact source spans and versions; citation validator detects nonexistent/unsupported references. |
+| **Feedback**          | Incorrect or malicious sources can be reported, quarantined, corrected and reindexed with evidence.                  |
+| **Expiry/deletion**   | Expired, revoked or held content is handled consistently across originals, chunks, embeddings, caches and packages.  |
+
+# 12 \| Embeddings, Vector Stores and Tenant Isolation
+
+# 32 \| Approval Gates, Decisions and Controlled Annexes
+
+| **Gate**                          | **Minimum AI evidence**                                                                                                                                                                           |
+|-----------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **G0 Build Authorization**        | AI principles, gateway architecture, use-case/register schema, no-LLM boundaries, data policy, agent/tool contracts, threat model, evaluation strategy and owned risks.                           |
+| **G1 Design-Partner Readiness**   | Approved AR-1/AR-2 use cases, model routes, prompts/retrieval, human oversight, disclosures, adversarial tests, deterministic fallback, kill switch, required views and complete decision traces. |
+| **G2 Commercial GA**              | Measured quality/security/SLO/cost, customer support, provider/incident readiness, independent red team for AR-3, tool certification, canary and claims evidence.                                 |
+| **G3 Enterprise/Sector Scale**    | Enhanced isolation, regional/provider controls, tenant policy, enterprise assurance, advanced agentic use only where evidence and contracts support it.                                           |
+| **G4 Sovereign/OT Authorization** | Separate deployment and AI threat model, local/offline models if needed, customer key/data custody, sector safety authority and explicit Board authorization.                                     |
+
+## 32.1 Decisions required before implementation authority
+
+| **Decision**               | **Required closure**                                                                              |
+|----------------------------|---------------------------------------------------------------------------------------------------|
+| **Launch AI use cases**    | Named list, risk classes, product owners and prohibited outcomes.                                 |
+| **Gateway implementation** | Runtime, provider abstraction, policy, redaction, budgets, evidence and kill architecture.        |
+| **Provider/model set**     | Approved providers/models/regions/terms; version-pinning and fallback strategy.                   |
+| **Prompt/config registry** | Signing, approval, deployment, diff, rollback and runtime attestation.                            |
+| **Retrieval stack**        | Sources, parsing, embedding, index, ACL, citations, poisoning and deletion.                       |
+| **Companion baselines** | ZS-T0-BE-ARCH-001 v1.2; ZS-T0-DOC-EST-001 v1.2; ZS-ENG-GOV-001 v1.1; ZS-ENG-SCOPE-001 v1.0; ZS-ENG-REQ-001 v1.0; ZS-ENG-ARCH-001 v1.0; ZS-ENG-DATA-001 v1.0; ZS-ENG-INT-001 v1.0; ZS-ENG-IAM-001 v1.0; ZS-ENG-EVID-001 v1.0     |
+| **Accountable owner**   | Chief Architect                                                                                                                                                                                                                 |
+| **Operational owners**  | Detection and Analytics Engineering Lead; Case and Response Engineering Lead                                                                                                                                                    |
+| **Control co-owners**   | CISO, SOC Operations, Security Architecture, AI Systems, Evidence and GRC, SRE, Privacy, QA and Customer Assurance                                                                                                              |
+| **Classification**      | EC-2 Engineering Controlled; crown-jewel threat details, production broker topology, signing-key design and red-team annexes EC-3                                                                                               |
+| **Gate relevance**      | G0 Build Authorization; G1 Design-Partner Readiness; R2+ controls and contractual MDR at G2                                                                                                                                     |
+| **Primary registers**   | Detection Content Register; Service and Module Catalog; Event and Schema Registry; Connector Register; Evidence Register; AI Register; SLO/Scale/Unit-Economics Register; Release Evidence Register                             |
+| **Review cadence**      | Quarterly and upon material detection runtime, rule schema, replay, risk model, case state, AI use, playbook, response authority, action broker, connector or customer-policy change                                            |
+| **Effective date**      | Upon approval                                                                                                                                                                                                                   |
+
+|     |
+|-----|
+
+**CONTROLLED DOCUMENT \| CONFIDENTIAL \| ENGINEERING DISTRIBUTION**
+
+# Document Control and Navigation
+
+| **Control**                  | **Value**                                                                                                                                                                       |
+|------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Normative language**       | MUST = mandatory; SHOULD = expected unless an approved exception exists; MAY = optional.                                                                                        |
+| **Simulation**              | Executes policy, target resolution and connector path without side effect; output includes expected commands, affected targets and rollback profile. |
+| **Blast radius**            | Count, criticality, dependency and business-service impact; unknown target scope blocks R3+.                                                         |
+| **Rate ceilings**           | Global, tenant, action, connector and target-class limits; ceilings cannot be raised within the same action transaction.                             |
+| **Blackout/change windows** | Customer policy controls time restrictions; emergency override is separately authorized and evidenced.                                               |
+| **Freeze switch**           | Out-of-band, dual-controlled ability to halt action issuance globally, regionally, by tenant, connector or action family.                            |
+| **Freeze recovery**         | Root cause, integrity check, policy review, customer communication and staged re-enable; no automatic unfreeze.                                      |
+| **Approval evidence**       | Decision, rationale, viewed blast radius, conditions, step-up receipt and policy version retained.                                                   |
+
+<table>
+<colgroup>
+<col style="width: 100%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th><p><strong>MASS-ACTION RULE</strong></p>
+<p>No UI, API, playbook or AI tool may bypass blast-radius calculation and rate ceilings. Bulk response is a distinct high-risk action, not repeated low-risk calls.</p></th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+| **AI grounded-output rate**          | Sampled outputs with valid citations and no material fabrication.          | Model/prompt release gate.                                           |
+| **analyst_quality_rate**             | Risk-based review pass and corrective-action closure.                      | Service quality dominates throughput.                                |
+| **cost per evaluated GB/event**      | Fully loaded analytics cost at reference envelope.                         | Release-blocking unit-economics guardrail.                           |
+| **cases per analyst shift**          | Contextual workload measure by severity/complexity.                        | Staffing; never used alone to drive automation.                      |
+| **broker_headroom**                  | Action throughput before configured ceilings and failure threshold.        | Capacity and mass-action safety.                                     |
+| **freeze_test_success**              | Scheduled freeze activation and staged recovery pass.                      | Operational readiness.                                               |
+
+<table>
+<colgroup>
+<col style="width: 100%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th><p><strong>SLO CLAIM CONTROL</strong></p>
+<p>Internal objectives are not contractual claims. Public or contractual detection, response or availability claims require measured capability, approved scope and Claim Register evidence.</p></th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+| **V14** | Playbook catalog                         | Version, mode, authority, prerequisites, certification, owner and release state.                    |
+| **V15** | Playbook designer/review                 | Typed steps, branches, approvals, tool contracts, compensation and test evidence.                   |
+| **V16** | Playbook run                             | Step timeline, human/automated distinction, approvals, outputs, failures, compensation and mode.    |
+| **V17** | Response proposal and approval           | R-level, target, blast radius, policy, approvers, attestation, reversibility and expiry.            |
+| **V18** | Action receipt and reconciliation        | Command, signature, receipt, observed state, unknown/partial, rollback/compensation.                |
+| **V19** | Freeze control center                    | Global/region/tenant/connector/action scope, dual control, reason, status and staged recovery.      |
+| **V20** | Threat-intelligence set view             | Source, license/TLP, confidence, expiry, tenant relevance and operational use.                      |
+| **V21** | SOC handover                             | Open cases, commitments, degraded coverage, approvals and acknowledgment.                           |
+| **V22** | Quality review                           | Sample selection, findings, root cause, remediation, owner and closure.                             |
+| **V23** | Communication and clock console          | Template/version, facts, recipients, deadlines, delivery and acknowledgment.                        |
+| **V24** | Detection/response operational dashboard | Latency, coverage, queue, actions, unknown outcomes, freeze and cost headroom.                      |
+
+## 29.1 Mandatory states and UX doctrine
+
+| **State**                     | **Required treatment**                                                                      |
+|-------------------------------|---------------------------------------------------------------------------------------------|
+| **Loading / resolving**       | Show scope and requested time; never display stale prior data as current.                   |
+| **Empty / first use**         | Explain prerequisites and next action; distinguish no data from no findings.                |
+| **Nominal / populated**       | Display tenant, environment, region, time, authority and evidence links.                    |
+| **Partial / incomplete**      | Non-suppressible limitation and affected decisions/actions.                                 |
+
+- SLOs, dashboards, alerts and runbooks are operational.
+
+- Rollback, compensation, kill/freeze and recovery paths are tested as applicable.
+
+- Canary and staged rollout evidence is complete.
+
+- Customer-visible uncertainty, authority and limitation states are verified.
+
+- Release Evidence Register contains approvals, artifacts and residual risks.
+
+- Documentation and machine-readable registries are current.
+
+- No unsupported claim or unapproved customer-specific fork exists.
+
+# 32 \| Approval Gates, Decisions and Controlled Annexes
+
+| **Gate**                               | **Minimum evidence**                                                                                                                                                                                            |
+|----------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **G0 Build Authorization**             | Controlled schemas/state machines; threat model; data/identity/evidence/AI controls; rule/playbook/action package formats; test strategy; owned risks and ADRs.                                                 |
+
+# 32 \| Approval Gates, Decisions and Controlled Annexes
+
+| **Gate**                               | **Minimum evidence**                                                                                                                                                                                            |
+|----------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **G0 Build Authorization**             | Controlled schemas/state machines; threat model; data/identity/evidence/AI controls; rule/playbook/action package formats; test strategy; owned risks and ADRs.                                                 |
+| **G1 Design-Partner Readiness**        | End-to-end telemetry-to-case-to-evidence slice; deterministic replay; R0/R1; AI advisory controls; signed content; required views/states; SOC operating workflow; incident/export evidence.                     |
+| **G2 Commercial GA / Contractual MDR** | Measured SLOs; 24/7 operating model; R2 only after independent red team; per-tenant signing and customer attestation; freeze/recovery; connector certifications; customer communications and support readiness. |
+| **G3 Enterprise and Sector Scale**     | T2/T3 isolation, higher scale, multi-region/dedicated planes, expanded connectors/frameworks, R3 governance and enterprise procurement evidence.                                                                |
+| **G4 Sovereign / OT Authorization**    | Dedicated sovereign/OT threat model, offline/segmented operation, sector safety authority, deployment certification and contracted demand.                                                                      |
+
+## 32.1 Gate decisions required before implementation authority
+
+| **Decision**                | **Required closure**                                                                |
+|-----------------------------|-------------------------------------------------------------------------------------|
+| **Detection runtime**       | Approved engine/runtime profile and deterministic replay support.                   |
+| **Rule package/signing**    | Content format, signing authority, canary and kill-switch implementation.           |
+| **Risk policy**             | Transparent factors, unknown behavior and change authority.                         |
+| **Case/incident authority** | State machines, incident declaration roles and closure criteria.                    |
+| **Action catalog**          | Launch action types, R-level, reversibility and connector certification.            |
+| **Companion baselines** | ZS-T0-BE-ARCH-001 v1.2; ZS-T0-DOC-EST-001 v1.2; ZS-ENG-GOV-001 v1.1; ZS-ENG-SCOPE-001 v1.0; ZS-ENG-REQ-001 v1.0; ZS-ENG-ARCH-001 v1.0; ZS-ENG-DATA-001 v1.0; ZS-ENG-INT-001 v1.0; ZS-ENG-IAM-001 v1.0              |
+| **Accountable owner**   | Chief Architect                                                                                                                                                                                                    |
+| **Operational owners**  | Evidence and GRC Engineering Lead; Security Architecture Lead                                                                                                                                                      |
+| **Control co-owners**   | Data Architecture, Compliance, Privacy, SRE, AI Systems, QA, Legal and Customer Assurance                                                                                                                          |
+| **Classification**      | EC-2 Engineering Controlled; cryptographic key hierarchy, production anchor topology and red-team annexes EC-3                                                                                                     |
+| **Gate relevance**      | G0 Build Authorization; G1 Design-Partner Readiness; selected controls G2 Commercial GA                                                                                                                            |
+| **Primary registers**   | R11 Evidence-Type and Collector Register; R12 Control, Framework and Standards Licensing Register; R18 SLO/Scale/Unit-Economics Register; R19 Release Evidence and Production-Approval Register                    |
+| **Review cadence**      | Quarterly and upon material evidence schema, collector, evaluator, cryptographic algorithm, anchor witness, package, retention, AI use or assurance-method change                                                  |
+| **Effective date**      | Upon approval                                                                                                                                                                                                      |
+
+|     |
+|-----|
+
+**CONTROLLED DOCUMENT \| CONFIDENTIAL \| ENGINEERING DISTRIBUTION**
+
+# Document Control and Navigation
+
+| **Control**                  | **Value**                                                                                                                                                               |
+|------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Normative language**       | MUST = mandatory; SHOULD = expected unless an approved exception exists; MAY = optional.                                                                                |
+| **Change**                  | **Minimum approval and evidence**                                                                            |
+|-----------------------------|--------------------------------------------------------------------------------------------------------------|
+| **New evidence type**       | Owner, source authority, purpose/data class, schema, integrity, expected use, retention, UI state and tests. |
+| **New collector/version**   | Connector certification, permissions, source schema, scale, health, negative and backfill tests.             |
+| **Expected-evidence rule**  | Compliance owner, population method, threshold, gaps, applicability/effective date and customer impact.      |
+| **Evaluator change**        | Signed version, test corpus, deterministic replay, difference review and staged release.                     |
+| **Ledger/canonicalization** | Architecture + Security ADR, compatibility proof, migration/replay and verifier support.                     |
+| **Anchor/witness/key**      | Security ADR, key/witness continuity, customer/package impact and failover exercise.                         |
+| **Package/verifier schema** | Backward support window, test vectors, customer notice and exit-portability evidence.                        |
+| **Retention/hold policy**   | Privacy/Legal approval, contract/jurisdiction analysis, prospective/retroactive scope and deletion test.     |
+| **AI use/model/prompt**     | AI Register approval, data/region, evaluation, adversarial tests, cost limit, disclosure and kill switch.    |
+| **Framework/mapping**       | SME/legal review, licensing state, effective date, affected evaluators/packages and customer communication.  |
+| **Exception**               | Named owner, risk, compensating controls, expiry, affected claims/packages and release visibility.           |
+| **Emergency change**        | Time-bounded, segregated approval, immediate evidence capture, retrospective review and replay/verification. |
+
+## 27.1 Stop-work triggers
+
+- Conflicting evidence, retention, cryptographic or framework authority.
+
+- Undefined integrity, completeness or failure-state behavior.
+| **Companion baselines** | ZS-T0-BE-ARCH-001 v1.2; ZS-T0-DOC-EST-001 v1.2; ZS-ENG-GOV-001 v1.1; ZS-ENG-SCOPE-001 v1.0; ZS-ENG-REQ-001 v1.0; ZS-ENG-ARCH-001 v1.0; ZS-ENG-DATA-001 v1.0; ZS-ENG-INT-001 v1.0              |
+| **Accountable owner**   | Chief Architect                                                                                                                                                                               |
+| **Operational owners**  | Identity and Access Engineering Lead; Platform Security Lead                                                                                                                                  |
+| **Control co-owners**   | Data Architecture, Privacy, SRE, AI Systems, QA, Support Operations                                                                                                                           |
+| **Classification**      | EC-2 Engineering Controlled; cryptographic, production topology and red-team annexes EC-3                                                                                                     |
+| **Gate relevance**      | G0 Build Authorization; G1 Design-Partner Readiness                                                                                                                                           |
+| **Primary registers**   | R06 Service and Module Catalog; R09 Data and Processing-Activity Register; R10 API and Webhook Register; R19 SLO/Scale/Unit-Economics Register; R20 Release Evidence Register                 |
+| **Review cadence**      | Quarterly and upon material identity, authorization, tenant, residency, support-access, response-authority or regional topology change                                                        |
+| **Effective date**      | Upon approval                                                                                                                                                                                 |
+
+|     |
+|-----|
+
+**CONTROLLED DOCUMENT \| CONFIDENTIAL \| ENGINEERING DISTRIBUTION**
+
+# Document Control and Navigation
+
+| **Control**                  | **Value**                                                                                                                                 |
+|------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
+| **Normative language**       | MUST = mandatory; SHOULD = expected unless an approved exception exists; MAY = optional.                                                  |
+| **Companion baselines** | ZS-T0-BE-ARCH-001 v1.2; ZS-T0-DOC-EST-001 v1.2; ZS-ENG-ARCH-001 v1.0; ZS-ENG-DATA-001 v1.0                     |
+| **Accountable owner**   | Chief Architect                                                                                                |
+| **Operational owners**  | Platform API Lead; Integration and Connectors Lead                                                             |
+| **Control co-owners**   | Data Architecture, Security Architecture, Privacy, SRE, AI Systems, QA                                         |
+| **Classification**      | EC-2 Engineering Controlled; identified security and production annexes EC-3                                   |
+| **Gate relevance**      | G0 Build Authorization; G1 Design-Partner Readiness                                                            |
+| **Primary registers**   | R10 API and Webhook Register; R11 Event and Schema Registry; R12 Connector and Integration Register            |
+| **Review cadence**      | Quarterly and upon material interface, connector, tenancy, residency, response-authority or AI-tool change     |
+| **Effective date**      | Upon approval                                                                                                  |
+
+|     |
+|-----|
+
+**CONTROLLED DOCUMENT \| CONFIDENTIAL \| ENGINEERING DISTRIBUTION**
+
+# Document Control and Navigation
+
+| **Control**                  | **Value**                                                                                              |
+|------------------------------|--------------------------------------------------------------------------------------------------------|
+| **Normative language**       | MUST = mandatory; SHOULD = expected unless an approved exception exists; MAY = optional.               |
+| **Companion baselines** | ZS-T0-BE-ARCH-001 v1.2; ZS-T0-DOC-EST-001 v1.2; ZS-ENG-ARCH-001 v1.0              |
+| **Accountable owner**   | Chief Architect                                                                   |
+| **Operational owners**  | Data Architecture Lead and Domain Architecture Lead                               |
+| **Control co-owners**   | Security Architecture, Privacy, Evidence & GRC, AI Systems                        |
+| **Classification**      | EC-2 Engineering Controlled; identified annexes EC-3                              |
+| **Gate relevance**      | G0 Build Authorization; G1 Design-Partner Readiness                               |
+| **Review cadence**      | Quarterly and upon material domain, schema, residency, evidence or AI-data change |
+| **Effective date**      | Upon approval                                                                     |
+
+|     |
+|-----|
+
+**CONTROLLED DOCUMENT • CONFIDENTIAL • ENGINEERING DISTRIBUTION**
+
+# Controlled Contents
+
+33. 00 Critical Review and Refined Architecture Decision
+
+34. 01 Document Control, Authority and Approval
+
+| **Add required field**             | Potentially breaking       | Expand with nullable/default, backfill, verify, then enforce.                 |
+| **Rename field**                   | Breaking                   | Add new field, dual-write/adapter, migrate consumers, deprecate old.          |
+| **Change type/unit/semantics**     | Breaking                   | New version and explicit conversion; never silent reinterpretation.           |
+| **Delete field/table**             | Breaking/destructive       | Zero-consumer proof, retention/legal review, backup and rollback plan.        |
+| **Repartition/rekey**              | High risk                  | Shadow copy or online migration, tenant reconciliation and rollback.          |
+| **Change encryption/key scope**    | High risk                  | Cryptographic design review, staged re-encryption and integrity verification. |
+| **Change AI embedding model**      | Semantic breaking          | New index/version, retrieval evaluation, dual-run and deletion policy.        |
+
+## 21.2 Migration manifest requirements
+
+- Migration ID, owner, dependency order, affected tenants/regions/stores and requirement/ADR references.
+
+- Preconditions, lock/availability behavior, expected duration, resource/cost envelope and observability.
+
+- Forward steps, idempotency, backfill checkpoints, validation queries and integrity checks.
+
+- Rollback or compensation strategy with data-loss statement.
+
+- Tenant-by-tenant reconciliation and failure isolation.
+
+<th><strong>Document-05 evidence required</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>G0 Build Authorization</strong></td>
+<td>Approved document architecture; closed data-model ADRs; domain catalog; identifier/tenant/residency standards; evidence and AI data controls; migration/test strategy; named owners.</td>
+</tr>
+<tr class="even">
+<td><strong>G1 Design-Partner Readiness</strong></td>
+<td>Implemented ERB-01 schemas/contracts; tenant isolation; evidence ledger model; connector/telemetry contracts; audit package export; AI transparency records; offboarding/export path; restore and replay tests.</td>
+</tr>
+<tr class="odd">
+<td><strong>G2 Commercial GA</strong></td>
+<td>Measured scale and cost; operational reconciliation; contractual retention/SLO support; MDR case/action data; incident and support records; independent test findings closed.</td>
+</tr>
+<tr class="even">
+<td><strong>G3 Enterprise/Sector Scale</strong></td>
+<td>T2/T3 isolation, sector-pack data overlays, dedicated-region behavior, advanced export/retention and enterprise integration capacity.</td>
+</tr>
+| **ARCHITECTURE BOUNDARY** | Identity-provider availability is a dependency, not an excuse to bypass authorization. Degraded operation may preserve bounded read; configuration, privilege and response actions remain fail-closed. |
+|---------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+
+# 15 \| Evidence-First Architectural Spine
+
+<img src="ZoikoShield_Combined_Engineering_Specifications_media/media/image161.png" style="width:6.9in;height:3.89097in" alt="Six-stage evidence flow from source and collector through immutable record, evaluator, assessment and audit package, anchored externally." />
+
+***Figure 7 — Evidence-first spine from source artifact to independently verifiable assertion.***
+
+| **Stage**                    | **Required architecture fact**                                                              | **Failure / integrity state**                          |
+|------------------------------|---------------------------------------------------------------------------------------------|--------------------------------------------------------|
+| **Source acquisition**       | Source identity, scope, permissions, source-native artifact and covered period.             | UNAUTHORIZED, PERMISSION_CHANGED, SOURCE_UNAVAILABLE.  |
+| **Collection**               | Collector workload identity, version, configuration hash, run ID and signature.             | COLLECTOR_UNHEALTHY, FAILED, PARTIAL.                  |
+| **Evidence record**          | Tenant/region, content hash, provenance, retention, legal hold, freshness and completeness. | HASH_MISMATCH, STALE, PARTIAL.                         |
+| **Ledger append**            | Per-tenant sequence, prior hash, record hash and trusted timestamp.                         | CHAIN_GAP, DUPLICATE, ANCHOR_PENDING.                  |
+| **Evaluation**               | Evaluator/rule/mapping version plus exact input/enrichment snapshots.                       | EVALUATOR_FAILED, NON_DETERMINISTIC, INCOMPLETE_INPUT. |
+| **Assessment/assertion**     | Transparent conclusion, confidence, scope, limitations and owner.                           | UNKNOWN/INCOMPLETE; never compliant by default.        |
+| **Package/freeze**           | Manifest, chain proofs, Merkle inclusion, source versions and known gaps.                   | FREEZE_BLOCKED if required evidence or proofs fail.    |
+| **Independent verification** | Offline verifier validates content, chain, timestamps and published roots.                  | VERIFICATION_FAILED opens integrity incident.          |
+
+
+<img src="ZoikoShield_Combined_Engineering_Specifications_media/media/image161.png" style="width:6.9in;height:3.89097in" alt="Six-stage evidence flow from source and collector through immutable record, evaluator, assessment and audit package, anchored externally." />
+
+***Figure 7 — Evidence-first spine from source artifact to independently verifiable assertion.***
+
+| **Stage**                    | **Required architecture fact**                                                              | **Failure / integrity state**                          |
+|------------------------------|---------------------------------------------------------------------------------------------|--------------------------------------------------------|
+| **Source acquisition**       | Source identity, scope, permissions, source-native artifact and covered period.             | UNAUTHORIZED, PERMISSION_CHANGED, SOURCE_UNAVAILABLE.  |
+| **Collection**               | Collector workload identity, version, configuration hash, run ID and signature.             | COLLECTOR_UNHEALTHY, FAILED, PARTIAL.                  |
+| **Evidence record**          | Tenant/region, content hash, provenance, retention, legal hold, freshness and completeness. | HASH_MISMATCH, STALE, PARTIAL.                         |
+| **Ledger append**            | Per-tenant sequence, prior hash, record hash and trusted timestamp.                         | CHAIN_GAP, DUPLICATE, ANCHOR_PENDING.                  |
+| **Evaluation**               | Evaluator/rule/mapping version plus exact input/enrichment snapshots.                       | EVALUATOR_FAILED, NON_DETERMINISTIC, INCOMPLETE_INPUT. |
+| **Assessment/assertion**     | Transparent conclusion, confidence, scope, limitations and owner.                           | UNKNOWN/INCOMPLETE; never compliant by default.        |
+| **Package/freeze**           | Manifest, chain proofs, Merkle inclusion, source versions and known gaps.                   | FREEZE_BLOCKED if required evidence or proofs fail.    |
+| **Independent verification** | Offline verifier validates content, chain, timestamps and published roots.                  | VERIFICATION_FAILED opens integrity incident.          |
+
+## 15.1 Architecture fitness checks
+
+- Synthetic tenant produces a complete package each release and the standalone verifier passes without privileged Zoiko access.
+
+| **Input set**            | Canonical event/schema versions, required fields, allowed missing-data behavior and tenant scope. |
+| **Enrichment**           | Asset, identity, intel and policy snapshot references used at original evaluation.                |
+| **Time semantics**       | Window, watermark, ordering, allowed lateness, event time vs processing time.                     |
+| **Decision output**      | Alert, risk factor contributions, confidence and incomplete-data state.                           |
+| **Replay**               | Exact rule/version/input/enrichment/watermark reconstruction; divergence is NON_DETERMINISTIC.    |
+| **Publication**          | Signed content bundle, staged rollout, canary tenants and rollback.                               |
+| **Cost**                 | Estimated and measured compute/query/data cost against R19 guardrail.                             |
+| **Evidence**             | Test corpus, precision/noise, replay result, reviewer and release reference.                      |
+
+| **CRITICAL RULE** | AI may propose a detection candidate. A blocking production detection must be deterministic or carry an explicitly approved exception with a bounded use and evaluation plan. |
+|-------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+
+# 17 \| Cases, SOAR and Governed Response Context
+
+| **Object**               | **Authority**                        | **Required controls**                                                                                  |
+|--------------------------|--------------------------------------|--------------------------------------------------------------------------------------------------------|
+| **Alert**                | Detection/alert module.              | Immutable source references, risk factors, confidence, disposition rationale and SLA state.            |
+| **Case**                 | Case module.                         | State machine, owner, timeline, evidence, tasks, communications, legal hold and closure criteria.      |
+| **Playbook run**         | Playbook module.                     | Version, simulation/live mode, step inputs/outputs, approvals, errors and compensation.                |
+| **Action proposal**      | shield-core/case workflow.           | Target, blast radius, authority level, policy and required approvers.                                  |
+
+# 29 \| Gate Evidence and Approval Conditions
+
+| **Gate**                                    | **Architecture evidence required**                                                                                                                                              | **Blocking condition**                                                                                             |
+|---------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------|
+| **G0 Build Authorization**                  | Approved C1/A7; current ZS-ENG-ARCH-001; Gate-0 ADRs closed; system/module/data/identity/evidence/AI/security views; fitness-function framework; owners and risks.              | Any load-bearing decision open without default; missing crown-jewel/evidence/data/test architecture.               |
+| **G1 Design-Partner Readiness**             | ERB-01 topology deployed; tenant/residency/isolation tests; P0 connectors; evidence package/verifier; AI controls; W01–W29/W33–W35 as applicable; failure-state demonstrations. | Cannot show partial/stale/unauthorized states; no independent evidence verification; unresolved cross-tenant path. |
+| **G2 Commercial GA**                        | Measured SLOs, 24/7 operating model, MDR response gates, red-team closure, offboarding/export, trust/status/support surfaces and release evidence.                              | Contract claims exceed measured capability; R2 automation lacks independent red team/signing.                      |
+| **G3 Enterprise/Sector Scale**              | T2/T3 isolation and sector-pack architecture, second-region/connector depth, partner controls, certification evidence and scale economics.                                      | Platform fork, unproven isolation or margin-negative scale.                                                        |
+| **G4 Sovereign/OT/Critical Infrastructure** | Dedicated/private topology, customer key custody, offline/controlled update, OT safety and sovereign operations, funded demand and independent assurance.                       | Speculative build, no specialized threat/safety model or untested recovery.                                        |
+
+| **APPROVAL CONDITION** | Tier-0 architecture existence does not grant build authorization. The current derivative, ADRs, registers, workstream packs, automated fitness functions and release evidence must agree. |
+|------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+
+# Annex A \| Controlled Document Metadata Contract
+
+<table>
+<colgroup>
+<col style="width: 100%" />
+</colgroup>
+| **Control co-owners**     | CISO, Privacy, AI Risk, QA and SRE for their requirement classes                                                                                |
+| **Approvers**             | Product, Architecture, Engineering, Security, Privacy, AI Risk, QA and Release Authority                                                        |
+| **Review cadence**        | Monthly during ERB-01; quarterly after commercial GA; event-triggered on material source change                                                 |
+| **Primary register**      | R04 Product Requirement and Acceptance Traceability Register                                                                                    |
+| **Supporting registers**  | R02 ADR; R05 Risk/Exception; R09 Data/RoPA; R10 API; R11 Event/Schema; R13 Evidence; R15 AI; R19 SLO/Scale/Unit Economics; R20 Release Evidence |
+| **Gate relevance**        | G0 Build Authorization and G1 Design-Partner Readiness; inherited into later gates                                                              |
+| **Distribution**          | Role- and workstream-filtered under ZS-ENG-GOV-001                                                                                              |
+
+## 1.1 Approval roles
+
+| **Role**                         | **Approval responsibility**                                                              | **Cannot approve alone**                                              |
+|----------------------------------|------------------------------------------------------------------------------------------|-----------------------------------------------------------------------|
+| **Product authority**            | Outcome, scope, user value, priority and acceptance intent.                              | Security, privacy, AI, evidence or release exceptions.                |
+| **Chief Architect**              | System fit, bounded context, design dependencies and trace completeness.                 | Business priority or own implementation exception.                    |
+| **Engineering lead**             | Feasibility, implementation plan, estimates and technical ownership.                     | Requirement that they authored where independent review is mandatory. |
+| **Security / Privacy / AI Risk** | Applicable controls, prohibited behavior and acceptance evidence.                        | Product scope or commercial entitlement.                              |
+| **QA / SRE**                     | Verifiability, testability, observation points, SLO evidence and release reconciliation. | Risk acceptance outside delegated authority.                          |
+| **Release authority**            | Gate decision from current trace and evidence.                                           | Creation or silent alteration of requirements.                        |
+
+## 1.2 Source authority and conflict precedence
+
+***Figure 8 — Traceability-based release authorization.***
+
+| **Gate**                                          | **Requirements evidence required**                                                                                                                                                                                               |
+|---------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **G0 — Build Authorization**                      | Approved requirement method; current R04 schema; release baseline; owners; data model; evidence design; AI controls; crown-jewel requirements; test strategy; no unresolved P0 ambiguity.                                        |
+| **G1 — Design-Partner Readiness**                 | All in-scope requirements baselined; assigned W01–W29 experience contracts complete; security/privacy/AI reviews; negative-state tests; tenant-isolation and evidence verification; customer-data handling; operational handoff. |
+| **G2 — Commercial GA**                            | Contractual service and SLA requirements; 24/7 operating requirements; incident/communication workflows; measured SLOs; release evidence; Trust Center/claims alignment; tenant exit tested.                                     |
+| **G3 — Enterprise / Sector Scale**                | Enhanced isolation, scale, dedicated topology and sector-pack requirements; procurement assurance; partner certification; exercised recovery.                                                                                    |
+| **G4 — Sovereign / OT / Critical Infrastructure** | Explicit Board authorization, contracted demand, sovereign/OT controls, deployment and operations evidence; no inherited assumption from earlier gates.                                                                          |
+
+## 24.1 Release reconciliation result
+
+| **Result**         | **Meaning**                                                                                                                |
+|--------------------|----------------------------------------------------------------------------------------------------------------------------|
+| **PASS**           | All required trace nodes current; tests/evidence valid; no unapproved blockers.                                            |
+| **CONDITIONAL**    | Only permitted where gate authority approves specific, expiring non-material conditions and customer impact is controlled. |
+| **FAIL**           | Orphan, stale, failed, conflicting or unapproved requirement/control blocks release.                                       |
+| **NOT APPLICABLE** | Criterion excluded by an approved scope rationale, not by omission.                                                        |
+
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th><p><strong>REFINED ARCHITECTURE DECISION</strong></p>
+<p>Issue one controlled scope document for ERB-01. It defines the minimum complete G0-to-G1 build boundary, names every committed and conditional capability, records exclusions, binds workstreams to one vertical slice, and prevents informal scope growth. It does not expose customer identities, pricing, pipeline or executive strategy.</p></th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+
+# 01 \| Document Control, Authority and Approval
+
+| **Field**                      | **Controlled value**                                                       |
+|--------------------------------|----------------------------------------------------------------------------|
+| **Document ID**                | ZS-ENG-SCOPE-001                                                           |
+| **Title**                      | Engineering Build Mandate and Current Release Scope Specification          |
+| **Version**                    | 1.0                                                                        |
+| **Status**                     | Draft detailed wireframe; not valid for implementation                     |
+
+- Employees, contractors, approved engineering partners and service providers working under a controlled workstream pack.
+
+- All repositories, environments, interfaces, schemas, wireframes, tests, release artifacts and runbooks governed by ERB-01.
+
+- All changes whose behavior can affect a G0 or G1 gate condition.
+
+## 3.3 Does not disclose
+
+- Customer and design-partner identities, pipeline details, negotiation history or account economics.
+
+- Complete price books, discount bands, partner margins, investment model or Board forecasts.
+
+- Unrelated future-sector strategy, acquisition plans or speculative product hypotheses.
+
+- Unrestricted crown-jewel attack trees, live credentials, private keys, production secrets or unresolved exploit details.
+
+- Licensed standards text beyond the legally permitted implementation extract.
+
+<table>
+# 06 \| Current Release Identity and Gate Boundary
+
+| **Release field**                 | **Controlled value**                                                                                                                             |
+|-----------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Release baseline**              | ERB-01 — Foundation and Design-Partner Readiness                                                                                                 |
+| **Gate movement**                 | G0 Build Authorization → G1 Design-Partner Readiness                                                                                             |
+| **Primary outcome**               | One production-grade design-partner vertical slice with verifiable evidence and controlled customer-data handling.                               |
+| **Supported customer archetypes** | Regulated financial-services operators and high-assurance B2B SaaS/cloud/cybersecurity/AI providers; no named accounts in engineering materials. |
+| **Deployment tier**               | T1 pooled regional data plane only; dedicated and sovereign tiers deferred.                                                                      |
+| **Offer boundary**                | Managed Defense and Continuous Assurance independently landable.                                                                                 |
+| **Sector-pack boundary**          | Core Assurance Baseline at G1; one P1 pack may become conditional G2 scope through R02/R14.                                                      |
+| **Response boundary**             | R0 observe, R1 recommend and simulation. R2+ not live in ERB-01.                                                                                 |
+| **AI boundary**                   | Gateway-controlled assistive use cases only; human-reviewed; deterministic fallback required.                                                    |
+| **Data boundary**                 | Approved real customer data only after G1 authorization; synthetic data before G1.                                                               |
+| **Commercial boundary**           | Technical entitlements and obligations implemented; public pricing and customer economics excluded.                                              |
+| **Exit evidence**                 | Offline-verifiable audit package, release evidence, synthetic offboarding and signed scope/gate decision.                                        |
+
+<img src="ZoikoShield_Combined_Engineering_Specifications_media/media/image176.png" style="width:6.65in;height:2.70139in" alt="ERB-01 moves the platform from build authorization to controlled design-partner readiness." />
+
+*Figure 3 — ZoikoShield authorization gates and ERB-01 boundary.*
+
+## 8.2 Controlled increments
+
+| **Increment**                           | **Gate**  | **Committed outcome**                                                                                                                                                                                                     | **Boundary**                                                    |
+|-----------------------------------------|-----------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------|
+| **F0 — Engineering foundation**         | G0        | Identity skeleton, tenant context, module boundaries, regional environments, CI/CD, event and data contracts, evidence ledger/verifier skeleton, model gateway skeleton, synthetic tenants and release evidence pipeline. | No real customer data; no customer-facing claims.               |
+| **DP1 — Design-partner vertical slice** | G1        | P0 connectors, normalized events, point detection, control evaluation, alerts/cases, R1 proposal, AI assistance, evidence operations, audit package, G1 experience contracts, support and synthetic exit.                 | Controlled real customer data only after G1 approval.           |
+| **GA0 — Commercial readiness**          | Future G2 | 24/7 operating model, measured SLOs, R2 red-team gates, G2 experience contracts, contracts/Trust Center, sector packs and commercial commitments.                                                                         | Not part of ERB-01; interfaces may be preserved, not delivered. |
+
+# 09 \| Committed Capability Scope by Domain
+
+| **Domain**                    | **ERB-01 capability boundary**                                                                                                                                | **State**                              |
+|-------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|----------------------------------------|
+| **Tenant & platform control** | Tenant/legal entity/environment/workspace hierarchy; regional placement; feature policy; configuration approval; audit logging.                               | COMMITTED                              |
+| **Identity & access**         | ZoikoID integration, OIDC/SAML, MFA/passkey, workload identity, RBAC/ABAC/relationship rules, JIT and SoD.                                                    | COMMITTED                              |
+| **Commercial control**        | Technical catalog IDs, independent offer entitlements, service-obligation objects, metering events and overlap validation.                                    | COMMITTED — no price values            |
+| **Integration & ingestion**   | P0 source categories, connector registry/runtime, authentication, residency routing, normalization, quarantine, replay and health.                            | COMMITTED                              |
+| **Asset & context**           | Baseline asset/identity records, source authority, entity resolution, criticality and transparent confidence.                                                 | COMMITTED — attack-path engine limited |
+| **Detection & risk**          | Point detection, selected windowed correlation, detection registry, deterministic replay, enrichment snapshots and transparent factors.                       | COMMITTED                              |
+| **Alerts, cases & playbooks** | Alert queue/detail, case workspace, R0/R1 response proposal, simulation playbooks, receipts and audit trail.                                                  | COMMITTED                              |
+</colgroup>
+<thead>
+<tr class="header">
+<th></th>
+<th><p><strong>APPROVAL EFFECT</strong></p>
+<p>Approval authorizes publication of the operational Document 02 and ERB-01 scope manifest. It does not itself close G0 or G1; those gate decisions require the evidence defined in R02 and R20.</p></th>
+</tr>
+</thead>
+<tbody>
+</tbody>
+</table>
+
+**ZOIKOSHIELD**
+
+**CONTROLLED DOCUMENT WIREFRAME • ZS-ENG-SCOPE-001 • VERSION 1.0 • CONFIDENTIAL**
+
+**ZOIKO TECH**
+
+**ZOIKOSHIELD**
+
+| **Legal / workforce control** | Legal / Compliance with People Operations where monitoring or employment controls apply                                                |
+| **Review cadence**            | Quarterly; event-driven on any source, tooling, access-model, security or legal change                                                 |
+| **Primary register**          | R01 Document Estate, Ownership and Review Register                                                                                     |
+| **Supporting registers**      | R02 ADR and Phase-Gate; R05 Risk and Exception; R15 AI Register; R18 Vendor/Subprocessor; R20 Release Evidence and Production Approval |
+| **Applies to**                | Employees, contractors, consultants, vendors, SOC partners and engineering service providers                                           |
+| **Gate relevance**            | G0-G4                                                                                                                                  |
+
+## 1.1 Approval roles
+
+| **Approver**                   | **Required confirmation**                                                                         |
+|--------------------------------|---------------------------------------------------------------------------------------------------|
+| **CTO**                        | Accountable approval; accepts operational ownership and funding of controls.                      |
+| **Global Head of Engineering** | Confirms engineering usability, role model, operating process and rollout readiness.              |
+| **Chief Architect**            | Confirms derivative hierarchy, source-of-truth rules and architecture decision integration.       |
+| **CISO / Security Governance** | Confirms access, repository, DLP, restricted annex, incident and evidence controls.               |
+| **Legal / Compliance**         | Confirms confidentiality, IP, privacy, workforce monitoring, cross-border and retention controls. |
+| **People Operations**          | Confirms employee/contractor acknowledgment, onboarding, role change and offboarding integration. |
+| **Repository / IAM owner**     | Confirms technical enforceability and control evidence availability.                              |
+
+## 1.2 Change record
+| **T-09** | Supersession test          | Publish replacement and verify old version removal, notification and work impact.    |
+| **T-10** | Minimum-disclosure review  | Sample workstream pack against completeness checklist and build tasks.               |
+
+# 18 \| Information Misuse and Security Incident Response
+
+| **Stage**     | **Mandatory action**                                                                                                                                        |
+|---------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Report**    | Unauthorized access, accidental forwarding, lost device, suspicious export, public AI use, customer data exposure, access after role end or bypass attempt. |
+| **Contain**   | Suspend access, revoke sessions/tokens, block sharing, isolate device or disable provider/integration.                                                      |
+| **Preserve**  | Retain repository, IAM, DLP, endpoint, ticket, AI-gateway and communication evidence.                                                                       |
+| **Assess**    | Classify information, recipients, geography, customer/contract impact and exploitation risk.                                                                |
+| **Notify**    | Security, document owner, Legal/Privacy, People and affected customer/regulator owners as required.                                                         |
+| **Remediate** | Recover or delete copies where lawful, rotate secrets if exposed, correct access policy and update controls.                                                |
+| **Review**    | Root cause, control failure, disciplinary/process separation, lessons learned and CAPA.                                                                     |
+| **Close**     | Evidence complete; access restored or terminated; claims/notifications reconciled.                                                                          |
+
+| **FAIR PROCESS**                                                                                                                                                                                                                   |
+|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| The control system records objective access and handling events. It must not presume malicious intent. Security containment, factual investigation, employment decisions and legal conclusions remain separate governed processes. |
+
+*Figure 7. Role change and offboarding control chain.*
+
+| **Trigger**                   | **Required control**                                                                                                                                |
+|-------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------|
+| **High-risk / involuntary**   | Immediately revoke EC-3, privileged, production, vault and active sessions; complete remaining access removal within the approved emergency target. |
+| **Normal termination**        | Remove all access by end of final working period; pre-stage ownership transfer and session/token revocation.                                        |
+| **Role or workstream change** | Recalculate access intersection; remove prior bundles before adding new ones where SoD risk exists.                                                 |
+| **Contractor end**            | Automatic expiry from authoritative contract date; sponsor certifies extension before renewal.                                                      |
+| **Subcontractor**             | Prime supplier remains accountable; no downstream access without prior identity, contract and security approval.                                    |
+| **Leave / suspension**        | Suspend or narrow access based on risk and business need; retain evidence and avoid unnecessary personal-data processing.                           |
+
+## 19.1 Closure checklist
+
+- Identity, sessions, tokens and MFA factors resolved.
+
+- Document, code, issue tracker, CI/CD, cloud, database, observability and vault access removed.
+
+- Managed device returned, locked or securely wiped under policy.
+
+- Local controlled copies and offline exports addressed where technically and legally possible.
+
+# 15 \| Engineering Authorization Gates
+
+| **Gate**                           | **Engineering evidence**                                                                                                                                             | **Fail-closed rule**                                                                                      |
+|------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------|
+| **G0 — Build Authorization**       | Common baseline issued; applicable workstream packs; current C1-C10/D1-D2/E1-E4/H1-H3 extracts; Gate-0 ADRs; owned risks; DoR and release workflow operational.      | No material production engineering solely on Tier-0 architecture or informal direction.                   |
+| **G1 — Design-Partner Readiness**  | G1 technical packs; isolation/privacy/AI gates; evidence verifier; synthetic offboarding; applicable W01-W18, W21-W28, W33-W35; support/operations handoff.          | No real customer data, customer AI workflow or live response path before G1 approval.                     |
+| **G2 — Commercial GA**             | Measured SLOs; service operations; independent red-team gates; production/security/AI evidence; W19-W20, W29-W32, W36-W38; contracts/claims implemented as approved. | No SLA, assurance claim, R2+ automation or commercial commitment beyond measured and approved capability. |
+| **G3 — Enterprise / Sector Scale** | Demand-funded topology; sector pack technical delta; legal/content controls; scale/economics; dedicated isolation; customer acceptance and operational readiness.    | No platform fork or unfunded dedicated topology.                                                          |
+| **G4 — Sovereign / OT**            | Board authorization; specialist threat/safety design; offline/update/key-custody operations; independent assessment; contracted demand.                              | No speculative sovereign, OT or critical-infrastructure build.                                            |
+
+## 15.1 Engineering release blockers
+
+- Known cross-tenant access path or unbounded privileged/response action.
+
+- Missing material audit event, non-reproducible evidence conclusion or failed ledger verification.
+
+- Unauthorized model/provider/tool/retrieval path or failed applicable AI-safety threshold.
+
+- Unrecoverable critical data, untested rollback or failed integrity reconciliation.
+
+## **7.2 Evidence-Based Extraction Criteria**
+
+1\. A module’s sustained scaling profile distorts shield-core capacity by at least 30%, or causes two unrelated rollback events in a quarter.
+
+2\. A materially different release cadence causes measurable queueing, safety or availability harm that cannot be solved through module flags or staged delivery.
+
+3\. A contracted isolation class requires physical separation of the module’s data, keys or compute.
+
+4\. A dedicated team owns the module end-to-end and measured coordination cost exceeds the operational cost of separation.
+
+5\. A crown-jewel threat model requires independent compromise containment, as already established for the four satellites.
+
+<table>
+<colgroup>
+<col style="width: 100%" />
+</colgroup>
+<thead>
+<tr class="header">
+<th><p><strong>ANTI-THEATER GUARD</strong></p>
+
+# **13 \| Detection Engineering and Deterministic Replay**
+
+## **13.1 Detection-as-Code Lifecycle**
+
+| PROPOSE → AUTHOR → VALIDATE → TEST → PEER REVIEW → SIGN → STAGE → PUBLISH → MONITOR → TUNE / RETIRE |
+|-----------------------------------------------------------------------------------------------------|
+
+| **Stage**    | **Required Evidence**                                                                                                   |
+|--------------|-------------------------------------------------------------------------------------------------------------------------|
+| **Author**   | Owner, purpose, data requirements, logic, ATT&CK mapping, severity, detection class, privacy impact and expected cost.  |
+| **Validate** | Schema, syntax, tenant-safety, performance, late-data semantics, field availability and forbidden data/tool use.        |
+| **Test**     | Unit fixtures, adversarial cases, synthetic data, production replay sample, precision/noise estimate, latency and cost. |
+| **Publish**  | Signed content bundle, approvers, canary cohort, rollback version and effective time.                                   |
+| **Operate**  | Firing volume, false positive/negative findings, suppressions, missing-source impact, analyst feedback and drift.       |
+| **Retire**   | Replacement, effective end, historical replay availability and customer impact.                                         |
+
+## **13.2 Deterministic Replay Contract**
+
+- Every alert records event IDs, rule bundle/version, evaluator build, policy version, feature flags, watermark, clock policy and enrichment snapshot references actually used.
+## **13.1 Detection-as-Code Lifecycle**
+
+| PROPOSE → AUTHOR → VALIDATE → TEST → PEER REVIEW → SIGN → STAGE → PUBLISH → MONITOR → TUNE / RETIRE |
+|-----------------------------------------------------------------------------------------------------|
+
+| **Stage**    | **Required Evidence**                                                                                                   |
+|--------------|-------------------------------------------------------------------------------------------------------------------------|
+| **Author**   | Owner, purpose, data requirements, logic, ATT&CK mapping, severity, detection class, privacy impact and expected cost.  |
+| **Validate** | Schema, syntax, tenant-safety, performance, late-data semantics, field availability and forbidden data/tool use.        |
+| **Test**     | Unit fixtures, adversarial cases, synthetic data, production replay sample, precision/noise estimate, latency and cost. |
+| **Publish**  | Signed content bundle, approvers, canary cohort, rollback version and effective time.                                   |
+| **Operate**  | Firing volume, false positive/negative findings, suppressions, missing-source impact, analyst feedback and drift.       |
+| **Retire**   | Replacement, effective end, historical replay availability and customer impact.                                         |
+
+## **13.2 Deterministic Replay Contract**
+
+- Every alert records event IDs, rule bundle/version, evaluator build, policy version, feature flags, watermark, clock policy and enrichment snapshot references actually used.
+
+- Replay executes against the original events and immutable enrichment versions — never “current” context — and must reproduce the original deterministic decision bit-for-bit.
+
+
+# **24 \| DevSecOps, AI Supply Chain and Release Governance**
+
+## **24.1 Controlled Delivery Pipeline**
+
+| **Stage**          | **Blocking Controls**                                                                                                                                                      |
+|--------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Plan**           | Threat/privacy/AI impact, ADR trigger, owner/team capacity, cost envelope, claim impact, test strategy and rollback.                                                       |
+| **Code / content** | Peer review, branch protection, signed commits where required, secrets scanning, SAST, dependency policy, architecture tests; detections/prompts/mappings treated as code. |
+| **Build**          | Hermetic/reproducible where feasible, pinned dependencies, SBOM, AI/ML-BOM, provenance, signed artifact and no direct production secrets.                                  |
+| **Verify**         | Unit/integration/contract/fuzz/security/privacy/tenant/AI/adversarial/performance/economics tests; synthetic end-to-end package verification.                              |
+| **Deploy**         | Admission verifies signature/provenance/policy; canary synthetic tenants, staged cohorts, migration guard, feature/authority flags and rollback.                           |
+| **Operate**        | SLO/error budget, security signals, drift, model/provider changes, cost, quality, customer impact and post-release evidence.                                               |
+
+## **24.2 Software and AI Artifact Requirements**
+
+| **Artifact**                     | **Required Evidence**                                                                                                                     |
+|----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
+| **Application/container**        | Source revision, build recipe, dependencies, SBOM, vulnerability state, signature, provenance and deployment digest.                      |
+| **Detection bundle**             | Rule source/version, tests, datasets, ATT&CK mapping, approvals, signature, canary and rollback.                                          |
+|--------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Plan**           | Threat/privacy/AI impact, ADR trigger, owner/team capacity, cost envelope, claim impact, test strategy and rollback.                                                       |
+| **Code / content** | Peer review, branch protection, signed commits where required, secrets scanning, SAST, dependency policy, architecture tests; detections/prompts/mappings treated as code. |
+| **Build**          | Hermetic/reproducible where feasible, pinned dependencies, SBOM, AI/ML-BOM, provenance, signed artifact and no direct production secrets.                                  |
+| **Verify**         | Unit/integration/contract/fuzz/security/privacy/tenant/AI/adversarial/performance/economics tests; synthetic end-to-end package verification.                              |
+| **Deploy**         | Admission verifies signature/provenance/policy; canary synthetic tenants, staged cohorts, migration guard, feature/authority flags and rollback.                           |
+| **Operate**        | SLO/error budget, security signals, drift, model/provider changes, cost, quality, customer impact and post-release evidence.                                               |
+
+## **24.2 Software and AI Artifact Requirements**
+
+| **Artifact**                     | **Required Evidence**                                                                                                                     |
+|----------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------|
+| **Application/container**        | Source revision, build recipe, dependencies, SBOM, vulnerability state, signature, provenance and deployment digest.                      |
+| **Detection bundle**             | Rule source/version, tests, datasets, ATT&CK mapping, approvals, signature, canary and rollback.                                          |
+| **Prompt/agent bundle**          | Instructions, model eligibility, tool manifest, schemas, limits, retrieval/memory policy, evaluations, approvals, signature and rollback. |
+| **Framework/mapping bundle**     | Source/license, author/reviewer/legal chain, tests, effective/supersession dates, signature and customer impact.                          |
+| **Infrastructure/policy bundle** | IaC/policy source, plan, security scan, approvers, provenance, drift monitor and rollback.                                                |
+
+## **24.3 P0 Release Blockers**
+
+| **4 — Enterprise and Sector**                          | T3 dedicated cells, enterprise connectors, partner console, selected sector packs and second response-certified EDR.                             | Contracted demand covers team/topology and assurance cost.                                                                          | Procurement, isolation, scale, residency and recovery evidence.                                                                | No sector pack without named SME, threat model, team and reference customer.                                                   |
+| **5 — Sovereign / Private and Advanced AI Governance** | T4, local key custody/offline content, advanced customer AI governance and regulated deployment options.                                         | Contracted demand ≥ committed lifecycle cost.                                                                                       | Sovereign security/operations package and customer acceptance.                                                                 | No speculative sovereign build or unsupported “air-gapped” claim.                                                              |
+
+## **28.1 Own-Assurance Sequencing**
+
+| **Stage**                             | **Controlled Position**                                                                                                                                                                     |
+|---------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Design partners**                   | Permitted before Type II under precise contracts and Claim Register controls. Do not imply ZoikoShield has completed reports/certifications it does not hold.                               |
+| **SOC 2**                             | Treat as an independent examination/report. Type I can establish design at a point in time; Type II covers operating effectiveness over a period. Public wording follows the issued report. |
+| **ISO/IEC 27001**                     | Certification program and scope approved; certification claim only after accredited certification and maintained surveillance.                                                              |
+| **Broad “continuous compliance” GTM** | Gated on measured product evidence, own operating assurance and claim-specific Legal/Compliance approval; architecture support does not equal customer compliance.                          |
+
+## **28.2 Migration Doctrine**
+
+- Inventory incumbent tools, data authority, response ownership, retention and contractual dependencies before proposing replacement.
+
+- Connect and normalize first; compare coverage, detection, cost and evidence; rationalize only with named owner and rollback.
+
+- Run parallel detections/assessments before cutover; preserve historical cases/evidence/legal holds and export manifests.
+
