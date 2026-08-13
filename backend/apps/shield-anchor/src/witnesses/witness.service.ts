@@ -3,15 +3,13 @@ import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { WitnessProvider } from './witness-provider.interface';
 import { MockWitnessProvider } from './mock-witness-provider.service';
+import { HttpWitnessProvider } from './http-witness-provider.service';
 
 export type WitnessAssuranceState = 'TEST_ONLY' | 'WITNESS_PARTIAL' | 'WITNESS_FULL';
 
 /**
- * Only MockWitnessProvider is registered this pass, so witnessAssuranceState
- * can only ever resolve to TEST_ONLY — WITNESS_PARTIAL (1 real witness)
- * and WITNESS_FULL (2+ independently-operated real witnesses) are modeled
- * but structurally unreachable until a real provider exists (spec
- * correction #3).
+ * Development uses an explicitly marked mock witness. Production requires
+ * signed receipts from at least two independently configured HTTP witnesses.
  */
 @Injectable()
 export class WitnessService {
@@ -20,14 +18,17 @@ export class WitnessService {
   constructor(
     private readonly prisma: PrismaService,
     mockWitnessProvider: MockWitnessProvider,
+    private readonly httpWitnessProvider: HttpWitnessProvider,
   ) {
     this.providers = [mockWitnessProvider];
   }
 
   async collectReceipts(checkpointId: string, merkleRoot: string) {
+    const results = process.env.NODE_ENV === 'production'
+      ? await this.httpWitnessProvider.attestAll(merkleRoot)
+      : await Promise.all(this.providers.map((provider) => provider.attest(merkleRoot)));
     const receipts = [];
-    for (const provider of this.providers) {
-      const result = await provider.attest(merkleRoot);
+    for (const result of results) {
       const receipt = await this.prisma.witnessReceipt.create({
         data: {
           id: randomUUID(),
@@ -35,6 +36,9 @@ export class WitnessService {
           witness_id: result.witnessId,
           witness_type: result.witnessType,
           receipt_hash: result.receiptHash,
+          signature: result.signature,
+          public_key: result.publicKey,
+          algorithm: result.algorithm,
           status: 'RECEIVED',
         },
       });

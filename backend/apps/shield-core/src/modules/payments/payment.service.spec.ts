@@ -16,6 +16,7 @@ describe('PaymentService (ZS-COM-BILL-001 Part 9)', () => {
   beforeEach(async () => {
     prismaMock = {
       commercialInvoice: { findUnique: jest.fn() },
+      entitlement: { findFirst: jest.fn().mockResolvedValue({ id: 'entitlement-1' }) },
       payment: { create: jest.fn(), findUnique: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
       refund: { create: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
       commercialEvent: { create: jest.fn() },
@@ -57,7 +58,7 @@ describe('PaymentService (ZS-COM-BILL-001 Part 9)', () => {
   it('refuses to accept payment against a non-ISSUED (mutable) invoice', async () => {
     prismaMock.commercialInvoice.findUnique.mockResolvedValue({ id: 'inv-1', status: 'DRAFT', currency: 'USD' });
 
-    await expect(service.createPayment(dto, 'idem-1')).rejects.toThrow(ConflictException);
+    await expect(service.createPayment('tenant-a', dto, 'idem-1')).rejects.toThrow(ConflictException);
     expect(providerMock.createPayment).not.toHaveBeenCalled();
   });
 
@@ -66,7 +67,7 @@ describe('PaymentService (ZS-COM-BILL-001 Part 9)', () => {
     providerMock.createPayment.mockResolvedValue({ providerPaymentId: 'p-1', status: 'AUTHORIZED' });
     prismaMock.payment.create.mockResolvedValue({ id: 'pay-1', status: 'AUTHORIZED' });
 
-    const payment = await service.createPayment(dto, 'idem-1');
+    const payment = await service.createPayment('tenant-a', dto, 'idem-1');
 
     expect(payment.status).toBe('AUTHORIZED');
   });
@@ -74,7 +75,7 @@ describe('PaymentService (ZS-COM-BILL-001 Part 9)', () => {
   it('OPS-01: refuses to charge while the kill switch blocks AUTOMATIC_CHARGING', async () => {
     killSwitchMock.assertNotBlocked.mockRejectedValue(new ConflictException('blocked'));
 
-    await expect(service.createPayment(dto, 'idem-1')).rejects.toThrow(ConflictException);
+    await expect(service.createPayment('tenant-a', dto, 'idem-1')).rejects.toThrow(ConflictException);
     expect(prismaMock.commercialInvoice.findUnique).not.toHaveBeenCalled();
   });
 

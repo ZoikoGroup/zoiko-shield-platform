@@ -1,7 +1,9 @@
 import { Controller, Get } from '@nestjs/common';
 import { ShieldIngestService } from './shield-ingest.service';
+import { PublicIngress } from './security/public-ingress.decorator';
 
 @Controller()
+@PublicIngress()
 export class ShieldIngestController {
   constructor(private readonly shieldIngestService: ShieldIngestService) {}
 

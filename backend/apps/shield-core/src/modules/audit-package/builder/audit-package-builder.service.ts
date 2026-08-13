@@ -134,17 +134,17 @@ export class AuditPackageBuilderService {
       frameworkVersions: [],
       mappingVersions: [],
       evidenceIndex,
-      // Ledger range/head proof (spec correction #6). This is the segment
-      // of the tenant's evidence ledger covering the evidence included
-      // here, not the whole chain — sufficient for the verifier to walk
-      // previous_entry_hash -> entry_hash link consistency (the same
-      // structural check EvidenceLedgerService.verifyChain performs
-      // live). Note this is a link-consistency check, not a from-scratch
-      // entry_hash recomputation — the raw evidenceMetadata baked into
-      // each entry_hash at write time isn't persisted verbatim, so it
-      // can't be independently re-derived; the verifier's report says so
-      // explicitly rather than overclaiming.
-      ledgerEntries: ledgerEntries.map((e) => ({ sequence: e.sequence, evidenceId: e.evidence_id, previousEntryHash: e.previous_entry_hash, entryHash: e.entry_hash })),
+      // Export the canonical metadata committed by every ledger entry so an
+      // offline verifier can recompute entry_hash rather than merely walking
+      // declared links.
+      ledgerEntries: ledgerEntries.map((e) => ({
+        tenantId,
+        sequence: e.sequence,
+        evidenceId: e.evidence_id,
+        previousEntryHash: e.previous_entry_hash,
+        entryHash: e.entry_hash,
+        evidenceMetadata: JSON.parse(e.entry_metadata || '{}'),
+      })),
       evaluationIndex,
       assessmentIndex,
       riskIndex: risks.map((r) => ({ riskId: r.id, title: r.title, likelihood: r.likelihood, impact: r.impact, status: r.status })),

@@ -1,0 +1,54 @@
+name: Backend CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: shield
+          POSTGRES_PASSWORD: shield
+          POSTGRES_DB: shield_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U shield -d shield_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      DATABASE_URL: postgres://shield:shield@localhost:5432/shield_ci
+      SHADOW_DATABASE_URL: postgres://shield:shield@localhost:5432/shield_shadow
+      NODE_ENV: test
+      JWT_SECRET: ci-only-jwt-secret
+      WORKLOAD_IDENTITY_DEV_SECRET: ci-only-workload-secret
+      DEV_SIMULATION_SIGNING_KEY: ci-only-simulation-secret
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - run: npm ci
+      - name: Create migration shadow database
+        run: PGPASSWORD=shield createdb -h localhost -U shield shield_shadow
+      - run: npm run migrate:deploy
+      - run: npx prisma generate
+      - run: npm run build
+      - run: npm run swagger:check
+      - run: npm test -- --runInBand
+      - name: Ensure schema and migrations match
+        run: npx prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --exit-code

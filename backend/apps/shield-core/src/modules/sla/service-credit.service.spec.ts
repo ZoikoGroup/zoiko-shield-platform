@@ -16,8 +16,11 @@ describe('ServiceCreditService (ZS-COM-BILL-001 FIN-04)', () => {
   beforeEach(async () => {
     prismaMock = {
       serviceCredit: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+      commercialInvoice: { findFirst: jest.fn().mockResolvedValue({ id: 'inv-1' }) },
     };
-    measurementMock = { getMeasurementById: jest.fn() };
+    measurementMock = {
+      getMeasurementById: jest.fn().mockResolvedValue({ id: 'm-1', contract_id: 'c-1' }),
+    };
     approvalMock = { requestApproval: jest.fn(), decideApproval: jest.fn() };
     invoiceMock = { issueCreditNote: jest.fn() };
 
@@ -38,7 +41,7 @@ describe('ServiceCreditService (ZS-COM-BILL-001 FIN-04)', () => {
     measurementMock.getMeasurementById.mockResolvedValue({ id: 'm-1', breached: false, contract_id: 'c-1' });
 
     await expect(
-      service.proposeCredit({ slaMeasurementId: 'm-1', amount: 100, proposedBy: 'ops' }),
+      service.proposeCredit('t1', { slaMeasurementId: 'm-1', amount: 100, proposedBy: 'ops' }),
     ).rejects.toThrow(ConflictException);
     expect(prismaMock.serviceCredit.create).not.toHaveBeenCalled();
   });
@@ -49,7 +52,7 @@ describe('ServiceCreditService (ZS-COM-BILL-001 FIN-04)', () => {
     approvalMock.requestApproval.mockResolvedValue({ id: 'appr-1' });
     prismaMock.serviceCredit.update.mockResolvedValue({ id: 'credit-1', approval_id: 'appr-1' });
 
-    await service.proposeCredit({ slaMeasurementId: 'm-1', amount: 250, proposedBy: 'ops' });
+    await service.proposeCredit('t1', { slaMeasurementId: 'm-1', amount: 250, proposedBy: 'ops' });
 
     expect(approvalMock.requestApproval).toHaveBeenCalledWith(
       expect.objectContaining({ changeType: 'SERVICE_CREDIT', objectType: 'ServiceCredit' }),
@@ -57,26 +60,34 @@ describe('ServiceCreditService (ZS-COM-BILL-001 FIN-04)', () => {
   });
 
   it('posting requires the credit to be APPROVED first', async () => {
-    prismaMock.serviceCredit.findUnique.mockResolvedValue({ id: 'credit-1', status: 'PROPOSED' });
+    prismaMock.serviceCredit.findUnique.mockResolvedValue({ id: 'credit-1', status: 'PROPOSED', sla_measurement_id: 'm-1' });
 
-    await expect(service.postCredit('credit-1', 'inv-1')).rejects.toThrow(ConflictException);
+    await expect(service.postCredit('t1', 'credit-1', 'inv-1')).rejects.toThrow(ConflictException);
     expect(invoiceMock.issueCreditNote).not.toHaveBeenCalled();
   });
 
   it('posting an approved credit issues an append-only credit note against the given invoice', async () => {
-    prismaMock.serviceCredit.findUnique.mockResolvedValue({ id: 'credit-1', status: 'APPROVED', amount: 250, sla_measurement_id: 'm-1' });
+    prismaMock.serviceCredit.findUnique.mockResolvedValue({ id: 'credit-1', status: 'APPROVED', amount: 250, contract_id: 'c-1', sla_measurement_id: 'm-1' });
     invoiceMock.issueCreditNote.mockResolvedValue({ id: 'cn-1' });
     prismaMock.serviceCredit.update.mockResolvedValue({ id: 'credit-1', status: 'POSTED', credit_note_id: 'cn-1' });
 
-    const credit = await service.postCredit('credit-1', 'inv-1');
+    const credit = await service.postCredit('t1', 'credit-1', 'inv-1');
 
     expect(invoiceMock.issueCreditNote).toHaveBeenCalledWith('inv-1', 250, expect.any(String));
     expect(credit.status).toBe('POSTED');
   });
 
   it('rejects an illegal transition (e.g. deciding an already-posted credit)', async () => {
-    prismaMock.serviceCredit.findUnique.mockResolvedValue({ id: 'credit-1', status: 'POSTED', approval_id: 'appr-1' });
+    prismaMock.serviceCredit.findUnique.mockResolvedValue({ id: 'credit-1', status: 'POSTED', approval_id: 'appr-1', sla_measurement_id: 'm-1' });
 
-    await expect(service.decideCredit('credit-1', 'finance', 'APPROVED', 'x')).rejects.toThrow(ConflictException);
+    await expect(service.decideCredit('t1', 'credit-1', 'finance', 'APPROVED', 'x')).rejects.toThrow(ConflictException);
+  });
+
+  it('does not expose a service credit when its measurement belongs to another tenant', async () => {
+    prismaMock.serviceCredit.findUnique.mockResolvedValue({ id: 'credit-1', sla_measurement_id: 'm-1' });
+    measurementMock.getMeasurementById.mockRejectedValue(new Error('not found'));
+
+    await expect(service.getCreditById('tenant-b', 'credit-1')).rejects.toThrow('not found');
+    expect(measurementMock.getMeasurementById).toHaveBeenCalledWith('tenant-b', 'm-1');
   });
 });

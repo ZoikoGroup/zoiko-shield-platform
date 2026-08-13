@@ -14,6 +14,9 @@ import { SigningKeyService } from './key-management/signing-key.service';
 import { MockWitnessProvider } from './witnesses/mock-witness-provider.service';
 import { WitnessService } from './witnesses/witness.service';
 import { CheckpointBuilderService } from './checkpoint-builder/checkpoint-builder.service';
+import { CHECKPOINT_SIGNER } from './signing/checkpoint-signer.token';
+import { ProductionCheckpointSigner } from './signing/production-checkpoint-signer.service';
+import { HttpWitnessProvider } from './witnesses/http-witness-provider.service';
 
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
@@ -23,10 +26,16 @@ import { CheckpointBuilderService } from './checkpoint-builder/checkpoint-builde
     OutboxPublisherService,
     TenantAnchorHeadService,
     MerkleTreeService,
-    DevCheckpointSigner,
+    {
+      provide: CHECKPOINT_SIGNER,
+      useFactory: () => process.env.NODE_ENV === 'production'
+        ? new ProductionCheckpointSigner()
+        : new DevCheckpointSigner(),
+    },
     SigningKeyService,
     MockWitnessProvider,
     WitnessService,
+    HttpWitnessProvider,
     CheckpointBuilderService,
   ],
 })

@@ -46,11 +46,13 @@ describe('NormalizedEventConsumer', () => {
     expect(detectionRuntimeMock.evaluateFromEvent).toHaveBeenCalledWith(payload, resolved);
   });
 
-  it('skips malformed payloads instead of throwing', async () => {
+  it('fails malformed payloads so the consumer cannot acknowledge silent data loss', async () => {
     consumer.onModuleInit();
     const handler = kafkaConsumerMock.registerHandler.mock.calls[0][1];
 
-    await handler({ eventId: 'kafka-evt-2', payload: {} });
+    await expect(handler({ eventId: 'kafka-evt-2', payload: {} })).rejects.toThrow(
+      'Malformed event.normalized.v1 payload',
+    );
 
     expect(contextResolutionMock.resolveFromEvent).not.toHaveBeenCalled();
   });

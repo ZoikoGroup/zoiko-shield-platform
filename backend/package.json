@@ -27,10 +27,14 @@
     "test:e2e": "jest --config ./apps/zoikoshield-backend/test/jest-e2e.json",
     "seed:platform-admin": "ts-node -r tsconfig-paths/register scripts/seed-platform-admin.ts",
     "check:platform-admin": "ts-node -r tsconfig-paths/register scripts/check-super-admin.ts",
-    "demo:erb01": "ts-node -r tsconfig-paths/register ./scripts/erb01-demo-runner.ts"
+    "demo:erb01": "ts-node -r tsconfig-paths/register ./scripts/erb01-demo-runner.ts",
+    "migrate:deploy": "prisma migrate deploy && node scripts/run-typeorm-migrations.js",
+    "swagger:check": "node scripts/check-swagger-coverage.js"
   },
   "dependencies": {
+    "@aws-sdk/client-kms": "^3.1106.0",
     "@aws-sdk/client-s3": "^3.1106.0",
+    "@azure/event-hubs": "^6.0.4",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
@@ -47,6 +51,7 @@
     "class-validator": "^0.15.1",
     "cookie-parser": "^1.4.7",
     "js-yaml": "^5.2.3",
+    "jsonwebtoken": "^9.0.2",
     "kafkajs": "^2.2.4",
     "nodemailer": "^9.0.5",
     "passport": "^0.7.0",

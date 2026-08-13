@@ -103,13 +103,15 @@ export class KafkaConsumerService implements OnApplicationBootstrap, OnModuleDes
       }
     }
 
+    if (!allHandlersSucceeded) {
+      throw new Error(`One or more handlers failed for event ${envelope.eventId} on ${topic}`);
+    }
+
     // Only record the inbox entry once every handler has succeeded — a
     // failed handler should still see this message redelivered.
-    if (allHandlersSucceeded) {
-      await this.prisma.inboxEvent
-        .create({ data: { event_id: envelope.eventId, topic, tenant_id: envelope.tenantId } })
-        .catch((err) => this.logger.warn(`Failed to record inbox entry for ${envelope.eventId}: ${(err as Error).message}`));
-    }
+    await this.prisma.inboxEvent.create({
+      data: { event_id: envelope.eventId, topic, tenant_id: envelope.tenantId },
+    });
   }
 
   async onModuleDestroy() {

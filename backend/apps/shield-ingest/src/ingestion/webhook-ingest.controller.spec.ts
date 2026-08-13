@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { WebhookIngestController } from './webhook-ingest.controller';
 import { RawIngestService } from './raw-ingest.service';
 import { HttpStatus } from '@nestjs/common';
+import { WebhookSignatureGuard } from './guards/webhook-signature.guard';
 
 describe('WebhookIngestController', () => {
   let controller: WebhookIngestController;
@@ -15,7 +16,10 @@ describe('WebhookIngestController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [WebhookIngestController],
       providers: [{ provide: RawIngestService, useValue: serviceMock }],
-    }).compile();
+    })
+      .overrideGuard(WebhookSignatureGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<WebhookIngestController>(WebhookIngestController);
   });

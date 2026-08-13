@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, DeleteObjectsCommand, ListObjectsV2Command } from '@aws-sdk/client-s3';
 
 const EVIDENCE_BUCKET = process.env.EVIDENCE_S3_BUCKET || 'zoiko-shield-evidence';
 
@@ -48,5 +48,37 @@ export class ObjectStorageService {
       chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     }
     return Buffer.concat(chunks);
+  }
+
+  async deleteObject(objectKey: string): Promise<void> {
+    await this.client.send(new DeleteObjectCommand({ Bucket: EVIDENCE_BUCKET, Key: objectKey }));
+  }
+
+  async deleteTenantObjects(tenantId: string): Promise<{ deleted: number; remaining: number }> {
+    const prefix = `${tenantId}/`;
+    let deleted = 0;
+    let continuationToken: string | undefined;
+    do {
+      const page = await this.client.send(new ListObjectsV2Command({
+        Bucket: EVIDENCE_BUCKET,
+        Prefix: prefix,
+        ContinuationToken: continuationToken,
+      }));
+      const keys = (page.Contents ?? []).flatMap((entry) => entry.Key ? [{ Key: entry.Key }] : []);
+      if (keys.length > 0) {
+        const outcome = await this.client.send(new DeleteObjectsCommand({
+          Bucket: EVIDENCE_BUCKET,
+          Delete: { Objects: keys, Quiet: true },
+        }));
+        if ((outcome.Errors ?? []).length > 0) {
+          throw new Error(`Object storage deletion failed for ${(outcome.Errors ?? []).length} object(s)`);
+        }
+        deleted += keys.length;
+      }
+      continuationToken = page.IsTruncated ? page.NextContinuationToken : undefined;
+    } while (continuationToken);
+
+    const verification = await this.client.send(new ListObjectsV2Command({ Bucket: EVIDENCE_BUCKET, Prefix: prefix, MaxKeys: 1 }));
+    return { deleted, remaining: verification.KeyCount ?? verification.Contents?.length ?? 0 };
   }
 }

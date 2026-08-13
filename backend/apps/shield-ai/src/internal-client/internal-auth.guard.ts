@@ -1,25 +1,22 @@
 import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { verifyWorkloadToken } from '../../../../libs/security/src/workload-token';
 
 /**
  * Guards shield-ai's controllers against being called by anything other
- * than another ZoikoShield backend service. Shared-secret header check —
- * simplest thing that actually authenticates service-to-service calls,
- * matching the scale of every other MVP integration this session
- * (env-var-backed, not a stub, not a fake pass-through).
+ * than another ZoikoShield backend service. Assertions are signed,
+ * short-lived, audience-bound workload JWTs.
  */
 @Injectable()
 export class InternalAuthGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
-    const token = request.headers['x-internal-service-token'];
-    const expected = process.env.INTERNAL_SERVICE_TOKEN;
-
-    if (!expected) {
-      throw new UnauthorizedException('INTERNAL_SERVICE_TOKEN is not configured');
+    const authorization = request.headers.authorization;
+    const token = typeof authorization === 'string' && authorization.startsWith('Bearer ') ? authorization.slice(7) : '';
+    try {
+      request.workloadIdentity = verifyWorkloadToken(token, 'shield-ai');
+      return true;
+    } catch {
+      throw new UnauthorizedException('Invalid or expired workload identity');
     }
-    if (token !== expected) {
-      throw new UnauthorizedException('Invalid internal service token');
-    }
-    return true;
   }
 }

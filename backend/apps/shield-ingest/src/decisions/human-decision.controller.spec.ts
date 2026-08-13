@@ -25,12 +25,17 @@ describe('HumanDecisionController', () => {
     const mockDecision = { id: 'dec-1', decision_type: 'INCIDENT_DECLARATION' };
     serviceMock.recordDecision.mockResolvedValue(mockDecision);
 
-    const response = await controller.recordDecision('case-1', {
+    const response = await controller.recordDecision('tenant-1', 'case-1', {
       decisionType: 'INCIDENT_DECLARATION',
       decision: 'Declare P1 Security Incident',
     });
 
     expect(response.statusCode).toBe(HttpStatus.CREATED);
     expect(response.data).toBe(mockDecision);
+    expect(serviceMock.recordDecision).toHaveBeenCalledWith(
+      'tenant-1',
+      'case-1',
+      expect.objectContaining({ decision: 'Declare P1 Security Incident' }),
+    );
   });
 });

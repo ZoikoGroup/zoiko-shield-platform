@@ -3,6 +3,8 @@ import { KafkaConsumerService } from '../../../kafka/kafka-consumer.service';
 import { EventEnvelope } from '../../../kafka/kafka-producer.service';
 import { CaseTimelineService } from '../../case-management/timeline/case-timeline.service';
 import { EvidenceService } from '../../evidence/services/evidence.service';
+import { PrismaService } from '../../../prisma/prisma.service';
+import { requireEnvironmentId } from '../../../tenant-context';
 
 /** Must match shield-action's CANONICAL_TOPICS.ACTION_SIMULATED exactly (apps/shield-action/src/kafka/kafka-producer.service.ts) — no shared package exists yet. */
 const ACTION_SIMULATED_TOPIC = 'action.simulated.v1';
@@ -39,6 +41,7 @@ export class ActionSimulatedConsumer implements OnModuleInit {
     private readonly kafkaConsumer: KafkaConsumerService,
     private readonly timeline: CaseTimelineService,
     private readonly evidenceService: EvidenceService,
+    private readonly prisma: PrismaService,
   ) {}
 
   onModuleInit(): void {
@@ -52,9 +55,18 @@ export class ActionSimulatedConsumer implements OnModuleInit {
       return;
     }
 
+    const caseRecord = await this.prisma.case.findFirst({
+      where: { id: payload.caseId, tenant_id: payload.tenantId },
+      select: { environment_id: true, region: true },
+    });
+    if (!caseRecord) {
+      throw new Error(`Case '${payload.caseId}' not found for action simulation evidence`);
+    }
+
     const evidence = await this.evidenceService.createEvidence({
       tenantId: payload.tenantId,
-      environmentId: payload.environmentId,
+      environmentId: requireEnvironmentId(caseRecord.environment_id, payload.environmentId),
+      region: caseRecord.region,
       evidenceType: 'ACTION_SIMULATION_RECEIPT',
       producingService: 'shield-action',
       sourceSystemId: 'shield-action',

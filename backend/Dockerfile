@@ -13,7 +13,7 @@ COPY . .
 RUN npx prisma generate && npm run build
 
 FROM build AS migrate
-CMD ["npx", "prisma", "migrate", "deploy"]
+CMD ["npm", "run", "migrate:deploy"]
 
 FROM node:22-alpine AS runtime
 ENV NODE_ENV=production
@@ -32,4 +32,3 @@ USER shield
 
 ENV SERVICE_NAME=shield-core
 CMD ["sh", "-c", "node dist/apps/${SERVICE_NAME}/main.js"]
-

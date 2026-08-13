@@ -16,45 +16,25 @@ export class ReplayEngineService {
   /**
    * Reprocess a quarantined event after schema/mapping update
    */
-  async reprocessQuarantinedEvent(eventId: string) {
-    const quarantined = await this.prisma.quarantinedEvent.findUnique({
-      where: { id: eventId },
-    });
-
-    if (!quarantined) {
-      throw new NotFoundException(`Quarantined event '${eventId}' not found`);
-    }
-
+  async reprocessQuarantinedEvent(tenantId: string, eventId: string) {
     this.logger.log(`Reprocessing quarantined event: ${eventId}`);
-
-    let rawObj: Record<string, any> = {};
-    try {
-      rawObj = JSON.parse(quarantined.rawPayload || '{}');
-    } catch {
-      rawObj = { rawText: quarantined.rawPayload };
-    }
-
-    const tenantId = quarantined.tenant_id || (quarantined as any).tenantId || 'tenant-123';
-    const reprocessFn = (this.normalizationService as any).normalizePayload || (this.normalizationService as any).reprocessQuarantinedEvent || (this.normalizationService as any).normalizeRawEvent;
-    const res = await reprocessFn.call(this.normalizationService, tenantId, eventId, 'WEBHOOK', rawObj);
-
-    return {
-      quarantinedId: eventId,
-      status: 'REPROCESSED',
-      normalizationResult: res,
-    };
+    return this.normalizationService.reprocessQuarantinedEvent(tenantId, eventId);
   }
 
   /**
    * Replay events over a time range for a detection rule
    */
   async replayEventsForDetection(
+    tenantId: string,
     detectionId: string,
     fromDate?: Date,
     toDate?: Date,
   ) {
-    const rule = await this.prisma.detectionRule.findUnique({
-      where: { id: detectionId },
+    const rule = await this.prisma.detectionRule.findFirst({
+      where: {
+        id: detectionId,
+        OR: [{ tenant_id: tenantId }, { tenant_id: null }],
+      },
     });
 
     if (!rule) {
@@ -66,17 +46,17 @@ export class ReplayEngineService {
 
     const events = await this.prisma.normalizedEvent.findMany({
       where: {
-        ...(rule.tenant_id ? { tenant_id: rule.tenant_id } : {}),
+        tenant_id: tenantId,
         recorded_at: { gte: start, lte: end },
       },
     });
 
     let matchedCount = 0;
     for (const evt of events) {
-      const runs: any = await (this.detectionEngineService as any).evaluateNormalizedEvent(evt.id);
+      const runs = await this.detectionEngineService.evaluateNormalizedEvent(evt.id);
       const isMatch = Array.isArray(runs)
-        ? runs.some((r: any) => r.result === 'MATCH' || r.result === 'MATCHED' || r.matched)
-        : (runs && ((runs as any).matched || (runs as any).result === 'MATCH' || (runs as any).result === 'MATCHED'));
+        ? runs.some((run) => run.result === 'MATCH' || run.result === 'MATCHED')
+        : false;
       if (isMatch) matchedCount++;
     }
 

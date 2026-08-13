@@ -5,6 +5,7 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { ConnectorSyncService } from '../../services/sync.service';
 import { EntraConnectorService } from './entra.connector';
 import { ConnectorContext } from '../../core/connector-context';
+import { requireRegion } from '../../../security/tenant-context';
 
 /**
  * Drives automatic Entra polling on a cron schedule instead of requiring a
@@ -67,7 +68,7 @@ export class EntraSchedulerService {
       connectorInstanceId: instanceId,
       tenantId,
       environmentId,
-      region: region ?? 'unspecified',
+      region: requireRegion(region),
       purpose: 'security-monitoring',
       correlationId: randomUUID(),
       traceId: randomUUID(),

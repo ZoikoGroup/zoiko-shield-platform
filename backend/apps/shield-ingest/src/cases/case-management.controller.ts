@@ -14,6 +14,7 @@ import {
   CreateCaseDto,
   UpdateCaseDto,
 } from './case-management.service';
+import { requireTenantId } from '../security/tenant-context';
 
 export class AssignCaseDto {
   ownerId!: string;
@@ -49,9 +50,7 @@ export class CaseManagementController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Body() dto: CreateCaseDto,
   ) {
-    if (!dto.tenantId && headerTenantId) {
-      dto.tenantId = headerTenantId;
-    }
+    dto.tenantId = requireTenantId(headerTenantId, dto.tenantId);
     const caseRecord = await this.caseService.createCase(dto);
     return {
       statusCode: HttpStatus.CREATED,
@@ -72,7 +71,7 @@ export class CaseManagementController {
     @Query('severity') severity?: string,
     @Query('ownerId') ownerId?: string,
   ) {
-    const tenantId = headerTenantId || queryTenantId || 'default-tenant';
+    const tenantId = requireTenantId(headerTenantId, queryTenantId);
     const cases = await this.caseService.getCases(tenantId, status, severity, ownerId);
     return {
       statusCode: HttpStatus.OK,
@@ -85,8 +84,11 @@ export class CaseManagementController {
    * Get single case detail and full timeline
    */
   @Get(':caseId')
-  async getCaseById(@Param('caseId') caseId: string) {
-    const caseRecord = await this.caseService.getCaseById(caseId);
+  async getCaseById(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+  ) {
+    const caseRecord = await this.caseService.getCaseById(requireTenantId(headerTenantId), caseId);
     return {
       statusCode: HttpStatus.OK,
       data: caseRecord,
@@ -99,10 +101,11 @@ export class CaseManagementController {
    */
   @Patch(':caseId')
   async updateCase(
+    @Headers('x-tenant-id') headerTenantId: string,
     @Param('caseId') caseId: string,
     @Body() dto: UpdateCaseDto,
   ) {
-    const updated = await this.caseService.updateCase(caseId, dto);
+    const updated = await this.caseService.updateCase(requireTenantId(headerTenantId), caseId, dto);
     return {
       statusCode: HttpStatus.OK,
       message: 'Case updated successfully',
@@ -116,10 +119,12 @@ export class CaseManagementController {
    */
   @Post(':caseId/assign')
   async assignCase(
+    @Headers('x-tenant-id') headerTenantId: string,
     @Param('caseId') caseId: string,
     @Body() dto: AssignCaseDto,
   ) {
     const updated = await this.caseService.assignCase(
+      requireTenantId(headerTenantId),
       caseId,
       dto.ownerId,
       dto.actorId,
@@ -137,10 +142,12 @@ export class CaseManagementController {
    */
   @Post(':caseId/transition')
   async transitionState(
+    @Headers('x-tenant-id') headerTenantId: string,
     @Param('caseId') caseId: string,
     @Body() dto: TransitionCaseDto,
   ) {
     const updated = await this.caseService.transitionState(
+      requireTenantId(headerTenantId),
       caseId,
       dto.targetStatus,
       dto.actorId,
@@ -159,10 +166,12 @@ export class CaseManagementController {
    */
   @Post(':caseId/notes')
   async addNote(
+    @Headers('x-tenant-id') headerTenantId: string,
     @Param('caseId') caseId: string,
     @Body() dto: AddNoteDto,
   ) {
     const noteEntry = await this.caseService.addNote(
+      requireTenantId(headerTenantId),
       caseId,
       dto.note,
       dto.actorId,
@@ -180,10 +189,12 @@ export class CaseManagementController {
    */
   @Post(':caseId/evidence')
   async linkEvidence(
+    @Headers('x-tenant-id') headerTenantId: string,
     @Param('caseId') caseId: string,
     @Body() dto: LinkEvidenceDto,
   ) {
     const evidenceEntry = await this.caseService.linkEvidence(
+      requireTenantId(headerTenantId),
       caseId,
       dto.evidenceId,
       dto.actorId,
@@ -200,8 +211,11 @@ export class CaseManagementController {
    * Query case timeline entries
    */
   @Get(':caseId/timeline')
-  async getCaseTimeline(@Param('caseId') caseId: string) {
-    const timeline = await this.caseService.getCaseTimeline(caseId);
+  async getCaseTimeline(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+  ) {
+    const timeline = await this.caseService.getCaseTimeline(requireTenantId(headerTenantId), caseId);
     return {
       statusCode: HttpStatus.OK,
       data: timeline,

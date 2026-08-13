@@ -138,10 +138,110 @@ services:
       MICROSOFT_CALLBACK_URL: ${MICROSOFT_CALLBACK_URL:-}
       EMAIL_USER: ${EMAIL_USER:-}
       EMAIL_APP_PASSWORD: ${EMAIL_APP_PASSWORD:-}
+      SERVICE_NAME: shield-core
+      WORKLOAD_IDENTITY_DEV_SECRET: ${WORKLOAD_IDENTITY_DEV_SECRET:-local-workload-identity-change-me}
+      SHIELD_AI_BASE_URL: http://shield-ai:3003
+      SHIELD_ANCHOR_BASE_URL: http://shield-anchor:3005
     volumes:
       - ./docs:/app/docs:ro
     ports:
       - "${SHIELD_CORE_PORT:-3001}:3001"
+
+  shield-ingest:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+      shield-core-migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: development
+      SERVICE_NAME: shield-ingest
+      SHIELD_INGEST_PORT: 3002
+      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
+      KAFKA_BROKERS: redpanda:9092
+      WORKLOAD_IDENTITY_DEV_SECRET: ${WORKLOAD_IDENTITY_DEV_SECRET:-local-workload-identity-change-me}
+      WEBHOOK_HMAC_SECRETS: ${WEBHOOK_HMAC_SECRETS:-}
+      WEBHOOK_HMAC_SECRET: ${WEBHOOK_HMAC_SECRET:-}
+      ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:-}
+      ENTRA_CLIENT_SECRET: ${ENTRA_CLIENT_SECRET:-}
+      ENTRA_REDIRECT_URI: ${ENTRA_REDIRECT_URI:-}
+    ports:
+      - "${SHIELD_INGEST_PORT:-3002}:3002"
+
+  shield-ai:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+      shield-core-migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: development
+      SERVICE_NAME: shield-ai
+      SHIELD_AI_PORT: 3003
+      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
+      KAFKA_BROKERS: redpanda:9092
+      SHIELD_CORE_BASE_URL: http://shield-core:3001
+      WORKLOAD_IDENTITY_DEV_SECRET: ${WORKLOAD_IDENTITY_DEV_SECRET:-local-workload-identity-change-me}
+    ports:
+      - "${SHIELD_AI_PORT:-3003}:3003"
+
+  shield-action:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+      shield-core-migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: development
+      SERVICE_NAME: shield-action
+      SHIELD_ACTION_PORT: 3004
+      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
+      KAFKA_BROKERS: redpanda:9092
+      SHIELD_CORE_BASE_URL: http://shield-core:3001
+      WORKLOAD_IDENTITY_DEV_SECRET: ${WORKLOAD_IDENTITY_DEV_SECRET:-local-workload-identity-change-me}
+      DEV_SIMULATION_SIGNING_KEY: ${DEV_SIMULATION_SIGNING_KEY:-local-simulation-signing-change-me}
+    ports:
+      - "${SHIELD_ACTION_PORT:-3004}:3004"
+
+  shield-anchor:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redpanda:
+        condition: service_healthy
+      shield-core-migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: development
+      SERVICE_NAME: shield-anchor
+      SHIELD_ANCHOR_PORT: 3005
+      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
+      KAFKA_BROKERS: redpanda:9092
+      WORKLOAD_IDENTITY_DEV_SECRET: ${WORKLOAD_IDENTITY_DEV_SECRET:-local-workload-identity-change-me}
+    ports:
+      - "${SHIELD_ANCHOR_PORT:-3005}:3005"
 
 volumes:
   postgres_data:

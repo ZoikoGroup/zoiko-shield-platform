@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { requireEnvironmentId } from '../../../tenant-context';
 
 export interface UpsertRelationshipInput {
   tenantId: string;
@@ -28,7 +29,7 @@ export class RelationshipService {
 
   async upsert(input: UpsertRelationshipInput) {
     const observedAt = input.observedAt ?? new Date();
-    const environmentId = input.environmentId || 'default-env';
+    const environmentId = requireEnvironmentId(input.environmentId);
 
     const key = {
       tenant_id: input.tenantId,

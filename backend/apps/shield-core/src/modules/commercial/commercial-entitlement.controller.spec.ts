@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { CommercialEntitlementController } from './commercial-entitlement.controller';
 import { CommercialEntitlementService } from './commercial-entitlement.service';
 import { HttpStatus } from '@nestjs/common';
+import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 
 describe('CommercialEntitlementController', () => {
   let controller: CommercialEntitlementController;
@@ -21,7 +23,12 @@ describe('CommercialEntitlementController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [CommercialEntitlementController],
       providers: [{ provide: CommercialEntitlementService, useValue: serviceMock }],
-    }).compile();
+    })
+      .overrideGuard(JwtAuthGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(PermissionsGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<CommercialEntitlementController>(CommercialEntitlementController);
   });

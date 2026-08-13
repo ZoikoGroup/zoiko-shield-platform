@@ -3,7 +3,9 @@ import { randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { TenantAnchorHeadService } from '../tenant-chain-head/tenant-anchor-head.service';
 import { MerkleTreeService } from '../merkle/merkle-tree.service';
-import { DevCheckpointSigner } from '../signing/dev-checkpoint-signer.service';
+import { Inject } from '@nestjs/common';
+import type { CheckpointSigner } from '../signing/checkpoint-signer.interface';
+import { CHECKPOINT_SIGNER } from '../signing/checkpoint-signer.token';
 import { SigningKeyService } from '../key-management/signing-key.service';
 import { WitnessService } from '../witnesses/witness.service';
 
@@ -32,7 +34,7 @@ export class CheckpointBuilderService {
     private readonly prisma: PrismaService,
     private readonly tenantAnchorHeadService: TenantAnchorHeadService,
     private readonly merkleTreeService: MerkleTreeService,
-    private readonly signer: DevCheckpointSigner,
+    @Inject(CHECKPOINT_SIGNER) private readonly signer: CheckpointSigner,
     private readonly signingKeyService: SigningKeyService,
     private readonly witnessService: WitnessService,
   ) {}
@@ -43,7 +45,7 @@ export class CheckpointBuilderService {
 
     const leaves = [input.ledgerHeadHash, input.manifestCoreHash].filter((v): v is string => !!v);
     const merkleResult = this.merkleTreeService.build(leaves);
-    const signResult = this.signer.sign(merkleResult.root);
+    const signResult = await this.signer.sign(merkleResult.root);
     await this.signingKeyService.recordIfNew(signResult.signingKeyId, signResult.algorithm, signResult.publicKey);
 
     const checkpointId = randomUUID();
@@ -101,7 +103,15 @@ export class CheckpointBuilderService {
       proofsByLeafIndex,
       signature: signResult.signature,
       signingKey: { keyId: signResult.signingKeyId, publicKey: signResult.publicKey, algorithm: signResult.algorithm, status: 'ACTIVE' },
-      witnessReceipts: witnessOutcome.receipts.map((r) => ({ witnessId: r.witness_id, witnessType: r.witness_type, receiptHash: r.receipt_hash, status: r.status })),
+      witnessReceipts: witnessOutcome.receipts.map((r) => ({
+        witnessId: r.witness_id,
+        witnessType: r.witness_type,
+        receiptHash: r.receipt_hash,
+        signature: r.signature,
+        publicKey: r.public_key,
+        algorithm: r.algorithm,
+        status: r.status,
+      })),
       witnessAssuranceState: witnessOutcome.witnessAssuranceState,
     };
   }

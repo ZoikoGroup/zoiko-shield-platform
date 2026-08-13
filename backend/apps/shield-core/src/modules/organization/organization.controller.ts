@@ -14,11 +14,12 @@ import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { AuthorizationService } from '../authorization/authorization.service';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { CurrentUser } from '../identity-adapter/decorators/current-user.decorator';
 import { PERMISSION_CODES } from '../authorization/constants';
 import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('tenant/:tenantId/organizations')
 export class OrganizationController {
   constructor(

@@ -1,7 +1,13 @@
-import { Controller, Get, Post, Param, Query, Headers, Body, HttpStatus, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Param, Query, Headers, Body, HttpStatus, NotFoundException, UseGuards } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DetectionRegistryService } from './registry/detection-registry.service';
 import { DetectionReplayService } from './replay/detection-replay.service';
+import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
+import { PlatformPermissionsGuard } from '../authorization/guards/platform-permissions.guard';
+import { RequirePlatformPermissions } from '../authorization/decorators/require-platform-permissions.decorator';
+import { PERMISSION_CODES } from '../authorization/constants';
+import { requireTenantId } from '../../tenant-context';
 
 export class CreateDetectionDefinitionDto {
   key!: string;
@@ -22,6 +28,7 @@ export class CreateDetectionVersionDto {
   allowedMissingDataBehavior?: string;
 }
 
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/detections')
 export class DetectionController {
   constructor(
@@ -31,6 +38,8 @@ export class DetectionController {
   ) {}
 
   @Post('definitions')
+  @UseGuards(PlatformPermissionsGuard)
+  @RequirePlatformPermissions(PERMISSION_CODES.DETECTION_MANAGE)
   async createDefinition(@Body() dto: CreateDetectionDefinitionDto) {
     const definition = await this.prisma.detectionDefinition.create({
       data: {
@@ -51,6 +60,8 @@ export class DetectionController {
   }
 
   @Post('definitions/:definitionId/versions')
+  @UseGuards(PlatformPermissionsGuard)
+  @RequirePlatformPermissions(PERMISSION_CODES.DETECTION_MANAGE)
   async createVersion(@Param('definitionId') definitionId: string, @Body() dto: CreateDetectionVersionDto) {
     const version = await this.prisma.detectionVersion.create({
       data: {
@@ -70,6 +81,8 @@ export class DetectionController {
   }
 
   @Post('versions/:versionId/publish')
+  @UseGuards(PlatformPermissionsGuard)
+  @RequirePlatformPermissions(PERMISSION_CODES.DETECTION_MANAGE)
   async publishVersion(@Param('versionId') versionId: string) {
     const version = await this.registry.publish(versionId);
     return { statusCode: HttpStatus.OK, data: version };
@@ -81,7 +94,7 @@ export class DetectionController {
     @Query('tenantId') queryTenantId?: string,
     @Query('limit') limit?: number,
   ) {
-    const tenantId = headerTenantId || queryTenantId || 'default-tenant';
+    const tenantId = requireTenantId(headerTenantId, queryTenantId);
     const matches = await this.prisma.detectionMatch.findMany({
       where: { tenant_id: tenantId },
       take: limit ? Number(limit) : 50,
@@ -91,8 +104,8 @@ export class DetectionController {
   }
 
   @Get('evaluations/:evaluationId')
-  async getEvaluation(@Param('evaluationId') evaluationId: string) {
-    const evaluation = await this.prisma.detectionEvaluation.findUnique({ where: { id: evaluationId } });
+  async getEvaluation(@Headers('x-tenant-id') tenantId: string, @Param('evaluationId') evaluationId: string) {
+    const evaluation = await this.prisma.detectionEvaluation.findFirst({ where: { id: evaluationId, tenant_id: tenantId } });
     if (!evaluation) {
       throw new NotFoundException(`DetectionEvaluation '${evaluationId}' not found`);
     }
@@ -100,8 +113,8 @@ export class DetectionController {
   }
 
   @Post('evaluations/:evaluationId/replay')
-  async replay(@Param('evaluationId') evaluationId: string) {
-    const replay = await this.replayService.replay(evaluationId);
+  async replay(@Headers('x-tenant-id') tenantId: string, @Param('evaluationId') evaluationId: string) {
+    const replay = await this.replayService.replay(tenantId, evaluationId);
     return { statusCode: HttpStatus.OK, data: replay };
   }
 }

@@ -18,18 +18,34 @@ export class DeletionAttestationService {
 
   async issue(tenantId: string, deletionRequestId: string, issuedBy: string) {
     const tasks = await this.prisma.deletionTask.findMany({ where: { deletion_request_id: deletionRequestId } });
-    if (tasks.some((t) => t.status === 'PENDING' || t.status === 'RUNNING')) {
-      throw new ConflictException('Deletion tasks are still in progress — attestation cannot be issued yet');
+    if (tasks.length === 0 || tasks.some((t) => t.status !== 'COMPLETED')) {
+      throw new ConflictException('Every deletion task must complete successfully before an attestation can be issued');
+    }
+
+    const results = tasks.map((task) => {
+      try {
+        return { task, result: JSON.parse(task.verification_result ?? '{}') as { outcome?: string } };
+      } catch {
+        throw new ConflictException(`Deletion task '${task.id}' has an unverifiable result`);
+      }
+    });
+    if (results.some(({ result }) => !['VERIFIED_DELETED', 'NOT_APPLICABLE'].includes(result.outcome ?? ''))) {
+      throw new ConflictException('One or more deletion tasks lacks a verified terminal result');
     }
 
     const backupRecords = await this.prisma.backupExpiryRecord.findMany({ where: { deletion_request_id: deletionRequestId } });
     const legalHolds = await this.prisma.legalHold.findMany({ where: { tenant_id: tenantId, status: 'ACTIVE' } });
 
-    const deletedScopes = tasks.filter((t) => t.status === 'COMPLETED').map((t) => t.store_type);
-    const retainedScopes = legalHolds.map((h) => ({ legalHoldId: h.id, reason: h.reason, scope: h.scope }));
+    const deletedScopes = results.filter(({ result }) => result.outcome === 'VERIFIED_DELETED').map(({ task }) => task.store_type);
+    const retainedScopes = [
+      ...legalHolds.map((h) => ({ legalHoldId: h.id, reason: h.reason, scope: h.scope })),
+      { scope: 'DELETION_CONTROL_AND_AUDIT_RECORDS', reason: 'Retained to prove and reconcile the deletion operation' },
+      { scope: 'CLOSING_OPERATOR_MEMBERSHIP', reason: 'Retained until attestation issuance, then removed during final closure' },
+    ];
     const limitations: string[] = [];
     if (backupRecords.some((b) => b.status === 'PENDING')) limitations.push('One or more backup classes remain PENDING expiry — see backupExpiryRefs');
-    if (tasks.some((t) => t.status === 'FAILED')) limitations.push(`${tasks.filter((t) => t.status === 'FAILED').length} deletion task(s) FAILED — see derivedStoreResults`);
+    const notApplicable = results.filter(({ result }) => result.outcome === 'NOT_APPLICABLE').map(({ task }) => task.store_type);
+    if (notApplicable.length > 0) limitations.push(`Stores not populated in this deployment: ${notApplicable.join(', ')}`);
 
     const attestationBody = {
       tenantId, deletionRequestId, deletedScopes, retainedScopes,

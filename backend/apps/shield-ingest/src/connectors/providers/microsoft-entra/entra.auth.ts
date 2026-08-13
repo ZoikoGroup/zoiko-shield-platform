@@ -8,7 +8,7 @@ export class EntraAuthService {
   // Microsoft Entra ID specific constants
   private readonly tenantId = 'common'; // Use 'common' for multi-tenant apps
   private readonly clientId =
-    process.env.ENTRA_CLIENT_ID || 'your-client-id-here';
+    process.env.ENTRA_CLIENT_ID || '';
   private readonly redirectUri =
     process.env.ENTRA_REDIRECT_URI ||
     'http://localhost:3000/v1/connectors/entra/callback';
@@ -18,6 +18,9 @@ export class EntraAuthService {
    * This is what the customer clicks to grant ZoikoShield access.
    */
   generateAuthUrl(customerTenantId: string, state: string): string {
+    if (!this.clientId || !process.env.ENTRA_REDIRECT_URI && process.env.NODE_ENV === 'production') {
+      throw new Error('ENTRA_CLIENT_ID and ENTRA_REDIRECT_URI must be configured');
+    }
     const scopes = ENTRA_REQUIRED_PERMISSIONS.join(' ');
 
     const authUrl = new URL(

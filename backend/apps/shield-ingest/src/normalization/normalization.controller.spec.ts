@@ -39,9 +39,10 @@ describe('NormalizationController', () => {
     const mockResult = { quarantineId: 'q-1', rawEventId: 'r-1', status: 'REPROCESSED' };
     serviceMock.reprocessQuarantinedEvent.mockResolvedValue(mockResult);
 
-    const response = await controller.reprocessQuarantinedEvent('q-1');
+    const response = await controller.reprocessQuarantinedEvent('tenant-1', 'q-1');
 
     expect(response.statusCode).toBe(HttpStatus.OK);
     expect(response.data).toBe(mockResult);
+    expect(serviceMock.reprocessQuarantinedEvent).toHaveBeenCalledWith('tenant-1', 'q-1');
   });
 });

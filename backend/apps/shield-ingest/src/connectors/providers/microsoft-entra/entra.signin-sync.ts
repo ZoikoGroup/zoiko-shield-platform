@@ -37,6 +37,7 @@ export class EntraSignInSyncService {
     instanceId: string,
     tenantId: string,
     environmentId: string,
+    region: string,
     accessToken: string,
   ): Promise<number> {
     this.logger.log(`Starting Sign-in Log polling for Connector ${instanceId}`);
@@ -76,10 +77,20 @@ export class EntraSignInSyncService {
 
         // External consumers (e.g. shield-ai) expect the richer canonical
         // shape too — publish it alongside the internal NormalizedEvent.
-        const canonicalEvent = this.normalizer.normalizeSignInLog(log, tenantId);
-        await this.kafkaProducer.emit(
+        const canonicalEvent = this.normalizer.normalizeSignInLog(
+          log,
+          tenantId,
+          environmentId,
+          region,
+        );
+        await this.kafkaProducer.publishEvent(
           CANONICAL_TOPICS.IDENTITY_SIGNIN,
+          canonicalEvent.event_type,
           { tenantId, instanceId, ...canonicalEvent },
+          {
+            correlationId: canonicalEvent.correlation_id,
+            occurredAt: new Date(canonicalEvent.event_timestamp),
+          },
         );
       }
 

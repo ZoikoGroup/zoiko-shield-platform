@@ -33,6 +33,8 @@ describe('CaseManagementController', () => {
     serviceMock.createCase.mockResolvedValue(mockCase);
 
     const response = await controller.createCase('tenant-1', {
+      environmentId: 'env-1',
+      region: 'eu-west-1',
       title: 'Test Case',
     });
 
@@ -54,11 +56,18 @@ describe('CaseManagementController', () => {
     const mockUpdated = { id: 'case-1', status: 'TRIAGED' };
     serviceMock.transitionState.mockResolvedValue(mockUpdated);
 
-    const response = await controller.transitionState('case-1', {
+    const response = await controller.transitionState('tenant-1', 'case-1', {
       targetStatus: 'TRIAGED',
     });
 
     expect(response.statusCode).toBe(HttpStatus.OK);
     expect(response.data).toBe(mockUpdated);
+    expect(serviceMock.transitionState).toHaveBeenCalledWith(
+      'tenant-1',
+      'case-1',
+      'TRIAGED',
+      undefined,
+      undefined,
+    );
   });
 });

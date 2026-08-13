@@ -42,7 +42,21 @@ export class SlaMeasurementService {
     private readonly definitionService: SlaDefinitionService,
   ) {}
 
-  async recordMeasurement(dto: RecordMeasurementDto) {
+  private async assertContractTenant(tenantId: string, contractId: string): Promise<void> {
+    const contract = await this.prisma.contract.findFirst({
+      where: {
+        id: contractId,
+        commercialAccount: { entitlements: { some: { tenant_id: tenantId } } },
+      },
+      select: { id: true },
+    });
+    if (!contract) {
+      throw new NotFoundException(`Contract '${contractId}' not found`);
+    }
+  }
+
+  async recordMeasurement(tenantId: string, dto: RecordMeasurementDto) {
+    await this.assertContractTenant(tenantId, dto.contractId);
     const definition = await this.definitionService.getActiveDefinition(dto.slaKey);
     if (!definition) {
       throw new ConflictException({
@@ -70,7 +84,7 @@ export class SlaMeasurementService {
     });
   }
 
-  async getMeasurementById(id: string) {
+  async getMeasurementById(tenantId: string, id: string) {
     const measurement = await this.prisma.slaMeasurement.findUnique({
       where: { id },
       include: { slaDefinition: true },
@@ -78,6 +92,7 @@ export class SlaMeasurementService {
     if (!measurement) {
       throw new NotFoundException(`SLA measurement '${id}' not found`);
     }
+    await this.assertContractTenant(tenantId, measurement.contract_id);
     return measurement;
   }
 }

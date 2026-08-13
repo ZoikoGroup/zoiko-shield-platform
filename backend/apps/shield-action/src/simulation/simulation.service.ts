@@ -42,8 +42,11 @@ export class SimulationService {
     private readonly dispatcher: DispatcherService,
   ) {}
 
-  async simulate(proposalId: string, correlationId: string): Promise<SimulationOutcome> {
-    const context = await this.shieldCoreClient.getAuthorizationContext(proposalId);
+  async simulate(tenantId: string, proposalId: string, correlationId: string): Promise<SimulationOutcome> {
+    const context = await this.shieldCoreClient.getAuthorizationContext(tenantId, proposalId);
+    if (context.tenantId !== tenantId) {
+      throw new Error(`shield-core returned conflicting tenant context for proposal '${proposalId}'`);
+    }
 
     const policyResult = this.policy.check(context);
     if (!policyResult.allowed) {

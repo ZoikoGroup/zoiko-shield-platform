@@ -9,6 +9,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { AssetIdentityContextService } from './asset-identity-context.service';
+import { requireTenantId } from '../security/tenant-context';
 
 export class ResolveAssetRequestDto {
   externalId!: string;
@@ -38,7 +39,7 @@ export class AssetIdentityContextController {
     @Query('tenantId') queryTenantId?: string,
     @Query('limit') limit?: number,
   ) {
-    const tenantId = headerTenantId || queryTenantId || 'default-tenant';
+    const tenantId = requireTenantId(headerTenantId, queryTenantId);
     const assets = await this.contextService.getAssets(
       tenantId,
       limit ? Number(limit) : 50,
@@ -54,8 +55,11 @@ export class AssetIdentityContextController {
    * Get single asset details
    */
   @Get('assets/:assetId')
-  async getAssetById(@Param('assetId') assetId: string) {
-    const asset = await this.contextService.getAssetById(assetId);
+  async getAssetById(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('assetId') assetId: string,
+  ) {
+    const asset = await this.contextService.getAssetById(requireTenantId(headerTenantId), assetId);
     return {
       statusCode: HttpStatus.OK,
       data: asset,
@@ -72,7 +76,7 @@ export class AssetIdentityContextController {
     @Query('tenantId') queryTenantId?: string,
     @Query('limit') limit?: number,
   ) {
-    const tenantId = headerTenantId || queryTenantId || 'default-tenant';
+    const tenantId = requireTenantId(headerTenantId, queryTenantId);
     const identities = await this.contextService.getIdentities(
       tenantId,
       limit ? Number(limit) : 50,
@@ -88,8 +92,14 @@ export class AssetIdentityContextController {
    * Get single identity detail
    */
   @Get('identities/:identityId')
-  async getIdentityById(@Param('identityId') identityId: string) {
-    const identity = await this.contextService.getIdentityById(identityId);
+  async getIdentityById(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('identityId') identityId: string,
+  ) {
+    const identity = await this.contextService.getIdentityById(
+      requireTenantId(headerTenantId),
+      identityId,
+    );
     return {
       statusCode: HttpStatus.OK,
       data: identity,
@@ -105,7 +115,7 @@ export class AssetIdentityContextController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Body() dto: ResolveAssetRequestDto,
   ) {
-    const tenantId = headerTenantId || 'default-tenant';
+    const tenantId = requireTenantId(headerTenantId);
     const asset = await this.contextService.resolveAsset({
       tenantId,
       ...dto,
@@ -125,7 +135,7 @@ export class AssetIdentityContextController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Body() dto: ResolveIdentityRequestDto,
   ) {
-    const tenantId = headerTenantId || 'default-tenant';
+    const tenantId = requireTenantId(headerTenantId);
     const identity = await this.contextService.resolveIdentity({
       tenantId,
       ...dto,

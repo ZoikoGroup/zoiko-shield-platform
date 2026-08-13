@@ -9,9 +9,8 @@ const ALGORITHM = 'Ed25519';
  * Explicitly dev/test-only — NEVER operates in production, full stop
  * (spec correction #1). Not "throws if no key is configured": construction
  * itself refuses unconditionally when NODE_ENV === 'production', with no
- * environment-variable escape hatch. A KmsCheckpointSigner/HsmCheckpointSigner
- * backed by a controlled dedicated anchor identity is the required future
- * production implementation — not built this pass.
+ * environment-variable escape hatch. Production selects the separately
+ * configured asymmetric ProductionCheckpointSigner at module wiring time.
  */
 @Injectable()
 export class DevCheckpointSigner implements CheckpointSigner {

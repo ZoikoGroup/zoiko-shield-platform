@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { IsOptional, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import {
   CatalogService,
   CreateCatalogVersionDto,
@@ -31,7 +32,7 @@ export class QueryPriceBookDto {
   currency?: string;
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/catalog')
 export class CatalogController {
   constructor(private readonly catalogService: CatalogService) { }

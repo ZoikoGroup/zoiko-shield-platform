@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { requireEnvironmentId } from '../security/tenant-context';
 
 export interface UsageObservationDto {
   tenantId: string;
@@ -32,7 +33,7 @@ export class MeteringService {
    * Duplicate, rejected, quarantined, and platform-generated records are explicitly NON_BILLABLE.
    */
   async recordUsageObservation(dto: UsageObservationDto) {
-    const environmentId = dto.environmentId || 'default-env';
+    const environmentId = requireEnvironmentId(dto.environmentId);
     const acceptedQty = dto.acceptedQuantity !== undefined ? dto.acceptedQuantity : 1;
 
     // Force NON_BILLABLE and billableQuantity = 0 for duplicate, rejected, or quarantined states
@@ -65,7 +66,7 @@ export class MeteringService {
    * Discovered resources enter 'DISCOVERED' coverage state and 'NON_BILLABLE' state until contract acceptance.
    */
   async observeProtectedResource(dto: ResourceObservationDto) {
-    const environmentId = dto.environmentId || 'default-env';
+    const environmentId = requireEnvironmentId(dto.environmentId);
 
     const existing = await this.prisma.resourceObservation.findFirst({
       where: {

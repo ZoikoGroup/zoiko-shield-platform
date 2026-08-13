@@ -47,11 +47,16 @@ describe('DetectionEngineController', () => {
     const testResult = { match: true, reason: 'Matched' };
     serviceMock.testRule.mockResolvedValue(testResult);
 
-    const response = await controller.testRule('rule-1', {
+    const response = await controller.testRule('tenant-1', 'rule-1', {
       sampleEvent: { outcome: 'FAILED' },
     });
 
     expect(response.statusCode).toBe(HttpStatus.OK);
     expect(response.data).toBe(testResult);
+    expect(serviceMock.testRule).toHaveBeenCalledWith(
+      'tenant-1',
+      'rule-1',
+      { outcome: 'FAILED' },
+    );
   });
 });

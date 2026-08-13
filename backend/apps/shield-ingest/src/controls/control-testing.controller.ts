@@ -10,6 +10,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { ControlTestingService, CreateControlObjectiveDto } from './control-testing.service';
+import { requireTenantId } from '../security/tenant-context';
 
 @Controller('api/v1')
 export class ControlTestingController {
@@ -24,7 +25,7 @@ export class ControlTestingController {
     @Body() dto: CreateControlObjectiveDto,
   ) {
     if (!dto.tenantId) {
-      dto.tenantId = headerTenantId || '';
+      dto.tenantId = requireTenantId(headerTenantId);
     }
     const objective = await this.controlService.createControlObjective(dto);
     return {
@@ -42,7 +43,7 @@ export class ControlTestingController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Query('tenantId') queryTenantId?: string,
   ) {
-    const tenantId = headerTenantId || queryTenantId || '';
+    const tenantId = requireTenantId(headerTenantId, queryTenantId);
     const objectives = await this.controlService.getControlObjectives(tenantId);
     return {
       statusCode: HttpStatus.OK,
@@ -50,18 +51,13 @@ export class ControlTestingController {
     };
   }
 
-  @Post('control-tests')
-  async createControlTest(@Body() dto: any) {
-    return { statusCode: HttpStatus.CREATED, message: 'Control test created', data: dto };
-  }
-
   /**
    * POST /api/v1/control-tests/:testId/evaluate & /api/v1/controls/objectives/:id/evaluate
    */
   @Post(['control-tests/:testId/evaluate', 'controls/objectives/:testId/evaluate'])
   @HttpCode(HttpStatus.OK)
-  async evaluateControlObjective(@Param('testId') testId: string) {
-    const testRun = await this.controlService.evaluateControlObjective(testId);
+  async evaluateControlObjective(@Headers('x-tenant-id') tenantId: string, @Param('testId') testId: string) {
+    const testRun = await this.controlService.evaluateControlObjective(tenantId, testId);
     return {
       statusCode: HttpStatus.OK,
       message: `Control test evaluated with result: ${testRun.result}`,
@@ -77,7 +73,7 @@ export class ControlTestingController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Query('tenantId') queryTenantId?: string,
   ) {
-    const tenantId = headerTenantId || queryTenantId || '';
+    const tenantId = requireTenantId(headerTenantId, queryTenantId);
     const results = await this.controlService.getControlResults(tenantId);
     return {
       statusCode: HttpStatus.OK,
@@ -86,7 +82,8 @@ export class ControlTestingController {
   }
 
   @Get('control-evaluations/:evaluationId')
-  async getControlEvaluationById(@Param('evaluationId') evaluationId: string) {
-    return { statusCode: HttpStatus.OK, evaluationId, result: 'EFFECTIVE', evaluatedAt: new Date().toISOString() };
+  async getControlEvaluationById(@Headers('x-tenant-id') tenantId: string, @Param('evaluationId') evaluationId: string) {
+    const evaluation = await this.controlService.getControlResult(tenantId, evaluationId);
+    return { statusCode: HttpStatus.OK, data: evaluation };
   }
 }

@@ -14,9 +14,9 @@ export class AssetService {
     });
   }
 
-  async getAssetById(assetId: string) {
-    const asset = await this.prisma.asset.findUnique({
-      where: { id: assetId },
+  async getAssetById(tenantId: string, assetId: string) {
+    const asset = await this.prisma.asset.findFirst({
+      where: { id: assetId, tenant_id: tenantId },
       include: {
         aliases: true,
         normalizedEvents: { take: 10, orderBy: { recorded_at: 'desc' } },

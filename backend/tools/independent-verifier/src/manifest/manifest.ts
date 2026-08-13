@@ -6,7 +6,7 @@ export interface ManifestCore {
   frameworkVersions: unknown[];
   mappingVersions: unknown[];
   evidenceIndex: Array<{ evidenceId: string; contentHash: string; integrityState: string }>;
-  ledgerEntries: Array<{ sequence: number; evidenceId: string; previousEntryHash: string | null; entryHash: string }>;
+  ledgerEntries: Array<{ tenantId: string; sequence: number; evidenceId: string; previousEntryHash: string | null; entryHash: string; evidenceMetadata: Record<string, unknown> }>;
   evaluationIndex: unknown[];
   assessmentIndex: unknown[];
   riskIndex: unknown[];

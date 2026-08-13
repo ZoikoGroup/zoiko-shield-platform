@@ -1,14 +1,37 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { requireEnvironmentId, requireRegion } from '../security/tenant-context';
+import { ConnectorRegistry } from './core/connector-registry';
+import { ConnectorSyncService } from './services/sync.service';
+import { randomUUID } from 'crypto';
+import { IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class CreateConnectorDto {
+  @IsOptional()
+  @IsString()
   tenantId!: string;
+
+  @IsString()
+  @MaxLength(200)
   name!: string;
+
+  @IsString()
+  @MaxLength(100)
   provider!: string; // e.g. 'generic-webhook', 'microsoft-entra', 'aws', 'azure'
-  environmentId?: string;
+
+  @IsString()
+  environmentId!: string;
+
+  @IsOptional()
+  @IsIn(['OAUTH', 'API_KEY', 'CLIENT_CREDENTIALS', 'WEBHOOK_SECRET', 'SYSLOG_TLS', 'SERVICE_ACCOUNT'])
   authenticationType?: 'OAUTH' | 'API_KEY' | 'CLIENT_CREDENTIALS' | 'WEBHOOK_SECRET' | 'SYSLOG_TLS' | 'SERVICE_ACCOUNT';
+
+  @IsOptional()
+  @IsString()
   credentialReference?: string;
-  sourceRegion?: string;
+
+  @IsString()
+  sourceRegion!: string;
 }
 
 export interface ConnectorTypeDto {
@@ -23,7 +46,11 @@ export interface ConnectorTypeDto {
 export class ConnectorCatalogService {
   private readonly logger = new Logger(ConnectorCatalogService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly registry: ConnectorRegistry,
+    private readonly syncService: ConnectorSyncService,
+  ) {}
 
   /**
    * Get list of supported initial connector categories (Step 5 MVP)
@@ -100,12 +127,12 @@ export class ConnectorCatalogService {
     const connector = await this.prisma.connectorInstance.create({
       data: {
         tenant_id: dto.tenantId,
-        environment_id: dto.environmentId || 'default-env',
+        environment_id: requireEnvironmentId(dto.environmentId),
         connectorDefId: definition.id,
         name: dto.name,
         authentication_type: dto.authenticationType || 'API_KEY',
-        source_region: dto.sourceRegion,
-        state: 'CONNECTED',
+        source_region: requireRegion(dto.sourceRegion),
+        state: 'NOT_CONNECTED',
       },
       include: {
         definition: true,
@@ -142,9 +169,9 @@ export class ConnectorCatalogService {
   /**
    * Get single connector detail
    */
-  async getConnectorById(connectorId: string) {
-    const connector = await this.prisma.connectorInstance.findUnique({
-      where: { id: connectorId },
+  async getConnectorById(tenantId: string, connectorId: string) {
+    const connector = await this.prisma.connectorInstance.findFirst({
+      where: { id: connectorId, tenant_id: tenantId },
       include: {
         definition: true,
         credentials: true,
@@ -162,8 +189,8 @@ export class ConnectorCatalogService {
   /**
    * Activate connector state
    */
-  async activateConnector(connectorId: string) {
-    await this.getConnectorById(connectorId);
+  async activateConnector(tenantId: string, connectorId: string) {
+    await this.getConnectorById(tenantId, connectorId);
     return this.prisma.connectorInstance.update({
       where: { id: connectorId },
       data: { state: 'CONNECTED' },
@@ -173,11 +200,62 @@ export class ConnectorCatalogService {
   /**
    * Disable connector state
    */
-  async disableConnector(connectorId: string) {
-    await this.getConnectorById(connectorId);
+  async disableConnector(tenantId: string, connectorId: string) {
+    await this.getConnectorById(tenantId, connectorId);
     return this.prisma.connectorInstance.update({
       where: { id: connectorId },
       data: { state: 'DISCONNECTED' },
     });
+  }
+
+  async updateConnector(tenantId: string, connectorId: string, input: { name?: string; sourceRegion?: string }) {
+    await this.getConnectorById(tenantId, connectorId);
+    if (!input.name && !input.sourceRegion) throw new BadRequestException('At least one supported connector field is required');
+    return this.prisma.connectorInstance.update({
+      where: { id: connectorId },
+      data: { name: input.name, source_region: input.sourceRegion },
+    });
+  }
+
+  async retireConnector(tenantId: string, connectorId: string) {
+    const instance = await this.getConnectorById(tenantId, connectorId);
+    if (this.registry.has(instance.definition.provider)) {
+      await this.registry.get(instance.definition.provider).disconnect(this.context(instance));
+    }
+    return this.prisma.connectorInstance.update({
+      where: { id: connectorId },
+      data: { state: 'NOT_CONNECTED', deletedAt: new Date() },
+    });
+  }
+
+  async testConnector(tenantId: string, connectorId: string) {
+    const instance = await this.getConnectorById(tenantId, connectorId);
+    if (!this.registry.has(instance.definition.provider)) {
+      throw new BadRequestException(`Provider '${instance.definition.provider}' has no executable connection test`);
+    }
+    return this.registry.get(instance.definition.provider).testConnection(this.context(instance));
+  }
+
+  async syncConnector(tenantId: string, connectorId: string) {
+    await this.getConnectorById(tenantId, connectorId);
+    await this.syncService.runSync(connectorId);
+    return this.getConnectorHealth(tenantId, connectorId);
+  }
+
+  async getConnectorHealth(tenantId: string, connectorId: string) {
+    await this.getConnectorById(tenantId, connectorId);
+    return this.prisma.connectorHealthStatus.findFirst({ where: { instanceId: connectorId, tenant_id: tenantId } });
+  }
+
+  private context(instance: { id: string; tenant_id: string; environment_id: string; source_region: string | null }) {
+    return {
+      connectorInstanceId: instance.id,
+      tenantId: instance.tenant_id,
+      environmentId: instance.environment_id,
+      region: requireRegion(instance.source_region),
+      purpose: 'security-monitoring',
+      correlationId: randomUUID(),
+      traceId: randomUUID(),
+    };
   }
 }

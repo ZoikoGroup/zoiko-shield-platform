@@ -165,6 +165,7 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
       this.logger.debug(`Published ${eventType} to ${topic}`);
     } catch (error: any) {
       this.logger.error(`Failed to publish ${eventType} to ${topic}: ${error.message}`);
+      throw error;
     }
   }
 }

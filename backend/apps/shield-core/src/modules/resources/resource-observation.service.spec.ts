@@ -13,6 +13,7 @@ describe('ResourceObservationService (ZS-COM-BILL-001 Part 5/6 dedup engine)', (
     prismaMock = {
       resourceObservation: {
         findUnique: jest.fn(),
+        findFirst: jest.fn(),
         create: jest.fn(),
         update: jest.fn(),
       },
@@ -56,6 +57,7 @@ describe('ResourceObservationService (ZS-COM-BILL-001 Part 5/6 dedup engine)', (
 
     const result = await service.recordObservation({
       tenantId: 't1',
+      environmentId: 'env-1',
       resourceType: 'ENDPOINT',
       sourceConnectorId: 'crowdstrike',
       identityAttributes: { externalId: 'abc' },
@@ -89,7 +91,7 @@ describe('ResourceObservationService (ZS-COM-BILL-001 Part 5/6 dedup engine)', (
   });
 
   it('never allows billable_state=BILLABLE while coverage_state is not BILLABLE (Principle 3)', async () => {
-    prismaMock.resourceObservation.findUnique.mockResolvedValue({
+    prismaMock.resourceObservation.findFirst.mockResolvedValue({
       id: 'obs-1',
       coverage_state: 'DISCOVERED',
     });
@@ -97,26 +99,35 @@ describe('ResourceObservationService (ZS-COM-BILL-001 Part 5/6 dedup engine)', (
       Promise.resolve({ id: 'obs-1', ...data }),
     );
 
-    const updated = await service.updateCoverageState('obs-1', 'REVIEW_REQUIRED');
+    const updated = await service.updateCoverageState('t1', 'obs-1', 'REVIEW_REQUIRED');
 
     expect(updated.coverage_state).toBe('REVIEW_REQUIRED');
     expect(updated.billable_state).toBe('NON_BILLABLE');
   });
 
   it('rejects an illegal jump straight from DISCOVERED to BILLABLE', async () => {
-    prismaMock.resourceObservation.findUnique.mockResolvedValue({ id: 'obs-1', coverage_state: 'DISCOVERED' });
+    prismaMock.resourceObservation.findFirst.mockResolvedValue({ id: 'obs-1', coverage_state: 'DISCOVERED' });
 
-    await expect(service.updateCoverageState('obs-1', 'BILLABLE')).rejects.toThrow(ConflictException);
+    await expect(service.updateCoverageState('t1', 'obs-1', 'BILLABLE')).rejects.toThrow(ConflictException);
   });
 
   it('sets billable_state=BILLABLE only on the BILLABLE coverage transition', async () => {
-    prismaMock.resourceObservation.findUnique.mockResolvedValue({ id: 'obs-1', coverage_state: 'COVERED' });
+    prismaMock.resourceObservation.findFirst.mockResolvedValue({ id: 'obs-1', coverage_state: 'COVERED' });
     prismaMock.resourceObservation.update.mockImplementation(({ data }: any) =>
       Promise.resolve({ id: 'obs-1', ...data }),
     );
 
-    const updated = await service.updateCoverageState('obs-1', 'BILLABLE');
+    const updated = await service.updateCoverageState('t1', 'obs-1', 'BILLABLE');
 
     expect(updated.billable_state).toBe('BILLABLE');
+  });
+
+  it('does not expose another tenant\'s observation by id', async () => {
+    prismaMock.resourceObservation.findFirst.mockResolvedValue(null);
+
+    await expect(service.getObservationById('tenant-b', 'obs-1')).rejects.toThrow();
+    expect(prismaMock.resourceObservation.findFirst).toHaveBeenCalledWith({
+      where: { id: 'obs-1', tenant_id: 'tenant-b' },
+    });
   });
 });

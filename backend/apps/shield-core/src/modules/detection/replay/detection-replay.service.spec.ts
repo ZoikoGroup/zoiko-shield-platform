@@ -40,7 +40,7 @@ describe('DetectionReplayService', () => {
 
   beforeEach(async () => {
     prismaMock = {
-      detectionEvaluation: { findUnique: jest.fn().mockResolvedValue(evaluation) },
+      detectionEvaluation: { findFirst: jest.fn().mockResolvedValue(evaluation) },
       contextSnapshot: {
         findUnique: jest.fn().mockResolvedValue({ id: 'snap-1', identity_entity_id: 'identity-1', asset_id: null, context_health: 'RESOLVED' }),
       },
@@ -67,7 +67,7 @@ describe('DetectionReplayService', () => {
   it('records divergence=false when replaying with identical frozen context produces the same result', async () => {
     ruleMock.evaluate.mockReturnValue({ result: 'MATCH', factors: [], incompleteData: false, reasons: [] });
 
-    const replay = await service.replay('eval-1');
+    const replay = await service.replay('tenant-a', 'eval-1');
 
     expect(replay.divergence).toBe(false);
     expect(replay.original_result).toBe('MATCH');
@@ -79,15 +79,15 @@ describe('DetectionReplayService', () => {
   it('records divergence=true (NON_DETERMINISTIC) when the replay result differs from the original', async () => {
     ruleMock.evaluate.mockReturnValue({ result: 'NO_MATCH', factors: [], incompleteData: false, reasons: [] });
 
-    const replay = await service.replay('eval-1');
+    const replay = await service.replay('tenant-a', 'eval-1');
 
     expect(replay.divergence).toBe(true);
     expect(replay.reason).toContain('NON_DETERMINISTIC');
   });
 
   it('throws for an unknown evaluation id rather than replaying nothing', async () => {
-    prismaMock.detectionEvaluation.findUnique.mockResolvedValue(null);
+    prismaMock.detectionEvaluation.findFirst.mockResolvedValue(null);
 
-    await expect(service.replay('missing')).rejects.toThrow();
+    await expect(service.replay('tenant-a', 'missing')).rejects.toThrow();
   });
 });

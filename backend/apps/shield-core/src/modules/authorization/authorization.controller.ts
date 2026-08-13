@@ -20,6 +20,8 @@ import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-paylo
 import { RequirePlatformPermissions } from './decorators/require-platform-permissions.decorator';
 import { PlatformPermissionsGuard } from './guards/platform-permissions.guard';
 import { PERMISSION_CODES } from './constants';
+import { PermissionsGuard } from './guards/permissions.guard';
+import { RequirePermissions } from './decorators/require-permissions.decorator';
 
 import {
   Delete,
@@ -101,9 +103,11 @@ export class AuthorizationController {
     return { invitationId: invitation.id, expiresAt: invitation.expiresAt, token };
   }
 
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions(PERMISSION_CODES.TENANT_MEMBER_INVITE)
   @Get('tenants/:tenantId/invitations')
   async listInvitations(@Param('tenantId') tenantId: string) {
-    return { statusCode: 200, tenantId, invitations: [] };
+    return this.authorizationService.listInvitations(tenantId);
   }
 
   @Post(['invitations/:token/accept', 'auth/invitations/:token/accept'])
@@ -111,18 +115,27 @@ export class AuthorizationController {
     return this.authorizationService.acceptInvitation(token, user.id, user.email);
   }
 
+  @UseGuards(PermissionsGuard)
   @Get('tenants/:tenantId/members')
   async listMembers(@Param('tenantId') tenantId: string) {
-    return { statusCode: 200, tenantId, members: [] };
+    return this.authorizationService.listMembers(tenantId);
   }
 
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions(PERMISSION_CODES.TENANT_MANAGE)
   @Patch('tenants/:tenantId/members/:memberId')
-  async updateMember(@Param('tenantId') tenantId: string, @Param('memberId') memberId: string, @Body() dto: any) {
-    return { statusCode: 200, tenantId, memberId, updated: dto };
+  async updateMember(
+    @Param('tenantId') tenantId: string,
+    @Param('memberId') memberId: string,
+    @Body() dto: { roleIds?: string[]; status?: 'ACTIVE' | 'SUSPENDED' },
+  ) {
+    return this.authorizationService.updateMember(tenantId, memberId, dto);
   }
 
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions(PERMISSION_CODES.TENANT_MANAGE)
   @Delete('tenants/:tenantId/members/:memberId')
   async removeMember(@Param('tenantId') tenantId: string, @Param('memberId') memberId: string) {
-    return { statusCode: 200, message: 'Member removed', memberId };
+    return this.authorizationService.removeMember(tenantId, memberId);
   }
 }

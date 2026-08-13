@@ -26,6 +26,7 @@ describe('EntraConnectorService', () => {
     prismaMock = {
       connectorDefinition: { findUnique: jest.fn(), create: jest.fn() },
       connectorInstance: { create: jest.fn(), update: jest.fn(), findUniqueOrThrow: jest.fn() },
+      connectorOauthState: { create: jest.fn().mockResolvedValue({ id: 'oauth-state-1' }) },
     };
     registryMock = { register: jest.fn() };
     authMock = { generateAuthUrl: jest.fn().mockReturnValue('https://login.microsoftonline.com/consent') };
@@ -87,6 +88,15 @@ describe('EntraConnectorService', () => {
       expect.objectContaining({ data: expect.objectContaining({ tenant_id: 'tenant-a', state: 'AWAITING_ADMIN_CONSENT' }) }),
     );
     expect(permissionMock.declareRequired).toHaveBeenCalledWith('tenant-a', 'instance-1', 'microsoft-entra', expect.any(Array));
+    expect(prismaMock.connectorOauthState.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        tenant_id: 'tenant-a',
+        instance_id: 'instance-1',
+        state_hash: expect.stringMatching(/^[a-f0-9]{64}$/),
+        expires_at: expect.any(Date),
+      }),
+    });
+    expect(authMock.generateAuthUrl).toHaveBeenCalledWith('tenant-a', expect.any(String));
   });
 
   it('persists the externalTenantId on consent completion instead of discarding it', async () => {

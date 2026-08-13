@@ -13,6 +13,9 @@ import { PolicyService } from '../identity-adapter/policy.service';
 import { PERMISSION_CODES } from '../authorization/constants';
 import { OnboardTenantDto } from './dto/onboard-tenant.dto';
 import { SessionMetadata } from '../identity-adapter/session.service';
+import { OnboardingReadinessService } from './onboarding-readiness.service';
+import { EvidenceService } from '../evidence/services/evidence.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
 const TENANT_OWNER_ROLE_CODE = 'TENANT_OWNER';
 
@@ -21,6 +24,9 @@ export class OnboardingService implements OnModuleInit {
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly policyService: PolicyService,
+    private readonly readinessService: OnboardingReadinessService,
+    private readonly evidenceService: EvidenceService,
+    private readonly prisma: PrismaService,
   ) {}
 
   /** Self-seeds a shared TENANT_OWNER role (tenantId: null template, per-tenant authority via TenantMembership), same pattern as PolicyService's policy seeding. */
@@ -28,7 +34,13 @@ export class OnboardingService implements OnModuleInit {
     const permissionRepository = this.dataSource.getRepository(Permission);
     const roleRepository = this.dataSource.getRepository(Role);
 
-    const codes = [PERMISSION_CODES.TENANT_MEMBER_INVITE, PERMISSION_CODES.TENANT_MANAGE];
+    const codes = [
+      PERMISSION_CODES.TENANT_MEMBER_INVITE,
+      PERMISSION_CODES.TENANT_MANAGE,
+      PERMISSION_CODES.TENANT_OFFBOARDING_START,
+      PERMISSION_CODES.DELETION_REQUEST,
+      PERMISSION_CODES.LEGAL_HOLD_CREATE,
+    ];
     const permissions = [];
     for (const code of codes) {
       let permission = await permissionRepository.findOne({ where: { code } });
@@ -49,10 +61,14 @@ export class OnboardingService implements OnModuleInit {
           permissions,
         }),
       );
+    } else {
+      existing.permissions = permissions;
+      await roleRepository.save(existing);
     }
   }
 
   async onboard(dto: OnboardTenantDto, principalId: string, metadata: SessionMetadata) {
+    this.readinessService.assertReady(dto);
     const activeDisclosure = await this.policyService.findActive('ACCESS_DISCLOSURE');
     if (!activeDisclosure || activeDisclosure.version !== dto.accessDisclosureVersion) {
       throw new BadRequestException(
@@ -60,7 +76,7 @@ export class OnboardingService implements OnModuleInit {
       );
     }
 
-    return this.dataSource.transaction(async (manager) => {
+    const provisioning = await this.dataSource.transaction(async (manager) => {
       const tenantRepo = manager.getRepository(Tenant);
       const legalEntityRepo = manager.getRepository(LegalEntity);
       const environmentRepo = manager.getRepository(Environment);
@@ -102,10 +118,6 @@ export class OnboardingService implements OnModuleInit {
         }),
       );
 
-      tenant.status = 'ACTIVE';
-      tenant.onboardingCompletedAt = new Date();
-      await tenantRepo.save(tenant);
-
       const ownerRole = await roleRepo.findOne({ where: { code: TENANT_OWNER_ROLE_CODE, roleLevel: 'TENANT' } });
       if (!ownerRole) {
         throw new Error('TENANT_OWNER role missing — OnboardingService.onModuleInit did not seed it');
@@ -132,7 +144,7 @@ export class OnboardingService implements OnModuleInit {
 
       await eventRepo.save(
         eventRepo.create({
-          eventType: 'tenant_onboarded',
+          eventType: 'tenant_provisioning_started',
           principalId,
           actorId: principalId,
           tenantId: tenant.id,
@@ -147,5 +159,81 @@ export class OnboardingService implements OnModuleInit {
 
       return { tenant, legalEntity, environment, membership };
     });
+
+    const commercialAccount = await this.prisma.$transaction(async (tx) => {
+      const account = await tx.commercialAccount.create({
+        data: {
+          name: provisioning.tenant.name,
+          legal_entity_id: provisioning.legalEntity.id,
+          environment_id: provisioning.environment.id,
+          region: provisioning.tenant.dataResidencyRegion,
+          residency_policy: provisioning.tenant.dataResidencyRegion,
+        },
+      });
+      await tx.entitlement.create({
+        data: {
+          commercial_account_id: account.id,
+          tenant_id: provisioning.tenant.id,
+          offer_type: 'G1_ONBOARDING',
+          status: 'ACTIVE',
+        },
+      });
+      return account;
+    });
+
+    const acceptanceEvidence = await this.evidenceService.createEvidence({
+      tenantId: provisioning.tenant.id,
+      environmentId: provisioning.environment.id,
+      legalEntityId: provisioning.legalEntity.id,
+      region: provisioning.tenant.dataResidencyRegion,
+      evidenceType: 'POLICY_ACCEPTANCE',
+      producingService: 'shield-core',
+      sourceSystemId: 'identity-adapter',
+      sourceObjectId: activeDisclosure.id,
+      purpose: 'TENANT_ONBOARDING',
+      dataClass: provisioning.tenant.dataClass,
+      retentionProfile: provisioning.tenant.retentionPolicyRef,
+      content: {
+        tenantId: provisioning.tenant.id,
+        principalId,
+        policyDocumentId: activeDisclosure.id,
+        policyVersion: activeDisclosure.version,
+        policyContentHash: activeDisclosure.contentHash,
+        acceptedAt: new Date().toISOString(),
+      },
+    });
+
+    const tenant = await this.dataSource.transaction(async (manager) => {
+      const tenantRepo = manager.getRepository(Tenant);
+      const eventRepo = manager.getRepository(IdentityEvent);
+      const current = await tenantRepo.findOneByOrFail({ id: provisioning.tenant.id });
+      current.status = 'ACTIVE';
+      current.onboardingCompletedAt = new Date();
+      const activated = await tenantRepo.save(current);
+      await eventRepo.save(
+        eventRepo.create({
+          eventType: 'tenant_onboarded',
+          principalId,
+          actorId: principalId,
+          tenantId: activated.id,
+          data: {
+            legalEntityId: provisioning.legalEntity.id,
+            environmentId: provisioning.environment.id,
+            commercialAccountId: commercialAccount.id,
+            acceptanceEvidenceId: acceptanceEvidence.id,
+            accessDisclosureVersion: activeDisclosure.version,
+          },
+        }),
+      );
+      return activated;
+    });
+
+    return {
+      tenant,
+      legalEntity: provisioning.legalEntity,
+      environment: provisioning.environment,
+      membership: provisioning.membership,
+      acceptanceEvidenceId: acceptanceEvidence.id,
+    };
   }
 }

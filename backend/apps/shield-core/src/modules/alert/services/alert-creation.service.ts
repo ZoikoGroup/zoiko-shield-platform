@@ -4,11 +4,13 @@ import { OutboxService } from '../../../outbox/outbox.service';
 import { AlertSuppressionService } from '../suppression/alert-suppression.service';
 import { AlertRepository } from '../repositories/alert.repository';
 import { ALERT_TOPICS } from '../events/alert-events';
+import { randomUUID } from 'crypto';
+import { requireRegion } from '../../../tenant-context';
 
 export interface CreateAlertFromMatchInput {
   tenantId: string;
   environmentId: string;
-  region?: string;
+  region: string;
   detectionDefinitionId: string;
   detectionVersionId: string;
   detectionMatchId: string;
@@ -60,13 +62,15 @@ export class AlertCreationService {
     });
 
     const priority = input.severity === 'CRITICAL' ? 'P1' : input.severity === 'HIGH' ? 'P2' : 'P3';
+    const alertId = randomUUID();
 
     const [alert] = await this.prisma.$transaction([
       this.prisma.alert.create({
         data: {
+          id: alertId,
           tenant_id: input.tenantId,
           environment_id: input.environmentId,
-          region: input.region ?? 'unspecified',
+          region: requireRegion(input.region),
           detection_definition_id: input.detectionDefinitionId,
           detection_version_id: input.detectionVersionId,
           detection_match_id: input.detectionMatchId,
@@ -94,9 +98,12 @@ export class AlertCreationService {
           topic: suppressionMatch ? ALERT_TOPICS.ALERT_SUPPRESSED : ALERT_TOPICS.ALERT_CREATED,
           eventType: suppressionMatch ? 'alert.suppressed' : 'alert.created',
           payload: {
+            alertId,
             detectionMatchId: input.detectionMatchId,
             severity: input.severity,
             suppressionRuleId: suppressionMatch?.id,
+            environmentId: input.environmentId,
+            region: requireRegion(input.region),
           },
           correlationId: input.correlationId,
         }),

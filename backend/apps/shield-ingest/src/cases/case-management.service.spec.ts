@@ -11,7 +11,7 @@ describe('CaseManagementService (Step 11)', () => {
     prismaMock = {
       case: {
         create: jest.fn(),
-        findUnique: jest.fn(),
+        findFirst: jest.fn(),
         findMany: jest.fn(),
         update: jest.fn(),
       },
@@ -42,6 +42,8 @@ describe('CaseManagementService (Step 11)', () => {
 
     const result = await service.createCase({
       tenantId: 'tenant-1',
+      environmentId: 'env-1',
+      region: 'eu-west-1',
       title: 'Suspicious Login Case',
     });
 
@@ -49,14 +51,14 @@ describe('CaseManagementService (Step 11)', () => {
     expect(prismaMock.case.create).toHaveBeenCalled();
     expect(prismaMock.caseTimeline.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        event_type: 'CREATED',
+        entry_type: 'CREATED',
         case_id: 'case-1',
       }),
     });
   });
 
   it('should execute valid state transition NEW -> TRIAGED', async () => {
-    prismaMock.case.findUnique.mockResolvedValue({
+    prismaMock.case.findFirst.mockResolvedValue({
       id: 'case-1',
       tenant_id: 'tenant-1',
       status: 'NEW',
@@ -66,30 +68,30 @@ describe('CaseManagementService (Step 11)', () => {
       status: 'TRIAGED',
     });
 
-    const updated = await service.transitionState('case-1', 'TRIAGED');
+    const updated = await service.transitionState('tenant-1', 'case-1', 'TRIAGED');
 
     expect(updated.status).toBe('TRIAGED');
     expect(prismaMock.caseTimeline.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        event_type: 'STATE_TRANSITION',
+        entry_type: 'STATE_TRANSITION',
       }),
     });
   });
 
   it('should reject illegal state transition NEW -> CLOSED', async () => {
-    prismaMock.case.findUnique.mockResolvedValue({
+    prismaMock.case.findFirst.mockResolvedValue({
       id: 'case-1',
       tenant_id: 'tenant-1',
       status: 'NEW',
     });
 
-    await expect(service.transitionState('case-1', 'CLOSED')).rejects.toThrow(
+    await expect(service.transitionState('tenant-1', 'case-1', 'CLOSED')).rejects.toThrow(
       ConflictException,
     );
   });
 
   it('should add analyst note to timeline', async () => {
-    prismaMock.case.findUnique.mockResolvedValue({
+    prismaMock.case.findFirst.mockResolvedValue({
       id: 'case-1',
       tenant_id: 'tenant-1',
     });
@@ -98,11 +100,11 @@ describe('CaseManagementService (Step 11)', () => {
       event_type: 'NOTE_ADDED',
     });
 
-    const note = await service.addNote('case-1', 'Investigated IP 192.168.1.1');
+    const note = await service.addNote('tenant-1', 'case-1', 'Investigated IP 192.168.1.1');
 
     expect(prismaMock.caseTimeline.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        event_type: 'NOTE_ADDED',
+        entry_type: 'NOTE_ADDED',
       }),
     });
   });

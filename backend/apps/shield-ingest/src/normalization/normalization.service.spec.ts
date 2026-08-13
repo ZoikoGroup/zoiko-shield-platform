@@ -14,6 +14,9 @@ describe('NormalizationService', () => {
     tenant_id: 'tenant-001',
     environment_id: 'prod-env',
     connector_id: 'conn-123',
+    source_type: 'WEBHOOK',
+    source_region: 'eu-west-1',
+    schema_version: 'v1.0',
     raw_payload_reference: JSON.stringify({
       eventId: 'evt-100',
       eventType: 'user.login',
@@ -42,10 +45,13 @@ describe('NormalizationService', () => {
         findUnique: jest.fn(),
         delete: jest.fn(),
       },
+      connectorHealthStatus: {
+        findFirst: jest.fn().mockResolvedValue({ state: 'HEALTHY' }),
+      },
     };
 
     kafkaMock = {
-      emit: jest.fn().mockResolvedValue(true),
+      publishEvent: jest.fn().mockResolvedValue(true),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -76,6 +82,9 @@ describe('NormalizationService', () => {
       severity: 'INFORMATIONAL',
       actor_email: 'alice@example.com',
       outcome: 'SUCCESS',
+      occurred_at: new Date(),
+      recorded_at: new Date(),
+      mapping_version: '1.0',
     });
 
     const result = await service.normalizeRawEvent('raw-100');
@@ -86,7 +95,12 @@ describe('NormalizationService', () => {
       where: { id: 'raw-100' },
       data: { processing_status: 'NORMALIZED' },
     });
-    expect(kafkaMock.emit).toHaveBeenCalledWith('telemetry.normalized', expect.any(Object));
+    expect(kafkaMock.publishEvent).toHaveBeenCalledWith(
+      'event.normalized.v1',
+      'event.normalized',
+      expect.objectContaining({ tenantId: 'tenant-001', normalizedEventId: 'norm-1' }),
+      expect.any(Object),
+    );
   });
 
   it('should quarantine a raw event with malformed JSON payload', async () => {

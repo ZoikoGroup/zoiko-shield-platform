@@ -10,6 +10,7 @@ import { EntraGraphClient } from './connectors/providers/microsoft-entra/entra.c
 import { EntraUserSyncService } from './connectors/providers/microsoft-entra/entra.user-sync';
 import { EntraSignInSyncService } from './connectors/providers/microsoft-entra/entra.signin-sync';
 import { EntraNormalizerService } from './connectors/providers/microsoft-entra/entra.normalizer';
+import { EntraEventHubConsumer } from './connectors/providers/microsoft-entra/entra.event-hub.consumer';
 import { EntraWebhookController } from './connectors/providers/microsoft-entra/entra.webhook.controller';
 
 import { ConnectorRegistry } from './connectors/core/connector-registry';
@@ -65,7 +66,21 @@ import { AssuranceReviewService } from './assurance/assurance-review.service';
 import { SLAClaimController } from './sla/sla-claim.controller';
 import { SLAClaimService } from './sla/sla-claim.service';
 
-import { AiInvestigationController } from './ai/ai-investigation.controller';
+import { APP_GUARD } from '@nestjs/core';
+import { WorkloadAuthGuard } from './security/workload-auth.guard';
+import { WebhookSignatureGuard } from './ingestion/guards/webhook-signature.guard';
+import { OutboxService } from './outbox/outbox.service';
+import { OutboxPublisherService } from './outbox/outbox-publisher.service';
+import { PrismaService as IngestPrismaService } from './prisma/prisma.service';
+import { PrismaService as CorePrismaService } from '../../shield-core/src/prisma/prisma.service';
+import { EvidenceService as CanonicalEvidenceService } from '../../shield-core/src/modules/evidence/services/evidence.service';
+import { EvidenceVerificationService } from '../../shield-core/src/modules/evidence/verification/evidence-verification.service';
+import { EvidenceRepository } from '../../shield-core/src/modules/evidence/repositories/evidence.repository';
+import { EvidenceLedgerService } from '../../shield-core/src/modules/evidence/ledger/evidence-ledger.service';
+import { EvidenceLineageService } from '../../shield-core/src/modules/evidence/lineage/evidence-lineage.service';
+import { ContentHashService } from '../../shield-core/src/modules/evidence/hashing/content-hash.service';
+import { ObjectStorageService } from '../../shield-core/src/modules/evidence/storage/object-storage.service';
+import { OutboxService as CoreOutboxService } from '../../shield-core/src/outbox/outbox.service';
 
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
@@ -87,7 +102,6 @@ import { AiInvestigationController } from './ai/ai-investigation.controller';
     ControlTestingController,
     AssuranceReviewController,
     SLAClaimController,
-    AiInvestigationController,
   ],
 
   providers: [
@@ -107,6 +121,7 @@ import { AiInvestigationController } from './ai/ai-investigation.controller';
     EntraUserSyncService,
     EntraSignInSyncService,
     EntraNormalizerService,
+    EntraEventHubConsumer,
     RawIngestService,
     ConnectorCatalogService,
     NormalizationService,
@@ -123,6 +138,19 @@ import { AiInvestigationController } from './ai/ai-investigation.controller';
     ControlTestingService,
     AssuranceReviewService,
     SLAClaimService,
+    OutboxService,
+    OutboxPublisherService,
+    { provide: CorePrismaService, useExisting: IngestPrismaService },
+    CoreOutboxService,
+    ContentHashService,
+    ObjectStorageService,
+    EvidenceRepository,
+    EvidenceLedgerService,
+    EvidenceLineageService,
+    CanonicalEvidenceService,
+    EvidenceVerificationService,
+    WebhookSignatureGuard,
+    { provide: APP_GUARD, useClass: WorkloadAuthGuard },
   ],
 })
 export class ShieldIngestModule {}

@@ -14,6 +14,7 @@ describe('AlertCreationService', () => {
   const baseInput = {
     tenantId: 'tenant-a',
     environmentId: 'env-1',
+    region: 'eu-west-1',
     detectionDefinitionId: 'def-1',
     detectionVersionId: 'v1',
     detectionMatchId: 'match-1',

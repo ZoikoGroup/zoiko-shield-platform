@@ -1,8 +1,12 @@
-import { Controller, Get, Post, Param, Headers, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Param, Headers, HttpStatus, UseGuards } from '@nestjs/common';
 import { EvidenceService } from '../services/evidence.service';
 import { EvidenceVerificationService } from '../verification/evidence-verification.service';
 import { EvidenceLineageService } from '../lineage/evidence-lineage.service';
+import { JwtAuthGuard } from '../../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../../authorization/guards/permissions.guard';
+import { requireTenantId } from '../../../tenant-context';
 
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/evidence')
 export class EvidenceController {
   constructor(
@@ -12,7 +16,7 @@ export class EvidenceController {
   ) {}
 
   private resolveTenantId(headerTenantId: string): string {
-    return headerTenantId || 'default-tenant';
+    return requireTenantId(headerTenantId);
   }
 
   @Get(':evidenceId')

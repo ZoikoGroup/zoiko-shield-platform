@@ -82,12 +82,32 @@ export class PaymentService {
     return payment;
   }
 
+  async getPaymentByIdForTenant(tenantId: string, paymentId: string) {
+    const payment = await this.getPaymentById(paymentId);
+    const entitlement = await this.prisma.entitlement.findFirst({
+      where: { tenant_id: tenantId, commercial_account_id: payment.commercial_account_id },
+      select: { id: true },
+    });
+    if (!entitlement) {
+      throw new NotFoundException(`Payment '${paymentId}' not found`);
+    }
+    return payment;
+  }
+
   /**
    * Part 12/9 sequencing: only an ISSUED (immutable) invoice can be paid —
    * the price/tax/invoice basis must already be frozen.
    */
-  async createPayment(dto: CreatePaymentDto, idempotencyKey: string) {
+  async createPayment(tenantId: string, dto: CreatePaymentDto, idempotencyKey: string) {
     await this.killSwitchService.assertNotBlocked('AUTOMATIC_CHARGING');
+
+    const entitlement = await this.prisma.entitlement.findFirst({
+      where: { tenant_id: tenantId, commercial_account_id: dto.commercialAccountId, status: 'ACTIVE' },
+      select: { id: true },
+    });
+    if (!entitlement) {
+      throw new NotFoundException('No active entitlement connects this tenant to the commercial account');
+    }
 
     const invoice = await this.prisma.commercialInvoice.findUnique({ where: { id: dto.invoiceId } });
     if (!invoice) {
@@ -107,7 +127,7 @@ export class PaymentService {
       {
         key: idempotencyKey,
         operation: 'payments.create',
-        tenantId: dto.commercialAccountId,
+        tenantId,
         requestPayload: dto,
       },
       async () => {
@@ -253,5 +273,10 @@ export class PaymentService {
     }
 
     return refund;
+  }
+
+  async refundPaymentForTenant(tenantId: string, paymentId: string, amount: number, reason: string) {
+    await this.getPaymentByIdForTenant(tenantId, paymentId);
+    return this.refundPayment(paymentId, amount, reason);
   }
 }

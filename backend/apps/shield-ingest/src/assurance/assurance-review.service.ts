@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { requireTenantId } from '../security/tenant-context';
 
 export class CreateAssuranceReviewDto {
   tenantId?: string;
@@ -33,7 +34,7 @@ export class AssuranceReviewService {
       throw new BadRequestException('Assurance review periodName is required');
     }
 
-    const tenantId = dto.tenantId || '';
+    const tenantId = requireTenantId(dto.tenantId);
     const actorId = dto.reviewedBy || 'system';
 
     const testRuns = await this.prisma.controlTestRun.findMany({
@@ -100,7 +101,7 @@ export class AssuranceReviewService {
         take: 1,
         orderBy: { created_at: 'desc' },
       }),
-      this.prisma.controlObjective.findMany(),
+      this.prisma.controlObjective.findMany({ where: { owner: tenantId } }),
       this.prisma.controlTestRun.findMany({
         where: { tenant_id: tenantId },
         orderBy: { executed_at: 'desc' },
@@ -136,19 +137,34 @@ export class AssuranceReviewService {
       throw new BadRequestException('Reflection title and notes are required');
     }
 
-    return {
-      id: 'ref-1',
-      tenantId: dto.tenantId,
-      category: dto.category,
-      title: dto.title,
-      notes: dto.notes,
-      actionItems: dto.actionItems || [],
-      authorId: dto.authorId || 'vCISO',
-      createdAt: new Date().toISOString(),
-    };
+    const tenantId = requireTenantId(dto.tenantId);
+    if (dto.assuranceReviewId) {
+      const review = await this.prisma.assuranceReview.findFirst({
+        where: { id: dto.assuranceReviewId, tenant_id: tenantId },
+        select: { id: true },
+      });
+      if (!review) {
+        throw new NotFoundException(`Assurance review '${dto.assuranceReviewId}' not found`);
+      }
+    }
+
+    return this.prisma.vCISOReflection.create({
+      data: {
+        tenant_id: tenantId,
+        assurance_review_id: dto.assuranceReviewId,
+        category: dto.category,
+        title: dto.title,
+        notes: dto.notes,
+        action_items: JSON.stringify(dto.actionItems ?? []),
+        author_id: dto.authorId ?? 'system',
+      },
+    });
   }
 
   async getVCISOReflections(tenantId: string, assuranceReviewId?: string) {
-    return [];
+    return this.prisma.vCISOReflection.findMany({
+      where: { tenant_id: tenantId, ...(assuranceReviewId ? { assurance_review_id: assuranceReviewId } : {}) },
+      orderBy: { created_at: 'desc' },
+    });
   }
 }

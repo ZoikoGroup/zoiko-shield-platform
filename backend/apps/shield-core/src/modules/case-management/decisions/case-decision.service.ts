@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OutboxService } from '../../../outbox/outbox.service';
 import { CaseTimelineService } from '../timeline/case-timeline.service';
@@ -31,8 +31,18 @@ export class CaseDecisionService {
     actorId: string;
     policyVersion?: string;
   }) {
+    const caseRecord = await this.prisma.case.findFirst({
+      where: { id: params.caseId, tenant_id: params.tenantId },
+      select: { environment_id: true, region: true },
+    });
+    if (!caseRecord) {
+      throw new NotFoundException(`Case '${params.caseId}' not found`);
+    }
+
     const evidence = await this.evidenceAutoCreation.createForCaseDecision({
       tenantId: params.tenantId,
+      environmentId: caseRecord.environment_id,
+      region: caseRecord.region,
       caseId: params.caseId,
       decisionType: params.decisionType,
       decision: params.decision,

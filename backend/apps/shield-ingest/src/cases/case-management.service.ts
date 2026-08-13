@@ -6,6 +6,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { requireEnvironmentId, requireRegion, requireTenantId } from '../security/tenant-context';
 
 const ALLOWED_CASE_TRANSITIONS: Record<string, string[]> = {
   NEW: ['TRIAGED', 'DUPLICATE', 'FALSE_POSITIVE'],
@@ -34,7 +35,8 @@ const ALLOWED_CASE_TRANSITIONS: Record<string, string[]> = {
 
 export class CreateCaseDto {
   tenantId?: string;
-  environmentId?: string;
+  environmentId!: string;
+  region!: string;
   title!: string;
   description?: string;
   severity?: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
@@ -68,8 +70,9 @@ export class CaseManagementService {
    * Create a new investigation case and log initial CREATED timeline event
    */
   async createCase(dto: CreateCaseDto) {
-    const tenantId = dto.tenantId || '';
-    const environmentId = dto.environmentId || 'default-env';
+    const tenantId = requireTenantId(dto.tenantId);
+    const environmentId = requireEnvironmentId(dto.environmentId);
+    const region = requireRegion(dto.region);
 
     this.logger.log(`Creating case '${dto.title}' for tenant ${tenantId}`);
 
@@ -77,6 +80,7 @@ export class CaseManagementService {
       data: {
         tenant_id: tenantId,
         environment_id: environmentId,
+        region,
         title: dto.title,
         description: dto.description,
         severity: dto.severity || 'HIGH',
@@ -106,9 +110,9 @@ export class CaseManagementService {
   /**
    * Get single case with complete timeline history
    */
-  async getCaseById(caseId: string) {
-    const caseRecord = await this.prisma.case.findUnique({
-      where: { id: caseId },
+  async getCaseById(tenantId: string, caseId: string) {
+    const caseRecord = await this.prisma.case.findFirst({
+      where: { id: caseId, tenant_id: tenantId },
       include: {
         timelineEntries: true,
       },
@@ -142,8 +146,8 @@ export class CaseManagementService {
   /**
    * Update case fields
    */
-  async updateCase(caseId: string, dto: UpdateCaseDto) {
-    await this.getCaseById(caseId);
+  async updateCase(tenantId: string, caseId: string, dto: UpdateCaseDto) {
+    await this.getCaseById(tenantId, caseId);
 
     const updateData: any = {};
     if (dto.title) updateData.title = dto.title;
@@ -164,8 +168,8 @@ export class CaseManagementService {
   /**
    * Assign case owner and append ASSIGNED timeline event
    */
-  async assignCase(caseId: string, ownerId: string, actorId = 'system') {
-    const caseRecord = await this.getCaseById(caseId);
+  async assignCase(tenantId: string, caseId: string, ownerId: string, actorId = 'system') {
+    const caseRecord = await this.getCaseById(tenantId, caseId);
 
     const updated = await this.prisma.case.update({
       where: { id: caseId },
@@ -189,8 +193,8 @@ export class CaseManagementService {
   /**
    * Transition case state per validated state machine rules
    */
-  async transitionState(caseId: string, targetStatus: string, actorId = 'system', reason?: string) {
-    const caseRecord = await this.getCaseById(caseId);
+  async transitionState(tenantId: string, caseId: string, targetStatus: string, actorId = 'system', reason?: string) {
+    const caseRecord = await this.getCaseById(tenantId, caseId);
     const currentStatus = caseRecord.status;
 
     const allowed = ALLOWED_CASE_TRANSITIONS[currentStatus] || [];
@@ -232,8 +236,8 @@ export class CaseManagementService {
   /**
    * Add analyst note to case timeline
    */
-  async addNote(caseId: string, noteText: string, actorId = 'system') {
-    const caseRecord = await this.getCaseById(caseId);
+  async addNote(tenantId: string, caseId: string, noteText: string, actorId = 'system') {
+    const caseRecord = await this.getCaseById(tenantId, caseId);
 
     if (!noteText || noteText.trim().length === 0) {
       throw new BadRequestException('Note text cannot be empty');
@@ -254,8 +258,16 @@ export class CaseManagementService {
   /**
    * Link evidence record to case timeline
    */
-  async linkEvidence(caseId: string, evidenceId: string, actorId = 'system') {
-    const caseRecord = await this.getCaseById(caseId);
+  async linkEvidence(tenantId: string, caseId: string, evidenceId: string, actorId = 'system') {
+    const caseRecord = await this.getCaseById(tenantId, caseId);
+
+    const evidence = await this.prisma.evidenceRecord.findFirst({
+      where: { id: evidenceId, tenant_id: tenantId },
+      select: { id: true },
+    });
+    if (!evidence) {
+      throw new NotFoundException(`Evidence '${evidenceId}' not found`);
+    }
 
     return this.timelineDelegate.create({
       data: {
@@ -273,11 +285,11 @@ export class CaseManagementService {
   /**
    * Query case timeline entries
    */
-  async getCaseTimeline(caseId: string) {
-    await this.getCaseById(caseId);
+  async getCaseTimeline(tenantId: string, caseId: string) {
+    await this.getCaseById(tenantId, caseId);
 
     return this.timelineDelegate.findMany({
-      where: { case_id: caseId },
+      where: { case_id: caseId, tenant_id: tenantId },
       orderBy: { created_at: 'asc' },
     });
   }

@@ -1,6 +1,6 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Tenant, TenantStatus } from './tenant.entity';
 import { IdentityEventService } from '../identity-adapter/identity-event.service';
 
@@ -26,6 +26,11 @@ export class TenantService {
 
   findAll(): Promise<Tenant[]> {
     return this.tenantRepository.find();
+  }
+
+  findAccessible(ids: string[]): Promise<Tenant[]> {
+    if (ids.length === 0) return Promise.resolve([]);
+    return this.tenantRepository.find({ where: { id: In(ids) } });
   }
 
   async findOne(id: string): Promise<Tenant> {

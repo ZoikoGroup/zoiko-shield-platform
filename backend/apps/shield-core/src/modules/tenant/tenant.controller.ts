@@ -1,4 +1,4 @@
-import { Body, Controller, ForbiddenException, Get, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, Patch, UseGuards } from '@nestjs/common';
 import { TenantService } from './tenant.service';
 import { UpdateTenantStatusDto } from './dto/update-tenant-status.dto';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
@@ -6,8 +6,9 @@ import { AuthorizationService } from '../authorization/authorization.service';
 import { CurrentUser } from '../identity-adapter/decorators/current-user.decorator';
 import { PERMISSION_CODES } from '../authorization/constants';
 import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller(['api/v1/tenants', 'tenant'])
 export class TenantController {
   constructor(
@@ -16,18 +17,17 @@ export class TenantController {
   ) {}
 
   @Get()
-  findAll() {
-    return this.tenantService.findAll();
+  async findAll(@CurrentUser() user: AuthenticatedUser) {
+    const tenantIds = await this.authorizationService.getAccessibleTenantIds(user.id);
+    return this.tenantService.findAccessible(tenantIds);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  async findOne(@Param('id') id: string, @CurrentUser() user: AuthenticatedUser) {
+    if (!(await this.authorizationService.hasTenantAccess(id, user.id))) {
+      throw new ForbiddenException('The authenticated principal has no active membership for this tenant');
+    }
     return this.tenantService.findOne(id);
-  }
-
-  @Post()
-  async createTenant(@Body() dto: { name: string; slug?: string; homeRegion?: string }, @CurrentUser() user: AuthenticatedUser) {
-    return { id: 'tenant-new', name: dto.name, status: 'ACTIVE', createdBy: user.id };
   }
 
   @Patch([':id', ':id/status'])
@@ -41,20 +41,5 @@ export class TenantController {
       throw new ForbiddenException('Missing tenant:manage permission for this tenant');
     }
     return this.tenantService.transitionStatus(id, dto.status ?? 'ACTIVE', user.id);
-  }
-
-  @Post(':tenantId/organizations')
-  async createOrganization(@Param('tenantId') tenantId: string, @Body() dto: any) {
-    return { statusCode: 201, tenantId, organization: dto };
-  }
-
-  @Post(':tenantId/legal-entities')
-  async createLegalEntity(@Param('tenantId') tenantId: string, @Body() dto: any) {
-    return { statusCode: 201, tenantId, legalEntity: dto };
-  }
-
-  @Post(':tenantId/environments')
-  async createEnvironment(@Param('tenantId') tenantId: string, @Body() dto: any) {
-    return { statusCode: 201, tenantId, environment: dto };
   }
 }

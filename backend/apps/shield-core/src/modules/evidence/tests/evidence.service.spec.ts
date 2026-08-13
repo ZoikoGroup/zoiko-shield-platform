@@ -19,12 +19,20 @@ describe('EvidenceService', () => {
 
   beforeEach(async () => {
     prismaMock = {
-      $transaction: jest.fn().mockImplementation((ops: any[]) => Promise.all(ops)),
-      evidenceRecord: { create: jest.fn().mockImplementation(({ data }: any) => Promise.resolve(data)) },
+      $transaction: jest.fn().mockImplementation((callback: any) => callback(prismaMock)),
+      evidenceRecord: {
+        create: jest.fn().mockImplementation(({ data }: any) => Promise.resolve(data)),
+        findFirst: jest.fn().mockResolvedValue({ id: 'evidence-parent' }),
+      },
+      evidenceLineage: { create: jest.fn().mockResolvedValue({}) },
       outboxEvent: { create: jest.fn().mockResolvedValue({}) },
     };
-    storageMock = { buildObjectKey: jest.fn().mockReturnValue('tenant-a/evidence-x'), putObject: jest.fn().mockResolvedValue(undefined) };
-    ledgerMock = { append: jest.fn().mockResolvedValue({ sequence: 1 }) };
+    storageMock = {
+      buildObjectKey: jest.fn().mockReturnValue('tenant-a/evidence-x'),
+      putObject: jest.fn().mockResolvedValue(undefined),
+      deleteObject: jest.fn().mockResolvedValue(undefined),
+    };
+    ledgerMock = { appendInTransaction: jest.fn().mockResolvedValue({ sequence: 1 }) };
     lineageMock = { link: jest.fn().mockResolvedValue(undefined) };
     evidenceRepoMock = { findById: jest.fn(), findByTenantAndId: jest.fn() };
 
@@ -47,6 +55,8 @@ describe('EvidenceService', () => {
   it('stores bytes in object storage, writes an EvidenceRecord with integrity_state PENDING, and appends to the ledger', async () => {
     const evidence = await service.createEvidence({
       tenantId: 'tenant-a',
+      environmentId: 'env-1',
+      region: 'eu-west-1',
       evidenceType: 'ALERT_CREATION',
       producingService: 'test',
       sourceSystemId: 'sys-1',
@@ -57,12 +67,14 @@ describe('EvidenceService', () => {
 
     expect(storageMock.putObject).toHaveBeenCalledTimes(1);
     expect(evidence.integrity_state).toBe('PENDING');
-    expect(ledgerMock.append).toHaveBeenCalledTimes(1);
+    expect(ledgerMock.appendInTransaction).toHaveBeenCalledTimes(1);
   });
 
   it('links lineage to a parent evidence record when parentEvidenceId is given', async () => {
     await service.createEvidence({
       tenantId: 'tenant-a',
+      environmentId: 'env-1',
+      region: 'eu-west-1',
       evidenceType: 'NORMALIZED_EVENT',
       producingService: 'test',
       sourceSystemId: 'sys-1',
@@ -73,9 +85,13 @@ describe('EvidenceService', () => {
       lineageRelationship: 'NORMALIZED_FROM',
     });
 
-    expect(lineageMock.link).toHaveBeenCalledWith(
-      expect.objectContaining({ parentEvidenceId: 'evidence-parent', relationship: 'NORMALIZED_FROM' }),
-    );
+    expect(prismaMock.evidenceLineage.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        parent_evidence_id: 'evidence-parent',
+        relationship: 'NORMALIZED_FROM',
+        tenant_id: 'tenant-a',
+      }),
+    });
   });
 
   it('rejects cross-tenant access — evidence belonging to tenant B is not returned to tenant A, even to answer not-found vs forbidden', async () => {

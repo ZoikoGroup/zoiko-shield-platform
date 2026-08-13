@@ -27,14 +27,15 @@ export class EvidenceAutoCreationService implements OnModuleInit {
   }
 
   private async handleAlertCreated(envelope: EventEnvelope<any>): Promise<void> {
-    const { tenantId, alertId, detectionMatchId, severity } = envelope.payload ?? {};
-    if (!tenantId || !alertId) {
-      this.logger.warn(`Malformed alert.created payload, skipping evidence creation: ${JSON.stringify(envelope.payload)}`);
-      return;
+    const { tenantId, environmentId, region, alertId, detectionMatchId, severity } = envelope.payload ?? {};
+    if (!tenantId || !environmentId || !alertId) {
+      throw new Error(`Malformed alert.created payload: ${JSON.stringify(envelope.payload)}`);
     }
 
     await this.evidenceService.createEvidence({
       tenantId,
+      environmentId,
+      region,
       evidenceType: 'ALERT_CREATION',
       producingService: 'shield-core-evidence-auto-creation',
       sourceSystemId: 'shield-ingest-alert-service',
@@ -44,9 +45,11 @@ export class EvidenceAutoCreationService implements OnModuleInit {
     });
   }
 
-  async createForCaseTransition(params: { tenantId: string; caseId: string; fromState: string; toState: string; actorId: string; reason: string }) {
+  async createForCaseTransition(params: { tenantId: string; environmentId: string; region: string; caseId: string; fromState: string; toState: string; actorId: string; reason: string }) {
     return this.evidenceService.createEvidence({
       tenantId: params.tenantId,
+      environmentId: params.environmentId,
+      region: params.region,
       evidenceType: 'CASE_STATE_TRANSITION',
       producingService: 'case-management',
       sourceSystemId: 'shield-core-case',
@@ -56,9 +59,11 @@ export class EvidenceAutoCreationService implements OnModuleInit {
     });
   }
 
-  async createForCaseDecision(params: { tenantId: string; caseId: string; decisionType: string; decision: string; rationale: string; actorId: string }) {
+  async createForCaseDecision(params: { tenantId: string; environmentId: string; region: string; caseId: string; decisionType: string; decision: string; rationale: string; actorId: string }) {
     return this.evidenceService.createEvidence({
       tenantId: params.tenantId,
+      environmentId: params.environmentId,
+      region: params.region,
       evidenceType: 'CASE_DECISION',
       producingService: 'case-management',
       sourceSystemId: 'shield-core-case',

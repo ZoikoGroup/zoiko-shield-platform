@@ -8,6 +8,7 @@ import {
 import { Kafka, Producer } from 'kafkajs';
 import { randomUUID } from 'crypto';
 import { ZoikoShieldCanonicalEvent } from '../connectors/providers/microsoft-entra/entra.types';
+import { requireTenantId } from '../security/tenant-context';
 
 /**
  * Canonical topic names shield-ingest owns/publishes. detection.* and
@@ -77,7 +78,7 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
    */
   async emit(topic: string, payload: any) {
     try {
-      const key = payload.tenantId || payload.tenant_id || 'default-key';
+      const key = requireTenantId(payload.tenantId, payload.tenant_id);
       await this.producer.send({
         topic,
         messages: [
@@ -90,37 +91,49 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
       this.logger.debug(`Successfully emitted event to Kafka topic ${topic}`);
     } catch (error: any) {
       this.logger.error(`Failed to emit event to Kafka topic ${topic}: ${error.message}`);
+      throw error;
     }
   }
 
-  async publishEvent(topic: string, eventType: string, payload: any, options?: any) {
-    return this.emit(topic, { eventType, ...payload, ...options });
+  async publishEvent<T extends { tenantId: string }>(
+    topic: string,
+    eventType: string,
+    payload: T,
+    options?: { correlationId?: string; causationId?: string; traceId?: string; occurredAt?: Date },
+  ) {
+    const producedAt = new Date();
+    const envelope: EventEnvelope<T> = {
+      eventId: randomUUID(),
+      eventType,
+      eventVersion: '1',
+      tenantId: requireTenantId(payload.tenantId),
+      correlationId: options?.correlationId ?? randomUUID(),
+      causationId: options?.causationId,
+      traceId: options?.traceId ?? randomUUID(),
+      occurredAt: (options?.occurredAt ?? producedAt).toISOString(),
+      producedAt: producedAt.toISOString(),
+      payload,
+    };
+    await this.producer.send({
+      topic,
+      messages: [{ key: envelope.tenantId, value: JSON.stringify(envelope) }],
+    });
+    this.logger.debug(`Published ${eventType} to ${topic}`);
+    return envelope;
   }
 
   /**
    * Publishes a canonical event to the specified Kafka topic.
    */
   async publishCanonicalEvent(event: ZoikoShieldCanonicalEvent) {
-
-    const topic =
-      process.env.KAFKA_CANONICAL_EVENTS_TOPIC || 'zoiko.events.canonical.v1';
-
-    try {
-      await this.producer.send({
-        topic,
-        messages: [
-          {
-            key: event.tenant_id, // Partition by tenant_id
-            value: JSON.stringify(event),
-          },
-        ],
-      });
-      this.logger.debug(
-        `Successfully published event ${event.source_event_id} to Kafka topic ${topic}`,
-      );
-    } catch (error: any) {
-      this.logger.error(`Failed to publish event to Kafka: ${error.message}`);
-      throw error;
-    }
+    return this.publishEvent(
+      CANONICAL_TOPICS.IDENTITY_SIGNIN,
+      event.event_type,
+      { tenantId: event.tenant_id, ...event },
+      {
+        correlationId: event.correlation_id,
+        occurredAt: new Date(event.event_timestamp),
+      },
+    );
   }
 }

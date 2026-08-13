@@ -14,7 +14,11 @@ import type { Response } from 'express';
 import { EntraNormalizerService } from './entra.normalizer';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { KafkaProducerService } from '../../../kafka/kafka.producer.service';
+import { PublicIngress } from '../../../security/public-ingress.decorator';
+import { createHash } from 'crypto';
+import { requireRegion } from '../../../security/tenant-context';
 
+@PublicIngress()
 @Controller('v1/webhooks/microsoft-graph')
 export class EntraWebhookController {
   private readonly logger = new Logger(EntraWebhookController.name);
@@ -47,58 +51,101 @@ export class EntraWebhookController {
     // 2. Queue-First Processing
     // Microsoft requires a 2xx response immediately, otherwise they will assume failure and retry.
     if (body && body.value) {
-      // Send 202 Accepted immediately before doing heavy work
-      res.status(HttpStatus.ACCEPTED).send();
-
-      // Process the payload asynchronously
-      this.processNotifications(body.value).catch((err) => {
-        this.logger.error(
-          `Failed to process webhook notifications: ${err.message}`,
-        );
-      });
-      return;
+      const validated = await this.validateNotifications(body.value);
+      // Queue (Kafka) or durably record lifecycle state before acknowledging.
+      // A processing failure returns non-2xx so Microsoft Graph retries instead
+      // of silently losing a validated notification.
+      await this.processNotifications(validated);
+      return res.status(HttpStatus.ACCEPTED).send();
     }
 
     // Invalid payload
     throw new HttpException('Invalid payload', HttpStatus.BAD_REQUEST);
   }
 
+  private async validateNotifications(notifications: any[]): Promise<Array<{ notification: any; subscription: any }>> {
+    if (!Array.isArray(notifications) || notifications.length === 0) {
+      throw new HttpException('Notification batch is empty', HttpStatus.BAD_REQUEST);
+    }
+    const validated: Array<{ notification: any; subscription: any }> = [];
+    for (const notification of notifications) {
+      if (!notification?.id || !notification?.clientState) {
+        throw new HttpException('Every notification must include id and clientState', HttpStatus.UNAUTHORIZED);
+      }
+      const subscription = await this.prisma.webhookSubscription.findFirst({
+        where: { clientState: notification.clientState, subscriptionId: notification.subscriptionId },
+        include: {
+          instance: {
+            select: {
+              environment_id: true,
+              source_region: true,
+            },
+          },
+        },
+      });
+      if (!subscription) throw new HttpException('Unknown Microsoft Graph subscription', HttpStatus.UNAUTHORIZED);
+
+      const nonceHash = createHash('sha256').update(`${notification.subscriptionId}:${notification.id}`).digest('hex');
+      try {
+        await this.prisma.webhookReplayNonce.create({
+          data: {
+            connector_id: subscription.instanceId,
+            nonce_hash: nonceHash,
+            expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000),
+          },
+        });
+      } catch {
+        throw new HttpException('Microsoft Graph notification replay detected', HttpStatus.CONFLICT);
+      }
+      validated.push({ notification, subscription });
+    }
+    return validated;
+  }
+
   /**
    * Processes the notifications asynchronously.
    */
-  private async processNotifications(notifications: any[]) {
+  private async processNotifications(validated: Array<{ notification: any; subscription: any }>) {
     this.logger.debug(
-      `Processing ${notifications.length} notifications from Microsoft Graph.`,
+      `Processing ${validated.length} notifications from Microsoft Graph.`,
     );
 
-    for (const notification of notifications) {
-      // Security: Validate the clientState to prevent forged notifications
-      const clientState = notification.clientState;
-      if (!clientState) {
-        this.logger.warn(
-          `Discarding notification without clientState. Resource: ${notification.resource}`,
-        );
-        continue;
-      }
-
-      // Check if this subscription exists in our database
-      const subscription = await this.prisma.webhookSubscription.findFirst({
-        where: { clientState },
-      });
-
-      if (!subscription) {
-        this.logger.warn(
-          `Discarding notification for unknown clientState. Resource: ${notification.resource}`,
-        );
-        continue;
-      }
+    for (const { notification, subscription } of validated) {
 
       if (notification.lifecycleEvent) {
-        // Handle lifecycle events (e.g., reauthorizationRequired, subscriptionRemoved)
         this.logger.log(
           `Received lifecycle event: ${notification.lifecycleEvent} for subscription ${subscription.subscriptionId}`,
         );
-        // TODO: Handle renewal or cleanup logic
+        await this.prisma.$transaction(async (tx) => {
+          if (notification.lifecycleEvent === 'subscriptionRemoved') {
+            await tx.webhookSubscription.deleteMany({
+              where: {
+                id: subscription.id,
+                tenant_id: subscription.tenant_id,
+              },
+            });
+          }
+          await tx.connectorInstance.updateMany({
+            where: {
+              id: subscription.instanceId,
+              tenant_id: subscription.tenant_id,
+            },
+            data: {
+              state:
+                notification.lifecycleEvent === 'reauthorizationRequired'
+                  ? 'PERMISSION_REVOKED'
+                  : 'DEGRADED',
+            },
+          });
+          await tx.connectorError.create({
+            data: {
+              tenant_id: subscription.tenant_id,
+              instanceId: subscription.instanceId,
+              errorCode: `GRAPH_${String(notification.lifecycleEvent).toUpperCase()}`,
+              message: `Microsoft Graph lifecycle event '${notification.lifecycleEvent}' requires connector reconciliation`,
+            },
+          });
+        });
       } else {
         // Standard resource change notification (e.g., user updated)
         this.logger.log(
@@ -111,6 +158,8 @@ export class EntraWebhookController {
         const canonicalEvent = this.normalizer.normalizeSignInLog(
           { id: notification.id, ...notification.resourceData },
           subscription.tenant_id,
+          subscription.instance.environment_id,
+          requireRegion(subscription.instance.source_region),
         );
 
         // Override event type for webhooks

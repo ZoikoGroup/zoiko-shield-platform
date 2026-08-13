@@ -35,6 +35,7 @@ describe('MeteringService (ZS-COM-BILL-001)', () => {
 
     const record = await service.recordUsageObservation({
       tenantId: 'tenant-1',
+      environmentId: 'env-1',
       sourceType: 'WEBHOOK',
       usageState: 'DUPLICATE',
       acceptedQuantity: 1,
@@ -57,6 +58,7 @@ describe('MeteringService (ZS-COM-BILL-001)', () => {
 
     const resource = await service.observeProtectedResource({
       tenantId: 'tenant-1',
+      environmentId: 'env-1',
       canonicalResourceId: 'host-100',
       resourceType: 'ENDPOINT',
       sourceConnectorId: 'conn-1',

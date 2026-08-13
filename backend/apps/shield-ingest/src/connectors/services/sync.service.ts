@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ConnectorRegistry } from '../core/connector-registry';
+import { requireRegion } from '../../security/tenant-context';
 import { ConnectorContext } from '../core/connector-context';
 import { ConnectorError } from '../core/connector-errors';
 import { ConnectorHealthService } from './health.service';
@@ -37,7 +38,7 @@ export class ConnectorSyncService {
       connectorInstanceId: instance.id,
       tenantId: instance.tenant_id,
       environmentId: instance.environment_id,
-      region: instance.source_region ?? 'unspecified',
+      region: requireRegion(instance.source_region),
       purpose: 'security-monitoring',
       correlationId: randomUUID(),
       traceId: randomUUID(),

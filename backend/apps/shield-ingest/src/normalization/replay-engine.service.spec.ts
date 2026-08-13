@@ -12,11 +12,8 @@ describe('ReplayEngineService', () => {
 
   beforeEach(async () => {
     prismaMock = {
-      quarantinedEvent: {
-        findUnique: jest.fn(),
-      },
       detectionRule: {
-        findUnique: jest.fn(),
+        findFirst: jest.fn(),
       },
       normalizedEvent: {
         findMany: jest.fn(),
@@ -24,7 +21,7 @@ describe('ReplayEngineService', () => {
     };
 
     normServiceMock = {
-      normalizePayload: jest.fn(),
+      reprocessQuarantinedEvent: jest.fn(),
     };
 
     detectionServiceMock = {
@@ -44,19 +41,13 @@ describe('ReplayEngineService', () => {
   });
 
   it('should reprocess quarantined event successfully', async () => {
-    prismaMock.quarantinedEvent.findUnique.mockResolvedValue({
-      id: 'q-1',
-      tenant_id: 'tenant-1',
-      rawPayload: '{"eventId":"evt-1"}',
-    });
-
-    normServiceMock.normalizePayload.mockResolvedValue({
-      eventId: 'evt-1',
+    normServiceMock.reprocessQuarantinedEvent.mockResolvedValue({
+      quarantineId: 'q-1',
       status: 'NORMALIZED',
     });
 
-    const result = await service.reprocessQuarantinedEvent('q-1');
-    expect(result.status).toBe('REPROCESSED');
-    expect(normServiceMock.normalizePayload).toHaveBeenCalled();
+    const result = await service.reprocessQuarantinedEvent('tenant-1', 'q-1');
+    expect(result.status).toBe('NORMALIZED');
+    expect(normServiceMock.reprocessQuarantinedEvent).toHaveBeenCalledWith('tenant-1', 'q-1');
   });
 });

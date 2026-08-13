@@ -28,6 +28,7 @@ describe('AssetResolutionService', () => {
 
     const result = await service.resolve({
       tenantId: 'tenant-a',
+      environmentId: 'env-1',
       sourceSystem: 'microsoft-entra',
       sourceAccountId: 'conn-1',
       externalType: 'IP_ADDRESS',
@@ -45,6 +46,7 @@ describe('AssetResolutionService', () => {
 
     const first = await service.resolve({
       tenantId: 'tenant-a',
+      environmentId: 'env-1',
       sourceSystem: 'crowdstrike',
       sourceAccountId: 'conn-cs',
       externalType: 'DEVICE_ID',
@@ -54,6 +56,7 @@ describe('AssetResolutionService', () => {
     });
     const second = await service.resolve({
       tenantId: 'tenant-a',
+      environmentId: 'env-1',
       sourceSystem: 'microsoft-entra',
       sourceAccountId: 'conn-entra',
       externalType: 'DEVICE_ID',
@@ -72,6 +75,7 @@ describe('AssetResolutionService', () => {
 
     await service.resolve({
       tenantId: 'tenant-b',
+      environmentId: 'env-1',
       sourceSystem: 'crowdstrike',
       sourceAccountId: 'conn-1',
       externalType: 'DEVICE_ID',

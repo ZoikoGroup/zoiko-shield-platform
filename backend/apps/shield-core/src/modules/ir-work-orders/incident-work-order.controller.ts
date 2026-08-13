@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpStatus, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { IsString } from 'class-validator';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { ActivateWorkOrderDto, IncidentWorkOrderService, LogHoursDto } from './incident-work-order.service';
 
 export class RequestOverageDto {
@@ -11,7 +12,7 @@ export class RequestOverageDto {
   reason!: string;
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/ir/work-orders')
 export class IncidentWorkOrderController {
   constructor(private readonly workOrderService: IncidentWorkOrderService) {}

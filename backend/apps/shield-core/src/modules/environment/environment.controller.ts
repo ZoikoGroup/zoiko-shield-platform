@@ -14,12 +14,13 @@ import { CreateEnvironmentDto } from './dto/create-environment.dto';
 import { UpdateEnvironmentDto } from './dto/update-environment.dto';
 import { TenantService } from '../tenant/tenant.service';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { AuthorizationService } from '../authorization/authorization.service';
 import { CurrentUser } from '../identity-adapter/decorators/current-user.decorator';
 import { PERMISSION_CODES } from '../authorization/constants';
 import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('tenant/:tenantId/environments')
 export class EnvironmentController {
   constructor(

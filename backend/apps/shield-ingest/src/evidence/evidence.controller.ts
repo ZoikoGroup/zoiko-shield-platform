@@ -10,6 +10,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { EvidenceService, CreateEvidenceDto } from './evidence.service';
+import { requireTenantId } from '../security/tenant-context';
 
 @Controller('api/v1/evidence')
 export class EvidenceController {
@@ -24,9 +25,7 @@ export class EvidenceController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Body() dto: CreateEvidenceDto,
   ) {
-    if (!dto.tenantId) {
-      dto.tenantId = headerTenantId || 'default-tenant';
-    }
+    dto.tenantId = requireTenantId(headerTenantId, dto.tenantId);
     const evidence = await this.evidenceService.createEvidence(dto);
     return {
       statusCode: HttpStatus.CREATED,
@@ -45,7 +44,7 @@ export class EvidenceController {
     @Query('tenantId') queryTenantId?: string,
     @Query('caseId') caseId?: string,
   ) {
-    const tenantId = headerTenantId || queryTenantId || 'default-tenant';
+    const tenantId = requireTenantId(headerTenantId, queryTenantId);
     const records = await this.evidenceService.getEvidenceByTenant(tenantId, caseId);
     return {
       statusCode: HttpStatus.OK,
@@ -58,8 +57,11 @@ export class EvidenceController {
    * Get single evidence details
    */
   @Get(':id')
-  async getEvidenceById(@Param('id') id: string) {
-    const evidence = await this.evidenceService.getEvidenceById(id);
+  async getEvidenceById(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('id') id: string,
+  ) {
+    const evidence = await this.evidenceService.getEvidenceById(requireTenantId(headerTenantId), id);
     return {
       statusCode: HttpStatus.OK,
       data: evidence,
@@ -72,8 +74,14 @@ export class EvidenceController {
    */
   @Post(':id/verify')
   @HttpCode(HttpStatus.OK)
-  async verifyEvidenceIntegrity(@Param('id') id: string) {
-    const result = await this.evidenceService.verifyEvidenceIntegrity(id);
+  async verifyEvidenceIntegrity(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('id') id: string,
+  ) {
+    const result = await this.evidenceService.verifyEvidenceIntegrity(
+      requireTenantId(headerTenantId),
+      id,
+    );
     return {
       statusCode: HttpStatus.OK,
       message: result.isIntegrityValid
