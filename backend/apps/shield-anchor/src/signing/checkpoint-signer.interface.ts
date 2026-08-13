@@ -6,11 +6,9 @@ export interface CheckpointSignResult {
 }
 
 /**
- * Small seam so a real KmsCheckpointSigner/HsmCheckpointSigner can replace
- * DevCheckpointSigner later without touching the pipeline around it. Only
- * DevCheckpointSigner is implemented this pass, and it is explicitly
- * dev/test-only (spec correction #1).
+ * Small seam shared by the development signer and the production KMS
+ * signer. The async contract prevents callers from assuming keys are local.
  */
 export interface CheckpointSigner {
-  sign(merkleRoot: string): CheckpointSignResult;
+  sign(merkleRoot: string): Promise<CheckpointSignResult> | CheckpointSignResult;
 }

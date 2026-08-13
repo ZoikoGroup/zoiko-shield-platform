@@ -1,9 +1,10 @@
 import { Body, Controller, Get, HttpStatus, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { CreateDunningPolicyDto, DunningPolicyService } from './dunning-policy.service';
 import { DunningService, TriggerDunningDto } from './dunning.service';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/dunning/policies')
 export class DunningPolicyController {
   constructor(private readonly policyService: DunningPolicyService) {}

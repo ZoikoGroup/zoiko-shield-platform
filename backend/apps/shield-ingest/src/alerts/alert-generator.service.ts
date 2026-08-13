@@ -1,6 +1,8 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { KafkaProducerService } from '../kafka/kafka.producer.service';
+import { OutboxService } from '../outbox/outbox.service';
+import { requireEnvironmentId, requireRegion } from '../security/tenant-context';
+import { randomUUID } from 'crypto';
 
 export interface PromoteAlertResult {
   alertId: string;
@@ -24,7 +26,7 @@ export class AlertGeneratorService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly kafkaProducer: KafkaProducerService,
+    private readonly outbox: OutboxService,
   ) {}
 
   /**
@@ -48,7 +50,7 @@ export class AlertGeneratorService {
     const existing = await this.prisma.alert.findFirst({
       where: {
         tenant_id: run.tenant_id,
-        detection_version_id: run.rule_id,
+        detection_match_id: run.id,
       },
     });
 
@@ -61,9 +63,22 @@ export class AlertGeneratorService {
     const title = `Alert: ${run.rule?.name || 'Detection Match'}`;
     const description = `Security alert triggered by detection rule '${run.rule?.name || run.rule_id}' on event '${run.event_id}'`;
 
-    const alert = await this.prisma.alert.create({
-      data: {
+    const sourceEvent = await this.prisma.normalizedEvent.findFirst({
+      where: { id: run.event_id, tenant_id: run.tenant_id },
+      include: { rawEvent: true },
+    });
+    if (!sourceEvent) {
+      throw new NotFoundException(`Normalized event '${run.event_id}' not found for detection run`);
+    }
+
+    const alertId = randomUUID();
+    const [alert] = await this.prisma.$transaction([
+      this.prisma.alert.create({
+        data: {
+        id: alertId,
         tenant_id: run.tenant_id,
+        environment_id: requireEnvironmentId(sourceEvent.environment_id),
+        region: requireRegion(sourceEvent.rawEvent.source_region),
         detection_definition_id: run.rule_id,
         detection_version_id: run.rule_id,
         detection_match_id: run.id,
@@ -75,21 +90,24 @@ export class AlertGeneratorService {
         status: 'NEW',
         source_event_ids: JSON.stringify(sourceEventIds),
       },
-    });
+      }),
+      this.prisma.outboxEvent.create({
+        data: this.outbox.build({
+          tenantId: run.tenant_id,
+          topic: 'alert.created.v1',
+          eventType: 'alert.created',
+          payload: {
+            alertId,
+            detectionRunId: run.id,
+            severity: run.rule?.severity || 'HIGH',
+            environmentId: sourceEvent.environment_id,
+            region: requireRegion(sourceEvent.rawEvent.source_region),
+          },
+        }),
+      }),
+    ]);
 
     this.logger.log(`Created Alert '${alert.id}' for tenant ${alert.tenant_id}`);
-
-    // Emit Kafka event
-    try {
-      await this.kafkaProducer.emit('alert.published', {
-        alertId: alert.id,
-        tenantId: alert.tenant_id,
-        severity: alert.severity,
-        title: alert.title,
-      });
-    } catch (err) {
-      this.logger.warn(`Failed to emit alert.published: ${err}`);
-    }
 
     return alert;
   }
@@ -112,9 +130,9 @@ export class AlertGeneratorService {
   /**
    * Get single alert details
    */
-  async getAlertById(alertId: string) {
-    const alert = await this.prisma.alert.findUnique({
-      where: { id: alertId },
+  async getAlertById(tenantId: string, alertId: string) {
+    const alert = await this.prisma.alert.findFirst({
+      where: { id: alertId, tenant_id: tenantId },
     });
 
     if (!alert) {
@@ -127,7 +145,7 @@ export class AlertGeneratorService {
   /**
    * Update alert status
    */
-  async updateAlertStatus(alertId: string, status: string) {
+  async updateAlertStatus(tenantId: string, alertId: string, status: string) {
     const validStatuses = [
       'NEW',
       'ACKNOWLEDGED',
@@ -142,7 +160,7 @@ export class AlertGeneratorService {
       throw new BadRequestException(`Invalid alert status '${status}'`);
     }
 
-    await this.getAlertById(alertId);
+    await this.getAlertById(tenantId, alertId);
 
     return this.prisma.alert.update({
       where: { id: alertId },
@@ -153,8 +171,8 @@ export class AlertGeneratorService {
   /**
    * Assign alert to analyst
    */
-  async assignAlert(alertId: string, userId: string) {
-    await this.getAlertById(alertId);
+  async assignAlert(tenantId: string, alertId: string, userId: string) {
+    await this.getAlertById(tenantId, alertId);
 
     return this.prisma.alert.update({
       where: { id: alertId },
@@ -168,13 +186,8 @@ export class AlertGeneratorService {
   /**
    * Promote alert into a Case candidate payload for Step 11 Case Management
    */
-  async promoteAlertToCase(alertId: string): Promise<PromoteAlertResult> {
-    const alert = await this.getAlertById(alertId);
-
-    await this.prisma.alert.update({
-      where: { id: alertId },
-      data: { status: 'PROMOTED_TO_CASE' },
-    });
+  async promoteAlertToCase(tenantId: string, alertId: string): Promise<PromoteAlertResult> {
+    const alert = await this.getAlertById(tenantId, alertId);
 
     let sourceEventIds: string[] = [];
     let affectedAssets: string[] = [];
@@ -184,7 +197,16 @@ export class AlertGeneratorService {
       sourceEventIds = JSON.parse(alert.source_event_ids || '[]');
       affectedAssets = JSON.parse(alert.affected_assets || '[]');
       affectedIdentities = JSON.parse(alert.affected_identities || '[]');
-    } catch {}
+    } catch (error) {
+      throw new BadRequestException(
+        `Alert '${alertId}' contains malformed context data: ${(error as Error).message}`,
+      );
+    }
+
+    await this.prisma.alert.update({
+      where: { id: alertId },
+      data: { status: 'PROMOTED_TO_CASE' },
+    });
 
     return {
       alertId: alert.id,

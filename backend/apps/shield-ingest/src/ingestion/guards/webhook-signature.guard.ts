@@ -5,10 +5,13 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
+import { PrismaService } from '../../prisma/prisma.service';
 
 @Injectable()
 export class WebhookSignatureGuard implements CanActivate {
-  canActivate(context: ExecutionContext): boolean {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
     const headers = request.headers;
 
@@ -20,22 +23,27 @@ export class WebhookSignatureGuard implements CanActivate {
       throw new UnauthorizedException('Missing required webhook HMAC signature header (x-signature or x-hub-signature-256)');
     }
 
-    // Enforce timestamp freshness (within 5 minutes / 300s) to prevent replay attacks
     const timestampStr = (headers['x-timestamp'] as string) || (headers['x-request-timestamp'] as string);
-    if (timestampStr) {
-      const requestTime = parseInt(timestampStr, 10);
-      const currentTime = Math.floor(Date.now() / 1000);
-      if (!isNaN(requestTime) && Math.abs(currentTime - requestTime) > 300) {
-        throw new UnauthorizedException('Webhook request timestamp expired or clock skew too large');
-      }
+    const nonce = headers['x-webhook-nonce'] as string;
+    if (!timestampStr || !nonce) {
+      throw new UnauthorizedException('Webhook timestamp and nonce are required');
+    }
+    const requestTime = Number(timestampStr);
+    const currentTime = Math.floor(Date.now() / 1000);
+    if (!Number.isInteger(requestTime) || Math.abs(currentTime - requestTime) > 300) {
+      throw new UnauthorizedException('Webhook request timestamp expired or invalid');
     }
 
-    const secret = process.env.WEBHOOK_HMAC_SECRET || 'zoiko-shield-webhook-secret';
-    const rawBody = request.rawBody ? request.rawBody.toString('utf-8') : JSON.stringify(request.body || {});
+    const connectorId = request.params?.connectorId;
+    const secretMap = process.env.WEBHOOK_HMAC_SECRETS ? JSON.parse(process.env.WEBHOOK_HMAC_SECRETS) as Record<string, string> : {};
+    const secret = secretMap[connectorId] ?? (process.env.NODE_ENV !== 'production' ? process.env.WEBHOOK_HMAC_SECRET : undefined);
+    if (!secret) throw new UnauthorizedException('No signing secret is configured for this connector');
+    if (!request.rawBody) throw new UnauthorizedException('Raw request bytes are required for signature verification');
+    const rawBody = request.rawBody.toString('utf-8');
     
     const computedHash = crypto
       .createHmac('sha256', secret)
-      .update(rawBody)
+      .update(`${timestampStr}.${nonce}.${rawBody}`)
       .digest('hex');
 
     const expectedSignature = signature.startsWith('sha256=')
@@ -50,6 +58,20 @@ export class WebhookSignatureGuard implements CanActivate {
       !crypto.timingSafeEqual(sigBuffer, expectedBuffer)
     ) {
       throw new UnauthorizedException('Invalid webhook HMAC signature');
+    }
+
+    const nonceHash = crypto.createHash('sha256').update(nonce).digest('hex');
+    await this.prisma.webhookReplayNonce.deleteMany({ where: { expires_at: { lt: new Date() } } });
+    try {
+      await this.prisma.webhookReplayNonce.create({
+        data: {
+          connector_id: connectorId,
+          nonce_hash: nonceHash,
+          expires_at: new Date((requestTime + 300) * 1000),
+        },
+      });
+    } catch {
+      throw new UnauthorizedException('Webhook nonce has already been used');
     }
 
     return true;

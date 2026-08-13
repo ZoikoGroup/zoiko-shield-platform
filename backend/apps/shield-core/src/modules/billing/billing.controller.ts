@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { IsNumber, IsPositive, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import {
   InvoiceSkeletonService,
   CreateDraftInvoiceDto,
@@ -27,7 +28,7 @@ export class IssueNoteDto {
   reason!: string;
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/billing/invoices')
 export class BillingController {
   constructor(private readonly invoiceService: InvoiceSkeletonService) {}

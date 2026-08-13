@@ -1,13 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { DetectionEngineService } from './detection-engine.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { KafkaProducerService } from '../kafka/kafka.producer.service';
 import { NotFoundException } from '@nestjs/common';
+import { AlertGeneratorService } from '../alerts/alert-generator.service';
 
 describe('DetectionEngineService', () => {
   let service: DetectionEngineService;
   let prismaMock: any;
-  let kafkaMock: any;
+  let alertMock: any;
 
   const mockRule = {
     id: 'rule-001',
@@ -43,7 +43,7 @@ describe('DetectionEngineService', () => {
       detectionRule: {
         create: jest.fn(),
         findMany: jest.fn(),
-        findUnique: jest.fn(),
+        findFirst: jest.fn(),
         update: jest.fn(),
       },
       detectionRun: {
@@ -56,15 +56,15 @@ describe('DetectionEngineService', () => {
       },
     };
 
-    kafkaMock = {
-      emit: jest.fn().mockResolvedValue(true),
+    alertMock = {
+      createAlertFromDetectionRun: jest.fn().mockResolvedValue({ id: 'alert-1' }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         DetectionEngineService,
         { provide: PrismaService, useValue: prismaMock },
-        { provide: KafkaProducerService, useValue: kafkaMock },
+        { provide: AlertGeneratorService, useValue: alertMock },
       ],
     }).compile();
 
@@ -96,7 +96,7 @@ describe('DetectionEngineService', () => {
         rule_id: 'rule-001',
       }),
     });
-    expect(kafkaMock.emit).toHaveBeenCalledWith('alert.created', expect.any(Object));
+    expect(alertMock.createAlertFromDetectionRun).toHaveBeenCalledWith('run-1');
   });
 
   it('should return NO_MATCH when threshold condition is not met', async () => {
@@ -116,16 +116,16 @@ describe('DetectionEngineService', () => {
         result: 'NO_MATCH',
       }),
     });
-    expect(kafkaMock.emit).not.toHaveBeenCalled();
+    expect(alertMock.createAlertFromDetectionRun).not.toHaveBeenCalled();
   });
 
   it('should test sample event against condition rules correctly', async () => {
-    prismaMock.detectionRule.findUnique.mockResolvedValue(mockRule);
+    prismaMock.detectionRule.findFirst.mockResolvedValue(mockRule);
 
-    const testResult = await service.testRule('rule-001', { outcome: 'FAILED' });
+    const testResult = await service.testRule('tenant-1', 'rule-001', { outcome: 'FAILED' });
     expect(testResult.match).toBe(true);
 
-    const failResult = await service.testRule('rule-001', { outcome: 'SUCCESS' });
+    const failResult = await service.testRule('tenant-1', 'rule-001', { outcome: 'SUCCESS' });
     expect(failResult.match).toBe(false);
   });
 });

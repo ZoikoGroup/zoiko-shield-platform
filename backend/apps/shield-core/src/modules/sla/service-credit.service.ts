@@ -43,8 +43,8 @@ export class ServiceCreditService {
     private readonly invoiceService: InvoiceSkeletonService,
   ) {}
 
-  async proposeCredit(dto: ProposeCreditDto) {
-    const measurement = await this.measurementService.getMeasurementById(dto.slaMeasurementId);
+  async proposeCredit(tenantId: string, dto: ProposeCreditDto) {
+    const measurement = await this.measurementService.getMeasurementById(tenantId, dto.slaMeasurementId);
     if (!measurement.breached) {
       throw new ConflictException({
         statusCode: 409,
@@ -74,16 +74,17 @@ export class ServiceCreditService {
     return this.prisma.serviceCredit.update({ where: { id: credit.id }, data: { approval_id: approval.id } });
   }
 
-  async getCreditById(id: string) {
+  async getCreditById(tenantId: string, id: string) {
     const credit = await this.prisma.serviceCredit.findUnique({ where: { id } });
     if (!credit) {
       throw new NotFoundException(`Service credit '${id}' not found`);
     }
+    await this.measurementService.getMeasurementById(tenantId, credit.sla_measurement_id);
     return credit;
   }
 
-  async decideCredit(creditId: string, approverId: string, decision: 'APPROVED' | 'REJECTED', reason: string) {
-    const credit = await this.getCreditById(creditId);
+  async decideCredit(tenantId: string, creditId: string, approverId: string, decision: 'APPROVED' | 'REJECTED', reason: string) {
+    const credit = await this.getCreditById(tenantId, creditId);
     assertTransition(CREDIT_TRANSITIONS, credit.status, decision, 'service credit');
 
     if (!credit.approval_id) {
@@ -95,9 +96,17 @@ export class ServiceCreditService {
   }
 
   /** Posting requires an already-ISSUED invoice for the same contract — the credit note is appended, the invoice is never touched. */
-  async postCredit(creditId: string, invoiceId: string) {
-    const credit = await this.getCreditById(creditId);
+  async postCredit(tenantId: string, creditId: string, invoiceId: string) {
+    const credit = await this.getCreditById(tenantId, creditId);
     assertTransition(CREDIT_TRANSITIONS, credit.status, 'POSTED', 'service credit');
+
+    const invoice = await this.prisma.commercialInvoice.findFirst({
+      where: { id: invoiceId, contract_id: credit.contract_id },
+      select: { id: true },
+    });
+    if (!invoice) {
+      throw new NotFoundException(`Invoice '${invoiceId}' not found for the service credit contract`);
+    }
 
     const creditNote = await this.invoiceService.issueCreditNote(
       invoiceId,

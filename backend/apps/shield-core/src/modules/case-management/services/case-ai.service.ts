@@ -77,6 +77,7 @@ export class CaseAiService {
     const evidence = await this.evidenceService.createEvidence({
       tenantId: params.tenantId,
       environmentId: context.environmentId,
+      region: context.region,
       evidenceType: 'AI_OUTPUT',
       producingService: 'shield-ai',
       sourceSystemId: 'shield-ai',
@@ -88,7 +89,7 @@ export class CaseAiService {
     return { aiOutput, evidenceId: evidence.id };
   }
 
-  async review(params: { tenantId: string; outputId: string; actorId: string; decision: string; rationale?: string; modifiedContent?: string }) {
+  async review(params: { tenantId: string; environmentId: string; region: string; outputId: string; actorId: string; decision: string; rationale?: string; modifiedContent?: string }) {
     const { authorizationDecisionId, decision } = await this.authorizationDecisionService.evaluate({
       actorId: params.actorId,
       tenantId: params.tenantId,
@@ -102,8 +103,8 @@ export class CaseAiService {
 
     const context: AiRequestContext = {
       tenantId: params.tenantId,
-      environmentId: 'default-env',
-      region: 'unspecified',
+      environmentId: params.environmentId,
+      region: params.region,
       dataClass: 'CASE_INVESTIGATION',
       purpose: 'AI_OUTPUT_REVIEW',
       actorId: params.actorId,

@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { requireEnvironmentId } from '../security/tenant-context';
 
 export interface ResolveAssetDto {
   tenantId: string;
@@ -28,7 +29,7 @@ export class AssetIdentityContextService {
    * Resolves an existing asset or creates a new tenant-scoped asset, updating last_seen_at.
    */
   async resolveAsset(dto: ResolveAssetDto) {
-    const environmentId = dto.environmentId || 'default-env';
+    const environmentId = requireEnvironmentId(dto.environmentId);
     const criticality = dto.criticality || 'MEDIUM';
     const name = dto.name || dto.externalId;
 
@@ -183,9 +184,9 @@ export class AssetIdentityContextService {
   /**
    * Get single asset details
    */
-  async getAssetById(assetId: string) {
-    const asset = await this.prisma.asset.findUnique({
-      where: { id: assetId },
+  async getAssetById(tenantId: string, assetId: string) {
+    const asset = await this.prisma.asset.findFirst({
+      where: { id: assetId, tenant_id: tenantId },
       include: { normalizedEvents: { take: 10, orderBy: { recorded_at: 'desc' } } },
     });
 
@@ -210,9 +211,9 @@ export class AssetIdentityContextService {
   /**
    * Get single identity details
    */
-  async getIdentityById(identityId: string) {
-    const identity = await this.prisma.identityEntity.findUnique({
-      where: { id: identityId },
+  async getIdentityById(tenantId: string, identityId: string) {
+    const identity = await this.prisma.identityEntity.findFirst({
+      where: { id: identityId, tenant_id: tenantId },
       include: { normalizedEvents: { take: 10, orderBy: { recorded_at: 'desc' } } },
     });
 

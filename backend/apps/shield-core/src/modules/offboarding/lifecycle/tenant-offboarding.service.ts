@@ -129,7 +129,12 @@ export class TenantOffboardingService {
 
     const tasks = await this.prisma.deletionTask.findMany({ where: { deletion_request_id: deletionRequest.id } });
     for (const task of tasks) {
-      await this.deletionTaskService.executeTask(task.id);
+      try {
+        await this.deletionTaskService.executeTask(task.id);
+      } catch (error) {
+        await this.prisma.tenantOffboardingRun.update({ where: { id: run.id }, data: { status: 'FAILED' } });
+        throw error;
+      }
     }
     await this.backupExpiryService.recordPending(tenantId, deletionRequest.id);
 
@@ -147,6 +152,17 @@ export class TenantOffboardingService {
 
     const attestation = await this.attestationService.issue(tenantId, run.deletion_request_id, issuedBy);
     await this.prisma.outboxEvent.create({ data: this.outbox.build({ tenantId, topic: CANONICAL_TOPICS.TENANT_DELETION_ATTESTED, eventType: 'tenant.deletion.attested', payload: { attestationId: attestation.id } }) });
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe(
+        'DELETE FROM authorization.user_roles WHERE membership_id IN (SELECT id FROM authorization.tenant_memberships WHERE "tenantId" = $1::uuid)', tenantId,
+      );
+      await tx.$executeRawUnsafe('DELETE FROM authorization.tenant_memberships WHERE "tenantId" = $1::uuid', tenantId);
+      await tx.$executeRawUnsafe(
+        'DELETE FROM authorization.role_permissions WHERE role_id IN (SELECT id FROM authorization.roles WHERE "tenantId" = $1::uuid)', tenantId,
+      );
+      await tx.$executeRawUnsafe('DELETE FROM authorization.roles WHERE "tenantId" = $1::uuid', tenantId);
+    });
 
     // Backups may still be PENDING — that is disclosed in the attestation itself (spec §19/§71), closure does not wait on it.
     const [updated] = await this.prisma.$transaction([

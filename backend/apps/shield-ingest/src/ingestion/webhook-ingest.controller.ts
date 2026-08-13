@@ -11,8 +11,10 @@ import {
 import { UseGuards } from '@nestjs/common';
 import { RawIngestService, IngestPayloadDto, IngestionResult } from './raw-ingest.service';
 import { WebhookSignatureGuard } from './guards/webhook-signature.guard';
+import { PublicIngress } from '../security/public-ingress.decorator';
 
 @UseGuards(WebhookSignatureGuard)
+@PublicIngress()
 @Controller('api/v1/ingestion/webhooks')
 export class WebhookIngestController {
   private readonly logger = new Logger(WebhookIngestController.name);

@@ -2,6 +2,7 @@ import { ConflictException, Injectable, Logger, NotFoundException } from '@nestj
 import * as crypto from 'crypto';
 import { IsObject, IsOptional, IsString } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
+import { requireEnvironmentId } from '../../tenant-context';
 import { ProtectedResourceDefinitionService } from './protected-resource-definition.service';
 import { assertTransition } from '../commerce/state-machine.util';
 
@@ -103,7 +104,7 @@ export class ResourceObservationService {
     const created = await this.prisma.resourceObservation.create({
       data: {
         tenant_id: dto.tenantId,
-        environment_id: dto.environmentId || 'default-env',
+        environment_id: requireEnvironmentId(dto.environmentId),
         canonical_resource_id: canonicalResourceId,
         resource_type: dto.resourceType,
         source_connector_id: dto.sourceConnectorId,
@@ -114,8 +115,8 @@ export class ResourceObservationService {
     return { observation: created, deduped: false };
   }
 
-  async getObservationById(id: string) {
-    const observation = await this.prisma.resourceObservation.findUnique({ where: { id } });
+  async getObservationById(tenantId: string, id: string) {
+    const observation = await this.prisma.resourceObservation.findFirst({ where: { id, tenant_id: tenantId } });
     if (!observation) {
       throw new NotFoundException(`Resource observation '${id}' not found`);
     }
@@ -134,8 +135,8 @@ export class ResourceObservationService {
    * independently: it can only be BILLABLE while coverage_state is
    * BILLABLE, otherwise it is forced back to NON_BILLABLE.
    */
-  async updateCoverageState(observationId: string, targetState: string, exclusionReason?: string) {
-    const observation = await this.getObservationById(observationId);
+  async updateCoverageState(tenantId: string, observationId: string, targetState: string, exclusionReason?: string) {
+    const observation = await this.getObservationById(tenantId, observationId);
     assertTransition(COVERAGE_TRANSITIONS, observation.coverage_state, targetState, 'protected resource coverage');
 
     return this.prisma.resourceObservation.update({

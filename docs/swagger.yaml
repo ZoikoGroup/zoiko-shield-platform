@@ -16,11 +16,11 @@ servers:
 - url: http://localhost:3002
   description: Ingest Microservice
 - url: http://localhost:3003
-  description: Anchor Microservice
+  description: AI Microservice
 - url: http://localhost:3004
   description: Action Microservice
 - url: http://localhost:3005
-  description: AI Gateway Microservice
+  description: Anchor Microservice
 tags:
 - name: Auth
   description: "Identity adapter \u2013 registration, login, OAuth, sessions, invitations"
@@ -146,12 +146,15 @@ components:
       description: Bearer extractor for API clients, OAuth2 tokens, and inter-service
         calls.
     InternalServiceAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: workload-jwt
+      description: Signed, audience-bound workload JWT with a maximum 60-second lifetime. Production verification uses the configured asymmetric workload public key.
+    WebhookHmacAuth:
       type: apiKey
       in: header
-      name: x-internal-service-token
-      description: "Shared-secret header (INTERNAL_SERVICE_TOKEN) required by InternalAuthGuard.\
-        \ Restricted to service-to-service calls between shield-core/shield-ai/shield-action/shield-anchor\
-        \ \u2014 never issued to customers or developer-API clients.\n"
+      name: x-signature
+      description: Connector-specific HMAC-SHA256 over `timestamp.nonce.rawBody`. `x-hub-signature-256` is accepted as an alias.
     RefreshCookieAuth:
       type: apiKey
       in: cookie
@@ -168,10 +171,22 @@ components:
     TenantIdHeader:
       name: x-tenant-id
       in: header
-      required: false
-      description: "Resolved tenant context for this request. Defaults to \"default-tenant\"\
-        \ when omitted (dev convenience \u2014 production deployments resolve this\
-        \ from session/token, not client-supplied trust)."
+      required: true
+      description: Canonical tenant context. It must agree with any tenant identifier in the path, query, or body and is authorized against active membership or trusted workload context.
+      schema:
+        type: string
+    EnvironmentIdHeader:
+      name: x-environment-id
+      in: header
+      required: true
+      description: Canonical environment context. Fabricated fallback environments are rejected.
+      schema:
+        type: string
+    RegionHeader:
+      name: x-region
+      in: header
+      required: true
+      description: Canonical approved data-residency region. Missing or unspecified regions are rejected.
       schema:
         type: string
     ActorIdHeader:
@@ -179,7 +194,7 @@ components:
       in: header
       required: false
       description: Resolved actor/principal performing this request, used for authorization
-        decisions and attribution. Defaults to "unknown-actor" when omitted.
+        decisions and attribution.
       schema:
         type: string
     IdempotencyKeyHeader:
@@ -509,16 +524,141 @@ components:
           type: string
           enum:
           - ACTIVE
-          - REVOKED
+          - SUSPENDED
+          - REMOVED
         source:
           type: string
           enum:
-          - ONBOARDING
+          - BOOTSTRAP
           - INVITATION
+          - SCIM
         roles:
           type: array
           items:
             $ref: '#/components/schemas/RoleResponse'
+    InvitationRecord:
+      type: object
+      description: Persisted invitation metadata. The token hash is never returned.
+      required: [id, tenantId, invitedEmail, roleId, invitedById, status, expiresAt, createdAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenantId:
+          type: string
+          format: uuid
+        invitedEmail:
+          type: string
+          format: email
+        roleId:
+          type: string
+          format: uuid
+        invitedById:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PENDING, ACCEPTED, EXPIRED, REVOKED]
+        expiresAt:
+          type: string
+          format: date-time
+        acceptedAt:
+          type: string
+          format: date-time
+          nullable: true
+        acceptedById:
+          type: string
+          format: uuid
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+    UpdateTenantMemberRequest:
+      type: object
+      minProperties: 1
+      properties:
+        roleIds:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            format: uuid
+        status:
+          type: string
+          enum: [ACTIVE, SUSPENDED]
+    ResponseFreezeRecord:
+      type: object
+      required: [id, scope, reason, active_from, created_by, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+          nullable: true
+        scope:
+          type: string
+          enum: [GLOBAL, TENANT, CONNECTOR, ACTION_TYPE]
+        scope_ref:
+          type: string
+          nullable: true
+        reason:
+          type: string
+        active_from:
+          type: string
+          format: date-time
+        active_until:
+          type: string
+          format: date-time
+          nullable: true
+        created_by:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    ConnectorMutationRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          maxLength: 200
+        sourceRegion:
+          type: string
+          maxLength: 100
+    ConnectorHealthResponse:
+      type: object
+      nullable: true
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        instanceId:
+          type: string
+          format: uuid
+        state:
+          type: string
+        lastMessage:
+          type: string
+          nullable: true
+        permissionStatus:
+          type: string
+        credentialStatus:
+          type: string
+        consecutiveFailures:
+          type: integer
+        lastSuccessfulConnectionAt:
+          type: string
+          format: date-time
+          nullable: true
+        lastSuccessfulSyncAt:
+          type: string
+          format: date-time
+          nullable: true
     RoleResponse:
       type: object
       properties:
@@ -2234,7 +2374,6 @@ components:
           type: string
         environmentId:
           type: string
-          nullable: true
           format: uuid
         authenticationType:
           type: string
@@ -2251,11 +2390,12 @@ components:
           nullable: true
         sourceRegion:
           type: string
-          nullable: true
       required:
       - tenantId
       - name
       - provider
+      - environmentId
+      - sourceRegion
     PostConnectorsResponse:
       type: object
       properties:
@@ -4447,8 +4587,10 @@ components:
             format: uuid
           environmentId:
             type: string
-            nullable: true
             format: uuid
+          region:
+            type: string
+            description: Approved data-residency region for the case.
           title:
             type: string
           description:
@@ -4492,6 +4634,8 @@ components:
             type: string
             nullable: true
         required:
+        - environmentId
+        - region
         - title
     PostCasesResponse:
       oneOf:
@@ -5012,19 +5156,10 @@ components:
           format: date-time
           nullable: true
       required:
-      - id
-      - tenant_id
-      - created_at
-      - status
-      - updated_at
-      - created_by
-      - api_client_id
-      - endpoint_url
-      - event_types
-      - payload_version
-      - data_minimization_profile
-      - verified_at
-      - suspended_at
+      - tenantId
+      - name
+      - provider
+      - environmentId
     PostCasesByCaseIdResponseProposalsRequest:
       type: object
       properties:
@@ -11188,7 +11323,6 @@ components:
           format: uuid
         region:
           type: string
-          nullable: true
         currency:
           type: string
           nullable: true
@@ -13894,13 +14028,13 @@ components:
           format: uuid
         environmentId:
           type: string
-          nullable: true
           format: uuid
         region:
           type: string
-          nullable: true
       required:
       - tenantId
+      - environmentId
+      - region
     PostConnectorsEntraConnectResponse:
       type: object
       properties:
@@ -14702,6 +14836,17 @@ components:
           type: string
           nullable: true
           format: uuid
+        environmentId:
+          type: string
+          format: uuid
+          description: Canonical environment where the evidence was collected.
+        legalEntityId:
+          type: string
+          nullable: true
+          format: uuid
+        region:
+          type: string
+          description: Approved data-residency region for the evidence object.
         caseId:
           type: string
           nullable: true
@@ -14733,6 +14878,8 @@ components:
           type: string
           nullable: true
       required:
+      - environmentId
+      - region
       - evidenceType
       - title
       - rawContent
@@ -23427,12 +23574,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postApiClients
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Create developer API client. Validates the documented request and
         returns the created or resulting resource. State-changing operations also
         enforce the service lifecycle and conflict rules.
       parameters:
-      - $ref: '#/components/parameters/ActorIdHeader'
       - $ref: '#/components/parameters/TenantIdHeader'
   /oauth/token:
     post:
@@ -23507,10 +23655,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetConnectorTypesResponse'
       operationId: getConnectorTypes
-      security: []
+      security:
+      - InternalServiceAuth: []
       description: List supported connector types. Applies the documented path, query,
         and tenant filters and returns the current persisted or computed result using
         the response model below.
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
   /api/v1/connectors:
     post:
       tags:
@@ -23536,7 +23687,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postConnectors
-      security: []
+      security:
+      - InternalServiceAuth: []
       description: Create security tool connector instance. Validates the documented
         request and returns the created or resulting resource. State-changing operations
         also enforce the service lifecycle and conflict rules.
@@ -23560,7 +23712,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getConnectors
-      security: []
+      security:
+      - InternalServiceAuth: []
       description: List tenant connectors. Applies the documented path, query, and
         tenant filters and returns the current persisted or computed result using
         the response model below.
@@ -23587,6 +23740,16 @@ paths:
           type: string
           format: uuid
         description: Unique connector ID identifying the target resource.
+      - name: x-timestamp
+        in: header
+        required: true
+        schema: { type: integer, format: int64 }
+        description: Unix timestamp in seconds; requests outside the five-minute replay window are rejected.
+      - name: x-webhook-nonce
+        in: header
+        required: true
+        schema: { type: string, minLength: 16 }
+        description: Single-use connector nonce retained for the replay window.
       responses:
         '202':
           description: Receive connector event webhook stream successful.
@@ -23607,7 +23770,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postIngestionWebhooksByConnectorId
-      security: []
+      security:
+      - WebhookHmacAuth: []
       description: Receive connector event webhook stream. Validates the documented
         request and returns the created or resulting resource. State-changing operations
         also enforce the service lifecycle and conflict rules.
@@ -23636,7 +23800,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getMeteringUsage
-      security: []
+      security:
+      - InternalServiceAuth: []
       description: Get telemetry usage breakdown. Applies the documented path, query,
         and tenant filters and returns the current persisted or computed result using
         the response model below.
@@ -23669,7 +23834,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getMeteringResources
-      security: []
+      security:
+      - InternalServiceAuth: []
       description: Get metered resource observations. Applies the documented path,
         query, and tenant filters and returns the current persisted or computed result
         using the response model below.
@@ -23702,7 +23868,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getContextAssets
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      - InternalServiceAuth: []
       description: List security assets. Applies the documented path, query, and tenant
         filters and returns the current persisted or computed result using the response
         model below.
@@ -23754,7 +23923,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postContextAssetsResolve
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      - InternalServiceAuth: []
       description: Resolve asset entity. Validates the documented request and returns
         the created or resulting resource. State-changing operations also enforce
         the service lifecycle and conflict rules.
@@ -23762,6 +23934,8 @@ paths:
       - $ref: '#/components/parameters/TenantIdHeader'
   /api/v1/controls:
     get:
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       tags:
       - Controls
       summary: List compliance control objectives
@@ -23773,7 +23947,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetControlsResponse'
       operationId: getControls
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      - InternalServiceAuth: []
       description: List compliance control objectives. Applies the documented path,
         query, and tenant filters and returns the current persisted or computed result
         using the response model below.
@@ -23790,7 +23967,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetControlImplementationsResponse'
       operationId: getControlImplementations
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: List control implementations. Applies the documented path, query,
         and tenant filters and returns the current persisted or computed result using
         the response model below.
@@ -23820,12 +23999,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postControlImplementations
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Create control implementation. Validates the documented request
         and returns the created or resulting resource. State-changing operations also
         enforce the service lifecycle and conflict rules.
       parameters:
-      - $ref: '#/components/parameters/ActorIdHeader'
       - $ref: '#/components/parameters/TenantIdHeader'
   /api/v1/audit-packages:
     get:
@@ -23840,7 +24020,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetAuditPackagesResponse'
       operationId: getAuditPackages
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: List audit packages. Applies the documented path, query, and tenant
         filters and returns the current persisted or computed result using the response
         model below.
@@ -23870,12 +24052,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postAuditPackages
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Create immutable audit package. Validates the documented request
         and returns the created or resulting resource. State-changing operations also
         enforce the service lifecycle and conflict rules.
       parameters:
-      - $ref: '#/components/parameters/ActorIdHeader'
       - $ref: '#/components/parameters/TenantIdHeader'
   /api/v1/audit-packages/{packageId}/build:
     post:
@@ -23907,7 +24090,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postAuditPackagesByPackageIdBuild
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: "Build the package manifest (ManifestCore only \u2014 no anchor\
         \ proof yet). Validates the documented request and returns the created or\
         \ resulting resource. State-changing operations also enforce the service lifecycle\
@@ -23948,7 +24133,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postAuditPackagesByPackageIdFreeze
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Freeze audit package & generate cryptographic proof envelope. Validates
         the documented request and returns the created or resulting resource. State-changing
         operations also enforce the service lifecycle and conflict rules.
@@ -23980,7 +24167,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getEvidenceByEvidenceId
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      - InternalServiceAuth: []
       description: Get evidence details. Applies the documented path, query, and tenant
         filters and returns the current persisted or computed result using the response
         model below.
@@ -24013,7 +24203,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getEvidenceByEvidenceIdLineage
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Get evidence lineage graph (bounded 20-hop parent/child reconstruction).
         Applies the documented path, query, and tenant filters and returns the current
         persisted or computed result using the response model below.
@@ -24051,7 +24243,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postEvidenceByEvidenceIdVerify
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      - InternalServiceAuth: []
       description: Verify evidence hash & cryptographic integrity. Validates the documented
         request and returns the created or resulting resource. State-changing operations
         also enforce the service lifecycle and conflict rules.
@@ -24080,12 +24275,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postExports
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Request data export job. Validates the documented request and returns
         the created or resulting resource. State-changing operations also enforce
         the service lifecycle and conflict rules.
       parameters:
-      - $ref: '#/components/parameters/ActorIdHeader'
       - $ref: '#/components/parameters/IdempotencyKeyHeader'
       - $ref: '#/components/parameters/TenantIdHeader'
     get:
@@ -24100,7 +24296,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetExportsResponse'
       operationId: getExports
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: List export jobs. Applies the documented path, query, and tenant
         filters and returns the current persisted or computed result using the response
         model below.
@@ -24119,7 +24317,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetReportingOperationalResponse'
       operationId: getReportingOperational
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Get security operational summary. Applies the documented path,
         query, and tenant filters and returns the current persisted or computed result
         using the response model below.
@@ -24138,7 +24338,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetDetectionsDefinitionsResponse'
       operationId: getDetectionsDefinitions
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: List detection rule definitions. Applies the documented path, query,
         and tenant filters and returns the current persisted or computed result using
         the response model below.
@@ -24166,7 +24368,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postDetectionsDefinitions
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Create detection definition. Validates the documented request and
         returns the created or resulting resource. State-changing operations also
         enforce the service lifecycle and conflict rules.
@@ -24189,7 +24393,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getAlerts
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      - InternalServiceAuth: []
       description: List security alerts. Applies the documented path, query, and tenant
         filters and returns the current persisted or computed result using the response
         model below.
@@ -24252,7 +24459,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postAlertsByAlertIdTriage
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Triage security alert. Validates the documented request and returns
         the created or resulting resource. State-changing operations also enforce
         the service lifecycle and conflict rules.
@@ -24275,7 +24484,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getCases
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      - InternalServiceAuth: []
       description: List incident cases. Applies the documented path, query, and tenant
         filters and returns the current persisted or computed result using the response
         model below.
@@ -24342,7 +24554,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postCases
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      - InternalServiceAuth: []
       description: Create case from alert. Validates the documented request and returns
         the created or resulting resource. State-changing operations also enforce
         the service lifecycle and conflict rules.
@@ -24382,7 +24597,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postCasesByCaseIdAiSummary
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Generate AI case summary. Validates the documented request and
         returns the created or resulting resource. State-changing operations also
         enforce the service lifecycle and conflict rules.
@@ -24405,7 +24622,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetRisksResponse'
       operationId: getRisks
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: List risks in register. Applies the documented path, query, and
         tenant filters and returns the current persisted or computed result using
         the response model below.
@@ -24435,7 +24654,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postRisks
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Register new risk. Validates the documented request and returns
         the created or resulting resource. State-changing operations also enforce
         the service lifecycle and conflict rules.
@@ -24454,7 +24675,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetWebhooksResponse'
       operationId: getWebhooks
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: List outbound webhook subscriptions. Applies the documented path,
         query, and tenant filters and returns the current persisted or computed result
         using the response model below.
@@ -24484,12 +24707,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postWebhooks
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Create outbound webhook subscription. Validates the documented
         request and returns the created or resulting resource. State-changing operations
         also enforce the service lifecycle and conflict rules.
       parameters:
-      - $ref: '#/components/parameters/ActorIdHeader'
       - $ref: '#/components/parameters/TenantIdHeader'
   /api/v1/cases/{caseId}/response-proposals:
     post:
@@ -24505,6 +24729,7 @@ paths:
           format: uuid
         description: Unique case ID identifying the target resource.
       - $ref: '#/components/parameters/TenantIdHeader'
+      - $ref: '#/components/parameters/EnvironmentIdHeader'
       requestBody:
         required: true
         content:
@@ -24531,16 +24756,59 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postCasesByCaseIdResponseProposals
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Create response action proposal. Validates the documented request
         and returns the created or resulting resource. State-changing operations also
         enforce the service lifecycle and conflict rules.
+    get:
+      tags: [ResponseProposals]
+      summary: List response proposals for a case
+      description: Returns persisted proposals for this tenant and case, newest first.
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      parameters:
+      - name: caseId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Tenant-scoped proposal list
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [statusCode, tenantId, caseId, proposals]
+                properties:
+                  statusCode: { type: integer, example: 200 }
+                  tenantId: { type: string, format: uuid }
+                  caseId: { type: string, format: uuid }
+                  proposals:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/PostCasesByCaseIdResponseProposalsResponse/properties/data'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: No active tenant membership
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getCasesByCaseIdResponseProposals
   /api/v1/response-proposals/{proposalId}:
     get:
       tags:
       - ResponseProposals
       summary: Get response proposal
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: proposalId
         in: path
         required: true
@@ -24563,7 +24831,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getResponseProposalsByProposalId
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Get response proposal. Applies the documented path, query, and
         tenant filters and returns the current persisted or computed result using
         the response model below.
@@ -24609,7 +24879,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postResponseProposalsByProposalIdApprove
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Approve a response proposal (creates ActionApproval, binds approved_material_hash,
         publishes action.approved.v1). Validates the documented request and returns
         the created or resulting resource. State-changing operations also enforce
@@ -24660,7 +24932,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postResponseProposalsByProposalIdReject
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Reject a response proposal. Validates the documented request and
         returns the created or resulting resource. State-changing operations also
         enforce the service lifecycle and conflict rules.
@@ -24735,7 +25009,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetAlertsByAlertIdResponse'
       operationId: getAlertsByAlertId
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      - InternalServiceAuth: []
       description: Get alert details. Applies the documented path, query, and tenant
         filters and returns the current persisted or computed result using the response
         model below.
@@ -24785,7 +25062,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: patchAlertsByAlertIdStatus
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      - InternalServiceAuth: []
       description: Update alert status. Validates the requested update or lifecycle
         transition and returns the updated resource without changing fields outside
         the documented request.
@@ -24817,7 +25097,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postAlertsByAlertIdAcknowledge
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Acknowledge alert. Validates the documented request and returns
         the created or resulting resource. State-changing operations also enforce
         the service lifecycle and conflict rules.
@@ -24861,7 +25143,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postAlertsByAlertIdAssign
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      - InternalServiceAuth: []
       description: Assign alert to an analyst. Validates the documented request and
         returns the created or resulting resource. State-changing operations also
         enforce the service lifecycle and conflict rules.
@@ -24893,7 +25178,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postAlertsByAlertIdEscalate
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Escalate alert. Validates the documented request and returns the
         created or resulting resource. State-changing operations also enforce the
         service lifecycle and conflict rules.
@@ -24937,7 +25224,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postAlertsByAlertIdClose
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Close alert. Validates the documented request and returns the created
         or resulting resource. State-changing operations also enforce the service
         lifecycle and conflict rules.
@@ -24975,7 +25264,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getCasesByCaseId
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      - InternalServiceAuth: []
       description: Get case details. Applies the documented path, query, and tenant
         filters and returns the current persisted or computed result using the response
         model below.
@@ -25018,7 +25310,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: patchCasesByCaseId
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      - InternalServiceAuth: []
       description: Update case fields. Validates the requested update or lifecycle
         transition and returns the updated resource without changing fields outside
         the documented request.
@@ -25074,7 +25369,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postCasesByCaseIdTransition
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      - InternalServiceAuth: []
       description: Transition case state (state-machine gated). Validates the documented
         request and returns the created or resulting resource. State-changing operations
         also enforce the service lifecycle and conflict rules.
@@ -25112,7 +25410,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postCasesByCaseIdAlerts
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Link an alert to a case. Validates the documented request and returns
         the created or resulting resource. State-changing operations also enforce
         the service lifecycle and conflict rules.
@@ -25150,7 +25450,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getCasesByCaseIdTimeline
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      - InternalServiceAuth: []
       description: Get case timeline. Applies the documented path, query, and tenant
         filters and returns the current persisted or computed result using the response
         model below.
@@ -25194,7 +25497,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postCasesByCaseIdNotes
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      - InternalServiceAuth: []
       description: Add analyst note to case. Validates the documented request and
         returns the created or resulting resource. State-changing operations also
         enforce the service lifecycle and conflict rules.
@@ -25226,7 +25532,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getCasesByCaseIdEvidence
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: List evidence linked to a case. Applies the documented path, query,
         and tenant filters and returns the current persisted or computed result using
         the response model below.
@@ -25238,6 +25546,7 @@ paths:
         created or resulting resource. State-changing operations also enforce the
         service lifecycle and conflict rules.
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: caseId
         in: path
         required: true
@@ -25271,7 +25580,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postCasesByCaseIdEvidence
-      security: []
+      security:
+      - InternalServiceAuth: []
   /api/v1/cases/{caseId}/decisions:
     post:
       tags:
@@ -25312,7 +25622,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postCasesByCaseIdDecisions
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      - InternalServiceAuth: []
       description: Record an investigation decision. Validates the documented request
         and returns the created or resulting resource. State-changing operations also
         enforce the service lifecycle and conflict rules.
@@ -25324,6 +25637,7 @@ paths:
         tenant filters and returns the current persisted or computed result using
         the response model below.
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: caseId
         in: path
         required: true
@@ -25351,7 +25665,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getCasesByCaseIdDecisions
-      security: []
+      security:
+      - InternalServiceAuth: []
   /api/v1/cases/{caseId}/ai/hypotheses:
     post:
       tags:
@@ -25386,7 +25701,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postCasesByCaseIdAiHypotheses
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Generate AI investigation hypotheses. Validates the documented
         request and returns the created or resulting resource. State-changing operations
         also enforce the service lifecycle and conflict rules.
@@ -25430,7 +25747,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postCasesByCaseIdAiNextQueries
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Generate AI-suggested next investigation queries. Validates the
         documented request and returns the created or resulting resource. State-changing
         operations also enforce the service lifecycle and conflict rules.
@@ -25476,7 +25795,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postCasesByCaseIdAiResponseRecommendation
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: "Generate AI response recommendation (advisory \u2014 creates no\
         \ authority by itself). Validates the documented request and returns the created\
         \ or resulting resource. State-changing operations also enforce the service\
@@ -25502,6 +25823,8 @@ paths:
           format: uuid
         description: Unique output ID identifying the target resource.
       - $ref: '#/components/parameters/TenantIdHeader'
+      - $ref: '#/components/parameters/EnvironmentIdHeader'
+      - $ref: '#/components/parameters/RegionHeader'
       responses:
         '201':
           description: Record human review of an AI output (proxies to Shield AI's
@@ -25523,7 +25846,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postAiOutputsByOutputIdReview
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Record human review of an AI output (proxies to Shield AI's internal
         review endpoint). Validates the documented request and returns the created
         or resulting resource. State-changing operations also enforce the service
@@ -25562,7 +25887,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getRisksByRiskId
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Get risk with transparent factor breakdown. Applies the documented
         path, query, and tenant filters and returns the current persisted or computed
         result using the response model below.
@@ -25599,7 +25926,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: patchRisksByRiskId
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Get/assert risk (tenant ownership check). Validates the requested
         update or lifecycle transition and returns the updated resource without changing
         fields outside the documented request.
@@ -25638,7 +25967,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postRisksByRiskIdTreatments
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Add a risk treatment plan (MITIGATE/TRANSFER/AVOID/ACCEPT). Validates
         the documented request and returns the created or resulting resource. State-changing
         operations also enforce the service lifecycle and conflict rules.
@@ -25690,7 +26021,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postRisksByRiskIdAccept
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: "Record a risk acceptance (named authority, rationale, expiry required\
         \ \u2014 never silent/permanent). Validates the documented request and returns\
         \ the created or resulting resource. State-changing operations also enforce\
@@ -25708,7 +26041,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetExceptionsResponse'
       operationId: getExceptions
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: List exceptions. Applies the documented path, query, and tenant
         filters and returns the current persisted or computed result using the response
         model below.
@@ -25732,12 +26067,13 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postExceptions
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Request a control/requirement/risk exception. Validates the documented
         request and returns the created or resulting resource. State-changing operations
         also enforce the service lifecycle and conflict rules.
       parameters:
-      - $ref: '#/components/parameters/ActorIdHeader'
       - $ref: '#/components/parameters/TenantIdHeader'
       requestBody:
         required: true
@@ -25758,7 +26094,6 @@ paths:
           type: string
           format: uuid
         description: Unique ID identifying the target resource.
-      - $ref: '#/components/parameters/ActorIdHeader'
       - $ref: '#/components/parameters/TenantIdHeader'
       responses:
         '201':
@@ -25780,7 +26115,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postExceptionsByIdApprove
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Approve a requested exception. Validates the documented request
         and returns the created or resulting resource. State-changing operations also
         enforce the service lifecycle and conflict rules.
@@ -25818,7 +26155,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postExceptionsByIdRevoke
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Revoke an exception before its natural expiry. Validates the documented
         request and returns the created or resulting resource. State-changing operations
         also enforce the service lifecycle and conflict rules.
@@ -25850,7 +26189,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getWebhooksById
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Get webhook subscription. Applies the documented path, query, and
         tenant filters and returns the current persisted or computed result using
         the response model below.
@@ -25893,7 +26234,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: patchWebhooksById
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Update webhook subscription (e.g. suspend). Validates the requested
         update or lifecycle transition and returns the updated resource without changing
         fields outside the documented request.
@@ -25936,7 +26279,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: deleteWebhooksById
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Revoke webhook subscription. Removes or revokes the identified
         resource and returns the documented result.
   /api/v1/webhooks/{id}/test:
@@ -25968,7 +26313,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postWebhooksByIdTest
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Send a synthetic test event (test=true, non-sensitive payload).
         Validates the documented request and returns the created or resulting resource.
         State-changing operations also enforce the service lifecycle and conflict
@@ -26003,7 +26350,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postWebhooksByIdRotateSecret
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: "Rotate signing secret (overlap rotation \u2014 vault-managed,\
         \ never logged). Validates the documented request and returns the created\
         \ or resulting resource. State-changing operations also enforce the service\
@@ -26036,7 +26385,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getWebhooksByIdDeliveries
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: List delivery attempts for a subscription. Applies the documented
         path, query, and tenant filters and returns the current persisted or computed
         result using the response model below.
@@ -26073,7 +26424,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getWebhooksByIdDeliveriesByDeliveryId
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Get delivery detail with attempt history. Applies the documented
         path, query, and tenant filters and returns the current persisted or computed
         result using the response model below.
@@ -26099,7 +26452,6 @@ paths:
           type: string
           format: uuid
         description: Unique ID identifying the target resource.
-      - $ref: '#/components/parameters/ActorIdHeader'
       - $ref: '#/components/parameters/TenantIdHeader'
       responses:
         '201':
@@ -26123,7 +26475,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postWebhooksByIdDeliveriesByDeliveryIdReplay
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: "Manually replay a delivery (authorized, audited, bounded \u2014\
         \ retains original eventId, re-signs with current secret, never re-triggers\
         \ response actions). Validates the documented request and returns the created\
@@ -26157,7 +26511,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getAuditPackagesByPackageId
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Get audit package. Applies the documented path, query, and tenant
         filters and returns the current persisted or computed result using the response
         model below.
@@ -26189,7 +26545,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postAuditPackagesByPackageIdValidate
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Run pre-freeze validation checklist. Validates the documented request
         and returns the created or resulting resource. State-changing operations also
         enforce the service lifecycle and conflict rules.
@@ -26207,7 +26565,6 @@ paths:
           type: string
           format: uuid
         description: Unique package ID identifying the target resource.
-      - $ref: '#/components/parameters/ActorIdHeader'
       - $ref: '#/components/parameters/TenantIdHeader'
       responses:
         '403':
@@ -26236,7 +26593,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postAuditPackagesByPackageIdApprove
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Approve package (binds approver to the exact manifestCoreHash;
         rejects approver == creator/evaluator-author/manual-test performer). Validates
         the documented request and returns the created or resulting resource. State-changing
@@ -26270,7 +26629,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getAuditPackagesByPackageIdManifest
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Get the package manifest (core-only pre-freeze, full envelope post-freeze).
         Applies the documented path, query, and tenant filters and returns the current
         persisted or computed result using the response model below.
@@ -26302,7 +26663,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getAuditPackagesByPackageIdEvidence
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Get the package's evidence index. Applies the documented path,
         query, and tenant filters and returns the current persisted or computed result
         using the response model below.
@@ -26336,7 +26699,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getAuditPackagesByPackageIdProofs
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Get the anchor proof envelope (checkpoint, Merkle proofs, signature,
         witness receipts). Applies the documented path, query, and tenant filters
         and returns the current persisted or computed result using the response model
@@ -26355,7 +26720,6 @@ paths:
           type: string
           format: uuid
         description: Unique package ID identifying the target resource.
-      - $ref: '#/components/parameters/ActorIdHeader'
       - $ref: '#/components/parameters/TenantIdHeader'
       responses:
         '400':
@@ -26384,7 +26748,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postAuditPackagesByPackageIdSupersede
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: "Correct a frozen package by superseding it (never mutates the\
         \ frozen original \u2014 it remains independently verifiable). Validates the\
         \ documented request and returns the created or resulting resource. State-changing\
@@ -26404,7 +26770,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetReportingSecurityResponse'
       operationId: getReportingSecurity
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: "Get security posture summary (live counts \u2014 openAlerts, criticalAlerts,\
         \ openCases). Applies the documented path, query, and tenant filters and returns\
         \ the current persisted or computed result using the response model below."
@@ -26425,7 +26793,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetReportingAssuranceResponse'
       operationId: getReportingAssurance
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Get assurance summary (control effectiveness, evidence gaps, active
         risks/exceptions). Applies the documented path, query, and tenant filters
         and returns the current persisted or computed result using the response model
@@ -26447,7 +26817,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetReportingServiceHealthResponse'
       operationId: getReportingServiceHealth
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Get platform service-health summary (connector/AI/action-simulation/ledger/anchor
         health). Applies the documented path, query, and tenant filters and returns
         the current persisted or computed result using the response model below.
@@ -26474,13 +26846,14 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postReportingSnapshots
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Build an immutable, versioned ReportSnapshot (never assembled from
         live queries at render time). Validates the documented request and returns
         the created or resulting resource. State-changing operations also enforce
         the service lifecycle and conflict rules.
       parameters:
-      - $ref: '#/components/parameters/ActorIdHeader'
       - $ref: '#/components/parameters/TenantIdHeader'
       requestBody:
         required: true
@@ -26516,7 +26889,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getReportingSnapshotsBySnapshotId
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Get a report snapshot. Applies the documented path, query, and
         tenant filters and returns the current persisted or computed result using
         the response model below.
@@ -26541,7 +26916,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postReportingExecutiveSnapshots
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Build an ExecutiveReportSnapshot from a frozen ReportSnapshot (every
         composite metric exposes its factors). Validates the documented request and
         returns the created or resulting resource. State-changing operations also
@@ -26582,7 +26959,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getExportsByExportId
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Get export job status. Applies the documented path, query, and
         tenant filters and returns the current persisted or computed result using
         the response model below.
@@ -26620,7 +26999,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postExportsByExportIdCancel
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Cancel an in-progress export job. Validates the documented request
         and returns the created or resulting resource. State-changing operations also
         enforce the service lifecycle and conflict rules.
@@ -26654,7 +27035,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getExportsByExportIdManifest
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Get the export manifest (schema versions, counts, hashes, legal-hold
         state, known limitations). Applies the documented path, query, and tenant
         filters and returns the current persisted or computed result using the response
@@ -26695,7 +27078,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getExportsByExportIdDownload
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Issue a short-lived signed download token (object storage is never
         exposed directly). Applies the documented path, query, and tenant filters
         and returns the current persisted or computed result using the response model
@@ -26706,6 +27091,7 @@ paths:
       - SecurityContext
       summary: Get resolved asset context
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: assetId
         in: path
         required: true
@@ -26727,7 +27113,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getContextAssetsByAssetId
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      - InternalServiceAuth: []
       description: Get resolved asset context. Applies the documented path, query,
         and tenant filters and returns the current persisted or computed result using
         the response model below.
@@ -26750,7 +27139,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getContextIdentities
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      - InternalServiceAuth: []
       description: List resolved identities. Applies the documented path, query, and
         tenant filters and returns the current persisted or computed result using
         the response model below.
@@ -26777,6 +27169,7 @@ paths:
       - SecurityContext
       summary: Get resolved identity context
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: identityId
         in: path
         required: true
@@ -26798,7 +27191,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getContextIdentitiesByIdentityId
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      - InternalServiceAuth: []
       description: Get resolved identity context. Applies the documented path, query,
         and tenant filters and returns the current persisted or computed result using
         the response model below.
@@ -26808,6 +27204,7 @@ paths:
       - SecurityContext
       summary: Get a context resolution snapshot
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: snapshotId
         in: path
         required: true
@@ -26829,7 +27226,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getContextSnapshotsBySnapshotId
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Get a context resolution snapshot. Applies the documented path,
         query, and tenant filters and returns the current persisted or computed result
         using the response model below.
@@ -26864,7 +27263,10 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postContextIdentitiesResolve
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      - InternalServiceAuth: []
       description: Resolve identity context from a normalized event. Validates the
         documented request and returns the created or resulting resource. State-changing
         operations also enforce the service lifecycle and conflict rules.
@@ -26909,7 +27311,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postDetectionsDefinitionsByDefinitionIdVersions
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Create a new draft detection rule version. Validates the documented
         request and returns the created or resulting resource. State-changing operations
         also enforce the service lifecycle and conflict rules.
@@ -26948,7 +27352,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postDetectionsVersionsByVersionIdPublish
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: "Publish a detection version (immutable once published \u2014 only\
         \ one PUBLISHED version per definition). Validates the documented request\
         \ and returns the created or resulting resource. State-changing operations\
@@ -26972,7 +27378,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getDetectionsMatches
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: List detection matches. Applies the documented path, query, and
         tenant filters and returns the current persisted or computed result using
         the response model below.
@@ -26999,6 +27407,7 @@ paths:
       - Detections
       summary: Get a detection evaluation
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: evaluationId
         in: path
         required: true
@@ -27020,7 +27429,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getDetectionsEvaluationsByEvaluationId
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Get a detection evaluation. Applies the documented path, query,
         and tenant filters and returns the current persisted or computed result using
         the response model below.
@@ -27030,6 +27441,7 @@ paths:
       - Detections
       summary: Replay a detection evaluation against its original frozen event snapshot
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: evaluationId
         in: path
         required: true
@@ -27058,7 +27470,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postDetectionsEvaluationsByEvaluationIdReplay
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Replay a detection evaluation against its original frozen event
         snapshot. Validates the documented request and returns the created or resulting
         resource. State-changing operations also enforce the service lifecycle and
@@ -27090,7 +27504,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getControlsByControlId
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Get control objective. Applies the documented path, query, and
         tenant filters and returns the current persisted or computed result using
         the response model below.
@@ -27108,7 +27524,6 @@ paths:
           type: string
           format: uuid
         description: Unique ID identifying the target resource.
-      - $ref: '#/components/parameters/ActorIdHeader'
       - $ref: '#/components/parameters/TenantIdHeader'
       responses:
         '400':
@@ -27137,7 +27552,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: patchControlImplementationsById
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Transition control implementation status (state-machine gated;
         NOT_APPLICABLE requires rationale + authorization). Validates the requested
         update or lifecycle transition and returns the updated resource without changing
@@ -27184,7 +27601,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postControlImplementationsByIdScopes
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Declare control scope (legal entity / environment / business unit
         / asset / identity scope). Validates the documented request and returns the
         created or resulting resource. State-changing operations also enforce the
@@ -27412,7 +27831,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postApiClientsByIdSuspend
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Suspend an API client. Validates the documented request and returns
         the created or resulting resource. State-changing operations also enforce
         the service lifecycle and conflict rules.
@@ -27450,7 +27871,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postApiClientsByIdRevoke
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Revoke an API client and all its credentials. Validates the documented
         request and returns the created or resulting resource. State-changing operations
         also enforce the service lifecycle and conflict rules.
@@ -27484,7 +27907,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postApiClientsByIdRotateCredential
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: "Rotate API client credential (overlap rotation \u2014 old version\
         \ RETIRING, then REVOKED). Validates the documented request and returns the\
         \ created or resulting resource. State-changing operations also enforce the\
@@ -27503,7 +27928,6 @@ paths:
           type: string
           format: uuid
         description: Unique ID identifying the target resource.
-      - $ref: '#/components/parameters/ActorIdHeader'
       - $ref: '#/components/parameters/TenantIdHeader'
       requestBody:
         required: true
@@ -27532,7 +27956,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postApiClientsByIdScopes
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Grant an API scope to a client (authorized, recorded, no permanent
         hidden elevation). Validates the documented request and returns the created
         or resulting resource. State-changing operations also enforce the service
@@ -27875,6 +28301,38 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postTenantsByTenantIdInvitations
+    get:
+      tags: [RBAC]
+      summary: List tenant invitations
+      description: Returns persisted invitation metadata for the tenant. Secret token hashes are never returned.
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      parameters:
+      - name: tenantId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Invitations ordered newest first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InvitationRecord'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Missing tenant membership or tenant:member:invite permission
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getTenantsByTenantIdInvitations
   /auth/invitations/{token}/accept:
     post:
       tags:
@@ -29220,7 +29678,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetAssessmentsResponse'
       operationId: getAssessments
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: List open evidence gaps for the tenant (assessment overview). Applies
         the documented path, query, and tenant filters and returns the current persisted
         or computed result using the response model below.
@@ -29231,7 +29691,6 @@ paths:
         \ a period (incomplete evidence stops at EVIDENCE_INCOMPLETE \u2014 never\
         \ proceeds to evaluation on partial evidence)"
       parameters:
-      - $ref: '#/components/parameters/ActorIdHeader'
       - $ref: '#/components/parameters/TenantIdHeader'
       responses:
         '201':
@@ -29249,7 +29708,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postAssessments
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: "Run an assessment for a control implementation + test version\
         \ over a period (incomplete evidence stops at EVIDENCE_INCOMPLETE \u2014 never\
         \ proceeds to evaluation on partial evidence). Validates the documented request\
@@ -29289,7 +29750,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getAssessmentsById
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Get assessment. Applies the documented path, query, and tenant
         filters and returns the current persisted or computed result using the response
         model below.
@@ -29307,7 +29770,6 @@ paths:
           type: string
           format: uuid
         description: Unique ID identifying the target resource.
-      - $ref: '#/components/parameters/ActorIdHeader'
       - $ref: '#/components/parameters/TenantIdHeader'
       responses:
         '400':
@@ -29330,7 +29792,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postAssessmentsByIdReview
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: "Record human review of an assessment (reviewer must differ from\
         \ performer \u2014 an automated result never self-approves). Validates the\
         \ documented request and returns the created or resulting resource. State-changing\
@@ -29367,7 +29831,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getAssessmentsByIdGaps
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: List open evidence gaps for the tenant. Applies the documented
         path, query, and tenant filters and returns the current persisted or computed
         result using the response model below.
@@ -29377,7 +29843,6 @@ paths:
       - Notifications
       summary: List notifications delivered to the current actor
       parameters:
-      - $ref: '#/components/parameters/ActorIdHeader'
       - $ref: '#/components/parameters/TenantIdHeader'
       responses:
         '200':
@@ -29387,7 +29852,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetNotificationsResponse'
       operationId: getNotifications
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: List notifications delivered to the current actor. Applies the
         documented path, query, and tenant filters and returns the current persisted
         or computed result using the response model below.
@@ -29419,7 +29886,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getNotificationsByNotificationId
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Get a notification delivery. Applies the documented path, query,
         and tenant filters and returns the current persisted or computed result using
         the response model below.
@@ -29438,7 +29907,6 @@ paths:
           type: string
           format: uuid
         description: Unique notification ID identifying the target resource.
-      - $ref: '#/components/parameters/ActorIdHeader'
       - $ref: '#/components/parameters/TenantIdHeader'
       responses:
         '403':
@@ -29468,7 +29936,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postNotificationsByNotificationIdAcknowledge
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: "Acknowledge a notification (SEEN/ACKNOWLEDGED/ACCEPTED/DECLINED\
         \ \u2014 delivery is never treated as acknowledgement, and SEEN is never treated\
         \ as APPROVED). Validates the documented request and returns the created or\
@@ -29486,7 +29956,6 @@ paths:
       - Notifications
       summary: List the current actor's notification preferences
       parameters:
-      - $ref: '#/components/parameters/ActorIdHeader'
       - $ref: '#/components/parameters/TenantIdHeader'
       responses:
         '200':
@@ -29496,7 +29965,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetNotificationPreferencesResponse'
       operationId: getNotificationPreferences
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: List the current actor's notification preferences. Applies the
         documented path, query, and tenant filters and returns the current persisted
         or computed result using the response model below.
@@ -29512,7 +29983,6 @@ paths:
         required: true
         schema:
           type: string
-      - $ref: '#/components/parameters/ActorIdHeader'
       - $ref: '#/components/parameters/TenantIdHeader'
       responses:
         '200':
@@ -29541,7 +30011,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: patchNotificationPreferencesById
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Set a channel preference (mandatory policies can never be suppressed
         by preference). Validates the requested update or lifecycle transition and
         returns the updated resource without changing fields outside the documented
@@ -29565,7 +30037,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetNotificationPoliciesResponse'
       operationId: getNotificationPolicies
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: List active notification policies (admin-controlled). Applies the
         documented path, query, and tenant filters and returns the current persisted
         or computed result using the response model below.
@@ -29575,6 +30049,7 @@ paths:
       - Notifications
       summary: Get a delivery with acknowledgement history (admin-controlled)
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: id
         in: path
         required: true
@@ -29597,7 +30072,9 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getNotificationDeliveriesById
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       description: Get a delivery with acknowledgement history (admin-controlled).
         Applies the documented path, query, and tenant filters and returns the current
         persisted or computed result using the response model below.
@@ -29612,7 +30089,9 @@ paths:
         on approval, creates a TenantOffboardingRun in EXPORT_REQUIRED and emits `tenant.offboarding.started`.
         If a run for this tenant is already in flight (any status other than COMPLETED/FAILED/BLOCKED),
         the existing run is returned unchanged instead of creating a duplicate.
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       parameters:
       - name: tenantId
         in: path
@@ -29621,7 +30100,6 @@ paths:
           type: string
           format: uuid
         description: Unique tenant ID identifying the target resource.
-      - $ref: '#/components/parameters/ActorIdHeader'
       requestBody:
         required: true
         content:
@@ -29668,7 +30146,9 @@ paths:
       description: Returns the most recently initiated TenantOffboardingRun for the
         tenant, ordered by `initiatedAt` descending. Its `status` is the state machine
         position to poll for progress.
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       parameters:
       - name: tenantId
         in: path
@@ -29713,7 +30193,9 @@ paths:
         Does not itself block earlier lifecycle steps \u2014 legal holds are enforced
         at `start-deletion`, where an intersecting hold moves the run to BLOCKED instead
         of silently proceeding or silently retaining data.
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       parameters:
       - name: tenantId
         in: path
@@ -29759,7 +30241,9 @@ paths:
         packages) scoped to the given run. Advances the run to EXPORTING then, on
         a READY or PARTIAL export result, to EXPORT_READY. Any other export outcome
         marks the run FAILED and the offboarding cannot proceed past this step.
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       parameters:
       - name: tenantId
         in: path
@@ -29821,7 +30305,9 @@ paths:
         emits `tenant.access.frozen`, then suspends and revokes every ACTIVE API client
         for the tenant \u2014 no new token issuance is possible from this point on
         (spec \u00a776).
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       parameters:
       - name: tenantId
         in: path
@@ -29887,7 +30373,9 @@ paths:
         and stops \u2014 no deletion tasks run. Otherwise the run proceeds through
         DELETING, executes every DeletionTask, records pending backup expiry, and
         advances to BACKUP_EXPIRY_PENDING.
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       parameters:
       - name: tenantId
         in: path
@@ -29896,7 +30384,6 @@ paths:
           type: string
           format: uuid
         description: Unique tenant ID identifying the target resource.
-      - $ref: '#/components/parameters/ActorIdHeader'
       requestBody:
         required: true
         content:
@@ -29954,7 +30441,9 @@ paths:
         ordered by `issuedAt` descending. The attestation is only issued once deletion
         has been reconciled; it always discloses retained scopes, active legal hold
         references, and pending backup expiry rather than asserting unqualified deletion.
-      security: []
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
       parameters:
       - name: tenantId
         in: path
@@ -30155,6 +30644,7 @@ paths:
       security:
       - InternalServiceAuth: []
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: proposalId
         in: path
         required: true
@@ -30373,7 +30863,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getEvents
-      security: []
+      security:
+      - InternalServiceAuth: []
       description: List normalized events. Applies the documented path, query, and
         tenant filters and returns the current persisted or computed result using
         the response model below.
@@ -30400,6 +30891,7 @@ paths:
       - Normalization
       summary: Get a normalized event
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: eventId
         in: path
         required: true
@@ -30421,7 +30913,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getEventsByEventId
-      security: []
+      security:
+      - InternalServiceAuth: []
       description: Get a normalized event. Applies the documented path, query, and
         tenant filters and returns the current persisted or computed result using
         the response model below.
@@ -30444,7 +30937,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getQuarantine
-      security: []
+      security:
+      - InternalServiceAuth: []
       description: List quarantined (failed-normalization) raw events. Applies the
         documented path, query, and tenant filters and returns the current persisted
         or computed result using the response model below.
@@ -30464,6 +30958,7 @@ paths:
       - Normalization
       summary: Reprocess a quarantined event
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: eventId
         in: path
         required: true
@@ -30485,7 +30980,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postQuarantineByEventIdReprocess
-      security: []
+      security:
+      - InternalServiceAuth: []
       description: Reprocess a quarantined event. Validates the documented request
         and returns the created or resulting resource. State-changing operations also
         enforce the service lifecycle and conflict rules.
@@ -30516,7 +31012,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postEventsReplay
-      security: []
+      security:
+      - InternalServiceAuth: []
       description: Replay normalized events through detection (uses the original frozen
         event, never live re-derivation). Validates the documented request and returns
         the created or resulting resource. State-changing operations also enforce
@@ -30535,6 +31032,7 @@ paths:
       - ConnectorCatalog
       summary: Get connector instance
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: connectorId
         in: path
         required: true
@@ -30556,16 +31054,86 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getConnectorsByConnectorId
-      security: []
+      security:
+      - InternalServiceAuth: []
       description: Get connector instance. Applies the documented path, query, and
         tenant filters and returns the current persisted or computed result using
         the response model below.
+    patch:
+      tags: [ConnectorCatalog]
+      summary: Update connector metadata
+      description: Updates the persisted connector name and/or source region after verifying tenant ownership.
+      security:
+      - InternalServiceAuth: []
+      parameters:
+      - name: connectorId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ConnectorMutationRequest' }
+      responses:
+        '200':
+          description: Updated connector
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PostConnectorsByConnectorIdActivateResponse' }
+        '400':
+          description: No supported field supplied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '401':
+          description: Invalid workload identity
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Connector not found in tenant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: patchConnectorsByConnectorId
+    delete:
+      tags: [ConnectorCatalog]
+      summary: Retire a connector
+      description: Calls the registered provider disconnect operation, sets NOT_CONNECTED, and soft-deletes the tenant-owned instance.
+      security:
+      - InternalServiceAuth: []
+      parameters:
+      - name: connectorId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Retired connector
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PostConnectorsByConnectorIdDisableResponse' }
+        '401':
+          description: Invalid workload identity
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Connector not found in tenant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: deleteConnectorsByConnectorId
   /api/v1/connectors/{connectorId}/activate:
     post:
       tags:
       - ConnectorCatalog
       summary: Activate a connector instance
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: connectorId
         in: path
         required: true
@@ -30593,7 +31161,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postConnectorsByConnectorIdActivate
-      security: []
+      security:
+      - InternalServiceAuth: []
       description: Activate a connector instance. Validates the documented request
         and returns the created or resulting resource. State-changing operations also
         enforce the service lifecycle and conflict rules.
@@ -30603,6 +31172,7 @@ paths:
       - ConnectorCatalog
       summary: Disable a connector instance
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: connectorId
         in: path
         required: true
@@ -30630,7 +31200,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postConnectorsByConnectorIdDisable
-      security: []
+      security:
+      - InternalServiceAuth: []
       description: Disable a connector instance. Validates the documented request
         and returns the created or resulting resource. State-changing operations also
         enforce the service lifecycle and conflict rules.
@@ -30653,7 +31224,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postConnectorsEntraConnect
-      security: []
+      security:
+      - InternalServiceAuth: []
       description: Start Microsoft Entra OAuth admin-consent flow. Validates the documented
         request and returns the created or resulting resource. State-changing operations
         also enforce the service lifecycle and conflict rules.
@@ -30723,6 +31295,7 @@ paths:
       - MicrosoftEntraConnector
       summary: Test Entra connector credentials/permissions
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: id
         in: path
         required: true
@@ -30744,7 +31317,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postConnectorsEntraByIdTest
-      security: []
+      security:
+      - InternalServiceAuth: []
       description: Test Entra connector credentials/permissions. Validates the documented
         request and returns the created or resulting resource. State-changing operations
         also enforce the service lifecycle and conflict rules.
@@ -30754,6 +31328,7 @@ paths:
       - MicrosoftEntraConnector
       summary: Trigger an Entra directory sync
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: id
         in: path
         required: true
@@ -30775,7 +31350,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postConnectorsEntraByIdSync
-      security: []
+      security:
+      - InternalServiceAuth: []
       description: Trigger an Entra directory sync. Validates the documented request
         and returns the created or resulting resource. State-changing operations also
         enforce the service lifecycle and conflict rules.
@@ -30871,7 +31447,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/PostAssuranceReviewsResponse'
       operationId: postAssuranceReviews
-      security: []
+      security:
+      - InternalServiceAuth: []
       parameters:
       - $ref: '#/components/parameters/TenantIdHeader'
     get:
@@ -30895,7 +31472,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetAssuranceReviewsResponse'
       operationId: getAssuranceReviews
-      security: []
+      security:
+      - InternalServiceAuth: []
       parameters:
       - $ref: '#/components/parameters/TenantIdHeader'
       - name: tenantId
@@ -30928,7 +31506,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetAssurancePostureResponse'
       operationId: getAssurancePosture
-      security: []
+      security:
+      - InternalServiceAuth: []
       parameters:
       - $ref: '#/components/parameters/TenantIdHeader'
       - name: tenantId
@@ -30967,7 +31546,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/PostAssuranceReflectionsResponse'
       operationId: postAssuranceReflections
-      security: []
+      security:
+      - InternalServiceAuth: []
       parameters:
       - $ref: '#/components/parameters/TenantIdHeader'
     get:
@@ -30991,7 +31571,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetAssuranceReflectionsResponse'
       operationId: getAssuranceReflections
-      security: []
+      security:
+      - InternalServiceAuth: []
       parameters:
       - $ref: '#/components/parameters/TenantIdHeader'
       - name: assuranceReviewId
@@ -31019,6 +31600,7 @@ paths:
         the created or resulting resource. State-changing operations also enforce
         the service lifecycle and conflict rules.
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: alertId
         in: path
         required: true
@@ -31046,7 +31628,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postAlertsByAlertIdCreateCase
-      security: []
+      security:
+      - InternalServiceAuth: []
   /api/v1/controls/objectives:
     post:
       tags:
@@ -31075,7 +31658,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/PostControlsObjectivesResponse'
       operationId: postControlsObjectives
-      security: []
+      security:
+      - InternalServiceAuth: []
       parameters:
       - $ref: '#/components/parameters/TenantIdHeader'
     get:
@@ -31099,7 +31683,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetControlsObjectivesResponse'
       operationId: getControlsObjectives
-      security: []
+      security:
+      - InternalServiceAuth: []
       parameters:
       - $ref: '#/components/parameters/TenantIdHeader'
       - name: tenantId
@@ -31119,6 +31704,7 @@ paths:
         returns the created or resulting resource. State-changing operations also
         enforce the service lifecycle and conflict rules.
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: id
         in: path
         required: true
@@ -31146,7 +31732,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postControlsObjectivesByIdEvaluate
-      security: []
+      security:
+      - InternalServiceAuth: []
   /api/v1/controls/results:
     get:
       tags:
@@ -31169,7 +31756,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetControlsResultsResponse'
       operationId: getControlsResults
-      security: []
+      security:
+      - InternalServiceAuth: []
       parameters:
       - $ref: '#/components/parameters/TenantIdHeader'
       - name: tenantId
@@ -31189,6 +31777,7 @@ paths:
         or resulting resource. State-changing operations also enforce the service
         lifecycle and conflict rules.
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: caseId
         in: path
         required: true
@@ -31222,7 +31811,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postCasesByCaseIdAssign
-      security: []
+      security:
+      - InternalServiceAuth: []
   /api/v1/dashboard/overview:
     get:
       tags:
@@ -31245,7 +31835,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetDashboardOverviewResponse'
       operationId: getDashboardOverview
-      security: []
+      security:
+      - InternalServiceAuth: []
       parameters:
       - $ref: '#/components/parameters/TenantIdHeader'
       - name: tenantId
@@ -31278,7 +31869,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetDashboardConnectorsResponse'
       operationId: getDashboardConnectors
-      security: []
+      security:
+      - InternalServiceAuth: []
       parameters:
       - $ref: '#/components/parameters/TenantIdHeader'
       - name: tenantId
@@ -31311,7 +31903,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetDashboardEventsResponse'
       operationId: getDashboardEvents
-      security: []
+      security:
+      - InternalServiceAuth: []
       parameters:
       - $ref: '#/components/parameters/TenantIdHeader'
       - name: tenantId
@@ -31344,7 +31937,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetDashboardAlertsResponse'
       operationId: getDashboardAlerts
-      security: []
+      security:
+      - InternalServiceAuth: []
       parameters:
       - $ref: '#/components/parameters/TenantIdHeader'
       - name: tenantId
@@ -31377,7 +31971,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetDashboardCasesResponse'
       operationId: getDashboardCases
-      security: []
+      security:
+      - InternalServiceAuth: []
       parameters:
       - $ref: '#/components/parameters/TenantIdHeader'
       - name: tenantId
@@ -31416,7 +32011,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/PostEvidenceResponse'
       operationId: postEvidence
-      security: []
+      security:
+      - InternalServiceAuth: []
       parameters:
       - $ref: '#/components/parameters/TenantIdHeader'
     get:
@@ -31440,7 +32036,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetEvidenceResponse'
       operationId: getEvidence
-      security: []
+      security:
+      - InternalServiceAuth: []
       parameters:
       - $ref: '#/components/parameters/TenantIdHeader'
       - name: caseId
@@ -31487,7 +32084,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/PostDetectionsResponse'
       operationId: postDetections
-      security: []
+      security:
+      - InternalServiceAuth: []
       parameters:
       - $ref: '#/components/parameters/TenantIdHeader'
     get:
@@ -31511,7 +32109,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetDetectionsResponse'
       operationId: getDetections
-      security: []
+      security:
+      - InternalServiceAuth: []
       parameters:
       - $ref: '#/components/parameters/TenantIdHeader'
       - name: tenantId
@@ -31531,6 +32130,7 @@ paths:
         filters and returns the current persisted or computed result using the response
         model below.
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: detectionId
         in: path
         required: true
@@ -31558,7 +32158,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getDetectionsByDetectionId
-      security: []
+      security:
+      - InternalServiceAuth: []
     patch:
       tags:
       - Detections
@@ -31567,6 +32168,7 @@ paths:
         transition and returns the updated resource without changing fields outside
         the documented request.
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: detectionId
         in: path
         required: true
@@ -31606,7 +32208,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: patchDetectionsByDetectionId
-      security: []
+      security:
+      - InternalServiceAuth: []
   /api/v1/detections/{detectionId}/test:
     post:
       tags:
@@ -31616,6 +32219,7 @@ paths:
         the created or resulting resource. State-changing operations also enforce
         the service lifecycle and conflict rules.
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: detectionId
         in: path
         required: true
@@ -31649,7 +32253,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postDetectionsByDetectionIdTest
-      security: []
+      security:
+      - InternalServiceAuth: []
   /api/v1/detections/{detectionId}/activate:
     post:
       tags:
@@ -31659,6 +32264,7 @@ paths:
         the created or resulting resource. State-changing operations also enforce
         the service lifecycle and conflict rules.
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: detectionId
         in: path
         required: true
@@ -31692,7 +32298,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postDetectionsByDetectionIdActivate
-      security: []
+      security:
+      - InternalServiceAuth: []
   /api/v1/detections/{detectionId}/disable:
     post:
       tags:
@@ -31702,6 +32309,7 @@ paths:
         the created or resulting resource. State-changing operations also enforce
         the service lifecycle and conflict rules.
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: detectionId
         in: path
         required: true
@@ -31735,7 +32343,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postDetectionsByDetectionIdDisable
-      security: []
+      security:
+      - InternalServiceAuth: []
   /api/v1/detections/{detectionId}/replay:
     post:
       tags:
@@ -31785,7 +32394,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postDetectionsByDetectionIdReplay
-      security: []
+      security:
+      - InternalServiceAuth: []
   /api/v1/sla/claims/evaluate:
     post:
       tags:
@@ -31814,7 +32424,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/PostSlaClaimsEvaluateResponse'
       operationId: postSlaClaimsEvaluate
-      security: []
+      security:
+      - InternalServiceAuth: []
       parameters:
       - $ref: '#/components/parameters/TenantIdHeader'
   /api/v1/sla/claims/evaluations:
@@ -31839,7 +32450,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetSlaClaimsEvaluationsResponse'
       operationId: getSlaClaimsEvaluations
-      security: []
+      security:
+      - InternalServiceAuth: []
       parameters:
       - $ref: '#/components/parameters/TenantIdHeader'
       - name: claimKey
@@ -31879,7 +32491,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetSlaPerformanceResponse'
       operationId: getSlaPerformance
-      security: []
+      security:
+      - InternalServiceAuth: []
       parameters:
       - $ref: '#/components/parameters/TenantIdHeader'
       - name: tenantId
@@ -32515,6 +33128,7 @@ paths:
       - CookieAuth: []
       - BearerAuth: []
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - $ref: '#/components/parameters/IdempotencyKeyHeader'
   /api/v1/payments/{id}:
     get:
@@ -32525,6 +33139,7 @@ paths:
         and returns the current persisted or computed result using the response model
         below. Accepts either the access-token cookie or a Bearer JWT.
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: id
         in: path
         required: true
@@ -32570,6 +33185,7 @@ paths:
         and returns the updated resource without changing fields outside the documented
         request. Accepts either the access-token cookie or a Bearer JWT.
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: id
         in: path
         required: true
@@ -32649,6 +33265,8 @@ paths:
       security: []
   /api/v1/ai/usage:
     post:
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       tags:
       - AIGovernance
       summary: Record AI usage record
@@ -32693,6 +33311,7 @@ paths:
         filters and returns the current persisted or computed result using the response
         model below. Restricted to trusted services using x-internal-service-token.
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: id
         in: path
         required: true
@@ -32737,6 +33356,7 @@ paths:
         transition and returns the updated resource without changing fields outside
         the documented request. Restricted to trusted services using x-internal-service-token.
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: id
         in: path
         required: true
@@ -34784,6 +35404,8 @@ paths:
       - BearerAuth: []
   /api/v1/resources/observations:
     post:
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       tags:
       - ResourceManagement
       summary: Record resource observation
@@ -34849,6 +35471,7 @@ paths:
       security:
       - InternalServiceAuth: []
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: tenantId
         in: query
         required: true
@@ -34865,6 +35488,7 @@ paths:
         tenant filters and returns the current persisted or computed result using
         the response model below. Restricted to trusted services using x-internal-service-token.
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: id
         in: path
         required: true
@@ -34909,6 +35533,7 @@ paths:
         transition and returns the updated resource without changing fields outside
         the documented request. Restricted to trusted services using x-internal-service-token.
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: id
         in: path
         required: true
@@ -35054,6 +35679,8 @@ paths:
       - BearerAuth: []
   /api/v1/sla/measurements:
     post:
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       tags:
       - SLA
       summary: Record SLA measurement
@@ -35098,6 +35725,7 @@ paths:
         filters and returns the current persisted or computed result using the response
         model below. Restricted to trusted services using x-internal-service-token.
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: id
         in: path
         required: true
@@ -35135,6 +35763,8 @@ paths:
       - InternalServiceAuth: []
   /api/v1/sla/credits:
     post:
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       tags:
       - SLA
       summary: Propose service credit
@@ -35180,6 +35810,7 @@ paths:
         filters and returns the current persisted or computed result using the response
         model below. Accepts either the access-token cookie or a Bearer JWT.
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: id
         in: path
         required: true
@@ -35225,6 +35856,7 @@ paths:
         and returns the updated resource without changing fields outside the documented
         request. Accepts either the access-token cookie or a Bearer JWT.
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: id
         in: path
         required: true
@@ -35283,6 +35915,7 @@ paths:
         the documented request. Accepts either the access-token cookie or a Bearer
         JWT.
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: id
         in: path
         required: true
@@ -36348,7 +36981,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getDashboardControlHealth
-      security: []
+      security:
+      - InternalServiceAuth: []
       summary: Get control health
       description: Get control health. Applies the documented path, query, and tenant
         filters and returns the current persisted or computed result using the response
@@ -36381,7 +37015,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getDashboardEvidenceHealth
-      security: []
+      security:
+      - InternalServiceAuth: []
       summary: Get evidence health
       description: Get evidence health. Applies the documented path, query, and tenant
         filters and returns the current persisted or computed result using the response
@@ -36396,3 +37031,413 @@ paths:
           nullable: true
           format: uuid
         description: Optional tenant ID filter.
+  /tenants/{tenantId}/members:
+    get:
+      tags: [RBAC]
+      summary: List tenant members
+      description: Returns tenant-scoped memberships with their roles and effective role permissions.
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      parameters:
+      - name: tenantId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Tenant membership list
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/MembershipResponse' }
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: No active membership for the tenant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getTenantsByTenantIdMembers
+  /tenants/{tenantId}/members/{memberId}:
+    patch:
+      tags: [RBAC]
+      summary: Update a tenant member
+      description: Replaces assigned tenant roles and/or changes ACTIVE/SUSPENDED status. Platform roles and roles owned by another tenant are rejected.
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      parameters:
+      - name: tenantId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: memberId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateTenantMemberRequest' }
+      responses:
+        '200':
+          description: Updated membership
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MembershipResponse' }
+        '400':
+          description: A requested role does not exist
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Missing tenant:manage or role belongs outside this tenant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Membership not found in tenant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: patchTenantsByTenantIdMembersByMemberId
+    delete:
+      tags: [RBAC]
+      summary: Remove a tenant member
+      description: Sets the membership to REMOVED and clears its tenant role assignments; the identity principal is retained.
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      parameters:
+      - name: tenantId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: memberId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Removed membership
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/MembershipResponse' }
+        '403':
+          description: Missing tenant:manage permission
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Membership not found in tenant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: deleteTenantsByTenantIdMembersByMemberId
+  /api/v1/tenants/{tenantId}/offboarding/issue-attestation:
+    post:
+      tags: [Offboarding]
+      summary: Issue verified deletion attestation and close tenant
+      description: Requires every deletion task to have a verified successful terminal result. Records retained audit/backup limitations, removes the closing operator membership, and completes the offboarding run.
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      parameters:
+      - name: tenantId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [runId]
+              properties:
+                runId: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Offboarding run closed with deletion attestation
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [run, attestation]
+                properties:
+                  run: { $ref: '#/components/schemas/TenantOffboardingRunResponse' }
+                  attestation: { $ref: '#/components/schemas/DeletionAttestationResponse' }
+        '403':
+          description: Missing deletion:request permission
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Offboarding run not found in tenant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: Run or deletion tasks are not ready for attestation
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: postTenantsByTenantIdOffboardingIssueAttestation
+  /api/v1/response-proposals/{proposalId}/simulate:
+    post:
+      tags: [ResponseProposals]
+      summary: Get the persisted simulation state for a proposal
+      description: Does not fabricate or directly execute a simulation. Returns QUEUED until shield-action creates a persisted ActionCommand and ActionReceipt, then returns the latest receipt.
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      parameters:
+      - name: proposalId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '201':
+          description: Current persisted simulation state
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [statusCode, data]
+                properties:
+                  statusCode: { type: integer, enum: [200, 202] }
+                  data:
+                    type: object
+                    required: [state, actionCommandId, receipt]
+                    properties:
+                      state: { type: string, enum: [QUEUED, PROCESSING, SIMULATED, REJECTED, FAILED] }
+                      actionCommandId: { type: string, format: uuid, nullable: true }
+                      receipt: { type: object, nullable: true, additionalProperties: true }
+        '403':
+          description: No active tenant membership
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Proposal not found in tenant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: postResponseProposalsByProposalIdSimulate
+  /api/v1/response/freeze:
+    post:
+      tags: [ResponseProposals]
+      summary: Freeze tenant response actions
+      description: Persists an idempotent active TENANT freeze consumed by shield-action reauthorization.
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 1 }
+      responses:
+        '201':
+          description: Active persisted freeze
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [statusCode, frozen, data]
+                properties:
+                  statusCode: { type: integer, example: 200 }
+                  frozen: { type: boolean, enum: [true] }
+                  data: { $ref: '#/components/schemas/ResponseFreezeRecord' }
+        '400':
+          description: Freeze reason missing
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: postResponseFreeze
+  /api/v1/response/unfreeze:
+    post:
+      tags: [ResponseProposals]
+      summary: End active tenant response freezes
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '201':
+          description: Number of freezes ended
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [statusCode, frozen, endedFreezes, activeUntil]
+                properties:
+                  statusCode: { type: integer, example: 200 }
+                  frozen: { type: boolean, enum: [false] }
+                  endedFreezes: { type: integer, minimum: 0 }
+                  activeUntil: { type: string, format: date-time }
+      operationId: postResponseUnfreeze
+  /api/v1/response/freeze-status:
+    get:
+      tags: [ResponseProposals]
+      summary: Get active tenant response freeze
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Current freeze state
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [statusCode, frozen, status, freeze]
+                properties:
+                  statusCode: { type: integer, example: 200 }
+                  frozen: { type: boolean }
+                  status: { type: string, enum: [FROZEN, OPERATIONAL] }
+                  freeze:
+                    allOf:
+                    - $ref: '#/components/schemas/ResponseFreezeRecord'
+                    nullable: true
+      operationId: getResponseFreezeStatus
+  /api/v1/connectors/{connectorId}/test:
+    post:
+      tags: [ConnectorCatalog]
+      summary: Run the provider connection test
+      description: Resolves the registered provider adapter and performs its real connection/permission health test. Unsupported providers fail explicitly.
+      security:
+      - InternalServiceAuth: []
+      parameters:
+      - name: connectorId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '201':
+          description: Provider health result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [statusCode, data]
+                properties:
+                  statusCode: { type: integer, example: 200 }
+                  data: { type: object, additionalProperties: true }
+        '400':
+          description: Provider has no executable adapter
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Connector not found in tenant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: postConnectorsByConnectorIdTest
+  /api/v1/connectors/{connectorId}/sync:
+    post:
+      tags: [ConnectorCatalog]
+      summary: Run a connector synchronization
+      description: Creates a persisted synchronization run, invokes the registered provider, updates connector health, and emits completion or failure events before returning.
+      security:
+      - InternalServiceAuth: []
+      parameters:
+      - name: connectorId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '201':
+          description: Connector health after the completed sync attempt
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [statusCode, data]
+                properties:
+                  statusCode: { type: integer, example: 200 }
+                  data: { $ref: '#/components/schemas/ConnectorHealthResponse' }
+        '404':
+          description: Connector not found in tenant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: postConnectorsByConnectorIdSync
+  /api/v1/connectors/{connectorId}/health:
+    get:
+      tags: [ConnectorCatalog]
+      summary: Get persisted connector health
+      security:
+      - InternalServiceAuth: []
+      parameters:
+      - name: connectorId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Current persisted connector health, or null before the first health result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [statusCode, data]
+                properties:
+                  statusCode: { type: integer, example: 200 }
+                  data: { $ref: '#/components/schemas/ConnectorHealthResponse' }
+        '404':
+          description: Connector not found in tenant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getConnectorsByConnectorIdHealth
+  /api/v1/control-evaluations/{evaluationId}:
+    get:
+      tags: [Controls]
+      summary: Get a persisted control evaluation
+      description: Returns the evaluation only when it belongs to the workload-authenticated tenant context.
+      security:
+      - InternalServiceAuth: []
+      parameters:
+      - name: evaluationId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Persisted control test result
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [statusCode, data]
+                properties:
+                  statusCode: { type: integer, example: 200 }
+                  data: { $ref: '#/components/schemas/ControlTestRunData' }
+        '404':
+          description: Evaluation not found in tenant
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getControlEvaluationsByEvaluationId

@@ -21,9 +21,9 @@ export class DetectionReplayService {
     private readonly registry: DetectionRegistryService,
   ) {}
 
-  async replay(evaluationId: string) {
-    const evaluation = await this.prisma.detectionEvaluation.findUnique({
-      where: { id: evaluationId },
+  async replay(tenantId: string, evaluationId: string) {
+    const evaluation = await this.prisma.detectionEvaluation.findFirst({
+      where: { id: evaluationId, tenant_id: tenantId },
       include: { detectionVersion: { include: { detectionDefinition: true } } },
     });
     if (!evaluation) {

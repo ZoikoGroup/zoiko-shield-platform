@@ -14,11 +14,12 @@ import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { AuthorizationService } from '../authorization/authorization.service';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { CurrentUser } from '../identity-adapter/decorators/current-user.decorator';
 import { PERMISSION_CODES } from '../authorization/constants';
 import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('tenant/:tenantId/customers')
 export class CustomerController {
   constructor(

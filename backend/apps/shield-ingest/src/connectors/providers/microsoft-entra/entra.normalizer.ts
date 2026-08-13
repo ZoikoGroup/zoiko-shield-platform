@@ -10,7 +10,12 @@ export class EntraNormalizerService {
    * Normalizes a raw Microsoft Graph OData Sign-in Log object into the
    * ZoikoShield Canonical Event format.
    */
-  normalizeSignInLog(rawLog: any, tenantId: string): ZoikoShieldCanonicalEvent {
+  normalizeSignInLog(
+    rawLog: any,
+    tenantId: string,
+    environmentId: string,
+    region: string,
+  ): ZoikoShieldCanonicalEvent {
     this.logger.debug(`Normalizing sign-in log: ${rawLog.id}`);
 
     // Map authentication result
@@ -44,8 +49,8 @@ export class EntraNormalizerService {
     return {
       // Metadata
       tenant_id: tenantId,
-      environment_id: 'production', // MVP Default
-      region: 'global', // MVP Default
+      environment_id: environmentId,
+      region,
       provider: 'microsoft-entra',
       event_type: 'security.identity.signin.v1',
       source_event_id: rawLog.id || 'unknown_event_id',

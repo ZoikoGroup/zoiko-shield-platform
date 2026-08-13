@@ -6,6 +6,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { MeteringService } from './metering.service';
+import { requireTenantId } from '../security/tenant-context';
 
 @Controller('api/v1/metering')
 export class MeteringController {
@@ -20,7 +21,7 @@ export class MeteringController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Query('tenantId') queryTenantId?: string,
   ) {
-    const tenantId = headerTenantId || queryTenantId || 'default-tenant';
+    const tenantId = requireTenantId(headerTenantId, queryTenantId);
     const summary = await this.meteringService.getUsageSummary(tenantId);
     return {
       statusCode: HttpStatus.OK,
@@ -37,7 +38,7 @@ export class MeteringController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Query('tenantId') queryTenantId?: string,
   ) {
-    const tenantId = headerTenantId || queryTenantId || 'default-tenant';
+    const tenantId = requireTenantId(headerTenantId, queryTenantId);
     const resources = await this.meteringService.getResourceObservations(tenantId);
     return {
       statusCode: HttpStatus.OK,

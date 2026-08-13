@@ -1,4 +1,5 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { workloadAuthorizationHeaders } from '../../../../libs/security/src/workload-token';
 
 const SHIELD_AI_BASE_URL = process.env.SHIELD_AI_BASE_URL || 'http://localhost:3003';
 
@@ -28,11 +29,7 @@ export class ShieldAiClient {
   private readonly logger = new Logger(ShieldAiClient.name);
 
   private headers(): Record<string, string> {
-    const token = process.env.INTERNAL_SERVICE_TOKEN;
-    if (!token) {
-      throw new ServiceUnavailableException('INTERNAL_SERVICE_TOKEN is not configured — cannot call shield-ai');
-    }
-    return { 'Content-Type': 'application/json', 'x-internal-service-token': token };
+    return { 'Content-Type': 'application/json', ...workloadAuthorizationHeaders('shield-ai') };
   }
 
   async requestUseCase(useCaseKey: string, context: AiRequestContext, input: Record<string, unknown>): Promise<any> {

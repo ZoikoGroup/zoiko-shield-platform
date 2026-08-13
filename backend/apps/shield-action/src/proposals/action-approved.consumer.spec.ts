@@ -18,21 +18,42 @@ describe('ActionApprovedConsumer', () => {
 
     await handler({
       eventId: 'evt1',
+      tenantId: 't1',
       correlationId: 'corr1',
       payload: { tenantId: 't1', proposalId: 'p1', caseId: 'case1' },
     });
 
-    expect(simulation.simulate).toHaveBeenCalledWith('p1', 'corr1');
+    expect(simulation.simulate).toHaveBeenCalledWith('t1', 'p1', 'corr1');
   });
 
-  it('skips silently when the payload is missing a proposalId', async () => {
+  it('fails closed when the payload is missing a proposalId', async () => {
     const kafkaConsumer = { registerHandler: jest.fn() } as any;
     const simulation = { simulate: jest.fn() } as any;
     const consumer = new ActionApprovedConsumer(kafkaConsumer, simulation);
     consumer.onModuleInit();
     const handler = kafkaConsumer.registerHandler.mock.calls[0][1];
 
-    await handler({ eventId: 'evt1', correlationId: 'corr1', payload: { tenantId: 't1' } });
+    await expect(
+      handler({ eventId: 'evt1', tenantId: 't1', correlationId: 'corr1', payload: { tenantId: 't1' } }),
+    ).rejects.toThrow('missing tenantId or proposalId');
+    expect(simulation.simulate).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when the payload and envelope tenants conflict', async () => {
+    const kafkaConsumer = { registerHandler: jest.fn() } as any;
+    const simulation = { simulate: jest.fn() } as any;
+    const consumer = new ActionApprovedConsumer(kafkaConsumer, simulation);
+    consumer.onModuleInit();
+    const handler = kafkaConsumer.registerHandler.mock.calls[0][1];
+
+    await expect(
+      handler({
+        eventId: 'evt1',
+        tenantId: 'tenant-a',
+        correlationId: 'corr1',
+        payload: { tenantId: 'tenant-b', proposalId: 'p1' },
+      }),
+    ).rejects.toThrow('conflicting tenant context');
     expect(simulation.simulate).not.toHaveBeenCalled();
   });
 });

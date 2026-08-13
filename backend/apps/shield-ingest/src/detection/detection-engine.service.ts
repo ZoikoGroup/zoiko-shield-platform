@@ -1,6 +1,5 @@
 import { Injectable, Logger, NotFoundException, BadRequestException, Optional } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { KafkaProducerService } from '../kafka/kafka.producer.service';
 import { AlertGeneratorService } from '../alerts/alert-generator.service';
 
 export interface ConditionRule {
@@ -43,7 +42,6 @@ export class DetectionEngineService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly kafkaProducer: KafkaProducerService,
     @Optional() private readonly alertService?: AlertGeneratorService,
   ) {}
 
@@ -86,9 +84,14 @@ export class DetectionEngineService {
   /**
    * Get single detection rule by ID
    */
-  async getRuleById(ruleId: string) {
-    const rule = await this.prisma.detectionRule.findUnique({
-      where: { id: ruleId },
+  async getRuleById(tenantId: string, ruleId: string, includeGlobal = true) {
+    const rule = await this.prisma.detectionRule.findFirst({
+      where: {
+        id: ruleId,
+        ...(includeGlobal
+          ? { OR: [{ tenant_id: tenantId }, { tenant_id: null }] }
+          : { tenant_id: tenantId }),
+      },
       include: {
         detectionRuns: { take: 10, orderBy: { executed_at: 'desc' } },
       },
@@ -104,8 +107,8 @@ export class DetectionEngineService {
   /**
    * Update a detection rule and increment its version
    */
-  async updateRule(ruleId: string, dto: UpdateDetectionRuleDto) {
-    const existing = await this.getRuleById(ruleId);
+  async updateRule(tenantId: string, ruleId: string, dto: UpdateDetectionRuleDto) {
+    const existing = await this.getRuleById(tenantId, ruleId, false);
 
     const dataToUpdate: any = {
       current_version: existing.current_version + 1,
@@ -128,8 +131,8 @@ export class DetectionEngineService {
   /**
    * Activate detection rule
    */
-  async activateRule(ruleId: string) {
-    await this.getRuleById(ruleId);
+  async activateRule(tenantId: string, ruleId: string) {
+    await this.getRuleById(tenantId, ruleId, false);
     return this.prisma.detectionRule.update({
       where: { id: ruleId },
       data: { status: 'ACTIVE' },
@@ -139,8 +142,8 @@ export class DetectionEngineService {
   /**
    * Disable detection rule
    */
-  async disableRule(ruleId: string) {
-    await this.getRuleById(ruleId);
+  async disableRule(tenantId: string, ruleId: string) {
+    await this.getRuleById(tenantId, ruleId, false);
     return this.prisma.detectionRule.update({
       where: { id: ruleId },
       data: { status: 'DISABLED' },
@@ -184,7 +187,9 @@ export class DetectionEngineService {
     let requiredFields: string[] = [];
     try {
       requiredFields = JSON.parse(rule.required_fields || '[]');
-    } catch {}
+    } catch {
+      return this.recordRun(rule, event, 'ERROR', 'Invalid required fields JSON');
+    }
 
     // Check required fields
     for (const field of requiredFields) {
@@ -261,26 +266,7 @@ export class DetectionEngineService {
 
     // Automatically create Alert record
     if (this.alertService) {
-      try {
-        await this.alertService.createAlertFromDetectionRun(run.id);
-      } catch (err) {
-        this.logger.warn(`Failed to create alert for detection run ${run.id}: ${err}`);
-      }
-    }
-
-    // Emit AlertCreated candidate to Kafka
-    try {
-      await this.kafkaProducer.emit('alert.created', {
-        tenantId: event.tenant_id,
-        environmentId: event.environment_id,
-        ruleId: rule.id,
-        ruleVersion: rule.current_version,
-        eventId: event.id,
-        severity: rule.severity,
-        ruleName: rule.name,
-      });
-    } catch (err) {
-      this.logger.warn(`Failed to emit alert.created event: ${err}`);
+      await this.alertService.createAlertFromDetectionRun(run.id);
     }
 
     return run;
@@ -335,8 +321,8 @@ export class DetectionEngineService {
   /**
    * Test a detection rule against sample event payload
    */
-  async testRule(ruleId: string, sampleEvent: Record<string, any>) {
-    const rule = await this.getRuleById(ruleId);
+  async testRule(tenantId: string, ruleId: string, sampleEvent: Record<string, any>) {
+    const rule = await this.getRuleById(tenantId, ruleId);
 
     let definition: RuleDefinition;
     try {
@@ -371,7 +357,7 @@ export class DetectionEngineService {
 
     for (const evt of events) {
       if (ruleId) {
-        const rule = await this.getRuleById(ruleId);
+        const rule = await this.getRuleById(tenantId, ruleId);
         const run = await this.evaluateRuleAgainstEvent(rule, evt);
         totalRuns++;
         if (run.result === 'MATCHED') totalMatched++;

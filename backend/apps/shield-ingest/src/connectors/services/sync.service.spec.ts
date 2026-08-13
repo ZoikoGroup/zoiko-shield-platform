@@ -19,7 +19,7 @@ describe('ConnectorSyncService', () => {
     tenant_id: 'tenant-a',
     environment_id: 'env-1',
     region: 'us',
-    source_region: null,
+    source_region: 'us-east-1',
     definition: { provider: 'microsoft-entra' },
   };
 

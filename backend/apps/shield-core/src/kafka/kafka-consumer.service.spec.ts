@@ -62,7 +62,9 @@ describe('KafkaConsumerService', () => {
     const handler = jest.fn().mockRejectedValue(new Error('boom'));
     service.registerHandler('test.topic', handler);
 
-    await invokeHandleMessage('test.topic', envelope);
+    await expect(invokeHandleMessage('test.topic', envelope)).rejects.toThrow(
+      'One or more handlers failed',
+    );
 
     expect(prismaMock.inboxEvent.create).not.toHaveBeenCalled();
   });

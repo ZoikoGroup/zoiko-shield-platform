@@ -1,8 +1,7 @@
-import { Injectable, Logger, NotFoundException, BadRequestException, Optional, Inject } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { KafkaProducerService } from '../kafka/kafka.producer.service';
-import { AssetIdentityContextService } from '../context/asset-identity-context.service';
-import { DetectionEngineService } from '../detection/detection-engine.service';
+import { KafkaProducerService, CANONICAL_TOPICS } from '../kafka/kafka.producer.service';
+import { requireRegion } from '../security/tenant-context';
 
 export interface ReprocessResult {
   quarantineId: string;
@@ -25,8 +24,6 @@ export class NormalizationService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly kafkaProducer: KafkaProducerService,
-    @Optional() private readonly contextService?: AssetIdentityContextService,
-    @Optional() private readonly detectionService?: DetectionEngineService,
   ) {}
 
   /**
@@ -120,40 +117,48 @@ export class NormalizationService {
       data: { processing_status: 'NORMALIZED' },
     });
 
-    // Resolve asset & identity context
-    if (this.contextService) {
-      try {
-        await this.contextService.processNormalizedEventContext(normalizedEvent.id);
-      } catch (err) {
-        this.logger.warn(`Failed to resolve event context: ${err}`);
-      }
-    }
+    const connectorHealth = await this.prisma.connectorHealthStatus.findFirst({
+      where: {
+        tenant_id: normalizedEvent.tenant_id,
+        instanceId: normalizedEvent.connector_id,
+      },
+      select: { state: true },
+    });
 
-    // Evaluate detection rules
-    if (this.detectionService) {
-      try {
-        await this.detectionService.evaluateNormalizedEvent(normalizedEvent.id);
-      } catch (err) {
-        this.logger.warn(`Failed to evaluate detection rules: ${err}`);
-      }
-    }
-
-    // Publish TelemetryNormalized event
-    try {
-      await this.kafkaProducer.emit('telemetry.normalized', {
-        eventId: normalizedEvent.id,
-        rawEventId: rawEvent.id,
+    await this.kafkaProducer.publishEvent(
+      CANONICAL_TOPICS.EVENT_NORMALIZED,
+      'event.normalized',
+      {
         tenantId: normalizedEvent.tenant_id,
         environmentId: normalizedEvent.environment_id,
+        region: requireRegion(rawEvent.source_region),
+        normalizedEventId: normalizedEvent.id,
         connectorId: normalizedEvent.connector_id,
+        sourceSystem: rawEvent.source_type,
         eventClass: normalizedEvent.event_class,
-        severity: normalizedEvent.severity,
-        actorEmail: normalizedEvent.actor_email,
-        outcome: normalizedEvent.outcome,
-      });
-    } catch (err) {
-      this.logger.warn(`Failed to emit Kafka TelemetryNormalized event: ${err}`);
-    }
+        eventCategory: normalizedEvent.event_category ?? undefined,
+        eventActivity: normalizedEvent.event_activity ?? undefined,
+        actorUserId: normalizedEvent.actor_user_id ?? undefined,
+        actorEmail: normalizedEvent.actor_email ?? undefined,
+        sourceIp: normalizedEvent.source_ip ?? undefined,
+        destinationIp: normalizedEvent.destination_ip ?? undefined,
+        resourceId: normalizedEvent.resource_id ?? undefined,
+        resourceType: normalizedEvent.resource_type ?? undefined,
+        action: normalizedEvent.action ?? undefined,
+        outcome: normalizedEvent.outcome ?? undefined,
+        occurredAt: (normalizedEvent.occurred_at ?? normalizedEvent.recorded_at).toISOString(),
+        schemaVersion: rawEvent.schema_version,
+        normalizerVersion: normalizedEvent.mapping_version,
+        correlationId: normalizedEvent.id,
+        traceId: normalizedEvent.id,
+        sourceHealthState: connectorHealth?.state ?? 'UNKNOWN',
+      },
+      {
+        correlationId: normalizedEvent.id,
+        traceId: normalizedEvent.id,
+        occurredAt: normalizedEvent.occurred_at ?? normalizedEvent.recorded_at,
+      },
+    );
 
     return normalizedEvent;
   }
@@ -201,9 +206,9 @@ export class NormalizationService {
   /**
    * Get normalized event by ID
    */
-  async getNormalizedEventById(eventId: string) {
-    const event = await this.prisma.normalizedEvent.findUnique({
-      where: { id: eventId },
+  async getNormalizedEventById(tenantId: string, eventId: string) {
+    const event = await this.prisma.normalizedEvent.findFirst({
+      where: { id: eventId, tenant_id: tenantId },
       include: { rawEvent: true },
     });
 
@@ -227,9 +232,9 @@ export class NormalizationService {
   /**
    * Reprocess a quarantined event
    */
-  async reprocessQuarantinedEvent(quarantineId: string): Promise<ReprocessResult> {
-    const quarantined = await this.prisma.quarantinedEvent.findUnique({
-      where: { id: quarantineId },
+  async reprocessQuarantinedEvent(tenantId: string, quarantineId: string): Promise<ReprocessResult> {
+    const quarantined = await this.prisma.quarantinedEvent.findFirst({
+      where: { id: quarantineId, tenant_id: tenantId },
     });
 
     if (!quarantined) {

@@ -1,8 +1,9 @@
-import { Body, Controller, Get, HttpStatus, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpStatus, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { InternalAuthGuard } from '../../internal-client/internal-auth.guard';
 import { CreateResourceDefinitionDto, ProtectedResourceDefinitionService } from './protected-resource-definition.service';
 import { RecordObservationDto, ResourceObservationService } from './resource-observation.service';
+import { requireTenantId } from '../../tenant-context';
 
 /** Admin-curated: humans define and approve resource identity/dedup rules. */
 @UseGuards(JwtAuthGuard)
@@ -26,7 +27,7 @@ export class ResourceDefinitionController {
 /**
  * Observations are written by the connector ingestion pipeline
  * (shield-ingest / shield-ai), not an interactive user session — guarded
- * with the same shared-secret InternalAuthGuard already used for other
+ * with the same workload-identity InternalAuthGuard already used for other
  * service-to-service endpoints in this app.
  */
 @UseGuards(InternalAuthGuard)
@@ -35,30 +36,38 @@ export class ResourceObservationController {
   constructor(private readonly observationService: ResourceObservationService) {}
 
   @Post()
-  async record(@Body() dto: RecordObservationDto) {
-    const result = await this.observationService.recordObservation(dto);
+  async record(@Headers('x-tenant-id') headerTenantId: string, @Body() dto: RecordObservationDto) {
+    const tenantId = requireTenantId(headerTenantId, dto.tenantId);
+    const result = await this.observationService.recordObservation({ ...dto, tenantId });
     return { statusCode: HttpStatus.CREATED, data: result };
   }
 
   @Get()
-  async list(@Query('tenantId') tenantId: string) {
+  async list(@Headers('x-tenant-id') headerTenantId: string, @Query('tenantId') queryTenantId?: string) {
+    const tenantId = requireTenantId(headerTenantId, queryTenantId);
     const observations = await this.observationService.listByTenant(tenantId);
     return { statusCode: HttpStatus.OK, data: observations };
   }
 
   @Get(':id')
-  async get(@Param('id') id: string) {
-    const observation = await this.observationService.getObservationById(id);
+  async get(@Headers('x-tenant-id') headerTenantId: string, @Param('id') id: string) {
+    const observation = await this.observationService.getObservationById(requireTenantId(headerTenantId), id);
     return { statusCode: HttpStatus.OK, data: observation };
   }
 
   @Patch(':id/coverage-state')
   async updateCoverageState(
+    @Headers('x-tenant-id') headerTenantId: string,
     @Param('id') id: string,
     @Body('targetState') targetState: string,
     @Body('exclusionReason') exclusionReason?: string,
   ) {
-    const observation = await this.observationService.updateCoverageState(id, targetState, exclusionReason);
+    const observation = await this.observationService.updateCoverageState(
+      requireTenantId(headerTenantId),
+      id,
+      targetState,
+      exclusionReason,
+    );
     return { statusCode: HttpStatus.OK, data: observation };
   }
 }

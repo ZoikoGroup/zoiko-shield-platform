@@ -1,10 +1,11 @@
 import { Body, Controller, Get, HttpStatus, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { CreatePartnerDto, CreatePartnerAgreementDto, PartnerService } from './partner.service';
 import { GrantDelegationDto, PartnerDelegationService } from './partner-delegation.service';
 import { CalculateSettlementDto, PartnerSettlementService } from './partner-settlement.service';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/partners')
 export class PartnerController {
   constructor(private readonly partnerService: PartnerService) {}

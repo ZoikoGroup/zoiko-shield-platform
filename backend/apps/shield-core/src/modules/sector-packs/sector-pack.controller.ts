@@ -1,8 +1,9 @@
 import { Body, Controller, Get, HttpStatus, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { CreateSectorPackDto, SectorPackService, SetMarketAvailabilityDto } from './sector-pack.service';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/sector-packs')
 export class SectorPackController {
   constructor(private readonly packService: SectorPackService) {}

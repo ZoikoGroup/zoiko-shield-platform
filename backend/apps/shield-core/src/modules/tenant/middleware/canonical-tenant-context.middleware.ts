@@ -1,4 +1,4 @@
-import { Injectable, NestMiddleware, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { CanonicalContext } from '../interfaces/canonical-context.interface';
 
@@ -16,21 +16,28 @@ export class CanonicalTenantContextMiddleware implements NestMiddleware {
     }
 
     const tenantId = (req.headers['x-tenant-id'] as string) || (req.query?.tenantId as string);
-    const environmentId = (req.headers['x-environment-id'] as string) || 'production';
+    const environmentId = req.headers['x-environment-id'] as string | undefined;
     const requestId = (req.headers['x-request-id'] as string) || `req-${Date.now()}`;
     const correlationId = (req.headers['x-correlation-id'] as string) || requestId;
     const purpose = (req.headers['x-purpose'] as string) || 'security-monitoring';
 
-    if (!tenantId || tenantId === 'default-tenant') {
-      // Allow request to proceed if controller handles auth independently, but do not supply a default context
+    if (tenantId === 'default-tenant') {
+      throw new BadRequestException("'default-tenant' is not a valid tenant identifier");
     }
 
     if (tenantId) {
+      const legalEntityId = req.headers['x-legal-entity-id'] as string | undefined;
+      const region = req.headers['x-region'] as string | undefined;
+      if (!legalEntityId || !environmentId || !region) {
+        throw new BadRequestException(
+          'x-legal-entity-id, x-environment-id, and x-region are required with tenant context',
+        );
+      }
       req.canonicalContext = {
         tenantId,
-        legalEntityId: (req.headers['x-legal-entity-id'] as string) || 'default-le',
+        legalEntityId,
         environmentId,
-        region: (req.headers['x-region'] as string) || 'us-east-1',
+        region,
         actorId: (req.headers['x-actor-id'] as string) || undefined,
         workloadId: (req.headers['x-workload-id'] as string) || undefined,
         correlationId,

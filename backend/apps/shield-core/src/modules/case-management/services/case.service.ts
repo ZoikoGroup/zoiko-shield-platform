@@ -6,6 +6,7 @@ import { CaseRepository } from '../repositories/case.repository';
 import { CaseStateMachineService, CaseStatus, CaseDisposition } from '../state-machine/case-state-machine.service';
 import { CaseTimelineService } from '../timeline/case-timeline.service';
 import { EvidenceService } from '../../evidence/services/evidence.service';
+import { EvidenceAutoCreationService } from '../../evidence/evidence-auto-creation.service';
 import { CASE_TOPICS } from '../events/case-events';
 
 @Injectable()
@@ -19,6 +20,7 @@ export class CaseService {
     private readonly stateMachine: CaseStateMachineService,
     private readonly timeline: CaseTimelineService,
     private readonly evidenceService: EvidenceService,
+    private readonly evidenceAutoCreation: EvidenceAutoCreationService,
   ) {}
 
   /**
@@ -96,6 +98,7 @@ export class CaseService {
     const sourceEvidence = await this.evidenceService.createEvidence({
       tenantId: params.tenantId,
       environmentId: params.environmentId ?? alert.environment_id,
+      region: alert.region,
       evidenceType: 'ALERT_ESCALATION',
       producingService: 'case-management',
       sourceSystemId: 'shield-ingest-alert-service',
@@ -191,6 +194,17 @@ export class CaseService {
       actorId: params.actorId,
       title: `Status changed: ${caseRow.status} -> ${params.toState}`,
       summary: params.reason,
+    });
+
+    await this.evidenceAutoCreation.createForCaseTransition({
+      tenantId: params.tenantId,
+      environmentId: caseRow.environment_id,
+      region: caseRow.region,
+      caseId: params.caseId,
+      fromState: caseRow.status,
+      toState: params.toState,
+      actorId: params.actorId,
+      reason: params.reason,
     });
 
     return transition;

@@ -1,0 +1,1 @@
+export const CHECKPOINT_SIGNER = Symbol('CHECKPOINT_SIGNER');

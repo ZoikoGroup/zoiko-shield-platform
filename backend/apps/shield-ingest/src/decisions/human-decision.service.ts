@@ -20,9 +20,9 @@ export class HumanDecisionService {
   /**
    * Record analyst human decision separately from AI outputs and append to CaseTimeline
    */
-  async recordDecision(caseId: string, dto: RecordHumanDecisionDto) {
-    const caseRecord = await this.prisma.case.findUnique({
-      where: { id: caseId },
+  async recordDecision(tenantId: string, caseId: string, dto: RecordHumanDecisionDto) {
+    const caseRecord = await this.prisma.case.findFirst({
+      where: { id: caseId, tenant_id: tenantId },
     });
 
     if (!caseRecord) {
@@ -66,9 +66,9 @@ export class HumanDecisionService {
   /**
    * Get human decisions for a case
    */
-  async getDecisionsByCase(caseId: string) {
-    const caseRecord = await this.prisma.case.findUnique({
-      where: { id: caseId },
+  async getDecisionsByCase(tenantId: string, caseId: string) {
+    const caseRecord = await this.prisma.case.findFirst({
+      where: { id: caseId, tenant_id: tenantId },
     });
 
     if (!caseRecord) {
@@ -76,7 +76,7 @@ export class HumanDecisionService {
     }
 
     return this.prisma.caseDecision.findMany({
-      where: { case_id: caseId },
+      where: { case_id: caseId, tenant_id: tenantId },
       orderBy: { created_at: 'desc' },
     });
   }

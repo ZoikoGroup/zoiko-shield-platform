@@ -79,20 +79,59 @@ export class AuthorizationService {
   }
 
   async getPermissionCodesForPrincipal(tenantId: string, principalId: string): Promise<string[]> {
+    const codes = new Set<string>();
+
+    // Check tenant-specific membership
     const membership = await this.membershipRepository.findOne({
       where: { tenantId, principalId, status: 'ACTIVE' },
       relations: { roles: { permissions: true } },
     });
-    if (!membership) {
-      return [];
-    }
-    const codes = new Set<string>();
-    for (const role of membership.roles) {
-      for (const permission of role.permissions) {
-        codes.add(permission.code);
+    if (membership) {
+      for (const role of membership.roles) {
+        for (const permission of role.permissions) {
+          codes.add(permission.code);
+        }
       }
     }
+
+    // Also check platform-scope membership — platform super admins carry
+    // their permissions across all tenants (offboarding, deletion, etc.)
+    if (tenantId !== '00000000-0000-0000-0000-000000000000') {
+      const platformMembership = await this.membershipRepository.findOne({
+        where: { tenantId: '00000000-0000-0000-0000-000000000000', principalId, status: 'ACTIVE' },
+        relations: { roles: { permissions: true } },
+      });
+      if (platformMembership) {
+        for (const role of platformMembership.roles) {
+          for (const permission of role.permissions) {
+            codes.add(permission.code);
+          }
+        }
+      }
+    }
+
     return [...codes];
+  }
+
+  async hasTenantAccess(tenantId: string, principalId: string): Promise<boolean> {
+    const membership = await this.membershipRepository.findOne({
+      where: [
+        { tenantId, principalId, status: 'ACTIVE' },
+        { tenantId: '00000000-0000-0000-0000-000000000000', principalId, status: 'ACTIVE' },
+      ],
+      select: { id: true },
+    });
+    return Boolean(membership);
+  }
+
+  async getAccessibleTenantIds(principalId: string): Promise<string[]> {
+    const memberships = await this.membershipRepository.find({
+      where: { principalId, status: 'ACTIVE' },
+      select: { tenantId: true },
+    });
+    return memberships
+      .map((membership) => membership.tenantId)
+      .filter((tenantId) => tenantId !== '00000000-0000-0000-0000-000000000000');
   }
 
   /** Returns all active memberships for a principal, with roles and permissions eagerly loaded. */
@@ -187,5 +226,52 @@ export class AuthorizationService {
     await this.invitationRepository.save(invitation);
 
     return membership;
+  }
+
+  async listInvitations(tenantId: string) {
+    const invitations = await this.invitationRepository.find({
+      where: { tenantId },
+      order: { createdAt: 'DESC' },
+    });
+    return invitations.map(({ tokenHash: _tokenHash, ...invitation }) => invitation);
+  }
+
+  async listMembers(tenantId: string) {
+    return this.membershipRepository.find({
+      where: { tenantId },
+      relations: { roles: { permissions: true } },
+      order: { joinedAt: 'ASC' },
+    });
+  }
+
+  async updateMember(
+    tenantId: string,
+    memberId: string,
+    input: { roleIds?: string[]; status?: 'ACTIVE' | 'SUSPENDED' },
+  ) {
+    const membership = await this.membershipRepository.findOne({
+      where: { id: memberId, tenantId },
+      relations: { roles: true },
+    });
+    if (!membership) throw new NotFoundException(`Tenant member ${memberId} not found`);
+
+    if (input.status) membership.status = input.status;
+    if (input.roleIds) {
+      const roles = input.roleIds.length ? await this.roleRepository.findBy({ id: In(input.roleIds) }) : [];
+      if (roles.length !== input.roleIds.length) throw new BadRequestException('One or more roles do not exist');
+      if (roles.some((role) => role.roleLevel !== 'TENANT' || (role.tenantId && role.tenantId !== tenantId))) {
+        throw new ForbiddenException('Every assigned role must be valid for the target tenant');
+      }
+      membership.roles = roles;
+    }
+    return this.membershipRepository.save(membership);
+  }
+
+  async removeMember(tenantId: string, memberId: string) {
+    const membership = await this.membershipRepository.findOne({ where: { id: memberId, tenantId } });
+    if (!membership) throw new NotFoundException(`Tenant member ${memberId} not found`);
+    membership.status = 'REMOVED';
+    membership.roles = [];
+    return this.membershipRepository.save(membership);
   }
 }

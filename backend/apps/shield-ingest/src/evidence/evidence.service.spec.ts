@@ -1,44 +1,44 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EvidenceService } from './evidence.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { EvidenceService as CanonicalEvidenceService } from '../../../shield-core/src/modules/evidence/services/evidence.service';
+import { EvidenceVerificationService } from '../../../shield-core/src/modules/evidence/verification/evidence-verification.service';
 
 describe('EvidenceService (Step 12)', () => {
   let service: EvidenceService;
   let prismaMock: any;
+  let canonicalEvidenceMock: any;
+  let verificationMock: any;
 
   beforeEach(async () => {
     prismaMock = {
-      evidenceRecord: {
-        create: jest.fn(),
-        findUnique: jest.fn(),
-        findMany: jest.fn(),
-      },
-      case: {
-        findUnique: jest.fn(),
-      },
-      caseTimeline: {
-        create: jest.fn(),
-      },
+      evidenceRecord: { findMany: jest.fn() },
     };
+    canonicalEvidenceMock = {
+      createEvidence: jest.fn(),
+      getById: jest.fn(),
+    };
+    verificationMock = { verify: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EvidenceService,
         { provide: PrismaService, useValue: prismaMock },
+        { provide: CanonicalEvidenceService, useValue: canonicalEvidenceMock },
+        { provide: EvidenceVerificationService, useValue: verificationMock },
       ],
     }).compile();
 
     service = module.get<EvidenceService>(EvidenceService);
   });
 
-  it('should create evidence record with SHA-256 hash and append EVIDENCE_LINKED to CaseTimeline', async () => {
-    prismaMock.evidenceRecord.create.mockImplementation(({ data }) =>
-      Promise.resolve({ id: 'ev-1', ...data }),
-    );
-    prismaMock.case.findUnique.mockResolvedValue({ id: 'case-1' });
+  it('routes evidence creation through the canonical object-store, ledger, and outbox write path', async () => {
+    canonicalEvidenceMock.createEvidence.mockResolvedValue({ id: 'ev-1', content_hash: 'sha256' });
 
     const result = await service.createEvidence({
       tenantId: 'tenant-1',
+      environmentId: 'env-1',
+      region: 'eu-west-1',
       caseId: 'case-1',
       evidenceType: 'LOG_EXCERPT',
       title: 'Auth Failure Audit Log',
@@ -46,28 +46,27 @@ describe('EvidenceService (Step 12)', () => {
     });
 
     expect(result.id).toBe('ev-1');
-    expect(result.sha256_hash).toBeDefined();
-    expect(prismaMock.caseTimeline.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        event_type: 'EVIDENCE_LINKED',
-        case_id: 'case-1',
+    expect(canonicalEvidenceMock.createEvidence).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: 'tenant-1',
+        environmentId: 'env-1',
+        region: 'eu-west-1',
+        caseId: 'case-1',
+        content: expect.objectContaining({ rawContent: 'User auth failure at 2026-08-10T12:00:00Z' }),
       }),
-    });
+    );
   });
 
-  it('should verify cryptographic SHA-256 hash integrity', async () => {
-    const rawContent = 'Sensitive audit payload';
-    const crypto = require('crypto');
-    const expectedHash = crypto.createHash('sha256').update(rawContent).digest('hex');
-
-    prismaMock.evidenceRecord.findUnique.mockResolvedValue({
-      id: 'ev-1',
-      raw_content: rawContent,
-      sha256_hash: expectedHash,
+  it('re-reads object bytes through the canonical independent verification path', async () => {
+    verificationMock.verify.mockResolvedValue({
+      integrityState: 'VERIFIED',
+      contentHash: 'expected-hash',
+      storedHash: 'expected-hash',
     });
 
-    const verifyResult = await service.verifyEvidenceIntegrity('ev-1');
+    const verifyResult = await service.verifyEvidenceIntegrity('tenant-1', 'ev-1');
     expect(verifyResult.isIntegrityValid).toBe(true);
-    expect(verifyResult.recomputedHash).toBe(expectedHash);
+    expect(verifyResult.recomputedHash).toBe('expected-hash');
+    expect(verificationMock.verify).toHaveBeenCalledWith('tenant-1', 'ev-1');
   });
 });

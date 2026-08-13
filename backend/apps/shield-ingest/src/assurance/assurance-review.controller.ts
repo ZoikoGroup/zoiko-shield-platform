@@ -14,6 +14,7 @@ import {
   CreateAssuranceReviewDto,
   CreateVCISOReflectionDto,
 } from './assurance-review.service';
+import { requireTenantId } from '../security/tenant-context';
 
 @Controller('api/v1/assurance')
 export class AssuranceReviewController {
@@ -29,7 +30,7 @@ export class AssuranceReviewController {
     @Body() dto: CreateAssuranceReviewDto,
   ) {
     if (!dto.tenantId) {
-      dto.tenantId = headerTenantId || 'default-tenant';
+      dto.tenantId = requireTenantId(headerTenantId);
     }
     const review = await this.assuranceService.createAssuranceReview(dto);
     return {
@@ -48,7 +49,7 @@ export class AssuranceReviewController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Query('tenantId') queryTenantId?: string,
   ) {
-    const tenantId = headerTenantId || queryTenantId || 'default-tenant';
+    const tenantId = requireTenantId(headerTenantId, queryTenantId);
     const reviews = await this.assuranceService.getAssuranceReviews(tenantId);
     return {
       statusCode: HttpStatus.OK,
@@ -65,7 +66,7 @@ export class AssuranceReviewController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Query('tenantId') queryTenantId?: string,
   ) {
-    const tenantId = headerTenantId || queryTenantId || 'default-tenant';
+    const tenantId = requireTenantId(headerTenantId, queryTenantId);
     const summary = await this.assuranceService.getAssurancePostureSummary(tenantId);
     return {
       statusCode: HttpStatus.OK,
@@ -83,7 +84,7 @@ export class AssuranceReviewController {
     @Body() dto: CreateVCISOReflectionDto,
   ) {
     if (!dto.tenantId) {
-      dto.tenantId = headerTenantId || 'default-tenant';
+      dto.tenantId = requireTenantId(headerTenantId);
     }
     const reflection = await this.assuranceService.createVCISOReflection(dto);
     return {
@@ -103,7 +104,7 @@ export class AssuranceReviewController {
     @Query('tenantId') queryTenantId?: string,
     @Query('assuranceReviewId') reviewId?: string,
   ) {
-    const tenantId = headerTenantId || queryTenantId || 'default-tenant';
+    const tenantId = requireTenantId(headerTenantId, queryTenantId);
     const reflections = await this.assuranceService.getVCISOReflections(tenantId, reviewId);
     return {
       statusCode: HttpStatus.OK,

@@ -9,10 +9,9 @@ describe('ControlTestingService (Step 13)', () => {
   beforeEach(async () => {
     prismaMock = {
       controlObjective: {
-        upsert: jest.fn(),
         create: jest.fn(),
         findMany: jest.fn(),
-        findUnique: jest.fn(),
+        findFirst: jest.fn(),
       },
       evidenceRecord: {
         findMany: jest.fn(),
@@ -36,35 +35,43 @@ describe('ControlTestingService (Step 13)', () => {
     service = module.get<ControlTestingService>(ControlTestingService);
   });
 
-  it('should seed default control objectives', async () => {
-    prismaMock.controlObjective.upsert.mockImplementation(({ create }) =>
-      Promise.resolve({ id: 'ctrl-1', ...create }),
+  it('should create a tenant-owned control objective', async () => {
+    prismaMock.controlObjective.create.mockImplementation(({ data }) =>
+      Promise.resolve({ id: 'ctrl-1', ...data }),
     );
 
-    const seeded = await service.seedDefaultControlObjectives('tenant-1');
-    expect(seeded.length).toBe(4);
-    expect(prismaMock.controlObjective.upsert).toHaveBeenCalledTimes(4);
+    const control = await service.createControlObjective({
+      tenantId: 'tenant-1',
+      code: 'MFA_ENFORCED',
+      name: 'MFA is enforced',
+    });
+
+    expect(control.owner).toBe('tenant-1');
+    expect(prismaMock.controlObjective.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ key: 'tenant-1:MFA_ENFORCED', owner: 'tenant-1' }),
+    });
   });
 
-  it('should evaluate control objective and generate ControlTestRun with PASS result', async () => {
-    prismaMock.controlObjective.findUnique.mockResolvedValue({
+  it('records INSUFFICIENT_EVIDENCE when no control-specific evaluator can prove the objective', async () => {
+    prismaMock.controlObjective.findFirst.mockResolvedValue({
       id: 'ctrl-1',
-      tenant_id: 'tenant-1',
-      code: 'MFA_ENFORCED',
+      owner: 'tenant-1',
+      key: 'tenant-1:MFA_ENFORCED',
+      status: 'ACTIVE',
     });
     prismaMock.evidenceRecord.findMany.mockResolvedValue([{ id: 'ev-1' }]);
     prismaMock.normalizedEvent.count.mockResolvedValue(50);
     prismaMock.controlTestRun.create.mockResolvedValue({
       id: 'run-1',
-      result: 'PASS',
+      result: 'INSUFFICIENT_EVIDENCE',
     });
 
-    const run = await service.evaluateControlObjective('ctrl-1');
-    expect(run.result).toBe('PASS');
+    const run = await service.evaluateControlObjective('tenant-1', 'ctrl-1');
+    expect(run.result).toBe('INSUFFICIENT_EVIDENCE');
     expect(prismaMock.controlTestRun.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        result: 'PASS',
-        evaluated_events_count: 50,
+        result: 'INSUFFICIENT_EVIDENCE',
+        tenant_id: 'tenant-1',
       }),
     });
   });

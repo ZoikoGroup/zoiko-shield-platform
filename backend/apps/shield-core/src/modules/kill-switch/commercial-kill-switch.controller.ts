@@ -1,9 +1,10 @@
 import { Body, Controller, Get, HttpStatus, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { ActivateKillSwitchDto, CommercialKillSwitchService } from './commercial-kill-switch.service';
 import type { KillSwitchAction } from './commercial-kill-switch.service';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/commercial/kill-switch')
 export class CommercialKillSwitchController {
   constructor(private readonly killSwitchService: CommercialKillSwitchService) {}

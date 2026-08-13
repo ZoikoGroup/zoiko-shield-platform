@@ -9,7 +9,7 @@ describe('HumanDecisionService (Step 16)', () => {
   beforeEach(async () => {
     prismaMock = {
       case: {
-        findUnique: jest.fn(),
+        findFirst: jest.fn(),
       },
       caseDecision: {
         create: jest.fn(),
@@ -31,7 +31,7 @@ describe('HumanDecisionService (Step 16)', () => {
   });
 
   it('should record human decision and append DECISION_RECORDED event to CaseTimeline', async () => {
-    prismaMock.case.findUnique.mockResolvedValue({
+    prismaMock.case.findFirst.mockResolvedValue({
       id: 'case-1',
       tenant_id: 'tenant-1',
     });
@@ -42,7 +42,7 @@ describe('HumanDecisionService (Step 16)', () => {
       decision: 'Escalate to L2 Analyst',
     });
 
-    const result = await service.recordDecision('case-1', {
+    const result = await service.recordDecision('tenant-1', 'case-1', {
       decisionType: 'TRIAGE_DECISION',
       decision: 'Escalate to L2 Analyst',
       reason: 'Confirmed lateral movement pattern',
@@ -52,7 +52,7 @@ describe('HumanDecisionService (Step 16)', () => {
     expect(prismaMock.caseDecision.create).toHaveBeenCalled();
     expect(prismaMock.caseTimeline.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
-        event_type: 'DECISION_RECORDED',
+        entry_type: 'DECISION_RECORDED',
         case_id: 'case-1',
       }),
     });

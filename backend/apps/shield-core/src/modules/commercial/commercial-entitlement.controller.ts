@@ -12,6 +12,8 @@ import {
 } from '@nestjs/common';
 import { IsOptional, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
+import { requireTenantId } from '../../tenant-context';
 import {
   CommercialEntitlementService,
   CreateCommercialAccountDto,
@@ -45,7 +47,7 @@ export class CheckClaimQueryDto {
   region?: string;
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/commercial')
 export class CommercialEntitlementController {
   constructor(
@@ -118,7 +120,7 @@ export class CommercialEntitlementController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Query('tenantId') queryTenantId?: string,
   ) {
-    const tenantId = headerTenantId || queryTenantId || 'default-tenant';
+    const tenantId = requireTenantId(headerTenantId, queryTenantId);
     const result = await this.commercialService.getEntitlementsByTenant(tenantId);
     return {
       statusCode: HttpStatus.OK,
@@ -135,7 +137,7 @@ export class CommercialEntitlementController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Query() query: CheckEntitlementQueryDto,
   ) {
-    const tenantId = headerTenantId || query.tenantId || 'default-tenant';
+    const tenantId = requireTenantId(headerTenantId, query.tenantId);
     const isEntitled = await this.commercialService.checkEntitlement(
       tenantId,
       query.offerType,
@@ -173,7 +175,7 @@ export class CommercialEntitlementController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Query() query: CheckClaimQueryDto,
   ) {
-    const tenantId = headerTenantId || query.tenantId || 'default-tenant';
+    const tenantId = requireTenantId(headerTenantId, query.tenantId);
     const result = await this.commercialService.verifyClaimEligibility(
       tenantId,
       query.claimKey,

@@ -7,6 +7,7 @@ import { CaseRepository } from '../repositories/case.repository';
 import { CaseStateMachineService } from '../state-machine/case-state-machine.service';
 import { CaseTimelineService } from '../timeline/case-timeline.service';
 import { EvidenceService } from '../../evidence/services/evidence.service';
+import { EvidenceAutoCreationService } from '../../evidence/evidence-auto-creation.service';
 
 describe('CaseService', () => {
   let service: CaseService;
@@ -14,6 +15,7 @@ describe('CaseService', () => {
   let caseRepoMock: any;
   let timelineMock: any;
   let evidenceServiceMock: any;
+  let evidenceAutoCreationMock: any;
 
   const alert = {
     id: 'alert-1',
@@ -49,6 +51,9 @@ describe('CaseService', () => {
     };
     timelineMock = { append: jest.fn().mockResolvedValue({}) };
     evidenceServiceMock = { createEvidence: jest.fn().mockResolvedValue({ id: 'evidence-1' }) };
+    evidenceAutoCreationMock = {
+      createForCaseTransition: jest.fn().mockResolvedValue({ id: 'transition-evidence-1' }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -59,6 +64,7 @@ describe('CaseService', () => {
         CaseStateMachineService,
         { provide: CaseTimelineService, useValue: timelineMock },
         { provide: EvidenceService, useValue: evidenceServiceMock },
+        { provide: EvidenceAutoCreationService, useValue: evidenceAutoCreationMock },
       ],
     }).compile();
 
@@ -89,7 +95,13 @@ describe('CaseService', () => {
   });
 
   it('allows a valid state transition and records a CaseTransition with actor + reason', async () => {
-    caseRepoMock.findByTenantAndId.mockResolvedValue({ id: 'case-1', tenant_id: 'tenant-a', status: 'NEW' });
+    caseRepoMock.findByTenantAndId.mockResolvedValue({
+      id: 'case-1',
+      tenant_id: 'tenant-a',
+      environment_id: 'env-1',
+      region: 'us',
+      status: 'NEW',
+    });
 
     const transition = await service.transition({
       tenantId: 'tenant-a',
@@ -104,6 +116,9 @@ describe('CaseService', () => {
       expect.objectContaining({
         data: expect.objectContaining({ from_state: 'NEW', to_state: 'TRIAGED', actor_id: 'analyst-1', reason: 'Initial triage complete' }),
       }),
+    );
+    expect(evidenceAutoCreationMock.createForCaseTransition).toHaveBeenCalledWith(
+      expect.objectContaining({ environmentId: 'env-1', caseId: 'case-1' }),
     );
   });
 

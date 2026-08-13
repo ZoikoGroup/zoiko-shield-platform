@@ -14,9 +14,9 @@ export class IdentityEntityService {
     });
   }
 
-  async getIdentityById(identityId: string) {
-    const identity = await this.prisma.identityEntity.findUnique({
-      where: { id: identityId },
+  async getIdentityById(tenantId: string, identityId: string) {
+    const identity = await this.prisma.identityEntity.findFirst({
+      where: { id: identityId, tenant_id: tenantId },
       include: {
         aliases: true,
         normalizedEvents: { take: 10, orderBy: { recorded_at: 'desc' } },

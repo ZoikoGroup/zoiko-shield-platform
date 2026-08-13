@@ -15,6 +15,7 @@ import {
   ConnectorCatalogService,
   CreateConnectorDto,
 } from './connector-catalog.service';
+import { requireTenantId } from '../security/tenant-context';
 
 @Controller('api/v1')
 export class ConnectorCatalogController {
@@ -63,7 +64,7 @@ export class ConnectorCatalogController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Query('tenantId') queryTenantId?: string,
   ) {
-    const tenantId = headerTenantId || queryTenantId || '';
+    const tenantId = requireTenantId(headerTenantId, queryTenantId);
     const result = await this.connectorCatalogService.getConnectors(tenantId);
     return {
       statusCode: HttpStatus.OK,
@@ -76,8 +77,8 @@ export class ConnectorCatalogController {
    * Get single connector details
    */
   @Get('connectors/:connectorId')
-  async getConnectorById(@Param('connectorId') connectorId: string) {
-    const result = await this.connectorCatalogService.getConnectorById(connectorId);
+  async getConnectorById(@Headers('x-tenant-id') tenantId: string, @Param('connectorId') connectorId: string) {
+    const result = await this.connectorCatalogService.getConnectorById(tenantId, connectorId);
     return {
       statusCode: HttpStatus.OK,
       data: result,
@@ -85,18 +86,22 @@ export class ConnectorCatalogController {
   }
 
   @Patch('connectors/:connectorId')
-  async updateConnector(@Param('connectorId') connectorId: string, @Body() dto: any) {
-    return { statusCode: HttpStatus.OK, message: 'Connector updated', connectorId, data: dto };
+  async updateConnector(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('connectorId') connectorId: string,
+    @Body() dto: { name?: string; sourceRegion?: string },
+  ) {
+    return { statusCode: HttpStatus.OK, data: await this.connectorCatalogService.updateConnector(tenantId, connectorId, dto) };
   }
 
   @Delete('connectors/:connectorId')
-  async deleteConnector(@Param('connectorId') connectorId: string) {
-    return { statusCode: HttpStatus.OK, message: 'Connector retired', connectorId };
+  async deleteConnector(@Headers('x-tenant-id') tenantId: string, @Param('connectorId') connectorId: string) {
+    return { statusCode: HttpStatus.OK, data: await this.connectorCatalogService.retireConnector(tenantId, connectorId) };
   }
 
   @Post('connectors/:connectorId/test')
-  async testConnector(@Param('connectorId') connectorId: string) {
-    return { statusCode: HttpStatus.OK, message: 'Connection test successful', connectorId, status: 'HEALTHY' };
+  async testConnector(@Headers('x-tenant-id') tenantId: string, @Param('connectorId') connectorId: string) {
+    return { statusCode: HttpStatus.OK, data: await this.connectorCatalogService.testConnector(tenantId, connectorId) };
   }
 
   /**
@@ -104,8 +109,8 @@ export class ConnectorCatalogController {
    * Activate a connector
    */
   @Post('connectors/:connectorId/activate')
-  async activateConnector(@Param('connectorId') connectorId: string) {
-    const result = await this.connectorCatalogService.activateConnector(connectorId);
+  async activateConnector(@Headers('x-tenant-id') tenantId: string, @Param('connectorId') connectorId: string) {
+    const result = await this.connectorCatalogService.activateConnector(tenantId, connectorId);
     return {
       statusCode: HttpStatus.OK,
       message: 'Connector activated',
@@ -118,8 +123,8 @@ export class ConnectorCatalogController {
    * Disable a connector
    */
   @Post('connectors/:connectorId/disable')
-  async disableConnector(@Param('connectorId') connectorId: string) {
-    const result = await this.connectorCatalogService.disableConnector(connectorId);
+  async disableConnector(@Headers('x-tenant-id') tenantId: string, @Param('connectorId') connectorId: string) {
+    const result = await this.connectorCatalogService.disableConnector(tenantId, connectorId);
     return {
       statusCode: HttpStatus.OK,
       message: 'Connector disabled',
@@ -128,12 +133,12 @@ export class ConnectorCatalogController {
   }
 
   @Post('connectors/:connectorId/sync')
-  async syncConnector(@Param('connectorId') connectorId: string) {
-    return { statusCode: HttpStatus.OK, message: 'Synchronization triggered', connectorId, status: 'SYNCING' };
+  async syncConnector(@Headers('x-tenant-id') tenantId: string, @Param('connectorId') connectorId: string) {
+    return { statusCode: HttpStatus.OK, data: await this.connectorCatalogService.syncConnector(tenantId, connectorId) };
   }
 
   @Get('connectors/:connectorId/health')
-  async getConnectorHealth(@Param('connectorId') connectorId: string) {
-    return { statusCode: HttpStatus.OK, connectorId, healthStatus: 'HEALTHY', lastSync: new Date().toISOString() };
+  async getConnectorHealth(@Headers('x-tenant-id') tenantId: string, @Param('connectorId') connectorId: string) {
+    return { statusCode: HttpStatus.OK, data: await this.connectorCatalogService.getConnectorHealth(tenantId, connectorId) };
   }
 }

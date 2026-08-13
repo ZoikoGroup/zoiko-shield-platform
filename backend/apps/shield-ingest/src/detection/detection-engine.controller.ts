@@ -14,6 +14,7 @@ import {
   CreateDetectionRuleDto,
   UpdateDetectionRuleDto,
 } from './detection-engine.service';
+import { requireTenantId } from '../security/tenant-context';
 
 export class TestRuleRequestDto {
   sampleEvent!: Record<string, any>;
@@ -37,7 +38,7 @@ export class DetectionEngineController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Body() dto: CreateDetectionRuleDto,
   ) {
-    const tenantId = headerTenantId || dto.tenantId;
+    const tenantId = requireTenantId(headerTenantId, dto.tenantId);
     const rule = await this.detectionService.createRule({
       ...dto,
       tenantId,
@@ -58,7 +59,7 @@ export class DetectionEngineController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Query('tenantId') queryTenantId?: string,
   ) {
-    const tenantId = headerTenantId || queryTenantId || undefined;
+    const tenantId = requireTenantId(headerTenantId, queryTenantId);
     const rules = await this.detectionService.getRules(tenantId);
     return {
       statusCode: HttpStatus.OK,
@@ -71,8 +72,14 @@ export class DetectionEngineController {
    * Get single detection rule details
    */
   @Get(':detectionId')
-  async getRuleById(@Param('detectionId') detectionId: string) {
-    const rule = await this.detectionService.getRuleById(detectionId);
+  async getRuleById(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('detectionId') detectionId: string,
+  ) {
+    const rule = await this.detectionService.getRuleById(
+      requireTenantId(headerTenantId),
+      detectionId,
+    );
     return {
       statusCode: HttpStatus.OK,
       data: rule,
@@ -85,10 +92,15 @@ export class DetectionEngineController {
    */
   @Patch(':detectionId')
   async updateRule(
+    @Headers('x-tenant-id') headerTenantId: string,
     @Param('detectionId') detectionId: string,
     @Body() dto: UpdateDetectionRuleDto,
   ) {
-    const rule = await this.detectionService.updateRule(detectionId, dto);
+    const rule = await this.detectionService.updateRule(
+      requireTenantId(headerTenantId),
+      detectionId,
+      dto,
+    );
     return {
       statusCode: HttpStatus.OK,
       message: 'Detection rule updated',
@@ -102,10 +114,12 @@ export class DetectionEngineController {
    */
   @Post(':detectionId/test')
   async testRule(
+    @Headers('x-tenant-id') headerTenantId: string,
     @Param('detectionId') detectionId: string,
     @Body() dto: TestRuleRequestDto,
   ) {
     const result = await this.detectionService.testRule(
+      requireTenantId(headerTenantId),
       detectionId,
       dto.sampleEvent,
     );
@@ -120,8 +134,14 @@ export class DetectionEngineController {
    * Activate detection rule
    */
   @Post(':detectionId/activate')
-  async activateRule(@Param('detectionId') detectionId: string) {
-    const rule = await this.detectionService.activateRule(detectionId);
+  async activateRule(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('detectionId') detectionId: string,
+  ) {
+    const rule = await this.detectionService.activateRule(
+      requireTenantId(headerTenantId),
+      detectionId,
+    );
     return {
       statusCode: HttpStatus.OK,
       message: 'Detection rule activated',
@@ -134,8 +154,14 @@ export class DetectionEngineController {
    * Disable detection rule
    */
   @Post(':detectionId/disable')
-  async disableRule(@Param('detectionId') detectionId: string) {
-    const rule = await this.detectionService.disableRule(detectionId);
+  async disableRule(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('detectionId') detectionId: string,
+  ) {
+    const rule = await this.detectionService.disableRule(
+      requireTenantId(headerTenantId),
+      detectionId,
+    );
     return {
       statusCode: HttpStatus.OK,
       message: 'Detection rule disabled',
@@ -153,7 +179,7 @@ export class DetectionEngineController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Body() body: ReplayDetectionsRequestDto,
   ) {
-    const tenantId = headerTenantId || body.tenantId || 'default-tenant';
+    const tenantId = requireTenantId(headerTenantId, body.tenantId);
     const result = await this.detectionService.replayDetections(
       tenantId,
       detectionId,

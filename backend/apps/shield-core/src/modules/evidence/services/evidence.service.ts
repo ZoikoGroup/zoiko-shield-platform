@@ -8,12 +8,13 @@ import { EvidenceLedgerService } from '../ledger/evidence-ledger.service';
 import { EvidenceLineageService } from '../lineage/evidence-lineage.service';
 import { EvidenceRepository } from '../repositories/evidence.repository';
 import { EVIDENCE_TOPICS } from '../events/evidence-events';
+import { requireEnvironmentId, requireRegion } from '../../../tenant-context';
 
 export interface CreateEvidenceInput {
   tenantId: string;
-  environmentId?: string;
+  environmentId: string;
   legalEntityId?: string;
-  region?: string;
+  region: string;
   evidenceType: string;
   producingService: string;
   sourceSystemId: string;
@@ -30,6 +31,8 @@ export interface CreateEvidenceInput {
   retentionProfile?: string;
   parentEvidenceId?: string;
   lineageRelationship?: string;
+  caseId?: string;
+  addedBy?: string;
 }
 
 /**
@@ -59,14 +62,25 @@ export class EvidenceService {
     const objectKey = this.storageService.buildObjectKey(input.tenantId, evidenceId);
     await this.storageService.putObject(objectKey, Buffer.from(canonicalBytes, 'utf-8'), mediaType);
 
-    const [evidence] = await this.prisma.$transaction([
-      this.prisma.evidenceRecord.create({
+    try {
+      const evidence = await this.prisma.$transaction(async (tx) => {
+        if (input.caseId) {
+          const caseRecord = await tx.case.findFirst({
+            where: { id: input.caseId, tenant_id: input.tenantId },
+            select: { id: true },
+          });
+          if (!caseRecord) {
+            throw new NotFoundException(`Case '${input.caseId}' not found`);
+          }
+        }
+
+        const created = await tx.evidenceRecord.create({
         data: {
           id: evidenceId,
           tenant_id: input.tenantId,
-          environment_id: input.environmentId ?? 'default-env',
+          environment_id: requireEnvironmentId(input.environmentId),
           legal_entity_id: input.legalEntityId,
-          region: input.region ?? 'unspecified',
+          region: requireRegion(input.region),
           evidence_type: input.evidenceType,
           producing_service: input.producingService,
           source_system_id: input.sourceSystemId,
@@ -91,34 +105,70 @@ export class EvidenceService {
           completeness_state: 'UNKNOWN',
           retention_profile: input.retentionProfile ?? 'STANDARD',
         },
-      }),
-      this.prisma.outboxEvent.create({
+        });
+        await tx.outboxEvent.create({
         data: this.outbox.build({
           tenantId: input.tenantId,
           topic: EVIDENCE_TOPICS.EVIDENCE_COLLECTED,
           eventType: 'evidence.collected',
           payload: { evidenceId, evidenceType: input.evidenceType, sourceSystemId: input.sourceSystemId },
         }),
-      }),
-    ]);
+        });
 
-    if (input.parentEvidenceId) {
-      await this.lineageService.link({
-        tenantId: input.tenantId,
-        evidenceId,
-        parentEvidenceId: input.parentEvidenceId,
-        relationship: input.lineageRelationship ?? 'DERIVED_FROM',
+        if (input.parentEvidenceId) {
+          const parent = await tx.evidenceRecord.findFirst({
+            where: { id: input.parentEvidenceId, tenant_id: input.tenantId },
+            select: { id: true },
+          });
+          if (!parent) throw new Error('Parent evidence does not belong to this tenant');
+          await tx.evidenceLineage.create({
+            data: {
+              tenant_id: input.tenantId,
+              evidence_id: evidenceId,
+              parent_evidence_id: input.parentEvidenceId,
+              relationship: input.lineageRelationship ?? 'DERIVED_FROM',
+            },
+          });
+        }
+
+        await this.ledgerService.appendInTransaction(tx, input.tenantId, evidenceId, {
+          evidenceType: input.evidenceType,
+          contentHash,
+          sourceSystemId: input.sourceSystemId,
+        });
+
+        if (input.caseId) {
+          await tx.caseEvidence.create({
+            data: {
+              tenant_id: input.tenantId,
+              case_id: input.caseId,
+              evidence_id: evidenceId,
+              added_by: input.addedBy ?? 'system',
+            },
+          });
+          await tx.caseTimelineEntry.create({
+            data: {
+              tenant_id: input.tenantId,
+              case_id: input.caseId,
+              entry_type: 'EVIDENCE_LINKED',
+              actor_id: input.addedBy ?? 'system',
+              title: 'Evidence Linked',
+              summary: `Linked evidence '${evidenceId}'`,
+              evidence_ref: evidenceId,
+            },
+          });
+        }
+        return created;
+      }, { isolationLevel: 'Serializable' });
+
+      this.logger.log(`Evidence ${evidence.id} created for tenant ${input.tenantId} (${input.evidenceType})`);
+      return evidence;
+    } catch (error) {
+      await this.storageService.deleteObject(objectKey).catch((cleanupError) => {
+        this.logger.error(`Failed to clean up orphaned evidence object '${objectKey}': ${String(cleanupError)}`);
       });
+      throw error;
     }
-
-    await this.ledgerService.append(input.tenantId, evidenceId, {
-      evidenceType: input.evidenceType,
-      contentHash,
-      sourceSystemId: input.sourceSystemId,
-    });
-
-    this.logger.log(`Evidence ${evidence.id} created for tenant ${input.tenantId} (${input.evidenceType})`);
-    return evidence;
   }
 
   async getById(tenantId: string, evidenceId: string) {

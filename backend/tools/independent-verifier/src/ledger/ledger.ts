@@ -1,8 +1,12 @@
+import { hashCanonicalJson } from '../hashing/hash';
+
 export interface LedgerEntry {
+  tenantId: string;
   sequence: number;
   evidenceId: string;
   previousEntryHash: string | null;
   entryHash: string;
+  evidenceMetadata: Record<string, unknown>;
 }
 
 export interface LedgerCheckResult {
@@ -12,14 +16,7 @@ export interface LedgerCheckResult {
 }
 
 /**
- * Walks the exported ledger segment and confirms each entry's declared
- * previousEntryHash matches the prior entry's declared entryHash — the
- * same structural check EvidenceLedgerService.verifyChain performs live.
- *
- * This is a LINK-CONSISTENCY check, not a from-scratch entry_hash
- * recomputation: the raw evidenceMetadata baked into each entry_hash at
- * write time isn't persisted verbatim on the ledger row, so it cannot be
- * independently re-derived here. Reported honestly, not overclaimed.
+ * Recomputes each entry commitment and checks sequence/link continuity.
  */
 export function verifyLedgerChain(entries: LedgerEntry[]): LedgerCheckResult {
   if (entries.length === 0) {
@@ -31,13 +28,25 @@ export function verifyLedgerChain(entries: LedgerEntry[]): LedgerCheckResult {
   let previousSequence: number | null = null;
 
   for (const entry of sorted) {
-    if (previousSequence !== null && entry.sequence === previousSequence) continue; // duplicate evidence sharing a sequence value is not expected but not itself a break
+    if (previousSequence !== null && entry.sequence !== previousSequence + 1) {
+      return { valid: false, brokenAtSequence: entry.sequence, note: 'Ledger sequence is duplicated or non-contiguous' };
+    }
     if (previousHash !== null && entry.previousEntryHash !== previousHash) {
-      return { valid: false, brokenAtSequence: entry.sequence, note: 'previousEntryHash does not match the prior entry\'s entryHash — link consistency check (not a from-scratch recomputation)' };
+      return { valid: false, brokenAtSequence: entry.sequence, note: 'previousEntryHash does not match the prior entry\'s entryHash' };
+    }
+    const recomputed = hashCanonicalJson({
+      tenantId: entry.tenantId,
+      sequence: entry.sequence,
+      evidenceId: entry.evidenceId,
+      previousEntryHash: entry.previousEntryHash,
+      evidenceMetadata: entry.evidenceMetadata,
+    }).contentHash;
+    if (recomputed !== entry.entryHash) {
+      return { valid: false, brokenAtSequence: entry.sequence, note: 'Ledger entry hash does not match its canonical material' };
     }
     previousHash = entry.entryHash;
     previousSequence = entry.sequence;
   }
 
-  return { valid: true, note: 'Ledger segment link-consistency verified (not a from-scratch entry_hash recomputation — evidenceMetadata is not exported verbatim)' };
+  return { valid: true, note: 'Ledger sequence, links, and entry hashes independently recomputed' };
 }

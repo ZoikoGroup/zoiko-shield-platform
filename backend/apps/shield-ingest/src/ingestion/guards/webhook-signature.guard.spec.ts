@@ -6,40 +6,50 @@ describe('WebhookSignatureGuard', () => {
   let guard: WebhookSignatureGuard;
 
   beforeEach(() => {
-    guard = new WebhookSignatureGuard();
+    process.env.WEBHOOK_HMAC_SECRET = 'test-webhook-secret';
+    guard = new WebhookSignatureGuard({
+      webhookReplayNonce: { deleteMany: jest.fn(), create: jest.fn() },
+    } as any);
   });
 
-  it('should allow request when valid HMAC-SHA256 signature is provided', () => {
-    const secret = 'zoiko-shield-webhook-secret';
+  it('should allow request when valid HMAC-SHA256 signature is provided', async () => {
+    const secret = 'test-webhook-secret';
     const payload = { eventId: 'evt-100' };
     const payloadString = JSON.stringify(payload);
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const nonce = 'nonce-100';
     const signature = `sha256=${crypto
       .createHmac('sha256', secret)
-      .update(payloadString)
+      .update(`${timestamp}.${nonce}.${payloadString}`)
       .digest('hex')}`;
 
     const context: any = {
       switchToHttp: () => ({
         getRequest: () => ({
-          headers: { 'x-hub-signature-256': signature },
+          headers: { 'x-hub-signature-256': signature, 'x-timestamp': timestamp, 'x-webhook-nonce': nonce },
+          params: { connectorId: 'connector-1' },
+          rawBody: Buffer.from(payloadString),
           body: payload,
         }),
       }),
     };
 
-    expect(guard.canActivate(context)).toBe(true);
+    await expect(guard.canActivate(context)).resolves.toBe(true);
   });
 
-  it('should throw UnauthorizedException when signature is invalid', () => {
+  it('should throw UnauthorizedException when signature is invalid', async () => {
+    const timestamp = String(Math.floor(Date.now() / 1000));
     const context: any = {
       switchToHttp: () => ({
         getRequest: () => ({
-          headers: { 'x-hub-signature-256': 'sha256=invalid' },
+          headers: { 'x-hub-signature-256': 'sha256=invalid', 'x-timestamp': timestamp, 'x-webhook-nonce': 'nonce-invalid' },
+          params: { connectorId: 'connector-1' },
+          rawBody: Buffer.from('{"eventId":"evt-100"}'),
           body: { eventId: 'evt-100' },
         }),
       }),
     };
 
-    expect(() => guard.canActivate(context)).toThrow(UnauthorizedException);
+    await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
   });
 });

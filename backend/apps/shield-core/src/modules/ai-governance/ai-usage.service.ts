@@ -74,8 +74,8 @@ export class AiUsageService {
     });
   }
 
-  async getUsageById(id: string) {
-    const usage = await this.prisma.aiUsageRecord.findUnique({ where: { id } });
+  async getUsageById(tenantId: string, id: string) {
+    const usage = await this.prisma.aiUsageRecord.findFirst({ where: { id, tenant_id: tenantId } });
     if (!usage) {
       throw new NotFoundException(`AI usage record '${id}' not found`);
     }
@@ -87,8 +87,8 @@ export class AiUsageService {
    * without an active AI_SECURITY entitlement — no catalog authorization,
    * no charge, no matter how much was actually spent with the provider.
    */
-  async markBillable(usageId: string, meterKey: string, quantity: number) {
-    const usage = await this.getUsageById(usageId);
+  async markBillable(tenantId: string, usageId: string, meterKey: string, quantity: number) {
+    const usage = await this.getUsageById(tenantId, usageId);
     if (usage.billable) {
       throw new ConflictException(`AI usage record '${usageId}' is already billable`);
     }

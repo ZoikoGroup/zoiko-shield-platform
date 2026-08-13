@@ -1,8 +1,15 @@
-import { Body, Controller, Get, Headers, Param, Post } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TenantOffboardingService } from './lifecycle/tenant-offboarding.service';
 import { LegalHoldService } from './legal-hold/legal-hold.service';
+import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { CurrentUser } from '../identity-adapter/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
+import { RequirePermissions } from '../authorization/decorators/require-permissions.decorator';
+import { PERMISSION_CODES } from '../authorization/constants';
 
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/tenants/:tenantId/offboarding')
 export class OffboardingController {
   constructor(
@@ -12,8 +19,9 @@ export class OffboardingController {
   ) {}
 
   @Post()
-  async start(@Param('tenantId') tenantId: string, @Headers('x-actor-id') actorId: string, @Body() body: { reason: string }) {
-    return this.offboardingService.start(tenantId, actorId ?? 'unknown-actor', body.reason);
+  @RequirePermissions(PERMISSION_CODES.TENANT_OFFBOARDING_START)
+  async start(@Param('tenantId') tenantId: string, @CurrentUser() user: AuthenticatedUser, @Body() body: { reason: string }) {
+    return this.offboardingService.start(tenantId, user.id, body.reason);
   }
 
   @Get()
@@ -38,9 +46,20 @@ export class OffboardingController {
   }
 
   @Post('start-deletion')
-  async startDeletion(@Param('tenantId') tenantId: string, @Headers('x-actor-id') actorId: string, @Body() body: { runId: string }) {
-    await this.offboardingService.revokeConnectors(tenantId, body.runId).catch(() => null);
-    return this.offboardingService.startDeletion(tenantId, body.runId, actorId ?? 'unknown-actor');
+  @RequirePermissions(PERMISSION_CODES.DELETION_REQUEST)
+  async startDeletion(@Param('tenantId') tenantId: string, @CurrentUser() user: AuthenticatedUser, @Body() body: { runId: string }) {
+    await this.offboardingService.revokeConnectors(tenantId, body.runId);
+    return this.offboardingService.startDeletion(tenantId, body.runId, user.id);
+  }
+
+  @Post('issue-attestation')
+  @RequirePermissions(PERMISSION_CODES.DELETION_REQUEST)
+  async issueAttestation(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: { runId: string },
+  ) {
+    return this.offboardingService.issueAttestationAndClose(tenantId, body.runId, user.id);
   }
 
   @Get('deletion-attestation')

@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AssetIdentityContextService } from './asset-identity-context.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotFoundException } from '@nestjs/common';
 
 describe('AssetIdentityContextService', () => {
   let service: AssetIdentityContextService;
@@ -50,6 +51,7 @@ describe('AssetIdentityContextService', () => {
 
     const result = await service.resolveAsset({
       tenantId: 'tenant-1',
+      environmentId: 'env-1',
       externalId: '192.168.1.1',
       assetType: 'IP',
     });
@@ -72,6 +74,7 @@ describe('AssetIdentityContextService', () => {
 
     const result = await service.resolveAsset({
       tenantId: 'tenant-1',
+      environmentId: 'env-1',
       externalId: '192.168.1.1',
       assetType: 'IP',
     });
@@ -96,5 +99,18 @@ describe('AssetIdentityContextService', () => {
 
     expect(result?.id).toBe('id-1');
     expect(prismaMock.identityEntity.create).toHaveBeenCalled();
+  });
+
+  it('scopes asset detail lookup to the authenticated tenant', async () => {
+    prismaMock.asset.findFirst.mockResolvedValue(null);
+
+    await expect(service.getAssetById('tenant-a', 'asset-from-tenant-b')).rejects.toThrow(
+      NotFoundException,
+    );
+    expect(prismaMock.asset.findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: 'asset-from-tenant-b', tenant_id: 'tenant-a' },
+      }),
+    );
   });
 });

@@ -9,8 +9,14 @@ import { ApiScopeGuard } from './guards/api-scope.guard';
 import { ApiRateLimitGuard } from './rate-limit/api-rate-limit.guard';
 import { RequireScopes } from './guards/require-scopes.decorator';
 import { PrismaService } from '../../prisma/prisma.service';
+import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { CurrentUser } from '../identity-adapter/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
+import { requireTenantId } from '../../tenant-context';
 
 /** Admin/tenant-side client management — separate from the public /oauth/token surface, which is G2-gated. */
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/api-clients')
 export class DeveloperApiController {
   constructor(
@@ -22,12 +28,12 @@ export class DeveloperApiController {
   @Post()
   async create(
     @Headers('x-tenant-id') tenantId: string,
-    @Headers('x-actor-id') actorId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Body() body: { name: string; purpose: string; environmentScope?: string; expiresAt?: string },
   ) {
     return this.apiClientService.create({
-      tenantId: tenantId ?? 'default-tenant',
-      createdBy: actorId ?? 'unknown-actor',
+      tenantId: requireTenantId(tenantId),
+      createdBy: user.id,
       name: body.name,
       purpose: body.purpose,
       environmentScope: body.environmentScope,
@@ -37,27 +43,27 @@ export class DeveloperApiController {
 
   @Post(':id/suspend')
   async suspend(@Headers('x-tenant-id') tenantId: string, @Param('id') id: string) {
-    return this.apiClientService.suspend(tenantId ?? 'default-tenant', id);
+    return this.apiClientService.suspend(requireTenantId(tenantId), id);
   }
 
   @Post(':id/revoke')
   async revoke(@Headers('x-tenant-id') tenantId: string, @Param('id') id: string) {
-    return this.apiClientService.revoke(tenantId ?? 'default-tenant', id);
+    return this.apiClientService.revoke(requireTenantId(tenantId), id);
   }
 
   @Post(':id/rotate-credential')
   async rotateCredential(@Headers('x-tenant-id') tenantId: string, @Param('id') id: string) {
-    return this.credentialService.rotate(tenantId ?? 'default-tenant', id);
+    return this.credentialService.rotate(requireTenantId(tenantId), id);
   }
 
   @Post(':id/scopes')
   async grantScope(
     @Headers('x-tenant-id') tenantId: string,
-    @Headers('x-actor-id') actorId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
     @Body() body: { scope: string; environmentId?: string; expiresAt?: string },
   ) {
-    return this.scopeGrantService.grant({ tenantId: tenantId ?? 'default-tenant', apiClientId: id, scope: body.scope, environmentId: body.environmentId, grantedBy: actorId ?? 'unknown-actor', expiresAt: body.expiresAt ? new Date(body.expiresAt) : undefined });
+    return this.scopeGrantService.grant({ tenantId: requireTenantId(tenantId), apiClientId: id, scope: body.scope, environmentId: body.environmentId, grantedBy: user.id, expiresAt: body.expiresAt ? new Date(body.expiresAt) : undefined });
   }
 }
 

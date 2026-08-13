@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Headers, HttpStatus, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { IsIn, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { CreateQuoteDto, QuoteService } from './quote.service';
 import { CreateOrderDto, OrderService } from './order.service';
 import { RequestAmendmentDto, SubscriptionService } from './subscription.service';
@@ -24,7 +25,7 @@ export class DecideAmendmentDto {
   reason!: string;
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/cpq/quotes')
 export class QuoteController {
   constructor(private readonly quoteService: QuoteService) {}

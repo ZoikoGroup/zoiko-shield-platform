@@ -1,8 +1,14 @@
-import { Body, Controller, Get, Headers, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Headers, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { ControlObjectiveService } from './objectives/control-objective.service';
 import { ControlImplementationService } from './implementations/control-implementation.service';
 import { ControlScopeService } from './scopes/control-scope.service';
+import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { CurrentUser } from '../identity-adapter/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
+import { requireTenantId } from '../../tenant-context';
 
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1')
 export class ControlsController {
   constructor(
@@ -23,19 +29,19 @@ export class ControlsController {
 
   @Get('control-implementations')
   async listImplementations(@Headers('x-tenant-id') tenantId: string) {
-    return this.controlImplementationService.list(tenantId ?? 'default-tenant');
+    return this.controlImplementationService.list(requireTenantId(tenantId));
   }
 
   @Post('control-implementations')
   async createImplementation(
     @Headers('x-tenant-id') tenantId: string,
-    @Headers('x-actor-id') actorId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Body()
     body: { controlObjectiveId: string; environmentId?: string; title: string; description: string; ownerId: string; implementationType: string },
   ) {
     return this.controlImplementationService.create({
-      tenantId: tenantId ?? 'default-tenant',
-      requestedBy: actorId ?? 'unknown-actor',
+      tenantId: requireTenantId(tenantId),
+      requestedBy: user.id,
       controlObjectiveId: body.controlObjectiveId,
       environmentId: body.environmentId,
       title: body.title,
@@ -48,13 +54,13 @@ export class ControlsController {
   @Patch('control-implementations/:id')
   async updateImplementation(
     @Headers('x-tenant-id') tenantId: string,
-    @Headers('x-actor-id') actorId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
     @Body() body: { status: string; notApplicableRationale?: string },
   ) {
     return this.controlImplementationService.transition({
-      tenantId: tenantId ?? 'default-tenant',
-      actorId: actorId ?? 'unknown-actor',
+      tenantId: requireTenantId(tenantId),
+      actorId: user.id,
       controlImplementationId: id,
       toStatus: body.status,
       notApplicableRationale: body.notApplicableRationale,
@@ -68,7 +74,7 @@ export class ControlsController {
     @Body() body: { legalEntityId?: string; environmentId?: string; businessUnitId?: string; assetScope?: string; identityScope?: string; expiresAt?: string },
   ) {
     return this.controlScopeService.create({
-      tenantId: tenantId ?? 'default-tenant',
+      tenantId: requireTenantId(tenantId),
       controlImplementationId: id,
       legalEntityId: body.legalEntityId,
       environmentId: body.environmentId,

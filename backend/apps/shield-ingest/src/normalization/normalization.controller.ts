@@ -9,6 +9,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { NormalizationService } from './normalization.service';
+import { requireTenantId } from '../security/tenant-context';
 
 export class ReplayQueryDto {
   tenantId?: string;
@@ -29,7 +30,7 @@ export class NormalizationController {
     @Query('tenantId') queryTenantId?: string,
     @Query('limit') limit?: number,
   ) {
-    const tenantId = headerTenantId || queryTenantId || 'default-tenant';
+    const tenantId = requireTenantId(headerTenantId, queryTenantId);
     const events = await this.normalizationService.getNormalizedEvents(
       tenantId,
       limit ? Number(limit) : 50,
@@ -45,8 +46,14 @@ export class NormalizationController {
    * Get single normalized event record
    */
   @Get('events/:eventId')
-  async getNormalizedEventById(@Param('eventId') eventId: string) {
-    const event = await this.normalizationService.getNormalizedEventById(eventId);
+  async getNormalizedEventById(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('eventId') eventId: string,
+  ) {
+    const event = await this.normalizationService.getNormalizedEventById(
+      requireTenantId(headerTenantId),
+      eventId,
+    );
     return {
       statusCode: HttpStatus.OK,
       data: event,
@@ -62,7 +69,7 @@ export class NormalizationController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Query('tenantId') queryTenantId?: string,
   ) {
-    const tenantId = headerTenantId || queryTenantId || 'default-tenant';
+    const tenantId = requireTenantId(headerTenantId, queryTenantId);
     const quarantined = await this.normalizationService.getQuarantinedEvents(tenantId);
     return {
       statusCode: HttpStatus.OK,
@@ -75,8 +82,14 @@ export class NormalizationController {
    * Reprocess a quarantined event
    */
   @Post('quarantine/:eventId/reprocess')
-  async reprocessQuarantinedEvent(@Param('eventId') quarantineId: string) {
-    const result = await this.normalizationService.reprocessQuarantinedEvent(quarantineId);
+  async reprocessQuarantinedEvent(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('eventId') quarantineId: string,
+  ) {
+    const result = await this.normalizationService.reprocessQuarantinedEvent(
+      requireTenantId(headerTenantId),
+      quarantineId,
+    );
     return {
       statusCode: HttpStatus.OK,
       message: 'Quarantine reprocessed',
@@ -93,7 +106,7 @@ export class NormalizationController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Body() body: ReplayQueryDto,
   ) {
-    const tenantId = headerTenantId || body.tenantId || 'default-tenant';
+    const tenantId = requireTenantId(headerTenantId, body.tenantId);
     const result = await this.normalizationService.replayEvents(
       tenantId,
       body.connectorId,

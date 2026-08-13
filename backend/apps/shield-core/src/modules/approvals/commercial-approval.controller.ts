@@ -1,6 +1,7 @@
 import { Body, Controller, Get, HttpStatus, Param, Patch, Post, UseGuards } from '@nestjs/common';
 import { IsIn, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { CommercialApprovalService, RequestApprovalDto } from './commercial-approval.service';
 
 export class DecideApprovalDto {
@@ -14,7 +15,7 @@ export class DecideApprovalDto {
   reason!: string;
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/commercial/approvals')
 export class CommercialApprovalController {
   constructor(private readonly approvalService: CommercialApprovalService) {}

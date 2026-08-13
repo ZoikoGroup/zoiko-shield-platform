@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AssetRepository } from './asset.repository';
 import { ResolveAssetInput, ResolvedAsset } from './asset.types';
+import { requireEnvironmentId } from '../../../tenant-context';
 
 /**
  * Alias-based asset resolution (spec §6/§11). A matching hostname alone is
@@ -16,7 +17,7 @@ export class AssetResolutionService {
 
   async resolve(input: ResolveAssetInput): Promise<ResolvedAsset> {
     const observedAt = input.observedAt ?? new Date();
-    const environmentId = input.environmentId || 'default-env';
+    const environmentId = requireEnvironmentId(input.environmentId);
 
     const existingAlias = await this.repo.findAliasByKey(
       input.tenantId,

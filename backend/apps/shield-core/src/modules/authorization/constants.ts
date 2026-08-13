@@ -8,4 +8,8 @@ export const PERMISSION_CODES = {
   PLATFORM_ROLE_MANAGE: 'platform:role:manage',
   TENANT_MEMBER_INVITE: 'tenant:member:invite',
   TENANT_MANAGE: 'tenant:manage',
+  TENANT_OFFBOARDING_START: 'tenant_offboarding:start',
+  DELETION_REQUEST: 'deletion:request',
+  LEGAL_HOLD_CREATE: 'legal_hold:create',
+  DETECTION_MANAGE: 'platform:detection:manage',
 } as const;

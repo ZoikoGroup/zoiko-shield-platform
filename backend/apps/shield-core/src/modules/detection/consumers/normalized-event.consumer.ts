@@ -33,8 +33,7 @@ export class NormalizedEventConsumer implements OnModuleInit {
   private async handle(envelope: EventEnvelope<NormalizedEventContract>): Promise<void> {
     const payload = envelope.payload;
     if (!payload?.tenantId || !payload?.normalizedEventId) {
-      this.logger.warn(`Malformed event.normalized.v1 payload, skipping: ${JSON.stringify(payload)}`);
-      return;
+      throw new Error(`Malformed event.normalized.v1 payload: ${JSON.stringify(payload)}`);
     }
 
     const resolved = await this.contextResolutionService.resolveFromEvent(payload);

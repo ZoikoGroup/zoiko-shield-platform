@@ -3,10 +3,12 @@ import {
   Get,
   Post,
   Param,
+  Headers,
   Body,
   HttpStatus,
 } from '@nestjs/common';
 import { HumanDecisionService, RecordHumanDecisionDto } from './human-decision.service';
+import { requireTenantId } from '../security/tenant-context';
 
 @Controller('api/v1/cases/:caseId/decisions')
 export class HumanDecisionController {
@@ -18,10 +20,15 @@ export class HumanDecisionController {
    */
   @Post()
   async recordDecision(
+    @Headers('x-tenant-id') headerTenantId: string,
     @Param('caseId') caseId: string,
     @Body() dto: RecordHumanDecisionDto,
   ) {
-    const decision = await this.decisionService.recordDecision(caseId, dto);
+    const decision = await this.decisionService.recordDecision(
+      requireTenantId(headerTenantId),
+      caseId,
+      dto,
+    );
     return {
       statusCode: HttpStatus.CREATED,
       message: 'Human decision recorded successfully',
@@ -34,8 +41,14 @@ export class HumanDecisionController {
    * Get human decisions for a case
    */
   @Get()
-  async getDecisionsByCase(@Param('caseId') caseId: string) {
-    const decisions = await this.decisionService.getDecisionsByCase(caseId);
+  async getDecisionsByCase(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+  ) {
+    const decisions = await this.decisionService.getDecisionsByCase(
+      requireTenantId(headerTenantId),
+      caseId,
+    );
     return {
       statusCode: HttpStatus.OK,
       data: decisions,

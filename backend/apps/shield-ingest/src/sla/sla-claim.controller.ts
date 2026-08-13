@@ -9,6 +9,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { SLAClaimService, EvaluateClaimDto } from './sla-claim.service';
+import { requireTenantId } from '../security/tenant-context';
 
 @Controller('api/v1/sla')
 export class SLAClaimController {
@@ -25,7 +26,7 @@ export class SLAClaimController {
     @Body() dto: EvaluateClaimDto,
   ) {
     if (!dto.tenantId) {
-      dto.tenantId = headerTenantId || 'default-tenant';
+      dto.tenantId = requireTenantId(headerTenantId);
     }
     const evaluation = await this.slaService.evaluateClaimEligibility(dto);
     return {
@@ -45,7 +46,7 @@ export class SLAClaimController {
     @Query('tenantId') queryTenantId?: string,
     @Query('claimKey') claimKey?: string,
   ) {
-    const tenantId = headerTenantId || queryTenantId || 'default-tenant';
+    const tenantId = requireTenantId(headerTenantId, queryTenantId);
     const evaluations = await this.slaService.getClaimEvaluations(tenantId, claimKey);
     return {
       statusCode: HttpStatus.OK,
@@ -62,7 +63,7 @@ export class SLAClaimController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Query('tenantId') queryTenantId?: string,
   ) {
-    const tenantId = headerTenantId || queryTenantId || 'default-tenant';
+    const tenantId = requireTenantId(headerTenantId, queryTenantId);
     const metrics = await this.slaService.getSLAPerformanceMetrics(tenantId);
     return {
       statusCode: HttpStatus.OK,

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ContentHashService } from '../hashing/content-hash.service';
+import type { Prisma } from '@prisma/client';
 
 const LEDGER_CANONICALIZATION_PROFILE = 'zs-ledger-v1';
 
@@ -21,7 +22,24 @@ export class EvidenceLedgerService {
   ) {}
 
   async append(tenantId: string, evidenceId: string, evidenceMetadata: Record<string, unknown>) {
-    const lastEntry = await this.prisma.evidenceLedgerEntry.findFirst({
+    return this.prisma.$transaction(
+      (tx) => this.appendInTransaction(tx, tenantId, evidenceId, evidenceMetadata),
+      { isolationLevel: 'Serializable' },
+    );
+  }
+
+  async appendInTransaction(
+    tx: Prisma.TransactionClient,
+    tenantId: string,
+    evidenceId: string,
+    evidenceMetadata: Record<string, unknown>,
+  ) {
+    await tx.$executeRawUnsafe(
+      'SELECT pg_advisory_xact_lock(hashtextextended($1, 0))',
+      tenantId,
+    );
+
+    const lastEntry = await tx.evidenceLedgerEntry.findFirst({
       where: { tenant_id: tenantId },
       orderBy: { sequence: 'desc' },
     });
@@ -37,13 +55,14 @@ export class EvidenceLedgerService {
       evidenceMetadata,
     });
 
-    return this.prisma.evidenceLedgerEntry.create({
+    return tx.evidenceLedgerEntry.create({
       data: {
         tenant_id: tenantId,
         sequence,
         evidence_id: evidenceId,
         previous_entry_hash: previousEntryHash,
         entry_hash: entryHash,
+        entry_metadata: JSON.stringify(evidenceMetadata),
         canonicalization_profile: LEDGER_CANONICALIZATION_PROFILE,
       },
     });
@@ -64,6 +83,22 @@ export class EvidenceLedgerService {
     let previousHash: string | undefined;
     for (const entry of entries) {
       if ((entry.previous_entry_hash ?? undefined) !== previousHash) {
+        return { valid: false, brokenAtSequence: entry.sequence };
+      }
+      let evidenceMetadata: Record<string, unknown>;
+      try {
+        evidenceMetadata = JSON.parse(entry.entry_metadata || '{}');
+      } catch {
+        return { valid: false, brokenAtSequence: entry.sequence };
+      }
+      const { contentHash } = this.hashService.hashCanonicalJson({
+        tenantId,
+        sequence: entry.sequence,
+        evidenceId: entry.evidence_id,
+        previousEntryHash: entry.previous_entry_hash ?? null,
+        evidenceMetadata,
+      });
+      if (contentHash !== entry.entry_hash) {
         return { valid: false, brokenAtSequence: entry.sequence };
       }
       previousHash = entry.entry_hash;

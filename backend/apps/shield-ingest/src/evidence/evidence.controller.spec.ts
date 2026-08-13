@@ -28,6 +28,8 @@ describe('EvidenceController', () => {
     serviceMock.createEvidence.mockResolvedValue(mockEvidence);
 
     const response = await controller.createEvidence('tenant-1', {
+      environmentId: 'env-1',
+      region: 'eu-west-1',
       evidenceType: 'LOG_EXCERPT',
       title: 'Audit Log',
       rawContent: 'Sample log',
@@ -41,8 +43,9 @@ describe('EvidenceController', () => {
     const mockVerify = { isIntegrityValid: true };
     serviceMock.verifyEvidenceIntegrity.mockResolvedValue(mockVerify);
 
-    const response = await controller.verifyEvidenceIntegrity('ev-1');
+    const response = await controller.verifyEvidenceIntegrity('tenant-1', 'ev-1');
     expect(response.statusCode).toBe(HttpStatus.OK);
     expect(response.data).toBe(mockVerify);
+    expect(serviceMock.verifyEvidenceIntegrity).toHaveBeenCalledWith('tenant-1', 'ev-1');
   });
 });

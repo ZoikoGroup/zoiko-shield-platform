@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { requireTenantId } from '../security/tenant-context';
 
 export class CreateControlObjectiveDto {
   tenantId?: string;
@@ -17,66 +18,6 @@ export class ControlTestingService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Seed baseline compliance controls for a tenant (SOC2, ISO27001)
-   */
-  async seedDefaultControlObjectives(tenantId: string) {
-    const defaults = [
-      {
-        code: 'MFA_ENFORCED',
-        name: 'Multi-Factor Authentication Enforced',
-        framework: 'SOC2',
-        description: 'Verify all user logins enforce MFA authentication credentials.',
-        severity: 'CRITICAL',
-      },
-      {
-        code: 'LOG_RETENTION_365',
-        name: '365-Day Security Log Retention',
-        framework: 'SOC2',
-        description: 'Ensure audit logs and security events are retained for a minimum of 365 days.',
-        severity: 'HIGH',
-      },
-      {
-        code: 'IDLE_SESSION_TIMEOUT',
-        name: 'Idle Session Automatic Timeout',
-        framework: 'ISO27001',
-        description: 'Verify inactive sessions auto-terminate after 15 minutes.',
-        severity: 'MEDIUM',
-      },
-      {
-        code: 'SUSPICIOUS_IP_BLOCK',
-        name: 'Automated Block of Malicious IPs',
-        framework: 'ZOIKO_SHIELD_BASELINE',
-        description: 'Ensure automated blocks on IPs flagged by threat intelligence.',
-        severity: 'HIGH',
-      },
-    ];
-
-    const seeded = [];
-    for (const d of defaults) {
-      const obj = await (this.prisma.controlObjective as any).upsert({
-        where: {
-          tenant_id_code: {
-            tenant_id: tenantId,
-            code: d.code,
-          },
-        },
-        update: {},
-        create: {
-          tenant_id: tenantId,
-          code: d.code,
-          name: d.name,
-          framework: d.framework,
-          description: d.description,
-          severity: d.severity,
-        },
-      });
-      seeded.push(obj);
-    }
-
-    return seeded;
-  }
-
-  /**
    * Create custom control objective
    */
   async createControlObjective(dto: CreateControlObjectiveDto) {
@@ -84,51 +25,34 @@ export class ControlTestingService {
       throw new BadRequestException('Control code and name are required');
     }
 
-    const tenantId = dto.tenantId || '';
+    const tenantId = requireTenantId(dto.tenantId);
 
-    return {
-      id: `ctrl-${Date.now()}`,
-      tenantId,
-      code: dto.code,
-      name: dto.name,
-      framework: dto.framework || 'SOC2',
-      description: dto.description,
-      severity: dto.severity || 'HIGH',
-      createdAt: new Date().toISOString(),
-    };
+    return this.prisma.controlObjective.create({
+      data: {
+        key: `${tenantId}:${dto.code}`,
+        title: dto.name,
+        description: dto.description ?? dto.name,
+        category: dto.framework ?? 'ZOIKO_SHIELD_BASELINE',
+        owner: tenantId,
+      },
+    });
   }
 
   /**
    * List control objectives for tenant
    */
   async getControlObjectives(tenantId: string) {
-    return [
-      {
-        id: 'ctrl-mfa',
-        tenantId,
-        code: 'MFA_ENFORCED',
-        name: 'Multi-Factor Authentication Enforced',
-        framework: 'SOC2',
-        description: 'Verify all user logins enforce MFA authentication credentials.',
-        severity: 'CRITICAL',
-      },
-      {
-        id: 'ctrl-log-retention',
-        tenantId,
-        code: 'LOG_RETENTION_365',
-        name: '365-Day Security Log Retention',
-        framework: 'SOC2',
-        description: 'Ensure audit logs and security events are retained for a minimum of 365 days.',
-        severity: 'HIGH',
-      },
-    ];
+    return this.prisma.controlObjective.findMany({ where: { owner: tenantId, status: 'ACTIVE' } });
   }
 
   /**
    * Evaluate a control objective against live telemetry & evidence strictly enforcing "unknown is not false"
    */
-  async evaluateControlObjective(controlId: string) {
-    const tenantId = 'tenant-001';
+  async evaluateControlObjective(tenantId: string, controlId: string) {
+    const control = await this.prisma.controlObjective.findFirst({
+      where: { id: controlId, owner: tenantId, status: 'ACTIVE' },
+    });
+    if (!control) throw new NotFoundException(`Control objective '${controlId}' not found`);
 
     const [evidenceItems, eventCount] = await Promise.all([
       this.prisma.evidenceRecord.findMany({
@@ -146,20 +70,18 @@ export class ControlTestingService {
     let result = 'INSUFFICIENT_EVIDENCE';
     let failureReason: string | null = 'No verifiable evidence for control evaluation';
 
-    if (evidenceItems.length > 0 || eventCount > 0) {
-      result = 'PASS';
-      failureReason = null;
-    }
-
     const testRun = await this.prisma.controlTestRun.create({
       data: {
         tenant_id: tenantId,
         objective_id: controlId,
-        control_objective_id: controlId,
         result,
-        evaluated_events_count: eventCount,
-        details: JSON.stringify({ evidenceIds, eventCount, failureReason }),
-      } as any,
+        details: JSON.stringify({
+          evidenceIds,
+          eventCount,
+          failureReason,
+          note: 'Generic telemetry presence is not sufficient to prove a control; a published control-specific evaluator is required.',
+        }),
+      },
     });
 
     this.logger.log(`Evaluated Control '${controlId}' -> Result: ${result} (Run ID: ${testRun.id})`);
@@ -175,5 +97,11 @@ export class ControlTestingService {
       where: { tenant_id: tenantId },
       orderBy: { executed_at: 'desc' },
     });
+  }
+
+  async getControlResult(tenantId: string, evaluationId: string) {
+    const result = await this.prisma.controlTestRun.findFirst({ where: { id: evaluationId, tenant_id: tenantId } });
+    if (!result) throw new NotFoundException(`Control evaluation '${evaluationId}' not found`);
+    return result;
   }
 }

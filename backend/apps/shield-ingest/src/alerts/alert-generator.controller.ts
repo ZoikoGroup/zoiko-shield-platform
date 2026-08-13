@@ -10,6 +10,7 @@ import {
   HttpStatus,
 } from '@nestjs/common';
 import { AlertGeneratorService } from './alert-generator.service';
+import { requireTenantId } from '../security/tenant-context';
 
 export class UpdateAlertStatusDto {
   status!: string;
@@ -35,7 +36,7 @@ export class AlertGeneratorController {
     @Query('severity') severity?: string,
     @Query('limit') limit?: number,
   ) {
-    const tenantId = headerTenantId || queryTenantId || 'default-tenant';
+    const tenantId = requireTenantId(headerTenantId, queryTenantId);
     const alerts = await this.alertService.getAlerts(
       tenantId,
       status,
@@ -53,8 +54,14 @@ export class AlertGeneratorController {
    * Get detailed alert information
    */
   @Get(':alertId')
-  async getAlertById(@Param('alertId') alertId: string) {
-    const alert = await this.alertService.getAlertById(alertId);
+  async getAlertById(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('alertId') alertId: string,
+  ) {
+    const alert = await this.alertService.getAlertById(
+      requireTenantId(headerTenantId),
+      alertId,
+    );
     return {
       statusCode: HttpStatus.OK,
       data: alert,
@@ -67,10 +74,15 @@ export class AlertGeneratorController {
    */
   @Patch(':alertId/status')
   async updateAlertStatus(
+    @Headers('x-tenant-id') headerTenantId: string,
     @Param('alertId') alertId: string,
     @Body() dto: UpdateAlertStatusDto,
   ) {
-    const alert = await this.alertService.updateAlertStatus(alertId, dto.status);
+    const alert = await this.alertService.updateAlertStatus(
+      requireTenantId(headerTenantId),
+      alertId,
+      dto.status,
+    );
     return {
       statusCode: HttpStatus.OK,
       message: 'Alert status updated',
@@ -84,10 +96,15 @@ export class AlertGeneratorController {
    */
   @Post(':alertId/assign')
   async assignAlert(
+    @Headers('x-tenant-id') headerTenantId: string,
     @Param('alertId') alertId: string,
     @Body() dto: AssignAlertDto,
   ) {
-    const alert = await this.alertService.assignAlert(alertId, dto.userId);
+    const alert = await this.alertService.assignAlert(
+      requireTenantId(headerTenantId),
+      alertId,
+      dto.userId,
+    );
     return {
       statusCode: HttpStatus.OK,
       message: 'Alert assigned successfully',
@@ -100,8 +117,14 @@ export class AlertGeneratorController {
    * Promote alert to case candidate payload
    */
   @Post(':alertId/create-case')
-  async createCaseFromAlert(@Param('alertId') alertId: string) {
-    const result = await this.alertService.promoteAlertToCase(alertId);
+  async createCaseFromAlert(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('alertId') alertId: string,
+  ) {
+    const result = await this.alertService.promoteAlertToCase(
+      requireTenantId(headerTenantId),
+      alertId,
+    );
     return {
       statusCode: HttpStatus.OK,
       message: 'Alert promoted to case',

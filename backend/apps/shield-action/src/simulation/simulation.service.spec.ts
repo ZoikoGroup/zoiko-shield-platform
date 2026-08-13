@@ -47,7 +47,7 @@ function buildService(context: ActionAuthorizationContext, overrides: Partial<{ 
 describe('SimulationService', () => {
   it('produces a SIMULATED outcome when every reauthorization check passes', async () => {
     const { service, prisma } = buildService(baseContext());
-    const outcome = await service.simulate('p1', 'corr1');
+    const outcome = await service.simulate('t1', 'p1', 'corr1');
     expect(outcome.status).toBe('SIMULATED');
     expect(outcome.actionCommandId).toBeDefined();
     expect(prisma.$transaction).toHaveBeenCalled();
@@ -55,21 +55,21 @@ describe('SimulationService', () => {
 
   it('rejects and never persists anything when policy check fails', async () => {
     const { service, prisma } = buildService(baseContext(), { policyAllowed: false });
-    const outcome = await service.simulate('p1', 'corr1');
+    const outcome = await service.simulate('t1', 'p1', 'corr1');
     expect(outcome.status).toBe('REJECTED');
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('rejects on an expired/invalid approval (fails closed, never persists)', async () => {
     const { service, prisma } = buildService(baseContext(), { approvalAllowed: false });
-    const outcome = await service.simulate('p1', 'corr1');
+    const outcome = await service.simulate('t1', 'p1', 'corr1');
     expect(outcome.status).toBe('REJECTED');
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('rejects when the tenant is frozen', async () => {
     const { service, prisma } = buildService(baseContext(), { frozen: true });
-    const outcome = await service.simulate('p1', 'corr1');
+    const outcome = await service.simulate('t1', 'p1', 'corr1');
     expect(outcome.status).toBe('REJECTED');
     expect(outcome.reason).toBe('frozen');
     expect(prisma.$transaction).not.toHaveBeenCalled();
@@ -77,7 +77,7 @@ describe('SimulationService', () => {
 
   it('rejects when the rate ceiling is exceeded', async () => {
     const { service, prisma } = buildService(baseContext(), { rateAllowed: false });
-    const outcome = await service.simulate('p1', 'corr1');
+    const outcome = await service.simulate('t1', 'p1', 'corr1');
     expect(outcome.status).toBe('REJECTED');
     expect(outcome.reason).toBe('rate denied');
     expect(prisma.$transaction).not.toHaveBeenCalled();
@@ -85,7 +85,14 @@ describe('SimulationService', () => {
 
   it('only signs via DevSimulationSigner in SIMULATION mode', async () => {
     const { service, signer } = buildService(baseContext());
-    await service.simulate('p1', 'corr1');
+    await service.simulate('t1', 'p1', 'corr1');
     expect(signer.sign).toHaveBeenCalledWith(expect.anything(), 'SIMULATION');
+  });
+
+  it('fails closed when shield-core returns a different tenant context', async () => {
+    const { service, prisma } = buildService(baseContext({ tenantId: 'tenant-b' }));
+
+    await expect(service.simulate('tenant-a', 'p1', 'corr1')).rejects.toThrow('conflicting tenant context');
+    expect(prisma.$transaction).not.toHaveBeenCalled();
   });
 });

@@ -1,9 +1,10 @@
-import { Controller, Get, Param, NotFoundException, UseGuards } from '@nestjs/common';
+import { Controller, Get, Headers, Param, NotFoundException, UseGuards } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { InternalAuthGuard } from '../../../internal-client/internal-auth.guard';
 import { AuthorizationDecisionService } from '../../authorization-decision/authorization-decision.service';
 import { ActionAuthorizationContext } from '../action-authorization-context.types';
+import { requireTenantId } from '../../../tenant-context';
 
 /**
  * shield-action's ONLY window into shield-core-owned data (correction #3)
@@ -21,14 +22,20 @@ export class ActionAuthorizationController {
   ) {}
 
   @Get(':proposalId/authorization-context')
-  async getAuthorizationContext(@Param('proposalId') proposalId: string): Promise<{ data: ActionAuthorizationContext }> {
-    const proposal = await this.prisma.actionProposal.findUnique({ where: { id: proposalId } });
+  async getAuthorizationContext(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('proposalId') proposalId: string,
+  ): Promise<{ data: ActionAuthorizationContext }> {
+    const tenantId = requireTenantId(headerTenantId);
+    const proposal = await this.prisma.actionProposal.findFirst({
+      where: { id: proposalId, tenant_id: tenantId },
+    });
     if (!proposal) {
       throw new NotFoundException(`ActionProposal '${proposalId}' not found`);
     }
 
     const latestApproval = await this.prisma.actionApproval.findFirst({
-      where: { proposal_id: proposalId },
+      where: { proposal_id: proposalId, tenant_id: tenantId },
       orderBy: { approved_at: 'desc' },
     });
 
@@ -67,11 +74,12 @@ export class ActionAuthorizationController {
       policyVersion: proposal.policy_version,
       authorizationDecisionId,
       entitlementAllowed: decision === 'ALLOW',
-      // No live connector/target-state verification exists this pass —
-      // explicitly reported as unverified rather than assumed healthy;
-      // shield-action's SIMULATION path does not require it, a future
-      // live-execution path must not proceed past this being unverified.
-      targetState: { verified: false, note: 'target state verification not implemented this pass' },
+      // Simulation never claims a live target state. A live-execution path
+      // must supply a connector-specific verified state before authorization.
+      targetState: {
+        verified: false,
+        note: 'UNVERIFIED: simulation does not assert live connector target state',
+      },
       proposalVersion: proposal.version,
       approvedMaterialHash: latestApproval?.approved_material_hash ?? null,
       correlationId: randomUUID(),

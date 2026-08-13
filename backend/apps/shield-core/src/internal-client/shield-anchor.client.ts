@@ -1,4 +1,5 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { workloadAuthorizationHeaders } from '../../../../libs/security/src/workload-token';
 
 const SHIELD_ANCHOR_BASE_URL = process.env.SHIELD_ANCHOR_BASE_URL || 'http://localhost:3005';
 
@@ -48,16 +49,11 @@ export class ShieldAnchorClient {
   private readonly logger = new Logger(ShieldAnchorClient.name);
 
   async requestCheckpoint(input: RequestCheckpointInput): Promise<ProofEnvelope> {
-    const token = process.env.INTERNAL_SERVICE_TOKEN;
-    if (!token) {
-      throw new ServiceUnavailableException('INTERNAL_SERVICE_TOKEN is not configured — cannot call shield-anchor');
-    }
-
     let response: Response;
     try {
       response = await fetch(`${SHIELD_ANCHOR_BASE_URL}/internal/v1/checkpoints`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-internal-service-token': token },
+        headers: { 'Content-Type': 'application/json', ...workloadAuthorizationHeaders('shield-anchor') },
         body: JSON.stringify(input),
       });
     } catch (err) {

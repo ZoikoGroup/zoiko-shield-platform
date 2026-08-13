@@ -11,6 +11,7 @@ import {
 } from '@nestjs/common';
 import { IsOptional, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { ContractStateService, CreateContractDto } from './contract-state.service';
 
 export class TransitionContractDto {
@@ -22,7 +23,7 @@ export class TransitionContractDto {
   actor?: string;
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/commerce/contracts')
 export class ContractController {
   constructor(private readonly contractService: ContractStateService) {}

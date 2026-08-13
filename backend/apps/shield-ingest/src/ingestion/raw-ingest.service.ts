@@ -3,12 +3,31 @@ import { PrismaService } from '../prisma/prisma.service';
 import { KafkaProducerService } from '../kafka/kafka.producer.service';
 import { MeteringService } from '../metering/metering.service';
 import * as crypto from 'crypto';
+import { IsISO8601, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class IngestPayloadDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
   eventId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
   sourceEventId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(250)
   eventType?: string;
+
+  @IsOptional()
+  @IsISO8601()
   occurredAt?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
   sourceRegion?: string;
   [key: string]: any;
 }
@@ -53,10 +72,18 @@ export class RawIngestService {
       throw new NotFoundException(`Connector with ID '${connectorId}' not found`);
     }
 
-    // Resolve tenant & environment from headers or connector
-    const tenantId = (headers['x-tenant-id'] as string) || connector.tenant_id;
-    const environmentId = (headers['x-environment-id'] as string) || connector.environment_id || 'default-env';
-    const sourceRegion = (headers['x-source-region'] as string) || connector.source_region || undefined;
+    // The authenticated connector is the authority. Caller-provided routing
+    // headers may confirm the route but can never override it.
+    const tenantId = connector.tenant_id;
+    const environmentId = connector.environment_id;
+    const sourceRegion = connector.source_region;
+    const assertedTenant = headers['x-tenant-id'];
+    const assertedEnvironment = headers['x-environment-id'];
+    const assertedRegion = headers['x-source-region'];
+    const routeMismatch =
+      (typeof assertedTenant === 'string' && assertedTenant !== tenantId) ||
+      (typeof assertedEnvironment === 'string' && assertedEnvironment !== environmentId) ||
+      (typeof assertedRegion === 'string' && assertedRegion !== sourceRegion);
 
     // Calculate SHA-256 cryptographic hash of raw payload
     const rawString = JSON.stringify(payload);
@@ -112,7 +139,7 @@ export class RawIngestService {
 
     // Basic payload schema validation: must be a non-empty object
     let processingStatus: 'ACCEPTED' | 'QUARANTINED' = 'ACCEPTED';
-    if (!payload || typeof payload !== 'object' || Object.keys(payload).length === 0) {
+    if (routeMismatch || !sourceRegion || !payload || typeof payload !== 'object' || Object.keys(payload).length === 0) {
       processingStatus = 'QUARANTINED';
     }
 

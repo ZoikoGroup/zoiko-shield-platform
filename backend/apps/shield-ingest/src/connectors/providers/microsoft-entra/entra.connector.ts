@@ -20,6 +20,8 @@ import { CredentialService } from '../../services/credential.service';
 import { PermissionService } from '../../services/permission.service';
 import { ConnectorHealthService } from '../../services/health.service';
 import { ENTRA_REQUIRED_PERMISSIONS } from './entra.permissions';
+import { createHash, randomBytes } from 'crypto';
+import { requireRegion } from '../../../security/tenant-context';
 
 /**
  * The Microsoft Entra provider adapter, implementing the generic
@@ -64,9 +66,6 @@ export class EntraConnectorService implements SecurityConnector, OnModuleInit {
       });
     }
 
-    const state = `state_${context.tenantId}_${Date.now()}`;
-    const authUrl = this.authService.generateAuthUrl(context.tenantId, state);
-
     const instance = await this.prisma.connectorInstance.create({
       data: {
         tenant_id: context.tenantId,
@@ -78,6 +77,17 @@ export class EntraConnectorService implements SecurityConnector, OnModuleInit {
         source_region: context.region,
       },
     });
+
+    const state = randomBytes(32).toString('base64url');
+    await this.prisma.connectorOauthState.create({
+      data: {
+        tenant_id: context.tenantId,
+        instance_id: instance.id,
+        state_hash: createHash('sha256').update(state).digest('hex'),
+        expires_at: new Date(Date.now() + 10 * 60 * 1000),
+      },
+    });
+    const authUrl = this.authService.generateAuthUrl(context.tenantId, state);
 
     await this.permissionService.declareRequired(
       context.tenantId,
@@ -98,7 +108,7 @@ export class EntraConnectorService implements SecurityConnector, OnModuleInit {
   async completeConsent(instanceId: string, externalTenantId: string): Promise<void> {
     const instance = await this.prisma.connectorInstance.update({
       where: { id: instanceId },
-      data: { externalTenantId, state: 'CONNECTED' } as any,
+      data: { externalTenantId, state: 'CONNECTED' },
     });
 
     // One shared ZoikoShield-side Entra app registration (ENTRA_CLIENT_ID /
@@ -140,6 +150,7 @@ export class EntraConnectorService implements SecurityConnector, OnModuleInit {
       instance.id,
       instance.tenant_id,
       instance.environment_id,
+      requireRegion(instance.source_region),
       accessToken,
     );
 

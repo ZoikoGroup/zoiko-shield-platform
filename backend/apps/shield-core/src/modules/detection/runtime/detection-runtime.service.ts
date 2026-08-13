@@ -156,6 +156,7 @@ export class DetectionRuntimeService {
     await this.alertCreationService.createFromMatch({
       tenantId: payload.tenantId,
       environmentId: payload.environmentId,
+      region: payload.region,
       detectionDefinitionId: version.detection_definition_id,
       detectionVersionId: version.id,
       detectionMatchId: match.id,

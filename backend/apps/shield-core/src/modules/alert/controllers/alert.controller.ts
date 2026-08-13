@@ -1,6 +1,11 @@
-import { Controller, Get, Post, Patch, Param, Query, Headers, Body, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Query, Headers, Body, HttpStatus, UseGuards } from '@nestjs/common';
 import { AlertService } from '../services/alert.service';
 import { AlertAssignmentService } from '../assignment/alert-assignment.service';
+import { JwtAuthGuard } from '../../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../../authorization/guards/permissions.guard';
+import { CurrentUser } from '../../identity-adapter/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../identity-adapter/interfaces/jwt-payload.interface';
+import { requireTenantId } from '../../../tenant-context';
 
 export class UpdateAlertStatusDto {
   status!: string;
@@ -12,6 +17,7 @@ export class AssignAlertDto {
   reason?: string;
 }
 
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/alerts')
 export class AlertController {
   constructor(
@@ -20,7 +26,7 @@ export class AlertController {
   ) {}
 
   private resolveTenantId(headerTenantId: string, queryTenantId?: string): string {
-    return headerTenantId || queryTenantId || 'default-tenant';
+    return requireTenantId(headerTenantId, queryTenantId);
   }
 
   @Get()
@@ -55,14 +61,14 @@ export class AlertController {
   }
 
   @Post(':alertId/assign')
-  async assign(@Headers('x-tenant-id') headerTenantId: string, @Param('alertId') alertId: string, @Body() dto: AssignAlertDto) {
+  async assign(@Headers('x-tenant-id') headerTenantId: string, @Param('alertId') alertId: string, @Body() dto: AssignAlertDto, @CurrentUser() user: AuthenticatedUser) {
     const tenantId = this.resolveTenantId(headerTenantId);
     const assignment = await this.assignmentService.assign({
       tenantId,
       alertId,
       principalId: dto.principalId,
       queueId: dto.queueId,
-      assignedBy: 'system',
+      assignedBy: user.id,
       reason: dto.reason,
     });
     return { statusCode: HttpStatus.OK, message: 'Alert assigned', data: assignment };

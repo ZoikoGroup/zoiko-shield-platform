@@ -1,8 +1,9 @@
 import { Body, Controller, Get, HttpStatus, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { CreateTaxRuleDto, TaxRuleService } from './tax-rule.service';
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/tax/rules')
 export class TaxRuleController {
   constructor(private readonly taxRuleService: TaxRuleService) {}

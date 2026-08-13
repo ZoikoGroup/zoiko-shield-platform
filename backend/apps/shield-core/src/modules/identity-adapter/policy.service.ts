@@ -5,13 +5,13 @@ import { Repository } from 'typeorm';
 import { PolicyDocument } from './policy-document.entity';
 import { PolicyAcceptance } from './policy-acceptance.entity';
 
-const TERMS_OF_SERVICE_V1_TEXT =
-  'ZoikoShield Terms of Service v1 (placeholder — replace with the approved, legally reviewed text before production use).';
+const DEVELOPMENT_TERMS_TEXT =
+  'ZoikoShield development terms: authorized evaluation use only; production publication requires configured approved policy text.';
 
 // W06 "Tenant onboarding wizard": access disclosure must be shown and
 // accepted, with generated evidence, before a tenant is activated.
-const ACCESS_DISCLOSURE_V1_TEXT =
-  'ZoikoShield Access Disclosure v1 (placeholder — replace with the approved data-processing/access-disclosure text before production use).';
+const DEVELOPMENT_ACCESS_DISCLOSURE_TEXT =
+  'ZoikoShield development access disclosure: security telemetry is processed only for the selected tenant, purpose, region, retention policy, and authorized support scope.';
 
 @Injectable()
 export class PolicyService implements OnModuleInit {
@@ -24,8 +24,13 @@ export class PolicyService implements OnModuleInit {
 
   /** Seeds v1 policy documents on boot if they don't already exist, so registration/onboarding always has an active policy to reference. */
   async onModuleInit(): Promise<void> {
-    await this.seedIfMissing('TERMS_OF_SERVICE', '1', TERMS_OF_SERVICE_V1_TEXT);
-    await this.seedIfMissing('ACCESS_DISCLOSURE', '1', ACCESS_DISCLOSURE_V1_TEXT);
+    const termsText = process.env.TERMS_OF_SERVICE_TEXT ?? DEVELOPMENT_TERMS_TEXT;
+    const disclosureText = process.env.ACCESS_DISCLOSURE_TEXT ?? DEVELOPMENT_ACCESS_DISCLOSURE_TEXT;
+    if (process.env.NODE_ENV === 'production' && (!process.env.TERMS_OF_SERVICE_TEXT || !process.env.ACCESS_DISCLOSURE_TEXT)) {
+      throw new Error('Approved TERMS_OF_SERVICE_TEXT and ACCESS_DISCLOSURE_TEXT must be configured in production');
+    }
+    await this.seedIfMissing('TERMS_OF_SERVICE', process.env.TERMS_OF_SERVICE_VERSION ?? '1', termsText);
+    await this.seedIfMissing('ACCESS_DISCLOSURE', process.env.ACCESS_DISCLOSURE_VERSION ?? '1', disclosureText);
   }
 
   private async seedIfMissing(kind: string, version: string, text: string): Promise<void> {

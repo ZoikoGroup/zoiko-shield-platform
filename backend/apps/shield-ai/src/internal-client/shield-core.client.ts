@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AiUnavailableException } from '../gateway/fallback/fallback.exceptions';
+import { workloadAuthorizationHeaders } from '../../../../libs/security/src/workload-token';
 
 const SHIELD_CORE_BASE_URL = process.env.SHIELD_CORE_BASE_URL || 'http://localhost:3001';
 
@@ -13,8 +14,7 @@ export class ShieldCoreClient {
   private readonly logger = new Logger(ShieldCoreClient.name);
 
   private headers(): Record<string, string> {
-    const token = process.env.INTERNAL_SERVICE_TOKEN;
-    return { 'x-internal-service-token': token ?? '' };
+    return workloadAuthorizationHeaders('shield-core');
   }
 
   async getCase(tenantId: string, caseId: string): Promise<any> {

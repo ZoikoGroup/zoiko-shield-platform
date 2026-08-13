@@ -1,13 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AlertGeneratorService } from './alert-generator.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { KafkaProducerService } from '../kafka/kafka.producer.service';
 import { NotFoundException } from '@nestjs/common';
+import { OutboxService } from '../outbox/outbox.service';
 
 describe('AlertGeneratorService', () => {
   let service: AlertGeneratorService;
   let prismaMock: any;
-  let kafkaMock: any;
 
   const mockDetectionRun = {
     id: 'run-100',
@@ -22,8 +21,12 @@ describe('AlertGeneratorService', () => {
 
   beforeEach(async () => {
     prismaMock = {
+      $transaction: jest.fn().mockImplementation((ops: any[]) => Promise.all(ops)),
       detectionRun: {
         findUnique: jest.fn(),
+      },
+      normalizedEvent: {
+        findFirst: jest.fn(),
       },
       alert: {
         findFirst: jest.fn(),
@@ -32,17 +35,16 @@ describe('AlertGeneratorService', () => {
         findUnique: jest.fn(),
         update: jest.fn(),
       },
-    };
-
-    kafkaMock = {
-      emit: jest.fn().mockResolvedValue(true),
+      outboxEvent: {
+        create: jest.fn().mockResolvedValue({ id: 'outbox-1' }),
+      },
     };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AlertGeneratorService,
         { provide: PrismaService, useValue: prismaMock },
-        { provide: KafkaProducerService, useValue: kafkaMock },
+        { provide: OutboxService, useValue: new OutboxService() },
       ],
     }).compile();
 
@@ -52,6 +54,13 @@ describe('AlertGeneratorService', () => {
   it('should create an Alert from a MATCHED detection run', async () => {
     prismaMock.detectionRun.findUnique.mockResolvedValue(mockDetectionRun);
     prismaMock.alert.findFirst.mockResolvedValue(null);
+    prismaMock.normalizedEvent.findFirst.mockResolvedValue({
+      ...mockDetectionRun.event,
+      id: 'norm-1',
+      tenant_id: 'tenant-1',
+      environment_id: 'prod',
+      rawEvent: { source_region: 'eu-west-1' },
+    });
     prismaMock.alert.create.mockResolvedValue({
       id: 'alert-1',
       tenant_id: 'tenant-1',
@@ -71,7 +80,9 @@ describe('AlertGeneratorService', () => {
         severity: 'HIGH',
       }),
     });
-    expect(kafkaMock.emit).toHaveBeenCalledWith('alert.published', expect.any(Object));
+    expect(prismaMock.outboxEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ topic: 'alert.created.v1', tenant_id: 'tenant-1' }),
+    });
   });
 
   it('should return null if detection run result is NO_MATCH', async () => {
@@ -83,5 +94,16 @@ describe('AlertGeneratorService', () => {
     const alert = await service.createAlertFromDetectionRun('run-100');
     expect(alert).toBeNull();
     expect(prismaMock.alert.create).not.toHaveBeenCalled();
+  });
+
+  it('does not return an alert outside the authenticated tenant', async () => {
+    prismaMock.alert.findFirst.mockResolvedValue(null);
+
+    await expect(service.getAlertById('tenant-a', 'alert-from-tenant-b')).rejects.toThrow(
+      NotFoundException,
+    );
+    expect(prismaMock.alert.findFirst).toHaveBeenCalledWith({
+      where: { id: 'alert-from-tenant-b', tenant_id: 'tenant-a' },
+    });
   });
 });

@@ -16,7 +16,7 @@ describe('SLAClaimService (Step 15)', () => {
         findMany: jest.fn(),
       },
       case: {
-        findUnique: jest.fn(),
+        findFirst: jest.fn(),
       },
       connectorInstance: {
         count: jest.fn(),
@@ -38,7 +38,7 @@ describe('SLAClaimService (Step 15)', () => {
 
   it('should evaluate CLAIM_15MIN_RESPONSE as QUALIFIED when response time <= 15 minutes', async () => {
     prismaMock.evidenceRecord.findMany.mockResolvedValue([{ id: 'ev-1' }]);
-    prismaMock.case.findUnique.mockResolvedValue({
+    prismaMock.case.findFirst.mockResolvedValue({
       id: 'case-1',
       created_at: new Date(Date.now() - 5 * 60 * 1000), // 5 minutes ago
       caseTimelines: [{ created_at: new Date() }],
@@ -60,8 +60,8 @@ describe('SLAClaimService (Step 15)', () => {
 
   it('should calculate tenant SLA performance metrics', async () => {
     prismaMock.claimEvaluation.findMany.mockResolvedValue([
-      { status: 'QUALIFIED', response_time_minutes: 5.0 },
-      { status: 'QUALIFIED', response_time_minutes: 10.0 },
+      { result: 'QUALIFIED', response_time_minutes: 5.0 },
+      { result: 'QUALIFIED', response_time_minutes: 10.0 },
     ]);
 
     const metrics = await service.getSLAPerformanceMetrics('tenant-1');

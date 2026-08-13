@@ -1,5 +1,6 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { requireTenantId } from '../security/tenant-context';
 
 export class EvaluateClaimDto {
   tenantId?: string;
@@ -22,7 +23,7 @@ export class SLAClaimService {
       throw new BadRequestException('Claim key is required');
     }
 
-    const tenantId = dto.tenantId || '';
+    const tenantId = requireTenantId(dto.tenantId);
 
     let status = 'UNKNOWN';
     let responseTimeMinutes: number | null = null;
@@ -40,8 +41,8 @@ export class SLAClaimService {
 
     if (dto.claimKey === 'CLAIM_15MIN_RESPONSE') {
       if (dto.caseId) {
-        const caseRecord = await this.prisma.case.findUnique({
-          where: { id: dto.caseId },
+        const caseRecord = await this.prisma.case.findFirst({
+          where: { id: dto.caseId, tenant_id: tenantId },
           include: { timelineEntries: true },
         });
 
@@ -91,7 +92,11 @@ export class SLAClaimService {
       data: {
         tenant_id: tenantId,
         claim_type: dto.claimKey,
+        case_id: dto.caseId,
         result: status,
+        response_time_minutes: responseTimeMinutes,
+        justification,
+        evidence_ids: JSON.stringify(evidenceIds),
       },
     });
 
@@ -129,9 +134,9 @@ export class SLAClaimService {
     let evaluatedCasesCount = 0;
     let qualifiedCount = 0;
 
-    evaluations.forEach((ev: any) => {
-      if (ev.status === 'QUALIFIED' || ev.result === 'QUALIFIED') qualifiedCount++;
-      const resp = ev.response_time_minutes ?? ev.responseTimeMinutes;
+    evaluations.forEach((ev) => {
+      if (ev.result === 'QUALIFIED') qualifiedCount++;
+      const resp = ev.response_time_minutes;
       if (resp !== null && resp !== undefined) {
         totalResponseMinutes += resp;
         evaluatedCasesCount++;
@@ -140,15 +145,16 @@ export class SLAClaimService {
 
     const totalEvals = evaluations.length;
     const averageResponseTimeMinutes =
-      evaluatedCasesCount > 0 ? Number((totalResponseMinutes / evaluatedCasesCount).toFixed(1)) : 7.5;
-    const slaCompliancePercentage = totalEvals > 0 ? Number(((qualifiedCount / totalEvals) * 100).toFixed(1)) : 100.0;
+      evaluatedCasesCount > 0 ? Number((totalResponseMinutes / evaluatedCasesCount).toFixed(1)) : null;
+    const slaCompliancePercentage = totalEvals > 0 ? Number(((qualifiedCount / totalEvals) * 100).toFixed(1)) : null;
 
     return {
       tenantId,
       slaCompliancePercentage,
       averageResponseTimeMinutes,
-      mtttMinutes: Number((averageResponseTimeMinutes * 0.4).toFixed(2)),
+      mtttMinutes: averageResponseTimeMinutes === null ? null : Number((averageResponseTimeMinutes * 0.4).toFixed(2)),
       mttrMinutes: averageResponseTimeMinutes,
+      evaluationState: totalEvals === 0 ? 'NOT_EVALUATED' : 'EVALUATED',
       evaluatedClaimsCount: totalEvals,
       qualifiedClaimsCount: qualifiedCount,
       targetSlaMinutes: 15.0,

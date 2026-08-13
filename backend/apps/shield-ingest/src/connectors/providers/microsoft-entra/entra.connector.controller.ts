@@ -5,14 +5,17 @@ import {
   Body,
   Query,
   Param,
+  Headers,
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
-import { randomUUID } from 'crypto';
+import { createHash, randomUUID } from 'crypto';
 import { EntraConnectorService } from './entra.connector';
 import { EntraAuthService } from './entra.auth';
 import { ConnectorSyncService } from '../../services/sync.service';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { PublicIngress } from '../../../security/public-ingress.decorator';
+import { requireEnvironmentId, requireRegion, requireTenantId } from '../../../security/tenant-context';
 
 @Controller('v1/connectors/entra')
 export class EntraConnectorController {
@@ -28,17 +31,13 @@ export class EntraConnectorController {
    * POST /v1/connectors/entra/connect
    */
   @Post('connect')
-  async connect(@Body() body: { tenantId: string; environmentId?: string; region?: string }) {
-    if (!body.tenantId) {
-      throw new HttpException('tenantId is required', HttpStatus.BAD_REQUEST);
-    }
-
+  async connect(@Body() body: { tenantId: string; environmentId: string; region: string }) {
     return this.entraConnectorService.connect(
       {
         connectorInstanceId: '',
-        tenantId: body.tenantId,
-        environmentId: body.environmentId ?? 'default-env',
-        region: body.region ?? 'unspecified',
+        tenantId: requireTenantId(body.tenantId),
+        environmentId: requireEnvironmentId(body.environmentId),
+        region: requireRegion(body.region),
         purpose: 'security-monitoring',
         correlationId: randomUUID(),
         traceId: randomUUID(),
@@ -52,6 +51,7 @@ export class EntraConnectorController {
    * GET /v1/connectors/entra/callback
    */
   @Get('callback')
+  @PublicIngress()
   async callback(
     @Query('admin_consent') adminConsent: string,
     @Query('tenant') entraTenantId: string,
@@ -66,8 +66,16 @@ export class EntraConnectorController {
       );
     }
 
-    // Very basic state extraction (in production, we'd look this up from a Redis cache or DB using the exact state string)
-    const tenantId = state.split('_')[1];
+    const stateRecord = await this.prisma.connectorOauthState.findFirst({
+      where: {
+        state_hash: createHash('sha256').update(state || '').digest('hex'),
+        consumed_at: null,
+        expires_at: { gt: new Date() },
+      },
+    });
+    if (!stateRecord) {
+      throw new HttpException('OAuth state is invalid, expired, or already used', HttpStatus.UNAUTHORIZED);
+    }
 
     const isSuccess = this.entraAuthService.verifyAdminConsent(entraTenantId, adminConsent);
     if (!isSuccess) {
@@ -78,18 +86,17 @@ export class EntraConnectorController {
     }
 
     const pendingInstance = await this.prisma.connectorInstance.findFirst({
-      where: { tenant_id: tenantId, state: 'AWAITING_ADMIN_CONSENT' },
-      orderBy: { createdAt: 'desc' },
+      where: { id: stateRecord.instance_id, tenant_id: stateRecord.tenant_id, state: 'AWAITING_ADMIN_CONSENT' },
     });
 
-    if (pendingInstance) {
-      await this.entraConnectorService.completeConsent(pendingInstance.id, entraTenantId);
-    }
+    if (!pendingInstance) throw new HttpException('Pending connector instance not found', HttpStatus.NOT_FOUND);
+    await this.prisma.connectorOauthState.update({ where: { id: stateRecord.id }, data: { consumed_at: new Date() } });
+    await this.entraConnectorService.completeConsent(pendingInstance.id, entraTenantId);
 
     return {
       message: 'Successfully connected to Microsoft Entra ID!',
       entraTenantId,
-      zoikoTenantId: tenantId,
+      zoikoTenantId: stateRecord.tenant_id,
     };
   }
 
@@ -98,8 +105,14 @@ export class EntraConnectorController {
    * POST /v1/connectors/entra/:id/test
    */
   @Post(':id/test')
-  async testConnection(@Param('id') id: string) {
-    const instance = await this.prisma.connectorInstance.findUnique({ where: { id } });
+  async testConnection(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('id') id: string,
+  ) {
+    const tenantId = requireTenantId(headerTenantId);
+    const instance = await this.prisma.connectorInstance.findFirst({
+      where: { id, tenant_id: tenantId },
+    });
     if (!instance) {
       throw new HttpException('Connector instance not found', HttpStatus.NOT_FOUND);
     }
@@ -108,7 +121,7 @@ export class EntraConnectorController {
       connectorInstanceId: instance.id,
       tenantId: instance.tenant_id,
       environmentId: instance.environment_id,
-      region: instance.source_region ?? 'unspecified',
+      region: requireRegion(instance.source_region),
       purpose: 'security-monitoring',
       correlationId: randomUUID(),
       traceId: randomUUID(),
@@ -120,20 +133,24 @@ export class EntraConnectorController {
    * POST /v1/connectors/entra/:id/sync
    */
   @Post(':id/sync')
-  async syncConnection(@Param('id') id: string) {
-    const instance = await this.prisma.connectorInstance.findUnique({ where: { id } });
+  async syncConnection(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('id') id: string,
+  ) {
+    const tenantId = requireTenantId(headerTenantId);
+    const instance = await this.prisma.connectorInstance.findFirst({
+      where: { id, tenant_id: tenantId },
+    });
     if (!instance) {
       throw new HttpException('Connector instance not found', HttpStatus.NOT_FOUND);
     }
 
-    this.syncService.runSync(instance.id).catch((err) => {
-      // eslint-disable-next-line no-console
-      console.error('Background sync failed:', err);
-    });
+    const syncRun = await this.syncService.runSync(instance.id);
 
     return {
-      message: 'Synchronization run started in the background.',
+      message: 'Synchronization run completed.',
       instanceId: instance.id,
+      syncRun,
     };
   }
 }

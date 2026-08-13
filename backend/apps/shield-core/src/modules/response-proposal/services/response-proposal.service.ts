@@ -191,4 +191,64 @@ export class ResponseProposalService {
     }
     return proposal;
   }
+
+  async listForCase(tenantId: string, caseId: string) {
+    return this.prisma.actionProposal.findMany({
+      where: { tenant_id: tenantId, case_id: caseId },
+      orderBy: { created_at: 'desc' },
+    });
+  }
+
+  async getSimulation(tenantId: string, proposalId: string) {
+    await this.getById(tenantId, proposalId);
+    const command = await this.prisma.actionCommand.findFirst({
+      where: { tenant_id: tenantId, proposal_id: proposalId },
+      orderBy: { created_at: 'desc' },
+      include: { receipts: { orderBy: { created_at: 'desc' }, take: 1 } },
+    });
+    return command
+      ? { state: command.receipts[0]?.status ?? 'PROCESSING', actionCommandId: command.id, receipt: command.receipts[0] ?? null }
+      : { state: 'QUEUED', actionCommandId: null, receipt: null };
+  }
+
+  async freezeTenant(tenantId: string, createdBy: string, reason: string) {
+    if (!reason?.trim()) throw new BadRequestException('A response freeze reason is required');
+    const existing = await this.getActiveFreeze(tenantId);
+    if (existing) return existing;
+    return this.prisma.freeze.create({
+      data: { tenant_id: tenantId, scope: 'TENANT', reason: reason.trim(), created_by: createdBy },
+    });
+  }
+
+  async unfreezeTenant(tenantId: string) {
+    const now = new Date();
+    const result = await this.prisma.freeze.updateMany({
+      where: {
+        tenant_id: tenantId,
+        scope: 'TENANT',
+        active_from: { lte: now },
+        OR: [{ active_until: null }, { active_until: { gt: now } }],
+      },
+      data: { active_until: now },
+    });
+    return { frozen: false, endedFreezes: result.count, activeUntil: now };
+  }
+
+  async getFreezeStatus(tenantId: string) {
+    const freeze = await this.getActiveFreeze(tenantId);
+    return { frozen: !!freeze, status: freeze ? 'FROZEN' : 'OPERATIONAL', freeze };
+  }
+
+  private getActiveFreeze(tenantId: string) {
+    const now = new Date();
+    return this.prisma.freeze.findFirst({
+      where: {
+        tenant_id: tenantId,
+        scope: 'TENANT',
+        active_from: { lte: now },
+        OR: [{ active_until: null }, { active_until: { gt: now } }],
+      },
+      orderBy: { active_from: 'desc' },
+    });
+  }
 }

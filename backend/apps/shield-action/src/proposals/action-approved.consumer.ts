@@ -32,12 +32,14 @@ export class ActionApprovedConsumer implements OnModuleInit {
 
   private async handle(envelope: EventEnvelope<ActionApprovedPayload>): Promise<void> {
     const payload = envelope.payload;
-    if (!payload?.proposalId) {
-      this.logger.warn(`action.approved.v1 event ${envelope.eventId} missing proposalId — skipping`);
-      return;
+    if (!payload?.tenantId || !payload.proposalId || !envelope.tenantId) {
+      throw new Error(`action.approved.v1 event ${envelope.eventId} is missing tenantId or proposalId`);
+    }
+    if (payload.tenantId !== envelope.tenantId) {
+      throw new Error(`action.approved.v1 event ${envelope.eventId} contains conflicting tenant context`);
     }
 
-    const outcome = await this.simulation.simulate(payload.proposalId, envelope.correlationId);
+    const outcome = await this.simulation.simulate(payload.tenantId, payload.proposalId, envelope.correlationId);
     if (outcome.status === 'REJECTED') {
       this.logger.warn(`Proposal ${payload.proposalId} rejected at reauthorization: ${outcome.reason}`);
       return;
