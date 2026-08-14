@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomBytes, randomUUID } from 'crypto';
 import { IsNull, Repository } from 'typeorm';
-import { Assurance, Session } from './session.entity';
+import { Assurance, Session, SessionBinding } from './session.entity';
 
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days, rolling
 const ABSOLUTE_SESSION_TTL_MS = 90 * 24 * 60 * 60 * 1000; // 90 days, hard ceiling regardless of activity
@@ -28,6 +28,7 @@ export class SessionService {
     principalId: string,
     assurance: Assurance,
     metadata: SessionMetadata,
+    binding: SessionBinding,
     familyId?: string,
     absoluteExpiresAt?: Date,
   ): Promise<{ session: Session; refreshToken: string }> {
@@ -36,6 +37,15 @@ export class SessionService {
     const session = this.sessionRepository.create({
       principalId,
       assurance,
+      tenantId: binding.tenantId,
+      membershipId: binding.membershipId,
+      environmentId: binding.environmentId,
+      region: binding.region,
+      authenticationMethod: binding.authenticationMethod,
+      issuer: binding.issuer ?? null,
+      policyVersion: binding.policyVersion,
+      riskState: binding.riskState ?? 'NORMAL',
+      state: binding.state ?? 'ACTIVE',
       refreshTokenHash: this.hashToken(refreshToken),
       familyId: familyId ?? randomUUID(),
       deviceName: metadata.deviceName,
@@ -103,6 +113,26 @@ export class SessionService {
   ): Promise<void> {
     await this.sessionRepository.update(
       { principalId, revokedAt: IsNull() },
+      { revokedAt: new Date(), revokedReason: reason },
+    );
+  }
+
+  async revokeForMembership(
+    membershipId: string,
+    reason = 'MEMBERSHIP_CHANGED',
+  ): Promise<void> {
+    await this.sessionRepository.update(
+      { membershipId, revokedAt: IsNull() },
+      { revokedAt: new Date(), revokedReason: reason },
+    );
+  }
+
+  async revokeForTenant(
+    tenantId: string,
+    reason = 'TENANT_CONFIGURATION_CHANGED',
+  ): Promise<void> {
+    await this.sessionRepository.update(
+      { tenantId, revokedAt: IsNull() },
       { revokedAt: new Date(), revokedReason: reason },
     );
   }

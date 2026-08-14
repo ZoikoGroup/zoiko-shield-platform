@@ -6,8 +6,14 @@ import {
   Headers,
   Body,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { ResponseProposalService } from '../services/response-proposal.service';
+import { JwtAuthGuard } from '../../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../../authorization/guards/permissions.guard';
+import { CurrentUser } from '../../identity-adapter/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../../identity-adapter/interfaces/jwt-payload.interface';
+import { requireTenantId } from '../../../tenant-context';
 
 export class CreateProposalDto {
   caseId?: string;
@@ -20,19 +26,17 @@ export class CreateProposalDto {
   reversible?: boolean;
   rollbackActionType?: string;
   residualRisk?: string;
-  actorId?: string;
 }
 
 export class ApproveProposalDto {
   reason?: string;
-  actorId?: string;
 }
 
 export class RejectProposalDto {
   reason!: string;
-  actorId?: string;
 }
 
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1')
 export class ResponseProposalController {
   constructor(
@@ -40,10 +44,7 @@ export class ResponseProposalController {
   ) {}
 
   private resolveTenantId(headerTenantId: string): string {
-    return headerTenantId || 'default-tenant';
-  }
-  private resolveActor(dtoActorId: string | undefined): string {
-    return dtoActorId || 'system';
+    return requireTenantId(headerTenantId);
   }
 
   @Post('cases/:caseId/response-proposals')
@@ -51,6 +52,7 @@ export class ResponseProposalController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Param('caseId') caseId: string,
     @Body() dto: CreateProposalDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const tenantId = this.resolveTenantId(headerTenantId);
     const proposal = await this.responseProposalService.createProposal({
@@ -62,7 +64,7 @@ export class ResponseProposalController {
       targetId: dto.targetId,
       actionType: dto.actionType,
       reason: dto.reason,
-      requestedBy: this.resolveActor(dto.actorId),
+      requestedBy: user.id,
       recommendationSource: dto.recommendationSource,
       reversible: dto.reversible,
       rollbackActionType: dto.rollbackActionType,
@@ -77,7 +79,11 @@ export class ResponseProposalController {
     @Param('caseId') caseId: string,
   ) {
     const tenantId = this.resolveTenantId(headerTenantId);
-    return { statusCode: HttpStatus.OK, tenantId, caseId, proposals: [] };
+    const proposals = await this.responseProposalService.listForCase(
+      tenantId,
+      caseId,
+    );
+    return { statusCode: HttpStatus.OK, tenantId, caseId, proposals };
   }
 
   @Get('response-proposals/:proposalId')
@@ -98,12 +104,13 @@ export class ResponseProposalController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Param('proposalId') proposalId: string,
     @Body() dto: ApproveProposalDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const tenantId = this.resolveTenantId(headerTenantId);
     const approval = await this.responseProposalService.approve({
       tenantId,
       proposalId,
-      approverId: this.resolveActor(dto.actorId),
+      approverId: user.id,
       reason: dto.reason,
     });
     return { statusCode: HttpStatus.OK, data: approval };
@@ -114,12 +121,13 @@ export class ResponseProposalController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Param('proposalId') proposalId: string,
     @Body() dto: RejectProposalDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const tenantId = this.resolveTenantId(headerTenantId);
     const proposal = await this.responseProposalService.reject({
       tenantId,
       proposalId,
-      actorId: this.resolveActor(dto.actorId),
+      actorId: user.id,
       reason: dto.reason,
     });
     return { statusCode: HttpStatus.OK, data: proposal };
@@ -130,17 +138,13 @@ export class ResponseProposalController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Param('proposalId') proposalId: string,
   ) {
+    const simulation = await this.responseProposalService.getSimulation(
+      this.resolveTenantId(headerTenantId),
+      proposalId,
+    );
     return {
       statusCode: HttpStatus.OK,
-      message: 'Response simulation executed successfully',
-      receipt: {
-        id: `rcpt-${Date.now()}`,
-        proposalId,
-        result: 'SIMULATED',
-        simulatedTarget: { type: 'USER', id: 'user-1' },
-        observedEffect: { sessionsTerminated: true },
-        createdAt: new Date().toISOString(),
-      },
+      data: simulation,
     };
   }
 
@@ -148,26 +152,29 @@ export class ResponseProposalController {
   async freezeResponse(
     @Headers('x-tenant-id') headerTenantId: string,
     @Body() body: { reason?: string },
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return {
-      statusCode: HttpStatus.OK,
-      message: 'Response freeze switch ACTIVATED',
-      frozen: true,
-      reason: body?.reason,
-    };
+    const freeze = await this.responseProposalService.freezeTenant(
+      this.resolveTenantId(headerTenantId),
+      user.id,
+      body?.reason ?? '',
+    );
+    return { statusCode: HttpStatus.OK, frozen: true, data: freeze };
   }
 
   @Post('response/unfreeze')
   async unfreezeResponse(@Headers('x-tenant-id') headerTenantId: string) {
-    return {
-      statusCode: HttpStatus.OK,
-      message: 'Response freeze switch DEACTIVATED',
-      frozen: false,
-    };
+    const result = await this.responseProposalService.unfreezeTenant(
+      this.resolveTenantId(headerTenantId),
+    );
+    return { statusCode: HttpStatus.OK, ...result };
   }
 
   @Get('response/freeze-status')
   async getFreezeStatus(@Headers('x-tenant-id') headerTenantId: string) {
-    return { statusCode: HttpStatus.OK, frozen: false, status: 'OPERATIONAL' };
+    const result = await this.responseProposalService.getFreezeStatus(
+      this.resolveTenantId(headerTenantId),
+    );
+    return { statusCode: HttpStatus.OK, ...result };
   }
 }

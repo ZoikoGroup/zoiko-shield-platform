@@ -1,7 +1,6 @@
 import {
   Injectable,
   ConflictException,
-  ForbiddenException,
   NotFoundException,
   Logger,
 } from '@nestjs/common';
@@ -9,7 +8,10 @@ import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OutboxService } from '../../../outbox/outbox.service';
 import { CANONICAL_TOPICS } from '../../../kafka/kafka-producer.service';
-import { AuthorizationDecisionService } from '../../authorization-decision/authorization-decision.service';
+import {
+  assertPermittedAuthorization,
+  AuthorizationDecisionService,
+} from '../../authorization-decision/authorization-decision.service';
 import { ExportJobService } from '../../export/jobs/export-job.service';
 import { ExportWorkerService } from '../../export/workers/export-worker.service';
 import { ApiClientService } from '../../developer-api/clients/api-client.service';
@@ -44,19 +46,18 @@ export class TenantOffboardingService {
   ) {}
 
   async start(tenantId: string, requestedBy: string, reason: string) {
-    const { authorizationDecisionId, decision } =
-      await this.authorizationDecisionService.evaluate({
-        actorId: requestedBy,
-        tenantId,
-        action: 'tenant_offboarding:start',
-        resourceType: 'Tenant',
-        resourceId: tenantId,
-      });
-    if (decision === 'DENY') {
-      throw new ForbiddenException(
-        'Actor is not authorized to start tenant offboarding',
-      );
-    }
+    const authorization = await this.authorizationDecisionService.evaluate({
+      actorId: requestedBy,
+      tenantId,
+      action: 'tenant_offboarding:start',
+      resourceType: 'Tenant',
+      resourceId: tenantId,
+    });
+    assertPermittedAuthorization(
+      authorization,
+      'Actor is not authorized to start tenant offboarding',
+    );
+    const { authorizationDecisionId } = authorization;
 
     const existing = await this.prisma.tenantOffboardingRun.findFirst({
       where: {

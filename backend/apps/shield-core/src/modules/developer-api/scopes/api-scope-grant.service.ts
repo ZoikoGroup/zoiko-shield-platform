@@ -1,11 +1,10 @@
-import {
-  Injectable,
-  BadRequestException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { AuthorizationDecisionService } from '../../authorization-decision/authorization-decision.service';
+import {
+  assertPermittedAuthorization,
+  AuthorizationDecisionService,
+} from '../../authorization-decision/authorization-decision.service';
 import { isKnownScope } from './api-scope-registry';
 
 /** No permanent hidden scope elevation — every grant is authorized and recorded (spec §34). */
@@ -28,19 +27,18 @@ export class ApiScopeGrantService {
       throw new BadRequestException(`Unknown scope '${params.scope}'`);
     }
 
-    const { authorizationDecisionId, decision } =
-      await this.authorizationDecisionService.evaluate({
-        actorId: params.grantedBy,
-        tenantId: params.tenantId,
-        action: 'api_scope:grant',
-        resourceType: 'ApiClient',
-        resourceId: params.apiClientId,
-      });
-    if (decision === 'DENY') {
-      throw new ForbiddenException(
-        'Actor is not authorized to grant API scopes',
-      );
-    }
+    const authorization = await this.authorizationDecisionService.evaluate({
+      actorId: params.grantedBy,
+      tenantId: params.tenantId,
+      action: 'api_scope:grant',
+      resourceType: 'ApiClient',
+      resourceId: params.apiClientId,
+    });
+    assertPermittedAuthorization(
+      authorization,
+      'Actor is not authorized to grant API scopes',
+    );
+    const { authorizationDecisionId } = authorization;
 
     return this.prisma.apiScopeGrant.create({
       data: {

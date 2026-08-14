@@ -55,7 +55,7 @@ export class PartnerController {
   }
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/partners/delegations')
 export class PartnerDelegationController {
   constructor(private readonly delegationService: PartnerDelegationService) {}
@@ -87,7 +87,7 @@ export class PartnerDelegationController {
   }
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/partners/settlements')
 export class PartnerSettlementController {
   constructor(private readonly settlementService: PartnerSettlementService) {}

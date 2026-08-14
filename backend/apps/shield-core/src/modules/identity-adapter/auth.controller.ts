@@ -16,12 +16,10 @@ import { PasswordRecoveryRequestDto } from './dto/password-recovery-request.dto'
 import { PasswordRecoveryVerifyDto } from './dto/password-recovery-verify.dto';
 import { PasswordRecoveryResetDto } from './dto/password-recovery-reset.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { GoogleAuthGuard } from './guards/google-auth.guard';
-import { MicrosoftAuthGuard } from './guards/microsoft-auth.guard';
 import { CurrentUser } from './decorators/current-user.decorator';
 import type { AuthenticatedUser } from './interfaces/jwt-payload.interface';
-import type { OAuthProfile } from './interfaces/oauth-profile.interface';
 import type { SessionMetadata } from './session.service';
+import { SwitchTenantSessionDto } from './dto/switch-tenant-session.dto';
 import {
   REFRESH_TOKEN_COOKIE,
   RECOVERY_GRANT_COOKIE,
@@ -30,6 +28,10 @@ import {
   setAuthCookies,
   setRecoveryGrantCookie,
 } from './auth-cookies';
+import {
+  AuthenticationOnlyEndpoint,
+  PublicEndpoint,
+} from '../../security/endpoint-access.decorator';
 
 function sessionMetadataFrom(req: Request): SessionMetadata {
   return {
@@ -59,6 +61,7 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
+  @PublicEndpoint()
   @Post(['password-recovery/request', 'forgot-password'])
   requestPasswordRecovery(
     @Body() dto: PasswordRecoveryRequestDto,
@@ -70,6 +73,7 @@ export class AuthController {
     );
   }
 
+  @PublicEndpoint()
   @Post('password-recovery/verify')
   async verifyPasswordRecovery(
     @Body() dto: PasswordRecoveryVerifyDto,
@@ -81,6 +85,7 @@ export class AuthController {
     return { message: 'Code verified. You may now set a new password.' };
   }
 
+  @PublicEndpoint()
   @Post(['password-recovery/reset', 'reset-password'])
   async resetPassword(
     @Body() dto: PasswordRecoveryResetDto,
@@ -96,6 +101,7 @@ export class AuthController {
   }
 
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @PublicEndpoint()
   @Post('login')
   async login(
     @Body() dto: LoginDto,
@@ -110,6 +116,7 @@ export class AuthController {
     return { user };
   }
 
+  @PublicEndpoint()
   @Post('refresh')
   async refresh(
     @Req() req: Request,
@@ -123,6 +130,7 @@ export class AuthController {
     return { success: true };
   }
 
+  @PublicEndpoint()
   @Post('logout')
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const token = req.cookies?.[REFRESH_TOKEN_COOKIE];
@@ -134,6 +142,7 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @AuthenticationOnlyEndpoint()
   @Post('logout-all')
   async logoutAll(
     @CurrentUser() user: AuthenticatedUser,
@@ -144,58 +153,19 @@ export class AuthController {
     return { success: true };
   }
 
-  @UseGuards(GoogleAuthGuard)
-  @Get('google')
-  googleLogin() {
-    // Handled by GoogleAuthGuard: redirects to Google's consent screen.
-  }
-
-  @UseGuards(GoogleAuthGuard)
-  @Get('google/callback')
-  async googleCallback(
+  @UseGuards(JwtAuthGuard)
+  @AuthenticationOnlyEndpoint()
+  @Post('switch-tenant')
+  async switchTenant(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() dto: SwitchTenantSessionDto,
     @Req() req: Request,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const profile = req.user as OAuthProfile;
-    const { user, ...tokens } = await this.authService.loginWithOAuthAssertion(
-      'GOOGLE',
-      {
-        issuer: profile.issuer,
-        subject: profile.providerUserId,
-        email: profile.email,
-        fullName: profile.fullName,
-        avatarUrl: profile.avatarUrl,
-        claimProfile: profile.claimProfile,
-      },
-      sessionMetadataFrom(req),
-    );
-    setAuthCookies(res, tokens);
-    return { user };
-  }
-
-  @UseGuards(MicrosoftAuthGuard)
-  @Get('microsoft')
-  microsoftLogin() {
-    // Handled by MicrosoftAuthGuard: redirects to Microsoft's consent screen.
-  }
-
-  @UseGuards(MicrosoftAuthGuard)
-  @Get('microsoft/callback')
-  async microsoftCallback(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response,
-  ) {
-    const profile = req.user as OAuthProfile;
-    const { user, ...tokens } = await this.authService.loginWithOAuthAssertion(
-      'MICROSOFT',
-      {
-        issuer: profile.issuer,
-        subject: profile.providerUserId,
-        email: profile.email,
-        fullName: profile.fullName,
-        avatarUrl: profile.avatarUrl,
-        claimProfile: profile.claimProfile,
-      },
+    const { user, ...tokens } = await this.authService.switchTenantSession(
+      currentUser.id,
+      currentUser.sessionId,
+      dto,
       sessionMetadataFrom(req),
     );
     setAuthCookies(res, tokens);
@@ -203,6 +173,7 @@ export class AuthController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @AuthenticationOnlyEndpoint()
   @Get(['me', '/api/v1/me'])
   me(@CurrentUser() user: AuthenticatedUser) {
     return user;

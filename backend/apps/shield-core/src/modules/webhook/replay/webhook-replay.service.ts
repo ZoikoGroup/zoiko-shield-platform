@@ -1,10 +1,9 @@
-import {
-  Injectable,
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { AuthorizationDecisionService } from '../../authorization-decision/authorization-decision.service';
+import {
+  assertPermittedAuthorization,
+  AuthorizationDecisionService,
+} from '../../authorization-decision/authorization-decision.service';
 import { CANONICAL_TOPICS } from '../../../kafka/kafka-producer.service';
 import { OutboxService } from '../../../outbox/outbox.service';
 import { WebhookDeliveryService } from '../delivery/webhook-delivery.service';
@@ -43,18 +42,17 @@ export class WebhookReplayService {
       throw new NotFoundException(`WebhookDelivery '${deliveryId}' not found`);
     }
 
-    const { decision } = await this.authorizationDecisionService.evaluate({
+    const authorization = await this.authorizationDecisionService.evaluate({
       actorId,
       tenantId,
       action: 'webhook:replay',
       resourceType: 'WebhookDelivery',
       resourceId: deliveryId,
     });
-    if (decision === 'DENY') {
-      throw new ForbiddenException(
-        'Actor is not authorized to replay webhook deliveries',
-      );
-    }
+    assertPermittedAuthorization(
+      authorization,
+      'Actor is not authorized to replay webhook deliveries',
+    );
 
     const data = JSON.parse(original.payload)?.data ?? {};
     await this.deliveryService.deliver(

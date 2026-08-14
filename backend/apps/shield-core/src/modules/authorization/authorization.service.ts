@@ -12,6 +12,8 @@ import { Permission } from './entities/permission.entity';
 import { Role, RoleLevel } from './entities/role.entity';
 import { TenantMembership } from './entities/tenant-membership.entity';
 import { Invitation } from './entities/invitation.entity';
+import { Session } from '../identity-adapter/session.entity';
+import { IdentityEvent } from '../identity-adapter/identity-event.entity';
 
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -26,6 +28,10 @@ export class AuthorizationService {
     private readonly membershipRepository: Repository<TenantMembership>,
     @InjectRepository(Invitation)
     private readonly invitationRepository: Repository<Invitation>,
+    @InjectRepository(Session)
+    private readonly sessionRepository: Repository<Session>,
+    @InjectRepository(IdentityEvent)
+    private readonly identityEventRepository: Repository<IdentityEvent>,
   ) {}
 
   async createPermission(
@@ -111,26 +117,6 @@ export class AuthorizationService {
       }
     }
 
-    // Also check platform-scope membership — platform super admins carry
-    // their permissions across all tenants (offboarding, deletion, etc.)
-    if (tenantId !== '00000000-0000-0000-0000-000000000000') {
-      const platformMembership = await this.membershipRepository.findOne({
-        where: {
-          tenantId: '00000000-0000-0000-0000-000000000000',
-          principalId,
-          status: 'ACTIVE',
-        },
-        relations: { roles: { permissions: true } },
-      });
-      if (platformMembership) {
-        for (const role of platformMembership.roles) {
-          for (const permission of role.permissions) {
-            codes.add(permission.code);
-          }
-        }
-      }
-    }
-
     return [...codes];
   }
 
@@ -139,14 +125,7 @@ export class AuthorizationService {
     principalId: string,
   ): Promise<boolean> {
     const membership = await this.membershipRepository.findOne({
-      where: [
-        { tenantId, principalId, status: 'ACTIVE' },
-        {
-          tenantId: '00000000-0000-0000-0000-000000000000',
-          principalId,
-          status: 'ACTIVE',
-        },
-      ],
+      where: { tenantId, principalId, status: 'ACTIVE' },
       select: { id: true },
     });
     return Boolean(membership);
@@ -170,6 +149,16 @@ export class AuthorizationService {
   ): Promise<TenantMembership[]> {
     return this.membershipRepository.find({
       where: { principalId, status: 'ACTIVE' },
+      relations: { roles: { permissions: true } },
+    });
+  }
+
+  getMembershipForPrincipal(
+    tenantId: string,
+    principalId: string,
+  ): Promise<TenantMembership | null> {
+    return this.membershipRepository.findOne({
+      where: { tenantId, principalId, status: 'ACTIVE' },
       relations: { roles: { permissions: true } },
     });
   }
@@ -216,6 +205,12 @@ export class AuthorizationService {
         expiresAt: new Date(Date.now() + INVITATION_TTL_MS),
       }),
     );
+    await this.recordIdentityEvent({
+      eventType: 'tenant_invitation_created',
+      actorId: data.invitedById,
+      tenantId: data.tenantId,
+      data: { invitationId: invitation.id, roleId: data.roleId },
+    });
     return { invitation, token };
   }
 
@@ -277,6 +272,18 @@ export class AuthorizationService {
     invitation.acceptedById = acceptingPrincipalId;
     await this.invitationRepository.save(invitation);
 
+    await this.recordIdentityEvent({
+      eventType: 'tenant_membership_created',
+      principalId: acceptingPrincipalId,
+      actorId: acceptingPrincipalId,
+      tenantId: invitation.tenantId,
+      data: {
+        membershipId: membership.id,
+        source: 'INVITATION',
+        roleId: role.id,
+      },
+    });
+
     return membership;
   }
 
@@ -301,7 +308,11 @@ export class AuthorizationService {
   async updateMember(
     tenantId: string,
     memberId: string,
-    input: { roleIds?: string[]; status?: 'ACTIVE' | 'SUSPENDED' },
+    input: {
+      roleIds?: string[];
+      status?: 'ACTIVE' | 'SUSPENDED';
+      actorId?: string;
+    },
   ) {
     const membership = await this.membershipRepository.findOne({
       where: { id: memberId, tenantId },
@@ -309,6 +320,10 @@ export class AuthorizationService {
     });
     if (!membership)
       throw new NotFoundException(`Tenant member ${memberId} not found`);
+    const before = {
+      status: membership.status,
+      roleIds: membership.roles.map((role) => role.id).sort(),
+    };
 
     if (input.status) membership.status = input.status;
     if (input.roleIds) {
@@ -330,10 +345,34 @@ export class AuthorizationService {
       }
       membership.roles = roles;
     }
-    return this.membershipRepository.save(membership);
+    const saved = await this.membershipRepository.save(membership);
+    await this.sessionRepository.update(
+      { membershipId: membership.id, revokedAt: IsNull() },
+      {
+        revokedAt: new Date(),
+        revokedReason: input.status
+          ? 'MEMBERSHIP_STATUS_CHANGED'
+          : 'MEMBERSHIP_ROLES_CHANGED',
+      },
+    );
+    await this.recordIdentityEvent({
+      eventType: 'tenant_membership_changed',
+      principalId: membership.principalId,
+      actorId: input.actorId,
+      tenantId,
+      data: {
+        membershipId: membership.id,
+        before,
+        after: {
+          status: saved.status,
+          roleIds: saved.roles.map((role) => role.id).sort(),
+        },
+      },
+    });
+    return saved;
   }
 
-  async removeMember(tenantId: string, memberId: string) {
+  async removeMember(tenantId: string, memberId: string, actorId?: string) {
     const membership = await this.membershipRepository.findOne({
       where: { id: memberId, tenantId },
     });
@@ -341,6 +380,37 @@ export class AuthorizationService {
       throw new NotFoundException(`Tenant member ${memberId} not found`);
     membership.status = 'REMOVED';
     membership.roles = [];
-    return this.membershipRepository.save(membership);
+    const saved = await this.membershipRepository.save(membership);
+    await this.sessionRepository.update(
+      { membershipId: membership.id, revokedAt: IsNull() },
+      { revokedAt: new Date(), revokedReason: 'MEMBERSHIP_REMOVED' },
+    );
+    await this.recordIdentityEvent({
+      eventType: 'tenant_membership_removed',
+      principalId: membership.principalId,
+      actorId,
+      tenantId,
+      data: { membershipId: membership.id },
+    });
+    return saved;
+  }
+
+  private async recordIdentityEvent(input: {
+    eventType: string;
+    principalId?: string;
+    actorId?: string;
+    tenantId: string;
+    data: Record<string, unknown>;
+  }): Promise<void> {
+    await this.identityEventRepository.save(
+      this.identityEventRepository.create({
+        eventType: input.eventType,
+        principalId: input.principalId ?? null,
+        actorId: input.actorId ?? null,
+        tenantId: input.tenantId,
+        correlationId: null,
+        data: input.data,
+      }),
+    );
   }
 }

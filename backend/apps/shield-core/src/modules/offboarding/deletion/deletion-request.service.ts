@@ -1,12 +1,14 @@
 import {
   Injectable,
-  ForbiddenException,
   ConflictException,
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { AuthorizationDecisionService } from '../../authorization-decision/authorization-decision.service';
+import {
+  assertPermittedAuthorization,
+  AuthorizationDecisionService,
+} from '../../authorization-decision/authorization-decision.service';
 import { LegalHoldService } from '../legal-hold/legal-hold.service';
 
 export interface CreateDeletionRequestInput {
@@ -42,19 +44,18 @@ export class DeletionRequestService {
   ) {}
 
   async request(input: CreateDeletionRequestInput) {
-    const { authorizationDecisionId, decision } =
-      await this.authorizationDecisionService.evaluate({
-        actorId: input.requestedBy,
-        tenantId: input.tenantId,
-        action: 'deletion:request',
-        resourceType: 'Tenant',
-        resourceId: input.tenantId,
-      });
-    if (decision === 'DENY') {
-      throw new ForbiddenException(
-        'Actor is not authorized to request deletion',
-      );
-    }
+    const authorization = await this.authorizationDecisionService.evaluate({
+      actorId: input.requestedBy,
+      tenantId: input.tenantId,
+      action: 'deletion:request',
+      resourceType: 'Tenant',
+      resourceId: input.tenantId,
+    });
+    assertPermittedAuthorization(
+      authorization,
+      'Actor is not authorized to request deletion',
+    );
+    const { authorizationDecisionId } = authorization;
 
     const activeHolds = await this.legalHoldService.getActiveForTenant(
       input.tenantId,

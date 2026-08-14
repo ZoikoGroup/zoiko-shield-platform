@@ -13,6 +13,7 @@ import {
 import { IsInt, IsPositive, IsString } from 'class-validator';
 import { InternalAuthGuard } from '../../internal-client/internal-auth.guard';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { AiUsageService, RecordAiUsageDto } from './ai-usage.service';
 import { AiBudgetService, SetBudgetDto } from './ai-budget.service';
 import { requireTenantId } from '../../tenant-context';
@@ -70,7 +71,7 @@ export class AiUsageController {
   }
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/ai/budgets')
 export class AiBudgetController {
   constructor(private readonly budgetService: AiBudgetService) {}

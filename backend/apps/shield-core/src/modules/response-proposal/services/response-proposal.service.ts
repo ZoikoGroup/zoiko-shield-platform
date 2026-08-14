@@ -8,7 +8,10 @@ import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OutboxService } from '../../../outbox/outbox.service';
 import { ContentHashService } from '../../evidence/hashing/content-hash.service';
-import { AuthorizationDecisionService } from '../../authorization-decision/authorization-decision.service';
+import {
+  assertPermittedAuthorization,
+  AuthorizationDecisionService,
+} from '../../authorization-decision/authorization-decision.service';
 import { CANONICAL_TOPICS } from '../../../kafka/kafka-producer.service';
 
 const PROPOSAL_TTL_MS = 24 * 60 * 60 * 1000; // 24h to be acted on
@@ -47,19 +50,18 @@ export class ResponseProposalService {
   ) {}
 
   async createProposal(input: CreateProposalInput) {
-    const { authorizationDecisionId, decision } =
-      await this.authorizationDecisionService.evaluate({
-        actorId: input.requestedBy,
-        tenantId: input.tenantId,
-        action: 'response_proposal:create',
-        resourceType: input.targetType,
-        resourceId: input.targetId,
-      });
-    if (decision === 'DENY') {
-      throw new BadRequestException(
-        'Actor is not authorized to create response proposals',
-      );
-    }
+    const authorization = await this.authorizationDecisionService.evaluate({
+      actorId: input.requestedBy,
+      tenantId: input.tenantId,
+      action: 'response_proposal:create',
+      resourceType: input.targetType,
+      resourceId: input.targetId,
+    });
+    assertPermittedAuthorization(
+      authorization,
+      'Actor is not authorized to create response proposals',
+    );
+    const { authorizationDecisionId } = authorization;
 
     const correlationId = randomUUID();
     const expiresAt = new Date(Date.now() + PROPOSAL_TTL_MS);
@@ -126,19 +128,18 @@ export class ResponseProposalService {
       );
     }
 
-    const { authorizationDecisionId, decision } =
-      await this.authorizationDecisionService.evaluate({
-        actorId: params.approverId,
-        tenantId: params.tenantId,
-        action: 'response_proposal:approve',
-        resourceType: proposal.target_type,
-        resourceId: proposal.target_id,
-      });
-    if (decision === 'DENY') {
-      throw new BadRequestException(
-        'Actor is not authorized to approve response proposals',
-      );
-    }
+    const authorization = await this.authorizationDecisionService.evaluate({
+      actorId: params.approverId,
+      tenantId: params.tenantId,
+      action: 'response_proposal:approve',
+      resourceType: proposal.target_type,
+      resourceId: proposal.target_id,
+    });
+    assertPermittedAuthorization(
+      authorization,
+      'Actor is not authorized to approve response proposals',
+    );
+    const { authorizationDecisionId } = authorization;
 
     const expiresAt = new Date(Date.now() + APPROVAL_TTL_MS);
     const { contentHash: approvedMaterialHash } =

@@ -11,6 +11,12 @@ import {
 } from '@nestjs/common';
 import { IsIn, IsString, IsUUID } from 'class-validator';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
+import { PlatformPermissionsGuard } from '../authorization/guards/platform-permissions.guard';
+import { RequirePlatformPermissions } from '../authorization/decorators/require-platform-permissions.decorator';
+import { PERMISSION_CODES } from '../authorization/constants';
+import { CurrentUser } from '../identity-adapter/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
 import { InternalAuthGuard } from '../../internal-client/internal-auth.guard';
 import {
   CreateSlaDefinitionDto,
@@ -27,9 +33,6 @@ import {
 import { requireTenantId } from '../../tenant-context';
 
 export class DecideCreditDto {
-  @IsString()
-  approverId!: string;
-
   @IsIn(['APPROVED', 'REJECTED'])
   decision!: 'APPROVED' | 'REJECTED';
 
@@ -42,7 +45,8 @@ export class PostCreditDto {
   invoiceId!: string;
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PlatformPermissionsGuard)
+@RequirePlatformPermissions(PERMISSION_CODES.PLATFORM_SLA_DEFINITION_MANAGE)
 @Controller('api/v1/sla/definitions')
 export class SlaDefinitionController {
   constructor(private readonly definitionService: SlaDefinitionService) {}
@@ -56,11 +60,11 @@ export class SlaDefinitionController {
   @Patch(':id/approve')
   async approve(
     @Param('id') id: string,
-    @Body('approvedBy') approvedBy: string,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const definition = await this.definitionService.approveDefinition(
       id,
-      approvedBy || 'system',
+      user.id,
     );
     return { statusCode: HttpStatus.OK, data: definition };
   }
@@ -97,7 +101,7 @@ export class SlaMeasurementController {
   }
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/sla/credits')
 export class ServiceCreditController {
   constructor(private readonly creditService: ServiceCreditService) {}
@@ -106,10 +110,12 @@ export class ServiceCreditController {
   async propose(
     @Headers('x-tenant-id') headerTenantId: string,
     @Body() dto: ProposeCreditDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const credit = await this.creditService.proposeCredit(
       requireTenantId(headerTenantId),
       dto,
+      user.id,
     );
     return { statusCode: HttpStatus.CREATED, data: credit };
   }
@@ -131,11 +137,12 @@ export class ServiceCreditController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Param('id') id: string,
     @Body() dto: DecideCreditDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const credit = await this.creditService.decideCredit(
       requireTenantId(headerTenantId),
       id,
-      dto.approverId,
+      user.id,
       dto.decision,
       dto.reason,
     );

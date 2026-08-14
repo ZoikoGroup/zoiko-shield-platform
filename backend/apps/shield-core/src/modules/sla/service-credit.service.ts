@@ -4,7 +4,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { IsNumber, IsString, IsUUID } from 'class-validator';
+import { IsNumber, IsUUID } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CommercialApprovalService } from '../approvals/commercial-approval.service';
 import { InvoiceSkeletonService } from '../billing/invoice-skeleton.service';
@@ -24,9 +24,6 @@ export class ProposeCreditDto {
 
   @IsNumber()
   amount!: number;
-
-  @IsString()
-  proposedBy!: string;
 }
 
 /**
@@ -48,7 +45,11 @@ export class ServiceCreditService {
     private readonly invoiceService: InvoiceSkeletonService,
   ) {}
 
-  async proposeCredit(tenantId: string, dto: ProposeCreditDto) {
+  async proposeCredit(
+    tenantId: string,
+    dto: ProposeCreditDto,
+    proposedBy: string,
+  ) {
     const measurement = await this.measurementService.getMeasurementById(
       tenantId,
       dto.slaMeasurementId,
@@ -74,7 +75,7 @@ export class ServiceCreditService {
       changeType: 'SERVICE_CREDIT',
       objectType: 'ServiceCredit',
       objectId: credit.id,
-      requestedBy: dto.proposedBy,
+      requestedBy: proposedBy,
       reason: `SLA breach on measurement ${dto.slaMeasurementId} (evidence: ${measurement.evidence_ref || 'none'})`,
       financialImpact: dto.amount,
     });

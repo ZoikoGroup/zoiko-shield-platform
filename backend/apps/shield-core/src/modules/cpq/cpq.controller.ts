@@ -83,7 +83,7 @@ export class QuoteController {
   }
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/cpq/orders')
 export class OrderController {
   constructor(private readonly orderService: OrderService) {}
@@ -122,7 +122,7 @@ export class OrderController {
   }
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/cpq/subscriptions')
 export class SubscriptionController {
   constructor(private readonly subscriptionService: SubscriptionService) {}

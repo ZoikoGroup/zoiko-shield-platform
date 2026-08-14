@@ -6,7 +6,10 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { AuthorizationDecisionService } from '../../authorization-decision/authorization-decision.service';
+import {
+  assertPermittedAuthorization,
+  AuthorizationDecisionService,
+} from '../../authorization-decision/authorization-decision.service';
 import { ControlImplementationStateMachineService } from './control-implementation-state-machine.service';
 
 export interface CreateControlImplementationInput {
@@ -30,18 +33,17 @@ export class ControlImplementationService {
   ) {}
 
   async create(input: CreateControlImplementationInput) {
-    const { decision } = await this.authorizationDecisionService.evaluate({
+    const authorization = await this.authorizationDecisionService.evaluate({
       actorId: input.requestedBy,
       tenantId: input.tenantId,
       action: 'control_implementation:create',
       resourceType: 'ControlObjective',
       resourceId: input.controlObjectiveId,
     });
-    if (decision === 'DENY') {
-      throw new ForbiddenException(
-        'Actor is not authorized to create control implementations',
-      );
-    }
+    assertPermittedAuthorization(
+      authorization,
+      'Actor is not authorized to create control implementations',
+    );
 
     return this.prisma.controlImplementation.create({
       data: {
@@ -75,18 +77,17 @@ export class ControlImplementationService {
       if (!params.notApplicableRationale) {
         throw new BadRequestException('NOT_APPLICABLE requires a rationale');
       }
-      const { decision } = await this.authorizationDecisionService.evaluate({
+      const authorization = await this.authorizationDecisionService.evaluate({
         actorId: params.actorId,
         tenantId: params.tenantId,
         action: 'control_implementation:mark_not_applicable',
         resourceType: 'ControlImplementation',
         resourceId: impl.id,
       });
-      if (decision === 'DENY') {
-        throw new ForbiddenException(
-          'Actor is not authorized to mark this control NOT_APPLICABLE',
-        );
-      }
+      assertPermittedAuthorization(
+        authorization,
+        'Actor is not authorized to mark this control NOT_APPLICABLE',
+      );
     }
 
     return this.prisma.controlImplementation.update({

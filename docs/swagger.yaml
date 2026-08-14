@@ -23,7 +23,9 @@ servers:
   description: Anchor Microservice
 tags:
 - name: Auth
-  description: "Identity adapter \u2013 registration, login, OAuth, sessions, invitations"
+  description: "Identity adapter \u2013 company SSO, approved password fallback, tenant-bound sessions, and invitations"
+- name: Identity Providers
+  description: Tenant-administered OIDC and SAML trust configuration and activation
 - name: RBAC
   description: "Authorization \u2013 permissions, roles, tenant membership"
 - name: Tenant
@@ -1178,9 +1180,16 @@ components:
           format: email
         password:
           type: string
+        tenantId:
+          type: string
+          format: uuid
+        environmentId:
+          type: string
+          format: uuid
       required:
       - email
       - password
+      - tenantId
     PostAuthLoginResponse:
       type: object
       properties:
@@ -1209,12 +1218,37 @@ components:
               - FEDERATED_MFA
               - PASSKEY
               - RECOVERY
+            tenantId:
+              type: string
+              format: uuid
+            membershipId:
+              type: string
+              format: uuid
+            environmentId:
+              type: string
+              format: uuid
+              nullable: true
+            region:
+              type: string
+            policyVersion:
+              type: string
+            riskState:
+              type: string
+            sessionState:
+              type: string
+              enum: [ACTIVE, RESTRICTED]
           required:
           - id
           - sessionId
           - email
           - emailVerified
           - assurance
+          - tenantId
+          - membershipId
+          - region
+          - policyVersion
+          - riskState
+          - sessionState
       required:
       - user
     PostAuthRefreshResponse:
@@ -1291,79 +1325,7 @@ components:
           type: string
       required:
       - message
-    GetAuthGoogleCallbackResponse:
-      type: object
-      properties:
-        user:
-          type: object
-          properties:
-            id:
-              type: string
-              format: uuid
-            sessionId:
-              type: string
-              format: uuid
-            email:
-              type: string
-            fullName:
-              type: string
-              nullable: true
-            emailVerified:
-              type: boolean
-            assurance:
-              type: string
-              enum:
-              - PASSWORD
-              - PASSWORD_MFA
-              - FEDERATED
-              - FEDERATED_MFA
-              - PASSKEY
-              - RECOVERY
-          required:
-          - id
-          - sessionId
-          - email
-          - emailVerified
-          - assurance
-      required:
-      - user
-    GetAuthMicrosoftCallbackResponse:
-      type: object
-      properties:
-        user:
-          type: object
-          properties:
-            id:
-              type: string
-              format: uuid
-            sessionId:
-              type: string
-              format: uuid
-            email:
-              type: string
-            fullName:
-              type: string
-              nullable: true
-            emailVerified:
-              type: boolean
-            assurance:
-              type: string
-              enum:
-              - PASSWORD
-              - PASSWORD_MFA
-              - FEDERATED
-              - FEDERATED_MFA
-              - PASSKEY
-              - RECOVERY
-          required:
-          - id
-          - sessionId
-          - email
-          - emailVerified
-          - assurance
-      required:
-      - user
-    GetAuthMeResponse:
+    TenantSessionUser:
       type: object
       properties:
         id:
@@ -1374,6 +1336,7 @@ components:
           format: uuid
         email:
           type: string
+          format: email
         fullName:
           type: string
           nullable: true
@@ -1381,19 +1344,165 @@ components:
           type: boolean
         assurance:
           type: string
-          enum:
-          - PASSWORD
-          - PASSWORD_MFA
-          - FEDERATED
-          - FEDERATED_MFA
-          - PASSKEY
-          - RECOVERY
+          enum: [PASSWORD, PASSWORD_MFA, FEDERATED, FEDERATED_MFA, PASSKEY, RECOVERY]
+        tenantId:
+          type: string
+          format: uuid
+        membershipId:
+          type: string
+          format: uuid
+        environmentId:
+          type: string
+          format: uuid
+          nullable: true
+        region:
+          type: string
+        policyVersion:
+          type: string
+        riskState:
+          type: string
+        sessionState:
+          type: string
+          enum: [ACTIVE, RESTRICTED]
       required:
       - id
       - sessionId
       - email
       - emailVerified
       - assurance
+      - tenantId
+      - membershipId
+      - region
+      - policyVersion
+      - riskState
+      - sessionState
+    PostAuthSwitchTenantRequest:
+      type: object
+      properties:
+        tenantId:
+          type: string
+          format: uuid
+        environmentId:
+          type: string
+          format: uuid
+      required:
+      - tenantId
+    TenantSessionResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/TenantSessionUser'
+      required:
+      - user
+    SsoStartRequest:
+      type: object
+      properties:
+        tenantSlug:
+          type: string
+          maxLength: 120
+        identityProviderId:
+          type: string
+          format: uuid
+        invitationToken:
+          type: string
+          maxLength: 512
+        returnTo:
+          type: string
+          pattern: '^/(?!/)'
+      required: [tenantSlug, identityProviderId]
+    SsoStartResponse:
+      type: object
+      properties:
+        authorizationUrl:
+          type: string
+          format: uri
+        protocol:
+          type: string
+          enum: [OIDC, SAML]
+      required: [authorizationUrl, protocol]
+    SsoDiscoveryResponse:
+      type: object
+      properties:
+        tenant:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            slug: { type: string }
+          required: [id, name, slug]
+        identityProviders:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              protocol: { type: string, enum: [OIDC, SAML] }
+            required: [id, name, protocol]
+      required: [tenant, identityProviders]
+    IdentityProviderConfigurationRequest:
+      type: object
+      properties:
+        name: { type: string, maxLength: 160 }
+        protocol: { type: string, enum: [OIDC, SAML] }
+        environmentId: { type: string, format: uuid }
+        issuer: { type: string, format: uri }
+        clientId: { type: string }
+        clientSecretRef: { type: string, description: Secret-manager reference; never returned by the API. }
+        oidcClientAuthMethod: { type: string, enum: [client_secret_basic, client_secret_post] }
+        samlEntryPoint: { type: string, format: uri }
+        samlIdpCertificates:
+          type: array
+          maxItems: 5
+          items: { type: string }
+        samlSpEntityId: { type: string }
+        samlSpPrivateKeyRef: { type: string, description: Secret-manager reference; never returned by the API. }
+        samlSpPublicCertificate: { type: string }
+        emailClaim: { type: string, default: email }
+        displayNameClaim: { type: string, default: name }
+        groupsClaim: { type: string }
+        mfaClaimValues:
+          type: array
+          maxItems: 20
+          items: { type: string }
+        requireMfa: { type: boolean, default: false }
+        allowedClockSkewMs: { type: integer, minimum: 0, maximum: 300000 }
+      required: [name, protocol, environmentId, issuer]
+    IdentityProviderConfigurationResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        tenantId: { type: string, format: uuid }
+        environmentId: { type: string, format: uuid }
+        name: { type: string }
+        protocol: { type: string, enum: [OIDC, SAML] }
+        status: { type: string, enum: [DRAFT, ACTIVE, DISABLED] }
+        issuer: { type: string }
+        callbackUrl: { type: string, format: uri, nullable: true }
+        clientId: { type: string, nullable: true }
+        hasClientSecretRef: { type: boolean }
+        oidcClientAuthMethod: { type: string, nullable: true }
+        oidcMetadata: { type: object, nullable: true, additionalProperties: true }
+        oidcSigningAlgorithm: { type: string, nullable: true }
+        samlEntryPoint: { type: string, nullable: true }
+        samlSpEntityId: { type: string, nullable: true }
+        samlCertificateCount: { type: integer }
+        hasSamlSpPrivateKeyRef: { type: boolean }
+        emailClaim: { type: string }
+        displayNameClaim: { type: string }
+        groupsClaim: { type: string, nullable: true }
+        mfaClaimValues:
+          type: array
+          items: { type: string }
+        requireMfa: { type: boolean }
+        allowedClockSkewMs: { type: integer }
+        metadataHash: { type: string, nullable: true }
+        metadataValidatedAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, tenantId, environmentId, name, protocol, status, issuer]
+    GetAuthMeResponse:
+      $ref: '#/components/schemas/TenantSessionUser'
     PostCommercialAccountsRequest:
       type: object
       properties:
@@ -4788,10 +4897,6 @@ components:
     PostCasesByCaseIdAiSummaryRequest:
       type: object
       properties:
-        actorId:
-          type: string
-          nullable: true
-          format: uuid
     PostCasesByCaseIdAiSummaryResponse:
       type: object
       properties:
@@ -5121,10 +5226,6 @@ components:
         residualRisk:
           type: string
           nullable: true
-        actorId:
-          type: string
-          nullable: true
-          format: uuid
       required:
       - targetType
       - targetId
@@ -5323,10 +5424,6 @@ components:
         reason:
           type: string
           nullable: true
-        actorId:
-          type: string
-          nullable: true
-          format: uuid
     PostResponseProposalsByProposalIdApproveResponse:
       type: object
       properties:
@@ -19796,12 +19893,9 @@ components:
           format: uuid
         amount:
           type: number
-        proposedBy:
-          type: string
       required:
       - slaMeasurementId
       - amount
-      - proposedBy
     PostSlaCreditsResponse:
       type: object
       properties:
@@ -19919,9 +20013,6 @@ components:
     PatchSlaCreditsByIdDecisionRequest:
       type: object
       properties:
-        approverId:
-          type: string
-          format: uuid
         decision:
           type: string
           enum:
@@ -19930,7 +20021,6 @@ components:
         reason:
           type: string
       required:
-      - approverId
       - decision
       - reason
     PatchSlaCreditsByIdDecisionResponse:
@@ -22288,9 +22378,9 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postAuthLogin
       security: []
-      description: Validates the local credentials, creates a revocable session, and
-        sets the httpOnly access and refresh token cookies. Failed attempts are rate
-        limited.
+      description: Validates approved local fallback credentials, then requires an
+        active membership and approved role in the requested tenant/environment before
+        creating a tenant-bound revocable session. Failed attempts are rate limited.
   /auth/refresh:
     post:
       tags:
@@ -22478,84 +22568,315 @@ paths:
       - RecoveryGrantAuth: []
       description: Consumes the recovery_grant cookie, validates and stores the new
         password, revokes all existing sessions, and clears the recovery grant.
-  /auth/google:
-    get:
-      tags:
-      - Auth
-      summary: Start Google OAuth federated login
+  /api/v1/auth/switch-tenant:
+    post:
+      tags: [Auth]
+      summary: Switch to another authorized tenant context
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostAuthSwitchTenantRequest'
       responses:
-        '302':
-          description: Browser redirected to the configured identity provider.
-          headers:
-            Location:
-              schema:
-                type: string
-                format: uri
-      operationId: getAuthGoogle
-      security: []
-      description: Starts Google federated sign-in through the configured Passport
-        strategy and redirects the browser to the provider consent screen.
-  /auth/google/callback:
-    get:
-      tags:
-      - Auth
-      summary: Google OAuth callback
-      responses:
-        '200':
-          description: Google OAuth callback successful.
+        '201':
+          description: A new server-validated tenant-bound session was issued and the previous session revoked.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetAuthGoogleCallbackResponse'
+                $ref: '#/components/schemas/TenantSessionResponse'
           headers:
             Set-Cookie:
-              description: httpOnly authentication, refresh, or recovery cookie set/cleared
-                by this operation.
-              schema:
-                type: string
-      operationId: getAuthGoogleCallback
-      security: []
-      description: Completes the Google OAuth callback, links or creates the external
-        identity, creates a session, and sets authentication cookies.
-  /auth/microsoft:
+              schema: { type: string }
+        '403':
+          description: The principal has no active approved membership in the target tenant.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: postAuthSwitchTenant
+  /api/v1/auth/sso/discovery/{tenantSlug}:
     get:
-      tags:
-      - Auth
-      summary: Start Microsoft OAuth federated login
-      responses:
-        '302':
-          description: Browser redirected to the configured identity provider.
-          headers:
-            Location:
-              schema:
-                type: string
-                format: uri
-      operationId: getAuthMicrosoft
+      tags: [Auth]
+      summary: Discover active company identity providers
       security: []
-      description: Starts Microsoft federated sign-in through the configured Passport
-        strategy and redirects the browser to the provider consent screen.
-  /auth/microsoft/callback:
-    get:
-      tags:
-      - Auth
-      summary: Microsoft OAuth callback
+      parameters:
+      - in: path
+        name: tenantSlug
+        required: true
+        schema: { type: string }
       responses:
         '200':
-          description: Microsoft OAuth callback successful.
+          description: Public, non-secret company SSO discovery result.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SsoDiscoveryResponse' }
+        '404':
+          description: No active company SSO configuration was found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getAuthSsoDiscovery
+  /api/v1/auth/sso/start:
+    post:
+      tags: [Auth]
+      summary: Start company OIDC or SAML sign-in
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SsoStartRequest' }
+      responses:
+        '201':
+          description: A single-use federation transaction was created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SsoStartResponse' }
+        '404':
+          description: The selected company identity provider is not active.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: postAuthSsoStart
+      description: Creates encrypted single-use state and, for OIDC, PKCE and nonce material. The browser should navigate to authorizationUrl.
+  /api/v1/auth/sso/oidc/callback:
+    get:
+      tags: [Auth]
+      summary: Complete an OIDC authorization-code callback
+      security: []
+      parameters:
+      - in: query
+        name: state
+        required: true
+        schema: { type: string }
+      - in: query
+        name: code
+        required: true
+        schema: { type: string }
+      responses:
+        '303':
+          description: Issuer, signature, audience, time, nonce and membership checks passed; cookies are set and the browser is redirected to the application.
+          headers:
+            Location: { schema: { type: string, format: uri } }
+            Set-Cookie: { schema: { type: string } }
+        '401':
+          description: The transaction or OIDC assertion failed validation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Active tenant membership or an approved invitation was not present.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getAuthSsoOidcCallback
+  /api/v1/auth/sso/saml/callback:
+    post:
+      tags: [Auth]
+      summary: Complete a SAML HTTP-POST callback
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                RelayState: { type: string }
+                SAMLResponse: { type: string, format: byte }
+              required: [RelayState, SAMLResponse]
+      responses:
+        '303':
+          description: Signature, issuer, audience, recipient, time, InResponseTo and membership checks passed; cookies are set and the browser is redirected.
+          headers:
+            Location: { schema: { type: string, format: uri } }
+            Set-Cookie: { schema: { type: string } }
+        '401':
+          description: The transaction or SAML assertion failed validation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Active tenant membership or an approved invitation was not present.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: postAuthSsoSamlCallback
+  /api/v1/auth/sso/saml/metadata/{tenantSlug}/{providerId}:
+    get:
+      tags: [Auth]
+      summary: Get SAML service-provider metadata
+      security: []
+      parameters:
+      - in: path
+        name: tenantSlug
+        required: true
+        schema: { type: string }
+      - in: path
+        name: providerId
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: SAML service-provider metadata for the active tenant configuration.
+          content:
+            application/samlmetadata+xml:
+              schema: { type: string }
+      operationId: getAuthSsoSamlMetadata
+  /api/v1/tenants/{tenantId}/identity-providers:
+    parameters:
+    - in: path
+      name: tenantId
+      required: true
+      schema: { type: string, format: uuid }
+    get:
+      tags: [Identity Providers]
+      summary: List tenant identity-provider configurations
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Secret-redacted tenant identity-provider configurations.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetAuthMicrosoftCallbackResponse'
-          headers:
-            Set-Cookie:
-              description: httpOnly authentication, refresh, or recovery cookie set/cleared
-                by this operation.
-              schema:
-                type: string
-      operationId: getAuthMicrosoftCallback
-      security: []
-      description: Completes the Microsoft OAuth callback, links or creates the external
-        identity, creates a session, and sets authentication cookies.
+                type: array
+                items: { $ref: '#/components/schemas/IdentityProviderConfigurationResponse' }
+        '403':
+          description: The session is for another tenant or lacks tenant:identity-provider:manage.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getTenantIdentityProviders
+    post:
+      tags: [Identity Providers]
+      summary: Create a draft tenant identity-provider configuration
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IdentityProviderConfigurationRequest' }
+      responses:
+        '201':
+          description: Draft configuration created; activation requires successful validation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IdentityProviderConfigurationResponse' }
+        '403':
+          description: The session is for another tenant or lacks tenant:identity-provider:manage.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: postTenantIdentityProvider
+  /api/v1/tenants/{tenantId}/identity-providers/{providerId}:
+    parameters:
+    - in: path
+      name: tenantId
+      required: true
+      schema: { type: string, format: uuid }
+    - in: path
+      name: providerId
+      required: true
+      schema: { type: string, format: uuid }
+    patch:
+      tags: [Identity Providers]
+      summary: Change a tenant identity-provider configuration
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IdentityProviderConfigurationRequest' }
+      responses:
+        '200':
+          description: Configuration changed, returned to DRAFT, and affected sessions revoked.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IdentityProviderConfigurationResponse' }
+      operationId: patchTenantIdentityProvider
+  /api/v1/tenants/{tenantId}/identity-providers/{providerId}/activate:
+    post:
+      tags: [Identity Providers]
+      summary: Validate and activate a tenant identity provider
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      parameters:
+      - in: path
+        name: tenantId
+        required: true
+        schema: { type: string, format: uuid }
+      - in: path
+        name: providerId
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '201':
+          description: OIDC metadata was discovered and pinned or the SAML trust configuration was validated, then activated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IdentityProviderConfigurationResponse' }
+      operationId: postTenantIdentityProviderActivate
+  /api/v1/tenants/{tenantId}/identity-providers/{providerId}/saml-metadata:
+    get:
+      tags: [Identity Providers]
+      summary: Get SAML service-provider metadata for tenant configuration
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      parameters:
+      - in: path
+        name: tenantId
+        required: true
+        schema: { type: string, format: uuid }
+      - in: path
+        name: providerId
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Metadata that can be imported into the company IdP while the configuration is still DRAFT.
+          content:
+            application/samlmetadata+xml:
+              schema: { type: string }
+        '403':
+          description: The session is for another tenant or lacks tenant:identity-provider:manage.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getTenantIdentityProviderSamlMetadata
+  /api/v1/tenants/{tenantId}/identity-providers/{providerId}/disable:
+    post:
+      tags: [Identity Providers]
+      summary: Disable a tenant identity provider
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      parameters:
+      - in: path
+        name: tenantId
+        required: true
+        schema: { type: string, format: uuid }
+      - in: path
+        name: providerId
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Provider disabled and sessions issued through its issuer revoked.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IdentityProviderConfigurationResponse' }
+      operationId: postTenantIdentityProviderDisable
   /auth/me:
     get:
       tags:

@@ -37,6 +37,11 @@ export class TenantController {
     @Param('id') id: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
+    if (id !== user.tenantId) {
+      throw new ForbiddenException(
+        'The requested tenant does not match the tenant-bound session',
+      );
+    }
     if (!(await this.authorizationService.hasTenantAccess(id, user.id))) {
       throw new ForbiddenException(
         'The authenticated principal has no active membership for this tenant',
@@ -51,6 +56,11 @@ export class TenantController {
     @Body() dto: UpdateTenantStatusDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
+    if (id !== user.tenantId) {
+      throw new ForbiddenException(
+        'The requested tenant does not match the tenant-bound session',
+      );
+    }
     const granted =
       await this.authorizationService.getPermissionCodesForPrincipal(
         id,

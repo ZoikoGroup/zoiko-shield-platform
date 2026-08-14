@@ -1,9 +1,12 @@
-import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { CaseService } from './case.service';
 import { CaseTimelineService } from '../timeline/case-timeline.service';
 import { EvidenceService } from '../../evidence/services/evidence.service';
-import { AuthorizationDecisionService } from '../../authorization-decision/authorization-decision.service';
+import {
+  assertPermittedAuthorization,
+  AuthorizationDecisionService,
+} from '../../authorization-decision/authorization-decision.service';
 import {
   ShieldAiClient,
   AiRequestContext,
@@ -45,19 +48,18 @@ export class CaseAiService {
       params.caseId,
     );
 
-    const { authorizationDecisionId, decision } =
-      await this.authorizationDecisionService.evaluate({
-        actorId: params.actorId,
-        tenantId: params.tenantId,
-        action: 'ai:invoke_use_case',
-        resourceType: 'CASE',
-        resourceId: params.caseId,
-      });
-    if (decision === 'DENY') {
-      throw new ForbiddenException(
-        'Actor is not authorized to request AI assistance on this case',
-      );
-    }
+    const authorization = await this.authorizationDecisionService.evaluate({
+      actorId: params.actorId,
+      tenantId: params.tenantId,
+      action: 'ai:invoke_use_case',
+      resourceType: 'CASE',
+      resourceId: params.caseId,
+    });
+    assertPermittedAuthorization(
+      authorization,
+      'Actor is not authorized to request AI assistance on this case',
+    );
+    const { authorizationDecisionId } = authorization;
 
     const correlationId = randomUUID();
     const context: AiRequestContext = {
@@ -124,19 +126,18 @@ export class CaseAiService {
     rationale?: string;
     modifiedContent?: string;
   }) {
-    const { authorizationDecisionId, decision } =
-      await this.authorizationDecisionService.evaluate({
-        actorId: params.actorId,
-        tenantId: params.tenantId,
-        action: 'ai:review_output',
-        resourceType: 'AI_OUTPUT',
-        resourceId: params.outputId,
-      });
-    if (decision === 'DENY') {
-      throw new ForbiddenException(
-        'Actor is not authorized to review AI output',
-      );
-    }
+    const authorization = await this.authorizationDecisionService.evaluate({
+      actorId: params.actorId,
+      tenantId: params.tenantId,
+      action: 'ai:review_output',
+      resourceType: 'AI_OUTPUT',
+      resourceId: params.outputId,
+    });
+    assertPermittedAuthorization(
+      authorization,
+      'Actor is not authorized to review AI output',
+    );
+    const { authorizationDecisionId } = authorization;
 
     const context: AiRequestContext = {
       tenantId: params.tenantId,

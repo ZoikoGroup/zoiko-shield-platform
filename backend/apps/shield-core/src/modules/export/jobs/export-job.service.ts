@@ -7,7 +7,10 @@ import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OutboxService } from '../../../outbox/outbox.service';
 import { CANONICAL_TOPICS } from '../../../kafka/kafka-producer.service';
-import { AuthorizationDecisionService } from '../../authorization-decision/authorization-decision.service';
+import {
+  assertPermittedAuthorization,
+  AuthorizationDecisionService,
+} from '../../authorization-decision/authorization-decision.service';
 
 export interface CreateExportJobInput {
   tenantId: string;
@@ -45,17 +48,18 @@ export class ExportJobService {
       if (existing) return existing;
     }
 
-    const { authorizationDecisionId, decision } =
-      await this.authorizationDecisionService.evaluate({
-        actorId: input.requestedBy,
-        tenantId: input.tenantId,
-        action: 'export:create',
-        resourceType: 'Tenant',
-        resourceId: input.tenantId,
-      });
-    if (decision === 'DENY') {
-      throw new ConflictException('Actor is not authorized to create exports');
-    }
+    const authorization = await this.authorizationDecisionService.evaluate({
+      actorId: input.requestedBy,
+      tenantId: input.tenantId,
+      action: 'export:create',
+      resourceType: 'Tenant',
+      resourceId: input.tenantId,
+    });
+    assertPermittedAuthorization(
+      authorization,
+      'Actor is not authorized to create exports',
+    );
+    const { authorizationDecisionId } = authorization;
 
     const jobId = randomUUID();
     const [job] = await this.prisma.$transaction([

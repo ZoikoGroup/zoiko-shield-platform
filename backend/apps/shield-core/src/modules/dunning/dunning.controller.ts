@@ -40,7 +40,7 @@ export class DunningPolicyController {
   }
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/dunning/cases')
 export class DunningCaseController {
   constructor(private readonly dunningService: DunningService) {}

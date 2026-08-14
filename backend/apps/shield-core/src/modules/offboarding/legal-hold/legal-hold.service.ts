@@ -1,11 +1,10 @@
-import {
-  Injectable,
-  ForbiddenException,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { AuthorizationDecisionService } from '../../authorization-decision/authorization-decision.service';
+import {
+  assertPermittedAuthorization,
+  AuthorizationDecisionService,
+} from '../../authorization-decision/authorization-decision.service';
 
 export interface CreateLegalHoldInput {
   tenantId: string;
@@ -25,19 +24,18 @@ export class LegalHoldService {
   ) {}
 
   async create(input: CreateLegalHoldInput) {
-    const { authorizationDecisionId, decision } =
-      await this.authorizationDecisionService.evaluate({
-        actorId: input.createdBy,
-        tenantId: input.tenantId,
-        action: 'legal_hold:create',
-        resourceType: 'Tenant',
-        resourceId: input.tenantId,
-      });
-    if (decision === 'DENY') {
-      throw new ForbiddenException(
-        'Actor is not authorized to create a legal hold',
-      );
-    }
+    const authorization = await this.authorizationDecisionService.evaluate({
+      actorId: input.createdBy,
+      tenantId: input.tenantId,
+      action: 'legal_hold:create',
+      resourceType: 'Tenant',
+      resourceId: input.tenantId,
+    });
+    assertPermittedAuthorization(
+      authorization,
+      'Actor is not authorized to create a legal hold',
+    );
+    const { authorizationDecisionId } = authorization;
 
     return this.prisma.legalHold.create({
       data: {

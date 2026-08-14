@@ -95,7 +95,7 @@ describe('TenantOffboardingService (SEC-02)', () => {
 
   it('repeated start commands are idempotent and return the in-flight run rather than starting a second one', async () => {
     authDecisionMock.evaluate.mockResolvedValue({
-      decision: 'ALLOW',
+      decision: 'PERMIT',
       authorizationDecisionId: 'ad-1',
     });
     prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({

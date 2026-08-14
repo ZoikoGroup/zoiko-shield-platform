@@ -11,6 +11,11 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PlatformPermissionsGuard } from '../authorization/guards/platform-permissions.guard';
+import { RequirePlatformPermissions } from '../authorization/decorators/require-platform-permissions.decorator';
+import { PERMISSION_CODES } from '../authorization/constants';
+import { CurrentUser } from '../identity-adapter/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
 import { InternalAuthGuard } from '../../internal-client/internal-auth.guard';
 import {
   CreateResourceDefinitionDto,
@@ -23,7 +28,10 @@ import {
 import { requireTenantId } from '../../tenant-context';
 
 /** Admin-curated: humans define and approve resource identity/dedup rules. */
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PlatformPermissionsGuard)
+@RequirePlatformPermissions(
+  PERMISSION_CODES.PLATFORM_RESOURCE_DEFINITION_MANAGE,
+)
 @Controller('api/v1/resources/definitions')
 export class ResourceDefinitionController {
   constructor(
@@ -39,11 +47,11 @@ export class ResourceDefinitionController {
   @Patch(':id/approve')
   async approve(
     @Param('id') id: string,
-    @Body('approvedBy') approvedBy: string,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const definition = await this.definitionService.approveDefinition(
       id,
-      approvedBy || 'system',
+      user.id,
     );
     return { statusCode: HttpStatus.OK, data: definition };
   }

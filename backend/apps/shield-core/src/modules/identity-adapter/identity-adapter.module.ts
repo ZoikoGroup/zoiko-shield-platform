@@ -22,8 +22,26 @@ import { MailService } from './mail.service';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { GoogleStrategy } from './strategies/google.strategy';
-import { MicrosoftStrategy } from './strategies/microsoft.strategy';
+import { IdentityProviderConfiguration } from './identity-provider-configuration.entity';
+import { FederationTransaction } from './federation-transaction.entity';
+import { SamlRequestCacheEntry } from './saml-request-cache.entity';
+import { ExternalIdentityTenantBinding } from './external-identity-tenant-binding.entity';
+import { TenantMembership } from '../authorization/entities/tenant-membership.entity';
+import { Invitation } from '../authorization/entities/invitation.entity';
+import { Role } from '../authorization/entities/role.entity';
+import { Tenant } from '../tenant/tenant.entity';
+import { Environment } from '../environment/environment.entity';
+import { AuthorizationModule } from '../authorization/authorization.module';
+import { FederationRuntimeService } from './federation-runtime.service';
+import { FederationTransactionService } from './federation-transaction.service';
+import { DatabaseSamlCacheProvider } from './database-saml-cache.provider';
+import { OidcFederationService } from './oidc-federation.service';
+import { SamlFederationService } from './saml-federation.service';
+import { SessionContextService } from './session-context.service';
+import { IdentityProviderConfigurationService } from './identity-provider-configuration.service';
+import { FederationAuthService } from './federation-auth.service';
+import { FederationController } from './federation.controller';
+import { IdentityProviderConfigurationController } from './identity-provider-configuration.controller';
 
 @Module({
   imports: [
@@ -37,7 +55,17 @@ import { MicrosoftStrategy } from './strategies/microsoft.strategy';
       PolicyDocument,
       PolicyAcceptance,
       IdentityEvent,
+      IdentityProviderConfiguration,
+      FederationTransaction,
+      SamlRequestCacheEntry,
+      ExternalIdentityTenantBinding,
+      TenantMembership,
+      Invitation,
+      Role,
+      Tenant,
+      Environment,
     ]),
+    AuthorizationModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -49,11 +77,17 @@ import { MicrosoftStrategy } from './strategies/microsoft.strategy';
             'JWT_EXPIRES_IN',
             '15m',
           ) as `${number}${'s' | 'm' | 'h' | 'd'}`,
+          issuer: config.get<string>('JWT_ISSUER', 'zoikoshield'),
+          audience: config.get<string>('JWT_AUDIENCE', 'zoikoshield-api'),
         },
       }),
     }),
   ],
-  controllers: [AuthController],
+  controllers: [
+    AuthController,
+    FederationController,
+    IdentityProviderConfigurationController,
+  ],
   providers: [
     PrincipalService,
     SessionService,
@@ -64,9 +98,20 @@ import { MicrosoftStrategy } from './strategies/microsoft.strategy';
     MailService,
     AuthService,
     JwtStrategy,
-    GoogleStrategy,
-    MicrosoftStrategy,
+    FederationRuntimeService,
+    FederationTransactionService,
+    DatabaseSamlCacheProvider,
+    OidcFederationService,
+    SamlFederationService,
+    SessionContextService,
+    IdentityProviderConfigurationService,
+    FederationAuthService,
   ],
-  exports: [PrincipalService, IdentityEventService, PolicyService],
+  exports: [
+    PrincipalService,
+    IdentityEventService,
+    PolicyService,
+    SessionService,
+  ],
 })
 export class IdentityAdapterModule {}

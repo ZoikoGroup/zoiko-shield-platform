@@ -53,11 +53,14 @@ describe('ServiceCreditService (ZS-COM-BILL-001 FIN-04)', () => {
     });
 
     await expect(
-      service.proposeCredit('t1', {
-        slaMeasurementId: 'm-1',
-        amount: 100,
-        proposedBy: 'ops',
-      }),
+      service.proposeCredit(
+        't1',
+        {
+          slaMeasurementId: 'm-1',
+          amount: 100,
+        },
+        'ops',
+      ),
     ).rejects.toThrow(ConflictException);
     expect(prismaMock.serviceCredit.create).not.toHaveBeenCalled();
   });
@@ -79,16 +82,20 @@ describe('ServiceCreditService (ZS-COM-BILL-001 FIN-04)', () => {
       approval_id: 'appr-1',
     });
 
-    await service.proposeCredit('t1', {
-      slaMeasurementId: 'm-1',
-      amount: 250,
-      proposedBy: 'ops',
-    });
+    await service.proposeCredit(
+      't1',
+      {
+        slaMeasurementId: 'm-1',
+        amount: 250,
+      },
+      'ops',
+    );
 
     expect(approvalMock.requestApproval).toHaveBeenCalledWith(
       expect.objectContaining({
         changeType: 'SERVICE_CREDIT',
         objectType: 'ServiceCredit',
+        requestedBy: 'ops',
       }),
     );
   });

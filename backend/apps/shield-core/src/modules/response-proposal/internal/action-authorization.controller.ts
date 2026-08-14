@@ -82,7 +82,7 @@ export class ActionAuthorizationController {
         : null,
       policyVersion: proposal.policy_version,
       authorizationDecisionId,
-      entitlementAllowed: decision === 'ALLOW',
+      entitlementAllowed: decision === 'PERMIT',
       // Simulation never claims a live target state. A live-execution path
       // must supply a connector-specific verified state before authorization.
       targetState: {

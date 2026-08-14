@@ -18,6 +18,7 @@ import {
   PaymentService,
   ProviderWebhookDto,
 } from './payment.service';
+import { ExternallyAuthenticatedEndpoint } from '../../security/endpoint-access.decorator';
 
 export class RefundPaymentDto {
   @IsNumber()
@@ -84,6 +85,7 @@ export class PaymentController {
  * payment processor webhook always needs: the caller is the processor,
  * not a logged-in ZoikoShield user.
  */
+@ExternallyAuthenticatedEndpoint()
 @Controller('api/v1/payments')
 export class PaymentWebhookController {
   constructor(private readonly paymentService: PaymentService) {}

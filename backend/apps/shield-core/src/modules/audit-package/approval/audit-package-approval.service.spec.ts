@@ -20,9 +20,10 @@ function makeDeps(
     outboxEvent: { create: jest.fn(async ({ data }: any) => data) },
   } as any;
   const authorizationDecisionService = {
-    evaluate: jest
-      .fn()
-      .mockResolvedValue({ authorizationDecisionId: 'ad1', decision: 'ALLOW' }),
+    evaluate: jest.fn().mockResolvedValue({
+      authorizationDecisionId: 'ad1',
+      decision: 'PERMIT',
+    }),
   } as any;
   const outbox = {
     build: jest.fn((p: any) => ({
