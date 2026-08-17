@@ -40,15 +40,37 @@ describe('ShieldCore Application Endpoints (e2e)', () => {
           .mockResolvedValue([{ id: 'ent-1', offer_type: 'MANAGED_DEFENSE' }]),
       },
       claimRegister: {
-        upsert: jest.fn().mockResolvedValue({
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'claim-1',
           claim_key: 'CLAIM_24_7_SOC',
-          status: 'APPROVED',
-        }),
-        findUnique: jest.fn().mockResolvedValue({
-          claim_key: 'CLAIM_24_7_SOC',
+          version: 1,
           approved_wording: '24/7 Managed SOC',
+          channels: JSON.stringify(['PRODUCT_UI']),
+          scope: JSON.stringify({}),
+          evidence_refs: JSON.stringify(['release-evidence-1']),
+          prohibited_variants: JSON.stringify([]),
+          limitations: JSON.stringify([]),
+          required_offer_type: 'MANAGED_DEFENSE',
+          sector_pack_key: null,
+          evidence_max_age_hours: 24,
           status: 'APPROVED',
+          effective_from: new Date('2026-01-01T00:00:00.000Z'),
+          expires_at: new Date('2099-01-01T00:00:00.000Z'),
         }),
+      },
+      claimEligibility: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        upsert: jest.fn().mockResolvedValue({ id: 'eligibility-1' }),
+      },
+      claimEvaluation: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'evaluation-1',
+          evidence_ids: JSON.stringify(['evidence-1']),
+          evaluated_at: new Date(),
+        }),
+      },
+      evidenceRecord: {
+        findMany: jest.fn().mockResolvedValue([{ id: 'evidence-1' }]),
       },
       catalogVersion: {
         create: jest.fn().mockResolvedValue({

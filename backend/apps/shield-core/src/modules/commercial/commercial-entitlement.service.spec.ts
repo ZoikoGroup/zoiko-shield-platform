@@ -1,14 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CommercialEntitlementService } from './commercial-entitlement.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { SectorPackService } from '../sector-packs/sector-pack.service';
 import { CommercialKillSwitchService } from '../kill-switch/commercial-kill-switch.service';
 import { ConflictException, NotFoundException } from '@nestjs/common';
 
 describe('CommercialEntitlementService (ZS-COM-BILL-001)', () => {
   let service: CommercialEntitlementService;
   let prismaMock: any;
-  let sectorPackMock: any;
   let killSwitchMock: any;
 
   beforeEach(async () => {
@@ -24,22 +22,16 @@ describe('CommercialEntitlementService (ZS-COM-BILL-001)', () => {
         findUnique: jest.fn(),
         update: jest.fn(),
       },
-      claimRegister: {
-        upsert: jest.fn(),
-        findUnique: jest.fn(),
-      },
       commercialApproval: {
         findFirst: jest.fn(),
       },
     };
-    sectorPackMock = { isAvailable: jest.fn() };
     killSwitchMock = { assertNotBlocked: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CommercialEntitlementService,
         { provide: PrismaService, useValue: prismaMock },
-        { provide: SectorPackService, useValue: sectorPackMock },
         { provide: CommercialKillSwitchService, useValue: killSwitchMock },
       ],
     }).compile();
@@ -92,84 +84,6 @@ describe('CommercialEntitlementService (ZS-COM-BILL-001)', () => {
     );
 
     expect(isEntitled).toBe(true);
-  });
-
-  it('should verify claim eligibility against ClaimRegister and entitlements', async () => {
-    prismaMock.claimRegister.findUnique.mockResolvedValue({
-      claim_key: 'CLAIM_24_7_SOC',
-      approved_wording: '24/7 Managed SOC Response',
-      status: 'APPROVED',
-    });
-
-    prismaMock.entitlement.findFirst.mockResolvedValue({
-      id: 'ent-1',
-      tenant_id: 'tenant-1',
-      offer_type: 'MANAGED_DEFENSE',
-      status: 'ACTIVE',
-      commercialAccount: { status: 'ACTIVE' },
-    });
-
-    const result = await service.verifyClaimEligibility(
-      'tenant-1',
-      'CLAIM_24_7_SOC',
-    );
-
-    expect(result.eligible).toBe(true);
-    expect(result.approvedWording).toBe('24/7 Managed SOC Response');
-  });
-
-  describe('REG-01: sector-pack-backed claims fail closed when the pack is unavailable', () => {
-    beforeEach(() => {
-      prismaMock.claimRegister.findUnique.mockResolvedValue({
-        claim_key: 'CLAIM_AUDIT_READY',
-        approved_wording: 'DORA-ready evidence pipeline',
-        status: 'APPROVED',
-      });
-      prismaMock.entitlement.findFirst.mockResolvedValue({
-        id: 'ent-1',
-        tenant_id: 'tenant-1',
-        offer_type: 'CONTINUOUS_ASSURANCE',
-        status: 'ACTIVE',
-        commercialAccount: { status: 'ACTIVE' },
-      });
-    });
-
-    it('is ineligible when the backing sector pack is not approved/licensed/available', async () => {
-      sectorPackMock.isAvailable.mockResolvedValue(false);
-
-      const result = await service.verifyClaimEligibility(
-        'tenant-1',
-        'CLAIM_AUDIT_READY',
-        'dora-eu',
-        'EU',
-      );
-
-      expect(result.eligible).toBe(false);
-      expect(sectorPackMock.isAvailable).toHaveBeenCalledWith('dora-eu', 'EU');
-    });
-
-    it('is eligible once both the entitlement AND the sector pack are available', async () => {
-      sectorPackMock.isAvailable.mockResolvedValue(true);
-
-      const result = await service.verifyClaimEligibility(
-        'tenant-1',
-        'CLAIM_AUDIT_READY',
-        'dora-eu',
-        'EU',
-      );
-
-      expect(result.eligible).toBe(true);
-    });
-
-    it('does not check sector pack availability when no sectorPackKey is given (non-framework claims unaffected)', async () => {
-      const result = await service.verifyClaimEligibility(
-        'tenant-1',
-        'CLAIM_AUDIT_READY',
-      );
-
-      expect(result.eligible).toBe(true);
-      expect(sectorPackMock.isAvailable).not.toHaveBeenCalled();
-    });
   });
 
   it('allows ACTIVE -> SUSPENDED (Part 20 state-machine hardening)', async () => {

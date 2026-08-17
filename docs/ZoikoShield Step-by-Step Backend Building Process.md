@@ -337,6 +337,10 @@ Issue a short-lived, tenant-bound invitation or bootstrap grant
 
 ## Enterprise SSO flow
 
+The implemented architecture, executable API verification sequence, negative
+checks and specification-ordered backlog are maintained in
+`Enterprise_SSO_Authorization_Implementation_and_API_Verification.md`.
+
 ```text
 User selects Sign in with Company SSO
 → Discover the tenant's active OIDC or SAML provider

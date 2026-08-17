@@ -960,12 +960,78 @@ model Entitlement {
 }
 
 model ClaimRegister {
-  id                String   @id @default(uuid())
-  claim_key         String   @unique
-  approved_wording  String
-  status            String   @default("APPROVED")
-  requires_evidence Boolean  @default(true)
-  created_at        DateTime @default(now())
+  id                     String    @id @default(uuid())
+  claim_key              String
+  version                Int
+  approved_wording       String
+  channels               String    @default("[]")
+  scope                  String    @default("{}")
+  evidence_refs          String    @default("[]")
+  prohibited_variants    String    @default("[]")
+  limitations            String    @default("[]")
+  required_offer_type    String
+  sector_pack_key        String?
+  evidence_max_age_hours Int       @default(24)
+  monitoring_reference   String
+  status                 String    @default("PENDING_APPROVAL")
+  requested_by           String
+  requested_at           DateTime  @default(now())
+  verification_date      DateTime?
+  effective_from         DateTime  @default(now())
+  expires_at             DateTime
+  supersedes_id          String?
+  revoked_by             String?
+  revoked_at             DateTime?
+  revocation_reason      String?
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
+
+  approvals     ClaimApproval[]
+  eligibilities ClaimEligibility[]
+
+  @@unique([claim_key, version])
+  @@index([claim_key, status])
+  @@index([status, effective_from, expires_at])
+}
+
+model ClaimApproval {
+  id                String        @id @default(uuid())
+  claim_register_id String
+  claim             ClaimRegister @relation(fields: [claim_register_id], references: [id], onDelete: Restrict)
+  reviewer_role     String
+  reviewer_id       String
+  decision          String
+  reason            String
+  decided_at        DateTime      @default(now())
+
+  @@unique([claim_register_id, reviewer_role])
+  @@index([reviewer_id])
+}
+
+model ClaimEligibility {
+  id                    String         @id @default(uuid())
+  tenant_id             String
+  environment_id        String
+  region                String
+  context_key           String         @unique
+  claim_key             String
+  claim_register_id     String?
+  claim                 ClaimRegister? @relation(fields: [claim_register_id], references: [id], onDelete: Restrict)
+  claim_version         Int?
+  channel               String
+  sector_pack_key       String?
+  status                String
+  reason_code           String
+  reason                String
+  approved_wording      String?
+  runtime_evaluation_id String?
+  evidence_refs         String         @default("[]")
+  evaluated_at          DateTime       @default(now())
+  valid_until           DateTime?
+  updated_at            DateTime       @updatedAt
+
+  @@index([tenant_id, claim_key])
+  @@index([status])
 }
 
 model CatalogVersion {

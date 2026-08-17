@@ -32,7 +32,7 @@ export class AuthorizationService {
     private readonly sessionRepository: Repository<Session>,
     @InjectRepository(IdentityEvent)
     private readonly identityEventRepository: Repository<IdentityEvent>,
-  ) {}
+  ) { }
 
   async createPermission(
     code: string,
@@ -58,8 +58,8 @@ export class AuthorizationService {
   }): Promise<Role> {
     const permissions = data.permissionCodes?.length
       ? await this.permissionRepository.findBy({
-          code: In(data.permissionCodes),
-        })
+        code: In(data.permissionCodes),
+      })
       : [];
     const role = this.roleRepository.create({
       tenantId: data.tenantId,

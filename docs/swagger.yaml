@@ -1939,17 +1939,181 @@ components:
       properties:
         claimKey:
           type: string
+          pattern: ^[A-Z][A-Z0-9_]{2,127}$
         approvedWording:
           type: string
-        requiresEvidence:
-          type: boolean
+        channels:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+            - PRODUCT_UI
+            - API
+            - CONTRACT
+            - MARKETING
+            - TRUST_CENTER
+            - STATUS_PAGE
+            - SALES
+        scope:
+          type: object
+          properties:
+            tenantIds:
+              type: array
+              items:
+                type: string
+            regions:
+              type: array
+              items:
+                type: string
+            sectorPackKeys:
+              type: array
+              items:
+                type: string
+            serviceTiers:
+              type: array
+              items:
+                type: string
+        evidenceRefs:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+        prohibitedVariants:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        limitations:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        requiredOfferType:
+          type: string
           enum:
-          - false
-          - true
+          - MANAGED_DEFENSE
+          - CONTINUOUS_ASSURANCE
+          - EXPOSURE_MANAGEMENT
+          - AI_SECURITY
+        sectorPackKey:
+          type: string
           nullable: true
+        evidenceMaxAgeHours:
+          type: integer
+          minimum: 1
+          maximum: 8760
+          default: 24
+        monitoringReference:
+          type: string
+        effectiveFrom:
+          type: string
+          format: date-time
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+        changeReason:
+          type: string
       required:
       - claimKey
       - approvedWording
+      - channels
+      - scope
+      - evidenceRefs
+      - prohibitedVariants
+      - limitations
+      - requiredOfferType
+      - monitoringReference
+      - expiresAt
+      - changeReason
+    ClaimRegistration:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        claim_key:
+          type: string
+        version:
+          type: integer
+        approved_wording:
+          type: string
+        channels:
+          type: array
+          items:
+            type: string
+        scope:
+          type: object
+          additionalProperties: true
+        evidence_refs:
+          type: array
+          items:
+            type: string
+        prohibited_variants:
+          type: array
+          items:
+            type: string
+        limitations:
+          type: array
+          items:
+            type: string
+        required_offer_type:
+          type: string
+        status:
+          type: string
+          enum:
+          - PENDING_APPROVAL
+          - APPROVED
+          - REJECTED
+          - SUPERSEDED
+          - REVOKED
+          - EXPIRED
+        requested_by:
+          type: string
+        effective_from:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        verification_date:
+          type: string
+          format: date-time
+          nullable: true
+        approvals:
+          type: array
+          items:
+            type: object
+            properties:
+              reviewer_role:
+                type: string
+                enum:
+                - LEGAL
+                - COMPLIANCE
+              reviewer_id:
+                type: string
+              decision:
+                type: string
+                enum:
+                - APPROVED
+                - REJECTED
+              reason:
+                type: string
+              decided_at:
+                type: string
+                format: date-time
+      required:
+      - id
+      - claim_key
+      - version
+      - approved_wording
+      - channels
+      - scope
+      - evidence_refs
+      - status
     PostCommercialClaimsRegisterResponse:
       type: object
       properties:
@@ -1959,29 +2123,7 @@ components:
         message:
           type: string
         data:
-          type: object
-          properties:
-            id:
-              type: string
-              format: uuid
-            created_at:
-              type: string
-              format: date-time
-            status:
-              type: string
-            claim_key:
-              type: string
-            approved_wording:
-              type: string
-            requires_evidence:
-              type: boolean
-          required:
-          - id
-          - created_at
-          - status
-          - claim_key
-          - approved_wording
-          - requires_evidence
+          $ref: '#/components/schemas/ClaimRegistration'
       required:
       - statusCode
       - message
@@ -1998,10 +2140,36 @@ components:
             properties:
               eligible:
                 type: boolean
+              status:
+                type: string
+                enum:
+                - ELIGIBLE
+                - INELIGIBLE
+              reasonCode:
+                type: string
               reason:
                 type: string
               approvedWording:
                 type: string
+                nullable: true
+              claimId:
+                type: string
+                format: uuid
+                nullable: true
+              claimVersion:
+                type: integer
+                nullable: true
+              runtimeEvaluationId:
+                type: string
+                format: uuid
+                nullable: true
+              evidenceRefs:
+                type: array
+                items:
+                  type: string
+              validUntil:
+                type: string
+                format: date-time
                 nullable: true
             required:
             - eligible
@@ -23110,7 +23278,7 @@ paths:
     post:
       tags:
       - Commercial
-      summary: Register approved claim wording
+      summary: Submit a claim registration for approval (compatibility path)
       requestBody:
         required: true
         content:
@@ -23140,10 +23308,286 @@ paths:
       security:
       - CookieAuth: []
       - BearerAuth: []
-      description: Register approved claim wording. Validates the documented request
-        and returns the created or resulting resource. State-changing operations also
-        enforce the service lifecycle and conflict rules. Accepts either the access-token
-        cookie or a Bearer JWT.
+      description: Creates a new immutable PENDING_APPROVAL version. This operation
+        never approves its own submission and requires the platform claim-management
+        permission. Legal and Compliance decisions must be recorded independently.
+        Accepts either the access-token cookie or a Bearer JWT.
+  /api/v1/commercial/claims/registrations:
+    post:
+      tags:
+      - Commercial
+      summary: Submit a versioned claim registration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostCommercialClaimsRegisterRequest'
+      responses:
+        '201':
+          description: Claim registration submitted in PENDING_APPROVAL status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostCommercialClaimsRegisterResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication is missing or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Platform claim-management permission is missing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Another version of this claim is already pending approval.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postCommercialClaimRegistration
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      description: Creates a new immutable PENDING_APPROVAL version with channel,
+        scope, evidence, wording, expiry, prohibited variants, and monitoring metadata.
+    get:
+      tags:
+      - Commercial
+      summary: List claim registrations
+      parameters:
+      - name: claimKey
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - PENDING_APPROVAL
+          - APPROVED
+          - REJECTED
+          - SUPERSEDED
+          - REVOKED
+          - EXPIRED
+      responses:
+        '200':
+          description: Versioned claim registrations.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 200
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClaimRegistration'
+      operationId: getCommercialClaimRegistrations
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      description: Lists the immutable version history and recorded review decisions.
+  /api/v1/commercial/claims/registrations/{id}:
+    get:
+      tags:
+      - Commercial
+      summary: Get a claim registration
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Claim registration and review history.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                  data:
+                    $ref: '#/components/schemas/ClaimRegistration'
+        '404':
+          description: Claim registration not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getCommercialClaimRegistration
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      description: Returns one version without mutating its historical content.
+  /api/v1/commercial/claims/registrations/{id}/reviews/legal:
+    patch:
+      tags:
+      - Commercial
+      summary: Record the Legal claim decision
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                decision:
+                  type: string
+                  enum:
+                  - APPROVED
+                  - REJECTED
+                reason:
+                  type: string
+              required:
+              - decision
+              - reason
+      responses:
+        '200':
+          description: Legal decision recorded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostCommercialClaimsRegisterResponse'
+        '403':
+          description: Legal approval authority is missing or maker-checker failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Claim state or reviewer separation does not permit the decision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: patchCommercialClaimLegalReview
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      description: Requires platform Legal claim-approval permission. The author
+        cannot review their own claim and the Compliance reviewer must be different.
+  /api/v1/commercial/claims/registrations/{id}/reviews/compliance:
+    patch:
+      tags:
+      - Commercial
+      summary: Record the Compliance claim decision
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                decision:
+                  type: string
+                  enum:
+                  - APPROVED
+                  - REJECTED
+                reason:
+                  type: string
+              required:
+              - decision
+              - reason
+      responses:
+        '200':
+          description: Compliance decision recorded; the claim becomes APPROVED only
+            when both independent approvals exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostCommercialClaimsRegisterResponse'
+        '403':
+          description: Compliance approval authority is missing or maker-checker failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Claim state or reviewer separation does not permit the decision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: patchCommercialClaimComplianceReview
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      description: Requires platform Compliance claim-approval permission. Approval
+        supersedes the prior approved version only after independent Legal approval.
+  /api/v1/commercial/claims/registrations/{id}/revoke:
+    patch:
+      tags:
+      - Commercial
+      summary: Revoke an approved claim
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+              required:
+              - reason
+      responses:
+        '200':
+          description: Claim revoked and retained in immutable history.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostCommercialClaimsRegisterResponse'
+        '409':
+          description: Only an approved claim can be revoked.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: patchCommercialClaimRevoke
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      description: Immediately removes runtime eligibility while preserving the
+        version, approvals, actor, time, and revocation rationale.
   /api/v1/commercial/claims/check:
     get:
       tags:
@@ -23164,6 +23608,21 @@ paths:
           type: string
           nullable: true
         description: Optional region filter.
+      - name: channel
+        in: query
+        required: false
+        schema:
+          type: string
+          default: PRODUCT_UI
+          enum:
+          - PRODUCT_UI
+          - API
+          - CONTRACT
+          - MARKETING
+          - TRUST_CENTER
+          - STATUS_PAGE
+          - SALES
+        description: Customer-facing channel in which the wording will be used.
       - name: sectorPackKey
         in: query
         required: false
@@ -23202,10 +23661,11 @@ paths:
       security:
       - CookieAuth: []
       - BearerAuth: []
-      description: Verify claim eligibility. Applies the documented path, query, and
-        tenant filters and returns the current persisted or computed result using
-        the response model below. Accepts either the access-token cookie or a Bearer
-        JWT.
+      description: Fails closed unless the current version is independently approved,
+        effective, unexpired, in scope for the channel/tenant/region, commercially
+        entitled, backed by an available sector pack when required, and supported
+        by fresh integrity-verified tenant evidence. Eligibility changes are persisted
+        and emitted as controlled commercial events.
   /api/v1/obligations:
     post:
       tags:
