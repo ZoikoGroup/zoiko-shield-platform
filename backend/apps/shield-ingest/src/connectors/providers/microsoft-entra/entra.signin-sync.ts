@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment */
 import { Injectable, Logger } from '@nestjs/common';
 import { EntraGraphClient } from './entra.client';
 import { EntraNormalizerService } from './entra.normalizer';

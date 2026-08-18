@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return */
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -100,7 +99,10 @@ describe('ClaimRegisterService (R17 claim governance)', () => {
       Promise.resolve({ id: 'claim-v2', ...data }),
     );
 
-    const result = (await service.registerClaim(registration, 'author-1')) as any;
+    const result = (await service.registerClaim(
+      registration,
+      'author-1',
+    )) as any;
 
     expect(result.status).toBe('PENDING_APPROVAL');
     expect(result.version).toBe(2);
