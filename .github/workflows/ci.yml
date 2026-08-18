@@ -136,7 +136,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: backend
-          file: backend/apps/shield-core/Dockerfile
+          file: backend/Dockerfile
           push: false
           tags: zoikoshield/shield-core:${{ github.sha }}
           cache-from: type=gha
@@ -146,7 +146,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: backend
-          file: backend/apps/shield-ingest/Dockerfile
+          file: backend/Dockerfile
           push: false
           tags: zoikoshield/shield-ingest:${{ github.sha }}
           cache-from: type=gha
@@ -156,7 +156,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: backend
-          file: backend/apps/shield-ai/Dockerfile
+          file: backend/Dockerfile
           push: false
           tags: zoikoshield/shield-ai:${{ github.sha }}
           cache-from: type=gha
@@ -166,7 +166,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: backend
-          file: backend/apps/shield-action/Dockerfile
+          file: backend/Dockerfile
           push: false
           tags: zoikoshield/shield-action:${{ github.sha }}
           cache-from: type=gha
@@ -176,7 +176,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: backend
-          file: backend/apps/shield-anchor/Dockerfile
+          file: backend/Dockerfile
           push: false
           tags: zoikoshield/shield-anchor:${{ github.sha }}
           cache-from: type=gha
