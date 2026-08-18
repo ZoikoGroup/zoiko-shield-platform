@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-argument */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { Injectable, Logger } from '@nestjs/common';
 import { EntraGraphClient } from './entra.client';
 import { ConnectorCheckpointService } from '../../services/checkpoint.service';
