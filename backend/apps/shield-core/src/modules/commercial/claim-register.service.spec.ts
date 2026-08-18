@@ -96,11 +96,11 @@ describe('ClaimRegisterService (R17 claim governance)', () => {
       version: 1,
       status: 'SUPERSEDED',
     });
-    prismaMock.claimRegister.create.mockImplementation(({ data }) =>
+    prismaMock.claimRegister.create.mockImplementation(({ data }: any) =>
       Promise.resolve({ id: 'claim-v2', ...data }),
     );
 
-    const result = await service.registerClaim(registration, 'author-1');
+    const result = (await service.registerClaim(registration, 'author-1')) as any;
 
     expect(result.status).toBe('PENDING_APPROVAL');
     expect(result.version).toBe(2);
@@ -180,12 +180,12 @@ describe('ClaimRegisterService (R17 claim governance)', () => {
         ],
       });
 
-    const result = await service.decideClaim(
+    const result = (await service.decideClaim(
       'claim-1',
       'COMPLIANCE',
       'compliance-1',
       { decision: 'APPROVED', reason: 'Evidence and scope are sufficient' },
-    );
+    )) as any;
 
     expect(result.status).toBe('APPROVED');
     expect(prismaMock.claimRegister.updateMany).toHaveBeenCalledWith(
