@@ -47,7 +47,8 @@ ALTER TABLE "ClaimRegister"
   ALTER COLUMN "required_offer_type" DROP DEFAULT,
   ALTER COLUMN "monitoring_reference" DROP DEFAULT,
   ALTER COLUMN "requested_by" DROP DEFAULT,
-  ALTER COLUMN "updated_at" DROP DEFAULT;
+  ALTER COLUMN "updated_at" DROP DEFAULT,
+  ALTER COLUMN "status" SET DEFAULT 'PENDING_APPROVAL';
 
 ALTER TABLE "ClaimRegister"
   DROP COLUMN IF EXISTS "requires_evidence";
