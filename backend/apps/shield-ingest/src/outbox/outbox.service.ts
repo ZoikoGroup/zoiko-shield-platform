@@ -18,7 +18,13 @@ export interface OutboxEventData {
  */
 @Injectable()
 export class OutboxService {
-  build(params: { tenantId: string; topic: string; eventType: string; payload: unknown; correlationId?: string }): OutboxEventData {
+  build(params: {
+    tenantId: string;
+    topic: string;
+    eventType: string;
+    payload: unknown;
+    correlationId?: string;
+  }): OutboxEventData {
     return {
       tenant_id: params.tenantId,
       topic: params.topic,

@@ -14,7 +14,9 @@ import { Injectable } from '@nestjs/common';
 export class MemoryPolicyService {
   assertRequestScoped(params: { tenantId: string; caseId?: string }): void {
     if (!params.tenantId) {
-      throw new Error('Memory policy violation: no tenantId on request context — cannot scope retrieval/output');
+      throw new Error(
+        'Memory policy violation: no tenantId on request context — cannot scope retrieval/output',
+      );
     }
   }
 }

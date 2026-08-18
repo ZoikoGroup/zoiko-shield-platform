@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 /**
@@ -15,11 +20,16 @@ export class ReconciliationService {
   constructor(private readonly prisma: PrismaService) {}
 
   async startRun(runType: string = 'ON_DEMAND') {
-    return this.prisma.reconciliationRun.create({ data: { run_type: runType, status: 'RUNNING' } });
+    return this.prisma.reconciliationRun.create({
+      data: { run_type: runType, status: 'RUNNING' },
+    });
   }
 
   async getRunById(id: string) {
-    const run = await this.prisma.reconciliationRun.findUnique({ where: { id }, include: { issues: true } });
+    const run = await this.prisma.reconciliationRun.findUnique({
+      where: { id },
+      include: { issues: true },
+    });
     if (!run) {
       throw new NotFoundException(`Reconciliation run '${id}' not found`);
     }
@@ -53,12 +63,17 @@ export class ReconciliationService {
 
   /** Domain: CONTRACT_ENTITLEMENT — an ACTIVE contract with no matching ACTIVE entitlement is drift, not auto-corrected. */
   async reconcileContractEntitlement(runId: string) {
-    const activeContracts = await this.prisma.contract.findMany({ where: { status: 'ACTIVE' } });
+    const activeContracts = await this.prisma.contract.findMany({
+      where: { status: 'ACTIVE' },
+    });
     let issues = 0;
 
     for (const contract of activeContracts) {
       const matchingEntitlement = await this.prisma.entitlement.findFirst({
-        where: { commercial_account_id: contract.commercial_account_id, status: 'ACTIVE' },
+        where: {
+          commercial_account_id: contract.commercial_account_id,
+          status: 'ACTIVE',
+        },
       });
       if (!matchingEntitlement) {
         await this.recordIssue(
@@ -86,10 +101,19 @@ export class ReconciliationService {
     let issues = 0;
 
     for (const invoice of issuedInvoices) {
-      const settledPayments = invoice.payments.filter((p) => ['SETTLED', 'PARTIALLY_REFUNDED', 'REFUNDED'].includes(p.status));
-      const totalSettled = settledPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+      const settledPayments = invoice.payments.filter((p) =>
+        ['SETTLED', 'PARTIALLY_REFUNDED', 'REFUNDED'].includes(p.status),
+      );
+      const totalSettled = settledPayments.reduce(
+        (sum, p) => sum + Number(p.amount),
+        0,
+      );
       const totalRefunded = settledPayments.reduce(
-        (sum, p) => sum + p.refunds.filter((r) => r.status === 'SUCCEEDED').reduce((s, r) => s + Number(r.amount), 0),
+        (sum, p) =>
+          sum +
+          p.refunds
+            .filter((r) => r.status === 'SUCCEEDED')
+            .reduce((s, r) => s + Number(r.amount), 0),
         0,
       );
       const netSettled = totalSettled - totalRefunded;
@@ -119,7 +143,10 @@ export class ReconciliationService {
   async reconcileServiceObligations(runId: string) {
     const now = new Date();
     const overdue = await this.prisma.serviceObligation.findMany({
-      where: { due_at: { lte: now }, status: { notIn: ['DELIVERED', 'WAIVED', 'CANCELLED'] } },
+      where: {
+        due_at: { lte: now },
+        status: { notIn: ['DELIVERED', 'WAIVED', 'CANCELLED'] },
+      },
     });
 
     for (const obligation of overdue) {
@@ -165,7 +192,9 @@ export class ReconciliationService {
 
   /** Domain: PARTNER_COST — a settlement's commission must match agreement rate * gross; never silently recomputed. */
   async reconcilePartnerCosts(runId: string) {
-    const settlements = await this.prisma.partnerSettlement.findMany({ where: { status: { not: 'CANCELLED' } } });
+    const settlements = await this.prisma.partnerSettlement.findMany({
+      where: { status: { not: 'CANCELLED' } },
+    });
     let issues = 0;
 
     for (const settlement of settlements) {
@@ -188,8 +217,13 @@ export class ReconciliationService {
         continue;
       }
 
-      const expectedCommission = Number(settlement.gross_amount) * (Number(agreement.commission_percent) / 100);
-      if (Math.abs(expectedCommission - Number(settlement.commission_amount)) > 0.01) {
+      const expectedCommission =
+        Number(settlement.gross_amount) *
+        (Number(agreement.commission_percent) / 100);
+      if (
+        Math.abs(expectedCommission - Number(settlement.commission_amount)) >
+        0.01
+      ) {
         await this.recordIssue(
           runId,
           'PARTNER_COST',
@@ -220,7 +254,11 @@ export class ReconciliationService {
     let issues = 0;
 
     for (const entitlement of activeEntitlements) {
-      if (['SUSPENDED', 'TERMINATED'].includes(entitlement.commercialAccount.status)) {
+      if (
+        ['SUSPENDED', 'TERMINATED'].includes(
+          entitlement.commercialAccount.status,
+        )
+      ) {
         await this.recordIssue(
           runId,
           'CLAIM_ELIGIBILITY',
@@ -238,20 +276,32 @@ export class ReconciliationService {
   }
 
   async completeRun(runId: string) {
-    const issueCount = await this.prisma.reconciliationIssue.count({ where: { run_id: runId } });
+    const issueCount = await this.prisma.reconciliationIssue.count({
+      where: { run_id: runId },
+    });
     return this.prisma.reconciliationRun.update({
       where: { id: runId },
-      data: { status: 'COMPLETED', completed_at: new Date(), issue_count: issueCount },
+      data: {
+        status: 'COMPLETED',
+        completed_at: new Date(),
+        issue_count: issueCount,
+      },
     });
   }
 
   async resolveIssue(issueId: string, resolution: string) {
-    const issue = await this.prisma.reconciliationIssue.findUnique({ where: { id: issueId } });
+    const issue = await this.prisma.reconciliationIssue.findUnique({
+      where: { id: issueId },
+    });
     if (!issue) {
-      throw new NotFoundException(`Reconciliation issue '${issueId}' not found`);
+      throw new NotFoundException(
+        `Reconciliation issue '${issueId}' not found`,
+      );
     }
     if (issue.status !== 'OPEN') {
-      throw new ConflictException(`Reconciliation issue '${issueId}' is '${issue.status}', not OPEN`);
+      throw new ConflictException(
+        `Reconciliation issue '${issueId}' is '${issue.status}', not OPEN`,
+      );
     }
     return this.prisma.reconciliationIssue.update({
       where: { id: issueId },

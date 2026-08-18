@@ -17,9 +17,7 @@ async function bootstrap() {
     origin: process.env.CORS_ORIGIN?.split(',') ?? true,
     credentials: true,
   });
-  app.useGlobalPipes(
-    new ValidationPipe({ whitelist: true, transform: true }),
-  );
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.useGlobalInterceptors(new HttpLoggingInterceptor('shield-core'));
 
   const candidatePaths = [

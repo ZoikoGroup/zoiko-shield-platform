@@ -39,7 +39,9 @@ export class AlertStateMachineService {
       throw new BadRequestException(`Unknown target alert status '${to}'`);
     }
     if (!ALLOWED_TRANSITIONS[fromState].includes(toState)) {
-      throw new BadRequestException(`Invalid alert transition '${from}' -> '${to}'`);
+      throw new BadRequestException(
+        `Invalid alert transition '${from}' -> '${to}'`,
+      );
     }
   }
 }

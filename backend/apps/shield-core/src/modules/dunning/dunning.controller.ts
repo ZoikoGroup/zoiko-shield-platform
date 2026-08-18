@@ -1,7 +1,19 @@
-import { Body, Controller, Get, HttpStatus, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
-import { CreateDunningPolicyDto, DunningPolicyService } from './dunning-policy.service';
+import {
+  CreateDunningPolicyDto,
+  DunningPolicyService,
+} from './dunning-policy.service';
 import { DunningService, TriggerDunningDto } from './dunning.service';
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -16,13 +28,19 @@ export class DunningPolicyController {
   }
 
   @Patch(':id/approve')
-  async approve(@Param('id') id: string, @Body('approvedBy') approvedBy: string) {
-    const policy = await this.policyService.approvePolicy(id, approvedBy || 'system');
+  async approve(
+    @Param('id') id: string,
+    @Body('approvedBy') approvedBy: string,
+  ) {
+    const policy = await this.policyService.approvePolicy(
+      id,
+      approvedBy || 'system',
+    );
     return { statusCode: HttpStatus.OK, data: policy };
   }
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/dunning/cases')
 export class DunningCaseController {
   constructor(private readonly dunningService: DunningService) {}

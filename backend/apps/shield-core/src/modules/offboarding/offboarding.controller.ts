@@ -20,13 +20,20 @@ export class OffboardingController {
 
   @Post()
   @RequirePermissions(PERMISSION_CODES.TENANT_OFFBOARDING_START)
-  async start(@Param('tenantId') tenantId: string, @CurrentUser() user: AuthenticatedUser, @Body() body: { reason: string }) {
+  async start(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: { reason: string },
+  ) {
     return this.offboardingService.start(tenantId, user.id, body.reason);
   }
 
   @Get()
   async get(@Param('tenantId') tenantId: string) {
-    return this.prisma.tenantOffboardingRun.findFirst({ where: { tenant_id: tenantId }, orderBy: { initiated_at: 'desc' } });
+    return this.prisma.tenantOffboardingRun.findFirst({
+      where: { tenant_id: tenantId },
+      orderBy: { initiated_at: 'desc' },
+    });
   }
 
   @Post('validate')
@@ -36,18 +43,28 @@ export class OffboardingController {
   }
 
   @Post('start-export')
-  async startExport(@Param('tenantId') tenantId: string, @Body() body: { runId: string }) {
+  async startExport(
+    @Param('tenantId') tenantId: string,
+    @Body() body: { runId: string },
+  ) {
     return this.offboardingService.startFinalExport(tenantId, body.runId);
   }
 
   @Post('freeze-access')
-  async freezeAccess(@Param('tenantId') tenantId: string, @Body() body: { runId: string }) {
+  async freezeAccess(
+    @Param('tenantId') tenantId: string,
+    @Body() body: { runId: string },
+  ) {
     return this.offboardingService.freezeAccess(tenantId, body.runId);
   }
 
   @Post('start-deletion')
   @RequirePermissions(PERMISSION_CODES.DELETION_REQUEST)
-  async startDeletion(@Param('tenantId') tenantId: string, @CurrentUser() user: AuthenticatedUser, @Body() body: { runId: string }) {
+  async startDeletion(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: { runId: string },
+  ) {
     await this.offboardingService.revokeConnectors(tenantId, body.runId);
     return this.offboardingService.startDeletion(tenantId, body.runId, user.id);
   }
@@ -59,11 +76,18 @@ export class OffboardingController {
     @CurrentUser() user: AuthenticatedUser,
     @Body() body: { runId: string },
   ) {
-    return this.offboardingService.issueAttestationAndClose(tenantId, body.runId, user.id);
+    return this.offboardingService.issueAttestationAndClose(
+      tenantId,
+      body.runId,
+      user.id,
+    );
   }
 
   @Get('deletion-attestation')
   async getAttestation(@Param('tenantId') tenantId: string) {
-    return this.prisma.deletionAttestation.findFirst({ where: { tenant_id: tenantId }, orderBy: { issued_at: 'desc' } });
+    return this.prisma.deletionAttestation.findFirst({
+      where: { tenant_id: tenantId },
+      orderBy: { issued_at: 'desc' },
+    });
   }
 }

@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Param, Headers, HttpStatus, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Headers,
+  HttpStatus,
+  UseGuards,
+} from '@nestjs/common';
 import { EvidenceService } from '../services/evidence.service';
 import { EvidenceVerificationService } from '../verification/evidence-verification.service';
 import { EvidenceLineageService } from '../lineage/evidence-lineage.service';
@@ -20,7 +28,10 @@ export class EvidenceController {
   }
 
   @Get(':evidenceId')
-  async getById(@Headers('x-tenant-id') headerTenantId: string, @Param('evidenceId') evidenceId: string) {
+  async getById(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('evidenceId') evidenceId: string,
+  ) {
     const tenantId = this.resolveTenantId(headerTenantId);
     // Cross-tenant access must be rejected, not merely filtered — see EvidenceService.assertTenantOwnership.
     await this.evidenceService.assertTenantOwnership(tenantId, evidenceId);
@@ -29,7 +40,10 @@ export class EvidenceController {
   }
 
   @Get(':evidenceId/lineage')
-  async getLineage(@Headers('x-tenant-id') headerTenantId: string, @Param('evidenceId') evidenceId: string) {
+  async getLineage(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('evidenceId') evidenceId: string,
+  ) {
     const tenantId = this.resolveTenantId(headerTenantId);
     await this.evidenceService.assertTenantOwnership(tenantId, evidenceId);
     const lineage = await this.lineageService.reconstruct(tenantId, evidenceId);
@@ -37,7 +51,10 @@ export class EvidenceController {
   }
 
   @Post(':evidenceId/verify')
-  async verify(@Headers('x-tenant-id') headerTenantId: string, @Param('evidenceId') evidenceId: string) {
+  async verify(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('evidenceId') evidenceId: string,
+  ) {
     const tenantId = this.resolveTenantId(headerTenantId);
     const result = await this.verificationService.verify(tenantId, evidenceId);
     return { statusCode: HttpStatus.OK, data: result };

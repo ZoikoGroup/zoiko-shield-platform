@@ -1,6 +1,9 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { requireEnvironmentId, requireTenantId } from '../security/tenant-context';
+import {
+  requireEnvironmentId,
+  requireTenantId,
+} from '../security/tenant-context';
 import { EvidenceService as CanonicalEvidenceService } from '../../../shield-core/src/modules/evidence/services/evidence.service';
 import { EvidenceVerificationService } from '../../../shield-core/src/modules/evidence/verification/evidence-verification.service';
 
@@ -10,7 +13,14 @@ export class CreateEvidenceDto {
   legalEntityId?: string;
   region!: string;
   caseId?: string;
-  evidenceType!: 'LOG_EXCERPT' | 'SNAPSHOT' | 'CONFIG_DUMP' | 'PCAP' | 'REPORT' | 'SIGNATURE' | 'SYSTEM_STATE';
+  evidenceType!:
+    | 'LOG_EXCERPT'
+    | 'SNAPSHOT'
+    | 'CONFIG_DUMP'
+    | 'PCAP'
+    | 'REPORT'
+    | 'SIGNATURE'
+    | 'SYSTEM_STATE';
   title!: string;
   description?: string;
   fileName?: string;
@@ -50,7 +60,9 @@ export class EvidenceService {
       sourceSystemId: 'ingest-api',
       sourceObjectId: dto.title,
       purpose: dto.description || dto.title,
-      retentionProfile: dto.retentionDays ? `${dto.retentionDays}_DAYS` : undefined,
+      retentionProfile: dto.retentionDays
+        ? `${dto.retentionDays}_DAYS`
+        : undefined,
       caseId: dto.caseId,
       addedBy: dto.createdBy,
       content: {

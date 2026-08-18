@@ -6,7 +6,8 @@ describe('DevCheckpointSigner', () => {
 
   afterEach(() => {
     process.env.NODE_ENV = originalNodeEnv;
-    if (originalKeyPem === undefined) delete process.env.ANCHOR_SIGNING_PRIVATE_KEY_PEM;
+    if (originalKeyPem === undefined)
+      delete process.env.ANCHOR_SIGNING_PRIVATE_KEY_PEM;
     else process.env.ANCHOR_SIGNING_PRIVATE_KEY_PEM = originalKeyPem;
   });
 
@@ -21,13 +22,18 @@ describe('DevCheckpointSigner', () => {
 
   it('NEVER operates in production — throws unconditionally at construction, even with a private key env var configured', () => {
     process.env.NODE_ENV = 'production';
-    process.env.ANCHOR_SIGNING_PRIVATE_KEY_PEM = 'irrelevant-value-should-never-matter';
-    expect(() => new DevCheckpointSigner()).toThrow(/must never operate in production/);
+    process.env.ANCHOR_SIGNING_PRIVATE_KEY_PEM =
+      'irrelevant-value-should-never-matter';
+    expect(() => new DevCheckpointSigner()).toThrow(
+      /must never operate in production/,
+    );
   });
 
   it('throws in production even with no key configured at all', () => {
     process.env.NODE_ENV = 'production';
     delete process.env.ANCHOR_SIGNING_PRIVATE_KEY_PEM;
-    expect(() => new DevCheckpointSigner()).toThrow(/must never operate in production/);
+    expect(() => new DevCheckpointSigner()).toThrow(
+      /must never operate in production/,
+    );
   });
 });

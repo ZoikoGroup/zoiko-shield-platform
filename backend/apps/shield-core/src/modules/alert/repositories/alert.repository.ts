@@ -7,7 +7,12 @@ export class AlertRepository {
 
   findByDetectionMatch(tenantId: string, detectionMatchId: string) {
     return this.prisma.alert.findUnique({
-      where: { tenant_id_detection_match_id: { tenant_id: tenantId, detection_match_id: detectionMatchId } },
+      where: {
+        tenant_id_detection_match_id: {
+          tenant_id: tenantId,
+          detection_match_id: detectionMatchId,
+        },
+      },
     });
   }
 

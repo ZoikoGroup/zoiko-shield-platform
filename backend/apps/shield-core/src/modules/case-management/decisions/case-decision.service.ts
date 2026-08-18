@@ -68,7 +68,11 @@ export class CaseDecisionService {
           tenantId: params.tenantId,
           topic: CASE_TOPICS.CASE_DECISION_RECORDED,
           eventType: 'case.decision.recorded',
-          payload: { caseId: params.caseId, decisionType: params.decisionType, evidenceId: evidence.id },
+          payload: {
+            caseId: params.caseId,
+            decisionType: params.decisionType,
+            evidenceId: evidence.id,
+          },
         }),
       }),
     ]);
@@ -87,6 +91,9 @@ export class CaseDecisionService {
   }
 
   async listForCase(tenantId: string, caseId: string) {
-    return this.prisma.caseDecision.findMany({ where: { tenant_id: tenantId, case_id: caseId }, orderBy: { created_at: 'asc' } });
+    return this.prisma.caseDecision.findMany({
+      where: { tenant_id: tenantId, case_id: caseId },
+      orderBy: { created_at: 'asc' },
+    });
   }
 }

@@ -9,7 +9,10 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
-import { ControlTestingService, CreateControlObjectiveDto } from './control-testing.service';
+import {
+  ControlTestingService,
+  CreateControlObjectiveDto,
+} from './control-testing.service';
 import { requireTenantId } from '../security/tenant-context';
 
 @Controller('api/v1')
@@ -54,10 +57,19 @@ export class ControlTestingController {
   /**
    * POST /api/v1/control-tests/:testId/evaluate & /api/v1/controls/objectives/:id/evaluate
    */
-  @Post(['control-tests/:testId/evaluate', 'controls/objectives/:testId/evaluate'])
+  @Post([
+    'control-tests/:testId/evaluate',
+    'controls/objectives/:testId/evaluate',
+  ])
   @HttpCode(HttpStatus.OK)
-  async evaluateControlObjective(@Headers('x-tenant-id') tenantId: string, @Param('testId') testId: string) {
-    const testRun = await this.controlService.evaluateControlObjective(tenantId, testId);
+  async evaluateControlObjective(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('testId') testId: string,
+  ) {
+    const testRun = await this.controlService.evaluateControlObjective(
+      tenantId,
+      testId,
+    );
     return {
       statusCode: HttpStatus.OK,
       message: `Control test evaluated with result: ${testRun.result}`,
@@ -82,8 +94,14 @@ export class ControlTestingController {
   }
 
   @Get('control-evaluations/:evaluationId')
-  async getControlEvaluationById(@Headers('x-tenant-id') tenantId: string, @Param('evaluationId') evaluationId: string) {
-    const evaluation = await this.controlService.getControlResult(tenantId, evaluationId);
+  async getControlEvaluationById(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('evaluationId') evaluationId: string,
+  ) {
+    const evaluation = await this.controlService.getControlResult(
+      tenantId,
+      evaluationId,
+    );
     return { statusCode: HttpStatus.OK, data: evaluation };
   }
 }

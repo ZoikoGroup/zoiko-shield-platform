@@ -39,10 +39,20 @@ export class ControlMappingService {
   }
 
   /** A correction is a brand-new row with supersedes_id set — the row it supersedes is never written to again. */
-  async correct(previousMappingId: string, input: Omit<CreateControlMappingInput, 'controlObjectiveId' | 'frameworkVersionId' | 'requirementId'>) {
-    const previous = await this.prisma.controlMapping.findUnique({ where: { id: previousMappingId } });
+  async correct(
+    previousMappingId: string,
+    input: Omit<
+      CreateControlMappingInput,
+      'controlObjectiveId' | 'frameworkVersionId' | 'requirementId'
+    >,
+  ) {
+    const previous = await this.prisma.controlMapping.findUnique({
+      where: { id: previousMappingId },
+    });
     if (!previous) {
-      throw new NotFoundException(`ControlMapping '${previousMappingId}' not found`);
+      throw new NotFoundException(
+        `ControlMapping '${previousMappingId}' not found`,
+      );
     }
     return this.prisma.controlMapping.create({
       data: {
@@ -64,7 +74,11 @@ export class ControlMappingService {
    * S" — recorded_at <= S AND valid_from <= T AND (valid_to IS NULL OR
    * valid_to > T), latest recorded_at among matches. Defaults both to now.
    */
-  async resolveAsOf(controlObjectiveId: string, businessTime: Date = new Date(), systemTime: Date = new Date()) {
+  async resolveAsOf(
+    controlObjectiveId: string,
+    businessTime: Date = new Date(),
+    systemTime: Date = new Date(),
+  ) {
     const candidates = await this.prisma.controlMapping.findMany({
       where: {
         control_objective_id: controlObjectiveId,

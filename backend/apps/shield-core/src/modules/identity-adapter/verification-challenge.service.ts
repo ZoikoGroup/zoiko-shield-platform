@@ -2,7 +2,10 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomInt, randomUUID } from 'crypto';
 import { MoreThan, Repository } from 'typeorm';
-import { ChallengePurpose, VerificationChallenge } from './verification-challenge.entity';
+import {
+  ChallengePurpose,
+  VerificationChallenge,
+} from './verification-challenge.entity';
 
 const CHALLENGE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const RESEND_COOLDOWN_MS = 60 * 1000; // 60 seconds
@@ -25,7 +28,10 @@ export class VerificationChallengeService {
   }
 
   /** True if a new challenge may be generated now (resend cooldown has elapsed). */
-  async canGenerate(principalId: string, purpose: ChallengePurpose): Promise<boolean> {
+  async canGenerate(
+    principalId: string,
+    purpose: ChallengePurpose,
+  ): Promise<boolean> {
     const latest = await this.challengeRepository.findOne({
       where: { principalId, purpose },
       order: { createdAt: 'DESC' },
@@ -66,9 +72,18 @@ export class VerificationChallengeService {
     return { code, correlationId };
   }
 
-  async verify(principalId: string, purpose: ChallengePurpose, code: string): Promise<void> {
+  async verify(
+    principalId: string,
+    purpose: ChallengePurpose,
+    code: string,
+  ): Promise<void> {
     const challenge = await this.challengeRepository.findOne({
-      where: { principalId, purpose, status: 'PENDING', expiresAt: MoreThan(new Date()) },
+      where: {
+        principalId,
+        purpose,
+        status: 'PENDING',
+        expiresAt: MoreThan(new Date()),
+      },
       order: { createdAt: 'DESC' },
     });
 
@@ -83,7 +98,11 @@ export class VerificationChallengeService {
         { id: challenge.id },
         { attemptCount, status: locked ? 'LOCKED' : 'PENDING' },
       );
-      throw new UnauthorizedException(locked ? 'Too many attempts, request a new code' : 'Invalid or expired code');
+      throw new UnauthorizedException(
+        locked
+          ? 'Too many attempts, request a new code'
+          : 'Invalid or expired code',
+      );
     }
 
     await this.challengeRepository.update(

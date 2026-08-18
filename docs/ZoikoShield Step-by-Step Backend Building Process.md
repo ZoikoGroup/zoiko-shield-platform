@@ -311,61 +311,63 @@ CREATE TABLE identity.sessions (
 );
 ```
 
-## Registration fields
+## Bootstrap identity inputs
 
 ```text
-fullName
-email
-password
-confirmPassword
-acceptTerms
+approved invitation or commercial bootstrap authority
+approved identity provider
+issuer and subject
+verified destination
+terms/policy acceptance
 ```
 
-## Registration flow
+## Invitation/bootstrap flow
 
 ```text
-User enters name, email and password
-→ Validate input
-→ Check whether email exists
-→ Hash password
-→ Create user
-→ Send verification email
-→ User verifies email
+Issue a short-lived, tenant-bound invitation or bootstrap grant
+→ Authenticate through an approved identity provider
+→ Validate issuer, audience, signature, timing and subject
+→ Resolve or create the principal by issuer-subject (never email alone)
+→ Validate the invitation/bootstrap authority and policy acceptance
+→ Provision the approved tenant membership and role mapping
 → Create login session
 → Check onboarding state
 → Redirect to organization onboarding
 ```
 
-## OAuth flow
+## Enterprise SSO flow
+
+The implemented architecture, executable API verification sequence, negative
+checks and specification-ordered backlog are maintained in
+`Enterprise_SSO_Authorization_Implementation_and_API_Verification.md`.
 
 ```text
-User selects Google or Microsoft
-→ Redirect to OAuth provider
-→ Provider authenticates user
-→ OAuth callback returns provider identity
-→ Find user by provider ID or verified email
-→ Create user when not found
-→ Create session
-→ Check onboarding state
-→ Redirect to onboarding or dashboard
+User selects Sign in with Company SSO
+→ Discover the tenant's active OIDC or SAML provider
+→ Redirect to the tenant-configured identity provider
+→ Validate the signed provider response, state, nonce, audience, and MFA policy
+→ Find the principal by the approved issuer-subject binding (never email alone)
+→ Require an active tenant membership or a matching single-use invitation
+→ Resolve tenant roles and permissions
+→ Create a tenant- and membership-bound session
+→ Redirect to the application
 ```
 
 ## Authentication endpoints
 
 ```http
-POST /api/v1/auth/register
 POST /api/v1/auth/login
 POST /api/v1/auth/refresh
 POST /api/v1/auth/logout
 POST /api/v1/auth/logout-all
+POST /api/v1/auth/switch-tenant
 
-GET  /api/v1/auth/google
-GET  /api/v1/auth/google/callback
+GET  /api/v1/auth/sso/discovery/:tenantSlug
+POST /api/v1/auth/sso/start
+GET  /api/v1/auth/sso/oidc/callback
+POST /api/v1/auth/sso/saml/callback
+GET  /api/v1/auth/sso/saml/metadata/:tenantSlug/:providerId
 
-GET  /api/v1/auth/microsoft
-GET  /api/v1/auth/microsoft/callback
-
-POST /api/v1/auth/verify-email
 POST /api/v1/auth/forgot-password
 POST /api/v1/auth/reset-password
 
@@ -376,19 +378,45 @@ GET  /api/v1/me
 
 ```json
 {
-  "accessToken": "access-token",
-  "refreshToken": "refresh-token",
   "user": {
     "id": "user-id",
+    "sessionId": "session-id",
     "email": "user@example.com",
     "fullName": "User Name",
-    "onboardingStatus": "NOT_STARTED"
+    "emailVerified": true,
+    "assurance": "FEDERATED",
+    "tenantId": "tenant-id",
+    "membershipId": "membership-id",
+    "environmentId": "environment-id",
+    "region": "EU",
+    "policyVersion": "iam-policy-1.0.0",
+    "riskState": "NORMAL",
+    "sessionState": "ACTIVE"
   }
 }
 ```
 
+The access and refresh tokens are set as secure HTTP-only cookies rather than
+returned in the JSON response body.
+
 ## Security rules
 
+- Every HTTP handler declares one access contract: public authentication
+  ingress, externally authenticated ingress, authentication-only, tenant
+  authorization, platform authorization, or workload identity. Missing
+  declarations fail closed at runtime and in `npm run access:check`.
+- Authentication-only endpoints grant no tenant resource authority.
+- Tenant endpoints validate the session tenant, active membership, supplied
+  tenant identifiers and required permissions before controller execution.
+- Tenant and platform guards call the policy-decision service before controller
+  execution. Only `PERMIT` proceeds; `DENY`, `NOT_APPLICABLE`, missing context,
+  and dependency failures fail closed. `INDETERMINATE` is returned separately
+  from an ordinary policy denial.
+- Material decisions persist the actor, tenant/environment, action, effect
+  class, resource, purpose, required permissions/entitlement, policy version,
+  stable reason code, obligations, correlation ID, and a context hash.
+- Resource-owning services independently bind resource identifiers to the
+  authorized tenant and return not-found for cross-tenant lookups.
 - Hash passwords with Argon2id or bcrypt.
 - Store hashed refresh tokens.
 - Rotate refresh tokens.
@@ -401,10 +429,16 @@ GET  /api/v1/me
 ## Done condition
 
 ```text
-User can register with email and password.
-User can log in.
-User can authenticate with Google.
-User can authenticate with Microsoft.
+Open password self-registration is unavailable.
+Approved password-fallback users can log in.
+Tenant administrators can configure and activate approved OIDC or SAML providers.
+Users can authenticate through their company's active identity provider.
+Federated identities are linked by issuer-subject, never email alone.
+Tenant membership and roles are validated before a tenant-bound session is issued.
+Every Shield Core controller operation passes the declared-access architecture check.
+Tenant and platform guards permit only a persisted PDP `PERMIT` decision.
+Cross-tenant, inactive-membership, missing-permission, missing-entitlement,
+insufficient-assurance, and policy-dependency failure tests fail closed.
 Refresh token rotation works.
 Logout works.
 Authentication audit events are recorded.
@@ -715,7 +749,7 @@ Tenant Owner enters email and role
 → Create pending invitation
 → Send invitation email
 → User opens invitation
-→ User logs in or registers
+→ User authenticates through an approved IdP or password fallback
 → Create tenant membership
 → Assign selected role
 → Mark invitation accepted
@@ -2851,7 +2885,7 @@ The team should build the modules in this order:
 The completed ZoikoShield MVP should demonstrate:
 
 ```text
-1. User registers using email/password or OAuth.
+1. The approved bootstrap user authenticates through federation or an approved password-fallback account.
 
 2. User creates an organization.
 

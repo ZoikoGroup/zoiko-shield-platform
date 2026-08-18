@@ -12,19 +12,32 @@ export class ReceiptVerificationService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async verify(actionReceiptId: string): Promise<{ verified: boolean; reason?: string }> {
-    const receipt = await this.prisma.actionReceipt.findUnique({ where: { id: actionReceiptId } });
+  async verify(
+    actionReceiptId: string,
+  ): Promise<{ verified: boolean; reason?: string }> {
+    const receipt = await this.prisma.actionReceipt.findUnique({
+      where: { id: actionReceiptId },
+    });
     if (!receipt) {
-      return { verified: false, reason: `ActionReceipt '${actionReceiptId}' not found` };
+      return {
+        verified: false,
+        reason: `ActionReceipt '${actionReceiptId}' not found`,
+      };
     }
     if (receipt.signature_verified !== true) {
       return { verified: false, reason: 'Receipt signature not verified' };
     }
     if (receipt.status !== 'SIMULATED' && receipt.status !== 'VERIFIED') {
-      return { verified: false, reason: `Receipt status '${receipt.status}' is not a verifiable terminal state` };
+      return {
+        verified: false,
+        reason: `Receipt status '${receipt.status}' is not a verifiable terminal state`,
+      };
     }
 
-    await this.prisma.actionReceipt.update({ where: { id: actionReceiptId }, data: { verified_at: new Date() } });
+    await this.prisma.actionReceipt.update({
+      where: { id: actionReceiptId },
+      data: { verified_at: new Date() },
+    });
     return { verified: true };
   }
 }

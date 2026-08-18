@@ -1,4 +1,13 @@
-import { Body, Controller, Get, HttpStatus, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { ReconciliationService } from './reconciliation.service';
@@ -22,19 +31,22 @@ export class ReconciliationController {
 
   @Post('runs/:id/checks/contract-entitlement')
   async checkContractEntitlement(@Param('id') id: string) {
-    const result = await this.reconciliationService.reconcileContractEntitlement(id);
+    const result =
+      await this.reconciliationService.reconcileContractEntitlement(id);
     return { statusCode: HttpStatus.OK, data: result };
   }
 
   @Post('runs/:id/checks/invoice-payments')
   async checkInvoicePayments(@Param('id') id: string) {
-    const result = await this.reconciliationService.reconcileInvoicePayments(id);
+    const result =
+      await this.reconciliationService.reconcileInvoicePayments(id);
     return { statusCode: HttpStatus.OK, data: result };
   }
 
   @Post('runs/:id/checks/service-obligations')
   async checkServiceObligations(@Param('id') id: string) {
-    const result = await this.reconciliationService.reconcileServiceObligations(id);
+    const result =
+      await this.reconciliationService.reconcileServiceObligations(id);
     return { statusCode: HttpStatus.OK, data: result };
   }
 
@@ -52,7 +64,8 @@ export class ReconciliationController {
 
   @Post('runs/:id/checks/claim-eligibility')
   async checkClaimEligibility(@Param('id') id: string) {
-    const result = await this.reconciliationService.reconcileClaimEligibility(id);
+    const result =
+      await this.reconciliationService.reconcileClaimEligibility(id);
     return { statusCode: HttpStatus.OK, data: result };
   }
 
@@ -63,7 +76,10 @@ export class ReconciliationController {
   }
 
   @Patch('issues/:id/resolve')
-  async resolveIssue(@Param('id') id: string, @Body('resolution') resolution: string) {
+  async resolveIssue(
+    @Param('id') id: string,
+    @Body('resolution') resolution: string,
+  ) {
     const issue = await this.reconciliationService.resolveIssue(id, resolution);
     return { statusCode: HttpStatus.OK, data: issue };
   }

@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { createHash } from 'crypto';
-import { WitnessProvider, WitnessReceiptResult } from './witness-provider.interface';
+import {
+  WitnessProvider,
+  WitnessReceiptResult,
+} from './witness-provider.interface';
 
 const MOCK_WITNESS_SALT = 'zoiko-mock-witness-v1';
 
@@ -16,7 +19,9 @@ export class MockWitnessProvider implements WitnessProvider {
 
   async attest(merkleRoot: string): Promise<WitnessReceiptResult> {
     const witnessId = 'mock-witness-1';
-    const receiptHash = createHash('sha256').update(`${merkleRoot}${witnessId}${MOCK_WITNESS_SALT}`).digest('hex');
+    const receiptHash = createHash('sha256')
+      .update(`${merkleRoot}${witnessId}${MOCK_WITNESS_SALT}`)
+      .digest('hex');
     return { witnessId, witnessType: this.witnessType, receiptHash };
   }
 }

@@ -5,7 +5,13 @@ import { PrismaService } from '../../../prisma/prisma.service';
 export class AssetRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAliasByKey(tenantId: string, sourceSystem: string, sourceAccountId: string | undefined, externalType: string, externalId: string) {
+  findAliasByKey(
+    tenantId: string,
+    sourceSystem: string,
+    sourceAccountId: string | undefined,
+    externalType: string,
+    externalId: string,
+  ) {
     return this.prisma.assetAlias.findUnique({
       where: {
         tenant_id_source_system_source_account_id_external_type_external_id: {
@@ -44,7 +50,10 @@ export class AssetRepository {
   }
 
   touchAsset(id: string, observedAt: Date) {
-    return this.prisma.asset.update({ where: { id }, data: { last_seen_at: observedAt } });
+    return this.prisma.asset.update({
+      where: { id },
+      data: { last_seen_at: observedAt },
+    });
   }
 
   createAlias(data: {
@@ -71,7 +80,10 @@ export class AssetRepository {
   }
 
   touchAlias(id: string, observedAt: Date) {
-    return this.prisma.assetAlias.update({ where: { id }, data: { last_seen_at: observedAt } });
+    return this.prisma.assetAlias.update({
+      where: { id },
+      data: { last_seen_at: observedAt },
+    });
   }
 
   recordDecision(data: {

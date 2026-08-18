@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { randomUUID } from 'crypto';
 import { ApiClientService } from '../clients/api-client.service';
@@ -31,18 +35,38 @@ export class OauthTokenService {
     private readonly scopeGrantService: ApiScopeGrantService,
   ) {}
 
-  async issueToken(params: { grantType: string; clientId: string; clientSecret: string; scope?: string }): Promise<{ access_token: string; token_type: 'Bearer'; expires_in: number; scope: string }> {
+  async issueToken(params: {
+    grantType: string;
+    clientId: string;
+    clientSecret: string;
+    scope?: string;
+  }): Promise<{
+    access_token: string;
+    token_type: 'Bearer';
+    expires_in: number;
+    scope: string;
+  }> {
     if (params.grantType !== 'client_credentials') {
-      throw new BadRequestException(`Unsupported grant_type '${params.grantType}'`);
+      throw new BadRequestException(
+        `Unsupported grant_type '${params.grantType}'`,
+      );
     }
 
-    const verification = await this.apiClientService.verifyCredential(params.clientId, params.clientSecret);
+    const verification = await this.apiClientService.verifyCredential(
+      params.clientId,
+      params.clientSecret,
+    );
     if (!verification) {
       throw new UnauthorizedException('Invalid client credentials');
     }
 
-    const grantedScopes = await this.scopeGrantService.getActiveScopes(verification.tenantId, verification.apiClient.id);
-    const requestedScopes = params.scope ? params.scope.split(' ') : grantedScopes;
+    const grantedScopes = await this.scopeGrantService.getActiveScopes(
+      verification.tenantId,
+      verification.apiClient.id,
+    );
+    const requestedScopes = params.scope
+      ? params.scope.split(' ')
+      : grantedScopes;
     const scopes = requestedScopes.filter((s) => grantedScopes.includes(s));
 
     const jti = randomUUID();
@@ -56,7 +80,14 @@ export class OauthTokenService {
       jti,
     };
 
-    const accessToken = await this.jwtService.signAsync(payload, { expiresIn: expiresInSeconds });
-    return { access_token: accessToken, token_type: 'Bearer', expires_in: expiresInSeconds, scope: scopes.join(' ') };
+    const accessToken = await this.jwtService.signAsync(payload, {
+      expiresIn: expiresInSeconds,
+    });
+    return {
+      access_token: accessToken,
+      token_type: 'Bearer',
+      expires_in: expiresInSeconds,
+      scope: scopes.join(' '),
+    };
   }
 }

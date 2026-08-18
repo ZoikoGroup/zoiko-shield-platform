@@ -1,6 +1,14 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { requireEnvironmentId, requireRegion } from '../security/tenant-context';
+import {
+  requireEnvironmentId,
+  requireRegion,
+} from '../security/tenant-context';
 import { ConnectorRegistry } from './core/connector-registry';
 import { ConnectorSyncService } from './services/sync.service';
 import { randomUUID } from 'crypto';
@@ -23,8 +31,21 @@ export class CreateConnectorDto {
   environmentId!: string;
 
   @IsOptional()
-  @IsIn(['OAUTH', 'API_KEY', 'CLIENT_CREDENTIALS', 'WEBHOOK_SECRET', 'SYSLOG_TLS', 'SERVICE_ACCOUNT'])
-  authenticationType?: 'OAUTH' | 'API_KEY' | 'CLIENT_CREDENTIALS' | 'WEBHOOK_SECRET' | 'SYSLOG_TLS' | 'SERVICE_ACCOUNT';
+  @IsIn([
+    'OAUTH',
+    'API_KEY',
+    'CLIENT_CREDENTIALS',
+    'WEBHOOK_SECRET',
+    'SYSLOG_TLS',
+    'SERVICE_ACCOUNT',
+  ])
+  authenticationType?:
+    | 'OAUTH'
+    | 'API_KEY'
+    | 'CLIENT_CREDENTIALS'
+    | 'WEBHOOK_SECRET'
+    | 'SYSLOG_TLS'
+    | 'SERVICE_ACCOUNT';
 
   @IsOptional()
   @IsString()
@@ -106,7 +127,9 @@ export class ConnectorCatalogService {
    * Create a new connector instance
    */
   async createConnector(dto: CreateConnectorDto) {
-    this.logger.log(`Creating connector '${dto.name}' for tenant ${dto.tenantId}`);
+    this.logger.log(
+      `Creating connector '${dto.name}' for tenant ${dto.tenantId}`,
+    );
 
     // Ensure definition exists or create default definition
     let definition = await this.prisma.connectorDefinition.findUnique({
@@ -208,9 +231,16 @@ export class ConnectorCatalogService {
     });
   }
 
-  async updateConnector(tenantId: string, connectorId: string, input: { name?: string; sourceRegion?: string }) {
+  async updateConnector(
+    tenantId: string,
+    connectorId: string,
+    input: { name?: string; sourceRegion?: string },
+  ) {
     await this.getConnectorById(tenantId, connectorId);
-    if (!input.name && !input.sourceRegion) throw new BadRequestException('At least one supported connector field is required');
+    if (!input.name && !input.sourceRegion)
+      throw new BadRequestException(
+        'At least one supported connector field is required',
+      );
     return this.prisma.connectorInstance.update({
       where: { id: connectorId },
       data: { name: input.name, source_region: input.sourceRegion },
@@ -220,7 +250,9 @@ export class ConnectorCatalogService {
   async retireConnector(tenantId: string, connectorId: string) {
     const instance = await this.getConnectorById(tenantId, connectorId);
     if (this.registry.has(instance.definition.provider)) {
-      await this.registry.get(instance.definition.provider).disconnect(this.context(instance));
+      await this.registry
+        .get(instance.definition.provider)
+        .disconnect(this.context(instance));
     }
     return this.prisma.connectorInstance.update({
       where: { id: connectorId },
@@ -231,9 +263,13 @@ export class ConnectorCatalogService {
   async testConnector(tenantId: string, connectorId: string) {
     const instance = await this.getConnectorById(tenantId, connectorId);
     if (!this.registry.has(instance.definition.provider)) {
-      throw new BadRequestException(`Provider '${instance.definition.provider}' has no executable connection test`);
+      throw new BadRequestException(
+        `Provider '${instance.definition.provider}' has no executable connection test`,
+      );
     }
-    return this.registry.get(instance.definition.provider).testConnection(this.context(instance));
+    return this.registry
+      .get(instance.definition.provider)
+      .testConnection(this.context(instance));
   }
 
   async syncConnector(tenantId: string, connectorId: string) {
@@ -244,10 +280,17 @@ export class ConnectorCatalogService {
 
   async getConnectorHealth(tenantId: string, connectorId: string) {
     await this.getConnectorById(tenantId, connectorId);
-    return this.prisma.connectorHealthStatus.findFirst({ where: { instanceId: connectorId, tenant_id: tenantId } });
+    return this.prisma.connectorHealthStatus.findFirst({
+      where: { instanceId: connectorId, tenant_id: tenantId },
+    });
   }
 
-  private context(instance: { id: string; tenant_id: string; environment_id: string; source_region: string | null }) {
+  private context(instance: {
+    id: string;
+    tenant_id: string;
+    environment_id: string;
+    source_region: string | null;
+  }) {
     return {
       connectorInstanceId: instance.id,
       tenantId: instance.tenant_id,

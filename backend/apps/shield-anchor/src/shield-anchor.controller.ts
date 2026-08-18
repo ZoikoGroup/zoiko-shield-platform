@@ -9,16 +9,28 @@ export class ShieldAnchorController {
 
   @Get('health')
   getHealth() {
-    return { status: 'healthy', service: 'shield-anchor', timestamp: new Date().toISOString() };
+    return {
+      status: 'healthy',
+      service: 'shield-anchor',
+      timestamp: new Date().toISOString(),
+    };
   }
 
   @Get('health/ready')
   getHealthReady() {
-    return { status: 'ready', service: 'shield-anchor', timestamp: new Date().toISOString() };
+    return {
+      status: 'ready',
+      service: 'shield-anchor',
+      timestamp: new Date().toISOString(),
+    };
   }
 
   @Get('health/live')
   getHealthLive() {
-    return { status: 'live', service: 'shield-anchor', timestamp: new Date().toISOString() };
+    return {
+      status: 'live',
+      service: 'shield-anchor',
+      timestamp: new Date().toISOString(),
+    };
   }
 }

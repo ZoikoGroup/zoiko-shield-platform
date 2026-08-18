@@ -9,7 +9,8 @@ describe('WorkloadAuthGuard', () => {
   beforeEach(() => {
     process.env.NODE_ENV = 'test';
     process.env.SERVICE_NAME = 'shield-core';
-    process.env.WORKLOAD_IDENTITY_DEV_SECRET = 'unit-test-workload-secret-with-sufficient-entropy';
+    process.env.WORKLOAD_IDENTITY_DEV_SECRET =
+      'unit-test-workload-secret-with-sufficient-entropy';
   });
 
   afterAll(() => {
@@ -18,7 +19,11 @@ describe('WorkloadAuthGuard', () => {
 
   function context(authorization: string): ExecutionContext {
     return {
-      switchToHttp: () => ({ getRequest: () => ({ headers: { authorization, 'x-tenant-id': 'tenant-a' } }) }),
+      switchToHttp: () => ({
+        getRequest: () => ({
+          headers: { authorization, 'x-tenant-id': 'tenant-a' },
+        }),
+      }),
       getHandler: () => function handler() {},
       getClass: () => class Controller {},
     } as unknown as ExecutionContext;
@@ -30,6 +35,8 @@ describe('WorkloadAuthGuard', () => {
     expect(guard.canActivate(context(`Bearer ${token}`))).toBe(true);
 
     const wrongAudience = createWorkloadToken('shield-ai');
-    expect(() => guard.canActivate(context(`Bearer ${wrongAudience}`))).toThrow(UnauthorizedException);
+    expect(() => guard.canActivate(context(`Bearer ${wrongAudience}`))).toThrow(
+      UnauthorizedException,
+    );
   });
 });

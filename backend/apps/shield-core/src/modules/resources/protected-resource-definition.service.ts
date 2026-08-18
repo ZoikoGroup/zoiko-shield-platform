@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { IsArray, IsObject, IsOptional, IsString } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -43,17 +48,25 @@ export class ProtectedResourceDefinitionService {
   }
 
   async approveDefinition(id: string, approvedBy: string) {
-    const definition = await this.prisma.protectedResourceDefinition.findUnique({ where: { id } });
+    const definition = await this.prisma.protectedResourceDefinition.findUnique(
+      { where: { id } },
+    );
     if (!definition) {
       throw new NotFoundException(`Resource definition '${id}' not found`);
     }
     if (definition.status !== 'DRAFT') {
-      throw new ConflictException(`Resource definition '${id}' is '${definition.status}', not DRAFT`);
+      throw new ConflictException(
+        `Resource definition '${id}' is '${definition.status}', not DRAFT`,
+      );
     }
 
     return this.prisma.protectedResourceDefinition.update({
       where: { id },
-      data: { status: 'APPROVED', approved_by: approvedBy, approved_at: new Date() },
+      data: {
+        status: 'APPROVED',
+        approved_by: approvedBy,
+        approved_at: new Date(),
+      },
     });
   }
 
@@ -68,7 +81,9 @@ export class ProtectedResourceDefinitionService {
     });
 
     if (!definition) {
-      this.logger.warn(`Resource definition query FAILED CLOSED for type '${resourceType}'`);
+      this.logger.warn(
+        `Resource definition query FAILED CLOSED for type '${resourceType}'`,
+      );
       return null;
     }
 

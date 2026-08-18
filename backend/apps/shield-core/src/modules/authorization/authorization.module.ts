@@ -8,12 +8,36 @@ import { AuthorizationService } from './authorization.service';
 import { AuthorizationController } from './authorization.controller';
 import { PermissionsGuard } from './guards/permissions.guard';
 import { PlatformPermissionsGuard } from './guards/platform-permissions.guard';
+import { Session } from '../identity-adapter/session.entity';
+import { IdentityEvent } from '../identity-adapter/identity-event.entity';
+import { PrismaModule } from '../../prisma/prisma.module';
+import { AuthorizationDecisionService } from '../authorization-decision/authorization-decision.service';
 
 @Global()
 @Module({
-  imports: [TypeOrmModule.forFeature([Permission, Role, TenantMembership, Invitation])],
+  imports: [
+    PrismaModule,
+    TypeOrmModule.forFeature([
+      Permission,
+      Role,
+      TenantMembership,
+      Invitation,
+      Session,
+      IdentityEvent,
+    ]),
+  ],
   controllers: [AuthorizationController],
-  providers: [AuthorizationService, PermissionsGuard, PlatformPermissionsGuard],
-  exports: [AuthorizationService, PermissionsGuard, PlatformPermissionsGuard],
+  providers: [
+    AuthorizationService,
+    AuthorizationDecisionService,
+    PermissionsGuard,
+    PlatformPermissionsGuard,
+  ],
+  exports: [
+    AuthorizationService,
+    AuthorizationDecisionService,
+    PermissionsGuard,
+    PlatformPermissionsGuard,
+  ],
 })
 export class AuthorizationModule {}

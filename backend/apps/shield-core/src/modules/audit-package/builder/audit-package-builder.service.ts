@@ -42,34 +42,73 @@ export class AuditPackageBuilderService {
   ) {}
 
   async build(tenantId: string, packageId: string) {
-    const pkg = await this.auditPackageService.assertMutable(tenantId, packageId);
+    const pkg = await this.auditPackageService.assertMutable(
+      tenantId,
+      packageId,
+    );
     this.stateMachine.assertValidTransition(pkg.status, 'BUILDING');
-    await this.prisma.auditPackage.update({ where: { id: pkg.id }, data: { status: 'BUILDING' } });
-
-    const assessments = await this.prisma.assessment.findMany({
-      where: { tenant_id: tenantId, assessment_period_start: { gte: pkg.period_start }, assessment_period_end: { lte: pkg.period_end } },
+    await this.prisma.auditPackage.update({
+      where: { id: pkg.id },
+      data: { status: 'BUILDING' },
     });
 
-    const evidenceBundleIds = assessments.map((a) => a.evidence_bundle_id).filter((id): id is string => !!id);
-    const evaluationRunIds = assessments.map((a) => a.evaluation_run_id).filter((id): id is string => !!id);
+    const assessments = await this.prisma.assessment.findMany({
+      where: {
+        tenant_id: tenantId,
+        assessment_period_start: { gte: pkg.period_start },
+        assessment_period_end: { lte: pkg.period_end },
+      },
+    });
+
+    const evidenceBundleIds = assessments
+      .map((a) => a.evidence_bundle_id)
+      .filter((id): id is string => !!id);
+    const evaluationRunIds = assessments
+      .map((a) => a.evaluation_run_id)
+      .filter((id): id is string => !!id);
 
     const [evidenceBundles, evaluationRuns, deficiencies] = await Promise.all([
-      this.prisma.evidenceBundle.findMany({ where: { id: { in: evidenceBundleIds } } }),
-      this.prisma.evaluationRun.findMany({ where: { id: { in: evaluationRunIds } } }),
-      this.prisma.controlDeficiency.findMany({ where: { assessment_id: { in: assessments.map((a) => a.id) } } }),
+      this.prisma.evidenceBundle.findMany({
+        where: { id: { in: evidenceBundleIds } },
+      }),
+      this.prisma.evaluationRun.findMany({
+        where: { id: { in: evaluationRunIds } },
+      }),
+      this.prisma.controlDeficiency.findMany({
+        where: { assessment_id: { in: assessments.map((a) => a.id) } },
+      }),
     ]);
 
-    const evidenceRefsUnion = Array.from(new Set(evidenceBundles.flatMap((b) => JSON.parse(b.evidence_refs) as string[])));
-    const evidenceRecords = await this.prisma.evidenceRecord.findMany({ where: { id: { in: evidenceRefsUnion } } });
+    const evidenceRefsUnion = Array.from(
+      new Set(
+        evidenceBundles.flatMap((b) => JSON.parse(b.evidence_refs) as string[]),
+      ),
+    );
+    const evidenceRecords = await this.prisma.evidenceRecord.findMany({
+      where: { id: { in: evidenceRefsUnion } },
+    });
     const ledgerEntries = await this.prisma.evidenceLedgerEntry.findMany({
       where: { tenant_id: tenantId, evidence_id: { in: evidenceRefsUnion } },
       orderBy: { sequence: 'asc' },
     });
 
-    const risks = await this.prisma.risk.findMany({ where: { tenant_id: tenantId, source_id: { in: deficiencies.map((d) => d.id) } } });
+    const risks = await this.prisma.risk.findMany({
+      where: {
+        tenant_id: tenantId,
+        source_id: { in: deficiencies.map((d) => d.id) },
+      },
+    });
     const riskIds = risks.map((r) => r.id);
-    const exceptions = await this.prisma.exception.findMany({ where: { tenant_id: tenantId, risk_id: { in: riskIds } } });
-    const gaps = await this.prisma.evidenceGap.findMany({ where: { tenant_id: tenantId, period_start: { gte: pkg.period_start }, period_end: { lte: pkg.period_end } } });
+    const exceptions = await this.prisma.exception.findMany({
+      where: { tenant_id: tenantId, risk_id: { in: riskIds } },
+    });
+    const gaps = await this.prisma.evidenceGap.findMany({
+      where: {
+        tenant_id: tenantId,
+        period_start: { gte: pkg.period_start },
+        period_end: { lte: pkg.period_end },
+      },
+    });
 
     const evidenceIndex = evidenceRecords.map((e) => ({
       evidenceId: e.id,
@@ -84,7 +123,8 @@ export class AuditPackageBuilderService {
       freshnessState: e.freshness_state,
       completenessState: e.completeness_state,
       vaultReference: e.vault_reference,
-      reasonForInclusion: 'Referenced by an EvidenceBundle within this package scope/period',
+      reasonForInclusion:
+        'Referenced by an EvidenceBundle within this package scope/period',
     }));
 
     const evaluationIndex = evaluationRuns.map((r) => ({
@@ -113,8 +153,16 @@ export class AuditPackageBuilderService {
     }));
 
     const knownGaps = [
-      ...gaps.map((g) => ({ type: 'EVIDENCE_GAP', reason: g.reason, periodStart: toIso(g.period_start), periodEnd: toIso(g.period_end), status: g.status })),
-      ...assessments.filter((a) => a.status === 'EVIDENCE_INCOMPLETE').map((a) => ({ type: 'INCOMPLETE_ASSESSMENT', assessmentId: a.id })),
+      ...gaps.map((g) => ({
+        type: 'EVIDENCE_GAP',
+        reason: g.reason,
+        periodStart: toIso(g.period_start),
+        periodEnd: toIso(g.period_end),
+        status: g.status,
+      })),
+      ...assessments
+        .filter((a) => a.status === 'EVIDENCE_INCOMPLETE')
+        .map((a) => ({ type: 'INCOMPLETE_ASSESSMENT', assessmentId: a.id })),
     ];
 
     const limitations: string[] = [];
@@ -123,14 +171,24 @@ export class AuditPackageBuilderService {
       limitations.push(...parsed);
     }
     for (const exception of exceptions) {
-      if (exception.status === 'EXPIRED') limitations.push(`Exception ${exception.id} expired ${exception.expires_at.toISOString()}`);
+      if (exception.status === 'EXPIRED')
+        limitations.push(
+          `Exception ${exception.id} expired ${exception.expires_at.toISOString()}`,
+        );
     }
 
     const manifestCore = {
       tenantId,
-      scope: { frameworkScope: JSON.parse(pkg.framework_scope), legalEntityScope: pkg.legal_entity_scope, environmentScope: pkg.environment_scope },
+      scope: {
+        frameworkScope: JSON.parse(pkg.framework_scope),
+        legalEntityScope: pkg.legal_entity_scope,
+        environmentScope: pkg.environment_scope,
+      },
       period: { start: toIso(pkg.period_start), end: toIso(pkg.period_end) },
-      schemaBundle: { id: 'zs-audit-package-manifest-v1', hash: 'zs-audit-package-manifest-v1-hash' },
+      schemaBundle: {
+        id: 'zs-audit-package-manifest-v1',
+        hash: 'zs-audit-package-manifest-v1-hash',
+      },
       frameworkVersions: [],
       mappingVersions: [],
       evidenceIndex,
@@ -147,15 +205,29 @@ export class AuditPackageBuilderService {
       })),
       evaluationIndex,
       assessmentIndex,
-      riskIndex: risks.map((r) => ({ riskId: r.id, title: r.title, likelihood: r.likelihood, impact: r.impact, status: r.status })),
-      exceptionIndex: exceptions.map((e) => ({ exceptionId: e.id, status: e.status, expiresAt: toIso(e.expires_at) })),
+      riskIndex: risks.map((r) => ({
+        riskId: r.id,
+        title: r.title,
+        likelihood: r.likelihood,
+        impact: r.impact,
+        status: r.status,
+      })),
+      exceptionIndex: exceptions.map((e) => ({
+        exceptionId: e.id,
+        status: e.status,
+        expiresAt: toIso(e.expires_at),
+      })),
       knownGaps,
       limitations,
       verifierProfile: VERIFIER_PROFILE,
-      exportMetadata: { builtAt: new Date().toISOString(), packageVersion: pkg.version },
+      exportMetadata: {
+        builtAt: new Date().toISOString(),
+        packageVersion: pkg.version,
+      },
     };
 
-    const { contentHash: manifestCoreHash } = this.hashService.hashCanonicalJson(manifestCore);
+    const { contentHash: manifestCoreHash } =
+      this.hashService.hashCanonicalJson(manifestCore);
 
     await this.prisma.auditPackageManifest.upsert({
       where: { package_id: pkg.id },
@@ -175,6 +247,9 @@ export class AuditPackageBuilderService {
     });
 
     this.stateMachine.assertValidTransition('BUILDING', 'VALIDATING');
-    return this.prisma.auditPackage.update({ where: { id: pkg.id }, data: { status: 'VALIDATING' } });
+    return this.prisma.auditPackage.update({
+      where: { id: pkg.id },
+      data: { status: 'VALIDATING' },
+    });
   }
 }

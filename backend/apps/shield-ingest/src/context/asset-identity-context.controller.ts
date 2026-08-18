@@ -59,7 +59,10 @@ export class AssetIdentityContextController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Param('assetId') assetId: string,
   ) {
-    const asset = await this.contextService.getAssetById(requireTenantId(headerTenantId), assetId);
+    const asset = await this.contextService.getAssetById(
+      requireTenantId(headerTenantId),
+      assetId,
+    );
     return {
       statusCode: HttpStatus.OK,
       data: asset,

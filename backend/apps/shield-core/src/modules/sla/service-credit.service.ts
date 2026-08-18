@@ -1,5 +1,10 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { IsNumber, IsString, IsUUID } from 'class-validator';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import { IsNumber, IsUUID } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CommercialApprovalService } from '../approvals/commercial-approval.service';
 import { InvoiceSkeletonService } from '../billing/invoice-skeleton.service';
@@ -19,9 +24,6 @@ export class ProposeCreditDto {
 
   @IsNumber()
   amount!: number;
-
-  @IsString()
-  proposedBy!: string;
 }
 
 /**
@@ -43,8 +45,15 @@ export class ServiceCreditService {
     private readonly invoiceService: InvoiceSkeletonService,
   ) {}
 
-  async proposeCredit(tenantId: string, dto: ProposeCreditDto) {
-    const measurement = await this.measurementService.getMeasurementById(tenantId, dto.slaMeasurementId);
+  async proposeCredit(
+    tenantId: string,
+    dto: ProposeCreditDto,
+    proposedBy: string,
+  ) {
+    const measurement = await this.measurementService.getMeasurementById(
+      tenantId,
+      dto.slaMeasurementId,
+    );
     if (!measurement.breached) {
       throw new ConflictException({
         statusCode: 409,
@@ -66,46 +75,82 @@ export class ServiceCreditService {
       changeType: 'SERVICE_CREDIT',
       objectType: 'ServiceCredit',
       objectId: credit.id,
-      requestedBy: dto.proposedBy,
+      requestedBy: proposedBy,
       reason: `SLA breach on measurement ${dto.slaMeasurementId} (evidence: ${measurement.evidence_ref || 'none'})`,
       financialImpact: dto.amount,
     });
 
-    return this.prisma.serviceCredit.update({ where: { id: credit.id }, data: { approval_id: approval.id } });
+    return this.prisma.serviceCredit.update({
+      where: { id: credit.id },
+      data: { approval_id: approval.id },
+    });
   }
 
   async getCreditById(tenantId: string, id: string) {
-    const credit = await this.prisma.serviceCredit.findUnique({ where: { id } });
+    const credit = await this.prisma.serviceCredit.findUnique({
+      where: { id },
+    });
     if (!credit) {
       throw new NotFoundException(`Service credit '${id}' not found`);
     }
-    await this.measurementService.getMeasurementById(tenantId, credit.sla_measurement_id);
+    await this.measurementService.getMeasurementById(
+      tenantId,
+      credit.sla_measurement_id,
+    );
     return credit;
   }
 
-  async decideCredit(tenantId: string, creditId: string, approverId: string, decision: 'APPROVED' | 'REJECTED', reason: string) {
+  async decideCredit(
+    tenantId: string,
+    creditId: string,
+    approverId: string,
+    decision: 'APPROVED' | 'REJECTED',
+    reason: string,
+  ) {
     const credit = await this.getCreditById(tenantId, creditId);
-    assertTransition(CREDIT_TRANSITIONS, credit.status, decision, 'service credit');
+    assertTransition(
+      CREDIT_TRANSITIONS,
+      credit.status,
+      decision,
+      'service credit',
+    );
 
     if (!credit.approval_id) {
-      throw new ConflictException(`Service credit '${creditId}' has no linked commercial approval`);
+      throw new ConflictException(
+        `Service credit '${creditId}' has no linked commercial approval`,
+      );
     }
-    await this.approvalService.decideApproval(credit.approval_id, approverId, decision, reason);
+    await this.approvalService.decideApproval(
+      credit.approval_id,
+      approverId,
+      decision,
+      reason,
+    );
 
-    return this.prisma.serviceCredit.update({ where: { id: creditId }, data: { status: decision } });
+    return this.prisma.serviceCredit.update({
+      where: { id: creditId },
+      data: { status: decision },
+    });
   }
 
   /** Posting requires an already-ISSUED invoice for the same contract — the credit note is appended, the invoice is never touched. */
   async postCredit(tenantId: string, creditId: string, invoiceId: string) {
     const credit = await this.getCreditById(tenantId, creditId);
-    assertTransition(CREDIT_TRANSITIONS, credit.status, 'POSTED', 'service credit');
+    assertTransition(
+      CREDIT_TRANSITIONS,
+      credit.status,
+      'POSTED',
+      'service credit',
+    );
 
     const invoice = await this.prisma.commercialInvoice.findFirst({
       where: { id: invoiceId, contract_id: credit.contract_id },
       select: { id: true },
     });
     if (!invoice) {
-      throw new NotFoundException(`Invoice '${invoiceId}' not found for the service credit contract`);
+      throw new NotFoundException(
+        `Invoice '${invoiceId}' not found for the service credit contract`,
+      );
     }
 
     const creditNote = await this.invoiceService.issueCreditNote(
@@ -116,7 +161,11 @@ export class ServiceCreditService {
 
     return this.prisma.serviceCredit.update({
       where: { id: creditId },
-      data: { status: 'POSTED', credit_note_id: creditNote.id, posted_at: new Date() },
+      data: {
+        status: 'POSTED',
+        credit_note_id: creditNote.id,
+        posted_at: new Date(),
+      },
     });
   }
 }

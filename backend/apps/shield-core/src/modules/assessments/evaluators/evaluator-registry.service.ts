@@ -1,4 +1,8 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ContentHashService } from '../../evidence/hashing/content-hash.service';
@@ -46,7 +50,9 @@ export class EvaluatorRegistryService {
   getRunner(key: string): EvaluatorRunner {
     const runner = this.runners.get(key);
     if (!runner) {
-      throw new NotFoundException(`No EvaluatorRunner registered for key '${key}'`);
+      throw new NotFoundException(
+        `No EvaluatorRunner registered for key '${key}'`,
+      );
     }
     return runner;
   }
@@ -64,13 +70,18 @@ export class EvaluatorRegistryService {
   }
 
   async createVersion(input: CreateEvaluatorVersionInput) {
-    const { contentHash } = this.hashService.hashCanonicalJson({ configuration: input.configuration, requiredFields: input.requiredFields ?? [] });
+    const { contentHash } = this.hashService.hashCanonicalJson({
+      configuration: input.configuration,
+      requiredFields: input.requiredFields ?? [],
+    });
     return this.prisma.evaluatorVersion.create({
       data: {
         id: randomUUID(),
         evaluator_id: input.evaluatorId,
         version: input.version,
-        accepted_evidence_schemas: JSON.stringify(input.acceptedEvidenceSchemas ?? []),
+        accepted_evidence_schemas: JSON.stringify(
+          input.acceptedEvidenceSchemas ?? [],
+        ),
         required_fields: JSON.stringify(input.requiredFields ?? []),
         runtime_profile: input.runtimeProfile ?? 'node',
         configuration: JSON.stringify(input.configuration),
@@ -81,9 +92,13 @@ export class EvaluatorRegistryService {
   }
 
   async publishVersion(evaluatorVersionId: string) {
-    const version = await this.prisma.evaluatorVersion.findUniqueOrThrow({ where: { id: evaluatorVersionId } });
+    const version = await this.prisma.evaluatorVersion.findUniqueOrThrow({
+      where: { id: evaluatorVersionId },
+    });
     if (version.status === 'PUBLISHED') {
-      throw new ConflictException(`EvaluatorVersion '${evaluatorVersionId}' is already PUBLISHED and cannot be republished`);
+      throw new ConflictException(
+        `EvaluatorVersion '${evaluatorVersionId}' is already PUBLISHED and cannot be republished`,
+      );
     }
     return this.prisma.evaluatorVersion.update({
       where: { id: evaluatorVersionId },
@@ -92,9 +107,14 @@ export class EvaluatorRegistryService {
   }
 
   async getVersionWithEvaluator(evaluatorVersionId: string) {
-    const version = await this.prisma.evaluatorVersion.findUnique({ where: { id: evaluatorVersionId }, include: { evaluator: true } });
+    const version = await this.prisma.evaluatorVersion.findUnique({
+      where: { id: evaluatorVersionId },
+      include: { evaluator: true },
+    });
     if (!version) {
-      throw new NotFoundException(`EvaluatorVersion '${evaluatorVersionId}' not found`);
+      throw new NotFoundException(
+        `EvaluatorVersion '${evaluatorVersionId}' not found`,
+      );
     }
     return version;
   }

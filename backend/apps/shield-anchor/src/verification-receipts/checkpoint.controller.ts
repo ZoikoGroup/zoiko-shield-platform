@@ -15,7 +15,9 @@ interface RequestCheckpointBody {
 @Controller('internal/v1/checkpoints')
 @UseGuards(InternalAuthGuard)
 export class CheckpointController {
-  constructor(private readonly checkpointBuilderService: CheckpointBuilderService) {}
+  constructor(
+    private readonly checkpointBuilderService: CheckpointBuilderService,
+  ) {}
 
   @Post()
   async requestCheckpoint(@Body() body: RequestCheckpointBody) {

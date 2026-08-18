@@ -9,7 +9,11 @@ function makePrisma(receipt: any) {
 
 describe('ReconciliationService', () => {
   it('records VERIFIED for a SIMULATED receipt', async () => {
-    const prisma = makePrisma({ tenant_id: 't1', status: 'SIMULATED', observed_state: '{}' });
+    const prisma = makePrisma({
+      tenant_id: 't1',
+      status: 'SIMULATED',
+      observed_state: '{}',
+    });
     const service = new ReconciliationService(prisma);
     const result = await service.reconcile('cmd1', 'rcpt1');
     expect(result.result).toBe('VERIFIED');
@@ -23,7 +27,11 @@ describe('ReconciliationService', () => {
   });
 
   it('stays UNKNOWN for any non-SIMULATED status', async () => {
-    const prisma = makePrisma({ tenant_id: 't1', status: 'FAILED', observed_state: '{}' });
+    const prisma = makePrisma({
+      tenant_id: 't1',
+      status: 'FAILED',
+      observed_state: '{}',
+    });
     const service = new ReconciliationService(prisma);
     const result = await service.reconcile('cmd1', 'rcpt1');
     expect(result.result).toBe('UNKNOWN');

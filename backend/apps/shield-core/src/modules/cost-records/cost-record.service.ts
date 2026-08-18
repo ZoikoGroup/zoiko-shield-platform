@@ -60,19 +60,36 @@ export class CostRecordService {
     });
   }
 
-  async getCostsByTenant(tenantId: string, periodStart?: Date, periodEnd?: Date) {
+  async getCostsByTenant(
+    tenantId: string,
+    periodStart?: Date,
+    periodEnd?: Date,
+  ) {
     return this.prisma.costRecord.findMany({
       where: {
         tenant_id: tenantId,
-        ...(periodStart && periodEnd ? { period_start: { gte: periodStart }, period_end: { lte: periodEnd } } : {}),
+        ...(periodStart && periodEnd
+          ? {
+              period_start: { gte: periodStart },
+              period_end: { lte: periodEnd },
+            }
+          : {}),
       },
       orderBy: { period_start: 'desc' },
     });
   }
 
-  async getTotalCostByUsageClass(usageClass: string, periodStart: Date, periodEnd: Date) {
+  async getTotalCostByUsageClass(
+    usageClass: string,
+    periodStart: Date,
+    periodEnd: Date,
+  ) {
     const records = await this.prisma.costRecord.findMany({
-      where: { usage_class: usageClass, period_start: { gte: periodStart }, period_end: { lte: periodEnd } },
+      where: {
+        usage_class: usageClass,
+        period_start: { gte: periodStart },
+        period_end: { lte: periodEnd },
+      },
     });
     return records.reduce((sum, r) => sum + Number(r.total_cost), 0);
   }

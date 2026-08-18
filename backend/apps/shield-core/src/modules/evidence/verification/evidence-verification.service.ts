@@ -25,18 +25,34 @@ export class EvidenceVerificationService {
     private readonly evidenceRepository: EvidenceRepository,
   ) {}
 
-  async verify(tenantId: string, evidenceId: string): Promise<{ integrityState: 'VERIFIED' | 'FAILED'; contentHash: string; storedHash: string }> {
-    const evidence = await this.evidenceRepository.findByTenantAndId(tenantId, evidenceId);
+  async verify(
+    tenantId: string,
+    evidenceId: string,
+  ): Promise<{
+    integrityState: 'VERIFIED' | 'FAILED';
+    contentHash: string;
+    storedHash: string;
+  }> {
+    const evidence = await this.evidenceRepository.findByTenantAndId(
+      tenantId,
+      evidenceId,
+    );
     if (!evidence || !evidence.vault_reference) {
-      throw new Error(`Evidence '${evidenceId}' not found or has no stored object`);
+      throw new Error(
+        `Evidence '${evidenceId}' not found or has no stored object`,
+      );
     }
 
     const bytes = await this.storageService.getObject(evidence.vault_reference);
     const recomputedHash = this.hashService.hash(bytes);
-    const integrityState = recomputedHash === evidence.content_hash ? 'VERIFIED' : 'FAILED';
+    const integrityState =
+      recomputedHash === evidence.content_hash ? 'VERIFIED' : 'FAILED';
 
     await this.prisma.$transaction([
-      this.prisma.evidenceRecord.update({ where: { id: evidenceId }, data: { integrity_state: integrityState } }),
+      this.prisma.evidenceRecord.update({
+        where: { id: evidenceId },
+        data: { integrity_state: integrityState },
+      }),
       this.prisma.outboxEvent.create({
         data: this.outbox.build({
           tenantId,
@@ -48,9 +64,15 @@ export class EvidenceVerificationService {
     ]);
 
     if (integrityState === 'FAILED') {
-      this.logger.error(`Evidence integrity FAILED for ${evidenceId}: expected ${evidence.content_hash}, got ${recomputedHash}`);
+      this.logger.error(
+        `Evidence integrity FAILED for ${evidenceId}: expected ${evidence.content_hash}, got ${recomputedHash}`,
+      );
     }
 
-    return { integrityState, contentHash: evidence.content_hash, storedHash: recomputedHash };
+    return {
+      integrityState,
+      contentHash: evidence.content_hash,
+      storedHash: recomputedHash,
+    };
   }
 }

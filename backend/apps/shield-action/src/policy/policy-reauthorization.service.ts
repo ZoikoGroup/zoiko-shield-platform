@@ -16,23 +16,39 @@ export interface PolicyCheckResult {
 export class PolicyReauthorizationService {
   check(context: ActionAuthorizationContext): PolicyCheckResult {
     if (context.proposalStatus !== 'APPROVED') {
-      return { allowed: false, reason: `Proposal status is '${context.proposalStatus}', expected 'APPROVED'` };
+      return {
+        allowed: false,
+        reason: `Proposal status is '${context.proposalStatus}', expected 'APPROVED'`,
+      };
     }
 
     if (context.authorityLevel !== 'R0' && context.authorityLevel !== 'R1') {
-      return { allowed: false, reason: `Authority level '${context.authorityLevel}' has no live path this milestone — only R0/R1 are enabled` };
+      return {
+        allowed: false,
+        reason: `Authority level '${context.authorityLevel}' has no live path this milestone — only R0/R1 are enabled`,
+      };
     }
 
     if (!context.policyVersion) {
-      return { allowed: false, reason: 'Missing policy version — cannot evaluate against current policy' };
+      return {
+        allowed: false,
+        reason:
+          'Missing policy version — cannot evaluate against current policy',
+      };
     }
 
     if (!context.entitlementAllowed) {
-      return { allowed: false, reason: 'Entitlement check denied at reauthorization time' };
+      return {
+        allowed: false,
+        reason: 'Entitlement check denied at reauthorization time',
+      };
     }
 
     if (!context.authorizationDecisionId) {
-      return { allowed: false, reason: 'Missing authorizationDecisionId in reauthorization context' };
+      return {
+        allowed: false,
+        reason: 'Missing authorizationDecisionId in reauthorization context',
+      };
     }
 
     return { allowed: true };

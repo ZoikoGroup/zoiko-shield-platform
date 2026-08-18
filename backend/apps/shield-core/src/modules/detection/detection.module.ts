@@ -19,6 +19,10 @@ import { NormalizedEventConsumer } from './consumers/normalized-event.consumer';
     DetectionReplayService,
     NormalizedEventConsumer,
   ],
-  exports: [DetectionRuntimeService, DetectionRegistryService, DetectionReplayService],
+  exports: [
+    DetectionRuntimeService,
+    DetectionRegistryService,
+    DetectionReplayService,
+  ],
 })
 export class DetectionModule {}

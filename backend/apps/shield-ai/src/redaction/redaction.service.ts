@@ -3,8 +3,15 @@ import { Injectable } from '@nestjs/common';
 const SECRET_PATTERNS: Array<{ name: string; pattern: RegExp }> = [
   { name: 'BEARER_TOKEN', pattern: /Bearer\s+[A-Za-z0-9\-._~+/]+=*/gi },
   { name: 'AWS_ACCESS_KEY', pattern: /AKIA[0-9A-Z]{16}/g },
-  { name: 'GENERIC_SECRET_ASSIGNMENT', pattern: /(secret|password|api[_-]?key|client[_-]?secret)\s*[:=]\s*['"]?[^\s'"]{6,}/gi },
-  { name: 'JWT', pattern: /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g },
+  {
+    name: 'GENERIC_SECRET_ASSIGNMENT',
+    pattern:
+      /(secret|password|api[_-]?key|client[_-]?secret)\s*[:=]\s*['"]?[^\s'"]{6,}/gi,
+  },
+  {
+    name: 'JWT',
+    pattern: /eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/g,
+  },
 ];
 
 /**

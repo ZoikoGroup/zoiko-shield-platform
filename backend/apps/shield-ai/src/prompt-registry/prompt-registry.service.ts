@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 /** Versioned, immutable-once-published (spec §6) — same DetectionVersion-style precedent already established. */
@@ -6,7 +10,12 @@ import { PrismaService } from '../prisma/prisma.service';
 export class PromptRegistryService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createDraft(data: { key: string; version: number; systemPromptRef: string; outputSchema: Record<string, unknown> }) {
+  async createDraft(data: {
+    key: string;
+    version: number;
+    systemPromptRef: string;
+    outputSchema: Record<string, unknown>;
+  }) {
     return this.prisma.promptProfile.create({
       data: {
         key: data.key,
@@ -19,11 +28,18 @@ export class PromptRegistryService {
   }
 
   async publish(id: string) {
-    const prompt = await this.prisma.promptProfile.findUniqueOrThrow({ where: { id } });
+    const prompt = await this.prisma.promptProfile.findUniqueOrThrow({
+      where: { id },
+    });
     if (prompt.status === 'PUBLISHED') {
-      throw new ConflictException(`PromptProfile '${id}' is already PUBLISHED and cannot be republished`);
+      throw new ConflictException(
+        `PromptProfile '${id}' is already PUBLISHED and cannot be republished`,
+      );
     }
-    return this.prisma.promptProfile.update({ where: { id }, data: { status: 'PUBLISHED', published_at: new Date() } });
+    return this.prisma.promptProfile.update({
+      where: { id },
+      data: { status: 'PUBLISHED', published_at: new Date() },
+    });
   }
 
   async getActiveForKey(key: string) {
@@ -32,7 +48,9 @@ export class PromptRegistryService {
       orderBy: { version: 'desc' },
     });
     if (!prompt) {
-      throw new NotFoundException(`No PUBLISHED PromptProfile for key '${key}'`);
+      throw new NotFoundException(
+        `No PUBLISHED PromptProfile for key '${key}'`,
+      );
     }
     return prompt;
   }

@@ -10,9 +10,15 @@ const DEFAULT_MAX_REQUESTS_PER_WINDOW = 100;
  */
 @Injectable()
 export class UsageControlService {
-  private readonly counters = new Map<string, { count: number; windowStart: number }>();
+  private readonly counters = new Map<
+    string,
+    { count: number; windowStart: number }
+  >();
 
-  checkAndIncrement(tenantId: string, max = DEFAULT_MAX_REQUESTS_PER_WINDOW): { allowed: boolean; remaining: number } {
+  checkAndIncrement(
+    tenantId: string,
+    max = DEFAULT_MAX_REQUESTS_PER_WINDOW,
+  ): { allowed: boolean; remaining: number } {
     const now = Date.now();
     const entry = this.counters.get(tenantId);
 

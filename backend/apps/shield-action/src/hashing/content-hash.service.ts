@@ -20,7 +20,10 @@ export class ContentHashService {
     return createHash('sha256').update(bytes).digest('hex');
   }
 
-  hashCanonicalJson(value: unknown): { contentHash: string; canonicalBytes: string } {
+  hashCanonicalJson(value: unknown): {
+    contentHash: string;
+    canonicalBytes: string;
+  } {
     const canonicalBytes = this.canonicalize(value);
     return { contentHash: this.hash(canonicalBytes), canonicalBytes };
   }
@@ -30,7 +33,7 @@ export class ContentHashService {
       return value.map((item) => this.sortKeysDeep(item));
     }
     if (value !== null && typeof value === 'object') {
-      return Object.keys(value as Record<string, unknown>)
+      return Object.keys(value)
         .sort()
         .reduce<Record<string, unknown>>((acc, key) => {
           acc[key] = this.sortKeysDeep((value as Record<string, unknown>)[key]);

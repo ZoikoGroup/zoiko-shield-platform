@@ -1,4 +1,8 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ContentHashService } from '../../evidence/hashing/content-hash.service';
@@ -61,9 +65,13 @@ export class FrameworkRegistryService {
   }
 
   async publishVersion(frameworkVersionId: string) {
-    const version = await this.prisma.frameworkVersion.findUniqueOrThrow({ where: { id: frameworkVersionId } });
+    const version = await this.prisma.frameworkVersion.findUniqueOrThrow({
+      where: { id: frameworkVersionId },
+    });
     if (version.status === 'PUBLISHED') {
-      throw new ConflictException(`FrameworkVersion '${frameworkVersionId}' is already PUBLISHED and cannot be republished`);
+      throw new ConflictException(
+        `FrameworkVersion '${frameworkVersionId}' is already PUBLISHED and cannot be republished`,
+      );
     }
     return this.prisma.frameworkVersion.update({
       where: { id: frameworkVersionId },
@@ -72,9 +80,13 @@ export class FrameworkRegistryService {
   }
 
   async getPublishedVersion(frameworkVersionId: string) {
-    const version = await this.prisma.frameworkVersion.findUnique({ where: { id: frameworkVersionId } });
+    const version = await this.prisma.frameworkVersion.findUnique({
+      where: { id: frameworkVersionId },
+    });
     if (!version) {
-      throw new NotFoundException(`FrameworkVersion '${frameworkVersionId}' not found`);
+      throw new NotFoundException(
+        `FrameworkVersion '${frameworkVersionId}' not found`,
+      );
     }
     return version;
   }

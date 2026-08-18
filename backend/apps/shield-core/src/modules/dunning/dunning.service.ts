@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { IsOptional, IsString, IsUUID } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ContractStateService } from '../commerce/contract-state.service';
@@ -45,7 +50,9 @@ export class DunningService {
   ) {}
 
   async getCaseById(id: string) {
-    const dunningCase = await this.prisma.dunningCase.findUnique({ where: { id } });
+    const dunningCase = await this.prisma.dunningCase.findUnique({
+      where: { id },
+    });
     if (!dunningCase) {
       throw new NotFoundException(`Dunning case '${id}' not found`);
     }
@@ -53,7 +60,9 @@ export class DunningService {
   }
 
   async triggerDunning(dto: TriggerDunningDto) {
-    const policy = await this.dunningPolicyService.getActivePolicy(dto.policyKey);
+    const policy = await this.dunningPolicyService.getActivePolicy(
+      dto.policyKey,
+    );
     if (!policy) {
       throw new ConflictException({
         statusCode: 409,
@@ -71,7 +80,11 @@ export class DunningService {
 
     // Reuses ContractStateService's own guarded transition — dunning never
     // bypasses the canonical contract state machine.
-    await this.contractService.transitionState(dto.contractId, 'PAST_DUE', dto.actor || 'dunning-engine');
+    await this.contractService.transitionState(
+      dto.contractId,
+      'PAST_DUE',
+      dto.actor || 'dunning-engine',
+    );
 
     return this.prisma.dunningCase.create({
       data: {
@@ -90,19 +103,35 @@ export class DunningService {
   async advanceDunning(dunningCaseId: string) {
     const dunningCase = await this.getCaseById(dunningCaseId);
     if (dunningCase.status !== 'ACTIVE') {
-      throw new ConflictException(`Dunning case '${dunningCaseId}' is '${dunningCase.status}', not ACTIVE`);
+      throw new ConflictException(
+        `Dunning case '${dunningCaseId}' is '${dunningCase.status}', not ACTIVE`,
+      );
     }
 
-    const policy = await this.prisma.dunningPolicy.findUniqueOrThrow({ where: { id: dunningCase.dunning_policy_id } });
-    const contract = await this.contractService.getContractById(dunningCase.contract_id);
-    const elapsedDays = (Date.now() - dunningCase.triggered_at.getTime()) / MS_PER_DAY;
+    const policy = await this.prisma.dunningPolicy.findUniqueOrThrow({
+      where: { id: dunningCase.dunning_policy_id },
+    });
+    const contract = await this.contractService.getContractById(
+      dunningCase.contract_id,
+    );
+    const elapsedDays =
+      (Date.now() - dunningCase.triggered_at.getTime()) / MS_PER_DAY;
 
     let targetStatus: string | null = null;
-    if (contract.status === 'PAST_DUE' && elapsedDays >= policy.restrict_after_days) {
+    if (
+      contract.status === 'PAST_DUE' &&
+      elapsedDays >= policy.restrict_after_days
+    ) {
       targetStatus = 'RESTRICTED';
-    } else if (contract.status === 'RESTRICTED' && elapsedDays >= policy.suspend_after_days) {
+    } else if (
+      contract.status === 'RESTRICTED' &&
+      elapsedDays >= policy.suspend_after_days
+    ) {
       targetStatus = 'SUSPENDED';
-    } else if (contract.status === 'SUSPENDED' && elapsedDays >= policy.terminate_after_days) {
+    } else if (
+      contract.status === 'SUSPENDED' &&
+      elapsedDays >= policy.terminate_after_days
+    ) {
       targetStatus = 'TERMINATION_WORKFLOW';
     }
 
@@ -111,7 +140,12 @@ export class DunningService {
     }
 
     if (targetStatus === 'TERMINATION_WORKFLOW') {
-      assertTransition(DUNNING_CASE_TRANSITIONS, dunningCase.status, 'ESCALATED_TO_TERMINATION', 'dunning case');
+      assertTransition(
+        DUNNING_CASE_TRANSITIONS,
+        dunningCase.status,
+        'ESCALATED_TO_TERMINATION',
+        'dunning case',
+      );
     }
 
     const updatedContract = await this.contractService.transitionState(
@@ -124,19 +158,34 @@ export class DunningService {
       where: { id: dunningCaseId },
       data: {
         last_action_at: new Date(),
-        ...(targetStatus === 'TERMINATION_WORKFLOW' ? { status: 'ESCALATED_TO_TERMINATION' } : {}),
+        ...(targetStatus === 'TERMINATION_WORKFLOW'
+          ? { status: 'ESCALATED_TO_TERMINATION' }
+          : {}),
       },
     });
 
-    return { dunningCase: updatedCase, contract: updatedContract, advanced: true };
+    return {
+      dunningCase: updatedCase,
+      contract: updatedContract,
+      advanced: true,
+    };
   }
 
   /** Payment received / dispute resolved — return the contract to ACTIVE. */
   async resolveDunning(dunningCaseId: string, actor = 'system') {
     const dunningCase = await this.getCaseById(dunningCaseId);
-    assertTransition(DUNNING_CASE_TRANSITIONS, dunningCase.status, 'RESOLVED', 'dunning case');
+    assertTransition(
+      DUNNING_CASE_TRANSITIONS,
+      dunningCase.status,
+      'RESOLVED',
+      'dunning case',
+    );
 
-    await this.contractService.transitionState(dunningCase.contract_id, 'ACTIVE', actor);
+    await this.contractService.transitionState(
+      dunningCase.contract_id,
+      'ACTIVE',
+      actor,
+    );
 
     return this.prisma.dunningCase.update({
       where: { id: dunningCaseId },

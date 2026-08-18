@@ -26,7 +26,9 @@ describe('QA-02: payment failure during an active incident', () => {
       path.resolve(__dirname, '../payments/payment.service.ts'),
       'utf-8',
     );
-    expect(source).not.toMatch(/evidence|case-management|EvidenceRecord|CaseService/i);
+    expect(source).not.toMatch(
+      /evidence|case-management|EvidenceRecord|CaseService/i,
+    );
   });
 
   it('TenantOffboardingService (the only path that can revoke access) requires a completed export before touching anything else — proven in tenant-offboarding.service.spec.ts', () => {
@@ -39,7 +41,9 @@ describe('QA-02: payment failure during an active incident', () => {
       path.resolve(__dirname, '../dunning/dunning.service.ts'),
       'utf-8',
     );
-    expect(dunningSource).not.toMatch(/TenantOffboardingService|DeletionRequestService|EvidenceRecord/);
+    expect(dunningSource).not.toMatch(
+      /TenantOffboardingService|DeletionRequestService|EvidenceRecord/,
+    );
   });
 });
 
@@ -67,7 +71,10 @@ describe('QA-02: AI outage / no-LLM critical path (AI-02)', () => {
       const full = path.join(absolute, entry.name);
       if (entry.isDirectory()) {
         out.push(...findSourceFiles(path.join(dir, entry.name)));
-      } else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.spec.ts')) {
+      } else if (
+        entry.name.endsWith('.ts') &&
+        !entry.name.endsWith('.spec.ts')
+      ) {
         out.push(full);
       }
     }
@@ -75,7 +82,8 @@ describe('QA-02: AI outage / no-LLM critical path (AI-02)', () => {
   }
 
   it('evidence integrity, authorization decisions, and detection execution have zero dependency on any AI/LLM provider — they function identically during an AI outage', () => {
-    const forbidden = /anthropic|openai|AiUsageService|@anthropic-ai|LlmService|LLMProvider/i;
+    const forbidden =
+      /anthropic|openai|AiUsageService|@anthropic-ai|LlmService|LLMProvider/i;
     const offenders: string[] = [];
 
     for (const root of criticalModules) {

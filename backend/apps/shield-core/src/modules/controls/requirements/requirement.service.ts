@@ -29,6 +29,8 @@ export class RequirementService {
   }
 
   async getById(requirementId: string) {
-    return this.prisma.requirement.findUniqueOrThrow({ where: { id: requirementId } });
+    return this.prisma.requirement.findUniqueOrThrow({
+      where: { id: requirementId },
+    });
   }
 }

@@ -34,7 +34,15 @@ export class ControlScopeService {
     });
   }
 
-  async listForImplementation(tenantId: string, controlImplementationId: string) {
-    return this.prisma.controlScope.findMany({ where: { tenant_id: tenantId, control_implementation_id: controlImplementationId } });
+  async listForImplementation(
+    tenantId: string,
+    controlImplementationId: string,
+  ) {
+    return this.prisma.controlScope.findMany({
+      where: {
+        tenant_id: tenantId,
+        control_implementation_id: controlImplementationId,
+      },
+    });
   }
 }

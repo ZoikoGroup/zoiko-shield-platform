@@ -6,7 +6,11 @@ export class DeduplicationService {
   constructor(private readonly prisma: PrismaService) {}
 
   /** Returns the existing RawEvent if this (tenant, connector, sourceEventId) was already ingested. */
-  async findExisting(tenantId: string, connectorId: string, sourceEventId: string) {
+  async findExisting(
+    tenantId: string,
+    connectorId: string,
+    sourceEventId: string,
+  ) {
     return this.prisma.rawEvent.findFirst({
       where: {
         tenant_id: tenantId,

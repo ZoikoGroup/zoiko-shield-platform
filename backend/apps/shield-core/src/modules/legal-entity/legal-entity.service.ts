@@ -17,18 +17,28 @@ export class LegalEntityService {
   }
 
   async findOne(tenantId: string, id: string): Promise<LegalEntity> {
-    const item = await this.legalEntityRepository.findOne({ where: { id, tenantId } });
+    const item = await this.legalEntityRepository.findOne({
+      where: { id, tenantId },
+    });
     if (!item) {
-      throw new NotFoundException(`Legal entity ${id} not found for tenant ${tenantId}`);
+      throw new NotFoundException(
+        `Legal entity ${id} not found for tenant ${tenantId}`,
+      );
     }
     return item;
   }
 
   create(tenantId: string, dto: CreateLegalEntityDto): Promise<LegalEntity> {
-    return this.legalEntityRepository.save(this.legalEntityRepository.create({ tenantId, ...dto }));
+    return this.legalEntityRepository.save(
+      this.legalEntityRepository.create({ tenantId, ...dto }),
+    );
   }
 
-  async update(tenantId: string, id: string, dto: UpdateLegalEntityDto): Promise<LegalEntity> {
+  async update(
+    tenantId: string,
+    id: string,
+    dto: UpdateLegalEntityDto,
+  ): Promise<LegalEntity> {
     const item = await this.findOne(tenantId, id);
     Object.assign(item, dto);
     return this.legalEntityRepository.save(item);

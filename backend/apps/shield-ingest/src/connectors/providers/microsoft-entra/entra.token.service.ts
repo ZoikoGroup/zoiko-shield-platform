@@ -22,7 +22,10 @@ export class EntraTokenService {
 
   constructor(private readonly credentialService: CredentialService) {}
 
-  async getAccessToken(instanceId: string, externalTenantId: string): Promise<string> {
+  async getAccessToken(
+    instanceId: string,
+    externalTenantId: string,
+  ): Promise<string> {
     const cached = this.cache.get(instanceId);
     if (cached && cached.expiresAt > Date.now() + 60_000) {
       return cached.accessToken;
@@ -36,9 +39,12 @@ export class EntraTokenService {
 
     const clientId = process.env.ENTRA_CLIENT_ID;
     if (!clientId) {
-      throw new ConnectorAuthenticationError('ENTRA_CLIENT_ID is not configured');
+      throw new ConnectorAuthenticationError(
+        'ENTRA_CLIENT_ID is not configured',
+      );
     }
-    const clientSecret = await this.credentialService.resolveClientSecret(instanceId);
+    const clientSecret =
+      await this.credentialService.resolveClientSecret(instanceId);
 
     const tokenUrl = `https://login.microsoftonline.com/${externalTenantId}/oauth2/v2.0/token`;
     const body = new URLSearchParams({
@@ -68,7 +74,10 @@ export class EntraTokenService {
       );
     }
 
-    const data = (await response.json()) as { access_token: string; expires_in: number };
+    const data = (await response.json()) as {
+      access_token: string;
+      expires_in: number;
+    };
     this.cache.set(instanceId, {
       accessToken: data.access_token,
       expiresAt: Date.now() + data.expires_in * 1000,
@@ -93,12 +102,16 @@ export class EntraTokenService {
   decodeGrantedRoles(accessToken: string): string[] {
     try {
       const payloadSegment = accessToken.split('.')[1];
-      const payload = JSON.parse(Buffer.from(payloadSegment, 'base64url').toString('utf8')) as {
+      const payload = JSON.parse(
+        Buffer.from(payloadSegment, 'base64url').toString('utf8'),
+      ) as {
         roles?: string[];
       };
       return payload.roles ?? [];
     } catch (err) {
-      this.logger.warn(`Failed to decode access token roles: ${(err as Error).message}`);
+      this.logger.warn(
+        `Failed to decode access token roles: ${(err as Error).message}`,
+      );
       return [];
     }
   }

@@ -36,10 +36,24 @@ export class WebhookDeliveryService {
     private readonly secretService: WebhookSecretService,
   ) {}
 
-  async deliver(input: DeliverInput, replayOfDeliveryId?: string): Promise<void> {
-    const subscription = await this.prisma.outboundWebhookSubscription.findUniqueOrThrow({ where: { id: input.webhookSubscriptionId } });
+  async deliver(
+    input: DeliverInput,
+    replayOfDeliveryId?: string,
+  ): Promise<void> {
+    const subscription =
+      await this.prisma.outboundWebhookSubscription.findUniqueOrThrow({
+        where: { id: input.webhookSubscriptionId },
+      });
 
-    const minimizedPayload = { id: input.eventId, type: input.eventType, version: '1.0', occurredAt: new Date().toISOString(), tenantContext: { tenantId: input.tenantId }, test: input.test ?? false, data: input.data };
+    const minimizedPayload = {
+      id: input.eventId,
+      type: input.eventType,
+      version: '1.0',
+      occurredAt: new Date().toISOString(),
+      tenantContext: { tenantId: input.tenantId },
+      test: input.test ?? false,
+      data: input.data,
+    };
     const rawBody = JSON.stringify(minimizedPayload);
     const payloadHash = createHash('sha256').update(rawBody).digest('hex');
 
@@ -59,17 +73,33 @@ export class WebhookDeliveryService {
       },
     });
 
-    await this.attempt(delivery.id, subscription.id, subscription.endpoint_url, input.eventId, rawBody);
+    await this.attempt(
+      delivery.id,
+      subscription.id,
+      subscription.endpoint_url,
+      input.eventId,
+      rawBody,
+    );
   }
 
-  private async attempt(deliveryId: string, subscriptionId: string, endpointUrl: string, eventId: string, rawBody: string): Promise<void> {
-    const delivery = await this.prisma.webhookDelivery.findUniqueOrThrow({ where: { id: deliveryId } });
+  private async attempt(
+    deliveryId: string,
+    subscriptionId: string,
+    endpointUrl: string,
+    eventId: string,
+    rawBody: string,
+  ): Promise<void> {
+    const delivery = await this.prisma.webhookDelivery.findUniqueOrThrow({
+      where: { id: deliveryId },
+    });
     const attemptNumber = delivery.attempt_count + 1;
     const startedAt = new Date();
 
     const secret = await this.secretService.getActiveSecret(subscriptionId);
     const timestamp = Math.floor(Date.now() / 1000).toString();
-    const signature = secret ? this.signingService.sign({ secret, timestamp, eventId, rawBody }) : 'UNSIGNED_NO_ACTIVE_SECRET';
+    const signature = secret
+      ? this.signingService.sign({ secret, timestamp, eventId, rawBody })
+      : 'UNSIGNED_NO_ACTIVE_SECRET';
 
     let responseStatus: number | undefined;
     let errorClass: string | undefined;
@@ -91,7 +121,8 @@ export class WebhookDeliveryService {
         body: rawBody,
       });
       responseStatus = response.status;
-      retryable = response.status >= 500 || RETRYABLE_STATUS.has(response.status);
+      retryable =
+        response.status >= 500 || RETRYABLE_STATUS.has(response.status);
     } catch (err) {
       errorClass = (err as Error).name || 'NETWORK_ERROR';
       retryable = true;
@@ -99,13 +130,33 @@ export class WebhookDeliveryService {
 
     const completedAt = new Date();
     await this.prisma.webhookDeliveryAttempt.create({
-      data: { id: randomUUID(), tenant_id: delivery.tenant_id, delivery_id: deliveryId, attempt_number: attemptNumber, started_at: startedAt, completed_at: completedAt, response_status: responseStatus, error_class: errorClass, retryable, duration_ms: completedAt.getTime() - startedAt.getTime() },
+      data: {
+        id: randomUUID(),
+        tenant_id: delivery.tenant_id,
+        delivery_id: deliveryId,
+        attempt_number: attemptNumber,
+        started_at: startedAt,
+        completed_at: completedAt,
+        response_status: responseStatus,
+        error_class: errorClass,
+        retryable,
+        duration_ms: completedAt.getTime() - startedAt.getTime(),
+      },
     });
 
-    const succeeded = responseStatus !== undefined && responseStatus >= 200 && responseStatus < 300;
+    const succeeded =
+      responseStatus !== undefined &&
+      responseStatus >= 200 &&
+      responseStatus < 300;
     const exhausted = attemptNumber >= MAX_ATTEMPTS;
 
-    const nextStatus = succeeded ? 'DELIVERED' : !retryable || exhausted ? (exhausted ? 'DEAD_LETTERED' : 'FAILED') : 'FAILED';
+    const nextStatus = succeeded
+      ? 'DELIVERED'
+      : !retryable || exhausted
+        ? exhausted
+          ? 'DEAD_LETTERED'
+          : 'FAILED'
+        : 'FAILED';
 
     await this.prisma.webhookDelivery.update({
       where: { id: deliveryId },
@@ -119,18 +170,42 @@ export class WebhookDeliveryService {
       },
     });
 
-    const topic = succeeded ? CANONICAL_TOPICS.WEBHOOK_DELIVERY_SUCCEEDED : nextStatus === 'DEAD_LETTERED' ? CANONICAL_TOPICS.WEBHOOK_DELIVERY_DEAD_LETTERED : CANONICAL_TOPICS.WEBHOOK_DELIVERY_FAILED;
-    await this.prisma.outboxEvent.create({ data: this.outbox.build({ tenantId: delivery.tenant_id, topic, eventType: topic, payload: { deliveryId, subscriptionId, responseStatus } }) });
+    const topic = succeeded
+      ? CANONICAL_TOPICS.WEBHOOK_DELIVERY_SUCCEEDED
+      : nextStatus === 'DEAD_LETTERED'
+        ? CANONICAL_TOPICS.WEBHOOK_DELIVERY_DEAD_LETTERED
+        : CANONICAL_TOPICS.WEBHOOK_DELIVERY_FAILED;
+    await this.prisma.outboxEvent.create({
+      data: this.outbox.build({
+        tenantId: delivery.tenant_id,
+        topic,
+        eventType: topic,
+        payload: { deliveryId, subscriptionId, responseStatus },
+      }),
+    });
 
     if (!succeeded && retryable && !exhausted) {
-      this.logger.debug(`WebhookDelivery ${deliveryId} attempt ${attemptNumber} failed (status=${responseStatus}, retryable) — will retry via WebhookRetryService`);
+      this.logger.debug(
+        `WebhookDelivery ${deliveryId} attempt ${attemptNumber} failed (status=${responseStatus}, retryable) — will retry via WebhookRetryService`,
+      );
     }
   }
 
   /** Called by WebhookRetryService's bounded backoff scheduler — resends the exact frozen bytes from the first attempt, never a reconstructed body. */
   async retryAttempt(deliveryId: string): Promise<void> {
-    const delivery = await this.prisma.webhookDelivery.findUniqueOrThrow({ where: { id: deliveryId } });
-    const subscription = await this.prisma.outboundWebhookSubscription.findUniqueOrThrow({ where: { id: delivery.webhook_subscription_id } });
-    await this.attempt(deliveryId, subscription.id, subscription.endpoint_url, delivery.event_id, delivery.payload);
+    const delivery = await this.prisma.webhookDelivery.findUniqueOrThrow({
+      where: { id: deliveryId },
+    });
+    const subscription =
+      await this.prisma.outboundWebhookSubscription.findUniqueOrThrow({
+        where: { id: delivery.webhook_subscription_id },
+      });
+    await this.attempt(
+      deliveryId,
+      subscription.id,
+      subscription.endpoint_url,
+      delivery.event_id,
+      delivery.payload,
+    );
   }
 }

@@ -21,7 +21,8 @@ export class CreateServiceObligationDto {
   contractId!: string;
 
   @IsIn(['SOC_COVERAGE', 'ASSURANCE_REVIEW', 'IR_RETAINER', 'VCISO'])
-  obligationType!: 'SOC_COVERAGE' | 'ASSURANCE_REVIEW' | 'IR_RETAINER' | 'VCISO';
+  obligationType!:
+    'SOC_COVERAGE' | 'ASSURANCE_REVIEW' | 'IR_RETAINER' | 'VCISO';
 
   @IsOptional()
   @IsIn(['BUSINESS_HOURS', 'EXTENDED', '24x7'])
@@ -42,7 +43,9 @@ export class ServiceObligationService {
    * Register a new service obligation under a contract
    */
   async createObligation(dto: CreateServiceObligationDto) {
-    this.logger.log(`Creating ${dto.obligationType} obligation for contract ${dto.contractId}`);
+    this.logger.log(
+      `Creating ${dto.obligationType} obligation for contract ${dto.contractId}`,
+    );
 
     return this.prisma.serviceObligation.create({
       data: {
@@ -68,16 +71,27 @@ export class ServiceObligationService {
   /**
    * Update obligation delivery status and record evidence link
    */
-  async updateStatus(obligationId: string, status: string, evidenceRef?: string) {
+  async updateStatus(
+    obligationId: string,
+    status: string,
+    evidenceRef?: string,
+  ) {
     const existing = await this.prisma.serviceObligation.findUnique({
       where: { id: obligationId },
     });
 
     if (!existing) {
-      throw new NotFoundException(`Service obligation '${obligationId}' not found`);
+      throw new NotFoundException(
+        `Service obligation '${obligationId}' not found`,
+      );
     }
 
-    assertTransition(OBLIGATION_TRANSITIONS, existing.status, status, 'service obligation');
+    assertTransition(
+      OBLIGATION_TRANSITIONS,
+      existing.status,
+      status,
+      'service obligation',
+    );
 
     const data: any = { status };
     if (status === 'DELIVERED') data.delivered_at = new Date();

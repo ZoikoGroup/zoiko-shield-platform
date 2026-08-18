@@ -10,14 +10,27 @@ import { createHmac, timingSafeEqual } from 'crypto';
  */
 @Injectable()
 export class WebhookSigningService {
-  sign(params: { secret: string; timestamp: string; eventId: string; rawBody: string }): string {
+  sign(params: {
+    secret: string;
+    timestamp: string;
+    eventId: string;
+    rawBody: string;
+  }): string {
     const material = `${params.timestamp}.${params.eventId}.${params.rawBody}`;
-    const digest = createHmac('sha256', params.secret).update(material).digest('hex');
+    const digest = createHmac('sha256', params.secret)
+      .update(material)
+      .digest('hex');
     return `v1=${digest}`;
   }
 
   /** Constant-time comparison — never a plain string ===, which would leak timing information. */
-  verify(params: { secret: string; timestamp: string; eventId: string; rawBody: string; signature: string }): boolean {
+  verify(params: {
+    secret: string;
+    timestamp: string;
+    eventId: string;
+    rawBody: string;
+    signature: string;
+  }): boolean {
     const expected = this.sign(params);
     const expectedBuf = Buffer.from(expected);
     const actualBuf = Buffer.from(params.signature);

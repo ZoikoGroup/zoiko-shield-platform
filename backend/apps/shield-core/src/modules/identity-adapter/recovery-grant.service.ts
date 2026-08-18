@@ -33,12 +33,19 @@ export class RecoveryGrantService {
   /** Validates and consumes the grant in one step — single use. */
   async consume(token: string): Promise<{ principalId: string }> {
     const grant = await this.recoveryGrantRepository.findOne({
-      where: { tokenHash: this.hashToken(token), consumedAt: IsNull(), expiresAt: MoreThan(new Date()) },
+      where: {
+        tokenHash: this.hashToken(token),
+        consumedAt: IsNull(),
+        expiresAt: MoreThan(new Date()),
+      },
     });
     if (!grant) {
       throw new UnauthorizedException('Invalid or expired recovery grant');
     }
-    await this.recoveryGrantRepository.update({ id: grant.id }, { consumedAt: new Date() });
+    await this.recoveryGrantRepository.update(
+      { id: grant.id },
+      { consumedAt: new Date() },
+    );
     return { principalId: grant.principalId };
   }
 }

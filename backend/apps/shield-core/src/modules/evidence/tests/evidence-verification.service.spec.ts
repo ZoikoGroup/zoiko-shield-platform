@@ -21,7 +21,9 @@ describe('EvidenceVerificationService', () => {
 
   beforeEach(async () => {
     prismaMock = {
-      $transaction: jest.fn().mockImplementation((ops: any[]) => Promise.all(ops)),
+      $transaction: jest
+        .fn()
+        .mockImplementation((ops: any[]) => Promise.all(ops)),
       evidenceRecord: { update: jest.fn().mockResolvedValue({}) },
       outboxEvent: { create: jest.fn().mockResolvedValue({}) },
     };
@@ -39,7 +41,9 @@ describe('EvidenceVerificationService', () => {
       ],
     }).compile();
 
-    service = module.get<EvidenceVerificationService>(EvidenceVerificationService);
+    service = module.get<EvidenceVerificationService>(
+      EvidenceVerificationService,
+    );
   });
 
   it('marks integrity VERIFIED when the re-hashed stored bytes match the recorded content_hash', async () => {
@@ -47,7 +51,10 @@ describe('EvidenceVerificationService', () => {
     const hashService = new ContentHashService();
     const correctHash = hashService.hash(bytes);
 
-    evidenceRepoMock.findByTenantAndId.mockResolvedValue({ ...storedEvidence, content_hash: correctHash });
+    evidenceRepoMock.findByTenantAndId.mockResolvedValue({
+      ...storedEvidence,
+      content_hash: correctHash,
+    });
     storageMock.getObject.mockResolvedValue(bytes);
 
     const result = await service.verify('tenant-a', 'evidence-1');
@@ -63,7 +70,10 @@ describe('EvidenceVerificationService', () => {
     const hashService = new ContentHashService();
     const originalHash = hashService.hash(originalBytes);
 
-    evidenceRepoMock.findByTenantAndId.mockResolvedValue({ ...storedEvidence, content_hash: originalHash });
+    evidenceRepoMock.findByTenantAndId.mockResolvedValue({
+      ...storedEvidence,
+      content_hash: originalHash,
+    });
     // Storage returns different bytes than what was originally hashed —
     // simulates tampering/corruption after the fact.
     storageMock.getObject.mockResolvedValue(Buffer.from('{"a":999}', 'utf-8'));

@@ -29,7 +29,11 @@ export class ReportingProjectionService {
 
   async upsert(input: UpsertProjectionInput) {
     const existing = await this.prisma.reportingProjection.findFirst({
-      where: { tenant_id: input.tenantId, projection_type: input.projectionType, source_object_id: input.sourceObjectId },
+      where: {
+        tenant_id: input.tenantId,
+        projection_type: input.projectionType,
+        source_object_id: input.sourceObjectId,
+      },
     });
 
     const data = {
@@ -54,12 +58,17 @@ export class ReportingProjectionService {
         data: { ...data, projection_version: existing.projection_version + 1 },
       });
     }
-    return this.prisma.reportingProjection.create({ data: { id: randomUUID(), ...data, projection_version: 1 } });
+    return this.prisma.reportingProjection.create({
+      data: { id: randomUUID(), ...data, projection_version: 1 },
+    });
   }
 
   async listForTenant(tenantId: string, projectionType?: string) {
     return this.prisma.reportingProjection.findMany({
-      where: { tenant_id: tenantId, ...(projectionType ? { projection_type: projectionType } : {}) },
+      where: {
+        tenant_id: tenantId,
+        ...(projectionType ? { projection_type: projectionType } : {}),
+      },
       orderBy: { updated_at: 'desc' },
     });
   }

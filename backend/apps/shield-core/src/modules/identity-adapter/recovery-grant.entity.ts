@@ -1,5 +1,11 @@
 import { randomUUID } from 'crypto';
-import { BeforeInsert, Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  BeforeInsert,
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 
 /**
  * Short-lived, single-use, single-purpose proof that a password-recovery OTP

@@ -78,7 +78,9 @@ export class EntraUserSyncService {
         });
 
         if (user['@removed']) {
-          this.logger.debug(`User removed (directory-sync published): ${user.id}`);
+          this.logger.debug(
+            `User removed (directory-sync published): ${user.id}`,
+          );
         }
       }
 
@@ -86,7 +88,12 @@ export class EntraUserSyncService {
       if (data['@odata.nextLink']) {
         endpoint = data['@odata.nextLink'];
       } else if (data['@odata.deltaLink']) {
-        await this.checkpointService.set(tenantId, instanceId, 'users', data['@odata.deltaLink']);
+        await this.checkpointService.set(
+          tenantId,
+          instanceId,
+          'users',
+          data['@odata.deltaLink'],
+        );
         this.logger.log(
           `User sync completed. Saved deltaLink. Total processed: ${totalProcessed}`,
         );

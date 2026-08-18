@@ -1,4 +1,14 @@
-import { Body, Controller, Get, HttpStatus, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { CreateTaxRuleDto, TaxRuleService } from './tax-rule.service';
@@ -15,8 +25,14 @@ export class TaxRuleController {
   }
 
   @Patch(':id/approve')
-  async approve(@Param('id') id: string, @Body('approvedBy') approvedBy: string) {
-    const rule = await this.taxRuleService.approveRule(id, approvedBy || 'system');
+  async approve(
+    @Param('id') id: string,
+    @Body('approvedBy') approvedBy: string,
+  ) {
+    const rule = await this.taxRuleService.approveRule(
+      id,
+      approvedBy || 'system',
+    );
     return { statusCode: HttpStatus.OK, data: rule };
   }
 

@@ -9,16 +9,28 @@ export class ShieldAiController {
 
   @Get('health')
   getHealth() {
-    return { status: 'healthy', service: 'shield-ai', timestamp: new Date().toISOString() };
+    return {
+      status: 'healthy',
+      service: 'shield-ai',
+      timestamp: new Date().toISOString(),
+    };
   }
 
   @Get('health/ready')
   getHealthReady() {
-    return { status: 'ready', service: 'shield-ai', timestamp: new Date().toISOString() };
+    return {
+      status: 'ready',
+      service: 'shield-ai',
+      timestamp: new Date().toISOString(),
+    };
   }
 
   @Get('health/live')
   getHealthLive() {
-    return { status: 'live', service: 'shield-ai', timestamp: new Date().toISOString() };
+    return {
+      status: 'live',
+      service: 'shield-ai',
+      timestamp: new Date().toISOString(),
+    };
   }
 }

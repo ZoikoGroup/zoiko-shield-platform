@@ -27,23 +27,35 @@ export class DetectionReplayService {
       include: { detectionVersion: { include: { detectionDefinition: true } } },
     });
     if (!evaluation) {
-      throw new NotFoundException(`DetectionEvaluation '${evaluationId}' not found`);
+      throw new NotFoundException(
+        `DetectionEvaluation '${evaluationId}' not found`,
+      );
     }
 
-    const payload: NormalizedEventContract = JSON.parse(evaluation.event_payload_snapshot || '{}');
+    const payload: NormalizedEventContract = JSON.parse(
+      evaluation.event_payload_snapshot || '{}',
+    );
 
     const snapshot = evaluation.context_snapshot_id
-      ? await this.prisma.contextSnapshot.findUnique({ where: { id: evaluation.context_snapshot_id } })
+      ? await this.prisma.contextSnapshot.findUnique({
+          where: { id: evaluation.context_snapshot_id },
+        })
       : null;
 
     const [identity, asset] = await Promise.all([
       snapshot?.identity_entity_id
-        ? this.prisma.identityEntity.findUnique({ where: { id: snapshot.identity_entity_id } })
+        ? this.prisma.identityEntity.findUnique({
+            where: { id: snapshot.identity_entity_id },
+          })
         : Promise.resolve(null),
-      snapshot?.asset_id ? this.prisma.asset.findUnique({ where: { id: snapshot.asset_id } }) : Promise.resolve(null),
+      snapshot?.asset_id
+        ? this.prisma.asset.findUnique({ where: { id: snapshot.asset_id } })
+        : Promise.resolve(null),
     ]);
 
-    const rule = this.registry.getRuleImplementation(evaluation.detectionVersion.detectionDefinition.key);
+    const rule = this.registry.getRuleImplementation(
+      evaluation.detectionVersion.detectionDefinition.key,
+    );
 
     const input: DetectionInput = {
       tenantId: evaluation.tenant_id,
@@ -66,10 +78,20 @@ export class DetectionReplayService {
       // Frozen identity/asset context as it existed at the snapshot, not
       // whatever the live rows say now (only identity_type/criticality can
       // drift on the live row — we still key the lookup by the frozen id).
-      identity: identity ? { id: identity.id, status: identity.status, identity_type: identity.identity_type } : null,
-      asset: asset ? { id: asset.id, criticality: asset.criticality, status: asset.status } : null,
+      identity: identity
+        ? {
+            id: identity.id,
+            status: identity.status,
+            identity_type: identity.identity_type,
+          }
+        : null,
+      asset: asset
+        ? { id: asset.id, criticality: asset.criticality, status: asset.status }
+        : null,
       contextHealth: snapshot?.context_health ?? 'UNRESOLVED',
-      configuration: JSON.parse(evaluation.detectionVersion.configuration || '{}'),
+      configuration: JSON.parse(
+        evaluation.detectionVersion.configuration || '{}',
+      ),
     };
 
     const replayOutcome = await rule.evaluate(input);
@@ -90,7 +112,9 @@ export class DetectionReplayService {
     });
 
     if (divergence) {
-      this.logger.warn(`Replay divergence for evaluation ${evaluationId}: ${evaluation.result} -> ${replayOutcome.result}`);
+      this.logger.warn(
+        `Replay divergence for evaluation ${evaluationId}: ${evaluation.result} -> ${replayOutcome.result}`,
+      );
     }
 
     return replay;

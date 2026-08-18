@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Headers, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { RiskService } from './risks/risk.service';
 import { RiskTreatmentService } from './treatments/risk-treatment.service';
 import { RiskAcceptanceService } from './acceptances/risk-acceptance.service';
@@ -27,35 +36,84 @@ export class RiskController {
   @Post('risks')
   async create(
     @Headers('x-tenant-id') tenantId: string,
-    @Body() body: { title: string; description: string; sourceType: string; sourceId: string; likelihood: string; impact: string; ownerId: string; factors: Array<{ factor: string; value: string; contribution: number; sourceRef: string; evaluatorVersion?: string }> },
+    @Body()
+    body: {
+      title: string;
+      description: string;
+      sourceType: string;
+      sourceId: string;
+      likelihood: string;
+      impact: string;
+      ownerId: string;
+      factors: Array<{
+        factor: string;
+        value: string;
+        contribution: number;
+        sourceRef: string;
+        evaluatorVersion?: string;
+      }>;
+    },
   ) {
-    return this.riskService.create({ tenantId: requireTenantId(tenantId), ...body });
+    return this.riskService.create({
+      tenantId: requireTenantId(tenantId),
+      ...body,
+    });
   }
 
   @Get('risks/:riskId')
-  async getById(@Headers('x-tenant-id') tenantId: string, @Param('riskId') riskId: string) {
+  async getById(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('riskId') riskId: string,
+  ) {
     return this.riskService.getWithFactors(requireTenantId(tenantId), riskId);
   }
 
   @Patch('risks/:riskId')
-  async update(@Headers('x-tenant-id') tenantId: string, @Param('riskId') riskId: string) {
-    return this.riskService.assertTenantOwnership(requireTenantId(tenantId), riskId);
+  async update(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('riskId') riskId: string,
+  ) {
+    return this.riskService.assertTenantOwnership(
+      requireTenantId(tenantId),
+      riskId,
+    );
   }
 
   @Post('risks/:riskId/treatments')
   async addTreatment(
     @Headers('x-tenant-id') tenantId: string,
     @Param('riskId') riskId: string,
-    @Body() body: { treatmentType: 'MITIGATE' | 'TRANSFER' | 'AVOID' | 'ACCEPT'; plan: string; ownerId: string; dueAt?: string },
+    @Body()
+    body: {
+      treatmentType: 'MITIGATE' | 'TRANSFER' | 'AVOID' | 'ACCEPT';
+      plan: string;
+      ownerId: string;
+      dueAt?: string;
+    },
   ) {
-    return this.riskTreatmentService.create({ tenantId: requireTenantId(tenantId), riskId, treatmentType: body.treatmentType, plan: body.plan, ownerId: body.ownerId, dueAt: body.dueAt ? new Date(body.dueAt) : undefined });
+    return this.riskTreatmentService.create({
+      tenantId: requireTenantId(tenantId),
+      riskId,
+      treatmentType: body.treatmentType,
+      plan: body.plan,
+      ownerId: body.ownerId,
+      dueAt: body.dueAt ? new Date(body.dueAt) : undefined,
+    });
   }
 
   @Post('risks/:riskId/accept')
   async accept(
     @Headers('x-tenant-id') tenantId: string,
     @Param('riskId') riskId: string,
-    @Body() body: { acceptedBy: string; authority: string; rationale: string; compensatingControls: string[]; expiresAt: string; reviewAt: string },
+    @Body()
+    body: {
+      acceptedBy: string;
+      authority: string;
+      rationale: string;
+      compensatingControls: string[];
+      expiresAt: string;
+      reviewAt: string;
+    },
   ) {
     return this.riskAcceptanceService.create({
       tenantId: requireTenantId(tenantId),
@@ -79,18 +137,45 @@ export class RiskController {
   async requestException(
     @Headers('x-tenant-id') tenantId: string,
     @CurrentUser() user: AuthenticatedUser,
-    @Body() body: { controlObjectiveId?: string; controlImplementationId?: string; requirementId?: string; riskId?: string; reason: string; compensatingControls: string[]; startsAt: string; expiresAt: string },
+    @Body()
+    body: {
+      controlObjectiveId?: string;
+      controlImplementationId?: string;
+      requirementId?: string;
+      riskId?: string;
+      reason: string;
+      compensatingControls: string[];
+      startsAt: string;
+      expiresAt: string;
+    },
   ) {
-    return this.exceptionService.request({ tenantId: requireTenantId(tenantId), requestedBy: user.id, ...body, startsAt: new Date(body.startsAt), expiresAt: new Date(body.expiresAt) });
+    return this.exceptionService.request({
+      tenantId: requireTenantId(tenantId),
+      requestedBy: user.id,
+      ...body,
+      startsAt: new Date(body.startsAt),
+      expiresAt: new Date(body.expiresAt),
+    });
   }
 
   @Post('exceptions/:id/approve')
-  async approveException(@Headers('x-tenant-id') tenantId: string, @CurrentUser() user: AuthenticatedUser, @Param('id') id: string) {
-    return this.exceptionService.approve(requireTenantId(tenantId), id, user.id);
+  async approveException(
+    @Headers('x-tenant-id') tenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    return this.exceptionService.approve(
+      requireTenantId(tenantId),
+      id,
+      user.id,
+    );
   }
 
   @Post('exceptions/:id/revoke')
-  async revokeException(@Headers('x-tenant-id') tenantId: string, @Param('id') id: string) {
+  async revokeException(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('id') id: string,
+  ) {
     return this.exceptionService.revoke(requireTenantId(tenantId), id);
   }
 }

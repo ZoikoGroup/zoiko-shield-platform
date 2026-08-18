@@ -23,7 +23,9 @@ servers:
   description: Anchor Microservice
 tags:
 - name: Auth
-  description: "Identity adapter \u2013 registration, login, OAuth, sessions, invitations"
+  description: "Identity adapter \u2013 company SSO, approved password fallback, tenant-bound sessions, and invitations"
+- name: Identity Providers
+  description: Tenant-administered OIDC and SAML trust configuration and activation
 - name: RBAC
   description: "Authorization \u2013 permissions, roles, tenant membership"
 - name: Tenant
@@ -771,6 +773,7 @@ components:
     OnboardTenantRequest:
       type: object
       required:
+      - orderId
       - tenantName
       - tenantSlug
       - homeRegion
@@ -780,6 +783,15 @@ components:
       - legalEntity
       - accessDisclosureVersion
       properties:
+        orderId:
+          type: string
+          format: uuid
+          description: An approved, PROVISIONED CommercialOrder (spec §7.2 —
+            tenant PROVISIONING requires an approved order/entitlement as
+            evidence). The order must not already be linked to another
+            tenant; one order provisions exactly one tenant. The tenant's
+            entitlements are derived from the order's own product lines —
+            never self-granted.
         tenantName:
           type: string
           example: Acme Corp
@@ -892,7 +904,7 @@ components:
           example: 1
     OnboardingResponse:
       type: object
-      description: Full result of the onboarding transaction
+      description: Full result of tenant onboarding
       properties:
         tenant:
           $ref: '#/components/schemas/TenantFull'
@@ -902,6 +914,22 @@ components:
           $ref: '#/components/schemas/EnvironmentResponse'
         membership:
           $ref: '#/components/schemas/MembershipResponse'
+        orderId:
+          type: string
+          format: uuid
+          description: The CommercialOrder that was validated and claimed to
+            provision this tenant
+        commercialAccountId:
+          type: string
+          format: uuid
+          description: The order's existing CommercialAccount — the tenant's
+            entitlements are granted against this account, not a newly
+            created one
+        acceptanceEvidenceId:
+          type: string
+          format: uuid
+          description: Evidence record capturing the ACCESS_DISCLOSURE policy
+            acceptance
     TenantOffboardingRunResponse:
       type: object
       description: "Raw TenantOffboardingRun record \u2014 field names are snake_case,\
@@ -1144,90 +1172,6 @@ components:
           type: string
           description: Trace identifier for support and observability.
           format: uuid
-    PostAuthRegisterRequest:
-      type: object
-      properties:
-        fullName:
-          type: string
-        email:
-          type: string
-          format: email
-        password:
-          type: string
-          minLength: 12
-        confirmPassword:
-          type: string
-        termsOfServiceVersion:
-          type: string
-      required:
-      - fullName
-      - email
-      - password
-      - confirmPassword
-      - termsOfServiceVersion
-    PostAuthRegisterResponse:
-      type: object
-      properties:
-        principalId:
-          type: string
-          format: uuid
-        email:
-          type: string
-        message:
-          type: string
-      required:
-      - principalId
-      - email
-      - message
-    PostAuthVerifyEmailRequest:
-      type: object
-      properties:
-        email:
-          type: string
-          format: email
-        otp:
-          type: string
-          minLength: 6
-          maxLength: 6
-      required:
-      - email
-      - otp
-    PostAuthVerifyEmailResponse:
-      type: object
-      properties:
-        user:
-          type: object
-          properties:
-            id:
-              type: string
-              format: uuid
-            sessionId:
-              type: string
-              format: uuid
-            email:
-              type: string
-            fullName:
-              type: string
-              nullable: true
-            emailVerified:
-              type: boolean
-            assurance:
-              type: string
-              enum:
-              - PASSWORD
-              - PASSWORD_MFA
-              - FEDERATED
-              - FEDERATED_MFA
-              - PASSKEY
-              - RECOVERY
-          required:
-          - id
-          - sessionId
-          - email
-          - emailVerified
-          - assurance
-      required:
-      - user
     PostAuthLoginRequest:
       type: object
       properties:
@@ -1236,9 +1180,16 @@ components:
           format: email
         password:
           type: string
+        tenantId:
+          type: string
+          format: uuid
+        environmentId:
+          type: string
+          format: uuid
       required:
       - email
       - password
+      - tenantId
     PostAuthLoginResponse:
       type: object
       properties:
@@ -1267,12 +1218,37 @@ components:
               - FEDERATED_MFA
               - PASSKEY
               - RECOVERY
+            tenantId:
+              type: string
+              format: uuid
+            membershipId:
+              type: string
+              format: uuid
+            environmentId:
+              type: string
+              format: uuid
+              nullable: true
+            region:
+              type: string
+            policyVersion:
+              type: string
+            riskState:
+              type: string
+            sessionState:
+              type: string
+              enum: [ACTIVE, RESTRICTED]
           required:
           - id
           - sessionId
           - email
           - emailVerified
           - assurance
+          - tenantId
+          - membershipId
+          - region
+          - policyVersion
+          - riskState
+          - sessionState
       required:
       - user
     PostAuthRefreshResponse:
@@ -1296,21 +1272,6 @@ components:
           type: boolean
       required:
       - success
-    PostAuthResendVerificationRequest:
-      type: object
-      properties:
-        email:
-          type: string
-          format: email
-      required:
-      - email
-    PostAuthResendVerificationResponse:
-      type: object
-      properties:
-        message:
-          type: string
-      required:
-      - message
     PostAuthPasswordRecoveryRequestRequest:
       type: object
       properties:
@@ -1364,79 +1325,7 @@ components:
           type: string
       required:
       - message
-    GetAuthGoogleCallbackResponse:
-      type: object
-      properties:
-        user:
-          type: object
-          properties:
-            id:
-              type: string
-              format: uuid
-            sessionId:
-              type: string
-              format: uuid
-            email:
-              type: string
-            fullName:
-              type: string
-              nullable: true
-            emailVerified:
-              type: boolean
-            assurance:
-              type: string
-              enum:
-              - PASSWORD
-              - PASSWORD_MFA
-              - FEDERATED
-              - FEDERATED_MFA
-              - PASSKEY
-              - RECOVERY
-          required:
-          - id
-          - sessionId
-          - email
-          - emailVerified
-          - assurance
-      required:
-      - user
-    GetAuthMicrosoftCallbackResponse:
-      type: object
-      properties:
-        user:
-          type: object
-          properties:
-            id:
-              type: string
-              format: uuid
-            sessionId:
-              type: string
-              format: uuid
-            email:
-              type: string
-            fullName:
-              type: string
-              nullable: true
-            emailVerified:
-              type: boolean
-            assurance:
-              type: string
-              enum:
-              - PASSWORD
-              - PASSWORD_MFA
-              - FEDERATED
-              - FEDERATED_MFA
-              - PASSKEY
-              - RECOVERY
-          required:
-          - id
-          - sessionId
-          - email
-          - emailVerified
-          - assurance
-      required:
-      - user
-    GetAuthMeResponse:
+    TenantSessionUser:
       type: object
       properties:
         id:
@@ -1447,6 +1336,7 @@ components:
           format: uuid
         email:
           type: string
+          format: email
         fullName:
           type: string
           nullable: true
@@ -1454,19 +1344,165 @@ components:
           type: boolean
         assurance:
           type: string
-          enum:
-          - PASSWORD
-          - PASSWORD_MFA
-          - FEDERATED
-          - FEDERATED_MFA
-          - PASSKEY
-          - RECOVERY
+          enum: [PASSWORD, PASSWORD_MFA, FEDERATED, FEDERATED_MFA, PASSKEY, RECOVERY]
+        tenantId:
+          type: string
+          format: uuid
+        membershipId:
+          type: string
+          format: uuid
+        environmentId:
+          type: string
+          format: uuid
+          nullable: true
+        region:
+          type: string
+        policyVersion:
+          type: string
+        riskState:
+          type: string
+        sessionState:
+          type: string
+          enum: [ACTIVE, RESTRICTED]
       required:
       - id
       - sessionId
       - email
       - emailVerified
       - assurance
+      - tenantId
+      - membershipId
+      - region
+      - policyVersion
+      - riskState
+      - sessionState
+    PostAuthSwitchTenantRequest:
+      type: object
+      properties:
+        tenantId:
+          type: string
+          format: uuid
+        environmentId:
+          type: string
+          format: uuid
+      required:
+      - tenantId
+    TenantSessionResponse:
+      type: object
+      properties:
+        user:
+          $ref: '#/components/schemas/TenantSessionUser'
+      required:
+      - user
+    SsoStartRequest:
+      type: object
+      properties:
+        tenantSlug:
+          type: string
+          maxLength: 120
+        identityProviderId:
+          type: string
+          format: uuid
+        invitationToken:
+          type: string
+          maxLength: 512
+        returnTo:
+          type: string
+          pattern: '^/(?!/)'
+      required: [tenantSlug, identityProviderId]
+    SsoStartResponse:
+      type: object
+      properties:
+        authorizationUrl:
+          type: string
+          format: uri
+        protocol:
+          type: string
+          enum: [OIDC, SAML]
+      required: [authorizationUrl, protocol]
+    SsoDiscoveryResponse:
+      type: object
+      properties:
+        tenant:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            slug: { type: string }
+          required: [id, name, slug]
+        identityProviders:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string }
+              protocol: { type: string, enum: [OIDC, SAML] }
+            required: [id, name, protocol]
+      required: [tenant, identityProviders]
+    IdentityProviderConfigurationRequest:
+      type: object
+      properties:
+        name: { type: string, maxLength: 160 }
+        protocol: { type: string, enum: [OIDC, SAML] }
+        environmentId: { type: string, format: uuid }
+        issuer: { type: string, format: uri }
+        clientId: { type: string }
+        clientSecretRef: { type: string, description: Secret-manager reference; never returned by the API. }
+        oidcClientAuthMethod: { type: string, enum: [client_secret_basic, client_secret_post] }
+        samlEntryPoint: { type: string, format: uri }
+        samlIdpCertificates:
+          type: array
+          maxItems: 5
+          items: { type: string }
+        samlSpEntityId: { type: string }
+        samlSpPrivateKeyRef: { type: string, description: Secret-manager reference; never returned by the API. }
+        samlSpPublicCertificate: { type: string }
+        emailClaim: { type: string, default: email }
+        displayNameClaim: { type: string, default: name }
+        groupsClaim: { type: string }
+        mfaClaimValues:
+          type: array
+          maxItems: 20
+          items: { type: string }
+        requireMfa: { type: boolean, default: false }
+        allowedClockSkewMs: { type: integer, minimum: 0, maximum: 300000 }
+      required: [name, protocol, environmentId, issuer]
+    IdentityProviderConfigurationResponse:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        tenantId: { type: string, format: uuid }
+        environmentId: { type: string, format: uuid }
+        name: { type: string }
+        protocol: { type: string, enum: [OIDC, SAML] }
+        status: { type: string, enum: [DRAFT, ACTIVE, DISABLED] }
+        issuer: { type: string }
+        callbackUrl: { type: string, format: uri, nullable: true }
+        clientId: { type: string, nullable: true }
+        hasClientSecretRef: { type: boolean }
+        oidcClientAuthMethod: { type: string, nullable: true }
+        oidcMetadata: { type: object, nullable: true, additionalProperties: true }
+        oidcSigningAlgorithm: { type: string, nullable: true }
+        samlEntryPoint: { type: string, nullable: true }
+        samlSpEntityId: { type: string, nullable: true }
+        samlCertificateCount: { type: integer }
+        hasSamlSpPrivateKeyRef: { type: boolean }
+        emailClaim: { type: string }
+        displayNameClaim: { type: string }
+        groupsClaim: { type: string, nullable: true }
+        mfaClaimValues:
+          type: array
+          items: { type: string }
+        requireMfa: { type: boolean }
+        allowedClockSkewMs: { type: integer }
+        metadataHash: { type: string, nullable: true }
+        metadataValidatedAt: { type: string, format: date-time, nullable: true }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+      required: [id, tenantId, environmentId, name, protocol, status, issuer]
+    GetAuthMeResponse:
+      $ref: '#/components/schemas/TenantSessionUser'
     PostCommercialAccountsRequest:
       type: object
       properties:
@@ -1903,17 +1939,181 @@ components:
       properties:
         claimKey:
           type: string
+          pattern: ^[A-Z][A-Z0-9_]{2,127}$
         approvedWording:
           type: string
-        requiresEvidence:
-          type: boolean
+        channels:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+            - PRODUCT_UI
+            - API
+            - CONTRACT
+            - MARKETING
+            - TRUST_CENTER
+            - STATUS_PAGE
+            - SALES
+        scope:
+          type: object
+          properties:
+            tenantIds:
+              type: array
+              items:
+                type: string
+            regions:
+              type: array
+              items:
+                type: string
+            sectorPackKeys:
+              type: array
+              items:
+                type: string
+            serviceTiers:
+              type: array
+              items:
+                type: string
+        evidenceRefs:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            type: string
+        prohibitedVariants:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        limitations:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+        requiredOfferType:
+          type: string
           enum:
-          - false
-          - true
+          - MANAGED_DEFENSE
+          - CONTINUOUS_ASSURANCE
+          - EXPOSURE_MANAGEMENT
+          - AI_SECURITY
+        sectorPackKey:
+          type: string
           nullable: true
+        evidenceMaxAgeHours:
+          type: integer
+          minimum: 1
+          maximum: 8760
+          default: 24
+        monitoringReference:
+          type: string
+        effectiveFrom:
+          type: string
+          format: date-time
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+        changeReason:
+          type: string
       required:
       - claimKey
       - approvedWording
+      - channels
+      - scope
+      - evidenceRefs
+      - prohibitedVariants
+      - limitations
+      - requiredOfferType
+      - monitoringReference
+      - expiresAt
+      - changeReason
+    ClaimRegistration:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        claim_key:
+          type: string
+        version:
+          type: integer
+        approved_wording:
+          type: string
+        channels:
+          type: array
+          items:
+            type: string
+        scope:
+          type: object
+          additionalProperties: true
+        evidence_refs:
+          type: array
+          items:
+            type: string
+        prohibited_variants:
+          type: array
+          items:
+            type: string
+        limitations:
+          type: array
+          items:
+            type: string
+        required_offer_type:
+          type: string
+        status:
+          type: string
+          enum:
+          - PENDING_APPROVAL
+          - APPROVED
+          - REJECTED
+          - SUPERSEDED
+          - REVOKED
+          - EXPIRED
+        requested_by:
+          type: string
+        effective_from:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        verification_date:
+          type: string
+          format: date-time
+          nullable: true
+        approvals:
+          type: array
+          items:
+            type: object
+            properties:
+              reviewer_role:
+                type: string
+                enum:
+                - LEGAL
+                - COMPLIANCE
+              reviewer_id:
+                type: string
+              decision:
+                type: string
+                enum:
+                - APPROVED
+                - REJECTED
+              reason:
+                type: string
+              decided_at:
+                type: string
+                format: date-time
+      required:
+      - id
+      - claim_key
+      - version
+      - approved_wording
+      - channels
+      - scope
+      - evidence_refs
+      - status
     PostCommercialClaimsRegisterResponse:
       type: object
       properties:
@@ -1923,29 +2123,7 @@ components:
         message:
           type: string
         data:
-          type: object
-          properties:
-            id:
-              type: string
-              format: uuid
-            created_at:
-              type: string
-              format: date-time
-            status:
-              type: string
-            claim_key:
-              type: string
-            approved_wording:
-              type: string
-            requires_evidence:
-              type: boolean
-          required:
-          - id
-          - created_at
-          - status
-          - claim_key
-          - approved_wording
-          - requires_evidence
+          $ref: '#/components/schemas/ClaimRegistration'
       required:
       - statusCode
       - message
@@ -1962,10 +2140,36 @@ components:
             properties:
               eligible:
                 type: boolean
+              status:
+                type: string
+                enum:
+                - ELIGIBLE
+                - INELIGIBLE
+              reasonCode:
+                type: string
               reason:
                 type: string
               approvedWording:
                 type: string
+                nullable: true
+              claimId:
+                type: string
+                format: uuid
+                nullable: true
+              claimVersion:
+                type: integer
+                nullable: true
+              runtimeEvaluationId:
+                type: string
+                format: uuid
+                nullable: true
+              evidenceRefs:
+                type: array
+                items:
+                  type: string
+              validUntil:
+                type: string
+                format: date-time
                 nullable: true
             required:
             - eligible
@@ -4861,10 +5065,6 @@ components:
     PostCasesByCaseIdAiSummaryRequest:
       type: object
       properties:
-        actorId:
-          type: string
-          nullable: true
-          format: uuid
     PostCasesByCaseIdAiSummaryResponse:
       type: object
       properties:
@@ -5194,10 +5394,6 @@ components:
         residualRisk:
           type: string
           nullable: true
-        actorId:
-          type: string
-          nullable: true
-          format: uuid
       required:
       - targetType
       - targetId
@@ -5396,10 +5592,6 @@ components:
         reason:
           type: string
           nullable: true
-        actorId:
-          type: string
-          nullable: true
-          format: uuid
     PostResponseProposalsByProposalIdApproveResponse:
       type: object
       properties:
@@ -19869,12 +20061,9 @@ components:
           format: uuid
         amount:
           type: number
-        proposedBy:
-          type: string
       required:
       - slaMeasurementId
       - amount
-      - proposedBy
     PostSlaCreditsResponse:
       type: object
       properties:
@@ -19992,9 +20181,6 @@ components:
     PatchSlaCreditsByIdDecisionRequest:
       type: object
       properties:
-        approverId:
-          type: string
-          format: uuid
         decision:
           type: string
           enum:
@@ -20003,7 +20189,6 @@ components:
         reason:
           type: string
       required:
-      - approverId
       - decision
       - reason
     PatchSlaCreditsByIdDecisionResponse:
@@ -22323,75 +22508,6 @@ components:
       - justification
       - evaluated_at
 paths:
-  /auth/register:
-    post:
-      tags:
-      - Auth
-      summary: Register a new user
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostAuthRegisterRequest'
-      responses:
-        '400':
-          description: Validation error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '409':
-          description: Email already registered
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-        '201':
-          description: Register a new user successful.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PostAuthRegisterResponse'
-      operationId: postAuthRegister
-      security: []
-      description: Creates an unverified local principal and password credential,
-        records the accepted Terms of Service version, and sends a one-time email
-        verification code. No session is issued until email verification succeeds.
-  /auth/verify-email:
-    post:
-      tags:
-      - Auth
-      summary: Verify email with OTP
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostAuthVerifyEmailRequest'
-      responses:
-        '201':
-          description: Verify email with OTP successful.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PostAuthVerifyEmailResponse'
-          headers:
-            Set-Cookie:
-              description: httpOnly authentication, refresh, or recovery cookie set/cleared
-                by this operation.
-              schema:
-                type: string
-        '400':
-          description: Request validation failed.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      operationId: postAuthVerifyEmail
-      security: []
-      description: Consumes the email verification OTP, marks the principal as verified,
-        creates a session, and sets the httpOnly access and refresh token cookies.
   /auth/login:
     post:
       tags:
@@ -22430,9 +22546,9 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postAuthLogin
       security: []
-      description: Validates the local credentials, creates a revocable session, and
-        sets the httpOnly access and refresh token cookies. Failed attempts are rate
-        limited.
+      description: Validates approved local fallback credentials, then requires an
+        active membership and approved role in the requested tenant/environment before
+        creating a tenant-bound revocable session. Failed attempts are rate limited.
   /auth/refresh:
     post:
       tags:
@@ -22516,34 +22632,6 @@ paths:
       operationId: postAuthLogoutAll
       description: Revokes every active session belonging to the authenticated principal
         and clears authentication cookies on the current client.
-  /auth/resend-verification:
-    post:
-      tags:
-      - Auth
-      summary: Resend email verification OTP
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PostAuthResendVerificationRequest'
-      responses:
-        '201':
-          description: Resend email verification OTP successful.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PostAuthResendVerificationResponse'
-        '400':
-          description: Request validation failed.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-      operationId: postAuthResendVerification
-      security: []
-      description: Issues a replacement email-verification OTP for an eligible unverified
-        account. The endpoint is rate limited to prevent email abuse.
   /auth/password-recovery/request:
     post:
       tags:
@@ -22648,84 +22736,315 @@ paths:
       - RecoveryGrantAuth: []
       description: Consumes the recovery_grant cookie, validates and stores the new
         password, revokes all existing sessions, and clears the recovery grant.
-  /auth/google:
-    get:
-      tags:
-      - Auth
-      summary: Start Google OAuth federated login
+  /api/v1/auth/switch-tenant:
+    post:
+      tags: [Auth]
+      summary: Switch to another authorized tenant context
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostAuthSwitchTenantRequest'
       responses:
-        '302':
-          description: Browser redirected to the configured identity provider.
-          headers:
-            Location:
-              schema:
-                type: string
-                format: uri
-      operationId: getAuthGoogle
-      security: []
-      description: Starts Google federated sign-in through the configured Passport
-        strategy and redirects the browser to the provider consent screen.
-  /auth/google/callback:
-    get:
-      tags:
-      - Auth
-      summary: Google OAuth callback
-      responses:
-        '200':
-          description: Google OAuth callback successful.
+        '201':
+          description: A new server-validated tenant-bound session was issued and the previous session revoked.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetAuthGoogleCallbackResponse'
+                $ref: '#/components/schemas/TenantSessionResponse'
           headers:
             Set-Cookie:
-              description: httpOnly authentication, refresh, or recovery cookie set/cleared
-                by this operation.
-              schema:
-                type: string
-      operationId: getAuthGoogleCallback
-      security: []
-      description: Completes the Google OAuth callback, links or creates the external
-        identity, creates a session, and sets authentication cookies.
-  /auth/microsoft:
+              schema: { type: string }
+        '403':
+          description: The principal has no active approved membership in the target tenant.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: postAuthSwitchTenant
+  /api/v1/auth/sso/discovery/{tenantSlug}:
     get:
-      tags:
-      - Auth
-      summary: Start Microsoft OAuth federated login
-      responses:
-        '302':
-          description: Browser redirected to the configured identity provider.
-          headers:
-            Location:
-              schema:
-                type: string
-                format: uri
-      operationId: getAuthMicrosoft
+      tags: [Auth]
+      summary: Discover active company identity providers
       security: []
-      description: Starts Microsoft federated sign-in through the configured Passport
-        strategy and redirects the browser to the provider consent screen.
-  /auth/microsoft/callback:
-    get:
-      tags:
-      - Auth
-      summary: Microsoft OAuth callback
+      parameters:
+      - in: path
+        name: tenantSlug
+        required: true
+        schema: { type: string }
       responses:
         '200':
-          description: Microsoft OAuth callback successful.
+          description: Public, non-secret company SSO discovery result.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SsoDiscoveryResponse' }
+        '404':
+          description: No active company SSO configuration was found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getAuthSsoDiscovery
+  /api/v1/auth/sso/start:
+    post:
+      tags: [Auth]
+      summary: Start company OIDC or SAML sign-in
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SsoStartRequest' }
+      responses:
+        '201':
+          description: A single-use federation transaction was created.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SsoStartResponse' }
+        '404':
+          description: The selected company identity provider is not active.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: postAuthSsoStart
+      description: Creates encrypted single-use state and, for OIDC, PKCE and nonce material. The browser should navigate to authorizationUrl.
+  /api/v1/auth/sso/oidc/callback:
+    get:
+      tags: [Auth]
+      summary: Complete an OIDC authorization-code callback
+      security: []
+      parameters:
+      - in: query
+        name: state
+        required: true
+        schema: { type: string }
+      - in: query
+        name: code
+        required: true
+        schema: { type: string }
+      responses:
+        '303':
+          description: Issuer, signature, audience, time, nonce and membership checks passed; cookies are set and the browser is redirected to the application.
+          headers:
+            Location: { schema: { type: string, format: uri } }
+            Set-Cookie: { schema: { type: string } }
+        '401':
+          description: The transaction or OIDC assertion failed validation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Active tenant membership or an approved invitation was not present.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getAuthSsoOidcCallback
+  /api/v1/auth/sso/saml/callback:
+    post:
+      tags: [Auth]
+      summary: Complete a SAML HTTP-POST callback
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                RelayState: { type: string }
+                SAMLResponse: { type: string, format: byte }
+              required: [RelayState, SAMLResponse]
+      responses:
+        '303':
+          description: Signature, issuer, audience, recipient, time, InResponseTo and membership checks passed; cookies are set and the browser is redirected.
+          headers:
+            Location: { schema: { type: string, format: uri } }
+            Set-Cookie: { schema: { type: string } }
+        '401':
+          description: The transaction or SAML assertion failed validation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Active tenant membership or an approved invitation was not present.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: postAuthSsoSamlCallback
+  /api/v1/auth/sso/saml/metadata/{tenantSlug}/{providerId}:
+    get:
+      tags: [Auth]
+      summary: Get SAML service-provider metadata
+      security: []
+      parameters:
+      - in: path
+        name: tenantSlug
+        required: true
+        schema: { type: string }
+      - in: path
+        name: providerId
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: SAML service-provider metadata for the active tenant configuration.
+          content:
+            application/samlmetadata+xml:
+              schema: { type: string }
+      operationId: getAuthSsoSamlMetadata
+  /api/v1/tenants/{tenantId}/identity-providers:
+    parameters:
+    - in: path
+      name: tenantId
+      required: true
+      schema: { type: string, format: uuid }
+    get:
+      tags: [Identity Providers]
+      summary: List tenant identity-provider configurations
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          description: Secret-redacted tenant identity-provider configurations.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GetAuthMicrosoftCallbackResponse'
-          headers:
-            Set-Cookie:
-              description: httpOnly authentication, refresh, or recovery cookie set/cleared
-                by this operation.
-              schema:
-                type: string
-      operationId: getAuthMicrosoftCallback
-      security: []
-      description: Completes the Microsoft OAuth callback, links or creates the external
-        identity, creates a session, and sets authentication cookies.
+                type: array
+                items: { $ref: '#/components/schemas/IdentityProviderConfigurationResponse' }
+        '403':
+          description: The session is for another tenant or lacks tenant:identity-provider:manage.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getTenantIdentityProviders
+    post:
+      tags: [Identity Providers]
+      summary: Create a draft tenant identity-provider configuration
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IdentityProviderConfigurationRequest' }
+      responses:
+        '201':
+          description: Draft configuration created; activation requires successful validation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IdentityProviderConfigurationResponse' }
+        '403':
+          description: The session is for another tenant or lacks tenant:identity-provider:manage.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: postTenantIdentityProvider
+  /api/v1/tenants/{tenantId}/identity-providers/{providerId}:
+    parameters:
+    - in: path
+      name: tenantId
+      required: true
+      schema: { type: string, format: uuid }
+    - in: path
+      name: providerId
+      required: true
+      schema: { type: string, format: uuid }
+    patch:
+      tags: [Identity Providers]
+      summary: Change a tenant identity-provider configuration
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/IdentityProviderConfigurationRequest' }
+      responses:
+        '200':
+          description: Configuration changed, returned to DRAFT, and affected sessions revoked.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IdentityProviderConfigurationResponse' }
+      operationId: patchTenantIdentityProvider
+  /api/v1/tenants/{tenantId}/identity-providers/{providerId}/activate:
+    post:
+      tags: [Identity Providers]
+      summary: Validate and activate a tenant identity provider
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      parameters:
+      - in: path
+        name: tenantId
+        required: true
+        schema: { type: string, format: uuid }
+      - in: path
+        name: providerId
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '201':
+          description: OIDC metadata was discovered and pinned or the SAML trust configuration was validated, then activated.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IdentityProviderConfigurationResponse' }
+      operationId: postTenantIdentityProviderActivate
+  /api/v1/tenants/{tenantId}/identity-providers/{providerId}/saml-metadata:
+    get:
+      tags: [Identity Providers]
+      summary: Get SAML service-provider metadata for tenant configuration
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      parameters:
+      - in: path
+        name: tenantId
+        required: true
+        schema: { type: string, format: uuid }
+      - in: path
+        name: providerId
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Metadata that can be imported into the company IdP while the configuration is still DRAFT.
+          content:
+            application/samlmetadata+xml:
+              schema: { type: string }
+        '403':
+          description: The session is for another tenant or lacks tenant:identity-provider:manage.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getTenantIdentityProviderSamlMetadata
+  /api/v1/tenants/{tenantId}/identity-providers/{providerId}/disable:
+    post:
+      tags: [Identity Providers]
+      summary: Disable a tenant identity provider
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      parameters:
+      - in: path
+        name: tenantId
+        required: true
+        schema: { type: string, format: uuid }
+      - in: path
+        name: providerId
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Provider disabled and sessions issued through its issuer revoked.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/IdentityProviderConfigurationResponse' }
+      operationId: postTenantIdentityProviderDisable
   /auth/me:
     get:
       tags:
@@ -22959,7 +23278,7 @@ paths:
     post:
       tags:
       - Commercial
-      summary: Register approved claim wording
+      summary: Submit a claim registration for approval (compatibility path)
       requestBody:
         required: true
         content:
@@ -22989,10 +23308,286 @@ paths:
       security:
       - CookieAuth: []
       - BearerAuth: []
-      description: Register approved claim wording. Validates the documented request
-        and returns the created or resulting resource. State-changing operations also
-        enforce the service lifecycle and conflict rules. Accepts either the access-token
-        cookie or a Bearer JWT.
+      description: Creates a new immutable PENDING_APPROVAL version. This operation
+        never approves its own submission and requires the platform claim-management
+        permission. Legal and Compliance decisions must be recorded independently.
+        Accepts either the access-token cookie or a Bearer JWT.
+  /api/v1/commercial/claims/registrations:
+    post:
+      tags:
+      - Commercial
+      summary: Submit a versioned claim registration
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostCommercialClaimsRegisterRequest'
+      responses:
+        '201':
+          description: Claim registration submitted in PENDING_APPROVAL status.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostCommercialClaimsRegisterResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication is missing or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Platform claim-management permission is missing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Another version of this claim is already pending approval.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postCommercialClaimRegistration
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      description: Creates a new immutable PENDING_APPROVAL version with channel,
+        scope, evidence, wording, expiry, prohibited variants, and monitoring metadata.
+    get:
+      tags:
+      - Commercial
+      summary: List claim registrations
+      parameters:
+      - name: claimKey
+        in: query
+        required: false
+        schema:
+          type: string
+      - name: status
+        in: query
+        required: false
+        schema:
+          type: string
+          enum:
+          - PENDING_APPROVAL
+          - APPROVED
+          - REJECTED
+          - SUPERSEDED
+          - REVOKED
+          - EXPIRED
+      responses:
+        '200':
+          description: Versioned claim registrations.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 200
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ClaimRegistration'
+      operationId: getCommercialClaimRegistrations
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      description: Lists the immutable version history and recorded review decisions.
+  /api/v1/commercial/claims/registrations/{id}:
+    get:
+      tags:
+      - Commercial
+      summary: Get a claim registration
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Claim registration and review history.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                  data:
+                    $ref: '#/components/schemas/ClaimRegistration'
+        '404':
+          description: Claim registration not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getCommercialClaimRegistration
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      description: Returns one version without mutating its historical content.
+  /api/v1/commercial/claims/registrations/{id}/reviews/legal:
+    patch:
+      tags:
+      - Commercial
+      summary: Record the Legal claim decision
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                decision:
+                  type: string
+                  enum:
+                  - APPROVED
+                  - REJECTED
+                reason:
+                  type: string
+              required:
+              - decision
+              - reason
+      responses:
+        '200':
+          description: Legal decision recorded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostCommercialClaimsRegisterResponse'
+        '403':
+          description: Legal approval authority is missing or maker-checker failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Claim state or reviewer separation does not permit the decision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: patchCommercialClaimLegalReview
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      description: Requires platform Legal claim-approval permission. The author
+        cannot review their own claim and the Compliance reviewer must be different.
+  /api/v1/commercial/claims/registrations/{id}/reviews/compliance:
+    patch:
+      tags:
+      - Commercial
+      summary: Record the Compliance claim decision
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                decision:
+                  type: string
+                  enum:
+                  - APPROVED
+                  - REJECTED
+                reason:
+                  type: string
+              required:
+              - decision
+              - reason
+      responses:
+        '200':
+          description: Compliance decision recorded; the claim becomes APPROVED only
+            when both independent approvals exist.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostCommercialClaimsRegisterResponse'
+        '403':
+          description: Compliance approval authority is missing or maker-checker failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Claim state or reviewer separation does not permit the decision.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: patchCommercialClaimComplianceReview
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      description: Requires platform Compliance claim-approval permission. Approval
+        supersedes the prior approved version only after independent Legal approval.
+  /api/v1/commercial/claims/registrations/{id}/revoke:
+    patch:
+      tags:
+      - Commercial
+      summary: Revoke an approved claim
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason:
+                  type: string
+              required:
+              - reason
+      responses:
+        '200':
+          description: Claim revoked and retained in immutable history.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostCommercialClaimsRegisterResponse'
+        '409':
+          description: Only an approved claim can be revoked.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: patchCommercialClaimRevoke
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      description: Immediately removes runtime eligibility while preserving the
+        version, approvals, actor, time, and revocation rationale.
   /api/v1/commercial/claims/check:
     get:
       tags:
@@ -23013,6 +23608,21 @@ paths:
           type: string
           nullable: true
         description: Optional region filter.
+      - name: channel
+        in: query
+        required: false
+        schema:
+          type: string
+          default: PRODUCT_UI
+          enum:
+          - PRODUCT_UI
+          - API
+          - CONTRACT
+          - MARKETING
+          - TRUST_CENTER
+          - STATUS_PAGE
+          - SALES
+        description: Customer-facing channel in which the wording will be used.
       - name: sectorPackKey
         in: query
         required: false
@@ -23051,10 +23661,11 @@ paths:
       security:
       - CookieAuth: []
       - BearerAuth: []
-      description: Verify claim eligibility. Applies the documented path, query, and
-        tenant filters and returns the current persisted or computed result using
-        the response model below. Accepts either the access-token cookie or a Bearer
-        JWT.
+      description: Fails closed unless the current version is independently approved,
+        effective, unexpired, in scope for the channel/tenant/region, commercially
+        entitled, backed by an available sector pack when required, and supported
+        by fresh integrity-verified tenant evidence. Eligibility changes are persisted
+        and emitted as controlled commercial events.
   /api/v1/obligations:
     post:
       tags:
@@ -28382,13 +28993,25 @@ paths:
       tags:
       - Onboarding
       summary: Run tenant onboarding workflow
-      description: 'Provisions a new tenant in a single atomic transaction: creates
-        the Tenant record, a LegalEntity, an Environment (defaults to Production),
-        activates the tenant, assigns the calling principal as TENANT_OWNER with tenant:member:invite
-        and tenant:manage permissions, records ACCESS_DISCLOSURE policy acceptance,
-        and emits a tenant_onboarded identity event. The tenantSlug must be unique
-        and URL-safe. The accessDisclosureVersion must match the currently active
-        ACCESS_DISCLOSURE policy version.'
+      description: 'Provisions a new tenant against an approved, PROVISIONED
+        commercial order (spec \u00a77.2 \u2014 PROVISIONING requires an approved
+        order/entitlement as evidence; there is no self-service tenant
+        creation). Validates and claims the order first \u2014 fails closed
+        before any tenant row is created if it does not exist, is not
+        PROVISIONED, or was already claimed by another tenant. Then creates
+        the Tenant, a LegalEntity, an Environment (defaults to Production),
+        assigns the calling principal as TENANT_OWNER with tenant:member:invite
+        and tenant:manage permissions, records ACCESS_DISCLOSURE policy
+        acceptance, grants one Entitlement per distinct offer family present
+        on the order''s product lines (against the order''s existing
+        CommercialAccount \u2014 never a self-granted account/entitlement),
+        activates the tenant, and emits tenant_provisioning_started and
+        tenant_onboarded identity events. The tenantSlug must be unique and
+        URL-safe. The accessDisclosureVersion must match the currently
+        active ACCESS_DISCLOSURE policy version. Note: this spans multiple
+        transactions (order validation, tenant provisioning, order
+        claim/entitlement grant, evidence creation, activation) rather than
+        one single atomic transaction.'
       security:
       - CookieAuth: []
       - BearerAuth: []
@@ -28401,14 +29024,14 @@ paths:
       responses:
         '201':
           description: "Onboarding completed \u2014 tenant, legal entity, environment,\
-            \ and TENANT_OWNER membership provisioned"
+            \ TENANT_OWNER membership, and order-derived entitlements provisioned"
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/OnboardingResponse'
         '400':
           description: accessDisclosureVersion does not match the currently active
-            ACCESS_DISCLOSURE policy version
+            ACCESS_DISCLOSURE policy version, or the request failed validation
           content:
             application/json:
               schema:
@@ -28419,8 +29042,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: orderId does not reference an existing CommercialOrder
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: Tenant slug is already in use
+          description: "Tenant slug is already in use, the order is not PROVISIONED,\
+            \ the order has no product lines to derive an entitlement from,\
+            \ or the order was already claimed by another tenant (including\
+            \ concurrently)"
           content:
             application/json:
               schema:

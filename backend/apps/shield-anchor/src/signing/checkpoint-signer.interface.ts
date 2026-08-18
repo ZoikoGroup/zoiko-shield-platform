@@ -10,5 +10,7 @@ export interface CheckpointSignResult {
  * signer. The async contract prevents callers from assuming keys are local.
  */
 export interface CheckpointSigner {
-  sign(merkleRoot: string): Promise<CheckpointSignResult> | CheckpointSignResult;
+  sign(
+    merkleRoot: string,
+  ): Promise<CheckpointSignResult> | CheckpointSignResult;
 }

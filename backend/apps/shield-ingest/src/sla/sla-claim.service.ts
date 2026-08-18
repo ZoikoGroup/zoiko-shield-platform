@@ -1,10 +1,16 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { requireTenantId } from '../security/tenant-context';
 
 export class EvaluateClaimDto {
   tenantId?: string;
-  claimKey!: 'CLAIM_15MIN_RESPONSE' | 'CLAIM_24_7_SOC' | 'CLAIM_CONTINUOUS_ASSURANCE';
+  claimKey!:
+    'CLAIM_15MIN_RESPONSE' | 'CLAIM_24_7_SOC' | 'CLAIM_CONTINUOUS_ASSURANCE';
   caseId?: string;
 }
 
@@ -46,12 +52,18 @@ export class SLAClaimService {
           include: { timelineEntries: true },
         });
 
-        const timelines = caseRecord ? ((caseRecord as any).timelineEntries || (caseRecord as any).caseTimelines || []) : [];
+        const timelines = caseRecord
+          ? (caseRecord as any).timelineEntries ||
+            (caseRecord as any).caseTimelines ||
+            []
+          : [];
 
         if (caseRecord && timelines.length > 0) {
           const createdAt = new Date(caseRecord.created_at).getTime();
           const firstTimeline = new Date(timelines[0].created_at).getTime();
-          responseTimeMinutes = Number(((firstTimeline - createdAt) / (1000 * 60)).toFixed(2));
+          responseTimeMinutes = Number(
+            ((firstTimeline - createdAt) / (1000 * 60)).toFixed(2),
+          );
 
           if (responseTimeMinutes <= 15.0) {
             status = 'QUALIFIED';
@@ -62,30 +74,35 @@ export class SLAClaimService {
           }
         } else {
           status = 'INSUFFICIENT_EVIDENCE';
-          justification = 'INSUFFICIENT_EVIDENCE: No timeline evidence recorded for case.';
+          justification =
+            'INSUFFICIENT_EVIDENCE: No timeline evidence recorded for case.';
         }
       } else {
         status = 'INSUFFICIENT_EVIDENCE';
-        justification = 'INSUFFICIENT_EVIDENCE: Specific case ID required for response time SLA evaluation.';
+        justification =
+          'INSUFFICIENT_EVIDENCE: Specific case ID required for response time SLA evaluation.';
       }
     } else if (dto.claimKey === 'CLAIM_24_7_SOC') {
       const activeConnectorsCount = await this.prisma.connectorInstance.count({
         where: { tenant_id: tenantId, state: 'HEALTHY' },
       });
 
-      status = activeConnectorsCount > 0 ? 'QUALIFIED' : 'INSUFFICIENT_EVIDENCE';
-      justification = activeConnectorsCount > 0
-        ? `Continuous telemetry monitoring active across ${activeConnectorsCount} healthy connector instances.`
-        : 'INSUFFICIENT_EVIDENCE: No active healthy connectors found.';
+      status =
+        activeConnectorsCount > 0 ? 'QUALIFIED' : 'INSUFFICIENT_EVIDENCE';
+      justification =
+        activeConnectorsCount > 0
+          ? `Continuous telemetry monitoring active across ${activeConnectorsCount} healthy connector instances.`
+          : 'INSUFFICIENT_EVIDENCE: No active healthy connectors found.';
     } else if (dto.claimKey === 'CLAIM_CONTINUOUS_ASSURANCE') {
       const passedControlsCount = await this.prisma.controlTestRun.count({
         where: { tenant_id: tenantId, result: 'PASS' },
       });
 
       status = passedControlsCount > 0 ? 'QUALIFIED' : 'NOT_EVALUATED';
-      justification = passedControlsCount > 0
-        ? `Continuous assurance verified with ${passedControlsCount} passing control objective evaluations.`
-        : 'NOT_EVALUATED: No passing control test runs found.';
+      justification =
+        passedControlsCount > 0
+          ? `Continuous assurance verified with ${passedControlsCount} passing control objective evaluations.`
+          : 'NOT_EVALUATED: No passing control test runs found.';
     }
 
     const evaluation = await this.prisma.claimEvaluation.create({
@@ -100,7 +117,9 @@ export class SLAClaimService {
       },
     });
 
-    this.logger.log(`Evaluated Claim '${dto.claimKey}' -> Status: ${status} (ID: ${evaluation.id})`);
+    this.logger.log(
+      `Evaluated Claim '${dto.claimKey}' -> Status: ${status} (ID: ${evaluation.id})`,
+    );
 
     return {
       ...evaluation,
@@ -145,14 +164,22 @@ export class SLAClaimService {
 
     const totalEvals = evaluations.length;
     const averageResponseTimeMinutes =
-      evaluatedCasesCount > 0 ? Number((totalResponseMinutes / evaluatedCasesCount).toFixed(1)) : null;
-    const slaCompliancePercentage = totalEvals > 0 ? Number(((qualifiedCount / totalEvals) * 100).toFixed(1)) : null;
+      evaluatedCasesCount > 0
+        ? Number((totalResponseMinutes / evaluatedCasesCount).toFixed(1))
+        : null;
+    const slaCompliancePercentage =
+      totalEvals > 0
+        ? Number(((qualifiedCount / totalEvals) * 100).toFixed(1))
+        : null;
 
     return {
       tenantId,
       slaCompliancePercentage,
       averageResponseTimeMinutes,
-      mtttMinutes: averageResponseTimeMinutes === null ? null : Number((averageResponseTimeMinutes * 0.4).toFixed(2)),
+      mtttMinutes:
+        averageResponseTimeMinutes === null
+          ? null
+          : Number((averageResponseTimeMinutes * 0.4).toFixed(2)),
       mttrMinutes: averageResponseTimeMinutes,
       evaluationState: totalEvals === 0 ? 'NOT_EVALUATED' : 'EVALUATED',
       evaluatedClaimsCount: totalEvals,

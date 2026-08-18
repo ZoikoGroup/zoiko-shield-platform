@@ -45,7 +45,10 @@ export class EvidenceController {
     @Query('caseId') caseId?: string,
   ) {
     const tenantId = requireTenantId(headerTenantId, queryTenantId);
-    const records = await this.evidenceService.getEvidenceByTenant(tenantId, caseId);
+    const records = await this.evidenceService.getEvidenceByTenant(
+      tenantId,
+      caseId,
+    );
     return {
       statusCode: HttpStatus.OK,
       data: records,
@@ -61,7 +64,10 @@ export class EvidenceController {
     @Headers('x-tenant-id') headerTenantId: string,
     @Param('id') id: string,
   ) {
-    const evidence = await this.evidenceService.getEvidenceById(requireTenantId(headerTenantId), id);
+    const evidence = await this.evidenceService.getEvidenceById(
+      requireTenantId(headerTenantId),
+      id,
+    );
     return {
       statusCode: HttpStatus.OK,
       data: evidence,

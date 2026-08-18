@@ -28,17 +28,29 @@ describe('AlertGeneratorController', () => {
     const mockAlerts = [{ id: 'alert-1', title: 'Alert 1' }];
     serviceMock.getAlerts.mockResolvedValue(mockAlerts);
 
-    const response = await controller.getAlerts('tenant-1', undefined, undefined, undefined, 10);
+    const response = await controller.getAlerts(
+      'tenant-1',
+      undefined,
+      undefined,
+      undefined,
+      10,
+    );
 
     expect(response.statusCode).toBe(HttpStatus.OK);
     expect(response.data).toBe(mockAlerts);
   });
 
   it('should promote alert to case', async () => {
-    const mockPromoteResult = { alertId: 'alert-1', status: 'PROMOTED_TO_CASE' };
+    const mockPromoteResult = {
+      alertId: 'alert-1',
+      status: 'PROMOTED_TO_CASE',
+    };
     serviceMock.promoteAlertToCase.mockResolvedValue(mockPromoteResult);
 
-    const response = await controller.createCaseFromAlert('alert-1');
+    const response = await controller.createCaseFromAlert(
+      'tenant-1',
+      'alert-1',
+    );
 
     expect(response.statusCode).toBe(HttpStatus.OK);
     expect(response.data).toBe(mockPromoteResult);

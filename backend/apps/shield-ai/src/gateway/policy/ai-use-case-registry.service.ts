@@ -5,7 +5,14 @@ import { PrismaService } from '../../prisma/prisma.service';
 export class AiUseCaseRegistryService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(data: { key: string; name: string; allowedDataClasses: string[]; allowedTools: string[]; prohibitedActions?: string[]; humanReviewRequired?: boolean }) {
+  async create(data: {
+    key: string;
+    name: string;
+    allowedDataClasses: string[];
+    allowedTools: string[];
+    prohibitedActions?: string[];
+    humanReviewRequired?: boolean;
+  }) {
     return this.prisma.aiUseCase.create({
       data: {
         key: data.key,

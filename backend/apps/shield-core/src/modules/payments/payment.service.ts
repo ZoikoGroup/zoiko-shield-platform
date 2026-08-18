@@ -1,5 +1,18 @@
-import { ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { IsIn, IsNumber, IsOptional, IsPositive, IsString, IsUUID } from 'class-validator';
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  IsIn,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { IdempotencyService } from '../idempotency/idempotency.service';
 import { assertTransition } from '../commerce/state-machine.util';
@@ -75,7 +88,9 @@ export class PaymentService {
   ) {}
 
   async getPaymentById(paymentId: string) {
-    const payment = await this.prisma.payment.findUnique({ where: { id: paymentId } });
+    const payment = await this.prisma.payment.findUnique({
+      where: { id: paymentId },
+    });
     if (!payment) {
       throw new NotFoundException(`Payment '${paymentId}' not found`);
     }
@@ -85,7 +100,10 @@ export class PaymentService {
   async getPaymentByIdForTenant(tenantId: string, paymentId: string) {
     const payment = await this.getPaymentById(paymentId);
     const entitlement = await this.prisma.entitlement.findFirst({
-      where: { tenant_id: tenantId, commercial_account_id: payment.commercial_account_id },
+      where: {
+        tenant_id: tenantId,
+        commercial_account_id: payment.commercial_account_id,
+      },
       select: { id: true },
     });
     if (!entitlement) {
@@ -98,18 +116,30 @@ export class PaymentService {
    * Part 12/9 sequencing: only an ISSUED (immutable) invoice can be paid —
    * the price/tax/invoice basis must already be frozen.
    */
-  async createPayment(tenantId: string, dto: CreatePaymentDto, idempotencyKey: string) {
+  async createPayment(
+    tenantId: string,
+    dto: CreatePaymentDto,
+    idempotencyKey: string,
+  ) {
     await this.killSwitchService.assertNotBlocked('AUTOMATIC_CHARGING');
 
     const entitlement = await this.prisma.entitlement.findFirst({
-      where: { tenant_id: tenantId, commercial_account_id: dto.commercialAccountId, status: 'ACTIVE' },
+      where: {
+        tenant_id: tenantId,
+        commercial_account_id: dto.commercialAccountId,
+        status: 'ACTIVE',
+      },
       select: { id: true },
     });
     if (!entitlement) {
-      throw new NotFoundException('No active entitlement connects this tenant to the commercial account');
+      throw new NotFoundException(
+        'No active entitlement connects this tenant to the commercial account',
+      );
     }
 
-    const invoice = await this.prisma.commercialInvoice.findUnique({ where: { id: dto.invoiceId } });
+    const invoice = await this.prisma.commercialInvoice.findUnique({
+      where: { id: dto.invoiceId },
+    });
     if (!invoice) {
       throw new NotFoundException(`Invoice '${dto.invoiceId}' not found`);
     }
@@ -131,7 +161,11 @@ export class PaymentService {
         requestPayload: dto,
       },
       async () => {
-        const providerResult = await this.provider.createPayment(dto.amount, currency, dto.paymentMethodToken);
+        const providerResult = await this.provider.createPayment(
+          dto.amount,
+          currency,
+          dto.paymentMethodToken,
+        );
 
         const payment = await this.prisma.$transaction(async (tx) => {
           const created = await tx.payment.create({
@@ -142,7 +176,10 @@ export class PaymentService {
               provider_payment_id: providerResult.providerPaymentId,
               amount: dto.amount,
               currency,
-              status: providerResult.status === 'AUTHORIZED' ? 'AUTHORIZED' : 'FAILED',
+              status:
+                providerResult.status === 'AUTHORIZED'
+                  ? 'AUTHORIZED'
+                  : 'FAILED',
               idempotency_key: idempotencyKey,
             },
           });
@@ -152,7 +189,10 @@ export class PaymentService {
               event_type: 'payment.created',
               tenant_id: dto.commercialAccountId,
               actor: 'system',
-              payload: JSON.stringify({ paymentId: created.id, status: created.status }),
+              payload: JSON.stringify({
+                paymentId: created.id,
+                status: created.status,
+              }),
               idempotency_key: `payment-created-${created.id}`,
             },
           });
@@ -167,18 +207,34 @@ export class PaymentService {
     return result.body;
   }
 
-  async transitionStatus(paymentId: string, targetStatus: string, actor = 'system') {
+  async transitionStatus(
+    paymentId: string,
+    targetStatus: string,
+    actor = 'system',
+  ) {
     const payment = await this.getPaymentById(paymentId);
-    assertTransition(PAYMENT_TRANSITIONS, payment.status, targetStatus, 'payment');
+    assertTransition(
+      PAYMENT_TRANSITIONS,
+      payment.status,
+      targetStatus,
+      'payment',
+    );
 
     return this.prisma.$transaction(async (tx) => {
-      const updated = await tx.payment.update({ where: { id: paymentId }, data: { status: targetStatus } });
+      const updated = await tx.payment.update({
+        where: { id: paymentId },
+        data: { status: targetStatus },
+      });
       await tx.commercialEvent.create({
         data: {
           event_type: 'payment.state_changed',
           tenant_id: payment.commercial_account_id,
           actor,
-          payload: JSON.stringify({ paymentId, previousStatus: payment.status, newStatus: targetStatus }),
+          payload: JSON.stringify({
+            paymentId,
+            previousStatus: payment.status,
+            newStatus: targetStatus,
+          }),
           idempotency_key: `payment-transition-${paymentId}-${targetStatus}-${Date.now()}`,
         },
       });
@@ -208,11 +264,17 @@ export class PaymentService {
           where: { provider_payment_id: dto.providerPaymentId },
         });
         if (!payment) {
-          throw new NotFoundException(`No payment found for provider payment '${dto.providerPaymentId}'`);
+          throw new NotFoundException(
+            `No payment found for provider payment '${dto.providerPaymentId}'`,
+          );
         }
 
         const targetStatus = WEBHOOK_EVENT_TO_STATUS[dto.eventType];
-        const updated = await this.transitionStatus(payment.id, targetStatus, 'provider-webhook');
+        const updated = await this.transitionStatus(
+          payment.id,
+          targetStatus,
+          'provider-webhook',
+        );
         return { statusCode: 200, body: updated };
       },
     );
@@ -227,7 +289,10 @@ export class PaymentService {
    */
   async refundPayment(paymentId: string, amount: number, reason: string) {
     const payment = await this.getPaymentById(paymentId);
-    if (payment.status !== 'SETTLED' && payment.status !== 'PARTIALLY_REFUNDED') {
+    if (
+      payment.status !== 'SETTLED' &&
+      payment.status !== 'PARTIALLY_REFUNDED'
+    ) {
       throw new ConflictException({
         statusCode: 409,
         error: 'PAYMENT_NOT_REFUNDABLE',
@@ -238,7 +303,10 @@ export class PaymentService {
     const priorRefunds = await this.prisma.refund.findMany({
       where: { payment_id: paymentId, status: 'SUCCEEDED' },
     });
-    const alreadyRefunded = priorRefunds.reduce((sum, r) => sum + Number(r.amount), 0);
+    const alreadyRefunded = priorRefunds.reduce(
+      (sum, r) => sum + Number(r.amount),
+      0,
+    );
     const refundableBalance = Number(payment.amount) - alreadyRefunded;
 
     if (amount > refundableBalance) {
@@ -249,7 +317,10 @@ export class PaymentService {
       });
     }
 
-    const providerResult = await this.provider.refundPayment(payment.provider_payment_id || '', amount);
+    const providerResult = await this.provider.refundPayment(
+      payment.provider_payment_id || '',
+      amount,
+    );
 
     const refund = await this.prisma.refund.create({
       data: {
@@ -275,7 +346,12 @@ export class PaymentService {
     return refund;
   }
 
-  async refundPaymentForTenant(tenantId: string, paymentId: string, amount: number, reason: string) {
+  async refundPaymentForTenant(
+    tenantId: string,
+    paymentId: string,
+    amount: number,
+    reason: string,
+  ) {
     await this.getPaymentByIdForTenant(tenantId, paymentId);
     return this.refundPayment(paymentId, amount, reason);
   }

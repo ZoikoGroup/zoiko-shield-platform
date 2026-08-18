@@ -10,21 +10,35 @@ describe('ConnectorCatalogController (Idempotency P1 & INT-01)', () => {
 
   beforeEach(async () => {
     catalogServiceMock = {
-      getConnectorTypes: jest.fn().mockReturnValue([{ provider: 'microsoft-entra', name: 'Microsoft Entra ID' }]),
-      createConnector: jest.fn().mockResolvedValue({ id: 'conn-100', name: 'Entra Prod' }),
+      getConnectorTypes: jest
+        .fn()
+        .mockReturnValue([
+          { provider: 'microsoft-entra', name: 'Microsoft Entra ID' },
+        ]),
+      createConnector: jest
+        .fn()
+        .mockResolvedValue({ id: 'conn-100', name: 'Entra Prod' }),
       getConnectors: jest.fn().mockResolvedValue([]),
       getConnectorById: jest.fn().mockResolvedValue({ id: 'conn-100' }),
       updateConnector: jest.fn().mockResolvedValue({ id: 'conn-100' }),
       retireConnector: jest.fn().mockResolvedValue({ id: 'conn-100' }),
       testConnector: jest.fn().mockResolvedValue({ success: true }),
-      activateConnector: jest.fn().mockResolvedValue({ id: 'conn-100', state: 'CONNECTED' }),
-      disableConnector: jest.fn().mockResolvedValue({ id: 'conn-100', state: 'DISCONNECTED' }),
+      activateConnector: jest
+        .fn()
+        .mockResolvedValue({ id: 'conn-100', state: 'CONNECTED' }),
+      disableConnector: jest
+        .fn()
+        .mockResolvedValue({ id: 'conn-100', state: 'DISCONNECTED' }),
       syncConnector: jest.fn().mockResolvedValue({ status: 'STARTED' }),
       getConnectorHealth: jest.fn().mockResolvedValue({ state: 'HEALTHY' }),
     };
 
     idempotencyServiceMock = {
-      run: jest.fn().mockImplementation((params: any, fn: any) => fn().then((res: any) => ({ ...res, replayed: false }))),
+      run: jest
+        .fn()
+        .mockImplementation((params: any, fn: any) =>
+          fn().then((res: any) => ({ ...res, replayed: false })),
+        ),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -35,14 +49,21 @@ describe('ConnectorCatalogController (Idempotency P1 & INT-01)', () => {
       ],
     }).compile();
 
-    controller = module.get<ConnectorCatalogController>(ConnectorCatalogController);
+    controller = module.get<ConnectorCatalogController>(
+      ConnectorCatalogController,
+    );
   });
 
   it('should create connector without idempotency key', async () => {
-    const result = await controller.createConnector('tenant-1', undefined, undefined, {
-      provider: 'microsoft-entra',
-      name: 'Entra Prod',
-    } as any);
+    const result = await controller.createConnector(
+      'tenant-1',
+      undefined,
+      undefined,
+      {
+        provider: 'microsoft-entra',
+        name: 'Entra Prod',
+      } as any,
+    );
 
     expect(result.statusCode).toBe(201);
     expect(result.data.id).toBe('conn-100');
@@ -50,10 +71,15 @@ describe('ConnectorCatalogController (Idempotency P1 & INT-01)', () => {
   });
 
   it('should process create connector through IdempotencyService when idempotency-key header is supplied', async () => {
-    const result = await controller.createConnector('tenant-1', 'ikey-12345', undefined, {
-      provider: 'microsoft-entra',
-      name: 'Entra Prod',
-    } as any);
+    const result = await controller.createConnector(
+      'tenant-1',
+      'ikey-12345',
+      undefined,
+      {
+        provider: 'microsoft-entra',
+        name: 'Entra Prod',
+      } as any,
+    );
 
     expect(idempotencyServiceMock.run).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -68,7 +94,12 @@ describe('ConnectorCatalogController (Idempotency P1 & INT-01)', () => {
   });
 
   it('should process activate connector through IdempotencyService when idempotency-key header is supplied', async () => {
-    const result = await controller.activateConnector('tenant-1', 'ikey-activate-99', undefined, 'conn-100');
+    const result = await controller.activateConnector(
+      'tenant-1',
+      'ikey-activate-99',
+      undefined,
+      'conn-100',
+    );
 
     expect(idempotencyServiceMock.run).toHaveBeenCalledWith(
       expect.objectContaining({

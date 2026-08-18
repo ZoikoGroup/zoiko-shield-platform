@@ -90,7 +90,9 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
       });
       this.logger.debug(`Successfully emitted event to Kafka topic ${topic}`);
     } catch (error: any) {
-      this.logger.error(`Failed to emit event to Kafka topic ${topic}: ${error.message}`);
+      this.logger.error(
+        `Failed to emit event to Kafka topic ${topic}: ${error.message}`,
+      );
       throw error;
     }
   }
@@ -99,7 +101,12 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
     topic: string,
     eventType: string,
     payload: T,
-    options?: { correlationId?: string; causationId?: string; traceId?: string; occurredAt?: Date },
+    options?: {
+      correlationId?: string;
+      causationId?: string;
+      traceId?: string;
+      occurredAt?: Date;
+    },
   ) {
     const producedAt = new Date();
     const envelope: EventEnvelope<T> = {

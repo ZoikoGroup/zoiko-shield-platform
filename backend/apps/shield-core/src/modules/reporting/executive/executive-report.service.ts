@@ -15,8 +15,15 @@ export class ExecutiveReportService {
     private readonly reportSnapshotService: ReportSnapshotService,
   ) {}
 
-  async createFromSnapshot(tenantId: string, reportSnapshotId: string, reportingPeriod: string) {
-    const snapshot = await this.reportSnapshotService.getById(tenantId, reportSnapshotId);
+  async createFromSnapshot(
+    tenantId: string,
+    reportSnapshotId: string,
+    reportingPeriod: string,
+  ) {
+    const snapshot = await this.reportSnapshotService.getById(
+      tenantId,
+      reportSnapshotId,
+    );
     const payload = JSON.parse(snapshot.payload);
     const limitations: string[] = JSON.parse(snapshot.limitations);
 
@@ -24,12 +31,30 @@ export class ExecutiveReportService {
     const metrics = [
       {
         key: 'control_effectiveness_rate',
-        value: this.safeRate(assuranceMetrics.controlsEffective, assuranceMetrics.controlsEffective + assuranceMetrics.controlsPartiallyEffective + assuranceMetrics.controlsIneffective + assuranceMetrics.controlsUnknown),
+        value: this.safeRate(
+          assuranceMetrics.controlsEffective,
+          assuranceMetrics.controlsEffective +
+            assuranceMetrics.controlsPartiallyEffective +
+            assuranceMetrics.controlsIneffective +
+            assuranceMetrics.controlsUnknown,
+        ),
         factors: [
-          { label: 'controlsEffective', value: assuranceMetrics.controlsEffective },
-          { label: 'controlsPartiallyEffective', value: assuranceMetrics.controlsPartiallyEffective },
-          { label: 'controlsIneffective', value: assuranceMetrics.controlsIneffective },
-          { label: 'controlsUnknown (counted against the rate, never dropped)', value: assuranceMetrics.controlsUnknown },
+          {
+            label: 'controlsEffective',
+            value: assuranceMetrics.controlsEffective,
+          },
+          {
+            label: 'controlsPartiallyEffective',
+            value: assuranceMetrics.controlsPartiallyEffective,
+          },
+          {
+            label: 'controlsIneffective',
+            value: assuranceMetrics.controlsIneffective,
+          },
+          {
+            label: 'controlsUnknown (counted against the rate, never dropped)',
+            value: assuranceMetrics.controlsUnknown,
+          },
         ],
         unknownInputs: assuranceMetrics.controlsUnknown,
         sourceRefs: ['assessment'],
@@ -40,7 +65,13 @@ export class ExecutiveReportService {
       {
         key: 'open_alert_count',
         value: payload.security?.metrics?.openAlerts ?? null,
-        factors: [{ label: 'openAlerts', value: payload.security?.metrics?.openAlerts }, { label: 'criticalAlerts', value: payload.security?.metrics?.criticalAlerts }],
+        factors: [
+          { label: 'openAlerts', value: payload.security?.metrics?.openAlerts },
+          {
+            label: 'criticalAlerts',
+            value: payload.security?.metrics?.criticalAlerts,
+          },
+        ],
         sourceRefs: ['alert'],
         definitionRef: 'count(Alert where status not in [CLOSED, RESOLVED])',
         period: reportingPeriod,
@@ -62,12 +93,23 @@ export class ExecutiveReportService {
     return executiveSnapshot;
   }
 
-  async approve(tenantId: string, executiveSnapshotId: string, approverId: string) {
-    const existing = await this.prisma.executiveReportSnapshot.findFirst({ where: { id: executiveSnapshotId, tenant_id: tenantId } });
+  async approve(
+    tenantId: string,
+    executiveSnapshotId: string,
+    approverId: string,
+  ) {
+    const existing = await this.prisma.executiveReportSnapshot.findFirst({
+      where: { id: executiveSnapshotId, tenant_id: tenantId },
+    });
     if (!existing) {
-      throw new NotFoundException(`ExecutiveReportSnapshot '${executiveSnapshotId}' not found`);
+      throw new NotFoundException(
+        `ExecutiveReportSnapshot '${executiveSnapshotId}' not found`,
+      );
     }
-    return this.prisma.executiveReportSnapshot.update({ where: { id: existing.id }, data: { approved_by: approverId, approved_at: new Date() } });
+    return this.prisma.executiveReportSnapshot.update({
+      where: { id: existing.id },
+      data: { approved_by: approverId, approved_at: new Date() },
+    });
   }
 
   private safeRate(numerator: number, denominator: number): number | null {

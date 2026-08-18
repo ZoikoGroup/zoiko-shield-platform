@@ -10,7 +10,15 @@ export interface UsageObservationDto {
   unit?: string;
   acceptedQuantity?: number;
   billableQuantity?: number;
-  usageState?: 'OBSERVED' | 'ACCEPTED' | 'REJECTED' | 'DUPLICATE' | 'QUARANTINED' | 'PLATFORM_DERIVED' | 'BILLABLE' | 'NON_BILLABLE';
+  usageState?:
+    | 'OBSERVED'
+    | 'ACCEPTED'
+    | 'REJECTED'
+    | 'DUPLICATE'
+    | 'QUARANTINED'
+    | 'PLATFORM_DERIVED'
+    | 'BILLABLE'
+    | 'NON_BILLABLE';
   billingClassification?: string;
 }
 
@@ -31,7 +39,9 @@ export class MeteringService {
   /**
    * Evaluates active commercial contract entitlement for tenant (Doctrine D1 & D4).
    */
-  private async evaluateContractAuthorization(tenantId: string): Promise<boolean> {
+  private async evaluateContractAuthorization(
+    tenantId: string,
+  ): Promise<boolean> {
     try {
       const now = new Date();
       const entitlement = await (this.prisma as any).entitlement?.findFirst({
@@ -57,7 +67,9 @@ export class MeteringService {
       });
       if (account) return true;
 
-      const directAccount = await (this.prisma as any).commercialAccount?.findFirst({
+      const directAccount = await (
+        this.prisma as any
+      ).commercialAccount?.findFirst({
         where: {
           id: tenantId,
           status: 'ACTIVE',
@@ -105,26 +117,38 @@ export class MeteringService {
    */
   async recordUsageObservation(dto: UsageObservationDto) {
     const environmentId = requireEnvironmentId(dto.environmentId);
-    const acceptedQty = dto.acceptedQuantity !== undefined ? dto.acceptedQuantity : 1;
+    const acceptedQty =
+      dto.acceptedQuantity !== undefined ? dto.acceptedQuantity : 1;
 
     let usageState = dto.usageState || 'ACCEPTED';
     let billableQty = dto.billableQuantity || 0;
 
     // Force NON_BILLABLE and billableQuantity = 0 for duplicate, rejected, quarantined, or platform-derived states
-    if (['REJECTED', 'DUPLICATE', 'QUARANTINED', 'PLATFORM_DERIVED'].includes(usageState)) {
+    if (
+      ['REJECTED', 'DUPLICATE', 'QUARANTINED', 'PLATFORM_DERIVED'].includes(
+        usageState,
+      )
+    ) {
       usageState = 'NON_BILLABLE';
       billableQty = 0;
     } else {
       // Evaluate contract authorization and meter definition per Doctrine D1 & D4
-      const hasActiveContract = await this.evaluateContractAuthorization(dto.tenantId);
+      const hasActiveContract = await this.evaluateContractAuthorization(
+        dto.tenantId,
+      );
       const activeMeterDef = await this.evaluateMeterDefinition(dto.sourceType);
 
-      if (!hasActiveContract || !activeMeterDef || activeMeterDef.billable_policy === 'NEVER_BILLABLE') {
+      if (
+        !hasActiveContract ||
+        !activeMeterDef ||
+        activeMeterDef.billable_policy === 'NEVER_BILLABLE'
+      ) {
         usageState = 'NON_BILLABLE';
         billableQty = 0;
       } else {
         usageState = 'BILLABLE';
-        billableQty = dto.billableQuantity !== undefined ? dto.billableQuantity : 1;
+        billableQty =
+          dto.billableQuantity !== undefined ? dto.billableQuantity : 1;
       }
     }
 
@@ -139,7 +163,8 @@ export class MeteringService {
         accepted_quantity: acceptedQty,
         billable_quantity: billableQty,
         usage_state: usageState,
-        billing_classification: dto.billingClassification || 'COMMERCIAL_DIRECT',
+        billing_classification:
+          dto.billingClassification || 'COMMERCIAL_DIRECT',
       },
     });
   }
@@ -194,17 +219,26 @@ export class MeteringService {
       take: 500,
     });
 
-    const acceptedTotal = records.reduce((acc, r) => acc + r.accepted_quantity, 0);
-    const billableTotal = records.reduce((acc, r) => acc + r.billable_quantity, 0);
-    const nonBillableCount = records.filter((r) => r.usage_state === 'NON_BILLABLE').length;
+    const acceptedTotal = records.reduce(
+      (acc, r) => acc + r.accepted_quantity,
+      0,
+    );
+    const billableTotal = records.reduce(
+      (acc, r) => acc + r.billable_quantity,
+      0,
+    );
+    const nonBillableCount = records.filter(
+      (r) => r.usage_state === 'NON_BILLABLE',
+    ).length;
 
     // Fetch active entitlement / contract committed capacity & meter definition
     let committedQuantity = 100000;
-    let overagePolicy = 'STANDARD_OVERAGE_RATE';
-    let overageRate = 0.005;
+    const overagePolicy = 'STANDARD_OVERAGE_RATE';
+    const overageRate = 0.005;
 
     try {
-      const activeMeterDef = await this.evaluateMeterDefinition('WEBHOOK_INGEST');
+      const activeMeterDef =
+        await this.evaluateMeterDefinition('WEBHOOK_INGEST');
       if (activeMeterDef && activeMeterDef.included_quantity > 0) {
         committedQuantity = activeMeterDef.included_quantity;
       }
@@ -217,7 +251,8 @@ export class MeteringService {
     if (records.length > 1) {
       const oldestRecord = records[records.length - 1];
       const newestRecord = records[0];
-      const timeSpanMs = newestRecord.recorded_at.getTime() - oldestRecord.recorded_at.getTime();
+      const timeSpanMs =
+        newestRecord.recorded_at.getTime() - oldestRecord.recorded_at.getTime();
       const timeSpanHours = timeSpanMs / (1000 * 60 * 60);
 
       if (timeSpanHours > 0) {
@@ -227,8 +262,10 @@ export class MeteringService {
     }
 
     // Warning thresholds per MET-03 (80%, 90%, 100%)
-    const utilizationPercentage = committedQuantity > 0 ? (billableTotal / committedQuantity) * 100 : 0;
-    let thresholdStatus: 'NORMAL' | 'WARNING_80' | 'WARNING_90' | 'EXCEEDED_100' = 'NORMAL';
+    const utilizationPercentage =
+      committedQuantity > 0 ? (billableTotal / committedQuantity) * 100 : 0;
+    let thresholdStatus:
+      'NORMAL' | 'WARNING_80' | 'WARNING_90' | 'EXCEEDED_100' = 'NORMAL';
     if (utilizationPercentage >= 100) {
       thresholdStatus = 'EXCEEDED_100';
     } else if (utilizationPercentage >= 90) {
@@ -276,4 +313,3 @@ export class MeteringService {
     });
   }
 }
-

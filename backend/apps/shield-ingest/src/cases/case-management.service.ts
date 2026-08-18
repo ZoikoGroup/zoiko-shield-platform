@@ -6,7 +6,11 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { requireEnvironmentId, requireRegion, requireTenantId } from '../security/tenant-context';
+import {
+  requireEnvironmentId,
+  requireRegion,
+  requireTenantId,
+} from '../security/tenant-context';
 
 const ALLOWED_CASE_TRANSITIONS: Record<string, string[]> = {
   NEW: ['TRIAGED', 'DUPLICATE', 'FALSE_POSITIVE'],
@@ -87,7 +91,7 @@ export class CaseManagementService {
         priority: dto.priority || 'P2',
         status: 'NEW',
         queue_id: dto.queue || 'DEFAULT',
-        ...(dto as any).queue ? { queue: dto.queue } : {},
+        ...((dto as any).queue ? { queue: dto.queue } : {}),
         created_by: dto.createdBy || 'system',
       },
     });
@@ -128,7 +132,12 @@ export class CaseManagementService {
   /**
    * List cases for a tenant
    */
-  async getCases(tenantId: string, status?: string, severity?: string, ownerId?: string) {
+  async getCases(
+    tenantId: string,
+    status?: string,
+    severity?: string,
+    ownerId?: string,
+  ) {
     const where: any = { tenant_id: tenantId };
     if (status) where.status = status;
     if (severity) where.severity = severity;
@@ -168,7 +177,12 @@ export class CaseManagementService {
   /**
    * Assign case owner and append ASSIGNED timeline event
    */
-  async assignCase(tenantId: string, caseId: string, ownerId: string, actorId = 'system') {
+  async assignCase(
+    tenantId: string,
+    caseId: string,
+    ownerId: string,
+    actorId = 'system',
+  ) {
     const caseRecord = await this.getCaseById(tenantId, caseId);
 
     const updated = await this.prisma.case.update({
@@ -193,7 +207,13 @@ export class CaseManagementService {
   /**
    * Transition case state per validated state machine rules
    */
-  async transitionState(tenantId: string, caseId: string, targetStatus: string, actorId = 'system', reason?: string) {
+  async transitionState(
+    tenantId: string,
+    caseId: string,
+    targetStatus: string,
+    actorId = 'system',
+    reason?: string,
+  ) {
     const caseRecord = await this.getCaseById(tenantId, caseId);
     const currentStatus = caseRecord.status;
 
@@ -236,7 +256,12 @@ export class CaseManagementService {
   /**
    * Add analyst note to case timeline
    */
-  async addNote(tenantId: string, caseId: string, noteText: string, actorId = 'system') {
+  async addNote(
+    tenantId: string,
+    caseId: string,
+    noteText: string,
+    actorId = 'system',
+  ) {
     const caseRecord = await this.getCaseById(tenantId, caseId);
 
     if (!noteText || noteText.trim().length === 0) {
@@ -258,7 +283,12 @@ export class CaseManagementService {
   /**
    * Link evidence record to case timeline
    */
-  async linkEvidence(tenantId: string, caseId: string, evidenceId: string, actorId = 'system') {
+  async linkEvidence(
+    tenantId: string,
+    caseId: string,
+    evidenceId: string,
+    actorId = 'system',
+  ) {
     const caseRecord = await this.getCaseById(tenantId, caseId);
 
     const evidence = await this.prisma.evidenceRecord.findFirst({

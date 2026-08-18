@@ -31,7 +31,10 @@ export class IdentityResolutionService {
 
     if (existingAlias) {
       await this.repo.touchAlias(existingAlias.id, observedAt);
-      await this.repo.touchIdentity(existingAlias.identity_entity_id, observedAt);
+      await this.repo.touchIdentity(
+        existingAlias.identity_entity_id,
+        observedAt,
+      );
       await this.repo.recordDecision({
         tenantId: input.tenantId,
         entityType: 'IDENTITY',
@@ -40,9 +43,13 @@ export class IdentityResolutionService {
         resolvedEntityId: existingAlias.identity_entity_id,
         decision: 'MATCHED',
         confidence: 1.0,
-        reason: 'Exact trusted alias match on (tenant, sourceSystem, sourceAccountId, externalType, externalId)',
+        reason:
+          'Exact trusted alias match on (tenant, sourceSystem, sourceAccountId, externalType, externalId)',
       });
-      return { identityEntityId: existingAlias.identity_entity_id, decision: 'MATCHED' };
+      return {
+        identityEntityId: existingAlias.identity_entity_id,
+        decision: 'MATCHED',
+      };
     }
 
     // No trusted alias found — create a brand-new canonical identity rather
@@ -76,17 +83,22 @@ export class IdentityResolutionService {
       resolvedEntityId: identity.id,
       decision: 'CREATED',
       confidence: 1.0,
-      reason: 'No existing alias for this (tenant, sourceSystem, externalType, externalId) — created new canonical identity',
+      reason:
+        'No existing alias for this (tenant, sourceSystem, externalType, externalId) — created new canonical identity',
     });
 
-    this.logger.log(`Created identity ${identity.id} for tenant ${input.tenantId} (resolver v${RESOLVER_VERSION})`);
+    this.logger.log(
+      `Created identity ${identity.id} for tenant ${input.tenantId} (resolver v${RESOLVER_VERSION})`,
+    );
     return { identityEntityId: identity.id, decision: 'CREATED' };
   }
 
   async markRemoved(tenantId: string, externalId: string): Promise<void> {
     const identity = await this.repo.findByExternalId(tenantId, externalId);
     if (!identity) {
-      this.logger.debug(`markRemoved: no identity for external_id ${externalId} in tenant ${tenantId}`);
+      this.logger.debug(
+        `markRemoved: no identity for external_id ${externalId} in tenant ${tenantId}`,
+      );
       return;
     }
     await this.repo.markRemoved(identity.id);

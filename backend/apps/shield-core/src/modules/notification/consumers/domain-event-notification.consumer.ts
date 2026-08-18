@@ -19,12 +19,23 @@ export class DomainEventNotificationConsumer implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.kafkaConsumer.registerHandler('audit_package.frozen.v1', this.handleAuditPackageFrozen.bind(this));
-    this.kafkaConsumer.registerHandler('assessment.reviewed.v1', this.handleAssessmentReviewed.bind(this));
-    this.kafkaConsumer.registerHandler('exception.expired.v1', this.handleExceptionExpired.bind(this));
+    this.kafkaConsumer.registerHandler(
+      'audit_package.frozen.v1',
+      this.handleAuditPackageFrozen.bind(this),
+    );
+    this.kafkaConsumer.registerHandler(
+      'assessment.reviewed.v1',
+      this.handleAssessmentReviewed.bind(this),
+    );
+    this.kafkaConsumer.registerHandler(
+      'exception.expired.v1',
+      this.handleExceptionExpired.bind(this),
+    );
   }
 
-  private async handleAuditPackageFrozen(envelope: EventEnvelope<{ packageId: string; tenantId: string }>): Promise<void> {
+  private async handleAuditPackageFrozen(
+    envelope: EventEnvelope<{ packageId: string; tenantId: string }>,
+  ): Promise<void> {
     const payload = envelope.payload;
     await this.dispatchService.dispatch({
       tenantId: payload.tenantId,
@@ -36,7 +47,13 @@ export class DomainEventNotificationConsumer implements OnModuleInit {
     });
   }
 
-  private async handleAssessmentReviewed(envelope: EventEnvelope<{ assessmentId: string; approved: boolean; tenantId: string }>): Promise<void> {
+  private async handleAssessmentReviewed(
+    envelope: EventEnvelope<{
+      assessmentId: string;
+      approved: boolean;
+      tenantId: string;
+    }>,
+  ): Promise<void> {
     if (envelope.payload.approved) return;
     await this.dispatchService.dispatch({
       tenantId: envelope.payload.tenantId,
@@ -48,7 +65,9 @@ export class DomainEventNotificationConsumer implements OnModuleInit {
     });
   }
 
-  private async handleExceptionExpired(envelope: EventEnvelope<{ exceptionId: string; tenantId: string }>): Promise<void> {
+  private async handleExceptionExpired(
+    envelope: EventEnvelope<{ exceptionId: string; tenantId: string }>,
+  ): Promise<void> {
     await this.dispatchService.dispatch({
       tenantId: envelope.payload.tenantId,
       eventId: envelope.eventId,

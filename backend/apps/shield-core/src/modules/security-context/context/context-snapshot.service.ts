@@ -44,16 +44,25 @@ export class ContextSnapshotService {
         identity_entity_id: params.identityEntityId,
         asset_id: params.assetId,
         relationship_refs: '[]',
-        source_versions: JSON.stringify({ connectorHealthState: params.sourceHealthState ?? 'UNKNOWN' }),
+        source_versions: JSON.stringify({
+          connectorHealthState: params.sourceHealthState ?? 'UNKNOWN',
+        }),
         resolver_version: RESOLVER_VERSION,
         context_health: contextHealth,
       },
     });
 
-    return { snapshotId: snapshot.id, contextHealth: contextHealth as ContextHealth };
+    return {
+      snapshotId: snapshot.id,
+      contextHealth: contextHealth,
+    };
   }
 
-  private deriveContextHealth(input: { hasIdentity: boolean; hasAsset: boolean; sourceDegraded: boolean }): ContextHealth {
+  private deriveContextHealth(input: {
+    hasIdentity: boolean;
+    hasAsset: boolean;
+    sourceDegraded: boolean;
+  }): ContextHealth {
     if (!input.hasIdentity && !input.hasAsset) return 'UNRESOLVED';
     if (input.sourceDegraded) return 'PARTIAL';
     if (!input.hasIdentity || !input.hasAsset) return 'PARTIAL';

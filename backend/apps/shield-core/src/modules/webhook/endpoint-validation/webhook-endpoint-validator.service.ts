@@ -52,12 +52,16 @@ export class WebhookEndpointValidatorService {
       throw new BadRequestException('Webhook endpoint cannot target localhost');
     }
     if (parsed.port && !['443', ''].includes(parsed.port)) {
-      throw new BadRequestException(`Unsupported port '${parsed.port}' for webhook endpoint`);
+      throw new BadRequestException(
+        `Unsupported port '${parsed.port}' for webhook endpoint`,
+      );
     }
 
     if (isIP(parsed.hostname)) {
       if (isPrivateOrLoopbackIp(parsed.hostname)) {
-        throw new BadRequestException('Webhook endpoint cannot target a private/loopback/link-local address');
+        throw new BadRequestException(
+          'Webhook endpoint cannot target a private/loopback/link-local address',
+        );
       }
       return;
     }
@@ -67,10 +71,17 @@ export class WebhookEndpointValidatorService {
       const records = await lookup(parsed.hostname, { all: true });
       resolved = records.map((r) => r.address);
     } catch {
-      throw new BadRequestException('Webhook endpoint hostname could not be resolved');
+      throw new BadRequestException(
+        'Webhook endpoint hostname could not be resolved',
+      );
     }
-    if (resolved.length === 0 || resolved.some((ip) => isPrivateOrLoopbackIp(ip))) {
-      throw new BadRequestException('Webhook endpoint resolves to a private/loopback/link-local address');
+    if (
+      resolved.length === 0 ||
+      resolved.some((ip) => isPrivateOrLoopbackIp(ip))
+    ) {
+      throw new BadRequestException(
+        'Webhook endpoint resolves to a private/loopback/link-local address',
+      );
     }
   }
 }

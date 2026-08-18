@@ -1,8 +1,14 @@
 import { Injectable } from '@nestjs/common';
 import { createHmac } from 'crypto';
-import { CommandSigner, SignableCommand, SignedCommand } from './command-signer.interface';
+import {
+  CommandSigner,
+  SignableCommand,
+  SignedCommand,
+} from './command-signer.interface';
 
-const DEV_SIGNING_KEY = process.env.DEV_SIMULATION_SIGNING_KEY || 'dev-simulation-signing-key-not-for-production';
+const DEV_SIGNING_KEY =
+  process.env.DEV_SIMULATION_SIGNING_KEY ||
+  'dev-simulation-signing-key-not-for-production';
 
 /**
  * Explicitly named to signal it is never production signing authority.
@@ -13,7 +19,10 @@ const DEV_SIGNING_KEY = process.env.DEV_SIMULATION_SIGNING_KEY || 'dev-simulatio
  */
 @Injectable()
 export class DevSimulationSigner implements CommandSigner {
-  sign(command: SignableCommand, executionMode: 'SIMULATION' | 'LIVE'): SignedCommand {
+  sign(
+    command: SignableCommand,
+    executionMode: 'SIMULATION' | 'LIVE',
+  ): SignedCommand {
     if (executionMode !== 'SIMULATION') {
       throw new Error('DevSimulationSigner cannot sign live commands');
     }
@@ -28,7 +37,9 @@ export class DevSimulationSigner implements CommandSigner {
       payload: command.payload,
     });
 
-    const signature = createHmac('sha256', DEV_SIGNING_KEY).update(material).digest('hex');
+    const signature = createHmac('sha256', DEV_SIGNING_KEY)
+      .update(material)
+      .digest('hex');
 
     return {
       signature: `dev-sim:${signature}`,

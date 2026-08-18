@@ -46,7 +46,13 @@ describe('CaseManagementController', () => {
     const mockCases = [{ id: 'case-1', title: 'Test Case' }];
     serviceMock.getCases.mockResolvedValue(mockCases);
 
-    const response = await controller.getCases('tenant-1', undefined, undefined, undefined, undefined);
+    const response = await controller.getCases(
+      'tenant-1',
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+    );
 
     expect(response.statusCode).toBe(HttpStatus.OK);
     expect(response.data).toBe(mockCases);

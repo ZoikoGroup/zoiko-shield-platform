@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { Type } from 'class-transformer';
 import {
   ArrayMinSize,
@@ -98,10 +103,14 @@ export class QuoteService {
       where: { id: commercialAccountId },
     });
     if (!account) {
-      throw new NotFoundException(`Commercial account '${commercialAccountId}' not found`);
+      throw new NotFoundException(
+        `Commercial account '${commercialAccountId}' not found`,
+      );
     }
 
-    if (NON_COMMERCIAL_CLASSIFICATIONS.includes(account.billing_classification)) {
+    if (
+      NON_COMMERCIAL_CLASSIFICATIONS.includes(account.billing_classification)
+    ) {
       return account;
     }
 
@@ -153,7 +162,11 @@ export class QuoteService {
     }> = [];
 
     for (const line of dto.lines) {
-      const priceBook = await this.catalogService.getActivePriceBook(line.sku, region, currency);
+      const priceBook = await this.catalogService.getActivePriceBook(
+        line.sku,
+        region,
+        currency,
+      );
       if (!priceBook) {
         throw new ConflictException({
           statusCode: 409,
@@ -185,7 +198,10 @@ export class QuoteService {
         requested_by: dto.requestedBy,
         // Frozen point-in-time snapshot: approval/conversion must never
         // re-read live catalog data to reinterpret this quote later.
-        snapshot: JSON.stringify({ catalogVersionId: dto.catalogVersionId, lines: resolvedLines }),
+        snapshot: JSON.stringify({
+          catalogVersionId: dto.catalogVersionId,
+          lines: resolvedLines,
+        }),
         lines: {
           create: resolvedLines.map((l) => ({
             product_id: l.productId,
@@ -219,7 +235,11 @@ export class QuoteService {
     }
 
     const nonTerminal = ['DRAFT', 'PENDING_APPROVAL', 'APPROVED'];
-    if (nonTerminal.includes(quote.status) && quote.expires_at && quote.expires_at < new Date()) {
+    if (
+      nonTerminal.includes(quote.status) &&
+      quote.expires_at &&
+      quote.expires_at < new Date()
+    ) {
       quote = await this.prisma.commercialQuote.update({
         where: { id: quoteId },
         data: { status: 'EXPIRED' },
@@ -232,7 +252,12 @@ export class QuoteService {
 
   async submitForApproval(quoteId: string, actor: string) {
     const quote = await this.getQuoteById(quoteId);
-    assertTransition(ALLOWED_TRANSITIONS, quote.status, 'PENDING_APPROVAL', 'quote');
+    assertTransition(
+      ALLOWED_TRANSITIONS,
+      quote.status,
+      'PENDING_APPROVAL',
+      'quote',
+    );
 
     if (quote.requires_approval) {
       const approval = await this.approvalService.requestApproval({
@@ -268,9 +293,13 @@ export class QuoteService {
 
     if (quote.requires_approval) {
       if (!quote.approval_id) {
-        throw new ConflictException('Quote requires approval but has no linked CommercialApproval');
+        throw new ConflictException(
+          'Quote requires approval but has no linked CommercialApproval',
+        );
       }
-      const approval = await this.approvalService.getApprovalById(quote.approval_id);
+      const approval = await this.approvalService.getApprovalById(
+        quote.approval_id,
+      );
       if (approval.status !== 'APPROVED') {
         throw new ConflictException({
           statusCode: 409,
@@ -283,7 +312,11 @@ export class QuoteService {
 
     return this.prisma.commercialQuote.update({
       where: { id: quoteId },
-      data: { status: 'APPROVED', approved_by: approverId, approved_at: new Date() },
+      data: {
+        status: 'APPROVED',
+        approved_by: approverId,
+        approved_at: new Date(),
+      },
     });
   }
 
@@ -299,13 +332,19 @@ export class QuoteService {
   async cancelQuote(quoteId: string) {
     const quote = await this.getQuoteById(quoteId);
     assertTransition(ALLOWED_TRANSITIONS, quote.status, 'CANCELLED', 'quote');
-    return this.prisma.commercialQuote.update({ where: { id: quoteId }, data: { status: 'CANCELLED' } });
+    return this.prisma.commercialQuote.update({
+      where: { id: quoteId },
+      data: { status: 'CANCELLED' },
+    });
   }
 
   /** Called by OrderService once an order has been created from this quote. */
   async markConverted(quoteId: string) {
     const quote = await this.getQuoteById(quoteId);
     assertTransition(ALLOWED_TRANSITIONS, quote.status, 'CONVERTED', 'quote');
-    return this.prisma.commercialQuote.update({ where: { id: quoteId }, data: { status: 'CONVERTED' } });
+    return this.prisma.commercialQuote.update({
+      where: { id: quoteId },
+      data: { status: 'CONVERTED' },
+    });
   }
 }

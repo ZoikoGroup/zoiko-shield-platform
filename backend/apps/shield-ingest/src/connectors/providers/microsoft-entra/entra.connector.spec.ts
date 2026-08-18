@@ -25,20 +25,38 @@ describe('EntraConnectorService', () => {
   beforeEach(async () => {
     prismaMock = {
       connectorDefinition: { findUnique: jest.fn(), create: jest.fn() },
-      connectorInstance: { create: jest.fn(), update: jest.fn(), findUniqueOrThrow: jest.fn() },
-      connectorOauthState: { create: jest.fn().mockResolvedValue({ id: 'oauth-state-1' }) },
+      connectorInstance: {
+        create: jest.fn(),
+        update: jest.fn(),
+        findUniqueOrThrow: jest.fn(),
+      },
+      connectorOauthState: {
+        create: jest.fn().mockResolvedValue({ id: 'oauth-state-1' }),
+      },
     };
     registryMock = { register: jest.fn() };
-    authMock = { generateAuthUrl: jest.fn().mockReturnValue('https://login.microsoftonline.com/consent') };
-    tokenMock = { getAccessToken: jest.fn(), invalidate: jest.fn(), decodeGrantedRoles: jest.fn() };
+    authMock = {
+      generateAuthUrl: jest
+        .fn()
+        .mockReturnValue('https://login.microsoftonline.com/consent'),
+    };
+    tokenMock = {
+      getAccessToken: jest.fn(),
+      invalidate: jest.fn(),
+      decodeGrantedRoles: jest.fn(),
+    };
     permissionMock = {
       declareRequired: jest.fn().mockResolvedValue(undefined),
       reconcileGranted: jest.fn().mockResolvedValue({ newlyMissing: [] }),
       getGranted: jest.fn().mockResolvedValue([]),
       getMissingRequired: jest.fn().mockResolvedValue([]),
     };
-    connectorHealthMock = { updatePermissionStatus: jest.fn().mockResolvedValue(undefined) };
-    credentialMock = { storeCredentialReference: jest.fn().mockResolvedValue(undefined) };
+    connectorHealthMock = {
+      updatePermissionStatus: jest.fn().mockResolvedValue(undefined),
+    };
+    credentialMock = {
+      storeCredentialReference: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -48,7 +66,10 @@ describe('EntraConnectorService', () => {
         { provide: EntraAuthService, useValue: authMock },
         { provide: EntraTokenService, useValue: tokenMock },
         { provide: EntraUserSyncService, useValue: { syncUsers: jest.fn() } },
-        { provide: EntraSignInSyncService, useValue: { pollSignInLogs: jest.fn() } },
+        {
+          provide: EntraSignInSyncService,
+          useValue: { pollSignInLogs: jest.fn() },
+        },
         { provide: EntraGraphClient, useValue: { request: jest.fn() } },
         { provide: EntraHealthService, useValue: { checkHealth: jest.fn() } },
         { provide: CredentialService, useValue: credentialMock },
@@ -63,11 +84,17 @@ describe('EntraConnectorService', () => {
   it('registers itself into the ConnectorRegistry under the microsoft-entra key on module init', () => {
     service.onModuleInit();
 
-    expect(registryMock.register).toHaveBeenCalledWith('microsoft-entra', service);
+    expect(registryMock.register).toHaveBeenCalledWith(
+      'microsoft-entra',
+      service,
+    );
   });
 
   it('creates a tenant-scoped ConnectorInstance in AWAITING_ADMIN_CONSENT and declares required permissions', async () => {
-    prismaMock.connectorDefinition.findUnique.mockResolvedValue({ id: 'def-1', provider: 'microsoft-entra' });
+    prismaMock.connectorDefinition.findUnique.mockResolvedValue({
+      id: 'def-1',
+      provider: 'microsoft-entra',
+    });
     prismaMock.connectorInstance.create.mockResolvedValue({ id: 'instance-1' });
 
     const result = await service.connect(
@@ -85,9 +112,19 @@ describe('EntraConnectorService', () => {
 
     expect(result.status).toBe('AWAITING_ADMIN_CONSENT');
     expect(prismaMock.connectorInstance.create).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ tenant_id: 'tenant-a', state: 'AWAITING_ADMIN_CONSENT' }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          tenant_id: 'tenant-a',
+          state: 'AWAITING_ADMIN_CONSENT',
+        }),
+      }),
     );
-    expect(permissionMock.declareRequired).toHaveBeenCalledWith('tenant-a', 'instance-1', 'microsoft-entra', expect.any(Array));
+    expect(permissionMock.declareRequired).toHaveBeenCalledWith(
+      'tenant-a',
+      'instance-1',
+      'microsoft-entra',
+      expect.any(Array),
+    );
     expect(prismaMock.connectorOauthState.create).toHaveBeenCalledWith({
       data: expect.objectContaining({
         tenant_id: 'tenant-a',
@@ -96,17 +133,26 @@ describe('EntraConnectorService', () => {
         expires_at: expect.any(Date),
       }),
     });
-    expect(authMock.generateAuthUrl).toHaveBeenCalledWith('tenant-a', expect.any(String));
+    expect(authMock.generateAuthUrl).toHaveBeenCalledWith(
+      'tenant-a',
+      expect.any(String),
+    );
   });
 
   it('persists the externalTenantId on consent completion instead of discarding it', async () => {
-    prismaMock.connectorInstance.update.mockResolvedValue({ id: 'instance-1', tenant_id: 'tenant-a' });
+    prismaMock.connectorInstance.update.mockResolvedValue({
+      id: 'instance-1',
+      tenant_id: 'tenant-a',
+    });
 
     await service.completeConsent('instance-1', 'customer-azure-tenant-id');
 
     expect(prismaMock.connectorInstance.update).toHaveBeenCalledWith({
       where: { id: 'instance-1' },
-      data: { externalTenantId: 'customer-azure-tenant-id', state: 'CONNECTED' },
+      data: {
+        externalTenantId: 'customer-azure-tenant-id',
+        state: 'CONNECTED',
+      },
     });
     expect(credentialMock.storeCredentialReference).toHaveBeenCalledWith(
       'tenant-a',
@@ -131,7 +177,10 @@ describe('EntraConnectorService', () => {
 
     expect(tokenMock.invalidate).toHaveBeenCalledWith('instance-1');
     expect(prismaMock.connectorInstance.update).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: 'instance-1' }, data: expect.objectContaining({ state: 'DISCONNECTED' }) }),
+      expect.objectContaining({
+        where: { id: 'instance-1' },
+        data: expect.objectContaining({ state: 'DISCONNECTED' }),
+      }),
     );
   });
 });

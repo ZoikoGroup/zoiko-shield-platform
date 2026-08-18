@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { TenantController } from './tenant.controller';
 import { TenantService } from './tenant.service';
 import { AuthorizationService } from '../authorization/authorization.service';
+import { AuthorizationDecisionService } from '../authorization-decision/authorization-decision.service';
 
 describe('TenantController', () => {
   let controller: TenantController;
@@ -24,6 +25,12 @@ describe('TenantController', () => {
       providers: [
         { provide: TenantService, useValue: tenantServiceMock },
         { provide: AuthorizationService, useValue: authServiceMock },
+        {
+          provide: AuthorizationDecisionService,
+          useValue: {
+            evaluate: jest.fn().mockResolvedValue({ decision: 'PERMIT' }),
+          },
+        },
       ],
     }).compile();
 

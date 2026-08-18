@@ -8,10 +8,18 @@ export class SigningKeyService {
   constructor(private readonly prisma: PrismaService) {}
 
   async recordIfNew(keyId: string, algorithm: string, publicKey: string) {
-    const existing = await this.prisma.signingKey.findUnique({ where: { key_id: keyId } });
+    const existing = await this.prisma.signingKey.findUnique({
+      where: { key_id: keyId },
+    });
     if (existing) return existing;
     return this.prisma.signingKey.create({
-      data: { id: randomUUID(), key_id: keyId, algorithm, public_key: publicKey, status: 'ACTIVE' },
+      data: {
+        id: randomUUID(),
+        key_id: keyId,
+        algorithm,
+        public_key: publicKey,
+        status: 'ACTIVE',
+      },
     });
   }
 }

@@ -21,9 +21,14 @@ export class EvidenceLedgerService {
     private readonly hashService: ContentHashService,
   ) {}
 
-  async append(tenantId: string, evidenceId: string, evidenceMetadata: Record<string, unknown>) {
+  async append(
+    tenantId: string,
+    evidenceId: string,
+    evidenceMetadata: Record<string, unknown>,
+  ) {
     return this.prisma.$transaction(
-      (tx) => this.appendInTransaction(tx, tenantId, evidenceId, evidenceMetadata),
+      (tx) =>
+        this.appendInTransaction(tx, tenantId, evidenceId, evidenceMetadata),
       { isolationLevel: 'Serializable' },
     );
   }
@@ -70,11 +75,16 @@ export class EvidenceLedgerService {
 
   /** The tenant's current chain head — derived on the fly, no separate denormalized head row for the evidence ledger itself. */
   async getHead(tenantId: string) {
-    return this.prisma.evidenceLedgerEntry.findFirst({ where: { tenant_id: tenantId }, orderBy: { sequence: 'desc' } });
+    return this.prisma.evidenceLedgerEntry.findFirst({
+      where: { tenant_id: tenantId },
+      orderBy: { sequence: 'desc' },
+    });
   }
 
   /** Re-walks the tenant's chain and confirms every entry's previous_entry_hash matches the prior entry's entry_hash — returns false at the first detected break (deletion/reorder/tamper). */
-  async verifyChain(tenantId: string): Promise<{ valid: boolean; brokenAtSequence?: number }> {
+  async verifyChain(
+    tenantId: string,
+  ): Promise<{ valid: boolean; brokenAtSequence?: number }> {
     const entries = await this.prisma.evidenceLedgerEntry.findMany({
       where: { tenant_id: tenantId },
       orderBy: { sequence: 'asc' },

@@ -6,8 +6,17 @@ export class AlertAssignmentService {
   constructor(private readonly prisma: PrismaService) {}
 
   /** Assigns an alert to an analyst or queue, recording the change (spec §7 — visible in the timeline via the AlertAssignment row itself). */
-  async assign(params: { tenantId: string; alertId: string; principalId?: string; queueId?: string; assignedBy: string; reason?: string }) {
-    const alert = await this.prisma.alert.findUnique({ where: { id: params.alertId } });
+  async assign(params: {
+    tenantId: string;
+    alertId: string;
+    principalId?: string;
+    queueId?: string;
+    assignedBy: string;
+    reason?: string;
+  }) {
+    const alert = await this.prisma.alert.findUnique({
+      where: { id: params.alertId },
+    });
     if (!alert || alert.tenant_id !== params.tenantId) {
       throw new NotFoundException(`Alert '${params.alertId}' not found`);
     }
@@ -25,7 +34,10 @@ export class AlertAssignmentService {
       }),
       this.prisma.alert.update({
         where: { id: params.alertId },
-        data: { assigned_to: params.principalId, assigned_queue: params.queueId },
+        data: {
+          assigned_to: params.principalId,
+          assigned_queue: params.queueId,
+        },
       }),
     ]);
 

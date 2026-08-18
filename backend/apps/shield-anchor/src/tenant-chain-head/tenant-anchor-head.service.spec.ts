@@ -12,17 +12,37 @@ function makePrisma(head: any) {
 
 describe('TenantAnchorHeadService', () => {
   it('CAS succeeds when expectedVersion matches the current row version', async () => {
-    const prisma = makePrisma({ tenant_id: 't1', version: 0, last_anchor_sequence: 0 });
+    const prisma = makePrisma({
+      tenant_id: 't1',
+      version: 0,
+      last_anchor_sequence: 0,
+    });
     prisma.tenantAnchorHead.updateMany.mockResolvedValue({ count: 1 });
     const service = new TenantAnchorHeadService(prisma);
-    await expect(service.commitHead('t1', 0, { lastAnchorSequence: 1, lastCheckpointId: 'cp1', lastCheckpointHash: 'h1' })).resolves.toBeUndefined();
+    await expect(
+      service.commitHead('t1', 0, {
+        lastAnchorSequence: 1,
+        lastCheckpointId: 'cp1',
+        lastCheckpointHash: 'h1',
+      }),
+    ).resolves.toBeUndefined();
   });
 
   it('CAS fails closed (never forks) when a concurrent writer already advanced the version', async () => {
-    const prisma = makePrisma({ tenant_id: 't1', version: 0, last_anchor_sequence: 0 });
+    const prisma = makePrisma({
+      tenant_id: 't1',
+      version: 0,
+      last_anchor_sequence: 0,
+    });
     prisma.tenantAnchorHead.updateMany.mockResolvedValue({ count: 0 });
     const service = new TenantAnchorHeadService(prisma);
-    await expect(service.commitHead('t1', 0, { lastAnchorSequence: 1, lastCheckpointId: 'cp1', lastCheckpointHash: 'h1' })).rejects.toThrow();
+    await expect(
+      service.commitHead('t1', 0, {
+        lastAnchorSequence: 1,
+        lastCheckpointId: 'cp1',
+        lastCheckpointHash: 'h1',
+      }),
+    ).rejects.toThrow();
   });
 
   it('creates a version:0 head on first use for a tenant', async () => {

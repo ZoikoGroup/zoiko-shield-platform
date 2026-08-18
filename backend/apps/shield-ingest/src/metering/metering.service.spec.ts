@@ -40,7 +40,9 @@ describe('MeteringService (ZS-COM-BILL-001)', () => {
   });
 
   it('should force billableQuantity to 0 and usageState to NON_BILLABLE for duplicate events', async () => {
-    prismaMock.usageRecord.create.mockImplementation(({ data }: any) => Promise.resolve({ id: 'u-1', ...data }));
+    prismaMock.usageRecord.create.mockImplementation(({ data }: any) =>
+      Promise.resolve({ id: 'u-1', ...data }),
+    );
 
     const record = await service.recordUsageObservation({
       tenantId: 'tenant-1',
@@ -59,7 +61,9 @@ describe('MeteringService (ZS-COM-BILL-001)', () => {
     prismaMock.entitlement.findFirst.mockResolvedValue(null);
     prismaMock.commercialAccount.findFirst.mockResolvedValue(null);
     prismaMock.meterDefinition.findFirst.mockResolvedValue(null);
-    prismaMock.usageRecord.create.mockImplementation(({ data }: any) => Promise.resolve({ id: 'u-2', ...data }));
+    prismaMock.usageRecord.create.mockImplementation(({ data }: any) =>
+      Promise.resolve({ id: 'u-2', ...data }),
+    );
 
     const record = await service.recordUsageObservation({
       tenantId: 'unauthorized-tenant',
@@ -75,9 +79,17 @@ describe('MeteringService (ZS-COM-BILL-001)', () => {
   });
 
   it('should allow BILLABLE when active contract and approved meter definition exist (Doctrine D1 & D4)', async () => {
-    prismaMock.entitlement.findFirst.mockResolvedValue({ id: 'ent-1', status: 'ACTIVE' });
-    prismaMock.meterDefinition.findFirst.mockResolvedValue({ id: 'm-1', billable_policy: 'STANDARD' });
-    prismaMock.usageRecord.create.mockImplementation(({ data }: any) => Promise.resolve({ id: 'u-3', ...data }));
+    prismaMock.entitlement.findFirst.mockResolvedValue({
+      id: 'ent-1',
+      status: 'ACTIVE',
+    });
+    prismaMock.meterDefinition.findFirst.mockResolvedValue({
+      id: 'm-1',
+      billable_policy: 'STANDARD',
+    });
+    prismaMock.usageRecord.create.mockImplementation(({ data }: any) =>
+      Promise.resolve({ id: 'u-3', ...data }),
+    );
 
     const record = await service.recordUsageObservation({
       tenantId: 'tenant-1',
@@ -96,8 +108,18 @@ describe('MeteringService (ZS-COM-BILL-001)', () => {
     const now = new Date();
     const past = new Date(now.getTime() - 3600 * 1000);
     prismaMock.usageRecord.findMany.mockResolvedValue([
-      { accepted_quantity: 50, billable_quantity: 50, usage_state: 'BILLABLE', recorded_at: now },
-      { accepted_quantity: 50, billable_quantity: 50, usage_state: 'BILLABLE', recorded_at: past },
+      {
+        accepted_quantity: 50,
+        billable_quantity: 50,
+        usage_state: 'BILLABLE',
+        recorded_at: now,
+      },
+      {
+        accepted_quantity: 50,
+        billable_quantity: 50,
+        usage_state: 'BILLABLE',
+        recorded_at: past,
+      },
     ]);
 
     const summary = await service.getUsageSummary('tenant-1');
@@ -135,4 +157,3 @@ describe('MeteringService (ZS-COM-BILL-001)', () => {
     expect(prismaMock.resourceObservation.create).toHaveBeenCalled();
   });
 });
-

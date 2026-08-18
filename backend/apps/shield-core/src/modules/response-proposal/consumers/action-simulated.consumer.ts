@@ -45,13 +45,20 @@ export class ActionSimulatedConsumer implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.kafkaConsumer.registerHandler(ACTION_SIMULATED_TOPIC, this.handle.bind(this));
+    this.kafkaConsumer.registerHandler(
+      ACTION_SIMULATED_TOPIC,
+      this.handle.bind(this),
+    );
   }
 
-  private async handle(envelope: EventEnvelope<ActionSimulatedPayload>): Promise<void> {
+  private async handle(
+    envelope: EventEnvelope<ActionSimulatedPayload>,
+  ): Promise<void> {
     const payload = envelope.payload;
     if (!payload?.tenantId || !payload?.caseId) {
-      this.logger.debug(`action.simulated.v1 with no caseId — nothing to update on a case timeline (proposal ${payload?.proposalId ?? 'unknown'})`);
+      this.logger.debug(
+        `action.simulated.v1 with no caseId — nothing to update on a case timeline (proposal ${payload?.proposalId ?? 'unknown'})`,
+      );
       return;
     }
 
@@ -60,12 +67,17 @@ export class ActionSimulatedConsumer implements OnModuleInit {
       select: { environment_id: true, region: true },
     });
     if (!caseRecord) {
-      throw new Error(`Case '${payload.caseId}' not found for action simulation evidence`);
+      throw new Error(
+        `Case '${payload.caseId}' not found for action simulation evidence`,
+      );
     }
 
     const evidence = await this.evidenceService.createEvidence({
       tenantId: payload.tenantId,
-      environmentId: requireEnvironmentId(caseRecord.environment_id, payload.environmentId),
+      environmentId: requireEnvironmentId(
+        caseRecord.environment_id,
+        payload.environmentId,
+      ),
       region: caseRecord.region,
       evidenceType: 'ACTION_SIMULATION_RECEIPT',
       producingService: 'shield-action',

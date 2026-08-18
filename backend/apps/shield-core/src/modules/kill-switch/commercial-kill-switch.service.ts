@@ -1,5 +1,16 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { IsArray, IsIn, IsISO8601, IsOptional, IsString } from 'class-validator';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  IsArray,
+  IsIn,
+  IsISO8601,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export const KILL_SWITCH_ACTIONS = [
@@ -12,7 +23,14 @@ export const KILL_SWITCH_ACTIONS = [
 ] as const;
 export type KillSwitchAction = (typeof KILL_SWITCH_ACTIONS)[number];
 
-const SCOPE_TYPES = ['GLOBAL', 'REGION', 'CATALOG', 'METER', 'CUSTOMER', 'CHANNEL'] as const;
+const SCOPE_TYPES = [
+  'GLOBAL',
+  'REGION',
+  'CATALOG',
+  'METER',
+  'CUSTOMER',
+  'CHANNEL',
+] as const;
 
 export class ActivateKillSwitchDto {
   @IsIn(SCOPE_TYPES)
@@ -52,7 +70,9 @@ export class CommercialKillSwitchService {
 
   async activate(dto: ActivateKillSwitchDto) {
     if (dto.scopeType !== 'GLOBAL' && !dto.scopeValue) {
-      throw new ConflictException(`scopeValue is required for scopeType '${dto.scopeType}'`);
+      throw new ConflictException(
+        `scopeValue is required for scopeType '${dto.scopeType}'`,
+      );
     }
 
     this.logger.warn(
@@ -73,17 +93,25 @@ export class CommercialKillSwitchService {
   }
 
   async deactivate(id: string, deactivatedBy: string) {
-    const killSwitch = await this.prisma.commercialKillSwitch.findUnique({ where: { id } });
+    const killSwitch = await this.prisma.commercialKillSwitch.findUnique({
+      where: { id },
+    });
     if (!killSwitch) {
       throw new NotFoundException(`Kill switch '${id}' not found`);
     }
     if (killSwitch.status !== 'ACTIVE') {
-      throw new ConflictException(`Kill switch '${id}' is '${killSwitch.status}', not ACTIVE`);
+      throw new ConflictException(
+        `Kill switch '${id}' is '${killSwitch.status}', not ACTIVE`,
+      );
     }
 
     return this.prisma.commercialKillSwitch.update({
       where: { id },
-      data: { status: 'DEACTIVATED', deactivated_by: deactivatedBy, deactivated_at: new Date() },
+      data: {
+        status: 'DEACTIVATED',
+        deactivated_by: deactivatedBy,
+        deactivated_at: new Date(),
+      },
     });
   }
 
@@ -92,8 +120,14 @@ export class CommercialKillSwitchService {
    * (blocked) if ANY active switch covers this action at GLOBAL scope or
    * at the given scope/value.
    */
-  async isBlocked(action: KillSwitchAction, scopeType?: string, scopeValue?: string): Promise<boolean> {
-    const activeSwitches = await this.prisma.commercialKillSwitch.findMany({ where: { status: 'ACTIVE' } });
+  async isBlocked(
+    action: KillSwitchAction,
+    scopeType?: string,
+    scopeValue?: string,
+  ): Promise<boolean> {
+    const activeSwitches = await this.prisma.commercialKillSwitch.findMany({
+      where: { status: 'ACTIVE' },
+    });
 
     for (const killSwitch of activeSwitches) {
       const blockedActions: string[] = JSON.parse(killSwitch.blocked_actions);
@@ -103,14 +137,21 @@ export class CommercialKillSwitchService {
       if (killSwitch.scope_type === 'GLOBAL') {
         return true;
       }
-      if (killSwitch.scope_type === scopeType && killSwitch.scope_value === scopeValue) {
+      if (
+        killSwitch.scope_type === scopeType &&
+        killSwitch.scope_value === scopeValue
+      ) {
         return true;
       }
     }
     return false;
   }
 
-  async assertNotBlocked(action: KillSwitchAction, scopeType?: string, scopeValue?: string) {
+  async assertNotBlocked(
+    action: KillSwitchAction,
+    scopeType?: string,
+    scopeValue?: string,
+  ) {
     const blocked = await this.isBlocked(action, scopeType, scopeValue);
     if (blocked) {
       throw new ConflictException({

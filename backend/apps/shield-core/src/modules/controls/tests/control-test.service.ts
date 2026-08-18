@@ -1,4 +1,8 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
 
@@ -54,9 +58,13 @@ export class ControlTestService {
   }
 
   async publishVersion(controlTestVersionId: string) {
-    const version = await this.prisma.controlTestVersion.findUniqueOrThrow({ where: { id: controlTestVersionId } });
+    const version = await this.prisma.controlTestVersion.findUniqueOrThrow({
+      where: { id: controlTestVersionId },
+    });
     if (version.status === 'PUBLISHED') {
-      throw new ConflictException(`ControlTestVersion '${controlTestVersionId}' is already PUBLISHED and cannot be republished`);
+      throw new ConflictException(
+        `ControlTestVersion '${controlTestVersionId}' is already PUBLISHED and cannot be republished`,
+      );
     }
     return this.prisma.controlTestVersion.update({
       where: { id: controlTestVersionId },
@@ -65,9 +73,13 @@ export class ControlTestService {
   }
 
   async getVersion(controlTestVersionId: string) {
-    const version = await this.prisma.controlTestVersion.findUnique({ where: { id: controlTestVersionId } });
+    const version = await this.prisma.controlTestVersion.findUnique({
+      where: { id: controlTestVersionId },
+    });
     if (!version) {
-      throw new NotFoundException(`ControlTestVersion '${controlTestVersionId}' not found`);
+      throw new NotFoundException(
+        `ControlTestVersion '${controlTestVersionId}' not found`,
+      );
     }
     return version;
   }

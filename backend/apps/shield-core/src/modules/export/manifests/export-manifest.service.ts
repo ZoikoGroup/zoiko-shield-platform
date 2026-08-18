@@ -16,8 +16,26 @@ export class ExportManifestService {
     private readonly hashService: ContentHashService,
   ) {}
 
-  async build(params: { tenantId: string; exportJobId: string; purpose: string; artifacts: Array<{ id: string; artifact_type: string; object_count: number; content_hash: string; schema_id: string; schema_version: string }>; unavailableScopes: string[] }): Promise<{ manifest: unknown; completenessState: 'COMPLETE' | 'PARTIAL' }> {
-    const activeLegalHold = await this.prisma.legalHold.findFirst({ where: { tenant_id: params.tenantId, status: 'ACTIVE' } });
+  async build(params: {
+    tenantId: string;
+    exportJobId: string;
+    purpose: string;
+    artifacts: Array<{
+      id: string;
+      artifact_type: string;
+      object_count: number;
+      content_hash: string;
+      schema_id: string;
+      schema_version: string;
+    }>;
+    unavailableScopes: string[];
+  }): Promise<{
+    manifest: unknown;
+    completenessState: 'COMPLETE' | 'PARTIAL';
+  }> {
+    const activeLegalHold = await this.prisma.legalHold.findFirst({
+      where: { tenant_id: params.tenantId, status: 'ACTIVE' },
+    });
     const legalHoldState = activeLegalHold ? 'ACTIVE' : 'NONE';
 
     const counts: Record<string, number> = {};
@@ -27,8 +45,12 @@ export class ExportManifestService {
       hashes[artifact.artifact_type] = artifact.content_hash;
     }
 
-    const knownLimitations = params.unavailableScopes.map((s) => `Requested scope '${s}' has no export builder implemented this pass`);
-    const completenessState = params.unavailableScopes.length > 0 ? 'PARTIAL' : 'COMPLETE';
+    const knownLimitations = params.unavailableScopes.map(
+      (s) =>
+        `Requested scope '${s}' has no export builder implemented this pass`,
+    );
+    const completenessState =
+      params.unavailableScopes.length > 0 ? 'PARTIAL' : 'COMPLETE';
 
     const manifestBody = {
       tenantId: params.tenantId,
@@ -36,14 +58,19 @@ export class ExportManifestService {
       manifestVersion: '1.0',
       scope: params.artifacts.map((a) => a.artifact_type),
       purpose: params.purpose,
-      schemaVersions: params.artifacts.map((a) => ({ type: a.artifact_type, schemaId: a.schema_id, schemaVersion: a.schema_version })),
+      schemaVersions: params.artifacts.map((a) => ({
+        type: a.artifact_type,
+        schemaId: a.schema_id,
+        schemaVersion: a.schema_version,
+      })),
       counts,
       hashes,
       knownLimitations,
       legalHoldState,
       completenessState,
     };
-    const { contentHash: manifestHash } = this.hashService.hashCanonicalJson(manifestBody);
+    const { contentHash: manifestHash } =
+      this.hashService.hashCanonicalJson(manifestBody);
 
     const manifest = await this.prisma.exportManifest.create({
       data: {

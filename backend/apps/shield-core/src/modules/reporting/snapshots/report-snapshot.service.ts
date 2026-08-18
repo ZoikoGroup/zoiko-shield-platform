@@ -20,8 +20,17 @@ export class ReportSnapshotService {
     private readonly operationalReportService: OperationalReportService,
   ) {}
 
-  async build(params: { tenantId: string; environmentId?: string; reportDefinitionId: string; periodStart: Date; periodEnd: Date; generatedBy: string }) {
-    const definition = await this.reportDefinitionService.getById(params.reportDefinitionId);
+  async build(params: {
+    tenantId: string;
+    environmentId?: string;
+    reportDefinitionId: string;
+    periodStart: Date;
+    periodEnd: Date;
+    generatedBy: string;
+  }) {
+    const definition = await this.reportDefinitionService.getById(
+      params.reportDefinitionId,
+    );
 
     const [security, assurance, auditPackages] = await Promise.all([
       this.operationalReportService.getSecuritySummary(params.tenantId),
@@ -29,13 +38,24 @@ export class ReportSnapshotService {
       this.operationalReportService.getAuditPackageSummary(params.tenantId),
     ]);
 
-    const sourceSnapshotRefs = [{ domain: 'security', capturedAt: security.generatedAt }, { domain: 'assurance', capturedAt: assurance.generatedAt }, { domain: 'audit-package', capturedAt: auditPackages.generatedAt }];
+    const sourceSnapshotRefs = [
+      { domain: 'security', capturedAt: security.generatedAt },
+      { domain: 'assurance', capturedAt: assurance.generatedAt },
+      { domain: 'audit-package', capturedAt: auditPackages.generatedAt },
+    ];
     const payload = { security, assurance, auditPackages };
-    const { contentHash: snapshotHash } = this.hashService.hashCanonicalJson(payload);
+    const { contentHash: snapshotHash } =
+      this.hashService.hashCanonicalJson(payload);
 
     const limitations: string[] = [];
-    if ((assurance.metrics as any).controlsUnknown > 0) limitations.push(`${(assurance.metrics as any).controlsUnknown} controls have UNKNOWN effectiveness`);
-    if ((assurance.metrics as any).expiredRiskAcceptances > 0) limitations.push(`${(assurance.metrics as any).expiredRiskAcceptances} risk acceptances have expired`);
+    if ((assurance.metrics as any).controlsUnknown > 0)
+      limitations.push(
+        `${(assurance.metrics as any).controlsUnknown} controls have UNKNOWN effectiveness`,
+      );
+    if ((assurance.metrics as any).expiredRiskAcceptances > 0)
+      limitations.push(
+        `${(assurance.metrics as any).expiredRiskAcceptances} risk acceptances have expired`,
+      );
 
     const snapshot = await this.prisma.reportSnapshot.create({
       data: {
@@ -48,7 +68,9 @@ export class ReportSnapshotService {
         period_end: params.periodEnd,
         generated_by: params.generatedBy,
         source_snapshot_refs: JSON.stringify(sourceSnapshotRefs),
-        source_versions: JSON.stringify(sourceSnapshotRefs.map((s) => s.domain)),
+        source_versions: JSON.stringify(
+          sourceSnapshotRefs.map((s) => s.domain),
+        ),
         freshness_state: 'CURRENT',
         completeness_state: limitations.length > 0 ? 'PARTIAL' : 'COMPLETE',
         limitations: JSON.stringify(limitations),
@@ -62,7 +84,9 @@ export class ReportSnapshotService {
   }
 
   async getById(tenantId: string, snapshotId: string) {
-    const snapshot = await this.prisma.reportSnapshot.findFirst({ where: { id: snapshotId, tenant_id: tenantId } });
+    const snapshot = await this.prisma.reportSnapshot.findFirst({
+      where: { id: snapshotId, tenant_id: tenantId },
+    });
     if (!snapshot) {
       throw new NotFoundException(`ReportSnapshot '${snapshotId}' not found`);
     }

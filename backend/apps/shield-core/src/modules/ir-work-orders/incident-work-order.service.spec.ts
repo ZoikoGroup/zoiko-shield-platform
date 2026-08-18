@@ -12,7 +12,11 @@ describe('IncidentWorkOrderService (ZS-COM-BILL-001 Part 15: no surprise IR char
   beforeEach(async () => {
     prismaMock = {
       serviceObligation: { findFirst: jest.fn() },
-      incidentWorkOrder: { create: jest.fn(), findUnique: jest.fn(), update: jest.fn() },
+      incidentWorkOrder: {
+        create: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+      },
       commercialApproval: { findFirst: jest.fn() },
     };
     approvalMock = { requestApproval: jest.fn() };
@@ -32,16 +36,28 @@ describe('IncidentWorkOrderService (ZS-COM-BILL-001 Part 15: no surprise IR char
     prismaMock.serviceObligation.findFirst.mockResolvedValue(null);
 
     await expect(
-      service.activate({ contractId: 'c-1', incidentReference: 'inc-1', activationReason: 'ransomware', authorizedBy: 'ciso' }),
+      service.activate({
+        contractId: 'c-1',
+        incidentReference: 'inc-1',
+        activationReason: 'ransomware',
+        authorizedBy: 'ciso',
+      }),
     ).rejects.toThrow(ConflictException);
     expect(prismaMock.incidentWorkOrder.create).not.toHaveBeenCalled();
   });
 
   it('logs hours normally while within included_hours', async () => {
     prismaMock.incidentWorkOrder.findUnique.mockResolvedValue({
-      id: 'wo-1', status: 'ACTIVE', included_hours: 10, consumed_hours: 3, overage_policy: 'BLOCK',
+      id: 'wo-1',
+      status: 'ACTIVE',
+      included_hours: 10,
+      consumed_hours: 3,
+      overage_policy: 'BLOCK',
     });
-    prismaMock.incidentWorkOrder.update.mockResolvedValue({ id: 'wo-1', consumed_hours: 8 });
+    prismaMock.incidentWorkOrder.update.mockResolvedValue({
+      id: 'wo-1',
+      consumed_hours: 8,
+    });
 
     await service.logHours('wo-1', { hours: 5 });
 
@@ -52,18 +68,32 @@ describe('IncidentWorkOrderService (ZS-COM-BILL-001 Part 15: no surprise IR char
 
   it('BLOCK policy rejects any hours that would exceed included_hours', async () => {
     prismaMock.incidentWorkOrder.findUnique.mockResolvedValue({
-      id: 'wo-1', status: 'ACTIVE', included_hours: 10, consumed_hours: 8, overage_policy: 'BLOCK',
+      id: 'wo-1',
+      status: 'ACTIVE',
+      included_hours: 10,
+      consumed_hours: 8,
+      overage_policy: 'BLOCK',
     });
 
-    await expect(service.logHours('wo-1', { hours: 5 })).rejects.toThrow(ConflictException);
+    await expect(service.logHours('wo-1', { hours: 5 })).rejects.toThrow(
+      ConflictException,
+    );
     expect(prismaMock.incidentWorkOrder.update).not.toHaveBeenCalled();
   });
 
   it('ALLOW_CAPPED policy allows overage up to the pre-authorized cap', async () => {
     prismaMock.incidentWorkOrder.findUnique.mockResolvedValue({
-      id: 'wo-1', status: 'ACTIVE', included_hours: 10, consumed_hours: 8, overage_policy: 'ALLOW_CAPPED', overage_cap_hours: 5,
+      id: 'wo-1',
+      status: 'ACTIVE',
+      included_hours: 10,
+      consumed_hours: 8,
+      overage_policy: 'ALLOW_CAPPED',
+      overage_cap_hours: 5,
     });
-    prismaMock.incidentWorkOrder.update.mockResolvedValue({ id: 'wo-1', consumed_hours: 12 });
+    prismaMock.incidentWorkOrder.update.mockResolvedValue({
+      id: 'wo-1',
+      consumed_hours: 12,
+    });
 
     await service.logHours('wo-1', { hours: 4 }); // 2h over included, within the 5h cap
 
@@ -72,27 +102,50 @@ describe('IncidentWorkOrderService (ZS-COM-BILL-001 Part 15: no surprise IR char
 
   it('ALLOW_CAPPED policy rejects overage beyond the pre-authorized cap', async () => {
     prismaMock.incidentWorkOrder.findUnique.mockResolvedValue({
-      id: 'wo-1', status: 'ACTIVE', included_hours: 10, consumed_hours: 8, overage_policy: 'ALLOW_CAPPED', overage_cap_hours: 1,
+      id: 'wo-1',
+      status: 'ACTIVE',
+      included_hours: 10,
+      consumed_hours: 8,
+      overage_policy: 'ALLOW_CAPPED',
+      overage_cap_hours: 1,
     });
 
-    await expect(service.logHours('wo-1', { hours: 4 })).rejects.toThrow(ConflictException); // 2h over, cap is 1h
+    await expect(service.logHours('wo-1', { hours: 4 })).rejects.toThrow(
+      ConflictException,
+    ); // 2h over, cap is 1h
   });
 
   it('REQUIRE_APPROVAL policy blocks overage until an APPROVED OVERAGE_OVERRIDE approval exists', async () => {
     prismaMock.incidentWorkOrder.findUnique.mockResolvedValue({
-      id: 'wo-1', status: 'ACTIVE', included_hours: 10, consumed_hours: 8, overage_policy: 'REQUIRE_APPROVAL',
+      id: 'wo-1',
+      status: 'ACTIVE',
+      included_hours: 10,
+      consumed_hours: 8,
+      overage_policy: 'REQUIRE_APPROVAL',
     });
     prismaMock.commercialApproval.findFirst.mockResolvedValue(null);
 
-    await expect(service.logHours('wo-1', { hours: 5 })).rejects.toThrow(ConflictException);
+    await expect(service.logHours('wo-1', { hours: 5 })).rejects.toThrow(
+      ConflictException,
+    );
   });
 
   it('REQUIRE_APPROVAL policy allows overage once an APPROVED OVERAGE_OVERRIDE approval exists', async () => {
     prismaMock.incidentWorkOrder.findUnique.mockResolvedValue({
-      id: 'wo-1', status: 'ACTIVE', included_hours: 10, consumed_hours: 8, overage_policy: 'REQUIRE_APPROVAL',
+      id: 'wo-1',
+      status: 'ACTIVE',
+      included_hours: 10,
+      consumed_hours: 8,
+      overage_policy: 'REQUIRE_APPROVAL',
     });
-    prismaMock.commercialApproval.findFirst.mockResolvedValue({ id: 'appr-1', status: 'APPROVED' });
-    prismaMock.incidentWorkOrder.update.mockResolvedValue({ id: 'wo-1', consumed_hours: 13 });
+    prismaMock.commercialApproval.findFirst.mockResolvedValue({
+      id: 'appr-1',
+      status: 'APPROVED',
+    });
+    prismaMock.incidentWorkOrder.update.mockResolvedValue({
+      id: 'wo-1',
+      consumed_hours: 13,
+    });
 
     await service.logHours('wo-1', { hours: 5 });
 
@@ -100,8 +153,13 @@ describe('IncidentWorkOrderService (ZS-COM-BILL-001 Part 15: no surprise IR char
   });
 
   it('rejects logging hours against a closed work order', async () => {
-    prismaMock.incidentWorkOrder.findUnique.mockResolvedValue({ id: 'wo-1', status: 'CLOSED' });
+    prismaMock.incidentWorkOrder.findUnique.mockResolvedValue({
+      id: 'wo-1',
+      status: 'CLOSED',
+    });
 
-    await expect(service.logHours('wo-1', { hours: 1 })).rejects.toThrow(ConflictException);
+    await expect(service.logHours('wo-1', { hours: 1 })).rejects.toThrow(
+      ConflictException,
+    );
   });
 });

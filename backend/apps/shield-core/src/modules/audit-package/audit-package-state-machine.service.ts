@@ -36,10 +36,14 @@ export class AuditPackageStateMachineService {
       throw new BadRequestException(`Unknown audit package status '${from}'`);
     }
     if (!Object.keys(ALLOWED_TRANSITIONS).includes(toState)) {
-      throw new BadRequestException(`Unknown target audit package status '${to}'`);
+      throw new BadRequestException(
+        `Unknown target audit package status '${to}'`,
+      );
     }
     if (!ALLOWED_TRANSITIONS[fromState].includes(toState)) {
-      throw new BadRequestException(`Invalid audit package transition '${from}' -> '${to}'`);
+      throw new BadRequestException(
+        `Invalid audit package transition '${from}' -> '${to}'`,
+      );
     }
   }
 }

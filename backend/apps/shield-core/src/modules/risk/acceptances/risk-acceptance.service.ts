@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OutboxService } from '../../../outbox/outbox.service';
@@ -30,8 +34,16 @@ export class RiskAcceptanceService {
   ) {}
 
   async create(input: CreateRiskAcceptanceInput) {
-    if (!input.authority || !input.rationale || input.compensatingControls.length === 0 || !input.expiresAt || !input.reviewAt) {
-      throw new BadRequestException('RiskAcceptance requires authority, rationale, at least one compensating control, expiresAt, and reviewAt — no silent/permanent acceptance');
+    if (
+      !input.authority ||
+      !input.rationale ||
+      input.compensatingControls.length === 0 ||
+      !input.expiresAt ||
+      !input.reviewAt
+    ) {
+      throw new BadRequestException(
+        'RiskAcceptance requires authority, rationale, at least one compensating control, expiresAt, and reviewAt — no silent/permanent acceptance',
+      );
     }
 
     const acceptanceId = randomUUID();
@@ -52,20 +64,40 @@ export class RiskAcceptanceService {
         },
       }),
       this.prisma.outboxEvent.create({
-        data: this.outbox.build({ tenantId: input.tenantId, topic: CANONICAL_TOPICS.RISK_ACCEPTED, eventType: 'risk.accepted', payload: { riskId: input.riskId, acceptanceId } }),
+        data: this.outbox.build({
+          tenantId: input.tenantId,
+          topic: CANONICAL_TOPICS.RISK_ACCEPTED,
+          eventType: 'risk.accepted',
+          payload: { riskId: input.riskId, acceptanceId },
+        }),
       }),
     ]);
     return acceptance;
   }
 
   /** A renewal/correction is a new immutable row — the row it supersedes is never written to again. */
-  async renew(previousAcceptanceId: string, input: Omit<CreateRiskAcceptanceInput, 'tenantId' | 'riskId'>) {
-    const previous = await this.prisma.riskAcceptance.findUnique({ where: { id: previousAcceptanceId } });
+  async renew(
+    previousAcceptanceId: string,
+    input: Omit<CreateRiskAcceptanceInput, 'tenantId' | 'riskId'>,
+  ) {
+    const previous = await this.prisma.riskAcceptance.findUnique({
+      where: { id: previousAcceptanceId },
+    });
     if (!previous) {
-      throw new NotFoundException(`RiskAcceptance '${previousAcceptanceId}' not found`);
+      throw new NotFoundException(
+        `RiskAcceptance '${previousAcceptanceId}' not found`,
+      );
     }
-    if (!input.authority || !input.rationale || input.compensatingControls.length === 0 || !input.expiresAt || !input.reviewAt) {
-      throw new BadRequestException('RiskAcceptance requires authority, rationale, at least one compensating control, expiresAt, and reviewAt');
+    if (
+      !input.authority ||
+      !input.rationale ||
+      input.compensatingControls.length === 0 ||
+      !input.expiresAt ||
+      !input.reviewAt
+    ) {
+      throw new BadRequestException(
+        'RiskAcceptance requires authority, rationale, at least one compensating control, expiresAt, and reviewAt',
+      );
     }
     return this.prisma.riskAcceptance.create({
       data: {
@@ -86,7 +118,11 @@ export class RiskAcceptanceService {
   }
 
   /** Current-as-of query, same bitemporal semantics as ControlMappingService.resolveAsOf. */
-  async resolveActiveForRisk(riskId: string, businessTime: Date = new Date(), systemTime: Date = new Date()) {
+  async resolveActiveForRisk(
+    riskId: string,
+    businessTime: Date = new Date(),
+    systemTime: Date = new Date(),
+  ) {
     return this.prisma.riskAcceptance.findMany({
       where: {
         risk_id: riskId,

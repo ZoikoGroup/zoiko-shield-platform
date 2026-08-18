@@ -18,7 +18,11 @@ describe('OrderService.provisionOrder (atomic Order -> Contract -> Subscription)
 
   beforeEach(async () => {
     prismaMock = {
-      commercialOrder: { findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
+      commercialOrder: {
+        findUnique: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
       $transaction: jest.fn().mockImplementation((cb) => cb(prismaMock)),
     };
     quoteMock = { getQuoteById: jest.fn(), markConverted: jest.fn() };
@@ -51,16 +55,32 @@ describe('OrderService.provisionOrder (atomic Order -> Contract -> Subscription)
     killSwitchMock.assertNotBlocked.mockRejectedValue(new Error('blocked'));
 
     await expect(
-      service.createOrderFromQuote({ quoteId: 'q-1', createdBy: 'alice' }, 'key-1'),
+      service.createOrderFromQuote(
+        { quoteId: 'q-1', createdBy: 'alice' },
+        'key-1',
+      ),
     ).rejects.toThrow('blocked');
     expect(quoteMock.getQuoteById).not.toHaveBeenCalled();
   });
 
   it('creates the Contract and Subscription inside the same $transaction as the order update', async () => {
-    prismaMock.commercialOrder.findUnique.mockResolvedValue({ id: 'order-1', status: 'CREATED', quote_id: 'q-1', commercial_account_id: 'acct-1', lines: [] });
-    quoteMock.getQuoteById.mockResolvedValue({ id: 'q-1', catalog_version_id: 'cv-1' });
+    prismaMock.commercialOrder.findUnique.mockResolvedValue({
+      id: 'order-1',
+      status: 'CREATED',
+      quote_id: 'q-1',
+      commercial_account_id: 'acct-1',
+      lines: [],
+    });
+    quoteMock.getQuoteById.mockResolvedValue({
+      id: 'q-1',
+      catalog_version_id: 'cv-1',
+    });
     contractMock.createContract.mockResolvedValue({ id: 'contract-1' });
-    prismaMock.commercialOrder.update.mockResolvedValue({ id: 'order-1', status: 'PROVISIONED', contract_id: 'contract-1' });
+    prismaMock.commercialOrder.update.mockResolvedValue({
+      id: 'order-1',
+      status: 'PROVISIONED',
+      contract_id: 'contract-1',
+    });
     subscriptionMock.createSubscription.mockResolvedValue({ id: 'sub-1' });
 
     await service.provisionOrder('order-1');
@@ -68,7 +88,13 @@ describe('OrderService.provisionOrder (atomic Order -> Contract -> Subscription)
     // Single $transaction call wrapping all three writes — not three separate awaits.
     expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
     // Both sibling services received the same tx client (prismaMock, per our mock's cb(prismaMock)).
-    expect(contractMock.createContract).toHaveBeenCalledWith(expect.anything(), prismaMock);
-    expect(subscriptionMock.createSubscription).toHaveBeenCalledWith(expect.anything(), prismaMock);
+    expect(contractMock.createContract).toHaveBeenCalledWith(
+      expect.anything(),
+      prismaMock,
+    );
+    expect(subscriptionMock.createSubscription).toHaveBeenCalledWith(
+      expect.anything(),
+      prismaMock,
+    );
   });
 });

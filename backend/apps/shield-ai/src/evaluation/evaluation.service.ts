@@ -1,5 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { CitationValidatorService, CitationValidationResult } from '../retrieval/citations/citation-validator.service';
+import {
+  CitationValidatorService,
+  CitationValidationResult,
+} from '../retrieval/citations/citation-validator.service';
 
 export interface EvaluationResult {
   safetyResult: 'PASSED' | 'DEGRADED' | 'REJECTED';
@@ -24,23 +27,34 @@ export class EvaluationService {
     freshnessState: string;
     modelConfidence?: number;
   }): EvaluationResult {
-    const citations = this.citationValidator.validate(params.citedSourceRefs, params.bundleSourceRefs);
+    const citations = this.citationValidator.validate(
+      params.citedSourceRefs,
+      params.bundleSourceRefs,
+    );
     const limitations: string[] = [];
 
     if (!citations.valid) {
-      limitations.push(`${citations.invalidRefs.length} citation(s) could not be validated against retrieved sources and were dropped`);
+      limitations.push(
+        `${citations.invalidRefs.length} citation(s) could not be validated against retrieved sources and were dropped`,
+      );
     }
     if (params.completenessState !== 'COMPLETE') {
-      limitations.push(`Retrieval completeness is ${params.completenessState} — some relevant evidence may be missing`);
+      limitations.push(
+        `Retrieval completeness is ${params.completenessState} — some relevant evidence may be missing`,
+      );
     }
     if (params.freshnessState !== 'CURRENT') {
-      limitations.push(`Retrieved context freshness is ${params.freshnessState}`);
+      limitations.push(
+        `Retrieved context freshness is ${params.freshnessState}`,
+      );
     }
     if ((params.modelConfidence ?? 1) < 0.4) {
       limitations.push('Model confidence is low');
     }
     if (citations.validatedCitations.length === 0) {
-      limitations.push('No validated citations support this output — treat as unverified');
+      limitations.push(
+        'No validated citations support this output — treat as unverified',
+      );
     }
 
     let safetyResult: EvaluationResult['safetyResult'] = 'PASSED';

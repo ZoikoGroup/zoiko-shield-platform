@@ -1,5 +1,18 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
-import { IsArray, IsIn, IsISO8601, IsNumber, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
+import {
+  IsArray,
+  IsIn,
+  IsISO8601,
+  IsNumber,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export class CreateCatalogVersionDto {
@@ -22,8 +35,17 @@ export class CreateProductDto {
   @IsString()
   sku!: string;
 
-  @IsIn(['MANAGED_DEFENSE', 'CONTINUOUS_ASSURANCE', 'EXPANSION_MODULE', 'PROFESSIONAL_SERVICE'])
-  offerFamily!: 'MANAGED_DEFENSE' | 'CONTINUOUS_ASSURANCE' | 'EXPANSION_MODULE' | 'PROFESSIONAL_SERVICE';
+  @IsIn([
+    'MANAGED_DEFENSE',
+    'CONTINUOUS_ASSURANCE',
+    'EXPANSION_MODULE',
+    'PROFESSIONAL_SERVICE',
+  ])
+  offerFamily!:
+    | 'MANAGED_DEFENSE'
+    | 'CONTINUOUS_ASSURANCE'
+    | 'EXPANSION_MODULE'
+    | 'PROFESSIONAL_SERVICE';
 
   @IsString()
   displayName!: string;
@@ -115,7 +137,9 @@ export class CatalogService {
     });
 
     if (!version) {
-      throw new NotFoundException(`Catalog version '${catalogVersionId}' not found`);
+      throw new NotFoundException(
+        `Catalog version '${catalogVersionId}' not found`,
+      );
     }
 
     return this.prisma.catalogVersion.update({
@@ -203,7 +227,9 @@ export class CatalogService {
     });
 
     if (!priceBook) {
-      this.logger.warn(`Price book query FAILED CLOSED for SKU '${sku}' (${region}/${currency})`);
+      this.logger.warn(
+        `Price book query FAILED CLOSED for SKU '${sku}' (${region}/${currency})`,
+      );
       return null;
     }
 

@@ -10,13 +10,26 @@ describe('NormalizedEventConsumer', () => {
   let contextResolutionMock: any;
   let detectionRuntimeMock: any;
 
-  const payload = { tenantId: 'tenant-a', normalizedEventId: 'evt-1', eventClass: 'AUTHENTICATION' };
-  const resolved = { eventId: 'evt-1', identityEntityId: 'identity-1', contextSnapshotId: 'snap-1', contextHealth: 'RESOLVED' };
+  const payload = {
+    tenantId: 'tenant-a',
+    normalizedEventId: 'evt-1',
+    eventClass: 'AUTHENTICATION',
+  };
+  const resolved = {
+    eventId: 'evt-1',
+    identityEntityId: 'identity-1',
+    contextSnapshotId: 'snap-1',
+    contextHealth: 'RESOLVED',
+  };
 
   beforeEach(async () => {
     kafkaConsumerMock = { registerHandler: jest.fn() };
-    contextResolutionMock = { resolveFromEvent: jest.fn().mockResolvedValue(resolved) };
-    detectionRuntimeMock = { evaluateFromEvent: jest.fn().mockResolvedValue(undefined) };
+    contextResolutionMock = {
+      resolveFromEvent: jest.fn().mockResolvedValue(resolved),
+    };
+    detectionRuntimeMock = {
+      evaluateFromEvent: jest.fn().mockResolvedValue(undefined),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -33,7 +46,10 @@ describe('NormalizedEventConsumer', () => {
   it('registers itself against event.normalized.v1 on module init', () => {
     consumer.onModuleInit();
 
-    expect(kafkaConsumerMock.registerHandler).toHaveBeenCalledWith('event.normalized.v1', expect.any(Function));
+    expect(kafkaConsumerMock.registerHandler).toHaveBeenCalledWith(
+      'event.normalized.v1',
+      expect.any(Function),
+    );
   });
 
   it('resolves context then evaluates detection, in that order, threading the resolved result through', async () => {
@@ -42,17 +58,22 @@ describe('NormalizedEventConsumer', () => {
 
     await handler({ eventId: 'kafka-evt-1', payload });
 
-    expect(contextResolutionMock.resolveFromEvent).toHaveBeenCalledWith(payload);
-    expect(detectionRuntimeMock.evaluateFromEvent).toHaveBeenCalledWith(payload, resolved);
+    expect(contextResolutionMock.resolveFromEvent).toHaveBeenCalledWith(
+      payload,
+    );
+    expect(detectionRuntimeMock.evaluateFromEvent).toHaveBeenCalledWith(
+      payload,
+      resolved,
+    );
   });
 
   it('fails malformed payloads so the consumer cannot acknowledge silent data loss', async () => {
     consumer.onModuleInit();
     const handler = kafkaConsumerMock.registerHandler.mock.calls[0][1];
 
-    await expect(handler({ eventId: 'kafka-evt-2', payload: {} })).rejects.toThrow(
-      'Malformed event.normalized.v1 payload',
-    );
+    await expect(
+      handler({ eventId: 'kafka-evt-2', payload: {} }),
+    ).rejects.toThrow('Malformed event.normalized.v1 payload');
 
     expect(contextResolutionMock.resolveFromEvent).not.toHaveBeenCalled();
   });

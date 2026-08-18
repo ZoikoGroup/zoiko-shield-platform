@@ -1,4 +1,11 @@
-import { Controller, Post, Param, Body, UseGuards, BadRequestException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Param,
+  Body,
+  UseGuards,
+  BadRequestException,
+} from '@nestjs/common';
 import { InternalAuthGuard } from '../internal-client/internal-auth.guard';
 import { GatewayRequestContext } from '../gateway/ai-gateway.service';
 import { CaseSummaryService } from '../use-cases/case-summary/case-summary.service';
@@ -30,7 +37,10 @@ export class UseCaseController {
 
   @Post(':key/invoke')
   async invoke(@Param('key') key: string, @Body() dto: InvokeUseCaseDto) {
-    const context: GatewayRequestContext = { ...dto.context, caseId: (dto.input?.caseId as string) ?? dto.context.caseId };
+    const context: GatewayRequestContext = {
+      ...dto.context,
+      caseId: (dto.input?.caseId as string) ?? dto.context.caseId,
+    };
 
     switch (key) {
       case 'CASE_SUMMARY':

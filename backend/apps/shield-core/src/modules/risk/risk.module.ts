@@ -12,7 +12,21 @@ import { ExceptionExpiryService } from './exceptions/exception-expiry.service';
 @Module({
   imports: [PrismaModule],
   controllers: [RiskController],
-  providers: [OutboxService, ControlDeficiencyService, RiskService, RiskTreatmentService, RiskAcceptanceService, ExceptionService, ExceptionExpiryService],
-  exports: [ControlDeficiencyService, RiskService, RiskTreatmentService, RiskAcceptanceService, ExceptionService],
+  providers: [
+    OutboxService,
+    ControlDeficiencyService,
+    RiskService,
+    RiskTreatmentService,
+    RiskAcceptanceService,
+    ExceptionService,
+    ExceptionExpiryService,
+  ],
+  exports: [
+    ControlDeficiencyService,
+    RiskService,
+    RiskTreatmentService,
+    RiskAcceptanceService,
+    ExceptionService,
+  ],
 })
 export class RiskModule {}

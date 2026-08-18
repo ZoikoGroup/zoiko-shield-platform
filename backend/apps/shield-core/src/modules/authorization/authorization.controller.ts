@@ -22,43 +22,49 @@ import { PlatformPermissionsGuard } from './guards/platform-permissions.guard';
 import { PERMISSION_CODES } from './constants';
 import { PermissionsGuard } from './guards/permissions.guard';
 import { RequirePermissions } from './decorators/require-permissions.decorator';
+import { AuthenticationOnlyEndpoint } from '../../security/endpoint-access.decorator';
 
-import {
-  Delete,
-} from '@nestjs/common';
+import { Delete } from '@nestjs/common';
 
 @UseGuards(JwtAuthGuard)
 @Controller(['api/v1', ''])
 export class AuthorizationController {
   constructor(private readonly authorizationService: AuthorizationService) {}
 
-  // ── Self-service: any authenticated user can inspect their own access ──
-
   /** Returns all tenant memberships for the caller, with roles and permissions. */
+  @UseGuards(PermissionsGuard)
   @Get('me/roles')
   getMyRoles(@CurrentUser() user: AuthenticatedUser) {
-    return this.authorizationService.getMembershipsForPrincipal(user.id);
+    return this.authorizationService.getMembershipForPrincipal(
+      user.tenantId,
+      user.id,
+    );
   }
 
   /** Returns effective permission codes for the caller within a specific tenant. */
+  @UseGuards(PermissionsGuard)
   @Get('me/permissions')
-  getMyPermissions(
-    @CurrentUser() user: AuthenticatedUser,
-    @Query('tenantId') tenantId: string,
-  ) {
-    return this.authorizationService.getPermissionCodesForPrincipal(tenantId, user.id);
+  getMyPermissions(@CurrentUser() user: AuthenticatedUser) {
+    return this.authorizationService.getPermissionCodesForPrincipal(
+      user.tenantId,
+      user.id,
+    );
   }
 
   @UseGuards(PlatformPermissionsGuard)
   @RequirePlatformPermissions(PERMISSION_CODES.PLATFORM_PERMISSION_MANAGE)
   @Post('permissions')
   createPermission(@Body() dto: CreatePermissionDto) {
-    return this.authorizationService.createPermission(dto.code, dto.description);
+    return this.authorizationService.createPermission(
+      dto.code,
+      dto.description,
+    );
   }
 
   @Get('roles')
-  findRoles(@Query('tenantId') tenantId?: string) {
-    return this.authorizationService.findRoles(tenantId);
+  @UseGuards(PermissionsGuard)
+  findRoles(@CurrentUser() user: AuthenticatedUser) {
+    return this.authorizationService.findRoles(user.tenantId);
   }
 
   @UseGuards(PlatformPermissionsGuard)
@@ -81,26 +87,41 @@ export class AuthorizationController {
     @Param('roleId') roleId: string,
     @Body() dto: UpdateRolePermissionsDto,
   ) {
-    return this.authorizationService.updateRolePermissions(roleId, dto.permissionCodes);
+    return this.authorizationService.updateRolePermissions(
+      roleId,
+      dto.permissionCodes,
+    );
   }
 
+  @UseGuards(PermissionsGuard)
   @Post('tenants/:tenantId/invitations')
   async createInvitation(
     @Param('tenantId') tenantId: string,
     @Body() dto: CreateInvitationDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    const granted = await this.authorizationService.getPermissionCodesForPrincipal(tenantId, user.id);
+    const granted =
+      await this.authorizationService.getPermissionCodesForPrincipal(
+        tenantId,
+        user.id,
+      );
     if (!granted.includes(PERMISSION_CODES.TENANT_MEMBER_INVITE)) {
-      throw new ForbiddenException('Missing tenant:member:invite permission for this tenant');
+      throw new ForbiddenException(
+        'Missing tenant:member:invite permission for this tenant',
+      );
     }
-    const { invitation, token } = await this.authorizationService.createInvitation({
-      tenantId,
-      invitedEmail: dto.invitedEmail,
-      roleId: dto.roleId,
-      invitedById: user.id,
-    });
-    return { invitationId: invitation.id, expiresAt: invitation.expiresAt, token };
+    const { invitation, token } =
+      await this.authorizationService.createInvitation({
+        tenantId,
+        invitedEmail: dto.invitedEmail,
+        roleId: dto.roleId,
+        invitedById: user.id,
+      });
+    return {
+      invitationId: invitation.id,
+      expiresAt: invitation.expiresAt,
+      token,
+    };
   }
 
   @UseGuards(PermissionsGuard)
@@ -110,9 +131,17 @@ export class AuthorizationController {
     return this.authorizationService.listInvitations(tenantId);
   }
 
+  @AuthenticationOnlyEndpoint()
   @Post(['invitations/:token/accept', 'auth/invitations/:token/accept'])
-  acceptInvitation(@Param('token') token: string, @CurrentUser() user: AuthenticatedUser) {
-    return this.authorizationService.acceptInvitation(token, user.id, user.email);
+  acceptInvitation(
+    @Param('token') token: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.authorizationService.acceptInvitation(
+      token,
+      user.id,
+      user.email,
+    );
   }
 
   @UseGuards(PermissionsGuard)
@@ -128,14 +157,22 @@ export class AuthorizationController {
     @Param('tenantId') tenantId: string,
     @Param('memberId') memberId: string,
     @Body() dto: { roleIds?: string[]; status?: 'ACTIVE' | 'SUSPENDED' },
+    @CurrentUser() user: AuthenticatedUser,
   ) {
-    return this.authorizationService.updateMember(tenantId, memberId, dto);
+    return this.authorizationService.updateMember(tenantId, memberId, {
+      ...dto,
+      actorId: user.id,
+    });
   }
 
   @UseGuards(PermissionsGuard)
   @RequirePermissions(PERMISSION_CODES.TENANT_MANAGE)
   @Delete('tenants/:tenantId/members/:memberId')
-  async removeMember(@Param('tenantId') tenantId: string, @Param('memberId') memberId: string) {
-    return this.authorizationService.removeMember(tenantId, memberId);
+  async removeMember(
+    @Param('tenantId') tenantId: string,
+    @Param('memberId') memberId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.authorizationService.removeMember(tenantId, memberId, user.id);
   }
 }

@@ -1,10 +1,17 @@
-import { Injectable, Logger, NotFoundException, BadRequestException, Optional } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+  Optional,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AlertGeneratorService } from '../alerts/alert-generator.service';
 
 export interface ConditionRule {
   field: string;
-  operator: 'EQUALS' | 'NOT_EQUALS' | 'CONTAINS' | 'IN' | 'GREATER_THAN' | 'LESS_THAN';
+  operator:
+    'EQUALS' | 'NOT_EQUALS' | 'CONTAINS' | 'IN' | 'GREATER_THAN' | 'LESS_THAN';
   value: any;
 }
 
@@ -107,7 +114,11 @@ export class DetectionEngineService {
   /**
    * Update a detection rule and increment its version
    */
-  async updateRule(tenantId: string, ruleId: string, dto: UpdateDetectionRuleDto) {
+  async updateRule(
+    tenantId: string,
+    ruleId: string,
+    dto: UpdateDetectionRuleDto,
+  ) {
     const existing = await this.getRuleById(tenantId, ruleId, false);
 
     const dataToUpdate: any = {
@@ -115,10 +126,13 @@ export class DetectionEngineService {
     };
 
     if (dto.name) dataToUpdate.name = dto.name;
-    if (dto.description !== undefined) dataToUpdate.description = dto.description;
+    if (dto.description !== undefined)
+      dataToUpdate.description = dto.description;
     if (dto.severity) dataToUpdate.severity = dto.severity;
     if (dto.conditionDefinition)
-      dataToUpdate.condition_definition = JSON.stringify(dto.conditionDefinition);
+      dataToUpdate.condition_definition = JSON.stringify(
+        dto.conditionDefinition,
+      );
     if (dto.requiredFields)
       dataToUpdate.required_fields = JSON.stringify(dto.requiredFields);
 
@@ -188,7 +202,12 @@ export class DetectionEngineService {
     try {
       requiredFields = JSON.parse(rule.required_fields || '[]');
     } catch {
-      return this.recordRun(rule, event, 'ERROR', 'Invalid required fields JSON');
+      return this.recordRun(
+        rule,
+        event,
+        'ERROR',
+        'Invalid required fields JSON',
+      );
     }
 
     // Check required fields
@@ -207,7 +226,12 @@ export class DetectionEngineService {
     try {
       definition = JSON.parse(rule.condition_definition);
     } catch {
-      return this.recordRun(rule, event, 'ERROR', 'Invalid condition definition JSON');
+      return this.recordRun(
+        rule,
+        event,
+        'ERROR',
+        'Invalid condition definition JSON',
+      );
     }
 
     // Check eventClass if specified
@@ -225,13 +249,25 @@ export class DetectionEngineService {
     }
 
     if (!conditionsMatched) {
-      return this.recordRun(rule, event, 'NO_MATCH', 'Conditions did not match');
+      return this.recordRun(
+        rule,
+        event,
+        'NO_MATCH',
+        'Conditions did not match',
+      );
     }
 
     // If ruleType is THRESHOLD, evaluate windowing
-    if (definition.ruleType === 'THRESHOLD' && definition.windowMinutes && definition.threshold) {
+    if (
+      definition.ruleType === 'THRESHOLD' &&
+      definition.windowMinutes &&
+      definition.threshold
+    ) {
       const windowStart = new Date(
-        (event.occurred_at ? new Date(event.occurred_at) : new Date()).getTime() -
+        (event.occurred_at
+          ? new Date(event.occurred_at)
+          : new Date()
+        ).getTime() -
           definition.windowMinutes * 60 * 1000,
       );
 
@@ -285,9 +321,16 @@ export class DetectionEngineService {
       case 'NOT_EQUALS':
         return String(val).toLowerCase() !== String(cond.value).toLowerCase();
       case 'CONTAINS':
-        return String(val).toLowerCase().includes(String(cond.value).toLowerCase());
+        return String(val)
+          .toLowerCase()
+          .includes(String(cond.value).toLowerCase());
       case 'IN':
-        return Array.isArray(cond.value) && cond.value.map(v => String(v).toLowerCase()).includes(String(val).toLowerCase());
+        return (
+          Array.isArray(cond.value) &&
+          cond.value
+            .map((v) => String(v).toLowerCase())
+            .includes(String(val).toLowerCase())
+        );
       case 'GREATER_THAN':
         return Number(val) > Number(cond.value);
       case 'LESS_THAN':
@@ -313,7 +356,10 @@ export class DetectionEngineService {
         event_id: event.id,
         rule_version: rule.current_version,
         result,
-        execution_details: JSON.stringify({ message: details, timestamp: new Date() }),
+        execution_details: JSON.stringify({
+          message: details,
+          timestamp: new Date(),
+        }),
       },
     });
   }
@@ -321,7 +367,11 @@ export class DetectionEngineService {
   /**
    * Test a detection rule against sample event payload
    */
-  async testRule(tenantId: string, ruleId: string, sampleEvent: Record<string, any>) {
+  async testRule(
+    tenantId: string,
+    ruleId: string,
+    sampleEvent: Record<string, any>,
+  ) {
     const rule = await this.getRuleById(tenantId, ruleId);
 
     let definition: RuleDefinition;
@@ -340,7 +390,10 @@ export class DetectionEngineService {
       }
     }
 
-    return { match: true, reason: `Sample payload matches rule '${rule.name}'` };
+    return {
+      match: true,
+      reason: `Sample payload matches rule '${rule.name}'`,
+    };
   }
 
   /**
@@ -364,7 +417,7 @@ export class DetectionEngineService {
       } else {
         const runs = await this.evaluateNormalizedEvent(evt.id);
         totalRuns += runs.length;
-        totalMatched += runs.filter(r => r.result === 'MATCHED').length;
+        totalMatched += runs.filter((r) => r.result === 'MATCHED').length;
       }
     }
 

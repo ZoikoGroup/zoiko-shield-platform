@@ -27,7 +27,9 @@ export class EntraSchedulerService {
   @Cron(process.env.ENTRA_POLL_INTERVAL_CRON || CronExpression.EVERY_5_MINUTES)
   async pollAllConnectedInstances(): Promise<void> {
     if (this.running) {
-      this.logger.warn('Previous Entra poll cycle still running — skipping this tick.');
+      this.logger.warn(
+        'Previous Entra poll cycle still running — skipping this tick.',
+      );
       return;
     }
     this.running = true;
@@ -41,12 +43,19 @@ export class EntraSchedulerService {
         },
       });
 
-      this.logger.log(`Scheduled Entra poll: ${instances.length} connected instance(s).`);
+      this.logger.log(
+        `Scheduled Entra poll: ${instances.length} connected instance(s).`,
+      );
 
       for (const instance of instances) {
         try {
           await this.syncService.runSync(instance.id);
-          await this.checkPermissionDrift(instance.id, instance.tenant_id, instance.environment_id, instance.source_region);
+          await this.checkPermissionDrift(
+            instance.id,
+            instance.tenant_id,
+            instance.environment_id,
+            instance.source_region,
+          );
         } catch (err) {
           this.logger.error(
             `Scheduled sync failed for instance ${instance.id}: ${(err as Error).message}`,

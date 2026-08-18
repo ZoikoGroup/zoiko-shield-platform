@@ -67,7 +67,9 @@ describe('NormalizationService', () => {
 
   it('should throw NotFoundException if raw event does not exist', async () => {
     prismaMock.rawEvent.findUnique.mockResolvedValue(null);
-    await expect(service.normalizeRawEvent('invalid-id')).rejects.toThrow(NotFoundException);
+    await expect(service.normalizeRawEvent('invalid-id')).rejects.toThrow(
+      NotFoundException,
+    );
   });
 
   it('should successfully normalize a valid raw event', async () => {
@@ -98,7 +100,10 @@ describe('NormalizationService', () => {
     expect(kafkaMock.publishEvent).toHaveBeenCalledWith(
       'event.normalized.v1',
       'event.normalized',
-      expect.objectContaining({ tenantId: 'tenant-001', normalizedEventId: 'norm-1' }),
+      expect.objectContaining({
+        tenantId: 'tenant-001',
+        normalizedEventId: 'norm-1',
+      }),
       expect.any(Object),
     );
   });

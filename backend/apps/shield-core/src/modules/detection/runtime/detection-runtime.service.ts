@@ -1,11 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { KafkaProducerService, CANONICAL_TOPICS } from '../../../kafka/kafka-producer.service';
+import {
+  KafkaProducerService,
+  CANONICAL_TOPICS,
+} from '../../../kafka/kafka-producer.service';
 import { DetectionRegistryService } from '../registry/detection-registry.service';
 import { DetectionInput } from './detection-rule.interface';
 import { AlertCreationService } from '../../alert/services/alert-creation.service';
-import { NormalizedEventContract, ResolvedContext } from '../../security-context/context/context.types';
+import {
+  NormalizedEventContract,
+  ResolvedContext,
+} from '../../security-context/context/context.types';
 
 /**
  * Dispatches to registered DetectionRule implementations (spec §17/§31),
@@ -27,19 +33,31 @@ export class DetectionRuntimeService {
     private readonly alertCreationService: AlertCreationService,
   ) {}
 
-  async evaluateFromEvent(payload: NormalizedEventContract, resolved: ResolvedContext): Promise<void> {
+  async evaluateFromEvent(
+    payload: NormalizedEventContract,
+    resolved: ResolvedContext,
+  ): Promise<void> {
     const [identity, asset] = await Promise.all([
       resolved.identityEntityId
-        ? this.prisma.identityEntity.findUnique({ where: { id: resolved.identityEntityId } })
+        ? this.prisma.identityEntity.findUnique({
+            where: { id: resolved.identityEntityId },
+          })
         : Promise.resolve(null),
-      resolved.assetId ? this.prisma.asset.findUnique({ where: { id: resolved.assetId } }) : Promise.resolve(null),
+      resolved.assetId
+        ? this.prisma.asset.findUnique({ where: { id: resolved.assetId } })
+        : Promise.resolve(null),
     ]);
 
-    const applicableVersions = await this.registry.findApplicable(payload.tenantId, payload.eventClass);
+    const applicableVersions = await this.registry.findApplicable(
+      payload.tenantId,
+      payload.eventClass,
+    );
     const correlationId = payload.correlationId ?? randomUUID();
 
     for (const version of applicableVersions) {
-      const rule = this.registry.getRuleImplementation(version.detectionDefinition.key);
+      const rule = this.registry.getRuleImplementation(
+        version.detectionDefinition.key,
+      );
 
       const input: DetectionInput = {
         tenantId: payload.tenantId,
@@ -59,8 +77,20 @@ export class DetectionRuntimeService {
           outcome: payload.outcome ?? null,
           occurred_at: payload.occurredAt ? new Date(payload.occurredAt) : null,
         },
-        identity: identity ? { id: identity.id, status: identity.status, identity_type: identity.identity_type } : null,
-        asset: asset ? { id: asset.id, criticality: asset.criticality, status: asset.status } : null,
+        identity: identity
+          ? {
+              id: identity.id,
+              status: identity.status,
+              identity_type: identity.identity_type,
+            }
+          : null,
+        asset: asset
+          ? {
+              id: asset.id,
+              criticality: asset.criticality,
+              status: asset.status,
+            }
+          : null,
         contextHealth: resolved.contextHealth,
         configuration: JSON.parse(version.configuration || '{}'),
       };
@@ -85,7 +115,14 @@ export class DetectionRuntimeService {
       });
 
       if (outcome.result === 'MATCH') {
-        await this.persistMatch(payload, resolved, version, evaluation.id, outcome, correlationId);
+        await this.persistMatch(
+          payload,
+          resolved,
+          version,
+          evaluation.id,
+          outcome,
+          correlationId,
+        );
       } else if (outcome.result === 'INDETERMINATE') {
         await this.kafkaProducer.publishEvent(
           CANONICAL_TOPICS.DETECTION_INDETERMINATE,
@@ -105,9 +142,18 @@ export class DetectionRuntimeService {
   private async persistMatch(
     payload: NormalizedEventContract,
     resolved: ResolvedContext,
-    version: { id: string; detection_definition_id: string; severity: string; detectionDefinition: { key: string; name: string } },
+    version: {
+      id: string;
+      detection_definition_id: string;
+      severity: string;
+      detectionDefinition: { key: string; name: string };
+    },
     evaluationId: string,
-    outcome: { confidence?: number; factors: unknown[]; incompleteData: boolean },
+    outcome: {
+      confidence?: number;
+      factors: unknown[];
+      incompleteData: boolean;
+    },
     correlationId: string,
   ) {
     const match = await this.prisma.detectionMatch.upsert({
@@ -132,12 +178,16 @@ export class DetectionRuntimeService {
         confidence: outcome.confidence,
         factor_contributions: JSON.stringify(outcome.factors),
         incomplete_data: outcome.incompleteData,
-        occurred_at: payload.occurredAt ? new Date(payload.occurredAt) : new Date(),
+        occurred_at: payload.occurredAt
+          ? new Date(payload.occurredAt)
+          : new Date(),
         correlation_id: correlationId,
       },
     });
 
-    this.logger.log(`Detection MATCH: evaluation=${evaluationId} match=${match.id} tenant=${payload.tenantId}`);
+    this.logger.log(
+      `Detection MATCH: evaluation=${evaluationId} match=${match.id} tenant=${payload.tenantId}`,
+    );
 
     await this.kafkaProducer.publishEvent(
       CANONICAL_TOPICS.DETECTION_MATCHED,

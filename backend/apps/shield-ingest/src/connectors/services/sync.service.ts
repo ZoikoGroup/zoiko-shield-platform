@@ -5,7 +5,10 @@ import { requireRegion } from '../../security/tenant-context';
 import { ConnectorContext } from '../core/connector-context';
 import { ConnectorError } from '../core/connector-errors';
 import { ConnectorHealthService } from './health.service';
-import { KafkaProducerService, CANONICAL_TOPICS } from '../../kafka/kafka.producer.service';
+import {
+  KafkaProducerService,
+  CANONICAL_TOPICS,
+} from '../../kafka/kafka.producer.service';
 import { randomUUID } from 'crypto';
 
 /**
@@ -63,13 +66,19 @@ export class ConnectorSyncService {
           status: 'SUCCESS',
           completedAt: new Date(),
           recordsProcessed: result.recordsProcessed,
-          recordsReceived: (result.recordsReceived as number) ?? result.recordsProcessed,
+          recordsReceived:
+            (result.recordsReceived as number) ?? result.recordsProcessed,
           recordsDuplicated: (result.recordsDuplicated as number) ?? 0,
           recordsQuarantined: (result.recordsQuarantined as number) ?? 0,
         },
       });
 
-      await this.healthService.updateHealth(instance.id, instance.tenant_id, 'HEALTHY', 'Sync completed');
+      await this.healthService.updateHealth(
+        instance.id,
+        instance.tenant_id,
+        'HEALTHY',
+        'Sync completed',
+      );
       await this.healthService.recordSuccessfulSync(instance.id);
 
       await this.kafkaProducer.publishEvent(
@@ -86,18 +95,25 @@ export class ConnectorSyncService {
         { correlationId: context.correlationId, traceId: context.traceId },
       );
     } catch (error) {
-      this.logger.error(`Sync failed for instance ${instanceId}: ${(error as Error).message}`);
+      this.logger.error(
+        `Sync failed for instance ${instanceId}: ${(error as Error).message}`,
+      );
 
       await this.prisma.connectorSynchronizationRun.update({
         where: { id: syncRun.id },
         data: {
           status: 'FAILED',
           completedAt: new Date(),
-          errorCode: error instanceof ConnectorError ? error.errorCode : 'UNKNOWN',
+          errorCode:
+            error instanceof ConnectorError ? error.errorCode : 'UNKNOWN',
         },
       });
 
-      await this.healthService.handleConnectorError(instance.id, instance.tenant_id, error as Error);
+      await this.healthService.handleConnectorError(
+        instance.id,
+        instance.tenant_id,
+        error as Error,
+      );
     }
   }
 }

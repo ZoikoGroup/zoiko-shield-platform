@@ -6,7 +6,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-export type ExternalIdentityProvider = 'GOOGLE' | 'MICROSOFT';
+export type ExternalIdentityProvider = 'GOOGLE' | 'MICROSOFT' | 'OIDC' | 'SAML';
 
 @Entity({ name: 'external_identities', schema: 'identity' })
 @Index(['issuer', 'subject'], { unique: true })

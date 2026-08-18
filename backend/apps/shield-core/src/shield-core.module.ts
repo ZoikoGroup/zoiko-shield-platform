@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
+import { DeclaredAccessGuard } from './security/declared-access.guard';
 import { ShieldCoreController } from './shield-core.controller';
 import { ShieldCoreService } from './shield-core.service';
 import { TenantModule } from './modules/tenant/tenant.module';
@@ -21,6 +22,10 @@ import { RecoveryGrant } from './modules/identity-adapter/recovery-grant.entity'
 import { PolicyDocument } from './modules/identity-adapter/policy-document.entity';
 import { PolicyAcceptance } from './modules/identity-adapter/policy-acceptance.entity';
 import { IdentityEvent } from './modules/identity-adapter/identity-event.entity';
+import { IdentityProviderConfiguration } from './modules/identity-adapter/identity-provider-configuration.entity';
+import { FederationTransaction } from './modules/identity-adapter/federation-transaction.entity';
+import { SamlRequestCacheEntry } from './modules/identity-adapter/saml-request-cache.entity';
+import { ExternalIdentityTenantBinding } from './modules/identity-adapter/external-identity-tenant-binding.entity';
 import { Permission } from './modules/authorization/entities/permission.entity';
 import { Role } from './modules/authorization/entities/role.entity';
 import { TenantMembership } from './modules/authorization/entities/tenant-membership.entity';
@@ -92,6 +97,10 @@ import { ScheduleModule } from '@nestjs/schedule';
         PolicyDocument,
         PolicyAcceptance,
         IdentityEvent,
+        IdentityProviderConfiguration,
+        FederationTransaction,
+        SamlRequestCacheEntry,
+        ExternalIdentityTenantBinding,
         Permission,
         Role,
         TenantMembership,
@@ -157,6 +166,11 @@ import { ScheduleModule } from '@nestjs/schedule';
     OffboardingModule,
   ],
   controllers: [ShieldCoreController],
-  providers: [ShieldCoreService, OutboxPublisherService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
+  providers: [
+    ShieldCoreService,
+    OutboxPublisherService,
+    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: DeclaredAccessGuard },
+  ],
 })
 export class ShieldCoreModule {}

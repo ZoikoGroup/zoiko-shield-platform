@@ -1,5 +1,8 @@
 import { IsIn, IsOptional, IsString, IsUUID } from 'class-validator';
-import type { CustomerKycStatus, CustomerLifecycleStatus } from '../customer.entity';
+import type {
+  CustomerKycStatus,
+  CustomerLifecycleStatus,
+} from '../customer.entity';
 
 export class UpdateCustomerDto {
   @IsOptional()

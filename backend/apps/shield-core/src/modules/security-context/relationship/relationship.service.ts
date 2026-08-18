@@ -42,7 +42,8 @@ export class RelationshipService {
 
     return this.prisma.relationship.upsert({
       where: {
-        tenant_id_subject_type_subject_id_relation_object_type_object_id: key as any,
+        tenant_id_subject_type_subject_id_relation_object_type_object_id:
+          key as any,
       },
       update: { last_seen_at: observedAt },
       create: {

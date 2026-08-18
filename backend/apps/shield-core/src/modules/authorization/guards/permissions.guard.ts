@@ -6,21 +6,29 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import { AuthorizationService } from '../authorization.service';
 import { PERMISSIONS_KEY } from '../decorators/require-permissions.decorator';
 import type { AuthenticatedUser } from '../../identity-adapter/interfaces/jwt-payload.interface';
-import { PLATFORM_SCOPE } from '../constants';
+import { PERMISSION_CODES, PLATFORM_SCOPE } from '../constants';
+import { PLATFORM_PERMISSIONS_KEY } from '../decorators/require-platform-permissions.decorator';
+import {
+  assertPermittedAuthorization,
+  AuthorizationDecisionService,
+} from '../../authorization-decision/authorization-decision.service';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
-    private readonly authorizationService: AuthorizationService,
+    private readonly authorizationDecisionService: AuthorizationDecisionService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const requiredPermissions = this.reflector.getAllAndOverride<string[]>(
+    const declaredPermissions = this.reflector.getAllAndMerge<string[]>(
       PERMISSIONS_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+    const platformPermissions = this.reflector.getAllAndOverride<string[]>(
+      PLATFORM_PERMISSIONS_KEY,
       [context.getHandler(), context.getClass()],
     );
     const request = context.switchToHttp().getRequest();
@@ -28,54 +36,94 @@ export class PermissionsGuard implements CanActivate {
     if (!user) {
       throw new ForbiddenException('Authentication is required');
     }
+    if (user.sessionState === 'RESTRICTED') {
+      throw new ForbiddenException(
+        'SESSION_RESTRICTED: This operation is not available in the bounded session state',
+      );
+    }
 
     const candidates = [
       request.headers['x-tenant-id'],
       request.params?.tenantId,
       request.query?.tenantId,
       request.body?.tenantId,
-    ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+    ].filter(
+      (value): value is string => typeof value === 'string' && value.length > 0,
+    );
     const distinctTenantIds = [...new Set(candidates)];
     if (distinctTenantIds.length > 1) {
-      throw new BadRequestException('Conflicting tenant identifiers were supplied');
+      throw new BadRequestException(
+        'Conflicting tenant identifiers were supplied',
+      );
     }
-    const tenantId = distinctTenantIds[0];
+    const suppliedTenantId = distinctTenantIds[0];
+    const tenantId = user.tenantId;
 
-    if (tenantId === 'default-tenant') {
-      throw new BadRequestException("'default-tenant' is not a valid tenant identifier");
+    if (suppliedTenantId === 'default-tenant') {
+      throw new BadRequestException(
+        "'default-tenant' is not a valid tenant identifier",
+      );
+    }
+
+    if (suppliedTenantId && suppliedTenantId !== tenantId) {
+      throw new ForbiddenException(
+        'The requested tenant does not match the tenant-bound session',
+      );
     }
 
     if (!tenantId) {
-      if (requiredPermissions?.length && requiredPermissions.every((permission) => permission.startsWith('platform:'))) {
-        const platformPermissions = await this.authorizationService.getPermissionCodesForPrincipal(PLATFORM_SCOPE, user.id);
-        if (!requiredPermissions.every((permission) => platformPermissions.includes(permission))) {
-          throw new ForbiddenException('Insufficient platform permissions');
-        }
-        return true;
-      }
-      if (context.getClass().name === 'TenantController') return true;
-      throw new BadRequestException('The x-tenant-id header is required for this operation');
-    }
-
-    if (!(await this.authorizationService.hasTenantAccess(tenantId, user.id))) {
-      throw new ForbiddenException('The authenticated principal has no active membership for this tenant');
+      throw new ForbiddenException('The session has no tenant binding');
     }
 
     request.headers['x-tenant-id'] = tenantId;
     request.tenantId = tenantId;
 
-    if (!requiredPermissions || requiredPermissions.length === 0) {
+    // A method-level PlatformPermissionsGuard is the sole PDP for an explicit
+    // platform operation; do not also require customer-tenant base actions.
+    if (platformPermissions?.length && tenantId === PLATFORM_SCOPE) {
       return true;
     }
 
-    const grantedPermissions = await this.authorizationService.getPermissionCodesForPrincipal(
+    const read = ['GET', 'HEAD', 'OPTIONS'].includes(request.method);
+    const basePermission = read
+      ? PERMISSION_CODES.TENANT_RESOURCE_READ
+      : PERMISSION_CODES.TENANT_RESOURCE_WRITE;
+    const requiredPermissions = [
+      ...new Set([basePermission, ...(declaredPermissions ?? [])]),
+    ];
+    const action =
+      declaredPermissions?.find(
+        (permission) => !permission.startsWith('tenant:resource:'),
+      ) ?? basePermission;
+    const resourceId = Object.entries(request.params ?? {}).find(
+      ([key, value]) =>
+        key !== 'tenantId' && typeof value === 'string' && value.length > 0,
+    )?.[1] as string | undefined;
+    const correlationHeader =
+      request.headers['x-correlation-id'] ?? request.headers['x-request-id'];
+    const result = await this.authorizationDecisionService.evaluate({
+      actorId: user.id,
       tenantId,
-      user.id,
-    );
-    const hasAll = requiredPermissions.every((permission) => grantedPermissions.includes(permission));
-    if (!hasAll) {
-      throw new ForbiddenException('Insufficient tenant permissions');
-    }
+      environmentId: user.environmentId,
+      action,
+      effectClass: read ? 'READ' : 'WRITE',
+      resourceType: context.getClass().name.replace(/Controller$/, ''),
+      resourceId,
+      resourceTenantId: tenantId,
+      purpose:
+        typeof request.headers['x-purpose'] === 'string'
+          ? request.headers['x-purpose']
+          : 'interactive-api',
+      requiredPermissions,
+      assurance: user.assurance,
+      riskState: user.riskState,
+      policyVersion: user.policyVersion,
+      correlationId:
+        typeof correlationHeader === 'string' ? correlationHeader : undefined,
+    });
+
+    request.authorizationDecision = result;
+    assertPermittedAuthorization(result);
     return true;
   }
 }

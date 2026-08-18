@@ -1,6 +1,9 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { KafkaProducerService, CANONICAL_TOPICS } from '../kafka/kafka.producer.service';
+import {
+  KafkaProducerService,
+  CANONICAL_TOPICS,
+} from '../kafka/kafka.producer.service';
 import { requireRegion } from '../security/tenant-context';
 
 export interface ReprocessResult {
@@ -69,17 +72,30 @@ export class NormalizationService {
       payload.eventType ||
       (payload.user ? 'AUTHENTICATION' : 'SECURITY_LOG');
     const eventCategory = payload.eventCategory || 'AUDIT';
-    const eventActivity = payload.eventActivity || payload.eventType || 'LOG_ENTRY';
+    const eventActivity =
+      payload.eventActivity || payload.eventType || 'LOG_ENTRY';
     const severity = (payload.severity || 'INFORMATIONAL').toUpperCase();
 
-    const actorUserId = payload.actorUserId || payload.user?.id || payload.userId || undefined;
-    const actorEmail = payload.actorEmail || payload.user?.email || payload.userEmail || undefined;
-    const sourceIp = payload.sourceIp || payload.clientIp || payload.ipAddress || undefined;
-    const destinationIp = payload.destinationIp || payload.targetIp || undefined;
+    const actorUserId =
+      payload.actorUserId || payload.user?.id || payload.userId || undefined;
+    const actorEmail =
+      payload.actorEmail ||
+      payload.user?.email ||
+      payload.userEmail ||
+      undefined;
+    const sourceIp =
+      payload.sourceIp || payload.clientIp || payload.ipAddress || undefined;
+    const destinationIp =
+      payload.destinationIp || payload.targetIp || undefined;
     const resourceId = payload.resourceId || payload.targetId || undefined;
-    const resourceType = payload.resourceType || payload.targetType || undefined;
+    const resourceType =
+      payload.resourceType || payload.targetType || undefined;
     const action = payload.action || payload.eventType || 'EXECUTE';
-    const outcome = (payload.outcome || payload.result || 'SUCCESS').toUpperCase();
+    const outcome = (
+      payload.outcome ||
+      payload.result ||
+      'SUCCESS'
+    ).toUpperCase();
 
     const occurredAt = payload.occurredAt
       ? new Date(payload.occurredAt)
@@ -146,7 +162,9 @@ export class NormalizationService {
         resourceType: normalizedEvent.resource_type ?? undefined,
         action: normalizedEvent.action ?? undefined,
         outcome: normalizedEvent.outcome ?? undefined,
-        occurredAt: (normalizedEvent.occurred_at ?? normalizedEvent.recorded_at).toISOString(),
+        occurredAt: (
+          normalizedEvent.occurred_at ?? normalizedEvent.recorded_at
+        ).toISOString(),
         schemaVersion: rawEvent.schema_version,
         normalizerVersion: normalizedEvent.mapping_version,
         correlationId: normalizedEvent.id,
@@ -232,13 +250,18 @@ export class NormalizationService {
   /**
    * Reprocess a quarantined event
    */
-  async reprocessQuarantinedEvent(tenantId: string, quarantineId: string): Promise<ReprocessResult> {
+  async reprocessQuarantinedEvent(
+    tenantId: string,
+    quarantineId: string,
+  ): Promise<ReprocessResult> {
     const quarantined = await this.prisma.quarantinedEvent.findFirst({
       where: { id: quarantineId, tenant_id: tenantId },
     });
 
     if (!quarantined) {
-      throw new NotFoundException(`Quarantined event '${quarantineId}' not found`);
+      throw new NotFoundException(
+        `Quarantined event '${quarantineId}' not found`,
+      );
     }
 
     // Find associated raw event
@@ -251,7 +274,9 @@ export class NormalizationService {
     });
 
     if (!rawEvent) {
-      throw new NotFoundException(`Associated raw event for quarantine '${quarantineId}' not found`);
+      throw new NotFoundException(
+        `Associated raw event for quarantine '${quarantineId}' not found`,
+      );
     }
 
     // Attempt normalization
@@ -282,8 +307,13 @@ export class NormalizationService {
   /**
    * Idempotent event replay across tenant or connector
    */
-  async replayEvents(tenantId: string, connectorId?: string): Promise<ReplayResult> {
-    this.logger.log(`Starting event replay for tenant ${tenantId}, connector ${connectorId || 'ALL'}`);
+  async replayEvents(
+    tenantId: string,
+    connectorId?: string,
+  ): Promise<ReplayResult> {
+    this.logger.log(
+      `Starting event replay for tenant ${tenantId}, connector ${connectorId || 'ALL'}`,
+    );
 
     const rawEvents = await this.prisma.rawEvent.findMany({
       where: {

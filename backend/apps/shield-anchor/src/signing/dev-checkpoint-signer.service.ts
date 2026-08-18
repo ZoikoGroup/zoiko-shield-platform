@@ -1,7 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { generateKeyPairSync, sign as edSign, createPrivateKey, createPublicKey, KeyObject } from 'crypto';
+import {
+  generateKeyPairSync,
+  sign as edSign,
+  createPrivateKey,
+  createPublicKey,
+  KeyObject,
+} from 'crypto';
 import { randomUUID } from 'crypto';
-import { CheckpointSigner, CheckpointSignResult } from './checkpoint-signer.interface';
+import {
+  CheckpointSigner,
+  CheckpointSignResult,
+} from './checkpoint-signer.interface';
 
 const ALGORITHM = 'Ed25519';
 
@@ -28,19 +37,33 @@ export class DevCheckpointSigner implements CheckpointSigner {
 
     this.keyId = `dev-key-${randomUUID()}`;
     if (process.env.ANCHOR_SIGNING_PRIVATE_KEY_PEM) {
-      this.privateKey = createPrivateKey(process.env.ANCHOR_SIGNING_PRIVATE_KEY_PEM);
-      this.publicKeyPem = createPublicKey(this.privateKey).export({ type: 'spki', format: 'pem' }).toString();
-      this.logger.warn(`DevCheckpointSigner loaded a configured dev private key (keyId=${this.keyId}) — still non-production only.`);
+      this.privateKey = createPrivateKey(
+        process.env.ANCHOR_SIGNING_PRIVATE_KEY_PEM,
+      );
+      this.publicKeyPem = createPublicKey(this.privateKey)
+        .export({ type: 'spki', format: 'pem' })
+        .toString();
+      this.logger.warn(
+        `DevCheckpointSigner loaded a configured dev private key (keyId=${this.keyId}) — still non-production only.`,
+      );
     } else {
       const { privateKey, publicKey } = generateKeyPairSync('ed25519');
       this.privateKey = privateKey;
-      this.publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
-      this.logger.warn(`DevCheckpointSigner generated an EPHEMERAL Ed25519 keypair (keyId=${this.keyId}) — development/test only, not production signing authority.`);
+      this.publicKeyPem = publicKey
+        .export({ type: 'spki', format: 'pem' })
+        .toString();
+      this.logger.warn(
+        `DevCheckpointSigner generated an EPHEMERAL Ed25519 keypair (keyId=${this.keyId}) — development/test only, not production signing authority.`,
+      );
     }
   }
 
   sign(merkleRoot: string): CheckpointSignResult {
-    const signature = edSign(null, Buffer.from(merkleRoot, 'utf-8'), this.privateKey);
+    const signature = edSign(
+      null,
+      Buffer.from(merkleRoot, 'utf-8'),
+      this.privateKey,
+    );
     return {
       signature: signature.toString('hex'),
       signingKeyId: this.keyId,

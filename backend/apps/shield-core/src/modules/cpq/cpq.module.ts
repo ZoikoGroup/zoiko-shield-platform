@@ -1,5 +1,9 @@
 import { Module } from '@nestjs/common';
-import { QuoteController, OrderController, SubscriptionController } from './cpq.controller';
+import {
+  QuoteController,
+  OrderController,
+  SubscriptionController,
+} from './cpq.controller';
 import { QuoteService } from './quote.service';
 import { OrderService } from './order.service';
 import { SubscriptionService } from './subscription.service';
@@ -11,7 +15,14 @@ import { IdempotencyModule } from '../idempotency/idempotency.module';
 import { KillSwitchModule } from '../kill-switch/kill-switch.module';
 
 @Module({
-  imports: [PrismaModule, CatalogModule, CommerceModule, ApprovalsModule, IdempotencyModule, KillSwitchModule],
+  imports: [
+    PrismaModule,
+    CatalogModule,
+    CommerceModule,
+    ApprovalsModule,
+    IdempotencyModule,
+    KillSwitchModule,
+  ],
   controllers: [QuoteController, OrderController, SubscriptionController],
   providers: [QuoteService, OrderService, SubscriptionService],
   exports: [QuoteService, OrderService, SubscriptionService],

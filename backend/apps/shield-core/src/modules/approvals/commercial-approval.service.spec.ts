@@ -19,14 +19,20 @@ describe('CommercialApprovalService (maker-checker, ZS-COM-BILL-001 Part 20)', (
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [CommercialApprovalService, { provide: PrismaService, useValue: prismaMock }],
+      providers: [
+        CommercialApprovalService,
+        { provide: PrismaService, useValue: prismaMock },
+      ],
     }).compile();
 
     service = module.get<CommercialApprovalService>(CommercialApprovalService);
   });
 
   it('creates a request directly in PENDING_APPROVAL and emits a CommercialEvent', async () => {
-    prismaMock.commercialApproval.create.mockResolvedValue({ id: 'appr-1', status: 'PENDING_APPROVAL' });
+    prismaMock.commercialApproval.create.mockResolvedValue({
+      id: 'appr-1',
+      status: 'PENDING_APPROVAL',
+    });
 
     const approval = await service.requestApproval({
       changeType: 'NON_STANDARD_DISCOUNT',
@@ -47,9 +53,9 @@ describe('CommercialApprovalService (maker-checker, ZS-COM-BILL-001 Part 20)', (
       requested_by: 'alice',
     });
 
-    await expect(service.decideApproval('appr-1', 'alice', 'APPROVED', 'looks fine')).rejects.toThrow(
-      ForbiddenException,
-    );
+    await expect(
+      service.decideApproval('appr-1', 'alice', 'APPROVED', 'looks fine'),
+    ).rejects.toThrow(ForbiddenException);
   });
 
   it('allows a different actor to approve', async () => {
@@ -59,9 +65,17 @@ describe('CommercialApprovalService (maker-checker, ZS-COM-BILL-001 Part 20)', (
       requested_by: 'alice',
       object_type: 'CommercialQuote',
     });
-    prismaMock.commercialApproval.update.mockResolvedValue({ id: 'appr-1', status: 'APPROVED' });
+    prismaMock.commercialApproval.update.mockResolvedValue({
+      id: 'appr-1',
+      status: 'APPROVED',
+    });
 
-    const result = await service.decideApproval('appr-1', 'bob', 'APPROVED', 'looks fine');
+    const result = await service.decideApproval(
+      'appr-1',
+      'bob',
+      'APPROVED',
+      'looks fine',
+    );
 
     expect(result.status).toBe('APPROVED');
   });
@@ -74,9 +88,9 @@ describe('CommercialApprovalService (maker-checker, ZS-COM-BILL-001 Part 20)', (
       object_type: 'CommercialQuote',
     });
 
-    await expect(service.decideApproval('appr-1', 'bob', 'APPROVED', 'x')).rejects.toThrow(
-      ConflictException,
-    );
+    await expect(
+      service.decideApproval('appr-1', 'bob', 'APPROVED', 'x'),
+    ).rejects.toThrow(ConflictException);
   });
 
   it('dynamically expires a PENDING_APPROVAL past its expires_at and rejects the decision', async () => {
@@ -87,18 +101,28 @@ describe('CommercialApprovalService (maker-checker, ZS-COM-BILL-001 Part 20)', (
       requested_by: 'alice',
       expires_at: pastExpiry,
     });
-    prismaMock.commercialApproval.update.mockResolvedValue({ id: 'appr-1', status: 'EXPIRED' });
+    prismaMock.commercialApproval.update.mockResolvedValue({
+      id: 'appr-1',
+      status: 'EXPIRED',
+    });
 
-    await expect(service.decideApproval('appr-1', 'bob', 'APPROVED', 'x')).rejects.toThrow(ConflictException);
+    await expect(
+      service.decideApproval('appr-1', 'bob', 'APPROVED', 'x'),
+    ).rejects.toThrow(ConflictException);
     expect(prismaMock.commercialApproval.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: { status: 'EXPIRED' } }),
     );
   });
 
   it('finds an approval by its linked object (used by amendments)', async () => {
-    prismaMock.commercialApproval.findFirst = jest.fn().mockResolvedValue({ id: 'appr-1', status: 'PENDING_APPROVAL' });
+    prismaMock.commercialApproval.findFirst = jest
+      .fn()
+      .mockResolvedValue({ id: 'appr-1', status: 'PENDING_APPROVAL' });
 
-    const approval = await service.getApprovalByObject('CommercialAmendment', 'amend-1');
+    const approval = await service.getApprovalByObject(
+      'CommercialAmendment',
+      'amend-1',
+    );
 
     expect(approval.id).toBe('appr-1');
   });

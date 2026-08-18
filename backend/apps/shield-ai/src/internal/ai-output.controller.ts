@@ -1,12 +1,27 @@
-import { Controller, Get, Post, Param, Query, Body, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Query,
+  Body,
+  UseGuards,
+} from '@nestjs/common';
 import { InternalAuthGuard } from '../internal-client/internal-auth.guard';
 import { AiOutputService } from '../outputs/ai-output.service';
-import { AiHumanReviewService, ReviewDecision } from '../outputs/ai-human-review.service';
+import {
+  AiHumanReviewService,
+  ReviewDecision,
+} from '../outputs/ai-human-review.service';
 import { GatewayRequestContext } from '../gateway/ai-gateway.service';
 
 export class ReviewOutputRequestDto {
   context!: GatewayRequestContext;
-  review!: { decision: ReviewDecision; rationale?: string; modifiedContent?: string };
+  review!: {
+    decision: ReviewDecision;
+    rationale?: string;
+    modifiedContent?: string;
+  };
 }
 
 @Controller('internal/v1/ai/outputs')
@@ -18,12 +33,18 @@ export class AiOutputController {
   ) {}
 
   @Get(':outputId')
-  async getById(@Param('outputId') outputId: string, @Query('tenantId') tenantId: string) {
+  async getById(
+    @Param('outputId') outputId: string,
+    @Query('tenantId') tenantId: string,
+  ) {
     return { data: await this.aiOutputService.getById(tenantId, outputId) };
   }
 
   @Post(':outputId/review')
-  async review(@Param('outputId') outputId: string, @Body() dto: ReviewOutputRequestDto) {
+  async review(
+    @Param('outputId') outputId: string,
+    @Body() dto: ReviewOutputRequestDto,
+  ) {
     const review = await this.aiHumanReviewService.recordReview({
       tenantId: dto.context.tenantId,
       outputId,

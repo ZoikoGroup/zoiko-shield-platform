@@ -29,6 +29,13 @@ import { AuditPackageExportService } from './export/audit-package-export.service
     AuditPackageSupersessionService,
     AuditPackageExportService,
   ],
-  exports: [AuditPackageService, AuditPackageBuilderService, AuditPackageValidatorService, AuditPackageApprovalService, AuditPackageFreezeService, AuditPackageSupersessionService],
+  exports: [
+    AuditPackageService,
+    AuditPackageBuilderService,
+    AuditPackageValidatorService,
+    AuditPackageApprovalService,
+    AuditPackageFreezeService,
+    AuditPackageSupersessionService,
+  ],
 })
 export class AuditPackageModule {}

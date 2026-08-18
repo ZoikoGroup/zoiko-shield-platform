@@ -1,5 +1,17 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { IsIn, IsInt, IsNumber, IsOptional, IsPositive, IsString } from 'class-validator';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  IsIn,
+  IsInt,
+  IsNumber,
+  IsOptional,
+  IsPositive,
+  IsString,
+} from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export class CreateSlaDefinitionDto {
@@ -73,17 +85,25 @@ export class SlaDefinitionService {
   }
 
   async approveDefinition(id: string, approvedBy: string) {
-    const definition = await this.prisma.slaDefinition.findUnique({ where: { id } });
+    const definition = await this.prisma.slaDefinition.findUnique({
+      where: { id },
+    });
     if (!definition) {
       throw new NotFoundException(`SLA definition '${id}' not found`);
     }
     if (definition.status !== 'DRAFT') {
-      throw new ConflictException(`SLA definition '${id}' is '${definition.status}', not DRAFT`);
+      throw new ConflictException(
+        `SLA definition '${id}' is '${definition.status}', not DRAFT`,
+      );
     }
 
     return this.prisma.slaDefinition.update({
       where: { id },
-      data: { status: 'APPROVED', approved_by: approvedBy, approved_at: new Date() },
+      data: {
+        status: 'APPROVED',
+        approved_by: approvedBy,
+        approved_at: new Date(),
+      },
     });
   }
 
@@ -100,7 +120,9 @@ export class SlaDefinitionService {
     });
 
     if (!definition) {
-      this.logger.warn(`SLA definition query FAILED CLOSED for key '${slaKey}'`);
+      this.logger.warn(
+        `SLA definition query FAILED CLOSED for key '${slaKey}'`,
+      );
       return null;
     }
     return definition;

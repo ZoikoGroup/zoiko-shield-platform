@@ -3,7 +3,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Principal, PrincipalType } from './principal.entity';
 import { LocalCredential } from './local-credential.entity';
-import { ExternalIdentity, ExternalIdentityProvider } from './external-identity.entity';
+import {
+  ExternalIdentity,
+  ExternalIdentityProvider,
+} from './external-identity.entity';
 
 @Injectable()
 export class PrincipalService {
@@ -28,35 +31,15 @@ export class PrincipalService {
     return this.localCredentialRepository.findOne({ where: { principalId } });
   }
 
-  findByExternalIdentity(issuer: string, subject: string): Promise<Principal | null> {
+  findByExternalIdentity(
+    issuer: string,
+    subject: string,
+  ): Promise<Principal | null> {
     return this.externalIdentityRepository
       .findOne({ where: { issuer, subject } })
-      .then((identity) => (identity ? this.findById(identity.principalId) : null));
-  }
-
-  async createLocal(data: {
-    email: string;
-    fullName?: string;
-    passwordHash: string;
-  }): Promise<Principal> {
-    const principal = await this.principalRepository.save(
-      this.principalRepository.create({
-        principalType: 'HUMAN',
-        source: 'LOCAL',
-        email: data.email,
-        fullName: data.fullName,
-        emailVerified: false,
-        status: 'ACTIVE',
-      }),
-    );
-    await this.localCredentialRepository.save(
-      this.localCredentialRepository.create({
-        principalId: principal.id,
-        passwordHash: data.passwordHash,
-        passwordUpdatedAt: new Date(),
-      }),
-    );
-    return principal;
+      .then((identity) =>
+        identity ? this.findById(identity.principalId) : null,
+      );
   }
 
   async createFederated(data: {
@@ -94,32 +77,48 @@ export class PrincipalService {
   }
 
   async recordLogin(principalId: string): Promise<void> {
-    await this.principalRepository.update({ id: principalId }, { lastLoginAt: new Date() });
+    await this.principalRepository.update(
+      { id: principalId },
+      { lastLoginAt: new Date() },
+    );
   }
 
-  async markEmailVerified(principalId: string): Promise<void> {
-    await this.principalRepository.update({ id: principalId }, { emailVerified: true });
-  }
-
-  async updatePassword(principalId: string, passwordHash: string): Promise<void> {
+  async updatePassword(
+    principalId: string,
+    passwordHash: string,
+  ): Promise<void> {
     await this.localCredentialRepository.update(
       { principalId },
-      { passwordHash, passwordUpdatedAt: new Date(), failedAttempts: 0, lockedUntil: null },
+      {
+        passwordHash,
+        passwordUpdatedAt: new Date(),
+        failedAttempts: 0,
+        lockedUntil: null,
+      },
     );
   }
 
   /** Increments the failed-attempt counter and locks the credential once a threshold is crossed by the caller. */
-  async recordFailedLogin(principalId: string, lockUntil?: Date): Promise<void> {
+  async recordFailedLogin(
+    principalId: string,
+    lockUntil?: Date,
+  ): Promise<void> {
     const credential = await this.getLocalCredential(principalId);
     if (!credential) return;
     await this.localCredentialRepository.update(
       { principalId },
-      { failedAttempts: credential.failedAttempts + 1, ...(lockUntil ? { lockedUntil: lockUntil } : {}) },
+      {
+        failedAttempts: credential.failedAttempts + 1,
+        ...(lockUntil ? { lockedUntil: lockUntil } : {}),
+      },
     );
   }
 
   async resetFailedLogins(principalId: string): Promise<void> {
-    await this.localCredentialRepository.update({ principalId }, { failedAttempts: 0 });
+    await this.localCredentialRepository.update(
+      { principalId },
+      { failedAttempts: 0 },
+    );
   }
 }
 

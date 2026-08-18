@@ -50,7 +50,10 @@ export class AssessmentService {
   ) {}
 
   async run(input: RunAssessmentInput) {
-    const controlTestVersion = await this.prisma.controlTestVersion.findUniqueOrThrow({ where: { id: input.controlTestVersionId } });
+    const controlTestVersion =
+      await this.prisma.controlTestVersion.findUniqueOrThrow({
+        where: { id: input.controlTestVersionId },
+      });
 
     const assessment = await this.prisma.assessment.create({
       data: {
@@ -64,20 +67,49 @@ export class AssessmentService {
         status: 'PENDING',
       },
     });
-    await this.publishEvent(CANONICAL_TOPICS.ASSESSMENT_STARTED, 'assessment.started', input.tenantId, { assessmentId: assessment.id }, input.correlationId);
+    await this.publishEvent(
+      CANONICAL_TOPICS.ASSESSMENT_STARTED,
+      'assessment.started',
+      input.tenantId,
+      { assessmentId: assessment.id },
+      input.correlationId,
+    );
 
-    const rules = await this.expectedEvidenceRuleService.listForControlTestVersion(input.controlTestVersionId);
+    const rules =
+      await this.expectedEvidenceRuleService.listForControlTestVersion(
+        input.controlTestVersionId,
+      );
     if (rules.length === 0) {
-      return this.prisma.assessment.update({ where: { id: assessment.id }, data: { status: 'EVIDENCE_INCOMPLETE', completeness_state: 'UNKNOWN', limitations: JSON.stringify(['No ExpectedEvidenceRule configured for this control test']) } });
+      return this.prisma.assessment.update({
+        where: { id: assessment.id },
+        data: {
+          status: 'EVIDENCE_INCOMPLETE',
+          completeness_state: 'UNKNOWN',
+          limitations: JSON.stringify([
+            'No ExpectedEvidenceRule configured for this control test',
+          ]),
+        },
+      });
     }
 
     const matchResults = await Promise.all(
-      rules.map((rule) => this.evidenceMatcher.match({ tenantId: input.tenantId, ruleId: rule.id, periodStart: input.assessmentPeriodStart, periodEnd: input.assessmentPeriodEnd })),
+      rules.map((rule) =>
+        this.evidenceMatcher.match({
+          tenantId: input.tenantId,
+          ruleId: rule.id,
+          periodStart: input.assessmentPeriodStart,
+          periodEnd: input.assessmentPeriodEnd,
+        }),
+      ),
     );
 
-    const allComplete = matchResults.every((m) => m.coverageState === 'COMPLETE');
+    const allComplete = matchResults.every(
+      (m) => m.coverageState === 'COMPLETE',
+    );
     const anyStale = matchResults.some((m) => m.freshnessState === 'STALE');
-    const anyIntegrityFailed = matchResults.some((m) => m.integrityState === 'FAILED');
+    const anyIntegrityFailed = matchResults.some(
+      (m) => m.integrityState === 'FAILED',
+    );
 
     if (!allComplete) {
       for (let i = 0; i < rules.length; i++) {
@@ -86,7 +118,14 @@ export class AssessmentService {
             tenantId: input.tenantId,
             expectedEvidenceRuleId: rules[i].id,
             controlTestVersionId: input.controlTestVersionId,
-            reason: matchResults[i].coverageState === 'MISSING' ? 'MISSING_SOURCE' : matchResults[i].coverageState === 'COLLECTOR_UNHEALTHY' ? 'CONNECTOR_UNHEALTHY' : matchResults[i].coverageState === 'PERMISSION_CHANGED' ? 'PERMISSION_REVOKED' : 'PARTIAL_POPULATION',
+            reason:
+              matchResults[i].coverageState === 'MISSING'
+                ? 'MISSING_SOURCE'
+                : matchResults[i].coverageState === 'COLLECTOR_UNHEALTHY'
+                  ? 'CONNECTOR_UNHEALTHY'
+                  : matchResults[i].coverageState === 'PERMISSION_CHANGED'
+                    ? 'PERMISSION_REVOKED'
+                    : 'PARTIAL_POPULATION',
             periodStart: input.assessmentPeriodStart,
             periodEnd: input.assessmentPeriodEnd,
           });
@@ -96,10 +135,16 @@ export class AssessmentService {
         where: { id: assessment.id },
         data: {
           status: 'EVIDENCE_INCOMPLETE',
-          completeness_state: matchResults.some((m) => m.coverageState === 'MISSING') ? 'MISSING' : 'PARTIAL',
+          completeness_state: matchResults.some(
+            (m) => m.coverageState === 'MISSING',
+          )
+            ? 'MISSING'
+            : 'PARTIAL',
           freshness_state: anyStale ? 'STALE' : 'CURRENT',
           integrity_state: anyIntegrityFailed ? 'FAILED' : 'UNKNOWN',
-          limitations: JSON.stringify(['Evidence incomplete — evaluation not attempted']),
+          limitations: JSON.stringify([
+            'Evidence incomplete — evaluation not attempted',
+          ]),
         },
       });
     }
@@ -111,7 +156,10 @@ export class AssessmentService {
       purpose: 'CONTROL_ASSESSMENT',
       controlTestVersionId: input.controlTestVersionId,
       expectedEvidenceResultId: matchResults[0].result.id,
-      evidenceRecords: allRecords.map((r) => ({ id: r.id, content_hash: r.content_hash })),
+      evidenceRecords: allRecords.map((r) => ({
+        id: r.id,
+        content_hash: r.content_hash,
+      })),
     });
 
     let evaluationRun = null;
@@ -124,7 +172,8 @@ export class AssessmentService {
         evidenceBundleId: bundle.id,
         correlationId: input.correlationId,
       });
-      effectiveness = EFFECTIVENESS_FROM_RESULT[evaluationRun.result] ?? 'UNKNOWN';
+      effectiveness =
+        EFFECTIVENESS_FROM_RESULT[evaluationRun.result] ?? 'UNKNOWN';
     }
 
     const updated = await this.prisma.assessment.update({
@@ -137,25 +186,47 @@ export class AssessmentService {
         completeness_state: 'COMPLETE',
         freshness_state: anyStale ? 'STALE' : 'CURRENT',
         integrity_state: anyIntegrityFailed ? 'FAILED' : 'VERIFIED',
-        limitations: evaluationRun ? evaluationRun.limitations : JSON.stringify([]),
+        limitations: evaluationRun
+          ? evaluationRun.limitations
+          : JSON.stringify([]),
       },
     });
-    await this.publishEvent(CANONICAL_TOPICS.ASSESSMENT_COMPLETED, 'assessment.completed', input.tenantId, { assessmentId: assessment.id, effectiveness }, input.correlationId);
+    await this.publishEvent(
+      CANONICAL_TOPICS.ASSESSMENT_COMPLETED,
+      'assessment.completed',
+      input.tenantId,
+      { assessmentId: assessment.id, effectiveness },
+      input.correlationId,
+    );
 
     return updated;
   }
 
   async getById(tenantId: string, assessmentId: string) {
-    const assessment = await this.prisma.assessment.findFirst({ where: { id: assessmentId, tenant_id: tenantId } });
+    const assessment = await this.prisma.assessment.findFirst({
+      where: { id: assessmentId, tenant_id: tenantId },
+    });
     if (!assessment) {
       throw new NotFoundException(`Assessment '${assessmentId}' not found`);
     }
     return assessment;
   }
 
-  private async publishEvent(topic: string, eventType: string, tenantId: string, payload: Record<string, unknown>, correlationId?: string) {
+  private async publishEvent(
+    topic: string,
+    eventType: string,
+    tenantId: string,
+    payload: Record<string, unknown>,
+    correlationId?: string,
+  ) {
     await this.prisma.outboxEvent.create({
-      data: this.outbox.build({ tenantId, topic, eventType, payload, correlationId }),
+      data: this.outbox.build({
+        tenantId,
+        topic,
+        eventType,
+        payload,
+        correlationId,
+      }),
     });
   }
 }

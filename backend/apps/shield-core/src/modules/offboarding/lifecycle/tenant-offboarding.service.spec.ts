@@ -37,7 +37,12 @@ describe('TenantOffboardingService (SEC-02)', () => {
 
   beforeEach(async () => {
     prismaMock = {
-      tenantOffboardingRun: { findFirst: jest.fn(), create: jest.fn(), update: jest.fn(), findUniqueOrThrow: jest.fn() },
+      tenantOffboardingRun: {
+        findFirst: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+        findUniqueOrThrow: jest.fn(),
+      },
       outboxEvent: { create: jest.fn() },
       apiClient: { findMany: jest.fn().mockResolvedValue([]) },
       connectorInstance: { updateMany: jest.fn() },
@@ -77,30 +82,55 @@ describe('TenantOffboardingService (SEC-02)', () => {
   });
 
   it('denies starting offboarding when the actor is not authorized', async () => {
-    authDecisionMock.evaluate.mockResolvedValue({ decision: 'DENY', authorizationDecisionId: 'ad-1' });
+    authDecisionMock.evaluate.mockResolvedValue({
+      decision: 'DENY',
+      authorizationDecisionId: 'ad-1',
+    });
 
-    await expect(service.start('tenant-1', 'attacker', 'malicious')).rejects.toThrow(ForbiddenException);
+    await expect(
+      service.start('tenant-1', 'attacker', 'malicious'),
+    ).rejects.toThrow(ForbiddenException);
     expect(prismaMock.tenantOffboardingRun.create).not.toHaveBeenCalled();
   });
 
   it('repeated start commands are idempotent and return the in-flight run rather than starting a second one', async () => {
-    authDecisionMock.evaluate.mockResolvedValue({ decision: 'ALLOW', authorizationDecisionId: 'ad-1' });
-    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({ id: 'run-1', status: 'EXPORTING' });
+    authDecisionMock.evaluate.mockResolvedValue({
+      decision: 'PERMIT',
+      authorizationDecisionId: 'ad-1',
+    });
+    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({
+      id: 'run-1',
+      status: 'EXPORTING',
+    });
 
-    const run = await service.start('tenant-1', 'admin', 'offboarding customer');
+    const run = await service.start(
+      'tenant-1',
+      'admin',
+      'offboarding customer',
+    );
 
     expect(run.id).toBe('run-1');
     expect(prismaMock.tenantOffboardingRun.create).not.toHaveBeenCalled();
   });
 
   it('SEC-02 core guarantee: deletion cannot proceed until the final export has actually completed', async () => {
-    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({ id: 'run-1', tenant_id: 'tenant-1', status: 'EXPORTING', requested_by: 'admin' });
+    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({
+      id: 'run-1',
+      tenant_id: 'tenant-1',
+      status: 'EXPORTING',
+      requested_by: 'admin',
+    });
     exportJobMock.create.mockResolvedValue({ id: 'job-1' });
     prismaMock.tenantOffboardingRun.update.mockResolvedValue({ id: 'run-1' });
     exportWorkerMock.run.mockResolvedValue(undefined);
-    prismaMock.exportJob.findUniqueOrThrow.mockResolvedValue({ id: 'job-1', status: 'FAILED' });
+    prismaMock.exportJob.findUniqueOrThrow.mockResolvedValue({
+      id: 'job-1',
+      status: 'FAILED',
+    });
 
-    await expect(service.startFinalExport('tenant-1', 'run-1')).rejects.toThrow(ConflictException);
+    await expect(service.startFinalExport('tenant-1', 'run-1')).rejects.toThrow(
+      ConflictException,
+    );
 
     // The run is marked FAILED, never allowed to silently continue toward deletion.
     expect(prismaMock.tenantOffboardingRun.update).toHaveBeenCalledWith(
@@ -109,11 +139,22 @@ describe('TenantOffboardingService (SEC-02)', () => {
   });
 
   it('a completed export moves the run to EXPORT_READY, the prerequisite for freezing access', async () => {
-    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({ id: 'run-1', tenant_id: 'tenant-1', status: 'EXPORTING', requested_by: 'admin' });
+    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({
+      id: 'run-1',
+      tenant_id: 'tenant-1',
+      status: 'EXPORTING',
+      requested_by: 'admin',
+    });
     exportJobMock.create.mockResolvedValue({ id: 'job-1' });
-    prismaMock.tenantOffboardingRun.update.mockResolvedValue({ id: 'run-1', status: 'EXPORT_READY' });
+    prismaMock.tenantOffboardingRun.update.mockResolvedValue({
+      id: 'run-1',
+      status: 'EXPORT_READY',
+    });
     exportWorkerMock.run.mockResolvedValue(undefined);
-    prismaMock.exportJob.findUniqueOrThrow.mockResolvedValue({ id: 'job-1', status: 'READY' });
+    prismaMock.exportJob.findUniqueOrThrow.mockResolvedValue({
+      id: 'job-1',
+      status: 'READY',
+    });
 
     const run = await service.startFinalExport('tenant-1', 'run-1');
 
@@ -121,15 +162,27 @@ describe('TenantOffboardingService (SEC-02)', () => {
   });
 
   it('freezing access before the export is ready is rejected — access cannot be cut before evidence is exported', async () => {
-    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({ id: 'run-1', tenant_id: 'tenant-1', status: 'EXPORTING' });
+    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({
+      id: 'run-1',
+      tenant_id: 'tenant-1',
+      status: 'EXPORTING',
+    });
 
-    await expect(service.freezeAccess('tenant-1', 'run-1')).rejects.toThrow(ConflictException);
+    await expect(service.freezeAccess('tenant-1', 'run-1')).rejects.toThrow(
+      ConflictException,
+    );
     expect(apiClientMock.suspend).not.toHaveBeenCalled();
   });
 
   it('freezing access suspends and revokes API client credentials', async () => {
-    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({ id: 'run-1', tenant_id: 'tenant-1', status: 'EXPORT_READY' });
-    prismaMock.$transaction.mockResolvedValue([{ id: 'run-1', status: 'ACCESS_FROZEN' }]);
+    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({
+      id: 'run-1',
+      tenant_id: 'tenant-1',
+      status: 'EXPORT_READY',
+    });
+    prismaMock.$transaction.mockResolvedValue([
+      { id: 'run-1', status: 'ACCESS_FROZEN' },
+    ]);
     prismaMock.apiClient.findMany.mockResolvedValue([{ id: 'client-1' }]);
 
     await service.freezeAccess('tenant-1', 'run-1');
@@ -139,10 +192,25 @@ describe('TenantOffboardingService (SEC-02)', () => {
   });
 
   it('SEC-02 core guarantee: an active legal hold blocks deletion outright rather than deleting around it', async () => {
-    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({ id: 'run-1', tenant_id: 'tenant-1', status: 'CONNECTOR_REVOCATION', requested_by: 'admin' });
-    deletionRequestMock.request.mockResolvedValue({ id: 'del-1', status: 'BLOCKED_BY_HOLD' });
-    prismaMock.tenantOffboardingRun.update.mockResolvedValue({ id: 'run-1', status: 'BLOCKED', deletion_request_id: 'del-1' });
-    prismaMock.tenantOffboardingRun.findUniqueOrThrow.mockResolvedValue({ id: 'run-1', status: 'BLOCKED' });
+    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({
+      id: 'run-1',
+      tenant_id: 'tenant-1',
+      status: 'CONNECTOR_REVOCATION',
+      requested_by: 'admin',
+    });
+    deletionRequestMock.request.mockResolvedValue({
+      id: 'del-1',
+      status: 'BLOCKED_BY_HOLD',
+    });
+    prismaMock.tenantOffboardingRun.update.mockResolvedValue({
+      id: 'run-1',
+      status: 'BLOCKED',
+      deletion_request_id: 'del-1',
+    });
+    prismaMock.tenantOffboardingRun.findUniqueOrThrow.mockResolvedValue({
+      id: 'run-1',
+      status: 'BLOCKED',
+    });
 
     const run = await service.startDeletion('tenant-1', 'run-1', 'admin');
 
@@ -153,28 +221,58 @@ describe('TenantOffboardingService (SEC-02)', () => {
   });
 
   it('deletion cannot start before connector revocation has completed', async () => {
-    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({ id: 'run-1', tenant_id: 'tenant-1', status: 'ACCESS_FROZEN' });
+    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({
+      id: 'run-1',
+      tenant_id: 'tenant-1',
+      status: 'ACCESS_FROZEN',
+    });
 
-    await expect(service.startDeletion('tenant-1', 'run-1', 'admin')).rejects.toThrow(ConflictException);
+    await expect(
+      service.startDeletion('tenant-1', 'run-1', 'admin'),
+    ).rejects.toThrow(ConflictException);
     expect(deletionRequestMock.request).not.toHaveBeenCalled();
   });
 
   it('an approved (non-blocked) deletion request executes its tasks and records pending backup expiry', async () => {
-    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({ id: 'run-1', tenant_id: 'tenant-1', status: 'CONNECTOR_REVOCATION', requested_by: 'admin' });
-    deletionRequestMock.request.mockResolvedValue({ id: 'del-1', status: 'APPROVED' });
-    prismaMock.tenantOffboardingRun.update.mockResolvedValue({ id: 'run-1', status: 'BACKUP_EXPIRY_PENDING' });
-    prismaMock.deletionTask.findMany.mockResolvedValue([{ id: 'task-1' }, { id: 'task-2' }]);
+    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({
+      id: 'run-1',
+      tenant_id: 'tenant-1',
+      status: 'CONNECTOR_REVOCATION',
+      requested_by: 'admin',
+    });
+    deletionRequestMock.request.mockResolvedValue({
+      id: 'del-1',
+      status: 'APPROVED',
+    });
+    prismaMock.tenantOffboardingRun.update.mockResolvedValue({
+      id: 'run-1',
+      status: 'BACKUP_EXPIRY_PENDING',
+    });
+    prismaMock.deletionTask.findMany.mockResolvedValue([
+      { id: 'task-1' },
+      { id: 'task-2' },
+    ]);
 
     await service.startDeletion('tenant-1', 'run-1', 'admin');
 
     expect(deletionTaskMock.executeTask).toHaveBeenCalledTimes(2);
-    expect(backupExpiryMock.recordPending).toHaveBeenCalledWith('tenant-1', 'del-1');
+    expect(backupExpiryMock.recordPending).toHaveBeenCalledWith(
+      'tenant-1',
+      'del-1',
+    );
   });
 
   it('attestation and closure requires backup expiry to be pending with a deletion request on record', async () => {
-    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({ id: 'run-1', tenant_id: 'tenant-1', status: 'DELETING', deletion_request_id: null });
+    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({
+      id: 'run-1',
+      tenant_id: 'tenant-1',
+      status: 'DELETING',
+      deletion_request_id: null,
+    });
 
-    await expect(service.issueAttestationAndClose('tenant-1', 'run-1', 'admin')).rejects.toThrow(ConflictException);
+    await expect(
+      service.issueAttestationAndClose('tenant-1', 'run-1', 'admin'),
+    ).rejects.toThrow(ConflictException);
     expect(attestationMock.issue).not.toHaveBeenCalled();
   });
 
@@ -186,9 +284,15 @@ describe('TenantOffboardingService (SEC-02)', () => {
       deletion_request_id: 'del-1',
     });
     attestationMock.issue.mockResolvedValue({ id: 'attestation-1' });
-    prismaMock.$transaction.mockResolvedValue([{ id: 'run-1', status: 'COMPLETED' }]);
+    prismaMock.$transaction.mockResolvedValue([
+      { id: 'run-1', status: 'COMPLETED' },
+    ]);
 
-    const result = await service.issueAttestationAndClose('tenant-1', 'run-1', 'admin');
+    const result = await service.issueAttestationAndClose(
+      'tenant-1',
+      'run-1',
+      'admin',
+    );
 
     expect(result.attestation.id).toBe('attestation-1');
     expect(result.run.status).toBe('COMPLETED');
@@ -200,6 +304,8 @@ describe('TenantOffboardingService (SEC-02)', () => {
     // which themselves gate on legal hold. It has no direct Prisma access to
     // evidence/case/alert tables for deletion.
     const source = TenantOffboardingService.toString();
-    expect(source).not.toMatch(/prisma\.(evidenceRecord|case|alert|caseEvidence|alertEvidence)\.delete/i);
+    expect(source).not.toMatch(
+      /prisma\.(evidenceRecord|case|alert|caseEvidence|alertEvidence)\.delete/i,
+    );
   });
 });

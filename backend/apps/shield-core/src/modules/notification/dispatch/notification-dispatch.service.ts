@@ -49,9 +49,15 @@ export class NotificationDispatchService {
     for (const policy of policies) {
       const allowedChannels: string[] = JSON.parse(policy.allowed_channels);
       for (const channelType of allowedChannels) {
-        const decision = await this.preferenceService.resolveDeliveryDecision({ tenantId: input.tenantId, principalId: input.recipientPrincipalId, policy: { id: policy.id, mandatory: policy.mandatory } });
+        const decision = await this.preferenceService.resolveDeliveryDecision({
+          tenantId: input.tenantId,
+          principalId: input.recipientPrincipalId,
+          policy: { id: policy.id, mandatory: policy.mandatory },
+        });
         if (!decision.shouldDeliver) {
-          this.logger.debug(`Skipping delivery for policy ${policy.key} channel ${channelType}: ${decision.reason}`);
+          this.logger.debug(
+            `Skipping delivery for policy ${policy.key} channel ${channelType}: ${decision.reason}`,
+          );
           continue;
         }
 
@@ -76,17 +82,31 @@ export class NotificationDispatchService {
           });
         } catch (err: any) {
           if (err?.code === PRISMA_UNIQUE_CONSTRAINT_ERROR) {
-            this.logger.debug(`Duplicate dispatch suppressed for event ${input.eventId}/${input.recipientPrincipalId}/${channelType} — idempotency key already exists`);
+            this.logger.debug(
+              `Duplicate dispatch suppressed for event ${input.eventId}/${input.recipientPrincipalId}/${channelType} — idempotency key already exists`,
+            );
             continue;
           }
           throw err;
         }
 
         try {
-          const template = await this.templateService.getLatestPublished(policy.key, channelType);
-          const rendered = this.templateService.render(template, input.templateContext);
+          const template = await this.templateService.getLatestPublished(
+            policy.key,
+            channelType,
+          );
+          const rendered = this.templateService.render(
+            template,
+            input.templateContext,
+          );
           const channel = this.channels.get(channelType);
-          const result = channel ? await channel.send({ recipientPrincipalId: input.recipientPrincipalId, subject: rendered.subject, body: rendered.body }) : { delivered: false, errorCode: 'NO_CHANNEL_ADAPTER' };
+          const result = channel
+            ? await channel.send({
+                recipientPrincipalId: input.recipientPrincipalId,
+                subject: rendered.subject,
+                body: rendered.body,
+              })
+            : { delivered: false, errorCode: 'NO_CHANNEL_ADAPTER' };
 
           await this.prisma.notificationDelivery.update({
             where: { id: delivery.id },
@@ -98,7 +118,13 @@ export class NotificationDispatchService {
             },
           });
         } catch (err) {
-          await this.prisma.notificationDelivery.update({ where: { id: delivery.id }, data: { status: 'FAILED', error_code: (err as Error).message.slice(0, 200) } });
+          await this.prisma.notificationDelivery.update({
+            where: { id: delivery.id },
+            data: {
+              status: 'FAILED',
+              error_code: (err as Error).message.slice(0, 200),
+            },
+          });
         }
       }
     }

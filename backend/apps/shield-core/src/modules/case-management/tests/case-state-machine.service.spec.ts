@@ -21,14 +21,20 @@ describe('CaseStateMachineService', () => {
   });
 
   it('allows early closure from TRIAGED directly to CLOSED (e.g. false positive found during triage)', () => {
-    expect(() => machine.assertValidTransition('TRIAGED', 'CLOSED')).not.toThrow();
+    expect(() =>
+      machine.assertValidTransition('TRIAGED', 'CLOSED'),
+    ).not.toThrow();
   });
 
   it('rejects skipping ahead (NEW -> INVESTIGATING directly)', () => {
-    expect(() => machine.assertValidTransition('NEW', 'INVESTIGATING')).toThrow(BadRequestException);
+    expect(() => machine.assertValidTransition('NEW', 'INVESTIGATING')).toThrow(
+      BadRequestException,
+    );
   });
 
   it('rejects any transition out of CLOSED', () => {
-    expect(() => machine.assertValidTransition('CLOSED', 'MONITORING')).toThrow(BadRequestException);
+    expect(() => machine.assertValidTransition('CLOSED', 'MONITORING')).toThrow(
+      BadRequestException,
+    );
   });
 });

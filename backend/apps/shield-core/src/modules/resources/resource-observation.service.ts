@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import * as crypto from 'crypto';
 import { IsObject, IsOptional, IsString } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -56,9 +61,15 @@ export class ResourceObservationService {
     attributes: Record<string, unknown>,
   ): string {
     const spec = JSON.parse(identityKeySpec) as { keys: string[] };
-    const keys = spec.keys && spec.keys.length > 0 ? spec.keys : Object.keys(attributes).sort();
+    const keys =
+      spec.keys && spec.keys.length > 0
+        ? spec.keys
+        : Object.keys(attributes).sort();
     const parts = keys.map((k) => `${k}=${String(attributes[k] ?? '')}`);
-    return crypto.createHash('sha256').update(`${resourceType}|${parts.join('|')}`).digest('hex');
+    return crypto
+      .createHash('sha256')
+      .update(`${resourceType}|${parts.join('|')}`)
+      .digest('hex');
   }
 
   /**
@@ -68,7 +79,9 @@ export class ResourceObservationService {
    * row rather than creating a second billable unit.
    */
   async recordObservation(dto: RecordObservationDto) {
-    const definition = await this.definitionService.getActiveDefinition(dto.resourceType);
+    const definition = await this.definitionService.getActiveDefinition(
+      dto.resourceType,
+    );
     if (!definition) {
       throw new ConflictException({
         statusCode: 409,
@@ -116,7 +129,9 @@ export class ResourceObservationService {
   }
 
   async getObservationById(tenantId: string, id: string) {
-    const observation = await this.prisma.resourceObservation.findFirst({ where: { id, tenant_id: tenantId } });
+    const observation = await this.prisma.resourceObservation.findFirst({
+      where: { id, tenant_id: tenantId },
+    });
     if (!observation) {
       throw new NotFoundException(`Resource observation '${id}' not found`);
     }
@@ -135,15 +150,26 @@ export class ResourceObservationService {
    * independently: it can only be BILLABLE while coverage_state is
    * BILLABLE, otherwise it is forced back to NON_BILLABLE.
    */
-  async updateCoverageState(tenantId: string, observationId: string, targetState: string, exclusionReason?: string) {
+  async updateCoverageState(
+    tenantId: string,
+    observationId: string,
+    targetState: string,
+    exclusionReason?: string,
+  ) {
     const observation = await this.getObservationById(tenantId, observationId);
-    assertTransition(COVERAGE_TRANSITIONS, observation.coverage_state, targetState, 'protected resource coverage');
+    assertTransition(
+      COVERAGE_TRANSITIONS,
+      observation.coverage_state,
+      targetState,
+      'protected resource coverage',
+    );
 
     return this.prisma.resourceObservation.update({
       where: { id: observationId },
       data: {
         coverage_state: targetState,
-        billable_state: targetState === 'BILLABLE' ? 'BILLABLE' : 'NON_BILLABLE',
+        billable_state:
+          targetState === 'BILLABLE' ? 'BILLABLE' : 'NON_BILLABLE',
         exclusion_reason: targetState === 'EXCLUDED' ? exclusionReason : null,
       },
     });

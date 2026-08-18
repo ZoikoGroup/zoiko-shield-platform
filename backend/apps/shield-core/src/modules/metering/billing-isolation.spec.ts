@@ -27,7 +27,10 @@ describe('MET-04: alert/incident/control-failure isolation from billing', () => 
       const full = path.join(absolute, entry.name);
       if (entry.isDirectory()) {
         out.push(...findSourceFiles(path.join(dir, entry.name)));
-      } else if (entry.name.endsWith('.ts') && !entry.name.endsWith('.spec.ts')) {
+      } else if (
+        entry.name.endsWith('.ts') &&
+        !entry.name.endsWith('.spec.ts')
+      ) {
         out.push(full);
       }
     }
@@ -35,7 +38,8 @@ describe('MET-04: alert/incident/control-failure isolation from billing', () => 
   }
 
   it('no Alert/Case/Detection/Controls/Risk source file imports the billing/metering/usage domain', () => {
-    const forbidden = /MeteringService|MeterDefinitionService|UsageRecord|MeterEvent|CommercialInvoice|InvoiceSkeletonService/;
+    const forbidden =
+      /MeteringService|MeterDefinitionService|UsageRecord|MeterEvent|CommercialInvoice|InvoiceSkeletonService/;
     const offenders: string[] = [];
 
     for (const root of securityPlaneRoots) {
@@ -57,7 +61,10 @@ describe('MET-04: alert/incident/control-failure isolation from billing', () => 
 
     beforeEach(async () => {
       prismaMock = {
-        meterEvent: { create: jest.fn(), findFirst: jest.fn().mockResolvedValue(null) },
+        meterEvent: {
+          create: jest.fn(),
+          findFirst: jest.fn().mockResolvedValue(null),
+        },
         usageRecord: { create: jest.fn() },
       };
       definitionMock = { getActiveDefinition: jest.fn() };
@@ -74,7 +81,11 @@ describe('MET-04: alert/incident/control-failure isolation from billing', () => 
     });
 
     it('a storm of platform-generated (e.g. detection-engine-emitted) events stays NON_BILLABLE regardless of volume', async () => {
-      definitionMock.getActiveDefinition.mockResolvedValue({ id: 'def-1', unit: 'EVENTS', billable_policy: 'STANDARD' });
+      definitionMock.getActiveDefinition.mockResolvedValue({
+        id: 'def-1',
+        unit: 'EVENTS',
+        billable_policy: 'STANDARD',
+      });
       prismaMock.meterEvent.create.mockImplementation(({ data }: any) =>
         Promise.resolve({ id: `me-${data.source_event_id}`, ...data }),
       );
@@ -102,8 +113,14 @@ describe('MET-04: alert/incident/control-failure isolation from billing', () => 
     });
 
     it('a NEVER_BILLABLE meter (e.g. one deliberately scoped to alert/incident counts) stays at zero billable quantity across a storm', async () => {
-      definitionMock.getActiveDefinition.mockResolvedValue({ id: 'def-2', unit: 'EVENTS', billable_policy: 'NEVER_BILLABLE' });
-      prismaMock.meterEvent.create.mockImplementation(({ data }: any) => Promise.resolve({ id: 'me', ...data }));
+      definitionMock.getActiveDefinition.mockResolvedValue({
+        id: 'def-2',
+        unit: 'EVENTS',
+        billable_policy: 'NEVER_BILLABLE',
+      });
+      prismaMock.meterEvent.create.mockImplementation(({ data }: any) =>
+        Promise.resolve({ id: 'me', ...data }),
+      );
 
       let totalBillable = 0;
       prismaMock.usageRecord.create.mockImplementation(({ data }: any) => {

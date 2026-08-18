@@ -18,7 +18,10 @@ export class ReplayEngineService {
    */
   async reprocessQuarantinedEvent(tenantId: string, eventId: string) {
     this.logger.log(`Reprocessing quarantined event: ${eventId}`);
-    return this.normalizationService.reprocessQuarantinedEvent(tenantId, eventId);
+    return this.normalizationService.reprocessQuarantinedEvent(
+      tenantId,
+      eventId,
+    );
   }
 
   /**
@@ -53,7 +56,9 @@ export class ReplayEngineService {
 
     let matchedCount = 0;
     for (const evt of events) {
-      const runs = await this.detectionEngineService.evaluateNormalizedEvent(evt.id);
+      const runs = await this.detectionEngineService.evaluateNormalizedEvent(
+        evt.id,
+      );
       const isMatch = Array.isArray(runs)
         ? runs.some((run) => run.result === 'MATCH' || run.result === 'MATCHED')
         : false;

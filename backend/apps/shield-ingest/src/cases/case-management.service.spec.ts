@@ -68,7 +68,11 @@ describe('CaseManagementService (Step 11)', () => {
       status: 'TRIAGED',
     });
 
-    const updated = await service.transitionState('tenant-1', 'case-1', 'TRIAGED');
+    const updated = await service.transitionState(
+      'tenant-1',
+      'case-1',
+      'TRIAGED',
+    );
 
     expect(updated.status).toBe('TRIAGED');
     expect(prismaMock.caseTimeline.create).toHaveBeenCalledWith({
@@ -85,9 +89,9 @@ describe('CaseManagementService (Step 11)', () => {
       status: 'NEW',
     });
 
-    await expect(service.transitionState('tenant-1', 'case-1', 'CLOSED')).rejects.toThrow(
-      ConflictException,
-    );
+    await expect(
+      service.transitionState('tenant-1', 'case-1', 'CLOSED'),
+    ).rejects.toThrow(ConflictException);
   });
 
   it('should add analyst note to timeline', async () => {
@@ -100,7 +104,11 @@ describe('CaseManagementService (Step 11)', () => {
       event_type: 'NOTE_ADDED',
     });
 
-    const note = await service.addNote('tenant-1', 'case-1', 'Investigated IP 192.168.1.1');
+    const note = await service.addNote(
+      'tenant-1',
+      'case-1',
+      'Investigated IP 192.168.1.1',
+    );
 
     expect(prismaMock.caseTimeline.create).toHaveBeenCalledWith({
       data: expect.objectContaining({

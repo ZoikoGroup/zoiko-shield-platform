@@ -19,16 +19,28 @@ export class ApprovalReauthorizationService {
 
   check(context: ActionAuthorizationContext): ApprovalCheckResult {
     if (!context.approval) {
-      return { allowed: false, reason: 'No approval recorded for this proposal' };
+      return {
+        allowed: false,
+        reason: 'No approval recorded for this proposal',
+      };
     }
     if (context.approval.decision !== 'APPROVED') {
-      return { allowed: false, reason: `Approval decision is '${context.approval.decision}', expected 'APPROVED'` };
+      return {
+        allowed: false,
+        reason: `Approval decision is '${context.approval.decision}', expected 'APPROVED'`,
+      };
     }
     if (new Date(context.approval.expiresAt).getTime() <= Date.now()) {
-      return { allowed: false, reason: `Approval expired at ${context.approval.expiresAt}` };
+      return {
+        allowed: false,
+        reason: `Approval expired at ${context.approval.expiresAt}`,
+      };
     }
     if (!context.approvedMaterialHash) {
-      return { allowed: false, reason: 'Missing approvedMaterialHash on approval' };
+      return {
+        allowed: false,
+        reason: 'Missing approvedMaterialHash on approval',
+      };
     }
 
     const { contentHash: recomputedHash } = this.hashService.hashCanonicalJson({
@@ -45,7 +57,11 @@ export class ApprovalReauthorizationService {
     });
 
     if (recomputedHash !== context.approvedMaterialHash) {
-      return { allowed: false, reason: 'approved_material_hash mismatch — proposal material changed since approval' };
+      return {
+        allowed: false,
+        reason:
+          'approved_material_hash mismatch — proposal material changed since approval',
+      };
     }
 
     return { allowed: true };

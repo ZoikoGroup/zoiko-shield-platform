@@ -18,7 +18,10 @@ describe('IdempotencyService (ZS-COM-BILL-001 Part 4)', () => {
     };
 
     const module: TestingModule = await Test.createTestingModule({
-      providers: [IdempotencyService, { provide: PrismaService, useValue: prismaMock }],
+      providers: [
+        IdempotencyService,
+        { provide: PrismaService, useValue: prismaMock },
+      ],
     }).compile();
 
     service = module.get<IdempotencyService>(IdempotencyService);
@@ -29,7 +32,9 @@ describe('IdempotencyService (ZS-COM-BILL-001 Part 4)', () => {
     prismaMock.idempotencyRecord.create.mockResolvedValue({});
     prismaMock.idempotencyRecord.update.mockResolvedValue({});
 
-    const fn = jest.fn().mockResolvedValue({ statusCode: 201, body: { id: 'x' } });
+    const fn = jest
+      .fn()
+      .mockResolvedValue({ statusCode: 201, body: { id: 'x' } });
 
     const result = await service.run(
       { key: 'k1', operation: 'op', requestPayload: { a: 1 } },
@@ -84,9 +89,14 @@ describe('IdempotencyService (ZS-COM-BILL-001 Part 4)', () => {
     expect(fn).not.toHaveBeenCalled();
 
     try {
-      await service.run({ key: 'k1', operation: 'op', requestPayload: { a: 2 } }, fn);
+      await service.run(
+        { key: 'k1', operation: 'op', requestPayload: { a: 2 } },
+        fn,
+      );
     } catch (err: any) {
-      expect(err.getResponse().error).toBe('IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST');
+      expect(err.getResponse().error).toBe(
+        'IDEMPOTENCY_KEY_REUSED_WITH_DIFFERENT_REQUEST',
+      );
     }
   });
 

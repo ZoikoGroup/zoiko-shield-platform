@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
-import { AiUsageController, AiBudgetController } from './ai-governance.controller';
+import {
+  AiUsageController,
+  AiBudgetController,
+} from './ai-governance.controller';
 import { AiUsageService } from './ai-usage.service';
 import { AiBudgetService } from './ai-budget.service';
 import { PrismaModule } from '../../prisma/prisma.module';

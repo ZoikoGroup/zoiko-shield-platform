@@ -32,14 +32,20 @@ export class ControlObjectiveService {
   }
 
   async getById(controlObjectiveId: string) {
-    const objective = await this.prisma.controlObjective.findUnique({ where: { id: controlObjectiveId } });
+    const objective = await this.prisma.controlObjective.findUnique({
+      where: { id: controlObjectiveId },
+    });
     if (!objective) {
-      throw new NotFoundException(`ControlObjective '${controlObjectiveId}' not found`);
+      throw new NotFoundException(
+        `ControlObjective '${controlObjectiveId}' not found`,
+      );
     }
     return objective;
   }
 
   async list() {
-    return this.prisma.controlObjective.findMany({ orderBy: { created_at: 'asc' } });
+    return this.prisma.controlObjective.findMany({
+      orderBy: { created_at: 'asc' },
+    });
   }
 }

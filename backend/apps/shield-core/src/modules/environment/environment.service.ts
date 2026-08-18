@@ -17,14 +17,22 @@ export class EnvironmentService {
   }
 
   async findOne(tenantId: string, id: string): Promise<Environment> {
-    const item = await this.environmentRepository.findOne({ where: { id, tenantId } });
+    const item = await this.environmentRepository.findOne({
+      where: { id, tenantId },
+    });
     if (!item) {
-      throw new NotFoundException(`Environment ${id} not found for tenant ${tenantId}`);
+      throw new NotFoundException(
+        `Environment ${id} not found for tenant ${tenantId}`,
+      );
     }
     return item;
   }
 
-  create(tenantId: string, dto: CreateEnvironmentDto, defaultRegion: string): Promise<Environment> {
+  create(
+    tenantId: string,
+    dto: CreateEnvironmentDto,
+    defaultRegion: string,
+  ): Promise<Environment> {
     return this.environmentRepository.save(
       this.environmentRepository.create({
         tenantId,
@@ -35,7 +43,11 @@ export class EnvironmentService {
     );
   }
 
-  async update(tenantId: string, id: string, dto: UpdateEnvironmentDto): Promise<Environment> {
+  async update(
+    tenantId: string,
+    id: string,
+    dto: UpdateEnvironmentDto,
+  ): Promise<Environment> {
     const item = await this.findOne(tenantId, id);
     Object.assign(item, dto);
     return this.environmentRepository.save(item);

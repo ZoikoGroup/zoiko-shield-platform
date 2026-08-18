@@ -51,7 +51,10 @@ export class EntraConnectorService implements SecurityConnector, OnModuleInit {
     this.registry.register('microsoft-entra', this);
   }
 
-  async connect(context: ConnectorContext, _input: ConnectInput): Promise<ConnectionResult> {
+  async connect(
+    context: ConnectorContext,
+    _input: ConnectInput,
+  ): Promise<ConnectionResult> {
     let definition = await this.prisma.connectorDefinition.findUnique({
       where: { provider: 'microsoft-entra' },
     });
@@ -60,7 +63,8 @@ export class EntraConnectorService implements SecurityConnector, OnModuleInit {
         data: {
           provider: 'microsoft-entra',
           name: 'Microsoft Entra ID',
-          description: 'Connection to Microsoft Entra for user and sign-in logs',
+          description:
+            'Connection to Microsoft Entra for user and sign-in logs',
           supportedEvents: ['user.sync', 'signin.log'],
         },
       });
@@ -105,7 +109,10 @@ export class EntraConnectorService implements SecurityConnector, OnModuleInit {
   }
 
   /** Called from the OAuth callback once Microsoft confirms admin consent. */
-  async completeConsent(instanceId: string, externalTenantId: string): Promise<void> {
+  async completeConsent(
+    instanceId: string,
+    externalTenantId: string,
+  ): Promise<void> {
     const instance = await this.prisma.connectorInstance.update({
       where: { id: instanceId },
       data: { externalTenantId, state: 'CONNECTED' },
@@ -127,18 +134,34 @@ export class EntraConnectorService implements SecurityConnector, OnModuleInit {
     const instance = await this.prisma.connectorInstance.findUniqueOrThrow({
       where: { id: context.connectorInstanceId },
     });
-    const accessToken = await this.tokenService.getAccessToken(instance.id, instance.tenant_id);
-    const healthy = await this.healthService.checkHealth(instance.id, instance.tenant_id, accessToken);
+    const accessToken = await this.tokenService.getAccessToken(
+      instance.id,
+      instance.tenant_id,
+    );
+    const healthy = await this.healthService.checkHealth(
+      instance.id,
+      instance.tenant_id,
+      accessToken,
+    );
     return healthy
-      ? { status: 'success', message: 'Connection test passed! Graph API is reachable.' }
-      : { status: 'failure', message: 'Graph API is unreachable or credentials are invalid.' };
+      ? {
+          status: 'success',
+          message: 'Connection test passed! Graph API is reachable.',
+        }
+      : {
+          status: 'failure',
+          message: 'Graph API is unreachable or credentials are invalid.',
+        };
   }
 
   async sync(context: ConnectorContext): Promise<SyncResult> {
     const instance = await this.prisma.connectorInstance.findUniqueOrThrow({
       where: { id: context.connectorInstanceId },
     });
-    const accessToken = await this.tokenService.getAccessToken(instance.id, instance.tenant_id);
+    const accessToken = await this.tokenService.getAccessToken(
+      instance.id,
+      instance.tenant_id,
+    );
 
     const usersProcessed = await this.userSync.syncUsers(
       instance.id,
@@ -175,9 +198,14 @@ export class EntraConnectorService implements SecurityConnector, OnModuleInit {
         instance.tenant_id,
       );
       const grantedNow = this.tokenService.decodeGrantedRoles(accessToken);
-      await this.permissionService.reconcileGranted(context.connectorInstanceId, grantedNow);
+      await this.permissionService.reconcileGranted(
+        context.connectorInstanceId,
+        grantedNow,
+      );
 
-      const hasAllRequired = ENTRA_REQUIRED_PERMISSIONS.every((p) => grantedNow.includes(p));
+      const hasAllRequired = ENTRA_REQUIRED_PERMISSIONS.every((p) =>
+        grantedNow.includes(p),
+      );
       await this.connectorHealthService.updatePermissionStatus(
         instance.id,
         instance.tenant_id,
@@ -189,8 +217,12 @@ export class EntraConnectorService implements SecurityConnector, OnModuleInit {
       );
     }
 
-    const granted = await this.permissionService.getGranted(context.connectorInstanceId);
-    const missing = await this.permissionService.getMissingRequired(context.connectorInstanceId);
+    const granted = await this.permissionService.getGranted(
+      context.connectorInstanceId,
+    );
+    const missing = await this.permissionService.getMissingRequired(
+      context.connectorInstanceId,
+    );
     return { granted, missing };
   }
 
@@ -200,6 +232,8 @@ export class EntraConnectorService implements SecurityConnector, OnModuleInit {
       data: { state: 'DISCONNECTED', deletedAt: new Date() },
     });
     this.tokenService.invalidate(context.connectorInstanceId);
-    this.logger.log(`Disconnected Entra instance ${context.connectorInstanceId}`);
+    this.logger.log(
+      `Disconnected Entra instance ${context.connectorInstanceId}`,
+    );
   }
 }

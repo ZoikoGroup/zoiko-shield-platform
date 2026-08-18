@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { IsString, IsUUID } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ContractStateService } from '../commerce/contract-state.service';
@@ -154,6 +159,9 @@ export class OrderService {
   async rejectOrder(orderId: string) {
     const order = await this.getOrderById(orderId);
     assertTransition(ALLOWED_TRANSITIONS, order.status, 'REJECTED', 'order');
-    return this.prisma.commercialOrder.update({ where: { id: orderId }, data: { status: 'REJECTED' } });
+    return this.prisma.commercialOrder.update({
+      where: { id: orderId },
+      data: { status: 'REJECTED' },
+    });
   }
 }

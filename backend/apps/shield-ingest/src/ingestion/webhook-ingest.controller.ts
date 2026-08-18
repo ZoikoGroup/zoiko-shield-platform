@@ -9,7 +9,11 @@ import {
   Logger,
 } from '@nestjs/common';
 import { UseGuards } from '@nestjs/common';
-import { RawIngestService, IngestPayloadDto, IngestionResult } from './raw-ingest.service';
+import {
+  RawIngestService,
+  IngestPayloadDto,
+  IngestionResult,
+} from './raw-ingest.service';
 import { WebhookSignatureGuard } from './guards/webhook-signature.guard';
 import { PublicIngress } from '../security/public-ingress.decorator';
 
@@ -36,7 +40,9 @@ export class WebhookIngestController {
     message: string;
     data: IngestionResult;
   }> {
-    this.logger.log(`Received incoming webhook for connectorId: ${connectorId}`);
+    this.logger.log(
+      `Received incoming webhook for connectorId: ${connectorId}`,
+    );
 
     const result = await this.rawIngestService.processWebhookPayload(
       connectorId,

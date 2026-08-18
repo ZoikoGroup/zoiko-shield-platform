@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { IsISO8601, IsString } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PartnerService } from './partner.service';
@@ -38,7 +43,9 @@ export class PartnerSettlementService {
   ) {}
 
   async calculateSettlement(dto: CalculateSettlementDto) {
-    const agreement = await this.partnerService.getActiveAgreement(dto.partnerId);
+    const agreement = await this.partnerService.getActiveAgreement(
+      dto.partnerId,
+    );
     if (!agreement) {
       throw new ConflictException({
         statusCode: 409,
@@ -50,10 +57,14 @@ export class PartnerSettlementService {
     const delegations = await this.prisma.partnerDelegation.findMany({
       where: { partner_id: dto.partnerId, status: 'ACTIVE' },
     });
-    const accountIds = [...new Set(delegations.map((d) => d.commercial_account_id))];
+    const accountIds = [
+      ...new Set(delegations.map((d) => d.commercial_account_id)),
+    ];
 
     if (accountIds.length === 0) {
-      this.logger.warn(`Partner '${dto.partnerId}' has no delegated commercial accounts — settlement will be zero`);
+      this.logger.warn(
+        `Partner '${dto.partnerId}' has no delegated commercial accounts — settlement will be zero`,
+      );
     }
 
     const invoices = await this.prisma.commercialInvoice.findMany({
@@ -64,8 +75,12 @@ export class PartnerSettlementService {
       },
     });
 
-    const grossAmount = invoices.reduce((sum, inv) => sum + inv.total_amount, 0);
-    const commissionAmount = grossAmount * (Number(agreement.commission_percent) / 100);
+    const grossAmount = invoices.reduce(
+      (sum, inv) => sum + inv.total_amount,
+      0,
+    );
+    const commissionAmount =
+      grossAmount * (Number(agreement.commission_percent) / 100);
 
     return this.prisma.partnerSettlement.create({
       data: {
@@ -80,7 +95,9 @@ export class PartnerSettlementService {
   }
 
   async getSettlementById(id: string) {
-    const settlement = await this.prisma.partnerSettlement.findUnique({ where: { id } });
+    const settlement = await this.prisma.partnerSettlement.findUnique({
+      where: { id },
+    });
     if (!settlement) {
       throw new NotFoundException(`Partner settlement '${id}' not found`);
     }
@@ -89,13 +106,29 @@ export class PartnerSettlementService {
 
   async approveSettlement(id: string) {
     const settlement = await this.getSettlementById(id);
-    assertTransition(SETTLEMENT_TRANSITIONS, settlement.status, 'APPROVED', 'partner settlement');
-    return this.prisma.partnerSettlement.update({ where: { id }, data: { status: 'APPROVED' } });
+    assertTransition(
+      SETTLEMENT_TRANSITIONS,
+      settlement.status,
+      'APPROVED',
+      'partner settlement',
+    );
+    return this.prisma.partnerSettlement.update({
+      where: { id },
+      data: { status: 'APPROVED' },
+    });
   }
 
   async markPaid(id: string) {
     const settlement = await this.getSettlementById(id);
-    assertTransition(SETTLEMENT_TRANSITIONS, settlement.status, 'PAID', 'partner settlement');
-    return this.prisma.partnerSettlement.update({ where: { id }, data: { status: 'PAID' } });
+    assertTransition(
+      SETTLEMENT_TRANSITIONS,
+      settlement.status,
+      'PAID',
+      'partner settlement',
+    );
+    return this.prisma.partnerSettlement.update({
+      where: { id },
+      data: { status: 'PAID' },
+    });
   }
 }

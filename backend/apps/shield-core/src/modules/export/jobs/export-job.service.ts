@@ -1,9 +1,16 @@
-import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OutboxService } from '../../../outbox/outbox.service';
 import { CANONICAL_TOPICS } from '../../../kafka/kafka-producer.service';
-import { AuthorizationDecisionService } from '../../authorization-decision/authorization-decision.service';
+import {
+  assertPermittedAuthorization,
+  AuthorizationDecisionService,
+} from '../../authorization-decision/authorization-decision.service';
 
 export interface CreateExportJobInput {
   tenantId: string;
@@ -32,20 +39,27 @@ export class ExportJobService {
 
   async create(input: CreateExportJobInput) {
     if (input.idempotencyKey) {
-      const existing = await this.prisma.exportJob.findFirst({ where: { tenant_id: input.tenantId, idempotency_key: input.idempotencyKey } });
+      const existing = await this.prisma.exportJob.findFirst({
+        where: {
+          tenant_id: input.tenantId,
+          idempotency_key: input.idempotencyKey,
+        },
+      });
       if (existing) return existing;
     }
 
-    const { authorizationDecisionId, decision } = await this.authorizationDecisionService.evaluate({
+    const authorization = await this.authorizationDecisionService.evaluate({
       actorId: input.requestedBy,
       tenantId: input.tenantId,
       action: 'export:create',
       resourceType: 'Tenant',
       resourceId: input.tenantId,
     });
-    if (decision === 'DENY') {
-      throw new ConflictException('Actor is not authorized to create exports');
-    }
+    assertPermittedAuthorization(
+      authorization,
+      'Actor is not authorized to create exports',
+    );
+    const { authorizationDecisionId } = authorization;
 
     const jobId = randomUUID();
     const [job] = await this.prisma.$transaction([
@@ -65,7 +79,14 @@ export class ExportJobService {
           expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
         },
       }),
-      this.prisma.outboxEvent.create({ data: this.outbox.build({ tenantId: input.tenantId, topic: CANONICAL_TOPICS.EXPORT_REQUESTED, eventType: 'export.requested', payload: { jobId } }) }),
+      this.prisma.outboxEvent.create({
+        data: this.outbox.build({
+          tenantId: input.tenantId,
+          topic: CANONICAL_TOPICS.EXPORT_REQUESTED,
+          eventType: 'export.requested',
+          payload: { jobId },
+        }),
+      }),
     ]);
     return job;
   }
@@ -73,13 +94,20 @@ export class ExportJobService {
   async cancel(tenantId: string, jobId: string) {
     const job = await this.assertTenantOwnership(tenantId, jobId);
     if (['READY', 'FAILED', 'EXPIRED', 'CANCELLED'].includes(job.status)) {
-      throw new ConflictException(`ExportJob '${jobId}' is already terminal (${job.status})`);
+      throw new ConflictException(
+        `ExportJob '${jobId}' is already terminal (${job.status})`,
+      );
     }
-    return this.prisma.exportJob.update({ where: { id: job.id }, data: { status: 'CANCELLED' } });
+    return this.prisma.exportJob.update({
+      where: { id: job.id },
+      data: { status: 'CANCELLED' },
+    });
   }
 
   async assertTenantOwnership(tenantId: string, jobId: string) {
-    const job = await this.prisma.exportJob.findFirst({ where: { id: jobId, tenant_id: tenantId } });
+    const job = await this.prisma.exportJob.findFirst({
+      where: { id: jobId, tenant_id: tenantId },
+    });
     if (!job) {
       throw new NotFoundException(`ExportJob '${jobId}' not found`);
     }
@@ -87,6 +115,9 @@ export class ExportJobService {
   }
 
   async list(tenantId: string) {
-    return this.prisma.exportJob.findMany({ where: { tenant_id: tenantId }, orderBy: { created_at: 'desc' } });
+    return this.prisma.exportJob.findMany({
+      where: { tenant_id: tenantId },
+      orderBy: { created_at: 'desc' },
+    });
   }
 }

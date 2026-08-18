@@ -1,4 +1,9 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { IsInt, IsOptional, IsPositive, IsString } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -59,17 +64,25 @@ export class DunningPolicyService {
   }
 
   async approvePolicy(id: string, approvedBy: string) {
-    const policy = await this.prisma.dunningPolicy.findUnique({ where: { id } });
+    const policy = await this.prisma.dunningPolicy.findUnique({
+      where: { id },
+    });
     if (!policy) {
       throw new NotFoundException(`Dunning policy '${id}' not found`);
     }
     if (policy.status !== 'DRAFT') {
-      throw new ConflictException(`Dunning policy '${id}' is '${policy.status}', not DRAFT`);
+      throw new ConflictException(
+        `Dunning policy '${id}' is '${policy.status}', not DRAFT`,
+      );
     }
 
     return this.prisma.dunningPolicy.update({
       where: { id },
-      data: { status: 'APPROVED', approved_by: approvedBy, approved_at: new Date() },
+      data: {
+        status: 'APPROVED',
+        approved_by: approvedBy,
+        approved_at: new Date(),
+      },
     });
   }
 
@@ -80,7 +93,9 @@ export class DunningPolicyService {
     });
 
     if (!policy) {
-      this.logger.warn(`Dunning policy query FAILED CLOSED for key '${policyKey}'`);
+      this.logger.warn(
+        `Dunning policy query FAILED CLOSED for key '${policyKey}'`,
+      );
       return null;
     }
     return policy;

@@ -1,5 +1,13 @@
 import { ConflictException, Injectable, Logger } from '@nestjs/common';
-import { IsBoolean, IsIn, IsInt, IsISO8601, IsOptional, IsPositive, IsString } from 'class-validator';
+import {
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsISO8601,
+  IsOptional,
+  IsPositive,
+  IsString,
+} from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { MeterDefinitionService } from './meter-definition.service';
 
@@ -50,7 +58,9 @@ export class MeteringService {
   ) {}
 
   async recordEvent(dto: RecordMeterEventDto) {
-    const definition = await this.meterDefinitionService.getActiveDefinition(dto.meterKey);
+    const definition = await this.meterDefinitionService.getActiveDefinition(
+      dto.meterKey,
+    );
     if (!definition) {
       throw new ConflictException({
         statusCode: 409,
@@ -114,7 +124,8 @@ export class MeteringService {
     // Principle 5: platform-generated detections/summaries/AI content must
     // never silently become customer-billable ingestion.
     const billable =
-      !dto.isPlatformGenerated && definition.billable_policy !== 'NEVER_BILLABLE';
+      !dto.isPlatformGenerated &&
+      definition.billable_policy !== 'NEVER_BILLABLE';
 
     const event = await this.prisma.meterEvent.create({
       data: {

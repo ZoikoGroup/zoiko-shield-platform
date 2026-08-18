@@ -1,4 +1,9 @@
-import { Injectable, Logger, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { IsISO8601, IsObject, IsString, IsUUID } from 'class-validator';
 import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -52,7 +57,10 @@ export class ContractStateService {
   async createContract(dto: CreateContractDto, tx?: Prisma.TransactionClient) {
     const client = tx ?? this.prisma;
     const configString = JSON.stringify(dto.orderConfig);
-    const snapshotHash = crypto.createHash('sha256').update(configString).digest('hex');
+    const snapshotHash = crypto
+      .createHash('sha256')
+      .update(configString)
+      .digest('hex');
 
     return client.contract.create({
       data: {

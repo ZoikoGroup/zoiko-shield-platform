@@ -1,9 +1,16 @@
-import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  OnApplicationBootstrap,
+  OnModuleDestroy,
+} from '@nestjs/common';
 import { Kafka, Consumer, EachMessagePayload } from 'kafkajs';
 import { EventEnvelope } from './kafka-producer.service';
 import { PrismaService } from '../prisma/prisma.service';
 
-export type KafkaMessageHandler = (envelope: EventEnvelope<any>) => Promise<void>;
+export type KafkaMessageHandler = (
+  envelope: EventEnvelope<any>,
+) => Promise<void>;
 
 /**
  * shield-core's first-ever Kafka consumer. Handlers register themselves
@@ -30,7 +37,9 @@ export type KafkaMessageHandler = (envelope: EventEnvelope<any>) => Promise<void
  * DetectionMatch's dedup key, Alert's [tenant_id, detection_match_id]).
  */
 @Injectable()
-export class KafkaConsumerService implements OnApplicationBootstrap, OnModuleDestroy {
+export class KafkaConsumerService
+  implements OnApplicationBootstrap, OnModuleDestroy
+{
   private readonly logger = new Logger(KafkaConsumerService.name);
   private readonly kafka: Kafka;
   private readonly consumer: Consumer;
@@ -41,7 +50,9 @@ export class KafkaConsumerService implements OnApplicationBootstrap, OnModuleDes
       clientId: 'zoiko-shield-core-consumer',
       brokers: [process.env.KAFKA_BROKERS || 'localhost:9092'],
     });
-    this.consumer = this.kafka.consumer({ groupId: 'shield-core-case-evidence' });
+    this.consumer = this.kafka.consumer({
+      groupId: 'shield-core-case-evidence',
+    });
   }
 
   registerHandler(topic: string, handler: KafkaMessageHandler): void {
@@ -52,14 +63,18 @@ export class KafkaConsumerService implements OnApplicationBootstrap, OnModuleDes
 
   async onApplicationBootstrap() {
     if (this.handlers.size === 0) {
-      this.logger.warn('No Kafka handlers registered — consumer will not subscribe to any topic.');
+      this.logger.warn(
+        'No Kafka handlers registered — consumer will not subscribe to any topic.',
+      );
       return;
     }
 
     try {
       await this.consumer.connect();
       await Promise.all(
-        [...this.handlers.keys()].map((topic) => this.consumer.subscribe({ topic, fromBeginning: false })),
+        [...this.handlers.keys()].map((topic) =>
+          this.consumer.subscribe({ topic, fromBeginning: false }),
+        ),
       );
 
       await this.consumer.run({
@@ -68,7 +83,9 @@ export class KafkaConsumerService implements OnApplicationBootstrap, OnModuleDes
         },
       });
 
-      this.logger.log(`Kafka consumer subscribed to: ${[...this.handlers.keys()].join(', ')}`);
+      this.logger.log(
+        `Kafka consumer subscribed to: ${[...this.handlers.keys()].join(', ')}`,
+      );
     } catch (error: any) {
       this.logger.error(`Failed to start Kafka consumer: ${error.message}`);
     }
@@ -82,13 +99,19 @@ export class KafkaConsumerService implements OnApplicationBootstrap, OnModuleDes
     try {
       envelope = JSON.parse(message.value.toString());
     } catch (err) {
-      this.logger.error(`Malformed message on ${topic}, skipping: ${(err as Error).message}`);
+      this.logger.error(
+        `Malformed message on ${topic}, skipping: ${(err as Error).message}`,
+      );
       return;
     }
 
-    const alreadyProcessed = await this.prisma.inboxEvent.findUnique({ where: { event_id: envelope.eventId } });
+    const alreadyProcessed = await this.prisma.inboxEvent.findUnique({
+      where: { event_id: envelope.eventId },
+    });
     if (alreadyProcessed) {
-      this.logger.debug(`Skipping already-processed event ${envelope.eventId} on ${topic} (inbox dedup)`);
+      this.logger.debug(
+        `Skipping already-processed event ${envelope.eventId} on ${topic} (inbox dedup)`,
+      );
       return;
     }
 
@@ -99,12 +122,16 @@ export class KafkaConsumerService implements OnApplicationBootstrap, OnModuleDes
         await handler(envelope);
       } catch (err) {
         allHandlersSucceeded = false;
-        this.logger.error(`Handler for ${topic} failed on event ${envelope.eventId}: ${(err as Error).message}`);
+        this.logger.error(
+          `Handler for ${topic} failed on event ${envelope.eventId}: ${(err as Error).message}`,
+        );
       }
     }
 
     if (!allHandlersSucceeded) {
-      throw new Error(`One or more handlers failed for event ${envelope.eventId} on ${topic}`);
+      throw new Error(
+        `One or more handlers failed for event ${envelope.eventId} on ${topic}`,
+      );
     }
 
     // Only record the inbox entry once every handler has succeeded — a

@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { AiOutputService } from './ai-output.service';
-import { KafkaProducerService, CANONICAL_TOPICS } from '../kafka/kafka-producer.service';
+import {
+  KafkaProducerService,
+  CANONICAL_TOPICS,
+} from '../kafka/kafka-producer.service';
 
 export type ReviewDecision = 'APPROVED' | 'MODIFIED' | 'REJECTED';
 
@@ -13,7 +16,15 @@ export class AiHumanReviewService {
     private readonly kafkaProducer: KafkaProducerService,
   ) {}
 
-  async recordReview(params: { tenantId: string; outputId: string; reviewerId: string; decision: ReviewDecision; rationale?: string; modifiedContent?: string; correlationId: string }) {
+  async recordReview(params: {
+    tenantId: string;
+    outputId: string;
+    reviewerId: string;
+    decision: ReviewDecision;
+    rationale?: string;
+    modifiedContent?: string;
+    correlationId: string;
+  }) {
     // Confirms the output exists and belongs to this tenant (throws otherwise).
     await this.aiOutputService.getById(params.tenantId, params.outputId);
 
@@ -28,13 +39,20 @@ export class AiHumanReviewService {
           modified_content: params.modifiedContent,
         },
       }),
-      this.prisma.aiOutput.update({ where: { id: params.outputId }, data: { review_status: params.decision } }),
+      this.prisma.aiOutput.update({
+        where: { id: params.outputId },
+        data: { review_status: params.decision },
+      }),
     ]);
 
     await this.kafkaProducer.publishEvent(
       CANONICAL_TOPICS.AI_OUTPUT_REVIEWED,
       'ai.output.reviewed',
-      { tenantId: params.tenantId, aiOutputId: params.outputId, decision: params.decision },
+      {
+        tenantId: params.tenantId,
+        aiOutputId: params.outputId,
+        decision: params.decision,
+      },
       { correlationId: params.correlationId },
     );
 

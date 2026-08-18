@@ -42,12 +42,21 @@ export class CommercialEventPublisherService {
           await this.kafkaProducer.publishEvent(
             `commercial.${event.event_type}`,
             event.event_type,
-            { tenantId: event.tenant_id || 'unknown-tenant', actor: event.actor, ...JSON.parse(event.payload) },
+            {
+              tenantId: event.tenant_id || 'unknown-tenant',
+              actor: event.actor,
+              ...JSON.parse(event.payload),
+            },
             { correlationId: event.idempotency_key },
           );
-          await this.prisma.commercialEvent.update({ where: { id: event.id }, data: { published_at: new Date() } });
+          await this.prisma.commercialEvent.update({
+            where: { id: event.id },
+            data: { published_at: new Date() },
+          });
         } catch (err) {
-          this.logger.error(`Failed to publish commercial event ${event.id}: ${(err as Error).message}`);
+          this.logger.error(
+            `Failed to publish commercial event ${event.id}: ${(err as Error).message}`,
+          );
         }
       }
     } finally {

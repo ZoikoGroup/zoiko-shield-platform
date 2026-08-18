@@ -35,11 +35,15 @@ export class NotificationPolicyService {
   }
 
   async getByEventType(eventType: string) {
-    return this.prisma.notificationPolicy.findMany({ where: { event_type: eventType, status: 'ACTIVE' } });
+    return this.prisma.notificationPolicy.findMany({
+      where: { event_type: eventType, status: 'ACTIVE' },
+    });
   }
 
   async getById(policyId: string) {
-    const policy = await this.prisma.notificationPolicy.findUnique({ where: { id: policyId } });
+    const policy = await this.prisma.notificationPolicy.findUnique({
+      where: { id: policyId },
+    });
     if (!policy) {
       throw new NotFoundException(`NotificationPolicy '${policyId}' not found`);
     }

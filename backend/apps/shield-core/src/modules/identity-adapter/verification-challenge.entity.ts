@@ -8,7 +8,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-export type ChallengePurpose = 'EMAIL_VERIFICATION' | 'PASSWORD_RECOVERY';
+export type ChallengePurpose = 'PASSWORD_RECOVERY';
 export type ChallengeStatus = 'PENDING' | 'CONSUMED' | 'EXPIRED' | 'LOCKED';
 
 @Entity({ name: 'verification_challenges', schema: 'identity' })

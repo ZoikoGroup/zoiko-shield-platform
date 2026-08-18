@@ -14,15 +14,22 @@ export interface CitationValidationResult {
  */
 @Injectable()
 export class CitationValidatorService {
-  validate(citedSourceRefs: string[], bundleSourceRefs: string[]): CitationValidationResult {
+  validate(
+    citedSourceRefs: string[],
+    bundleSourceRefs: string[],
+  ): CitationValidationResult {
     const bundleSet = new Set(bundleSourceRefs);
-    const validatedCitations: Array<{ sourceType: string; sourceId: string }> = [];
+    const validatedCitations: Array<{ sourceType: string; sourceId: string }> =
+      [];
     const invalidRefs: string[] = [];
 
     for (const ref of citedSourceRefs) {
       if (bundleSet.has(ref)) {
         const [sourceType, sourceId] = ref.split(':');
-        validatedCitations.push({ sourceType: sourceType.toUpperCase(), sourceId });
+        validatedCitations.push({
+          sourceType: sourceType.toUpperCase(),
+          sourceId,
+        });
       } else {
         invalidRefs.push(ref);
       }

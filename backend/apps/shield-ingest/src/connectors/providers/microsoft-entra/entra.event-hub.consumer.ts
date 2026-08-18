@@ -44,7 +44,9 @@ export class EntraEventHubConsumer implements OnModuleDestroy {
 
   async startConsuming(options: EntraEventHubConsumerOptions): Promise<void> {
     if (this.consumers.has(options.instanceId)) {
-      throw new Error(`Event Hub consumer for connector '${options.instanceId}' is already running`);
+      throw new Error(
+        `Event Hub consumer for connector '${options.instanceId}' is already running`,
+      );
     }
     if (!options.connectionString || !options.eventHubName) {
       throw new Error('Event Hub connection string and hub name are required');
@@ -58,7 +60,9 @@ export class EntraEventHubConsumer implements OnModuleDestroy {
       },
     });
     if (!instance) {
-      throw new Error(`Connector '${options.instanceId}' does not belong to tenant '${options.tenantId}'`);
+      throw new Error(
+        `Connector '${options.instanceId}' does not belong to tenant '${options.tenantId}'`,
+      );
     }
 
     const client = new EventHubConsumerClient(
@@ -69,12 +73,14 @@ export class EntraEventHubConsumer implements OnModuleDestroy {
 
     try {
       const partitionIds = await client.getPartitionIds();
-      const checkpoints = await this.prisma.eventHubConsumerCheckpoint.findMany({
-        where: {
-          instanceId: instance.id,
-          tenant_id: instance.tenant_id,
+      const checkpoints = await this.prisma.eventHubConsumerCheckpoint.findMany(
+        {
+          where: {
+            instanceId: instance.id,
+            tenant_id: instance.tenant_id,
+          },
         },
-      });
+      );
       const checkpointByPartition = new Map(
         checkpoints.map((checkpoint) => [checkpoint.partitionId, checkpoint]),
       );
@@ -88,7 +94,11 @@ export class EntraEventHubConsumer implements OnModuleDestroy {
               await this.processEvents(instance, partitionId, events);
             },
             processError: async (error: Error) => {
-              await this.recordConsumerError(instance.id, instance.tenant_id, error);
+              await this.recordConsumerError(
+                instance.id,
+                instance.tenant_id,
+                error,
+              );
             },
           },
           {
@@ -115,13 +125,19 @@ export class EntraEventHubConsumer implements OnModuleDestroy {
     const running = this.consumers.get(instanceId);
     if (!running) return;
     this.consumers.delete(instanceId);
-    await Promise.all(running.subscriptions.map((subscription) => subscription.close()));
+    await Promise.all(
+      running.subscriptions.map((subscription) => subscription.close()),
+    );
     await running.client.close();
     this.logger.log(`Stopped Event Hub consumer for connector ${instanceId}`);
   }
 
   async onModuleDestroy(): Promise<void> {
-    await Promise.all([...this.consumers.keys()].map((instanceId) => this.stopConsuming(instanceId)));
+    await Promise.all(
+      [...this.consumers.keys()].map((instanceId) =>
+        this.stopConsuming(instanceId),
+      ),
+    );
   }
 
   private async processEvents(
@@ -204,8 +220,11 @@ export class EntraEventHubConsumer implements OnModuleDestroy {
 
   private recordsFromBody(body: unknown): Array<Record<string, unknown>> {
     if (Array.isArray(body)) {
-      return body.filter((record): record is Record<string, unknown> =>
-        Boolean(record) && typeof record === 'object' && !Array.isArray(record),
+      return body.filter(
+        (record): record is Record<string, unknown> =>
+          Boolean(record) &&
+          typeof record === 'object' &&
+          !Array.isArray(record),
       );
     }
     if (body && typeof body === 'object' && !Array.isArray(body)) {
@@ -218,7 +237,9 @@ export class EntraEventHubConsumer implements OnModuleDestroy {
       }
       return [record];
     }
-    throw new Error('Event Hub message body must contain an object or record array');
+    throw new Error(
+      'Event Hub message body must contain an object or record array',
+    );
   }
 
   private stringValue(value: unknown): string | undefined {
@@ -226,7 +247,8 @@ export class EntraEventHubConsumer implements OnModuleDestroy {
   }
 
   private eventTime(record: Record<string, unknown>): Date | undefined {
-    const raw = this.stringValue(record.createdDateTime) ?? this.stringValue(record.time);
+    const raw =
+      this.stringValue(record.createdDateTime) ?? this.stringValue(record.time);
     if (!raw) return undefined;
     const parsed = new Date(raw);
     return Number.isNaN(parsed.getTime()) ? undefined : parsed;
@@ -237,7 +259,9 @@ export class EntraEventHubConsumer implements OnModuleDestroy {
     tenantId: string,
     error: Error,
   ): Promise<void> {
-    this.logger.error(`Event Hub consumer failed for connector ${instanceId}: ${error.message}`);
+    this.logger.error(
+      `Event Hub consumer failed for connector ${instanceId}: ${error.message}`,
+    );
     await this.prisma.$transaction([
       this.prisma.connectorInstance.updateMany({
         where: { id: instanceId, tenant_id: tenantId },

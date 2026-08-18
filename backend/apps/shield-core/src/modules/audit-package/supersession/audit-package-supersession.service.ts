@@ -21,15 +21,23 @@ export class AuditPackageSupersessionService {
   ) {}
 
   async supersede(tenantId: string, packageId: string, createdBy: string) {
-    const pkg = await this.auditPackageService.assertTenantOwnership(tenantId, packageId);
+    const pkg = await this.auditPackageService.assertTenantOwnership(
+      tenantId,
+      packageId,
+    );
     if (pkg.status !== 'FROZEN') {
-      throw new BadRequestException(`AuditPackage '${packageId}' must be FROZEN before it can be superseded (currently ${pkg.status})`);
+      throw new BadRequestException(
+        `AuditPackage '${packageId}' must be FROZEN before it can be superseded (currently ${pkg.status})`,
+      );
     }
     this.stateMachine.assertValidTransition(pkg.status, 'SUPERSEDED');
 
     const newPackageId = randomUUID();
     const [, newPkg] = await this.prisma.$transaction([
-      this.prisma.auditPackage.update({ where: { id: pkg.id }, data: { status: 'SUPERSEDED' } }),
+      this.prisma.auditPackage.update({
+        where: { id: pkg.id },
+        data: { status: 'SUPERSEDED' },
+      }),
       this.prisma.auditPackage.create({
         data: {
           id: newPackageId,
@@ -47,7 +55,12 @@ export class AuditPackageSupersessionService {
         },
       }),
       this.prisma.outboxEvent.create({
-        data: this.outbox.build({ tenantId, topic: CANONICAL_TOPICS.AUDIT_PACKAGE_SUPERSEDED, eventType: 'audit_package.superseded', payload: { oldPackageId: pkg.id, newPackageId } }),
+        data: this.outbox.build({
+          tenantId,
+          topic: CANONICAL_TOPICS.AUDIT_PACKAGE_SUPERSEDED,
+          eventType: 'audit_package.superseded',
+          payload: { oldPackageId: pkg.id, newPackageId },
+        }),
       }),
     ]);
     return newPkg;

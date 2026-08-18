@@ -23,13 +23,27 @@ export class EvidenceAutoCreationService implements OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    this.kafkaConsumer.registerHandler(ALERT_CREATED_TOPIC, this.handleAlertCreated.bind(this));
+    this.kafkaConsumer.registerHandler(
+      ALERT_CREATED_TOPIC,
+      this.handleAlertCreated.bind(this),
+    );
   }
 
-  private async handleAlertCreated(envelope: EventEnvelope<any>): Promise<void> {
-    const { tenantId, environmentId, region, alertId, detectionMatchId, severity } = envelope.payload ?? {};
+  private async handleAlertCreated(
+    envelope: EventEnvelope<any>,
+  ): Promise<void> {
+    const {
+      tenantId,
+      environmentId,
+      region,
+      alertId,
+      detectionMatchId,
+      severity,
+    } = envelope.payload ?? {};
     if (!tenantId || !environmentId || !alertId) {
-      throw new Error(`Malformed alert.created payload: ${JSON.stringify(envelope.payload)}`);
+      throw new Error(
+        `Malformed alert.created payload: ${JSON.stringify(envelope.payload)}`,
+      );
     }
 
     await this.evidenceService.createEvidence({
@@ -41,11 +55,25 @@ export class EvidenceAutoCreationService implements OnModuleInit {
       sourceSystemId: 'shield-ingest-alert-service',
       sourceObjectId: alertId,
       purpose: 'INVESTIGATION',
-      content: { alertId, detectionMatchId, severity, triggeringEvent: envelope.eventType },
+      content: {
+        alertId,
+        detectionMatchId,
+        severity,
+        triggeringEvent: envelope.eventType,
+      },
     });
   }
 
-  async createForCaseTransition(params: { tenantId: string; environmentId: string; region: string; caseId: string; fromState: string; toState: string; actorId: string; reason: string }) {
+  async createForCaseTransition(params: {
+    tenantId: string;
+    environmentId: string;
+    region: string;
+    caseId: string;
+    fromState: string;
+    toState: string;
+    actorId: string;
+    reason: string;
+  }) {
     return this.evidenceService.createEvidence({
       tenantId: params.tenantId,
       environmentId: params.environmentId,
@@ -55,11 +83,26 @@ export class EvidenceAutoCreationService implements OnModuleInit {
       sourceSystemId: 'shield-core-case',
       sourceObjectId: params.caseId,
       purpose: 'INVESTIGATION',
-      content: { caseId: params.caseId, fromState: params.fromState, toState: params.toState, actorId: params.actorId, reason: params.reason },
+      content: {
+        caseId: params.caseId,
+        fromState: params.fromState,
+        toState: params.toState,
+        actorId: params.actorId,
+        reason: params.reason,
+      },
     });
   }
 
-  async createForCaseDecision(params: { tenantId: string; environmentId: string; region: string; caseId: string; decisionType: string; decision: string; rationale: string; actorId: string }) {
+  async createForCaseDecision(params: {
+    tenantId: string;
+    environmentId: string;
+    region: string;
+    caseId: string;
+    decisionType: string;
+    decision: string;
+    rationale: string;
+    actorId: string;
+  }) {
     return this.evidenceService.createEvidence({
       tenantId: params.tenantId,
       environmentId: params.environmentId,
@@ -69,7 +112,13 @@ export class EvidenceAutoCreationService implements OnModuleInit {
       sourceSystemId: 'shield-core-case',
       sourceObjectId: params.caseId,
       purpose: 'DECISION_RECORD',
-      content: { caseId: params.caseId, decisionType: params.decisionType, decision: params.decision, rationale: params.rationale, actorId: params.actorId },
+      content: {
+        caseId: params.caseId,
+        decisionType: params.decisionType,
+        decision: params.decision,
+        rationale: params.rationale,
+        actorId: params.actorId,
+      },
     });
   }
 }

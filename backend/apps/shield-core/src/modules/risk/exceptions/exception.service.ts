@@ -46,33 +46,60 @@ export class ExceptionService {
         },
       }),
       this.prisma.outboxEvent.create({
-        data: this.outbox.build({ tenantId: input.tenantId, topic: CANONICAL_TOPICS.EXCEPTION_REQUESTED, eventType: 'exception.requested', payload: { exceptionId } }),
+        data: this.outbox.build({
+          tenantId: input.tenantId,
+          topic: CANONICAL_TOPICS.EXCEPTION_REQUESTED,
+          eventType: 'exception.requested',
+          payload: { exceptionId },
+        }),
       }),
     ]);
     return exception;
   }
 
   async approve(tenantId: string, exceptionId: string, approverId: string) {
-    const exception = await this.prisma.exception.findFirst({ where: { id: exceptionId, tenant_id: tenantId } });
+    const exception = await this.prisma.exception.findFirst({
+      where: { id: exceptionId, tenant_id: tenantId },
+    });
     if (!exception) {
       throw new NotFoundException(`Exception '${exceptionId}' not found`);
     }
     const [updated] = await this.prisma.$transaction([
-      this.prisma.exception.update({ where: { id: exception.id }, data: { status: 'APPROVED', approved_by: approverId } }),
+      this.prisma.exception.update({
+        where: { id: exception.id },
+        data: { status: 'APPROVED', approved_by: approverId },
+      }),
       this.prisma.outboxEvent.create({
-        data: this.outbox.build({ tenantId, topic: CANONICAL_TOPICS.EXCEPTION_APPROVED, eventType: 'exception.approved', payload: { exceptionId } }),
+        data: this.outbox.build({
+          tenantId,
+          topic: CANONICAL_TOPICS.EXCEPTION_APPROVED,
+          eventType: 'exception.approved',
+          payload: { exceptionId },
+        }),
       }),
     ]);
     return updated;
   }
 
   async revoke(tenantId: string, exceptionId: string) {
-    return this.prisma.exception.update({ where: { id: exceptionId }, data: { status: 'REVOKED' } });
+    return this.prisma.exception.update({
+      where: { id: exceptionId },
+      data: { status: 'REVOKED' },
+    });
   }
 
-  async isCurrentlyEffective(exceptionId: string, asOf: Date = new Date()): Promise<boolean> {
-    const exception = await this.prisma.exception.findUnique({ where: { id: exceptionId } });
+  async isCurrentlyEffective(
+    exceptionId: string,
+    asOf: Date = new Date(),
+  ): Promise<boolean> {
+    const exception = await this.prisma.exception.findUnique({
+      where: { id: exceptionId },
+    });
     if (!exception) return false;
-    return exception.status === 'APPROVED' && exception.starts_at <= asOf && exception.expires_at > asOf;
+    return (
+      exception.status === 'APPROVED' &&
+      exception.starts_at <= asOf &&
+      exception.expires_at > asOf
+    );
   }
 }

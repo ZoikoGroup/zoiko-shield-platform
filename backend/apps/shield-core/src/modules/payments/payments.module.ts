@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
-import { PaymentController, PaymentWebhookController } from './payment.controller';
+import {
+  PaymentController,
+  PaymentWebhookController,
+} from './payment.controller';
 import { PaymentService } from './payment.service';
 import { ManualPaymentProvider } from './manual-payment.provider';
 import { PAYMENT_PROVIDER } from './payment-provider.interface';
@@ -10,7 +13,11 @@ import { KillSwitchModule } from '../kill-switch/kill-switch.module';
 @Module({
   imports: [PrismaModule, IdempotencyModule, KillSwitchModule],
   controllers: [PaymentController, PaymentWebhookController],
-  providers: [PaymentService, ManualPaymentProvider, { provide: PAYMENT_PROVIDER, useExisting: ManualPaymentProvider }],
+  providers: [
+    PaymentService,
+    ManualPaymentProvider,
+    { provide: PAYMENT_PROVIDER, useExisting: ManualPaymentProvider },
+  ],
   exports: [PaymentService],
 })
 export class PaymentsModule {}

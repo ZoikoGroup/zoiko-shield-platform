@@ -8,7 +8,13 @@ export interface DetectGapInput {
   tenantId: string;
   expectedEvidenceRuleId: string;
   controlTestVersionId?: string;
-  reason: 'MISSING_SOURCE' | 'STALE_SOURCE' | 'PERMISSION_REVOKED' | 'CONNECTOR_UNHEALTHY' | 'PARTIAL_POPULATION' | 'EVALUATOR_FAILED';
+  reason:
+    | 'MISSING_SOURCE'
+    | 'STALE_SOURCE'
+    | 'PERMISSION_REVOKED'
+    | 'CONNECTOR_UNHEALTHY'
+    | 'PARTIAL_POPULATION'
+    | 'EVALUATOR_FAILED';
   scope?: Record<string, unknown>;
   periodStart: Date;
   periodEnd: Date;
@@ -46,7 +52,10 @@ export class EvidenceGapService {
           tenantId: input.tenantId,
           topic: CANONICAL_TOPICS.EVIDENCE_GAP_DETECTED,
           eventType: 'evidence.gap.detected',
-          payload: { expectedEvidenceRuleId: input.expectedEvidenceRuleId, reason: input.reason },
+          payload: {
+            expectedEvidenceRuleId: input.expectedEvidenceRuleId,
+            reason: input.reason,
+          },
         }),
       }),
     ]);
@@ -55,7 +64,10 @@ export class EvidenceGapService {
 
   async resolve(tenantId: string, gapId: string) {
     const [gap] = await this.prisma.$transaction([
-      this.prisma.evidenceGap.update({ where: { id: gapId }, data: { status: 'RESOLVED', resolved_at: new Date() } }),
+      this.prisma.evidenceGap.update({
+        where: { id: gapId },
+        data: { status: 'RESOLVED', resolved_at: new Date() },
+      }),
       this.prisma.outboxEvent.create({
         data: this.outbox.build({
           tenantId,
@@ -69,6 +81,8 @@ export class EvidenceGapService {
   }
 
   async listOpenForTenant(tenantId: string) {
-    return this.prisma.evidenceGap.findMany({ where: { tenant_id: tenantId, status: 'OPEN' } });
+    return this.prisma.evidenceGap.findMany({
+      where: { tenant_id: tenantId, status: 'OPEN' },
+    });
   }
 }

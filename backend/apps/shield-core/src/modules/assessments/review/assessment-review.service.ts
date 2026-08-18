@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OutboxService } from '../../../outbox/outbox.service';
 import { CANONICAL_TOPICS } from '../../../kafka/kafka-producer.service';
@@ -19,28 +23,50 @@ export class AssessmentReviewService {
   ) {}
 
   async review(input: ReviewAssessmentInput) {
-    const assessment = await this.prisma.assessment.findFirst({ where: { id: input.assessmentId, tenant_id: input.tenantId } });
+    const assessment = await this.prisma.assessment.findFirst({
+      where: { id: input.assessmentId, tenant_id: input.tenantId },
+    });
     if (!assessment) {
-      throw new NotFoundException(`Assessment '${input.assessmentId}' not found`);
+      throw new NotFoundException(
+        `Assessment '${input.assessmentId}' not found`,
+      );
     }
-    if (assessment.status !== 'EVALUATED' && assessment.status !== 'REVIEW_REQUIRED') {
-      throw new BadRequestException(`Assessment '${input.assessmentId}' is not in a reviewable state (${assessment.status})`);
+    if (
+      assessment.status !== 'EVALUATED' &&
+      assessment.status !== 'REVIEW_REQUIRED'
+    ) {
+      throw new BadRequestException(
+        `Assessment '${input.assessmentId}' is not in a reviewable state (${assessment.status})`,
+      );
     }
-    if (assessment.performer_id && assessment.performer_id === input.reviewerId) {
-      throw new BadRequestException('Assessment reviewer must be a different identity than the performer');
+    if (
+      assessment.performer_id &&
+      assessment.performer_id === input.reviewerId
+    ) {
+      throw new BadRequestException(
+        'Assessment reviewer must be a different identity than the performer',
+      );
     }
 
     const [updated] = await this.prisma.$transaction([
       this.prisma.assessment.update({
         where: { id: assessment.id },
-        data: { status: input.approve ? 'APPROVED' : 'REVIEW_REQUIRED', reviewer_id: input.reviewerId, reviewed_at: new Date() },
+        data: {
+          status: input.approve ? 'APPROVED' : 'REVIEW_REQUIRED',
+          reviewer_id: input.reviewerId,
+          reviewed_at: new Date(),
+        },
       }),
       this.prisma.outboxEvent.create({
         data: this.outbox.build({
           tenantId: input.tenantId,
           topic: CANONICAL_TOPICS.ASSESSMENT_REVIEWED,
           eventType: 'assessment.reviewed',
-          payload: { assessmentId: assessment.id, approved: input.approve, reviewerId: input.reviewerId },
+          payload: {
+            assessmentId: assessment.id,
+            approved: input.approve,
+            reviewerId: input.reviewerId,
+          },
         }),
       }),
     ]);

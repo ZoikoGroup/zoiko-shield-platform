@@ -38,7 +38,9 @@ export class ExpectedEvidenceRuleService {
   }
 
   async getById(ruleId: string) {
-    const rule = await this.prisma.expectedEvidenceRule.findUnique({ where: { id: ruleId } });
+    const rule = await this.prisma.expectedEvidenceRule.findUnique({
+      where: { id: ruleId },
+    });
     if (!rule) {
       throw new NotFoundException(`ExpectedEvidenceRule '${ruleId}' not found`);
     }
@@ -46,6 +48,11 @@ export class ExpectedEvidenceRuleService {
   }
 
   async listForControlTestVersion(controlTestVersionId: string) {
-    return this.prisma.expectedEvidenceRule.findMany({ where: { control_test_version_id: controlTestVersionId, status: 'ACTIVE' } });
+    return this.prisma.expectedEvidenceRule.findMany({
+      where: {
+        control_test_version_id: controlTestVersionId,
+        status: 'ACTIVE',
+      },
+    });
   }
 }

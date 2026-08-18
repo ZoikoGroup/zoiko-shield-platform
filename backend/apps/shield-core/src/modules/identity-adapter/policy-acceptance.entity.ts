@@ -1,5 +1,11 @@
 import { randomUUID } from 'crypto';
-import { BeforeInsert, Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  BeforeInsert,
+  Column,
+  CreateDateColumn,
+  Entity,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 
 @Entity({ name: 'policy_acceptances', schema: 'identity' })
 export class PolicyAcceptance {

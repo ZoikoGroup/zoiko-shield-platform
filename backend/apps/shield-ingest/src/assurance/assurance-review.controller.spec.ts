@@ -21,7 +21,9 @@ describe('AssuranceReviewController', () => {
       providers: [{ provide: AssuranceReviewService, useValue: serviceMock }],
     }).compile();
 
-    controller = module.get<AssuranceReviewController>(AssuranceReviewController);
+    controller = module.get<AssuranceReviewController>(
+      AssuranceReviewController,
+    );
   });
 
   it('should create assurance review and return CREATED status', async () => {

@@ -21,7 +21,9 @@ export class EvidenceMatcherService {
   constructor(private readonly prisma: PrismaService) {}
 
   async match(params: MatchParams) {
-    const rule = await this.prisma.expectedEvidenceRule.findUniqueOrThrow({ where: { id: params.ruleId } });
+    const rule = await this.prisma.expectedEvidenceRule.findUniqueOrThrow({
+      where: { id: params.ruleId },
+    });
 
     const records = await this.prisma.evidenceRecord.findMany({
       where: {
@@ -29,8 +31,14 @@ export class EvidenceMatcherService {
         evidence_type: rule.evidence_type,
         source_system_id: rule.expected_source,
         OR: [
-          { period_start: { lte: params.periodEnd }, period_end: { gte: params.periodStart } },
-          { period_start: null, received_at: { gte: params.periodStart, lte: params.periodEnd } },
+          {
+            period_start: { lte: params.periodEnd },
+            period_end: { gte: params.periodStart },
+          },
+          {
+            period_start: null,
+            received_at: { gte: params.periodStart, lte: params.periodEnd },
+          },
         ],
       },
     });
@@ -40,10 +48,15 @@ export class EvidenceMatcherService {
     // Coverage
     let coverageState: string;
     if (observedCount === 0) {
-      if (params.sourceHealthState === 'UNHEALTHY') coverageState = 'COLLECTOR_UNHEALTHY';
-      else if (params.sourceHealthState === 'PERMISSION_CHANGED') coverageState = 'PERMISSION_CHANGED';
+      if (params.sourceHealthState === 'UNHEALTHY')
+        coverageState = 'COLLECTOR_UNHEALTHY';
+      else if (params.sourceHealthState === 'PERMISSION_CHANGED')
+        coverageState = 'PERMISSION_CHANGED';
       else coverageState = 'MISSING';
-    } else if (rule.minimum_coverage != null && observedCount < rule.minimum_coverage) {
+    } else if (
+      rule.minimum_coverage != null &&
+      observedCount < rule.minimum_coverage
+    ) {
       coverageState = 'PARTIAL';
     } else {
       coverageState = 'COMPLETE';
@@ -65,12 +78,23 @@ export class EvidenceMatcherService {
     if (observedCount === 0) {
       integrityState = 'UNKNOWN';
     } else {
-      const allVerified = records.every((r) => r.integrity_state === 'VERIFIED');
+      const allVerified = records.every(
+        (r) => r.integrity_state === 'VERIFIED',
+      );
       const anyFailed = records.some((r) => r.integrity_state === 'FAILED');
-      integrityState = anyFailed ? 'FAILED' : allVerified ? 'VERIFIED' : 'PENDING';
+      integrityState = anyFailed
+        ? 'FAILED'
+        : allVerified
+          ? 'VERIFIED'
+          : 'PENDING';
     }
 
-    const gapCount = coverageState === 'COMPLETE' && freshnessState === 'CURRENT' && integrityState === 'VERIFIED' ? 0 : 1;
+    const gapCount =
+      coverageState === 'COMPLETE' &&
+      freshnessState === 'CURRENT' &&
+      integrityState === 'VERIFIED'
+        ? 0
+        : 1;
 
     const result = await this.prisma.expectedEvidenceResult.create({
       data: {

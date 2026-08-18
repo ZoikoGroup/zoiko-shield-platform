@@ -1,5 +1,11 @@
 import { randomUUID } from 'crypto';
-import { BeforeInsert, Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  BeforeInsert,
+  Column,
+  Entity,
+  Index,
+  PrimaryGeneratedColumn,
+} from 'typeorm';
 
 @Entity({ name: 'policy_documents', schema: 'identity' })
 @Index(['kind', 'version'], { unique: true })

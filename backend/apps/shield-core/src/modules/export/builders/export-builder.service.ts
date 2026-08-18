@@ -4,15 +4,26 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { ContentHashService } from '../../evidence/hashing/content-hash.service';
 import { ObjectStorageService } from '../../evidence/storage/object-storage.service';
 
-const SCOPE_BUILDERS: Record<string, (prisma: PrismaService, tenantId: string) => Promise<unknown[]>> = {
-  cases: (prisma, tenantId) => prisma.case.findMany({ where: { tenant_id: tenantId } }),
-  alerts: (prisma, tenantId) => prisma.alert.findMany({ where: { tenant_id: tenantId } }),
-  controls: (prisma, tenantId) => prisma.controlImplementation.findMany({ where: { tenant_id: tenantId } }),
-  assessments: (prisma, tenantId) => prisma.assessment.findMany({ where: { tenant_id: tenantId } }),
-  risks: (prisma, tenantId) => prisma.risk.findMany({ where: { tenant_id: tenantId } }),
-  exceptions: (prisma, tenantId) => prisma.exception.findMany({ where: { tenant_id: tenantId } }),
-  evidence_metadata: (prisma, tenantId) => prisma.evidenceRecord.findMany({ where: { tenant_id: tenantId } }),
-  audit_packages: (prisma, tenantId) => prisma.auditPackage.findMany({ where: { tenant_id: tenantId } }),
+const SCOPE_BUILDERS: Record<
+  string,
+  (prisma: PrismaService, tenantId: string) => Promise<unknown[]>
+> = {
+  cases: (prisma, tenantId) =>
+    prisma.case.findMany({ where: { tenant_id: tenantId } }),
+  alerts: (prisma, tenantId) =>
+    prisma.alert.findMany({ where: { tenant_id: tenantId } }),
+  controls: (prisma, tenantId) =>
+    prisma.controlImplementation.findMany({ where: { tenant_id: tenantId } }),
+  assessments: (prisma, tenantId) =>
+    prisma.assessment.findMany({ where: { tenant_id: tenantId } }),
+  risks: (prisma, tenantId) =>
+    prisma.risk.findMany({ where: { tenant_id: tenantId } }),
+  exceptions: (prisma, tenantId) =>
+    prisma.exception.findMany({ where: { tenant_id: tenantId } }),
+  evidence_metadata: (prisma, tenantId) =>
+    prisma.evidenceRecord.findMany({ where: { tenant_id: tenantId } }),
+  audit_packages: (prisma, tenantId) =>
+    prisma.auditPackage.findMany({ where: { tenant_id: tenantId } }),
 };
 
 /**
@@ -33,8 +44,19 @@ export class ExportBuilderService {
     private readonly storageService: ObjectStorageService,
   ) {}
 
-  async buildArtifacts(tenantId: string, exportJobId: string, requestedScope: string[]) {
-    const artifacts: Array<{ id: string; artifact_type: string; object_count: number; content_hash: string; schema_id: string; schema_version: string }> = [];
+  async buildArtifacts(
+    tenantId: string,
+    exportJobId: string,
+    requestedScope: string[],
+  ) {
+    const artifacts: Array<{
+      id: string;
+      artifact_type: string;
+      object_count: number;
+      content_hash: string;
+      schema_id: string;
+      schema_version: string;
+    }> = [];
     const unavailableScopes: string[] = [];
 
     for (const scopeKey of requestedScope) {
@@ -49,9 +71,13 @@ export class ExportBuilderService {
       const { contentHash } = this.hashService.hashCanonicalJson(rows);
       const objectKey = `exports/${exportJobId}/${scopeKey}.json`;
 
-      await this.storageService.putObject(objectKey, Buffer.from(content, 'utf-8'), 'application/json').catch((err) => {
-        this.logger.warn(`Object storage export failed for scope '${scopeKey}' of export ${exportJobId}: ${(err as Error).message}`);
-      });
+      await this.storageService
+        .putObject(objectKey, Buffer.from(content, 'utf-8'), 'application/json')
+        .catch((err) => {
+          this.logger.warn(
+            `Object storage export failed for scope '${scopeKey}' of export ${exportJobId}: ${(err as Error).message}`,
+          );
+        });
 
       const artifact = await this.prisma.exportArtifact.create({
         data: {

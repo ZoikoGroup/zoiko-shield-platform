@@ -4,10 +4,12 @@ import { CommercialEntitlementService } from './commercial-entitlement.service';
 import { HttpStatus } from '@nestjs/common';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
+import { ClaimRegisterService } from './claim-register.service';
 
 describe('CommercialEntitlementController', () => {
   let controller: CommercialEntitlementController;
   let serviceMock: any;
+  let claimRegisterMock: any;
 
   beforeEach(async () => {
     serviceMock = {
@@ -16,13 +18,15 @@ describe('CommercialEntitlementController', () => {
       grantEntitlement: jest.fn(),
       getEntitlementsByTenant: jest.fn(),
       checkEntitlement: jest.fn(),
-      registerClaim: jest.fn(),
-      verifyClaimEligibility: jest.fn(),
     };
+    claimRegisterMock = { verifyClaimEligibility: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       controllers: [CommercialEntitlementController],
-      providers: [{ provide: CommercialEntitlementService, useValue: serviceMock }],
+      providers: [
+        { provide: CommercialEntitlementService, useValue: serviceMock },
+        { provide: ClaimRegisterService, useValue: claimRegisterMock },
+      ],
     })
       .overrideGuard(JwtAuthGuard)
       .useValue({ canActivate: () => true })
@@ -30,7 +34,9 @@ describe('CommercialEntitlementController', () => {
       .useValue({ canActivate: () => true })
       .compile();
 
-    controller = module.get<CommercialEntitlementController>(CommercialEntitlementController);
+    controller = module.get<CommercialEntitlementController>(
+      CommercialEntitlementController,
+    );
   });
 
   it('should return created commercial account', async () => {

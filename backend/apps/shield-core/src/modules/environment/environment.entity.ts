@@ -7,7 +7,8 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-export type EnvironmentType = 'PRODUCTION' | 'STAGING' | 'DEVELOPMENT' | 'TEST' | 'SIMULATION';
+export type EnvironmentType =
+  'PRODUCTION' | 'STAGING' | 'DEVELOPMENT' | 'TEST' | 'SIMULATION';
 export type EnvironmentStatus = 'ACTIVE' | 'DISABLED';
 
 @Entity({ name: 'environments', schema: 'tenant' })

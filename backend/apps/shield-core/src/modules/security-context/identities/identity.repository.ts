@@ -5,7 +5,13 @@ import { PrismaService } from '../../../prisma/prisma.service';
 export class IdentityRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAliasByKey(tenantId: string, sourceSystem: string, sourceAccountId: string | undefined, externalType: string, externalId: string) {
+  findAliasByKey(
+    tenantId: string,
+    sourceSystem: string,
+    sourceAccountId: string | undefined,
+    externalType: string,
+    externalId: string,
+  ) {
     return this.prisma.identityAlias.findUnique({
       where: {
         tenant_id_source_system_source_account_id_external_type_external_id: {
@@ -21,7 +27,9 @@ export class IdentityRepository {
   }
 
   findIdentityByEmail(tenantId: string, email: string) {
-    return this.prisma.identityEntity.findFirst({ where: { tenant_id: tenantId, email } });
+    return this.prisma.identityEntity.findFirst({
+      where: { tenant_id: tenantId, email },
+    });
   }
 
   createIdentity(data: {
@@ -78,15 +86,23 @@ export class IdentityRepository {
   }
 
   touchAlias(id: string, observedAt: Date) {
-    return this.prisma.identityAlias.update({ where: { id }, data: { last_seen_at: observedAt } });
+    return this.prisma.identityAlias.update({
+      where: { id },
+      data: { last_seen_at: observedAt },
+    });
   }
 
   findByExternalId(tenantId: string, externalId: string) {
-    return this.prisma.identityEntity.findFirst({ where: { tenant_id: tenantId, external_id: externalId } });
+    return this.prisma.identityEntity.findFirst({
+      where: { tenant_id: tenantId, external_id: externalId },
+    });
   }
 
   markRemoved(id: string) {
-    return this.prisma.identityEntity.update({ where: { id }, data: { status: 'REMOVED' } });
+    return this.prisma.identityEntity.update({
+      where: { id },
+      data: { status: 'REMOVED' },
+    });
   }
 
   recordDecision(data: {

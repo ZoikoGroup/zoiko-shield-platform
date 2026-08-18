@@ -1,11 +1,28 @@
-import { Body, Controller, HttpStatus, Param, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  HttpStatus,
+  Param,
+  Patch,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PlatformPermissionsGuard } from '../authorization/guards/platform-permissions.guard';
+import { RequirePlatformPermissions } from '../authorization/decorators/require-platform-permissions.decorator';
+import { PERMISSION_CODES } from '../authorization/constants';
+import { CurrentUser } from '../identity-adapter/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
 import { InternalAuthGuard } from '../../internal-client/internal-auth.guard';
-import { CreateMeterDefinitionDto, MeterDefinitionService } from './meter-definition.service';
+import {
+  CreateMeterDefinitionDto,
+  MeterDefinitionService,
+} from './meter-definition.service';
 import { MeteringService, RecordMeterEventDto } from './metering.service';
 
 /** Admin-curated: humans define and approve meters before any event can be classified against them. */
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, PlatformPermissionsGuard)
+@RequirePlatformPermissions(PERMISSION_CODES.PLATFORM_METER_DEFINITION_MANAGE)
 @Controller('api/v1/metering/definitions')
 export class MeterDefinitionController {
   constructor(private readonly definitionService: MeterDefinitionService) {}
@@ -17,8 +34,14 @@ export class MeterDefinitionController {
   }
 
   @Patch(':id/approve')
-  async approve(@Param('id') id: string, @Body('approvedBy') approvedBy: string) {
-    const definition = await this.definitionService.approveDefinition(id, approvedBy || 'system');
+  async approve(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const definition = await this.definitionService.approveDefinition(
+      id,
+      user.id,
+    );
     return { statusCode: HttpStatus.OK, data: definition };
   }
 }

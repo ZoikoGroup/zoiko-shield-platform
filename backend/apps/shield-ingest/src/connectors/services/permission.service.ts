@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { KafkaProducerService, CANONICAL_TOPICS } from '../../kafka/kafka.producer.service';
+import {
+  KafkaProducerService,
+  CANONICAL_TOPICS,
+} from '../../kafka/kafka.producer.service';
 
 @Injectable()
 export class PermissionService {
@@ -36,8 +39,13 @@ export class PermissionService {
   }
 
   /** Marks the given set as currently granted; anything previously granted but absent from `grantedNow` is flagged missing (permission drift). */
-  async reconcileGranted(instanceId: string, grantedNow: string[]): Promise<{ newlyMissing: string[] }> {
-    const existing = await this.prisma.connectorPermission.findMany({ where: { instanceId } });
+  async reconcileGranted(
+    instanceId: string,
+    grantedNow: string[],
+  ): Promise<{ newlyMissing: string[] }> {
+    const existing = await this.prisma.connectorPermission.findMany({
+      where: { instanceId },
+    });
     const newlyMissing: string[] = [];
 
     for (const perm of existing) {
@@ -52,11 +60,17 @@ export class PermissionService {
     }
 
     if (newlyMissing.length > 0) {
-      this.logger.warn(`Permission drift detected for instance ${instanceId}: lost ${newlyMissing.join(', ')}`);
+      this.logger.warn(
+        `Permission drift detected for instance ${instanceId}: lost ${newlyMissing.join(', ')}`,
+      );
       await this.kafkaProducer.publishEvent(
         CANONICAL_TOPICS.CONNECTOR_PERMISSION_CHANGED,
         'connector.permission.drift_detected',
-        { tenantId: existing[0].tenant_id, instanceId, lostPermissions: newlyMissing },
+        {
+          tenantId: existing[0].tenant_id,
+          instanceId,
+          lostPermissions: newlyMissing,
+        },
       );
     }
 

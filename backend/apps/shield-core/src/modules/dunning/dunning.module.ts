@@ -1,5 +1,8 @@
 import { Module } from '@nestjs/common';
-import { DunningPolicyController, DunningCaseController } from './dunning.controller';
+import {
+  DunningPolicyController,
+  DunningCaseController,
+} from './dunning.controller';
 import { DunningPolicyService } from './dunning-policy.service';
 import { DunningService } from './dunning.service';
 import { PrismaModule } from '../../prisma/prisma.module';

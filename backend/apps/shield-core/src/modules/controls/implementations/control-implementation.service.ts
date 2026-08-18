@@ -1,7 +1,15 @@
-import { Injectable, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { AuthorizationDecisionService } from '../../authorization-decision/authorization-decision.service';
+import {
+  assertPermittedAuthorization,
+  AuthorizationDecisionService,
+} from '../../authorization-decision/authorization-decision.service';
 import { ControlImplementationStateMachineService } from './control-implementation-state-machine.service';
 
 export interface CreateControlImplementationInput {
@@ -25,16 +33,17 @@ export class ControlImplementationService {
   ) {}
 
   async create(input: CreateControlImplementationInput) {
-    const { decision } = await this.authorizationDecisionService.evaluate({
+    const authorization = await this.authorizationDecisionService.evaluate({
       actorId: input.requestedBy,
       tenantId: input.tenantId,
       action: 'control_implementation:create',
       resourceType: 'ControlObjective',
       resourceId: input.controlObjectiveId,
     });
-    if (decision === 'DENY') {
-      throw new ForbiddenException('Actor is not authorized to create control implementations');
-    }
+    assertPermittedAuthorization(
+      authorization,
+      'Actor is not authorized to create control implementations',
+    );
 
     return this.prisma.controlImplementation.create({
       data: {
@@ -51,48 +60,73 @@ export class ControlImplementationService {
     });
   }
 
-  async transition(params: { tenantId: string; controlImplementationId: string; toStatus: string; actorId: string; notApplicableRationale?: string }) {
-    const impl = await this.assertTenantOwnership(params.tenantId, params.controlImplementationId);
+  async transition(params: {
+    tenantId: string;
+    controlImplementationId: string;
+    toStatus: string;
+    actorId: string;
+    notApplicableRationale?: string;
+  }) {
+    const impl = await this.assertTenantOwnership(
+      params.tenantId,
+      params.controlImplementationId,
+    );
     this.stateMachine.assertValidTransition(impl.status, params.toStatus);
 
     if (params.toStatus === 'NOT_APPLICABLE') {
       if (!params.notApplicableRationale) {
         throw new BadRequestException('NOT_APPLICABLE requires a rationale');
       }
-      const { decision } = await this.authorizationDecisionService.evaluate({
+      const authorization = await this.authorizationDecisionService.evaluate({
         actorId: params.actorId,
         tenantId: params.tenantId,
         action: 'control_implementation:mark_not_applicable',
         resourceType: 'ControlImplementation',
         resourceId: impl.id,
       });
-      if (decision === 'DENY') {
-        throw new ForbiddenException('Actor is not authorized to mark this control NOT_APPLICABLE');
-      }
+      assertPermittedAuthorization(
+        authorization,
+        'Actor is not authorized to mark this control NOT_APPLICABLE',
+      );
     }
 
     return this.prisma.controlImplementation.update({
       where: { id: impl.id },
       data: {
         status: params.toStatus,
-        not_applicable_rationale: params.toStatus === 'NOT_APPLICABLE' ? params.notApplicableRationale : impl.not_applicable_rationale,
+        not_applicable_rationale:
+          params.toStatus === 'NOT_APPLICABLE'
+            ? params.notApplicableRationale
+            : impl.not_applicable_rationale,
         reviewed_at: new Date(),
       },
     });
   }
 
-  async assertTenantOwnership(tenantId: string, controlImplementationId: string) {
-    const impl = await this.prisma.controlImplementation.findUnique({ where: { id: controlImplementationId } });
+  async assertTenantOwnership(
+    tenantId: string,
+    controlImplementationId: string,
+  ) {
+    const impl = await this.prisma.controlImplementation.findUnique({
+      where: { id: controlImplementationId },
+    });
     if (!impl) {
-      throw new NotFoundException(`ControlImplementation '${controlImplementationId}' not found`);
+      throw new NotFoundException(
+        `ControlImplementation '${controlImplementationId}' not found`,
+      );
     }
     if (impl.tenant_id !== tenantId) {
-      throw new ForbiddenException(`ControlImplementation '${controlImplementationId}' does not belong to this tenant`);
+      throw new ForbiddenException(
+        `ControlImplementation '${controlImplementationId}' does not belong to this tenant`,
+      );
     }
     return impl;
   }
 
   async list(tenantId: string) {
-    return this.prisma.controlImplementation.findMany({ where: { tenant_id: tenantId }, orderBy: { created_at: 'asc' } });
+    return this.prisma.controlImplementation.findMany({
+      where: { tenant_id: tenantId },
+      orderBy: { created_at: 'asc' },
+    });
   }
 }

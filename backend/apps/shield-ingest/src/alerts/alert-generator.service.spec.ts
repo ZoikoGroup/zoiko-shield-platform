@@ -16,12 +16,18 @@ describe('AlertGeneratorService', () => {
     event_id: 'norm-1',
     result: 'MATCHED',
     rule: { name: 'Failed Login Rule', severity: 'HIGH' },
-    event: { environment_id: 'prod', resource_id: '192.168.1.1', actor_email: 'user@example.com' },
+    event: {
+      environment_id: 'prod',
+      resource_id: '192.168.1.1',
+      actor_email: 'user@example.com',
+    },
   };
 
   beforeEach(async () => {
     prismaMock = {
-      $transaction: jest.fn().mockImplementation((ops: any[]) => Promise.all(ops)),
+      $transaction: jest
+        .fn()
+        .mockImplementation((ops: any[]) => Promise.all(ops)),
       detectionRun: {
         findUnique: jest.fn(),
       },
@@ -81,7 +87,10 @@ describe('AlertGeneratorService', () => {
       }),
     });
     expect(prismaMock.outboxEvent.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({ topic: 'alert.created.v1', tenant_id: 'tenant-1' }),
+      data: expect.objectContaining({
+        topic: 'alert.created.v1',
+        tenant_id: 'tenant-1',
+      }),
     });
   });
 
@@ -99,9 +108,9 @@ describe('AlertGeneratorService', () => {
   it('does not return an alert outside the authenticated tenant', async () => {
     prismaMock.alert.findFirst.mockResolvedValue(null);
 
-    await expect(service.getAlertById('tenant-a', 'alert-from-tenant-b')).rejects.toThrow(
-      NotFoundException,
-    );
+    await expect(
+      service.getAlertById('tenant-a', 'alert-from-tenant-b'),
+    ).rejects.toThrow(NotFoundException);
     expect(prismaMock.alert.findFirst).toHaveBeenCalledWith({
       where: { id: 'alert-from-tenant-b', tenant_id: 'tenant-a' },
     });

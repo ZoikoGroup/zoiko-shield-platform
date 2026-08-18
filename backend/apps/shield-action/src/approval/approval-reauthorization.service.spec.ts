@@ -2,7 +2,10 @@ import { ApprovalReauthorizationService } from './approval-reauthorization.servi
 import { ContentHashService } from '../hashing/content-hash.service';
 import { ActionAuthorizationContext } from '../internal-client/action-authorization-context.types';
 
-function buildContext(hashService: ContentHashService, overrides: Partial<ActionAuthorizationContext> = {}): ActionAuthorizationContext {
+function buildContext(
+  hashService: ContentHashService,
+  overrides: Partial<ActionAuthorizationContext> = {},
+): ActionAuthorizationContext {
   const expiresAt = new Date(Date.now() + 60_000).toISOString();
   const base: ActionAuthorizationContext = {
     tenantId: 't1',
@@ -13,7 +16,12 @@ function buildContext(hashService: ContentHashService, overrides: Partial<Action
     targetId: 'id1',
     authorityLevel: 'R1',
     proposalStatus: 'APPROVED',
-    approval: { approvalId: 'a1', decision: 'APPROVED', approverId: 'u1', expiresAt },
+    approval: {
+      approvalId: 'a1',
+      decision: 'APPROVED',
+      approverId: 'u1',
+      expiresAt,
+    },
     policyVersion: '1.0',
     authorizationDecisionId: 'ad1',
     entitlementAllowed: true,
@@ -59,7 +67,12 @@ describe('ApprovalReauthorizationService', () => {
 
   it('denies an expired approval even though action.approved.v1 was already published', () => {
     const context = buildContext(hashService, {
-      approval: { approvalId: 'a1', decision: 'APPROVED', approverId: 'u1', expiresAt: new Date(Date.now() - 1000).toISOString() },
+      approval: {
+        approvalId: 'a1',
+        decision: 'APPROVED',
+        approverId: 'u1',
+        expiresAt: new Date(Date.now() - 1000).toISOString(),
+      },
     });
     // approvedMaterialHash was computed against the expired timestamp already baked into buildContext defaults,
     // so this exercises the expiry branch specifically.

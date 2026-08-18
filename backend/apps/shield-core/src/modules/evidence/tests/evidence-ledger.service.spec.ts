@@ -10,9 +10,15 @@ describe('EvidenceLedgerService', () => {
 
   beforeEach(async () => {
     prismaMock = {
-      evidenceLedgerEntry: { findFirst: jest.fn(), create: jest.fn(), findMany: jest.fn() },
+      evidenceLedgerEntry: {
+        findFirst: jest.fn(),
+        create: jest.fn(),
+        findMany: jest.fn(),
+      },
       $executeRawUnsafe: jest.fn().mockResolvedValue(undefined),
-      $transaction: jest.fn().mockImplementation((callback: any) => callback(prismaMock)),
+      $transaction: jest
+        .fn()
+        .mockImplementation((callback: any) => callback(prismaMock)),
     };
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -49,19 +55,30 @@ describe('EvidenceLedgerService', () => {
 
   it('starts the per-tenant chain at sequence 1 with no previous_entry_hash', async () => {
     prismaMock.evidenceLedgerEntry.findFirst.mockResolvedValue(null);
-    prismaMock.evidenceLedgerEntry.create.mockImplementation(({ data }: any) => Promise.resolve({ id: 'entry-1', ...data }));
+    prismaMock.evidenceLedgerEntry.create.mockImplementation(({ data }: any) =>
+      Promise.resolve({ id: 'entry-1', ...data }),
+    );
 
-    const entry = await service.append('tenant-a', 'evidence-1', { type: 'RAW' });
+    const entry = await service.append('tenant-a', 'evidence-1', {
+      type: 'RAW',
+    });
 
     expect(entry.sequence).toBe(1);
     expect(entry.previous_entry_hash).toBeUndefined();
   });
 
   it('chains sequence N+1 to commit the previous entry hash', async () => {
-    prismaMock.evidenceLedgerEntry.findFirst.mockResolvedValue({ sequence: 1, entry_hash: 'hash-1' });
-    prismaMock.evidenceLedgerEntry.create.mockImplementation(({ data }: any) => Promise.resolve({ id: 'entry-2', ...data }));
+    prismaMock.evidenceLedgerEntry.findFirst.mockResolvedValue({
+      sequence: 1,
+      entry_hash: 'hash-1',
+    });
+    prismaMock.evidenceLedgerEntry.create.mockImplementation(({ data }: any) =>
+      Promise.resolve({ id: 'entry-2', ...data }),
+    );
 
-    const entry = await service.append('tenant-a', 'evidence-2', { type: 'RAW' });
+    const entry = await service.append('tenant-a', 'evidence-2', {
+      type: 'RAW',
+    });
 
     expect(entry.sequence).toBe(2);
     expect(entry.previous_entry_hash).toBe('hash-1');
@@ -85,9 +102,17 @@ describe('EvidenceLedgerService', () => {
 
   it('verifyChain reports valid=true for an intact chain', async () => {
     const first = buildEntry(1, null, 'evidence-1', { type: 'RAW' });
-    const second = buildEntry(2, first.entry_hash, 'evidence-2', { type: 'NORMALIZED' });
-    const third = buildEntry(3, second.entry_hash, 'evidence-3', { type: 'ALERT' });
-    prismaMock.evidenceLedgerEntry.findMany.mockResolvedValue([first, second, third]);
+    const second = buildEntry(2, first.entry_hash, 'evidence-2', {
+      type: 'NORMALIZED',
+    });
+    const third = buildEntry(3, second.entry_hash, 'evidence-3', {
+      type: 'ALERT',
+    });
+    prismaMock.evidenceLedgerEntry.findMany.mockResolvedValue([
+      first,
+      second,
+      third,
+    ]);
 
     const result = await service.verifyChain('tenant-a');
 

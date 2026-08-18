@@ -1,10 +1,16 @@
-import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { CaseService } from './case.service';
 import { CaseTimelineService } from '../timeline/case-timeline.service';
 import { EvidenceService } from '../../evidence/services/evidence.service';
-import { AuthorizationDecisionService } from '../../authorization-decision/authorization-decision.service';
-import { ShieldAiClient, AiRequestContext } from '../../../internal-client/shield-ai.client';
+import {
+  assertPermittedAuthorization,
+  AuthorizationDecisionService,
+} from '../../authorization-decision/authorization-decision.service';
+import {
+  ShieldAiClient,
+  AiRequestContext,
+} from '../../../internal-client/shield-ai.client';
 
 const AI_USE_CASE_KEYS: Record<string, string> = {
   summary: 'CASE_SUMMARY',
@@ -30,19 +36,30 @@ export class CaseAiService {
     private readonly shieldAiClient: ShieldAiClient,
   ) {}
 
-  async invoke(params: { tenantId: string; environmentId?: string; caseId: string; useCaseSlug: keyof typeof AI_USE_CASE_KEYS; actorId: string }) {
-    const caseRow = await this.caseService.assertTenantOwnership(params.tenantId, params.caseId);
+  async invoke(params: {
+    tenantId: string;
+    environmentId?: string;
+    caseId: string;
+    useCaseSlug: keyof typeof AI_USE_CASE_KEYS;
+    actorId: string;
+  }) {
+    const caseRow = await this.caseService.assertTenantOwnership(
+      params.tenantId,
+      params.caseId,
+    );
 
-    const { authorizationDecisionId, decision } = await this.authorizationDecisionService.evaluate({
+    const authorization = await this.authorizationDecisionService.evaluate({
       actorId: params.actorId,
       tenantId: params.tenantId,
       action: 'ai:invoke_use_case',
       resourceType: 'CASE',
       resourceId: params.caseId,
     });
-    if (decision === 'DENY') {
-      throw new ForbiddenException('Actor is not authorized to request AI assistance on this case');
-    }
+    assertPermittedAuthorization(
+      authorization,
+      'Actor is not authorized to request AI assistance on this case',
+    );
+    const { authorizationDecisionId } = authorization;
 
     const correlationId = randomUUID();
     const context: AiRequestContext = {
@@ -59,7 +76,11 @@ export class CaseAiService {
       policyVersion: '1.0',
     };
 
-    const result = await this.shieldAiClient.requestUseCase(AI_USE_CASE_KEYS[params.useCaseSlug], context, { caseId: params.caseId });
+    const result = await this.shieldAiClient.requestUseCase(
+      AI_USE_CASE_KEYS[params.useCaseSlug],
+      context,
+      { caseId: params.caseId },
+    );
     const aiOutput = result.data;
 
     await this.timeline.append({
@@ -68,9 +89,10 @@ export class CaseAiService {
       entryType: 'DECISION_RECORDED',
       actorId: params.actorId,
       title: `AI ${AI_USE_CASE_KEYS[params.useCaseSlug]} generated`,
-      summary: Array.isArray(aiOutput.limitations) && aiOutput.limitations.length > 0
-        ? `AI output generated with limitations: ${aiOutput.limitations.join('; ')}`
-        : 'AI output generated',
+      summary:
+        Array.isArray(aiOutput.limitations) && aiOutput.limitations.length > 0
+          ? `AI output generated with limitations: ${aiOutput.limitations.join('; ')}`
+          : 'AI output generated',
       correlationId,
     });
 
@@ -83,23 +105,39 @@ export class CaseAiService {
       sourceSystemId: 'shield-ai',
       sourceObjectId: aiOutput.id,
       purpose: 'INVESTIGATION',
-      content: { aiOutputId: aiOutput.id, useCase: AI_USE_CASE_KEYS[params.useCaseSlug], citations: aiOutput.citations, limitations: aiOutput.limitations },
+      content: {
+        aiOutputId: aiOutput.id,
+        useCase: AI_USE_CASE_KEYS[params.useCaseSlug],
+        citations: aiOutput.citations,
+        limitations: aiOutput.limitations,
+      },
     });
 
     return { aiOutput, evidenceId: evidence.id };
   }
 
-  async review(params: { tenantId: string; environmentId: string; region: string; outputId: string; actorId: string; decision: string; rationale?: string; modifiedContent?: string }) {
-    const { authorizationDecisionId, decision } = await this.authorizationDecisionService.evaluate({
+  async review(params: {
+    tenantId: string;
+    environmentId: string;
+    region: string;
+    outputId: string;
+    actorId: string;
+    decision: string;
+    rationale?: string;
+    modifiedContent?: string;
+  }) {
+    const authorization = await this.authorizationDecisionService.evaluate({
       actorId: params.actorId,
       tenantId: params.tenantId,
       action: 'ai:review_output',
       resourceType: 'AI_OUTPUT',
       resourceId: params.outputId,
     });
-    if (decision === 'DENY') {
-      throw new ForbiddenException('Actor is not authorized to review AI output');
-    }
+    assertPermittedAuthorization(
+      authorization,
+      'Actor is not authorized to review AI output',
+    );
+    const { authorizationDecisionId } = authorization;
 
     const context: AiRequestContext = {
       tenantId: params.tenantId,

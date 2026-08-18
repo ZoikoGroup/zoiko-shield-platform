@@ -12,6 +12,8 @@ import { Permission } from './entities/permission.entity';
 import { Role, RoleLevel } from './entities/role.entity';
 import { TenantMembership } from './entities/tenant-membership.entity';
 import { Invitation } from './entities/invitation.entity';
+import { Session } from '../identity-adapter/session.entity';
+import { IdentityEvent } from '../identity-adapter/identity-event.entity';
 
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
@@ -26,14 +28,25 @@ export class AuthorizationService {
     private readonly membershipRepository: Repository<TenantMembership>,
     @InjectRepository(Invitation)
     private readonly invitationRepository: Repository<Invitation>,
+    @InjectRepository(Session)
+    private readonly sessionRepository: Repository<Session>,
+    @InjectRepository(IdentityEvent)
+    private readonly identityEventRepository: Repository<IdentityEvent>,
   ) {}
 
-  async createPermission(code: string, description?: string): Promise<Permission> {
-    const existing = await this.permissionRepository.findOne({ where: { code } });
+  async createPermission(
+    code: string,
+    description?: string,
+  ): Promise<Permission> {
+    const existing = await this.permissionRepository.findOne({
+      where: { code },
+    });
     if (existing) {
       throw new ConflictException(`Permission ${code} already exists`);
     }
-    return this.permissionRepository.save(this.permissionRepository.create({ code, description }));
+    return this.permissionRepository.save(
+      this.permissionRepository.create({ code, description }),
+    );
   }
 
   async createRole(data: {
@@ -44,7 +57,9 @@ export class AuthorizationService {
     permissionCodes?: string[];
   }): Promise<Role> {
     const permissions = data.permissionCodes?.length
-      ? await this.permissionRepository.findBy({ code: In(data.permissionCodes) })
+      ? await this.permissionRepository.findBy({
+          code: In(data.permissionCodes),
+        })
       : [];
     const role = this.roleRepository.create({
       tenantId: data.tenantId,
@@ -66,7 +81,10 @@ export class AuthorizationService {
     return this.roleRepository.find({ relations: { permissions: true } });
   }
 
-  async updateRolePermissions(roleId: string, permissionCodes: string[]): Promise<Role> {
+  async updateRolePermissions(
+    roleId: string,
+    permissionCodes: string[],
+  ): Promise<Role> {
     const role = await this.roleRepository.findOne({
       where: { id: roleId },
       relations: { permissions: true },
@@ -74,11 +92,16 @@ export class AuthorizationService {
     if (!role) {
       throw new NotFoundException(`Role ${roleId} not found`);
     }
-    role.permissions = await this.permissionRepository.findBy({ code: In(permissionCodes) });
+    role.permissions = await this.permissionRepository.findBy({
+      code: In(permissionCodes),
+    });
     return this.roleRepository.save(role);
   }
 
-  async getPermissionCodesForPrincipal(tenantId: string, principalId: string): Promise<string[]> {
+  async getPermissionCodesForPrincipal(
+    tenantId: string,
+    principalId: string,
+  ): Promise<string[]> {
     const codes = new Set<string>();
 
     // Check tenant-specific membership
@@ -94,31 +117,15 @@ export class AuthorizationService {
       }
     }
 
-    // Also check platform-scope membership — platform super admins carry
-    // their permissions across all tenants (offboarding, deletion, etc.)
-    if (tenantId !== '00000000-0000-0000-0000-000000000000') {
-      const platformMembership = await this.membershipRepository.findOne({
-        where: { tenantId: '00000000-0000-0000-0000-000000000000', principalId, status: 'ACTIVE' },
-        relations: { roles: { permissions: true } },
-      });
-      if (platformMembership) {
-        for (const role of platformMembership.roles) {
-          for (const permission of role.permissions) {
-            codes.add(permission.code);
-          }
-        }
-      }
-    }
-
     return [...codes];
   }
 
-  async hasTenantAccess(tenantId: string, principalId: string): Promise<boolean> {
+  async hasTenantAccess(
+    tenantId: string,
+    principalId: string,
+  ): Promise<boolean> {
     const membership = await this.membershipRepository.findOne({
-      where: [
-        { tenantId, principalId, status: 'ACTIVE' },
-        { tenantId: '00000000-0000-0000-0000-000000000000', principalId, status: 'ACTIVE' },
-      ],
+      where: { tenantId, principalId, status: 'ACTIVE' },
       select: { id: true },
     });
     return Boolean(membership);
@@ -131,13 +138,27 @@ export class AuthorizationService {
     });
     return memberships
       .map((membership) => membership.tenantId)
-      .filter((tenantId) => tenantId !== '00000000-0000-0000-0000-000000000000');
+      .filter(
+        (tenantId) => tenantId !== '00000000-0000-0000-0000-000000000000',
+      );
   }
 
   /** Returns all active memberships for a principal, with roles and permissions eagerly loaded. */
-  async getMembershipsForPrincipal(principalId: string): Promise<TenantMembership[]> {
+  async getMembershipsForPrincipal(
+    principalId: string,
+  ): Promise<TenantMembership[]> {
     return this.membershipRepository.find({
       where: { principalId, status: 'ACTIVE' },
+      relations: { roles: { permissions: true } },
+    });
+  }
+
+  getMembershipForPrincipal(
+    tenantId: string,
+    principalId: string,
+  ): Promise<TenantMembership | null> {
+    return this.membershipRepository.findOne({
+      where: { tenantId, principalId, status: 'ACTIVE' },
       relations: { roles: { permissions: true } },
     });
   }
@@ -157,12 +178,16 @@ export class AuthorizationService {
     roleId: string;
     invitedById: string;
   }): Promise<{ invitation: Invitation; token: string }> {
-    const role = await this.roleRepository.findOne({ where: { id: data.roleId } });
+    const role = await this.roleRepository.findOne({
+      where: { id: data.roleId },
+    });
     if (!role) {
       throw new NotFoundException(`Role ${data.roleId} not found`);
     }
     if (role.roleLevel === 'PLATFORM') {
-      throw new ForbiddenException('Cannot invite a member with a PLATFORM-level role');
+      throw new ForbiddenException(
+        'Cannot invite a member with a PLATFORM-level role',
+      );
     }
     if (role.tenantId && role.tenantId !== data.tenantId) {
       throw new ForbiddenException('Role does not belong to the target tenant');
@@ -180,6 +205,12 @@ export class AuthorizationService {
         expiresAt: new Date(Date.now() + INVITATION_TTL_MS),
       }),
     );
+    await this.recordIdentityEvent({
+      eventType: 'tenant_invitation_created',
+      actorId: data.invitedById,
+      tenantId: data.tenantId,
+      data: { invitationId: invitation.id, roleId: data.roleId },
+    });
     return { invitation, token };
   }
 
@@ -189,17 +220,31 @@ export class AuthorizationService {
     acceptingPrincipalEmail: string,
   ): Promise<TenantMembership> {
     const invitation = await this.invitationRepository.findOne({
-      where: { tokenHash: this.hashToken(token), status: 'PENDING', expiresAt: MoreThan(new Date()) },
+      where: {
+        tokenHash: this.hashToken(token),
+        status: 'PENDING',
+        expiresAt: MoreThan(new Date()),
+      },
     });
     if (!invitation) {
-      throw new NotFoundException('Invitation not found, expired or already used');
+      throw new NotFoundException(
+        'Invitation not found, expired or already used',
+      );
     }
-    if (invitation.invitedEmail.toLowerCase() !== acceptingPrincipalEmail.toLowerCase()) {
-      throw new ForbiddenException('This invitation was issued to a different email address');
+    if (
+      invitation.invitedEmail.toLowerCase() !==
+      acceptingPrincipalEmail.toLowerCase()
+    ) {
+      throw new ForbiddenException(
+        'This invitation was issued to a different email address',
+      );
     }
 
     let membership = await this.membershipRepository.findOne({
-      where: { tenantId: invitation.tenantId, principalId: acceptingPrincipalId },
+      where: {
+        tenantId: invitation.tenantId,
+        principalId: acceptingPrincipalId,
+      },
       relations: { roles: true },
     });
     if (!membership) {
@@ -211,7 +256,9 @@ export class AuthorizationService {
         roles: [],
       });
     }
-    const role = await this.roleRepository.findOne({ where: { id: invitation.roleId } });
+    const role = await this.roleRepository.findOne({
+      where: { id: invitation.roleId },
+    });
     if (!role) {
       throw new BadRequestException('Invitation role no longer exists');
     }
@@ -225,6 +272,18 @@ export class AuthorizationService {
     invitation.acceptedById = acceptingPrincipalId;
     await this.invitationRepository.save(invitation);
 
+    await this.recordIdentityEvent({
+      eventType: 'tenant_membership_created',
+      principalId: acceptingPrincipalId,
+      actorId: acceptingPrincipalId,
+      tenantId: invitation.tenantId,
+      data: {
+        membershipId: membership.id,
+        source: 'INVITATION',
+        roleId: role.id,
+      },
+    });
+
     return membership;
   }
 
@@ -233,7 +292,9 @@ export class AuthorizationService {
       where: { tenantId },
       order: { createdAt: 'DESC' },
     });
-    return invitations.map(({ tokenHash: _tokenHash, ...invitation }) => invitation);
+    return invitations.map(
+      ({ tokenHash: _tokenHash, ...invitation }) => invitation,
+    );
   }
 
   async listMembers(tenantId: string) {
@@ -247,31 +308,109 @@ export class AuthorizationService {
   async updateMember(
     tenantId: string,
     memberId: string,
-    input: { roleIds?: string[]; status?: 'ACTIVE' | 'SUSPENDED' },
+    input: {
+      roleIds?: string[];
+      status?: 'ACTIVE' | 'SUSPENDED';
+      actorId?: string;
+    },
   ) {
     const membership = await this.membershipRepository.findOne({
       where: { id: memberId, tenantId },
       relations: { roles: true },
     });
-    if (!membership) throw new NotFoundException(`Tenant member ${memberId} not found`);
+    if (!membership)
+      throw new NotFoundException(`Tenant member ${memberId} not found`);
+    const before = {
+      status: membership.status,
+      roleIds: membership.roles.map((role) => role.id).sort(),
+    };
 
     if (input.status) membership.status = input.status;
     if (input.roleIds) {
-      const roles = input.roleIds.length ? await this.roleRepository.findBy({ id: In(input.roleIds) }) : [];
-      if (roles.length !== input.roleIds.length) throw new BadRequestException('One or more roles do not exist');
-      if (roles.some((role) => role.roleLevel !== 'TENANT' || (role.tenantId && role.tenantId !== tenantId))) {
-        throw new ForbiddenException('Every assigned role must be valid for the target tenant');
+      const roles = input.roleIds.length
+        ? await this.roleRepository.findBy({ id: In(input.roleIds) })
+        : [];
+      if (roles.length !== input.roleIds.length)
+        throw new BadRequestException('One or more roles do not exist');
+      if (
+        roles.some(
+          (role) =>
+            role.roleLevel !== 'TENANT' ||
+            (role.tenantId && role.tenantId !== tenantId),
+        )
+      ) {
+        throw new ForbiddenException(
+          'Every assigned role must be valid for the target tenant',
+        );
       }
       membership.roles = roles;
     }
-    return this.membershipRepository.save(membership);
+    const saved = await this.membershipRepository.save(membership);
+    await this.sessionRepository.update(
+      { membershipId: membership.id, revokedAt: IsNull() },
+      {
+        revokedAt: new Date(),
+        revokedReason: input.status
+          ? 'MEMBERSHIP_STATUS_CHANGED'
+          : 'MEMBERSHIP_ROLES_CHANGED',
+      },
+    );
+    await this.recordIdentityEvent({
+      eventType: 'tenant_membership_changed',
+      principalId: membership.principalId,
+      actorId: input.actorId,
+      tenantId,
+      data: {
+        membershipId: membership.id,
+        before,
+        after: {
+          status: saved.status,
+          roleIds: saved.roles.map((role) => role.id).sort(),
+        },
+      },
+    });
+    return saved;
   }
 
-  async removeMember(tenantId: string, memberId: string) {
-    const membership = await this.membershipRepository.findOne({ where: { id: memberId, tenantId } });
-    if (!membership) throw new NotFoundException(`Tenant member ${memberId} not found`);
+  async removeMember(tenantId: string, memberId: string, actorId?: string) {
+    const membership = await this.membershipRepository.findOne({
+      where: { id: memberId, tenantId },
+    });
+    if (!membership)
+      throw new NotFoundException(`Tenant member ${memberId} not found`);
     membership.status = 'REMOVED';
     membership.roles = [];
-    return this.membershipRepository.save(membership);
+    const saved = await this.membershipRepository.save(membership);
+    await this.sessionRepository.update(
+      { membershipId: membership.id, revokedAt: IsNull() },
+      { revokedAt: new Date(), revokedReason: 'MEMBERSHIP_REMOVED' },
+    );
+    await this.recordIdentityEvent({
+      eventType: 'tenant_membership_removed',
+      principalId: membership.principalId,
+      actorId,
+      tenantId,
+      data: { membershipId: membership.id },
+    });
+    return saved;
+  }
+
+  private async recordIdentityEvent(input: {
+    eventType: string;
+    principalId?: string;
+    actorId?: string;
+    tenantId: string;
+    data: Record<string, unknown>;
+  }): Promise<void> {
+    await this.identityEventRepository.save(
+      this.identityEventRepository.create({
+        eventType: input.eventType,
+        principalId: input.principalId ?? null,
+        actorId: input.actorId ?? null,
+        tenantId: input.tenantId,
+        correlationId: null,
+        data: input.data,
+      }),
+    );
   }
 }

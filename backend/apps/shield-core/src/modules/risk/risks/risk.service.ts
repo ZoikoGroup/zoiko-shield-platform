@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OutboxService } from '../../../outbox/outbox.service';
@@ -34,7 +38,9 @@ export class RiskService {
 
   async create(input: CreateRiskInput) {
     if (input.factors.length === 0) {
-      throw new BadRequestException('A Risk must be created with at least one transparent RiskFactor');
+      throw new BadRequestException(
+        'A Risk must be created with at least one transparent RiskFactor',
+      );
     }
 
     const riskId = randomUUID();
@@ -68,14 +74,21 @@ export class RiskService {
         }),
       ),
       this.prisma.outboxEvent.create({
-        data: this.outbox.build({ tenantId: input.tenantId, topic: CANONICAL_TOPICS.RISK_CREATED, eventType: 'risk.created', payload: { riskId } }),
+        data: this.outbox.build({
+          tenantId: input.tenantId,
+          topic: CANONICAL_TOPICS.RISK_CREATED,
+          eventType: 'risk.created',
+          payload: { riskId },
+        }),
       }),
     ]);
     return risk;
   }
 
   async assertTenantOwnership(tenantId: string, riskId: string) {
-    const risk = await this.prisma.risk.findFirst({ where: { id: riskId, tenant_id: tenantId } });
+    const risk = await this.prisma.risk.findFirst({
+      where: { id: riskId, tenant_id: tenantId },
+    });
     if (!risk) {
       throw new NotFoundException(`Risk '${riskId}' not found`);
     }
@@ -84,11 +97,16 @@ export class RiskService {
 
   async getWithFactors(tenantId: string, riskId: string) {
     const risk = await this.assertTenantOwnership(tenantId, riskId);
-    const factors = await this.prisma.riskFactor.findMany({ where: { risk_id: risk.id } });
+    const factors = await this.prisma.riskFactor.findMany({
+      where: { risk_id: risk.id },
+    });
     return { risk, factors };
   }
 
   async list(tenantId: string) {
-    return this.prisma.risk.findMany({ where: { tenant_id: tenantId }, orderBy: { created_at: 'desc' } });
+    return this.prisma.risk.findMany({
+      where: { tenant_id: tenantId },
+      orderBy: { created_at: 'desc' },
+    });
   }
 }

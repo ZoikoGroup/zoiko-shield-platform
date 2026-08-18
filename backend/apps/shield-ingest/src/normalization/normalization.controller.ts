@@ -70,7 +70,8 @@ export class NormalizationController {
     @Query('tenantId') queryTenantId?: string,
   ) {
     const tenantId = requireTenantId(headerTenantId, queryTenantId);
-    const quarantined = await this.normalizationService.getQuarantinedEvents(tenantId);
+    const quarantined =
+      await this.normalizationService.getQuarantinedEvents(tenantId);
     return {
       statusCode: HttpStatus.OK,
       data: quarantined,

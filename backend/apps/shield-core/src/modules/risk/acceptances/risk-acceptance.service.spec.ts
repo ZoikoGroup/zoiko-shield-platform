@@ -11,14 +11,23 @@ function makePrisma() {
         rows.push(row);
         return row;
       }),
-      findUnique: jest.fn(async ({ where }: any) => rows.find((r) => r.id === where.id) ?? null),
+      findUnique: jest.fn(
+        async ({ where }: any) => rows.find((r) => r.id === where.id) ?? null,
+      ),
     },
     outboxEvent: { create: jest.fn(async ({ data }: any) => data) },
   } as any;
 }
 
 function makeOutbox() {
-  return { build: jest.fn((params: any) => ({ tenant_id: params.tenantId, topic: params.topic, event_type: params.eventType, payload: JSON.stringify(params.payload) })) } as any;
+  return {
+    build: jest.fn((params: any) => ({
+      tenant_id: params.tenantId,
+      topic: params.topic,
+      event_type: params.eventType,
+      payload: JSON.stringify(params.payload),
+    })),
+  } as any;
 }
 
 describe('RiskAcceptanceService', () => {
@@ -26,8 +35,15 @@ describe('RiskAcceptanceService', () => {
     const service = new RiskAcceptanceService(makePrisma(), makeOutbox());
     await expect(
       service.create({
-        tenantId: 't1', riskId: 'r1', acceptedBy: 'u1', authority: 'CISO', rationale: 'accepted for now',
-        compensatingControls: [], validFrom: new Date(), expiresAt: new Date(Date.now() + 1000), reviewAt: new Date(Date.now() + 1000),
+        tenantId: 't1',
+        riskId: 'r1',
+        acceptedBy: 'u1',
+        authority: 'CISO',
+        rationale: 'accepted for now',
+        compensatingControls: [],
+        validFrom: new Date(),
+        expiresAt: new Date(Date.now() + 1000),
+        reviewAt: new Date(Date.now() + 1000),
       }),
     ).rejects.toThrow();
   });
@@ -36,8 +52,15 @@ describe('RiskAcceptanceService', () => {
     const service = new RiskAcceptanceService(makePrisma(), makeOutbox());
     await expect(
       service.create({
-        tenantId: 't1', riskId: 'r1', acceptedBy: 'u1', authority: 'CISO', rationale: 'r',
-        compensatingControls: ['c1'], validFrom: new Date(), expiresAt: undefined as any, reviewAt: new Date(),
+        tenantId: 't1',
+        riskId: 'r1',
+        acceptedBy: 'u1',
+        authority: 'CISO',
+        rationale: 'r',
+        compensatingControls: ['c1'],
+        validFrom: new Date(),
+        expiresAt: undefined as any,
+        reviewAt: new Date(),
       }),
     ).rejects.toThrow();
   });
@@ -47,17 +70,31 @@ describe('RiskAcceptanceService', () => {
     const service = new RiskAcceptanceService(prisma, makeOutbox());
 
     const original = await service.create({
-      tenantId: 't1', riskId: 'r1', acceptedBy: 'u1', authority: 'CISO', rationale: 'first',
-      compensatingControls: ['c1'], validFrom: new Date('2026-01-01'), expiresAt: new Date('2026-06-01'), reviewAt: new Date('2026-05-01'),
+      tenantId: 't1',
+      riskId: 'r1',
+      acceptedBy: 'u1',
+      authority: 'CISO',
+      rationale: 'first',
+      compensatingControls: ['c1'],
+      validFrom: new Date('2026-01-01'),
+      expiresAt: new Date('2026-06-01'),
+      reviewAt: new Date('2026-05-01'),
     });
     const snapshot = { ...original };
 
     const renewed = await service.renew(original.id, {
-      acceptedBy: 'u2', authority: 'CISO', rationale: 'renewed', compensatingControls: ['c1', 'c2'],
-      validFrom: new Date('2026-06-01'), expiresAt: new Date('2026-12-01'), reviewAt: new Date('2026-11-01'),
+      acceptedBy: 'u2',
+      authority: 'CISO',
+      rationale: 'renewed',
+      compensatingControls: ['c1', 'c2'],
+      validFrom: new Date('2026-06-01'),
+      expiresAt: new Date('2026-12-01'),
+      reviewAt: new Date('2026-11-01'),
     });
 
     expect(renewed.supersedes_id).toBe(original.id);
-    expect(prisma.rows.find((r: any) => r.id === original.id)).toEqual(snapshot);
+    expect(prisma.rows.find((r: any) => r.id === original.id)).toEqual(
+      snapshot,
+    );
   });
 });

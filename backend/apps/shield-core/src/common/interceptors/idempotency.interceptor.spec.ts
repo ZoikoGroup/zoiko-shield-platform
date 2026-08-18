@@ -34,9 +34,9 @@ describe('IdempotencyInterceptor (INT-01 / P1)', () => {
     };
     const mockHandler: any = { handle: () => of({}) };
 
-    await expect(interceptor.intercept(mockContext, mockHandler)).rejects.toThrow(
-      BadRequestException,
-    );
+    await expect(
+      interceptor.intercept(mockContext, mockHandler),
+    ).rejects.toThrow(BadRequestException);
   });
 
   it('should replay cached payload if idempotency-key exists', async () => {

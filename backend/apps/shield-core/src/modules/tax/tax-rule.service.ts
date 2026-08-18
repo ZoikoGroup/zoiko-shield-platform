@@ -1,5 +1,16 @@
-import { ConflictException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { IsBoolean, IsISO8601, IsNumber, IsOptional, IsString } from 'class-validator';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  IsBoolean,
+  IsISO8601,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export class CreateTaxRuleDto {
@@ -56,12 +67,18 @@ export class TaxRuleService {
       throw new NotFoundException(`Tax rule '${id}' not found`);
     }
     if (rule.status !== 'DRAFT') {
-      throw new ConflictException(`Tax rule '${id}' is '${rule.status}', not DRAFT`);
+      throw new ConflictException(
+        `Tax rule '${id}' is '${rule.status}', not DRAFT`,
+      );
     }
 
     return this.prisma.taxRule.update({
       where: { id },
-      data: { status: 'APPROVED', approved_by: approvedBy, approved_at: new Date() },
+      data: {
+        status: 'APPROVED',
+        approved_by: approvedBy,
+        approved_at: new Date(),
+      },
     });
   }
 
@@ -70,7 +87,11 @@ export class TaxRuleService {
    * jurisdiction/tax-class combination right now. Callers must block
    * invoice issuance rather than default to a 0% or invented rate.
    */
-  async resolveTax(jurisdiction: string, productTaxClass: string, taxableAmount: number) {
+  async resolveTax(
+    jurisdiction: string,
+    productTaxClass: string,
+    taxableAmount: number,
+  ) {
     const now = new Date();
     const rule = await this.prisma.taxRule.findFirst({
       where: {
@@ -91,8 +112,15 @@ export class TaxRuleService {
     }
 
     const rate = Number(rule.rate_percent);
-    const taxAmount = rule.reverse_charge ? 0 : Math.round(taxableAmount * (rate / 100) * 10000) / 10000;
+    const taxAmount = rule.reverse_charge
+      ? 0
+      : Math.round(taxableAmount * (rate / 100) * 10000) / 10000;
 
-    return { ruleId: rule.id, ratePercent: rate, reverseCharge: rule.reverse_charge, taxAmount };
+    return {
+      ruleId: rule.id,
+      ratePercent: rate,
+      reverseCharge: rule.reverse_charge,
+      taxAmount,
+    };
   }
 }

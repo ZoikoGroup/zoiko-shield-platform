@@ -15,7 +15,11 @@ import { EntraAuthService } from './entra.auth';
 import { ConnectorSyncService } from '../../services/sync.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { PublicIngress } from '../../../security/public-ingress.decorator';
-import { requireEnvironmentId, requireRegion, requireTenantId } from '../../../security/tenant-context';
+import {
+  requireEnvironmentId,
+  requireRegion,
+  requireTenantId,
+} from '../../../security/tenant-context';
 
 @Controller('v1/connectors/entra')
 export class EntraConnectorController {
@@ -31,7 +35,9 @@ export class EntraConnectorController {
    * POST /v1/connectors/entra/connect
    */
   @Post('connect')
-  async connect(@Body() body: { tenantId: string; environmentId: string; region: string }) {
+  async connect(
+    @Body() body: { tenantId: string; environmentId: string; region: string },
+  ) {
     return this.entraConnectorService.connect(
       {
         connectorInstanceId: '',
@@ -68,16 +74,24 @@ export class EntraConnectorController {
 
     const stateRecord = await this.prisma.connectorOauthState.findFirst({
       where: {
-        state_hash: createHash('sha256').update(state || '').digest('hex'),
+        state_hash: createHash('sha256')
+          .update(state || '')
+          .digest('hex'),
         consumed_at: null,
         expires_at: { gt: new Date() },
       },
     });
     if (!stateRecord) {
-      throw new HttpException('OAuth state is invalid, expired, or already used', HttpStatus.UNAUTHORIZED);
+      throw new HttpException(
+        'OAuth state is invalid, expired, or already used',
+        HttpStatus.UNAUTHORIZED,
+      );
     }
 
-    const isSuccess = this.entraAuthService.verifyAdminConsent(entraTenantId, adminConsent);
+    const isSuccess = this.entraAuthService.verifyAdminConsent(
+      entraTenantId,
+      adminConsent,
+    );
     if (!isSuccess) {
       throw new HttpException(
         'Admin consent was not successfully granted.',
@@ -86,12 +100,26 @@ export class EntraConnectorController {
     }
 
     const pendingInstance = await this.prisma.connectorInstance.findFirst({
-      where: { id: stateRecord.instance_id, tenant_id: stateRecord.tenant_id, state: 'AWAITING_ADMIN_CONSENT' },
+      where: {
+        id: stateRecord.instance_id,
+        tenant_id: stateRecord.tenant_id,
+        state: 'AWAITING_ADMIN_CONSENT',
+      },
     });
 
-    if (!pendingInstance) throw new HttpException('Pending connector instance not found', HttpStatus.NOT_FOUND);
-    await this.prisma.connectorOauthState.update({ where: { id: stateRecord.id }, data: { consumed_at: new Date() } });
-    await this.entraConnectorService.completeConsent(pendingInstance.id, entraTenantId);
+    if (!pendingInstance)
+      throw new HttpException(
+        'Pending connector instance not found',
+        HttpStatus.NOT_FOUND,
+      );
+    await this.prisma.connectorOauthState.update({
+      where: { id: stateRecord.id },
+      data: { consumed_at: new Date() },
+    });
+    await this.entraConnectorService.completeConsent(
+      pendingInstance.id,
+      entraTenantId,
+    );
 
     return {
       message: 'Successfully connected to Microsoft Entra ID!',
@@ -114,7 +142,10 @@ export class EntraConnectorController {
       where: { id, tenant_id: tenantId },
     });
     if (!instance) {
-      throw new HttpException('Connector instance not found', HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        'Connector instance not found',
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     return this.entraConnectorService.testConnection({
@@ -142,7 +173,10 @@ export class EntraConnectorController {
       where: { id, tenant_id: tenantId },
     });
     if (!instance) {
-      throw new HttpException('Connector instance not found', HttpStatus.NOT_FOUND);
+      throw new HttpException(
+        'Connector instance not found',
+        HttpStatus.NOT_FOUND,
+      );
     }
 
     const syncRun = await this.syncService.runSync(instance.id);

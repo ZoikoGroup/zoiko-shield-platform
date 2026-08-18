@@ -13,8 +13,13 @@ import { PrismaService } from '../prisma/prisma.service';
 export class ReconciliationService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async reconcile(actionCommandId: string, actionReceiptId: string): Promise<{ result: 'VERIFIED' | 'UNKNOWN' }> {
-    const receipt = await this.prisma.actionReceipt.findUnique({ where: { id: actionReceiptId } });
+  async reconcile(
+    actionCommandId: string,
+    actionReceiptId: string,
+  ): Promise<{ result: 'VERIFIED' | 'UNKNOWN' }> {
+    const receipt = await this.prisma.actionReceipt.findUnique({
+      where: { id: actionReceiptId },
+    });
     const result = receipt?.status === 'SIMULATED' ? 'VERIFIED' : 'UNKNOWN';
 
     await this.prisma.actionReconciliation.create({

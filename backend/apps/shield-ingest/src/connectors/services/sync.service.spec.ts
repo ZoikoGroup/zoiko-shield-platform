@@ -56,11 +56,17 @@ describe('ConnectorSyncService', () => {
   it('throws for an unknown instance instead of silently no-op-ing', async () => {
     prismaMock.connectorInstance.findUnique.mockResolvedValue(null);
 
-    await expect(service.runSync('missing')).rejects.toThrow("Connector instance 'missing' not found");
+    await expect(service.runSync('missing')).rejects.toThrow(
+      "Connector instance 'missing' not found",
+    );
   });
 
   it('on success: records SUCCESS on the sync run, marks health HEALTHY, and publishes connector.sync.completed.v1', async () => {
-    connectorMock.sync.mockResolvedValue({ recordsProcessed: 5, recordsDuplicated: 1, recordsQuarantined: 0 });
+    connectorMock.sync.mockResolvedValue({
+      recordsProcessed: 5,
+      recordsDuplicated: 1,
+      recordsQuarantined: 0,
+    });
 
     await service.runSync('instance-1');
 
@@ -68,7 +74,12 @@ describe('ConnectorSyncService', () => {
       where: { id: 'run-1' },
       data: expect.objectContaining({ status: 'SUCCESS', recordsProcessed: 5 }),
     });
-    expect(healthMock.updateHealth).toHaveBeenCalledWith('instance-1', 'tenant-a', 'HEALTHY', 'Sync completed');
+    expect(healthMock.updateHealth).toHaveBeenCalledWith(
+      'instance-1',
+      'tenant-a',
+      'HEALTHY',
+      'Sync completed',
+    );
     expect(kafkaMock.publishEvent).toHaveBeenCalledWith(
       'connector.sync.completed.v1',
       'connector.sync.completed',
@@ -78,13 +89,18 @@ describe('ConnectorSyncService', () => {
   });
 
   it('on failure: records FAILED with the error code and routes into ConnectorHealthService.handleConnectorError instead of retrying inline', async () => {
-    connectorMock.sync.mockRejectedValue(new ConnectorAuthenticationError('token expired'));
+    connectorMock.sync.mockRejectedValue(
+      new ConnectorAuthenticationError('token expired'),
+    );
 
     await service.runSync('instance-1');
 
     expect(prismaMock.connectorSynchronizationRun.update).toHaveBeenCalledWith({
       where: { id: 'run-1' },
-      data: expect.objectContaining({ status: 'FAILED', errorCode: 'AUTH_FAILED' }),
+      data: expect.objectContaining({
+        status: 'FAILED',
+        errorCode: 'AUTH_FAILED',
+      }),
     });
     expect(healthMock.handleConnectorError).toHaveBeenCalledTimes(1);
     expect(healthMock.updateHealth).not.toHaveBeenCalled();

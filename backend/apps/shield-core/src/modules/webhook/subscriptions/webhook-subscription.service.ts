@@ -7,12 +7,15 @@ import { WebhookEndpointValidatorService } from '../endpoint-validation/webhook-
 import { WebhookSecretService } from '../secret-rotation/webhook-secret.service';
 
 const ALLOWED_EVENT_TYPES = new Set([
-  'alert.created.v1', 'alert.updated.v1',
-  'case.created.v1', 'case.state.changed.v1',
+  'alert.created.v1',
+  'alert.updated.v1',
+  'case.created.v1',
+  'case.state.changed.v1',
   'connector.health.changed.v1',
   'evidence.completeness.changed.v1',
   'assessment.completed.v1',
-  'risk.updated.v1', 'exception.expired.v1',
+  'risk.updated.v1',
+  'exception.expired.v1',
   'audit_package.frozen.v1',
   'export.ready.v1',
 ]);
@@ -26,12 +29,22 @@ export class WebhookSubscriptionService {
     private readonly secretService: WebhookSecretService,
   ) {}
 
-  async create(params: { tenantId: string; apiClientId?: string; endpointUrl: string; eventTypes: string[]; createdBy: string }) {
+  async create(params: {
+    tenantId: string;
+    apiClientId?: string;
+    endpointUrl: string;
+    eventTypes: string[];
+    createdBy: string;
+  }) {
     await this.validator.validate(params.endpointUrl);
 
-    const unknownEvents = params.eventTypes.filter((e) => !ALLOWED_EVENT_TYPES.has(e));
+    const unknownEvents = params.eventTypes.filter(
+      (e) => !ALLOWED_EVENT_TYPES.has(e),
+    );
     if (unknownEvents.length > 0) {
-      throw new NotFoundException(`Event type(s) not on the allowlist: ${unknownEvents.join(', ')}`);
+      throw new NotFoundException(
+        `Event type(s) not on the allowlist: ${unknownEvents.join(', ')}`,
+      );
     }
 
     const subscriptionId = randomUUID();
@@ -47,7 +60,14 @@ export class WebhookSubscriptionService {
           status: 'PENDING_VERIFICATION',
         },
       }),
-      this.prisma.outboxEvent.create({ data: this.outbox.build({ tenantId: params.tenantId, topic: CANONICAL_TOPICS.WEBHOOK_SUBSCRIPTION_CREATED, eventType: 'webhook.subscription.created', payload: { subscriptionId } }) }),
+      this.prisma.outboxEvent.create({
+        data: this.outbox.build({
+          tenantId: params.tenantId,
+          topic: CANONICAL_TOPICS.WEBHOOK_SUBSCRIPTION_CREATED,
+          eventType: 'webhook.subscription.created',
+          payload: { subscriptionId },
+        }),
+      }),
     ]);
 
     await this.secretService.issue(params.tenantId, subscriptionId);
@@ -56,16 +76,36 @@ export class WebhookSubscriptionService {
 
   async markVerified(tenantId: string, subscriptionId: string) {
     const [updated] = await this.prisma.$transaction([
-      this.prisma.outboundWebhookSubscription.update({ where: { id: subscriptionId }, data: { status: 'ACTIVE', verified_at: new Date() } }),
-      this.prisma.outboxEvent.create({ data: this.outbox.build({ tenantId, topic: CANONICAL_TOPICS.WEBHOOK_SUBSCRIPTION_VERIFIED, eventType: 'webhook.subscription.verified', payload: { subscriptionId } }) }),
+      this.prisma.outboundWebhookSubscription.update({
+        where: { id: subscriptionId },
+        data: { status: 'ACTIVE', verified_at: new Date() },
+      }),
+      this.prisma.outboxEvent.create({
+        data: this.outbox.build({
+          tenantId,
+          topic: CANONICAL_TOPICS.WEBHOOK_SUBSCRIPTION_VERIFIED,
+          eventType: 'webhook.subscription.verified',
+          payload: { subscriptionId },
+        }),
+      }),
     ]);
     return updated;
   }
 
   async suspend(tenantId: string, subscriptionId: string) {
     const [updated] = await this.prisma.$transaction([
-      this.prisma.outboundWebhookSubscription.update({ where: { id: subscriptionId }, data: { status: 'SUSPENDED', suspended_at: new Date() } }),
-      this.prisma.outboxEvent.create({ data: this.outbox.build({ tenantId, topic: CANONICAL_TOPICS.WEBHOOK_SUBSCRIPTION_SUSPENDED, eventType: 'webhook.subscription.suspended', payload: { subscriptionId } }) }),
+      this.prisma.outboundWebhookSubscription.update({
+        where: { id: subscriptionId },
+        data: { status: 'SUSPENDED', suspended_at: new Date() },
+      }),
+      this.prisma.outboxEvent.create({
+        data: this.outbox.build({
+          tenantId,
+          topic: CANONICAL_TOPICS.WEBHOOK_SUBSCRIPTION_SUSPENDED,
+          eventType: 'webhook.subscription.suspended',
+          payload: { subscriptionId },
+        }),
+      }),
     ]);
     return updated;
   }
@@ -75,15 +115,25 @@ export class WebhookSubscriptionService {
   }
 
   async assertTenantOwnership(tenantId: string, subscriptionId: string) {
-    const subscription = await this.prisma.outboundWebhookSubscription.findFirst({ where: { id: subscriptionId, tenant_id: tenantId } });
+    const subscription =
+      await this.prisma.outboundWebhookSubscription.findFirst({
+        where: { id: subscriptionId, tenant_id: tenantId },
+      });
     if (!subscription) {
-      throw new NotFoundException(`WebhookSubscription '${subscriptionId}' not found`);
+      throw new NotFoundException(
+        `WebhookSubscription '${subscriptionId}' not found`,
+      );
     }
     return subscription;
   }
 
   async listActiveForEventType(tenantId: string, eventType: string) {
-    const subscriptions = await this.prisma.outboundWebhookSubscription.findMany({ where: { tenant_id: tenantId, status: 'ACTIVE' } });
-    return subscriptions.filter((s) => (JSON.parse(s.event_types) as string[]).includes(eventType));
+    const subscriptions =
+      await this.prisma.outboundWebhookSubscription.findMany({
+        where: { tenant_id: tenantId, status: 'ACTIVE' },
+      });
+    return subscriptions.filter((s) =>
+      (JSON.parse(s.event_types) as string[]).includes(eventType),
+    );
   }
 }

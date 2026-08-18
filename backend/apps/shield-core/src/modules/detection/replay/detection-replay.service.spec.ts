@@ -40,18 +40,37 @@ describe('DetectionReplayService', () => {
 
   beforeEach(async () => {
     prismaMock = {
-      detectionEvaluation: { findFirst: jest.fn().mockResolvedValue(evaluation) },
+      detectionEvaluation: {
+        findFirst: jest.fn().mockResolvedValue(evaluation),
+      },
       contextSnapshot: {
-        findUnique: jest.fn().mockResolvedValue({ id: 'snap-1', identity_entity_id: 'identity-1', asset_id: null, context_health: 'RESOLVED' }),
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'snap-1',
+          identity_entity_id: 'identity-1',
+          asset_id: null,
+          context_health: 'RESOLVED',
+        }),
       },
       identityEntity: {
-        findUnique: jest.fn().mockResolvedValue({ id: 'identity-1', status: 'ACTIVE', identity_type: 'MANAGED_IDENTITY' }),
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'identity-1',
+          status: 'ACTIVE',
+          identity_type: 'MANAGED_IDENTITY',
+        }),
       },
       asset: { findUnique: jest.fn().mockResolvedValue(null) },
-      detectionReplay: { create: jest.fn().mockImplementation(({ data }: any) => Promise.resolve({ id: 'replay-1', ...data })) },
+      detectionReplay: {
+        create: jest
+          .fn()
+          .mockImplementation(({ data }: any) =>
+            Promise.resolve({ id: 'replay-1', ...data }),
+          ),
+      },
     };
     ruleMock = { key: 'SUSPICIOUS_LOGIN_NEW_LOCATION', evaluate: jest.fn() };
-    registryMock = { getRuleImplementation: jest.fn().mockReturnValue(ruleMock) };
+    registryMock = {
+      getRuleImplementation: jest.fn().mockReturnValue(ruleMock),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -65,7 +84,12 @@ describe('DetectionReplayService', () => {
   });
 
   it('records divergence=false when replaying with identical frozen context produces the same result', async () => {
-    ruleMock.evaluate.mockReturnValue({ result: 'MATCH', factors: [], incompleteData: false, reasons: [] });
+    ruleMock.evaluate.mockReturnValue({
+      result: 'MATCH',
+      factors: [],
+      incompleteData: false,
+      reasons: [],
+    });
 
     const replay = await service.replay('tenant-a', 'eval-1');
 
@@ -73,11 +97,18 @@ describe('DetectionReplayService', () => {
     expect(replay.original_result).toBe('MATCH');
     expect(replay.replay_result).toBe('MATCH');
     // Proves replay is driven by the frozen payload snapshot, not a live NormalizedEvent read.
-    expect(prismaMock.identityEntity.findUnique).toHaveBeenCalledWith({ where: { id: 'identity-1' } });
+    expect(prismaMock.identityEntity.findUnique).toHaveBeenCalledWith({
+      where: { id: 'identity-1' },
+    });
   });
 
   it('records divergence=true (NON_DETERMINISTIC) when the replay result differs from the original', async () => {
-    ruleMock.evaluate.mockReturnValue({ result: 'NO_MATCH', factors: [], incompleteData: false, reasons: [] });
+    ruleMock.evaluate.mockReturnValue({
+      result: 'NO_MATCH',
+      factors: [],
+      incompleteData: false,
+      reasons: [],
+    });
 
     const replay = await service.replay('tenant-a', 'eval-1');
 

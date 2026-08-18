@@ -5,7 +5,8 @@ import { WitnessProvider } from './witness-provider.interface';
 import { MockWitnessProvider } from './mock-witness-provider.service';
 import { HttpWitnessProvider } from './http-witness-provider.service';
 
-export type WitnessAssuranceState = 'TEST_ONLY' | 'WITNESS_PARTIAL' | 'WITNESS_FULL';
+export type WitnessAssuranceState =
+  'TEST_ONLY' | 'WITNESS_PARTIAL' | 'WITNESS_FULL';
 
 /**
  * Development uses an explicitly marked mock witness. Production requires
@@ -24,9 +25,12 @@ export class WitnessService {
   }
 
   async collectReceipts(checkpointId: string, merkleRoot: string) {
-    const results = process.env.NODE_ENV === 'production'
-      ? await this.httpWitnessProvider.attestAll(merkleRoot)
-      : await Promise.all(this.providers.map((provider) => provider.attest(merkleRoot)));
+    const results =
+      process.env.NODE_ENV === 'production'
+        ? await this.httpWitnessProvider.attestAll(merkleRoot)
+        : await Promise.all(
+            this.providers.map((provider) => provider.attest(merkleRoot)),
+          );
     const receipts = [];
     for (const result of results) {
       const receipt = await this.prisma.witnessReceipt.create({
@@ -44,7 +48,12 @@ export class WitnessService {
       });
       receipts.push(receipt);
     }
-    return { receipts, witnessAssuranceState: this.computeAssuranceState(receipts.map((r) => r.witness_type)) };
+    return {
+      receipts,
+      witnessAssuranceState: this.computeAssuranceState(
+        receipts.map((r) => r.witness_type),
+      ),
+    };
   }
 
   private computeAssuranceState(witnessTypes: string[]): WitnessAssuranceState {

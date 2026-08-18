@@ -1,7 +1,13 @@
 import { IsIn, IsOptional, IsString } from 'class-validator';
 import type { EnvironmentType } from '../environment.entity';
 
-const ENVIRONMENT_TYPES: EnvironmentType[] = ['PRODUCTION', 'STAGING', 'DEVELOPMENT', 'TEST', 'SIMULATION'];
+const ENVIRONMENT_TYPES: EnvironmentType[] = [
+  'PRODUCTION',
+  'STAGING',
+  'DEVELOPMENT',
+  'TEST',
+  'SIMULATION',
+];
 
 export class CreateEnvironmentDto {
   @IsString()

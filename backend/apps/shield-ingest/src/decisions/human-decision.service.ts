@@ -1,8 +1,19 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 
 export class RecordHumanDecisionDto {
-  decisionType!: 'TRIAGE_DECISION' | 'FALSE_POSITIVE_DECISION' | 'INCIDENT_DECLARATION' | 'RESPONSE_RECOMMENDATION' | 'CONTROL_REVIEW' | 'CASE_CLOSURE';
+  decisionType!:
+    | 'TRIAGE_DECISION'
+    | 'FALSE_POSITIVE_DECISION'
+    | 'INCIDENT_DECLARATION'
+    | 'RESPONSE_RECOMMENDATION'
+    | 'CONTROL_REVIEW'
+    | 'CASE_CLOSURE';
   decision!: string;
   reason?: string;
   evidenceIds?: string[];
@@ -20,7 +31,11 @@ export class HumanDecisionService {
   /**
    * Record analyst human decision separately from AI outputs and append to CaseTimeline
    */
-  async recordDecision(tenantId: string, caseId: string, dto: RecordHumanDecisionDto) {
+  async recordDecision(
+    tenantId: string,
+    caseId: string,
+    dto: RecordHumanDecisionDto,
+  ) {
     const caseRecord = await this.prisma.case.findFirst({
       where: { id: caseId, tenant_id: tenantId },
     });
@@ -48,7 +63,8 @@ export class HumanDecisionService {
     });
 
     // Automatically append DECISION_RECORDED event to CaseTimelineEntry
-    const timelineDelegate = this.prisma.caseTimelineEntry || (this.prisma as any).caseTimeline;
+    const timelineDelegate =
+      this.prisma.caseTimelineEntry || (this.prisma as any).caseTimeline;
     await timelineDelegate.create({
       data: {
         tenant_id: caseRecord.tenant_id,

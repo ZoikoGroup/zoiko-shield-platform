@@ -14,9 +14,23 @@ import { DeletionAttestationService } from './attestation/deletion-attestation.s
 import { TenantOffboardingService } from './lifecycle/tenant-offboarding.service';
 
 @Module({
-  imports: [PrismaModule, EvidenceModule, AuthorizationDecisionModule, ExportModule, DeveloperApiModule],
+  imports: [
+    PrismaModule,
+    EvidenceModule,
+    AuthorizationDecisionModule,
+    ExportModule,
+    DeveloperApiModule,
+  ],
   controllers: [OffboardingController],
-  providers: [OutboxService, LegalHoldService, DeletionRequestService, DeletionTaskService, BackupExpiryService, DeletionAttestationService, TenantOffboardingService],
+  providers: [
+    OutboxService,
+    LegalHoldService,
+    DeletionRequestService,
+    DeletionTaskService,
+    BackupExpiryService,
+    DeletionAttestationService,
+    TenantOffboardingService,
+  ],
   exports: [LegalHoldService, DeletionRequestService, TenantOffboardingService],
 })
 export class OffboardingModule {}

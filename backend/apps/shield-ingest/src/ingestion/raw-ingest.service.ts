@@ -1,4 +1,10 @@
-import { Injectable, Logger, BadRequestException, NotFoundException, Optional } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { KafkaProducerService } from '../kafka/kafka.producer.service';
 import { MeteringService } from '../metering/metering.service';
@@ -69,7 +75,9 @@ export class RawIngestService {
     });
 
     if (!connector) {
-      throw new NotFoundException(`Connector with ID '${connectorId}' not found`);
+      throw new NotFoundException(
+        `Connector with ID '${connectorId}' not found`,
+      );
     }
 
     // The authenticated connector is the authority. Caller-provided routing
@@ -82,12 +90,16 @@ export class RawIngestService {
     const assertedRegion = headers['x-source-region'];
     const routeMismatch =
       (typeof assertedTenant === 'string' && assertedTenant !== tenantId) ||
-      (typeof assertedEnvironment === 'string' && assertedEnvironment !== environmentId) ||
+      (typeof assertedEnvironment === 'string' &&
+        assertedEnvironment !== environmentId) ||
       (typeof assertedRegion === 'string' && assertedRegion !== sourceRegion);
 
     // Calculate SHA-256 cryptographic hash of raw payload
     const rawString = JSON.stringify(payload);
-    const payloadHash = crypto.createHash('sha256').update(rawString).digest('hex');
+    const payloadHash = crypto
+      .createHash('sha256')
+      .update(rawString)
+      .digest('hex');
 
     // Extract source event ID if provided
     const sourceEventId = payload.sourceEventId || payload.eventId || undefined;
@@ -120,7 +132,9 @@ export class RawIngestService {
               billableQuantity: 0,
             });
           } catch (err) {
-            this.logger.warn(`Failed to record duplicate usage observation: ${err}`);
+            this.logger.warn(
+              `Failed to record duplicate usage observation: ${err}`,
+            );
           }
         }
 
@@ -139,7 +153,13 @@ export class RawIngestService {
 
     // Basic payload schema validation: must be a non-empty object
     let processingStatus: 'ACCEPTED' | 'QUARANTINED' = 'ACCEPTED';
-    if (routeMismatch || !sourceRegion || !payload || typeof payload !== 'object' || Object.keys(payload).length === 0) {
+    if (
+      routeMismatch ||
+      !sourceRegion ||
+      !payload ||
+      typeof payload !== 'object' ||
+      Object.keys(payload).length === 0
+    ) {
       processingStatus = 'QUARANTINED';
     }
 
@@ -177,19 +197,22 @@ export class RawIngestService {
           environmentId,
           sourceType: rawEvent.source_type,
           rawEventId: rawEvent.id,
-          usageState: processingStatus === 'QUARANTINED' ? 'QUARANTINED' : 'ACCEPTED',
+          usageState:
+            processingStatus === 'QUARANTINED' ? 'QUARANTINED' : 'ACCEPTED',
           acceptedQuantity: 1,
           billableQuantity: processingStatus === 'ACCEPTED' ? 1 : 0,
         });
 
         // Observe resource if payload specifies resourceId or sourceIp
-        const resourceId = payload.resourceId || payload.sourceIp || payload.clientIp;
+        const resourceId =
+          payload.resourceId || payload.sourceIp || payload.clientIp;
         if (resourceId) {
           await this.meteringService.observeProtectedResource({
             tenantId,
             environmentId,
             canonicalResourceId: resourceId,
-            resourceType: payload.resourceType || (payload.sourceIp ? 'IP' : 'ENDPOINT'),
+            resourceType:
+              payload.resourceType || (payload.sourceIp ? 'IP' : 'ENDPOINT'),
             sourceConnectorId: connectorId,
           });
         }
@@ -210,7 +233,9 @@ export class RawIngestService {
         status: processingStatus,
       });
     } catch (err) {
-      this.logger.warn(`Failed to emit Kafka event: ${err instanceof Error ? err.message : String(err)}`);
+      this.logger.warn(
+        `Failed to emit Kafka event: ${err instanceof Error ? err.message : String(err)}`,
+      );
     }
 
     return {
@@ -220,7 +245,8 @@ export class RawIngestService {
       connectorId: rawEvent.connector_id,
       sourceEventId: rawEvent.source_event_id || undefined,
       payloadHash: rawEvent.payload_hash,
-      processingStatus: rawEvent.processing_status as 'ACCEPTED' | 'QUARANTINED',
+      processingStatus: rawEvent.processing_status as
+        'ACCEPTED' | 'QUARANTINED',
       receivedAt: rawEvent.received_at,
     };
   }

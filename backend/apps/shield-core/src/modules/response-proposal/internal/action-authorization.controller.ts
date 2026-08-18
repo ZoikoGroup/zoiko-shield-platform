@@ -1,4 +1,11 @@
-import { Controller, Get, Headers, Param, NotFoundException, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Headers,
+  Param,
+  NotFoundException,
+  UseGuards,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { InternalAuthGuard } from '../../../internal-client/internal-auth.guard';
@@ -42,15 +49,17 @@ export class ActionAuthorizationController {
     // Re-evaluate authorization fresh — never trust a decision resolved at
     // proposal/approval time as still valid now (roles/entitlements may
     // have changed since).
-    const evaluationActorId = latestApproval?.approver_id ?? proposal.requested_by;
-    const { authorizationDecisionId, decision } = await this.authorizationDecisionService.evaluate({
-      actorId: evaluationActorId,
-      tenantId: proposal.tenant_id,
-      action: 'response_action:execute',
-      resourceType: proposal.target_type,
-      resourceId: proposal.target_id,
-      correlationId: randomUUID(),
-    });
+    const evaluationActorId =
+      latestApproval?.approver_id ?? proposal.requested_by;
+    const { authorizationDecisionId, decision } =
+      await this.authorizationDecisionService.evaluate({
+        actorId: evaluationActorId,
+        tenantId: proposal.tenant_id,
+        action: 'response_action:execute',
+        resourceType: proposal.target_type,
+        resourceId: proposal.target_id,
+        correlationId: randomUUID(),
+      });
 
     const context: ActionAuthorizationContext = {
       tenantId: proposal.tenant_id,
@@ -73,7 +82,7 @@ export class ActionAuthorizationController {
         : null,
       policyVersion: proposal.policy_version,
       authorizationDecisionId,
-      entitlementAllowed: decision === 'ALLOW',
+      entitlementAllowed: decision === 'PERMIT',
       // Simulation never claims a live target state. A live-execution path
       // must supply a connector-specific verified state before authorization.
       targetState: {

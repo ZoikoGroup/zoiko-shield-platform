@@ -10,16 +10,23 @@ import {
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
-import { IsOptional, IsString } from 'class-validator';
+import { IsIn, IsOptional, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
-import { requireTenantId } from '../../tenant-context';
+import {
+  requireEnvironmentId,
+  requireRegion,
+  requireTenantId,
+} from '../../tenant-context';
+import { CurrentUser } from '../identity-adapter/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
 import {
   CommercialEntitlementService,
   CreateCommercialAccountDto,
   GrantEntitlementDto,
-  RegisterClaimDto,
 } from './commercial-entitlement.service';
+import { CLAIM_CHANNELS, ClaimRegisterService } from './claim-register.service';
+import type { ClaimChannel } from './claim-register.service';
 
 export class CheckEntitlementQueryDto {
   @IsOptional()
@@ -45,6 +52,10 @@ export class CheckClaimQueryDto {
   @IsOptional()
   @IsString()
   region?: string;
+
+  @IsOptional()
+  @IsIn(CLAIM_CHANNELS)
+  channel?: ClaimChannel;
 }
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -52,6 +63,7 @@ export class CheckClaimQueryDto {
 export class CommercialEntitlementController {
   constructor(
     private readonly commercialService: CommercialEntitlementService,
+    private readonly claimRegisterService: ClaimRegisterService,
   ) {}
 
   /**
@@ -74,7 +86,8 @@ export class CommercialEntitlementController {
    */
   @Get('accounts/:accountId')
   async getCommercialAccountById(@Param('accountId') accountId: string) {
-    const account = await this.commercialService.getCommercialAccountById(accountId);
+    const account =
+      await this.commercialService.getCommercialAccountById(accountId);
     return {
       statusCode: HttpStatus.OK,
       data: account,
@@ -104,7 +117,10 @@ export class CommercialEntitlementController {
     @Param('id') id: string,
     @Body('status') status: string,
   ) {
-    const entitlement = await this.commercialService.updateEntitlementStatus(id, status);
+    const entitlement = await this.commercialService.updateEntitlementStatus(
+      id,
+      status,
+    );
     return {
       statusCode: HttpStatus.OK,
       data: entitlement,
@@ -121,7 +137,8 @@ export class CommercialEntitlementController {
     @Query('tenantId') queryTenantId?: string,
   ) {
     const tenantId = requireTenantId(headerTenantId, queryTenantId);
-    const result = await this.commercialService.getEntitlementsByTenant(tenantId);
+    const result =
+      await this.commercialService.getEntitlementsByTenant(tenantId);
     return {
       statusCode: HttpStatus.OK,
       data: result,
@@ -153,20 +170,6 @@ export class CommercialEntitlementController {
   }
 
   /**
-   * POST /api/v1/commercial/claims/register
-   * Register approved claim wording in ClaimRegister
-   */
-  @Post('claims/register')
-  async registerClaim(@Body() dto: RegisterClaimDto) {
-    const claim = await this.commercialService.registerClaim(dto);
-    return {
-      statusCode: HttpStatus.OK,
-      message: 'Claim registered',
-      data: claim,
-    };
-  }
-
-  /**
    * GET /api/v1/commercial/claims/check
    * Verify claim eligibility against entitlement and ClaimRegister
    */
@@ -174,14 +177,17 @@ export class CommercialEntitlementController {
   async checkClaimEligibility(
     @Headers('x-tenant-id') headerTenantId: string,
     @Query() query: CheckClaimQueryDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const tenantId = requireTenantId(headerTenantId, query.tenantId);
-    const result = await this.commercialService.verifyClaimEligibility(
+    const result = await this.claimRegisterService.verifyClaimEligibility({
       tenantId,
-      query.claimKey,
-      query.sectorPackKey,
-      query.region,
-    );
+      environmentId: requireEnvironmentId(user.environmentId),
+      region: requireRegion(user.region, query.region),
+      claimKey: query.claimKey,
+      channel: query.channel ?? 'PRODUCT_UI',
+      sectorPackKey: query.sectorPackKey,
+    });
     return {
       statusCode: HttpStatus.OK,
       data: result,

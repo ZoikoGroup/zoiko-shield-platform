@@ -16,6 +16,20 @@ export type Assurance =
   | 'PASSKEY'
   | 'RECOVERY';
 
+export type SessionState = 'ACTIVE' | 'RESTRICTED';
+
+export interface SessionBinding {
+  tenantId: string;
+  membershipId: string;
+  environmentId: string | null;
+  region: string;
+  authenticationMethod: 'PASSWORD' | 'OIDC' | 'SAML';
+  issuer?: string | null;
+  policyVersion: string;
+  riskState?: string;
+  state?: SessionState;
+}
+
 @Entity({ name: 'sessions', schema: 'identity' })
 export class Session {
   @PrimaryGeneratedColumn('uuid')
@@ -34,6 +48,34 @@ export class Session {
 
   @Column({ type: 'varchar', default: 'PASSWORD' })
   assurance: Assurance;
+
+  @Column({ type: 'uuid', nullable: true })
+  @Index()
+  tenantId: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  membershipId: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  environmentId: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  region: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  authenticationMethod: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  issuer: string | null;
+
+  @Column({ type: 'varchar', default: 'iam-policy-1.0.0' })
+  policyVersion: string;
+
+  @Column({ type: 'varchar', default: 'NORMAL' })
+  riskState: string;
+
+  @Column({ type: 'varchar', default: 'ACTIVE' })
+  state: SessionState;
 
   @Column({ type: 'text' })
   refreshTokenHash: string;

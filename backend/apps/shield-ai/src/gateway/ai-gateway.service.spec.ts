@@ -67,7 +67,11 @@ describe('AiGatewayService', () => {
       useCase: { id: 'uc-1' },
       modelProfile: { id: 'mp-1', provider: 'MOCK' },
     });
-    promptRegistry.getActiveForKey.mockResolvedValue({ id: 'p-1', system_prompt_ref: 'sys', output_schema: '{}' });
+    promptRegistry.getActiveForKey.mockResolvedValue({
+      id: 'p-1',
+      system_prompt_ref: 'sys',
+      output_schema: '{}',
+    });
 
     const context: GatewayRequestContext = {
       tenantId: 't-1',
@@ -81,7 +85,9 @@ describe('AiGatewayService', () => {
       traceId: 'trace-1',
     };
 
-    await expect(service.invoke('CASE_SUMMARY', 'CASE_SUMMARY', context)).rejects.toThrow(PolicyDeniedException);
+    await expect(
+      service.invoke('CASE_SUMMARY', 'CASE_SUMMARY', context),
+    ).rejects.toThrow(PolicyDeniedException);
   });
 
   it('should execute successfully when caseId is provided and policy allows', async () => {
@@ -91,9 +97,17 @@ describe('AiGatewayService', () => {
       useCase: { id: 'uc-1' },
       modelProfile: { id: 'mp-1', provider: 'MOCK' },
     });
-    promptRegistry.getActiveForKey.mockResolvedValue({ id: 'p-1', system_prompt_ref: 'sys', output_schema: '{}' });
+    promptRegistry.getActiveForKey.mockResolvedValue({
+      id: 'p-1',
+      system_prompt_ref: 'sys',
+      output_schema: '{}',
+    });
     retrievalBroker.build.mockResolvedValue({
-      bundle: { id: 'b-1', completeness_state: 'COMPLETE', freshness_state: 'FRESH' },
+      bundle: {
+        id: 'b-1',
+        completeness_state: 'COMPLETE',
+        freshness_state: 'FRESH',
+      },
       sourceRefs: ['ref-1'],
       retrievalContext: 'raw context',
     });
@@ -132,7 +146,11 @@ describe('AiGatewayService', () => {
       traceId: 'trace-1',
     };
 
-    const result = await service.invoke('CASE_SUMMARY', 'CASE_SUMMARY', context);
+    const result = await service.invoke(
+      'CASE_SUMMARY',
+      'CASE_SUMMARY',
+      context,
+    );
     expect(result).toBeDefined();
     expect(result.id).toBe('out-1');
   });

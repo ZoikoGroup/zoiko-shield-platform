@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Param, Query, Headers, Body, HttpStatus, NotFoundException, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  Query,
+  Headers,
+  Body,
+  HttpStatus,
+  NotFoundException,
+  UseGuards,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { DetectionRegistryService } from './registry/detection-registry.service';
 import { DetectionReplayService } from './replay/detection-replay.service';
@@ -55,14 +66,19 @@ export class DetectionController {
 
   @Get('definitions')
   async listDefinitions() {
-    const definitions = await this.prisma.detectionDefinition.findMany({ include: { versions: true } });
+    const definitions = await this.prisma.detectionDefinition.findMany({
+      include: { versions: true },
+    });
     return { statusCode: HttpStatus.OK, data: definitions };
   }
 
   @Post('definitions/:definitionId/versions')
   @UseGuards(PlatformPermissionsGuard)
   @RequirePlatformPermissions(PERMISSION_CODES.DETECTION_MANAGE)
-  async createVersion(@Param('definitionId') definitionId: string, @Body() dto: CreateDetectionVersionDto) {
+  async createVersion(
+    @Param('definitionId') definitionId: string,
+    @Body() dto: CreateDetectionVersionDto,
+  ) {
     const version = await this.prisma.detectionVersion.create({
       data: {
         detection_definition_id: definitionId,
@@ -73,7 +89,8 @@ export class DetectionController {
         required_event_types: JSON.stringify(dto.requiredEventTypes || []),
         required_fields: JSON.stringify(dto.requiredFields || []),
         required_context: JSON.stringify(dto.requiredContext || []),
-        allowed_missing_data_behavior: dto.allowedMissingDataBehavior || 'INDETERMINATE',
+        allowed_missing_data_behavior:
+          dto.allowedMissingDataBehavior || 'INDETERMINATE',
         status: 'DRAFT',
       },
     });
@@ -104,16 +121,26 @@ export class DetectionController {
   }
 
   @Get('evaluations/:evaluationId')
-  async getEvaluation(@Headers('x-tenant-id') tenantId: string, @Param('evaluationId') evaluationId: string) {
-    const evaluation = await this.prisma.detectionEvaluation.findFirst({ where: { id: evaluationId, tenant_id: tenantId } });
+  async getEvaluation(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('evaluationId') evaluationId: string,
+  ) {
+    const evaluation = await this.prisma.detectionEvaluation.findFirst({
+      where: { id: evaluationId, tenant_id: tenantId },
+    });
     if (!evaluation) {
-      throw new NotFoundException(`DetectionEvaluation '${evaluationId}' not found`);
+      throw new NotFoundException(
+        `DetectionEvaluation '${evaluationId}' not found`,
+      );
     }
     return { statusCode: HttpStatus.OK, data: evaluation };
   }
 
   @Post('evaluations/:evaluationId/replay')
-  async replay(@Headers('x-tenant-id') tenantId: string, @Param('evaluationId') evaluationId: string) {
+  async replay(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('evaluationId') evaluationId: string,
+  ) {
     const replay = await this.replayService.replay(tenantId, evaluationId);
     return { statusCode: HttpStatus.OK, data: replay };
   }

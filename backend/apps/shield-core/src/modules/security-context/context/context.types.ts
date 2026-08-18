@@ -1,4 +1,5 @@
-export type ContextHealth = 'RESOLVED' | 'PARTIAL' | 'AMBIGUOUS' | 'UNRESOLVED' | 'STALE';
+export type ContextHealth =
+  'RESOLVED' | 'PARTIAL' | 'AMBIGUOUS' | 'UNRESOLVED' | 'STALE';
 
 export interface ResolvedContext {
   eventId: string;

@@ -29,10 +29,19 @@ export class EnvironmentController {
     private readonly authorizationService: AuthorizationService,
   ) {}
 
-  private async requireManage(tenantId: string, user: AuthenticatedUser): Promise<void> {
-    const granted = await this.authorizationService.getPermissionCodesForPrincipal(tenantId, user.id);
+  private async requireManage(
+    tenantId: string,
+    user: AuthenticatedUser,
+  ): Promise<void> {
+    const granted =
+      await this.authorizationService.getPermissionCodesForPrincipal(
+        tenantId,
+        user.id,
+      );
     if (!granted.includes(PERMISSION_CODES.TENANT_MANAGE)) {
-      throw new ForbiddenException('Missing tenant:manage permission for this tenant');
+      throw new ForbiddenException(
+        'Missing tenant:manage permission for this tenant',
+      );
     }
   }
 

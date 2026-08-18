@@ -20,7 +20,12 @@ describe('DunningService (ZS-COM-BILL-001 Part 18, policy-driven, fail closed)',
 
   beforeEach(async () => {
     prismaMock = {
-      dunningCase: { findFirst: jest.fn(), findUnique: jest.fn(), create: jest.fn(), update: jest.fn() },
+      dunningCase: {
+        findFirst: jest.fn(),
+        findUnique: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
       dunningPolicy: { findUniqueOrThrow: jest.fn().mockResolvedValue(policy) },
     };
     contractMock = { transitionState: jest.fn(), getContractById: jest.fn() };
@@ -50,18 +55,31 @@ describe('DunningService (ZS-COM-BILL-001 Part 18, policy-driven, fail closed)',
   it('triggering dunning moves the contract to PAST_DUE via the canonical contract state machine', async () => {
     policyMock.getActivePolicy.mockResolvedValue(policy);
     prismaMock.dunningCase.findFirst.mockResolvedValue(null);
-    prismaMock.dunningCase.create.mockResolvedValue({ id: 'case-1', status: 'ACTIVE' });
+    prismaMock.dunningCase.create.mockResolvedValue({
+      id: 'case-1',
+      status: 'ACTIVE',
+    });
 
     await service.triggerDunning({ contractId: 'c-1', policyKey: 'standard' });
 
-    expect(contractMock.transitionState).toHaveBeenCalledWith('c-1', 'PAST_DUE', expect.any(String));
+    expect(contractMock.transitionState).toHaveBeenCalledWith(
+      'c-1',
+      'PAST_DUE',
+      expect.any(String),
+    );
   });
 
   it('triggering dunning twice for the same contract is idempotent (returns the existing active case)', async () => {
     policyMock.getActivePolicy.mockResolvedValue(policy);
-    prismaMock.dunningCase.findFirst.mockResolvedValue({ id: 'case-1', status: 'ACTIVE' });
+    prismaMock.dunningCase.findFirst.mockResolvedValue({
+      id: 'case-1',
+      status: 'ACTIVE',
+    });
 
-    const result = await service.triggerDunning({ contractId: 'c-1', policyKey: 'standard' });
+    const result = await service.triggerDunning({
+      contractId: 'c-1',
+      policyKey: 'standard',
+    });
 
     expect(result.id).toBe('case-1');
     expect(contractMock.transitionState).not.toHaveBeenCalled();
@@ -94,12 +112,19 @@ describe('DunningService (ZS-COM-BILL-001 Part 18, policy-driven, fail closed)',
     });
     contractMock.getContractById.mockResolvedValue({ status: 'PAST_DUE' });
     contractMock.transitionState.mockResolvedValue({ status: 'RESTRICTED' });
-    prismaMock.dunningCase.update.mockResolvedValue({ id: 'case-1', status: 'ACTIVE' });
+    prismaMock.dunningCase.update.mockResolvedValue({
+      id: 'case-1',
+      status: 'ACTIVE',
+    });
 
     const result = await service.advanceDunning('case-1');
 
     expect(result.advanced).toBe(true);
-    expect(contractMock.transitionState).toHaveBeenCalledWith('c-1', 'RESTRICTED', 'dunning-engine');
+    expect(contractMock.transitionState).toHaveBeenCalledWith(
+      'c-1',
+      'RESTRICTED',
+      'dunning-engine',
+    );
   });
 
   it('escalating to TERMINATION_WORKFLOW also flips the dunning case to ESCALATED_TO_TERMINATION', async () => {
@@ -112,31 +137,54 @@ describe('DunningService (ZS-COM-BILL-001 Part 18, policy-driven, fail closed)',
       triggered_at: sixtyOneDaysAgo,
     });
     contractMock.getContractById.mockResolvedValue({ status: 'SUSPENDED' });
-    contractMock.transitionState.mockResolvedValue({ status: 'TERMINATION_WORKFLOW' });
-    prismaMock.dunningCase.update.mockResolvedValue({ id: 'case-1', status: 'ESCALATED_TO_TERMINATION' });
+    contractMock.transitionState.mockResolvedValue({
+      status: 'TERMINATION_WORKFLOW',
+    });
+    prismaMock.dunningCase.update.mockResolvedValue({
+      id: 'case-1',
+      status: 'ESCALATED_TO_TERMINATION',
+    });
 
     const result = await service.advanceDunning('case-1');
 
     expect(prismaMock.dunningCase.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ status: 'ESCALATED_TO_TERMINATION' }) }),
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'ESCALATED_TO_TERMINATION' }),
+      }),
     );
     expect(result.contract.status).toBe('TERMINATION_WORKFLOW');
   });
 
   it('resolving dunning returns the contract to ACTIVE and closes the case', async () => {
-    prismaMock.dunningCase.findUnique.mockResolvedValue({ id: 'case-1', status: 'ACTIVE', contract_id: 'c-1' });
+    prismaMock.dunningCase.findUnique.mockResolvedValue({
+      id: 'case-1',
+      status: 'ACTIVE',
+      contract_id: 'c-1',
+    });
     contractMock.transitionState.mockResolvedValue({ status: 'ACTIVE' });
-    prismaMock.dunningCase.update.mockResolvedValue({ id: 'case-1', status: 'RESOLVED' });
+    prismaMock.dunningCase.update.mockResolvedValue({
+      id: 'case-1',
+      status: 'RESOLVED',
+    });
 
     const result = await service.resolveDunning('case-1', 'ops');
 
-    expect(contractMock.transitionState).toHaveBeenCalledWith('c-1', 'ACTIVE', 'ops');
+    expect(contractMock.transitionState).toHaveBeenCalledWith(
+      'c-1',
+      'ACTIVE',
+      'ops',
+    );
     expect(result.status).toBe('RESOLVED');
   });
 
   it('rejects resolving a case that is not ACTIVE', async () => {
-    prismaMock.dunningCase.findUnique.mockResolvedValue({ id: 'case-1', status: 'RESOLVED' });
+    prismaMock.dunningCase.findUnique.mockResolvedValue({
+      id: 'case-1',
+      status: 'RESOLVED',
+    });
 
-    await expect(service.resolveDunning('case-1')).rejects.toThrow(ConflictException);
+    await expect(service.resolveDunning('case-1')).rejects.toThrow(
+      ConflictException,
+    );
   });
 });

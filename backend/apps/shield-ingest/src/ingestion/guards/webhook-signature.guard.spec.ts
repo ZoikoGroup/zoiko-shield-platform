@@ -26,7 +26,11 @@ describe('WebhookSignatureGuard', () => {
     const context: any = {
       switchToHttp: () => ({
         getRequest: () => ({
-          headers: { 'x-hub-signature-256': signature, 'x-timestamp': timestamp, 'x-webhook-nonce': nonce },
+          headers: {
+            'x-hub-signature-256': signature,
+            'x-timestamp': timestamp,
+            'x-webhook-nonce': nonce,
+          },
           params: { connectorId: 'connector-1' },
           rawBody: Buffer.from(payloadString),
           body: payload,
@@ -42,7 +46,11 @@ describe('WebhookSignatureGuard', () => {
     const context: any = {
       switchToHttp: () => ({
         getRequest: () => ({
-          headers: { 'x-hub-signature-256': 'sha256=invalid', 'x-timestamp': timestamp, 'x-webhook-nonce': 'nonce-invalid' },
+          headers: {
+            'x-hub-signature-256': 'sha256=invalid',
+            'x-timestamp': timestamp,
+            'x-webhook-nonce': 'nonce-invalid',
+          },
           params: { connectorId: 'connector-1' },
           rawBody: Buffer.from('{"eventId":"evt-100"}'),
           body: { eventId: 'evt-100' },
@@ -50,6 +58,8 @@ describe('WebhookSignatureGuard', () => {
       }),
     };
 
-    await expect(guard.canActivate(context)).rejects.toThrow(UnauthorizedException);
+    await expect(guard.canActivate(context)).rejects.toThrow(
+      UnauthorizedException,
+    );
   });
 });
