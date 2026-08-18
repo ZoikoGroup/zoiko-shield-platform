@@ -167,7 +167,7 @@ export interface ClaimEligibilityContext {
   sectorPackKey?: string;
 }
 
-interface ClaimEligibilityResult {
+export interface ClaimEligibilityResult {
   eligible: boolean;
   status: 'ELIGIBLE' | 'INELIGIBLE';
   reasonCode: string;

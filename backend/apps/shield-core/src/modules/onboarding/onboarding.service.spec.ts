@@ -62,9 +62,11 @@ describe('OnboardingService (spec §7.2 order gate)', () => {
     });
     tenantRepo = fakeRepo({
       findOne: jest.fn().mockResolvedValue(null), // slug not taken
-      findOneByOrFail: jest.fn().mockImplementation((where: any) =>
-        Promise.resolve({ id: where.id, status: 'PROVISIONING' }),
-      ),
+      findOneByOrFail: jest
+        .fn()
+        .mockImplementation((where: any) =>
+          Promise.resolve({ id: where.id, status: 'PROVISIONING' }),
+        ),
     });
     const repos: Record<string, any> = {
       Tenant: tenantRepo,
@@ -79,7 +81,8 @@ describe('OnboardingService (spec §7.2 order gate)', () => {
     dataSourceMock = {
       getRepository: jest.fn((entity: { name: string }) => {
         const repo = repos[entity.name];
-        if (!repo) throw new Error(`No fake repo registered for ${entity.name}`);
+        if (!repo)
+          throw new Error(`No fake repo registered for ${entity.name}`);
         return repo;
       }),
       transaction: jest.fn(async (cb: (manager: any) => Promise<any>) =>
@@ -185,11 +188,7 @@ describe('OnboardingService (spec §7.2 order gate)', () => {
       { id: 'prod-2', offer_family: 'CONTINUOUS_ASSURANCE' },
     ]);
 
-    const result = await service.onboard(
-      baseDto as any,
-      'principal-1',
-      {} as any,
-    );
+    const result = await service.onboard(baseDto, 'principal-1', {});
 
     expect(prismaMock.commercialOrder.updateMany).toHaveBeenCalledWith({
       where: { id: 'order-1', tenant_id: null },

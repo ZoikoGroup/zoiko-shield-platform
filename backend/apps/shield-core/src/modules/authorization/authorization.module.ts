@@ -40,4 +40,4 @@ import { AuthorizationDecisionService } from '../authorization-decision/authoriz
     PlatformPermissionsGuard,
   ],
 })
-export class AuthorizationModule { }
+export class AuthorizationModule {}

@@ -181,7 +181,7 @@ export class AuthorizationDecisionService {
       resourceTenantId: input.resourceTenantId ?? input.tenantId,
       environmentId: input.environmentId ?? null,
       purpose: input.purpose?.trim() || 'interactive-api',
-      effectClass: input.effectClass ?? ('READ' as AuthorizationEffectClass),
+      effectClass: input.effectClass ?? 'READ',
       requiredPermissions: permissions,
       policyVersion: input.policyVersion?.trim() || '1.0',
       applicable: input.applicable ?? true,
