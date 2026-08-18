@@ -41,7 +41,19 @@ describe('Anti-Tampering E2E Integration Flow', () => {
     packagePath = path.join(tempDir, 'audit_package_test');
     fs.mkdirSync(packagePath, { recursive: true });
 
-    const ledgerHeadHash = 'a'.repeat(64);
+    const ledgerEntryMaterial = {
+      tenantId: 'tenant-123',
+      sequence: 1,
+      evidenceId: 'evt-1',
+      previousEntryHash: null,
+      evidenceMetadata: {},
+    };
+    const { contentHash: ledgerHeadHash } =
+      hashCanonicalJson(ledgerEntryMaterial);
+    const ledgerEntry = {
+      ...ledgerEntryMaterial,
+      entryHash: ledgerHeadHash,
+    };
 
     // 1. Core payload
     const manifestCoreOnly = {
@@ -50,14 +62,7 @@ describe('Anti-Tampering E2E Integration Flow', () => {
       period: {},
       schemaBundle: { id: 'schema-1', hash: 'b'.repeat(64) },
       evidenceIndex: [],
-      ledgerEntries: [
-        {
-          sequence: 1,
-          evidenceId: 'evt-1',
-          previousEntryHash: null,
-          entryHash: ledgerHeadHash,
-        },
-      ],
+      ledgerEntries: [ledgerEntry],
       evaluationIndex: [],
       assessmentIndex: [],
       riskIndex: [],
