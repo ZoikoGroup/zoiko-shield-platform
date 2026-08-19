@@ -5,6 +5,7 @@ describe('ResponseProposalController authority context', () => {
   const user = {
     id: 'principal-1',
     tenantId: 'tenant-a',
+    environmentId: 'env-a',
   } as AuthenticatedUser;
 
   it('uses the authenticated principal and guarded tenant, not caller actor input', async () => {
@@ -30,6 +31,7 @@ describe('ResponseProposalController authority context', () => {
     expect(service.createProposal).toHaveBeenCalledWith(
       expect.objectContaining({
         tenantId: 'tenant-a',
+        environmentId: 'env-a',
         requestedBy: 'principal-1',
       }),
     );
