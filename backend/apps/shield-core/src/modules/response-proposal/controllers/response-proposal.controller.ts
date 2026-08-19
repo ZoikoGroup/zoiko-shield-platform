@@ -51,7 +51,7 @@ export class ResponseProposalController {
   private resolveEnvironmentId(
     headerEnvironmentId?: string,
     dtoEnvironmentId?: string,
-    userEnvironmentId?: string,
+    userEnvironmentId?: string | null,
   ): string {
     return requireEnvironmentId(
       headerEnvironmentId,
