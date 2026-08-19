@@ -82,13 +82,15 @@ function discoverRoutes() {
               routes.push({
                 method,
                 route,
-                file: path.relative(path.join(__dirname, '..'), file),
+                file: path
+                  .relative(path.join(__dirname, '..'), file)
+                  .replace(/\\/g, '/'),
                 publicIngress: classIsPublicIngress || methodIsPublicIngress,
                 requiresTenantHeader,
                 guardContract: [...classDecorators, ...methodDecorators]
                   .map((item) => item.expression.getText(source))
                   .join(' '),
-                operation: `${path.relative(path.join(__dirname, '..'), file)}:${member.name?.getText(source) ?? 'anonymous'}:${method}`,
+                operation: `${path.relative(path.join(__dirname, '..'), file).replace(/\\/g, '/')}:${member.name?.getText(source) ?? 'anonymous'}:${method}`,
               });
             }
           }
