@@ -13,9 +13,10 @@ import { JwtAuthGuard } from '../../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../authorization/guards/permissions.guard';
 import { CurrentUser } from '../../identity-adapter/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../identity-adapter/interfaces/jwt-payload.interface';
-import { requireTenantId } from '../../../tenant-context';
+import { requireTenantId, requireEnvironmentId } from '../../../tenant-context';
 
 export class CreateProposalDto {
+  environmentId?: string;
   caseId?: string;
   alertId?: string;
   targetType!: string;
@@ -47,17 +48,35 @@ export class ResponseProposalController {
     return requireTenantId(headerTenantId);
   }
 
+  private resolveEnvironmentId(
+    headerEnvironmentId?: string,
+    dtoEnvironmentId?: string,
+    userEnvironmentId?: string,
+  ): string {
+    return requireEnvironmentId(
+      headerEnvironmentId,
+      dtoEnvironmentId,
+      userEnvironmentId,
+    );
+  }
+
   @Post('cases/:caseId/response-proposals')
   async create(
     @Headers('x-tenant-id') headerTenantId: string,
     @Param('caseId') caseId: string,
     @Body() dto: CreateProposalDto,
     @CurrentUser() user: AuthenticatedUser,
+    @Headers('x-environment-id') headerEnvironmentId?: string,
   ) {
     const tenantId = this.resolveTenantId(headerTenantId);
+    const environmentId = this.resolveEnvironmentId(
+      headerEnvironmentId,
+      dto.environmentId,
+      user?.environmentId,
+    );
     const proposal = await this.responseProposalService.createProposal({
       tenantId,
-      environmentId: 'default-env',
+      environmentId,
       caseId,
       alertId: dto.alertId,
       targetType: dto.targetType,
