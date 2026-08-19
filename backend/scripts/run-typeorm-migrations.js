@@ -1,3 +1,4 @@
+require('dotenv/config');
 const { createHash } = require('crypto');
 const { readdirSync, readFileSync } = require('fs');
 const { join } = require('path');
@@ -35,7 +36,10 @@ function splitStatements(sql) {
 
 async function main() {
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required');
-  const client = new Client({ connectionString: process.env.DATABASE_URL });
+  const ssl = process.env.DATABASE_URL.includes('sslmode=require')
+    ? { rejectUnauthorized: false }
+    : undefined;
+  const client = new Client({ connectionString: process.env.DATABASE_URL, ssl });
   await client.connect();
   try {
     await client.query('SELECT pg_advisory_lock($1)', [92810427]);
