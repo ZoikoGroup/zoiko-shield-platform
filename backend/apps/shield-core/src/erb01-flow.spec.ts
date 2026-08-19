@@ -1,10 +1,18 @@
-import { createHash, randomBytes, generateKeyPairSync, sign as edSign } from 'crypto';
+import {
+  createHash,
+  randomBytes,
+  generateKeyPairSync,
+  sign as edSign,
+} from 'crypto';
 import { mkdtempSync, writeFileSync, rmSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { verifyPackageDirectory } from '../../../tools/independent-verifier/src/verify';
 import { hashCanonicalJson } from '../../../tools/independent-verifier/src/hashing/hash';
-import { SCIM_SCHEMAS, SCIM_SERVICE_PROVIDER_CONFIG } from './modules/identity-adapter/scim/scim.constants';
+import {
+  SCIM_SCHEMAS,
+  SCIM_SERVICE_PROVIDER_CONFIG,
+} from './modules/identity-adapter/scim/scim.constants';
 
 describe('ZoikoShield ERB-01 End-to-End Vertical Slice Verification Flow', () => {
   const tenantId = '00000000-0000-4000-8000-000000000001';
@@ -22,7 +30,9 @@ describe('ZoikoShield ERB-01 End-to-End Vertical Slice Verification Flow', () =>
     if (tempDir) {
       try {
         rmSync(tempDir, { recursive: true, force: true });
-      } catch {}
+      } catch {
+        // ignore error on cleanup
+      }
     }
   });
 
@@ -91,7 +101,13 @@ describe('ZoikoShield ERB-01 End-to-End Vertical Slice Verification Flow', () =>
       tenantId: invitation.tenantId,
       principalId: analystUserId,
       status: 'ACTIVE',
-      roles: [{ id: invitation.roleId, code: 'SECURITY_ANALYST', name: 'Security Analyst' }],
+      roles: [
+        {
+          id: invitation.roleId,
+          code: 'SECURITY_ANALYST',
+          name: 'Security Analyst',
+        },
+      ],
       source: 'INVITATION',
     };
 
@@ -109,7 +125,11 @@ describe('ZoikoShield ERB-01 End-to-End Vertical Slice Verification Flow', () =>
     const scimUserDto = {
       schemas: [SCIM_SCHEMAS.USER],
       userName: 'devops@acme.defense',
-      name: { formatted: 'DevOps Engineer', givenName: 'DevOps', familyName: 'Engineer' },
+      name: {
+        formatted: 'DevOps Engineer',
+        givenName: 'DevOps',
+        familyName: 'Engineer',
+      },
       emails: [{ value: 'devops@acme.defense', primary: true }],
       active: true,
     };
@@ -154,7 +174,9 @@ describe('ZoikoShield ERB-01 End-to-End Vertical Slice Verification Flow', () =>
     };
 
     const payloadString = JSON.stringify(rawPayload);
-    const payloadHash = createHash('sha256').update(payloadString).digest('hex');
+    const payloadHash = createHash('sha256')
+      .update(payloadString)
+      .digest('hex');
 
     expect(payloadHash).toHaveLength(64);
 
@@ -225,7 +247,9 @@ describe('ZoikoShield ERB-01 End-to-End Vertical Slice Verification Flow', () =>
     };
 
     expect(ruleMatch.matched).toBe(true);
-    expect(ruleMatch.matchedEventCount).toBeGreaterThanOrEqual(detectionRule.threshold);
+    expect(ruleMatch.matchedEventCount).toBeGreaterThanOrEqual(
+      detectionRule.threshold,
+    );
   });
 
   // ── Step 9: Alert Generation & Source Linkage ────────────────
@@ -279,7 +303,9 @@ describe('ZoikoShield ERB-01 End-to-End Vertical Slice Verification Flow', () =>
     };
 
     const evidenceContentString = JSON.stringify(rawEvidenceContent);
-    const contentHash = createHash('sha256').update(evidenceContentString).digest('hex');
+    const contentHash = createHash('sha256')
+      .update(evidenceContentString)
+      .digest('hex');
 
     const evidenceRecord = {
       id: 'ev-001',
@@ -328,11 +354,13 @@ describe('ZoikoShield ERB-01 End-to-End Vertical Slice Verification Flow', () =>
       aiRunId: 'ai-run-001',
       useCaseId: 'CASE_INVESTIGATION_SUMMARY',
       status: 'ADVISORY_REVIEW_REQUIRED',
-      summary: 'Automated authentication failure bursts detected against user account from suspicious IP.',
+      summary:
+        'Automated authentication failure bursts detected against user account from suspicious IP.',
       citations: [
         {
           evidenceId: 'ev-001',
-          description: '6 failed login attempts recorded within 10 minutes from 198.51.100.42',
+          description:
+            '6 failed login attempts recorded within 10 minutes from 198.51.100.42',
         },
       ],
       recommendedActions: [
@@ -355,7 +383,8 @@ describe('ZoikoShield ERB-01 End-to-End Vertical Slice Verification Flow', () =>
       caseId: 'case-001',
       decisionType: 'TRIAGE_DECISION',
       decision: 'CONFIRMED_SUSPICIOUS_ACTIVITY',
-      reason: 'Burst of failed credentials from non-corporate IP range indicates targeted credential stuffing.',
+      reason:
+        'Burst of failed credentials from non-corporate IP range indicates targeted credential stuffing.',
       evidenceIds: ['ev-001'],
       aiRunId: 'ai-run-001',
       actorId: analystUserId,
@@ -378,7 +407,8 @@ describe('ZoikoShield ERB-01 End-to-End Vertical Slice Verification Flow', () =>
       targetType: 'USER',
       targetId: 'victim@acme.defense',
       authorityLevel: 'R1_RECOMMEND',
-      reason: 'Precautionary containment following confirmed brute-force incident.',
+      reason:
+        'Precautionary containment following confirmed brute-force incident.',
       blastRadius: { impactedUsers: 1, serviceDowntime: 'NONE' },
       status: 'APPROVED_FOR_SIMULATION',
     };
@@ -403,7 +433,8 @@ describe('ZoikoShield ERB-01 End-to-End Vertical Slice Verification Flow', () =>
     const controlEvaluation = {
       id: 'eval-001',
       controlId: 'CTL-IAM-001',
-      controlTitle: 'Privileged and User Account Lockout on Authentication Failure',
+      controlTitle:
+        'Privileged and User Account Lockout on Authentication Failure',
       evaluatorId: 'evaluator-auth-lockout',
       evaluatorVersion: '1.0.0',
       requiredEvidenceIds: ['ev-001'],
@@ -420,7 +451,9 @@ describe('ZoikoShield ERB-01 End-to-End Vertical Slice Verification Flow', () =>
   // ── Step 17: Audit Package Generation & Offline Verification ──
   it('Step 17: Generates complete audit package and confirms independent offline verification', () => {
     const { privateKey, publicKey } = generateKeyPairSync('ed25519');
-    const publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
+    const publicKeyPem = publicKey
+      .export({ type: 'spki', format: 'pem' })
+      .toString();
 
     const evidenceHash = 'd'.repeat(64);
     const rawLedgerEntry = {
@@ -435,15 +468,28 @@ describe('ZoikoShield ERB-01 End-to-End Vertical Slice Verification Flow', () =>
     const manifestCoreOnly = {
       tenantId,
       scope: { environmentId },
-      period: { start: '2026-08-01T00:00:00.000Z', end: '2026-08-19T00:00:00.000Z' },
+      period: {
+        start: '2026-08-01T00:00:00.000Z',
+        end: '2026-08-19T00:00:00.000Z',
+      },
       schemaBundle: { id: 'zs-audit-package-manifest-v1', hash: 'x' },
       frameworkVersions: ['SOC2-2026', 'ISO27001-2022'],
       mappingVersions: ['ocsf-v1.1.0'],
       evidenceIndex: [
-        { evidenceId: 'ev-001', contentHash: evidenceHash, integrityState: 'VERIFIED' },
+        {
+          evidenceId: 'ev-001',
+          contentHash: evidenceHash,
+          integrityState: 'VERIFIED',
+        },
       ],
       ledgerEntries: [{ ...rawLedgerEntry, entryHash: ledgerHeadHash }],
-      evaluationIndex: [{ evaluationId: 'eval-001', controlId: 'CTL-IAM-001', result: 'EFFECTIVE' }],
+      evaluationIndex: [
+        {
+          evaluationId: 'eval-001',
+          controlId: 'CTL-IAM-001',
+          result: 'EFFECTIVE',
+        },
+      ],
       assessmentIndex: [],
       riskIndex: [],
       exceptionIndex: [],
@@ -459,13 +505,16 @@ describe('ZoikoShield ERB-01 End-to-End Vertical Slice Verification Flow', () =>
       exportMetadata: { exportedAt: '2026-08-19T00:00:00.000Z' },
     };
 
-    const { contentHash: manifestCoreHash } = hashCanonicalJson(manifestCoreOnly);
+    const { contentHash: manifestCoreHash } =
+      hashCanonicalJson(manifestCoreOnly);
 
     function sha256Buf(buf: Buffer): Buffer {
       return createHash('sha256').update(buf).digest();
     }
     function hashLeaf(bytes: string): Buffer {
-      return sha256Buf(Buffer.concat([Buffer.from([0x00]), Buffer.from(bytes, 'utf-8')]));
+      return sha256Buf(
+        Buffer.concat([Buffer.from([0x00]), Buffer.from(bytes, 'utf-8')]),
+      );
     }
     function hashBranch(l: Buffer, r: Buffer): Buffer {
       return sha256Buf(Buffer.concat([Buffer.from([0x01]), l, r]));
@@ -479,9 +528,15 @@ describe('ZoikoShield ERB-01 End-to-End Vertical Slice Verification Flow', () =>
       '1': [{ siblingHash: leafHashes[0].toString('hex'), position: 'LEFT' }],
     };
 
-    const signature = edSign(null, Buffer.from(merkleRoot, 'utf-8'), privateKey).toString('hex');
+    const signature = edSign(
+      null,
+      Buffer.from(merkleRoot, 'utf-8'),
+      privateKey,
+    ).toString('hex');
     const witnessId = 'mock-witness-1';
-    const receiptHash = createHash('sha256').update(`${merkleRoot}${witnessId}zoiko-mock-witness-v1`).digest('hex');
+    const receiptHash = createHash('sha256')
+      .update(`${merkleRoot}${witnessId}zoiko-mock-witness-v1`)
+      .digest('hex');
 
     const proofEnvelope = {
       checkpoint: {
@@ -502,8 +557,15 @@ describe('ZoikoShield ERB-01 End-to-End Vertical Slice Verification Flow', () =>
       merkleRoot,
       proofsByLeafIndex,
       signature,
-      signingKey: { keyId: 'key1', publicKey: publicKeyPem, algorithm: 'Ed25519', status: 'ACTIVE' },
-      witnessReceipts: [{ witnessId, witnessType: 'MOCK', receiptHash, status: 'RECEIVED' }],
+      signingKey: {
+        keyId: 'key1',
+        publicKey: publicKeyPem,
+        algorithm: 'Ed25519',
+        status: 'ACTIVE',
+      },
+      witnessReceipts: [
+        { witnessId, witnessType: 'MOCK', receiptHash, status: 'RECEIVED' },
+      ],
       witnessAssuranceState: 'TEST_ONLY',
     };
 
@@ -514,17 +576,31 @@ describe('ZoikoShield ERB-01 End-to-End Vertical Slice Verification Flow', () =>
       approvedAt: new Date().toISOString(),
     };
 
-    const finalManifest = { ...manifestCoreOnly, proofEnvelope, auditPackageApproval };
-    const { contentHash: packageEnvelopeHash } = hashCanonicalJson(finalManifest);
+    const finalManifest = {
+      ...manifestCoreOnly,
+      proofEnvelope,
+      auditPackageApproval,
+    };
+    const { contentHash: packageEnvelopeHash } =
+      hashCanonicalJson(finalManifest);
 
-    const envelopeFile = { packageId: 'AP-ERB01-TEST-001', packageVersion: 1, packageEnvelopeHash };
+    const envelopeFile = {
+      packageId: 'AP-ERB01-TEST-001',
+      packageVersion: 1,
+      packageEnvelopeHash,
+    };
 
-    writeFileSync(join(tempDir, 'manifest.json'), JSON.stringify(finalManifest));
+    writeFileSync(
+      join(tempDir, 'manifest.json'),
+      JSON.stringify(finalManifest),
+    );
     writeFileSync(join(tempDir, 'envelope.json'), JSON.stringify(envelopeFile));
 
     const result = verifyPackageDirectory(tempDir);
 
-    expect(result.overallResult).toBe('CRYPTOGRAPHICALLY_VERIFIED_NOT_EXTERNALLY_WITNESSED');
+    expect(result.overallResult).toBe(
+      'CRYPTOGRAPHICALLY_VERIFIED_NOT_EXTERNALLY_WITNESSED',
+    );
     expect(result.manifestValid).toBe(true);
     expect(result.signatureValid).toBe(true);
     expect(result.merkleProofValid).toBe(true);
