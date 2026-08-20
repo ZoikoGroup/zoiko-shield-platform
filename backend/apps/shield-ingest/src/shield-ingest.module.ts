@@ -23,8 +23,13 @@ import { ConnectorSyncService } from './connectors/services/sync.service';
 
 import { WebhookIngestController } from './ingestion/webhook-ingest.controller';
 import { RawIngestService } from './ingestion/raw-ingest.service';
+import { QuarantineService } from './ingestion/quarantine.service';
 import { ConnectorCatalogController } from './connectors/connector-catalog.controller';
 import { ConnectorCatalogService } from './connectors/connector-catalog.service';
+import { AwsCloudTrailProvider } from './connectors/providers/aws-cloudtrail/aws-cloudtrail.provider';
+import { AwsCloudTrailNormalizerService } from './connectors/providers/aws-cloudtrail/aws-cloudtrail.normalizer';
+import { SyslogTlsProvider } from './connectors/providers/syslog-tls/syslog-tls.provider';
+import { SyslogTlsNormalizerService } from './connectors/providers/syslog-tls/syslog-tls.normalizer';
 import { KafkaModule } from './kafka/kafka.module';
 import { PrismaModule } from './prisma/prisma.module';
 
@@ -125,6 +130,11 @@ import { IdempotencyService } from '../../shield-core/src/modules/idempotency/id
     EntraHealthService,
     EntraNormalizerService,
     EntraEventHubConsumer,
+    AwsCloudTrailProvider,
+    AwsCloudTrailNormalizerService,
+    SyslogTlsProvider,
+    SyslogTlsNormalizerService,
+    QuarantineService,
     RawIngestService,
     ConnectorCatalogService,
     NormalizationService,

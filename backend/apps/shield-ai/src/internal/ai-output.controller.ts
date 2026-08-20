@@ -13,6 +13,11 @@ import {
   AiHumanReviewService,
   ReviewDecision,
 } from '../outputs/ai-human-review.service';
+import { AiDecisionLedgerService } from '../outputs/ai-decision-ledger.service';
+import {
+  EvaluationRunnerService,
+  EvaluationTestCase,
+} from '../evaluation/evaluation-runner.service';
 import { GatewayRequestContext } from '../gateway/ai-gateway.service';
 
 export class ReviewOutputRequestDto {
@@ -24,12 +29,19 @@ export class ReviewOutputRequestDto {
   };
 }
 
+export class RunEvaluationRequestDto {
+  useCaseKey!: string;
+  testCases!: EvaluationTestCase[];
+}
+
 @Controller('internal/v1/ai/outputs')
 @UseGuards(InternalAuthGuard)
 export class AiOutputController {
   constructor(
     private readonly aiOutputService: AiOutputService,
     private readonly aiHumanReviewService: AiHumanReviewService,
+    private readonly aiDecisionLedger: AiDecisionLedgerService,
+    private readonly evaluationRunner: EvaluationRunnerService,
   ) {}
 
   @Get(':outputId')
@@ -38,6 +50,25 @@ export class AiOutputController {
     @Query('tenantId') tenantId: string,
   ) {
     return { data: await this.aiOutputService.getById(tenantId, outputId) };
+  }
+
+  @Get(':outputId/decision-record')
+  async getDecisionRecord(
+    @Param('outputId') outputId: string,
+    @Query('tenantId') tenantId: string,
+  ) {
+    return {
+      data: this.aiDecisionLedger.getDecisionRecord(tenantId, outputId),
+    };
+  }
+
+  @Post('evaluations/run')
+  async runEvaluation(@Body() dto: RunEvaluationRequestDto) {
+    const report = await this.evaluationRunner.runEvaluationSuite(
+      dto.useCaseKey,
+      dto.testCases || [],
+    );
+    return { data: report };
   }
 
   @Post(':outputId/review')

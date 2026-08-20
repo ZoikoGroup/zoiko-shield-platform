@@ -29,6 +29,7 @@
     "check:platform-admin": "ts-node -r tsconfig-paths/register scripts/check-super-admin.ts",
     "demo:erb01": "ts-node -r tsconfig-paths/register ./scripts/erb01-demo-runner.ts",
     "migrate:deploy": "prisma migrate deploy && node scripts/run-typeorm-migrations.js",
+    "order:generate": "ts-node -r tsconfig-paths/register scripts/generate-order-id.ts",
     "swagger:check": "node scripts/check-swagger-coverage.js",
     "access:check": "node scripts/check-controller-access.js"
   },
