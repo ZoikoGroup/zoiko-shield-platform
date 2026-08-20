@@ -38073,3 +38073,76 @@ paths:
             application/json:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
       operationId: getControlEvaluationsByEvaluationId
+  /internal/v1/ai/outputs/{outputId}/decision-record:
+    get:
+      tags:
+      - CaseAI
+      summary: Get AI decision record trace
+      description: Internal workload-authenticated route to retrieve cryptographic AI decision trace.
+      security:
+      - InternalServiceAuth: []
+      parameters:
+      - name: outputId
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: tenantId
+        in: query
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: AI decision trace record
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '404':
+          description: Decision record not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getInternalAiOutputsByOutputIdDecisionRecord
+  /internal/v1/ai/outputs/evaluations/run:
+    post:
+      tags:
+      - AIGovernance
+      summary: Execute gold set evaluation suite
+      description: Internal workload-authenticated route to run evaluation benchmark.
+      security:
+      - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [useCaseKey]
+              properties:
+                useCaseKey:
+                  type: string
+                testCases:
+                  type: array
+                  items:
+                    type: object
+                    additionalProperties: true
+      responses:
+        '201':
+          description: Evaluation suite report
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Invalid evaluation payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postInternalAiOutputsEvaluationsRun
+
