@@ -21,6 +21,10 @@ import { CredentialExchangeService } from './credential-exchange/credential-exch
 import { SimulationService } from './simulation/simulation.service';
 import { ActionApprovedConsumer } from './proposals/action-approved.consumer';
 
+import { ActionAuthorityService } from './policy/action-authority.service';
+import { ActionRollbackBrokerService } from './rollback/action-rollback-broker.service';
+import { ResponsePlaybookService } from './playbooks/response-playbook.service';
+
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
   controllers: [ShieldActionController],
@@ -34,13 +38,21 @@ import { ActionApprovedConsumer } from './proposals/action-approved.consumer';
     DevSimulationSigner,
     DispatcherService,
     PolicyReauthorizationService,
+    ActionAuthorityService,
     ApprovalReauthorizationService,
     ReceiptVerificationService,
     ReconciliationService,
     RollbackService,
+    ActionRollbackBrokerService,
+    ResponsePlaybookService,
     CredentialExchangeService,
     SimulationService,
     ActionApprovedConsumer,
+  ],
+  exports: [
+    ActionAuthorityService,
+    ActionRollbackBrokerService,
+    ResponsePlaybookService,
   ],
 })
 export class ShieldActionModule {}

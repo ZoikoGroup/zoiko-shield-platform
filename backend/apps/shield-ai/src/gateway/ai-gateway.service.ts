@@ -8,6 +8,7 @@ import { RedactionService } from '../redaction/redaction.service';
 import { UsageControlService } from '../usage-control/usage-control.service';
 import { MemoryPolicyService } from '../memory-policy/memory-policy.service';
 import { AiOutputService } from '../outputs/ai-output.service';
+import { AiKillSwitchService } from '../kill-switch/ai-kill-switch.service';
 import {
   AiUnavailableException,
   PolicyDeniedException,
@@ -51,6 +52,7 @@ export class AiGatewayService {
     private readonly memoryPolicy: MemoryPolicyService,
     private readonly aiOutputService: AiOutputService,
     private readonly kafkaProducer: KafkaProducerService,
+    private readonly killSwitch: AiKillSwitchService,
   ) {}
 
   async invoke(
@@ -58,6 +60,12 @@ export class AiGatewayService {
     promptKey: string,
     context: GatewayRequestContext,
   ) {
+    this.killSwitch.assertNotBlocked({
+      tenantId: context.tenantId,
+      useCaseKey,
+      promptKey,
+    });
+
     this.memoryPolicy.assertRequestScoped({
       tenantId: context.tenantId,
       caseId: context.caseId,

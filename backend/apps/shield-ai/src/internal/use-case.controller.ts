@@ -13,6 +13,14 @@ import { InvestigationHypothesisService } from '../use-cases/investigation-hypot
 import { EntityExplanationService } from '../use-cases/entity-explanation/entity-explanation.service';
 import { NextQueryService } from '../use-cases/next-query/next-query.service';
 import { ResponseRecommendationService } from '../use-cases/response-recommendation/response-recommendation.service';
+import {
+  DetectionCandidateInput,
+  DetectionCandidateService,
+} from '../use-cases/detection-candidate/detection-candidate.service';
+import {
+  DetectionExplanationInput,
+  DetectionExplanationService,
+} from '../use-cases/detection-explanation/detection-explanation.service';
 
 export class InvokeUseCaseDto {
   context!: GatewayRequestContext;
@@ -33,6 +41,8 @@ export class UseCaseController {
     private readonly entityExplanation: EntityExplanationService,
     private readonly nextQuery: NextQueryService,
     private readonly responseRecommendation: ResponseRecommendationService,
+    private readonly detectionCandidate: DetectionCandidateService,
+    private readonly detectionExplanation: DetectionExplanationService,
   ) {}
 
   @Post(':key/invoke')
@@ -53,6 +63,27 @@ export class UseCaseController {
         return { data: await this.nextQuery.invoke(context) };
       case 'RESPONSE_RECOMMENDATION':
         return { data: await this.responseRecommendation.invoke(context) };
+      case 'DETECTION_CANDIDATE':
+        return {
+          data: await this.detectionCandidate.generateCandidate(
+            (dto.input as unknown as DetectionCandidateInput) || {
+              name: 'Candidate Rule',
+              description: 'AI-generated candidate rule',
+            },
+            context,
+          ),
+        };
+      case 'DETECTION_EXPLANATION':
+        return {
+          data: await this.detectionExplanation.explainMatch(
+            (dto.input as unknown as DetectionExplanationInput) || {
+              ruleId: 'rule-unknown',
+              ruleVersion: 1,
+              matchedEventIds: [],
+            },
+            context,
+          ),
+        };
       default:
         throw new BadRequestException(`Unknown use case key '${key}'`);
     }
