@@ -16,19 +16,26 @@ import { UsageControlService } from './usage-control/usage-control.service';
 import { MemoryPolicyService } from './memory-policy/memory-policy.service';
 import { CitationValidatorService } from './retrieval/citations/citation-validator.service';
 import { EvaluationService } from './evaluation/evaluation.service';
+import { EvaluationRunnerService } from './evaluation/evaluation-runner.service';
 import { RetrievalBrokerService } from './retrieval/retrieval-broker/retrieval-broker.service';
 import { ToolBrokerService } from './tools/tool-broker/tool-broker.service';
+import { ToolCapabilityService } from './tools/tool-capability.service';
+import { AgentRunnerService } from './agent/agent-runner.service';
+import { AiKillSwitchService } from './kill-switch/ai-kill-switch.service';
 
 import { ShieldCoreClient } from './internal-client/shield-core.client';
 
 import { AiOutputService } from './outputs/ai-output.service';
 import { AiHumanReviewService } from './outputs/ai-human-review.service';
+import { AiDecisionLedgerService } from './outputs/ai-decision-ledger.service';
 
 import { CaseSummaryService } from './use-cases/case-summary/case-summary.service';
 import { InvestigationHypothesisService } from './use-cases/investigation-hypothesis/investigation-hypothesis.service';
 import { EntityExplanationService } from './use-cases/entity-explanation/entity-explanation.service';
 import { NextQueryService } from './use-cases/next-query/next-query.service';
 import { ResponseRecommendationService } from './use-cases/response-recommendation/response-recommendation.service';
+import { DetectionCandidateService } from './use-cases/detection-candidate/detection-candidate.service';
+import { DetectionExplanationService } from './use-cases/detection-explanation/detection-explanation.service';
 
 import { UseCaseController } from './internal/use-case.controller';
 import { AiOutputController } from './internal/ai-output.controller';
@@ -44,25 +51,41 @@ import { AiOutputController } from './internal/ai-output.controller';
     AiUseCaseRegistryService,
     PolicyService,
     AiGatewayService,
+    AiKillSwitchService,
 
     RedactionService,
     UsageControlService,
     MemoryPolicyService,
     CitationValidatorService,
     EvaluationService,
+    EvaluationRunnerService,
     RetrievalBrokerService,
     ToolBrokerService,
+    ToolCapabilityService,
+    AgentRunnerService,
 
     ShieldCoreClient,
 
     AiOutputService,
     AiHumanReviewService,
+    AiDecisionLedgerService,
 
     CaseSummaryService,
     InvestigationHypothesisService,
     EntityExplanationService,
     NextQueryService,
     ResponseRecommendationService,
+    DetectionCandidateService,
+    DetectionExplanationService,
+  ],
+  exports: [
+    DetectionCandidateService,
+    DetectionExplanationService,
+    ToolCapabilityService,
+    AgentRunnerService,
+    AiKillSwitchService,
+    EvaluationRunnerService,
+    AiDecisionLedgerService,
   ],
 })
 export class ShieldAiModule {}

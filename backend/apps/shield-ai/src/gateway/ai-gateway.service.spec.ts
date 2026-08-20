@@ -12,6 +12,8 @@ import { AiOutputService } from '../outputs/ai-output.service';
 import { KafkaProducerService } from '../kafka/kafka-producer.service';
 import { PolicyDeniedException } from './fallback/fallback.exceptions';
 
+import { AiKillSwitchService } from '../kill-switch/ai-kill-switch.service';
+
 describe('AiGatewayService', () => {
   let service: AiGatewayService;
   let policyService: any;
@@ -24,6 +26,7 @@ describe('AiGatewayService', () => {
   let memoryPolicy: any;
   let aiOutputService: any;
   let kafkaProducer: any;
+  let killSwitch: any;
 
   beforeEach(async () => {
     policyService = { evaluate: jest.fn() };
@@ -36,6 +39,7 @@ describe('AiGatewayService', () => {
     memoryPolicy = { assertRequestScoped: jest.fn() };
     aiOutputService = { create: jest.fn() };
     kafkaProducer = { publishEvent: jest.fn() };
+    killSwitch = { assertNotBlocked: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -50,6 +54,7 @@ describe('AiGatewayService', () => {
         { provide: MemoryPolicyService, useValue: memoryPolicy },
         { provide: AiOutputService, useValue: aiOutputService },
         { provide: KafkaProducerService, useValue: kafkaProducer },
+        { provide: AiKillSwitchService, useValue: killSwitch },
       ],
     }).compile();
 
