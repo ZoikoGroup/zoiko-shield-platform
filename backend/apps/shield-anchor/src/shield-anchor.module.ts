@@ -17,6 +17,7 @@ import { CheckpointBuilderService } from './checkpoint-builder/checkpoint-builde
 import { CHECKPOINT_SIGNER } from './signing/checkpoint-signer.token';
 import { ProductionCheckpointSigner } from './signing/production-checkpoint-signer.service';
 import { HttpWitnessProvider } from './witnesses/http-witness-provider.service';
+import { Rfc3161WitnessService } from './witnesses/rfc3161/rfc3161-witness.service';
 
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
@@ -37,7 +38,9 @@ import { HttpWitnessProvider } from './witnesses/http-witness-provider.service';
     MockWitnessProvider,
     WitnessService,
     HttpWitnessProvider,
+    Rfc3161WitnessService,
     CheckpointBuilderService,
   ],
+  exports: [Rfc3161WitnessService],
 })
 export class ShieldAnchorModule {}
