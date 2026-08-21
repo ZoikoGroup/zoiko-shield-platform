@@ -36,6 +36,8 @@ import { NextQueryService } from './use-cases/next-query/next-query.service';
 import { ResponseRecommendationService } from './use-cases/response-recommendation/response-recommendation.service';
 import { DetectionCandidateService } from './use-cases/detection-candidate/detection-candidate.service';
 import { DetectionExplanationService } from './use-cases/detection-explanation/detection-explanation.service';
+import { AiRedTeamService } from './security/adversarial/red-team.service';
+import { AiFinOpsBudgetService } from './usage-control/ai-finops-budget.service';
 
 import { UseCaseController } from './internal/use-case.controller';
 import { AiOutputController } from './internal/ai-output.controller';
@@ -52,6 +54,8 @@ import { AiOutputController } from './internal/ai-output.controller';
     PolicyService,
     AiGatewayService,
     AiKillSwitchService,
+    AiRedTeamService,
+    AiFinOpsBudgetService,
 
     RedactionService,
     UsageControlService,
@@ -84,6 +88,8 @@ import { AiOutputController } from './internal/ai-output.controller';
     ToolCapabilityService,
     AgentRunnerService,
     AiKillSwitchService,
+    AiRedTeamService,
+    AiFinOpsBudgetService,
     EvaluationRunnerService,
     AiDecisionLedgerService,
   ],
