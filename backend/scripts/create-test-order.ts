@@ -7,11 +7,8 @@ import crypto from 'crypto';
 async function main() {
   const databaseUrl = process.env.DATABASE_URL || 'postgres://shield:shield@localhost:5433/shield_core';
 
-  const prisma = new PrismaClient({
-    datasources: {
-      db: { url: databaseUrl }
-    }
-  });
+  process.env.DATABASE_URL = databaseUrl;
+  const prisma = new PrismaClient();
 
   const dataSource = new DataSource({
     type: 'postgres',
