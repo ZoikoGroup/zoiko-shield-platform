@@ -38,6 +38,8 @@ import { DetectionCandidateService } from './use-cases/detection-candidate/detec
 import { DetectionExplanationService } from './use-cases/detection-explanation/detection-explanation.service';
 import { AiRedTeamService } from './security/adversarial/red-team.service';
 import { AiFinOpsBudgetService } from './usage-control/ai-finops-budget.service';
+import { SafeDegradationService } from './degradation/safe-degradation.service';
+import { AiObservabilityMetricsService } from './observability/ai-observability-metrics.service';
 
 import { UseCaseController } from './internal/use-case.controller';
 import { AiOutputController } from './internal/ai-output.controller';
@@ -56,6 +58,8 @@ import { AiOutputController } from './internal/ai-output.controller';
     AiKillSwitchService,
     AiRedTeamService,
     AiFinOpsBudgetService,
+    SafeDegradationService,
+    AiObservabilityMetricsService,
 
     RedactionService,
     UsageControlService,
@@ -90,6 +94,8 @@ import { AiOutputController } from './internal/ai-output.controller';
     AiKillSwitchService,
     AiRedTeamService,
     AiFinOpsBudgetService,
+    SafeDegradationService,
+    AiObservabilityMetricsService,
     EvaluationRunnerService,
     AiDecisionLedgerService,
   ],
