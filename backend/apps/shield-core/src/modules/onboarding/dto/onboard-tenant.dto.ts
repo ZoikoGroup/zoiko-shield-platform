@@ -103,6 +103,10 @@ export class OnboardTenantDto {
   @Type(() => OnboardLegalEntityDto)
   legalEntity: OnboardLegalEntityDto;
 
+  @IsString()
+  @IsNotEmpty()
+  ownerEmail: string;
+
   @IsOptional()
   @ValidateNested()
   @Type(() => OnboardEnvironmentDto)

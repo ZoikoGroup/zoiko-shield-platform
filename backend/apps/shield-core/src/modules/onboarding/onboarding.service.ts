@@ -14,6 +14,7 @@ import { TenantMembership } from '../authorization/entities/tenant-membership.en
 import { Role } from '../authorization/entities/role.entity';
 import { Permission } from '../authorization/entities/permission.entity';
 import { PolicyAcceptance } from '../identity-adapter/policy-acceptance.entity';
+import { Principal } from '../identity-adapter/principal.entity';
 import { IdentityEvent } from '../identity-adapter/identity-event.entity';
 import { PolicyService } from '../identity-adapter/policy.service';
 import { PERMISSION_CODES } from '../authorization/constants';
@@ -136,6 +137,20 @@ export class OnboardingService implements OnModuleInit {
       const roleRepo = manager.getRepository(Role);
       const policyAcceptanceRepo = manager.getRepository(PolicyAcceptance);
       const eventRepo = manager.getRepository(IdentityEvent);
+      const principalRepo = manager.getRepository(Principal);
+
+      let customerPrincipal = await principalRepo.findOne({ where: { email: dto.ownerEmail } });
+      if (!customerPrincipal) {
+        customerPrincipal = await principalRepo.save(
+          principalRepo.create({
+            email: dto.ownerEmail,
+            principalType: 'HUMAN',
+            status: 'ACTIVE',
+            source: 'ONBOARDING',
+            emailVerified: false,
+          })
+        );
+      }
 
       const slugTaken = await tenantRepo.findOne({
         where: { slug: dto.tenantSlug },
@@ -186,7 +201,7 @@ export class OnboardingService implements OnModuleInit {
       const membership = await membershipRepo.save(
         membershipRepo.create({
           tenantId: tenant.id,
-          principalId,
+          principalId: customerPrincipal.id,
           status: 'ACTIVE',
           source: 'BOOTSTRAP',
           roles: [ownerRole],
@@ -195,7 +210,7 @@ export class OnboardingService implements OnModuleInit {
 
       await policyAcceptanceRepo.save(
         policyAcceptanceRepo.create({
-          principalId,
+          principalId: customerPrincipal.id,
           policyDocumentId: activeDisclosure.id,
           ipAddress: metadata.ipAddress,
           userAgent: metadata.userAgent,
@@ -205,7 +220,7 @@ export class OnboardingService implements OnModuleInit {
       await eventRepo.save(
         eventRepo.create({
           eventType: 'tenant_provisioning_started',
-          principalId,
+          principalId: customerPrincipal.id,
           actorId: principalId,
           tenantId: tenant.id,
           data: {
@@ -217,7 +232,7 @@ export class OnboardingService implements OnModuleInit {
         }),
       );
 
-      return { tenant, legalEntity, environment, membership };
+      return { tenant, legalEntity, environment, membership, customerPrincipalId: customerPrincipal.id };
     });
 
     await this.prisma.$transaction(async (tx) => {
@@ -260,7 +275,7 @@ export class OnboardingService implements OnModuleInit {
       retentionProfile: provisioning.tenant.retentionPolicyRef,
       content: {
         tenantId: provisioning.tenant.id,
-        principalId,
+        principalId: provisioning.customerPrincipalId,
         policyDocumentId: activeDisclosure.id,
         policyVersion: activeDisclosure.version,
         policyContentHash: activeDisclosure.contentHash,
@@ -280,7 +295,7 @@ export class OnboardingService implements OnModuleInit {
       await eventRepo.save(
         eventRepo.create({
           eventType: 'tenant_onboarded',
-          principalId,
+          principalId: provisioning.customerPrincipalId,
           actorId: principalId,
           tenantId: activated.id,
           data: {

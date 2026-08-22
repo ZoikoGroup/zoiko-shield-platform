@@ -29,13 +29,13 @@ async function main() {
     }
 
     // 3. Ensure Product exists
-    let prodRes = await client.query(`SELECT id FROM public."Product" WHERE sku = 'SKU-ENTERPRISE-01' LIMIT 1`);
+    let prodRes = await client.query(`SELECT id FROM public."Product" WHERE sku = 'SKU-MDR-01' LIMIT 1`);
     let productId = prodRes.rows[0]?.id;
     if (!productId) {
       productId = crypto.randomUUID();
       await client.query(`
         INSERT INTO public."Product" (id, catalog_version_id, sku, offer_family, display_name, metric_family, created_at)
-        VALUES ($1, $2, 'SKU-ENTERPRISE-01', 'ENTERPRISE_SUITE', 'ZoikoShield Enterprise', 'USER_LICENSES', NOW())
+        VALUES ($1, $2, 'SKU-MDR-01', 'MANAGED_DEFENSE', 'ZoikoShield Managed Defense', 'USER_LICENSES', NOW())
       `, [productId, catalogVersionId]);
     }
 

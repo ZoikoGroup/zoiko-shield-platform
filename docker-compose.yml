@@ -99,7 +99,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
 
   shield-core:
     build:
@@ -120,7 +120,7 @@ services:
     environment:
       NODE_ENV: development
       PORT: 3001
-      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
       REDIS_URL: redis://redis:6379
       KAFKA_BROKERS: redpanda:9092
       S3_ENDPOINT: http://minio:9000
@@ -163,7 +163,7 @@ services:
       NODE_ENV: development
       SERVICE_NAME: shield-ingest
       SHIELD_INGEST_PORT: 3002
-      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
       KAFKA_BROKERS: redpanda:9092
       WORKLOAD_IDENTITY_DEV_SECRET: ${WORKLOAD_IDENTITY_DEV_SECRET:-local-workload-identity-change-me}
       WEBHOOK_HMAC_SECRETS: ${WEBHOOK_HMAC_SECRETS:-}
@@ -190,7 +190,7 @@ services:
       NODE_ENV: development
       SERVICE_NAME: shield-ai
       SHIELD_AI_PORT: 3003
-      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
       KAFKA_BROKERS: redpanda:9092
       SHIELD_CORE_BASE_URL: http://shield-core:3001
       WORKLOAD_IDENTITY_DEV_SECRET: ${WORKLOAD_IDENTITY_DEV_SECRET:-local-workload-identity-change-me}
@@ -213,7 +213,7 @@ services:
       NODE_ENV: development
       SERVICE_NAME: shield-action
       SHIELD_ACTION_PORT: 3004
-      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
       KAFKA_BROKERS: redpanda:9092
       SHIELD_CORE_BASE_URL: http://shield-core:3001
       WORKLOAD_IDENTITY_DEV_SECRET: ${WORKLOAD_IDENTITY_DEV_SECRET:-local-workload-identity-change-me}
@@ -237,7 +237,7 @@ services:
       NODE_ENV: development
       SERVICE_NAME: shield-anchor
       SHIELD_ANCHOR_PORT: 3005
-      DATABASE_URL: ${DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
       KAFKA_BROKERS: redpanda:9092
       WORKLOAD_IDENTITY_DEV_SECRET: ${WORKLOAD_IDENTITY_DEV_SECRET:-local-workload-identity-change-me}
     ports:
