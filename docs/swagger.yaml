@@ -2135,58 +2135,52 @@ components:
           type: integer
           example: 200
         data:
-          oneOf:
-          - type: object
-            properties:
-              eligible:
-                type: boolean
-              status:
+          type: object
+          properties:
+            eligible:
+              type: boolean
+            status:
+              type: string
+              enum:
+              - ELIGIBLE
+              - INELIGIBLE
+            reasonCode:
+              type: string
+            reason:
+              type: string
+            approvedWording:
+              type: string
+              nullable: true
+            claimId:
+              type: string
+              format: uuid
+              nullable: true
+            claimVersion:
+              type: integer
+              nullable: true
+            runtimeEvaluationId:
+              type: string
+              format: uuid
+              nullable: true
+            evidenceRefs:
+              type: array
+              items:
                 type: string
-                enum:
-                - ELIGIBLE
-                - INELIGIBLE
-              reasonCode:
-                type: string
-              reason:
-                type: string
-              approvedWording:
-                type: string
-                nullable: true
-              claimId:
-                type: string
-                format: uuid
-                nullable: true
-              claimVersion:
-                type: integer
-                nullable: true
-              runtimeEvaluationId:
-                type: string
-                format: uuid
-                nullable: true
-              evidenceRefs:
-                type: array
-                items:
-                  type: string
-              validUntil:
-                type: string
-                format: date-time
-                nullable: true
-            required:
-            - eligible
-            - reason
-            - approvedWording
-          - type: object
-            properties:
-              eligible:
-                type: boolean
-              reason:
-                type: string
-              approvedWording:
-                type: string
-            required:
-            - eligible
-            - reason
-            - approvedWording
+            validUntil:
+              type: string
+              format: date-time
+              nullable: true
+          required:
+          - eligible
+          - status
+          - reasonCode
+          - reason
+          - approvedWording
+          - claimId
+          - claimVersion
+          - runtimeEvaluationId
+          - evidenceRefs
+          - validUntil
       required:
       - statusCode
       - data
