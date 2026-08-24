@@ -31,6 +31,7 @@ const baseDto = {
   retentionPolicyRef: 'default',
   legalEntity: { legalName: 'Acme Corp Ltd' },
   accessDisclosureVersion: '1',
+  ownerEmail: 'owner@example.com',
 };
 
 /**
@@ -76,6 +77,7 @@ describe('OnboardingService (spec §7.2 order gate)', () => {
       Role: ownerRoleRepo,
       PolicyAcceptance: fakeRepo(),
       IdentityEvent: fakeRepo(),
+      Principal: fakeRepo(),
     };
 
     dataSourceMock = {
