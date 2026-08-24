@@ -47,6 +47,7 @@ import { AlertGeneratorService } from './alerts/alert-generator.service';
 
 import { MeteringController } from './metering/metering.controller';
 import { MeteringService } from './metering/metering.service';
+import { UsageThresholdDispatcherService } from './metering/usage-threshold-dispatcher.service';
 
 import { CaseManagementController } from './cases/case-management.controller';
 import { CaseManagementService } from './cases/case-management.service';
@@ -142,6 +143,7 @@ import { IdempotencyService } from '../../shield-core/src/modules/idempotency/id
     DetectionEngineService,
     AlertGeneratorService,
     MeteringService,
+    UsageThresholdDispatcherService,
     CaseManagementService,
     HumanDecisionService,
     DashboardService,
@@ -166,5 +168,7 @@ import { IdempotencyService } from '../../shield-core/src/modules/idempotency/id
     WebhookSignatureGuard,
     { provide: APP_GUARD, useClass: WorkloadAuthGuard },
   ],
+  exports: [UsageThresholdDispatcherService],
 })
 export class ShieldIngestModule {}
+
