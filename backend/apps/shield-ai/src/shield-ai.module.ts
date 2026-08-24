@@ -17,6 +17,7 @@ import { MemoryPolicyService } from './memory-policy/memory-policy.service';
 import { CitationValidatorService } from './retrieval/citations/citation-validator.service';
 import { EvaluationService } from './evaluation/evaluation.service';
 import { EvaluationRunnerService } from './evaluation/evaluation-runner.service';
+import { ScheduledGoldsetRunnerWorker } from './evaluation/scheduled-goldset-runner.worker';
 import { RetrievalBrokerService } from './retrieval/retrieval-broker/retrieval-broker.service';
 import { ToolBrokerService } from './tools/tool-broker/tool-broker.service';
 import { ToolCapabilityService } from './tools/tool-capability.service';
@@ -43,10 +44,17 @@ import { AiObservabilityMetricsService } from './observability/ai-observability-
 
 import { UseCaseController } from './internal/use-case.controller';
 import { AiOutputController } from './internal/ai-output.controller';
+import { AiGovernanceViewsController } from './internal/ai-governance-views.controller';
 
 @Module({
   imports: [PrismaModule, KafkaModule],
-  controllers: [ShieldAiController, UseCaseController, AiOutputController],
+  controllers: [
+    ShieldAiController,
+    UseCaseController,
+    AiOutputController,
+    AiGovernanceViewsController,
+  ],
+
   providers: [
     MockModelProvider,
     ProviderRegistryService,
@@ -67,6 +75,7 @@ import { AiOutputController } from './internal/ai-output.controller';
     CitationValidatorService,
     EvaluationService,
     EvaluationRunnerService,
+    ScheduledGoldsetRunnerWorker,
     RetrievalBrokerService,
     ToolBrokerService,
     ToolCapabilityService,
@@ -97,7 +106,9 @@ import { AiOutputController } from './internal/ai-output.controller';
     SafeDegradationService,
     AiObservabilityMetricsService,
     EvaluationRunnerService,
+    ScheduledGoldsetRunnerWorker,
     AiDecisionLedgerService,
   ],
 })
 export class ShieldAiModule {}
+
