@@ -16,7 +16,7 @@ import {
 } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { TaxRuleService } from '../tax/tax-rule.service';
-import { NON_COMMERCIAL_CLASSIFICATIONS } from '../commercial/commercial-entitlement.service';
+import { NON_COMMERCIAL_CLASSIFICATIONS } from '../commercial/commercial-account.service';
 import { CommercialKillSwitchService } from '../kill-switch/commercial-kill-switch.service';
 
 export class CreateDraftInvoiceDto {

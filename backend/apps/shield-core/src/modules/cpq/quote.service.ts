@@ -21,7 +21,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { CatalogService } from '../catalog/catalog.service';
 import { CommercialApprovalService } from '../approvals/commercial-approval.service';
 import { CommercialKillSwitchService } from '../kill-switch/commercial-kill-switch.service';
-import { NON_COMMERCIAL_CLASSIFICATIONS } from '../commercial/commercial-entitlement.service';
+import { NON_COMMERCIAL_CLASSIFICATIONS } from '../commercial/commercial-account.service';
 import { assertTransition } from '../commerce/state-machine.util';
 
 /**
@@ -99,8 +99,18 @@ export class QuoteService {
    * they can never accidentally start generating live commercial records.
    */
   private async assertProductionReadyAccount(commercialAccountId: string) {
+    const now = new Date();
     const account = await this.prisma.commercialAccount.findUnique({
       where: { id: commercialAccountId },
+      include: {
+        tenantBindings: {
+          where: {
+            status: 'ACTIVE',
+            effective_from: { lte: now },
+            OR: [{ effective_to: null }, { effective_to: { gte: now } }],
+          },
+        },
+      },
     });
     if (!account) {
       throw new NotFoundException(
@@ -115,10 +125,27 @@ export class QuoteService {
     }
 
     const missing: string[] = [];
-    if (!account.legal_entity_id) missing.push('legalEntityId');
-    if (!account.region) missing.push('region');
+    if (!account.customer_legal_name) missing.push('customerLegalName');
+    if (!account.billing_address || account.billing_address === '{}')
+      missing.push('billingAddress');
+    if (!account.tax_facts || account.tax_facts === '{}')
+      missing.push('taxFacts');
+    if (!account.currency) missing.push('currency');
+    if (!account.contacts || account.contacts === '[]')
+      missing.push('contacts');
+    if (!account.contract_owner_id) missing.push('contractOwnerId');
     if (!account.billing_classification) missing.push('billingClassification');
     if (!account.billing_source) missing.push('billingSource');
+
+    const readyBinding = account.tenantBindings.find(
+      (binding) =>
+        binding.legal_entity_id &&
+        binding.environment_id &&
+        binding.region &&
+        binding.residency_policy &&
+        binding.service_scope !== '[]',
+    );
+    if (!readyBinding) missing.push('activeTenantEnvironmentBinding');
 
     if (missing.length > 0) {
       throw new ConflictException({

@@ -12,8 +12,10 @@ describe('CommercialEntitlementService (ZS-COM-BILL-001)', () => {
   beforeEach(async () => {
     prismaMock = {
       commercialAccount: {
-        create: jest.fn(),
         findUnique: jest.fn(),
+      },
+      commercialAccountTenantBinding: {
+        findFirst: jest.fn().mockResolvedValue({ id: 'binding-1' }),
       },
       entitlement: {
         create: jest.fn(),
@@ -39,23 +41,6 @@ describe('CommercialEntitlementService (ZS-COM-BILL-001)', () => {
     service = module.get<CommercialEntitlementService>(
       CommercialEntitlementService,
     );
-  });
-
-  it('should create commercial account with classification', async () => {
-    prismaMock.commercialAccount.create.mockResolvedValue({
-      id: 'comm-1',
-      name: 'Acme Corp',
-      billing_classification: 'COMMERCIAL_DIRECT',
-      status: 'ACTIVE',
-    });
-
-    const account = await service.createCommercialAccount({
-      name: 'Acme Corp',
-      billingClassification: 'COMMERCIAL_DIRECT',
-    });
-
-    expect(account.id).toBe('comm-1');
-    expect(prismaMock.commercialAccount.create).toHaveBeenCalled();
   });
 
   it('should fail closed (return false) for unapproved or expired entitlement', async () => {
@@ -125,6 +110,23 @@ describe('CommercialEntitlementService (ZS-COM-BILL-001)', () => {
       }),
     ).rejects.toThrow(ConflictException);
     expect(prismaMock.commercialAccount.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('A1: refuses to infer a payer when the tenant has no active account binding', async () => {
+    prismaMock.commercialAccount.findUnique.mockResolvedValue({
+      id: 'acct-1',
+      billing_source: 'DIRECT',
+    });
+    prismaMock.commercialAccountTenantBinding.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.grantEntitlement({
+        commercialAccountId: 'acct-1',
+        tenantId: 'tenant-unbound',
+        offerType: 'MANAGED_DEFENSE',
+      }),
+    ).rejects.toThrow(ConflictException);
+    expect(prismaMock.entitlement.create).not.toHaveBeenCalled();
   });
 
   describe('ONE-01: Zoiko One vs direct charging collision prevention', () => {

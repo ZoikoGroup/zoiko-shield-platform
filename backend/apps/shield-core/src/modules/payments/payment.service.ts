@@ -58,8 +58,8 @@ export class CreatePaymentDto {
   @IsString()
   currency?: string;
 
-  @IsString()
-  paymentMethodToken!: string;
+  @IsUUID()
+  paymentMethodReferenceId!: string;
 }
 
 export class ProviderWebhookDto {
@@ -99,14 +99,18 @@ export class PaymentService {
 
   async getPaymentByIdForTenant(tenantId: string, paymentId: string) {
     const payment = await this.getPaymentById(paymentId);
-    const entitlement = await this.prisma.entitlement.findFirst({
+    const now = new Date();
+    const binding = await this.prisma.commercialAccountTenantBinding.findFirst({
       where: {
         tenant_id: tenantId,
         commercial_account_id: payment.commercial_account_id,
+        status: 'ACTIVE',
+        effective_from: { lte: now },
+        OR: [{ effective_to: null }, { effective_to: { gte: now } }],
       },
       select: { id: true },
     });
-    if (!entitlement) {
+    if (!binding) {
       throw new NotFoundException(`Payment '${paymentId}' not found`);
     }
     return payment;
@@ -123,17 +127,20 @@ export class PaymentService {
   ) {
     await this.killSwitchService.assertNotBlocked('AUTOMATIC_CHARGING');
 
-    const entitlement = await this.prisma.entitlement.findFirst({
+    const now = new Date();
+    const binding = await this.prisma.commercialAccountTenantBinding.findFirst({
       where: {
         tenant_id: tenantId,
         commercial_account_id: dto.commercialAccountId,
         status: 'ACTIVE',
+        effective_from: { lte: now },
+        OR: [{ effective_to: null }, { effective_to: { gte: now } }],
       },
       select: { id: true },
     });
-    if (!entitlement) {
+    if (!binding) {
       throw new NotFoundException(
-        'No active entitlement connects this tenant to the commercial account',
+        'No active binding connects this tenant to the commercial account',
       );
     }
 
@@ -150,6 +157,26 @@ export class PaymentService {
         message: `Invoice '${dto.invoiceId}' is '${invoice.status}', not ISSUED — cannot accept payment against a mutable draft`,
       });
     }
+    if (invoice.commercial_account_id !== dto.commercialAccountId) {
+      throw new ConflictException({
+        statusCode: 409,
+        error: 'INVOICE_ACCOUNT_MISMATCH',
+        message: `Invoice '${dto.invoiceId}' does not belong to commercial account '${dto.commercialAccountId}'`,
+      });
+    }
+
+    const paymentMethod = await this.prisma.paymentMethodReference.findFirst({
+      where: {
+        id: dto.paymentMethodReferenceId,
+        commercial_account_id: dto.commercialAccountId,
+        status: 'ACTIVE',
+      },
+    });
+    if (!paymentMethod) {
+      throw new NotFoundException(
+        'Approved payment-method reference not found for this commercial account',
+      );
+    }
 
     const currency = dto.currency || invoice.currency;
 
@@ -164,7 +191,7 @@ export class PaymentService {
         const providerResult = await this.provider.createPayment(
           dto.amount,
           currency,
-          dto.paymentMethodToken,
+          paymentMethod.provider_token,
         );
 
         const payment = await this.prisma.$transaction(async (tx) => {
@@ -172,10 +199,11 @@ export class PaymentService {
             data: {
               commercial_account_id: dto.commercialAccountId,
               invoice_id: dto.invoiceId,
-              provider: 'manual',
+              provider: paymentMethod.provider,
               provider_payment_id: providerResult.providerPaymentId,
               amount: dto.amount,
               currency,
+              payment_method_reference_id: paymentMethod.id,
               status:
                 providerResult.status === 'AUTHORIZED'
                   ? 'AUTHORIZED'

@@ -177,6 +177,13 @@ components:
       description: Canonical tenant context. It must agree with any tenant identifier in the path, query, or body and is authorized against active membership or trusted workload context.
       schema:
         type: string
+    ManagingOrganizationIdHeader:
+      name: x-managing-organization-id
+      in: header
+      required: true
+      description: Authoritative managing-organization context for a delegated partner principal. It must match both the identity context and customer grant.
+      schema:
+        type: string
     EnvironmentIdHeader:
       name: x-environment-id
       in: header
@@ -1503,229 +1510,520 @@ components:
       required: [id, tenantId, environmentId, name, protocol, status, issuer]
     GetAuthMeResponse:
       $ref: '#/components/schemas/TenantSessionUser'
+    CommercialBillingAddress:
+      type: object
+      properties:
+        line1: { type: string }
+        line2: { type: string, nullable: true }
+        city: { type: string }
+        stateOrProvince: { type: string, nullable: true }
+        postalCode: { type: string }
+        countryCode: { type: string, minLength: 2, maxLength: 2 }
+      required: [line1, city, postalCode, countryCode]
+    CommercialTaxFacts:
+      type: object
+      properties:
+        countryCode: { type: string, minLength: 2, maxLength: 2 }
+        taxRegistrationId: { type: string, nullable: true }
+        exemptionReference: { type: string, nullable: true }
+      required: [countryCode]
+    CommercialContact:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [BILLING, COMMERCIAL, PROCUREMENT, LEGAL, TECHNICAL]
+        name: { type: string }
+        email: { type: string, format: email }
+      required: [type, name, email]
+    CommercialAccountBindingInput:
+      type: object
+      properties:
+        tenantId: { type: string, format: uuid }
+        legalEntityId: { type: string, format: uuid }
+        businessUnitId: { type: string, format: uuid, nullable: true }
+        environmentId: { type: string }
+        region: { type: string }
+        residencyPolicy: { type: string }
+        serviceScope:
+          type: array
+          minItems: 1
+          items: { type: string }
+        relationshipType: { type: string, nullable: true }
+        isPrimary: { type: boolean, nullable: true }
+        effectiveFrom: { type: string, format: date-time, nullable: true }
+        effectiveTo: { type: string, format: date-time, nullable: true }
+      required:
+      - tenantId
+      - legalEntityId
+      - environmentId
+      - region
+      - residencyPolicy
+      - serviceScope
+    CommercialAccountBinding:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        commercial_account_id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        legal_entity_id: { type: string, format: uuid, nullable: true }
+        business_unit_id: { type: string, format: uuid, nullable: true }
+        environment_id: { type: string }
+        region: { type: string }
+        residency_policy: { type: string, nullable: true }
+        service_scope:
+          type: array
+          items: { type: string }
+        relationship_type: { type: string }
+        is_primary: { type: boolean }
+        status: { type: string, enum: [ACTIVE, SUSPENDED, ENDED] }
+        effective_from: { type: string, format: date-time }
+        effective_to: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+      required:
+      - id
+      - commercial_account_id
+      - tenant_id
+      - environment_id
+      - region
+      - service_scope
+      - relationship_type
+      - is_primary
+      - status
+      - effective_from
+      - created_at
+      - updated_at
+    CommercialAccount:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        customer_legal_name: { type: string }
+        billing_address: { $ref: '#/components/schemas/CommercialBillingAddress' }
+        tax_facts: { $ref: '#/components/schemas/CommercialTaxFacts' }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        contacts:
+          type: array
+          items: { $ref: '#/components/schemas/CommercialContact' }
+        billing_source:
+          type: string
+          enum: [DIRECT, ZOIKO_ONE_BUNDLE, RESELLER]
+        billing_source_reference: { type: string, nullable: true }
+        billing_classification: { type: string }
+        contract_owner_id: { type: string }
+        processor_customer_ref: { type: string, nullable: true }
+        default_payment_method_reference_id: { type: string, format: uuid, nullable: true }
+        group_account_id: { type: string, format: uuid, nullable: true }
+        status: { type: string }
+        tenantBindings:
+          type: array
+          items: { $ref: '#/components/schemas/CommercialAccountBinding' }
+        entitlements:
+          type: array
+          items: { type: object, additionalProperties: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+      required:
+      - id
+      - name
+      - customer_legal_name
+      - billing_address
+      - tax_facts
+      - currency
+      - contacts
+      - billing_source
+      - billing_classification
+      - contract_owner_id
+      - status
+      - created_at
+      - updated_at
+    CommercialGroupAccount:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        customer_legal_name: { type: string }
+        status: { type: string, enum: [ACTIVE, MIGRATION_REVIEW, SUSPENDED] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+      required: [id, name, customer_legal_name, status, created_at, updated_at]
+    PostCommercialGroupAccountRequest:
+      type: object
+      properties:
+        name: { type: string }
+        customerLegalName: { type: string }
+      required: [name, customerLegalName]
+    PostCommercialGroupAccountResponse:
+      type: object
+      properties:
+        statusCode: { type: integer, example: 201 }
+        message: { type: string }
+        data: { $ref: '#/components/schemas/CommercialGroupAccount' }
+      required: [statusCode, message, data]
+    CommercialGroupSummaryResponse:
+      type: object
+      properties:
+        statusCode: { type: integer, example: 200 }
+        data:
+          allOf:
+          - $ref: '#/components/schemas/CommercialGroupAccount'
+          - type: object
+            properties:
+              accountCount: { type: integer }
+              currencies:
+                type: array
+                items: { type: string }
+              regions:
+                type: array
+                items: { type: string }
+              commercialAccounts:
+                type: array
+                items: { $ref: '#/components/schemas/CommercialAccount' }
+      required: [statusCode, data]
     PostCommercialAccountsRequest:
       type: object
       properties:
-        name:
-          type: string
+        name: { type: string }
+        customerLegalName: { type: string }
+        billingAddress: { $ref: '#/components/schemas/CommercialBillingAddress' }
+        taxFacts: { $ref: '#/components/schemas/CommercialTaxFacts' }
+        currency: { type: string, minLength: 3, maxLength: 3 }
+        contacts:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/CommercialContact' }
         billingSource:
           type: string
-          enum:
-          - DIRECT
-          - ZOIKO_ONE_BUNDLE
-          - RESELLER
-          nullable: true
+          enum: [DIRECT, ZOIKO_ONE_BUNDLE, RESELLER]
+        billingSourceReference: { type: string, nullable: true }
         billingClassification:
           type: string
-          enum:
-          - COMMERCIAL_DIRECT
-          - COMMERCIAL_ZOIKO_ONE
-          - COMMERCIAL_RESELLER
-          - DESIGN_PARTNER
-          - PILOT
-          - EVALUATION
-          - INTERNAL
-          - DEMO
-          - SANDBOX
-          - PARTNER_MANAGED
+          enum: [COMMERCIAL_DIRECT, COMMERCIAL_ZOIKO_ONE, COMMERCIAL_RESELLER,
+            DESIGN_PARTNER, PILOT, EVALUATION, INTERNAL, DEMO, SANDBOX,
+            PARTNER_MANAGED]
           nullable: true
-        groupAccountId:
-          type: string
-          nullable: true
-          format: uuid
-        legalEntityId:
-          type: string
-          nullable: true
-          format: uuid
-        businessUnitId:
-          type: string
-          nullable: true
-          format: uuid
-        environmentId:
-          type: string
-          nullable: true
-          format: uuid
-        region:
-          type: string
-          nullable: true
-        residencyPolicy:
-          type: string
+        contractOwnerId: { type: string, nullable: true }
+        processorCustomerRef: { type: string, nullable: true }
+        groupAccountId: { type: string, format: uuid, nullable: true }
+        initialBinding:
+          allOf:
+          - $ref: '#/components/schemas/CommercialAccountBindingInput'
           nullable: true
       required:
       - name
+      - customerLegalName
+      - billingAddress
+      - taxFacts
+      - currency
+      - contacts
+      - billingSource
     PostCommercialAccountsResponse:
       type: object
       properties:
-        statusCode:
-          type: integer
-          example: 201
-        message:
-          type: string
+        statusCode: { type: integer, example: 201 }
+        message: { type: string }
+        data: { $ref: '#/components/schemas/CommercialAccount' }
+      required: [statusCode, message, data]
+    GetCommercialAccountsResponse:
+      type: object
+      properties:
+        statusCode: { type: integer, example: 200 }
         data:
-          type: object
-          properties:
-            id:
-              type: string
-              format: uuid
-            environment_id:
-              type: string
-              nullable: true
-              format: uuid
-            created_at:
-              type: string
-              format: date-time
-            name:
-              type: string
-            status:
-              type: string
-            region:
-              type: string
-            billing_source:
-              type: string
-            billing_classification:
-              type: string
-            group_account_id:
-              type: string
-              nullable: true
-              format: uuid
-            legal_entity_id:
-              type: string
-              nullable: true
-              format: uuid
-            business_unit_id:
-              type: string
-              nullable: true
-              format: uuid
-            residency_policy:
-              type: string
-              nullable: true
-            updated_at:
-              type: string
-              format: date-time
-          required:
-          - id
-          - environment_id
-          - created_at
-          - name
-          - status
-          - region
-          - billing_source
-          - billing_classification
-          - group_account_id
-          - legal_entity_id
-          - business_unit_id
-          - residency_policy
-          - updated_at
-      required:
-      - statusCode
-      - message
-      - data
+          type: array
+          items: { $ref: '#/components/schemas/CommercialAccount' }
+      required: [statusCode, data]
     GetCommercialAccountsByAccountIdResponse:
       type: object
       properties:
-        statusCode:
-          type: integer
-          example: 200
+        statusCode: { type: integer, example: 200 }
+        data: { $ref: '#/components/schemas/CommercialAccount' }
+      required: [statusCode, data]
+    CommercialAccountBindingResponse:
+      type: object
+      properties:
+        statusCode: { type: integer }
+        message: { type: string, nullable: true }
+        data: { $ref: '#/components/schemas/CommercialAccountBinding' }
+      required: [statusCode, data]
+    GetCommercialAccountBindingsResponse:
+      type: object
+      properties:
+        statusCode: { type: integer, example: 200 }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CommercialAccountBinding' }
+      required: [statusCode, data]
+    PatchCommercialAccountBindingStatusRequest:
+      type: object
+      properties:
+        status: { type: string, enum: [ACTIVE, SUSPENDED, ENDED] }
+        effectiveTo: { type: string, format: date-time, nullable: true }
+      required: [status]
+    RequestCommercialAccountChange:
+      type: object
+      properties:
+        changeType:
+          type: string
+          enum: [ACCOUNT_PROFILE_CHANGE, TENANT_BINDING_CHANGE, PAYMENT_METHOD_CHANGE]
+        reason: { type: string }
+        expiresAt: { type: string, format: date-time, nullable: true }
+        bindingId: { type: string, format: uuid, nullable: true }
+        accountChanges:
+          type: object
+          nullable: true
+          properties:
+            customerLegalName: { type: string }
+            billingAddress: { $ref: '#/components/schemas/CommercialBillingAddress' }
+            taxFacts: { $ref: '#/components/schemas/CommercialTaxFacts' }
+            currency: { type: string, minLength: 3, maxLength: 3 }
+            contacts:
+              type: array
+              items: { $ref: '#/components/schemas/CommercialContact' }
+            billingSourceReference: { type: string, nullable: true }
+            contractOwnerId: { type: string }
+            processorCustomerRef: { type: string, nullable: true }
+            groupAccountId: { type: string, format: uuid, nullable: true }
+        bindingChanges:
+          type: object
+          nullable: true
+          properties:
+            legalEntityId: { type: string, format: uuid }
+            businessUnitId: { type: string, format: uuid, nullable: true }
+            region: { type: string }
+            residencyPolicy: { type: string }
+            serviceScope:
+              type: array
+              minItems: 1
+              items: { type: string }
+            relationshipType: { type: string }
+        paymentMethod:
+          type: object
+          nullable: true
+          description: Provider-tokenized payment method. Raw PAN/CVC is prohibited.
+          properties:
+            provider: { type: string }
+            providerToken: { type: string, writeOnly: true }
+            brand: { type: string, nullable: true }
+            last4: { type: string, pattern: '^\\d{4}$', nullable: true }
+          required: [provider, providerToken]
+      required: [changeType, reason]
+    TransferEntitlementMapping:
+      type: object
+      properties:
+        sourceEntitlementId: { type: string, format: uuid }
+        targetOfferType: { type: string }
+      required: [sourceEntitlementId, targetOfferType]
+    CreateCorporateTransferRequest:
+      type: object
+      properties:
+        sourceCommercialAccountId: { type: string, format: uuid }
+        sourceBindingId: { type: string, format: uuid }
+        targetCommercialAccountId: { type: string, format: uuid }
+        targetTenantId: { type: string, format: uuid }
+        targetEnvironmentId: { type: string }
+        targetLegalEntityId: { type: string, format: uuid }
+        targetBusinessUnitId: { type: string, format: uuid, nullable: true }
+        targetRegion: { type: string }
+        targetResidencyPolicy: { type: string }
+        targetServiceScope:
+          type: array
+          minItems: 1
+          items: { type: string }
+        effectiveAt: { type: string, format: date-time }
+        dataDecision:
+          type: string
+          enum: [RETAIN_HISTORICAL_AT_SOURCE, EXPORT_COPY_AND_RETAIN_SOURCE]
+        exportDecision:
+          type: string
+          enum: [NOT_REQUIRED, REQUIRED_BEFORE_EXECUTION]
+        exportManifestId: { type: string, format: uuid, nullable: true }
+        legalHoldDecision:
+          type: string
+          enum: [PRESERVE_IN_SOURCE, NOT_APPLICABLE]
+        entitlementMapping:
+          type: array
+          minItems: 1
+          items: { $ref: '#/components/schemas/TransferEntitlementMapping' }
+        reason: { type: string }
+        approvalExpiresAt: { type: string, format: date-time, nullable: true }
+      required:
+      - sourceCommercialAccountId
+      - sourceBindingId
+      - targetCommercialAccountId
+      - targetTenantId
+      - targetEnvironmentId
+      - targetLegalEntityId
+      - targetRegion
+      - targetResidencyPolicy
+      - targetServiceScope
+      - effectiveAt
+      - dataDecision
+      - exportDecision
+      - legalHoldDecision
+      - entitlementMapping
+      - reason
+    DecideCorporateTransferRequest:
+      type: object
+      properties:
+        decision: { type: string, enum: [APPROVED, REJECTED] }
+        reason: { type: string }
+      required: [decision, reason]
+    ReconcileCorporateTransferRequest:
+      type: object
+      properties:
+        outcome: { type: string, enum: [PASS, PASS_WITH_EXCEPTIONS] }
+        notes: { type: string }
+      required: [outcome, notes]
+    CorporateTransfer:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        source_commercial_account_id: { type: string, format: uuid }
+        source_binding_id: { type: string, format: uuid }
+        source_tenant_id: { type: string, format: uuid }
+        source_environment_id: { type: string }
+        target_commercial_account_id: { type: string, format: uuid }
+        target_tenant_id: { type: string, format: uuid }
+        target_environment_id: { type: string }
+        target_legal_entity_id: { type: string, format: uuid }
+        target_business_unit_id: { type: string, format: uuid, nullable: true }
+        target_region: { type: string }
+        target_residency_policy: { type: string }
+        target_service_scope:
+          type: array
+          items: { type: string }
+        effective_at: { type: string, format: date-time }
+        data_decision: { type: string }
+        export_decision: { type: string }
+        export_manifest_id: { type: string, format: uuid, nullable: true }
+        legal_hold_decision: { type: string }
+        legal_hold_references:
+          type: array
+          items: { type: string, format: uuid }
+        entitlement_mapping:
+          type: array
+          items: { $ref: '#/components/schemas/TransferEntitlementMapping' }
+        evidence_lineage_policy:
+          type: string
+          enum: [PRESERVE_SOURCE_IDENTIFIERS]
+        evidence_boundary_snapshot: { type: object, additionalProperties: true }
+        source_approval_id: { type: string, format: uuid, nullable: true }
+        target_approval_id: { type: string, format: uuid, nullable: true }
+        status:
+          type: string
+          enum: [PENDING_APPROVAL, APPROVED, REJECTED, RECONCILIATION_PENDING, RECONCILED]
+        requested_by: { type: string }
+        requested_at: { type: string, format: date-time }
+        executed_by: { type: string, nullable: true }
+        executed_at: { type: string, format: date-time, nullable: true }
+        reconciled_by: { type: string, nullable: true }
+        reconciled_at: { type: string, format: date-time, nullable: true }
+        reconciliation_result: { type: object, additionalProperties: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+      required:
+      - id
+      - source_commercial_account_id
+      - source_binding_id
+      - source_tenant_id
+      - source_environment_id
+      - target_commercial_account_id
+      - target_tenant_id
+      - target_environment_id
+      - target_legal_entity_id
+      - target_region
+      - target_residency_policy
+      - target_service_scope
+      - effective_at
+      - data_decision
+      - export_decision
+      - legal_hold_decision
+      - entitlement_mapping
+      - evidence_lineage_policy
+      - status
+      - requested_by
+      - requested_at
+      - created_at
+      - updated_at
+    CorporateTransferResponse:
+      type: object
+      properties:
+        statusCode: { type: integer }
+        message: { type: string, nullable: true }
+        data: { $ref: '#/components/schemas/CorporateTransfer' }
+      required: [statusCode, data]
+    CorporateTransferListResponse:
+      type: object
+      properties:
+        statusCode: { type: integer, example: 200 }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CorporateTransfer' }
+      required: [statusCode, data]
+    DecideCommercialAccountChange:
+      type: object
+      properties:
+        decision: { type: string, enum: [APPROVED, REJECTED] }
+        reason: { type: string }
+      required: [decision, reason]
+    CommercialAccountChangeApproval:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        change_type:
+          type: string
+          enum: [ACCOUNT_PROFILE_CHANGE, TENANT_BINDING_CHANGE, PAYMENT_METHOD_CHANGE]
+        object_type: { type: string, enum: [CommercialAccount] }
+        object_id: { type: string, format: uuid }
+        tenant_id: { type: string, format: uuid }
+        requested_by: { type: string }
+        requested_at: { type: string, format: date-time }
+        reason: { type: string }
+        before_snapshot: { type: object, additionalProperties: true }
+        proposed_snapshot:
+          type: object
+          additionalProperties: true
+          description: Redacted proposal; processor tokens are never included.
+        required_approval_role: { type: string }
+        status:
+          type: string
+          enum: [PENDING_APPROVAL, APPROVED, REJECTED, EXPIRED, CANCELLED, APPLIED]
+        approved_by: { type: string, nullable: true }
+        approved_at: { type: string, format: date-time, nullable: true }
+        decision_reason: { type: string, nullable: true }
+        expires_at: { type: string, format: date-time, nullable: true }
+        applied_at: { type: string, format: date-time, nullable: true }
+      required: [id, change_type, object_type, object_id, tenant_id,
+        requested_by, requested_at, reason, before_snapshot, proposed_snapshot,
+        required_approval_role, status]
+    CommercialAccountChangeResponse:
+      type: object
+      properties:
+        statusCode: { type: integer }
+        message: { type: string, nullable: true }
+        data: { $ref: '#/components/schemas/CommercialAccountChangeApproval' }
+      required: [statusCode, data]
+    CommercialAccountChangeListResponse:
+      type: object
+      properties:
+        statusCode: { type: integer, example: 200 }
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/CommercialAccountChangeApproval' }
+      required: [statusCode, data]
+    ApplyCommercialAccountChangeResponse:
+      type: object
+      properties:
+        statusCode: { type: integer, example: 200 }
+        message: { type: string }
         data:
           type: object
           properties:
-            entitlements:
-              type: array
-              items:
-                type: object
-                properties:
-                  id:
-                    type: string
-                    format: uuid
-                  tenant_id:
-                    type: string
-                    format: uuid
-                  created_at:
-                    type: string
-                    format: date-time
-                  status:
-                    type: string
-                  updated_at:
-                    type: string
-                    format: date-time
-                  commercial_account_id:
-                    type: string
-                    format: uuid
-                  offer_type:
-                    type: string
-                  effective_from:
-                    type: string
-                    format: date-time
-                  effective_to:
-                    type: string
-                    format: date-time
-                    nullable: true
-                required:
-                - id
-                - tenant_id
-                - created_at
-                - status
-                - updated_at
-                - commercial_account_id
-                - offer_type
-                - effective_from
-                - effective_to
-            id:
-              type: string
-              format: uuid
-            environment_id:
-              type: string
-              nullable: true
-              format: uuid
-            created_at:
-              type: string
-              format: date-time
-            name:
-              type: string
-            status:
-              type: string
-            region:
-              type: string
-            billing_source:
-              type: string
-            billing_classification:
-              type: string
-            group_account_id:
-              type: string
-              nullable: true
-              format: uuid
-            legal_entity_id:
-              type: string
-              nullable: true
-              format: uuid
-            business_unit_id:
-              type: string
-              nullable: true
-              format: uuid
-            residency_policy:
-              type: string
-              nullable: true
-            updated_at:
-              type: string
-              format: date-time
-          required:
-          - entitlements
-          - id
-          - environment_id
-          - created_at
-          - name
-          - status
-          - region
-          - billing_source
-          - billing_classification
-          - group_account_id
-          - legal_entity_id
-          - business_unit_id
-          - residency_policy
-          - updated_at
-      required:
-      - statusCode
-      - data
+            approval: { $ref: '#/components/schemas/CommercialAccountChangeApproval' }
+            resource: { type: object, additionalProperties: true }
+          required: [approval, resource]
+      required: [statusCode, message, data]
     PostCommercialEntitlementsRequest:
       type: object
       properties:
@@ -16520,13 +16818,15 @@ components:
         currency:
           type: string
           nullable: true
-        paymentMethodToken:
+        paymentMethodReferenceId:
           type: string
+          format: uuid
+          description: ACTIVE payment-method reference approved for this commercial account.
       required:
       - commercialAccountId
       - invoiceId
       - amount
-      - paymentMethodToken
+      - paymentMethodReferenceId
     PostPaymentsResponse:
       oneOf:
       - type: object
@@ -18383,9 +18683,12 @@ components:
           - AUDITOR
           - TECHNOLOGY_PARTNER
           - IR_SPECIALIST
+        managingOrganizationId:
+          type: string
       required:
       - legalName
       - partnerType
+      - managingOrganizationId
     PostPartnersResponse:
       type: object
       properties:
@@ -18407,12 +18710,15 @@ components:
               type: string
             partner_type:
               type: string
+            managing_organization_id:
+              type: string
           required:
           - id
           - created_at
           - status
           - legal_name
           - partner_type
+          - managing_organization_id
       required:
       - statusCode
       - data
@@ -18595,24 +18901,28 @@ components:
         partnerId:
           type: string
           format: uuid
+        managingOrganizationId:
+          type: string
+        partnerPrincipalId:
+          type: string
         commercialAccountId:
           type: string
           format: uuid
         scope:
           type: array
+          minItems: 1
           items:
             type: string
-        grantedBy:
-          type: string
         expiresAt:
           type: string
           format: date-time
-          nullable: true
       required:
       - partnerId
+      - managingOrganizationId
+      - partnerPrincipalId
       - commercialAccountId
       - scope
-      - grantedBy
+      - expiresAt
     PostPartnersDelegationsResponse:
       type: object
       properties:
@@ -18633,15 +18943,26 @@ components:
             commercial_account_id:
               type: string
               format: uuid
+            tenant_id:
+              type: string
+              format: uuid
+            environment_id:
+              type: string
+            managing_organization_id:
+              type: string
+            partner_principal_id:
+              type: string
             expires_at:
               type: string
               format: date-time
-              nullable: true
             partner_id:
               type: string
               format: uuid
             scope:
-              type: string
+              type: array
+              items: { type: string }
+            customer_visible:
+              type: boolean
             granted_by:
               type: string
             revoked_at:
@@ -18653,9 +18974,14 @@ components:
           - created_at
           - status
           - commercial_account_id
+          - tenant_id
+          - environment_id
+          - managing_organization_id
+          - partner_principal_id
           - expires_at
           - partner_id
           - scope
+          - customer_visible
           - granted_by
           - revoked_at
       required:
@@ -18689,7 +19015,8 @@ components:
               type: string
               format: uuid
             scope:
-              type: string
+              type: array
+              items: { type: string }
             granted_by:
               type: string
             revoked_at:
@@ -18709,6 +19036,21 @@ components:
       required:
       - statusCode
       - data
+    PatchPartnersDelegationsByIdRevokeRequest:
+      type: object
+      properties:
+        reason: { type: string }
+      required: [reason]
+    GetPartnersDelegationsResponse:
+      type: object
+      properties:
+        statusCode: { type: integer, example: 200 }
+        data:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+      required: [statusCode, data]
     GetPartnersDelegationsCheckResponse:
       type: object
       properties:
@@ -18938,13 +19280,15 @@ components:
           - EMERGENCY_ENTITLEMENT_EXTENSION
           - PARTNER_MARGIN_OVERRIDE
           - OVERAGE_OVERRIDE
+          - ACCOUNT_PROFILE_CHANGE
+          - TENANT_BINDING_CHANGE
+          - PAYMENT_METHOD_CHANGE
+          - CORPORATE_TRANSFER
         objectType:
           type: string
         objectId:
           type: string
           format: uuid
-        requestedBy:
-          type: string
         reason:
           type: string
         beforeSnapshot:
@@ -18976,7 +19320,6 @@ components:
       - changeType
       - objectType
       - objectId
-      - requestedBy
       - reason
     PostCommercialApprovalsResponse:
       type: object
@@ -19149,9 +19492,6 @@ components:
     PatchCommercialApprovalsByIdDecisionRequest:
       type: object
       properties:
-        approverId:
-          type: string
-          format: uuid
         decision:
           type: string
           enum:
@@ -19160,7 +19500,6 @@ components:
         reason:
           type: string
       required:
-      - approverId
       - decision
       - reason
     PatchCommercialApprovalsByIdDecisionResponse:
@@ -23063,7 +23402,68 @@ paths:
       operationId: getAuthMe
       description: Returns the authenticated principal and session claims resolved
         from the access token.
+  /api/v1/commercial/group-accounts:
+    post:
+      tags: [Commercial]
+      summary: Create an explicit commercial group-account master
+      description: Platform-only operation requiring commercial-account management
+        permission and step-up MFA. Group membership does not grant cross-tenant
+        data-plane access.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PostCommercialGroupAccountRequest' }
+      responses:
+        '201':
+          description: Group account created and audited.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PostCommercialGroupAccountResponse' }
+        '400':
+          description: Request validation failed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Platform commercial-account management permission or MFA is missing.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: postCommercialGroupAccount
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
   /api/v1/commercial/accounts:
+    get:
+      tags:
+      - Commercial
+      summary: List commercial accounts bound to the current tenant/environment
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Tenant-scoped commercial account list.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCommercialAccountsResponse'
+        '401':
+          description: Authentication is missing or invalid.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: The session lacks tenant commercial-account read permission.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getCommercialAccounts
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      description: Returns only accounts having an explicit binding to the tenant
+        and, when the session is environment-bound, that environment.
     post:
       tags:
       - Commercial
@@ -23093,20 +23493,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: A platform-scoped session with commercial-account management
+            permission is required.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
       operationId: postCommercialAccounts
       security:
       - CookieAuth: []
       - BearerAuth: []
-      description: Create commercial account. Validates the documented request and
-        returns the created or resulting resource. State-changing operations also
-        enforce the service lifecycle and conflict rules. Accepts either the access-token
-        cookie or a Bearer JWT.
+      description: Platform-only commercial control operation. Persists complete
+        account master data, optionally creates the initial tenant/environment binding,
+        and writes an audit event in the same transaction.
   /api/v1/commercial/accounts/{accountId}:
     get:
       tags:
       - Commercial
       summary: Get commercial account details
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: accountId
         in: path
         required: true
@@ -23127,6 +23533,11 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: The session lacks tenant commercial-account read permission.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
         '404':
           description: The referenced resource was not found.
           content:
@@ -23137,10 +23548,497 @@ paths:
       security:
       - CookieAuth: []
       - BearerAuth: []
-      description: Get commercial account details. Applies the documented path, query,
-        and tenant filters and returns the current persisted or computed result using
-        the response model below. Accepts either the access-token cookie or a Bearer
-        JWT.
+      description: Returns the account only when an explicit binding matches the
+        session tenant and optional session environment. An unbound account is returned
+        as not found to prevent cross-tenant enumeration.
+  /api/v1/commercial/accounts/{accountId}/group-summary:
+    get:
+      tags: [Commercial]
+      summary: Get a tenant-governed commercial group aggregation
+      description: Returns only group accounts that are each independently bound to
+        the session tenant and environment. This endpoint never collapses or returns
+        data-plane records from another tenant.
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      - name: accountId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Tenant-filtered group summary.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommercialGroupSummaryResponse' }
+        '403':
+          description: Commercial-account read permission is missing.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Account or an active group association is not visible.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getCommercialAccountGroupSummary
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+  /api/v1/commercial/accounts/{accountId}/bindings:
+    get:
+      tags:
+      - Commercial
+      summary: List current tenant bindings for a commercial account
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      - name: accountId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Tenant-scoped binding history.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCommercialAccountBindingsResponse'
+        '401':
+          description: Authentication is missing or invalid.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Tenant commercial-account read permission is required.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: No account binding is visible to the current tenant.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getCommercialAccountBindings
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+    post:
+      tags:
+      - Commercial
+      summary: Bind a commercial account to a tenant environment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommercialAccountBindingInput'
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Commercial account binding created and audited.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommercialAccountBindingResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Platform commercial-account management permission is required.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: The tenant/environment binding already exists.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: postCommercialAccountBinding
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+  /api/v1/commercial/accounts/{accountId}/bindings/{bindingId}/status:
+    patch:
+      tags:
+      - Commercial
+      summary: Transition a commercial account binding status
+      parameters:
+      - name: accountId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: bindingId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchCommercialAccountBindingStatusRequest'
+      responses:
+        '200':
+          description: Binding lifecycle transition applied and audited.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommercialAccountBindingResponse'
+        '403':
+          description: Platform commercial-account management permission is required.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: The binding does not belong to the specified account.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: The requested binding lifecycle transition is illegal.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: patchCommercialAccountBindingStatus
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+  /api/v1/commercial/accounts/{accountId}/change-requests:
+    post:
+      tags: [Commercial]
+      summary: Request a governed commercial-account change
+      description: Requires Commercial Account Owner or Billing Admin authority and
+        step-up MFA. The authenticated principal is always the recorded requester.
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      - name: accountId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RequestCommercialAccountChange' }
+      responses:
+        '201':
+          description: Change request created in PENDING_APPROVAL.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommercialAccountChangeResponse' }
+        '400':
+          description: Change payload is invalid or contains raw payment-card data.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Commercial management permission or step-up assurance is missing.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Account is not actively bound to the current tenant/environment.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: postCommercialAccountChangeRequest
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+    get:
+      tags: [Commercial]
+      summary: List tenant-scoped commercial-account change requests
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      - name: accountId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Change-request history for the bound account and tenant.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommercialAccountChangeListResponse' }
+        '403':
+          description: Commercial account read permission is missing.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Account is not actively bound to the current tenant/environment.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getCommercialAccountChangeRequests
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+  /api/v1/commercial/accounts/{accountId}/change-requests/{approvalId}/decision:
+    patch:
+      tags: [Commercial]
+      summary: Independently approve or reject a commercial-account change
+      description: Requires Commercial Account Owner or Commercial Approver authority,
+        step-up MFA, and a principal different from the requester.
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      - name: accountId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: approvalId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DecideCommercialAccountChange' }
+      responses:
+        '200':
+          description: Independent decision recorded.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CommercialAccountChangeResponse' }
+        '403':
+          description: Approval permission, step-up assurance, or maker-checker separation failed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Tenant-scoped account or approval was not found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: Approval is expired or in a terminal state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: patchCommercialAccountChangeDecision
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+  /api/v1/commercial/accounts/{accountId}/change-requests/{approvalId}/apply:
+    post:
+      tags: [Commercial]
+      summary: Apply an approved commercial-account change
+      description: Applies only APPROVED, non-stale changes. Payment tokens are never
+        returned or written to approval/event payloads.
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      - name: accountId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: approvalId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Approved change applied and audited.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApplyCommercialAccountChangeResponse' }
+        '403':
+          description: Commercial management permission or step-up assurance is missing.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Tenant-scoped account or approval was not found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: Change is unapproved, stale, already applied, or otherwise invalid.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: postCommercialAccountChangeApply
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+  /api/v1/commercial/transfers:
+    post:
+      tags: [Commercial]
+      summary: Request a subsidiary or business-unit transfer plan
+      description: Records effective, export, legal-hold, entitlement and evidence-lineage
+        decisions. Cross-tenant plans create independent source and target approvals.
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCorporateTransferRequest' }
+      responses:
+        '201':
+          description: Transfer plan submitted for participant approval.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorporateTransferResponse' }
+        '400':
+          description: Plan fields or effective boundary are invalid.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Transfer-management permission or step-up MFA is missing.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: Source boundary, entitlement, legal-hold or export prerequisites are ambiguous.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: postCorporateTransfer
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+    get:
+      tags: [Commercial]
+      summary: List transfer plans visible to the current participant boundary
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      - name: commercialAccountId
+        in: query
+        required: false
+        schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Source or target plans for the current tenant/environment.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorporateTransferListResponse' }
+        '403':
+          description: Commercial-account read permission is missing.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getCorporateTransfers
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+  /api/v1/commercial/transfers/{transferId}/decision:
+    patch:
+      tags: [Commercial]
+      summary: Approve or reject one participant side of a transfer
+      description: The approval is selected from the authenticated tenant/environment,
+        and maker-checker separation is enforced. A cross-tenant plan becomes APPROVED
+        only after both participant approvals.
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      - name: transferId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DecideCorporateTransferRequest' }
+      responses:
+        '200':
+          description: Participant decision recorded.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorporateTransferResponse' }
+        '403':
+          description: Transfer-approval permission, MFA, or maker-checker separation failed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Transfer is not visible to this participant boundary.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: Approval is expired or no longer pending.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: patchCorporateTransferDecision
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+  /api/v1/commercial/transfers/{transferId}/execute:
+    post:
+      tags: [Commercial]
+      summary: Execute an approved transfer at its effective boundary
+      description: Ends the source binding and source entitlements, creates future
+        target records, captures the evidence boundary, and never reassigns historical
+        EvidenceRecord or EvidenceLineage rows.
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      - name: transferId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Transfer executed and awaiting target reconciliation.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorporateTransferResponse' }
+        '403':
+          description: Source transfer-management permission or MFA is missing.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: Effective time, source version, legal hold, export or entitlement prerequisite failed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: postCorporateTransferExecute
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+  /api/v1/commercial/transfers/{transferId}/reconcile:
+    post:
+      tags: [Commercial]
+      summary: Complete target-side post-transfer reconciliation
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      - name: transferId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ReconcileCorporateTransferRequest' }
+      responses:
+        '200':
+          description: Active target boundary and mapped entitlements reconciled.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/CorporateTransferResponse' }
+        '403':
+          description: Target transfer-approval permission or MFA is missing.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: Target binding or mapped entitlements are not active.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: postCorporateTransferReconcile
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
   /api/v1/commercial/entitlements:
     post:
       tags:
@@ -33720,10 +34618,9 @@ paths:
       tags:
       - Payments
       summary: Create payment
-      description: Create payment. Validates the documented request and returns the
-        created or resulting resource. State-changing operations also enforce the
-        service lifecycle and conflict rules. Accepts either the access-token cookie
-        or a Bearer JWT.
+      description: Requires Billing Admin or Commercial Account Owner authority and
+        step-up MFA. The payment method must be an ACTIVE, approved reference belonging
+        to the same commercial account; raw provider tokens are not accepted here.
       requestBody:
         required: true
         content:
@@ -33807,9 +34704,9 @@ paths:
       tags:
       - Payments
       summary: Refund payment
-      description: Refund payment. Validates the requested update or lifecycle transition
-        and returns the updated resource without changing fields outside the documented
-        request. Accepts either the access-token cookie or a Bearer JWT.
+      description: Requires the separately governed tenant:refund:manage permission
+        and step-up MFA. Commercial Account Owner and Billing Admin templates do not
+        receive refund authority automatically.
       parameters:
       - $ref: '#/components/parameters/TenantIdHeader'
       - name: id
@@ -35364,6 +36261,115 @@ paths:
       security:
       - CookieAuth: []
       - BearerAuth: []
+  /api/v1/partners/{partnerId}/principals:
+    get:
+      tags: [Partners]
+      summary: List authoritative partner principal contexts
+      description: Platform-scoped listing of identity principals bound to one partner managing organization.
+      parameters:
+      - name: partnerId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Partner principal contexts returned. }
+        '403':
+          description: Platform commercial-account authority or step-up assurance is missing.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Partner not found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getPartnerPrincipalContexts
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+    post:
+      tags: [Partners]
+      summary: Bind an identity to a partner managing organization
+      description: Creates the authoritative one-principal-to-one-managing-organization context required before any customer can delegate access.
+      parameters:
+      - name: partnerId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [principalId]
+              properties:
+                principalId: { type: string, format: uuid }
+      responses:
+        '201': { description: Authoritative partner principal context created. }
+        '403':
+          description: Platform commercial-account authority or step-up assurance is missing.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Active partner or identity principal not found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: Principal already belongs to a partner managing organization.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: postPartnerPrincipalContext
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+  /api/v1/partners/{partnerId}/principals/{contextId}/deactivate:
+    patch:
+      tags: [Partners]
+      summary: Deactivate a partner principal context
+      description: Deactivates the authoritative identity context, revokes all of its active customer delegations, and invalidates all sessions for the principal.
+      parameters:
+      - name: partnerId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: contextId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 1 }
+      responses:
+        '200': { description: Partner principal context deactivated. }
+        '403':
+          description: Platform commercial-account authority or step-up assurance is missing.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Partner principal context not found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: Context is not active.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: patchPartnerPrincipalContextDeactivate
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
   /api/v1/partners/agreements:
     post:
       tags:
@@ -35419,12 +36425,6 @@ paths:
           type: string
           format: uuid
         description: Unique ID identifying the target resource.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PatchPartnersAgreementsByIdApproveRequest'
       responses:
         '400':
           description: Bad Request - Invalid payload or parameters
@@ -35461,14 +36461,42 @@ paths:
       - CookieAuth: []
       - BearerAuth: []
   /api/v1/partners/delegations:
+    get:
+      tags: [Partners]
+      summary: List customer-visible partner delegations
+      description: Returns only explicit grants for the session tenant/environment,
+        and materializes elapsed ACTIVE grants as EXPIRED before returning them.
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      - name: commercialAccountId
+        in: query
+        required: false
+        schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Customer-visible delegation history.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/GetPartnersDelegationsResponse' }
+        '403':
+          description: Partner-delegation read permission is missing.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getPartnersDelegations
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
     post:
       tags:
       - Partners
       summary: Grant partner delegation
-      description: Grant partner delegation. Validates the documented request and
-        returns the created or resulting resource. State-changing operations also
-        enforce the service lifecycle and conflict rules. Accepts either the access-token
-        cookie or a Bearer JWT.
+      description: Creates an explicit customer-visible MSP/MSSP grant bound to
+        the tenant, environment, managing organization, partner principal and account.
+        Scope is operational-only, expiry is mandatory, delegated actors cannot
+        re-delegate, and the authenticated customer actor is recorded.
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       requestBody:
         required: true
         content:
@@ -35494,6 +36522,21 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PostPartnersDelegationsResponse'
+        '403':
+          description: Delegation-management permission, MFA, or non-transitive policy failed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Active MSP/MSSP partner or tenant-bound commercial account was not found.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: A requested scope is not delegable, the authoritative partner principal context is missing, the customer boundary is ambiguous, or an active duplicate exists.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
       operationId: postPartnersDelegations
       security:
       - CookieAuth: []
@@ -35508,6 +36551,7 @@ paths:
         the documented request. Accepts either the access-token cookie or a Bearer
         JWT.
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: id
         in: path
         required: true
@@ -35515,6 +36559,11 @@ paths:
           type: string
           format: uuid
         description: Unique ID identifying the target resource.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PatchPartnersDelegationsByIdRevokeRequest' }
       responses:
         '400':
           description: Bad Request - Invalid payload or parameters
@@ -35578,11 +36627,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GetPartnersDelegationsCheckResponse'
+        '403':
+          description: The session lacks delegated-partner use permission.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
       operationId: getPartnersDelegationsCheck
       security:
       - CookieAuth: []
       - BearerAuth: []
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: commercialAccountId
         in: query
         required: true
@@ -35590,19 +36645,196 @@ paths:
           type: string
           format: uuid
         description: Required commercial account ID value.
-      - name: partnerId
+      - name: managingOrganizationId
         in: query
         required: true
         schema:
           type: string
-          format: uuid
-        description: Required partner ID value.
+        description: Managing-organization context for the authenticated partner principal.
       - name: scope
         in: query
         required: true
         schema:
           type: string
         description: Required scope value.
+  /api/v1/partners/delegated/accounts/{accountId}/usage:
+    get:
+      tags: [Partners]
+      summary: Read usage through an explicit partner delegation
+      description: Returns usage only for the uniquely bound tenant/environment customer boundary after VIEW_USAGE is authorized at the shared policy decision point and domain service.
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      - $ref: '#/components/parameters/ManagingOrganizationIdHeader'
+      - name: accountId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Delegated usage records returned. }
+        '403':
+          description: Identity context, active customer grant, boundary, or VIEW_USAGE scope is missing.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getPartnerDelegatedUsage
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+  /api/v1/partners/delegated/accounts/{accountId}/invoices:
+    get:
+      tags: [Partners]
+      summary: Read invoices through an explicit partner delegation
+      description: Returns invoices only for the exact delegated commercial account when VIEW_INVOICES is present; no mutation or payment authority is implied.
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      - $ref: '#/components/parameters/ManagingOrganizationIdHeader'
+      - name: accountId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Delegated account invoices returned. }
+        '403':
+          description: Identity context, active customer grant, boundary, or VIEW_INVOICES scope is missing.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getPartnerDelegatedInvoices
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+  /api/v1/partners/delegated/accounts/{accountId}/entitlements:
+    get:
+      tags: [Partners]
+      summary: Read entitlements through an explicit partner delegation
+      description: Returns tenant entitlements for the exact delegated account when VIEW_ENTITLEMENTS is present. The route cannot create, expand, suspend, or revoke entitlement.
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      - $ref: '#/components/parameters/ManagingOrganizationIdHeader'
+      - name: accountId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Delegated account entitlements returned. }
+        '403':
+          description: Identity context, active customer grant, boundary, or VIEW_ENTITLEMENTS scope is missing.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getPartnerDelegatedEntitlements
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+  /api/v1/partners/delegated/accounts/{accountId}/support-cases:
+    get:
+      tags: [Partners]
+      summary: List delegated customer support cases
+      description: Lists only support cases for the exact account, tenant, and environment after VIEW_TICKETS authorization. Security incidents and commercial records are separate domains.
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      - $ref: '#/components/parameters/ManagingOrganizationIdHeader'
+      - name: accountId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      responses:
+        '200': { description: Delegated support cases returned. }
+        '403':
+          description: Identity context, active customer grant, boundary, or VIEW_TICKETS scope is missing.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: getPartnerDelegatedSupportCases
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+    post:
+      tags: [Partners]
+      summary: Create a delegated customer support case
+      description: Creates a support-only record attributed to the authorizing delegation when MANAGE_SUPPORT_CASES is present. It grants no security-response, pricing, payment, or entitlement authority.
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      - $ref: '#/components/parameters/ManagingOrganizationIdHeader'
+      - name: accountId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subject, description]
+              properties:
+                subject: { type: string, minLength: 1 }
+                description: { type: string, minLength: 1 }
+                priority:
+                  type: string
+                  enum: [LOW, NORMAL, HIGH, URGENT]
+      responses:
+        '201': { description: Delegated support case created. }
+        '403':
+          description: Identity context, active customer grant, boundary, or MANAGE_SUPPORT_CASES scope is missing.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: postPartnerDelegatedSupportCase
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+  /api/v1/partners/delegated/accounts/{accountId}/support-cases/{supportCaseId}:
+    patch:
+      tags: [Partners]
+      summary: Update a delegated customer support case
+      description: Applies a governed support-case transition within the exact delegated account/tenant/environment boundary when MANAGE_SUPPORT_CASES is present.
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      - $ref: '#/components/parameters/ManagingOrganizationIdHeader'
+      - name: accountId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: supportCaseId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [OPEN, IN_PROGRESS, WAITING_CUSTOMER, RESOLVED, CLOSED]
+                priority:
+                  type: string
+                  enum: [LOW, NORMAL, HIGH, URGENT]
+                description: { type: string, minLength: 1 }
+      responses:
+        '200': { description: Delegated support case updated. }
+        '403':
+          description: Identity context, active customer grant, boundary, or MANAGE_SUPPORT_CASES scope is missing.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Support case not found in the delegated boundary.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: The requested support-case state transition is invalid.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+      operationId: patchPartnerDelegatedSupportCase
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
   /api/v1/partners/settlements:
     post:
       tags:
@@ -35796,10 +37028,10 @@ paths:
       tags:
       - CommercialApprovals
       summary: Request commercial approval
-      description: Request commercial approval. Validates the documented request and
-        returns the created or resulting resource. State-changing operations also
-        enforce the service lifecycle and conflict rules. Accepts either the access-token
-        cookie or a Bearer JWT.
+      description: Creates a tenant-bound approval request using the authenticated
+        principal as requester. Client-supplied actor identifiers are not accepted.
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       requestBody:
         required: true
         content:
@@ -35839,6 +37071,7 @@ paths:
         the response model below. Accepts either the access-token cookie or a Bearer
         JWT.
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: id
         in: path
         required: true
@@ -35880,10 +37113,11 @@ paths:
       tags:
       - CommercialApprovals
       summary: Record decision
-      description: Record decision. Validates the requested update or lifecycle transition
-        and returns the updated resource without changing fields outside the documented
-        request. Accepts either the access-token cookie or a Bearer JWT.
+      description: Records a decision using the authenticated principal as approver.
+        The approval must belong to the session tenant and maker-checker separation
+        is enforced.
       parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
       - name: id
         in: path
         required: true
@@ -38139,4 +39373,3 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postInternalAiOutputsEvaluationsRun
-

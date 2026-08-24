@@ -918,28 +918,135 @@ model UsageRecord {
   @@index([recorded_at])
 }
 
-model CommercialAccount {
-  id                     String   @id @default(uuid())
-  name                   String
-  billing_source         String   @default("DIRECT")
-  billing_classification String   @default("COMMERCIAL_DIRECT")
-  status                 String   @default("ACTIVE")
-  group_account_id       String?
-  legal_entity_id        String?
-  business_unit_id       String?
-  environment_id         String?
-  region                 String   @default("GLOBAL")
-  residency_policy       String?
-  created_at             DateTime @default(now())
-  updated_at             DateTime @updatedAt
+model GroupAccount {
+  id                  String   @id @default(uuid())
+  name                String
+  customer_legal_name String
+  status              String   @default("ACTIVE")
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
 
-  entitlements Entitlement[]
-  contracts    Contract[]
-  invoices     CommercialInvoice[]
-  quotes       CommercialQuote[]
+  commercialAccounts CommercialAccount[]
+
+  @@index([status])
+}
+
+model CommercialAccount {
+  id                                  String        @id @default(uuid())
+  name                                String
+  customer_legal_name                 String
+  billing_address                     String        @default("{}")
+  tax_facts                           String        @default("{}")
+  currency                            String        @default("USD")
+  contacts                            String        @default("[]")
+  billing_source                      String        @default("DIRECT")
+  billing_source_reference            String?
+  billing_classification              String        @default("COMMERCIAL_DIRECT")
+  status                              String        @default("ACTIVE")
+  contract_owner_id                   String?
+  processor_customer_ref              String?
+  default_payment_method_reference_id String?       @unique
+  group_account_id                    String?
+  groupAccount                        GroupAccount? @relation(fields: [group_account_id], references: [id])
+  legal_entity_id                     String?
+  business_unit_id                    String?
+  environment_id                      String?
+  region                              String        @default("GLOBAL")
+  residency_policy                    String?
+  created_at                          DateTime      @default(now())
+  updated_at                          DateTime      @updatedAt
+
+  entitlements         Entitlement[]
+  contracts            Contract[]
+  invoices             CommercialInvoice[]
+  quotes               CommercialQuote[]
+  tenantBindings       CommercialAccountTenantBinding[]
+  paymentMethods       PaymentMethodReference[]         @relation("CommercialAccountPaymentMethods")
+  defaultPaymentMethod PaymentMethodReference?          @relation("CommercialAccountDefaultPaymentMethod", fields: [default_payment_method_reference_id], references: [id])
+  sourceTransfers      CorporateTransfer[]              @relation("CorporateTransferSourceAccount")
+  targetTransfers      CorporateTransfer[]              @relation("CorporateTransferTargetAccount")
+  partnerSupportCases  PartnerSupportCase[]
+  evaluationPrograms   EvaluationProgram[]
 
   @@index([status])
   @@index([billing_classification])
+}
+
+model CommercialAccountTenantBinding {
+  id                    String            @id @default(uuid())
+  commercial_account_id String
+  commercialAccount     CommercialAccount @relation(fields: [commercial_account_id], references: [id])
+  tenant_id             String
+  legal_entity_id       String?
+  business_unit_id      String?
+  environment_id        String
+  region                String            @default("GLOBAL")
+  residency_policy      String?
+  service_scope         String            @default("[]")
+  relationship_type     String            @default("CUSTOMER")
+  is_primary            Boolean           @default(false)
+  status                String            @default("ACTIVE")
+  effective_from        DateTime          @default(now())
+  effective_to          DateTime?
+  created_at            DateTime          @default(now())
+  updated_at            DateTime          @updatedAt
+
+  @@unique([commercial_account_id, tenant_id, environment_id])
+  @@index([tenant_id, status])
+  @@index([legal_entity_id])
+  @@index([environment_id, region])
+}
+
+/**
+ * Approved subsidiary/business-unit separation plan. Historical evidence is
+ * intentionally not related through a mutable foreign key: execution closes
+ * the old commercial boundary and creates future-dated target records while
+ * evidence and its lineage remain under their original tenant identifiers.
+ */
+model CorporateTransfer {
+  id                           String            @id @default(uuid())
+  source_commercial_account_id String
+  sourceCommercialAccount      CommercialAccount @relation("CorporateTransferSourceAccount", fields: [source_commercial_account_id], references: [id])
+  source_binding_id            String
+  source_tenant_id             String
+  source_environment_id        String
+  source_binding_updated_at    DateTime
+  target_commercial_account_id String
+  targetCommercialAccount      CommercialAccount @relation("CorporateTransferTargetAccount", fields: [target_commercial_account_id], references: [id])
+  target_tenant_id             String
+  target_environment_id        String
+  target_legal_entity_id       String
+  target_business_unit_id      String?
+  target_region                String
+  target_residency_policy      String
+  target_service_scope         String            @default("[]")
+  effective_at                 DateTime
+  data_decision                String            @default("RETAIN_HISTORICAL_AT_SOURCE")
+  export_decision              String            @default("NOT_REQUIRED")
+  export_manifest_id           String?
+  legal_hold_decision          String            @default("PRESERVE_IN_SOURCE")
+  legal_hold_references        String            @default("[]")
+  entitlement_mapping          String            @default("[]")
+  evidence_lineage_policy      String            @default("PRESERVE_SOURCE_IDENTIFIERS")
+  evidence_boundary_snapshot   String            @default("{}")
+  source_approval_id           String?           @unique
+  target_approval_id           String?           @unique
+  status                       String            @default("PENDING_APPROVAL")
+  requested_by                 String
+  requested_at                 DateTime          @default(now())
+  executed_by                  String?
+  executed_at                  DateTime?
+  reconciled_by                String?
+  reconciled_at                DateTime?
+  reconciliation_result        String            @default("{}")
+  created_at                   DateTime          @default(now())
+  updated_at                   DateTime          @updatedAt
+
+  @@index([source_tenant_id, status])
+  @@index([target_tenant_id, status])
+  @@index([source_commercial_account_id])
+  @@index([target_commercial_account_id])
+  @@index([effective_at, status])
 }
 
 model Entitlement {
@@ -948,6 +1055,10 @@ model Entitlement {
   commercialAccount     CommercialAccount @relation(fields: [commercial_account_id], references: [id])
   tenant_id             String
   offer_type            String
+  source_type           String            @default("ACCEPTED_ORDER")
+  source_id             String?
+  evaluation_program_id String?
+  evaluationProgram     EvaluationProgram? @relation(fields: [evaluation_program_id], references: [id])
   status                String            @default("ACTIVE")
   effective_from        DateTime          @default(now())
   effective_to          DateTime?
@@ -957,6 +1068,55 @@ model Entitlement {
   @@index([tenant_id])
   @@index([offer_type])
   @@index([status])
+  @@index([source_type, source_id])
+  @@index([evaluation_program_id, status])
+}
+
+/**
+ * Time-bound, explicitly governed pre-production commercial access. There is
+ * deliberately no generic or unlimited "trial" record: every design-partner,
+ * evaluation, or pilot programme has an approval, a hard end and a fail-closed
+ * entitlement expiry action.
+ */
+model EvaluationProgram {
+  id                      String            @id @default(uuid())
+  program_key             String            @unique
+  program_type            String
+  commercial_account_id   String
+  commercialAccount       CommercialAccount @relation(fields: [commercial_account_id], references: [id])
+  tenant_id               String
+  environment_id          String
+  region                  String
+  starts_at               DateTime
+  ends_at                 DateTime
+  data_classes            String            @default("[]")
+  connector_scope         String            @default("[]")
+  entitlement_scope       String            @default("[]")
+  service_coverage        String            @default("[]")
+  response_authority      String            @default("NONE")
+  payment_requirement     String            @default("NOT_REQUIRED")
+  payment_reference_id    String?
+  conversion_policy       String            @default("EXPIRE")
+  expiry_action           String            @default("REVOKE_ENTITLEMENTS")
+  status                  String            @default("DRAFT")
+  approval_id             String?           @unique
+  requested_by            String
+  approved_by             String?
+  approved_at             DateTime?
+  activated_at            DateTime?
+  expired_at              DateTime?
+  converted_order_id      String?
+  convertedOrder          CommercialOrder?  @relation(fields: [converted_order_id], references: [id])
+  converted_at            DateTime?
+  created_at              DateTime          @default(now())
+  updated_at              DateTime          @updatedAt
+
+  entitlements Entitlement[]
+
+  @@index([commercial_account_id, status])
+  @@index([tenant_id, environment_id, status])
+  @@index([starts_at, status])
+  @@index([ends_at, status])
 }
 
 model ClaimRegister {
@@ -1057,9 +1217,15 @@ model Product {
   catalog_version_id String
   catalogVersion     CatalogVersion @relation(fields: [catalog_version_id], references: [id])
   sku                String
+  internal_product_key String
   offer_family       String
   display_name       String
   metric_family      String
+  launch_class       String         @default("PHASE_GATED")
+  release_status     String         @default("GATED")
+  bundle_rules       String         @default("[]")
+  released_by        String?
+  released_at        DateTime?
   requires           String         @default("[]")
   incompatible_with  String         @default("[]")
   region_scope       String         @default("[]")
@@ -1068,7 +1234,10 @@ model Product {
   priceBooks PriceBook[]
 
   @@unique([catalog_version_id, sku])
+  @@unique([catalog_version_id, internal_product_key])
   @@index([sku])
+  @@index([internal_product_key])
+  @@index([release_status])
 }
 
 model PriceBook {
@@ -1080,6 +1249,7 @@ model PriceBook {
   region             String         @default("GLOBAL")
   currency           String         @default("USD")
   channel            String         @default("DIRECT")
+  visibility         String         @default("BESPOKE")
   unit_price         Float          @default(0.0)
   minimum_commit     Float          @default(0.0)
   overage_rate       Float          @default(0.0)
@@ -1087,6 +1257,10 @@ model PriceBook {
   effective_from     DateTime       @default(now())
   effective_to       DateTime?
   margin_gate_passed Boolean        @default(false)
+  approval_id        String?        @unique
+  public_disclosure_approved Boolean @default(false)
+  approved_by        String?
+  approved_at        DateTime?
   created_at         DateTime       @default(now())
 
   @@index([status])
@@ -1253,16 +1427,20 @@ model TaxRule {
 // ============================================================
 
 model PaymentMethodReference {
-  id                    String   @id @default(uuid())
+  id                    String             @id @default(uuid())
   commercial_account_id String
+  commercialAccount     CommercialAccount  @relation("CommercialAccountPaymentMethods", fields: [commercial_account_id], references: [id])
+  defaultForAccount     CommercialAccount? @relation("CommercialAccountDefaultPaymentMethod")
   provider              String
   provider_token        String
   brand                 String?
   last4                 String?
-  status                String   @default("ACTIVE")
-  created_at            DateTime @default(now())
+  status                String             @default("ACTIVE")
+  created_at            DateTime           @default(now())
+  updated_at            DateTime           @updatedAt
 
-  @@index([commercial_account_id])
+  @@unique([provider, provider_token])
+  @@index([commercial_account_id, status])
 }
 
 model Payment {
@@ -1377,7 +1555,8 @@ model CommercialOrder {
   created_at            DateTime        @default(now())
   updated_at            DateTime        @updatedAt
 
-  lines CommercialOrderLine[]
+  lines                       CommercialOrderLine[]
+  convertedEvaluationPrograms EvaluationProgram[]
 
   @@index([commercial_account_id])
   @@index([status])
@@ -1435,6 +1614,7 @@ model CommercialApproval {
   change_type            String
   object_type            String
   object_id              String
+  tenant_id              String?
   requested_by           String
   requested_at           DateTime  @default(now())
   reason                 String
@@ -1452,6 +1632,7 @@ model CommercialApproval {
   idempotency_key        String?   @unique
 
   @@index([object_type, object_id])
+  @@index([tenant_id, status])
   @@index([status])
 }
 
@@ -1673,13 +1854,42 @@ model IncidentWorkOrder {
 // ============================================================
 
 model Partner {
-  id           String   @id @default(uuid())
-  legal_name   String
-  partner_type String
-  status       String   @default("ACTIVE")
-  created_at   DateTime @default(now())
+  id                       String   @id @default(uuid())
+  legal_name               String
+  partner_type             String
+  managing_organization_id String   @unique
+  status                   String   @default("ACTIVE")
+  created_at               DateTime @default(now())
+
+  delegations       PartnerDelegation[]
+  principalContexts PartnerPrincipalContext[]
 
   @@index([status])
+}
+
+/**
+ * Authoritative identity-to-managing-organization binding. A principal can
+ * operate for only one partner organization and cannot become delegated merely
+ * because a customer grant contains a matching free-form identifier.
+ */
+model PartnerPrincipalContext {
+  id                       String    @id @default(uuid())
+  partner_id               String
+  partner                  Partner   @relation(fields: [partner_id], references: [id])
+  principal_id             String    @unique
+  managing_organization_id String
+  status                   String    @default("ACTIVE")
+  created_by               String
+  deactivated_by           String?
+  deactivated_at           DateTime?
+  deactivation_reason      String?
+  created_at               DateTime  @default(now())
+  updated_at               DateTime  @updatedAt
+
+  delegations PartnerDelegation[]
+
+  @@index([partner_id, status])
+  @@index([managing_organization_id, status])
 }
 
 model PartnerAgreement {
@@ -1706,19 +1916,63 @@ model PartnerAgreement {
  * Explicit, tenant-scoped, revocable, expiring, non-transitive. Never grants pricing authority.
  */
 model PartnerDelegation {
-  id                    String    @id @default(uuid())
-  partner_id            String
-  commercial_account_id String
-  scope                 String    @default("[]")
-  status                String    @default("ACTIVE")
-  granted_by            String
-  expires_at            DateTime?
-  revoked_at            DateTime?
-  created_at            DateTime  @default(now())
+  id                           String                   @id @default(uuid())
+  partner_id                   String
+  partner                      Partner                  @relation(fields: [partner_id], references: [id])
+  managing_organization_id     String
+  partner_principal_id         String
+  partner_principal_context_id String?
+  partnerPrincipalContext      PartnerPrincipalContext? @relation(fields: [partner_principal_context_id], references: [id])
+  commercial_account_id        String
+  tenant_id                    String
+  environment_id               String
+  scope                        String                   @default("[]")
+  customer_visible             Boolean                  @default(true)
+  status                       String                   @default("ACTIVE")
+  granted_by                   String
+  expires_at                   DateTime
+  revoked_by                   String?
+  revocation_reason            String?
+  revoked_at                   DateTime?
+  created_at                   DateTime                 @default(now())
+  updated_at                   DateTime                 @updatedAt
+
+  supportCases PartnerSupportCase[]
 
   @@index([partner_id])
-  @@index([commercial_account_id])
+  @@index([commercial_account_id, tenant_id, environment_id])
+  @@index([tenant_id, status])
+  @@index([partner_principal_id, tenant_id, status])
+  @@index([partner_principal_context_id, status])
+  @@index([managing_organization_id, status])
   @@index([status])
+}
+
+/**
+ * Customer-bound support workflow available to delegated partner operators.
+ * It is intentionally separate from security Case/Incident records and has no
+ * commercial price, payment, entitlement-mutation or response authority.
+ */
+model PartnerSupportCase {
+  id                        String             @id @default(uuid())
+  commercial_account_id     String
+  commercialAccount         CommercialAccount  @relation(fields: [commercial_account_id], references: [id])
+  tenant_id                 String
+  environment_id            String
+  subject                   String
+  description               String
+  priority                  String             @default("NORMAL")
+  status                    String             @default("OPEN")
+  created_by                String
+  updated_by                String?
+  created_via_delegation_id String?
+  createdViaDelegation      PartnerDelegation? @relation(fields: [created_via_delegation_id], references: [id])
+  created_at                DateTime           @default(now())
+  updated_at                DateTime           @updatedAt
+
+  @@index([commercial_account_id, tenant_id, environment_id])
+  @@index([tenant_id, status])
+  @@index([created_via_delegation_id])
 }
 
 model PartnerSettlement {

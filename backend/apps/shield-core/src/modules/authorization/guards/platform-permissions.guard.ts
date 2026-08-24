@@ -6,8 +6,10 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PLATFORM_PERMISSIONS_KEY } from '../decorators/require-platform-permissions.decorator';
+import { REQUIRED_ASSURANCE_KEY } from '../decorators/require-assurance.decorator';
 import { PLATFORM_SCOPE } from '../constants';
 import type { AuthenticatedUser } from '../../identity-adapter/interfaces/jwt-payload.interface';
+import type { Assurance } from '../../identity-adapter/session.entity';
 import {
   assertPermittedAuthorization,
   AuthorizationDecisionService,
@@ -30,8 +32,18 @@ export class PlatformPermissionsGuard implements CanActivate {
         'Platform operation has no declared platform permission',
       );
     }
+    const requiredAssurance = this.reflector.getAllAndOverride<Assurance[]>(
+      REQUIRED_ASSURANCE_KEY,
+      [context.getHandler(), context.getClass()],
+    );
 
-    const request = context.switchToHttp().getRequest();
+    const request = context.switchToHttp().getRequest<{
+      user?: AuthenticatedUser;
+      method: string;
+      params?: Record<string, unknown>;
+      headers: Record<string, string | string[] | undefined>;
+      authorizationDecision?: unknown;
+    }>();
     const user: AuthenticatedUser | undefined = request.user;
     if (!user) {
       throw new ForbiddenException('Authentication required');
@@ -57,6 +69,7 @@ export class PlatformPermissionsGuard implements CanActivate {
       resourceTenantId: PLATFORM_SCOPE,
       purpose: 'platform-administration',
       requiredPermissions,
+      requiredAssurance,
       assurance: user.assurance,
       riskState: user.riskState,
       policyVersion: user.policyVersion,

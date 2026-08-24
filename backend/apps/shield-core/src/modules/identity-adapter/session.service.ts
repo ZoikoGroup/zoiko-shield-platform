@@ -117,6 +117,17 @@ export class SessionService {
     );
   }
 
+  async revokeForPrincipalTenant(
+    principalId: string,
+    tenantId: string,
+    reason = 'DELEGATED_AUTHORITY_CHANGED',
+  ): Promise<void> {
+    await this.sessionRepository.update(
+      { principalId, tenantId, revokedAt: IsNull() },
+      { revokedAt: new Date(), revokedReason: reason },
+    );
+  }
+
   async revokeForMembership(
     membershipId: string,
     reason = 'MEMBERSHIP_CHANGED',

@@ -82,6 +82,35 @@ describe('PlatformPermissionsGuard', () => {
     await expect(guard.canActivate(context(platformUser))).resolves.toBe(true);
   });
 
+  it('passes a declared step-up assurance requirement to the PDP', async () => {
+    const reflector = {
+      getAllAndOverride: jest
+        .fn()
+        .mockReturnValueOnce(['platform:commercial-account:manage'])
+        .mockReturnValueOnce(['PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY']),
+    } as unknown as Reflector;
+    const decision = {
+      evaluate: jest.fn().mockResolvedValue({
+        authorizationDecisionId: 'decision-1',
+        decision: 'PERMIT',
+        reasonCode: 'POLICY_PERMIT',
+        obligations: ['AUDIT_WRITE'],
+      }),
+    };
+    const guard = new PlatformPermissionsGuard(
+      reflector,
+      decision as unknown as AuthorizationDecisionService,
+    );
+
+    await guard.canActivate(context(platformUser));
+
+    expect(decision.evaluate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requiredAssurance: ['PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY'],
+      }),
+    );
+  });
+
   it('surfaces an indeterminate policy dependency as unavailable', async () => {
     const reflector = {
       getAllAndOverride: jest.fn().mockReturnValue(['platform:tenant:onboard']),

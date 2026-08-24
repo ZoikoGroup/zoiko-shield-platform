@@ -10,10 +10,13 @@ import { PERMISSIONS_KEY } from '../decorators/require-permissions.decorator';
 import type { AuthenticatedUser } from '../../identity-adapter/interfaces/jwt-payload.interface';
 import { PERMISSION_CODES, PLATFORM_SCOPE } from '../constants';
 import { PLATFORM_PERMISSIONS_KEY } from '../decorators/require-platform-permissions.decorator';
+import { REQUIRED_ASSURANCE_KEY } from '../decorators/require-assurance.decorator';
+import type { Assurance } from '../../identity-adapter/session.entity';
 import {
   assertPermittedAuthorization,
   AuthorizationDecisionService,
 } from '../../authorization-decision/authorization-decision.service';
+import { PARTNER_DELEGATION_SCOPE_KEY } from '../../partners/require-partner-delegation-scope.decorator';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -31,7 +34,24 @@ export class PermissionsGuard implements CanActivate {
       PLATFORM_PERMISSIONS_KEY,
       [context.getHandler(), context.getClass()],
     );
-    const request = context.switchToHttp().getRequest();
+    const requiredAssurance = this.reflector.getAllAndOverride<Assurance[]>(
+      REQUIRED_ASSURANCE_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+    const partnerDelegationScope = this.reflector.getAllAndOverride<string>(
+      PARTNER_DELEGATION_SCOPE_KEY,
+      [context.getHandler(), context.getClass()],
+    );
+    const request = context.switchToHttp().getRequest<{
+      user?: AuthenticatedUser;
+      method: string;
+      headers: Record<string, string | string[] | undefined>;
+      params?: Record<string, unknown>;
+      query?: Record<string, unknown>;
+      body?: Record<string, unknown>;
+      tenantId?: string;
+      authorizationDecision?: unknown;
+    }>();
     const user: AuthenticatedUser | undefined = request.user;
     if (!user) {
       throw new ForbiddenException('Authentication is required');
@@ -101,6 +121,14 @@ export class PermissionsGuard implements CanActivate {
     )?.[1] as string | undefined;
     const correlationHeader =
       request.headers['x-correlation-id'] ?? request.headers['x-request-id'];
+    const managingOrganizationHeader =
+      request.headers['x-managing-organization-id'];
+    const partnerCommercialAccountId =
+      typeof request.params?.accountId === 'string'
+        ? request.params.accountId
+        : typeof request.query?.commercialAccountId === 'string'
+          ? request.query.commercialAccountId
+          : undefined;
     const result = await this.authorizationDecisionService.evaluate({
       actorId: user.id,
       tenantId,
@@ -115,11 +143,18 @@ export class PermissionsGuard implements CanActivate {
           ? request.headers['x-purpose']
           : 'interactive-api',
       requiredPermissions,
+      requiredAssurance,
       assurance: user.assurance,
       riskState: user.riskState,
       policyVersion: user.policyVersion,
       correlationId:
         typeof correlationHeader === 'string' ? correlationHeader : undefined,
+      partnerDelegationScope,
+      partnerCommercialAccountId,
+      partnerManagingOrganizationId:
+        typeof managingOrganizationHeader === 'string'
+          ? managingOrganizationHeader
+          : undefined,
     });
 
     request.authorizationDecision = result;

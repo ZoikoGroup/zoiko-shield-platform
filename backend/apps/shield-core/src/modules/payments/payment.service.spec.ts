@@ -16,8 +16,17 @@ describe('PaymentService (ZS-COM-BILL-001 Part 9)', () => {
   beforeEach(async () => {
     prismaMock = {
       commercialInvoice: { findUnique: jest.fn() },
-      entitlement: {
+      commercialAccountTenantBinding: {
         findFirst: jest.fn().mockResolvedValue({ id: 'entitlement-1' }),
+      },
+      paymentMethodReference: {
+        findFirst: jest.fn().mockResolvedValue({
+          id: 'method-1',
+          commercial_account_id: 'acct-1',
+          provider: 'stripe',
+          provider_token: 'tok-1',
+          status: 'ACTIVE',
+        }),
       },
       payment: {
         create: jest.fn(),
@@ -59,7 +68,7 @@ describe('PaymentService (ZS-COM-BILL-001 Part 9)', () => {
     commercialAccountId: 'acct-1',
     invoiceId: 'inv-1',
     amount: 100,
-    paymentMethodToken: 'tok-1',
+    paymentMethodReferenceId: 'method-1',
   };
 
   it('refuses to accept payment against a non-ISSUED (mutable) invoice', async () => {
@@ -80,6 +89,7 @@ describe('PaymentService (ZS-COM-BILL-001 Part 9)', () => {
       id: 'inv-1',
       status: 'ISSUED',
       currency: 'USD',
+      commercial_account_id: 'acct-1',
     });
     providerMock.createPayment.mockResolvedValue({
       providerPaymentId: 'p-1',
@@ -93,6 +103,41 @@ describe('PaymentService (ZS-COM-BILL-001 Part 9)', () => {
     const payment = await service.createPayment('tenant-a', dto, 'idem-1');
 
     expect(payment.status).toBe('AUTHORIZED');
+    expect(providerMock.createPayment).toHaveBeenCalledWith(
+      100,
+      'USD',
+      'tok-1',
+    );
+  });
+
+  it('rejects an issued invoice belonging to another commercial account', async () => {
+    prismaMock.commercialInvoice.findUnique.mockResolvedValue({
+      id: 'inv-1',
+      status: 'ISSUED',
+      currency: 'USD',
+      commercial_account_id: 'acct-other',
+    });
+
+    await expect(
+      service.createPayment('tenant-a', dto, 'idem-1'),
+    ).rejects.toThrow(ConflictException);
+    expect(prismaMock.paymentMethodReference.findFirst).not.toHaveBeenCalled();
+    expect(providerMock.createPayment).not.toHaveBeenCalled();
+  });
+
+  it('rejects a payment-method reference that is not active for the account', async () => {
+    prismaMock.commercialInvoice.findUnique.mockResolvedValue({
+      id: 'inv-1',
+      status: 'ISSUED',
+      currency: 'USD',
+      commercial_account_id: 'acct-1',
+    });
+    prismaMock.paymentMethodReference.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.createPayment('tenant-a', dto, 'idem-1'),
+    ).rejects.toThrow(NotFoundException);
+    expect(providerMock.createPayment).not.toHaveBeenCalled();
   });
 
   it('OPS-01: refuses to charge while the kill switch blocks AUTOMATIC_CHARGING', async () => {
