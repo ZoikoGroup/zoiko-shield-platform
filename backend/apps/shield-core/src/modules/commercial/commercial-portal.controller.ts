@@ -42,32 +42,48 @@ export class CommercialPortalController {
       orderBy: { created_at: 'desc' },
     });
 
+    const accountIds = Array.from(
+      new Set(
+        entitlements
+          .map((e) => e.commercial_account_id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    );
+
     // 2. Fetch Protected Resource Observations
-    const resourceCounts = await this.prisma.protectedResource.groupBy({
+    const resourceCounts = await this.prisma.resourceObservation.groupBy({
       by: ['resource_type', 'coverage_state'],
       where: { tenant_id: tenantId },
       _count: { id: true },
     });
 
     // 3. Fetch Service Obligations
-    const obligations = await this.prisma.serviceObligation.findMany({
-      where: { tenant_id: tenantId },
-      orderBy: { due_at: 'asc' },
-      take: 10,
-    });
+    const obligations =
+      accountIds.length > 0
+        ? await this.prisma.serviceObligation.findMany({
+            where: { contract: { commercial_account_id: { in: accountIds } } },
+            orderBy: { due_at: 'asc' },
+            take: 10,
+          })
+        : [];
 
     // 4. Fetch Invoices & Payments
-    const invoices = await this.prisma.commercialInvoice.findMany({
-      where: { tenant_id: tenantId },
-      include: { payments: true, serviceCredits: true },
-      orderBy: { created_at: 'desc' },
-      take: 10,
-    });
+    const invoices =
+      accountIds.length > 0
+        ? await this.prisma.commercialInvoice.findMany({
+            where: { commercial_account_id: { in: accountIds } },
+            include: { payments: true, lines: true, creditNotes: true },
+            orderBy: { created_at: 'desc' },
+            take: 10,
+          })
+        : [];
+
+
 
     // 5. Fetch Telemetry Ingestion Meter Summaries
-    const telemetryMeters = await this.prisma.meterReading.findMany({
+    const telemetryMeters = await this.prisma.meterEvent.findMany({
       where: { tenant_id: tenantId },
-      orderBy: { window_start: 'desc' },
+      orderBy: { occurred_at: 'desc' },
       take: 14,
     });
 
@@ -110,9 +126,9 @@ export class CommercialPortalController {
   ) {
     const tenantId = requireTenantId(headerTenantId, queryTenantId);
 
-    const readings = await this.prisma.meterReading.findMany({
+    const readings = await this.prisma.meterEvent.findMany({
       where: { tenant_id: tenantId },
-      orderBy: { window_start: 'desc' },
+      orderBy: { occurred_at: 'desc' },
       take: 30,
     });
 
@@ -130,3 +146,4 @@ export class CommercialPortalController {
     };
   }
 }
+

@@ -18,7 +18,7 @@ describe('ScheduledGoldsetRunnerWorker (ZS-ENG-AI-001 §19-20 AI Regression Runn
       activateKillSwitch: jest.fn(),
     };
     degradationMock = {
-      transitionState: jest.fn(),
+      resolveOperatingMode: jest.fn(),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -50,7 +50,7 @@ describe('ScheduledGoldsetRunnerWorker (ZS-ENG-AI-001 §19-20 AI Regression Runn
 
     expect(report.releaseDecision).toBe('APPROVED');
     expect(killSwitchMock.activateKillSwitch).not.toHaveBeenCalled();
-    expect(degradationMock.transitionState).not.toHaveBeenCalled();
+    expect(degradationMock.resolveOperatingMode).not.toHaveBeenCalled();
   });
 
   it('autonomously activates AI kill switch and drops to deterministic fallback when zero-tolerance failure occurs', async () => {
@@ -72,12 +72,13 @@ describe('ScheduledGoldsetRunnerWorker (ZS-ENG-AI-001 §19-20 AI Regression Runn
     expect(killSwitchMock.activateKillSwitch).toHaveBeenCalledWith(
       expect.objectContaining({
         scope: 'GLOBAL',
+        targetId: '*',
         activatedBy: 'SCHEDULED_GOLDSET_RUNNER_AUTONOMOUS',
       }),
     );
-    expect(degradationMock.transitionState).toHaveBeenCalledWith(
-      'ALL_ROUTES',
-      'DEGRADED_DETERMINISTIC_FALLBACK',
+    expect(degradationMock.resolveOperatingMode).toHaveBeenCalledWith(
+      'MODEL_UNAVAILABLE',
+      'Automated evaluation failure',
     );
   });
 });

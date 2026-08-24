@@ -2,18 +2,16 @@ import {
   Controller,
   Get,
   Post,
-  Param,
   Body,
   UseGuards,
   HttpStatus,
   Query,
 } from '@nestjs/common';
 import { InternalAuthGuard } from '../internal-client/internal-auth.guard';
-import { ModelRegistryService } from '../model-registry/model-registry.service';
-import { PromptRegistryService } from '../prompt-registry/prompt-registry.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { AiKillSwitchService } from '../kill-switch/ai-kill-switch.service';
-import { AiFinopsBudgetService } from '../usage-control/ai-finops-budget.service';
-import { ToolCapabilityService } from '../tools/tool-capability.service';
+import { AiFinOpsBudgetService } from '../usage-control/ai-finops-budget.service';
+import { TOOL_REGISTRY } from '../tools/tool-capability.service';
 
 /**
  * ZS-ENG-AI-001 §28: Required Engineering and Governance Views (V01 to V30).
@@ -24,11 +22,9 @@ import { ToolCapabilityService } from '../tools/tool-capability.service';
 @UseGuards(InternalAuthGuard)
 export class AiGovernanceViewsController {
   constructor(
-    private readonly modelRegistry: ModelRegistryService,
-    private readonly promptRegistry: PromptRegistryService,
+    private readonly prisma: PrismaService,
     private readonly killSwitchService: AiKillSwitchService,
-    private readonly finopsBudget: AiFinopsBudgetService,
-    private readonly toolCapability: ToolCapabilityService,
+    private readonly finopsBudget: AiFinOpsBudgetService,
   ) {}
 
   /**
@@ -38,8 +34,9 @@ export class AiGovernanceViewsController {
   @Get('v01-ops-center')
   async getOpsCenterView(@Query('tenantId') tenantId?: string) {
     const budgetStatus = tenantId
-      ? await this.finopsBudget.getBudgetStatus(tenantId)
+      ? this.finopsBudget.getTenantUsageSummary(tenantId)
       : null;
+
 
     return {
       statusCode: HttpStatus.OK,
@@ -65,7 +62,9 @@ export class AiGovernanceViewsController {
    */
   @Get('v04-models')
   async getModelRegistryView() {
-    const models = await this.modelRegistry.listApprovedModels();
+    const models = await this.prisma.modelProfile.findMany({
+      orderBy: { created_at: 'desc' },
+    });
     return {
       statusCode: HttpStatus.OK,
       data: {
@@ -81,7 +80,9 @@ export class AiGovernanceViewsController {
    */
   @Get('v06-prompts')
   async getPromptRegistryView() {
-    const prompts = await this.promptRegistry.listPromptProfiles();
+    const prompts = await this.prisma.promptProfile.findMany({
+      orderBy: { created_at: 'desc' },
+    });
     return {
       statusCode: HttpStatus.OK,
       data: {
@@ -97,11 +98,10 @@ export class AiGovernanceViewsController {
    */
   @Get('v12-tools')
   async getToolMatrixView() {
-    const tools = this.toolCapability.listRegisteredTools();
     return {
       statusCode: HttpStatus.OK,
       data: {
-        registeredTools: tools,
+        registeredTools: TOOL_REGISTRY,
         sideEffectHierarchy: [
           'T0_PURE_READ',
           'T1_DERIVED_COMPUTATION',
@@ -120,7 +120,7 @@ export class AiGovernanceViewsController {
    */
   @Get('v24-kill-switch-status')
   async getKillSwitchStatus() {
-    const status = await this.killSwitchService.getAllKillStates();
+    const status = this.killSwitchService.listActiveSwitches();
     return {
       statusCode: HttpStatus.OK,
       data: status,
@@ -138,17 +138,25 @@ export class AiGovernanceViewsController {
       reason: string;
     },
   ) {
-    const result = await this.killSwitchService.setKillState(
-      body.scope,
-      body.targetId,
-      body.active,
-      body.approver,
-      body.reason,
-    );
+    if (body.active) {
+      this.killSwitchService.activateKillSwitch({
+        scope: body.scope,
+        targetId: body.targetId,
+        reason: body.reason,
+        activatedBy: body.approver,
+      });
+    } else {
+      this.killSwitchService.deactivateKillSwitch({
+        scope: body.scope,
+        targetId: body.targetId,
+        deactivatedBy: body.approver,
+      });
+    }
+
     return {
       statusCode: HttpStatus.OK,
       message: `Kill switch '${body.scope}:${body.targetId}' updated to ${body.active ? 'ACTIVE (KILLED)' : 'INACTIVE (RESTORED)'}`,
-      data: result,
+      data: this.killSwitchService.listActiveSwitches(),
     };
   }
 }

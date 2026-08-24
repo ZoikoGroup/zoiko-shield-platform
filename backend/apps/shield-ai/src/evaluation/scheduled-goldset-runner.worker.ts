@@ -3,7 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import {
   EvaluationRunnerService,
   EvaluationTestCase,
-  EvaluationReport,
+  EvaluationSuiteReport,
 } from './evaluation-runner.service';
 import { AiKillSwitchService } from '../kill-switch/ai-kill-switch.service';
 import { SafeDegradationService } from '../degradation/safe-degradation.service';
@@ -19,8 +19,8 @@ import { SafeDegradationService } from '../degradation/safe-degradation.service'
  *    - Evidence fabrication / ungrounded hallucination
  *    - Adversarial prompt injection bypass
  * 3. Autonomous Fail-Safe: If any critical zero-tolerance failure occurs,
- *    it automatically activates the AI Kill Switch and drops the system into
- *    DEGRADED_DETERMINISTIC_FALLBACK mode.
+ *    it automatically activates the AI Kill Switch and triggers safe degradation
+ *    into deterministic fallback mode.
  */
 @Injectable()
 export class ScheduledGoldsetRunnerWorker {
@@ -36,7 +36,7 @@ export class ScheduledGoldsetRunnerWorker {
    * Run gold-set regression manifest on schedule
    */
   @Cron(CronExpression.EVERY_HOUR)
-  async executeScheduledEvaluation(): Promise<EvaluationReport> {
+  async executeScheduledEvaluation(): Promise<EvaluationSuiteReport> {
     this.logger.log('Starting scheduled AI Gold-Set & Red-Team Regression Sweep...');
 
     const manifest = this.loadGoldSetManifest();
@@ -48,14 +48,15 @@ export class ScheduledGoldsetRunnerWorker {
       );
 
       // 1. Autonomous Kill Switch Activation
-      await this.killSwitchService.activateKillSwitch({
+      this.killSwitchService.activateKillSwitch({
         scope: 'GLOBAL',
+        targetId: '*',
         reason: `Automated gold-set zero-tolerance failure: ${report.blockingReasons[0]}`,
         activatedBy: 'SCHEDULED_GOLDSET_RUNNER_AUTONOMOUS',
       });
 
-      // 2. Safe Degradation into Deterministic Fallback State
-      this.degradationService.transitionState('ALL_ROUTES', 'DEGRADED_DETERMINISTIC_FALLBACK');
+      // 2. Safe Degradation into Deterministic Fallback Mode
+      this.degradationService.resolveOperatingMode('MODEL_UNAVAILABLE', 'Automated evaluation failure');
     } else {
       this.logger.log(
         `Scheduled AI evaluation PASSED. Mean Grounding: ${report.meanGroundingScore}, Citation Precision: ${report.meanCitationPrecision}`,
