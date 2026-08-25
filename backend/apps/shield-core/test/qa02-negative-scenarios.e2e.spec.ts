@@ -21,6 +21,8 @@ import { PrismaService } from '../src/prisma/prisma.service';
  * 7. Granular Kill-Switch Interception (Immediate Route Freezing)
  * 8. Evidence State Preservation (Cannot Upgrade Partial/Stale Evidence)
  */
+import { CommercialApprovalService } from '../src/modules/approvals/commercial-approval.service';
+
 describe('QA-02 Comprehensive Negative Testing Matrix (G1 Production Gate)', () => {
   let catalogService: CatalogService;
   let agentRunner: AgentRunnerService;
@@ -45,6 +47,12 @@ describe('QA-02 Comprehensive Negative Testing Matrix (G1 Production Gate)', () 
       },
     };
 
+    const approvalsMock = {
+      requestApproval: jest.fn(),
+      decideApproval: jest.fn(),
+      getApprovalById: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         CatalogService,
@@ -55,6 +63,7 @@ describe('QA-02 Comprehensive Negative Testing Matrix (G1 Production Gate)', () 
         AiKillSwitchService,
         CommercialKillSwitchService,
         { provide: PrismaService, useValue: prismaMock },
+        { provide: CommercialApprovalService, useValue: approvalsMock },
       ],
     }).compile();
 

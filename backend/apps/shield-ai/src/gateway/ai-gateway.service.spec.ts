@@ -13,6 +13,7 @@ import { KafkaProducerService } from '../kafka/kafka-producer.service';
 import { PolicyDeniedException } from './fallback/fallback.exceptions';
 
 import { AiKillSwitchService } from '../kill-switch/ai-kill-switch.service';
+import { ShieldCoreClient } from '../internal-client/shield-core.client';
 
 describe('AiGatewayService', () => {
   let service: AiGatewayService;
@@ -27,6 +28,7 @@ describe('AiGatewayService', () => {
   let aiOutputService: any;
   let kafkaProducer: any;
   let killSwitch: any;
+  let shieldCore: any;
 
   beforeEach(async () => {
     policyService = { evaluate: jest.fn() };
@@ -40,6 +42,7 @@ describe('AiGatewayService', () => {
     aiOutputService = { create: jest.fn() };
     kafkaProducer = { publishEvent: jest.fn() };
     killSwitch = { assertNotBlocked: jest.fn() };
+    shieldCore = { recordUsage: jest.fn(), markBillable: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -55,6 +58,7 @@ describe('AiGatewayService', () => {
         { provide: AiOutputService, useValue: aiOutputService },
         { provide: KafkaProducerService, useValue: kafkaProducer },
         { provide: AiKillSwitchService, useValue: killSwitch },
+        { provide: ShieldCoreClient, useValue: shieldCore },
       ],
     }).compile();
 

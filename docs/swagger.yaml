@@ -38890,6 +38890,8 @@ paths:
       security:
         - CookieAuth: []
         - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
   /api/v1/ai/budgets/over-budget:
     get:
       tags:
@@ -38924,13 +38926,7 @@ paths:
         - CookieAuth: []
         - BearerAuth: []
       parameters:
-        - name: tenantId
-          in: query
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: Required tenant ID value.
+        - $ref: '#/components/parameters/TenantIdHeader'
   /api/v1/reconciliation/runs:
     post:
       tags:
@@ -44560,3 +44556,235 @@ paths:
                 type: object
                 additionalProperties: true
       operationId: getCommercialPortalUsage
+
+  /api/v1/ai/governance/profiles:
+    get:
+      tags:
+        - AIGovernance
+      summary: List AI governance profiles
+      description: List AI governance profiles for the tenant. Requires TENANT_AI_GOVERNANCE_READ permission.
+      operationId: getAiGovernanceProfiles
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: List of AI governance profiles
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - AIGovernance
+      summary: Create AI governance profile
+      description: Create a new AI governance profile for the tenant. Requires TENANT_AI_GOVERNANCE_MANAGE permission and MFA step-up.
+      operationId: postAiGovernanceProfiles
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '201':
+          description: AI governance profile created
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ai/governance/profiles/provider-cost-events:
+    get:
+      tags:
+        - AIGovernance
+      summary: List AI provider cost events
+      description: List AI provider cost events for the tenant. Requires TENANT_AI_GOVERNANCE_READ permission.
+      operationId: getAiGovernanceProfilesProviderCostEvents
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: List of provider cost events
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ai/governance/profiles/{id}/visibility:
+    get:
+      tags:
+        - AIGovernance
+      summary: Get AI governance profile usage visibility
+      description: Get usage visibility summary for a specific AI governance profile. Requires TENANT_AI_GOVERNANCE_READ permission.
+      operationId: getAiGovernanceProfileVisibility
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: AI governance profile ID
+      responses:
+        '200':
+          description: AI governance profile visibility
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ai/governance/profiles/{id}/decision:
+    patch:
+      tags:
+        - AIGovernance
+      summary: Submit AI governance profile approval decision
+      description: Submit an approve or reject decision on an AI governance profile. Requires TENANT_AI_GOVERNANCE_APPROVE permission and MFA step-up.
+      operationId: patchAiGovernanceProfileDecision
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: AI governance profile ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: Decision recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ai/governance/profiles/{id}/activate:
+    post:
+      tags:
+        - AIGovernance
+      summary: Activate AI governance profile
+      description: Activate an approved AI governance profile. Requires TENANT_AI_GOVERNANCE_MANAGE permission and MFA step-up.
+      operationId: postAiGovernanceProfileActivate
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: AI governance profile ID
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        '200':
+          description: AI governance profile activated
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - profile not in activatable state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
