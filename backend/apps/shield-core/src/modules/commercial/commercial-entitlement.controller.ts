@@ -22,7 +22,6 @@ import { CurrentUser } from '../identity-adapter/decorators/current-user.decorat
 import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
 import {
   CommercialEntitlementService,
-  CreateCommercialAccountDto,
   GrantEntitlementDto,
 } from './commercial-entitlement.service';
 import { CLAIM_CHANNELS, ClaimRegisterService } from './claim-register.service';
@@ -65,34 +64,6 @@ export class CommercialEntitlementController {
     private readonly commercialService: CommercialEntitlementService,
     private readonly claimRegisterService: ClaimRegisterService,
   ) {}
-
-  /**
-   * POST /api/v1/commercial/accounts
-   * Create commercial account
-   */
-  @Post('accounts')
-  async createCommercialAccount(@Body() dto: CreateCommercialAccountDto) {
-    const account = await this.commercialService.createCommercialAccount(dto);
-    return {
-      statusCode: HttpStatus.CREATED,
-      message: 'Commercial account created successfully',
-      data: account,
-    };
-  }
-
-  /**
-   * GET /api/v1/commercial/accounts/:accountId
-   * Get single commercial account details
-   */
-  @Get('accounts/:accountId')
-  async getCommercialAccountById(@Param('accountId') accountId: string) {
-    const account =
-      await this.commercialService.getCommercialAccountById(accountId);
-    return {
-      statusCode: HttpStatus.OK,
-      data: account,
-    };
-  }
 
   /**
    * POST /api/v1/commercial/entitlements

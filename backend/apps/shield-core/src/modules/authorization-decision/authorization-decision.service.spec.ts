@@ -35,6 +35,10 @@ describe('AuthorizationDecisionService', () => {
       },
       entitlement: { findFirst: jest.fn() },
       relationship: { findFirst: jest.fn() },
+      partnerPrincipalContext: {
+        findUnique: jest.fn().mockResolvedValue(null),
+      },
+      partnerDelegation: { findFirst: jest.fn() },
     };
     const authorization = {
       hasTenantAccess: jest.fn().mockResolvedValue(true),
@@ -124,6 +128,84 @@ describe('AuthorizationDecisionService', () => {
     expect(result.decision).toBe('DENY');
     expect(result.reasonCode).toBe('STEP_UP_REQUIRED');
     expect(result.obligations).toContain('REQUIRE_FRESH_STEP_UP');
+  });
+
+  it('denies an authoritative partner identity on an ordinary tenant read with no declared delegation scope', async () => {
+    const { service, prisma, authorization } = setup();
+    prisma.partnerPrincipalContext.findUnique.mockResolvedValue({
+      id: 'partner-context-1',
+      status: 'ACTIVE',
+      managing_organization_id: 'mssp-org-1',
+    });
+    authorization.getPermissionCodesForPrincipal.mockResolvedValue([
+      'case:read',
+      'tenant:partner-delegation:use',
+    ]);
+
+    const result = await service.evaluate(input);
+
+    expect(result.decision).toBe('DENY');
+    expect(result.reasonCode).toBe('PARTNER_DELEGATION_CONTEXT_REQUIRED');
+    expect(prisma.partnerDelegation.findFirst).not.toHaveBeenCalled();
+  });
+
+  it('permits a partner operation only when the exact customer-visible grant contains its declared scope', async () => {
+    const { service, prisma, authorization } = setup();
+    prisma.partnerPrincipalContext.findUnique.mockResolvedValue({
+      id: 'partner-context-1',
+      status: 'ACTIVE',
+      managing_organization_id: 'mssp-org-1',
+    });
+    prisma.partnerDelegation.findFirst.mockResolvedValue({
+      scope: '["VIEW_TICKETS"]',
+    });
+    authorization.getPermissionCodesForPrincipal.mockResolvedValue([
+      'case:read',
+      'tenant:partner-delegation:use',
+    ]);
+
+    const result = await service.evaluate({
+      ...input,
+      partnerDelegationScope: 'VIEW_TICKETS',
+      partnerCommercialAccountId: 'account-1',
+      partnerManagingOrganizationId: 'mssp-org-1',
+    });
+
+    expect(result.decision).toBe('PERMIT');
+    expect(prisma.partnerDelegation.findFirst).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        partner_principal_context_id: 'partner-context-1',
+        partner_principal_id: 'principal-1',
+        commercial_account_id: 'account-1',
+        tenant_id: 'tenant-a',
+        environment_id: 'env-a',
+        customer_visible: true,
+      }),
+      select: { scope: true },
+    });
+  });
+
+  it('denies a partner request whose managing organization header differs from identity authority', async () => {
+    const { service, prisma, authorization } = setup();
+    prisma.partnerPrincipalContext.findUnique.mockResolvedValue({
+      id: 'partner-context-1',
+      status: 'ACTIVE',
+      managing_organization_id: 'mssp-org-1',
+    });
+    authorization.getPermissionCodesForPrincipal.mockResolvedValue([
+      'case:read',
+      'tenant:partner-delegation:use',
+    ]);
+
+    const result = await service.evaluate({
+      ...input,
+      partnerDelegationScope: 'VIEW_TICKETS',
+      partnerCommercialAccountId: 'account-1',
+      partnerManagingOrganizationId: 'another-org',
+    });
+
+    expect(result.decision).toBe('DENY');
+    expect(result.reasonCode).toBe('PARTNER_MANAGING_ORGANIZATION_MISMATCH');
   });
 
   it('records INDETERMINATE and fails closed when an authority is unavailable', async () => {

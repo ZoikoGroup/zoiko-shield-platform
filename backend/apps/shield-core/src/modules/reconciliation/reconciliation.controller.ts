@@ -69,6 +69,13 @@ export class ReconciliationController {
     return { statusCode: HttpStatus.OK, data: result };
   }
 
+  @Post('runs/:id/checks/meter-billing-exports')
+  async checkMeterBillingExports(@Param('id') id: string) {
+    const result =
+      await this.reconciliationService.reconcileMeterBillingExports(id);
+    return { statusCode: HttpStatus.OK, data: result };
+  }
+
   @Patch('runs/:id/complete')
   async completeRun(@Param('id') id: string) {
     const run = await this.reconciliationService.completeRun(id);

@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthorizationService } from '../authorization/authorization.service';
+import { PERMISSION_CODES } from '../authorization/constants';
 import type { Assurance } from '../identity-adapter/session.entity';
 
 export type AuthorizationDecisionEffect =
@@ -45,6 +46,9 @@ export interface EvaluateInput {
   policyVersion?: string;
   correlationId?: string;
   applicable?: boolean;
+  partnerDelegationScope?: string;
+  partnerCommercialAccountId?: string;
+  partnerManagingOrganizationId?: string;
 }
 
 export interface AuthorizationDecisionResult {
@@ -185,6 +189,10 @@ export class AuthorizationDecisionService {
       requiredPermissions: permissions,
       policyVersion: input.policyVersion?.trim() || '1.0',
       applicable: input.applicable ?? true,
+      partnerDelegationScope: input.partnerDelegationScope?.trim(),
+      partnerCommercialAccountId: input.partnerCommercialAccountId?.trim(),
+      partnerManagingOrganizationId:
+        input.partnerManagingOrganizationId?.trim(),
     };
   }
 
@@ -275,6 +283,92 @@ export class AuthorizationDecisionService {
         reason: `Actor lacks required permission(s): ${missingPermissions.join(', ')}`,
         obligations: ['DENY_EXECUTION'],
       };
+    }
+
+    const partnerPrincipalAuthority = this.prisma.partnerPrincipalContext;
+    const partnerContext = partnerPrincipalAuthority?.findUnique
+      ? await partnerPrincipalAuthority.findUnique({
+          where: { principal_id: input.actorId },
+        })
+      : null;
+    const hasDelegatedOperatorPermission = grantedPermissions.includes(
+      PERMISSION_CODES.TENANT_PARTNER_DELEGATION_USE,
+    );
+    if (partnerContext || hasDelegatedOperatorPermission) {
+      if (!partnerContext || partnerContext.status !== 'ACTIVE') {
+        return {
+          decision: 'DENY',
+          reasonCode: 'ACTIVE_PARTNER_PRINCIPAL_CONTEXT_REQUIRED',
+          reason:
+            'A delegated operator requires an active authoritative partner identity context',
+          obligations: ['DENY_EXECUTION', 'REVOKE_STALE_SESSION'],
+        };
+      }
+
+      // The diagnostic check resolves its exact grant in the domain service.
+      // Every actual operational effect must carry declarative scope metadata
+      // into this shared decision point.
+      const diagnosticOnly =
+        input.action === PERMISSION_CODES.TENANT_PARTNER_DELEGATION_USE &&
+        !input.partnerDelegationScope;
+      if (!diagnosticOnly) {
+        if (
+          !input.environmentId ||
+          !input.partnerDelegationScope ||
+          !input.partnerCommercialAccountId ||
+          !input.partnerManagingOrganizationId
+        ) {
+          return {
+            decision: 'DENY',
+            reasonCode: 'PARTNER_DELEGATION_CONTEXT_REQUIRED',
+            reason:
+              'A delegated partner request must declare its customer account, managing organization, environment and operation scope',
+            obligations: ['DENY_EXECUTION'],
+          };
+        }
+        if (
+          partnerContext.managing_organization_id !==
+          input.partnerManagingOrganizationId
+        ) {
+          return {
+            decision: 'DENY',
+            reasonCode: 'PARTNER_MANAGING_ORGANIZATION_MISMATCH',
+            reason:
+              'The request managing organization does not match the authoritative partner identity context',
+            obligations: ['DENY_EXECUTION', 'AUDIT_ISOLATION_VIOLATION'],
+          };
+        }
+
+        const now = new Date();
+        const delegation = await this.prisma.partnerDelegation.findFirst({
+          where: {
+            partner_principal_context_id: partnerContext.id,
+            partner_principal_id: input.actorId,
+            managing_organization_id: input.partnerManagingOrganizationId,
+            commercial_account_id: input.partnerCommercialAccountId,
+            tenant_id: input.tenantId,
+            environment_id: input.environmentId,
+            status: 'ACTIVE',
+            customer_visible: true,
+            expires_at: { gt: now },
+          },
+          select: { scope: true },
+        });
+        if (
+          !delegation ||
+          !this.parseStringArray(delegation.scope).includes(
+            input.partnerDelegationScope,
+          )
+        ) {
+          return {
+            decision: 'DENY',
+            reasonCode: 'PARTNER_DELEGATION_SCOPE_REQUIRED',
+            reason:
+              'No current customer-visible delegation grants this operation for the requested account boundary',
+            obligations: ['DENY_EXECUTION'],
+          };
+        }
+      }
     }
 
     if (input.requiredEntitlement) {
@@ -371,8 +465,27 @@ export class AuthorizationDecisionService {
           requiredAssurance: input.requiredAssurance ?? [],
           riskState: input.riskState ?? null,
           policyVersion: input.policyVersion,
+          partnerDelegationScope: input.partnerDelegationScope ?? null,
+          partnerCommercialAccountId: input.partnerCommercialAccountId ?? null,
+          partnerManagingOrganizationId:
+            input.partnerManagingOrganizationId ?? null,
         }),
       )
       .digest('hex');
+  }
+
+  private parseStringArray(value: unknown): string[] {
+    if (Array.isArray(value)) {
+      return value.filter((item): item is string => typeof item === 'string');
+    }
+    if (typeof value !== 'string') return [];
+    try {
+      const parsed: unknown = JSON.parse(value);
+      return Array.isArray(parsed)
+        ? parsed.filter((item): item is string => typeof item === 'string')
+        : [];
+    } catch {
+      return [];
+    }
   }
 }

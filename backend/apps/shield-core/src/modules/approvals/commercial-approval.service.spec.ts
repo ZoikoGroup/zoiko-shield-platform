@@ -38,12 +38,22 @@ describe('CommercialApprovalService (maker-checker, ZS-COM-BILL-001 Part 20)', (
       changeType: 'NON_STANDARD_DISCOUNT',
       objectType: 'CommercialQuote',
       objectId: 'q-1',
+      tenantId: 'tenant-1',
       requestedBy: 'alice',
       reason: 'launch discount',
     });
 
     expect(approval.status).toBe('PENDING_APPROVAL');
-    expect(prismaMock.commercialEvent.create).toHaveBeenCalled();
+    expect(prismaMock.commercialApproval.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ tenant_id: 'tenant-1' }),
+      }),
+    );
+    expect(prismaMock.commercialEvent.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ tenant_id: 'tenant-1' }),
+      }),
+    );
   });
 
   it('rejects a decision made by the same actor who requested it (maker != checker)', async () => {

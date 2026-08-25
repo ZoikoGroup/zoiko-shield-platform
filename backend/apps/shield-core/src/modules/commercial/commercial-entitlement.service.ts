@@ -21,64 +21,6 @@ const ENTITLEMENT_TRANSITIONS: Record<string, string[]> = {
   REVOKED: [],
 };
 
-const BILLING_CLASSIFICATIONS = [
-  'COMMERCIAL_DIRECT',
-  'COMMERCIAL_ZOIKO_ONE',
-  'COMMERCIAL_RESELLER',
-  'DESIGN_PARTNER',
-  'PILOT',
-  'EVALUATION',
-  'INTERNAL',
-  'DEMO',
-  'SANDBOX',
-  'PARTNER_MANAGED',
-] as const;
-/** Part 1: never accidentally billable. */
-export const NON_COMMERCIAL_CLASSIFICATIONS = [
-  'INTERNAL',
-  'DEMO',
-  'SANDBOX',
-  'EVALUATION',
-  'PILOT',
-];
-
-export class CreateCommercialAccountDto {
-  @IsString()
-  name!: string;
-
-  @IsOptional()
-  @IsIn(['DIRECT', 'ZOIKO_ONE_BUNDLE', 'RESELLER'])
-  billingSource?: 'DIRECT' | 'ZOIKO_ONE_BUNDLE' | 'RESELLER';
-
-  @IsOptional()
-  @IsIn(BILLING_CLASSIFICATIONS)
-  billingClassification?: (typeof BILLING_CLASSIFICATIONS)[number];
-
-  @IsOptional()
-  @IsString()
-  groupAccountId?: string;
-
-  @IsOptional()
-  @IsString()
-  legalEntityId?: string;
-
-  @IsOptional()
-  @IsString()
-  businessUnitId?: string;
-
-  @IsOptional()
-  @IsString()
-  environmentId?: string;
-
-  @IsOptional()
-  @IsString()
-  region?: string;
-
-  @IsOptional()
-  @IsString()
-  residencyPolicy?: string;
-}
-
 export class GrantEntitlementDto {
   @IsString()
   commercialAccountId!: string;
@@ -117,36 +59,6 @@ export class CommercialEntitlementService {
   ) {}
 
   /**
-   * Create a new commercial account (Plane 1)
-   */
-  async createCommercialAccount(dto: CreateCommercialAccountDto) {
-    const classification = dto.billingClassification || 'COMMERCIAL_DIRECT';
-    this.logger.log(
-      `Creating Commercial Account '${dto.name}' with classification ${classification}`,
-    );
-
-    // Part 1: the account itself may be created before its legal entity is
-    // finalized (e.g. during sales cycle). The hard gate is enforced at
-    // quote-creation time (QuoteService.assertProductionReadyAccount) for
-    // every classification outside NON_COMMERCIAL_CLASSIFICATIONS, so a
-    // production account can never actually be quoted without one.
-    return this.prisma.commercialAccount.create({
-      data: {
-        name: dto.name,
-        billing_source: dto.billingSource || 'DIRECT',
-        billing_classification: classification,
-        status: 'ACTIVE',
-        group_account_id: dto.groupAccountId,
-        legal_entity_id: dto.legalEntityId,
-        business_unit_id: dto.businessUnitId,
-        environment_id: dto.environmentId,
-        region: dto.region || 'GLOBAL',
-        residency_policy: dto.residencyPolicy,
-      },
-    });
-  }
-
-  /**
    * Get single commercial account by ID
    */
   async getCommercialAccountById(accountId: string) {
@@ -170,6 +82,7 @@ export class CommercialEntitlementService {
   async grantEntitlement(dto: GrantEntitlementDto) {
     await this.killSwitchService.assertNotBlocked('ENTITLEMENT_EXPANSION');
     await this.getCommercialAccountById(dto.commercialAccountId);
+    await this.assertActiveTenantBinding(dto.commercialAccountId, dto.tenantId);
     await this.assertNoSourceCollision(
       dto.tenantId,
       dto.offerType,
@@ -185,11 +98,36 @@ export class CommercialEntitlementService {
         commercial_account_id: dto.commercialAccountId,
         tenant_id: dto.tenantId,
         offer_type: dto.offerType,
+        source_type: 'MANUAL_GRANT',
         status: 'ACTIVE',
         effective_from: dto.effectiveFrom || new Date(),
         effective_to: dto.effectiveTo,
       },
     });
+  }
+
+  /** Entitlements never infer a payer relationship from a tenant identifier. */
+  private async assertActiveTenantBinding(
+    commercialAccountId: string,
+    tenantId: string,
+  ) {
+    const now = new Date();
+    const binding = await this.prisma.commercialAccountTenantBinding.findFirst({
+      where: {
+        commercial_account_id: commercialAccountId,
+        tenant_id: tenantId,
+        status: 'ACTIVE',
+        effective_from: { lte: now },
+        OR: [{ effective_to: null }, { effective_to: { gte: now } }],
+      },
+    });
+    if (!binding) {
+      throw new ConflictException({
+        statusCode: 409,
+        error: 'COMMERCIAL_ACCOUNT_BINDING_REQUIRED',
+        message: `Tenant '${tenantId}' has no active binding to commercial account '${commercialAccountId}'`,
+      });
+    }
   }
 
   /**

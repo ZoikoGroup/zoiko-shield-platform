@@ -52,6 +52,10 @@ const basePkg = {
   status: 'READY_FOR_REVIEW',
   created_by: 'creator1',
   version: 1,
+  completeness_state: 'COMPLETE',
+  freshness_state: 'CURRENT',
+  verifier_compatibility: 'COMPATIBLE',
+  missing_evidence: '[]',
 };
 const baseManifest = {
   manifest_core_hash: 'hash1',

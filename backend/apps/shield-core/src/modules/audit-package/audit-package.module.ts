@@ -13,6 +13,7 @@ import { AuditPackageApprovalService } from './approval/audit-package-approval.s
 import { AuditPackageFreezeService } from './freeze/audit-package-freeze.service';
 import { AuditPackageSupersessionService } from './supersession/audit-package-supersession.service';
 import { AuditPackageExportService } from './export/audit-package-export.service';
+import { AuditPackageClaimService } from './claim/audit-package-claim.service';
 
 @Module({
   imports: [PrismaModule, EvidenceModule, AuthorizationDecisionModule],
@@ -28,6 +29,7 @@ import { AuditPackageExportService } from './export/audit-package-export.service
     AuditPackageFreezeService,
     AuditPackageSupersessionService,
     AuditPackageExportService,
+    AuditPackageClaimService,
   ],
   exports: [
     AuditPackageService,
@@ -36,6 +38,7 @@ import { AuditPackageExportService } from './export/audit-package-export.service
     AuditPackageApprovalService,
     AuditPackageFreezeService,
     AuditPackageSupersessionService,
+    AuditPackageClaimService,
   ],
 })
 export class AuditPackageModule {}

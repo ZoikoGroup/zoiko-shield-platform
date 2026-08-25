@@ -88,6 +88,7 @@ async function main() {
       data: {
         catalog_version_id: catalogVersion.id,
         sku: 'ZS-MD-BASE',
+        internal_product_key: 'managed-defense-base',
         offer_family: 'MANAGED_DEFENSE',
         display_name: 'ZoikoShield Managed Defense (Base)',
         metric_family: 'PROTECTED_RESOURCES',
@@ -104,6 +105,7 @@ async function main() {
       data: {
         catalog_version_id: catalogVersion.id,
         sku: 'ZS-CA-BASE',
+        internal_product_key: 'continuous-assurance-base',
         offer_family: 'CONTINUOUS_ASSURANCE',
         display_name: 'ZoikoShield Continuous Assurance (Base)',
         metric_family: 'PROTECTED_RESOURCES',
@@ -149,6 +151,7 @@ async function main() {
   const commercialAccount = await prisma.commercialAccount.create({
     data: {
       name: customerName,
+      customer_legal_name: customerName,
       billing_source: 'DIRECT',
       billing_classification: 'COMMERCIAL_DIRECT',
       status: 'ACTIVE',

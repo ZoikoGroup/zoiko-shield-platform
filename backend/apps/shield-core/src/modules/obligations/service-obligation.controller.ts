@@ -6,12 +6,19 @@ import {
   Param,
   Query,
   Body,
+  Headers,
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
 import { IsOptional, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
+import { RequirePermissions } from '../authorization/decorators/require-permissions.decorator';
+import { RequireAssurance } from '../authorization/decorators/require-assurance.decorator';
+import { PERMISSION_CODES } from '../authorization/constants';
+import { CurrentUser } from '../identity-adapter/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
+import { requireEnvironmentId, requireTenantId } from '../../tenant-context';
 import {
   ServiceObligationService,
   CreateServiceObligationDto,
@@ -27,6 +34,7 @@ export class UpdateObligationStatusDto {
 }
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequirePermissions(PERMISSION_CODES.TENANT_COMMERCIAL_ACCOUNT_READ)
 @Controller('api/v1/obligations')
 export class ServiceObligationController {
   constructor(private readonly obligationService: ServiceObligationService) {}
@@ -36,8 +44,18 @@ export class ServiceObligationController {
    * Create service obligation
    */
   @Post()
-  async createObligation(@Body() dto: CreateServiceObligationDto) {
-    const obligation = await this.obligationService.createObligation(dto);
+  @RequirePermissions(PERMISSION_CODES.TENANT_COMMERCIAL_ACCOUNT_MANAGE)
+  @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
+  async createObligation(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: CreateServiceObligationDto,
+  ) {
+    const obligation = await this.obligationService.createObligation(
+      dto,
+      requireTenantId(headerTenantId),
+      requireEnvironmentId(user.environmentId),
+    );
     return {
       statusCode: HttpStatus.CREATED,
       data: obligation,
@@ -49,9 +67,16 @@ export class ServiceObligationController {
    * Get obligations by contract ID
    */
   @Get()
-  async getObligations(@Query('contractId') contractId: string) {
-    const obligations =
-      await this.obligationService.getObligationsByContract(contractId);
+  async getObligations(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Query('contractId') contractId: string,
+  ) {
+    const obligations = await this.obligationService.getObligationsByContract(
+      contractId,
+      requireTenantId(headerTenantId),
+      requireEnvironmentId(user.environmentId),
+    );
     return {
       statusCode: HttpStatus.OK,
       data: obligations,
@@ -63,7 +88,11 @@ export class ServiceObligationController {
    * Update obligation status and link delivery evidence
    */
   @Patch(':id/status')
+  @RequirePermissions(PERMISSION_CODES.TENANT_COMMERCIAL_ACCOUNT_MANAGE)
+  @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
   async updateStatus(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
     @Body() dto: UpdateObligationStatusDto,
   ) {
@@ -71,6 +100,9 @@ export class ServiceObligationController {
       id,
       dto.status,
       dto.evidenceRef,
+      requireTenantId(headerTenantId),
+      requireEnvironmentId(user.environmentId),
+      user.id,
     );
     return {
       statusCode: HttpStatus.OK,

@@ -11,6 +11,14 @@ export interface ModelInvocationResult {
   /** Raw citation refs the model claimed to use — validated by evaluation/ against the actual RetrievalBundle before being trusted. */
   citedSourceRefs: string[];
   confidence?: number;
+  usage?: {
+    inputTokens?: number;
+    outputTokens?: number;
+    internalCost?: number;
+    internalCostSource?: string;
+    providerPriceVersion?: string;
+    modelClass?: string;
+  };
 }
 
 /**

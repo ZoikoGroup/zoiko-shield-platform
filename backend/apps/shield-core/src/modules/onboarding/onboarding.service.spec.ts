@@ -7,7 +7,6 @@ import { OnboardingReadinessService } from './onboarding-readiness.service';
 import { EvidenceService } from '../evidence/services/evidence.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
-/** Generic fake TypeORM repository — enough for OnboardingService's create/save/findOne usage. */
 function fakeRepo(overrides: Partial<Record<string, jest.Mock>> = {}) {
   let counter = 0;
   return {

@@ -1,133 +1,407 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException } from '@nestjs/common';
-import { SubscriptionService } from './subscription.service';
+import { Test } from '@nestjs/testing';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CommercialApprovalService } from '../approvals/commercial-approval.service';
+import { SubscriptionService } from './subscription.service';
 
-describe('SubscriptionService amendments (routed through the generic CommercialApprovalService)', () => {
+describe('SubscriptionService Category B4-B5 controls', () => {
   let service: SubscriptionService;
-  let prismaMock: any;
-  let approvalMock: any;
+  let prisma: any;
+  let approvals: any;
+
+  const subscription = {
+    id: 'sub-1',
+    order_id: 'order-1',
+    commercial_account_id: 'account-1',
+    contract_id: 'contract-1',
+    status: 'ACTIVE',
+    effective_from: new Date(Date.now() - 86_400_000),
+    effective_to: new Date(Date.now() + 86_400_000),
+    amendments: [],
+  };
+
+  const upgrade = {
+    id: 'amendment-1',
+    subscription_id: 'sub-1',
+    subscription,
+    amendment_type: 'UPGRADE',
+    status: 'APPROVED',
+    tenant_id: 'tenant-1',
+    environment_id: 'env-1',
+    approval_id: 'approval-1',
+    effective_at: new Date(Date.now() - 1_000),
+    proposed_snapshot: JSON.stringify({ offerTypes: ['AI_SECURITY'] }),
+    remediation_plan: '{}',
+    claim_eligibility: false,
+    deployment_ready: false,
+    service_capacity_ready: false,
+    activatedEntitlements: [],
+  };
 
   beforeEach(async () => {
-    prismaMock = {
+    prisma = {
       commercialSubscription: {
         create: jest.fn(),
         findUnique: jest.fn(),
         update: jest.fn(),
       },
+      commercialAccountTenantBinding: { findFirst: jest.fn() },
       commercialAmendment: {
         create: jest.fn(),
         findUnique: jest.fn(),
+        findMany: jest.fn(),
         update: jest.fn(),
       },
+      commercialApproval: { update: jest.fn() },
+      commercialEvent: { create: jest.fn() },
+      entitlement: {
+        findFirst: jest.fn(),
+        findMany: jest.fn(),
+        createMany: jest.fn(),
+        updateMany: jest.fn(),
+      },
+      case: { findMany: jest.fn() },
+      incidentWorkOrder: { findMany: jest.fn() },
+      legalHold: { findMany: jest.fn() },
+      evidenceRecord: { count: jest.fn(), findMany: jest.fn() },
+      auditPackage: { findMany: jest.fn() },
+      evidenceRetentionTransition: {
+        upsert: jest.fn(),
+        update: jest.fn(),
+      },
+      connectorInstance: { findMany: jest.fn(), updateMany: jest.fn() },
+      $executeRaw: jest.fn(),
+      $transaction: jest.fn((callback) => callback(prisma)),
     };
-    approvalMock = {
+    approvals = {
       requestApproval: jest.fn(),
       decideApproval: jest.fn(),
-      getApprovalByObject: jest.fn(),
+      getApprovalById: jest.fn(),
     };
-
-    const module: TestingModule = await Test.createTestingModule({
+    const module = await Test.createTestingModule({
       providers: [
         SubscriptionService,
-        { provide: PrismaService, useValue: prismaMock },
-        { provide: CommercialApprovalService, useValue: approvalMock },
+        { provide: PrismaService, useValue: prisma },
+        { provide: CommercialApprovalService, useValue: approvals },
       ],
     }).compile();
-
-    service = module.get<SubscriptionService>(SubscriptionService);
+    service = module.get(SubscriptionService);
+    prisma.commercialAccountTenantBinding.findFirst.mockResolvedValue({
+      id: 'binding-1',
+    });
+    prisma.evidenceRecord.findMany.mockResolvedValue([]);
+    prisma.auditPackage.findMany.mockResolvedValue([]);
+    prisma.evidenceRetentionTransition.upsert.mockResolvedValue({
+      id: 'retention-transition-1',
+    });
   });
 
-  it('requesting an amendment opens a linked CommercialApproval via the generic engine', async () => {
-    prismaMock.commercialSubscription.findUnique.mockResolvedValue({
-      id: 'sub-1',
-      status: 'ACTIVE',
-    });
-    prismaMock.commercialAmendment.create.mockResolvedValue({
-      id: 'amend-1',
-      status: 'REQUESTED',
-    });
-    prismaMock.commercialAmendment.update.mockResolvedValue({
-      id: 'amend-1',
-      status: 'REQUESTED',
-    });
-    approvalMock.requestApproval.mockResolvedValue({
-      id: 'appr-1',
+  it('creates an upgrade as a pending approved commercial preview, not an entitlement', async () => {
+    prisma.commercialSubscription.findUnique.mockResolvedValue(subscription);
+    prisma.commercialAmendment.create.mockResolvedValue({
+      id: 'amendment-1',
       status: 'PENDING_APPROVAL',
     });
-
-    await service.requestAmendment('sub-1', {
-      amendmentType: 'UPGRADE',
-      requestedBy: 'alice',
+    approvals.requestApproval.mockResolvedValue({ id: 'approval-1' });
+    prisma.commercialAmendment.update.mockResolvedValue({
+      id: 'amendment-1',
+      status: 'PENDING_APPROVAL',
+      approval_id: 'approval-1',
     });
 
-    expect(approvalMock.requestApproval).toHaveBeenCalledWith(
+    const result = await service.requestUpgrade(
+      'sub-1',
+      'tenant-1',
+      'env-1',
+      'maker-1',
+      {
+        offerTypes: ['AI_SECURITY'],
+        commercialPreview: { monthlyDelta: 100 },
+        commercialReason: 'Add AI security module',
+      },
+    );
+
+    expect(result.status).toBe('PENDING_APPROVAL');
+    expect(approvals.requestApproval).toHaveBeenCalledWith(
       expect.objectContaining({
         objectType: 'CommercialAmendment',
-        objectId: 'amend-1',
-        requestedBy: 'alice',
+        requestedBy: 'maker-1',
+        requiredApprovalRole: 'COMMERCIAL_APPROVER',
+      }),
+      prisma,
+    );
+    expect(prisma.entitlement.createMany).not.toHaveBeenCalled();
+  });
+
+  it('keeps an approved upgrade pending until every readiness gate passes', async () => {
+    prisma.commercialAmendment.findUnique.mockResolvedValue(upgrade);
+    prisma.commercialAmendment.update.mockResolvedValue({
+      ...upgrade,
+      status: 'APPROVED',
+    });
+
+    await service.verifyUpgradeReadiness('amendment-1', 'ops-1', {
+      claimEligibility: true,
+      deploymentReady: true,
+      serviceCapacityReady: false,
+      claimEvidenceRef: 'claim-check-1',
+      deploymentEvidenceRef: 'deploy-check-1',
+      capacityEvidenceRef: 'capacity-check-1',
+    });
+    expect(prisma.commercialAmendment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'APPROVED' }),
       }),
     );
   });
 
-  it('deciding an amendment delegates the maker-checker decision to CommercialApprovalService', async () => {
-    prismaMock.commercialAmendment.findUnique.mockResolvedValue({
-      id: 'amend-1',
-      status: 'REQUESTED',
-      requested_by: 'alice',
-    });
-    approvalMock.getApprovalByObject.mockResolvedValue({ id: 'appr-1' });
-    approvalMock.decideApproval.mockResolvedValue({
-      id: 'appr-1',
-      status: 'APPROVED',
-    });
-    prismaMock.commercialAmendment.update.mockResolvedValue({
-      id: 'amend-1',
-      status: 'APPROVED',
+  it('moves an approved upgrade to PENDING_ACTIVATION only when all gates pass', async () => {
+    prisma.commercialAmendment.findUnique.mockResolvedValue(upgrade);
+    prisma.commercialAmendment.update.mockResolvedValue({
+      ...upgrade,
+      status: 'PENDING_ACTIVATION',
     });
 
-    const result = await service.decideAmendment(
-      'amend-1',
-      'bob',
-      'APPROVED',
-      'looks fine',
+    await service.verifyUpgradeReadiness('amendment-1', 'ops-1', {
+      claimEligibility: true,
+      deploymentReady: true,
+      serviceCapacityReady: true,
+      claimEvidenceRef: 'claim-check-1',
+      deploymentEvidenceRef: 'deploy-check-1',
+      capacityEvidenceRef: 'capacity-check-1',
+    });
+    expect(prisma.commercialAmendment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'PENDING_ACTIVATION' }),
+      }),
     );
-
-    expect(approvalMock.decideApproval).toHaveBeenCalledWith(
-      'appr-1',
-      'bob',
-      'APPROVED',
-      'looks fine',
-    );
-    expect(result.status).toBe('APPROVED');
   });
 
-  it('rejects deciding an amendment that is already settled, without calling the approval engine', async () => {
-    prismaMock.commercialAmendment.findUnique.mockResolvedValue({
-      id: 'amend-1',
+  it('activates upgraded runtime scope only after approval and readiness', async () => {
+    const readyUpgrade = {
+      ...upgrade,
+      status: 'PENDING_ACTIVATION',
+      claim_eligibility: true,
+      deployment_ready: true,
+      service_capacity_ready: true,
+    };
+    prisma.commercialAmendment.findUnique.mockResolvedValue(readyUpgrade);
+    approvals.getApprovalById.mockResolvedValue({
+      id: 'approval-1',
+      status: 'APPROVED',
+      object_type: 'CommercialAmendment',
+      object_id: 'amendment-1',
+    });
+    prisma.entitlement.findFirst.mockResolvedValue(null);
+    prisma.commercialAmendment.update.mockResolvedValue({
+      id: 'amendment-1',
       status: 'APPLIED',
     });
 
-    await expect(
-      service.decideAmendment('amend-1', 'bob', 'APPROVED', 'x'),
-    ).rejects.toThrow(ConflictException);
-    expect(approvalMock.getApprovalByObject).not.toHaveBeenCalled();
+    await service.applyAmendment('amendment-1', 'ops-1');
+
+    expect(prisma.entitlement.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          offer_type: 'AI_SECURITY',
+          source_type: 'SUBSCRIPTION_UPGRADE',
+          activation_amendment_id: 'amendment-1',
+        }),
+      ],
+    });
   });
 
-  it('createSubscription writes through a provided transaction client when given one', async () => {
-    const txMock = {
+  it('places a downgrade into remediation when an active incident or legal hold exists', async () => {
+    const downgrade = {
+      ...upgrade,
+      amendment_type: 'DOWNGRADE',
+      status: 'APPROVED',
+      proposed_snapshot: JSON.stringify({
+        offerTypesToRemove: ['MANAGED_DEFENSE'],
+        connectorIdsToDisable: [],
+      }),
+    };
+    prisma.commercialAmendment.findUnique.mockResolvedValue(downgrade);
+    prisma.case.findMany.mockResolvedValue([
+      { id: 'case-1', status: 'INVESTIGATING' },
+    ]);
+    prisma.incidentWorkOrder.findMany.mockResolvedValue([{ id: 'ir-1' }]);
+    prisma.legalHold.findMany.mockResolvedValue([{ id: 'hold-1' }]);
+    prisma.evidenceRecord.count.mockResolvedValue(10);
+    prisma.entitlement.findMany.mockResolvedValue([
+      { offer_type: 'MANAGED_DEFENSE' },
+    ]);
+    prisma.commercialAmendment.update.mockResolvedValue({
+      ...downgrade,
+      status: 'REMEDIATION_REQUIRED',
+    });
+
+    const result = await service.assessDowngrade('amendment-1');
+    expect(result.status).toBe('REMEDIATION_REQUIRED');
+    expect(prisma.commercialAmendment.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          status: 'REMEDIATION_REQUIRED',
+          remediation_status: 'REQUIRED',
+        }),
+      }),
+    );
+  });
+
+  it('never applies a downgrade while safety assessment still requires remediation', async () => {
+    const downgrade = {
+      ...upgrade,
+      amendment_type: 'DOWNGRADE',
+      status: 'SCHEDULED',
+      remediation_plan: JSON.stringify({ preserveHistoricalEvidence: true }),
+      proposed_snapshot: JSON.stringify({
+        offerTypesToRemove: ['MANAGED_DEFENSE'],
+        connectorIdsToDisable: [],
+      }),
+    };
+    prisma.commercialAmendment.findUnique.mockResolvedValue(downgrade);
+    approvals.getApprovalById.mockResolvedValue({
+      id: 'approval-1',
+      status: 'APPROVED',
+      object_type: 'CommercialAmendment',
+      object_id: 'amendment-1',
+    });
+    prisma.case.findMany.mockResolvedValue([
+      { id: 'case-1', status: 'INVESTIGATING' },
+    ]);
+    prisma.incidentWorkOrder.findMany.mockResolvedValue([]);
+    prisma.legalHold.findMany.mockResolvedValue([]);
+    prisma.evidenceRecord.count.mockResolvedValue(2);
+    prisma.entitlement.findMany.mockResolvedValue([
+      { offer_type: 'MANAGED_DEFENSE' },
+    ]);
+    prisma.commercialAmendment.update.mockResolvedValue({
+      ...downgrade,
+      status: 'REMEDIATION_REQUIRED',
+    });
+
+    await expect(
+      service.applyAmendment('amendment-1', 'ops-1'),
+    ).rejects.toBeInstanceOf(ConflictException);
+    expect(prisma.entitlement.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('makes retention reduction prospective while snapshotting legal-hold and audit-cycle preservation', async () => {
+    const downgrade = {
+      ...upgrade,
+      amendment_type: 'DOWNGRADE',
+      status: 'APPROVED',
+      effective_at: new Date(Date.now() + 86_400_000),
+      remediation_plan: JSON.stringify({
+        preserveHistoricalEvidence: true,
+        evidenceRefs: ['retention-review-1'],
+        recordedBy: 'records-owner-1',
+      }),
+      proposed_snapshot: JSON.stringify({
+        offerTypesToRemove: [],
+        connectorIdsToDisable: [],
+        targetRetentionProfile: 'standard-365d',
+      }),
+    };
+    prisma.commercialAmendment.findUnique.mockResolvedValue(downgrade);
+    prisma.case.findMany.mockResolvedValue([]);
+    prisma.incidentWorkOrder.findMany.mockResolvedValue([]);
+    prisma.legalHold.findMany.mockResolvedValue([{ id: 'hold-1' }]);
+    prisma.evidenceRecord.count.mockResolvedValue(12);
+    prisma.evidenceRecord.findMany.mockResolvedValue([
+      { retention_profile: 'legal-7y' },
+    ]);
+    prisma.auditPackage.findMany.mockResolvedValue([
+      {
+        id: 'package-1',
+        status: 'FROZEN',
+        audit_cycle_reference: 'FY2026',
+        retention_until: new Date('2033-01-01T00:00:00Z'),
+      },
+    ]);
+    prisma.commercialAmendment.update.mockResolvedValue({
+      ...downgrade,
+      status: 'SCHEDULED',
+    });
+
+    const result = await service.assessDowngrade('amendment-1');
+
+    expect(result.status).toBe('SCHEDULED');
+    expect(prisma.evidenceRetentionTransition.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        create: expect.objectContaining({
+          status: 'VERIFIED',
+          historical_evidence_count: 12,
+          preserve_historical_evidence: true,
+          legal_hold_ids: '["hold-1"]',
+          audit_package_ids: '["package-1"]',
+        }),
+      }),
+    );
+  });
+
+  it('applies a safe due downgrade prospectively without deleting evidence', async () => {
+    const downgrade = {
+      ...upgrade,
+      amendment_type: 'DOWNGRADE',
+      status: 'SCHEDULED',
+      remediation_plan: JSON.stringify({ preserveHistoricalEvidence: true }),
+      proposed_snapshot: JSON.stringify({
+        offerTypesToRemove: ['MANAGED_DEFENSE'],
+        connectorIdsToDisable: ['77f5524b-138c-455a-ae65-4b978fd94a53'],
+      }),
+    };
+    prisma.commercialAmendment.findUnique.mockResolvedValue(downgrade);
+    approvals.getApprovalById.mockResolvedValue({
+      id: 'approval-1',
+      status: 'APPROVED',
+      object_type: 'CommercialAmendment',
+      object_id: 'amendment-1',
+    });
+    prisma.case.findMany.mockResolvedValue([]);
+    prisma.incidentWorkOrder.findMany.mockResolvedValue([]);
+    prisma.legalHold.findMany.mockResolvedValue([]);
+    prisma.evidenceRecord.count.mockResolvedValue(8);
+    prisma.connectorInstance.findMany.mockResolvedValue([
+      { id: '77f5524b-138c-455a-ae65-4b978fd94a53' },
+    ]);
+    prisma.entitlement.findMany.mockResolvedValue([
+      { offer_type: 'MANAGED_DEFENSE' },
+    ]);
+    prisma.commercialAmendment.update
+      .mockResolvedValueOnce({ ...downgrade, status: 'SCHEDULED' })
+      .mockResolvedValueOnce({ ...downgrade, status: 'APPLIED' });
+
+    await service.applyAmendment('amendment-1', 'ops-1');
+
+    expect(prisma.entitlement.updateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        offer_type: { in: ['MANAGED_DEFENSE'] },
+        status: 'ACTIVE',
+      }),
+      data: expect.objectContaining({ status: 'EXPIRED' }),
+    });
+    expect(prisma.connectorInstance.updateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        id: { in: ['77f5524b-138c-455a-ae65-4b978fd94a53'] },
+      }),
+      data: { state: 'DISCONNECTED' },
+    });
+    expect(prisma.evidenceRetentionTransition.update).not.toHaveBeenCalled();
+    expect((prisma.evidenceRecord as any).deleteMany).toBeUndefined();
+  });
+
+  it('createSubscription writes through a provided transaction', async () => {
+    const tx = {
       commercialSubscription: {
         create: jest.fn().mockResolvedValue({ id: 'sub-1' }),
       },
     };
-
     await service.createSubscription(
       { orderId: 'o-1', commercialAccountId: 'acct-1', contractId: 'c-1' },
-      txMock as any,
+      tx as any,
     );
-
-    expect(txMock.commercialSubscription.create).toHaveBeenCalled();
-    expect(prismaMock.commercialSubscription.create).not.toHaveBeenCalled();
+    expect(tx.commercialSubscription.create).toHaveBeenCalled();
+    expect(prisma.commercialSubscription.create).not.toHaveBeenCalled();
   });
 });

@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { createHash } from 'crypto';
 
 /**
  * ZS-COM-BILL-001 Part 27 / REC-01. Core principle: unknown state must
@@ -273,6 +274,108 @@ export class ReconciliationService {
       }
     }
     return { checked: activeEntitlements.length, issuesFound: issues };
+  }
+
+  /**
+   * Domain: METER_BILLING_EXPORT. Recomputes the frozen snapshot checksum and
+   * sums its exact immutable usage-record set. Drift is filed for review; the
+   * export and source evidence are never rewritten by reconciliation.
+   */
+  async reconcileMeterBillingExports(runId: string) {
+    const exports = await this.prisma.meterBillingExport.findMany({
+      where: { status: 'APPROVED' },
+      orderBy: { created_at: 'asc' },
+    });
+    let issues = 0;
+
+    for (const billingExport of exports) {
+      let usageIds: string[] = [];
+      let eventIds: string[] = [];
+      try {
+        const parsed = JSON.parse(billingExport.usage_record_ids) as unknown;
+        usageIds = Array.isArray(parsed)
+          ? parsed.filter((id): id is string => typeof id === 'string')
+          : [];
+        const parsedEvents = JSON.parse(billingExport.event_ids) as unknown;
+        eventIds = Array.isArray(parsedEvents)
+          ? parsedEvents.filter((id): id is string => typeof id === 'string')
+          : [];
+      } catch {
+        usageIds = [];
+        eventIds = [];
+      }
+      const usage = await this.prisma.usageRecord.findMany({
+        where: { id: { in: usageIds } },
+      });
+      const events = await this.prisma.meterEvent.findMany({
+        where: { id: { in: eventIds } },
+      });
+      const totals = usage.reduce(
+        (sum, record) => ({
+          accepted: sum.accepted + record.accepted_quantity,
+          billable: sum.billable + record.billable_quantity,
+          overage: sum.overage + record.overage_quantity,
+        }),
+        { accepted: 0, billable: 0, overage: 0 },
+      );
+      const checksum = createHash('sha256')
+        .update(billingExport.immutable_snapshot)
+        .digest('hex');
+      let frozen: {
+        eventHashes?: Array<{ id: string; hash: string }>;
+        usageHashes?: Array<{ id: string; hash: string }>;
+      } = {};
+      try {
+        frozen = JSON.parse(billingExport.immutable_snapshot) as typeof frozen;
+      } catch {
+        frozen = {};
+      }
+      const eventHashes = new Map(
+        (frozen.eventHashes ?? []).map((item) => [item.id, item.hash]),
+      );
+      const usageHashes = new Map(
+        (frozen.usageHashes ?? []).map((item) => [item.id, item.hash]),
+      );
+      const matched =
+        checksum === billingExport.checksum &&
+        events.length === eventIds.length &&
+        usage.length === usageIds.length &&
+        events.every(
+          (event) => eventHashes.get(event.id) === event.immutable_hash,
+        ) &&
+        usage.every(
+          (record) => usageHashes.get(record.id) === record.immutable_hash,
+        ) &&
+        totals.accepted === billingExport.accepted_quantity &&
+        totals.billable === billingExport.billable_quantity &&
+        totals.overage === billingExport.overage_quantity;
+      if (!matched) {
+        await this.recordIssue(
+          runId,
+          'METER_BILLING_EXPORT',
+          'MeterBillingExport',
+          billingExport.id,
+          JSON.stringify({
+            checksum: billingExport.checksum,
+            eventCount: eventIds.length,
+            usageRecordCount: usageIds.length,
+            accepted: billingExport.accepted_quantity,
+            billable: billingExport.billable_quantity,
+            overage: billingExport.overage_quantity,
+          }),
+          JSON.stringify({
+            checksum,
+            eventCount: events.length,
+            usageRecordCount: usage.length,
+            ...totals,
+          }),
+          'CRITICAL',
+          `Approved meter billing export '${billingExport.id}' does not reconcile to its frozen evidence set`,
+        );
+        issues++;
+      }
+    }
+    return { checked: exports.length, issuesFound: issues };
   }
 
   async completeRun(runId: string) {

@@ -8,21 +8,38 @@ const { Client } = require('pg');
  * Splits a .sql file into individual statements. Required for pooled
  * connections (e.g. Neon's PgBouncer-based pooler in transaction mode),
  * which don't reliably accept a single multi-statement query the way a
- * direct connection does. Only tracks single/double-quote state — none of
- * these migrations use dollar-quoted function bodies, so that's sufficient.
+ * direct connection does. Tracks single/double-quote state and -- line
+ * comments so semicolons inside comments or string literals are not treated
+ * as statement terminators.
  */
 function splitStatements(sql) {
   const statements = [];
   let current = '';
   let inSingleQuote = false;
   let inDoubleQuote = false;
+  let inLineComment = false;
 
   for (let i = 0; i < sql.length; i++) {
     const char = sql[i];
-    if (char === "'" && !inDoubleQuote) inSingleQuote = !inSingleQuote;
-    else if (char === '"' && !inSingleQuote) inDoubleQuote = !inDoubleQuote;
 
-    if (char === ';' && !inSingleQuote && !inDoubleQuote) {
+    // Handle line comment start: -- outside of any string
+    if (!inSingleQuote && !inDoubleQuote && !inLineComment &&
+        char === '-' && sql[i + 1] === '-') {
+      inLineComment = true;
+    }
+
+    // End of line comment on newline
+    if (inLineComment && char === '\n') {
+      inLineComment = false;
+    }
+
+    // Track string delimiters (only outside comments)
+    if (!inLineComment) {
+      if (char === "'" && !inDoubleQuote) inSingleQuote = !inSingleQuote;
+      else if (char === '"' && !inSingleQuote) inDoubleQuote = !inDoubleQuote;
+    }
+
+    if (char === ';' && !inSingleQuote && !inDoubleQuote && !inLineComment) {
       current += char;
       statements.push(current.trim());
       current = '';

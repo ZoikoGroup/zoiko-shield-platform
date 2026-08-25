@@ -13,8 +13,6 @@ describe('CommercialEntitlementController', () => {
 
   beforeEach(async () => {
     serviceMock = {
-      createCommercialAccount: jest.fn(),
-      getCommercialAccountById: jest.fn(),
       grantEntitlement: jest.fn(),
       getEntitlementsByTenant: jest.fn(),
       checkEntitlement: jest.fn(),
@@ -37,16 +35,6 @@ describe('CommercialEntitlementController', () => {
     controller = module.get<CommercialEntitlementController>(
       CommercialEntitlementController,
     );
-  });
-
-  it('should return created commercial account', async () => {
-    const mockAccount = { id: 'comm-1', name: 'Acme' };
-    serviceMock.createCommercialAccount.mockResolvedValue(mockAccount);
-
-    const response = await controller.createCommercialAccount({ name: 'Acme' });
-
-    expect(response.statusCode).toBe(HttpStatus.CREATED);
-    expect(response.data).toBe(mockAccount);
   });
 
   it('should check entitlement (fail closed)', async () => {

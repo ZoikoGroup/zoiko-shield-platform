@@ -27,6 +27,9 @@ describe('ReconciliationService (ZS-COM-BILL-001 REC-01: unknown never silently 
       slaMeasurement: { findMany: jest.fn() },
       partnerSettlement: { findMany: jest.fn() },
       partnerAgreement: { findFirst: jest.fn() },
+      meterBillingExport: { findMany: jest.fn() },
+      usageRecord: { findMany: jest.fn() },
+      meterEvent: { findMany: jest.fn() },
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -109,6 +112,43 @@ describe('ReconciliationService (ZS-COM-BILL-001 REC-01: unknown never silently 
 
     await expect(service.resolveIssue('issue-1', 'x')).rejects.toThrow(
       ConflictException,
+    );
+  });
+
+  it('files a critical issue when an approved meter export no longer reconciles', async () => {
+    prismaMock.meterBillingExport.findMany.mockResolvedValue([
+      {
+        id: 'export-1',
+        immutable_snapshot: '{"frozen":true}',
+        checksum: 'wrong',
+        event_ids: '[]',
+        usage_record_ids: JSON.stringify(['usage-1']),
+        accepted_quantity: 10,
+        billable_quantity: 4,
+        overage_quantity: 4,
+      },
+    ]);
+    prismaMock.usageRecord.findMany.mockResolvedValue([
+      {
+        id: 'usage-1',
+        accepted_quantity: 10,
+        billable_quantity: 4,
+        overage_quantity: 4,
+      },
+    ]);
+    prismaMock.meterEvent.findMany.mockResolvedValue([]);
+    prismaMock.reconciliationIssue.create.mockResolvedValue({ id: 'issue-1' });
+
+    const result = await service.reconcileMeterBillingExports('run-1');
+
+    expect(result).toEqual({ checked: 1, issuesFound: 1 });
+    expect(prismaMock.reconciliationIssue.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          domain: 'METER_BILLING_EXPORT',
+          severity: 'CRITICAL',
+        }),
+      }),
     );
   });
 

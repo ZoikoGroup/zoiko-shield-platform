@@ -1,9 +1,5 @@
 import { Module } from '@nestjs/common';
-import {
-  QuoteController,
-  OrderController,
-  SubscriptionController,
-} from './cpq.controller';
+import { QuoteController, OrderController } from './cpq.controller';
 import { QuoteService } from './quote.service';
 import { OrderService } from './order.service';
 import { SubscriptionService } from './subscription.service';
@@ -13,6 +9,12 @@ import { CommerceModule } from '../commerce/commerce.module';
 import { ApprovalsModule } from '../approvals/approvals.module';
 import { IdempotencyModule } from '../idempotency/idempotency.module';
 import { KillSwitchModule } from '../kill-switch/kill-switch.module';
+import {
+  CommercialConcessionController,
+  PlatformSubscriptionChangeController,
+  TenantSubscriptionController,
+} from './subscription-change.controller';
+import { ConcessionService } from './concession.service';
 
 @Module({
   imports: [
@@ -23,8 +25,19 @@ import { KillSwitchModule } from '../kill-switch/kill-switch.module';
     IdempotencyModule,
     KillSwitchModule,
   ],
-  controllers: [QuoteController, OrderController, SubscriptionController],
-  providers: [QuoteService, OrderService, SubscriptionService],
-  exports: [QuoteService, OrderService, SubscriptionService],
+  controllers: [
+    QuoteController,
+    OrderController,
+    TenantSubscriptionController,
+    PlatformSubscriptionChangeController,
+    CommercialConcessionController,
+  ],
+  providers: [
+    QuoteService,
+    OrderService,
+    SubscriptionService,
+    ConcessionService,
+  ],
+  exports: [QuoteService, OrderService, SubscriptionService, ConcessionService],
 })
 export class CpqModule {}

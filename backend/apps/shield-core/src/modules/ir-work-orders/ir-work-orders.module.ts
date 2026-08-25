@@ -1,13 +1,22 @@
 import { Module } from '@nestjs/common';
-import { IncidentWorkOrderController } from './incident-work-order.controller';
+import {
+  IncidentLegalSensitiveController,
+  IncidentResponseRetainerController,
+  IncidentWorkOrderController,
+} from './incident-work-order.controller';
 import { IncidentWorkOrderService } from './incident-work-order.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { ApprovalsModule } from '../approvals/approvals.module';
+import { IncidentResponseRetainerService } from './incident-response-retainer.service';
 
 @Module({
   imports: [PrismaModule, ApprovalsModule],
-  controllers: [IncidentWorkOrderController],
-  providers: [IncidentWorkOrderService],
-  exports: [IncidentWorkOrderService],
+  controllers: [
+    IncidentResponseRetainerController,
+    IncidentWorkOrderController,
+    IncidentLegalSensitiveController,
+  ],
+  providers: [IncidentResponseRetainerService, IncidentWorkOrderService],
+  exports: [IncidentResponseRetainerService, IncidentWorkOrderService],
 })
 export class IrWorkOrdersModule {}

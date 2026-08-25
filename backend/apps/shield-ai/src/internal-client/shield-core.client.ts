@@ -36,6 +36,58 @@ export class ShieldCoreClient {
     );
   }
 
+  async recordAiUsage(payload: {
+    tenantId: string;
+    environmentId: string;
+    governanceProfileId: string;
+    useCaseKey: string;
+    workflow: string;
+    workflowClass: string;
+    region: string;
+    provider: string;
+    model: string;
+    modelProfileId: string;
+    modelClass: string;
+    inputTokens: number;
+    outputTokens: number;
+    toolCalls: number;
+    retrievalCalls: number;
+    retrievalUnits: number;
+    storageByteHours: number;
+    contractedUsageUnits: number;
+    complexityUnits: number;
+    internalCost: number;
+    internalCostSource: string;
+    providerPriceVersion?: string;
+  }): Promise<any> {
+    let response: Response;
+    try {
+      response = await fetch(`${SHIELD_CORE_BASE_URL}/api/v1/ai/usage`, {
+        method: 'POST',
+        headers: {
+          ...this.headers(),
+          'content-type': 'application/json',
+          'x-tenant-id': payload.tenantId,
+          'x-environment-id': payload.environmentId,
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      this.logger.error(
+        `shield-core unreachable recording AI cost: ${(err as Error).message}`,
+      );
+      throw new AiUnavailableException(
+        'shield-core unreachable while recording governed AI usage',
+      );
+    }
+    if (!response.ok) {
+      throw new AiUnavailableException(
+        `shield-core rejected governed AI usage with ${response.status}`,
+      );
+    }
+    return response.json();
+  }
+
   private async get(path: string): Promise<any> {
     let response: Response;
     try {

@@ -43,6 +43,7 @@ async function main() {
         id: crypto.randomUUID(),
         catalog_version_id: catalogVersion.id,
         sku: 'SKU-ENTERPRISE-01',
+        internal_product_key: 'enterprise-01',
         display_name: 'ZoikoShield Enterprise Edition',
         offer_family: 'ENTERPRISE_SUITE',
         metric_family: 'USER_LICENSES',
@@ -60,6 +61,7 @@ async function main() {
       data: {
         id: crypto.randomUUID(),
         name: 'Demo Account',
+        customer_legal_name: 'Demo Account Ltd',
         status: 'ACTIVE',
       }
     });

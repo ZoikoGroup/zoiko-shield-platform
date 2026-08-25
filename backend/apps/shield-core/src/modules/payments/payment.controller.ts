@@ -19,6 +19,9 @@ import {
   ProviderWebhookDto,
 } from './payment.service';
 import { ExternallyAuthenticatedEndpoint } from '../../security/endpoint-access.decorator';
+import { RequirePermissions } from '../authorization/decorators/require-permissions.decorator';
+import { RequireAssurance } from '../authorization/decorators/require-assurance.decorator';
+import { PERMISSION_CODES } from '../authorization/constants';
 
 export class RefundPaymentDto {
   @IsNumber()
@@ -36,6 +39,8 @@ export class PaymentController {
   constructor(private readonly paymentService: PaymentService) {}
 
   @Post()
+  @RequirePermissions(PERMISSION_CODES.TENANT_PAYMENT_CREATE)
+  @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
   async create(
     @Headers('x-tenant-id') tenantId: string,
     @Body() dto: CreatePaymentDto,
@@ -55,6 +60,7 @@ export class PaymentController {
   }
 
   @Get(':id')
+  @RequirePermissions(PERMISSION_CODES.TENANT_COMMERCIAL_ACCOUNT_READ)
   async get(@Headers('x-tenant-id') tenantId: string, @Param('id') id: string) {
     const payment = await this.paymentService.getPaymentByIdForTenant(
       tenantId,
@@ -64,6 +70,8 @@ export class PaymentController {
   }
 
   @Patch(':id/refund')
+  @RequirePermissions(PERMISSION_CODES.TENANT_REFUND_MANAGE)
+  @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
   async refund(
     @Headers('x-tenant-id') tenantId: string,
     @Param('id') id: string,

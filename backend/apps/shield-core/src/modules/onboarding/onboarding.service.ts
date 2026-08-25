@@ -46,6 +46,7 @@ export class OnboardingService implements OnModuleInit {
       PERMISSION_CODES.TENANT_MANAGE,
       PERMISSION_CODES.TENANT_RESOURCE_READ,
       PERMISSION_CODES.TENANT_RESOURCE_WRITE,
+      PERMISSION_CODES.TENANT_COMMERCIAL_ACCOUNT_READ,
       PERMISSION_CODES.TENANT_IDENTITY_PROVIDER_MANAGE,
       PERMISSION_CODES.TENANT_OFFBOARDING_START,
       PERMISSION_CODES.DELETION_REQUEST,
@@ -139,7 +140,9 @@ export class OnboardingService implements OnModuleInit {
       const eventRepo = manager.getRepository(IdentityEvent);
       const principalRepo = manager.getRepository(Principal);
 
-      let customerPrincipal = await principalRepo.findOne({ where: { email: dto.ownerEmail } });
+      let customerPrincipal = await principalRepo.findOne({
+        where: { email: dto.ownerEmail },
+      });
       if (!customerPrincipal) {
         customerPrincipal = await principalRepo.save(
           principalRepo.create({
@@ -148,7 +151,7 @@ export class OnboardingService implements OnModuleInit {
             status: 'ACTIVE',
             source: 'ONBOARDING',
             emailVerified: false,
-          })
+          }),
         );
       }
 
@@ -232,7 +235,13 @@ export class OnboardingService implements OnModuleInit {
         }),
       );
 
-      return { tenant, legalEntity, environment, membership, customerPrincipalId: customerPrincipal.id };
+      return {
+        tenant,
+        legalEntity,
+        environment,
+        membership,
+        customerPrincipalId: customerPrincipal.id,
+      };
     });
 
     await this.prisma.$transaction(async (tx) => {
@@ -256,6 +265,8 @@ export class OnboardingService implements OnModuleInit {
           commercial_account_id: order.commercial_account_id,
           tenant_id: provisioning.tenant.id,
           offer_type: offerType,
+          source_type: 'ACCEPTED_ORDER',
+          source_id: order.id,
           status: 'ACTIVE',
         })),
       });

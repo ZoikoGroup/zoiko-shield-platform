@@ -11,10 +11,17 @@ import { ControlImplementationStateMachineService } from './implementations/cont
 import { ControlImplementationService } from './implementations/control-implementation.service';
 import { ControlScopeService } from './scopes/control-scope.service';
 import { ControlTestService } from './tests/control-test.service';
+import { ApprovalsModule } from '../approvals/approvals.module';
+import { FrameworkGovernanceController } from './frameworks/framework-governance.controller';
 
 @Module({
-  imports: [PrismaModule, EvidenceModule, AuthorizationDecisionModule],
-  controllers: [ControlsController],
+  imports: [
+    PrismaModule,
+    EvidenceModule,
+    AuthorizationDecisionModule,
+    ApprovalsModule,
+  ],
+  controllers: [ControlsController, FrameworkGovernanceController],
   providers: [
     FrameworkRegistryService,
     RequirementService,

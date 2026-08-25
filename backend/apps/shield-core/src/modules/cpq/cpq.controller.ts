@@ -9,31 +9,17 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { IsIn, IsString } from 'class-validator';
+import { IsString } from 'class-validator';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { CreateQuoteDto, QuoteService } from './quote.service';
 import { CreateOrderDto, OrderService } from './order.service';
-import {
-  RequestAmendmentDto,
-  SubscriptionService,
-} from './subscription.service';
 
 export class ApproveQuoteDto {
   @IsString()
   approverId!: string;
 }
 export class RejectQuoteDto {
-  @IsString()
-  reason!: string;
-}
-export class DecideAmendmentDto {
-  @IsString()
-  approverId!: string;
-
-  @IsIn(['APPROVED', 'REJECTED'])
-  decision!: 'APPROVED' | 'REJECTED';
-
   @IsString()
   reason!: string;
 }
@@ -119,53 +105,5 @@ export class OrderController {
   async reject(@Param('id') id: string) {
     const order = await this.orderService.rejectOrder(id);
     return { statusCode: HttpStatus.OK, data: order };
-  }
-}
-
-@UseGuards(JwtAuthGuard, PermissionsGuard)
-@Controller('api/v1/cpq/subscriptions')
-export class SubscriptionController {
-  constructor(private readonly subscriptionService: SubscriptionService) {}
-
-  @Get(':id')
-  async get(@Param('id') id: string) {
-    const subscription = await this.subscriptionService.getSubscriptionById(id);
-    return { statusCode: HttpStatus.OK, data: subscription };
-  }
-
-  @Patch(':id/activate')
-  async activate(@Param('id') id: string) {
-    const subscription =
-      await this.subscriptionService.activateSubscription(id);
-    return { statusCode: HttpStatus.OK, data: subscription };
-  }
-
-  @Patch(':id/cancel')
-  async cancel(@Param('id') id: string) {
-    const subscription = await this.subscriptionService.cancelSubscription(id);
-    return { statusCode: HttpStatus.OK, data: subscription };
-  }
-
-  @Post(':id/amendments')
-  async requestAmendment(
-    @Param('id') id: string,
-    @Body() dto: RequestAmendmentDto,
-  ) {
-    const amendment = await this.subscriptionService.requestAmendment(id, dto);
-    return { statusCode: HttpStatus.CREATED, data: amendment };
-  }
-
-  @Patch('amendments/:amendmentId/decision')
-  async decideAmendment(
-    @Param('amendmentId') amendmentId: string,
-    @Body() dto: DecideAmendmentDto,
-  ) {
-    const amendment = await this.subscriptionService.decideAmendment(
-      amendmentId,
-      dto.approverId,
-      dto.decision,
-      dto.reason,
-    );
-    return { statusCode: HttpStatus.OK, data: amendment };
   }
 }

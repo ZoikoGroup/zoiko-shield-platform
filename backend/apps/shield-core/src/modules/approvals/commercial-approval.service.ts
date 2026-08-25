@@ -15,6 +15,7 @@ import {
 } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { assertTransition } from '../commerce/state-machine.util';
+import type { Prisma } from '@prisma/client';
 
 export const APPROVAL_CHANGE_TYPES = [
   'PRICE_CHANGE',
@@ -28,6 +29,26 @@ export const APPROVAL_CHANGE_TYPES = [
   'EMERGENCY_ENTITLEMENT_EXTENSION',
   'PARTNER_MARGIN_OVERRIDE',
   'OVERAGE_OVERRIDE',
+  'ACCOUNT_PROFILE_CHANGE',
+  'TENANT_BINDING_CHANGE',
+  'PAYMENT_METHOD_CHANGE',
+  'CORPORATE_TRANSFER',
+  'EVALUATION_PROGRAM',
+  'RESOURCE_COVERAGE_POLICY',
+  'METER_CONTRACT_POLICY',
+  'METER_USAGE_AUTHORIZATION',
+  'METER_CORRECTION',
+  'METER_BILLING_EXPORT',
+  'MANAGED_DEFENSE_PROFILE',
+  'MANAGED_DEFENSE_PAID_OVERFLOW',
+  'ASSURANCE_CONTENT_RELEASE',
+  'CONTINUOUS_ASSURANCE_PROFILE',
+  'IR_RETAINER_PROFILE',
+  'IR_EMERGENCY_RECONCILIATION',
+  'THIRD_PARTY_PASS_THROUGH',
+  'PROFESSIONAL_SERVICE_PROFILE',
+  'PROFESSIONAL_SERVICE_OVERAGE',
+  'AI_GOVERNANCE_PROFILE',
 ] as const;
 export type ApprovalChangeType = (typeof APPROVAL_CHANGE_TYPES)[number];
 
@@ -55,6 +76,11 @@ export class RequestApprovalDto {
   @IsString()
   objectId!: string;
 
+  @IsOptional()
+  @IsString()
+  tenantId?: string;
+
+  @IsOptional()
   @IsString()
   requestedBy!: string;
 
@@ -92,17 +118,21 @@ export class CommercialApprovalService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  async requestApproval(dto: RequestApprovalDto) {
+  async requestApproval(
+    dto: RequestApprovalDto,
+    transaction?: Prisma.TransactionClient,
+  ) {
     this.logger.log(
       `Requesting ${dto.changeType} approval for ${dto.objectType}/${dto.objectId} by ${dto.requestedBy}`,
     );
 
-    return this.prisma.$transaction(async (tx) => {
+    const createApproval = async (tx: Prisma.TransactionClient) => {
       const approval = await tx.commercialApproval.create({
         data: {
           change_type: dto.changeType,
           object_type: dto.objectType,
           object_id: dto.objectId,
+          tenant_id: dto.tenantId,
           requested_by: dto.requestedBy,
           reason: dto.reason,
           before_snapshot: JSON.stringify(dto.beforeSnapshot ?? {}),
@@ -118,7 +148,7 @@ export class CommercialApprovalService {
       await tx.commercialEvent.create({
         data: {
           event_type: 'commercial_approval.requested',
-          tenant_id: dto.objectType,
+          tenant_id: dto.tenantId,
           actor: dto.requestedBy,
           payload: JSON.stringify({
             approvalId: approval.id,
@@ -129,12 +159,28 @@ export class CommercialApprovalService {
       });
 
       return approval;
-    });
+    };
+
+    return transaction
+      ? createApproval(transaction)
+      : this.prisma.$transaction(createApproval);
   }
 
   async getApprovalById(approvalId: string) {
     const approval = await this.prisma.commercialApproval.findUnique({
       where: { id: approvalId },
+    });
+    if (!approval) {
+      throw new NotFoundException(
+        `Commercial approval '${approvalId}' not found`,
+      );
+    }
+    return approval;
+  }
+
+  async getApprovalByIdForTenant(approvalId: string, tenantId: string) {
+    const approval = await this.prisma.commercialApproval.findFirst({
+      where: { id: approvalId, tenant_id: tenantId },
     });
     if (!approval) {
       throw new NotFoundException(

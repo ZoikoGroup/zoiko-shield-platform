@@ -23,7 +23,10 @@ describe('QuoteService (ZS-COM-BILL-001 Part 2 CPQ chain)', () => {
         update: jest.fn(),
       },
     };
-    catalogMock = { getActivePriceBook: jest.fn() };
+    catalogMock = {
+      getActivePriceBook: jest.fn(),
+      validateProductSelection: jest.fn(),
+    };
     approvalMock = {
       requestApproval: jest.fn(),
       getApprovalById: jest.fn(),
@@ -47,9 +50,22 @@ describe('QuoteService (ZS-COM-BILL-001 Part 2 CPQ chain)', () => {
   const readyAccount = {
     id: 'acct-1',
     billing_classification: 'COMMERCIAL_DIRECT',
-    legal_entity_id: 'le-1',
-    region: 'US',
     billing_source: 'DIRECT',
+    customer_legal_name: 'Acme Limited',
+    billing_address: '{"countryCode":"US"}',
+    tax_facts: '{"countryCode":"US"}',
+    currency: 'USD',
+    contacts: '[{"type":"BILLING"}]',
+    contract_owner_id: 'owner-1',
+    tenantBindings: [
+      {
+        legal_entity_id: 'le-1',
+        environment_id: 'production',
+        region: 'US',
+        residency_policy: 'US_ONLY',
+        service_scope: '["MANAGED_DEFENSE"]',
+      },
+    ],
   };
 
   it('fails closed when no approved price book exists for a SKU (draft price cannot be used)', async () => {
@@ -74,9 +90,14 @@ describe('QuoteService (ZS-COM-BILL-001 Part 2 CPQ chain)', () => {
     prismaMock.commercialAccount.findUnique.mockResolvedValue({
       id: 'acct-2',
       billing_classification: 'COMMERCIAL_DIRECT',
-      legal_entity_id: null,
-      region: null,
       billing_source: null,
+      customer_legal_name: null,
+      billing_address: '{}',
+      tax_facts: '{}',
+      currency: null,
+      contacts: '[]',
+      contract_owner_id: null,
+      tenantBindings: [],
     });
 
     await expect(
@@ -96,6 +117,7 @@ describe('QuoteService (ZS-COM-BILL-001 Part 2 CPQ chain)', () => {
       legal_entity_id: null,
       region: null,
       billing_source: null,
+      tenantBindings: [],
     });
     prismaMock.catalogVersion.findUnique.mockResolvedValue({
       id: 'cv-1',
