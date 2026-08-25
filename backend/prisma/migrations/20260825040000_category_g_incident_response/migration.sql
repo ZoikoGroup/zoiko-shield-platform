@@ -90,7 +90,7 @@ CREATE UNIQUE INDEX "IncidentResponseRetainer_service_obligation_id_key"
   ON "IncidentResponseRetainer"("service_obligation_id");
 CREATE UNIQUE INDEX "IncidentResponseRetainer_approval_id_key"
   ON "IncidentResponseRetainer"("approval_id");
-CREATE UNIQUE INDEX "IncidentResponseRetainer_tenant_id_environment_id_retainer_key_"
+CREATE UNIQUE INDEX "IncidentResponseRetainer_tenant_id_environment_id_retainer__key"
   ON "IncidentResponseRetainer"("tenant_id", "environment_id", "retainer_key", "version");
 CREATE INDEX "IncidentResponseRetainer_tenant_id_environment_id_status_idx"
   ON "IncidentResponseRetainer"("tenant_id", "environment_id", "status");
@@ -119,7 +119,7 @@ ALTER TABLE "IncidentWorkOrder"
   ADD COLUMN "tenant_id" TEXT,
   ADD COLUMN "environment_id" TEXT,
   ADD COLUMN "retainer_id" TEXT,
-  ADD COLUMN "activation_reference" TEXT NOT NULL DEFAULT 'MIGRATION_REVIEW',
+  ADD COLUMN "activation_reference" TEXT NOT NULL,
   ADD COLUMN "authority_scope" TEXT NOT NULL DEFAULT '{}',
   ADD COLUMN "started_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   ADD COLUMN "customer_command_structure" TEXT NOT NULL DEFAULT '{}',
@@ -138,13 +138,13 @@ ALTER TABLE "IncidentWorkOrder"
   ADD COLUMN "closure_summary" TEXT,
   ADD COLUMN "closure_evidence_refs" TEXT NOT NULL DEFAULT '[]',
   ADD COLUMN "customer_acknowledgement_ref" TEXT,
-  ADD COLUMN "no_privilege_or_notification_determination" TEXT NOT NULL DEFAULT 'This work order does not establish legal privilege or provide a breach-notification, regulatory, or legal conclusion.';
+  ADD COLUMN "no_privilege_or_notification_determination" TEXT NOT NULL;
 
 UPDATE "IncidentWorkOrder" SET "status" = 'MIGRATION_REVIEW';
 
 CREATE UNIQUE INDEX "IncidentWorkOrder_emergency_reconciliation_approval_id_key"
   ON "IncidentWorkOrder"("emergency_reconciliation_approval_id");
-CREATE UNIQUE INDEX "IncidentWorkOrder_tenant_id_environment_id_incident_reference_k"
+CREATE UNIQUE INDEX "IncidentWorkOrder_tenant_id_environment_id_incident_referen_key"
   ON "IncidentWorkOrder"("tenant_id", "environment_id", "incident_reference");
 CREATE INDEX "IncidentWorkOrder_tenant_id_environment_id_status_idx"
   ON "IncidentWorkOrder"("tenant_id", "environment_id", "status");
@@ -153,7 +153,7 @@ CREATE INDEX "IncidentWorkOrder_retainer_id_status_idx"
 ALTER TABLE "IncidentWorkOrder"
   ADD CONSTRAINT "IncidentWorkOrder_retainer_id_fkey"
   FOREIGN KEY ("retainer_id") REFERENCES "IncidentResponseRetainer"("id")
-  ON DELETE RESTRICT ON UPDATE CASCADE;
+  ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "IncidentWorkOrder"
   ADD CONSTRAINT "IncidentWorkOrder_contract_id_fkey"
   FOREIGN KEY ("contract_id") REFERENCES "Contract"("id")
@@ -229,7 +229,7 @@ CREATE TABLE "IncidentWorkOrderConsumption" (
     NULLIF(BTRIM("actor_id"), '') IS NOT NULL
   )
 );
-CREATE INDEX "IncidentWorkOrderConsumption_tenant_id_environment_id_occurred_"
+CREATE INDEX "IncidentWorkOrderConsumption_tenant_id_environment_id_occur_idx"
   ON "IncidentWorkOrderConsumption"("tenant_id", "environment_id", "occurred_at");
 CREATE INDEX "IncidentWorkOrderConsumption_work_order_id_occurred_at_idx"
   ON "IncidentWorkOrderConsumption"("work_order_id", "occurred_at");
@@ -327,7 +327,7 @@ CREATE TABLE "IncidentLegalSensitiveRecord" (
     NULLIF(BTRIM("recorded_by"), '') IS NOT NULL
   )
 );
-CREATE INDEX "IncidentLegalSensitiveRecord_tenant_id_environment_id_purpose_idx"
+CREATE INDEX "IncidentLegalSensitiveRecord_tenant_id_environment_id_purpo_idx"
   ON "IncidentLegalSensitiveRecord"("tenant_id", "environment_id", "purpose");
 CREATE INDEX "IncidentLegalSensitiveRecord_work_order_id_recorded_at_idx"
   ON "IncidentLegalSensitiveRecord"("work_order_id", "recorded_at");
@@ -353,7 +353,7 @@ CREATE TABLE "IncidentLegalAccessEvent" (
     NULLIF(BTRIM("actor_id"), '') IS NOT NULL
   )
 );
-CREATE INDEX "IncidentLegalAccessEvent_tenant_id_environment_id_accessed_at_idx"
+CREATE INDEX "IncidentLegalAccessEvent_tenant_id_environment_id_accessed__idx"
   ON "IncidentLegalAccessEvent"("tenant_id", "environment_id", "accessed_at");
 CREATE INDEX "IncidentLegalAccessEvent_legal_record_id_accessed_at_idx"
   ON "IncidentLegalAccessEvent"("legal_record_id", "accessed_at");

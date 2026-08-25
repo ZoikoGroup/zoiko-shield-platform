@@ -3781,6 +3781,7 @@ model FrameworkVersion {
   requirements Requirement[]
 
   @@unique([framework_id, version])
+  @@index([release_status])
 }
 
 model Requirement {
