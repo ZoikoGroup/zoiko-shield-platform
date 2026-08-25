@@ -23,6 +23,7 @@ export interface PolicyCheckResult {
   governanceProfile?: Awaited<
     ReturnType<PrismaService['aiGovernanceProfile']['findFirst']>
   >;
+  runtimeState?: 'AVAILABLE' | 'WARNING' | 'DEGRADED';
 }
 
 /**
@@ -110,10 +111,25 @@ export class PolicyService {
         effective_from: { lte: now },
         OR: [{ effective_to: null }, { effective_to: { gte: now } }],
       },
+      include: {
+        commercialAccount: true,
+        contract: true,
+        priceBook: true,
+      },
       orderBy: [{ version: 'desc' }, { created_at: 'desc' }],
     });
     const governanceProfile = profileCandidates.find(
       (profile) =>
+        profile.commercialAccount.status === 'ACTIVE' &&
+        profile.contract.status === 'ACTIVE' &&
+        profile.contract.term_start <= now &&
+        profile.contract.term_end >= now &&
+        profile.priceBook.status === 'ACTIVE' &&
+        profile.priceBook.effective_from <= now &&
+        (!profile.priceBook.effective_to ||
+          profile.priceBook.effective_to >= now) &&
+        profile.contract.catalog_version_id === profile.catalog_version_id &&
+        profile.priceBook.catalog_version_id === profile.catalog_version_id &&
         this.parseArray(profile.allowed_use_case_keys).includes(useCaseKey) &&
         this.parseArray(profile.allowed_regions).includes(input.region),
     );
@@ -125,6 +141,63 @@ export class PolicyService {
           'No active tenant AI governance profile authorizes this use case and region',
       };
     }
+    const governedUsage = await this.prisma.aiUsageRecord.findMany({
+      where: {
+        tenant_id: input.tenantId,
+        environment_id: input.environmentId,
+        governance_profile_id: governanceProfile.id,
+        occurred_at: {
+          gte: governanceProfile.effective_from,
+          ...(governanceProfile.effective_to
+            ? { lte: governanceProfile.effective_to }
+            : {}),
+        },
+      },
+      select: { contracted_usage_units: true },
+    });
+    const currentUsage = governedUsage.reduce(
+      (total, usage) =>
+        total +
+        (governanceProfile.billable_metric === 'CONTRACTED_USAGE'
+          ? Number(usage.contracted_usage_units)
+          : governanceProfile.billable_metric === 'NON_BILLABLE'
+            ? 0
+            : 1),
+      0,
+    );
+    const allowance = Number(governanceProfile.included_allowance);
+    const usagePercent = allowance > 0 ? (currentUsage / allowance) * 100 : 0;
+    const atAllowance = allowance > 0 && currentUsage >= allowance;
+    const atContractCap =
+      governanceProfile.overage_policy === 'CONTRACT_AUTHORIZED' &&
+      governanceProfile.overage_cap !== null &&
+      currentUsage >= allowance + Number(governanceProfile.overage_cap);
+    const rateLimited =
+      governanceProfile.overage_policy === 'RATE_LIMIT' &&
+      allowance > 0 &&
+      usagePercent >= governanceProfile.rate_limit_at_percent;
+    const blocked =
+      (governanceProfile.overage_policy === 'BLOCK' && atAllowance) ||
+      rateLimited ||
+      atContractCap;
+    if (blocked) {
+      return {
+        allowed: false,
+        denialCode: 'AI_UNAVAILABLE',
+        reason: rateLimited
+          ? 'Tenant AI allowance is rate-limited'
+          : atContractCap
+            ? 'Tenant AI contracted overage cap is exhausted'
+            : 'Tenant AI included allowance is exhausted',
+        governanceProfile,
+      };
+    }
+    const runtimeState =
+      governanceProfile.overage_policy === 'DEGRADE' && atAllowance
+        ? 'DEGRADED'
+        : usagePercent >= governanceProfile.warning_threshold_percent
+          ? 'WARNING'
+          : 'AVAILABLE';
     const entitlement = await this.prisma.entitlement.findFirst({
       where: {
         tenant_id: input.tenantId,
@@ -137,9 +210,7 @@ export class PolicyService {
     });
     if (
       !entitlement ||
-      ['SUSPENDED', 'TERMINATED'].includes(
-        entitlement.commercialAccount.status,
-      )
+      ['SUSPENDED', 'TERMINATED'].includes(entitlement.commercialAccount.status)
     ) {
       return {
         allowed: false,
@@ -190,6 +261,12 @@ export class PolicyService {
       };
     }
 
-    return { allowed: true, useCase, modelProfile, governanceProfile };
+    return {
+      allowed: true,
+      useCase,
+      modelProfile,
+      governanceProfile,
+      runtimeState,
+    };
   }
 }

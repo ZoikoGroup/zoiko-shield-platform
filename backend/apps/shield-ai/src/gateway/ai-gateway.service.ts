@@ -154,7 +154,12 @@ export class AiGatewayService {
       toolCalls: 0,
       retrievalCalls: 1,
       retrievalUnits: sourceRefs.length,
-      storageByteHours: Buffer.byteLength(invocationResult.content, 'utf8'),
+      storageByteHours: Buffer.byteLength(
+        typeof invocationResult.content === 'string'
+          ? invocationResult.content
+          : JSON.stringify(invocationResult.content),
+        'utf8',
+      ),
       contractedUsageUnits: 1,
       complexityUnits: 0,
       internalCost: invocationResult.usage?.internalCost ?? 0,

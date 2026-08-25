@@ -1484,7 +1484,7 @@ model Contract {
   incidentResponseRetainers      IncidentResponseRetainer[]
   incidentWorkOrders             IncidentWorkOrder[]
   professionalServiceEngagements ProfessionalServiceEngagement[]
-  aiGovernanceProfiles            AiGovernanceProfile[]
+  aiGovernanceProfiles           AiGovernanceProfile[]
 
   @@index([commercial_account_id])
   @@index([status])
@@ -3151,39 +3151,39 @@ model MarketAvailability {
 // ============================================================
 
 model AiUsageRecord {
-  id                             String              @id @default(uuid())
+  id                             String               @id @default(uuid())
   tenant_id                      String
-  environment_id                 String              @default("UNBOUND")
+  environment_id                 String               @default("UNBOUND")
   governance_profile_id          String?
   governanceProfile              AiGovernanceProfile? @relation(fields: [governance_profile_id], references: [id])
-  use_case_key                   String              @default("LEGACY_UNBOUND")
+  use_case_key                   String               @default("LEGACY_UNBOUND")
   workflow                       String
-  workflow_class                 String              @default("STANDARD")
+  workflow_class                 String               @default("STANDARD")
   provider                       String
   model                          String
   model_profile_id               String?
-  model_class                    String              @default("STANDARD")
-  input_tokens                   Int                 @default(0)
-  output_tokens                  Int                 @default(0)
-  tool_calls                     Int                 @default(0)
-  retrieval_calls                Int                 @default(0)
-  retrieval_units                Int                 @default(0)
-  ai_storage_byte_hours          Decimal             @default(0) @db.Decimal(20, 4)
-  contracted_usage_units         Decimal             @default(0) @db.Decimal(14, 4)
-  complexity_units               Decimal             @default(0) @db.Decimal(14, 4)
-  internal_cost                  Decimal             @default(0) @db.Decimal(14, 6)
-  internal_cost_source           String              @default("CALLER_REPORTED")
+  model_class                    String               @default("STANDARD")
+  input_tokens                   Int                  @default(0)
+  output_tokens                  Int                  @default(0)
+  tool_calls                     Int                  @default(0)
+  retrieval_calls                Int                  @default(0)
+  retrieval_units                Int                  @default(0)
+  ai_storage_byte_hours          Decimal              @default(0) @db.Decimal(20, 4)
+  contracted_usage_units         Decimal              @default(0) @db.Decimal(14, 4)
+  complexity_units               Decimal              @default(0) @db.Decimal(14, 4)
+  internal_cost                  Decimal              @default(0) @db.Decimal(14, 6)
+  internal_cost_source           String               @default("CALLER_REPORTED")
   provider_price_version         String?
-  fallback_used                  Boolean             @default(false)
+  fallback_used                  Boolean              @default(false)
   fallback_from_model_profile_id String?
-  billing_classification         String              @default("INTERNAL_COST_ONLY")
-  billable                       Boolean             @default(false)
-  billable_quantity              Decimal             @default(0) @db.Decimal(14, 4)
+  billing_classification         String               @default("INTERNAL_COST_ONLY")
+  billable                       Boolean              @default(false)
+  billable_quantity              Decimal              @default(0) @db.Decimal(14, 4)
   meter_event_id                 String?
   catalog_version_id             String?
   customer_authorization_ref     String?
-  occurred_at                    DateTime            @default(now())
-  created_at                     DateTime            @default(now())
+  occurred_at                    DateTime             @default(now())
+  created_at                     DateTime             @default(now())
 
   @@index([tenant_id, environment_id, occurred_at])
   @@index([governance_profile_id, occurred_at])
@@ -3212,7 +3212,7 @@ model AiGovernanceProfile {
   usage_authorization_id           String?
   catalog_version_id               String
   customer_authorization_ref       String?
-  included_allowance               Decimal           @default(0) @db.Decimal(14, 4)
+  included_allowance               Decimal           @db.Decimal(14, 4)
   warning_threshold_percent        Int               @default(80)
   overage_policy                   String            @default("BLOCK")
   overage_cap                      Decimal?          @db.Decimal(14, 4)
@@ -3221,19 +3221,20 @@ model AiGovernanceProfile {
   fallback_model_profile_ids       String            @default("[]")
   fallback_customer_charge_allowed Boolean           @default(false)
   fallback_authorization_ref       String?
-  effective_from                   DateTime           @default(now())
+  effective_from                   DateTime          @default(now())
   effective_to                     DateTime?
-  status                           String             @default("PENDING_APPROVAL")
-  approval_id                      String?            @unique
+  status                           String            @default("PENDING_APPROVAL")
+  approval_id                      String?           @unique
   requested_by                     String
   approved_by                      String?
   approved_at                      DateTime?
   activated_by                     String?
+  activation_reference             String?
   activated_at                     DateTime?
-  created_at                       DateTime           @default(now())
-  updated_at                       DateTime           @updatedAt
+  created_at                       DateTime          @default(now())
+  updated_at                       DateTime          @updatedAt
 
-  usageRecords      AiUsageRecord[]
+  usageRecords       AiUsageRecord[]
   providerCostEvents AiProviderCostEvent[]
 
   @@unique([tenant_id, environment_id, profile_key, version])
@@ -3243,23 +3244,23 @@ model AiGovernanceProfile {
 }
 
 model AiProviderCostEvent {
-  id                     String              @id @default(uuid())
+  id                     String               @id @default(uuid())
   tenant_id              String?
   environment_id         String?
   governance_profile_id  String?
   governanceProfile      AiGovernanceProfile? @relation(fields: [governance_profile_id], references: [id])
   provider               String
-  model                   String
-  model_class             String
+  model                  String
+  model_class            String
   provider_price_version String
-  prior_unit_cost         Decimal?            @db.Decimal(14, 6)
-  new_unit_cost           Decimal             @db.Decimal(14, 6)
-  cost_unit               String
-  effective_at            DateTime
-  source_reference        String
-  customer_price_changed  Boolean             @default(false)
-  recorded_by             String
-  created_at              DateTime            @default(now())
+  prior_unit_cost        Decimal?             @db.Decimal(14, 6)
+  new_unit_cost          Decimal              @db.Decimal(14, 6)
+  cost_unit              String
+  effective_at           DateTime
+  source_reference       String
+  customer_price_changed Boolean              @default(false)
+  recorded_by            String
+  created_at             DateTime             @default(now())
 
   @@unique([provider, model, provider_price_version, effective_at])
   @@index([tenant_id, environment_id, effective_at])
