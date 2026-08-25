@@ -90,7 +90,7 @@ CREATE UNIQUE INDEX "IncidentResponseRetainer_service_obligation_id_key"
   ON "IncidentResponseRetainer"("service_obligation_id");
 CREATE UNIQUE INDEX "IncidentResponseRetainer_approval_id_key"
   ON "IncidentResponseRetainer"("approval_id");
-CREATE UNIQUE INDEX "IncidentResponseRetainer_tenant_id_environment_id_retainer_key_version_key"
+CREATE UNIQUE INDEX "IncidentResponseRetainer_tenant_id_environment_id_retainer_key_"
   ON "IncidentResponseRetainer"("tenant_id", "environment_id", "retainer_key", "version");
 CREATE INDEX "IncidentResponseRetainer_tenant_id_environment_id_status_idx"
   ON "IncidentResponseRetainer"("tenant_id", "environment_id", "status");
@@ -144,7 +144,7 @@ UPDATE "IncidentWorkOrder" SET "status" = 'MIGRATION_REVIEW';
 
 CREATE UNIQUE INDEX "IncidentWorkOrder_emergency_reconciliation_approval_id_key"
   ON "IncidentWorkOrder"("emergency_reconciliation_approval_id");
-CREATE UNIQUE INDEX "IncidentWorkOrder_tenant_id_environment_id_incident_reference_key"
+CREATE UNIQUE INDEX "IncidentWorkOrder_tenant_id_environment_id_incident_reference_k"
   ON "IncidentWorkOrder"("tenant_id", "environment_id", "incident_reference");
 CREATE INDEX "IncidentWorkOrder_tenant_id_environment_id_status_idx"
   ON "IncidentWorkOrder"("tenant_id", "environment_id", "status");
@@ -229,7 +229,7 @@ CREATE TABLE "IncidentWorkOrderConsumption" (
     NULLIF(BTRIM("actor_id"), '') IS NOT NULL
   )
 );
-CREATE INDEX "IncidentWorkOrderConsumption_tenant_id_environment_id_occurred_at_idx"
+CREATE INDEX "IncidentWorkOrderConsumption_tenant_id_environment_id_occurred_"
   ON "IncidentWorkOrderConsumption"("tenant_id", "environment_id", "occurred_at");
 CREATE INDEX "IncidentWorkOrderConsumption_work_order_id_occurred_at_idx"
   ON "IncidentWorkOrderConsumption"("work_order_id", "occurred_at");
