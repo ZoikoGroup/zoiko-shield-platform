@@ -150,6 +150,7 @@ async function main() {
   // 5. Create Commercial Account
   const commercialAccount = await prisma.commercialAccount.create({
     data: {
+      name: customerName,
       customer_legal_name: customerName,
       billing_source: 'DIRECT',
       billing_classification: 'COMMERCIAL_DIRECT',

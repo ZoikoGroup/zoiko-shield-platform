@@ -1,5 +1,5 @@
 -- Category B4-B6 platform-plane authorities. Readiness verification is kept
--- separate from customer commercial approval; concession makers and approvers
+-- separate from customer commercial approval. Concession makers and approvers
 -- are also independently permissioned.
 INSERT INTO "authorization".permissions (id, code, description) VALUES (gen_random_uuid(), 'platform:commercial-readiness:verify', 'Verify deployment, claim and service-capacity readiness and apply approved subscription changes') ON CONFLICT (code) DO NOTHING;
 INSERT INTO "authorization".permissions (id, code, description) VALUES (gen_random_uuid(), 'platform:concession:manage', 'Request and operate bounded commercial concessions') ON CONFLICT (code) DO NOTHING;
