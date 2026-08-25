@@ -35,6 +35,7 @@ describe('AiUsageService (ZS-COM-BILL-001 AI-01: internal cost != billable usage
         update: jest.fn(),
       },
       modelProfile: { findFirst: jest.fn() },
+      costRecord: { create: jest.fn() },
       $transaction: jest.fn((callback: (tx: any) => unknown) =>
         callback(prismaMock),
       ),

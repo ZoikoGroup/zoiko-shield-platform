@@ -42,7 +42,7 @@ describe('AiGatewayService', () => {
     aiOutputService = { create: jest.fn() };
     kafkaProducer = { publishEvent: jest.fn() };
     killSwitch = { assertNotBlocked: jest.fn() };
-    shieldCore = { recordUsage: jest.fn(), markBillable: jest.fn() };
+    shieldCore = { recordAiUsage: jest.fn(), markBillable: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -73,8 +73,9 @@ describe('AiGatewayService', () => {
     usageControl.checkAndIncrement.mockReturnValue({ allowed: true });
     policyService.evaluate.mockResolvedValue({
       allowed: true,
-      useCase: { id: 'uc-1' },
-      modelProfile: { id: 'mp-1', provider: 'MOCK' },
+      useCase: { id: 'uc-1', risk_class: 'LOW' },
+      modelProfile: { id: 'mp-1', provider: 'MOCK', model: 'mock-model' },
+      governanceProfile: { id: 'gp-1' },
     });
     promptRegistry.getActiveForKey.mockResolvedValue({
       id: 'p-1',
@@ -103,8 +104,9 @@ describe('AiGatewayService', () => {
     usageControl.checkAndIncrement.mockReturnValue({ allowed: true });
     policyService.evaluate.mockResolvedValue({
       allowed: true,
-      useCase: { id: 'uc-1' },
-      modelProfile: { id: 'mp-1', provider: 'MOCK' },
+      useCase: { id: 'uc-1', risk_class: 'LOW' },
+      modelProfile: { id: 'mp-1', provider: 'MOCK', model: 'mock-model' },
+      governanceProfile: { id: 'gp-1' },
     });
     promptRegistry.getActiveForKey.mockResolvedValue({
       id: 'p-1',
