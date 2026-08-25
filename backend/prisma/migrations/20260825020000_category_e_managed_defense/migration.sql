@@ -70,7 +70,7 @@ CREATE TABLE "ManagedDefenseProfile" (
 );
 CREATE UNIQUE INDEX "ManagedDefenseProfile_approval_id_key"
   ON "ManagedDefenseProfile"("approval_id");
-CREATE UNIQUE INDEX "ManagedDefenseProfile_tenant_id_environment_id_profile_key_version_key"
+CREATE UNIQUE INDEX "ManagedDefenseProfile_tenant_id_environment_id_profile_key__key"
   ON "ManagedDefenseProfile"("tenant_id", "environment_id", "profile_key", "version");
 CREATE INDEX "ManagedDefenseProfile_tenant_id_environment_id_status_idx"
   ON "ManagedDefenseProfile"("tenant_id", "environment_id", "status");
@@ -113,9 +113,9 @@ CREATE TABLE "ManagedDefenseReadinessAssessment" (
     )
   )
 );
-CREATE UNIQUE INDEX "ManagedDefenseReadinessAssessment_managed_defense_profile_id_key"
+CREATE UNIQUE INDEX "ManagedDefenseReadinessAssessment_managed_defense_profile_i_key"
   ON "ManagedDefenseReadinessAssessment"("managed_defense_profile_id");
-CREATE INDEX "ManagedDefenseReadinessAssessment_tenant_id_environment_id_status_idx"
+CREATE INDEX "ManagedDefenseReadinessAssessment_tenant_id_environment_id__idx"
   ON "ManagedDefenseReadinessAssessment"("tenant_id", "environment_id", "status");
 
 ALTER TABLE "ServiceObligation"
@@ -293,7 +293,7 @@ ALTER TABLE "ManagedDefenseProfile"
   FOREIGN KEY ("contract_id") REFERENCES "Contract"("id")
   ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "ManagedDefenseReadinessAssessment"
-  ADD CONSTRAINT "ManagedDefenseReadinessAssessment_managed_defense_profile_id_fkey"
+  ADD CONSTRAINT "ManagedDefenseReadinessAssessment_managed_defense_profile__fkey"
   FOREIGN KEY ("managed_defense_profile_id") REFERENCES "ManagedDefenseProfile"("id")
   ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "ServiceObligation"
