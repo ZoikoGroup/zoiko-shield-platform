@@ -288,12 +288,19 @@ export class AiUsageService {
     dto: MarkAiUsageBillableDto = {},
   ) {
     const usage = await this.prisma.aiUsageRecord.findFirst({
-      where: { id: usageId, tenant_id: tenantId, environment_id: environmentId },
+      where: {
+        id: usageId,
+        tenant_id: tenantId,
+        environment_id: environmentId,
+      },
       include: { governanceProfile: true },
     });
-    if (!usage) throw new NotFoundException(`AI usage record '${usageId}' not found`);
+    if (!usage)
+      throw new NotFoundException(`AI usage record '${usageId}' not found`);
     if (usage.billable) {
-      throw new ConflictException(`AI usage record '${usageId}' is already billable`);
+      throw new ConflictException(
+        `AI usage record '${usageId}' is already billable`,
+      );
     }
     const profile = usage.governanceProfile;
     if (!profile || profile.status !== 'ACTIVE' || !profile.tenant_enabled) {
@@ -303,7 +310,9 @@ export class AiUsageService {
       dto.expectedGovernanceProfileId &&
       dto.expectedGovernanceProfileId !== profile.id
     ) {
-      throw new ConflictException('Governance profile replay guard does not match');
+      throw new ConflictException(
+        'Governance profile replay guard does not match',
+      );
     }
     if (
       profile.billable_metric === 'NON_BILLABLE' ||
@@ -314,7 +323,8 @@ export class AiUsageService {
       throw new ConflictException({
         statusCode: 409,
         error: 'AI_USAGE_NOT_CONTRACT_AUTHORIZED',
-        message: 'AI usage has no approved catalog and customer billing authorization',
+        message:
+          'AI usage has no approved catalog and customer billing authorization',
       });
     }
     if (
@@ -325,13 +335,16 @@ export class AiUsageService {
       throw new ConflictException({
         statusCode: 409,
         error: 'AI_FALLBACK_PREMIUM_NOT_AUTHORIZED',
-        message: 'Provider fallback cost is internal-only without explicit contract authorization',
+        message:
+          'Provider fallback cost is internal-only without explicit contract authorization',
       });
     }
     const metric = profile.billable_metric as AiBillableMetric;
     const quantity = this.derivedQuantity(metric, usage);
     if (quantity <= 0) {
-      throw new ConflictException('Approved AI metric produced no positive quantity');
+      throw new ConflictException(
+        'Approved AI metric produced no positive quantity',
+      );
     }
     const result = await this.meteringService.recordEvent({
       tenantId,
@@ -360,7 +373,10 @@ export class AiUsageService {
         complexityExcludedUnlessContractMetric: true,
       },
     });
-    if (!result.usageRecord || Number(result.usageRecord.billable_quantity) <= 0) {
+    if (
+      !result.usageRecord ||
+      Number(result.usageRecord.billable_quantity) <= 0
+    ) {
       throw new ConflictException({
         statusCode: 409,
         error: 'AI_USAGE_NOT_CONTRACT_AUTHORIZED',
@@ -379,11 +395,7 @@ export class AiUsageService {
     });
   }
 
-  async visibility(
-    tenantId: string,
-    environmentId: string,
-    profileId: string,
-  ) {
+  async visibility(tenantId: string, environmentId: string, profileId: string) {
     const profile = await this.profiles.get(profileId, tenantId, environmentId);
     const now = new Date();
     const periodStart = profile.effective_from;
@@ -404,7 +416,10 @@ export class AiUsageService {
     );
     const allowance = Number(profile.included_allowance);
     const elapsed = Math.max(1, now.getTime() - periodStart.getTime());
-    const totalPeriod = Math.max(elapsed, periodEnd.getTime() - periodStart.getTime());
+    const totalPeriod = Math.max(
+      elapsed,
+      periodEnd.getTime() - periodStart.getTime(),
+    );
     const forecastUsage = (currentUsage / elapsed) * totalPeriod;
     const percent = allowance > 0 ? (currentUsage / allowance) * 100 : 0;
     const warning = percent >= profile.warning_threshold_percent;
@@ -428,9 +443,14 @@ export class AiUsageService {
       forecastUsage,
       remainingAllowance: Math.max(0, allowance - currentUsage),
       usagePercent: percent,
-      thresholdState: exhausted ? 'OVERAGE' : warning ? 'WARNING' : 'WITHIN_ALLOWANCE',
+      thresholdState: exhausted
+        ? 'OVERAGE'
+        : warning
+          ? 'WARNING'
+          : 'WITHIN_ALLOWANCE',
       overagePolicy: profile.overage_policy,
-      overageCap: profile.overage_cap === null ? null : Number(profile.overage_cap),
+      overageCap:
+        profile.overage_cap === null ? null : Number(profile.overage_cap),
       runtimeState: rateLimited
         ? 'RATE_LIMITED'
         : degraded

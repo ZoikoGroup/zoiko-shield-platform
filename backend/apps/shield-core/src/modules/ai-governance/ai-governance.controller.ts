@@ -110,6 +110,20 @@ export class InternalAiProviderCostController {
       data: await this.costs.record(dto),
     };
   }
+
+  @Get()
+  async list(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Headers('x-environment-id') headerEnvironmentId: string,
+  ) {
+    return {
+      statusCode: HttpStatus.OK,
+      data: await this.costs.list(
+        requireTenantId(headerTenantId),
+        requireEnvironmentId(headerEnvironmentId),
+      ),
+    };
+  }
 }
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -119,7 +133,6 @@ export class AiGovernanceProfileController {
   constructor(
     private readonly profiles: AiGovernanceProfileService,
     private readonly usage: AiUsageService,
-    private readonly costs: AiProviderCostService,
   ) {}
 
   @Get()
@@ -154,18 +167,6 @@ export class AiGovernanceProfileController {
     };
   }
 
-  @Get('provider-cost-events')
-  async providerCostEvents(
-    @Headers('x-tenant-id') headerTenantId: string,
-    @CurrentUser() user: AuthenticatedUser,
-  ) {
-    const scope = boundary(headerTenantId, user);
-    return {
-      statusCode: HttpStatus.OK,
-      data: await this.costs.list(scope.tenantId, scope.environmentId),
-    };
-  }
-
   @Get(':id')
   async get(
     @Headers('x-tenant-id') headerTenantId: string,
@@ -188,7 +189,11 @@ export class AiGovernanceProfileController {
     const scope = boundary(headerTenantId, user);
     return {
       statusCode: HttpStatus.OK,
-      data: await this.usage.visibility(scope.tenantId, scope.environmentId, id),
+      data: await this.usage.visibility(
+        scope.tenantId,
+        scope.environmentId,
+        id,
+      ),
     };
   }
 

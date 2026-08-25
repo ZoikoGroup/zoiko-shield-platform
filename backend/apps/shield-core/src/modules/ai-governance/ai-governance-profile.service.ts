@@ -89,7 +89,7 @@ export class CreateAiGovernanceProfileDto {
   customerAuthorizationRef?: string;
 
   @IsNumber()
-  @Min(0)
+  @IsPositive()
   includedAllowance!: number;
 
   @IsInt()
@@ -255,7 +255,9 @@ export class AiGovernanceProfileService {
       throw new ConflictException('An ACTIVE matching price book is required');
     }
     if (!entitled) {
-      throw new ConflictException('An active AI_SECURITY entitlement is required');
+      throw new ConflictException(
+        'An active AI_SECURITY entitlement is required',
+      );
     }
     if (
       priceBook.catalog_version_id !== contract.catalog_version_id ||
@@ -288,6 +290,19 @@ export class AiGovernanceProfileService {
   }
 
   private validateBillingPolicy(dto: CreateAiGovernanceProfileDto) {
+    if (!AI_BILLABLE_METRICS.includes(dto.billableMetric)) {
+      throw new BadRequestException(
+        `Unsupported AI billable metric '${dto.billableMetric}'; raw tokens are internal cost evidence only`,
+      );
+    }
+    if (!AI_OVERAGE_POLICIES.includes(dto.overagePolicy)) {
+      throw new BadRequestException(
+        `Unsupported AI overage policy '${dto.overagePolicy}'`,
+      );
+    }
+    if (!(dto.includedAllowance > 0)) {
+      throw new BadRequestException('includedAllowance must be positive');
+    }
     const billable = dto.billableMetric !== 'NON_BILLABLE';
     if (
       billable &&
@@ -352,9 +367,7 @@ export class AiGovernanceProfileService {
   ) {
     this.validateBillingPolicy(dto);
     const effectiveFrom = new Date(dto.effectiveFrom);
-    const effectiveTo = dto.effectiveTo
-      ? new Date(dto.effectiveTo)
-      : undefined;
+    const effectiveTo = dto.effectiveTo ? new Date(dto.effectiveTo) : undefined;
     if (effectiveTo && effectiveTo <= effectiveFrom) {
       throw new BadRequestException('effectiveTo must be after effectiveFrom');
     }
@@ -386,24 +399,35 @@ export class AiGovernanceProfileService {
       effectiveFrom > contract.term_end ||
       (effectiveTo && effectiveTo > contract.term_end)
     ) {
-      throw new ConflictException('AI profile term must remain within contract term');
+      throw new ConflictException(
+        'AI profile term must remain within contract term',
+      );
     }
     const modelProfiles = await this.prisma.modelProfile.findMany({
-      where: { id: { in: [...allowedModels, ...fallbackModels] }, status: 'ACTIVE' },
+      where: {
+        id: { in: [...allowedModels, ...fallbackModels] },
+        status: 'ACTIVE',
+      },
     });
     if (modelProfiles.length !== allowedModels.length + fallbackModels.length) {
       throw new ConflictException(
         'Every configured primary and fallback ModelProfile must be ACTIVE',
       );
     }
-    if (modelProfiles.some((profile) => !allowedRegions.includes(profile.region))) {
+    if (
+      modelProfiles.some((profile) => !allowedRegions.includes(profile.region))
+    ) {
       throw new ConflictException(
         'Every configured ModelProfile region must be explicitly allowed',
       );
     }
     const profileKey = this.required(dto.profileKey, 'profileKey');
     const latest = await this.prisma.aiGovernanceProfile.findFirst({
-      where: { tenant_id: tenantId, environment_id: environmentId, profile_key: profileKey },
+      where: {
+        tenant_id: tenantId,
+        environment_id: environmentId,
+        profile_key: profileKey,
+      },
       orderBy: { version: 'desc' },
     });
     const version = (latest?.version ?? 0) + 1;
@@ -489,7 +513,9 @@ export class AiGovernanceProfileService {
   ) {
     const profile = await this.get(id, tenantId, environmentId);
     if (profile.status !== 'PENDING_APPROVAL' || !profile.approval_id) {
-      throw new ConflictException(`AI governance profile '${id}' has no pending approval`);
+      throw new ConflictException(
+        `AI governance profile '${id}' has no pending approval`,
+      );
     }
     await this.approvals.decideApproval(
       profile.approval_id,
@@ -502,7 +528,11 @@ export class AiGovernanceProfileService {
         where: { id },
         data:
           dto.decision === 'APPROVED'
-            ? { status: 'APPROVED', approved_by: decidedBy, approved_at: new Date() }
+            ? {
+                status: 'APPROVED',
+                approved_by: decidedBy,
+                approved_at: new Date(),
+              }
             : { status: 'REJECTED' },
       });
       if (dto.decision === 'APPROVED') {
@@ -537,6 +567,64 @@ export class AiGovernanceProfileService {
     if (!(await this.entitlements.checkEntitlement(tenantId, 'AI_SECURITY'))) {
       throw new ConflictException('AI_SECURITY entitlement is not active');
     }
+    const [binding, contract, priceBook, models] = await Promise.all([
+      this.prisma.commercialAccountTenantBinding.findFirst({
+        where: {
+          commercial_account_id: profile.commercial_account_id,
+          tenant_id: tenantId,
+          environment_id: environmentId,
+          status: 'ACTIVE',
+          effective_from: { lte: now },
+          OR: [{ effective_to: null }, { effective_to: { gte: now } }],
+        },
+      }),
+      this.prisma.contract.findFirst({
+        where: {
+          id: profile.contract_id,
+          commercial_account_id: profile.commercial_account_id,
+          catalog_version_id: profile.catalog_version_id,
+          status: 'ACTIVE',
+          term_start: { lte: now },
+          term_end: { gte: now },
+        },
+      }),
+      this.prisma.priceBook.findFirst({
+        where: {
+          id: profile.price_book_id,
+          catalog_version_id: profile.catalog_version_id,
+          status: 'ACTIVE',
+          effective_from: { lte: now },
+          AND: [
+            { OR: [{ effective_to: null }, { effective_to: { gte: now } }] },
+          ],
+        },
+      }),
+      this.prisma.modelProfile.findMany({
+        where: {
+          id: {
+            in: [
+              ...this.parseArray(profile.allowed_model_profile_ids),
+              ...this.parseArray(profile.fallback_model_profile_ids),
+            ],
+          },
+          status: 'ACTIVE',
+        },
+      }),
+    ]);
+    const expectedModels = new Set([
+      ...this.parseArray(profile.allowed_model_profile_ids),
+      ...this.parseArray(profile.fallback_model_profile_ids),
+    ]).size;
+    if (
+      !binding ||
+      !contract ||
+      !priceBook ||
+      models.length !== expectedModels
+    ) {
+      throw new ConflictException(
+        'AI activation authority is stale: binding, contract, price book or provider policy is no longer active',
+      );
+    }
     const existing = await this.prisma.aiGovernanceProfile.findFirst({
       where: {
         tenant_id: tenantId,
@@ -551,10 +639,18 @@ export class AiGovernanceProfileService {
         `Profile '${profile.profile_key}' already has an ACTIVE version`,
       );
     }
-    this.required(dto.activationReference, 'activationReference');
+    const activationReference = this.required(
+      dto.activationReference,
+      'activationReference',
+    );
     return this.prisma.aiGovernanceProfile.update({
       where: { id },
-      data: { status: 'ACTIVE', activated_by: activatedBy, activated_at: now },
+      data: {
+        status: 'ACTIVE',
+        activated_by: activatedBy,
+        activation_reference: activationReference,
+        activated_at: now,
+      },
     });
   }
 
@@ -579,16 +675,31 @@ export class AiGovernanceProfileService {
       now < profile.effective_from ||
       (profile.effective_to && now > profile.effective_to)
     ) {
-      throw new ConflictException('AI is not enabled by an effective ACTIVE profile');
+      throw new ConflictException(
+        'AI is not enabled by an effective ACTIVE profile',
+      );
     }
-    if (!(await this.entitlements.checkEntitlement(params.tenantId, 'AI_SECURITY'))) {
+    if (
+      !(await this.entitlements.checkEntitlement(
+        params.tenantId,
+        'AI_SECURITY',
+      ))
+    ) {
       throw new ConflictException('AI_SECURITY entitlement is not active');
     }
-    if (!this.parseArray(profile.allowed_use_case_keys).includes(params.useCaseKey)) {
-      throw new ConflictException(`AI use case '${params.useCaseKey}' is not approved`);
+    if (
+      !this.parseArray(profile.allowed_use_case_keys).includes(
+        params.useCaseKey,
+      )
+    ) {
+      throw new ConflictException(
+        `AI use case '${params.useCaseKey}' is not approved`,
+      );
     }
     if (!this.parseArray(profile.allowed_regions).includes(params.region)) {
-      throw new ConflictException(`AI region '${params.region}' is not approved`);
+      throw new ConflictException(
+        `AI region '${params.region}' is not approved`,
+      );
     }
     const allowedModels = params.fallbackUsed
       ? this.parseArray(profile.fallback_model_profile_ids)
