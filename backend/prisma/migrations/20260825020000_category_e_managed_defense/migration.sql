@@ -179,11 +179,11 @@ CREATE TABLE "ManagedDefenseDeliveryEvent" (
     )
   )
 );
-CREATE INDEX "ManagedDefenseDeliveryEvent_tenant_id_environment_id_occurred_at_idx"
+CREATE INDEX "ManagedDefenseDeliveryEvent_tenant_id_environment_id_occurred_a"
   ON "ManagedDefenseDeliveryEvent"("tenant_id", "environment_id", "occurred_at");
-CREATE INDEX "ManagedDefenseDeliveryEvent_managed_defense_profile_id_occurred_at_idx"
+CREATE INDEX "ManagedDefenseDeliveryEvent_managed_defense_profile_id_occurred"
   ON "ManagedDefenseDeliveryEvent"("managed_defense_profile_id", "occurred_at");
-CREATE INDEX "ManagedDefenseDeliveryEvent_service_obligation_id_occurred_at_idx"
+CREATE INDEX "ManagedDefenseDeliveryEvent_service_obligation_id_occurred_at_i"
   ON "ManagedDefenseDeliveryEvent"("service_obligation_id", "occurred_at");
 CREATE INDEX "ManagedDefenseDeliveryEvent_event_type_idx"
   ON "ManagedDefenseDeliveryEvent"("event_type");
@@ -238,9 +238,9 @@ CREATE TABLE "ManagedDefenseCapacityException" (
 );
 CREATE UNIQUE INDEX "ManagedDefenseCapacityException_approval_id_key"
   ON "ManagedDefenseCapacityException"("approval_id");
-CREATE INDEX "ManagedDefenseCapacityException_tenant_id_environment_id_status_idx"
+CREATE INDEX "ManagedDefenseCapacityException_tenant_id_environment_id_status"
   ON "ManagedDefenseCapacityException"("tenant_id", "environment_id", "status");
-CREATE INDEX "ManagedDefenseCapacityException_managed_defense_profile_id_status_idx"
+CREATE INDEX "ManagedDefenseCapacityException_managed_defense_profile_id_stat"
   ON "ManagedDefenseCapacityException"("managed_defense_profile_id", "status");
 
 CREATE TABLE "ManagedDefenseCapabilityImpact" (
@@ -275,9 +275,9 @@ CREATE TABLE "ManagedDefenseCapabilityImpact" (
     )
   )
 );
-CREATE INDEX "ManagedDefenseCapabilityImpact_tenant_id_environment_id_status_idx"
+CREATE INDEX "ManagedDefenseCapabilityImpact_tenant_id_environment_id_status_"
   ON "ManagedDefenseCapabilityImpact"("tenant_id", "environment_id", "status");
-CREATE INDEX "ManagedDefenseCapabilityImpact_managed_defense_profile_id_status_idx"
+CREATE INDEX "ManagedDefenseCapabilityImpact_managed_defense_profile_id_statu"
   ON "ManagedDefenseCapabilityImpact"("managed_defense_profile_id", "status");
 CREATE INDEX "ManagedDefenseCapabilityImpact_sla_definition_id_idx"
   ON "ManagedDefenseCapabilityImpact"("sla_definition_id");
