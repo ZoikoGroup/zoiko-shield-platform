@@ -9,6 +9,7 @@ import { UsageControlService } from '../usage-control/usage-control.service';
 import { MemoryPolicyService } from '../memory-policy/memory-policy.service';
 import { AiOutputService } from '../outputs/ai-output.service';
 import { AiKillSwitchService } from '../kill-switch/ai-kill-switch.service';
+import { ShieldCoreClient } from '../internal-client/shield-core.client';
 import {
   AiUnavailableException,
   PolicyDeniedException,
@@ -53,6 +54,7 @@ export class AiGatewayService {
     private readonly aiOutputService: AiOutputService,
     private readonly kafkaProducer: KafkaProducerService,
     private readonly killSwitch: AiKillSwitchService,
+    private readonly shieldCore: ShieldCoreClient,
   ) {}
 
   async invoke(
@@ -99,7 +101,7 @@ export class AiGatewayService {
       throw new PolicyDeniedException(policyResult.reason ?? 'Policy denied');
     }
 
-    const { useCase, modelProfile } = policyResult;
+    const { useCase, modelProfile, governanceProfile } = policyResult;
     const prompt = await this.promptRegistry.getActiveForKey(promptKey);
 
     if (!context.caseId) {
@@ -133,6 +135,32 @@ export class AiGatewayService {
       userInput: context.purpose,
       retrievalContext: redactedContext,
       outputSchema,
+    });
+
+    await this.shieldCore.recordAiUsage({
+      tenantId: context.tenantId,
+      environmentId: context.environmentId,
+      governanceProfileId: governanceProfile!.id,
+      useCaseKey,
+      workflow: useCaseKey,
+      workflowClass: useCase!.risk_class,
+      region: context.region,
+      provider: modelProfile!.provider,
+      model: modelProfile!.model,
+      modelProfileId: modelProfile!.id,
+      modelClass: invocationResult.usage?.modelClass ?? 'STANDARD',
+      inputTokens: invocationResult.usage?.inputTokens ?? 0,
+      outputTokens: invocationResult.usage?.outputTokens ?? 0,
+      toolCalls: 0,
+      retrievalCalls: 1,
+      retrievalUnits: sourceRefs.length,
+      storageByteHours: Buffer.byteLength(invocationResult.content, 'utf8'),
+      contractedUsageUnits: 1,
+      complexityUnits: 0,
+      internalCost: invocationResult.usage?.internalCost ?? 0,
+      internalCostSource:
+        invocationResult.usage?.internalCostSource ?? 'PROVIDER_NOT_REPORTED',
+      providerPriceVersion: invocationResult.usage?.providerPriceVersion,
     });
 
     const evaluation = this.evaluationService.evaluate({

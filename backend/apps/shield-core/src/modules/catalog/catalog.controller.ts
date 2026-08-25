@@ -1,22 +1,31 @@
 import {
+  Body,
   Controller,
   Get,
-  Post,
-  Patch,
-  Param,
-  Query,
-  Body,
   HttpStatus,
+  Param,
+  Patch,
+  Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { IsOptional, IsString } from 'class-validator';
-import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { RequireAssurance } from '../authorization/decorators/require-assurance.decorator';
+import { RequirePlatformPermissions } from '../authorization/decorators/require-platform-permissions.decorator';
+import { PERMISSION_CODES } from '../authorization/constants';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
+import { PlatformPermissionsGuard } from '../authorization/guards/platform-permissions.guard';
+import { CurrentUser } from '../identity-adapter/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
 import {
   CatalogService,
   CreateCatalogVersionDto,
-  CreateProductDto,
   CreatePriceBookDto,
+  CreateProductDto,
+  DecidePriceBookApprovalDto,
+  RequestPriceBookApprovalDto,
+  UpdateBundleRulesDto,
 } from './catalog.service';
 
 export class QueryPriceBookDto {
@@ -32,36 +41,28 @@ export class QueryPriceBookDto {
   currency?: string;
 }
 
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+/** Catalog mutations are plane-1 operations and require step-up authentication. */
+@UseGuards(JwtAuthGuard, PlatformPermissionsGuard)
+@RequirePlatformPermissions(PERMISSION_CODES.PLATFORM_CATALOG_MANAGE)
+@RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
 @Controller('api/v1/catalog')
-export class CatalogController {
+export class CatalogAdminController {
   constructor(private readonly catalogService: CatalogService) {}
 
-  /**
-   * POST /api/v1/catalog/versions
-   * Create new catalog version
-   */
   @Post('versions')
   async createCatalogVersion(@Body() dto: CreateCatalogVersionDto) {
     const version = await this.catalogService.createCatalogVersion(dto);
-    return {
-      statusCode: HttpStatus.CREATED,
-      data: version,
-    };
+    return { statusCode: HttpStatus.CREATED, data: version };
   }
 
-  /**
-   * PATCH /api/v1/catalog/versions/:id/approve
-   * Approve catalog version
-   */
   @Patch('versions/:id/approve')
   async approveCatalogVersion(
     @Param('id') id: string,
-    @Body('approvedBy') approvedBy: string,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const version = await this.catalogService.approveCatalogVersion(
       id,
-      approvedBy || 'system',
+      user.id,
     );
     return {
       statusCode: HttpStatus.OK,
@@ -70,50 +71,96 @@ export class CatalogController {
     };
   }
 
-  /**
-   * POST /api/v1/catalog/products
-   * Register product SKU
-   */
   @Post('products')
   async createProduct(@Body() dto: CreateProductDto) {
     const product = await this.catalogService.createProduct(dto);
+    return { statusCode: HttpStatus.CREATED, data: product };
+  }
+
+  @Patch('products/:id/bundle-rules')
+  async updateBundleRules(
+    @Param('id') id: string,
+    @Body() dto: UpdateBundleRulesDto,
+  ) {
+    const product = await this.catalogService.updateBundleRules(id, dto.rules);
+    return { statusCode: HttpStatus.OK, data: product };
+  }
+
+  @Patch('products/:id/release')
+  async releaseProduct(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const product = await this.catalogService.releaseProduct(id, user.id);
     return {
-      statusCode: HttpStatus.CREATED,
+      statusCode: HttpStatus.OK,
+      message: 'Product released for this catalog version',
       data: product,
     };
   }
 
-  /**
-   * POST /api/v1/catalog/price-books
-   * Register price book
-   */
   @Post('price-books')
   async createPriceBook(@Body() dto: CreatePriceBookDto) {
     const priceBook = await this.catalogService.createPriceBook(dto);
+    return { statusCode: HttpStatus.CREATED, data: priceBook };
+  }
+
+  @Post('price-books/:id/approval')
+  async requestPriceBookApproval(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: RequestPriceBookApprovalDto,
+  ) {
+    const approval = await this.catalogService.requestPriceBookApproval(
+      id,
+      user.id,
+      dto,
+    );
     return {
       statusCode: HttpStatus.CREATED,
-      data: priceBook,
+      message: 'Price submitted for independent Finance/Commercial approval',
+      data: approval,
     };
   }
 
-  /**
-   * PATCH /api/v1/catalog/price-books/:id/approve
-   * Approve price book
-   */
+  @Patch('price-books/:id/approval/:approvalId/decision')
+  @RequirePlatformPermissions(PERMISSION_CODES.PLATFORM_PRICE_APPROVE)
+  async decidePriceBookApproval(
+    @Param('id') id: string,
+    @Param('approvalId') approvalId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: DecidePriceBookApprovalDto,
+  ) {
+    const approval = await this.catalogService.decidePriceBookApproval(
+      id,
+      approvalId,
+      user.id,
+      dto,
+    );
+    return { statusCode: HttpStatus.OK, data: approval };
+  }
+
   @Patch('price-books/:id/approve')
-  async approvePriceBook(@Param('id') id: string) {
-    const priceBook = await this.catalogService.approvePriceBook(id);
+  @RequirePlatformPermissions(PERMISSION_CODES.PLATFORM_PRICE_APPROVE)
+  async approvePriceBook(
+    @Param('id') id: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const priceBook = await this.catalogService.approvePriceBook(id, user.id);
     return {
       statusCode: HttpStatus.OK,
-      message: 'Price book approved',
+      message: 'Approved price decision applied',
       data: priceBook,
     };
   }
+}
 
-  /**
-   * GET /api/v1/catalog/price-books/active
-   * Query active price book (ADR-06 fail-closed check)
-   */
+/** Customer-plane reads only expose released products and usable approved prices. */
+@UseGuards(JwtAuthGuard, PermissionsGuard)
+@Controller('api/v1/catalog')
+export class CatalogReadController {
+  constructor(private readonly catalogService: CatalogService) {}
+
   @Get('price-books/active')
   async getActivePriceBook(@Query() query: QueryPriceBookDto) {
     const priceBook = await this.catalogService.getActivePriceBook(
@@ -121,22 +168,12 @@ export class CatalogController {
       query.region,
       query.currency,
     );
-    return {
-      statusCode: HttpStatus.OK,
-      data: priceBook,
-    };
+    return { statusCode: HttpStatus.OK, data: priceBook };
   }
 
-  /**
-   * GET /api/v1/catalog/products
-   * List approved catalog products
-   */
   @Get('products')
   async getApprovedProducts() {
     const products = await this.catalogService.getApprovedProducts();
-    return {
-      statusCode: HttpStatus.OK,
-      data: products,
-    };
+    return { statusCode: HttpStatus.OK, data: products };
   }
 }

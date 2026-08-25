@@ -35,9 +35,15 @@ export class ModelRegistryService {
   }
 
   /** First ACTIVE profile matching provider/region — no silent fallback to an unapproved region (spec correction #4). */
-  async findEligible(params: { region: string }) {
+  async findEligible(params: { region: string; allowedProfileIds?: string[] }) {
     return this.prisma.modelProfile.findFirst({
-      where: { status: 'ACTIVE', region: params.region },
+      where: {
+        status: 'ACTIVE',
+        region: params.region,
+        ...(params.allowedProfileIds
+          ? { id: { in: params.allowedProfileIds } }
+          : {}),
+      },
       orderBy: { created_at: 'asc' },
     });
   }

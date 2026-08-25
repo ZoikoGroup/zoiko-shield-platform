@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   Injectable,
   ForbiddenException,
   NotFoundException,
@@ -36,6 +37,17 @@ export class AuditPackageApprovalService {
       packageId,
     );
     this.stateMachine.assertValidTransition(pkg.status, 'APPROVED');
+
+    if (
+      pkg.completeness_state !== 'COMPLETE' ||
+      pkg.freshness_state !== 'CURRENT' ||
+      pkg.verifier_compatibility !== 'COMPATIBLE' ||
+      JSON.parse(pkg.missing_evidence).length > 0
+    ) {
+      throw new ConflictException(
+        'Package approval requires complete, current, verifier-compatible evidence with no missing sources',
+      );
+    }
 
     if (approverId === pkg.created_by) {
       throw new ForbiddenException(

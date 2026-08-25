@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ModelRegistryService } from '../../model-registry/model-registry.service';
 import { AiUseCaseRegistryService } from './ai-use-case-registry.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
 export interface PolicyCheckInput {
   tenantId: string;
@@ -19,6 +20,9 @@ export interface PolicyCheckResult {
   reason?: string;
   useCase?: Awaited<ReturnType<AiUseCaseRegistryService['getByKey']>>;
   modelProfile?: Awaited<ReturnType<ModelRegistryService['findEligible']>>;
+  governanceProfile?: Awaited<
+    ReturnType<PrismaService['aiGovernanceProfile']['findFirst']>
+  >;
 }
 
 /**
@@ -38,7 +42,19 @@ export class PolicyService {
   constructor(
     private readonly modelRegistry: ModelRegistryService,
     private readonly useCaseRegistry: AiUseCaseRegistryService,
+    private readonly prisma: PrismaService,
   ) {}
+
+  private parseArray(value: string): string[] {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return Array.isArray(parsed)
+        ? parsed.filter((item): item is string => typeof item === 'string')
+        : [];
+    } catch {
+      return [];
+    }
+  }
 
   async evaluate(
     useCaseKey: string,
@@ -84,8 +100,58 @@ export class PolicyService {
       };
     }
 
+    const now = new Date();
+    const profileCandidates = await this.prisma.aiGovernanceProfile.findMany({
+      where: {
+        tenant_id: input.tenantId,
+        environment_id: input.environmentId,
+        status: 'ACTIVE',
+        tenant_enabled: true,
+        effective_from: { lte: now },
+        OR: [{ effective_to: null }, { effective_to: { gte: now } }],
+      },
+      orderBy: [{ version: 'desc' }, { created_at: 'desc' }],
+    });
+    const governanceProfile = profileCandidates.find(
+      (profile) =>
+        this.parseArray(profile.allowed_use_case_keys).includes(useCaseKey) &&
+        this.parseArray(profile.allowed_regions).includes(input.region),
+    );
+    if (!governanceProfile) {
+      return {
+        allowed: false,
+        denialCode: 'POLICY_DENIED',
+        reason:
+          'No active tenant AI governance profile authorizes this use case and region',
+      };
+    }
+    const entitlement = await this.prisma.entitlement.findFirst({
+      where: {
+        tenant_id: input.tenantId,
+        offer_type: 'AI_SECURITY',
+        status: 'ACTIVE',
+        effective_from: { lte: now },
+        OR: [{ effective_to: null }, { effective_to: { gte: now } }],
+      },
+      include: { commercialAccount: true },
+    });
+    if (
+      !entitlement ||
+      ['SUSPENDED', 'TERMINATED'].includes(
+        entitlement.commercialAccount.status,
+      )
+    ) {
+      return {
+        allowed: false,
+        denialCode: 'POLICY_DENIED',
+        reason: 'AI_SECURITY entitlement is not active',
+      };
+    }
     const modelProfile = await this.modelRegistry.findEligible({
       region: input.region,
+      allowedProfileIds: this.parseArray(
+        governanceProfile.allowed_model_profile_ids,
+      ),
     });
     if (!modelProfile) {
       return {
@@ -124,6 +190,6 @@ export class PolicyService {
       };
     }
 
-    return { allowed: true, useCase, modelProfile };
+    return { allowed: true, useCase, modelProfile, governanceProfile };
   }
 }

@@ -46,11 +46,14 @@ import { ApprovalsModule } from './modules/approvals/approvals.module';
 import { CpqModule } from './modules/cpq/cpq.module';
 import { ResourcesModule } from './modules/resources/resources.module';
 import { MeteringModule } from './modules/metering/metering.module';
+import { ManagedDefenseModule } from './modules/managed-defense/managed-defense.module';
+import { ContinuousAssuranceModule } from './modules/continuous-assurance/continuous-assurance.module';
 import { TaxModule } from './modules/tax/tax.module';
 import { PaymentsModule } from './modules/payments/payments.module';
 import { DunningModule } from './modules/dunning/dunning.module';
 import { SlaModule } from './modules/sla/sla.module';
 import { IrWorkOrdersModule } from './modules/ir-work-orders/ir-work-orders.module';
+import { ProfessionalServicesModule } from './modules/professional-services/professional-services.module';
 import { PartnersModule } from './modules/partners/partners.module';
 import { SectorPacksModule } from './modules/sector-packs/sector-packs.module';
 import { AiGovernanceModule } from './modules/ai-governance/ai-governance.module';
@@ -134,11 +137,14 @@ import { ScheduleModule } from '@nestjs/schedule';
     CpqModule,
     ResourcesModule,
     MeteringModule,
+    ManagedDefenseModule,
+    ContinuousAssuranceModule,
     TaxModule,
     PaymentsModule,
     DunningModule,
     SlaModule,
     IrWorkOrdersModule,
+    ProfessionalServicesModule,
     PartnersModule,
     SectorPacksModule,
     AiGovernanceModule,

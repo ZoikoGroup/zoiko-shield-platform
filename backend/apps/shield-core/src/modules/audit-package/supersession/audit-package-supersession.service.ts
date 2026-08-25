@@ -42,6 +42,7 @@ export class AuditPackageSupersessionService {
         data: {
           id: newPackageId,
           tenant_id: tenantId,
+          continuous_assurance_profile_id: pkg.continuous_assurance_profile_id,
           version: pkg.version + 1,
           purpose: pkg.purpose,
           framework_scope: pkg.framework_scope,
@@ -52,6 +53,11 @@ export class AuditPackageSupersessionService {
           created_by: createdBy,
           status: 'DRAFT',
           supersedes_package_id: pkg.id,
+          retention_profile: pkg.retention_profile,
+          retention_until: pkg.retention_until,
+          audit_cycle_reference: pkg.audit_cycle_reference,
+          claim_eligibility: false,
+          claim_eligibility_reason: 'PACKAGE_NOT_VALIDATED',
         },
       }),
       this.prisma.outboxEvent.create({

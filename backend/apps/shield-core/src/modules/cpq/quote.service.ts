@@ -188,11 +188,18 @@ export class QuoteService {
       discountPercent: number;
     }> = [];
 
+    await this.catalogService.validateProductSelection(
+      dto.catalogVersionId,
+      dto.lines.map((line) => line.sku),
+    );
+
     for (const line of dto.lines) {
       const priceBook = await this.catalogService.getActivePriceBook(
         line.sku,
         region,
         currency,
+        dto.commercialAccountId,
+        dto.catalogVersionId,
       );
       if (!priceBook) {
         throw new ConflictException({

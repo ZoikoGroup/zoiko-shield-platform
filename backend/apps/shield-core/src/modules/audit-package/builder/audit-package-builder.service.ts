@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ContentHashService } from '../../evidence/hashing/content-hash.service';
@@ -47,6 +47,109 @@ export class AuditPackageBuilderService {
       packageId,
     );
     this.stateMachine.assertValidTransition(pkg.status, 'BUILDING');
+
+    const frameworkVersionIds = JSON.parse(pkg.framework_scope) as string[];
+    const profile = pkg.continuous_assurance_profile_id
+      ? await this.prisma.continuousAssuranceProfile.findFirst({
+          where: {
+            id: pkg.continuous_assurance_profile_id,
+            tenant_id: tenantId,
+            status: 'ACTIVE',
+          },
+        })
+      : null;
+    if (!profile) {
+      throw new ConflictException(
+        'Audit package build requires its ACTIVE Continuous Assurance profile',
+      );
+    }
+    const profileControlScope = JSON.parse(profile.control_scope) as {
+      allContractedControls?: boolean;
+      controlImplementationIds?: string[];
+    };
+    const explicitControlImplementationIds = Array.isArray(
+      profileControlScope.controlImplementationIds,
+    )
+      ? profileControlScope.controlImplementationIds
+      : [];
+    if (
+      profileControlScope.allContractedControls !== true &&
+      explicitControlImplementationIds.length === 0
+    ) {
+      throw new ConflictException(
+        'Continuous Assurance profile has no explicit control scope',
+      );
+    }
+    const legalEntityIds = pkg.legal_entity_scope
+      ? [pkg.legal_entity_scope]
+      : (JSON.parse(profile.legal_entity_ids) as string[]);
+    const businessUnitIds = JSON.parse(profile.business_unit_ids) as string[];
+    const sectorPackIds = JSON.parse(profile.sector_pack_ids) as string[];
+    const [frameworkVersions, sectorPacks, controlImplementations] =
+      await Promise.all([
+        this.prisma.frameworkVersion.findMany({
+          where: {
+            id: { in: frameworkVersionIds },
+            status: 'PUBLISHED',
+            release_status: 'APPROVED',
+          },
+          include: { framework: true },
+        }),
+        this.prisma.sectorPack.findMany({
+          where: {
+            id: { in: sectorPackIds },
+            release_status: 'APPROVED',
+          },
+        }),
+        this.prisma.controlImplementation.findMany({
+          where: {
+            tenant_id: tenantId,
+            OR: [
+              { environment_id: null },
+              { environment_id: profile.environment_id },
+            ],
+            ...(profileControlScope.allContractedControls === true
+              ? {}
+              : { id: { in: explicitControlImplementationIds } }),
+            scopes: {
+              some: {
+                tenant_id: tenantId,
+                AND: [
+                  {
+                    OR: [
+                      { environment_id: null },
+                      { environment_id: profile.environment_id },
+                    ],
+                  },
+                  {
+                    OR: [
+                      ...(legalEntityIds.length
+                        ? [{ legal_entity_id: { in: legalEntityIds } }]
+                        : []),
+                      ...(businessUnitIds.length
+                        ? [{ business_unit_id: { in: businessUnitIds } }]
+                        : []),
+                    ],
+                  },
+                ],
+              },
+            },
+          },
+          select: { id: true },
+        }),
+      ]);
+    if (
+      frameworkVersions.length !== frameworkVersionIds.length ||
+      sectorPacks.length !== sectorPackIds.length ||
+      controlImplementations.length === 0 ||
+      (profileControlScope.allContractedControls !== true &&
+        controlImplementations.length !==
+          explicitControlImplementationIds.length)
+    ) {
+      throw new ConflictException(
+        'Framework, sector-pack, or contracted control scope changed after package creation',
+      );
+    }
     await this.prisma.auditPackage.update({
       where: { id: pkg.id },
       data: { status: 'BUILDING' },
@@ -55,6 +158,9 @@ export class AuditPackageBuilderService {
     const assessments = await this.prisma.assessment.findMany({
       where: {
         tenant_id: tenantId,
+        control_implementation_id: {
+          in: controlImplementations.map((control) => control.id),
+        },
         assessment_period_start: { gte: pkg.period_start },
         assessment_period_end: { lte: pkg.period_end },
       },
@@ -82,6 +188,13 @@ export class AuditPackageBuilderService {
     const evidenceRefsUnion = Array.from(
       new Set(
         evidenceBundles.flatMap((b) => JSON.parse(b.evidence_refs) as string[]),
+      ),
+    );
+    const mappingVersions = Array.from(
+      new Set(
+        evidenceBundles.flatMap(
+          (bundle) => JSON.parse(bundle.mapping_versions) as string[],
+        ),
       ),
     );
     const evidenceRecords = await this.prisma.evidenceRecord.findMany({
@@ -183,14 +296,40 @@ export class AuditPackageBuilderService {
         frameworkScope: JSON.parse(pkg.framework_scope),
         legalEntityScope: pkg.legal_entity_scope,
         environmentScope: pkg.environment_scope,
+        continuousAssuranceProfileId: profile.id,
+        legalEntityIds: JSON.parse(profile.legal_entity_ids),
+        businessUnitIds: JSON.parse(profile.business_unit_ids),
+        connectorIds: JSON.parse(profile.connector_ids),
+        controlScope: JSON.parse(profile.control_scope),
+        region: profile.region,
+        deploymentClass: profile.deployment_class,
       },
       period: { start: toIso(pkg.period_start), end: toIso(pkg.period_end) },
       schemaBundle: {
         id: 'zs-audit-package-manifest-v1',
         hash: 'zs-audit-package-manifest-v1-hash',
       },
-      frameworkVersions: [],
-      mappingVersions: [],
+      frameworkVersions: frameworkVersions.map((version) => ({
+        frameworkVersionId: version.id,
+        frameworkKey: version.framework.key,
+        version: version.version,
+        sourceReference: version.source_reference,
+        sourceVersion: version.source_version,
+        contentHash: version.content_hash,
+        approvedClaimWording: version.approved_claim_wording,
+        releaseStatus: version.release_status,
+      })),
+      sectorPacks: sectorPacks.map((pack) => ({
+        sectorPackId: pack.id,
+        packKey: pack.pack_key,
+        version: pack.version,
+        jurisdiction: pack.jurisdiction,
+        sourceReference: pack.source_reference,
+        sourceVersion: pack.source_version,
+        approvedClaimWording: pack.approved_claim_wording,
+        releaseStatus: pack.release_status,
+      })),
+      mappingVersions,
       evidenceIndex,
       // Export the canonical metadata committed by every ledger entry so an
       // offline verifier can recompute entry_hash rather than merely walking
@@ -219,6 +358,11 @@ export class AuditPackageBuilderService {
       })),
       knownGaps,
       limitations,
+      retention: {
+        profile: pkg.retention_profile,
+        retainedUntil: toIso(pkg.retention_until),
+        auditCycleReference: pkg.audit_cycle_reference,
+      },
       verifierProfile: VERIFIER_PROFILE,
       exportMetadata: {
         builtAt: new Date().toISOString(),

@@ -23,7 +23,10 @@ describe('QuoteService (ZS-COM-BILL-001 Part 2 CPQ chain)', () => {
         update: jest.fn(),
       },
     };
-    catalogMock = { getActivePriceBook: jest.fn() };
+    catalogMock = {
+      getActivePriceBook: jest.fn(),
+      validateProductSelection: jest.fn(),
+    };
     approvalMock = {
       requestApproval: jest.fn(),
       getApprovalById: jest.fn(),

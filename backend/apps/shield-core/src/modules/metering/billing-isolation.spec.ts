@@ -4,6 +4,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { MeteringService } from './metering.service';
 import { MeterDefinitionService } from './meter-definition.service';
 import { PrismaService } from '../../prisma/prisma.service';
+import { MeterGovernanceService } from './meter-governance.service';
 
 /**
  * ZS-COM-BILL-001 MET-04 / Principle 10: "ZoikoShield must never
@@ -58,6 +59,7 @@ describe('MET-04: alert/incident/control-failure isolation from billing', () => 
     let service: MeteringService;
     let prismaMock: any;
     let definitionMock: any;
+    let governanceMock: any;
 
     beforeEach(async () => {
       prismaMock = {
@@ -66,14 +68,22 @@ describe('MET-04: alert/incident/control-failure isolation from billing', () => 
           findFirst: jest.fn().mockResolvedValue(null),
         },
         usageRecord: { create: jest.fn() },
+        $transaction: jest.fn((callback: any) => callback(prismaMock)),
       };
       definitionMock = { getActiveDefinition: jest.fn() };
+      governanceMock = {
+        immutableHash: jest.fn().mockReturnValue('immutable-hash'),
+        resolveEffectivePolicy: jest.fn().mockResolvedValue(null),
+        evaluate: jest.fn(),
+        recordThresholds: jest.fn(),
+      };
 
       const module: TestingModule = await Test.createTestingModule({
         providers: [
           MeteringService,
           { provide: PrismaService, useValue: prismaMock },
           { provide: MeterDefinitionService, useValue: definitionMock },
+          { provide: MeterGovernanceService, useValue: governanceMock },
         ],
       }).compile();
 
@@ -83,7 +93,10 @@ describe('MET-04: alert/incident/control-failure isolation from billing', () => 
     it('a storm of platform-generated (e.g. detection-engine-emitted) events stays NON_BILLABLE regardless of volume', async () => {
       definitionMock.getActiveDefinition.mockResolvedValue({
         id: 'def-1',
+        meter_key: 'incident.alert_volume',
+        version: 1,
         unit: 'EVENTS',
+        source_scope: JSON.stringify(['detection-engine']),
         billable_policy: 'STANDARD',
       });
       prismaMock.meterEvent.create.mockImplementation(({ data }: any) =>
@@ -105,6 +118,8 @@ describe('MET-04: alert/incident/control-failure isolation from billing', () => 
           sourceEventId: `alert-storm-${i}`,
           occurredAt: new Date(),
           quantity: 1,
+          environmentId: 'prod',
+          validationState: 'VALID',
           isPlatformGenerated: true,
         });
       }
@@ -115,7 +130,10 @@ describe('MET-04: alert/incident/control-failure isolation from billing', () => 
     it('a NEVER_BILLABLE meter (e.g. one deliberately scoped to alert/incident counts) stays at zero billable quantity across a storm', async () => {
       definitionMock.getActiveDefinition.mockResolvedValue({
         id: 'def-2',
+        meter_key: 'alert.count',
+        version: 1,
         unit: 'EVENTS',
+        source_scope: JSON.stringify(['detection-engine']),
         billable_policy: 'NEVER_BILLABLE',
       });
       prismaMock.meterEvent.create.mockImplementation(({ data }: any) =>
@@ -136,6 +154,8 @@ describe('MET-04: alert/incident/control-failure isolation from billing', () => 
           sourceEventId: `incident-${i}`,
           occurredAt: new Date(),
           quantity: 1,
+          environmentId: 'prod',
+          validationState: 'VALID',
         });
       }
 

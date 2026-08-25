@@ -11,6 +11,10 @@ import { EvidenceLedgerService } from '../../evidence/ledger/evidence-ledger.ser
 import { ShieldAnchorClient } from '../../../internal-client/shield-anchor.client';
 import { AuditPackageService } from '../audit-package.service';
 import { AuditPackageStateMachineService } from '../audit-package-state-machine.service';
+import {
+  AuditPackageClaimService,
+  evaluateAuditPackageManifest,
+} from '../claim/audit-package-claim.service';
 
 /**
  * Freeze flow (spec correction #1 + #3): recompute manifestCoreHash fresh
@@ -33,6 +37,7 @@ export class AuditPackageFreezeService {
     private readonly shieldAnchorClient: ShieldAnchorClient,
     private readonly auditPackageService: AuditPackageService,
     private readonly stateMachine: AuditPackageStateMachineService,
+    private readonly claimService: AuditPackageClaimService,
   ) {}
 
   async freeze(tenantId: string, packageId: string) {
@@ -97,8 +102,10 @@ export class AuditPackageFreezeService {
     // approvedAt is pre-stringified for the same reason every other Date going into hashed
     // content is (see AuditPackageBuilderService's toIso doc comment) — a raw Date collapses
     // to {} under ContentHashService's canonicalization.
+    const packageClaim = evaluateAuditPackageManifest(manifestCore, 'FROZEN');
     const finalManifest = {
       ...manifestCore,
+      packageClaim,
       proofEnvelope,
       auditPackageApproval: {
         approverId: latestApproval.approver_id,
@@ -135,9 +142,19 @@ export class AuditPackageFreezeService {
         );
       });
 
-    return this.prisma.auditPackage.update({
+    await this.prisma.auditPackage.update({
       where: { id: pkg.id },
-      data: { status: 'FROZEN', frozen_at: new Date() },
+      data: {
+        status: 'FROZEN',
+        frozen_at: new Date(),
+        frozen_manifest_hash: packageEnvelopeHash,
+      },
     });
+    const assessed = await this.claimService.assess(
+      tenantId,
+      packageId,
+      'system:audit-package-freeze',
+    );
+    return assessed.package;
   }
 }

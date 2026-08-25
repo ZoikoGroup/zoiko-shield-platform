@@ -75,7 +75,7 @@ describe('AiUsageService (ZS-COM-BILL-001 AI-01: internal cost != billable usage
     entitlementMock.checkEntitlement.mockResolvedValue(false);
 
     await expect(
-      service.markBillable('t1', 'u-1', 'ai.tokens', 100),
+      service.markBillable('t1', 'prod', 'u-1', 'ai.tokens', 100),
     ).rejects.toThrow(ConflictException);
     expect(meteringMock.recordEvent).not.toHaveBeenCalled();
   });
@@ -90,14 +90,23 @@ describe('AiUsageService (ZS-COM-BILL-001 AI-01: internal cost != billable usage
       occurred_at: new Date(),
     });
     entitlementMock.checkEntitlement.mockResolvedValue(true);
-    meteringMock.recordEvent.mockResolvedValue({ event: { id: 'me-1' } });
+    meteringMock.recordEvent.mockResolvedValue({
+      event: { id: 'me-1' },
+      usageRecord: { billable_quantity: 100 },
+    });
     prismaMock.aiUsageRecord.update.mockResolvedValue({
       id: 'u-1',
       billable: true,
       meter_event_id: 'me-1',
     });
 
-    const usage = await service.markBillable('t1', 'u-1', 'ai.tokens', 100);
+    const usage = await service.markBillable(
+      't1',
+      'prod',
+      'u-1',
+      'ai.tokens',
+      100,
+    );
 
     expect(meteringMock.recordEvent).toHaveBeenCalledWith(
       expect.objectContaining({ meterKey: 'ai.tokens', quantity: 100 }),
@@ -112,7 +121,7 @@ describe('AiUsageService (ZS-COM-BILL-001 AI-01: internal cost != billable usage
     });
 
     await expect(
-      service.markBillable('t1', 'u-1', 'ai.tokens', 100),
+      service.markBillable('t1', 'prod', 'u-1', 'ai.tokens', 100),
     ).rejects.toThrow(ConflictException);
   });
 

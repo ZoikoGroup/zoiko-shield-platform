@@ -19,8 +19,13 @@ import { CurrentUser } from '../identity-adapter/decorators/current-user.decorat
 import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { requireTenantId } from '../../tenant-context';
+import { AuditPackageClaimService } from './claim/audit-package-claim.service';
+import { RequireAssurance } from '../authorization/decorators/require-assurance.decorator';
+import { RequirePermissions } from '../authorization/decorators/require-permissions.decorator';
+import { PERMISSION_CODES } from '../authorization/constants';
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
+@RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_READ)
 @Controller('api/v1/audit-packages')
 export class AuditPackageController {
   constructor(
@@ -31,6 +36,7 @@ export class AuditPackageController {
     private readonly freezeService: AuditPackageFreezeService,
     private readonly supersessionService: AuditPackageSupersessionService,
     private readonly exportService: AuditPackageExportService,
+    private readonly claimService: AuditPackageClaimService,
   ) {}
 
   @Get()
@@ -39,28 +45,36 @@ export class AuditPackageController {
   }
 
   @Post()
+  @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_WRITE)
+  @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
   async create(
     @Headers('x-tenant-id') tenantId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Body()
     body: {
       purpose: string;
+      continuousAssuranceProfileId: string;
       frameworkScope: string[];
       legalEntityScope?: string;
       environmentScope?: string;
       periodStart: string;
       periodEnd: string;
+      retentionUntil: string;
+      auditCycleReference: string;
     },
   ) {
     return this.auditPackageService.create({
       tenantId: requireTenantId(tenantId),
       createdBy: user.id,
+      continuousAssuranceProfileId: body.continuousAssuranceProfileId,
       purpose: body.purpose,
       frameworkScope: body.frameworkScope,
       legalEntityScope: body.legalEntityScope,
       environmentScope: body.environmentScope,
       periodStart: new Date(body.periodStart),
       periodEnd: new Date(body.periodEnd),
+      retentionUntil: new Date(body.retentionUntil),
+      auditCycleReference: body.auditCycleReference,
     });
   }
 
@@ -76,6 +90,8 @@ export class AuditPackageController {
   }
 
   @Post(':packageId/build')
+  @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_WRITE)
+  @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
   async build(
     @Headers('x-tenant-id') tenantId: string,
     @Param('packageId') packageId: string,
@@ -84,6 +100,8 @@ export class AuditPackageController {
   }
 
   @Post([':packageId/validate', ':packageId/verify'])
+  @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_WRITE)
+  @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
   async validate(
     @Headers('x-tenant-id') tenantId: string,
     @Param('packageId') packageId: string,
@@ -92,6 +110,8 @@ export class AuditPackageController {
   }
 
   @Post(':packageId/approve')
+  @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_WRITE)
+  @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
   async approve(
     @Headers('x-tenant-id') tenantId: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -105,6 +125,8 @@ export class AuditPackageController {
   }
 
   @Post(':packageId/freeze')
+  @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_WRITE)
+  @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
   async freeze(
     @Headers('x-tenant-id') tenantId: string,
     @Param('packageId') packageId: string,
@@ -151,7 +173,17 @@ export class AuditPackageController {
     );
   }
 
+  @Get(':packageId/claim-eligibility')
+  async claimEligibility(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('packageId') packageId: string,
+  ) {
+    return this.claimService.get(requireTenantId(tenantId), packageId);
+  }
+
   @Post(':packageId/supersede')
+  @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_WRITE)
+  @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
   async supersede(
     @Headers('x-tenant-id') tenantId: string,
     @CurrentUser() user: AuthenticatedUser,

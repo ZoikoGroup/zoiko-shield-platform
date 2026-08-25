@@ -98,6 +98,7 @@ export class CommercialEntitlementService {
         commercial_account_id: dto.commercialAccountId,
         tenant_id: dto.tenantId,
         offer_type: dto.offerType,
+        source_type: 'MANUAL_GRANT',
         status: 'ACTIVE',
         effective_from: dto.effectiveFrom || new Date(),
         effective_to: dto.effectiveTo,
