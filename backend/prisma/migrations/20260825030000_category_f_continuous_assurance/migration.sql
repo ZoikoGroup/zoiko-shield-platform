@@ -175,7 +175,7 @@ CREATE INDEX "ContinuousAssuranceProfile_commercial_account_id_status_idx"
   ON "ContinuousAssuranceProfile"("commercial_account_id", "status");
 CREATE INDEX "ContinuousAssuranceProfile_contract_id_status_idx"
   ON "ContinuousAssuranceProfile"("contract_id", "status");
-CREATE INDEX "ContinuousAssuranceProfile_effective_from_effective_to_status_idx"
+CREATE INDEX "ContinuousAssuranceProfile_effective_from_effective_to_stat_idx"
   ON "ContinuousAssuranceProfile"("effective_from", "effective_to", "status");
 
 ALTER TABLE "ContinuousAssuranceProfile"
@@ -197,7 +197,7 @@ ALTER TABLE "AuditPackage"
   ADD COLUMN "limitations" TEXT NOT NULL DEFAULT '[]',
   ADD COLUMN "verifier_compatibility" TEXT NOT NULL DEFAULT 'UNKNOWN',
   ADD COLUMN "claim_eligibility" BOOLEAN NOT NULL DEFAULT false,
-  ADD COLUMN "claim_eligibility_reason" TEXT NOT NULL DEFAULT 'LEGACY_PACKAGE_REQUIRES_REBUILD',
+  ADD COLUMN "claim_eligibility_reason" TEXT NOT NULL DEFAULT 'PACKAGE_NOT_VALIDATED',
   ADD COLUMN "approved_claim_wording" TEXT,
   ADD COLUMN "claim_assessed_at" TIMESTAMP(3),
   ADD COLUMN "frozen_manifest_hash" TEXT,
@@ -242,7 +242,7 @@ CREATE TABLE "AuditPackageClaimAssessment" (
     )
   )
 );
-CREATE INDEX "AuditPackageClaimAssessment_tenant_id_package_id_assessed_at_idx"
+CREATE INDEX "AuditPackageClaimAssessment_tenant_id_package_id_assessed_a_idx"
   ON "AuditPackageClaimAssessment"("tenant_id", "package_id", "assessed_at");
 CREATE INDEX "AuditPackageClaimAssessment_claim_eligibility_assessed_at_idx"
   ON "AuditPackageClaimAssessment"("claim_eligibility", "assessed_at");

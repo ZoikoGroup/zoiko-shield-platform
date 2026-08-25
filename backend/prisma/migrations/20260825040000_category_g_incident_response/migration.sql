@@ -153,7 +153,7 @@ CREATE INDEX "IncidentWorkOrder_retainer_id_status_idx"
 ALTER TABLE "IncidentWorkOrder"
   ADD CONSTRAINT "IncidentWorkOrder_retainer_id_fkey"
   FOREIGN KEY ("retainer_id") REFERENCES "IncidentResponseRetainer"("id")
-  ON DELETE RESTRICT ON UPDATE CASCADE;
+  ON DELETE SET NULL ON UPDATE CASCADE;
 ALTER TABLE "IncidentWorkOrder"
   ADD CONSTRAINT "IncidentWorkOrder_contract_id_fkey"
   FOREIGN KEY ("contract_id") REFERENCES "Contract"("id")
