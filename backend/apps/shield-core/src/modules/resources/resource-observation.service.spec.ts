@@ -111,7 +111,7 @@ describe('ResourceObservationService (Category C canonical discovery)', () => {
     });
 
     expect(result.deduped).toBe(false);
-    expect(result.observation.billable_state).toBe('NON_BILLABLE');
+    expect((result.observation as any).billable_state).toBe('NON_BILLABLE');
     expect(prismaMock.resourceObservation.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({

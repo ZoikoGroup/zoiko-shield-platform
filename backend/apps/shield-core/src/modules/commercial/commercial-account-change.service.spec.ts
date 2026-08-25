@@ -152,7 +152,7 @@ describe('CommercialAccountChangeService (Category A3)', () => {
       },
     );
 
-    expect(result.proposed_snapshot.changes).toEqual({
+    expect((result.proposed_snapshot as any).changes).toEqual({
       groupAccountId: 'group-1',
     });
     expect(prismaMock.groupAccount.findFirst).toHaveBeenCalledWith({

@@ -104,7 +104,7 @@ describe('ResourceCoverageService (Category C governed acceptance)', () => {
     });
 
     expect(result.observation.coverage_state).toBe('REVIEW_REQUIRED');
-    expect(result.observation.billable_state).toBe('NON_BILLABLE');
+    expect((result.observation as any).billable_state).toBe('NON_BILLABLE');
     expect(prismaMock.resourceCoverageDecision.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
@@ -140,8 +140,8 @@ describe('ResourceCoverageService (Category C governed acceptance)', () => {
       coverage_state: 'DISCOVERED',
     });
 
-    expect(result.notice.status).toBe('PENDING_DELIVERY');
-    expect(result.observation.auto_enrollment_status).toBe('NOTICE_PENDING');
+    expect(result.notice!.status).toBe('PENDING_DELIVERY');
+    expect((result.observation as any).auto_enrollment_status).toBe('NOTICE_PENDING');
     expect(
       prismaMock.resourceObservation.update.mock.calls.some(
         ([input]: any[]) => input.data.billable_state === 'BILLABLE',
@@ -182,7 +182,7 @@ describe('ResourceCoverageService (Category C governed acceptance)', () => {
     );
 
     expect(result.coverage_state).toBe('BILLABLE');
-    expect(result.billable_state).toBe('BILLABLE');
+    expect((result as any).billable_state).toBe('BILLABLE');
     expect(result.coverage_policy_id).toBe('policy-1');
   });
 

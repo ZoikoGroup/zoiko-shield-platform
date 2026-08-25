@@ -9,6 +9,9 @@ describe('AiBudgetService (fail closed on missing budget)', () => {
   beforeEach(async () => {
     prismaMock = {
       aiBudget: { create: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
+      $transaction: jest.fn((callback: (tx: any) => unknown) =>
+        callback(prismaMock),
+      ),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -24,7 +27,7 @@ describe('AiBudgetService (fail closed on missing budget)', () => {
   it('treats a tenant with no configured budget as over-budget (fail closed)', async () => {
     prismaMock.aiBudget.findFirst.mockResolvedValue(null);
 
-    const overBudget = await service.isOverBudget('t1');
+    const overBudget = await service.isOverBudget('t1', 'env-1');
 
     expect(overBudget).toBe(true);
   });
@@ -35,7 +38,7 @@ describe('AiBudgetService (fail closed on missing budget)', () => {
       consumed_amount: 200,
     });
 
-    const overBudget = await service.isOverBudget('t1');
+    const overBudget = await service.isOverBudget('t1', 'env-1');
 
     expect(overBudget).toBe(false);
   });
@@ -51,7 +54,7 @@ describe('AiBudgetService (fail closed on missing budget)', () => {
       status: 'EXHAUSTED',
     });
 
-    const updated = await service.recordSpend('t1', 15);
+    const updated = await service.recordSpend('t1', 'env-1', 15);
 
     expect(updated!.status).toBe('EXHAUSTED');
   });
