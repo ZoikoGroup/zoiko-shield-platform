@@ -73,8 +73,9 @@ describe('AiGatewayService', () => {
     usageControl.checkAndIncrement.mockReturnValue({ allowed: true });
     policyService.evaluate.mockResolvedValue({
       allowed: true,
-      useCase: { id: 'uc-1' },
-      modelProfile: { id: 'mp-1', provider: 'MOCK' },
+      useCase: { id: 'uc-1', risk_class: 'LOW' },
+      modelProfile: { id: 'mp-1', provider: 'MOCK', model: 'mock-model' },
+      governanceProfile: { id: 'gp-1' },
     });
     promptRegistry.getActiveForKey.mockResolvedValue({
       id: 'p-1',
