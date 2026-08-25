@@ -135,7 +135,7 @@ ALTER TABLE "PartnerDelegation"
   ALTER COLUMN "updated_at" SET NOT NULL;
 
 DROP INDEX "PartnerDelegation_commercial_account_id_idx";
-CREATE INDEX "PartnerDelegation_commercial_account_id_tenant_id_environment_id_idx"
+CREATE INDEX "PartnerDelegation_commercial_account_id_tenant_id_environme_idx"
   ON "PartnerDelegation"("commercial_account_id", "tenant_id", "environment_id");
 CREATE INDEX "PartnerDelegation_tenant_id_status_idx"
   ON "PartnerDelegation"("tenant_id", "status");

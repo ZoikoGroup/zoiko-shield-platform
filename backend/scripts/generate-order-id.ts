@@ -1,13 +1,10 @@
 import 'dotenv/config';
 import 'reflect-metadata';
-import crypto from 'crypto';
+import * as crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
-import { Client, Pool } from 'pg';
-import { PrismaPg } from '@prisma/adapter-pg';
+import { Client } from 'pg';
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const adapter = new PrismaPg(pool);
-const prisma = new PrismaClient({ adapter });
+const prisma = new PrismaClient();
 
 async function main() {
   console.log('===============================================================');
