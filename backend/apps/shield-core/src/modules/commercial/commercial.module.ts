@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common';
 import { CommercialEntitlementController } from './commercial-entitlement.controller';
 import { CommercialEntitlementService } from './commercial-entitlement.service';
+import { CommercialPortalController } from './commercial-portal.controller';
+import { PilotLifecycleService } from './pilot-lifecycle.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { SectorPacksModule } from '../sector-packs/sector-packs.module';
 import { KillSwitchModule } from '../kill-switch/kill-switch.module';
@@ -27,6 +29,7 @@ import { CorporateTransferScheduler } from './corporate-transfer.scheduler';
     CorporateTransferController,
     CommercialEntitlementController,
     ClaimRegisterController,
+    CommercialPortalController,
   ],
   providers: [
     CommercialAccountService,
@@ -35,6 +38,7 @@ import { CorporateTransferScheduler } from './corporate-transfer.scheduler';
     CorporateTransferScheduler,
     CommercialEntitlementService,
     ClaimRegisterService,
+    PilotLifecycleService,
   ],
   exports: [
     CommercialAccountService,
@@ -42,6 +46,9 @@ import { CorporateTransferScheduler } from './corporate-transfer.scheduler';
     CorporateTransferService,
     CommercialEntitlementService,
     ClaimRegisterService,
+    PilotLifecycleService,
   ],
 })
 export class CommercialModule {}
+
+

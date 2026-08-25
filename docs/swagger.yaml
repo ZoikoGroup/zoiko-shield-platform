@@ -44394,3 +44394,169 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
       operationId: postInternalAiOutputsEvaluationsRun
+  /internal/v1/governance/views/v01-ops-center:
+    get:
+      tags:
+      - AIGovernance
+      summary: AI Operations Command Center view
+      description: Returns fleet health, active routes, degraded systems, token spend, and kill states.
+      security:
+      - InternalServiceAuth: []
+      parameters:
+      - name: tenantId
+        in: query
+        required: false
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Operations command center data
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+      operationId: getInternalGovernanceViewsV01OpsCenter
+  /internal/v1/governance/views/v04-models:
+    get:
+      tags:
+      - AIGovernance
+      summary: Model and Provider Registry view
+      description: Returns approved models, versions, terms, regions, and concentration risk.
+      security:
+      - InternalServiceAuth: []
+      responses:
+        '200':
+          description: Model registry list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+      operationId: getInternalGovernanceViewsV04Models
+  /internal/v1/governance/views/v06-prompts:
+    get:
+      tags:
+      - AIGovernance
+      summary: Prompt Profile Registry view
+      description: Returns version diff, instruction hierarchy, output schema, and approvals.
+      security:
+      - InternalServiceAuth: []
+      responses:
+        '200':
+          description: Prompt registry list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+      operationId: getInternalGovernanceViewsV06Prompts
+  /internal/v1/governance/views/v12-tools:
+    get:
+      tags:
+      - AIGovernance
+      summary: Tool Registry & Side-Effect Matrix view
+      description: Returns side-effect tiers T0-T5, target authorization endpoints, and rate limits.
+      security:
+      - InternalServiceAuth: []
+      responses:
+        '200':
+          description: Tool matrix data
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+      operationId: getInternalGovernanceViewsV12Tools
+  /internal/v1/governance/views/v24-kill-switch-status:
+    get:
+      tags:
+      - AIGovernance
+      summary: Kill-Switch Control status
+      description: Returns active kill switch states across all granular control layers.
+      security:
+      - InternalServiceAuth: []
+      responses:
+        '200':
+          description: Kill switch status list
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+      operationId: getInternalGovernanceViewsV24KillSwitchStatus
+  /internal/v1/governance/views/v24-kill-switch-toggle:
+    post:
+      tags:
+      - AIGovernance
+      summary: Toggle granular kill switch
+      description: Activates or deactivates an AI kill switch at a specified control layer.
+      security:
+      - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scope, targetId, active, approver, reason]
+              properties:
+                scope:
+                  type: string
+                targetId:
+                  type: string
+                active:
+                  type: boolean
+                approver:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Kill switch updated confirmation
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+      operationId: postInternalGovernanceViewsV24KillSwitchToggle
+  /api/v1/commercial/portal/summary:
+    get:
+      tags:
+      - Commercial
+      summary: Customer Commercial Portal summary overview
+      description: Returns aggregated commercial overview including entitlements, protected resources, obligations, and invoices.
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Aggregated portal summary data
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+      operationId: getCommercialPortalSummary
+  /api/v1/commercial/portal/usage:
+    get:
+      tags:
+      - Commercial
+      summary: Customer Commercial Portal telemetry usage
+      description: Returns telemetry meter breakdown with accepted vs. billable separation and anti-perverse-incentive policies.
+      security:
+      - CookieAuth: []
+      - BearerAuth: []
+      parameters:
+      - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Detailed telemetry usage breakdown
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+      operationId: getCommercialPortalUsage
