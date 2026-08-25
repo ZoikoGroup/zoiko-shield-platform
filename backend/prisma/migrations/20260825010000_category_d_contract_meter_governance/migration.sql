@@ -97,7 +97,7 @@ CREATE UNIQUE INDEX "MeterUsageAuthorization_approval_id_key"
   ON "MeterUsageAuthorization"("approval_id");
 CREATE INDEX "MeterUsageAuthorization_tenant_id_environment_id_status_idx"
   ON "MeterUsageAuthorization"("tenant_id", "environment_id", "status");
-CREATE INDEX "MeterUsageAuthorization_meter_authorization_id_status_period_start_period_end_idx"
+CREATE INDEX "MeterUsageAuthorization_meter_authorization_id_status_perio_idx"
   ON "MeterUsageAuthorization"("meter_authorization_id", "status", "period_start", "period_end");
 
 ALTER TABLE "MeterEvent"

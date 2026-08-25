@@ -36,7 +36,7 @@ CREATE INDEX "PriceBook_commercial_account_id_status_idx"
 ALTER TABLE "PriceBook"
   ADD CONSTRAINT "PriceBook_commercial_account_id_fkey"
   FOREIGN KEY ("commercial_account_id") REFERENCES "CommercialAccount"("id")
-  ON DELETE RESTRICT ON UPDATE CASCADE;
+  ON DELETE SET NULL ON UPDATE CASCADE;
 UPDATE "PriceBook"
 SET "status" = 'MIGRATION_REVIEW', "margin_gate_passed" = false
 WHERE "status" = 'APPROVED';

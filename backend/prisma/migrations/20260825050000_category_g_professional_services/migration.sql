@@ -253,9 +253,9 @@ CREATE TABLE "ProfessionalServiceActivity" (
     NULLIF(BTRIM("actor_id"), '') IS NOT NULL
   )
 );
-CREATE INDEX "ProfessionalServiceActivity_tenant_id_environment_id_occurred_at_idx"
+CREATE INDEX "ProfessionalServiceActivity_tenant_id_environment_id_occurr_idx"
   ON "ProfessionalServiceActivity"("tenant_id", "environment_id", "occurred_at");
-CREATE INDEX "ProfessionalServiceActivity_engagement_id_allocation_period_start_occurred_at_idx"
+CREATE INDEX "ProfessionalServiceActivity_engagement_id_allocation_period_idx"
   ON "ProfessionalServiceActivity"("engagement_id", "allocation_period_start", "occurred_at");
 CREATE INDEX "ProfessionalServiceActivity_entry_type_idx"
   ON "ProfessionalServiceActivity"("entry_type");
@@ -302,7 +302,7 @@ ALTER TABLE "ProfessionalServiceDeliverable"
 ALTER TABLE "ProfessionalServiceDeliverable"
   ADD CONSTRAINT "ProfessionalServiceDeliverable_correction_of_id_fkey"
   FOREIGN KEY ("correction_of_id") REFERENCES "ProfessionalServiceDeliverable"("id")
-  ON DELETE RESTRICT ON UPDATE CASCADE;
+  ON DELETE SET NULL ON UPDATE CASCADE;
 
 CREATE TABLE "ProfessionalServiceAcceptanceEvent" (
   "id" TEXT NOT NULL,
@@ -332,7 +332,7 @@ CREATE TABLE "ProfessionalServiceAcceptanceEvent" (
 );
 CREATE UNIQUE INDEX "ProfessionalServiceAcceptanceEvent_engagement_id_round_key"
   ON "ProfessionalServiceAcceptanceEvent"("engagement_id", "round");
-CREATE INDEX "ProfessionalServiceAcceptanceEvent_tenant_id_environment_id_decided_at_idx"
+CREATE INDEX "ProfessionalServiceAcceptanceEvent_tenant_id_environment_id_idx"
   ON "ProfessionalServiceAcceptanceEvent"("tenant_id", "environment_id", "decided_at");
 CREATE INDEX "ProfessionalServiceAcceptanceEvent_engagement_id_decided_at_idx"
   ON "ProfessionalServiceAcceptanceEvent"("engagement_id", "decided_at");

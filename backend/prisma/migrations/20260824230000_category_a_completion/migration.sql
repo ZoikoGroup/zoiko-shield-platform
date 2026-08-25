@@ -60,7 +60,7 @@ CREATE TABLE "PartnerSupportCase" (
   CONSTRAINT "PartnerSupportCase_pkey" PRIMARY KEY ("id")
 );
 
-CREATE INDEX "PartnerSupportCase_commercial_account_id_tenant_id_environment_id_idx"
+CREATE INDEX "PartnerSupportCase_commercial_account_id_tenant_id_environm_idx"
   ON "PartnerSupportCase"("commercial_account_id", "tenant_id", "environment_id");
 CREATE INDEX "PartnerSupportCase_tenant_id_status_idx"
   ON "PartnerSupportCase"("tenant_id", "status");
