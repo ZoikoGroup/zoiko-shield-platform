@@ -5,7 +5,7 @@ ALTER TABLE "MeterDefinition"
   ADD COLUMN "validation_rules" TEXT NOT NULL DEFAULT '{}',
   ADD COLUMN "correction_policy" TEXT NOT NULL DEFAULT 'REVERSAL_REPLACEMENT_ADJUSTMENT',
   ADD COLUMN "requested_by" TEXT,
-  ADD COLUMN "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP;
+  ADD COLUMN "updated_at" TIMESTAMP(3) NOT NULL;
 
 -- Legacy APPROVED meters have no mandatory source/validation contract and
 -- therefore cannot remain billing-authoritative after this migration.
@@ -58,7 +58,7 @@ CREATE TABLE "MeterAuthorizationPolicy" (
 );
 CREATE UNIQUE INDEX "MeterAuthorizationPolicy_approval_id_key"
   ON "MeterAuthorizationPolicy"("approval_id");
-CREATE UNIQUE INDEX "MeterAuthorizationPolicy_tenant_id_environment_id_policy_key_version_key"
+CREATE UNIQUE INDEX "MeterAuthorizationPolicy_tenant_id_environment_id_policy_ke_key"
   ON "MeterAuthorizationPolicy"("tenant_id", "environment_id", "policy_key", "version");
 CREATE INDEX "MeterAuthorizationPolicy_tenant_id_environment_id_status_idx"
   ON "MeterAuthorizationPolicy"("tenant_id", "environment_id", "status");
@@ -105,7 +105,7 @@ ALTER TABLE "MeterEvent"
   ADD COLUMN "meter_authorization_id" TEXT,
   ADD COLUMN "usage_authorization_id" TEXT,
   ADD COLUMN "contract_id" TEXT,
-  ADD COLUMN "validation_state" TEXT NOT NULL DEFAULT 'MIGRATION_REVIEW',
+  ADD COLUMN "validation_state" TEXT NOT NULL DEFAULT 'UNVALIDATED',
   ADD COLUMN "validation_reason" TEXT,
   ADD COLUMN "dedupe_state" TEXT NOT NULL DEFAULT 'UNIQUE',
   ADD COLUMN "correction_type" TEXT NOT NULL DEFAULT 'ORIGINAL',
@@ -175,7 +175,7 @@ CREATE TABLE "MeterThresholdEvent" (
     "threshold_percent" BETWEEN 1 AND 100 AND "threshold_quantity" > 0
   )
 );
-CREATE UNIQUE INDEX "MeterThresholdEvent_meter_authorization_id_period_start_threshold_percent_key"
+CREATE UNIQUE INDEX "MeterThresholdEvent_meter_authorization_id_period_start_thr_key"
   ON "MeterThresholdEvent"("meter_authorization_id", "period_start", "threshold_percent");
 CREATE INDEX "MeterThresholdEvent_tenant_id_environment_id_status_idx"
   ON "MeterThresholdEvent"("tenant_id", "environment_id", "status");
@@ -241,7 +241,7 @@ CREATE UNIQUE INDEX "MeterBillingExport_approval_id_key"
   ON "MeterBillingExport"("approval_id");
 CREATE INDEX "MeterBillingExport_tenant_id_environment_id_status_idx"
   ON "MeterBillingExport"("tenant_id", "environment_id", "status");
-CREATE INDEX "MeterBillingExport_meter_authorization_id_period_start_period_end_idx"
+CREATE INDEX "MeterBillingExport_meter_authorization_id_period_start_peri_idx"
   ON "MeterBillingExport"("meter_authorization_id", "period_start", "period_end");
 CREATE INDEX "MeterBillingExport_contract_id_period_start_period_end_idx"
   ON "MeterBillingExport"("contract_id", "period_start", "period_end");

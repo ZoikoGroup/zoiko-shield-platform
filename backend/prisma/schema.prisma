@@ -2271,6 +2271,7 @@ model MeterEvent {
   @@index([usage_authorization_id])
   @@index([correction_of_event_id])
   @@index([accepted_state])
+  @@index([tenant_id])
 }
 
 /**
