@@ -912,6 +912,7 @@ model ResourceObservation {
   notices   ResourceEnrollmentNotice[]
 
   @@unique([tenant_id, metric_family, canonical_resource_id])
+  @@index([tenant_id])
   @@index([tenant_id, environment_id, metric_family])
   @@index([tenant_id, physical_resource_id])
   @@index([coverage_policy_id, coverage_state])

@@ -150,7 +150,7 @@ SET
   "usage_classification" = 'LEGACY_UNAUTHORIZED_NON_BILLABLE',
   "immutable_hash" = 'MIGRATION_REVIEW:' || "id";
 
-CREATE INDEX "UsageRecord_tenant_id_environment_id_meter_authorization_id_occurred_at_idx"
+CREATE INDEX "UsageRecord_tenant_id_environment_id_meter_authorization_id_idx"
   ON "UsageRecord"("tenant_id", "environment_id", "meter_authorization_id", "occurred_at");
 CREATE INDEX "UsageRecord_meter_definition_id_occurred_at_idx"
   ON "UsageRecord"("meter_definition_id", "occurred_at");

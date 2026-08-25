@@ -140,10 +140,10 @@ export class AiGatewayService {
     await this.shieldCore.recordAiUsage({
       tenantId: context.tenantId,
       environmentId: context.environmentId,
-      governanceProfileId: governanceProfile!.id,
+      governanceProfileId: governanceProfile?.id || 'gp-default',
       useCaseKey,
       workflow: useCaseKey,
-      workflowClass: useCase!.risk_class,
+      workflowClass: useCase?.risk_class || 'LOW',
       region: context.region,
       provider: modelProfile!.provider,
       model: modelProfile!.model,
@@ -154,7 +154,12 @@ export class AiGatewayService {
       toolCalls: 0,
       retrievalCalls: 1,
       retrievalUnits: sourceRefs.length,
-      storageByteHours: Buffer.byteLength(invocationResult.content, 'utf8'),
+      storageByteHours: Buffer.byteLength(
+        typeof invocationResult.content === 'string'
+          ? invocationResult.content
+          : JSON.stringify(invocationResult.content || {}),
+        'utf8',
+      ),
       contractedUsageUnits: 1,
       complexityUnits: 0,
       internalCost: invocationResult.usage?.internalCost ?? 0,

@@ -7,8 +7,11 @@ export type ConnectorProviderKey =
   | 'generic-syslog'
   | 'microsoft-entra'
   | 'aws-cloudtrail'
+  | 'aws-guardduty'
   | 'azure-monitor'
-  | 'crowdstrike-edr';
+  | 'okta-identity'
+  | 'crowdstrike-edr'
+  | 'sentinelone-edr';
 
 export type ConnectorCategory =
   | 'Webhook Ingestion'
