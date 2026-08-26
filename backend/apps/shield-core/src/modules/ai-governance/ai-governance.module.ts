@@ -10,6 +10,7 @@ import { AiUsageService } from './ai-usage.service';
 import { AiBudgetService } from './ai-budget.service';
 import { AiGovernanceProfileService } from './ai-governance-profile.service';
 import { AiProviderCostService } from './ai-provider-cost.service';
+import { AiTokenQuotaGuard } from './ai-token-quota.guard';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { CommercialModule } from '../commercial/commercial.module';
 import { MeteringModule } from '../metering/metering.module';
@@ -40,6 +41,7 @@ import { NoLlmContinuityService } from './no-llm-continuity.service';
     AiGovernanceProfileService,
     AiProviderCostService,
     NoLlmContinuityService,
+    AiTokenQuotaGuard,
   ],
   exports: [
     AiUsageService,
@@ -47,6 +49,8 @@ import { NoLlmContinuityService } from './no-llm-continuity.service';
     AiGovernanceProfileService,
     AiProviderCostService,
     NoLlmContinuityService,
+    AiTokenQuotaGuard,
   ],
 })
 export class AiGovernanceModule {}
+

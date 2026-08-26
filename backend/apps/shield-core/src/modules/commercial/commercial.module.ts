@@ -19,6 +19,10 @@ import { ApprovalsModule } from '../approvals/approvals.module';
 import { CorporateTransferController } from './corporate-transfer.controller';
 import { CorporateTransferService } from './corporate-transfer.service';
 import { CorporateTransferScheduler } from './corporate-transfer.scheduler';
+import { TrustCenterController } from './trust-center.controller';
+import { TrustCenterService } from './trust-center.service';
+import { ZoikoOneBundlingController } from './zoiko-one-bundling.controller';
+import { ZoikoOneBundlingService } from './zoiko-one-bundling.service';
 
 @Module({
   imports: [PrismaModule, SectorPacksModule, KillSwitchModule, ApprovalsModule],
@@ -30,6 +34,8 @@ import { CorporateTransferScheduler } from './corporate-transfer.scheduler';
     CommercialEntitlementController,
     ClaimRegisterController,
     CommercialPortalController,
+    TrustCenterController,
+    ZoikoOneBundlingController,
   ],
   providers: [
     CommercialAccountService,
@@ -39,6 +45,8 @@ import { CorporateTransferScheduler } from './corporate-transfer.scheduler';
     CommercialEntitlementService,
     ClaimRegisterService,
     PilotLifecycleService,
+    TrustCenterService,
+    ZoikoOneBundlingService,
   ],
   exports: [
     CommercialAccountService,
@@ -47,8 +55,11 @@ import { CorporateTransferScheduler } from './corporate-transfer.scheduler';
     CommercialEntitlementService,
     ClaimRegisterService,
     PilotLifecycleService,
+    TrustCenterService,
+    ZoikoOneBundlingService,
   ],
 })
 export class CommercialModule {}
+
 
 

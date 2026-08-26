@@ -7,6 +7,7 @@ import {
 import { QuoteService } from './quote.service';
 import { OrderService } from './order.service';
 import { SubscriptionService } from './subscription.service';
+import { CpqDependencyValidatorService } from './cpq-dependency-validator.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { CatalogModule } from '../catalog/catalog.module';
 import { CommerceModule } from '../commerce/commerce.module';
@@ -64,6 +65,7 @@ import {
     OfferReadinessService,
     RoadmapCommitmentService,
     DiscountApprovalService,
+    CpqDependencyValidatorService,
   ],
   exports: [
     QuoteService,
@@ -73,6 +75,8 @@ import {
     OfferReadinessService,
     RoadmapCommitmentService,
     DiscountApprovalService,
+    CpqDependencyValidatorService,
   ],
 })
 export class CpqModule {}
+
