@@ -25,7 +25,9 @@ export class AiTokenQuotaGuard implements CanActivate {
     }
 
     const environmentId =
-      request.headers['x-environment-id'] || request.query?.environmentId || 'default';
+      request.headers['x-environment-id'] ||
+      request.query?.environmentId ||
+      'default';
 
     const isOver = await this.aiBudgetService.isOverBudget(
       tenantId,

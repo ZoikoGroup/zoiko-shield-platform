@@ -6,7 +6,14 @@ import { PrismaService } from '../../prisma/prisma.service';
 
 export class PublishTrustCenterArtifactDto {
   title!: string;
-  category!: 'SOC2' | 'ISO27001' | 'PCI_DSS' | 'HIPAA' | 'GDPR' | 'SECURITY_WHITEPAPER' | 'PEN_TEST_SUMMARY';
+  category!:
+    | 'SOC2'
+    | 'ISO27001'
+    | 'PCI_DSS'
+    | 'HIPAA'
+    | 'GDPR'
+    | 'SECURITY_WHITEPAPER'
+    | 'PEN_TEST_SUMMARY';
   description!: string;
   version!: string;
   documentRef!: string;
