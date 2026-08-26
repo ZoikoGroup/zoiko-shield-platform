@@ -1753,6 +1753,13 @@ export class MeterGovernanceService {
     });
     if (!billingExport)
       throw new NotFoundException(`Meter billing export '${id}' not found`);
+    const policy = await this.prisma.meterAuthorizationPolicy.findFirst({
+      where: {
+        id: billingExport.meter_authorization_id,
+        tenant_id: tenantId,
+        environment_id: environmentId,
+      },
+    });
     const checksumValid =
       createHash('sha256')
         .update(billingExport.immutable_snapshot)
