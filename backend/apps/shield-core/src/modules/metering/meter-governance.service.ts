@@ -1615,7 +1615,7 @@ export class MeterGovernanceService {
       .update(immutableSnapshot)
       .digest('hex');
     return this.prisma.$transaction(async (tx) => {
-      const billingExport = await tx.meterBillingExport.create({
+      const billingExport = await (tx as any).meterBillingExport.create({
         data: {
           tenant_id: tenantId,
           environment_id: environmentId,
@@ -1771,6 +1771,9 @@ export class MeterGovernanceService {
     });
     const events = await this.prisma.meterEvent.findMany({
       where: { id: { in: eventIds } },
+    });
+    const policy = await this.prisma.meterAuthorizationPolicy.findFirst({
+      where: { id: billingExport.meter_authorization_id },
     });
     let snapshotHashes: {
       eventHashes?: Array<{ id: string; hash: string }>;

@@ -70,7 +70,7 @@ async function main() {
   // 5. Ensure CommercialQuote exists
   let quote = await prisma.commercialQuote.findFirst();
   if (!quote) {
-    quote = await prisma.commercialQuote.create({
+    quote = await (prisma as any).commercialQuote.create({
       data: {
         id: crypto.randomUUID(),
         tenant_id: 'test-tenant',
@@ -90,7 +90,7 @@ async function main() {
   const order = await prisma.commercialOrder.create({
     data: {
       id: orderId,
-      quote_id: quote.id,
+      quote_id: quote!.id,
       commercial_account_id: account.id,
       idempotency_key: crypto.randomUUID(),
       created_by: 'system',
