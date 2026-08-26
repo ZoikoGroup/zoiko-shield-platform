@@ -1772,9 +1772,6 @@ export class MeterGovernanceService {
     const events = await this.prisma.meterEvent.findMany({
       where: { id: { in: eventIds } },
     });
-    const policy = await this.prisma.meterAuthorizationPolicy.findFirst({
-      where: { id: billingExport.meter_authorization_id },
-    });
     let snapshotHashes: {
       eventHashes?: Array<{ id: string; hash: string }>;
       usageHashes?: Array<{ id: string; hash: string }>;
