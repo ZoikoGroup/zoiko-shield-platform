@@ -15,6 +15,7 @@ import { assertTransition } from '../commerce/state-machine.util';
  * through this map rather than an arbitrary status string.
  */
 const ENTITLEMENT_TRANSITIONS: Record<string, string[]> = {
+  PENDING_ACTIVATION: ['ACTIVE', 'REVOKED'],
   ACTIVE: ['SUSPENDED', 'EXPIRED', 'REVOKED'],
   SUSPENDED: ['ACTIVE', 'REVOKED'],
   EXPIRED: [],

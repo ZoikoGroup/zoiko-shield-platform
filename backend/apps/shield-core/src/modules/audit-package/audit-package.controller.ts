@@ -23,6 +23,18 @@ import { AuditPackageClaimService } from './claim/audit-package-claim.service';
 import { RequireAssurance } from '../authorization/decorators/require-assurance.decorator';
 import { RequirePermissions } from '../authorization/decorators/require-permissions.decorator';
 import { PERMISSION_CODES } from '../authorization/constants';
+import { IsDefined, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { HumanAuthorityAttestationDto } from '../human-authority/human-authority.dto';
+import { RequireHumanAuthority } from '../human-authority/human-authority.decorator';
+import { HumanAuthorityGuard } from '../human-authority/human-authority.guard';
+
+export class ApproveAuditPackageDto {
+  @IsDefined()
+  @ValidateNested()
+  @Type(() => HumanAuthorityAttestationDto)
+  humanAuthority!: HumanAuthorityAttestationDto;
+}
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_READ)
@@ -110,12 +122,15 @@ export class AuditPackageController {
   }
 
   @Post(':packageId/approve')
+  @UseGuards(HumanAuthorityGuard)
+  @RequireHumanAuthority('COMPLIANCE_CONCLUSION', 'AuditPackage', 'packageId')
   @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_WRITE)
   @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
   async approve(
     @Headers('x-tenant-id') tenantId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Param('packageId') packageId: string,
+    @Body() _dto: ApproveAuditPackageDto,
   ) {
     return this.approvalService.approve(
       requireTenantId(tenantId),

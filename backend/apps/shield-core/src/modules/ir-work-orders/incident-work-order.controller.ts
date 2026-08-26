@@ -18,6 +18,11 @@ import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { CurrentUser } from '../identity-adapter/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
+import { IsDefined, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { HumanAuthorityAttestationDto } from '../human-authority/human-authority.dto';
+import { RequireHumanAuthority } from '../human-authority/human-authority.decorator';
+import { HumanAuthorityGuard } from '../human-authority/human-authority.guard';
 import {
   CreateIncidentResponseRetainerDto,
   DecideIncidentResponseRetainerDto,
@@ -35,6 +40,13 @@ import {
   RequestIncidentOverageApprovalDto,
   RequestThirdPartyCostDto,
 } from './incident-work-order.service';
+
+export class CreateIncidentLegalRecordAuthorityDto extends CreateIncidentLegalRecordDto {
+  @IsDefined()
+  @ValidateNested()
+  @Type(() => HumanAuthorityAttestationDto)
+  humanAuthority!: HumanAuthorityAttestationDto;
+}
 
 function boundary(headerTenantId: string, user: AuthenticatedUser) {
   return {
@@ -359,12 +371,17 @@ export class IncidentLegalSensitiveController {
   }
 
   @Post()
+  @UseGuards(HumanAuthorityGuard)
+  @RequireHumanAuthority(
+    'LEGAL_COMPLIANCE_CONCLUSION',
+    'IncidentLegalSensitiveRecord',
+  )
   @RequirePermissions(PERMISSION_CODES.TENANT_IR_LEGAL_SENSITIVE_MANAGE)
   @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
   async create(
     @Headers('x-tenant-id') headerTenantId: string,
     @CurrentUser() user: AuthenticatedUser,
-    @Body() dto: CreateIncidentLegalRecordDto,
+    @Body() dto: CreateIncidentLegalRecordAuthorityDto,
   ) {
     const scope = boundary(headerTenantId, user);
     return {

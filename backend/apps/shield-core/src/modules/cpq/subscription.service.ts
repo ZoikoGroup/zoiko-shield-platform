@@ -217,9 +217,56 @@ export class SubscriptionService {
       'ACTIVE',
       'subscription',
     );
-    return this.prisma.commercialSubscription.update({
-      where: { id: subscriptionId },
-      data: { status: 'ACTIVE' },
+    const componentLines = await this.prisma.commercialOrderLine.findMany({
+      where: {
+        order_id: subscription.order_id,
+        line_type: 'BUNDLE_COMPONENT',
+      },
+      select: { id: true },
+    });
+    const sourceIds = componentLines.map((line) => line.id);
+    const pendingEntitlements = sourceIds.length
+      ? await this.prisma.entitlement.findMany({
+          where: {
+            source_type: 'BUNDLE_COMPONENT',
+            source_id: { in: sourceIds },
+            status: 'PENDING_ACTIVATION',
+          },
+        })
+      : [];
+    for (const entitlement of pendingEntitlements) {
+      const collision = await this.prisma.entitlement.findFirst({
+        where: {
+          tenant_id: entitlement.tenant_id,
+          offer_type: entitlement.offer_type,
+          status: 'ACTIVE',
+          effective_from: { lte: new Date() },
+          OR: [{ effective_to: null }, { effective_to: { gte: new Date() } }],
+        },
+      });
+      if (collision) {
+        throw new ConflictException(
+          `Tenant already has ACTIVE '${entitlement.offer_type}' scope; bundle activation would create duplicate entitlement`,
+        );
+      }
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const activated = await tx.commercialSubscription.update({
+        where: { id: subscriptionId },
+        data: { status: 'ACTIVE' },
+      });
+      if (sourceIds.length) {
+        await tx.entitlement.updateMany({
+          where: {
+            source_type: 'BUNDLE_COMPONENT',
+            source_id: { in: sourceIds },
+            status: 'PENDING_ACTIVATION',
+          },
+          data: { status: 'ACTIVE' },
+        });
+      }
+      return activated;
     });
   }
 
@@ -472,6 +519,80 @@ export class SubscriptionService {
     return this.getAmendmentById(amendmentId);
   }
 
+  /**
+   * B4: Explicitly move an APPROVED downgrade or upgrade to SCHEDULED for
+   * deterministic future application. Remediation must be satisfied before
+   * a downgrade can be scheduled. Upgrades must have passed all readiness gates.
+   */
+  async scheduleAmendment(
+    amendmentId: string,
+    tenantId: string,
+    environmentId: string,
+    scheduledBy: string,
+    scheduledAt: Date,
+  ) {
+    const amendment = await this.getAmendmentForTenant(
+      amendmentId,
+      tenantId,
+      environmentId,
+    );
+    if (!['APPROVED', 'PENDING_ACTIVATION'].includes(amendment.status)) {
+      throw new ConflictException(
+        `Amendment '${amendmentId}' is '${amendment.status}'; only APPROVED or PENDING_ACTIVATION amendments can be scheduled`,
+      );
+    }
+    if (amendment.amendment_type === 'DOWNGRADE') {
+      const remediationPlan = JSON.parse(
+        amendment.remediation_plan || '{}',
+      ) as Record<string, unknown>;
+      if (remediationPlan.preserveHistoricalEvidence !== true) {
+        throw new ConflictException(
+          'Downgrade cannot be scheduled until remediation records historical-evidence preservation',
+        );
+      }
+    } else if (amendment.amendment_type === 'UPGRADE') {
+      if (
+        !amendment.claim_eligibility ||
+        !amendment.deployment_ready ||
+        !amendment.service_capacity_ready
+      ) {
+        throw new ConflictException(
+          'Upgrade cannot be scheduled until all three readiness gates have passed',
+        );
+      }
+    }
+    if (scheduledAt.getTime() < Date.now() - 60_000) {
+      throw new BadRequestException('scheduledAt cannot be in the past');
+    }
+    return this.prisma.commercialAmendment.update({
+      where: { id: amendmentId },
+      data: {
+        status: 'SCHEDULED',
+        effective_at: scheduledAt,
+        readiness_verified_by: scheduledBy,
+        readiness_verified_at: new Date(),
+      },
+    });
+  }
+
+  /** List all amendments for a subscription scoped to a tenant/environment. */
+  async listAmendmentsForTenant(
+    subscriptionId: string,
+    tenantId: string,
+    environmentId: string,
+  ) {
+    await this.getSubscriptionForTenant(
+      subscriptionId,
+      tenantId,
+      environmentId,
+    );
+    return this.prisma.commercialAmendment.findMany({
+      where: { subscription_id: subscriptionId, tenant_id: tenantId, environment_id: environmentId },
+      include: { retentionTransition: true },
+      orderBy: { created_at: 'desc' },
+    });
+  }
+
   async verifyUpgradeReadiness(
     amendmentId: string,
     verifiedBy: string,
@@ -480,7 +601,12 @@ export class SubscriptionService {
     const amendment = await this.getAmendmentById(amendmentId);
     if (amendment.amendment_type !== 'UPGRADE') {
       throw new BadRequestException(
-        'Readiness verification only applies to upgrades',
+        'Readiness verification only applies to UPGRADE amendments',
+      );
+    }
+    if (!amendment.subscription || amendment.subscription.status !== 'ACTIVE') {
+      throw new ConflictException(
+        'Readiness can only be verified while the parent subscription is ACTIVE',
       );
     }
     if (!['APPROVED', 'PENDING_ACTIVATION'].includes(amendment.status)) {

@@ -86,6 +86,26 @@ export class ConcessionService {
     return concession;
   }
 
+  async listConcessions(
+    filters: {
+      tenantId?: string;
+      environmentId?: string;
+      status?: string;
+    } = {},
+  ) {
+    return this.prisma.commercialConcession.findMany({
+      where: {
+        ...(filters.tenantId ? { tenant_id: filters.tenantId } : {}),
+        ...(filters.environmentId
+          ? { environment_id: filters.environmentId }
+          : {}),
+        ...(filters.status ? { status: filters.status } : {}),
+      },
+      orderBy: { created_at: 'desc' },
+      take: 200,
+    });
+  }
+
   private async requireBinding(
     commercialAccountId: string,
     tenantId: string,
@@ -337,15 +357,28 @@ export class ConcessionService {
           data: { status: 'EXPIRED' },
         });
       }
+      // B6: enforce renewal treatment on expiry
+      const eventType =
+        concession.renewal_treatment === 'CONVERT_TO_PAID'
+          ? 'commercial_concession.conversion_required'
+          : 'commercial_concession.expired';
       await tx.commercialEvent.create({
         data: {
-          event_type: 'commercial_concession.expired',
+          event_type: eventType,
           tenant_id: concession.tenant_id,
           actor,
           payload: JSON.stringify({
             concessionId: id,
             renewalTreatment: concession.renewal_treatment,
             entitlementAction: 'EXPIRE',
+            ...(concession.renewal_treatment === 'CONVERT_TO_PAID'
+              ? {
+                  conversionRequired: true,
+                  subscriptionId: concession.subscription_id,
+                  commercialAccountId: concession.commercial_account_id,
+                  scope: JSON.parse(concession.scope),
+                }
+              : {}),
           }),
           idempotency_key: `commercial-concession-expired-${id}`,
         },

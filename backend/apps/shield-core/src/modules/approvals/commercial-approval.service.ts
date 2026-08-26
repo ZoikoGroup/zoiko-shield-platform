@@ -49,6 +49,8 @@ export const APPROVAL_CHANGE_TYPES = [
   'PROFESSIONAL_SERVICE_PROFILE',
   'PROFESSIONAL_SERVICE_OVERAGE',
   'AI_GOVERNANCE_PROFILE',
+  'ROADMAP_LEGAL_REVIEW',
+  'ROADMAP_PRODUCT_REVIEW',
 ] as const;
 export type ApprovalChangeType = (typeof APPROVAL_CHANGE_TYPES)[number];
 
@@ -240,24 +242,46 @@ export class CommercialApprovalService {
     approverId: string,
     decision: 'APPROVED' | 'REJECTED',
     decisionReason: string,
+    transaction?: Prisma.TransactionClient,
   ) {
-    const approval = await this.getApprovalById(approvalId);
-    await this.assertNotExpired(approval);
+    const decide = async (tx: Prisma.TransactionClient) => {
+      const approval = await tx.commercialApproval.findUnique({
+        where: { id: approvalId },
+      });
+      if (!approval) {
+        throw new NotFoundException(
+          `Commercial approval '${approvalId}' not found`,
+        );
+      }
+      if (
+        approval.status === 'PENDING_APPROVAL' &&
+        approval.expires_at &&
+        approval.expires_at < new Date()
+      ) {
+        await tx.commercialApproval.update({
+          where: { id: approval.id },
+          data: { status: 'EXPIRED' },
+        });
+        throw new ConflictException({
+          statusCode: 409,
+          error: 'COMMERCIAL_APPROVAL_EXPIRED',
+          message: `Commercial approval '${approval.id}' expired at ${approval.expires_at.toISOString()}`,
+        });
+      }
 
-    if (approval.requested_by === approverId) {
-      throw new ForbiddenException(
-        `Approver '${approverId}' cannot decide on a commercial approval they requested themselves (maker-checker violation)`,
+      if (approval.requested_by === approverId) {
+        throw new ForbiddenException(
+          `Approver '${approverId}' cannot decide on a commercial approval they requested themselves (maker-checker violation)`,
+        );
+      }
+
+      assertTransition(
+        ALLOWED_TRANSITIONS,
+        approval.status,
+        decision,
+        'commercial approval',
       );
-    }
 
-    assertTransition(
-      ALLOWED_TRANSITIONS,
-      approval.status,
-      decision,
-      'commercial approval',
-    );
-
-    return this.prisma.$transaction(async (tx) => {
       const updated = await tx.commercialApproval.update({
         where: { id: approvalId },
         data: {
@@ -271,7 +295,7 @@ export class CommercialApprovalService {
       await tx.commercialEvent.create({
         data: {
           event_type: `commercial_approval.${decision.toLowerCase()}`,
-          tenant_id: approval.object_type,
+          tenant_id: approval.tenant_id,
           actor: approverId,
           payload: JSON.stringify({ approvalId, decision, decisionReason }),
           idempotency_key: `commercial-approval-decided-${approvalId}`,
@@ -279,7 +303,9 @@ export class CommercialApprovalService {
       });
 
       return updated;
-    });
+    };
+
+    return transaction ? decide(transaction) : this.prisma.$transaction(decide);
   }
 
   /**

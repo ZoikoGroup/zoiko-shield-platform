@@ -29,6 +29,7 @@ const ENTRY_OFFER_FAMILIES = [
   'CONTINUOUS_ASSURANCE',
 ] as const;
 export const BUNDLE_RELATIONSHIP_TYPES = [
+  'INCLUDES',
   'INCLUDED_BY',
   'REQUIRES',
   'ALTERNATIVE_TO',
@@ -36,9 +37,51 @@ export const BUNDLE_RELATIONSHIP_TYPES = [
   'OVERRIDES',
 ] as const;
 type BundleRelationshipType = (typeof BUNDLE_RELATIONSHIP_TYPES)[number];
-interface BundleRule {
+const BUNDLE_COMPONENT_TYPES = ['TECHNOLOGY', 'HUMAN_SERVICE'] as const;
+const BUNDLE_INVOICE_PRESENTATIONS = ['SEPARATE', 'AGGREGATE_ALLOWED'] as const;
+const ENTITLEMENT_OFFER_TYPES = [
+  'MANAGED_DEFENSE',
+  'CONTINUOUS_ASSURANCE',
+  'EXPOSURE_MANAGEMENT',
+  'AI_SECURITY',
+] as const;
+
+export interface BundleRule {
   relationshipType: BundleRelationshipType;
   targetSku: string;
+  componentType?: (typeof BUNDLE_COMPONENT_TYPES)[number];
+  quantity?: number;
+  allocationPercent?: number;
+  entitlementOfferType?: (typeof ENTITLEMENT_OFFER_TYPES)[number];
+  meterKey?: string;
+  serviceObligationType?: string;
+  costClass?: string;
+  claimKey?: string;
+  invoicePresentation?: (typeof BUNDLE_INVOICE_PRESENTATIONS)[number];
+}
+
+export interface ResolvedBundleComponent {
+  productId: string;
+  sku: string;
+  internalProductKey: string;
+  displayName: string;
+  componentType: (typeof BUNDLE_COMPONENT_TYPES)[number];
+  quantity: number;
+  allocationPercent: number;
+  entitlementOfferType?: string;
+  meterKey?: string;
+  meterDefinitionId?: string;
+  serviceObligationType?: string;
+  costClass: string;
+  claimKey: string;
+  claimRegisterId: string;
+  invoicePresentation: (typeof BUNDLE_INVOICE_PRESENTATIONS)[number];
+}
+
+export interface ResolvedBundleExpansion {
+  parentProductId: string;
+  parentSku: string;
+  components: ResolvedBundleComponent[];
 }
 
 export class CreateCatalogVersionDto {
@@ -199,8 +242,13 @@ export class CatalogService {
     }
   }
 
+  private isSupported(values: readonly string[], value: unknown) {
+    return typeof value === 'string' && values.includes(value);
+  }
+
   private validateBundleRules(rules: BundleRule[], productSku: string) {
     const seen = new Set<string>();
+    const includedComponents: BundleRule[] = [];
     for (const rule of rules) {
       if (
         !rule ||
@@ -219,7 +267,215 @@ export class CatalogService {
       if (seen.has(key))
         throw new BadRequestException(`Duplicate bundle rule '${key}'`);
       seen.add(key);
+
+      if (rule.relationshipType === 'INCLUDES') {
+        includedComponents.push(rule);
+        if (
+          !this.isSupported(BUNDLE_COMPONENT_TYPES, rule.componentType) ||
+          !Number.isInteger(rule.quantity) ||
+          (rule.quantity ?? 0) <= 0 ||
+          typeof rule.allocationPercent !== 'number' ||
+          rule.allocationPercent <= 0 ||
+          rule.allocationPercent > 100 ||
+          !rule.costClass?.trim() ||
+          !rule.claimKey?.trim() ||
+          !this.isSupported(
+            BUNDLE_INVOICE_PRESENTATIONS,
+            rule.invoicePresentation,
+          )
+        ) {
+          throw new BadRequestException(
+            `INCLUDES rule '${key}' requires componentType, positive integer quantity, allocationPercent (0,100], costClass, claimKey and invoicePresentation`,
+          );
+        }
+        if (
+          rule.componentType === 'TECHNOLOGY' &&
+          (!this.isSupported(
+            ENTITLEMENT_OFFER_TYPES,
+            rule.entitlementOfferType,
+          ) ||
+            !rule.meterKey?.trim())
+        ) {
+          throw new BadRequestException(
+            `Technology component '${rule.targetSku}' requires a supported entitlementOfferType and meterKey`,
+          );
+        }
+        if (
+          rule.componentType === 'HUMAN_SERVICE' &&
+          !rule.serviceObligationType?.trim()
+        ) {
+          throw new BadRequestException(
+            `Human-service component '${rule.targetSku}' requires serviceObligationType`,
+          );
+        }
+      }
     }
+
+    if (includedComponents.length) {
+      const total = includedComponents.reduce(
+        (sum, rule) => sum + (rule.allocationPercent ?? 0),
+        0,
+      );
+      if (Math.abs(total - 100) > 0.0001) {
+        throw new BadRequestException(
+          `Bundle '${productSku}' component allocation must total 100%; received ${total}%`,
+        );
+      }
+      const types = new Set(
+        includedComponents.map((rule) => rule.componentType),
+      );
+      if (!types.has('TECHNOLOGY') || !types.has('HUMAN_SERVICE')) {
+        throw new BadRequestException(
+          `Bundle '${productSku}' must explicitly separate at least one TECHNOLOGY and one HUMAN_SERVICE component`,
+        );
+      }
+    }
+  }
+
+  /**
+   * Resolves a quoted bundle into released catalog components plus the exact
+   * approved meter/claim definitions that will be frozen into the quote.
+   */
+  async resolveBundleExpansions(
+    catalogVersionId: string,
+    selectedProducts: Array<{
+      id: string;
+      sku: string;
+      bundle_rules: string;
+    }>,
+  ): Promise<ResolvedBundleExpansion[]> {
+    const parents = selectedProducts
+      .map((product) => {
+        const rules = JSON.parse(product.bundle_rules || '[]') as BundleRule[];
+        this.validateBundleRules(rules, product.sku);
+        return {
+          product,
+          rules: rules.filter((rule) => rule.relationshipType === 'INCLUDES'),
+        };
+      })
+      .filter(({ rules }) => rules.length > 0);
+    if (!parents.length) return [];
+
+    const targetSkus = [
+      ...new Set(parents.flatMap(({ rules }) => rules.map((r) => r.targetSku))),
+    ];
+    const targets = await this.prisma.product.findMany({
+      where: {
+        catalog_version_id: catalogVersionId,
+        sku: { in: targetSkus },
+        release_status: 'RELEASED',
+      },
+    });
+    const targetBySku = new Map(targets.map((target) => [target.sku, target]));
+    const unavailable = targetSkus.filter((sku) => !targetBySku.has(sku));
+    if (unavailable.length) {
+      throw new ConflictException(
+        `Bundle components are missing, gated, or unreleased: ${unavailable.join(', ')}`,
+      );
+    }
+    const nested = targets.find((target) =>
+      (JSON.parse(target.bundle_rules || '[]') as BundleRule[]).some(
+        (rule) => rule.relationshipType === 'INCLUDES',
+      ),
+    );
+    if (nested) {
+      throw new ConflictException(
+        `Nested bundle component '${nested.sku}' is not supported; expand it into leaf catalog items`,
+      );
+    }
+
+    const now = new Date();
+    const meterKeys = [
+      ...new Set(
+        parents.flatMap(
+          ({ rules }) =>
+            rules.map((rule) => rule.meterKey).filter(Boolean) as string[],
+        ),
+      ),
+    ];
+    const claimKeys = [
+      ...new Set(
+        parents.flatMap(
+          ({ rules }) =>
+            rules.map((rule) => rule.claimKey).filter(Boolean) as string[],
+        ),
+      ),
+    ];
+    const [meters, claims] = await Promise.all([
+      this.prisma.meterDefinition.findMany({
+        where: {
+          meter_key: { in: meterKeys },
+          status: 'APPROVED',
+          effective_from: { lte: now },
+          OR: [{ effective_to: null }, { effective_to: { gte: now } }],
+        },
+        orderBy: { version: 'desc' },
+      }),
+      this.prisma.claimRegister.findMany({
+        where: {
+          claim_key: { in: claimKeys },
+          status: 'APPROVED',
+          effective_from: { lte: now },
+          expires_at: { gte: now },
+        },
+        orderBy: { version: 'desc' },
+      }),
+    ]);
+    const meterByKey = new Map<string, (typeof meters)[number]>();
+    meters.forEach((meter) => {
+      if (!meterByKey.has(meter.meter_key))
+        meterByKey.set(meter.meter_key, meter);
+    });
+    const claimByKey = new Map<string, (typeof claims)[number]>();
+    claims.forEach((claim) => {
+      if (!claimByKey.has(claim.claim_key))
+        claimByKey.set(claim.claim_key, claim);
+    });
+    const missingMeters = meterKeys.filter((key) => !meterByKey.has(key));
+    const missingClaims = claimKeys.filter((key) => !claimByKey.has(key));
+    if (missingMeters.length || missingClaims.length) {
+      throw new ConflictException({
+        statusCode: 409,
+        error: 'BUNDLE_GOVERNANCE_DEFINITION_MISSING',
+        message: [
+          missingMeters.length
+            ? `approved meters missing: ${missingMeters.join(', ')}`
+            : '',
+          missingClaims.length
+            ? `approved claims missing: ${missingClaims.join(', ')}`
+            : '',
+        ]
+          .filter(Boolean)
+          .join('; '),
+      });
+    }
+
+    return parents.map(({ product, rules }) => ({
+      parentProductId: product.id,
+      parentSku: product.sku,
+      components: rules.map((rule) => {
+        const target = targetBySku.get(rule.targetSku)!;
+        return {
+          productId: target.id,
+          sku: target.sku,
+          internalProductKey: target.internal_product_key,
+          displayName: target.display_name,
+          componentType: rule.componentType!,
+          quantity: rule.quantity!,
+          allocationPercent: rule.allocationPercent!,
+          entitlementOfferType: rule.entitlementOfferType,
+          meterKey: rule.meterKey,
+          meterDefinitionId: rule.meterKey
+            ? meterByKey.get(rule.meterKey)!.id
+            : undefined,
+          serviceObligationType: rule.serviceObligationType,
+          costClass: rule.costClass!,
+          claimKey: rule.claimKey!,
+          claimRegisterId: claimByKey.get(rule.claimKey!)!.id,
+          invoicePresentation: rule.invoicePresentation!,
+        };
+      }),
+    }));
   }
 
   async createCatalogVersion(dto: CreateCatalogVersionDto) {
@@ -410,6 +666,14 @@ export class CatalogService {
         ) {
           throw new ConflictException(
             `SKU '${product.sku}' is included by '${rule.targetSku}' and cannot be priced as a separate line`,
+          );
+        }
+        if (
+          selected.has(rule.targetSku) &&
+          rule.relationshipType === 'INCLUDES'
+        ) {
+          throw new ConflictException(
+            `SKU '${rule.targetSku}' is included in bundle '${product.sku}' and cannot be priced as a separate line`,
           );
         }
         if (

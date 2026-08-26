@@ -27,6 +27,9 @@ describe('MeteringService (ZS-COM-BILL-001)', () => {
       meterDefinition: {
         findFirst: jest.fn(),
       },
+      meterAuthorizationPolicy: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -55,6 +58,10 @@ describe('MeteringService (ZS-COM-BILL-001)', () => {
 
     expect(record.usage_state).toBe('NON_BILLABLE');
     expect(record.billable_quantity).toBe(0);
+    expect(record.accepted_quantity).toBe(0);
+    expect(record.usage_classification).toBe(
+      'INGESTION_DUPLICATE_NON_BILLABLE',
+    );
   });
 
   it('should force NON_BILLABLE when no active contract or approved meter definition exists (Doctrine D1)', async () => {
@@ -78,7 +85,7 @@ describe('MeteringService (ZS-COM-BILL-001)', () => {
     expect(record.billable_quantity).toBe(0);
   });
 
-  it('should allow BILLABLE when active contract and approved meter definition exist (Doctrine D1 & D4)', async () => {
+  it('never treats raw receipt as billable even when an entitlement and meter definition exist', async () => {
     prismaMock.entitlement.findFirst.mockResolvedValue({
       id: 'ent-1',
       status: 'ACTIVE',
@@ -100,8 +107,33 @@ describe('MeteringService (ZS-COM-BILL-001)', () => {
       billableQuantity: 1,
     });
 
-    expect(record.usage_state).toBe('BILLABLE');
-    expect(record.billable_quantity).toBe(1);
+    expect(record.usage_state).toBe('NON_BILLABLE');
+    expect(record.billable_quantity).toBe(0);
+    expect(record.accepted_quantity).toBe(1);
+    expect(record.usage_classification).toBe(
+      'INGESTION_PENDING_GOVERNED_VALIDATION',
+    );
+  });
+
+  it('records provider processing loss with zero accepted and billable quantity', async () => {
+    prismaMock.usageRecord.create.mockImplementation(({ data }: any) =>
+      Promise.resolve({ id: 'u-loss', ...data }),
+    );
+
+    const record = await service.recordUsageObservation({
+      tenantId: 'tenant-1',
+      environmentId: 'env-1',
+      sourceType: 'WEBHOOK',
+      usageState: 'PROCESSING_LOSS',
+      acceptedQuantity: 50,
+      billableQuantity: 50,
+    });
+
+    expect(record.accepted_quantity).toBe(0);
+    expect(record.billable_quantity).toBe(0);
+    expect(record.usage_classification).toBe(
+      'INGESTION_PROCESSING_LOSS_NON_BILLABLE',
+    );
   });
 
   it('should return committedQuantity, warningThresholds, projectedForecast, and overageRatePolicy in getUsageSummary (MET-03)', async () => {
@@ -130,8 +162,11 @@ describe('MeteringService (ZS-COM-BILL-001)', () => {
     expect(summary.committedQuantity).toBeDefined();
     expect(summary.projectedForecast).toBeGreaterThanOrEqual(100);
     expect(summary.warningThresholds).toBeDefined();
-    expect(summary.warningThresholds.status).toBe('NORMAL');
+    expect(summary.warningThresholds.status).toBe('NOT_CONFIGURED');
     expect(summary.overageRatePolicy).toBeDefined();
+    expect(summary.overageRatePolicy.capEnforcement).toBe(
+      'NO_INVENTED_OVERAGE_POLICY',
+    );
   });
 
   it('should create new resource observation with DISCOVERED and NON_BILLABLE state', async () => {

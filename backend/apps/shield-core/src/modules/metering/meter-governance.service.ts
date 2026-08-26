@@ -23,6 +23,7 @@ import type {
   MeterAuthorizationPolicy,
   MeterEvent,
   Prisma,
+  UsageRecord,
 } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CommercialApprovalService } from '../approvals/commercial-approval.service';
@@ -260,6 +261,71 @@ export class MeterGovernanceService {
     return createHash('sha256').update(this.stable(value)).digest('hex');
   }
 
+  private exportExclusionReason(
+    usage: UsageRecord,
+    event: MeterEvent | undefined,
+    policy: MeterAuthorizationPolicy,
+  ): string | null {
+    if (!event) return 'MISSING_SOURCE_EVENT';
+    if (
+      usage.tenant_id !== policy.tenant_id ||
+      usage.environment_id !== policy.environment_id ||
+      usage.meter_authorization_id !== policy.id ||
+      usage.contract_id !== policy.contract_id ||
+      usage.meter_definition_id !== policy.meter_definition_id ||
+      event.tenant_id !== policy.tenant_id ||
+      event.environment_id !== policy.environment_id ||
+      event.meter_authorization_id !== policy.id ||
+      event.contract_id !== policy.contract_id ||
+      event.meter_definition_id !== policy.meter_definition_id
+    ) {
+      return 'COMMERCIAL_SCOPE_MISMATCH';
+    }
+    if (
+      event.accepted_state !== 'ACCEPTED' ||
+      event.validation_state !== 'VALID' ||
+      event.dedupe_state !== 'UNIQUE'
+    ) {
+      return 'EVENT_NOT_ACCEPTED_VALID_UNIQUE';
+    }
+    if (event.is_platform_generated) return 'PLATFORM_GENERATED';
+    if (!['ACCEPTED', 'CORRECTION'].includes(usage.usage_state)) {
+      return 'USAGE_STATE_NOT_EXPORTABLE';
+    }
+    const correction = event.correction_type !== 'ORIGINAL';
+    if (
+      (usage.usage_state === 'CORRECTION') !== correction ||
+      (correction && event.source !== 'CONTROLLED_CORRECTION')
+    ) {
+      return 'CORRECTION_LINEAGE_INVALID';
+    }
+    if (
+      !correction &&
+      (usage.accepted_quantity < 0 ||
+        usage.billable_quantity < 0 ||
+        usage.overage_quantity < 0 ||
+        usage.billable_quantity > usage.accepted_quantity)
+    ) {
+      return 'ORIGINAL_QUANTITY_INVALID';
+    }
+    if (
+      usage.billable_quantity !== 0 &&
+      usage.usage_classification !== 'CONTRACT_AUTHORIZED_BILLABLE' &&
+      !usage.usage_classification.startsWith('APPROVED_')
+    ) {
+      return 'BILLABLE_CLASSIFICATION_INVALID';
+    }
+    if (
+      (usage.billable_quantity === 0 &&
+        event.billable_state !== 'NON_BILLABLE') ||
+      (usage.billable_quantity !== 0 &&
+        !['BILLABLE', 'BILLABLE_CORRECTION'].includes(event.billable_state))
+    ) {
+      return 'EVENT_USAGE_BILLABLE_STATE_MISMATCH';
+    }
+    return null;
+  }
+
   periodBounds(occurredAt: Date, billingPeriod: string) {
     const start = new Date(occurredAt);
     const end = new Date(occurredAt);
@@ -354,9 +420,20 @@ export class MeterGovernanceService {
         'Retention extensions require an explicit customer-visible pricing disclosure',
       );
     }
-    if (dto.pricingModel === 'COMMITTED_CAPACITY' && !dto.committedQuantity) {
+    if (
+      dto.pricingModel === 'COMMITTED_CAPACITY' &&
+      (!dto.committedQuantity || !dto.priceBookId)
+    ) {
       throw new BadRequestException(
-        'committedQuantity is required for COMMITTED_CAPACITY',
+        'COMMITTED_CAPACITY requires committedQuantity and an approved priceBookId so the fee remains a contract line item',
+      );
+    }
+    if (
+      dto.pricingModel !== 'COMMITTED_CAPACITY' &&
+      dto.committedQuantity !== undefined
+    ) {
+      throw new BadRequestException(
+        'committedQuantity is only valid for COMMITTED_CAPACITY pricing',
       );
     }
     if (
@@ -1440,20 +1517,55 @@ export class MeterGovernanceService {
         );
       }
     }
-    const usage = await this.prisma.usageRecord.findMany({
+    const usageCandidates = await this.prisma.usageRecord.findMany({
       where: {
         meter_authorization_id: policy.id,
         occurred_at: { gte: start, lt: end },
       },
       orderBy: [{ occurred_at: 'asc' }, { id: 'asc' }],
     });
-    const events = await this.prisma.meterEvent.findMany({
+    const policyEvents = await this.prisma.meterEvent.findMany({
       where: {
         meter_authorization_id: policy.id,
         occurred_at: { gte: start, lt: end },
       },
       orderBy: [{ occurred_at: 'asc' }, { id: 'asc' }],
     });
+    const eventById = new Map(policyEvents.map((event) => [event.id, event]));
+    const evaluatedUsage = usageCandidates.map((record) => ({
+      record,
+      event: record.raw_event_id
+        ? eventById.get(record.raw_event_id)
+        : undefined,
+      exclusionReason: this.exportExclusionReason(
+        record,
+        record.raw_event_id ? eventById.get(record.raw_event_id) : undefined,
+        policy,
+      ),
+    }));
+    const invalidBillable = evaluatedUsage.find(
+      ({ record, exclusionReason }) =>
+        exclusionReason && record.billable_quantity !== 0,
+    );
+    if (invalidBillable) {
+      throw new ConflictException({
+        statusCode: 409,
+        error: 'FAILED_INGESTION_BILLING_ATTEMPT',
+        message: `Usage record '${invalidBillable.record.id}' has billable quantity without accepted, validated, deduplicated evidence (${invalidBillable.exclusionReason})`,
+      });
+    }
+    const usage = evaluatedUsage
+      .filter((item) => !item.exclusionReason && !!item.event)
+      .map(({ record }) => record);
+    const includedEventIds = new Set(
+      usage.map((record) => record.raw_event_id).filter(Boolean) as string[],
+    );
+    const events = policyEvents.filter((event) =>
+      includedEventIds.has(event.id),
+    );
+    const excludedEventIds = policyEvents
+      .filter((event) => !includedEventIds.has(event.id))
+      .map((event) => event.id);
     const totals = usage.reduce(
       (sum, item) => ({
         accepted: sum.accepted + item.accepted_quantity,
@@ -1470,6 +1582,12 @@ export class MeterGovernanceService {
       meterDefinitionId: policy.meter_definition_id,
       meterVersion: policy.meterDefinition.version,
       unit: policy.meterDefinition.unit,
+      billingBasis: 'ACCEPTED_DATA_USAGE',
+      pricingModel: policy.pricing_model,
+      committedQuantity: policy.committed_quantity,
+      committedCapacityChargeIncluded: false,
+      eligibilityRule:
+        'ACCEPTED_VALID_UNIQUE_CONTRACT_AUTHORIZED_EVIDENCE_ONLY',
       periodStart: start.toISOString(),
       periodEnd: end.toISOString(),
       eventHashes: events.map((event) => ({
@@ -1480,6 +1598,14 @@ export class MeterGovernanceService {
         id: item.id,
         hash: item.immutable_hash,
       })),
+      excludedEventIds,
+      excludedUsage: evaluatedUsage
+        .filter((item) => item.exclusionReason)
+        .map((item) => ({
+          usageRecordId: item.record.id,
+          rawEventId: item.record.raw_event_id,
+          reason: item.exclusionReason,
+        })),
       totals,
       supersedesId: dto.supersedesId ?? null,
       correctionRequestId: dto.correctionRequestId ?? null,
@@ -1504,6 +1630,9 @@ export class MeterGovernanceService {
           accepted_quantity: totals.accepted,
           billable_quantity: totals.billable,
           overage_quantity: totals.overage,
+          billing_basis: 'ACCEPTED_DATA_USAGE',
+          excluded_event_ids: JSON.stringify(excludedEventIds),
+          committed_capacity_included: false,
           immutable_snapshot: immutableSnapshot,
           checksum,
           reason: dto.reason.trim(),
@@ -1551,6 +1680,13 @@ export class MeterGovernanceService {
     });
     if (!billingExport)
       throw new NotFoundException(`Meter billing export '${id}' not found`);
+    const policy = await this.prisma.meterAuthorizationPolicy.findFirst({
+      where: {
+        id: billingExport.meter_authorization_id,
+        tenant_id: tenantId,
+        environment_id: environmentId,
+      },
+    });
     if (
       billingExport.status !== 'PENDING_APPROVAL' ||
       !billingExport.approval_id
@@ -1632,6 +1768,11 @@ export class MeterGovernanceService {
     let snapshotHashes: {
       eventHashes?: Array<{ id: string; hash: string }>;
       usageHashes?: Array<{ id: string; hash: string }>;
+      billingBasis?: string;
+      pricingModel?: string;
+      committedQuantity?: number | null;
+      committedCapacityChargeIncluded?: boolean;
+      excludedEventIds?: string[];
     } = {};
     try {
       snapshotHashes = JSON.parse(
@@ -1656,6 +1797,29 @@ export class MeterGovernanceService {
         (record) =>
           expectedUsageHashes.get(record.id) === record.immutable_hash,
       );
+    const eventById = new Map(events.map((event) => [event.id, event]));
+    const ingestionEligibilityValid =
+      !!policy &&
+      usage.every(
+        (record) =>
+          !this.exportExclusionReason(
+            record,
+            record.raw_event_id
+              ? eventById.get(record.raw_event_id)
+              : undefined,
+            policy,
+          ),
+      ) &&
+      events.every((event) =>
+        usage.some((record) => record.raw_event_id === event.id),
+      );
+    const commercialSeparationValid =
+      billingExport.billing_basis === 'ACCEPTED_DATA_USAGE' &&
+      !billingExport.committed_capacity_included &&
+      snapshotHashes.billingBasis === 'ACCEPTED_DATA_USAGE' &&
+      snapshotHashes.committedCapacityChargeIncluded === false &&
+      snapshotHashes.pricingModel === policy?.pricing_model &&
+      snapshotHashes.committedQuantity === policy?.committed_quantity;
     const totals = usage.reduce(
       (sum, item) => ({
         accepted: sum.accepted + item.accepted_quantity,
@@ -1672,11 +1836,17 @@ export class MeterGovernanceService {
     return {
       exportId: id,
       status:
-        checksumValid && evidenceHashesValid && quantityValid
+        checksumValid &&
+        evidenceHashesValid &&
+        ingestionEligibilityValid &&
+        commercialSeparationValid &&
+        quantityValid
           ? 'MATCHED'
           : 'MISMATCH',
       checksumValid,
       evidenceHashesValid,
+      ingestionEligibilityValid,
+      commercialSeparationValid,
       quantityValid,
       expected: {
         eventCount: eventIds.length,
