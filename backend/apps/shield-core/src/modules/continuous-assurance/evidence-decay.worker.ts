@@ -15,7 +15,7 @@ export class EvidenceDecayWorker {
     const staleRecords = await this.prisma.evidenceRecord.findMany({
       where: {
         created_at: { lt: thresholdDate },
-        status: { notIn: ['DECAYED', 'ARCHIVED', 'EXPIRED'] },
+        freshness_state: { notIn: ['DECAYED', 'ARCHIVED', 'EXPIRED'] },
       },
     });
 
@@ -23,7 +23,7 @@ export class EvidenceDecayWorker {
     for (const record of staleRecords) {
       await this.prisma.evidenceRecord.update({
         where: { id: record.id },
-        data: { status: 'DECAYED' },
+        data: { freshness_state: 'DECAYED' },
       });
 
       await this.prisma.commercialEvent.create({
@@ -34,7 +34,8 @@ export class EvidenceDecayWorker {
           idempotency_key: `decay-${record.id}`,
           payload: JSON.stringify({
             evidenceId: record.id,
-            evidenceKey: record.evidence_key,
+            evidenceType: record.evidence_type,
+            sourceObjectId: record.source_object_id,
             createdAt: record.created_at,
             decayedAt: new Date().toISOString(),
           }),

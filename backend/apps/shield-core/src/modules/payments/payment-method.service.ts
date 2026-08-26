@@ -1,15 +1,14 @@
 import {
   BadRequestException,
   Injectable,
-  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
-export interface AddPaymentMethodDto {
-  commercialAccountId: string;
-  type: 'CARD' | 'ACH_DEBIT' | 'SEPA_DEBIT' | 'BANK_TRANSFER';
-  provider: 'STRIPE' | 'ADYEN' | 'MANUAL';
-  providerPaymentMethodRef: string;
+export class AddPaymentMethodDto {
+  commercialAccountId!: string;
+  type!: 'CARD' | 'ACH_DEBIT' | 'SEPA_DEBIT' | 'BANK_TRANSFER';
+  provider!: 'STRIPE' | 'ADYEN' | 'MANUAL';
+  providerPaymentMethodRef!: string;
   lastFour?: string;
   cardBrand?: string;
   expiryMonth?: number;
@@ -18,9 +17,9 @@ export interface AddPaymentMethodDto {
   billingDetails?: Record<string, unknown>;
 }
 
-export interface AccountingHandoffExportDto {
-  periodKey: string;
-  exportFormat: 'CSV' | 'JSON' | 'QUICKBOOKS_IIF' | 'NETSUITE_CSV';
+export class AccountingHandoffExportDto {
+  periodKey!: string;
+  exportFormat!: 'CSV' | 'JSON' | 'QUICKBOOKS_IIF' | 'NETSUITE_CSV';
 }
 
 @Injectable()
@@ -101,15 +100,14 @@ export class PaymentMethodService {
   ) {
     const invoices = await this.prisma.commercialInvoice.findMany({
       where: { status: { in: ['ISSUED', 'PAID'] } },
-      include: { lines: true, payments: true },
+      include: { lines: true },
       take: 100,
     });
 
     const handoffLines = invoices.map((inv) => ({
-      invoiceNumber: inv.invoice_number,
+      invoiceId: inv.id,
       issueDate: inv.issued_at,
       totalAmount: inv.total_amount,
-      taxAmount: inv.tax_amount,
       currency: inv.currency,
       status: inv.status,
       revenueAccountCode: '4000-SAAS-SUBSCRIPTION',
@@ -142,6 +140,7 @@ export class PaymentMethodService {
       exportedBy: actorId,
     };
   }
+
 
   getSellerMerchantConfig() {
     return {

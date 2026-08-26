@@ -1,19 +1,18 @@
 import {
   BadRequestException,
-  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
-export interface CreateZoikoOneBundleOrderDto {
-  bundleReference: string;
-  commercialAccountId: string;
-  includedProductKeys: string[];
-  incrementalProductKeys: string[];
+export class CreateZoikoOneBundleOrderDto {
+  bundleReference!: string;
+  commercialAccountId!: string;
+  includedProductKeys!: string[];
+  incrementalProductKeys!: string[];
   coTerminationDate?: string;
   discountPercentage?: number;
-  creditAllocationMethod: 'PRO_RATA' | 'PRIMARY_FIRST' | 'EQUAL_SPLIT';
+  creditAllocationMethod!: 'PRO_RATA' | 'PRIMARY_FIRST' | 'EQUAL_SPLIT';
 }
 
 @Injectable()
@@ -44,8 +43,8 @@ export class ZoikoOneBundlingService {
       where: { tenant_id: tenantId, status: 'ACTIVE' },
     });
 
-    const existingKeys = new Set(existingEntitlements.map((e) => e.product_key));
-    const overlaps = dto.includedProductKeys.filter((key) => existingKeys.has(key));
+    const existingKeys = new Set(existingEntitlements.map((e) => e.offer_type));
+    const overlaps = (dto.includedProductKeys || []).filter((key) => existingKeys.has(key));
 
     const event = await this.prisma.commercialEvent.create({
       data: {
@@ -106,10 +105,10 @@ export class ZoikoOneBundlingService {
     }
 
     const includedScope = entitlements.filter((e) =>
-      bundleProductKeys.has(e.product_key),
+      bundleProductKeys.has(e.offer_type),
     );
     const incrementalScope = entitlements.filter(
-      (e) => !bundleProductKeys.has(e.product_key),
+      (e) => !bundleProductKeys.has(e.offer_type),
     );
 
     return {
@@ -117,14 +116,14 @@ export class ZoikoOneBundlingService {
       totalActiveEntitlements: entitlements.length,
       includedScope: includedScope.map((e) => ({
         id: e.id,
-        productKey: e.product_key,
-        scope: e.entitlement_scope,
+        offerType: e.offer_type,
+        sourceType: e.source_type,
         status: e.status,
       })),
       incrementalScope: incrementalScope.map((e) => ({
         id: e.id,
-        productKey: e.product_key,
-        scope: e.entitlement_scope,
+        offerType: e.offer_type,
+        sourceType: e.source_type,
         status: e.status,
       })),
       reconciliationStatus:
@@ -143,7 +142,7 @@ export class ZoikoOneBundlingService {
 
     const keyCounts = new Map<string, number>();
     for (const e of activeEntitlements) {
-      keyCounts.set(e.product_key, (keyCounts.get(e.product_key) || 0) + 1);
+      keyCounts.set(e.offer_type, (keyCounts.get(e.offer_type) || 0) + 1);
     }
 
     const duplicatedKeys = Array.from(keyCounts.entries())
@@ -175,3 +174,4 @@ export class ZoikoOneBundlingService {
     };
   }
 }
+

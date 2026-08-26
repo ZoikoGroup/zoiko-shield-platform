@@ -1,19 +1,18 @@
 import {
   BadRequestException,
   Injectable,
-  NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
-export interface PublishTrustCenterArtifactDto {
-  title: string;
-  category: 'SOC2' | 'ISO27001' | 'PCI_DSS' | 'HIPAA' | 'GDPR' | 'SECURITY_WHITEPAPER' | 'PEN_TEST_SUMMARY';
-  description: string;
-  version: string;
-  documentRef: string;
-  effectiveFrom: string;
+export class PublishTrustCenterArtifactDto {
+  title!: string;
+  category!: 'SOC2' | 'ISO27001' | 'PCI_DSS' | 'HIPAA' | 'GDPR' | 'SECURITY_WHITEPAPER' | 'PEN_TEST_SUMMARY';
+  description!: string;
+  version!: string;
+  documentRef!: string;
+  effectiveFrom!: string;
   effectiveTo?: string;
-  classification: 'PUBLIC' | 'CUSTOMER_RESTRICTED' | 'NDA_REQUIRED';
+  classification!: 'PUBLIC' | 'CUSTOMER_RESTRICTED' | 'NDA_REQUIRED';
 }
 
 @Injectable()
@@ -85,9 +84,9 @@ export class TrustCenterService {
       approvedClaimsCount: claims.length,
       claims: claims.map((c) => ({
         claimKey: c.claim_key,
-        claimWording: c.claim_wording,
-        category: c.category,
-        evidenceRequirement: c.evidence_requirement,
+        claimWording: c.approved_wording,
+        scope: c.scope,
+        evidenceRequirement: c.evidence_refs,
       })),
       publishedArtifacts: publications.map((p) => {
         try {
@@ -98,14 +97,15 @@ export class TrustCenterService {
       }),
       availableAuditPackages: auditPackages.map((a) => ({
         id: a.id,
-        packageName: a.name,
-        frameworkKey: a.framework_key,
-        frameworkVersion: a.framework_version,
+        packageName: a.purpose,
+        frameworkScope: a.framework_scope,
+        frameworkVersion: a.version,
         status: a.status,
         frozenAt: a.frozen_at,
       })),
     };
   }
+
 
   async getProcurementWorkspace(tenantId: string) {
     const accounts = await this.prisma.commercialAccount.findMany({

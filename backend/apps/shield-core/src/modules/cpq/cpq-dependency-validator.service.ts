@@ -46,13 +46,14 @@ export class CpqDependencyValidatorService {
   ): Promise<{ valid: boolean; violations: string[] }> {
     const activeEntitlements = await this.prisma.entitlement.findMany({
       where: { tenant_id: tenantId, status: 'ACTIVE' },
-      select: { product_key: true },
+      select: { offer_type: true },
     });
 
     const activeKeys = new Set([
-      ...activeEntitlements.map((e) => e.product_key),
+      ...activeEntitlements.map((e) => e.offer_type),
       ...proposedProductKeys,
     ]);
+
 
     const violations: string[] = [];
 
