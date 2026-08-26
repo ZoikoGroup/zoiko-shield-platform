@@ -45055,21 +45055,25 @@ paths:
   /api/v1/commercial/concessions:
     get:
       tags: [CPQ]
-      summary: List commercial concessions
-      description: List all commercial concessions and discounts
+      summary: List all commercial concessions
+      description: Returns all concessions visible to the platform operator. Requires PLATFORM_CONCESSION_MANAGE permission.
       security:
         - CookieAuth: []
         - BearerAuth: []
       responses:
         "200":
-          description: List of concessions
+          description: List of commercial concessions
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: true
+                type: array
+                items:
+                  { $ref: "#/components/schemas/CommercialConcessionResponse" }
         "401":
           description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
       operationId: getCommercialConcessions
     post:
       tags: [CPQ]
@@ -45101,28 +45105,6 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
       operationId: postCommercialConcessions
-    get:
-      tags: [CPQ]
-      summary: List all commercial concessions
-      description: Returns all concessions visible to the platform operator. Requires PLATFORM_CONCESSION_MANAGE permission.
-      security:
-        - CookieAuth: []
-        - BearerAuth: []
-      responses:
-        "200":
-          description: List of commercial concessions
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  { $ref: "#/components/schemas/CommercialConcessionResponse" }
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/ErrorResponse" }
-      operationId: getCommercialConcessions
   /api/v1/commercial/concessions/{id}:
     get:
       tags: [CPQ]
@@ -46187,77 +46169,4 @@ paths:
               schema:
                 type: string
 
-  /api/v1/cpq/subscriptions/amendments/{amendmentId}/schedule:
-    post:
-      tags:
-        - CPQ
-      summary: Schedule subscription amendment
-      description: Schedule an approved amendment for future execution
-      operationId: postCpqSubscriptionAmendmentSchedule
-      security:
-        - CookieAuth: []
-        - BearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/TenantIdHeader'
-        - name: amendmentId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: Amendment ID
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - scheduledAt
-              properties:
-                scheduledAt:
-                  type: string
-                  format: date-time
-      responses:
-        '200':
-          description: Amendment scheduled
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        '400':
-          description: Bad Request
-        '401':
-          description: Unauthorized
-
-  /api/v1/cpq/subscriptions/{id}/amendments:
-    get:
-      tags:
-        - CPQ
-      summary: List subscription amendments
-      description: List all amendments for a given subscription
-      operationId: getCpqSubscriptionAmendments
-      security:
-        - CookieAuth: []
-        - BearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/TenantIdHeader'
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-          description: Subscription ID
-      responses:
-        '200':
-          description: List of amendments
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties: true
-        '401':
-          description: Unauthorized
 
