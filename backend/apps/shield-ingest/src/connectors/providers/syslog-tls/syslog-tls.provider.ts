@@ -84,6 +84,8 @@ export class SyslogTlsProvider implements SecurityConnector, OnModuleInit {
   }
 
   async disconnect(context: ConnectorContext): Promise<void> {
-    this.logger.log(`Stopped Syslog TLS listener for tenant ${context.tenantId}`);
+    this.logger.log(
+      `Stopped Syslog TLS listener for tenant ${context.tenantId}`,
+    );
   }
 }

@@ -46,7 +46,10 @@ export interface GuardDutyFinding {
       networkConnectionAction?: {
         connectionDirection: string;
         localIpDetails?: { ipAddressV4?: string };
-        remoteIpDetails?: { ipAddressV4?: string; country?: { countryName?: string } };
+        remoteIpDetails?: {
+          ipAddressV4?: string;
+          country?: { countryName?: string };
+        };
       };
     };
     evidence?: {

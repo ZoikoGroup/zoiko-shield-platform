@@ -33,7 +33,9 @@ export class Rfc3161WitnessService implements WitnessProvider {
       modulusLength: 2048,
     });
     this.tsaPrivateKey = privateKey;
-    this.tsaPublicKeyPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
+    this.tsaPublicKeyPem = publicKey
+      .export({ type: 'spki', format: 'pem' })
+      .toString();
   }
 
   async attest(merkleRoot: string): Promise<WitnessReceiptResult> {

@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import crypto from 'crypto';
 
-export type UsageThresholdTier = '75_PERCENT' | '90_PERCENT' | '100_PERCENT_REACHED';
+export type UsageThresholdTier =
+  '75_PERCENT' | '90_PERCENT' | '100_PERCENT_REACHED';
 
 export interface UsageThresholdEvent {
   eventId: string;
@@ -11,7 +12,8 @@ export interface UsageThresholdEvent {
   quotaVolume: number;
   utilizationPercentage: number;
   thresholdTier: UsageThresholdTier;
-  actionRequired: 'NOTIFY_ADMIN' | 'RESTRICT_NON_CRITICAL' | 'SURGE_SAFE_CONTINUATION';
+  actionRequired:
+    'NOTIFY_ADMIN' | 'RESTRICT_NON_CRITICAL' | 'SURGE_SAFE_CONTINUATION';
   dispatchedAt: Date;
 }
 
@@ -30,7 +32,10 @@ export class UsageThresholdDispatcherService {
   private readonly logger = new Logger(UsageThresholdDispatcherService.name);
 
   // In-memory record of dispatched notifications to avoid spamming
-  private readonly dispatchedThresholds = new Map<string, Set<UsageThresholdTier>>();
+  private readonly dispatchedThresholds = new Map<
+    string,
+    Set<UsageThresholdTier>
+  >();
 
   /**
    * Evaluate usage volume against contracted quota and dispatch events
@@ -62,7 +67,8 @@ export class UsageThresholdDispatcherService {
 
     // Deduplicate event per tenant & tier
     const tenantKey = `${tenantId}:${meterKey}`;
-    const sentTiers = this.dispatchedThresholds.get(tenantKey) || new Set<UsageThresholdTier>();
+    const sentTiers =
+      this.dispatchedThresholds.get(tenantKey) || new Set<UsageThresholdTier>();
 
     if (sentTiers.has(tier)) {
       return null; // Already dispatched for this tier
@@ -94,7 +100,10 @@ export class UsageThresholdDispatcherService {
    * Surge-safe ingestion check (§8 D4): During an active incident/attack,
    * critical security logs must NOT be dropped even if capacity is exceeded.
    */
-  isSurgeSafeIngestionAllowed(tenantId: string, isCriticalSecurityEvent: boolean): boolean {
+  isSurgeSafeIngestionAllowed(
+    tenantId: string,
+    isCriticalSecurityEvent: boolean,
+  ): boolean {
     if (isCriticalSecurityEvent) {
       return true; // Always allow critical security telemetry
     }

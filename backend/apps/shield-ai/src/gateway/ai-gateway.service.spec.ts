@@ -42,7 +42,11 @@ describe('AiGatewayService', () => {
     aiOutputService = { create: jest.fn() };
     kafkaProducer = { publishEvent: jest.fn() };
     killSwitch = { assertNotBlocked: jest.fn() };
-    shieldCore = { recordAiUsage: jest.fn(), recordUsage: jest.fn(), markBillable: jest.fn() };
+    shieldCore = {
+      recordAiUsage: jest.fn(),
+      recordUsage: jest.fn(),
+      markBillable: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [

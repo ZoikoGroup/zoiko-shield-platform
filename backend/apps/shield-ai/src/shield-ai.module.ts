@@ -111,4 +111,3 @@ import { AiGovernanceViewsController } from './internal/ai-governance-views.cont
   ],
 })
 export class ShieldAiModule {}
-

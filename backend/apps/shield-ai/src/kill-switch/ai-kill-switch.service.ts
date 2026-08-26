@@ -85,49 +85,101 @@ export class AiKillSwitchService {
     // 1. Global Kill Switch
     if (this.switches.has(this.key('GLOBAL', '*'))) {
       const rec = this.switches.get(this.key('GLOBAL', '*'))!;
-      return { blocked: true, reason: `Global AI emergency freeze active: ${rec.reason}`, scope: 'GLOBAL' };
+      return {
+        blocked: true,
+        reason: `Global AI emergency freeze active: ${rec.reason}`,
+        scope: 'GLOBAL',
+      };
     }
 
     // 2. Tenant Kill Switch
     if (this.switches.has(this.key('TENANT', context.tenantId))) {
       const rec = this.switches.get(this.key('TENANT', context.tenantId))!;
-      return { blocked: true, reason: `AI is disabled for tenant '${context.tenantId}': ${rec.reason}`, scope: 'TENANT' };
+      return {
+        blocked: true,
+        reason: `AI is disabled for tenant '${context.tenantId}': ${rec.reason}`,
+        scope: 'TENANT',
+      };
     }
 
     // 3. Feature / Use Case Kill Switch
-    if (context.useCaseKey && this.switches.has(this.key('FEATURE', context.useCaseKey))) {
+    if (
+      context.useCaseKey &&
+      this.switches.has(this.key('FEATURE', context.useCaseKey))
+    ) {
       const rec = this.switches.get(this.key('FEATURE', context.useCaseKey))!;
-      return { blocked: true, reason: `AI feature '${context.useCaseKey}' is disabled: ${rec.reason}`, scope: 'FEATURE' };
+      return {
+        blocked: true,
+        reason: `AI feature '${context.useCaseKey}' is disabled: ${rec.reason}`,
+        scope: 'FEATURE',
+      };
     }
 
     // 4. Prompt Kill Switch
-    if (context.promptKey && this.switches.has(this.key('PROMPT', context.promptKey))) {
+    if (
+      context.promptKey &&
+      this.switches.has(this.key('PROMPT', context.promptKey))
+    ) {
       const rec = this.switches.get(this.key('PROMPT', context.promptKey))!;
-      return { blocked: true, reason: `Prompt profile '${context.promptKey}' is disabled: ${rec.reason}`, scope: 'PROMPT' };
+      return {
+        blocked: true,
+        reason: `Prompt profile '${context.promptKey}' is disabled: ${rec.reason}`,
+        scope: 'PROMPT',
+      };
     }
 
     // 5. Model Route Kill Switch
-    if (context.modelRoute && this.switches.has(this.key('MODEL_ROUTE', context.modelRoute))) {
-      const rec = this.switches.get(this.key('MODEL_ROUTE', context.modelRoute))!;
-      return { blocked: true, reason: `Model route '${context.modelRoute}' is disabled: ${rec.reason}`, scope: 'MODEL_ROUTE' };
+    if (
+      context.modelRoute &&
+      this.switches.has(this.key('MODEL_ROUTE', context.modelRoute))
+    ) {
+      const rec = this.switches.get(
+        this.key('MODEL_ROUTE', context.modelRoute),
+      )!;
+      return {
+        blocked: true,
+        reason: `Model route '${context.modelRoute}' is disabled: ${rec.reason}`,
+        scope: 'MODEL_ROUTE',
+      };
     }
 
     // 6. Provider Kill Switch
-    if (context.providerKey && this.switches.has(this.key('PROVIDER', context.providerKey))) {
+    if (
+      context.providerKey &&
+      this.switches.has(this.key('PROVIDER', context.providerKey))
+    ) {
       const rec = this.switches.get(this.key('PROVIDER', context.providerKey))!;
-      return { blocked: true, reason: `Model provider '${context.providerKey}' is disabled: ${rec.reason}`, scope: 'PROVIDER' };
+      return {
+        blocked: true,
+        reason: `Model provider '${context.providerKey}' is disabled: ${rec.reason}`,
+        scope: 'PROVIDER',
+      };
     }
 
     // 7. Agent Kill Switch
-    if (context.agentId && this.switches.has(this.key('AGENT', context.agentId))) {
+    if (
+      context.agentId &&
+      this.switches.has(this.key('AGENT', context.agentId))
+    ) {
       const rec = this.switches.get(this.key('AGENT', context.agentId))!;
-      return { blocked: true, reason: `Agent '${context.agentId}' is frozen: ${rec.reason}`, scope: 'AGENT' };
+      return {
+        blocked: true,
+        reason: `Agent '${context.agentId}' is frozen: ${rec.reason}`,
+        scope: 'AGENT',
+      };
     }
 
     // 8. Tool Kill Switch
-    if (context.toolName && this.switches.has(this.key('TOOL', context.toolName))) {
+    if (
+      context.toolName &&
+      this.switches.has(this.key('TOOL', context.toolName))
+    ) {
       const rec = this.switches.get(this.key('TOOL', context.toolName))!;
-      return { blocked: true, reason: `Tool '${context.toolName}' is disabled: ${rec.reason}`, scope: 'TOOL' };
+      return {
+        blocked: true,
+        reason: `Tool '${context.toolName}' is disabled: ${rec.reason}`,
+        scope: 'TOOL',
+      };
     }
 
     return { blocked: false };

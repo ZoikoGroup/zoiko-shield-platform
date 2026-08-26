@@ -38,7 +38,8 @@ export class OktaProvider implements SecurityConnector, OnModuleInit {
     if (!input.orgUrl || !input.apiToken) {
       return {
         status: 'FAILED',
-        error: 'Missing required configuration: orgUrl and apiToken are mandatory',
+        error:
+          'Missing required configuration: orgUrl and apiToken are mandatory',
       };
     }
 
@@ -83,16 +84,14 @@ export class OktaProvider implements SecurityConnector, OnModuleInit {
 
   async getPermissions(context: ConnectorContext): Promise<PermissionResult> {
     return {
-      granted: [
-        'okta.logs.read',
-        'okta.users.read',
-        'okta.events.read',
-      ],
+      granted: ['okta.logs.read', 'okta.users.read', 'okta.events.read'],
       missing: [],
     };
   }
 
   async disconnect(context: ConnectorContext): Promise<void> {
-    this.logger.log(`Disconnecting Okta Identity Cloud for tenant ${context.tenantId}`);
+    this.logger.log(
+      `Disconnecting Okta Identity Cloud for tenant ${context.tenantId}`,
+    );
   }
 }

@@ -26,8 +26,14 @@ export class AwsGuardDutyNormalizerService {
       10: { id: 4, label: 'CRITICAL' },
     };
 
-    const roundedSeverity = Math.min(10, Math.max(1, Math.round(finding.severity)));
-    const severityInfo = severityMap[roundedSeverity] || { id: 2, label: 'MEDIUM' };
+    const roundedSeverity = Math.min(
+      10,
+      Math.max(1, Math.round(finding.severity)),
+    );
+    const severityInfo = severityMap[roundedSeverity] || {
+      id: 2,
+      label: 'MEDIUM',
+    };
 
     const resources = [];
     if (finding.resource?.instanceDetails) {

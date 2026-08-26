@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import crypto from 'crypto';
-import { CrowdStrikeDetectionPayload, OcsfProcessActivityEvent } from './crowdstrike.types';
+import {
+  CrowdStrikeDetectionPayload,
+  OcsfProcessActivityEvent,
+} from './crowdstrike.types';
 
 @Injectable()
 export class CrowdStrikeNormalizerService {
@@ -30,7 +33,10 @@ export class CrowdStrikeNormalizerService {
       5: { id: 4, label: 'CRITICAL' },
     };
 
-    const severity = severityMap[payload.max_severity] || { id: 3, label: 'HIGH' };
+    const severity = severityMap[payload.max_severity] || {
+      id: 3,
+      label: 'HIGH',
+    };
 
     const attacks = payload.behaviors.map((b) => ({
       tactic: { name: b.tactic },

@@ -105,7 +105,9 @@ export class SocSlaClockService {
   pauseClock(caseId: string, reason: string): TriageClockRecord {
     const clock = this.clocks.get(caseId);
     if (!clock) {
-      throw new NotFoundException(`Triage clock for case '${caseId}' not found`);
+      throw new NotFoundException(
+        `Triage clock for case '${caseId}' not found`,
+      );
     }
 
     if (clock.status === 'PAUSED') {
@@ -129,7 +131,9 @@ export class SocSlaClockService {
   resumeClock(caseId: string): TriageClockRecord {
     const clock = this.clocks.get(caseId);
     if (!clock) {
-      throw new NotFoundException(`Triage clock for case '${caseId}' not found`);
+      throw new NotFoundException(
+        `Triage clock for case '${caseId}' not found`,
+      );
     }
 
     if (clock.status !== 'PAUSED') {
@@ -160,7 +164,9 @@ export class SocSlaClockService {
   } {
     const clock = this.clocks.get(caseId);
     if (!clock) {
-      throw new NotFoundException(`Triage clock for case '${caseId}' not found`);
+      throw new NotFoundException(
+        `Triage clock for case '${caseId}' not found`,
+      );
     }
 
     const now = new Date();

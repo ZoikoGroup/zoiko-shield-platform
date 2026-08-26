@@ -33,7 +33,10 @@ describe('QuarantineService (Ingestion DLQ & Error Isolation)', () => {
     expect(record.status).toBe('PENDING_REVIEW');
     expect(record.failureReason).toBe('PARSER_EXCEPTION');
 
-    const fetched = service.getQuarantinedEvent('tenant-1', record.quarantineId);
+    const fetched = service.getQuarantinedEvent(
+      'tenant-1',
+      record.quarantineId,
+    );
     expect(fetched.quarantineId).toBe(record.quarantineId);
   });
 

@@ -197,4 +197,3 @@ import { IdempotencyService } from '../../shield-core/src/modules/idempotency/id
   ],
 })
 export class ShieldIngestModule {}
-

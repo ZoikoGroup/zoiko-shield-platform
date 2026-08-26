@@ -502,7 +502,9 @@ describe('SubscriptionService Category B4-B5 controls', () => {
       }),
     };
     prisma.commercialSubscription.findUnique.mockResolvedValue(subscription);
-    prisma.commercialAmendment.findUnique.mockResolvedValue(remediatedDowngrade);
+    prisma.commercialAmendment.findUnique.mockResolvedValue(
+      remediatedDowngrade,
+    );
     prisma.commercialAmendment.update.mockResolvedValue({
       ...remediatedDowngrade,
       status: 'SCHEDULED',

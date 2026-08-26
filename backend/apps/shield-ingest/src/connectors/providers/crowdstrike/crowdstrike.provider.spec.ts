@@ -46,7 +46,8 @@ describe('CrowdStrikeProvider & Normalizer', () => {
           timestamp: '2026-08-25T13:00:00Z',
           cmdline: 'powershell.exe -enc SQBFAFgA...',
           filename: 'powershell.exe',
-          sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+          sha256:
+            'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
           user_name: 'corp\\finance_analyst',
         },
       ],
@@ -68,7 +69,9 @@ describe('CrowdStrikeProvider & Normalizer', () => {
     expect(normalized.severity).toBe('CRITICAL');
     expect(normalized.device.hostname).toBe('finance-workstation-05');
     expect(normalized.process.name).toBe('powershell.exe');
-    expect(normalized.process.file.hashes[0].value).toBe('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
+    expect(normalized.process.file.hashes[0].value).toBe(
+      'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    );
     expect(normalized.attacks?.[0].tactic.name).toBe('Defense Evasion');
     expect(normalized.raw_payload_hash).toBeDefined();
   });

@@ -206,9 +206,7 @@ export class ResourceCoverageService {
       throw new BadRequestException('policyKey and reason must be non-empty');
     }
     const effectiveFrom = new Date(dto.effectiveFrom);
-    const effectiveTo = dto.effectiveTo
-      ? new Date(dto.effectiveTo)
-      : undefined;
+    const effectiveTo = dto.effectiveTo ? new Date(dto.effectiveTo) : undefined;
     if (
       Number.isNaN(effectiveFrom.getTime()) ||
       (effectiveTo &&
@@ -252,10 +250,11 @@ export class ResourceCoverageService {
     dto: CreateCoveragePolicyDto,
   ) {
     this.assertPolicyConfiguration(dto);
-    const definition =
-      await this.prisma.protectedResourceDefinition.findUnique({
+    const definition = await this.prisma.protectedResourceDefinition.findUnique(
+      {
         where: { id: dto.resourceDefinitionId },
-      });
+      },
+    );
     if (!definition || definition.status !== 'APPROVED') {
       throw new ConflictException(
         'Coverage policies require an APPROVED protected-resource definition',
@@ -271,13 +270,10 @@ export class ResourceCoverageService {
     }
 
     const effectiveFrom = new Date(dto.effectiveFrom);
-    const effectiveTo = dto.effectiveTo
-      ? new Date(dto.effectiveTo)
-      : undefined;
+    const effectiveTo = dto.effectiveTo ? new Date(dto.effectiveTo) : undefined;
     if (
       meter.effective_from > effectiveFrom ||
-      (meter.effective_to &&
-        (!effectiveTo || meter.effective_to < effectiveTo))
+      (meter.effective_to && (!effectiveTo || meter.effective_to < effectiveTo))
     ) {
       throw new ConflictException(
         'The meter definition is not effective for the complete coverage-policy window',
@@ -306,9 +302,7 @@ export class ResourceCoverageService {
     }
 
     const allowedOverlap = this.parseObject(definition.overlap_policy);
-    const allowedMetrics = Array.isArray(
-      allowedOverlap.disclosedMetricFamilies,
-    )
+    const allowedMetrics = Array.isArray(allowedOverlap.disclosedMetricFamilies)
       ? allowedOverlap.disclosedMetricFamilies.filter(
           (item): item is string => typeof item === 'string',
         )
@@ -422,11 +416,7 @@ export class ResourceCoverageService {
     approverId: string,
     dto: DecideCoveragePolicyDto,
   ) {
-    const policy = await this.getPolicyForTenant(
-      id,
-      tenantId,
-      environmentId,
-    );
+    const policy = await this.getPolicyForTenant(id, tenantId, environmentId);
     if (policy.status !== 'PENDING_APPROVAL' || !policy.approval_id) {
       throw new ConflictException(
         `Coverage policy '${id}' has no pending linked approval`,
@@ -498,11 +488,7 @@ export class ResourceCoverageService {
     environmentId: string,
     at = new Date(),
   ) {
-    const policy = await this.getPolicyForTenant(
-      id,
-      tenantId,
-      environmentId,
-    );
+    const policy = await this.getPolicyForTenant(id, tenantId, environmentId);
     if (
       policy.status !== 'APPROVED' ||
       policy.effective_from > at ||
@@ -523,10 +509,7 @@ export class ResourceCoverageService {
     return policy;
   }
 
-  private async assertCap(policy: {
-    id: string;
-    cap_quantity: number | null;
-  }) {
+  private async assertCap(policy: { id: string; cap_quantity: number | null }) {
     if (!policy.cap_quantity) return;
     const current = await this.prisma.resourceObservation.count({
       where: {
@@ -756,7 +739,9 @@ export class ResourceCoverageService {
     dto: AcceptResourceCoverageDto,
   ) {
     if (!dto.reason?.trim()) {
-      throw new BadRequestException('A non-empty acceptance reason is required');
+      throw new BadRequestException(
+        'A non-empty acceptance reason is required',
+      );
     }
     const observation = await this.getObservation(
       tenantId,
@@ -967,8 +952,11 @@ export class ResourceCoverageService {
       include: { observation: true, coveragePolicy: true },
       orderBy: { effective_at: 'asc' },
     });
-    const results: Array<{ noticeId: string; status: string; reason?: string }> =
-      [];
+    const results: Array<{
+      noticeId: string;
+      status: string;
+      reason?: string;
+    }> = [];
     for (const notice of notices) {
       try {
         const policy = await this.getEffectiveApprovedPolicy(
@@ -978,7 +966,9 @@ export class ResourceCoverageService {
           asOf,
         );
         if (!policy.auto_enroll) {
-          throw new ConflictException('Policy no longer permits auto-enrollment');
+          throw new ConflictException(
+            'Policy no longer permits auto-enrollment',
+          );
         }
         await this.assertAutoThreshold(policy);
         await this.assertCap(policy);
@@ -1020,7 +1010,9 @@ export class ResourceCoverageService {
   async processDueAutoEnrollments() {
     const results = await this.processAutoEnrollments();
     if (results.length > 0) {
-      this.logger.log(`Processed ${results.length} resource auto-enrollment(s)`);
+      this.logger.log(
+        `Processed ${results.length} resource auto-enrollment(s)`,
+      );
     }
   }
 }

@@ -91,9 +91,9 @@ describe('ProtectedResourceDefinitionService (Category C taxonomy)', () => {
       requested_by: 'maker-1',
     });
 
-    await expect(
-      service.approveDefinition('def-1', 'maker-1'),
-    ).rejects.toThrow(ForbiddenException);
+    await expect(service.approveDefinition('def-1', 'maker-1')).rejects.toThrow(
+      ForbiddenException,
+    );
   });
 
   it('fails closed for a legacy approved definition with no metric governance', async () => {

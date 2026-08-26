@@ -136,7 +136,9 @@ describe('ResourceCountingService (Category C count previews)', () => {
       },
     );
 
-    expect(JSON.parse(preview.metric_results)[0].billingPreviewQuantity).toBe(0);
+    expect(JSON.parse(preview.metric_results)[0].billingPreviewQuantity).toBe(
+      0,
+    );
     expect(JSON.parse(preview.exclusions)[0].reason).toBe(
       'MINIMUM_DURATION_NOT_MET',
     );
@@ -214,12 +216,7 @@ describe('ResourceCountingService (Category C count previews)', () => {
     });
 
     await expect(
-      service.finalizePreview(
-        'preview-1',
-        'tenant-1',
-        'env-1',
-        'approver-1',
-      ),
+      service.finalizePreview('preview-1', 'tenant-1', 'env-1', 'approver-1'),
     ).rejects.toThrow(ConflictException);
   });
 });

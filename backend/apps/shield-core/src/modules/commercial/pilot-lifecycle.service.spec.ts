@@ -35,7 +35,9 @@ describe('PilotLifecycleService (ZS-COM-BILL-001 COM-04 Pilot & Conversion Engin
     expect(pilot.id).toBeDefined();
     expect(pilot.status).toBe('ACTIVE');
     expect(pilot.durationDays).toBe(30);
-    expect(pilot.expiryDate.getTime()).toBeGreaterThan(pilot.startDate.getTime());
+    expect(pilot.expiryDate.getTime()).toBeGreaterThan(
+      pilot.startDate.getTime(),
+    );
   });
 
   it('rejects invalid pilot duration (<1 or >90 days)', async () => {

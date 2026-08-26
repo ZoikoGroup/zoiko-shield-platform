@@ -53,9 +53,7 @@ export class PlatformDiscountAuthorityPolicyController {
   constructor(private readonly discounts: DiscountApprovalService) {}
 
   @Post()
-  @RequirePlatformPermissions(
-    PERMISSION_CODES.PLATFORM_DISCOUNT_POLICY_MANAGE,
-  )
+  @RequirePlatformPermissions(PERMISSION_CODES.PLATFORM_DISCOUNT_POLICY_MANAGE)
   async create(
     @CurrentUser() user: AuthenticatedUser,
     @Body() dto: CreateDiscountAuthorityPolicyDto,
@@ -67,9 +65,7 @@ export class PlatformDiscountAuthorityPolicyController {
   }
 
   @Get()
-  @RequirePlatformPermissions(
-    PERMISSION_CODES.PLATFORM_DISCOUNT_POLICY_MANAGE,
-  )
+  @RequirePlatformPermissions(PERMISSION_CODES.PLATFORM_DISCOUNT_POLICY_MANAGE)
   async list(
     @Query('serviceClass') serviceClass?: string,
     @Query('region') region?: string,
@@ -87,9 +83,7 @@ export class PlatformDiscountAuthorityPolicyController {
 
   @Patch(':id/decision')
   @UseGuards(HumanAuthorityGuard)
-  @RequirePlatformPermissions(
-    PERMISSION_CODES.PLATFORM_DISCOUNT_POLICY_APPROVE,
-  )
+  @RequirePlatformPermissions(PERMISSION_CODES.PLATFORM_DISCOUNT_POLICY_APPROVE)
   @RequireHumanAuthority(
     'COMMERCIAL_CHANGE_AUTHORIZATION',
     'DiscountAuthorityPolicy',
@@ -127,11 +121,7 @@ export class TenantQuoteDiscountReviewController {
     );
     return {
       statusCode: HttpStatus.OK,
-      data: await this.discounts.getReview(
-        quoteId,
-        tenantId,
-        environmentId,
-      ),
+      data: await this.discounts.getReview(quoteId, tenantId, environmentId),
     };
   }
 

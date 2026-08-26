@@ -52,7 +52,10 @@ export class AiFinOpsBudgetService {
     return budget;
   }
 
-  setTenantBudgetCap(tenantId: string, updates: Partial<TenantBudgetCap>): void {
+  setTenantBudgetCap(
+    tenantId: string,
+    updates: Partial<TenantBudgetCap>,
+  ): void {
     const existing = this.getOrCreateBudget(tenantId);
     Object.assign(existing, updates);
     this.tenantBudgets.set(tenantId, existing);
@@ -74,8 +77,14 @@ export class AiFinOpsBudgetService {
     if (recentCalls.length >= budget.maxCallsPerMinute) {
       return {
         allowed: false,
-        remainingBudgetUsd: Math.max(0, budget.monthlyLimitUsd - budget.currentSpendUsd),
-        remainingTokens: Math.max(0, budget.monthlyTokenLimit - budget.currentTokensUsed),
+        remainingBudgetUsd: Math.max(
+          0,
+          budget.monthlyLimitUsd - budget.currentSpendUsd,
+        ),
+        remainingTokens: Math.max(
+          0,
+          budget.monthlyTokenLimit - budget.currentTokensUsed,
+        ),
         reason: `Rate ceiling exceeded: ${recentCalls.length} calls in past 60s (limit: ${budget.maxCallsPerMinute}/min). Denial-of-wallet loop defense triggered.`,
       };
     }
@@ -84,8 +93,14 @@ export class AiFinOpsBudgetService {
     if (budget.currentSpendUsd + estimatedCostUsd > budget.monthlyLimitUsd) {
       return {
         allowed: false,
-        remainingBudgetUsd: Math.max(0, budget.monthlyLimitUsd - budget.currentSpendUsd),
-        remainingTokens: Math.max(0, budget.monthlyTokenLimit - budget.currentTokensUsed),
+        remainingBudgetUsd: Math.max(
+          0,
+          budget.monthlyLimitUsd - budget.currentSpendUsd,
+        ),
+        remainingTokens: Math.max(
+          0,
+          budget.monthlyTokenLimit - budget.currentTokensUsed,
+        ),
         reason: `Monthly AI budget cap exceeded: spend is $${budget.currentSpendUsd.toFixed(2)} (limit: $${budget.monthlyLimitUsd.toFixed(2)})`,
       };
     }
@@ -94,16 +109,24 @@ export class AiFinOpsBudgetService {
     if (budget.currentTokensUsed + estimatedTokens > budget.monthlyTokenLimit) {
       return {
         allowed: false,
-        remainingBudgetUsd: Math.max(0, budget.monthlyLimitUsd - budget.currentSpendUsd),
-        remainingTokens: Math.max(0, budget.monthlyTokenLimit - budget.currentTokensUsed),
+        remainingBudgetUsd: Math.max(
+          0,
+          budget.monthlyLimitUsd - budget.currentSpendUsd,
+        ),
+        remainingTokens: Math.max(
+          0,
+          budget.monthlyTokenLimit - budget.currentTokensUsed,
+        ),
         reason: `Monthly token limit exceeded: used ${budget.currentTokensUsed} (limit: ${budget.monthlyTokenLimit})`,
       };
     }
 
     return {
       allowed: true,
-      remainingBudgetUsd: budget.monthlyLimitUsd - (budget.currentSpendUsd + estimatedCostUsd),
-      remainingTokens: budget.monthlyTokenLimit - (budget.currentTokensUsed + estimatedTokens),
+      remainingBudgetUsd:
+        budget.monthlyLimitUsd - (budget.currentSpendUsd + estimatedCostUsd),
+      remainingTokens:
+        budget.monthlyTokenLimit - (budget.currentTokensUsed + estimatedTokens),
     };
   }
 

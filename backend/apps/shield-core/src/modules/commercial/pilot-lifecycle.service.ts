@@ -61,14 +61,20 @@ export class PilotLifecycleService {
   /**
    * Register a new Design-Partner or Pilot evaluation program
    */
-  async createPilotProgram(dto: CreatePilotProgramDto): Promise<PilotProgramRecord> {
+  async createPilotProgram(
+    dto: CreatePilotProgramDto,
+  ): Promise<PilotProgramRecord> {
     if (dto.durationDays <= 0 || dto.durationDays > 90) {
-      throw new BadRequestException('Pilot duration must be between 1 and 90 days');
+      throw new BadRequestException(
+        'Pilot duration must be between 1 and 90 days',
+      );
     }
 
     const pilotId = `pilot-${crypto.randomUUID()}`;
     const startDate = new Date();
-    const expiryDate = new Date(startDate.getTime() + dto.durationDays * 24 * 60 * 60 * 1000);
+    const expiryDate = new Date(
+      startDate.getTime() + dto.durationDays * 24 * 60 * 60 * 1000,
+    );
 
     const record: PilotProgramRecord = {
       id: pilotId,
@@ -136,14 +142,18 @@ export class PilotLifecycleService {
   /**
    * Convert pilot program into a live commercial contract
    */
-  async convertPilotToContract(dto: ConvertPilotDto): Promise<PilotProgramRecord> {
+  async convertPilotToContract(
+    dto: ConvertPilotDto,
+  ): Promise<PilotProgramRecord> {
     const pilot = this.pilots.get(dto.pilotId);
     if (!pilot) {
       throw new NotFoundException(`Pilot program '${dto.pilotId}' not found`);
     }
 
     if (pilot.status === 'CONVERTED') {
-      throw new ConflictException(`Pilot program '${dto.pilotId}' is already converted`);
+      throw new ConflictException(
+        `Pilot program '${dto.pilotId}' is already converted`,
+      );
     }
 
     pilot.status = 'CONVERTED';
@@ -160,6 +170,8 @@ export class PilotLifecycleService {
    * List all pilots for tenant
    */
   async listPilotsForTenant(tenantId: string): Promise<PilotProgramRecord[]> {
-    return Array.from(this.pilots.values()).filter((p) => p.tenantId === tenantId);
+    return Array.from(this.pilots.values()).filter(
+      (p) => p.tenantId === tenantId,
+    );
   }
 }

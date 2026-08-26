@@ -89,11 +89,13 @@ export class ServiceCreditLedgerService {
     maxCapPercent?: number; // Defaults to 30%
   }): AppliedInvoiceDeduction {
     const capPercent = params.maxCapPercent ?? 30.0;
-    const maxCreditAllowance = (params.baseMonthlyRecurringCharge * capPercent) / 100;
+    const maxCreditAllowance =
+      (params.baseMonthlyRecurringCharge * capPercent) / 100;
 
     // Get pending credits for tenant
     const pendingCredits = Array.from(this.credits.values()).filter(
-      (c) => c.tenantId === params.tenantId && c.status === 'PENDING_APPLICATION',
+      (c) =>
+        c.tenantId === params.tenantId && c.status === 'PENDING_APPLICATION',
     );
 
     let totalDeduction = 0;
@@ -105,7 +107,10 @@ export class ServiceCreditLedgerService {
       }
 
       const availableRoom = maxCreditAllowance - totalDeduction;
-      const deductibleFromThisCredit = Math.min(credit.creditAmount, availableRoom);
+      const deductibleFromThisCredit = Math.min(
+        credit.creditAmount,
+        availableRoom,
+      );
 
       totalDeduction += deductibleFromThisCredit;
       credit.status = 'APPLIED_TO_INVOICE';

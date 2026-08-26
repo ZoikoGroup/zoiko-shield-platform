@@ -92,10 +92,12 @@ describe('ResourceCoverageService (Category C governed acceptance)', () => {
       coverage_state: 'DISCOVERED',
       billable_state: 'NON_BILLABLE',
     };
-    prismaMock.resourceObservation.update.mockImplementation(({ data }: any) => {
-      persisted = { ...persisted, ...data };
-      return Promise.resolve(persisted);
-    });
+    prismaMock.resourceObservation.update.mockImplementation(
+      ({ data }: any) => {
+        persisted = { ...persisted, ...data };
+        return Promise.resolve(persisted);
+      },
+    );
     prismaMock.resourceCoveragePolicy.findMany.mockResolvedValue([]);
 
     const result = await service.routeDiscoveredObservation({
@@ -141,7 +143,9 @@ describe('ResourceCoverageService (Category C governed acceptance)', () => {
     });
 
     expect(result.notice!.status).toBe('PENDING_DELIVERY');
-    expect((result.observation as any).auto_enrollment_status).toBe('NOTICE_PENDING');
+    expect((result.observation as any).auto_enrollment_status).toBe(
+      'NOTICE_PENDING',
+    );
     expect(
       prismaMock.resourceObservation.update.mock.calls.some(
         ([input]: any[]) => input.data.billable_state === 'BILLABLE',
@@ -168,7 +172,9 @@ describe('ResourceCoverageService (Category C governed acceptance)', () => {
     prismaMock.resourceCoveragePolicy.findFirst.mockResolvedValue(policy);
     prismaMock.resourceObservation.count.mockResolvedValue(1);
     prismaMock.resourceObservation.findMany.mockResolvedValue([]);
-    prismaMock.resourceEnrollmentNotice.updateMany.mockResolvedValue({ count: 0 });
+    prismaMock.resourceEnrollmentNotice.updateMany.mockResolvedValue({
+      count: 0,
+    });
     prismaMock.resourceObservation.update.mockImplementation(({ data }: any) =>
       Promise.resolve({ ...observation, ...data }),
     );

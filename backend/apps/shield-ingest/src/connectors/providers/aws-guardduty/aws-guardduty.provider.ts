@@ -38,7 +38,8 @@ export class AwsGuardDutyProvider implements SecurityConnector, OnModuleInit {
     if (!input.roleArn) {
       return {
         status: 'FAILED',
-        error: 'Missing required configuration: roleArn is mandatory for AWS IAM cross-account access',
+        error:
+          'Missing required configuration: roleArn is mandatory for AWS IAM cross-account access',
       };
     }
 
@@ -94,6 +95,8 @@ export class AwsGuardDutyProvider implements SecurityConnector, OnModuleInit {
   }
 
   async disconnect(context: ConnectorContext): Promise<void> {
-    this.logger.log(`Disconnecting AWS GuardDuty for tenant ${context.tenantId}`);
+    this.logger.log(
+      `Disconnecting AWS GuardDuty for tenant ${context.tenantId}`,
+    );
   }
 }

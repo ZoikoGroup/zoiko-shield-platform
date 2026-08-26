@@ -81,11 +81,13 @@ export class AiDecisionLedgerService {
       .update(params.outputContent || '')
       .digest('hex');
 
-    const tokensIn = params.cost?.tokensIn ?? Math.ceil(params.contextPayload.length / 4);
-    const tokensOut = params.cost?.tokensOut ?? Math.ceil(params.outputContent.length / 4);
+    const tokensIn =
+      params.cost?.tokensIn ?? Math.ceil(params.contextPayload.length / 4);
+    const tokensOut =
+      params.cost?.tokensOut ?? Math.ceil(params.outputContent.length / 4);
     const amountUsd =
       params.cost?.amountUsd ??
-      Number(((tokensIn * 0.000003) + (tokensOut * 0.000015)).toFixed(4));
+      Number((tokensIn * 0.000003 + tokensOut * 0.000015).toFixed(4));
 
     const record: AiDecisionRecord = {
       requestId,

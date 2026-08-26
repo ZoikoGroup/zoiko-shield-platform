@@ -78,8 +78,6 @@ export class CommercialPortalController {
           })
         : [];
 
-
-
     // 5. Fetch Telemetry Ingestion Meter Summaries
     const telemetryMeters = await this.prisma.meterEvent.findMany({
       where: { tenant_id: tenantId },
@@ -99,7 +97,9 @@ export class CommercialPortalController {
         protectedResourcesSummary: resourceCounts,
         serviceObligationsSummary: {
           total: obligations.length,
-          pending: obligations.filter((o) => ['NOT_DUE', 'SCHEDULED', 'IN_PROGRESS'].includes(o.status)).length,
+          pending: obligations.filter((o) =>
+            ['NOT_DUE', 'SCHEDULED', 'IN_PROGRESS'].includes(o.status),
+          ).length,
           delivered: obligations.filter((o) => o.status === 'DELIVERED').length,
           recentObligations: obligations,
         },
@@ -139,11 +139,11 @@ export class CommercialPortalController {
         history: readings,
         meterPolicy: {
           acceptedVsBillableSeparation: true,
-          antiPerverseIncentiveRule: 'Alert storms and incidents do not increase recurring charges',
+          antiPerverseIncentiveRule:
+            'Alert storms and incidents do not increase recurring charges',
           deduplicationActive: true,
         },
       },
     };
   }
 }
-

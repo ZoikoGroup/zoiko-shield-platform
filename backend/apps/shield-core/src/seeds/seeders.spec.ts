@@ -11,7 +11,9 @@ describe('Production Master Data Seeders', () => {
       providers: [RegulatoryControlsSeeder, DetectionRulesSeeder],
     }).compile();
 
-    regulatorySeeder = module.get<RegulatoryControlsSeeder>(RegulatoryControlsSeeder);
+    regulatorySeeder = module.get<RegulatoryControlsSeeder>(
+      RegulatoryControlsSeeder,
+    );
     detectionSeeder = module.get<DetectionRulesSeeder>(DetectionRulesSeeder);
   });
 
@@ -22,7 +24,9 @@ describe('Production Master Data Seeders', () => {
     const soc2 = controls.find((c) => c.code === 'SOC2-CC6.1');
     expect(soc2).toBeDefined();
     expect(soc2?.framework).toBe('SOC2_TYPE2');
-    expect(soc2?.automatedTestKey).toBe('test_mfa_enforcement_and_privileged_roles');
+    expect(soc2?.automatedTestKey).toBe(
+      'test_mfa_enforcement_and_privileged_roles',
+    );
 
     const dora = controls.find((c) => c.code === 'DORA-ART9');
     expect(dora).toBeDefined();

@@ -10,6 +10,8 @@ import {
   MeterGovernanceController,
   PlatformMeterGovernanceController,
 } from './meter-governance.controller';
+import { UsageCorrectionController } from './usage-correction.controller';
+import { UsageCorrectionService } from './usage-correction.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { ApprovalsModule } from '../approvals/approvals.module';
 
@@ -20,8 +22,19 @@ import { ApprovalsModule } from '../approvals/approvals.module';
     MeteringController,
     MeterGovernanceController,
     PlatformMeterGovernanceController,
+    UsageCorrectionController,
   ],
-  providers: [MeterDefinitionService, MeterGovernanceService, MeteringService],
-  exports: [MeterDefinitionService, MeterGovernanceService, MeteringService],
+  providers: [
+    MeterDefinitionService,
+    MeterGovernanceService,
+    MeteringService,
+    UsageCorrectionService,
+  ],
+  exports: [
+    MeterDefinitionService,
+    MeterGovernanceService,
+    MeteringService,
+    UsageCorrectionService,
+  ],
 })
 export class MeteringModule {}

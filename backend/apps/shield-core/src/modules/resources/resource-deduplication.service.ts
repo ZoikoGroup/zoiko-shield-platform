@@ -12,7 +12,12 @@ export interface ResourceIdentityAlias {
 export interface CanonicalResourceCluster {
   canonicalResourceId: string;
   tenantId: string;
-  resourceType: 'ENDPOINT' | 'SERVER_WORKLOAD' | 'USER_IDENTITY' | 'CLOUD_ACCOUNT' | 'APPLICATION';
+  resourceType:
+    | 'ENDPOINT'
+    | 'SERVER_WORKLOAD'
+    | 'USER_IDENTITY'
+    | 'CLOUD_ACCOUNT'
+    | 'APPLICATION';
   primaryIdentifier: string;
   aliases: ResourceIdentityAlias[];
   firstObservedAt: Date;
@@ -148,7 +153,9 @@ export class ResourceDeduplicationService {
    * Get all canonical clusters for tenant
    */
   getClustersForTenant(tenantId: string): CanonicalResourceCluster[] {
-    return Array.from(this.clusters.values()).filter((c) => c.tenantId === tenantId);
+    return Array.from(this.clusters.values()).filter(
+      (c) => c.tenantId === tenantId,
+    );
   }
 
   /**

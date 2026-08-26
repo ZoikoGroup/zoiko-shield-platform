@@ -41,7 +41,9 @@ export class PeriodicReconciliationWorker {
     }
 
     this.isRunning = true;
-    this.logger.log('Starting automated daily financial and governance reconciliation run (REC-01)...');
+    this.logger.log(
+      'Starting automated daily financial and governance reconciliation run (REC-01)...',
+    );
 
     try {
       const run = await this.reconciliationService.startRun('DAILY_SCHEDULED');
@@ -91,7 +93,10 @@ export class PeriodicReconciliationWorker {
         status: 'COMPLETED',
       };
     } catch (error) {
-      this.logger.error('Error executing automated daily reconciliation run', error);
+      this.logger.error(
+        'Error executing automated daily reconciliation run',
+        error,
+      );
       throw error;
     } finally {
       this.isRunning = false;

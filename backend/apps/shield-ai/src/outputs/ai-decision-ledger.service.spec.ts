@@ -17,7 +17,10 @@ describe('AiDecisionLedgerService (ZS-ENG-AI-001 §29 Example D)', () => {
   });
 
   it('creates immutable cryptographic decision record with SHA-256 hashes and evidence ID', () => {
-    const contextPayload = JSON.stringify({ eventId: 'evt-100', user: 'victim@acme.com' });
+    const contextPayload = JSON.stringify({
+      eventId: 'evt-100',
+      user: 'victim@acme.com',
+    });
     const outputContent = 'Observed anomalous credential spray attack.';
 
     const record = service.createDecisionRecord({
@@ -40,7 +43,11 @@ describe('AiDecisionLedgerService (ZS-ENG-AI-001 §29 Example D)', () => {
     expect(record.outputHash).toBeDefined();
     expect(record.cost.amountUsd).toBeGreaterThanOrEqual(0);
 
-    const verified = service.verifyIntegrity(record, contextPayload, outputContent);
+    const verified = service.verifyIntegrity(
+      record,
+      contextPayload,
+      outputContent,
+    );
     expect(verified).toBe(true);
   });
 

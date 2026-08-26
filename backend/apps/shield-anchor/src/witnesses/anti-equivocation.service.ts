@@ -19,7 +19,10 @@ export interface EquivocationCheckResult {
 @Injectable()
 export class AntiEquivocationService {
   private readonly logger = new Logger(AntiEquivocationService.name);
-  private readonly knownEpochCommitments = new Map<string, ChainCheckpointHeader>();
+  private readonly knownEpochCommitments = new Map<
+    string,
+    ChainCheckpointHeader
+  >();
 
   recordCommitment(header: ChainCheckpointHeader): EquivocationCheckResult {
     const key = `${header.tenantId}:epoch:${header.epoch}`;
@@ -42,7 +45,10 @@ export class AntiEquivocationService {
     if (header.epoch > 1) {
       const prevKey = `${header.tenantId}:epoch:${header.epoch - 1}`;
       const prevCommitment = this.knownEpochCommitments.get(prevKey);
-      if (prevCommitment && prevCommitment.currentEpochRoot !== header.previousEpochRoot) {
+      if (
+        prevCommitment &&
+        prevCommitment.currentEpochRoot !== header.previousEpochRoot
+      ) {
         this.logger.error(
           `CHAIN FORK DETECTED on tenant ${header.tenantId}, epoch ${header.epoch}! Expected previous root ${prevCommitment.currentEpochRoot}, but got ${header.previousEpochRoot}`,
         );
@@ -62,7 +68,10 @@ export class AntiEquivocationService {
     };
   }
 
-  getCommitment(tenantId: string, epoch: number): ChainCheckpointHeader | undefined {
+  getCommitment(
+    tenantId: string,
+    epoch: number,
+  ): ChainCheckpointHeader | undefined {
     return this.knownEpochCommitments.get(`${tenantId}:epoch:${epoch}`);
   }
 }

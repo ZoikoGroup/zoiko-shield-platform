@@ -47,9 +47,18 @@ export interface AnnexA_AiUseCaseRecord {
   dataClasses: string[]; // e.g. ['security_telemetry', 'case_evidence']
   prohibitedOutcomes: string[]; // e.g. ['incident_declaration', 'case_closure', 'response_approval']
   eligibleModelRoutes: string[];
-  humanReviewRequirement: 'MANDATORY_BEFORE_DISPOSITION' | 'OPTIONAL' | 'PROHIBITED';
+  humanReviewRequirement:
+    'MANDATORY_BEFORE_DISPOSITION' | 'OPTIONAL' | 'PROHIBITED';
   dpiaReferenceId?: string;
-  status: 'PROPOSED' | 'CLASSIFIED' | 'DESIGNING' | 'EVALUATING' | 'ACTIVE' | 'DEGRADED' | 'SUSPENDED' | 'RETIRED';
+  status:
+    | 'PROPOSED'
+    | 'CLASSIFIED'
+    | 'DESIGNING'
+    | 'EVALUATING'
+    | 'ACTIVE'
+    | 'DEGRADED'
+    | 'SUSPENDED'
+    | 'RETIRED';
   reviewDate: Date;
   expiryDate: Date;
 }
@@ -98,7 +107,11 @@ export interface AnnexC_ModelRoutePolicy {
     pinnedVersion: string;
   };
   fallback: {
-    mode: 'DETERMINISTIC_BASELINE' | 'HUMAN_ONLY' | 'FAIL_CLOSED' | 'ALTERNATE_MODEL';
+    mode:
+      | 'DETERMINISTIC_BASELINE'
+      | 'HUMAN_ONLY'
+      | 'FAIL_CLOSED'
+      | 'ALTERNATE_MODEL';
     alternateProviderId?: string;
     alternateModelId?: string;
   };
@@ -122,7 +135,7 @@ export interface AnnexD_PromptProfile {
     'TENANT_POLICY_OVERLAY',
     'TASK_CONTEXT',
     'RETRIEVED_CONTENT',
-    'USER_INSTRUCTION'
+    'USER_INSTRUCTION',
   ];
   outputContract: {
     schemaType: 'JSON_SCHEMA' | 'TYPED_OBJECT';
@@ -176,8 +189,14 @@ export interface AnnexF_AgentProfile {
     maxDurationSeconds: number; // Hard ceiling <= 180
     maxCostUsd: number; // Hard ceiling <= $1.50
   };
-  mandatoryCheckpoints: Array<'BEFORE_EXTERNAL_QUERY' | 'BEFORE_HUMAN_RECOMMENDATION' | 'BEFORE_SIDE_EFFECT'>;
-  stopConditions: Array<'POLICY_DENIAL' | 'INJECTION_DETECTED' | 'BUDGET_EXHAUSTED' | 'HUMAN_STOP'>;
+  mandatoryCheckpoints: Array<
+    | 'BEFORE_EXTERNAL_QUERY'
+    | 'BEFORE_HUMAN_RECOMMENDATION'
+    | 'BEFORE_SIDE_EFFECT'
+  >;
+  stopConditions: Array<
+    'POLICY_DENIAL' | 'INJECTION_DETECTED' | 'BUDGET_EXHAUSTED' | 'HUMAN_STOP'
+  >;
 }
 
 // ============================================================================
@@ -199,7 +218,12 @@ export interface AnnexG_ToolContract {
 // Annex H: Memory Profile & Deletion Controls (§13)
 // ============================================================================
 export interface AnnexH_MemoryProfile {
-  memoryType: 'WORKING' | 'SESSION' | 'CASE_TASK' | 'USER_PREFERENCE' | 'ORGANIZATIONAL_KNOWLEDGE';
+  memoryType:
+    | 'WORKING'
+    | 'SESSION'
+    | 'CASE_TASK'
+    | 'USER_PREFERENCE'
+    | 'ORGANIZATIONAL_KNOWLEDGE';
   isDefaultEnabled: boolean;
   defaultTtlSeconds: number;
   allowedContent: string[];
@@ -315,7 +339,7 @@ export interface AnnexN_KillSwitchRunbook {
     'AGENT',
     'TOOL',
     'TENANT',
-    'GLOBAL'
+    'GLOBAL',
   ];
   dualControlRequired: boolean;
   reconciliationAuditRequired: boolean;
