@@ -46152,3 +46152,757 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/commercial/trust-center/overview:
+    get:
+      tags:
+        - TrustCenter
+      summary: Get Trust Center overview
+      description: Returns security posture, published audit artifacts, and approved claims summary for the tenant.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Trust Center overview retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getTrustCenterOverview
+
+  /api/v1/commercial/trust-center/procurement:
+    get:
+      tags:
+        - TrustCenter
+      summary: Get procurement workspace
+      description: Returns vendor details, DPAs, tax facts, contacts, and security exhibits for procurement teams.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Procurement workspace retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getTrustCenterProcurement
+
+  /api/v1/commercial/trust-center/publish:
+    post:
+      tags:
+        - TrustCenter
+      summary: Publish a Trust Center artifact
+      description: Publish a security artifact or compliance disclosure (SOC2, ISO27001, PCI-DSS, etc.) to the Trust Center.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - category
+                - documentRef
+                - effectiveFrom
+                - classification
+              properties:
+                title:
+                  type: string
+                category:
+                  type: string
+                  enum: [SOC2, ISO27001, PCI_DSS, HIPAA, GDPR, SECURITY_WHITEPAPER, PEN_TEST_SUMMARY]
+                description:
+                  type: string
+                version:
+                  type: string
+                documentRef:
+                  type: string
+                effectiveFrom:
+                  type: string
+                  format: date-time
+                effectiveTo:
+                  type: string
+                  format: date-time
+                classification:
+                  type: string
+                  enum: [PUBLIC, CUSTOMER_RESTRICTED, NDA_REQUIRED]
+      responses:
+        '201':
+          description: Trust Center artifact published successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postTrustCenterPublish
+
+  /api/v1/commercial/zoiko-one/bundle-orders:
+    post:
+      tags:
+        - ZoikoOneBundling
+      summary: Create Zoiko One bundle order
+      description: Creates a dedicated Zoiko One bundle order reference, tracking included vs incremental product scope.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - bundleReference
+                - commercialAccountId
+                - creditAllocationMethod
+              properties:
+                bundleReference:
+                  type: string
+                commercialAccountId:
+                  type: string
+                  format: uuid
+                includedProductKeys:
+                  type: array
+                  items:
+                    type: string
+                incrementalProductKeys:
+                  type: array
+                  items:
+                    type: string
+                coTerminationDate:
+                  type: string
+                  format: date-time
+                discountPercentage:
+                  type: number
+                creditAllocationMethod:
+                  type: string
+                  enum: [PRO_RATA, PRIMARY_FIRST, EQUAL_SPLIT]
+      responses:
+        '201':
+          description: Zoiko One bundle order registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Commercial account not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postZoikoOneBundleOrders
+
+  /api/v1/commercial/zoiko-one/scope-view:
+    get:
+      tags:
+        - ZoikoOneBundling
+      summary: Get Zoiko One scope view
+      description: Returns included vs incremental entitlement scope for a tenant under Zoiko One.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Scope view retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getZoikoOneScopeView
+
+  /api/v1/commercial/zoiko-one/reconcile-overlap:
+    post:
+      tags:
+        - ZoikoOneBundling
+      summary: Reconcile Zoiko One entitlement overlaps
+      description: Detects and reconciles potential double-charge or entitlement overlaps between direct and bundle contracts.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - commercialAccountId
+              properties:
+                commercialAccountId:
+                  type: string
+                  format: uuid
+      responses:
+        '200':
+          description: Zoiko One overlap reconciliation completed
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postZoikoOneReconcileOverlap
+
+  /api/v1/commercial/usage-corrections/disputes:
+    get:
+      tags:
+        - UsageCorrections
+      summary: List usage disputes and corrections
+      description: Returns all usage dispute and correction events for the tenant in reverse chronological order.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Usage disputes retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getUsageCorrectionDisputes
+    post:
+      tags:
+        - UsageCorrections
+      summary: Submit a usage dispute
+      description: Submit an append-only usage dispute record. Raw telemetry is never mutated.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - meterDefinitionId
+                - reason
+              properties:
+                meterDefinitionId:
+                  type: string
+                  format: uuid
+                disputedPeriodStart:
+                  type: string
+                  format: date-time
+                disputedPeriodEnd:
+                  type: string
+                  format: date-time
+                claimedQuantity:
+                  type: number
+                reason:
+                  type: string
+                evidenceReference:
+                  type: string
+      responses:
+        '201':
+          description: Usage dispute submitted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postUsageCorrectionDispute
+
+  /api/v1/commercial/usage-corrections/apply:
+    post:
+      tags:
+        - UsageCorrections
+      summary: Apply a usage correction
+      description: Post an append-only usage correction (REVERSAL, REPLACEMENT, or ADJUSTMENT). Requires Finance Admin authority.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - meterDefinitionId
+                - correctionType
+                - adjustedQuantity
+                - approvedBy
+              properties:
+                disputeId:
+                  type: string
+                  format: uuid
+                meterDefinitionId:
+                  type: string
+                  format: uuid
+                correctionType:
+                  type: string
+                  enum: [REVERSAL, REPLACEMENT, ADJUSTMENT]
+                originalRecordId:
+                  type: string
+                  format: uuid
+                adjustedQuantity:
+                  type: number
+                reason:
+                  type: string
+                approvedBy:
+                  type: string
+      responses:
+        '201':
+          description: Usage correction applied successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postUsageCorrectionApply
+
+  /api/v1/payments/methods:
+    get:
+      tags:
+        - PaymentMethods
+      summary: List payment methods
+      description: List stored payment methods for a commercial account.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: commercialAccountId
+          in: query
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: The commercial account to list payment methods for.
+      responses:
+        '200':
+          description: Payment methods retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getPaymentMethods
+    post:
+      tags:
+        - PaymentMethods
+      summary: Add a payment method
+      description: Store a new payment method reference for a commercial account. Raw provider tokens are not accepted.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - commercialAccountId
+                - type
+                - provider
+                - providerPaymentMethodRef
+              properties:
+                commercialAccountId:
+                  type: string
+                  format: uuid
+                type:
+                  type: string
+                  enum: [CARD, ACH_DEBIT, SEPA_DEBIT, BANK_TRANSFER]
+                provider:
+                  type: string
+                  enum: [STRIPE, ADYEN, MANUAL]
+                providerPaymentMethodRef:
+                  type: string
+                lastFour:
+                  type: string
+                cardBrand:
+                  type: string
+                expiryMonth:
+                  type: integer
+                expiryYear:
+                  type: integer
+                isPrimary:
+                  type: boolean
+      responses:
+        '201':
+          description: Payment method added successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postPaymentMethods
+
+  /api/v1/payments/methods/merchant-config:
+    get:
+      tags:
+        - PaymentMethods
+      summary: Get seller merchant configuration
+      description: Returns the ZoikoShield seller legal entity, merchant account references, and supported currencies.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Merchant configuration retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getPaymentMethodsMerchantConfig
+
+  /api/v1/payments/methods/accounting-handoff:
+    post:
+      tags:
+        - PaymentMethods
+      summary: Export accounting handoff batch
+      description: Generates an ERP accounting handoff export of ISSUED and PAID invoices for the given period key.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - periodKey
+                - exportFormat
+              properties:
+                periodKey:
+                  type: string
+                  description: "Period identifier e.g. '2026-07'"
+                exportFormat:
+                  type: string
+                  enum: [CSV, JSON, QUICKBOOKS_IIF, NETSUITE_CSV]
+      responses:
+        '200':
+          description: Accounting handoff export generated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postPaymentMethodsAccountingHandoff
+
+  /api/v1/commercial/period-close/list:
+    get:
+      tags:
+        - FinancialPeriodClose
+      summary: List financial period statuses
+      description: Returns recent period close lock and emergency override events for audit and governance review.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Period statuses retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getFinancialPeriodCloseList
+
+  /api/v1/commercial/period-close/lock:
+    post:
+      tags:
+        - FinancialPeriodClose
+      summary: Lock a financial period
+      description: Dual-control period close lock. Requires distinct approver and dual-control sign-off IDs. Blocked if CRITICAL reconciliation issues are open.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - periodKey
+                - periodStart
+                - periodEnd
+                - closingNotes
+                - approverId
+                - dualControlSignoffId
+              properties:
+                periodKey:
+                  type: string
+                  description: "Period identifier e.g. '2026-07'"
+                periodStart:
+                  type: string
+                  format: date-time
+                periodEnd:
+                  type: string
+                  format: date-time
+                closingNotes:
+                  type: string
+                approverId:
+                  type: string
+                dualControlSignoffId:
+                  type: string
+      responses:
+        '201':
+          description: Financial period locked successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Dual-control rule violation or open CRITICAL reconciliation issues
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postFinancialPeriodCloseLock
+
+  /api/v1/commercial/period-close/emergency-override:
+    post:
+      tags:
+        - FinancialPeriodClose
+      summary: Request emergency period override
+      description: Request an emergency override for a locked financial period. Requires dual approval and creates an immutable audit event.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - periodKey
+                - targetDomain
+                - reason
+                - justificationRef
+              properties:
+                periodKey:
+                  type: string
+                targetDomain:
+                  type: string
+                  enum: [INVOICE, PAYMENT, METER_EXPORT, PARTNER_SETTLEMENT]
+                reason:
+                  type: string
+                justificationRef:
+                  type: string
+      responses:
+        '200':
+          description: Emergency override request submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Period is not locked or missing fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postFinancialPeriodCloseEmergencyOverride
