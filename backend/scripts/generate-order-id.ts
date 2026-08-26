@@ -158,7 +158,12 @@ async function main() {
   console.log(`✔ Created Commercial Account: '${commercialAccount.name}' (ID: ${commercialAccount.id})`);
 
   // 6. Create Commercial Quote
-  const quoteLines = [];
+  const quoteLines: Array<{
+    product_id: string;
+    price_book_id: string;
+    quantity: number;
+    unit_price: any;
+  }> = [];
   if (offerChoice === 'MANAGED_DEFENSE' || offerChoice === 'BOTH') {
     quoteLines.push({
       product_id: mdProduct.id,
@@ -176,7 +181,7 @@ async function main() {
     });
   }
 
-  const quote = await prisma.commercialQuote.create({
+  const quote: any = await (prisma as any).commercialQuote.create({
     data: {
       tenant_id: 'platform',
       environment_id: 'default-env',
@@ -197,7 +202,7 @@ async function main() {
     },
     include: { lines: true },
   });
-  console.log(`✔ Created & Approved Commercial Quote (ID: ${quote.id}, Lines: ${quote.lines.length})`);
+  console.log(`✔ Created & Approved Commercial Quote (ID: ${quote.id}, Lines: ${quote.lines?.length || 0})`);
 
   // 7. Create Contract & Commercial Order (Atomic Provisioning)
   const termStart = new Date();
@@ -207,7 +212,8 @@ async function main() {
   const idempotencyKey = `order-gen-${crypto.randomUUID()}`;
 
   const order = await prisma.$transaction(async (tx) => {
-    const createdOrder = await tx.commercialOrder.create({
+    const quoteLinesList: any[] = quote.lines || [];
+    const createdOrder = await (tx as any).commercialOrder.create({
       data: {
         quote_id: quote.id,
         commercial_account_id: commercialAccount.id,
@@ -215,7 +221,7 @@ async function main() {
         idempotency_key: idempotencyKey,
         created_by: 'billing-automation',
         lines: {
-          create: quote.lines.map((l) => ({
+          create: quoteLinesList.map((l: any) => ({
             product_id: l.product_id,
             quantity: l.quantity,
             unit_price: l.unit_price,
@@ -225,7 +231,7 @@ async function main() {
       include: { lines: true },
     });
 
-    const contract = await tx.contract.create({
+    const contract = await (tx as any).contract.create({
       data: {
         commercial_account_id: commercialAccount.id,
         catalog_version_id: catalogVersion.id,
@@ -236,7 +242,7 @@ async function main() {
       },
     });
 
-    await tx.commercialSubscription.create({
+    await (tx as any).commercialSubscription.create({
       data: {
         order_id: createdOrder.id,
         commercial_account_id: commercialAccount.id,
@@ -247,7 +253,7 @@ async function main() {
       },
     });
 
-    const provisionedOrder = await tx.commercialOrder.update({
+    const provisionedOrder = await (tx as any).commercialOrder.update({
       where: { id: createdOrder.id },
       data: {
         status: 'PROVISIONED',
@@ -259,13 +265,15 @@ async function main() {
     return provisionedOrder;
   });
 
+  const finalOrder = order as any;
+
   console.log('\n===============================================================');
   console.log(' 🎉 PROVISIONED COMMERCIAL ORDER CREATED SUCCESSFULLY');
   console.log('===============================================================');
-  console.log(`📦 Order ID:                ${order.id}`);
-  console.log(`🏢 Commercial Account ID:   ${order.commercial_account_id}`);
-  console.log(`📜 Contract ID:             ${order.contract_id}`);
-  console.log(`📊 Status:                  ${order.status}`);
+  console.log(`📦 Order ID:                ${finalOrder.id}`);
+  console.log(`🏢 Commercial Account ID:   ${finalOrder.commercial_account_id}`);
+  console.log(`📜 Contract ID:             ${finalOrder.contract_id}`);
+  console.log(`📊 Status:                  ${finalOrder.status}`);
   console.log(`🛒 Offer Family Purchased:  ${offerChoice}`);
   console.log('===============================================================\n');
 

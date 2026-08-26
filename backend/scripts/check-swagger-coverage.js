@@ -133,6 +133,7 @@ const approvedPublicOperations = new Set([
   'get:/v1/connectors/entra/callback',
   'post:/v1/webhooks/microsoft-graph',
   'post:/api/v1/payments/webhook',
+  'get:/metrics',
   'get:/',
 ]);
 const undocumentedSecurity = [];

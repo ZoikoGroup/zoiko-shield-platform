@@ -6,6 +6,7 @@ import {
 } from './action-execution.interface';
 import { EntraUserActionAdapter } from './entra-user.adapter';
 import { EdrIsolateActionAdapter } from './edr-isolate.adapter';
+import { AwsIamActionAdapter } from './aws-iam.adapter';
 
 @Injectable()
 export class ActionExecutionRegistryService {
@@ -14,8 +15,9 @@ export class ActionExecutionRegistryService {
   constructor(
     private readonly entraAdapter: EntraUserActionAdapter,
     private readonly edrAdapter: EdrIsolateActionAdapter,
+    private readonly awsIamAdapter: AwsIamActionAdapter,
   ) {
-    this.adapters.push(entraAdapter, edrAdapter);
+    this.adapters.push(entraAdapter, edrAdapter, awsIamAdapter);
   }
 
   getAdapter(actionType: string): ActionExecutionAdapter {

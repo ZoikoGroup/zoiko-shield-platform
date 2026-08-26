@@ -45053,6 +45053,28 @@ paths:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
       operationId: getCpqSubscriptionsByIdAmendments
   /api/v1/commercial/concessions:
+    get:
+      tags: [CPQ]
+      summary: List all commercial concessions
+      description: Returns all concessions visible to the platform operator. Requires PLATFORM_CONCESSION_MANAGE permission.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        "200":
+          description: List of commercial concessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  { $ref: "#/components/schemas/CommercialConcessionResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: getCommercialConcessions
     post:
       tags: [CPQ]
       summary: Request a bounded commercial concession
@@ -45083,28 +45105,6 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
       operationId: postCommercialConcessions
-    get:
-      tags: [CPQ]
-      summary: List all commercial concessions
-      description: Returns all concessions visible to the platform operator. Requires PLATFORM_CONCESSION_MANAGE permission.
-      security:
-        - CookieAuth: []
-        - BearerAuth: []
-      responses:
-        "200":
-          description: List of commercial concessions
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  { $ref: "#/components/schemas/CommercialConcessionResponse" }
-        "401":
-          description: Unauthorized
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/ErrorResponse" }
-      operationId: getCommercialConcessions
   /api/v1/commercial/concessions/{id}:
     get:
       tags: [CPQ]
@@ -46152,7 +46152,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-
   /api/v1/commercial/trust-center/overview:
     get:
       tags:
@@ -46906,3 +46905,19 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postFinancialPeriodCloseEmergencyOverride
+
+  /metrics:
+    get:
+      tags:
+        - Health
+      summary: Prometheus metrics endpoint
+      description: Returns Prometheus format text telemetry metrics
+      operationId: getPrometheusMetrics
+      security: []
+      responses:
+        '200':
+          description: Prometheus metrics in text format
+          content:
+            text/plain:
+              schema:
+                type: string

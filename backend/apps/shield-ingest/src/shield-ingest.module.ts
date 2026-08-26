@@ -30,6 +30,16 @@ import { AwsCloudTrailProvider } from './connectors/providers/aws-cloudtrail/aws
 import { AwsCloudTrailNormalizerService } from './connectors/providers/aws-cloudtrail/aws-cloudtrail.normalizer';
 import { SyslogTlsProvider } from './connectors/providers/syslog-tls/syslog-tls.provider';
 import { SyslogTlsNormalizerService } from './connectors/providers/syslog-tls/syslog-tls.normalizer';
+import { OktaProvider } from './connectors/providers/okta/okta.provider';
+import { OktaNormalizerService } from './connectors/providers/okta/okta.normalizer';
+import { CrowdStrikeProvider } from './connectors/providers/crowdstrike/crowdstrike.provider';
+import { CrowdStrikeNormalizerService } from './connectors/providers/crowdstrike/crowdstrike.normalizer';
+import { SentinelOneProvider } from './connectors/providers/sentinelone/sentinelone.provider';
+import { SentinelOneNormalizerService } from './connectors/providers/sentinelone/sentinelone.normalizer';
+import { DLQReplayWorker } from './ingestion/dlq-replay.worker';
+import { TokenBucketRateLimiterService } from './ingestion/rate-limiter/token-bucket-limiter.service';
+import { AwsSqsIngestListener } from './connectors/listeners/aws-sqs.listener';
+import { AzureEventHubsIngestListener } from './connectors/listeners/azure-eventhubs.listener';
 import { KafkaModule } from './kafka/kafka.module';
 import { PrismaModule } from './prisma/prisma.module';
 
@@ -135,6 +145,13 @@ import { IdempotencyService } from '../../shield-core/src/modules/idempotency/id
     AwsCloudTrailNormalizerService,
     SyslogTlsProvider,
     SyslogTlsNormalizerService,
+    OktaProvider,
+    OktaNormalizerService,
+    CrowdStrikeProvider,
+    CrowdStrikeNormalizerService,
+    SentinelOneProvider,
+    SentinelOneNormalizerService,
+    DLQReplayWorker,
     QuarantineService,
     RawIngestService,
     ConnectorCatalogService,
@@ -166,8 +183,17 @@ import { IdempotencyService } from '../../shield-core/src/modules/idempotency/id
     CanonicalEvidenceService,
     EvidenceVerificationService,
     WebhookSignatureGuard,
+    TokenBucketRateLimiterService,
+    AwsSqsIngestListener,
+    AzureEventHubsIngestListener,
     { provide: APP_GUARD, useClass: WorkloadAuthGuard },
   ],
-  exports: [UsageThresholdDispatcherService],
+  exports: [
+    UsageThresholdDispatcherService,
+    DLQReplayWorker,
+    TokenBucketRateLimiterService,
+    AwsSqsIngestListener,
+    AzureEventHubsIngestListener,
+  ],
 })
 export class ShieldIngestModule {}
