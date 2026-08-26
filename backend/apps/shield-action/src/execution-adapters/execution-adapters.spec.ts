@@ -2,12 +2,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ActionExecutionRegistryService } from './action-execution-registry.service';
 import { EntraUserActionAdapter } from './entra-user.adapter';
 import { EdrIsolateActionAdapter } from './edr-isolate.adapter';
+import { AwsIamActionAdapter } from './aws-iam.adapter';
 import { ActionExecutionContext } from './action-execution.interface';
 
 describe('ActionExecutionRegistry & Adapters', () => {
   let registry: ActionExecutionRegistryService;
   let entraAdapter: EntraUserActionAdapter;
   let edrAdapter: EdrIsolateActionAdapter;
+  let awsIamAdapter: AwsIamActionAdapter;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -15,6 +17,7 @@ describe('ActionExecutionRegistry & Adapters', () => {
         ActionExecutionRegistryService,
         EntraUserActionAdapter,
         EdrIsolateActionAdapter,
+        AwsIamActionAdapter,
       ],
     }).compile();
 
@@ -23,6 +26,7 @@ describe('ActionExecutionRegistry & Adapters', () => {
     );
     entraAdapter = module.get<EntraUserActionAdapter>(EntraUserActionAdapter);
     edrAdapter = module.get<EdrIsolateActionAdapter>(EdrIsolateActionAdapter);
+    awsIamAdapter = module.get<AwsIamActionAdapter>(AwsIamActionAdapter);
   });
 
   it('should be defined', () => {
@@ -72,6 +76,29 @@ describe('ActionExecutionRegistry & Adapters', () => {
     expect(receipt.actionType).toBe('ISOLATE_ENDPOINT');
     expect(receipt.observedEffect.networkIsolationActive).toBe(true);
     expect(receipt.observedEffect.executionMode).toBe('SIMULATED');
+  });
+
+  it('executes AWS IAM REVOKE_IAM_SESSION action and returns signed receipt', async () => {
+    const context: ActionExecutionContext = {
+      tenantId: 'tenant-123',
+      commandId: 'cmd-003',
+      actionType: 'REVOKE_IAM_SESSION',
+      targetRef: 'arn:aws:iam::123456789012:role/CompromisedDevRole',
+      authorityLevel: 'R2',
+      approvalRef: 'appr-1001',
+      isSimulation: false,
+    };
+
+    const receipt = await registry.executeAction(context);
+
+    expect(receipt.status).toBe('EXECUTED');
+    expect(receipt.actionType).toBe('REVOKE_IAM_SESSION');
+    expect(receipt.targetRef).toBe('arn:aws:iam::123456789012:role/CompromisedDevRole');
+    expect(receipt.observedEffect.sessionsRevoked).toBe(true);
+    expect(receipt.signature).toBeDefined();
+
+    const rollbackResult = await registry.rollbackAction(receipt);
+    expect(rollbackResult.status).toBe('ROLLED_BACK');
   });
 
   it('throws NotFoundException for unregistered action type', () => {

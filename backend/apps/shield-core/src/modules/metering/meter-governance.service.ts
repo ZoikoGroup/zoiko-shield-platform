@@ -1615,7 +1615,7 @@ export class MeterGovernanceService {
       .update(immutableSnapshot)
       .digest('hex');
     return this.prisma.$transaction(async (tx) => {
-      const billingExport = await tx.meterBillingExport.create({
+      const billingExport = await (tx as any).meterBillingExport.create({
         data: {
           tenant_id: tenantId,
           environment_id: environmentId,
@@ -1765,6 +1765,9 @@ export class MeterGovernanceService {
     const events = await this.prisma.meterEvent.findMany({
       where: { id: { in: eventIds } },
     });
+    const policy = await this.prisma.meterAuthorizationPolicy.findFirst({
+      where: { id: billingExport.meter_authorization_id },
+    });
     let snapshotHashes: {
       eventHashes?: Array<{ id: string; hash: string }>;
       usageHashes?: Array<{ id: string; hash: string }>;
@@ -1813,9 +1816,10 @@ export class MeterGovernanceService {
       events.every((event) =>
         usage.some((record) => record.raw_event_id === event.id),
       );
+    const be = billingExport as any;
     const commercialSeparationValid =
-      billingExport.billing_basis === 'ACCEPTED_DATA_USAGE' &&
-      !billingExport.committed_capacity_included &&
+      be.billing_basis === 'ACCEPTED_DATA_USAGE' &&
+      !be.committed_capacity_included &&
       snapshotHashes.billingBasis === 'ACCEPTED_DATA_USAGE' &&
       snapshotHashes.committedCapacityChargeIncluded === false &&
       snapshotHashes.pricingModel === policy?.pricing_model &&

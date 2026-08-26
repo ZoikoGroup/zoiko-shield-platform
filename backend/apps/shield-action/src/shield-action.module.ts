@@ -24,6 +24,10 @@ import { ActionApprovedConsumer } from './proposals/action-approved.consumer';
 import { ActionAuthorityService } from './policy/action-authority.service';
 import { ActionRollbackBrokerService } from './rollback/action-rollback-broker.service';
 import { ResponsePlaybookService } from './playbooks/response-playbook.service';
+import { ActionExecutionRegistryService } from './execution-adapters/action-execution-registry.service';
+import { EntraUserActionAdapter } from './execution-adapters/entra-user.adapter';
+import { EdrIsolateActionAdapter } from './execution-adapters/edr-isolate.adapter';
+import { AwsIamActionAdapter } from './execution-adapters/aws-iam.adapter';
 
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
@@ -48,11 +52,16 @@ import { ResponsePlaybookService } from './playbooks/response-playbook.service';
     CredentialExchangeService,
     SimulationService,
     ActionApprovedConsumer,
+    ActionExecutionRegistryService,
+    EntraUserActionAdapter,
+    EdrIsolateActionAdapter,
+    AwsIamActionAdapter,
   ],
   exports: [
     ActionAuthorityService,
     ActionRollbackBrokerService,
     ResponsePlaybookService,
+    ActionExecutionRegistryService,
   ],
 })
 export class ShieldActionModule {}

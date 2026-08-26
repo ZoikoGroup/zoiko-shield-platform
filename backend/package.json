@@ -31,6 +31,11 @@
     "migrate:deploy": "prisma migrate deploy && node scripts/run-typeorm-migrations.js",
     "order:generate": "ts-node -r tsconfig-paths/register scripts/generate-order-id.ts",
     "simulate:soc": "ts-node -r tsconfig-paths/register scripts/simulate-soc-lifecycle.ts",
+    "simulate:concurrency": "ts-node -r tsconfig-paths/register ./scripts/simulate-high-concurrency-stream.ts",
+    "simulate:remediation": "ts-node -r tsconfig-paths/register ./scripts/simulate-incident-to-remediation.ts",
+    "simulate:ai-resilience": "ts-node -r tsconfig-paths/register ./scripts/simulate-ai-copilot-fallback.ts",
+    "benchmark:detection": "ts-node -r tsconfig-paths/register ./scripts/benchmark-detection-pipeline.ts",
+    "verify:platform": "ts-node -r tsconfig-paths/register ./scripts/full-platform-verifier.ts",
     "swagger:check": "node scripts/check-swagger-coverage.js",
     "access:check": "node scripts/check-controller-access.js"
   },
