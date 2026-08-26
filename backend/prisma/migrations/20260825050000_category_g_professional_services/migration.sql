@@ -175,9 +175,9 @@ CREATE UNIQUE INDEX "ProfessionalServiceEngagement_service_obligation_id_key"
   ON "ProfessionalServiceEngagement"("service_obligation_id");
 CREATE UNIQUE INDEX "ProfessionalServiceEngagement_approval_id_key"
   ON "ProfessionalServiceEngagement"("approval_id");
-CREATE UNIQUE INDEX "ProfessionalServiceEngagement_tenant_id_environment_id_engagement_key_version_key"
+CREATE UNIQUE INDEX "ProfessionalServiceEngagement_tenant_id_environment_id_enga_key"
   ON "ProfessionalServiceEngagement"("tenant_id", "environment_id", "engagement_key", "version");
-CREATE INDEX "ProfessionalServiceEngagement_tenant_id_environment_id_status_idx"
+CREATE INDEX "ProfessionalServiceEngagement_tenant_id_environment_id_stat_idx"
   ON "ProfessionalServiceEngagement"("tenant_id", "environment_id", "status");
 CREATE INDEX "ProfessionalServiceEngagement_commercial_account_id_status_idx"
   ON "ProfessionalServiceEngagement"("commercial_account_id", "status");
@@ -253,9 +253,9 @@ CREATE TABLE "ProfessionalServiceActivity" (
     NULLIF(BTRIM("actor_id"), '') IS NOT NULL
   )
 );
-CREATE INDEX "ProfessionalServiceActivity_tenant_id_environment_id_occurred_at_idx"
+CREATE INDEX "ProfessionalServiceActivity_tenant_id_environment_id_occurr_idx"
   ON "ProfessionalServiceActivity"("tenant_id", "environment_id", "occurred_at");
-CREATE INDEX "ProfessionalServiceActivity_engagement_id_allocation_period_start_occurred_at_idx"
+CREATE INDEX "ProfessionalServiceActivity_engagement_id_allocation_period_idx"
   ON "ProfessionalServiceActivity"("engagement_id", "allocation_period_start", "occurred_at");
 CREATE INDEX "ProfessionalServiceActivity_entry_type_idx"
   ON "ProfessionalServiceActivity"("entry_type");
@@ -287,9 +287,9 @@ CREATE TABLE "ProfessionalServiceDeliverable" (
     "evidence_references" <> '[]' AND NULLIF(BTRIM("submitted_by"), '') IS NOT NULL
   )
 );
-CREATE UNIQUE INDEX "ProfessionalServiceDeliverable_engagement_id_deliverable_key_version_key"
+CREATE UNIQUE INDEX "ProfessionalServiceDeliverable_engagement_id_deliverable_ke_key"
   ON "ProfessionalServiceDeliverable"("engagement_id", "deliverable_key", "version");
-CREATE INDEX "ProfessionalServiceDeliverable_tenant_id_environment_id_submitted_at_idx"
+CREATE INDEX "ProfessionalServiceDeliverable_tenant_id_environment_id_sub_idx"
   ON "ProfessionalServiceDeliverable"("tenant_id", "environment_id", "submitted_at");
 CREATE INDEX "ProfessionalServiceDeliverable_engagement_id_submitted_at_idx"
   ON "ProfessionalServiceDeliverable"("engagement_id", "submitted_at");
@@ -302,7 +302,7 @@ ALTER TABLE "ProfessionalServiceDeliverable"
 ALTER TABLE "ProfessionalServiceDeliverable"
   ADD CONSTRAINT "ProfessionalServiceDeliverable_correction_of_id_fkey"
   FOREIGN KEY ("correction_of_id") REFERENCES "ProfessionalServiceDeliverable"("id")
-  ON DELETE RESTRICT ON UPDATE CASCADE;
+  ON DELETE SET NULL ON UPDATE CASCADE;
 
 CREATE TABLE "ProfessionalServiceAcceptanceEvent" (
   "id" TEXT NOT NULL,
@@ -332,7 +332,7 @@ CREATE TABLE "ProfessionalServiceAcceptanceEvent" (
 );
 CREATE UNIQUE INDEX "ProfessionalServiceAcceptanceEvent_engagement_id_round_key"
   ON "ProfessionalServiceAcceptanceEvent"("engagement_id", "round");
-CREATE INDEX "ProfessionalServiceAcceptanceEvent_tenant_id_environment_id_decided_at_idx"
+CREATE INDEX "ProfessionalServiceAcceptanceEvent_tenant_id_environment_id_idx"
   ON "ProfessionalServiceAcceptanceEvent"("tenant_id", "environment_id", "decided_at");
 CREATE INDEX "ProfessionalServiceAcceptanceEvent_engagement_id_decided_at_idx"
   ON "ProfessionalServiceAcceptanceEvent"("engagement_id", "decided_at");

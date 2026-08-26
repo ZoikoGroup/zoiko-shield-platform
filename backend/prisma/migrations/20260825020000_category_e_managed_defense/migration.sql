@@ -70,7 +70,7 @@ CREATE TABLE "ManagedDefenseProfile" (
 );
 CREATE UNIQUE INDEX "ManagedDefenseProfile_approval_id_key"
   ON "ManagedDefenseProfile"("approval_id");
-CREATE UNIQUE INDEX "ManagedDefenseProfile_tenant_id_environment_id_profile_key_version_key"
+CREATE UNIQUE INDEX "ManagedDefenseProfile_tenant_id_environment_id_profile_key__key"
   ON "ManagedDefenseProfile"("tenant_id", "environment_id", "profile_key", "version");
 CREATE INDEX "ManagedDefenseProfile_tenant_id_environment_id_status_idx"
   ON "ManagedDefenseProfile"("tenant_id", "environment_id", "status");
@@ -113,9 +113,9 @@ CREATE TABLE "ManagedDefenseReadinessAssessment" (
     )
   )
 );
-CREATE UNIQUE INDEX "ManagedDefenseReadinessAssessment_managed_defense_profile_id_key"
+CREATE UNIQUE INDEX "ManagedDefenseReadinessAssessment_managed_defense_profile_i_key"
   ON "ManagedDefenseReadinessAssessment"("managed_defense_profile_id");
-CREATE INDEX "ManagedDefenseReadinessAssessment_tenant_id_environment_id_status_idx"
+CREATE INDEX "ManagedDefenseReadinessAssessment_tenant_id_environment_id__idx"
   ON "ManagedDefenseReadinessAssessment"("tenant_id", "environment_id", "status");
 
 ALTER TABLE "ServiceObligation"
@@ -179,11 +179,11 @@ CREATE TABLE "ManagedDefenseDeliveryEvent" (
     )
   )
 );
-CREATE INDEX "ManagedDefenseDeliveryEvent_tenant_id_environment_id_occurred_at_idx"
+CREATE INDEX "ManagedDefenseDeliveryEvent_tenant_id_environment_id_occurr_idx"
   ON "ManagedDefenseDeliveryEvent"("tenant_id", "environment_id", "occurred_at");
-CREATE INDEX "ManagedDefenseDeliveryEvent_managed_defense_profile_id_occurred_at_idx"
+CREATE INDEX "ManagedDefenseDeliveryEvent_managed_defense_profile_id_occu_idx"
   ON "ManagedDefenseDeliveryEvent"("managed_defense_profile_id", "occurred_at");
-CREATE INDEX "ManagedDefenseDeliveryEvent_service_obligation_id_occurred_at_idx"
+CREATE INDEX "ManagedDefenseDeliveryEvent_service_obligation_id_occurred__idx"
   ON "ManagedDefenseDeliveryEvent"("service_obligation_id", "occurred_at");
 CREATE INDEX "ManagedDefenseDeliveryEvent_event_type_idx"
   ON "ManagedDefenseDeliveryEvent"("event_type");
@@ -238,9 +238,9 @@ CREATE TABLE "ManagedDefenseCapacityException" (
 );
 CREATE UNIQUE INDEX "ManagedDefenseCapacityException_approval_id_key"
   ON "ManagedDefenseCapacityException"("approval_id");
-CREATE INDEX "ManagedDefenseCapacityException_tenant_id_environment_id_status_idx"
+CREATE INDEX "ManagedDefenseCapacityException_tenant_id_environment_id_st_idx"
   ON "ManagedDefenseCapacityException"("tenant_id", "environment_id", "status");
-CREATE INDEX "ManagedDefenseCapacityException_managed_defense_profile_id_status_idx"
+CREATE INDEX "ManagedDefenseCapacityException_managed_defense_profile_id__idx"
   ON "ManagedDefenseCapacityException"("managed_defense_profile_id", "status");
 
 CREATE TABLE "ManagedDefenseCapabilityImpact" (
@@ -275,9 +275,9 @@ CREATE TABLE "ManagedDefenseCapabilityImpact" (
     )
   )
 );
-CREATE INDEX "ManagedDefenseCapabilityImpact_tenant_id_environment_id_status_idx"
+CREATE INDEX "ManagedDefenseCapabilityImpact_tenant_id_environment_id_sta_idx"
   ON "ManagedDefenseCapabilityImpact"("tenant_id", "environment_id", "status");
-CREATE INDEX "ManagedDefenseCapabilityImpact_managed_defense_profile_id_status_idx"
+CREATE INDEX "ManagedDefenseCapabilityImpact_managed_defense_profile_id_s_idx"
   ON "ManagedDefenseCapabilityImpact"("managed_defense_profile_id", "status");
 CREATE INDEX "ManagedDefenseCapabilityImpact_sla_definition_id_idx"
   ON "ManagedDefenseCapabilityImpact"("sla_definition_id");
@@ -293,7 +293,7 @@ ALTER TABLE "ManagedDefenseProfile"
   FOREIGN KEY ("contract_id") REFERENCES "Contract"("id")
   ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "ManagedDefenseReadinessAssessment"
-  ADD CONSTRAINT "ManagedDefenseReadinessAssessment_managed_defense_profile_id_fkey"
+  ADD CONSTRAINT "ManagedDefenseReadinessAssessment_managed_defense_profile__fkey"
   FOREIGN KEY ("managed_defense_profile_id") REFERENCES "ManagedDefenseProfile"("id")
   ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE "ServiceObligation"

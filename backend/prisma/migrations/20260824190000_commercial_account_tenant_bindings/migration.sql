@@ -42,7 +42,7 @@ CREATE TABLE "CommercialAccountTenantBinding" (
   CONSTRAINT "CommercialAccountTenantBinding_pkey" PRIMARY KEY ("id")
 );
 
-CREATE UNIQUE INDEX "CommercialAccountTenantBinding_commercial_account_id_tenant_id_environment_id_key"
+CREATE UNIQUE INDEX "CommercialAccountTenantBinding_commercial_account_id_tenant_key"
   ON "CommercialAccountTenantBinding"("commercial_account_id", "tenant_id", "environment_id");
 CREATE INDEX "CommercialAccountTenantBinding_tenant_id_status_idx"
   ON "CommercialAccountTenantBinding"("tenant_id", "status");

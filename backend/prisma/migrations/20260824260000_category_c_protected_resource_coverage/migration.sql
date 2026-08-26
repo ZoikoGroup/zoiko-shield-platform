@@ -37,7 +37,7 @@ SET
   "auto_enrollment_status" = 'MIGRATION_REVIEW';
 
 DROP INDEX "ResourceObservation_tenant_id_canonical_resource_id_resourc_key";
-CREATE UNIQUE INDEX "ResourceObservation_tenant_id_metric_family_canonical_resource_id_key"
+CREATE UNIQUE INDEX "ResourceObservation_tenant_id_metric_family_canonical_resou_key"
   ON "ResourceObservation"("tenant_id", "metric_family", "canonical_resource_id");
 CREATE INDEX "ResourceObservation_tenant_id_environment_id_metric_family_idx"
   ON "ResourceObservation"("tenant_id", "environment_id", "metric_family");
@@ -81,7 +81,7 @@ CREATE TABLE "ResourceCoveragePolicy" (
 );
 CREATE UNIQUE INDEX "ResourceCoveragePolicy_approval_id_key"
   ON "ResourceCoveragePolicy"("approval_id");
-CREATE UNIQUE INDEX "ResourceCoveragePolicy_tenant_id_environment_id_policy_key_version_key"
+CREATE UNIQUE INDEX "ResourceCoveragePolicy_tenant_id_environment_id_policy_key__key"
   ON "ResourceCoveragePolicy"("tenant_id", "environment_id", "policy_key", "version");
 CREATE INDEX "ResourceCoveragePolicy_tenant_id_environment_id_status_idx"
   ON "ResourceCoveragePolicy"("tenant_id", "environment_id", "status");
@@ -103,7 +103,7 @@ CREATE TABLE "ResourceObservationWindow" (
   "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "ResourceObservationWindow_pkey" PRIMARY KEY ("id")
 );
-CREATE INDEX "ResourceObservationWindow_observation_id_observed_from_observed_to_idx"
+CREATE INDEX "ResourceObservationWindow_observation_id_observed_from_obse_idx"
   ON "ResourceObservationWindow"("observation_id", "observed_from", "observed_to");
 CREATE INDEX "ResourceObservationWindow_observed_at_idx"
   ON "ResourceObservationWindow"("observed_at");
@@ -121,7 +121,7 @@ CREATE TABLE "ResourceCoverageDecision" (
   "decided_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "ResourceCoverageDecision_pkey" PRIMARY KEY ("id")
 );
-CREATE INDEX "ResourceCoverageDecision_tenant_id_observation_id_decided_at_idx"
+CREATE INDEX "ResourceCoverageDecision_tenant_id_observation_id_decided_a_idx"
   ON "ResourceCoverageDecision"("tenant_id", "observation_id", "decided_at");
 CREATE INDEX "ResourceCoverageDecision_coverage_policy_id_idx"
   ON "ResourceCoverageDecision"("coverage_policy_id");

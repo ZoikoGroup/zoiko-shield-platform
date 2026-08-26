@@ -912,6 +912,7 @@ model ResourceObservation {
   notices   ResourceEnrollmentNotice[]
 
   @@unique([tenant_id, metric_family, canonical_resource_id])
+  @@index([tenant_id])
   @@index([tenant_id, environment_id, metric_family])
   @@index([tenant_id, physical_resource_id])
   @@index([coverage_policy_id, coverage_state])
@@ -2678,6 +2679,7 @@ model MeterEvent {
   @@index([usage_authorization_id])
   @@index([correction_of_event_id])
   @@index([accepted_state])
+  @@index([tenant_id])
 }
 
 /**
@@ -4242,6 +4244,7 @@ model FrameworkVersion {
   requirements Requirement[]
 
   @@unique([framework_id, version])
+  @@index([release_status])
 }
 
 model Requirement {
