@@ -44974,6 +44974,84 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
       operationId: postCpqSubscriptionsAmendmentsByAmendmentIdApply
+  /api/v1/cpq/subscriptions/amendments/{amendmentId}/schedule:
+    post:
+      tags: [CPQ]
+      summary: Schedule an approved subscription amendment for a future effective date
+      description: Records the scheduler-confirmed effective date for an approved upgrade or downgrade. The amendment must already be APPROVED before scheduling is accepted.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TenantIdHeader"
+        - name: amendmentId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scheduledAt]
+              properties:
+                scheduledAt:
+                  type: string
+                  format: date-time
+                  description: ISO-8601 UTC instant at which the amendment should be applied.
+      responses:
+        "200":
+          description: Amendment scheduled
+          content:
+            application/json:
+              schema:
+                { $ref: "#/components/schemas/SubscriptionAmendmentResponse" }
+        "400":
+          description: Invalid or past effective date
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Amendment not found in this tenant/environment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: Amendment is not in an APPROVED schedulable state
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: postCpqSubscriptionsAmendmentsByAmendmentIdSchedule
+  /api/v1/cpq/subscriptions/{id}/amendments:
+    get:
+      tags: [CPQ]
+      summary: List all amendments for a subscription
+      description: Returns the full amendment history for a subscription scoped to the tenant and environment.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TenantIdHeader"
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Amendment list for the subscription
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  { $ref: "#/components/schemas/SubscriptionAmendmentResponse" }
+        "404":
+          description: Subscription not found in this tenant/environment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: getCpqSubscriptionsByIdAmendments
   /api/v1/commercial/concessions:
     post:
       tags: [CPQ]
@@ -45005,6 +45083,28 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
       operationId: postCommercialConcessions
+    get:
+      tags: [CPQ]
+      summary: List all commercial concessions
+      description: Returns all concessions visible to the platform operator. Requires PLATFORM_CONCESSION_MANAGE permission.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        "200":
+          description: List of commercial concessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  { $ref: "#/components/schemas/CommercialConcessionResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: getCommercialConcessions
   /api/v1/commercial/concessions/{id}:
     get:
       tags: [CPQ]
