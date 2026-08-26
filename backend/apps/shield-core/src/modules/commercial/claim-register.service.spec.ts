@@ -62,8 +62,9 @@ describe('ClaimRegisterService (R17 claim governance)', () => {
       claimApproval: { create: jest.fn() },
       claimEligibility: {
         findUnique: jest.fn().mockResolvedValue(null),
-        upsert: jest.fn(),
+        upsert: jest.fn().mockResolvedValue({ id: 'eligibility-1' }),
       },
+      bundleClaimEligibility: { updateMany: jest.fn() },
       claimEvaluation: { findFirst: jest.fn() },
       evidenceRecord: { findMany: jest.fn() },
       commercialEvent: { create: jest.fn() },
@@ -220,6 +221,18 @@ describe('ClaimRegisterService (R17 claim governance)', () => {
     expect(result.eligible).toBe(false);
     expect(result.reasonCode).toBe('CLAIM_PENDING_APPROVAL');
     expect(prismaMock.claimEligibility.upsert).toHaveBeenCalled();
+    expect(prismaMock.bundleClaimEligibility.updateMany).toHaveBeenCalledWith({
+      where: expect.objectContaining({
+        tenant_id: 'tenant-1',
+        environment_id: 'env-1',
+        claim_key: 'CLAIM_24_7_SOC',
+        channel: 'PRODUCT_UI',
+      }),
+      data: expect.objectContaining({
+        status: 'INELIGIBLE',
+        evaluated_eligibility_id: 'eligibility-1',
+      }),
+    });
   });
 
   it('returns eligible only with entitlement and fresh integrity-verified runtime evidence', async () => {

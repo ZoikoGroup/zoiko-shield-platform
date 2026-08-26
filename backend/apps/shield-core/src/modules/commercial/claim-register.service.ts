@@ -525,7 +525,7 @@ export class ClaimRegisterService {
       existing.runtime_evaluation_id !== result.runtimeEvaluationId;
 
     await this.prisma.$transaction(async (tx) => {
-      await tx.claimEligibility.upsert({
+      const eligibility = await tx.claimEligibility.upsert({
         where: { context_key: contextKey },
         update: {
           claim_register_id: result.claimId,
@@ -557,6 +557,20 @@ export class ClaimRegisterService {
           evidence_refs: JSON.stringify(result.evidenceRefs),
           evaluated_at: new Date(),
           valid_until: result.validUntil,
+        },
+      });
+      await tx.bundleClaimEligibility.updateMany({
+        where: {
+          tenant_id: context.tenantId,
+          environment_id: context.environmentId,
+          region: context.region,
+          claim_key: context.claimKey,
+          channel: context.channel,
+        },
+        data: {
+          status: result.status,
+          reason_code: result.reasonCode,
+          evaluated_eligibility_id: eligibility.id,
         },
       });
       if (changed) {

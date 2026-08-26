@@ -9,7 +9,8 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { IsIn, IsString } from 'class-validator';
+import { IsDefined, IsIn, IsString, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { requireEnvironmentId, requireTenantId } from '../../tenant-context';
 import { PERMISSION_CODES } from '../authorization/constants';
 import { RequireAssurance } from '../authorization/decorators/require-assurance.decorator';
@@ -32,6 +33,15 @@ import {
   SubscriptionService,
   VerifyUpgradeReadinessDto,
 } from './subscription.service';
+import { HumanAuthorityAttestationDto } from '../human-authority/human-authority.dto';
+import { RequireHumanAuthority } from '../human-authority/human-authority.decorator';
+import { HumanAuthorityGuard } from '../human-authority/human-authority.guard';
+import { IsISO8601 } from 'class-validator';
+
+export class ScheduleAmendmentDto {
+  @IsISO8601()
+  scheduledAt!: Date;
+}
 
 export class DecideSubscriptionChangeDto {
   @IsIn(['APPROVED', 'REJECTED'])
@@ -39,6 +49,11 @@ export class DecideSubscriptionChangeDto {
 
   @IsString()
   reason!: string;
+
+  @IsDefined()
+  @ValidateNested()
+  @Type(() => HumanAuthorityAttestationDto)
+  humanAuthority!: HumanAuthorityAttestationDto;
 }
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -125,6 +140,12 @@ export class TenantSubscriptionController {
   }
 
   @Patch('amendments/:amendmentId/decision')
+  @UseGuards(HumanAuthorityGuard)
+  @RequireHumanAuthority(
+    'CONTRACT_CHANGE_AUTHORIZATION',
+    'CommercialAmendment',
+    'amendmentId',
+  )
   @RequirePermissions(PERMISSION_CODES.TENANT_COMMERCIAL_ACCOUNT_APPROVE)
   @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
   async decideAmendment(
@@ -163,6 +184,41 @@ export class TenantSubscriptionController {
       dto,
     );
     return { statusCode: HttpStatus.OK, data: amendment };
+  }
+
+  @Post('amendments/:amendmentId/schedule')
+  @RequirePermissions(PERMISSION_CODES.TENANT_COMMERCIAL_ACCOUNT_MANAGE)
+  @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
+  async scheduleAmendment(
+    @Param('amendmentId') amendmentId: string,
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: ScheduleAmendmentDto,
+  ) {
+    const boundary = this.boundary(headerTenantId, user);
+    const amendment = await this.subscriptions.scheduleAmendment(
+      amendmentId,
+      boundary.tenantId,
+      boundary.environmentId,
+      user.id,
+      new Date(dto.scheduledAt),
+    );
+    return { statusCode: HttpStatus.OK, data: amendment };
+  }
+
+  @Get(':id/amendments')
+  async listAmendments(
+    @Param('id') id: string,
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const boundary = this.boundary(headerTenantId, user);
+    const amendments = await this.subscriptions.listAmendmentsForTenant(
+      id,
+      boundary.tenantId,
+      boundary.environmentId,
+    );
+    return { statusCode: HttpStatus.OK, data: amendments };
   }
 }
 
@@ -260,5 +316,12 @@ export class CommercialConcessionController {
   ) {
     const concession = await this.concessions.activateConcession(id, user.id);
     return { statusCode: HttpStatus.OK, data: concession };
+  }
+
+  @Get()
+  @RequirePlatformPermissions(PERMISSION_CODES.PLATFORM_CONCESSION_MANAGE)
+  async list() {
+    const concessions = await this.concessions.listConcessions();
+    return { statusCode: HttpStatus.OK, data: concessions };
   }
 }

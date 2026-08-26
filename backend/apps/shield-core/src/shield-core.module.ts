@@ -80,6 +80,7 @@ import { OffboardingModule } from './modules/offboarding/offboarding.module';
 import { OutboxPublisherService } from './outbox/outbox-publisher.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { HumanAuthorityModule } from './modules/human-authority/human-authority.module';
 
 @Module({
   imports: [
@@ -148,6 +149,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     PartnersModule,
     SectorPacksModule,
     AiGovernanceModule,
+    HumanAuthorityModule,
     CostRecordsModule,
     ReconciliationModule,
     KillSwitchModule,

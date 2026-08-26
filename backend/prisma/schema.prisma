@@ -1247,11 +1247,15 @@ model Entitlement {
   activationAmendment     CommercialAmendment?  @relation(fields: [activation_amendment_id], references: [id])
   concession_id           String?
   concession              CommercialConcession? @relation(fields: [concession_id], references: [id])
+  bundle_order_line_id    String?               @unique
+  bundleOrderLine         CommercialOrderLine?  @relation("BundleComponentEntitlement", fields: [bundle_order_line_id], references: [id], onDelete: Restrict)
   status                  String                @default("ACTIVE")
   effective_from          DateTime              @default(now())
   effective_to            DateTime?
   created_at              DateTime              @default(now())
   updated_at              DateTime              @updatedAt
+
+  invoiceBases CommercialInvoiceLineBasis[]
 
   @@index([tenant_id])
   @@index([offer_type])
@@ -1336,8 +1340,9 @@ model ClaimRegister {
   created_at             DateTime  @default(now())
   updated_at             DateTime  @updatedAt
 
-  approvals     ClaimApproval[]
-  eligibilities ClaimEligibility[]
+  approvals               ClaimApproval[]
+  eligibilities           ClaimEligibility[]
+  bundleClaimRequirements BundleClaimEligibility[]
 
   @@unique([claim_key, version])
   @@index([claim_key, status])
@@ -1380,6 +1385,8 @@ model ClaimEligibility {
   valid_until           DateTime?
   updated_at            DateTime       @updatedAt
 
+  bundleClaimRequirements BundleClaimEligibility[]
+
   @@index([tenant_id, claim_key])
   @@index([status])
 }
@@ -1394,10 +1401,12 @@ model CatalogVersion {
   approved_at    DateTime?
   created_at     DateTime  @default(now())
 
-  products   Product[]
-  priceBooks PriceBook[]
-  contracts  Contract[]
-  quotes     CommercialQuote[]
+  products           Product[]
+  priceBooks         PriceBook[]
+  contracts          Contract[]
+  quotes             CommercialQuote[]
+  cpqReadiness       CpqOfferReadiness[]
+  roadmapCommitments RoadmapCommitment[]
 
   @@index([status])
 }
@@ -1421,7 +1430,11 @@ model Product {
   region_scope         String         @default("[]")
   created_at           DateTime       @default(now())
 
-  priceBooks PriceBook[]
+  priceBooks             PriceBook[]
+  cpqReadiness           CpqOfferReadiness[]
+  roadmapCommitments     RoadmapCommitment[]
+  commercialOrderLines   CommercialOrderLine[] @relation("CommercialOrderLineProduct")
+  bundleParentOrderLines CommercialOrderLine[] @relation("CommercialOrderLineBundleParentProduct")
 
   @@unique([catalog_version_id, sku])
   @@unique([catalog_version_id, internal_product_key])
@@ -1457,6 +1470,7 @@ model PriceBook {
 
   professionalServiceEngagements ProfessionalServiceEngagement[]
   aiGovernanceProfiles           AiGovernanceProfile[]
+  invoiceLines                   CommercialInvoiceLine[]
 
   @@index([status])
   @@index([product_id])
@@ -1485,6 +1499,9 @@ model Contract {
   incidentWorkOrders             IncidentWorkOrder[]
   professionalServiceEngagements ProfessionalServiceEngagement[]
   aiGovernanceProfiles           AiGovernanceProfile[]
+  bundleMeterProjections         BundleMeterProjection[]
+  bundleCostAllocations          BundleCostAllocation[]
+  bundleClaimEligibilities       BundleClaimEligibility[]
 
   @@index([commercial_account_id])
   @@index([status])
@@ -1523,6 +1540,8 @@ model ServiceObligation {
   contract                   Contract               @relation(fields: [contract_id], references: [id])
   managed_defense_profile_id String?
   managedDefenseProfile      ManagedDefenseProfile? @relation(fields: [managed_defense_profile_id], references: [id])
+  bundle_order_line_id       String?                @unique
+  bundleOrderLine            CommercialOrderLine?   @relation("BundleComponentServiceObligation", fields: [bundle_order_line_id], references: [id], onDelete: Restrict)
   obligation_key             String?
   obligation_type            String
   obligation_scope           String                 @default("{}")
@@ -1543,6 +1562,7 @@ model ServiceObligation {
   deliveryEvents                ManagedDefenseDeliveryEvent[]
   irRetainer                    IncidentResponseRetainer?
   professionalServiceEngagement ProfessionalServiceEngagement?
+  invoiceBases                  CommercialInvoiceLineBasis[]
 
   @@index([contract_id])
   @@index([tenant_id, environment_id, status])
@@ -1797,6 +1817,7 @@ model CommercialInvoice {
   updated_at            DateTime          @updatedAt
 
   lines       CommercialInvoiceLine[]
+  traces      CommercialInvoiceLineTrace[]
   creditNotes CommercialCreditNote[]
   debitNotes  CommercialDebitNote[]
   payments    Payment[]
@@ -1807,24 +1828,95 @@ model CommercialInvoice {
 }
 
 model CommercialInvoiceLine {
-  id                   String            @id @default(uuid())
+  id                   String               @id @default(uuid())
   invoice_id           String
-  invoice              CommercialInvoice @relation(fields: [invoice_id], references: [id])
+  invoice              CommercialInvoice    @relation(fields: [invoice_id], references: [id])
+  order_line_id        String?
+  orderLine            CommercialOrderLine? @relation(fields: [order_line_id], references: [id], onDelete: Restrict)
+  price_book_id        String?
+  priceBook            PriceBook?           @relation(fields: [price_book_id], references: [id], onDelete: Restrict)
   sku                  String
   contract_id          String
   subscription_id      String?
   service_period_start DateTime
   service_period_end   DateTime
-  quantity             Int               @default(1)
-  unit_price           Decimal           @db.Decimal(14, 4)
-  discount_percent     Decimal           @default(0) @db.Decimal(5, 2)
-  tax_amount           Decimal           @default(0) @db.Decimal(14, 4)
+  quantity             Int                  @default(1)
+  unit_price           Decimal              @db.Decimal(14, 4)
+  discount_percent     Decimal              @default(0) @db.Decimal(5, 2)
+  tax_amount           Decimal              @default(0) @db.Decimal(14, 4)
   tax_rule_id          String?
-  currency             String            @default("USD")
-  source_version       String            @default("v1")
-  created_at           DateTime          @default(now())
+  currency             String               @default("USD")
+  source_version       String               @default("v1")
+  presentation_mode    String               @default("SEPARATE")
+  representation_scope String               @default("COMMERCIAL_ENTITLEMENT_OR_OBLIGATION")
+  created_at           DateTime             @default(now())
+
+  traces CommercialInvoiceLineTrace[]
+  bases  CommercialInvoiceLineBasis[]
 
   @@index([invoice_id])
+  @@index([order_line_id])
+  @@index([price_book_id])
+}
+
+/**
+ * Frozen commercial/service evidence explaining what an invoice line bills.
+ * Outcome evidence remains in its source domain; this row records the exact
+ * entitlement, obligation or approved meter snapshot observed at billing time.
+ */
+model CommercialInvoiceLineBasis {
+  id                            String                    @id @default(uuid())
+  invoice_line_id               String
+  invoiceLine                   CommercialInvoiceLine     @relation(fields: [invoice_line_id], references: [id], onDelete: Restrict)
+  basis_type                    String
+  source_id                     String
+  entitlement_id                String?
+  entitlement                   Entitlement?              @relation(fields: [entitlement_id], references: [id], onDelete: Restrict)
+  service_obligation_id         String?
+  serviceObligation             ServiceObligation?        @relation(fields: [service_obligation_id], references: [id], onDelete: Restrict)
+  meter_billing_export_id       String?
+  meterBillingExport            MeterBillingExport?       @relation(fields: [meter_billing_export_id], references: [id], onDelete: Restrict)
+  meter_authorization_policy_id String?
+  meterAuthorizationPolicy      MeterAuthorizationPolicy? @relation(fields: [meter_authorization_policy_id], references: [id], onDelete: Restrict)
+  source_status                 String
+  source_version                String                    @default("v1")
+  quantity                      Int                       @default(1)
+  unit                          String
+  service_period_start          DateTime
+  service_period_end            DateTime
+  source_snapshot               String
+  source_snapshot_hash          String
+  created_at                    DateTime                  @default(now())
+
+  @@unique([invoice_line_id, basis_type, source_id])
+  @@index([entitlement_id])
+  @@index([service_obligation_id])
+  @@index([meter_billing_export_id])
+  @@index([meter_authorization_policy_id])
+}
+
+/**
+ * A normalized source edge for invoice presentation. An invoice may show one
+ * bundle line, but every underlying technology/service component and its
+ * allocated pre-tax amount remains queryable and independently reconcilable.
+ */
+model CommercialInvoiceLineTrace {
+  id                   String                @id @default(uuid())
+  invoice_id           String
+  invoice              CommercialInvoice     @relation(fields: [invoice_id], references: [id], onDelete: Restrict)
+  invoice_line_id      String
+  invoiceLine          CommercialInvoiceLine @relation(fields: [invoice_line_id], references: [id], onDelete: Restrict)
+  order_line_id        String
+  orderLine            CommercialOrderLine   @relation(fields: [order_line_id], references: [id], onDelete: Restrict)
+  allocated_amount     Decimal               @db.Decimal(14, 4)
+  currency             String
+  service_period_start DateTime
+  service_period_end   DateTime
+  created_at           DateTime              @default(now())
+
+  @@unique([invoice_id, order_line_id, service_period_start, service_period_end])
+  @@index([invoice_line_id])
+  @@index([order_line_id])
 }
 
 /**
@@ -1956,17 +2048,26 @@ model CommercialEvent {
 
 model CommercialQuote {
   id                    String            @id @default(uuid())
+  tenant_id             String
+  environment_id        String
   commercial_account_id String
   commercialAccount     CommercialAccount @relation(fields: [commercial_account_id], references: [id])
   catalog_version_id    String
   catalogVersion        CatalogVersion    @relation(fields: [catalog_version_id], references: [id])
   status                String            @default("DRAFT")
+  quote_key             String
+  version               Int               @default(1)
+  supersedes_quote_id   String?           @unique
+  supersedesQuote       CommercialQuote?  @relation("CommercialQuoteRevision", fields: [supersedes_quote_id], references: [id], onDelete: Restrict)
+  revisions             CommercialQuote[] @relation("CommercialQuoteRevision")
   currency              String            @default("USD")
   region                String            @default("GLOBAL")
   term_months           Int               @default(12)
   requires_approval     Boolean           @default(false)
   approval_id           String?
   snapshot              String            @default("{}")
+  configuration_hash    String
+  validation_status     String            @default("PENDING_VALIDATION")
   requested_by          String
   approved_by           String?
   approved_at           DateTime?
@@ -1975,11 +2076,199 @@ model CommercialQuote {
   created_at            DateTime          @default(now())
   updated_at            DateTime          @updatedAt
 
-  lines  CommercialQuoteLine[]
-  orders CommercialOrder[]
+  lines              CommercialQuoteLine[]
+  orders             CommercialOrder[]
+  validation         CommercialQuoteValidation?
+  roadmapCommitments RoadmapCommitment[]
+  discountReview     QuoteDiscountReview?
 
+  @@unique([commercial_account_id, quote_key, version])
   @@index([commercial_account_id])
+  @@index([tenant_id, environment_id, status])
   @@index([status])
+}
+
+/**
+ * Versioned, platform-approved escalation thresholds for one service class.
+ * Sales cannot create or approve these policies. Quotes consume only a policy
+ * that is APPROVED and effective for their region/currency.
+ */
+model DiscountAuthorityPolicy {
+  id                            String                    @id @default(uuid())
+  policy_key                    String
+  version                       Int                       @default(1)
+  supersedes_policy_id          String?                   @unique
+  supersedesPolicy              DiscountAuthorityPolicy?  @relation("DiscountAuthorityPolicyRevision", fields: [supersedes_policy_id], references: [id], onDelete: Restrict)
+  revisions                     DiscountAuthorityPolicy[] @relation("DiscountAuthorityPolicyRevision")
+  service_class                 String
+  region                        String
+  currency                      String
+  standard_margin_floor_percent Decimal                   @db.Decimal(6, 2)
+  finance_margin_floor_percent  Decimal                   @db.Decimal(6, 2)
+  absolute_margin_floor_percent Decimal                   @db.Decimal(6, 2)
+  status                        String                    @default("PENDING_APPROVAL")
+  effective_from                DateTime
+  effective_to                  DateTime?
+  requested_by                  String
+  requested_at                  DateTime                  @default(now())
+  decided_by                    String?
+  decided_at                    DateTime?
+  decision_reason               String?
+  created_at                    DateTime                  @default(now())
+
+  @@unique([policy_key, version])
+  @@index([service_class, region, currency, status, effective_from])
+  @@index([status, effective_from])
+}
+
+/**
+ * Frozen I3 economics and authority decision for a discounted quote. This is
+ * separate from the CPQ technical-readiness receipt: a commercial approver can
+ * accept/reject economics but cannot edit technical authority or scope.
+ */
+model QuoteDiscountReview {
+  id                            String              @id @default(uuid())
+  quote_id                      String              @unique
+  quote                         CommercialQuote     @relation(fields: [quote_id], references: [id], onDelete: Restrict)
+  tenant_id                     String
+  environment_id                String
+  status                        String              @default("DRAFT")
+  policy_ids                    String              @default("[]")
+  gross_margin_by_service_class String              @default("[]")
+  partner_pass_through          String              @default("{}")
+  commercial_reason             String
+  term_months                   Int
+  ramp_schedule                 String              @default("[]")
+  minimum_commit_amount         Decimal             @db.Decimal(14, 4)
+  catalog_minimum_commit_amount Decimal             @db.Decimal(14, 4)
+  discount_expires_at           DateTime
+  required_approval_role        String
+  authority_rank                Int
+  financial_impact              Decimal             @db.Decimal(14, 4)
+  margin_impact                 Decimal             @db.Decimal(8, 4)
+  technical_authority_hash      String
+  approval_id                   String?             @unique
+  approval                      CommercialApproval? @relation("QuoteDiscountApproval", fields: [approval_id], references: [id], onDelete: Restrict)
+  requested_by                  String
+  submitted_at                  DateTime?
+  approved_by                   String?
+  approved_at                   DateTime?
+  rejected_reason               String?
+  created_at                    DateTime            @default(now())
+  updated_at                    DateTime            @updatedAt
+
+  @@index([tenant_id, environment_id, status])
+  @@index([required_approval_role, status])
+  @@index([discount_expires_at, status])
+}
+
+/**
+ * Platform-verified, versioned offer readiness. Sales/CPQ can consume this
+ * evidence but cannot create it or reinterpret an unavailable offer as ready.
+ */
+model CpqOfferReadiness {
+  id                         String         @id @default(uuid())
+  catalog_version_id         String
+  catalogVersion             CatalogVersion @relation(fields: [catalog_version_id], references: [id], onDelete: Restrict)
+  product_id                 String
+  product                    Product        @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  region                     String
+  version                    Int            @default(1)
+  retention_profiles         String         @default("[]")
+  service_tiers              String         @default("[]")
+  supported_connector_keys   String         @default("[]")
+  obligation_types           String         @default("[]")
+  service_capacity_status    String
+  market_availability_status String
+  claim_eligibility_status   String
+  evidence_refs              String         @default("[]")
+  status                     String         @default("VERIFIED")
+  verified_by                String
+  effective_from             DateTime       @default(now())
+  effective_to               DateTime?
+  created_at                 DateTime       @default(now())
+
+  @@unique([product_id, region, version])
+  @@index([catalog_version_id, region, status])
+  @@index([product_id, region, status, effective_from])
+}
+
+/**
+ * Immutable proof of the exact checks and controlled inputs used by CPQ.
+ */
+model CommercialQuoteValidation {
+  id                         String          @id @default(uuid())
+  tenant_id                  String
+  environment_id             String
+  quote_id                   String          @unique
+  quote                      CommercialQuote @relation(fields: [quote_id], references: [id], onDelete: Restrict)
+  configuration_hash         String
+  readiness_record_ids       String          @default("[]")
+  price_book_ids             String          @default("[]")
+  tax_rule_id                String
+  dependency_status          String
+  incompatibility_status     String
+  unit_economics_status      String
+  service_capacity_status    String
+  market_availability_status String
+  claim_eligibility_status   String
+  partner_economics_status   String
+  result                     String
+  validated_by               String
+  created_at                 DateTime        @default(now())
+
+  @@index([tenant_id, environment_id, created_at])
+  @@index([result, created_at])
+}
+
+/**
+ * Conditional, non-GA language attached to a quote but deliberately excluded
+ * from quote lines and entitlement derivation. Legal and Product approve it
+ * independently; even a passed release gate only makes it eligible for a
+ * separate future order.
+ */
+model RoadmapCommitment {
+  id                            String              @id @default(uuid())
+  tenant_id                     String
+  environment_id                String
+  quote_id                      String
+  quote                         CommercialQuote     @relation(fields: [quote_id], references: [id], onDelete: Restrict)
+  commitment_key                String
+  target_product_id             String
+  targetProduct                 Product             @relation(fields: [target_product_id], references: [id], onDelete: Restrict)
+  target_catalog_version_id     String
+  targetCatalogVersion          CatalogVersion      @relation(fields: [target_catalog_version_id], references: [id], onDelete: Restrict)
+  feature_key                   String
+  non_ga_language               String
+  conditions                    String              @default("[]")
+  delivery_dependency_type      String
+  delivery_dependency_reference String
+  target_delivery_date          DateTime?
+  status                        String              @default("DRAFT")
+  entitlement_effect            String              @default("NONE")
+  runtime_access_status         String              @default("DISABLED")
+  legal_approval_id             String?             @unique
+  legalApproval                 CommercialApproval? @relation("RoadmapLegalApproval", fields: [legal_approval_id], references: [id], onDelete: Restrict)
+  product_approval_id           String?             @unique
+  productApproval               CommercialApproval? @relation("RoadmapProductApproval", fields: [product_approval_id], references: [id], onDelete: Restrict)
+  submitted_by                  String?
+  submitted_at                  DateTime?
+  legal_approved_by             String?
+  legal_approved_at             DateTime?
+  product_approved_by           String?
+  product_approved_at           DateTime?
+  release_gate_evidence_refs    String              @default("[]")
+  release_gate_passed_by        String?
+  release_gate_passed_at        DateTime?
+  created_by                    String
+  created_at                    DateTime            @default(now())
+  updated_at                    DateTime            @updatedAt
+
+  @@unique([quote_id, commitment_key])
+  @@unique([quote_id, feature_key])
+  @@index([tenant_id, environment_id, status])
+  @@index([target_product_id, status])
+  @@index([quote_id, status])
 }
 
 model CommercialQuoteLine {
@@ -2020,15 +2309,47 @@ model CommercialOrder {
 }
 
 model CommercialOrderLine {
-  id         String          @id @default(uuid())
-  order_id   String
-  order      CommercialOrder @relation(fields: [order_id], references: [id])
-  product_id String
-  quantity   Int             @default(1)
-  unit_price Decimal         @db.Decimal(14, 4)
-  created_at DateTime        @default(now())
+  id                       String          @id @default(uuid())
+  order_id                 String
+  order                    CommercialOrder @relation(fields: [order_id], references: [id])
+  product_id               String
+  product                  Product         @relation("CommercialOrderLineProduct", fields: [product_id], references: [id], onDelete: Restrict)
+  quantity                 Int             @default(1)
+  list_unit_price          Decimal         @default(0) @db.Decimal(14, 4)
+  discount_percent         Decimal         @default(0) @db.Decimal(5, 2)
+  unit_price               Decimal         @db.Decimal(14, 4)
+  currency                 String          @default("USD")
+  line_type                String          @default("CUSTOMER")
+  billable                 Boolean         @default(true)
+  catalog_sku              String          @default("")
+  bundle_parent_product_id String?
+  bundleParentProduct      Product?        @relation("CommercialOrderLineBundleParentProduct", fields: [bundle_parent_product_id], references: [id], onDelete: Restrict)
+  component_type           String?
+  entitlement_offer_type   String?
+  meter_definition_id      String?
+  service_obligation_type  String?
+  cost_class               String?
+  cost_allocation_percent  Decimal?        @db.Decimal(5, 2)
+  claim_key                String?
+  claim_register_id        String?
+  invoice_presentation     String          @default("SEPARATE")
+  component_snapshot       String          @default("{}")
+  component_snapshot_hash  String?
+  projection_status        String          @default("NOT_APPLICABLE")
+  created_at               DateTime        @default(now())
+
+  bundleEntitlement       Entitlement?                 @relation("BundleComponentEntitlement")
+  bundleServiceObligation ServiceObligation?           @relation("BundleComponentServiceObligation")
+  bundleMeterProjection   BundleMeterProjection?
+  bundleCostAllocation    BundleCostAllocation?
+  bundleClaimEligibility  BundleClaimEligibility?
+  invoiceTraces           CommercialInvoiceLineTrace[]
+  invoiceLines            CommercialInvoiceLine[]
 
   @@index([order_id])
+  @@index([order_id, line_type])
+  @@index([bundle_parent_product_id])
+  @@index([projection_status])
 }
 
 model CommercialSubscription {
@@ -2042,11 +2363,93 @@ model CommercialSubscription {
   created_at            DateTime  @default(now())
   updated_at            DateTime  @updatedAt
 
-  amendments  CommercialAmendment[]
-  concessions CommercialConcession[]
+  amendments               CommercialAmendment[]
+  concessions              CommercialConcession[]
+  bundleMeterProjections   BundleMeterProjection[]
+  bundleCostAllocations    BundleCostAllocation[]
+  bundleClaimEligibilities BundleClaimEligibility[]
 
   @@index([commercial_account_id])
   @@index([status])
+}
+
+/**
+ * Meter requirements created from an accepted bundle stay non-billable until
+ * ordinary meter governance creates and approves a contract authorization.
+ */
+model BundleMeterProjection {
+  id                     String                    @id @default(uuid())
+  order_line_id          String                    @unique
+  orderLine              CommercialOrderLine       @relation(fields: [order_line_id], references: [id], onDelete: Restrict)
+  contract_id            String
+  contract               Contract                  @relation(fields: [contract_id], references: [id], onDelete: Restrict)
+  subscription_id        String
+  subscription           CommercialSubscription    @relation(fields: [subscription_id], references: [id], onDelete: Restrict)
+  tenant_id              String
+  environment_id         String
+  meter_definition_id    String
+  meterDefinition        MeterDefinition           @relation(fields: [meter_definition_id], references: [id], onDelete: Restrict)
+  meter_authorization_id String?                   @unique
+  meterAuthorization     MeterAuthorizationPolicy? @relation("BundleMeterAuthorization", fields: [meter_authorization_id], references: [id], onDelete: Restrict)
+  status                 String                    @default("PENDING_GOVERNANCE")
+  created_at             DateTime                  @default(now())
+  updated_at             DateTime                  @updatedAt
+
+  @@index([contract_id, status])
+  @@index([tenant_id, environment_id, status])
+}
+
+/**
+ * Internal revenue/cost-basis allocation; never a separately billable line.
+ */
+model BundleCostAllocation {
+  id                 String                 @id @default(uuid())
+  order_line_id      String                 @unique
+  orderLine          CommercialOrderLine    @relation(fields: [order_line_id], references: [id], onDelete: Restrict)
+  contract_id        String
+  contract           Contract               @relation(fields: [contract_id], references: [id], onDelete: Restrict)
+  subscription_id    String
+  subscription       CommercialSubscription @relation(fields: [subscription_id], references: [id], onDelete: Restrict)
+  cost_class         String
+  allocation_method  String                 @default("CATALOG_PERCENT")
+  allocation_percent Decimal                @db.Decimal(5, 2)
+  allocated_revenue  Decimal                @db.Decimal(14, 4)
+  currency           String
+  status             String                 @default("ALLOCATED")
+  created_at         DateTime               @default(now())
+
+  @@index([contract_id, cost_class])
+  @@index([subscription_id])
+}
+
+/**
+ * A bundle claim requirement is deliberately fail-closed until the existing
+ * claim policy engine records a current eligibility decision for the context.
+ */
+model BundleClaimEligibility {
+  id                       String                 @id @default(uuid())
+  order_line_id            String                 @unique
+  orderLine                CommercialOrderLine    @relation(fields: [order_line_id], references: [id], onDelete: Restrict)
+  contract_id              String
+  contract                 Contract               @relation(fields: [contract_id], references: [id], onDelete: Restrict)
+  subscription_id          String
+  subscription             CommercialSubscription @relation(fields: [subscription_id], references: [id], onDelete: Restrict)
+  tenant_id                String
+  environment_id           String
+  region                   String
+  claim_key                String
+  claim_register_id        String
+  claimRegister            ClaimRegister          @relation(fields: [claim_register_id], references: [id], onDelete: Restrict)
+  channel                  String                 @default("CONTRACT")
+  status                   String                 @default("PENDING_EVALUATION")
+  reason_code              String                 @default("BUNDLE_COMPONENT_PENDING_EVALUATION")
+  evaluated_eligibility_id String?
+  evaluatedEligibility     ClaimEligibility?      @relation(fields: [evaluated_eligibility_id], references: [id], onDelete: Restrict)
+  created_at               DateTime               @default(now())
+  updated_at               DateTime               @updatedAt
+
+  @@index([tenant_id, environment_id, claim_key])
+  @@index([contract_id, status])
 }
 
 model CommercialAmendment {
@@ -2176,6 +2579,10 @@ model CommercialApproval {
   applied_at             DateTime?
   idempotency_key        String?   @unique
 
+  legalRoadmapCommitment   RoadmapCommitment?   @relation("RoadmapLegalApproval")
+  productRoadmapCommitment RoadmapCommitment?   @relation("RoadmapProductApproval")
+  quoteDiscountReview      QuoteDiscountReview? @relation("QuoteDiscountApproval")
+
   @@index([object_type, object_id])
   @@index([tenant_id, status])
   @@index([status])
@@ -2223,10 +2630,11 @@ model MeterDefinition {
   created_at         DateTime  @default(now())
   updated_at         DateTime  @updatedAt
 
-  events                MeterEvent[]
-  usageRecords          UsageRecord[]
-  authorizationPolicies MeterAuthorizationPolicy[]
-  coveragePolicies      ResourceCoveragePolicy[]
+  events                 MeterEvent[]
+  usageRecords           UsageRecord[]
+  authorizationPolicies  MeterAuthorizationPolicy[]
+  coveragePolicies       ResourceCoveragePolicy[]
+  bundleMeterProjections BundleMeterProjection[]
 
   @@unique([meter_key, version])
   @@index([status])
@@ -2313,11 +2721,13 @@ model MeterAuthorizationPolicy {
   created_at                   DateTime          @default(now())
   updated_at                   DateTime          @updatedAt
 
-  events              MeterEvent[]
-  usageRecords        UsageRecord[]
-  usageAuthorizations MeterUsageAuthorization[]
-  thresholdEvents     MeterThresholdEvent[]
-  billingExports      MeterBillingExport[]
+  events                MeterEvent[]
+  usageRecords          UsageRecord[]
+  usageAuthorizations   MeterUsageAuthorization[]
+  thresholdEvents       MeterThresholdEvent[]
+  billingExports        MeterBillingExport[]
+  invoiceBases          CommercialInvoiceLineBasis[]
+  bundleMeterProjection BundleMeterProjection?       @relation("BundleMeterAuthorization")
 
   @@unique([tenant_id, environment_id, policy_key, version])
   @@index([tenant_id, environment_id, status])
@@ -2409,32 +2819,37 @@ model MeterCorrectionRequest {
  * Immutable billing input snapshot. Corrections create a superseding export.
  */
 model MeterBillingExport {
-  id                     String                   @id @default(uuid())
-  tenant_id              String
-  environment_id         String
-  meter_authorization_id String
-  meterAuthorization     MeterAuthorizationPolicy @relation(fields: [meter_authorization_id], references: [id])
-  contract_id            String
-  period_start           DateTime
-  period_end             DateTime
-  meter_definition_id    String
-  meter_version          Int
-  event_ids              String                   @default("[]")
-  usage_record_ids       String                   @default("[]")
-  accepted_quantity      Int                      @default(0)
-  billable_quantity      Int                      @default(0)
-  overage_quantity       Int                      @default(0)
-  immutable_snapshot     String
-  checksum               String
-  status                 String                   @default("PENDING_APPROVAL")
-  approval_id            String?                  @unique
-  reason                 String
-  requested_by           String
-  approved_by            String?
-  approved_at            DateTime?
-  supersedes_id          String?
-  correction_request_id  String?
-  created_at             DateTime                 @default(now())
+  id                          String                   @id @default(uuid())
+  tenant_id                   String
+  environment_id              String
+  meter_authorization_id      String
+  meterAuthorization          MeterAuthorizationPolicy @relation(fields: [meter_authorization_id], references: [id])
+  contract_id                 String
+  period_start                DateTime
+  period_end                  DateTime
+  meter_definition_id         String
+  meter_version               Int
+  event_ids                   String                   @default("[]")
+  usage_record_ids            String                   @default("[]")
+  accepted_quantity           Int                      @default(0)
+  billable_quantity           Int                      @default(0)
+  overage_quantity            Int                      @default(0)
+  billing_basis               String                   @default("ACCEPTED_DATA_USAGE")
+  excluded_event_ids          String                   @default("[]")
+  committed_capacity_included Boolean                  @default(false)
+  immutable_snapshot          String
+  checksum                    String
+  status                      String                   @default("PENDING_APPROVAL")
+  approval_id                 String?                  @unique
+  reason                      String
+  requested_by                String
+  approved_by                 String?
+  approved_at                 DateTime?
+  supersedes_id               String?
+  correction_request_id       String?
+  created_at                  DateTime                 @default(now())
+
+  invoiceBases CommercialInvoiceLineBasis[]
 
   @@index([tenant_id, environment_id, status])
   @@index([meter_authorization_id, period_start, period_end])
@@ -3480,7 +3895,8 @@ model AiOutput {
   correlation_id            String
   created_at                DateTime @default(now())
 
-  humanReviews AiHumanReview[]
+  humanReviews            AiHumanReview[]
+  humanAuthorityDecisions AiHumanAuthorityDecision[]
 
   @@index([tenant_id])
   @@index([use_case_id])
@@ -3497,8 +3913,55 @@ model AiHumanReview {
   modified_content String?
   reviewed_at      DateTime @default(now())
 
+  humanAuthorityDecisions AiHumanAuthorityDecision[]
+
   @@index([tenant_id])
   @@index([ai_output_id])
+}
+
+model AiHumanAuthorityDecision {
+  id                    String         @id @default(uuid())
+  tenant_id             String
+  environment_id        String
+  action_class          String
+  resource_type         String
+  resource_id           String
+  actor_id              String
+  decision_origin       String
+  ai_output_id          String?
+  aiOutput              AiOutput?      @relation(fields: [ai_output_id], references: [id], onDelete: Restrict)
+  ai_human_review_id    String?
+  aiHumanReview         AiHumanReview? @relation(fields: [ai_human_review_id], references: [id], onDelete: Restrict)
+  human_confirmation    Boolean        @default(false)
+  authority_statement   String
+  decision              String
+  reason                String
+  authorization_context String         @default("{}")
+  created_at            DateTime       @default(now())
+
+  @@index([tenant_id, environment_id, created_at])
+  @@index([action_class, resource_type, resource_id])
+  @@index([actor_id, created_at])
+  @@index([ai_output_id])
+}
+
+model DeterministicContinuityEvent {
+  id                String   @id @default(uuid())
+  tenant_id         String
+  environment_id    String
+  operation         String
+  actor_id          String
+  engine            String   @default("SHIELD_CORE_DETERMINISTIC_V1")
+  llm_used          Boolean  @default(false)
+  input_hash        String
+  output_hash       String
+  outcome           String
+  reason            String
+  authorization_ref String?
+  created_at        DateTime @default(now())
+
+  @@index([tenant_id, environment_id, created_at])
+  @@index([operation, outcome, created_at])
 }
 
 model RetrievalBundle {

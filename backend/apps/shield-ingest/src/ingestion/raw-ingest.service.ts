@@ -128,7 +128,7 @@ export class RawIngestService {
               sourceType: connector.authentication_type || 'WEBHOOK',
               rawEventId: existing.id,
               usageState: 'DUPLICATE',
-              acceptedQuantity: 1,
+              acceptedQuantity: 0,
               billableQuantity: 0,
             });
           } catch (err) {
@@ -199,8 +199,10 @@ export class RawIngestService {
           rawEventId: rawEvent.id,
           usageState:
             processingStatus === 'QUARANTINED' ? 'QUARANTINED' : 'ACCEPTED',
-          acceptedQuantity: 1,
-          billableQuantity: processingStatus === 'ACCEPTED' ? 1 : 0,
+          acceptedQuantity: processingStatus === 'ACCEPTED' ? 1 : 0,
+          // Raw receipt is not governed acceptance. Core metering may create
+          // billable usage only after validation, deduplication and policy.
+          billableQuantity: 0,
         });
 
         // Observe resource if payload specifies resourceId or sourceIp

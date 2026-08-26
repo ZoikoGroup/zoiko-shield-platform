@@ -48,7 +48,8 @@ export class BillingController {
 
   /**
    * POST /api/v1/billing/invoices/:id/lines
-   * Add a structured, tax-resolved invoice line (Part 10/12)
+   * Add a structured, tax-resolved line with frozen order, price and
+   * entitlement/service/meter basis (Parts 10/12, Category J1).
    */
   @Post(':id/lines')
   async addInvoiceLine(
@@ -98,7 +99,8 @@ export class BillingController {
 
   /**
    * PATCH /api/v1/billing/invoices/:id/issue
-   * Issue commercial invoice (FIN-02 immutability rule)
+   * Issue commercial-basis invoice; this is not security-outcome proof
+   * (FIN-02 immutability rule, Category J1).
    */
   @Patch(':id/issue')
   async issueInvoice(@Param('id') id: string) {

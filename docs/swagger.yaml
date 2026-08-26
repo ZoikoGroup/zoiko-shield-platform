@@ -228,6 +228,36 @@ components:
         type: string
         minLength: 1
   schemas:
+    HumanAuthorityAttestation:
+      type: object
+      additionalProperties: false
+      required: [decisionOrigin, humanConfirmation, authorityStatement]
+      properties:
+        decisionOrigin:
+          type: string
+          enum: [HUMAN, AI_ASSISTED, AI_AUTONOMOUS]
+          description: AI_AUTONOMOUS is accepted as an auditable denial input and can never permit the protected decision.
+        humanConfirmation:
+          type: boolean
+          description: Must be true for a permit decision.
+        authorityStatement:
+          type: string
+          minLength: 12
+        aiOutputId:
+          type: string
+          format: uuid
+          description: Required only for AI_ASSISTED decisions.
+        aiHumanReviewId:
+          type: string
+          format: uuid
+          description: Required only for AI_ASSISTED decisions and must identify an APPROVED or MODIFIED review of aiOutputId.
+    HumanAuthorityOnlyRequest:
+      type: object
+      additionalProperties: false
+      required: [humanAuthority]
+      properties:
+        humanAuthority:
+          $ref: "#/components/schemas/HumanAuthorityAttestation"
     ManagedDefenseObjectResponse:
       type: object
       required: [statusCode, data]
@@ -250,7 +280,7 @@ components:
             additionalProperties: true
     ManagedDefenseDecisionRequest:
       type: object
-      required: [decision, reason]
+      required: [decision, reason, humanAuthority]
       properties:
         decision:
           type: string
@@ -258,6 +288,8 @@ components:
         reason:
           type: string
           minLength: 1
+        humanAuthority:
+          $ref: "#/components/schemas/HumanAuthorityAttestation"
     CreateManagedDefenseProfileRequest:
       type: object
       required:
@@ -600,6 +632,14 @@ components:
         invoice_id:
           type: string
           format: uuid
+        order_line_id:
+          type: string
+          format: uuid
+          description: Provisioned, billable customer order line supporting this charge.
+        price_book_id:
+          type: string
+          format: uuid
+          description: Approved price book frozen into the accepted quote.
         sku:
           type: string
         contract_id:
@@ -628,6 +668,58 @@ components:
           format: uuid
         currency:
           type: string
+        presentation_mode:
+          type: string
+          enum: [SEPARATE, AGGREGATED]
+        representation_scope:
+          type: string
+          enum: [COMMERCIAL_ENTITLEMENT_OR_OBLIGATION]
+          description: Commercial basis, not proof of a successful security outcome.
+        bases:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required:
+              - basis_type
+              - source_id
+              - source_status
+              - source_version
+              - quantity
+              - unit
+              - service_period_start
+              - service_period_end
+              - source_snapshot_hash
+            properties:
+              basis_type:
+                type: string
+                enum: [ENTITLEMENT, SERVICE_OBLIGATION, METER_SNAPSHOT]
+              source_id: { type: string, format: uuid }
+              source_status: { type: string }
+              source_version: { type: string }
+              quantity: { type: integer, minimum: 1 }
+              unit: { type: string }
+              service_period_start: { type: string, format: date-time }
+              service_period_end: { type: string, format: date-time }
+              source_snapshot_hash:
+                type: string
+                pattern: "^[0-9a-f]{64}$"
+        traces:
+          type: array
+          items:
+            type: object
+            required:
+              - order_line_id
+              - allocated_amount
+              - currency
+              - service_period_start
+              - service_period_end
+            properties:
+              order_line_id: { type: string, format: uuid }
+              allocated_amount: { type: number }
+              currency: { type: string }
+              service_period_start: { type: string, format: date-time }
+              service_period_end: { type: string, format: date-time }
     CommercialInvoiceResponse:
       type: object
       properties:
@@ -6310,10 +6402,13 @@ components:
         - data
     PostResponseProposalsByProposalIdApproveRequest:
       type: object
+      required: [humanAuthority]
       properties:
         reason:
           type: string
           nullable: true
+        humanAuthority:
+          $ref: "#/components/schemas/HumanAuthorityAttestation"
     PostResponseProposalsByProposalIdApproveResponse:
       type: object
       properties:
@@ -12290,6 +12385,7 @@ components:
                 type: string
                 enum:
                   [
+                    INCLUDES,
                     INCLUDED_BY,
                     REQUIRES,
                     ALTERNATIVE_TO,
@@ -12297,6 +12393,34 @@ components:
                     OVERRIDES,
                   ]
               targetSku: { type: string }
+              componentType:
+                type: string
+                enum: [TECHNOLOGY, HUMAN_SERVICE]
+                nullable: true
+              quantity: { type: integer, minimum: 1, nullable: true }
+              allocationPercent:
+                type: number
+                exclusiveMinimum: 0
+                maximum: 100
+                nullable: true
+              entitlementOfferType:
+                type: string
+                enum:
+                  [
+                    MANAGED_DEFENSE,
+                    CONTINUOUS_ASSURANCE,
+                    EXPOSURE_MANAGEMENT,
+                    AI_SECURITY,
+                  ]
+                nullable: true
+              meterKey: { type: string, nullable: true }
+              serviceObligationType: { type: string, nullable: true }
+              costClass: { type: string, nullable: true }
+              claimKey: { type: string, nullable: true }
+              invoicePresentation:
+                type: string
+                enum: [SEPARATE, AGGREGATE_ALLOWED]
+                nullable: true
     PriceBookApprovalRequest:
       type: object
       required: [reason, marginGatePassed]
@@ -17190,6 +17314,10 @@ components:
         contractId:
           type: string
           format: uuid
+        orderLineId:
+          type: string
+          format: uuid
+          description: Provisioned billable customer order line for this SKU.
         subscriptionId:
           type: string
           nullable: true
@@ -17213,15 +17341,43 @@ components:
           type: string
         productTaxClass:
           type: string
+        presentationMode:
+          type: string
+          enum: [SEPARATE, AGGREGATED]
+          nullable: true
+        traceSources:
+          type: array
+          minItems: 1
+          nullable: true
+          items:
+            type: object
+            required: [orderLineId, allocatedAmount]
+            properties:
+              orderLineId: { type: string, format: uuid }
+              allocatedAmount: { type: number, minimum: 0 }
+        basisSources:
+          type: array
+          minItems: 1
+          description: Normalized commercial/service sources frozen into the invoice line.
+          items:
+            type: object
+            required: [basisType, sourceId]
+            properties:
+              basisType:
+                type: string
+                enum: [ENTITLEMENT, SERVICE_OBLIGATION, METER_SNAPSHOT]
+              sourceId: { type: string, format: uuid }
       required:
         - sku
         - contractId
+        - orderLineId
         - servicePeriodStart
         - servicePeriodEnd
         - quantity
         - unitPrice
         - jurisdiction
         - productTaxClass
+        - basisSources
     PatchBillingInvoicesByIdFxRateRequest:
       type: object
       properties:
@@ -17568,9 +17724,12 @@ components:
           minimum: 0
         reason:
           type: string
+        humanAuthority:
+          $ref: "#/components/schemas/HumanAuthorityAttestation"
       required:
         - amount
         - reason
+        - humanAuthority
     PatchPaymentsByIdRefundResponse:
       type: object
       properties:
@@ -20123,6 +20282,11 @@ components:
           type: string
           format: date-time
           nullable: true
+        discountTerms:
+          allOf:
+            - $ref: "#/components/schemas/QuoteDiscountTerms"
+          nullable: true
+          description: Required with explicit expiresAt whenever any line discountPercent is greater than zero; forbidden otherwise.
       required:
         - changeType
         - objectType
@@ -20306,9 +20470,12 @@ components:
             - REJECTED
         reason:
           type: string
+        humanAuthority:
+          $ref: "#/components/schemas/HumanAuthorityAttestation"
       required:
         - decision
         - reason
+        - humanAuthority
     PatchCommercialApprovalsByIdDecisionResponse:
       type: object
       properties:
@@ -22240,6 +22407,7 @@ components:
           counselControlled,
           contentReference,
           accessReason,
+          humanAuthority,
         ]
       properties:
         workOrderId: { type: string, format: uuid }
@@ -22263,6 +22431,8 @@ components:
         conclusionReference: { type: string }
         contentReference: { type: string, minLength: 1 }
         accessReason: { type: string, minLength: 1 }
+        humanAuthority:
+          $ref: "#/components/schemas/HumanAuthorityAttestation"
     ProfessionalServiceObjectResponse:
       type: object
       required: [statusCode, data]
@@ -22541,9 +22711,6 @@ components:
         catalogVersionId:
           type: string
           format: uuid
-        region:
-          type: string
-          nullable: true
         currency:
           type: string
           nullable: true
@@ -22552,12 +22719,64 @@ components:
           nullable: true
           exclusiveMinimum: true
           minimum: 0
-        requestedBy:
+        quoteKey:
           type: string
+          nullable: true
+        supersedesQuoteId:
+          type: string
+          format: uuid
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        configuration:
+          type: object
+          additionalProperties: false
+          required:
+            - retentionProfile
+            - serviceTier
+            - connectorDependencies
+            - obligations
+            - exclusions
+            - taxAssumption
+            - partnerEconomics
+          properties:
+            retentionProfile: { type: string, minLength: 1 }
+            serviceTier: { type: string, minLength: 1 }
+            connectorDependencies:
+              type: array
+              uniqueItems: true
+              items: { type: string, minLength: 1 }
+            obligations:
+              type: array
+              uniqueItems: true
+              items: { type: string, minLength: 1 }
+            exclusions:
+              type: array
+              uniqueItems: true
+              items: { type: string, minLength: 1 }
+            taxAssumption:
+              type: object
+              additionalProperties: false
+              required: [jurisdiction, productTaxClass, sellerLegalEntityReference]
+              properties:
+                jurisdiction: { type: string, minLength: 1 }
+                productTaxClass: { type: string, minLength: 1 }
+                sellerLegalEntityReference: { type: string, minLength: 1 }
+            partnerEconomics:
+              type: object
+              additionalProperties: false
+              required: [route]
+              properties:
+                route: { type: string, enum: [DIRECT, PARTNER] }
+                partnerAgreementId: { type: string, format: uuid }
         lines:
           type: array
+          minItems: 1
           items:
             type: object
+            additionalProperties: false
             properties:
               sku:
                 type: string
@@ -22569,14 +22788,393 @@ components:
                 type: number
                 nullable: true
                 minimum: 0
+                maximum: 100
             required:
               - sku
               - quantity
       required:
         - commercialAccountId
         - catalogVersionId
-        - requestedBy
+        - configuration
         - lines
+    DiscountRampPhase:
+      type: object
+      additionalProperties: false
+      required: [startMonth, endMonth, quantityPercent]
+      properties:
+        startMonth: { type: integer, minimum: 1 }
+        endMonth: { type: integer, minimum: 1 }
+        quantityPercent: { type: number, minimum: 0, maximum: 100 }
+    QuoteDiscountTerms:
+      type: object
+      additionalProperties: false
+      required: [reason, rampSchedule, minimumCommitAmount, discountExpiresAt]
+      properties:
+        reason: { type: string, minLength: 1 }
+        rampSchedule:
+          type: array
+          minItems: 1
+          description: Contiguous full-term quantity ramp that is non-decreasing and ends at 100 percent.
+          items: { $ref: "#/components/schemas/DiscountRampPhase" }
+        minimumCommitAmount: { type: number, minimum: 0 }
+        discountExpiresAt: { type: string, format: date-time }
+    CreateDiscountAuthorityPolicyRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - serviceClass
+        - region
+        - currency
+        - standardMarginFloorPercent
+        - financeMarginFloorPercent
+        - absoluteMarginFloorPercent
+        - effectiveFrom
+      properties:
+        policyKey: { type: string, minLength: 1 }
+        supersedesPolicyId: { type: string, format: uuid }
+        serviceClass: { type: string, minLength: 1 }
+        region: { type: string, minLength: 1 }
+        currency: { type: string, minLength: 1 }
+        standardMarginFloorPercent: { type: number, minimum: -100, maximum: 100 }
+        financeMarginFloorPercent: { type: number, minimum: -100, maximum: 100 }
+        absoluteMarginFloorPercent: { type: number, minimum: -100, maximum: 100 }
+        effectiveFrom: { type: string, format: date-time }
+        effectiveTo: { type: string, format: date-time }
+    DecideDiscountAuthorityPolicyRequest:
+      type: object
+      additionalProperties: false
+      required: [decision, reason, humanAuthority]
+      properties:
+        decision: { type: string, enum: [APPROVED, REJECTED] }
+        reason: { type: string, minLength: 1 }
+        humanAuthority:
+          $ref: "#/components/schemas/HumanAuthorityAttestation"
+    DecideQuoteDiscountRequest:
+      type: object
+      additionalProperties: false
+      required: [decision, reason, humanAuthority]
+      properties:
+        decision: { type: string, enum: [APPROVED, REJECTED] }
+        reason: { type: string, minLength: 1 }
+        humanAuthority:
+          $ref: "#/components/schemas/HumanAuthorityAttestation"
+    DiscountAuthorityPolicy:
+      type: object
+      additionalProperties: true
+      required:
+        - id
+        - policy_key
+        - version
+        - service_class
+        - region
+        - currency
+        - standard_margin_floor_percent
+        - finance_margin_floor_percent
+        - absolute_margin_floor_percent
+        - status
+        - effective_from
+        - requested_by
+      properties:
+        id: { type: string, format: uuid }
+        policy_key: { type: string }
+        version: { type: integer, minimum: 1 }
+        supersedes_policy_id: { type: string, format: uuid, nullable: true }
+        service_class: { type: string }
+        region: { type: string }
+        currency: { type: string }
+        standard_margin_floor_percent: { type: number }
+        finance_margin_floor_percent: { type: number }
+        absolute_margin_floor_percent: { type: number }
+        status: { type: string, enum: [PENDING_APPROVAL, APPROVED, REJECTED, SUPERSEDED] }
+        effective_from: { type: string, format: date-time }
+        effective_to: { type: string, format: date-time, nullable: true }
+        requested_by: { type: string }
+        decided_by: { type: string, nullable: true }
+        decided_at: { type: string, format: date-time, nullable: true }
+        decision_reason: { type: string, nullable: true }
+    QuoteDiscountReview:
+      type: object
+      additionalProperties: true
+      required:
+        - id
+        - quote_id
+        - tenant_id
+        - environment_id
+        - status
+        - policy_ids
+        - gross_margin_by_service_class
+        - partner_pass_through
+        - commercial_reason
+        - term_months
+        - ramp_schedule
+        - minimum_commit_amount
+        - catalog_minimum_commit_amount
+        - discount_expires_at
+        - required_approval_role
+        - authority_rank
+        - technical_authority_hash
+      properties:
+        id: { type: string, format: uuid }
+        quote_id: { type: string, format: uuid }
+        tenant_id: { type: string }
+        environment_id: { type: string }
+        status: { type: string, enum: [DRAFT, PENDING_APPROVAL, APPROVED, REJECTED] }
+        policy_ids: { type: string, description: Frozen JSON array of approved policy identifiers. }
+        gross_margin_by_service_class: { type: string, description: Frozen internal economics JSON; never customer pricing authority. }
+        partner_pass_through: { type: string, description: Frozen partner pass-through JSON. }
+        commercial_reason: { type: string }
+        term_months: { type: integer, minimum: 1 }
+        ramp_schedule: { type: string, description: Frozen JSON array. }
+        minimum_commit_amount: { type: number, minimum: 0 }
+        catalog_minimum_commit_amount: { type: number, minimum: 0 }
+        discount_expires_at: { type: string, format: date-time }
+        required_approval_role:
+          type: string
+          enum: [COMMERCIAL_APPROVER, FINANCE_COMMERCIAL_APPROVER, EXECUTIVE_COMMERCIAL_APPROVER]
+        authority_rank: { type: integer, minimum: 1, maximum: 3 }
+        financial_impact: { type: number, minimum: 0 }
+        margin_impact: { type: number, minimum: 0 }
+        technical_authority_hash: { type: string, pattern: "^[0-9a-f]{64}$" }
+        approval_id: { type: string, format: uuid, nullable: true }
+        requested_by: { type: string }
+        approved_by: { type: string, nullable: true }
+        approved_at: { type: string, format: date-time, nullable: true }
+    DiscountAuthorityPolicyResponse:
+      type: object
+      required: [statusCode, data]
+      properties:
+        statusCode: { type: integer }
+        data: { $ref: "#/components/schemas/DiscountAuthorityPolicy" }
+    DiscountAuthorityPolicyListResponse:
+      type: object
+      required: [statusCode, data]
+      properties:
+        statusCode: { type: integer }
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/DiscountAuthorityPolicy" }
+    QuoteDiscountReviewResponse:
+      type: object
+      required: [statusCode, data]
+      properties:
+        statusCode: { type: integer }
+        data: { $ref: "#/components/schemas/QuoteDiscountReview" }
+    VerifyCpqOfferReadinessRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - catalogVersionId
+        - productId
+        - region
+        - retentionProfiles
+        - serviceTiers
+        - supportedConnectorKeys
+        - obligationTypes
+        - serviceCapacityStatus
+        - marketAvailabilityStatus
+        - claimEligibilityStatus
+        - evidenceRefs
+      properties:
+        catalogVersionId: { type: string, format: uuid }
+        productId: { type: string, format: uuid }
+        region: { type: string, minLength: 1 }
+        retentionProfiles:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: string, minLength: 1 }
+        serviceTiers:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: string, minLength: 1 }
+        supportedConnectorKeys:
+          type: array
+          uniqueItems: true
+          items: { type: string, minLength: 1 }
+        obligationTypes:
+          type: array
+          uniqueItems: true
+          items: { type: string, minLength: 1 }
+        serviceCapacityStatus:
+          type: string
+          enum: [AVAILABLE, LIMITED, UNAVAILABLE, NOT_APPLICABLE]
+        marketAvailabilityStatus:
+          type: string
+          enum: [AVAILABLE, UNAVAILABLE]
+        claimEligibilityStatus:
+          type: string
+          enum: [ELIGIBLE, CONDITIONAL, INELIGIBLE, NOT_APPLICABLE]
+        evidenceRefs:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: string, minLength: 1 }
+        effectiveFrom: { type: string, format: date-time }
+        effectiveTo: { type: string, format: date-time }
+    CpqOfferReadiness:
+      type: object
+      additionalProperties: true
+      required:
+        - id
+        - catalog_version_id
+        - product_id
+        - region
+        - version
+        - service_capacity_status
+        - market_availability_status
+        - claim_eligibility_status
+        - status
+        - verified_by
+      properties:
+        id: { type: string, format: uuid }
+        catalog_version_id: { type: string, format: uuid }
+        product_id: { type: string, format: uuid }
+        region: { type: string }
+        version: { type: integer, minimum: 1 }
+        retention_profiles: { type: string, description: Frozen JSON array. }
+        service_tiers: { type: string, description: Frozen JSON array. }
+        supported_connector_keys: { type: string, description: Frozen JSON array. }
+        obligation_types: { type: string, description: Frozen JSON array. }
+        service_capacity_status: { type: string }
+        market_availability_status: { type: string }
+        claim_eligibility_status: { type: string }
+        evidence_refs: { type: string, description: Frozen JSON array. }
+        status: { type: string, enum: [VERIFIED] }
+        verified_by: { type: string }
+        effective_from: { type: string, format: date-time }
+        effective_to: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+    CpqOfferReadinessResponse:
+      type: object
+      required: [statusCode, data]
+      properties:
+        statusCode: { type: integer }
+        data: { $ref: "#/components/schemas/CpqOfferReadiness" }
+    CpqOfferReadinessListResponse:
+      type: object
+      required: [statusCode, data]
+      properties:
+        statusCode: { type: integer }
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/CpqOfferReadiness" }
+    CreateRoadmapCommitmentRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - commitmentKey
+        - targetProductId
+        - featureKey
+        - nonGaLanguage
+        - conditions
+        - deliveryDependencyType
+        - deliveryDependencyReference
+      properties:
+        commitmentKey: { type: string, minLength: 3 }
+        targetProductId: { type: string, format: uuid }
+        featureKey: { type: string, minLength: 3 }
+        nonGaLanguage:
+          type: string
+          minLength: 20
+          description: Must explicitly state non-GA/not generally available and conditional/subject-to/not-guaranteed status.
+        conditions:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: string, minLength: 1 }
+        deliveryDependencyType:
+          type: string
+          enum: [PRODUCT_RELEASE, DELIVERY_MILESTONE, THIRD_PARTY_DEPENDENCY]
+        deliveryDependencyReference: { type: string, minLength: 3 }
+        targetDeliveryDate: { type: string, format: date-time }
+    SubmitRoadmapCommitmentRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        approvalExpiresAt: { type: string, format: date-time }
+    DecideRoadmapCommitmentRequest:
+      type: object
+      additionalProperties: false
+      required: [decision, reason, humanAuthority]
+      properties:
+        decision: { type: string, enum: [APPROVED, REJECTED] }
+        reason: { type: string, minLength: 3 }
+        humanAuthority:
+          $ref: "#/components/schemas/HumanAuthorityAttestation"
+    PassRoadmapReleaseGateRequest:
+      type: object
+      additionalProperties: false
+      required: [evidenceRefs, humanAuthority]
+      properties:
+        evidenceRefs:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: { type: string, minLength: 1 }
+        humanAuthority:
+          $ref: "#/components/schemas/HumanAuthorityAttestation"
+    RoadmapCommitment:
+      type: object
+      additionalProperties: true
+      required:
+        - id
+        - tenant_id
+        - environment_id
+        - quote_id
+        - commitment_key
+        - target_product_id
+        - target_catalog_version_id
+        - feature_key
+        - non_ga_language
+        - conditions
+        - delivery_dependency_type
+        - delivery_dependency_reference
+        - status
+        - entitlement_effect
+        - runtime_access_status
+      properties:
+        id: { type: string, format: uuid }
+        tenant_id: { type: string }
+        environment_id: { type: string }
+        quote_id: { type: string, format: uuid }
+        commitment_key: { type: string }
+        target_product_id: { type: string, format: uuid }
+        target_catalog_version_id: { type: string, format: uuid }
+        feature_key: { type: string }
+        non_ga_language: { type: string }
+        conditions: { type: string, description: Frozen JSON array. }
+        delivery_dependency_type: { type: string }
+        delivery_dependency_reference: { type: string }
+        target_delivery_date: { type: string, format: date-time, nullable: true }
+        status:
+          type: string
+          enum: [DRAFT, PENDING_APPROVAL, APPROVED, REJECTED, RELEASE_GATE_PASSED]
+        entitlement_effect: { type: string, enum: [NONE] }
+        runtime_access_status:
+          type: string
+          enum: [DISABLED, ELIGIBLE_FOR_SEPARATE_ORDER]
+        legal_approval_id: { type: string, format: uuid, nullable: true }
+        product_approval_id: { type: string, format: uuid, nullable: true }
+        legal_approved_by: { type: string, nullable: true }
+        product_approved_by: { type: string, nullable: true }
+        release_gate_evidence_refs: { type: string, description: Frozen JSON array. }
+        release_gate_passed_by: { type: string, nullable: true }
+        release_gate_passed_at: { type: string, format: date-time, nullable: true }
+    RoadmapCommitmentResponse:
+      type: object
+      required: [statusCode, data]
+      properties:
+        statusCode: { type: integer }
+        data: { $ref: "#/components/schemas/RoadmapCommitment" }
+    RoadmapCommitmentListResponse:
+      type: object
+      required: [statusCode, data]
+      properties:
+        statusCode: { type: integer }
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/RoadmapCommitment" }
     PostCpqQuotesResponse:
       type: object
       properties:
@@ -22805,11 +23403,7 @@ components:
         - data
     PatchCpqQuotesByIdSubmitRequest:
       type: object
-      properties:
-        actor:
-          type: string
-      required:
-        - actor
+      additionalProperties: false
     PatchCpqQuotesByIdSubmitResponse:
       type: object
       properties:
@@ -22889,12 +23483,10 @@ components:
         - data
     PatchCpqQuotesByIdApproveRequest:
       type: object
+      additionalProperties: false
       properties:
-        approverId:
+        note:
           type: string
-          format: uuid
-      required:
-        - approverId
     PatchCpqQuotesByIdApproveResponse:
       type: object
       properties:
@@ -23135,15 +23727,13 @@ components:
         - data
     PostCpqOrdersRequest:
       type: object
+      additionalProperties: false
       properties:
         quoteId:
           type: string
           format: uuid
-        createdBy:
-          type: string
       required:
         - quoteId
-        - createdBy
     PostCpqOrdersResponse:
       type: object
       properties:
@@ -23298,10 +23888,12 @@ components:
         - data
     PatchCpqOrdersByIdProvisionRequest:
       type: object
+      additionalProperties: false
       properties:
         termMonths:
-          type: number
+          type: integer
           nullable: true
+          minimum: 1
     PatchCpqOrdersByIdProvisionResponse:
       type: object
       properties:
@@ -23768,9 +24360,12 @@ components:
             - REJECTED
         reason:
           type: string
+        humanAuthority:
+          $ref: "#/components/schemas/HumanAuthorityAttestation"
       required:
         - decision
         - reason
+        - humanAuthority
     PatchCpqSubscriptionsAmendmentsByAmendmentIdDecisionResponse:
       type: object
       properties:
@@ -27564,8 +28159,10 @@ paths:
         "Locks an invoice from DRAFT or APPROVAL_PENDING into ISSUED \u2014\
         \ permanently immutable from this point (FIN-02). Fails closed if the commercial\
         \ account is non-commercial (INTERNAL/DEMO/SANDBOX/PILOT/EVALUATION), if any\
-        \ structured line lacks a resolved tax rule, or if the USAGE_BILLING_EXPORT/INVOICE_FINALIZATION\
-        \ kill switch is active."
+        \ structured line lacks a resolved tax rule or normalized order/approved-price/entitlement,\
+        \ service-obligation or approved meter-snapshot basis, or if the USAGE_BILLING_EXPORT/INVOICE_FINALIZATION\
+        \ kill switch is active. The frozen invoice records commercial basis, not successful\
+        \ security-outcome proof; later service credits remain append-only."
       security:
         - CookieAuth: []
         - BearerAuth: []
@@ -27599,8 +28196,8 @@ paths:
         "409":
           description:
             "Invoice cannot be issued: non-commercial account (NON_COMMERCIAL_ACCOUNT_CANNOT_BE_INVOICED),
-            an unresolved line tax rule (INVOICE_LINE_TAX_UNRESOLVED), or already
-            issued/not in an issuable status"
+            an unresolved line tax rule (INVOICE_LINE_TAX_UNRESOLVED), missing/corrupt
+            commercial basis, or already issued/not in an issuable status"
           content:
             application/json:
               schema:
@@ -27706,7 +28303,7 @@ paths:
     patch:
       tags: [Catalog]
       summary: Replace typed product bundle rules
-      description: Defines INCLUDED_BY, REQUIRES, ALTERNATIVE_TO, INCOMPATIBLE_WITH and OVERRIDES relationships. Every target must exist in the same DRAFT catalog.
+      description: Defines INCLUDES, INCLUDED_BY, REQUIRES, ALTERNATIVE_TO, INCOMPATIBLE_WITH and OVERRIDES relationships. INCLUDES freezes separate technology and human-service components with a 100% cost allocation, entitlement/meter or service-obligation projection, claim key and invoice-presentation policy. Every target must exist in the same DRAFT catalog.
       security:
         - CookieAuth: []
         - BearerAuth: []
@@ -30913,6 +31510,12 @@ paths:
         rejects approver == creator/evaluator-author/manual-test performer). Validates
         the documented request and returns the created or resulting resource. State-changing
         operations also enforce the service lifecycle and conflict rules.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/HumanAuthorityOnlyRequest"
   /api/v1/audit-packages/{packageId}/manifest:
     get:
       tags:
@@ -35389,6 +35992,114 @@ paths:
         \ triggering Kafka payload). Applies the documented path, query, and tenant\
         \ filters and returns the current persisted or computed result using the response\
         \ model below. Restricted to trusted services using x-internal-service-token."
+  /internal/v1/no-llm-continuity/evaluate:
+    post:
+      tags:
+        - AIGovernance
+        - InternalMicroservices
+      summary: Evaluate a deterministic no-LLM critical path
+      description: >-
+        Evaluates detection, evidence integrity, authorization, response safety,
+        or factual core-case continuity without invoking a model. The tenant and
+        environment headers must match the body. Every result receives an
+        append-only receipt with canonical input/output hashes and llmUsed=false.
+        Restricted to trusted services using x-internal-service-token.
+      operationId: postInternalNoLlmContinuityEvaluate
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TenantIdHeader"
+        - $ref: "#/components/parameters/EnvironmentIdHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required:
+                - tenantId
+                - environmentId
+                - actorId
+                - operation
+                - facts
+              properties:
+                tenantId:
+                  type: string
+                environmentId:
+                  type: string
+                actorId:
+                  type: string
+                operation:
+                  type: string
+                  enum:
+                    - DETECTION_EVALUATION
+                    - EVIDENCE_INTEGRITY
+                    - AUTHORIZATION
+                    - RESPONSE_SAFETY
+                    - CORE_CASE_FALLBACK
+                facts:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "200":
+          description: Deterministic continuity result and append-only receipt
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [statusCode, data]
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 200
+                  data:
+                    type: object
+                    required:
+                      - continuityEventId
+                      - engine
+                      - llmUsed
+                      - inputHash
+                      - outputHash
+                      - outcome
+                      - reason
+                      - result
+                    properties:
+                      continuityEventId:
+                        type: string
+                        format: uuid
+                      engine:
+                        type: string
+                        enum: [SHIELD_CORE_DETERMINISTIC_V1]
+                      llmUsed:
+                        type: boolean
+                        enum: [false]
+                      inputHash:
+                        type: string
+                        pattern: "^[0-9a-f]{64}$"
+                      outputHash:
+                        type: string
+                        pattern: "^[0-9a-f]{64}$"
+                      outcome:
+                        type: string
+                      reason:
+                        type: string
+                      result:
+                        type: object
+                        additionalProperties: true
+        "400":
+          description: Request validation or tenant/environment boundary failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Workload authentication is missing or invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /internal/v1/use-cases/{key}/invoke:
     post:
       tags:
@@ -38230,7 +38941,14 @@ paths:
         "Adds a tax-resolved invoice line to a DRAFT invoice. Tax is resolved\
         \ and frozen at add-time via the approved tax rule for the given jurisdiction/productTaxClass\
         \ \u2014 fails closed (409) rather than inventing a rate if none is approved.\
-        \ Blocked while the USAGE_BILLING_EXPORT kill switch is active."
+        \ The line must reconcile to an ACTIVE contract, provisioned customer order\
+        \ line, accepted quote and approved price book, and freeze at least one ACTIVE\
+        \ entitlement, non-cancelled service obligation, or checksum-valid APPROVED meter\
+        \ export for the exact period. A BREACHED obligation remains commercial basis\
+        \ and is not represented as successful outcome evidence.\
+        \ AGGREGATED bundle presentation requires two or more normalized component\
+        \ traces whose allocations equal the pre-tax line amount. Blocked while the\
+        \ USAGE_BILLING_EXPORT kill switch is active."
       security:
         - CookieAuth: []
         - BearerAuth: []
@@ -38275,8 +38993,9 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "409":
           description:
-            Invoice is not DRAFT, or no approved tax rule exists for the
-            jurisdiction/productTaxClass (NO_APPROVED_TAX_RULE)
+            Invoice is not DRAFT; the contract/order/price/entitlement/service/meter
+            basis is invalid; or no approved tax rule exists for the jurisdiction/productTaxClass
+            (NO_APPROVED_TAX_RULE)
           content:
             application/json:
               schema:
@@ -42797,7 +43516,525 @@ paths:
       security:
         - CookieAuth: []
         - BearerAuth: []
+  /api/v1/platform/cpq/offer-readiness/verify:
+    post:
+      tags: [CPQ]
+      summary: Append a platform-verified regional offer-readiness version
+      description: Requires platform commercial-readiness permission and MFA. Sales cannot call this endpoint. The product must be released in the approved catalog and the record is append-only.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VerifyCpqOfferReadinessRequest" }
+      responses:
+        "201":
+          description: Readiness version verified and recorded.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CpqOfferReadinessResponse" }
+        "400":
+          description: Invalid readiness dimensions or effective dates.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "401":
+          description: Unauthorized - Missing or invalid credentials
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Platform readiness permission or MFA is missing.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: Product or regional readiness conflicts with the approved catalog.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: postPlatformCpqOfferReadinessVerify
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/platform/cpq/offer-readiness/products/{productId}:
+    get:
+      tags: [CPQ]
+      summary: List immutable offer-readiness versions for a product
+      description: Requires platform commercial-readiness permission and MFA. Results are ordered by region and descending version.
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: region
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: Current and historical readiness versions.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CpqOfferReadinessListResponse" }
+        "401":
+          description: Unauthorized - Missing or invalid credentials
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Platform readiness permission or MFA is missing.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Product not found.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: getPlatformCpqOfferReadinessByProduct
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/platform/cpq/discount-authority-policies:
+    post:
+      tags: [CPQ]
+      summary: Create a versioned service-class discount authority policy
+      description: Requires platform policy-management authority and MFA. New policies start PENDING_APPROVAL and cannot be used for quote analysis until independently approved.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateDiscountAuthorityPolicyRequest" }
+      responses:
+        "201":
+          description: Pending discount authority policy created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DiscountAuthorityPolicyResponse" }
+        "400":
+          description: Margin floors or effective dates are invalid.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "401":
+          description: Unauthorized - Missing or invalid credentials
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Platform policy-management authority or MFA is missing.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: The requested revision conflicts with its predecessor.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: postPlatformCpqDiscountAuthorityPolicy
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+    get:
+      tags: [CPQ]
+      summary: List versioned discount authority policies
+      parameters:
+        - name: serviceClass
+          in: query
+          schema: { type: string }
+        - name: region
+          in: query
+          schema: { type: string }
+        - name: currency
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Discount authority policy versions.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DiscountAuthorityPolicyListResponse" }
+        "401":
+          description: Unauthorized - Missing or invalid credentials
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Platform policy-management authority or MFA is missing.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: getPlatformCpqDiscountAuthorityPolicies
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/platform/cpq/discount-authority-policies/{id}/decision:
+    parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/EnvironmentIdHeader"
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [CPQ]
+      summary: Independently approve or reject a discount authority policy
+      description: Requires separate platform policy-approval authority, MFA, human attestation, and maker-checker separation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DecideDiscountAuthorityPolicyRequest" }
+      responses:
+        "200":
+          description: Policy decision recorded.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DiscountAuthorityPolicyResponse" }
+        "401":
+          description: Unauthorized - Missing or invalid credentials
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Policy approval, MFA, human authority, or maker-checker requirement failed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: Policy state, revision, or effective-date overlap conflicts.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: patchPlatformCpqDiscountAuthorityPolicyDecision
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/cpq/quotes/{quoteId}/discount-review:
+    parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/EnvironmentIdHeader"
+      - name: quoteId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [CPQ]
+      summary: Read the frozen margin and authority review for a discounted quote
+      responses:
+        "200":
+          description: Scoped discount review and linked approval.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/QuoteDiscountReviewResponse" }
+        "401":
+          description: Unauthorized - Missing or invalid credentials
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Discount review not found in this tenant environment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: getCpqQuoteDiscountReview
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/cpq/quotes/{quoteId}/discount-review/decision:
+    parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/EnvironmentIdHeader"
+      - name: quoteId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [CPQ]
+      summary: Approve or reject a quote discount at the dynamically required authority tier
+      description: Requires tenant discount approval, MFA, human attestation, maker-checker separation, and an active Commercial, Finance, or Executive role at or above the rank frozen on the review. Technical readiness cannot be altered here.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DecideQuoteDiscountRequest" }
+      responses:
+        "200":
+          description: Discount decision recorded atomically with its commercial approval.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/QuoteDiscountReviewResponse" }
+        "401":
+          description: Unauthorized - Missing or invalid credentials
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Required authority tier, permission, MFA, maker-checker, or human authority is missing.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Discount review not found in this tenant environment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: Review or approval is not pending or has expired.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: patchCpqQuoteDiscountReviewDecision
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/cpq/quotes/{quoteId}/roadmap-commitments:
+    parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/EnvironmentIdHeader"
+      - name: quoteId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      tags: [CPQ]
+      summary: Attach a separate conditional non-GA roadmap commitment to a draft quote
+      description: The target must be unreleased in a future draft catalog. This record is excluded from quote lines, orders, and entitlement derivation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CreateRoadmapCommitmentRequest" }
+      responses:
+        "201":
+          description: Non-entitling roadmap commitment created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoadmapCommitmentResponse" }
+        "400":
+          description: Language, conditions, dependency, or target date is invalid.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "401":
+          description: Unauthorized - Missing or invalid credentials
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Quote or roadmap target product not found in this scope.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: Quote or future-catalog release state does not permit the commitment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: postCpqQuoteRoadmapCommitment
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+    get:
+      tags: [CPQ]
+      summary: List separately governed roadmap commitments for a quote
+      responses:
+        "200":
+          description: Roadmap commitments and their two approval records.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoadmapCommitmentListResponse" }
+        "401":
+          description: Unauthorized - Missing or invalid credentials
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Quote not found in this tenant environment.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: getCpqQuoteRoadmapCommitments
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/cpq/quotes/{quoteId}/roadmap-commitments/{commitmentId}/submit:
+    parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/EnvironmentIdHeader"
+      - name: quoteId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+      - name: commitmentId
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [CPQ]
+      summary: Freeze roadmap language and request separate Legal/Product approval
+      description: Requires MFA. The requester is derived from the authenticated principal, and two role-specific maker-checker approvals are created atomically.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SubmitRoadmapCommitmentRequest" }
+      responses:
+        "200":
+          description: Legal and Product approvals requested.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoadmapCommitmentResponse" }
+        "401":
+          description: Unauthorized - Missing or invalid credentials
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "404":
+          description: Quote or commitment not found in this scope.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: Quote or commitment is no longer draft.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: patchCpqQuoteRoadmapCommitmentSubmit
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/platform/cpq/roadmap-commitments/{id}/legal-decision:
+    parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/EnvironmentIdHeader"
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [CPQ]
+      summary: Record the independent Legal decision on roadmap language
+      description: Requires the dedicated platform Legal permission, MFA, and an explicit human-authority attestation.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DecideRoadmapCommitmentRequest" }
+      responses:
+        "200":
+          description: Legal decision recorded.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoadmapCommitmentResponse" }
+        "401":
+          description: Unauthorized - Missing or invalid credentials
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Legal permission, MFA, maker-checker, or human authority is missing.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: Approval record or commitment state conflicts.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: patchPlatformCpqRoadmapLegalDecision
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/platform/cpq/roadmap-commitments/{id}/product-decision:
+    parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/EnvironmentIdHeader"
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [CPQ]
+      summary: Record the independent Product decision on delivery conditions
+      description: Requires the dedicated platform Product permission, MFA, human authority, and an approver distinct from Legal.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/DecideRoadmapCommitmentRequest" }
+      responses:
+        "200":
+          description: Product decision recorded.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoadmapCommitmentResponse" }
+        "401":
+          description: Unauthorized - Missing or invalid credentials
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Product permission, MFA, maker-checker, or human authority is missing.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: Approval record, distinct-approver, or commitment state conflicts.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: patchPlatformCpqRoadmapProductDecision
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/platform/cpq/roadmap-commitments/{id}/release-gate:
+    parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/EnvironmentIdHeader"
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    patch:
+      tags: [CPQ]
+      summary: Record that the separately approved roadmap target passed its release gate
+      description: Requires Product permission, MFA, human authority, evidence, and a RELEASED target product in an APPROVED catalog. It still creates no entitlement; a separate accepted order is required.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PassRoadmapReleaseGateRequest" }
+      responses:
+        "200":
+          description: Release gate passed; target is eligible only for a separate order.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RoadmapCommitmentResponse" }
+        "401":
+          description: Unauthorized - Missing or invalid credentials
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "403":
+          description: Product permission, MFA, or human authority is missing.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: Legal/Product approval or catalog release gate is incomplete.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: patchPlatformCpqRoadmapReleaseGate
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
   /api/v1/cpq/quotes:
+    parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/EnvironmentIdHeader"
+      - $ref: "#/components/parameters/RegionHeader"
     post:
       tags:
         - CPQ
@@ -42832,11 +44069,20 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PostCpqQuotesResponse"
+        "409":
+          description: The account, catalog, price, tax, partner economics, or regional readiness is not approved for this exact quote configuration.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
       operationId: postCpqQuotes
       security:
         - CookieAuth: []
         - BearerAuth: []
   /api/v1/cpq/quotes/{id}:
+    parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/EnvironmentIdHeader"
     get:
       tags:
         - CPQ
@@ -42883,6 +44129,9 @@ paths:
         - CookieAuth: []
         - BearerAuth: []
   /api/v1/cpq/quotes/{id}/submit:
+    parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/EnvironmentIdHeader"
     patch:
       tags:
         - CPQ
@@ -42899,12 +44148,6 @@ paths:
             type: string
             format: uuid
           description: Unique ID identifying the target resource.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/PatchCpqQuotesByIdSubmitRequest"
       responses:
         "400":
           description: Bad Request - Invalid payload or parameters
@@ -42941,6 +44184,9 @@ paths:
         - CookieAuth: []
         - BearerAuth: []
   /api/v1/cpq/quotes/{id}/approve:
+    parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/EnvironmentIdHeader"
     patch:
       tags:
         - CPQ
@@ -42959,7 +44205,7 @@ paths:
             format: uuid
           description: Unique ID identifying the target resource.
       requestBody:
-        required: true
+        required: false
         content:
           application/json:
             schema:
@@ -43000,6 +44246,9 @@ paths:
         - CookieAuth: []
         - BearerAuth: []
   /api/v1/cpq/quotes/{id}/reject:
+    parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/EnvironmentIdHeader"
     patch:
       tags:
         - CPQ
@@ -43058,6 +44307,9 @@ paths:
         - CookieAuth: []
         - BearerAuth: []
   /api/v1/cpq/quotes/{id}/cancel:
+    parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/EnvironmentIdHeader"
     patch:
       tags:
         - CPQ
@@ -43110,6 +44362,9 @@ paths:
         - CookieAuth: []
         - BearerAuth: []
   /api/v1/cpq/orders:
+    parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/EnvironmentIdHeader"
     post:
       tags:
         - CPQ
@@ -43151,6 +44406,9 @@ paths:
       parameters:
         - $ref: "#/components/parameters/IdempotencyKeyHeader"
   /api/v1/cpq/orders/{id}:
+    parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/EnvironmentIdHeader"
     get:
       tags:
         - CPQ
@@ -43197,6 +44455,9 @@ paths:
         - CookieAuth: []
         - BearerAuth: []
   /api/v1/cpq/orders/{id}/provision:
+    parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/EnvironmentIdHeader"
     patch:
       tags:
         - CPQ
@@ -43256,6 +44517,9 @@ paths:
         - CookieAuth: []
         - BearerAuth: []
   /api/v1/cpq/orders/{id}/reject:
+    parameters:
+      - $ref: "#/components/parameters/TenantIdHeader"
+      - $ref: "#/components/parameters/EnvironmentIdHeader"
     patch:
       tags:
         - CPQ

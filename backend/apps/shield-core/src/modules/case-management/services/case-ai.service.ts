@@ -1,4 +1,8 @@
-import { Injectable, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { CaseService } from './case.service';
 import { CaseTimelineService } from '../timeline/case-timeline.service';
@@ -11,6 +15,7 @@ import {
   ShieldAiClient,
   AiRequestContext,
 } from '../../../internal-client/shield-ai.client';
+import { NoLlmContinuityService } from '../../ai-governance/no-llm-continuity.service';
 
 const AI_USE_CASE_KEYS: Record<string, string> = {
   summary: 'CASE_SUMMARY',
@@ -34,7 +39,22 @@ export class CaseAiService {
     private readonly evidenceService: EvidenceService,
     private readonly authorizationDecisionService: AuthorizationDecisionService,
     private readonly shieldAiClient: ShieldAiClient,
+    private readonly continuity: NoLlmContinuityService,
   ) {}
+
+  private isAiUnavailable(error: unknown): boolean {
+    if (!(error instanceof ServiceUnavailableException)) return false;
+    const response = error.getResponse();
+    if (error.message === 'AI_UNAVAILABLE' || response === 'AI_UNAVAILABLE') {
+      return true;
+    }
+    return (
+      typeof response === 'object' &&
+      response !== null &&
+      'message' in response &&
+      (response as { message?: unknown }).message === 'AI_UNAVAILABLE'
+    );
+  }
 
   async invoke(params: {
     tenantId: string;
@@ -76,23 +96,67 @@ export class CaseAiService {
       policyVersion: '1.0',
     };
 
-    const result = await this.shieldAiClient.requestUseCase(
-      AI_USE_CASE_KEYS[params.useCaseSlug],
-      context,
-      { caseId: params.caseId },
-    );
-    const aiOutput = result.data;
+    let aiOutput: Record<string, any>;
+    let deterministicFallback = false;
+    try {
+      const result = await this.shieldAiClient.requestUseCase(
+        AI_USE_CASE_KEYS[params.useCaseSlug],
+        context,
+        { caseId: params.caseId },
+      );
+      aiOutput = result.data;
+    } catch (error) {
+      if (!this.isAiUnavailable(error)) throw error;
+
+      deterministicFallback = true;
+      const fallback = await this.continuity.evaluate({
+        tenantId: params.tenantId,
+        environmentId: context.environmentId,
+        actorId: params.actorId,
+        operation: 'CORE_CASE_FALLBACK',
+        facts: {
+          useCase: AI_USE_CASE_KEYS[params.useCaseSlug],
+          caseId: caseRow.id,
+          title: caseRow.title,
+          status: caseRow.status,
+          severity: caseRow.severity,
+          priority: caseRow.priority,
+        },
+      });
+      const fallbackResult = fallback.result as Record<string, unknown>;
+      aiOutput = {
+        id: `continuity-${fallback.continuityEventId}`,
+        outputType: 'DETERMINISTIC_FALLBACK',
+        content: fallbackResult,
+        citations: [],
+        limitations: fallbackResult.limitations,
+        safetyResult: 'DETERMINISTIC_NO_LLM',
+        reviewStatus: 'HUMAN_REVIEW_REQUIRED',
+        deterministic: true,
+        llmUsed: false,
+        continuityEventId: fallback.continuityEventId,
+        inputHash: fallback.inputHash,
+        outputHash: fallback.outputHash,
+      };
+      this.logger.warn(
+        `shield-ai unavailable; deterministic fallback ${fallback.continuityEventId} returned for case ${caseRow.id}`,
+      );
+    }
 
     await this.timeline.append({
       tenantId: params.tenantId,
       caseId: params.caseId,
       entryType: 'DECISION_RECORDED',
       actorId: params.actorId,
-      title: `AI ${AI_USE_CASE_KEYS[params.useCaseSlug]} generated`,
+      title: deterministicFallback
+        ? `Deterministic ${AI_USE_CASE_KEYS[params.useCaseSlug]} fallback generated`
+        : `AI ${AI_USE_CASE_KEYS[params.useCaseSlug]} generated`,
       summary:
         Array.isArray(aiOutput.limitations) && aiOutput.limitations.length > 0
-          ? `AI output generated with limitations: ${aiOutput.limitations.join('; ')}`
-          : 'AI output generated',
+          ? `${deterministicFallback ? 'Fallback' : 'AI output'} generated with limitations: ${aiOutput.limitations.join('; ')}`
+          : deterministicFallback
+            ? 'Deterministic factual fallback generated without an LLM'
+            : 'AI output generated',
       correlationId,
     });
 
@@ -100,9 +164,13 @@ export class CaseAiService {
       tenantId: params.tenantId,
       environmentId: context.environmentId,
       region: context.region,
-      evidenceType: 'AI_OUTPUT',
-      producingService: 'shield-ai',
-      sourceSystemId: 'shield-ai',
+      evidenceType: deterministicFallback
+        ? 'DETERMINISTIC_FALLBACK'
+        : 'AI_OUTPUT',
+      producingService: deterministicFallback ? 'shield-core' : 'shield-ai',
+      sourceSystemId: deterministicFallback
+        ? 'shield-core-no-llm-continuity'
+        : 'shield-ai',
       sourceObjectId: aiOutput.id,
       purpose: 'INVESTIGATION',
       content: {
@@ -110,6 +178,9 @@ export class CaseAiService {
         useCase: AI_USE_CASE_KEYS[params.useCaseSlug],
         citations: aiOutput.citations,
         limitations: aiOutput.limitations,
+        deterministic: deterministicFallback,
+        continuityEventId: aiOutput.continuityEventId,
+        content: deterministicFallback ? aiOutput.content : undefined,
       },
     });
 

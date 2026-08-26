@@ -10,7 +10,14 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { IsNumber, IsPositive, IsString } from 'class-validator';
+import {
+  IsDefined,
+  IsNumber,
+  IsPositive,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+import { Type } from 'class-transformer';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import {
@@ -22,6 +29,9 @@ import { ExternallyAuthenticatedEndpoint } from '../../security/endpoint-access.
 import { RequirePermissions } from '../authorization/decorators/require-permissions.decorator';
 import { RequireAssurance } from '../authorization/decorators/require-assurance.decorator';
 import { PERMISSION_CODES } from '../authorization/constants';
+import { HumanAuthorityAttestationDto } from '../human-authority/human-authority.dto';
+import { RequireHumanAuthority } from '../human-authority/human-authority.decorator';
+import { HumanAuthorityGuard } from '../human-authority/human-authority.guard';
 
 export class RefundPaymentDto {
   @IsNumber()
@@ -30,6 +40,11 @@ export class RefundPaymentDto {
 
   @IsString()
   reason!: string;
+
+  @IsDefined()
+  @ValidateNested()
+  @Type(() => HumanAuthorityAttestationDto)
+  humanAuthority!: HumanAuthorityAttestationDto;
 }
 
 /** Authenticated, tenant-principal-initiated payment operations. */
@@ -70,6 +85,8 @@ export class PaymentController {
   }
 
   @Patch(':id/refund')
+  @UseGuards(HumanAuthorityGuard)
+  @RequireHumanAuthority('REFUND_AUTHORIZATION', 'Payment', 'id')
   @RequirePermissions(PERMISSION_CODES.TENANT_REFUND_MANAGE)
   @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
   async refund(

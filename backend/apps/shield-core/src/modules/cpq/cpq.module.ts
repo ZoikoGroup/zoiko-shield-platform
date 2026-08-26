@@ -1,5 +1,9 @@
 import { Module } from '@nestjs/common';
-import { QuoteController, OrderController } from './cpq.controller';
+import {
+  OrderController,
+  PlatformOfferReadinessController,
+  QuoteController,
+} from './cpq.controller';
 import { QuoteService } from './quote.service';
 import { OrderService } from './order.service';
 import { SubscriptionService } from './subscription.service';
@@ -15,6 +19,19 @@ import {
   TenantSubscriptionController,
 } from './subscription-change.controller';
 import { ConcessionService } from './concession.service';
+import { OfferReadinessService } from './offer-readiness.service';
+import { TaxModule } from '../tax/tax.module';
+import { EvidenceModule } from '../evidence/evidence.module';
+import { RoadmapCommitmentService } from './roadmap-commitment.service';
+import {
+  PlatformRoadmapCommitmentController,
+  TenantRoadmapCommitmentController,
+} from './roadmap-commitment.controller';
+import { DiscountApprovalService } from './discount-approval.service';
+import {
+  PlatformDiscountAuthorityPolicyController,
+  TenantQuoteDiscountReviewController,
+} from './discount-approval.controller';
 
 @Module({
   imports: [
@@ -24,10 +41,17 @@ import { ConcessionService } from './concession.service';
     ApprovalsModule,
     IdempotencyModule,
     KillSwitchModule,
+    TaxModule,
+    EvidenceModule,
   ],
   controllers: [
     QuoteController,
     OrderController,
+    PlatformOfferReadinessController,
+    TenantRoadmapCommitmentController,
+    PlatformRoadmapCommitmentController,
+    PlatformDiscountAuthorityPolicyController,
+    TenantQuoteDiscountReviewController,
     TenantSubscriptionController,
     PlatformSubscriptionChangeController,
     CommercialConcessionController,
@@ -37,7 +61,18 @@ import { ConcessionService } from './concession.service';
     OrderService,
     SubscriptionService,
     ConcessionService,
+    OfferReadinessService,
+    RoadmapCommitmentService,
+    DiscountApprovalService,
   ],
-  exports: [QuoteService, OrderService, SubscriptionService, ConcessionService],
+  exports: [
+    QuoteService,
+    OrderService,
+    SubscriptionService,
+    ConcessionService,
+    OfferReadinessService,
+    RoadmapCommitmentService,
+    DiscountApprovalService,
+  ],
 })
 export class CpqModule {}

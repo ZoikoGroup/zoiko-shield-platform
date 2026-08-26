@@ -39,7 +39,11 @@ describe('MeterGovernanceService (Category D1-D4)', () => {
         findMany: jest.fn(),
         update: jest.fn(),
       },
-      meterBillingExport: { findFirst: jest.fn() },
+      meterBillingExport: {
+        findFirst: jest.fn(),
+        create: jest.fn(),
+        update: jest.fn(),
+      },
       meterCorrectionRequest: { findFirst: jest.fn(), update: jest.fn() },
       meterEvent: {
         findUniqueOrThrow: jest.fn(),
@@ -82,6 +86,159 @@ describe('MeterGovernanceService (Category D1-D4)', () => {
 
     expect(result.billableQuantity).toBe(0);
     expect(result.classification).toBe('COMMITTED_CONTRACT_NO_SYNTHETIC_USAGE');
+  });
+
+  it('fails closed when a billing export finds billable usage backed by processing loss', async () => {
+    const exportPolicy = {
+      ...policy,
+      status: 'APPROVED',
+      tenant_id: 'tenant-1',
+      environment_id: 'prod',
+      commercial_account_id: 'account-1',
+      meterDefinition: { version: 1, unit: 'EVENTS' },
+      contract: { status: 'ACTIVE' },
+    };
+    prisma.meterAuthorizationPolicy.findFirst.mockResolvedValue(exportPolicy);
+    prisma.meterBillingExport.findFirst.mockResolvedValue(null);
+    prisma.usageRecord.findMany.mockResolvedValue([
+      {
+        id: 'usage-failed',
+        tenant_id: 'tenant-1',
+        environment_id: 'prod',
+        meter_definition_id: 'meter-1',
+        meter_authorization_id: 'policy-1',
+        contract_id: 'contract-1',
+        raw_event_id: 'event-failed',
+        accepted_quantity: 5,
+        billable_quantity: 5,
+        overage_quantity: 0,
+        usage_state: 'ACCEPTED',
+        usage_classification: 'CONTRACT_AUTHORIZED_BILLABLE',
+        immutable_hash: 'usage-hash',
+      },
+    ]);
+    prisma.meterEvent.findMany.mockResolvedValue([
+      {
+        id: 'event-failed',
+        tenant_id: 'tenant-1',
+        environment_id: 'prod',
+        meter_definition_id: 'meter-1',
+        meter_authorization_id: 'policy-1',
+        contract_id: 'contract-1',
+        accepted_state: 'PROCESSING_LOSS',
+        validation_state: 'VALID',
+        dedupe_state: 'UNIQUE',
+        billable_state: 'NON_BILLABLE',
+        correction_type: 'ORIGINAL',
+        source: 'crowdstrike',
+        is_platform_generated: false,
+        immutable_hash: 'event-hash',
+      },
+    ]);
+
+    await expect(
+      service.createBillingExport('tenant-1', 'prod', 'billing-maker', {
+        meterAuthorizationId: 'policy-1',
+        periodStart: new Date('2026-08-01T00:00:00.000Z'),
+        periodEnd: new Date('2026-09-01T00:00:00.000Z'),
+        reason: 'monthly usage',
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        error: 'FAILED_INGESTION_BILLING_ATTEMPT',
+      }),
+    });
+    expect(prisma.meterBillingExport.create).not.toHaveBeenCalled();
+  });
+
+  it('exports only accepted validated deduplicated evidence and records exclusions without a commitment fee', async () => {
+    const exportPolicy = {
+      ...policy,
+      status: 'APPROVED',
+      tenant_id: 'tenant-1',
+      environment_id: 'prod',
+      commercial_account_id: 'account-1',
+      meterDefinition: { version: 1, unit: 'EVENTS' },
+      contract: { status: 'ACTIVE' },
+    };
+    prisma.meterAuthorizationPolicy.findFirst.mockResolvedValue(exportPolicy);
+    prisma.meterBillingExport.findFirst.mockResolvedValue(null);
+    prisma.usageRecord.findMany.mockResolvedValue([
+      {
+        id: 'usage-accepted',
+        tenant_id: 'tenant-1',
+        environment_id: 'prod',
+        meter_definition_id: 'meter-1',
+        meter_authorization_id: 'policy-1',
+        contract_id: 'contract-1',
+        raw_event_id: 'event-accepted',
+        accepted_quantity: 5,
+        billable_quantity: 3,
+        overage_quantity: 3,
+        usage_state: 'ACCEPTED',
+        usage_classification: 'CONTRACT_AUTHORIZED_BILLABLE',
+        immutable_hash: 'usage-hash',
+      },
+    ]);
+    prisma.meterEvent.findMany.mockResolvedValue([
+      {
+        id: 'event-accepted',
+        tenant_id: 'tenant-1',
+        environment_id: 'prod',
+        meter_definition_id: 'meter-1',
+        meter_authorization_id: 'policy-1',
+        contract_id: 'contract-1',
+        accepted_state: 'ACCEPTED',
+        validation_state: 'VALID',
+        dedupe_state: 'UNIQUE',
+        billable_state: 'BILLABLE',
+        correction_type: 'ORIGINAL',
+        source: 'crowdstrike',
+        is_platform_generated: false,
+        immutable_hash: 'event-hash',
+      },
+      {
+        id: 'event-quarantined',
+        accepted_state: 'QUARANTINED',
+        validation_state: 'INVALID',
+        dedupe_state: 'UNIQUE',
+        billable_state: 'NON_BILLABLE',
+        correction_type: 'ORIGINAL',
+        source: 'crowdstrike',
+        is_platform_generated: false,
+        immutable_hash: 'failed-hash',
+      },
+    ]);
+    prisma.meterBillingExport.create.mockImplementation(({ data }: any) =>
+      Promise.resolve({ id: 'export-accepted', ...data }),
+    );
+    prisma.meterBillingExport.update.mockImplementation(({ data }: any) =>
+      Promise.resolve({ id: 'export-accepted', ...data }),
+    );
+    approvals.requestApproval.mockResolvedValue({ id: 'approval-1' });
+
+    await service.createBillingExport(
+      'tenant-1',
+      'prod',
+      'billing-maker',
+      {
+        meterAuthorizationId: 'policy-1',
+        periodStart: new Date('2026-08-01T00:00:00.000Z'),
+        periodEnd: new Date('2026-09-01T00:00:00.000Z'),
+        reason: 'monthly usage',
+      },
+    );
+
+    const created = prisma.meterBillingExport.create.mock.calls[0][0].data;
+    const frozen = JSON.parse(created.immutable_snapshot);
+    expect(JSON.parse(created.event_ids)).toEqual(['event-accepted']);
+    expect(JSON.parse(created.excluded_event_ids)).toEqual([
+      'event-quarantined',
+    ]);
+    expect(created.billing_basis).toBe('ACCEPTED_DATA_USAGE');
+    expect(created.committed_capacity_included).toBe(false);
+    expect(frozen.committedCapacityChargeIncluded).toBe(false);
+    expect(frozen.totals).toEqual({ accepted: 5, billable: 3, overage: 3 });
   });
 
   it('fails closed when customer authorization is required but absent', async () => {
