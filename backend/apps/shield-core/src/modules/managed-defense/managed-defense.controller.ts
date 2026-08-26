@@ -31,6 +31,18 @@ import {
   RecordManagedDefenseDeliveryDto,
   VerifyManagedDefenseReadinessDto,
 } from './managed-defense.service';
+import { IsDefined, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+import { HumanAuthorityAttestationDto } from '../human-authority/human-authority.dto';
+import { RequireHumanAuthority } from '../human-authority/human-authority.decorator';
+import { HumanAuthorityGuard } from '../human-authority/human-authority.guard';
+
+export class DecideManagedDefenseAuthorityDto extends DecideManagedDefenseDto {
+  @IsDefined()
+  @ValidateNested()
+  @Type(() => HumanAuthorityAttestationDto)
+  humanAuthority!: HumanAuthorityAttestationDto;
+}
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions(PERMISSION_CODES.TENANT_COMMERCIAL_ACCOUNT_READ)
@@ -98,13 +110,19 @@ export class ManagedDefenseController {
   }
 
   @Patch('profiles/:id/decision')
+  @UseGuards(HumanAuthorityGuard)
+  @RequireHumanAuthority(
+    'RESPONSE_AUTHORITY_ELEVATION',
+    'ManagedDefenseProfile',
+    'id',
+  )
   @RequirePermissions(PERMISSION_CODES.TENANT_COMMERCIAL_ACCOUNT_APPROVE)
   @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
   async decideProfile(
     @Headers('x-tenant-id') headerTenantId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
-    @Body() dto: DecideManagedDefenseDto,
+    @Body() dto: DecideManagedDefenseAuthorityDto,
   ) {
     const boundary = this.boundary(headerTenantId, user);
     return {

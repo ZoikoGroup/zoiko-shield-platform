@@ -218,6 +218,23 @@ describe('MeteringService (ZS-COM-BILL-001 Part 7: accepted != billable)', () =>
     expect(prismaMock.usageRecord.create).not.toHaveBeenCalled();
   });
 
+  it('provider processing loss is retained as non-billable evidence and never creates usage', async () => {
+    definitionMock.getActiveDefinition.mockResolvedValue(definition);
+    prismaMock.meterEvent.create.mockImplementation(({ data }: any) =>
+      Promise.resolve({ id: 'me-loss', ...data }),
+    );
+
+    const result = await service.recordEvent({
+      ...baseDto,
+      intake: 'PROCESSING_LOSS',
+    });
+
+    expect(result.event.accepted_state).toBe('PROCESSING_LOSS');
+    expect(result.event.billable_state).toBe('NON_BILLABLE');
+    expect(result.usageRecord).toBeNull();
+    expect(prismaMock.usageRecord.create).not.toHaveBeenCalled();
+  });
+
   it('a platform-generated event is forced NON_BILLABLE even on a STANDARD meter', async () => {
     definitionMock.getActiveDefinition.mockResolvedValue(definition);
     prismaMock.meterEvent.findFirst.mockResolvedValue(null);

@@ -15,9 +15,15 @@ import { HypothesisService } from './hypotheses/hypothesis.service';
 import { CaseDecisionService } from './decisions/case-decision.service';
 import { OutboxService } from '../../outbox/outbox.service';
 import { ShieldAiClient } from '../../internal-client/shield-ai.client';
+import { AiGovernanceModule } from '../ai-governance/ai-governance.module';
 
 @Module({
-  imports: [PrismaModule, EvidenceModule, AuthorizationDecisionModule],
+  imports: [
+    PrismaModule,
+    EvidenceModule,
+    AuthorizationDecisionModule,
+    AiGovernanceModule,
+  ],
   controllers: [CaseController, CaseAiController, InternalCaseController],
   providers: [
     CaseService,

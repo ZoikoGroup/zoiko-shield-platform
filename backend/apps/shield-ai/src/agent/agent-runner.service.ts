@@ -37,7 +37,11 @@ export interface AgentRunReceipt {
   tenantId: string;
   caseId?: string;
   goal: string;
-  status: 'COMPLETED' | 'STOPPED_BUDGET_EXHAUSTED' | 'STOPPED_INJECTION_DETECTED' | 'STOPPED_POLICY_DENIAL';
+  status:
+    | 'COMPLETED'
+    | 'STOPPED_BUDGET_EXHAUSTED'
+    | 'STOPPED_INJECTION_DETECTED'
+    | 'STOPPED_POLICY_DENIAL';
   stopReason: string;
   totalSteps: number;
   totalToolCalls: number;
@@ -64,7 +68,10 @@ export class AgentRunnerService {
     tenantId: string;
     caseId?: string;
     initialContext: string;
-    toolsExecutor?: (toolName: string, args: Record<string, unknown>) => Promise<{ result: string; citations?: string[] }>;
+    toolsExecutor?: (
+      toolName: string,
+      args: Record<string, unknown>,
+    ) => Promise<{ result: string; citations?: string[] }>;
   }): Promise<AgentRunReceipt> {
     const runId = `run-${crypto.randomUUID()}`;
     const startTime = Date.now();
@@ -77,12 +84,38 @@ export class AgentRunnerService {
     let stopReason = 'GOAL_MET';
     let status: AgentRunReceipt['status'] = 'COMPLETED';
 
+    // High-impact authority is always retained by an authenticated human.
+    // An agent declaring A4 must not even reach capability issuance.
+    if (params.profile.autonomy === 'A4_HIGH_IMPACT') {
+      return {
+        runId,
+        agentId: params.profile.id,
+        tenantId: params.tenantId,
+        caseId: params.caseId,
+        goal: params.profile.goal,
+        status: 'STOPPED_POLICY_DENIAL',
+        stopReason:
+          'A4_HIGH_IMPACT is human-authority-only; autonomous agent execution is prohibited',
+        totalSteps: 0,
+        totalToolCalls: 0,
+        totalDurationMs: Date.now() - startTime,
+        estimatedCostUsd: 0,
+        steps: [],
+        citations: [],
+        completedAt: new Date(),
+      };
+    }
+
     // Ephemeral working memory / scratchpad (destroyed at run end per §13)
     let scratchpad = `Initial Context: ${params.initialContext}`;
 
     const maxSteps = Math.min(params.profile.budgets.maxSteps || 12, 12);
-    const maxToolCalls = Math.min(params.profile.budgets.maxToolCalls || 20, 20);
-    const maxDurationMs = (params.profile.budgets.maxDurationSeconds || 180) * 1000;
+    const maxToolCalls = Math.min(
+      params.profile.budgets.maxToolCalls || 20,
+      20,
+    );
+    const maxDurationMs =
+      (params.profile.budgets.maxDurationSeconds || 180) * 1000;
     const maxCostUsd = params.profile.budgets.maxCostUsd || 1.5;
 
     while (currentStep < maxSteps) {
@@ -179,7 +212,10 @@ export class AgentRunnerService {
       });
     }
 
-    if (status === 'COMPLETED' && toolCallCount < params.profile.allowedTools.length) {
+    if (
+      status === 'COMPLETED' &&
+      toolCallCount < params.profile.allowedTools.length
+    ) {
       status = 'STOPPED_BUDGET_EXHAUSTED';
       stopReason = `Maximum step limit (${maxSteps}) reached before completing all planned actions`;
     }

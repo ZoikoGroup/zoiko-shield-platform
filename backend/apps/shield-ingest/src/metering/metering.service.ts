@@ -16,6 +16,7 @@ export interface UsageObservationDto {
     | 'REJECTED'
     | 'DUPLICATE'
     | 'QUARANTINED'
+    | 'PROCESSING_LOSS'
     | 'PLATFORM_DERIVED'
     | 'BILLABLE'
     | 'NON_BILLABLE';
@@ -37,120 +38,26 @@ export class MeteringService {
   constructor(private readonly prisma: PrismaService) {}
 
   /**
-   * Evaluates active commercial contract entitlement for tenant (Doctrine D1 & D4).
-   */
-  private async evaluateContractAuthorization(
-    tenantId: string,
-  ): Promise<boolean> {
-    try {
-      const now = new Date();
-      const entitlement = await (this.prisma as any).entitlement?.findFirst({
-        where: {
-          tenant_id: tenantId,
-          status: 'ACTIVE',
-          effective_from: { lte: now },
-          OR: [{ effective_to: null }, { effective_to: { gte: now } }],
-        },
-      });
-      if (entitlement) return true;
-
-      const account = await (this.prisma as any).commercialAccount?.findFirst({
-        where: {
-          status: 'ACTIVE',
-          entitlements: {
-            some: {
-              tenant_id: tenantId,
-              status: 'ACTIVE',
-            },
-          },
-        },
-      });
-      if (account) return true;
-
-      const directAccount = await (
-        this.prisma as any
-      ).commercialAccount?.findFirst({
-        where: {
-          id: tenantId,
-          status: 'ACTIVE',
-        },
-      });
-      return !!directAccount;
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Evaluates active meter definition (Doctrine D1 & D4).
-   */
-  private async evaluateMeterDefinition(sourceType: string) {
-    try {
-      const now = new Date();
-      const definition = await (this.prisma as any).meterDefinition?.findFirst({
-        where: {
-          status: 'APPROVED',
-          effective_from: { lte: now },
-          AND: [
-            { OR: [{ effective_to: null }, { effective_to: { gte: now } }] },
-            {
-              OR: [
-                { meter_key: sourceType },
-                { meter_key: 'COMMERCIAL_DIRECT' },
-                { meter_key: 'WEBHOOK_INGEST' },
-              ],
-            },
-          ],
-        },
-        orderBy: { version: 'desc' },
-      });
-      return definition;
-    } catch {
-      return null;
-    }
-  }
-
-  /**
    * Records telemetry usage observations enforcing ZS-COM-BILL-001 data class rules.
-   * Telemetry is ONLY billable if evaluated against an approved meter_definition + contract authorization.
-   * Duplicate, rejected, quarantined, and platform-generated records are explicitly NON_BILLABLE.
+   * This raw-ingest compatibility record is observation evidence only. It is
+   * never billing authority: governed core metering creates the separate
+   * contract-bound UsageRecord only after validation and deduplication.
    */
   async recordUsageObservation(dto: UsageObservationDto) {
     const environmentId = requireEnvironmentId(dto.environmentId);
-    const acceptedQty =
-      dto.acceptedQuantity !== undefined ? dto.acceptedQuantity : 1;
-
-    let usageState = dto.usageState || 'ACCEPTED';
-    let billableQty = dto.billableQuantity || 0;
-
-    // Force NON_BILLABLE and billableQuantity = 0 for duplicate, rejected, quarantined, or platform-derived states
-    if (
-      ['REJECTED', 'DUPLICATE', 'QUARANTINED', 'PLATFORM_DERIVED'].includes(
-        usageState,
-      )
-    ) {
-      usageState = 'NON_BILLABLE';
-      billableQty = 0;
-    } else {
-      // Evaluate contract authorization and meter definition per Doctrine D1 & D4
-      const hasActiveContract = await this.evaluateContractAuthorization(
-        dto.tenantId,
-      );
-      const activeMeterDef = await this.evaluateMeterDefinition(dto.sourceType);
-
-      if (
-        !hasActiveContract ||
-        !activeMeterDef ||
-        activeMeterDef.billable_policy === 'NEVER_BILLABLE'
-      ) {
-        usageState = 'NON_BILLABLE';
-        billableQty = 0;
-      } else {
-        usageState = 'BILLABLE';
-        billableQty =
-          dto.billableQuantity !== undefined ? dto.billableQuantity : 1;
-      }
-    }
+    const intakeState = dto.usageState || 'OBSERVED';
+    const unaccepted = [
+      'REJECTED',
+      'DUPLICATE',
+      'QUARANTINED',
+      'PROCESSING_LOSS',
+    ].includes(intakeState);
+    const acceptedQty = unaccepted ? 0 : (dto.acceptedQuantity ?? 1);
+    const usageClassification = unaccepted
+      ? `INGESTION_${intakeState}_NON_BILLABLE`
+      : intakeState === 'PLATFORM_DERIVED'
+        ? 'PLATFORM_GENERATED_NON_BILLABLE'
+        : 'INGESTION_PENDING_GOVERNED_VALIDATION';
 
     return this.prisma.usageRecord.create({
       data: {
@@ -161,8 +68,9 @@ export class MeteringService {
         raw_event_id: dto.rawEventId,
         unit: dto.unit || 'EVENTS',
         accepted_quantity: acceptedQty,
-        billable_quantity: billableQty,
-        usage_state: usageState,
+        billable_quantity: 0,
+        usage_state: 'NON_BILLABLE',
+        usage_classification: usageClassification,
         billing_classification:
           dto.billingClassification || 'COMMERCIAL_DIRECT',
       },
@@ -231,20 +139,26 @@ export class MeteringService {
       (r) => r.usage_state === 'NON_BILLABLE',
     ).length;
 
-    // Fetch active entitlement / contract committed capacity & meter definition
-    let committedQuantity = 100000;
-    const overagePolicy = 'STANDARD_OVERAGE_RATE';
-    const overageRate = 0.005;
-
+    // Commitment values come only from approved, active contract policies.
+    // Multiple meter/unit commitments are not collapsed into an invented sum.
+    let commitments: any[] = [];
     try {
-      const activeMeterDef =
-        await this.evaluateMeterDefinition('WEBHOOK_INGEST');
-      if (activeMeterDef && activeMeterDef.included_quantity > 0) {
-        committedQuantity = activeMeterDef.included_quantity;
-      }
+      commitments =
+        (await (this.prisma as any).meterAuthorizationPolicy?.findMany({
+          where: {
+            tenant_id: tenantId,
+            status: 'APPROVED',
+            pricing_model: 'COMMITTED_CAPACITY',
+            contract: { status: 'ACTIVE' },
+          },
+          include: { meterDefinition: true },
+          orderBy: [{ meter_definition_id: 'asc' }, { version: 'desc' }],
+        })) ?? [];
     } catch (err) {
-      this.logger.warn(`Could not load meter definition for forecast: ${err}`);
+      this.logger.warn(`Could not load governed commitments: ${err}`);
     }
+    const singleCommitment = commitments.length === 1 ? commitments[0] : null;
+    const committedQuantity = singleCommitment?.committed_quantity ?? null;
 
     // Calculate run-rate projected forecast based on active records timeline
     let projectedForecast = billableTotal;
@@ -263,29 +177,46 @@ export class MeteringService {
 
     // Warning thresholds per MET-03 (80%, 90%, 100%)
     const utilizationPercentage =
-      committedQuantity > 0 ? (billableTotal / committedQuantity) * 100 : 0;
+      committedQuantity && committedQuantity > 0
+        ? (acceptedTotal / committedQuantity) * 100
+        : 0;
     let thresholdStatus:
-      'NORMAL' | 'WARNING_80' | 'WARNING_90' | 'EXCEEDED_100' = 'NORMAL';
-    if (utilizationPercentage >= 100) {
+      | 'NOT_CONFIGURED'
+      | 'MULTIPLE_POLICIES'
+      | 'NORMAL'
+      | 'WARNING_80'
+      | 'WARNING_90'
+      | 'EXCEEDED_100' = singleCommitment
+      ? 'NORMAL'
+      : commitments.length
+        ? 'MULTIPLE_POLICIES'
+        : 'NOT_CONFIGURED';
+    if (singleCommitment && utilizationPercentage >= 100) {
       thresholdStatus = 'EXCEEDED_100';
-    } else if (utilizationPercentage >= 90) {
+    } else if (singleCommitment && utilizationPercentage >= 90) {
       thresholdStatus = 'WARNING_90';
-    } else if (utilizationPercentage >= 80) {
+    } else if (singleCommitment && utilizationPercentage >= 80) {
       thresholdStatus = 'WARNING_80';
     }
 
     const warningThresholds = {
-      capacity80: Math.round(committedQuantity * 0.8),
-      capacity90: Math.round(committedQuantity * 0.9),
+      capacity80: committedQuantity
+        ? Math.round(committedQuantity * 0.8)
+        : null,
+      capacity90: committedQuantity
+        ? Math.round(committedQuantity * 0.9)
+        : null,
       capacity100: committedQuantity,
       utilizationPercentage: Number(utilizationPercentage.toFixed(2)),
       status: thresholdStatus,
     };
 
     const overageRatePolicy = {
-      policy: overagePolicy,
-      unitRateUsd: overageRate,
-      capEnforcement: 'NOTIFICATIONS_AND_OVERAGE_BILLING',
+      policy: singleCommitment?.overage_behavior ?? 'NOT_CONFIGURED',
+      unitRateUsd: singleCommitment?.overage_rate ?? null,
+      capEnforcement: singleCommitment
+        ? 'GOVERNED_BY_CONTRACT_POLICY'
+        : 'NO_INVENTED_OVERAGE_POLICY',
     };
 
     return {
@@ -295,6 +226,15 @@ export class MeteringService {
       billableTotal,
       nonBillableCount,
       committedQuantity,
+      commitments: commitments.map((policy) => ({
+        policyId: policy.id,
+        contractId: policy.contract_id,
+        meterDefinitionId: policy.meter_definition_id,
+        unit: policy.meterDefinition?.unit,
+        committedQuantity: policy.committed_quantity,
+        overageBehavior: policy.overage_behavior,
+        overageRate: policy.overage_rate,
+      })),
       currentUsage: billableTotal,
       projectedForecast,
       warningThresholds,

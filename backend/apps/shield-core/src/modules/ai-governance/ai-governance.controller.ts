@@ -34,6 +34,10 @@ import {
   MarkAiUsageBillableDto,
   RecordAiUsageDto,
 } from './ai-usage.service';
+import {
+  EvaluateNoLlmContinuityDto,
+  NoLlmContinuityService,
+} from './no-llm-continuity.service';
 
 function boundary(headerTenantId: string, user: AuthenticatedUser) {
   return {
@@ -122,6 +126,33 @@ export class InternalAiProviderCostController {
         requireTenantId(headerTenantId),
         requireEnvironmentId(headerEnvironmentId),
       ),
+    };
+  }
+}
+
+@UseGuards(InternalAuthGuard)
+@Controller('internal/v1/no-llm-continuity')
+export class InternalNoLlmContinuityController {
+  constructor(private readonly continuity: NoLlmContinuityService) {}
+
+  @Post('evaluate')
+  async evaluate(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Headers('x-environment-id') headerEnvironmentId: string,
+    @Body() dto: EvaluateNoLlmContinuityDto,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, dto.tenantId);
+    const environmentId = requireEnvironmentId(
+      headerEnvironmentId,
+      dto.environmentId,
+    );
+    return {
+      statusCode: HttpStatus.OK,
+      data: await this.continuity.evaluate({
+        ...dto,
+        tenantId,
+        environmentId,
+      }),
     };
   }
 }

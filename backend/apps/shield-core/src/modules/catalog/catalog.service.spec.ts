@@ -29,6 +29,8 @@ describe('CatalogService (Category B catalog and pricing controls)', () => {
         update: jest.fn(),
         findFirst: jest.fn(),
       },
+      meterDefinition: { findMany: jest.fn() },
+      claimRegister: { findMany: jest.fn() },
       commercialAccount: { findUnique: jest.fn() },
       commercialApproval: { update: jest.fn() },
       $transaction: jest.fn((callback) => callback(prisma)),
@@ -140,6 +142,111 @@ describe('CatalogService (Category B catalog and pricing controls)', () => {
     await expect(
       service.validateProductSelection('cat-1', ['ADDON']),
     ).rejects.toThrow("requires 'CORE'");
+  });
+
+  it('resolves technology and human-service bundle components against approved meter and claim definitions', async () => {
+    const rules = [
+      {
+        relationshipType: 'INCLUDES' as const,
+        targetSku: 'TECH-COMPONENT',
+        componentType: 'TECHNOLOGY' as const,
+        quantity: 2,
+        allocationPercent: 70,
+        entitlementOfferType: 'MANAGED_DEFENSE' as const,
+        meterKey: 'protected-resources',
+        costClass: 'TELEMETRY_AND_PLATFORM',
+        claimKey: 'CONTINUOUS_MONITORING',
+        invoicePresentation: 'AGGREGATE_ALLOWED' as const,
+      },
+      {
+        relationshipType: 'INCLUDES' as const,
+        targetSku: 'SERVICE-COMPONENT',
+        componentType: 'HUMAN_SERVICE' as const,
+        quantity: 1,
+        allocationPercent: 30,
+        serviceObligationType: 'QUARTERLY_SECURITY_REVIEW',
+        costClass: 'SECURITY_ANALYST_LABOR',
+        claimKey: 'EXPERT_REVIEW_INCLUDED',
+        invoicePresentation: 'AGGREGATE_ALLOWED' as const,
+      },
+    ];
+    prisma.product.findMany.mockResolvedValue([
+      {
+        id: 'tech-1',
+        sku: 'TECH-COMPONENT',
+        internal_product_key: 'managed-defense-runtime',
+        display_name: 'Managed Defense Runtime',
+        bundle_rules: '[]',
+      },
+      {
+        id: 'service-1',
+        sku: 'SERVICE-COMPONENT',
+        internal_product_key: 'expert-review',
+        display_name: 'Expert Review',
+        bundle_rules: '[]',
+      },
+    ]);
+    prisma.meterDefinition.findMany.mockResolvedValue([
+      { id: 'meter-1', meter_key: 'protected-resources', version: 2 },
+    ]);
+    prisma.claimRegister.findMany.mockResolvedValue([
+      { id: 'claim-1', claim_key: 'CONTINUOUS_MONITORING', version: 2 },
+      { id: 'claim-2', claim_key: 'EXPERT_REVIEW_INCLUDED', version: 1 },
+    ]);
+
+    const expansions = await service.resolveBundleExpansions('cat-1', [
+      {
+        id: 'bundle-1',
+        sku: 'SHIELD-BUNDLE',
+        bundle_rules: JSON.stringify(rules),
+      },
+    ]);
+
+    expect(expansions).toEqual([
+      expect.objectContaining({
+        parentSku: 'SHIELD-BUNDLE',
+        components: [
+          expect.objectContaining({
+            sku: 'TECH-COMPONENT',
+            meterDefinitionId: 'meter-1',
+            claimRegisterId: 'claim-1',
+          }),
+          expect.objectContaining({
+            sku: 'SERVICE-COMPONENT',
+            serviceObligationType: 'QUARTERLY_SECURITY_REVIEW',
+            claimRegisterId: 'claim-2',
+          }),
+        ],
+      }),
+    ]);
+  });
+
+  it('rejects a bundle whose component cost allocation is not complete', async () => {
+    prisma.product.findUnique.mockResolvedValue({
+      id: 'bundle-1',
+      sku: 'SHIELD-BUNDLE',
+      catalog_version_id: 'cat-1',
+    });
+    prisma.catalogVersion.findUnique.mockResolvedValue({
+      id: 'cat-1',
+      status: 'DRAFT',
+    });
+    await expect(
+      service.updateBundleRules('bundle-1', [
+        {
+          relationshipType: 'INCLUDES',
+          targetSku: 'TECH-COMPONENT',
+          componentType: 'TECHNOLOGY',
+          quantity: 1,
+          allocationPercent: 90,
+          entitlementOfferType: 'MANAGED_DEFENSE',
+          meterKey: 'protected-resources',
+          costClass: 'PLATFORM',
+          claimKey: 'CONTINUOUS_MONITORING',
+          invoicePresentation: 'AGGREGATE_ALLOWED',
+        },
+      ]),
+    ).rejects.toThrow('allocation must total 100%');
   });
 
   it('requires a commercial-account mapping for bespoke pricing', async () => {

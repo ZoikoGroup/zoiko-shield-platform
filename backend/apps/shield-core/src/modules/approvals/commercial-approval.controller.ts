@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   Body,
   Controller,
   Get,
@@ -9,7 +10,8 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
-import { IsIn, IsString } from 'class-validator';
+import { IsDefined, IsIn, IsString, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { CurrentUser } from '../identity-adapter/decorators/current-user.decorator';
@@ -22,6 +24,9 @@ import {
   CommercialApprovalService,
   RequestApprovalDto,
 } from './commercial-approval.service';
+import { HumanAuthorityAttestationDto } from '../human-authority/human-authority.dto';
+import { RequireHumanAuthority } from '../human-authority/human-authority.decorator';
+import { HumanAuthorityGuard } from '../human-authority/human-authority.guard';
 
 export class DecideApprovalDto {
   @IsIn(['APPROVED', 'REJECTED'])
@@ -29,6 +34,11 @@ export class DecideApprovalDto {
 
   @IsString()
   reason!: string;
+
+  @IsDefined()
+  @ValidateNested()
+  @Type(() => HumanAuthorityAttestationDto)
+  humanAuthority!: HumanAuthorityAttestationDto;
 }
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -67,6 +77,12 @@ export class CommercialApprovalController {
   }
 
   @Patch(':id/decision')
+  @UseGuards(HumanAuthorityGuard)
+  @RequireHumanAuthority(
+    'COMMERCIAL_CHANGE_AUTHORIZATION',
+    'CommercialApproval',
+    'id',
+  )
   @RequirePermissions(PERMISSION_CODES.TENANT_COMMERCIAL_ACCOUNT_APPROVE)
   @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
   async decide(
@@ -75,10 +91,18 @@ export class CommercialApprovalController {
     @Body() dto: DecideApprovalDto,
     @CurrentUser() user: AuthenticatedUser,
   ) {
-    await this.approvalService.getApprovalByIdForTenant(
+    const existing = await this.approvalService.getApprovalByIdForTenant(
       id,
       requireTenantId(headerTenantId),
     );
+    if (
+      existing.change_type === 'NON_STANDARD_DISCOUNT' &&
+      existing.object_type === 'QuoteDiscountReview'
+    ) {
+      throw new ConflictException(
+        'Use the quote discount-decision endpoint so required approval authority is enforced',
+      );
+    }
     const approval = await this.approvalService.decideApproval(
       id,
       user.id,

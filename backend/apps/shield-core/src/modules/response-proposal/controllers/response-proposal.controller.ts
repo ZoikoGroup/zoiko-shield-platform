@@ -8,12 +8,17 @@ import {
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
+import { IsDefined, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ResponseProposalService } from '../services/response-proposal.service';
 import { JwtAuthGuard } from '../../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../authorization/guards/permissions.guard';
 import { CurrentUser } from '../../identity-adapter/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../identity-adapter/interfaces/jwt-payload.interface';
 import { requireTenantId, requireEnvironmentId } from '../../../tenant-context';
+import { HumanAuthorityAttestationDto } from '../../human-authority/human-authority.dto';
+import { RequireHumanAuthority } from '../../human-authority/human-authority.decorator';
+import { HumanAuthorityGuard } from '../../human-authority/human-authority.guard';
 
 export class CreateProposalDto {
   environmentId?: string;
@@ -31,6 +36,11 @@ export class CreateProposalDto {
 
 export class ApproveProposalDto {
   reason?: string;
+
+  @IsDefined()
+  @ValidateNested()
+  @Type(() => HumanAuthorityAttestationDto)
+  humanAuthority!: HumanAuthorityAttestationDto;
 }
 
 export class RejectProposalDto {
@@ -119,6 +129,12 @@ export class ResponseProposalController {
   }
 
   @Post('response-proposals/:proposalId/approve')
+  @UseGuards(HumanAuthorityGuard)
+  @RequireHumanAuthority(
+    'HIGH_IMPACT_RESPONSE_AUTHORIZATION',
+    'ActionProposal',
+    'proposalId',
+  )
   async approve(
     @Headers('x-tenant-id') headerTenantId: string,
     @Param('proposalId') proposalId: string,
