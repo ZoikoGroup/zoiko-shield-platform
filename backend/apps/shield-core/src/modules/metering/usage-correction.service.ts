@@ -5,23 +5,23 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
-export interface SubmitUsageDisputeDto {
-  meterDefinitionId: string;
-  disputedPeriodStart: string;
-  disputedPeriodEnd: string;
-  claimedQuantity: number;
-  reason: string;
-  evidenceReference: string;
+export class SubmitUsageDisputeDto {
+  meterDefinitionId!: string;
+  disputedPeriodStart!: string;
+  disputedPeriodEnd!: string;
+  claimedQuantity!: number;
+  reason!: string;
+  evidenceReference!: string;
 }
 
-export interface PostUsageCorrectionDto {
+export class PostUsageCorrectionDto {
   disputeId?: string;
-  meterDefinitionId: string;
-  correctionType: 'REVERSAL' | 'REPLACEMENT' | 'ADJUSTMENT';
+  meterDefinitionId!: string;
+  correctionType!: 'REVERSAL' | 'REPLACEMENT' | 'ADJUSTMENT';
   originalRecordId?: string;
-  adjustedQuantity: number;
-  reason: string;
-  approvedBy: string;
+  adjustedQuantity!: number;
+  reason!: string;
+  approvedBy!: string;
 }
 
 @Injectable()

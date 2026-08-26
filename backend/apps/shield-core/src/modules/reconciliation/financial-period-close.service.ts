@@ -5,20 +5,20 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
-export interface CloseFinancialPeriodDto {
-  periodKey: string; // e.g. '2026-07'
-  periodStart: string;
-  periodEnd: string;
-  closingNotes: string;
-  approverId: string;
-  dualControlSignoffId: string;
+export class CloseFinancialPeriodDto {
+  periodKey!: string; // e.g. '2026-07'
+  periodStart!: string;
+  periodEnd!: string;
+  closingNotes!: string;
+  approverId!: string;
+  dualControlSignoffId!: string;
 }
 
-export interface RequestEmergencyOverrideDto {
-  periodKey: string;
-  targetDomain: 'INVOICE' | 'PAYMENT' | 'METER_EXPORT' | 'PARTNER_SETTLEMENT';
-  reason: string;
-  justificationRef: string;
+export class RequestEmergencyOverrideDto {
+  periodKey!: string;
+  targetDomain!: 'INVOICE' | 'PAYMENT' | 'METER_EXPORT' | 'PARTNER_SETTLEMENT';
+  reason!: string;
+  justificationRef!: string;
 }
 
 @Injectable()
