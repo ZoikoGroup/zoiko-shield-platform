@@ -8,11 +8,17 @@ import {
 import { Reflector } from '@nestjs/core';
 
 export const PLANE_METADATA_KEY = 'ZOIKO_SYSTEM_PLANE';
-export type SystemPlane = 'PLANE_1_COMMERCIAL' | 'PLANE_2_SECURITY_EVIDENCE' | 'SHARED_IDENTITY';
+export type SystemPlane =
+  'PLANE_1_COMMERCIAL' | 'PLANE_2_SECURITY_EVIDENCE' | 'SHARED_IDENTITY';
 
-export const RequirePlane = (plane: SystemPlane) =>
+export const RequirePlane =
+  (plane: SystemPlane) =>
   (target: any, key?: string | symbol, descriptor?: any) => {
-    Reflect.defineMetadata(PLANE_METADATA_KEY, plane, descriptor?.value || target);
+    Reflect.defineMetadata(
+      PLANE_METADATA_KEY,
+      plane,
+      descriptor?.value || target,
+    );
     return descriptor || target;
   };
 
@@ -49,7 +55,8 @@ export class TwoPlaneIsolationGuard implements CanActivate {
     const body = request.body || {};
 
     // Check caller's asserted source plane or origin context
-    const callerSourcePlane = headers['x-zoiko-source-plane'] as string | undefined;
+    const callerSourcePlane = headers['x-zoiko-source-plane'] as
+      string | undefined;
 
     // Rule 1: Plane 2 (Security Telemetry / Ingestion) cannot directly write to Plane 1 (Commercial)
     if (
@@ -57,7 +64,8 @@ export class TwoPlaneIsolationGuard implements CanActivate {
       callerSourcePlane === 'PLANE_2_SECURITY_EVIDENCE'
     ) {
       // Unless it's an explicit authorized work order payload with commercial authorization signature
-      const hasExplicitCommercialOrder = body.workOrderAuthorizationApproved === true;
+      const hasExplicitCommercialOrder =
+        body.workOrderAuthorizationApproved === true;
       if (!hasExplicitCommercialOrder) {
         this.logger.error(
           `[Two-Plane Breach Blocked] Plane 2 Security event attempted to mutate Plane 1 Commercial data without explicit order approval! Route: ${request.path}`,
@@ -69,7 +77,11 @@ export class TwoPlaneIsolationGuard implements CanActivate {
     }
 
     // Rule 2: Anti-Perverse-Incentive Check - Ingestion alert surges cannot directly modify price books
-    if (targetPlane === 'PLANE_1_COMMERCIAL' && body.sourceAlertId && !body.commercialOrderReference) {
+    if (
+      targetPlane === 'PLANE_1_COMMERCIAL' &&
+      body.sourceAlertId &&
+      !body.commercialOrderReference
+    ) {
       this.logger.error(
         `[Two-Plane Breach Blocked] Attempted to create commercial charge directly from alertId '${body.sourceAlertId}' without commercialOrderReference`,
       );

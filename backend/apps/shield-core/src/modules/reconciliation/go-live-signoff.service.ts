@@ -67,7 +67,8 @@ export class GoLiveSignoffService {
 
     return {
       evaluatedAt: new Date().toISOString(),
-      overallReadiness: failedCount === 0 ? 'READY_FOR_PRODUCTION' : 'NOT_READY',
+      overallReadiness:
+        failedCount === 0 ? 'READY_FOR_PRODUCTION' : 'NOT_READY',
       checksCount: checks.length,
       passedCount: checks.filter((c) => c.status === 'PASSED').length,
       categories: checks,

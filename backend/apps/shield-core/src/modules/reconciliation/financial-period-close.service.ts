@@ -32,7 +32,10 @@ export class FinancialPeriodCloseService {
       );
     }
 
-    if (dto.approverId === dto.dualControlSignoffId || dto.approverId === actorId) {
+    if (
+      dto.approverId === dto.dualControlSignoffId ||
+      dto.approverId === actorId
+    ) {
       throw new ConflictException(
         'Dual-control rule violation: Approver and Dual-Control sign-off must be distinct users',
       );
@@ -127,7 +130,10 @@ export class FinancialPeriodCloseService {
     const events = await this.prisma.commercialEvent.findMany({
       where: {
         event_type: {
-          in: ['financial_period.closed', 'financial_period.emergency_override_requested'],
+          in: [
+            'financial_period.closed',
+            'financial_period.emergency_override_requested',
+          ],
         },
       },
       orderBy: { created_at: 'desc' },
@@ -136,7 +142,12 @@ export class FinancialPeriodCloseService {
 
     return events.map((e) => {
       try {
-        return { id: e.id, eventType: e.event_type, createdAt: e.created_at, ...JSON.parse(e.payload) };
+        return {
+          id: e.id,
+          eventType: e.event_type,
+          createdAt: e.created_at,
+          ...JSON.parse(e.payload),
+        };
       } catch {
         return { id: e.id, eventType: e.event_type, createdAt: e.created_at };
       }

@@ -171,4 +171,3 @@ import { IdempotencyService } from '../../shield-core/src/modules/idempotency/id
   exports: [UsageThresholdDispatcherService],
 })
 export class ShieldIngestModule {}
-

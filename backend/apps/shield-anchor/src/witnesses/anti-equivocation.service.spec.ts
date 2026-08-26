@@ -20,8 +20,10 @@ describe('AntiEquivocationService', () => {
     const epoch1 = service.recordCommitment({
       tenantId: 'ten-corp-01',
       epoch: 1,
-      previousEpochRoot: '0000000000000000000000000000000000000000000000000000000000000000',
-      currentEpochRoot: 'aaaa111122223333444455556666777788889999aaaabbbbccccddddeeeeffff',
+      previousEpochRoot:
+        '0000000000000000000000000000000000000000000000000000000000000000',
+      currentEpochRoot:
+        'aaaa111122223333444455556666777788889999aaaabbbbccccddddeeeeffff',
       publishedSignature: 'sig-001',
       witnessCount: 2,
     });
@@ -30,8 +32,10 @@ describe('AntiEquivocationService', () => {
     const epoch2 = service.recordCommitment({
       tenantId: 'ten-corp-01',
       epoch: 2,
-      previousEpochRoot: 'aaaa111122223333444455556666777788889999aaaabbbbccccddddeeeeffff',
-      currentEpochRoot: 'bbbb22223333444455556666777788889999aaaabbbbccccddddeeeeffffaaaa',
+      previousEpochRoot:
+        'aaaa111122223333444455556666777788889999aaaabbbbccccddddeeeeffff',
+      currentEpochRoot:
+        'bbbb22223333444455556666777788889999aaaabbbbccccddddeeeeffffaaaa',
       publishedSignature: 'sig-002',
       witnessCount: 2,
     });
@@ -42,7 +46,8 @@ describe('AntiEquivocationService', () => {
     service.recordCommitment({
       tenantId: 'ten-corp-01',
       epoch: 1,
-      previousEpochRoot: '0000000000000000000000000000000000000000000000000000000000000000',
+      previousEpochRoot:
+        '0000000000000000000000000000000000000000000000000000000000000000',
       currentEpochRoot: 'root-valid-1',
       publishedSignature: 'sig-001',
       witnessCount: 2,
@@ -51,7 +56,8 @@ describe('AntiEquivocationService', () => {
     const conflicting = service.recordCommitment({
       tenantId: 'ten-corp-01',
       epoch: 1,
-      previousEpochRoot: '0000000000000000000000000000000000000000000000000000000000000000',
+      previousEpochRoot:
+        '0000000000000000000000000000000000000000000000000000000000000000',
       currentEpochRoot: 'root-malicious-fork-1',
       publishedSignature: 'sig-evil',
       witnessCount: 1,
@@ -65,7 +71,8 @@ describe('AntiEquivocationService', () => {
     service.recordCommitment({
       tenantId: 'ten-corp-01',
       epoch: 1,
-      previousEpochRoot: '0000000000000000000000000000000000000000000000000000000000000000',
+      previousEpochRoot:
+        '0000000000000000000000000000000000000000000000000000000000000000',
       currentEpochRoot: 'root-epoch-1',
       publishedSignature: 'sig-001',
       witnessCount: 2,

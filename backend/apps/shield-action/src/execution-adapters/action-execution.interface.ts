@@ -27,5 +27,7 @@ export interface ExecutionReceipt {
 export interface ActionExecutionAdapter {
   supportsAction(actionType: string): boolean;
   execute(context: ActionExecutionContext): Promise<ExecutionReceipt>;
-  rollback(receipt: ExecutionReceipt): Promise<{ status: 'ROLLED_BACK' | 'FAILED'; error?: string }>;
+  rollback(
+    receipt: ExecutionReceipt,
+  ): Promise<{ status: 'ROLLED_BACK' | 'FAILED'; error?: string }>;
 }

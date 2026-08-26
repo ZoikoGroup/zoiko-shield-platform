@@ -208,7 +208,10 @@ export class ResourceCountingService {
 
         for (const resource of resources) {
           const intervals = resource.windows.map((window) => ({
-            start: Math.max(windowStart.getTime(), window.observed_from.getTime()),
+            start: Math.max(
+              windowStart.getTime(),
+              window.observed_from.getTime(),
+            ),
             end: Math.min(windowEnd.getTime(), window.observed_to.getTime()),
           }));
           const duration = this.durationSeconds(intervals);
@@ -289,7 +292,7 @@ export class ResourceCountingService {
             : policy.aggregation_method === 'AVERAGE'
               ? average
               : policy.aggregation_method === 'COMMITTED'
-                ? policy.committed_quantity ?? 0
+                ? (policy.committed_quantity ?? 0)
                 : highWater;
         return {
           policyId: policy.id,
@@ -318,19 +321,18 @@ export class ResourceCountingService {
 
     // Validate selected metrics against every concurrently billable metric for
     // the same physical resource, so omitting a policy cannot hide overlap.
-    const overlapCandidates =
-      await this.prisma.resourceObservation.findMany({
-        where: {
-          tenant_id: tenantId,
-          environment_id: environmentId,
-          coverage_state: 'BILLABLE',
-          billable_state: 'BILLABLE',
-          first_seen_at: { lte: windowEnd },
-          last_seen_at: { gte: windowStart },
-        },
-        include: { coveragePolicy: true },
-        orderBy: { id: 'asc' },
-      });
+    const overlapCandidates = await this.prisma.resourceObservation.findMany({
+      where: {
+        tenant_id: tenantId,
+        environment_id: environmentId,
+        coverage_state: 'BILLABLE',
+        billable_state: 'BILLABLE',
+        first_seen_at: { lte: windowEnd },
+        last_seen_at: { gte: windowStart },
+      },
+      include: { coveragePolicy: true },
+      orderBy: { id: 'asc' },
+    });
     const selectedPhysicalIds = new Set(
       rawResources
         .filter((resource) => resource.included === true)
@@ -354,20 +356,16 @@ export class ResourceCountingService {
           const b = candidates[right];
           if (a.metric_family === b.metric_family) continue;
           const aDisclosed = a.coveragePolicy
-            ? this.parseStringArray(
-                a.coveragePolicy.disclosed_metric_families,
-              )
+            ? this.parseStringArray(a.coveragePolicy.disclosed_metric_families)
             : [];
           const bDisclosed = b.coveragePolicy
-            ? this.parseStringArray(
-                b.coveragePolicy.disclosed_metric_families,
-              )
+            ? this.parseStringArray(b.coveragePolicy.disclosed_metric_families)
             : [];
           const allowed = Boolean(
             a.coveragePolicy?.disclosure_reference &&
-              b.coveragePolicy?.disclosure_reference &&
-              aDisclosed.includes(b.metric_family) &&
-              bDisclosed.includes(a.metric_family),
+            b.coveragePolicy?.disclosure_reference &&
+            aDisclosed.includes(b.metric_family) &&
+            bDisclosed.includes(a.metric_family),
           );
           blockedOverlap ||= !allowed;
           overlaps.push({
@@ -449,11 +447,7 @@ export class ResourceCountingService {
     });
   }
 
-  async getPreview(
-    id: string,
-    tenantId: string,
-    environmentId: string,
-  ) {
+  async getPreview(id: string, tenantId: string, environmentId: string) {
     const preview = await this.prisma.resourceCountPreview.findFirst({
       where: { id, tenant_id: tenantId, environment_id: environmentId },
     });

@@ -27,7 +27,8 @@ export class ActionAuthorityService {
       if (!params.isSimulation) {
         return {
           allowed: false,
-          reason: 'Authority level R0 is simulation-only and cannot execute live estate actions',
+          reason:
+            'Authority level R0 is simulation-only and cannot execute live estate actions',
         };
       }
       return { allowed: true };

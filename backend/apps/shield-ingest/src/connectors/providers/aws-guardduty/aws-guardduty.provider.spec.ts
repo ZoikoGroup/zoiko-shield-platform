@@ -59,7 +59,8 @@ describe('AwsGuardDutyProvider & Normalizer', () => {
       createdAt: '2026-08-25T12:00:00Z',
       updatedAt: '2026-08-25T12:05:00Z',
       title: 'SSH brute force attacks against EC2 instance i-0123456789abcdef0',
-      description: '198.51.100.99 is performing SSH brute force attacks against i-0123456789abcdef0.',
+      description:
+        '198.51.100.99 is performing SSH brute force attacks against i-0123456789abcdef0.',
     };
 
     const normalized = normalizer.normalizeFinding(

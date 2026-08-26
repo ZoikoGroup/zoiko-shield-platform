@@ -217,17 +217,12 @@ describe('MeterGovernanceService (Category D1-D4)', () => {
     );
     approvals.requestApproval.mockResolvedValue({ id: 'approval-1' });
 
-    await service.createBillingExport(
-      'tenant-1',
-      'prod',
-      'billing-maker',
-      {
-        meterAuthorizationId: 'policy-1',
-        periodStart: new Date('2026-08-01T00:00:00.000Z'),
-        periodEnd: new Date('2026-09-01T00:00:00.000Z'),
-        reason: 'monthly usage',
-      },
-    );
+    await service.createBillingExport('tenant-1', 'prod', 'billing-maker', {
+      meterAuthorizationId: 'policy-1',
+      periodStart: new Date('2026-08-01T00:00:00.000Z'),
+      periodEnd: new Date('2026-09-01T00:00:00.000Z'),
+      reason: 'monthly usage',
+    });
 
     const created = prisma.meterBillingExport.create.mock.calls[0][0].data;
     const frozen = JSON.parse(created.immutable_snapshot);

@@ -1,7 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export class PublishTrustCenterArtifactDto {
@@ -32,7 +29,9 @@ export class TrustCenterService {
     actorId: string,
   ) {
     if (!dto.title || !dto.documentRef) {
-      throw new BadRequestException('Artifact title and documentRef are required');
+      throw new BadRequestException(
+        'Artifact title and documentRef are required',
+      );
     }
 
     const event = await this.prisma.commercialEvent.create({
@@ -97,7 +96,11 @@ export class TrustCenterService {
       })),
       publishedArtifacts: publications.map((p) => {
         try {
-          return { id: p.id, publishedAt: p.created_at, ...JSON.parse(p.payload) };
+          return {
+            id: p.id,
+            publishedAt: p.created_at,
+            ...JSON.parse(p.payload),
+          };
         } catch {
           return { id: p.id, publishedAt: p.created_at };
         }
@@ -112,7 +115,6 @@ export class TrustCenterService {
       })),
     };
   }
-
 
   async getProcurementWorkspace(tenantId: string) {
     const accounts = await this.prisma.commercialAccount.findMany({
@@ -140,13 +142,29 @@ export class TrustCenterService {
         customerLegalName: a.customer_legal_name,
         currency: a.currency,
         billingSource: a.billing_source,
-        contacts: typeof a.contacts === 'string' ? JSON.parse(a.contacts) : a.contacts,
-        taxFacts: typeof a.tax_facts === 'string' ? JSON.parse(a.tax_facts) : a.tax_facts,
+        contacts:
+          typeof a.contacts === 'string' ? JSON.parse(a.contacts) : a.contacts,
+        taxFacts:
+          typeof a.tax_facts === 'string'
+            ? JSON.parse(a.tax_facts)
+            : a.tax_facts,
       })),
       securityExhibits: [
-        { key: 'DPA', name: 'Data Processing Addendum v2.1', status: 'EXECUTED' },
-        { key: 'SLA', name: 'Service Level Agreement Standard', status: 'ACTIVE' },
-        { key: 'SOC2_TYPE_II', name: 'SOC 2 Type II Compliance Report', status: 'AVAILABLE' },
+        {
+          key: 'DPA',
+          name: 'Data Processing Addendum v2.1',
+          status: 'EXECUTED',
+        },
+        {
+          key: 'SLA',
+          name: 'Service Level Agreement Standard',
+          status: 'ACTIVE',
+        },
+        {
+          key: 'SOC2_TYPE_II',
+          name: 'SOC 2 Type II Compliance Report',
+          status: 'AVAILABLE',
+        },
       ],
     };
   }

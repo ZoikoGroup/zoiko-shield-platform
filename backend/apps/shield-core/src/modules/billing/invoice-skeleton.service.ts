@@ -432,8 +432,8 @@ export class InvoiceSkeletonService {
       }
 
       if (source.basisType === 'CONTRACT_COMMITMENT') {
-        const commitment =
-          await this.prisma.meterAuthorizationPolicy.findFirst({
+        const commitment = await this.prisma.meterAuthorizationPolicy.findFirst(
+          {
             where: {
               id: source.sourceId,
               commercial_account_id: invoice.commercial_account_id,
@@ -449,7 +449,8 @@ export class InvoiceSkeletonService {
               ],
             },
             include: { meterDefinition: true },
-          });
+          },
+        );
         if (!commitment || !commitment.committed_quantity) {
           throw new ConflictException({
             statusCode: 409,

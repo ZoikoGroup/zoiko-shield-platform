@@ -170,9 +170,7 @@ export class DiscountApprovalService {
       );
     }
     const effectiveFrom = new Date(dto.effectiveFrom);
-    const effectiveTo = dto.effectiveTo
-      ? new Date(dto.effectiveTo)
-      : undefined;
+    const effectiveTo = dto.effectiveTo ? new Date(dto.effectiveTo) : undefined;
     if (
       Number.isNaN(effectiveFrom.getTime()) ||
       (effectiveTo &&
@@ -416,7 +414,7 @@ export class DiscountApprovalService {
 
     const partnerRate =
       input.partnerEconomics.route === 'PARTNER'
-        ? input.partnerEconomics.commissionPercent ?? 0
+        ? (input.partnerEconomics.commissionPercent ?? 0)
         : 0;
     const analyses: Array<Record<string, unknown>> = [];
     const policyIds: string[] = [];
@@ -554,11 +552,7 @@ export class DiscountApprovalService {
     };
   }
 
-  async getReview(
-    quoteId: string,
-    tenantId: string,
-    environmentId: string,
-  ) {
+  async getReview(quoteId: string, tenantId: string, environmentId: string) {
     const review = await this.prisma.quoteDiscountReview.findFirst({
       where: {
         quote_id: quoteId,
@@ -582,7 +576,11 @@ export class DiscountApprovalService {
     actorId: string,
   ) {
     const quote = await this.prisma.commercialQuote.findFirst({
-      where: { id: quoteId, tenant_id: tenantId, environment_id: environmentId },
+      where: {
+        id: quoteId,
+        tenant_id: tenantId,
+        environment_id: environmentId,
+      },
       include: { discountReview: true },
     });
     const review = quote?.discountReview;
@@ -612,9 +610,7 @@ export class DiscountApprovalService {
       termMonths: review.term_months,
       rampSchedule: JSON.parse(review.ramp_schedule),
       minimumCommitAmount: Number(review.minimum_commit_amount),
-      catalogMinimumCommitAmount: Number(
-        review.catalog_minimum_commit_amount,
-      ),
+      catalogMinimumCommitAmount: Number(review.catalog_minimum_commit_amount),
       discountExpiresAt: review.discount_expires_at.toISOString(),
       requiredApprovalRole: review.required_approval_role,
       authorityRank: review.authority_rank,

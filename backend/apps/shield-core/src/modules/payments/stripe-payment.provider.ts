@@ -9,7 +9,8 @@ import {
 @Injectable()
 export class StripePaymentProvider implements PaymentProvider {
   private readonly logger = new Logger(StripePaymentProvider.name);
-  private readonly webhookSecret = process.env.STRIPE_WEBHOOK_SECRET || 'whsec_demo_secret_key_testing';
+  private readonly webhookSecret =
+    process.env.STRIPE_WEBHOOK_SECRET || 'whsec_demo_secret_key_testing';
 
   async createPayment(
     amount: number,
@@ -59,7 +60,10 @@ export class StripePaymentProvider implements PaymentProvider {
       return false;
     }
     // Test mode allows test signatures
-    if (signature === 't=12345,v1=test-signature' || signature.startsWith('sig_test_')) {
+    if (
+      signature === 't=12345,v1=test-signature' ||
+      signature.startsWith('sig_test_')
+    ) {
       return true;
     }
 

@@ -16,17 +16,21 @@ describe('ServiceCreditLedgerService (ZS-COM-BILL-001 §9 E3 & SVC-02 SLA Credit
       ],
     }).compile();
 
-    service = module.get<ServiceCreditLedgerService>(ServiceCreditLedgerService);
+    service = module.get<ServiceCreditLedgerService>(
+      ServiceCreditLedgerService,
+    );
   });
 
   it('registers approved service credit linked to SLA breach claim and evidence hash', () => {
     const credit = service.registerApprovedCredit({
       tenantId: 'tenant-sla-01',
       slaBreachClaimId: 'claim-breach-101',
-      evidenceRecordHash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+      evidenceRecordHash:
+        'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
       creditAmount: 250.0,
       currency: 'USD',
-      reason: 'SOC Triage SLA Breached: Critical response took 45m (Target: 15m)',
+      reason:
+        'SOC Triage SLA Breached: Critical response took 45m (Target: 15m)',
     });
 
     expect(credit.creditId).toBeDefined();

@@ -64,7 +64,9 @@ describe('EvaluationRunnerService (ZS-ENG-AI-001 §19)', () => {
 
     expect(report.releaseDecision).toBe('BLOCKED');
     expect(report.criticalFailureCount).toBe(1);
-    expect(report.blockingReasons[0]).toContain('Cross-tenant disclosure detected');
+    expect(report.blockingReasons[0]).toContain(
+      'Cross-tenant disclosure detected',
+    );
   });
 
   it('immediately blocks release on fabricated evidence assertion (§19.1)', async () => {

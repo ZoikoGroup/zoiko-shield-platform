@@ -31,9 +31,14 @@ describe('DetectionExplanationService (ZS-ENG-AI-001 §17 & §18)', () => {
         id: 'out-2',
         outputType: DETECTION_EXPLANATION_USE_CASE_KEY,
         content: JSON.stringify({
-          ruleSummary: 'Threshold of 5 failed logins within 60s was exceeded (7 observed)',
-          truePositiveIndicators: ['Non-standard user-agent', 'Multiple source IPs targeting single account'],
-          recommendedTuning: 'Consider adding geographic subnet whitelist to reduce false positives from corporate VPN',
+          ruleSummary:
+            'Threshold of 5 failed logins within 60s was exceeded (7 observed)',
+          truePositiveIndicators: [
+            'Non-standard user-agent',
+            'Multiple source IPs targeting single account',
+          ],
+          recommendedTuning:
+            'Consider adding geographic subnet whitelist to reduce false positives from corporate VPN',
           citations: ['evt-test-1', 'evt-test-2'],
         }),
         citations: ['evt-test-1', 'evt-test-2'],

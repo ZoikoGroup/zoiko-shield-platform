@@ -22,7 +22,10 @@ export interface PlaybookStepDefinition {
 export interface PlaybookDefinition {
   playbookId: string;
   name: string;
-  category: 'RANSOMWARE_CONTAINMENT' | 'CREDENTIAL_COMPROMISE' | 'DATA_EXFILTRATION_CONTAINMENT';
+  category:
+    | 'RANSOMWARE_CONTAINMENT'
+    | 'CREDENTIAL_COMPROMISE'
+    | 'DATA_EXFILTRATION_CONTAINMENT';
   steps: PlaybookStepDefinition[];
 }
 
@@ -60,7 +63,9 @@ export class ResponsePlaybookService {
     tenantId: string;
     approverIds: string[];
     proposalStatus: string;
-    stepExecutor?: (step: PlaybookStepDefinition) => Promise<{ success: boolean; error?: string }>;
+    stepExecutor?: (
+      step: PlaybookStepDefinition,
+    ) => Promise<{ success: boolean; error?: string }>;
   }): Promise<PlaybookExecutionReport> {
     const executionId = `pb-exec-${crypto.randomUUID()}`;
     const stepResults: PlaybookStepResult[] = [];
@@ -156,7 +161,9 @@ export class ResponsePlaybookService {
           params.tenantId,
           receipt.rollbackToken,
         );
-        const matched = stepResults.find((r) => r.receiptId === receipt.receiptId);
+        const matched = stepResults.find(
+          (r) => r.receiptId === receipt.receiptId,
+        );
         if (matched) {
           matched.status = 'COMPENSATED';
         }

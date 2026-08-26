@@ -37,14 +37,21 @@ export class AiGovernanceViewsController {
       ? this.finopsBudget.getTenantUsageSummary(tenantId)
       : null;
 
-
     return {
       statusCode: HttpStatus.OK,
       data: {
         fleetStatus: 'HEALTHY',
         activeRoutes: [
-          { routeId: 'route-secure-text-v3', status: 'ACTIVE', provider: 'bedrock-claude-3-5-sonnet' },
-          { routeId: 'route-fast-summary-v2', status: 'ACTIVE', provider: 'azure-openai-gpt-4o-mini' },
+          {
+            routeId: 'route-secure-text-v3',
+            status: 'ACTIVE',
+            provider: 'bedrock-claude-3-5-sonnet',
+          },
+          {
+            routeId: 'route-fast-summary-v2',
+            status: 'ACTIVE',
+            provider: 'azure-openai-gpt-4o-mini',
+          },
         ],
         budgetStatus,
         governanceCompliance: {
@@ -131,7 +138,8 @@ export class AiGovernanceViewsController {
   async toggleKillSwitch(
     @Body()
     body: {
-      scope: 'FEATURE' | 'MODEL_ROUTE' | 'PROVIDER' | 'TOOL' | 'TENANT' | 'GLOBAL';
+      scope:
+        'FEATURE' | 'MODEL_ROUTE' | 'PROVIDER' | 'TOOL' | 'TENANT' | 'GLOBAL';
       targetId: string;
       active: boolean;
       approver: string;

@@ -1,9 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import crypto from 'crypto';
-import {
-  SyslogParsedMessage,
-  SyslogNormalizedEvent,
-} from './syslog-tls.types';
+import { SyslogParsedMessage, SyslogNormalizedEvent } from './syslog-tls.types';
 
 @Injectable()
 export class SyslogTlsNormalizerService {
@@ -14,7 +11,9 @@ export class SyslogTlsNormalizerService {
     /^<(\d{1,3})>(\d)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(\S+)\s+(?:(\[.*?\]|-))\s*(.*)$/s;
 
   parseRfc5424(rawText: string): SyslogParsedMessage | null {
-    const match = rawText.trim().match(SyslogTlsNormalizerService.RFC5424_REGEX);
+    const match = rawText
+      .trim()
+      .match(SyslogTlsNormalizerService.RFC5424_REGEX);
     if (!match) {
       // Fallback for simple BSD / RFC 3164
       return {
@@ -69,21 +68,32 @@ export class SyslogTlsNormalizerService {
     const msg = parsed.message;
 
     // SSH authentication pattern parsing
-    if (msg.includes('Accepted password for') || msg.includes('Accepted publickey for')) {
+    if (
+      msg.includes('Accepted password for') ||
+      msg.includes('Accepted publickey for')
+    ) {
       actionType = 'AUTH_SUCCESS';
       const userMatch = msg.match(/for\s+(\S+)\s+from\s+(\S+)/);
       if (userMatch) {
         targetUser = userMatch[1];
         sourceIp = userMatch[2];
       }
-    } else if (msg.includes('Failed password for') || msg.includes('authentication failure')) {
+    } else if (
+      msg.includes('Failed password for') ||
+      msg.includes('authentication failure')
+    ) {
       actionType = 'AUTH_FAILURE';
-      const userMatch = msg.match(/for\s+(?:invalid user\s+)?(\S+)\s+from\s+(\S+)/);
+      const userMatch = msg.match(
+        /for\s+(?:invalid user\s+)?(\S+)\s+from\s+(\S+)/,
+      );
       if (userMatch) {
         targetUser = userMatch[1];
         sourceIp = userMatch[2];
       }
-    } else if (msg.toLowerCase().includes('drop') || msg.toLowerCase().includes('denied')) {
+    } else if (
+      msg.toLowerCase().includes('drop') ||
+      msg.toLowerCase().includes('denied')
+    ) {
       actionType = 'NETWORK_DROP';
       const ipMatch = msg.match(/SRC=(\S+)/);
       if (ipMatch) {

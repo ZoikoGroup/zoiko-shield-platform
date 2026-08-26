@@ -1,7 +1,4 @@
-import {
-  BadRequestException,
-  Injectable,
-} from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export class AddPaymentMethodDto {
@@ -87,7 +84,9 @@ export class PaymentMethodService {
         if (payload.commercialAccountId === commercialAccountId) {
           methods.push({ id: e.id, addedAt: e.created_at, ...payload });
         }
-      } catch {}
+      } catch {
+        // ignore invalid JSON payload
+      }
     }
 
     return methods;
@@ -141,14 +140,21 @@ export class PaymentMethodService {
     };
   }
 
-
   getSellerMerchantConfig() {
     return {
       sellerLegalEntity: 'Zoiko Tech Inc.',
       taxId: 'US-983421049',
       merchantAccounts: [
-        { provider: 'STRIPE', accountId: 'acct_1ZoikoShieldProd', region: 'US/GLOBAL' },
-        { provider: 'ADYEN', merchantAccount: 'ZoikoTechECOM', region: 'EU/UK' },
+        {
+          provider: 'STRIPE',
+          accountId: 'acct_1ZoikoShieldProd',
+          region: 'US/GLOBAL',
+        },
+        {
+          provider: 'ADYEN',
+          merchantAccount: 'ZoikoTechECOM',
+          region: 'EU/UK',
+        },
       ],
       defaultCurrency: 'USD',
       supportedCurrencies: ['USD', 'EUR', 'GBP', 'CAD', 'AUD'],

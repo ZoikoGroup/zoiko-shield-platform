@@ -14,7 +14,11 @@ describe('StripePaymentProvider', () => {
   });
 
   it('fails payment when invalid token is provided', async () => {
-    const res = await provider.createPayment(1500, 'USD', 'tok_invalid_declined');
+    const res = await provider.createPayment(
+      1500,
+      'USD',
+      'tok_invalid_declined',
+    );
     expect(res.status).toBe('FAILED');
     expect(res.providerPaymentId).toMatch(/^ch_err_/);
   });
@@ -26,7 +30,14 @@ describe('StripePaymentProvider', () => {
   });
 
   it('verifies valid webhook signature and rejects empty/invalid signature', () => {
-    expect(provider.verifyWebhookSignature('{"type":"charge.succeeded"}', 'sig_test_123')).toBe(true);
-    expect(provider.verifyWebhookSignature('{"type":"charge.succeeded"}', '')).toBe(false);
+    expect(
+      provider.verifyWebhookSignature(
+        '{"type":"charge.succeeded"}',
+        'sig_test_123',
+      ),
+    ).toBe(true);
+    expect(
+      provider.verifyWebhookSignature('{"type":"charge.succeeded"}', ''),
+    ).toBe(false);
   });
 });

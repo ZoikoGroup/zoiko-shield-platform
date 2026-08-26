@@ -56,7 +56,9 @@ describe('DiscountApprovalService (Category I3 margin authority)', () => {
         findFirst: jest.fn(),
         update: jest.fn(),
       },
-      $transaction: jest.fn().mockImplementation((callback) => callback(prisma)),
+      $transaction: jest
+        .fn()
+        .mockImplementation((callback) => callback(prisma)),
     };
     approvals = {
       requestApproval: jest.fn(),

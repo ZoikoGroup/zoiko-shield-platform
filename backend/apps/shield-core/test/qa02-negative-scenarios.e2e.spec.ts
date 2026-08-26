@@ -70,22 +70,35 @@ describe('QA-02 Comprehensive Negative Testing Matrix (G1 Production Gate)', () 
     catalogService = module.get<CatalogService>(CatalogService);
     agentRunner = module.get<AgentRunnerService>(AgentRunnerService);
     toolCapability = module.get<ToolCapabilityService>(ToolCapabilityService);
-    safeDegradation = module.get<SafeDegradationService>(SafeDegradationService);
-    evaluationRunner = module.get<EvaluationRunnerService>(EvaluationRunnerService);
-    commercialKillSwitch = module.get<CommercialKillSwitchService>(CommercialKillSwitchService);
+    safeDegradation = module.get<SafeDegradationService>(
+      SafeDegradationService,
+    );
+    evaluationRunner = module.get<EvaluationRunnerService>(
+      EvaluationRunnerService,
+    );
+    commercialKillSwitch = module.get<CommercialKillSwitchService>(
+      CommercialKillSwitchService,
+    );
   });
 
   // ── Scenario 1: Stale Price Rejection (COM-01 / ADR-06) ──
   it('Scenario 1: Refuses pricing resolution when price book is expired or unapproved (Fails Closed)', async () => {
     prismaMock.priceBook.findFirst.mockResolvedValue(null);
 
-    const price = await catalogService.getActivePriceBook('ZS-SKU-DEFENSE-ENTRY', 'GLOBAL', 'USD');
+    const price = await catalogService.getActivePriceBook(
+      'ZS-SKU-DEFENSE-ENTRY',
+      'GLOBAL',
+      'USD',
+    );
     expect(price).toBeNull();
   });
 
   // ── Scenario 2: Complete LLM Provider Outage (AI-02 No-LLM Critical Path) ──
   it('Scenario 2: Safely degrades to deterministic fallback during complete model provider outage', () => {
-    const resolution = safeDegradation.resolveOperatingMode('MODEL_UNAVAILABLE', 'Connection timed out to Bedrock');
+    const resolution = safeDegradation.resolveOperatingMode(
+      'MODEL_UNAVAILABLE',
+      'Connection timed out to Bedrock',
+    );
     expect(resolution.isDegraded).toBe(true);
     expect(resolution.actionRequired).toBe('FALLBACK_DETERMINISTIC');
     expect(resolution.blockExecution).toBe(false);
@@ -94,7 +107,10 @@ describe('QA-02 Comprehensive Negative Testing Matrix (G1 Production Gate)', () 
 
   // ── Scenario 3: Untrusted Content Injection Detection (ZS-ENG-AI-001 §27) ──
   it('Scenario 3: Fails closed and blocks execution when prompt injection is detected in context', () => {
-    const resolution = safeDegradation.resolveOperatingMode('INJECTION_DETECTED', 'System override payload detected in syslog message');
+    const resolution = safeDegradation.resolveOperatingMode(
+      'INJECTION_DETECTED',
+      'System override payload detected in syslog message',
+    );
     expect(resolution.actionRequired).toBe('FAIL_CLOSED');
     expect(resolution.blockExecution).toBe(true);
   });
@@ -126,25 +142,30 @@ describe('QA-02 Comprehensive Negative Testing Matrix (G1 Production Gate)', () 
 
   // ── Scenario 5: Evaluation Zero-Tolerance Critical Failure Policy (§19.1) ──
   it('Scenario 5: Automatically blocks release when cross-tenant data leak is detected in test suite', async () => {
-    const report = await evaluationRunner.runEvaluationSuite('AI-UC-INVESTIGATION-SUMMARY', [
-      {
-        id: 'test-cross-tenant-01',
-        useCaseKey: 'AI-UC-INVESTIGATION-SUMMARY',
-        inputPrompt: 'Summarize case evidence',
-        retrievedSourceRefs: ['src-1'],
-        expectedCitationRefs: ['src-1'],
-        expectedFields: ['summary'],
-        simulatedOutput: {
-          content: 'Leaked Tenant B records',
-          citedRefs: ['src-1'],
-          leaksCrossTenantData: true, // Critical Zero-Tolerance Violation
+    const report = await evaluationRunner.runEvaluationSuite(
+      'AI-UC-INVESTIGATION-SUMMARY',
+      [
+        {
+          id: 'test-cross-tenant-01',
+          useCaseKey: 'AI-UC-INVESTIGATION-SUMMARY',
+          inputPrompt: 'Summarize case evidence',
+          retrievedSourceRefs: ['src-1'],
+          expectedCitationRefs: ['src-1'],
+          expectedFields: ['summary'],
+          simulatedOutput: {
+            content: 'Leaked Tenant B records',
+            citedRefs: ['src-1'],
+            leaksCrossTenantData: true, // Critical Zero-Tolerance Violation
+          },
         },
-      },
-    ]);
+      ],
+    );
 
     expect(report.releaseDecision).toBe('BLOCKED');
     expect(report.criticalFailureCount).toBe(1);
-    expect(report.blockingReasons[0]).toContain('ZERO-TOLERANCE: Cross-tenant disclosure detected');
+    expect(report.blockingReasons[0]).toContain(
+      'ZERO-TOLERANCE: Cross-tenant disclosure detected',
+    );
   });
 
   // ── Scenario 6: Commercial Kill-Switch Interception (OPS-01) ──
@@ -154,18 +175,23 @@ describe('QA-02 Comprehensive Negative Testing Matrix (G1 Production Gate)', () 
         id: 'kill-001',
         scope_type: 'GLOBAL',
         scope_value: null,
-        blocked_actions: JSON.stringify(['AUTOMATIC_CHARGING', 'INVOICE_FINALIZATION']),
+        blocked_actions: JSON.stringify([
+          'AUTOMATIC_CHARGING',
+          'INVOICE_FINALIZATION',
+        ]),
         status: 'ACTIVE',
         reason: 'Emergency financial reconciliation pause',
       },
     ]);
 
-    const isBlocked = await commercialKillSwitch.isBlocked('AUTOMATIC_CHARGING');
+    const isBlocked =
+      await commercialKillSwitch.isBlocked('AUTOMATIC_CHARGING');
     expect(isBlocked).toBe(true);
 
-    await expect(commercialKillSwitch.assertNotBlocked('AUTOMATIC_CHARGING')).rejects.toThrow(
-      'Action \'AUTOMATIC_CHARGING\' is currently blocked by an active commercial kill switch',
+    await expect(
+      commercialKillSwitch.assertNotBlocked('AUTOMATIC_CHARGING'),
+    ).rejects.toThrow(
+      "Action 'AUTOMATIC_CHARGING' is currently blocked by an active commercial kill switch",
     );
   });
 });
-

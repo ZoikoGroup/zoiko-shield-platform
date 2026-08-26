@@ -28,9 +28,15 @@ export class AwsCloudTrailNormalizerService {
       record.errorCode || record.errorMessage ? 'FAILED' : 'SUCCESS';
 
     let eventType = `aws.${record.eventSource?.replace('.amazonaws.com', '')}.${record.eventName}`;
-    if (record.eventName?.startsWith('Create') || record.eventName?.startsWith('Put')) {
+    if (
+      record.eventName?.startsWith('Create') ||
+      record.eventName?.startsWith('Put')
+    ) {
       eventType = `aws.mutation.${record.eventName}`;
-    } else if (record.eventName?.startsWith('Delete') || record.eventName?.startsWith('Revoke')) {
+    } else if (
+      record.eventName?.startsWith('Delete') ||
+      record.eventName?.startsWith('Revoke')
+    ) {
       eventType = `aws.destructive.${record.eventName}`;
     }
 
@@ -58,7 +64,9 @@ export class AwsCloudTrailNormalizerService {
         service: record.eventSource || 'aws.generic',
         action: record.eventName || 'UnknownAction',
         region: record.awsRegion || region,
-        resource_arn: (record.requestParameters?.roleArn as string) || (record.requestParameters?.bucketName as string),
+        resource_arn:
+          (record.requestParameters?.roleArn as string) ||
+          (record.requestParameters?.bucketName as string),
       },
 
       network: {

@@ -18,7 +18,10 @@ export class OktaNormalizerService {
     const severity = isSuccess ? 'INFORMATIONAL' : 'HIGH';
 
     let activityId = 1; // Logon
-    if (event.eventType.includes('logout') || event.eventType.includes('session.end')) {
+    if (
+      event.eventType.includes('logout') ||
+      event.eventType.includes('session.end')
+    ) {
       activityId = 2; // Logoff
     }
 

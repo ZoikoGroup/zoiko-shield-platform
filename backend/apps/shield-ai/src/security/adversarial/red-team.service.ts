@@ -106,13 +106,17 @@ export class AiRedTeamService {
           if (!detectedVectors.includes(signature.type)) {
             detectedVectors.push(signature.type);
           }
-          signals.push(`Matched pattern ${pattern.toString()} for vector ${signature.type}`);
+          signals.push(
+            `Matched pattern ${pattern.toString()} for vector ${signature.type}`,
+          );
         }
       }
     }
 
     const isVulnerable = detectedVectors.length > 0;
-    const riskScore = isVulnerable ? Math.min(100, detectedVectors.length * 30) : 0;
+    const riskScore = isVulnerable
+      ? Math.min(100, detectedVectors.length * 30)
+      : 0;
 
     return {
       isVulnerable,
@@ -122,7 +126,9 @@ export class AiRedTeamService {
     };
   }
 
-  async runRedTeamSuite(testCases: RedTeamTestCase[]): Promise<RedTeamAssessmentReport> {
+  async runRedTeamSuite(
+    testCases: RedTeamTestCase[],
+  ): Promise<RedTeamAssessmentReport> {
     const assessmentId = `rt-eval-${crypto.randomUUID()}`;
     const testResults: RedTeamTestResult[] = [];
 
@@ -160,7 +166,8 @@ export class AiRedTeamService {
 
     for (const vector of Object.keys(breakdown) as AttackVectorType[]) {
       const b = breakdown[vector];
-      b.complianceRate = b.total > 0 ? Math.round((b.blocked / b.total) * 100) : 100;
+      b.complianceRate =
+        b.total > 0 ? Math.round((b.blocked / b.total) * 100) : 100;
     }
 
     const passedCount = testResults.filter((r) => r.passed).length;

@@ -26,7 +26,10 @@ export interface QuarantinedEventRecord {
 @Injectable()
 export class QuarantineService {
   private readonly logger = new Logger(QuarantineService.name);
-  private readonly quarantinedEvents = new Map<string, QuarantinedEventRecord>();
+  private readonly quarantinedEvents = new Map<
+    string,
+    QuarantinedEventRecord
+  >();
 
   quarantine(params: {
     tenantId: string;

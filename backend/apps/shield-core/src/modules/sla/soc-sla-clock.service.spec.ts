@@ -54,7 +54,10 @@ describe('SocSlaClockService (ZS-COM-BILL-001 SVC-01/04 SOC Response Clock)', ()
       severity: 'HIGH',
     });
 
-    const paused = service.pauseClock('case-paused-01', 'CUSTOMER_ACTION_REQUIRED');
+    const paused = service.pauseClock(
+      'case-paused-01',
+      'CUSTOMER_ACTION_REQUIRED',
+    );
     expect(paused.status).toBe('PAUSED');
     expect(paused.pauseReason).toBe('CUSTOMER_ACTION_REQUIRED');
 

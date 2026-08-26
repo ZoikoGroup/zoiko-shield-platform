@@ -48,7 +48,8 @@ export class TrustCenterController {
     @Query('tenantId') queryTenantId?: string,
   ) {
     const tenantId = requireTenantId(headerTenantId, queryTenantId);
-    const data = await this.trustCenterService.getProcurementWorkspace(tenantId);
+    const data =
+      await this.trustCenterService.getProcurementWorkspace(tenantId);
     return {
       statusCode: HttpStatus.OK,
       data,

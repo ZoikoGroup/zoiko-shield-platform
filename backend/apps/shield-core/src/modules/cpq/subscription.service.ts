@@ -587,7 +587,11 @@ export class SubscriptionService {
       environmentId,
     );
     return this.prisma.commercialAmendment.findMany({
-      where: { subscription_id: subscriptionId, tenant_id: tenantId, environment_id: environmentId },
+      where: {
+        subscription_id: subscriptionId,
+        tenant_id: tenantId,
+        environment_id: environmentId,
+      },
       include: { retentionTransition: true },
       orderBy: { created_at: 'desc' },
     });

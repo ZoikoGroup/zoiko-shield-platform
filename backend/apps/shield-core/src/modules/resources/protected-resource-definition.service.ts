@@ -6,13 +6,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  IsArray,
-  IsIn,
-  IsObject,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsArray, IsIn, IsObject, IsOptional, IsString } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export const RESOURCE_FAMILIES = [
@@ -390,9 +384,11 @@ export class ProtectedResourceDefinitionService {
   }
 
   async getDefinition(id: string) {
-    const definition = await this.prisma.protectedResourceDefinition.findUnique({
-      where: { id },
-    });
+    const definition = await this.prisma.protectedResourceDefinition.findUnique(
+      {
+        where: { id },
+      },
+    );
     if (!definition) {
       throw new NotFoundException(`Resource definition '${id}' not found`);
     }
@@ -422,7 +418,9 @@ export class ProtectedResourceDefinitionService {
     // Legacy rows that pre-date Category C have no controlled metric family;
     // they cannot safely classify a new observation until reviewed/versioned.
     if (
-      !RESOURCE_FAMILIES.includes(definition.resource_family as ResourceFamily) ||
+      !RESOURCE_FAMILIES.includes(
+        definition.resource_family as ResourceFamily,
+      ) ||
       !definition.metric_family ||
       definition.metric_family === 'LEGACY' ||
       !definition.controlled_definition ||

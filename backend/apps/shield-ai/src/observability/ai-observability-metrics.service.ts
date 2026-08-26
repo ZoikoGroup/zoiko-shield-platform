@@ -52,7 +52,10 @@ export class AiObservabilityMetricsService {
     if (eligible) this.eligibleRequests += 1;
   }
 
-  recordGrounding(totalClaimsInDoc: number, supportedClaimsInDoc: number): void {
+  recordGrounding(
+    totalClaimsInDoc: number,
+    supportedClaimsInDoc: number,
+  ): void {
     this.totalClaims += totalClaimsInDoc;
     this.groundedClaims += supportedClaimsInDoc;
   }
@@ -118,32 +121,48 @@ export class AiObservabilityMetricsService {
     }
     for (const [provider, count] of this.providerCallCounts.entries()) {
       providerConcentration[provider] =
-        totalProviderCalls > 0 ? Number((count / totalProviderCalls).toFixed(2)) : 0;
+        totalProviderCalls > 0
+          ? Number((count / totalProviderCalls).toFixed(2))
+          : 0;
     }
 
     return {
       timestamp: new Date(),
       ai_request_eligible_rate:
-        this.totalRequests > 0 ? Number((this.eligibleRequests / this.totalRequests).toFixed(2)) : 1.0,
+        this.totalRequests > 0
+          ? Number((this.eligibleRequests / this.totalRequests).toFixed(2))
+          : 1.0,
       ai_grounded_claim_rate:
-        this.totalClaims > 0 ? Number((this.groundedClaims / this.totalClaims).toFixed(2)) : 1.0,
+        this.totalClaims > 0
+          ? Number((this.groundedClaims / this.totalClaims).toFixed(2))
+          : 1.0,
       ai_critical_failure_count: this.criticalFailures,
       ai_human_override_rate:
-        this.totalHumanReviews > 0 ? Number((this.humanOverrides / this.totalHumanReviews).toFixed(2)) : 0.0,
+        this.totalHumanReviews > 0
+          ? Number((this.humanOverrides / this.totalHumanReviews).toFixed(2))
+          : 0.0,
       ai_fallback_success_rate:
-        this.totalFallbacks > 0 ? Number((this.successfulFallbacks / this.totalFallbacks).toFixed(2)) : 1.0,
+        this.totalFallbacks > 0
+          ? Number((this.successfulFallbacks / this.totalFallbacks).toFixed(2))
+          : 1.0,
       ai_agent_budget_breach: this.budgetBreaches,
       ai_tool_authorization_denial: this.toolDenials,
       ai_retrieval_citation_failure: this.citationFailures,
       ai_model_route_latency_ms:
-        this.totalRequests > 0 ? Math.round(this.totalLatenciesMs / Math.max(1, this.totalRequests)) : 0,
+        this.totalRequests > 0
+          ? Math.round(this.totalLatenciesMs / Math.max(1, this.totalRequests))
+          : 0,
       ai_cost_per_outcome_usd:
-        this.totalOutcomes > 0 ? Number((this.totalCostUsd / this.totalOutcomes).toFixed(4)) : 0.0,
+        this.totalOutcomes > 0
+          ? Number((this.totalCostUsd / this.totalOutcomes).toFixed(4))
+          : 0.0,
       ai_provider_concentration: providerConcentration,
       ai_drift_alert: this.driftAlerts,
       ai_kill_switch_test: this.killSwitchTests,
       ai_audit_trace_complete_rate:
-        this.totalDecisions > 0 ? Number((this.completeTraces / this.totalDecisions).toFixed(2)) : 1.0,
+        this.totalDecisions > 0
+          ? Number((this.completeTraces / this.totalDecisions).toFixed(2))
+          : 1.0,
     };
   }
 }

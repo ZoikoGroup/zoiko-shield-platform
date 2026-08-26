@@ -38,7 +38,8 @@ export class AwsCloudTrailProvider implements SecurityConnector, OnModuleInit {
     if (!input.roleArn || !input.s3BucketName) {
       return {
         status: 'FAILED',
-        error: 'Missing required configuration: roleArn and s3BucketName are mandatory',
+        error:
+          'Missing required configuration: roleArn and s3BucketName are mandatory',
       };
     }
 
@@ -84,12 +85,19 @@ export class AwsCloudTrailProvider implements SecurityConnector, OnModuleInit {
 
   async getPermissions(context: ConnectorContext): Promise<PermissionResult> {
     return {
-      granted: ['s3:GetObject', 's3:ListBucket', 'sqs:ReceiveMessage', 'sqs:DeleteMessage'],
+      granted: [
+        's3:GetObject',
+        's3:ListBucket',
+        'sqs:ReceiveMessage',
+        'sqs:DeleteMessage',
+      ],
       missing: [],
     };
   }
 
   async disconnect(context: ConnectorContext): Promise<void> {
-    this.logger.log(`Disconnecting AWS CloudTrail for tenant ${context.tenantId}`);
+    this.logger.log(
+      `Disconnecting AWS CloudTrail for tenant ${context.tenantId}`,
+    );
   }
 }

@@ -16,13 +16,27 @@ describe('ResourceDeduplicationService (ZS-COM-BILL-001 §7 C1-C3 Resource Dedup
       ],
     }).compile();
 
-    service = module.get<ResourceDeduplicationService>(ResourceDeduplicationService);
+    service = module.get<ResourceDeduplicationService>(
+      ResourceDeduplicationService,
+    );
   });
 
   it('computes deterministic canonical ID from tenant, type, and primary key', () => {
-    const id1 = service.computeCanonicalId('tenant-1', 'USER_IDENTITY', 'alice@company.com');
-    const id2 = service.computeCanonicalId('tenant-1', 'USER_IDENTITY', 'alice@company.com');
-    const id3 = service.computeCanonicalId('tenant-1', 'USER_IDENTITY', 'bob@company.com');
+    const id1 = service.computeCanonicalId(
+      'tenant-1',
+      'USER_IDENTITY',
+      'alice@company.com',
+    );
+    const id2 = service.computeCanonicalId(
+      'tenant-1',
+      'USER_IDENTITY',
+      'alice@company.com',
+    );
+    const id3 = service.computeCanonicalId(
+      'tenant-1',
+      'USER_IDENTITY',
+      'bob@company.com',
+    );
 
     expect(id1).toBe(id2);
     expect(id1).not.toBe(id3);

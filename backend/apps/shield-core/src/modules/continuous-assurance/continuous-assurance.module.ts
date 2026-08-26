@@ -12,4 +12,3 @@ import { EvidenceDecayWorker } from './evidence-decay.worker';
   exports: [ContinuousAssuranceService, EvidenceDecayWorker],
 })
 export class ContinuousAssuranceModule {}
-

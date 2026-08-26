@@ -36,7 +36,8 @@ export class CpqDependencyValidatorService {
       sourceProductKey: 'ZOIKO_ONE_ALL_ACCESS',
       relationship: 'OVERRIDES',
       targetProductKey: 'SHIELD_CORE_PLATFORM',
-      errorMessage: 'Zoiko One All Access overrides individual core platform line items',
+      errorMessage:
+        'Zoiko One All Access overrides individual core platform line items',
     },
   ];
 
@@ -53,7 +54,6 @@ export class CpqDependencyValidatorService {
       ...activeEntitlements.map((e) => e.offer_type),
       ...proposedProductKeys,
     ]);
-
 
     const violations: string[] = [];
 

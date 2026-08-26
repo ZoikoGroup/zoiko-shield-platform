@@ -44,7 +44,9 @@ export class ZoikoOneBundlingService {
     });
 
     const existingKeys = new Set(existingEntitlements.map((e) => e.offer_type));
-    const overlaps = (dto.includedProductKeys || []).filter((key) => existingKeys.has(key));
+    const overlaps = (dto.includedProductKeys || []).filter((key) =>
+      existingKeys.has(key),
+    );
 
     const event = await this.prisma.commercialEvent.create({
       data: {
@@ -99,9 +101,13 @@ export class ZoikoOneBundlingService {
       try {
         const payload = JSON.parse(event.payload);
         if (Array.isArray(payload.includedProductKeys)) {
-          payload.includedProductKeys.forEach((k: string) => bundleProductKeys.add(k));
+          payload.includedProductKeys.forEach((k: string) =>
+            bundleProductKeys.add(k),
+          );
         }
-      } catch {}
+      } catch {
+        // ignore invalid JSON payload
+      }
     }
 
     const includedScope = entitlements.filter((e) =>
@@ -127,7 +133,9 @@ export class ZoikoOneBundlingService {
         status: e.status,
       })),
       reconciliationStatus:
-        includedScope.length > 0 ? 'RECONCILED_NO_DOUBLE_CHARGE' : 'STANDALONE_DIRECT',
+        includedScope.length > 0
+          ? 'RECONCILED_NO_DOUBLE_CHARGE'
+          : 'STANDALONE_DIRECT',
     };
   }
 
@@ -174,4 +182,3 @@ export class ZoikoOneBundlingService {
     };
   }
 }
-

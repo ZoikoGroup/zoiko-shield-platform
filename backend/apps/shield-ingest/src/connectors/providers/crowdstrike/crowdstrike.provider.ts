@@ -38,7 +38,8 @@ export class CrowdStrikeProvider implements SecurityConnector, OnModuleInit {
     if (!input.clientId || !input.clientSecret) {
       return {
         status: 'FAILED',
-        error: 'Missing required configuration: clientId and clientSecret are mandatory for OAuth2 token exchange',
+        error:
+          'Missing required configuration: clientId and clientSecret are mandatory for OAuth2 token exchange',
       };
     }
 
@@ -83,16 +84,14 @@ export class CrowdStrikeProvider implements SecurityConnector, OnModuleInit {
 
   async getPermissions(context: ConnectorContext): Promise<PermissionResult> {
     return {
-      granted: [
-        'detections:read',
-        'hosts:read',
-        'event_streams:read',
-      ],
+      granted: ['detections:read', 'hosts:read', 'event_streams:read'],
       missing: [],
     };
   }
 
   async disconnect(context: ConnectorContext): Promise<void> {
-    this.logger.log(`Disconnecting CrowdStrike Falcon EDR for tenant ${context.tenantId}`);
+    this.logger.log(
+      `Disconnecting CrowdStrike Falcon EDR for tenant ${context.tenantId}`,
+    );
   }
 }

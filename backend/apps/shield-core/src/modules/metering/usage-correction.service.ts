@@ -34,7 +34,9 @@ export class UsageCorrectionService {
     actorId: string,
   ) {
     if (!dto.meterDefinitionId || !dto.reason) {
-      throw new BadRequestException('meterDefinitionId and reason are required');
+      throw new BadRequestException(
+        'meterDefinitionId and reason are required',
+      );
     }
 
     const event = await this.prisma.commercialEvent.create({
@@ -111,7 +113,9 @@ export class UsageCorrectionService {
     const events = await this.prisma.commercialEvent.findMany({
       where: {
         tenant_id: tenantId,
-        event_type: { in: ['usage.dispute_submitted', 'usage.correction_posted'] },
+        event_type: {
+          in: ['usage.dispute_submitted', 'usage.correction_posted'],
+        },
       },
       orderBy: { created_at: 'desc' },
       take: 30,
@@ -119,7 +123,12 @@ export class UsageCorrectionService {
 
     return events.map((e) => {
       try {
-        return { id: e.id, eventType: e.event_type, createdAt: e.created_at, ...JSON.parse(e.payload) };
+        return {
+          id: e.id,
+          eventType: e.event_type,
+          createdAt: e.created_at,
+          ...JSON.parse(e.payload),
+        };
       } catch {
         return { id: e.id, eventType: e.event_type, createdAt: e.created_at };
       }

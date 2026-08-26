@@ -5,12 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
-import {
-  IsISO8601,
-  IsObject,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsISO8601, IsObject, IsOptional, IsString } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { requireEnvironmentId } from '../../tenant-context';
 import { ProtectedResourceDefinitionService } from './protected-resource-definition.service';
@@ -87,10 +82,13 @@ export class ResourceObservationService {
     });
   }
 
-  private identity(definition: {
-    metric_family: string;
-    identity_key_spec: string;
-  }, attributes: Record<string, unknown>) {
+  private identity(
+    definition: {
+      metric_family: string;
+      identity_key_spec: string;
+    },
+    attributes: Record<string, unknown>,
+  ) {
     let spec: IdentitySpec;
     try {
       spec = JSON.parse(definition.identity_key_spec) as IdentitySpec;
@@ -335,9 +333,8 @@ export class ResourceObservationService {
       );
       return { observation: result, deduped: true, notice: null };
     }
-    const routed = await this.coverageService.routeDiscoveredObservation(
-      created,
-    );
+    const routed =
+      await this.coverageService.routeDiscoveredObservation(created);
     return { ...routed, deduped: false };
   }
 

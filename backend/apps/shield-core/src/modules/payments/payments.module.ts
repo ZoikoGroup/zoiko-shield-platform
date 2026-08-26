@@ -28,4 +28,3 @@ import { KillSwitchModule } from '../kill-switch/kill-switch.module';
   exports: [PaymentService, PaymentMethodService],
 })
 export class PaymentsModule {}
-

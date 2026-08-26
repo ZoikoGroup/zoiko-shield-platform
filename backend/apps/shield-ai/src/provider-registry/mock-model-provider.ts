@@ -30,11 +30,15 @@ export class MockModelProvider implements ModelProvider {
       Math.max(1, Math.min(3, sourceRefs.length)),
     );
     let content: string;
-    if (input.userInput.includes('candidate detection rule') || input.systemPrompt?.includes('DETECTION_CANDIDATE')) {
+    if (
+      input.userInput.includes('candidate detection rule') ||
+      input.systemPrompt?.includes('DETECTION_CANDIDATE')
+    ) {
       content = JSON.stringify({
         key: 'rule-ai-candidate-01',
         name: 'AI Generated Suspicious Activity Detection',
-        description: 'Auto-generated candidate detection rule based on observed symptoms',
+        description:
+          'Auto-generated candidate detection rule based on observed symptoms',
         severity: 'HIGH',
         ruleType: 'THRESHOLD',
         status: 'DRAFT',
@@ -62,11 +66,18 @@ export class MockModelProvider implements ModelProvider {
         ],
         limitations: ['Synthetic baseline test required prior to publication'],
       });
-    } else if (input.userInput.includes('Explain detection match') || input.systemPrompt?.includes('DETECTION_EXPLANATION')) {
+    } else if (
+      input.userInput.includes('Explain detection match') ||
+      input.systemPrompt?.includes('DETECTION_EXPLANATION')
+    ) {
       content = JSON.stringify({
         ruleSummary: `Detection match explanation across ${sourceRefs.length} cited source(s)`,
-        truePositiveIndicators: ['Non-standard user-agent', 'Multiple source IPs targeting single account'],
-        recommendedTuning: 'Consider adding geographic subnet whitelist to reduce false positives',
+        truePositiveIndicators: [
+          'Non-standard user-agent',
+          'Multiple source IPs targeting single account',
+        ],
+        recommendedTuning:
+          'Consider adding geographic subnet whitelist to reduce false positives',
         reviewState: 'AI_PROPOSED',
       });
     } else {

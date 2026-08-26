@@ -30,7 +30,9 @@ describe('ScheduledGoldsetRunnerWorker (ZS-ENG-AI-001 §19-20 AI Regression Runn
       ],
     }).compile();
 
-    worker = module.get<ScheduledGoldsetRunnerWorker>(ScheduledGoldsetRunnerWorker);
+    worker = module.get<ScheduledGoldsetRunnerWorker>(
+      ScheduledGoldsetRunnerWorker,
+    );
   });
 
   it('completes clean evaluation run without triggering kill switches when all test cases pass', async () => {
@@ -63,7 +65,9 @@ describe('ScheduledGoldsetRunnerWorker (ZS-ENG-AI-001 §19-20 AI Regression Runn
       meanGroundingScore: 0.4,
       meanCitationPrecision: 0.5,
       releaseDecision: 'BLOCKED',
-      blockingReasons: ['Cross-tenant disclosure detected: leaked customer PII'],
+      blockingReasons: [
+        'Cross-tenant disclosure detected: leaked customer PII',
+      ],
     });
 
     const report = await worker.executeScheduledEvaluation();
