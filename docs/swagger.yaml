@@ -45105,6 +45105,28 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
       operationId: postCommercialConcessions
+    get:
+      tags: [CPQ]
+      summary: List all commercial concessions
+      description: Returns all concessions visible to the platform operator. Requires PLATFORM_CONCESSION_MANAGE permission.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        "200":
+          description: List of commercial concessions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  { $ref: "#/components/schemas/CommercialConcessionResponse" }
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: getCommercialConcessions
   /api/v1/commercial/concessions/{id}:
     get:
       tags: [CPQ]

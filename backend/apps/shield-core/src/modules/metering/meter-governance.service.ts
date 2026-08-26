@@ -1823,10 +1823,9 @@ export class MeterGovernanceService {
       events.every((event) =>
         usage.some((record) => record.raw_event_id === event.id),
       );
-    const be = billingExport as any;
     const commercialSeparationValid =
-      be.billing_basis === 'ACCEPTED_DATA_USAGE' &&
-      !be.committed_capacity_included &&
+      billingExport.billing_basis === 'ACCEPTED_DATA_USAGE' &&
+      !billingExport.committed_capacity_included &&
       snapshotHashes.billingBasis === 'ACCEPTED_DATA_USAGE' &&
       snapshotHashes.committedCapacityChargeIncluded === false &&
       snapshotHashes.pricingModel === policy?.pricing_model &&
