@@ -183,10 +183,10 @@ async function main() {
 
   const quote: any = await (prisma as any).commercialQuote.create({
     data: {
-      tenant_id: 'tenant-demo',
-      environment_id: 'production',
-      quote_key: `quote-key-${crypto.randomUUID()}`,
-      configuration_hash: crypto.createHash('sha256').update('order-gen-config').digest('hex'),
+      tenant_id: 'platform',
+      environment_id: 'default-env',
+      quote_key: `order-gen-${Date.now()}`,
+      configuration_hash: crypto.createHash('sha256').update(`order-gen-${commercialAccount.id}-${Date.now()}`).digest('hex'),
       commercial_account_id: commercialAccount.id,
       catalog_version_id: catalogVersion.id,
       status: 'APPROVED',

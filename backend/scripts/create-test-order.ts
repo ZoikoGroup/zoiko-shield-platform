@@ -73,12 +73,12 @@ async function main() {
     quote = await (prisma as any).commercialQuote.create({
       data: {
         id: crypto.randomUUID(),
-        tenant_id: 'tenant-test',
-        environment_id: 'dev',
-        quote_key: `quote-test-${crypto.randomUUID()}`,
-        configuration_hash: crypto.createHash('sha256').update('test-quote').digest('hex'),
+        tenant_id: 'test-tenant',
+        environment_id: 'default-env',
         commercial_account_id: account.id,
         catalog_version_id: catalogVersion.id,
+        quote_key: `test-quote-${Date.now()}`,
+        configuration_hash: crypto.createHash('sha256').update(`test-${Date.now()}`).digest('hex'),
         requested_by: 'system',
         status: 'APPROVED',
       }
