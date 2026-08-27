@@ -36,6 +36,8 @@ import { CrowdStrikeProvider } from './connectors/providers/crowdstrike/crowdstr
 import { CrowdStrikeNormalizerService } from './connectors/providers/crowdstrike/crowdstrike.normalizer';
 import { SentinelOneProvider } from './connectors/providers/sentinelone/sentinelone.provider';
 import { SentinelOneNormalizerService } from './connectors/providers/sentinelone/sentinelone.normalizer';
+import { CortexXdrProvider } from './connectors/providers/cortex-xdr/cortex-xdr.provider';
+import { CortexXdrNormalizerService } from './connectors/providers/cortex-xdr/cortex-xdr.normalizer';
 import { DLQReplayWorker } from './ingestion/dlq-replay.worker';
 import { TokenBucketRateLimiterService } from './ingestion/rate-limiter/token-bucket-limiter.service';
 import { AwsSqsIngestListener } from './connectors/listeners/aws-sqs.listener';
@@ -151,6 +153,8 @@ import { IdempotencyService } from '../../shield-core/src/modules/idempotency/id
     CrowdStrikeNormalizerService,
     SentinelOneProvider,
     SentinelOneNormalizerService,
+    CortexXdrProvider,
+    CortexXdrNormalizerService,
     DLQReplayWorker,
     QuarantineService,
     RawIngestService,

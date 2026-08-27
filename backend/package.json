@@ -35,6 +35,8 @@
     "simulate:remediation": "ts-node -r tsconfig-paths/register ./scripts/simulate-incident-to-remediation.ts",
     "simulate:ai-resilience": "ts-node -r tsconfig-paths/register ./scripts/simulate-ai-copilot-fallback.ts",
     "benchmark:detection": "ts-node -r tsconfig-paths/register ./scripts/benchmark-detection-pipeline.ts",
+    "audit:package:generate": "ts-node -r tsconfig-paths/register ./scripts/generate-compliance-audit-package.ts",
+    "simulate:cloud-threats": "ts-node -r tsconfig-paths/register ./scripts/simulate-multi-cloud-threat-ingest.ts",
     "verify:platform": "ts-node -r tsconfig-paths/register ./scripts/full-platform-verifier.ts",
     "swagger:check": "node scripts/check-swagger-coverage.js",
     "access:check": "node scripts/check-controller-access.js"
