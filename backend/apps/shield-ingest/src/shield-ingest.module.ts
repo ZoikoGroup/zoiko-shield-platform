@@ -53,6 +53,7 @@ import { AssetIdentityContextService } from './context/asset-identity-context.se
 
 import { DetectionEngineController } from './detection/detection-engine.controller';
 import { DetectionEngineService } from './detection/detection-engine.service';
+import { ThreatCorrelationService } from './detection/correlation/threat-correlation.service';
 
 import { AlertGeneratorController } from './alerts/alert-generator.controller';
 import { AlertGeneratorService } from './alerts/alert-generator.service';
@@ -162,6 +163,7 @@ import { IdempotencyService } from '../../shield-core/src/modules/idempotency/id
     NormalizationService,
     AssetIdentityContextService,
     DetectionEngineService,
+    ThreatCorrelationService,
     AlertGeneratorService,
     MeteringService,
     UsageThresholdDispatcherService,

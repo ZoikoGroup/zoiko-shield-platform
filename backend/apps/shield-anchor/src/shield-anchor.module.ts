@@ -18,6 +18,7 @@ import { CHECKPOINT_SIGNER } from './signing/checkpoint-signer.token';
 import { ProductionCheckpointSigner } from './signing/production-checkpoint-signer.service';
 import { HttpWitnessProvider } from './witnesses/http-witness-provider.service';
 import { Rfc3161WitnessService } from './witnesses/rfc3161/rfc3161-witness.service';
+import { EpochAggregatorService } from './merkle/epoch-aggregator.service';
 
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
@@ -39,8 +40,9 @@ import { Rfc3161WitnessService } from './witnesses/rfc3161/rfc3161-witness.servi
     WitnessService,
     HttpWitnessProvider,
     Rfc3161WitnessService,
+    EpochAggregatorService,
     CheckpointBuilderService,
   ],
-  exports: [Rfc3161WitnessService],
+  exports: [Rfc3161WitnessService, EpochAggregatorService, MerkleTreeService],
 })
 export class ShieldAnchorModule {}

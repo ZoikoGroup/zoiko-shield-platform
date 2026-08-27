@@ -12,6 +12,7 @@ export class EntraUserActionAdapter implements ActionExecutionAdapter {
 
   private readonly supportedActions = new Set([
     'DISABLE_USER_ACCOUNT',
+    'ENABLE_USER_ACCOUNT',
     'REVOKE_USER_SESSIONS',
     'FORCE_PASSWORD_RESET',
   ]);
@@ -32,7 +33,8 @@ export class EntraUserActionAdapter implements ActionExecutionAdapter {
       provider: 'microsoft-entra',
       targetAccount: context.targetRef,
       accountDisabled: context.actionType === 'DISABLE_USER_ACCOUNT',
-      sessionsInvalidated: true,
+      accountEnabled: context.actionType === 'ENABLE_USER_ACCOUNT',
+      sessionsInvalidated: context.actionType !== 'ENABLE_USER_ACCOUNT',
       executionMode: context.isSimulation ? 'SIMULATED' : 'LIVE',
     };
 

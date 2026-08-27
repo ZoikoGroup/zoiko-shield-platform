@@ -1,10 +1,12 @@
 export interface ActionExecutionContext {
   tenantId: string;
+  environmentId?: string;
   commandId: string;
   actionType: string;
   targetRef: string;
-  authorityLevel: 'R0' | 'R1' | 'R2' | 'R3' | 'R4';
-  approvalRef: string;
+  authorityLevel?: 'R0' | 'R1' | 'R2' | 'R3' | 'R4';
+  approvalRef?: string;
+  parameters?: Record<string, any>;
   isSimulation: boolean;
 }
 
