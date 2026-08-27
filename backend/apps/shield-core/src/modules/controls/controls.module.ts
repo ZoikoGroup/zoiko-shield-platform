@@ -11,6 +11,9 @@ import { ControlImplementationStateMachineService } from './implementations/cont
 import { ControlImplementationService } from './implementations/control-implementation.service';
 import { ControlScopeService } from './scopes/control-scope.service';
 import { ControlTestService } from './tests/control-test.service';
+import { ContinuousControlEvaluatorService } from './continuous-control-evaluator.service';
+import { RegulatoryControlsSeeder } from '../../seeds/regulatory-controls.seeder';
+import { MerkleTreeService } from '../../../../shield-anchor/src/merkle/merkle-tree.service';
 import { ApprovalsModule } from '../approvals/approvals.module';
 import { FrameworkGovernanceController } from './frameworks/framework-governance.controller';
 
@@ -31,6 +34,9 @@ import { FrameworkGovernanceController } from './frameworks/framework-governance
     ControlImplementationService,
     ControlScopeService,
     ControlTestService,
+    RegulatoryControlsSeeder,
+    MerkleTreeService,
+    ContinuousControlEvaluatorService,
   ],
   exports: [
     FrameworkRegistryService,
@@ -40,6 +46,7 @@ import { FrameworkGovernanceController } from './frameworks/framework-governance
     ControlImplementationService,
     ControlScopeService,
     ControlTestService,
+    ContinuousControlEvaluatorService,
   ],
 })
 export class ControlsModule {}

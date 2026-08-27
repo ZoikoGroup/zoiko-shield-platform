@@ -10,6 +10,7 @@ import { EmailChannelService } from './channels/email-channel.service';
 import { SlackChannelService } from './channels/slack-channel.service';
 import { TeamsChannelService } from './channels/teams-channel.service';
 import { NotificationDispatchService } from './dispatch/notification-dispatch.service';
+import { TransactionalEmailService } from './transactional-email.service';
 import { NotificationAcknowledgementService } from './acknowledgement/notification-acknowledgement.service';
 import { DomainEventNotificationConsumer } from './consumers/domain-event-notification.consumer';
 
@@ -19,6 +20,7 @@ import { DomainEventNotificationConsumer } from './consumers/domain-event-notifi
   providers: [
     NotificationPolicyService,
     NotificationTemplateService,
+    TransactionalEmailService,
     NotificationPreferenceService,
     InAppChannelService,
     EmailChannelService,
@@ -31,6 +33,7 @@ import { DomainEventNotificationConsumer } from './consumers/domain-event-notifi
   exports: [
     NotificationPolicyService,
     NotificationTemplateService,
+    TransactionalEmailService,
     NotificationDispatchService,
     SlackChannelService,
     TeamsChannelService,

@@ -36,6 +36,8 @@ import { CrowdStrikeProvider } from './connectors/providers/crowdstrike/crowdstr
 import { CrowdStrikeNormalizerService } from './connectors/providers/crowdstrike/crowdstrike.normalizer';
 import { SentinelOneProvider } from './connectors/providers/sentinelone/sentinelone.provider';
 import { SentinelOneNormalizerService } from './connectors/providers/sentinelone/sentinelone.normalizer';
+import { CortexXdrProvider } from './connectors/providers/cortex-xdr/cortex-xdr.provider';
+import { CortexXdrNormalizerService } from './connectors/providers/cortex-xdr/cortex-xdr.normalizer';
 import { DLQReplayWorker } from './ingestion/dlq-replay.worker';
 import { TokenBucketRateLimiterService } from './ingestion/rate-limiter/token-bucket-limiter.service';
 import { AwsSqsIngestListener } from './connectors/listeners/aws-sqs.listener';
@@ -51,6 +53,7 @@ import { AssetIdentityContextService } from './context/asset-identity-context.se
 
 import { DetectionEngineController } from './detection/detection-engine.controller';
 import { DetectionEngineService } from './detection/detection-engine.service';
+import { ThreatCorrelationService } from './detection/correlation/threat-correlation.service';
 
 import { AlertGeneratorController } from './alerts/alert-generator.controller';
 import { AlertGeneratorService } from './alerts/alert-generator.service';
@@ -151,6 +154,8 @@ import { IdempotencyService } from '../../shield-core/src/modules/idempotency/id
     CrowdStrikeNormalizerService,
     SentinelOneProvider,
     SentinelOneNormalizerService,
+    CortexXdrProvider,
+    CortexXdrNormalizerService,
     DLQReplayWorker,
     QuarantineService,
     RawIngestService,
@@ -158,6 +163,7 @@ import { IdempotencyService } from '../../shield-core/src/modules/idempotency/id
     NormalizationService,
     AssetIdentityContextService,
     DetectionEngineService,
+    ThreatCorrelationService,
     AlertGeneratorService,
     MeteringService,
     UsageThresholdDispatcherService,

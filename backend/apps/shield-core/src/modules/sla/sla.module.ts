@@ -9,6 +9,7 @@ import { SlaMeasurementService } from './sla-measurement.service';
 import { ServiceCreditService } from './service-credit.service';
 import { SocSlaClockService } from './soc-sla-clock.service';
 import { ServiceCreditLedgerService } from './service-credit-ledger.service';
+import { AutomatedSlaCreditSettlementService } from './automated-sla-credit-settlement.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { ApprovalsModule } from '../approvals/approvals.module';
 import { BillingModule } from '../billing/billing.module';
@@ -26,6 +27,7 @@ import { BillingModule } from '../billing/billing.module';
     ServiceCreditService,
     SocSlaClockService,
     ServiceCreditLedgerService,
+    AutomatedSlaCreditSettlementService,
   ],
   exports: [
     SlaDefinitionService,
@@ -33,6 +35,7 @@ import { BillingModule } from '../billing/billing.module';
     ServiceCreditService,
     SocSlaClockService,
     ServiceCreditLedgerService,
+    AutomatedSlaCreditSettlementService,
   ],
 })
 export class SlaModule {}

@@ -11,7 +11,8 @@ export type ConnectorProviderKey =
   | 'azure-monitor'
   | 'okta-identity'
   | 'crowdstrike-edr'
-  | 'sentinelone-edr';
+  | 'sentinelone-edr'
+  | 'palo-alto-cortex-xdr';
 
 export type ConnectorCategory =
   | 'Webhook Ingestion'

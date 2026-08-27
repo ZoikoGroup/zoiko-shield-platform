@@ -22,6 +22,8 @@ import { RetrievalBrokerService } from './retrieval/retrieval-broker/retrieval-b
 import { ToolBrokerService } from './tools/tool-broker/tool-broker.service';
 import { ToolCapabilityService } from './tools/tool-capability.service';
 import { AgentRunnerService } from './agent/agent-runner.service';
+import { SecurityCopilotService } from './agent/security-copilot.service';
+import { PromptGuardrailService } from './security/prompt-guardrail.service';
 import { AiKillSwitchService } from './kill-switch/ai-kill-switch.service';
 
 import { ShieldCoreClient } from './internal-client/shield-core.client';
@@ -80,6 +82,8 @@ import { AiGovernanceViewsController } from './internal/ai-governance-views.cont
     ToolBrokerService,
     ToolCapabilityService,
     AgentRunnerService,
+    PromptGuardrailService,
+    SecurityCopilotService,
 
     ShieldCoreClient,
 
@@ -100,6 +104,8 @@ import { AiGovernanceViewsController } from './internal/ai-governance-views.cont
     DetectionExplanationService,
     ToolCapabilityService,
     AgentRunnerService,
+    PromptGuardrailService,
+    SecurityCopilotService,
     AiKillSwitchService,
     AiRedTeamService,
     AiFinOpsBudgetService,

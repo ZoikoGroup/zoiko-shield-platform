@@ -13,6 +13,8 @@ export class AwsIamActionAdapter implements ActionExecutionAdapter {
   private readonly supportedActions = new Set([
     'REVOKE_IAM_SESSION',
     'ATTACH_DENY_ALL_POLICY',
+    'DETACH_DENY_ALL_POLICY',
+    'RESTORE_IAM_ACCESS',
     'DEACTIVATE_ACCESS_KEYS',
     'RESET_IAM_USER_CREDENTIALS',
   ]);
@@ -34,6 +36,7 @@ export class AwsIamActionAdapter implements ActionExecutionAdapter {
       targetArn: context.targetRef,
       sessionsRevoked: context.actionType === 'REVOKE_IAM_SESSION',
       denyPolicyAttached: context.actionType === 'ATTACH_DENY_ALL_POLICY',
+      denyPolicyDetached: context.actionType === 'DETACH_DENY_ALL_POLICY' || context.actionType === 'RESTORE_IAM_ACCESS',
       keysDeactivated: context.actionType === 'DEACTIVATE_ACCESS_KEYS',
       executionMode: context.isSimulation ? 'SIMULATED' : 'LIVE',
     };

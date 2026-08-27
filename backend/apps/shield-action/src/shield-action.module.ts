@@ -9,8 +9,10 @@ import { ShieldCoreClient } from './internal-client/shield-core.client';
 import { OutboxService } from './outbox/outbox.service';
 import { OutboxPublisherService } from './outbox/outbox-publisher.service';
 import { FreezeControllerService } from './freeze-controller/freeze-controller.service';
+import { EmergencyFreezeLockdownService } from './freeze-controller/emergency-freeze-lockdown.service';
 import { RateControlService } from './rate-control/rate-control.service';
 import { DevSimulationSigner } from './command-signing/dev-simulation-signer.service';
+import { CloudHsmSignerService } from './command-signing/cloud-hsm-signer.service';
 import { DispatcherService } from './dispatcher/dispatcher.service';
 import { PolicyReauthorizationService } from './policy/policy-reauthorization.service';
 import { ApprovalReauthorizationService } from './approval/approval-reauthorization.service';
@@ -22,7 +24,9 @@ import { SimulationService } from './simulation/simulation.service';
 import { ActionApprovedConsumer } from './proposals/action-approved.consumer';
 
 import { ActionAuthorityService } from './policy/action-authority.service';
+import { CedarPolicyEvaluatorService } from './policy/cedar-policy-evaluator.service';
 import { ActionRollbackBrokerService } from './rollback/action-rollback-broker.service';
+import { ActionRollbackOrchestratorService } from './rollback/action-rollback-orchestrator.service';
 import { ResponsePlaybookService } from './playbooks/response-playbook.service';
 import { ActionExecutionRegistryService } from './execution-adapters/action-execution-registry.service';
 import { EntraUserActionAdapter } from './execution-adapters/entra-user.adapter';
@@ -38,16 +42,20 @@ import { AwsIamActionAdapter } from './execution-adapters/aws-iam.adapter';
     OutboxService,
     OutboxPublisherService,
     FreezeControllerService,
+    EmergencyFreezeLockdownService,
     RateControlService,
     DevSimulationSigner,
+    CloudHsmSignerService,
     DispatcherService,
     PolicyReauthorizationService,
     ActionAuthorityService,
+    CedarPolicyEvaluatorService,
     ApprovalReauthorizationService,
     ReceiptVerificationService,
     ReconciliationService,
     RollbackService,
     ActionRollbackBrokerService,
+    ActionRollbackOrchestratorService,
     ResponsePlaybookService,
     CredentialExchangeService,
     SimulationService,
@@ -59,7 +67,11 @@ import { AwsIamActionAdapter } from './execution-adapters/aws-iam.adapter';
   ],
   exports: [
     ActionAuthorityService,
+    CedarPolicyEvaluatorService,
+    CloudHsmSignerService,
+    EmergencyFreezeLockdownService,
     ActionRollbackBrokerService,
+    ActionRollbackOrchestratorService,
     ResponsePlaybookService,
     ActionExecutionRegistryService,
   ],

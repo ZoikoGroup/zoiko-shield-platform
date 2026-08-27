@@ -6,6 +6,7 @@ import {
 import { MeterDefinitionService } from './meter-definition.service';
 import { MeteringService } from './metering.service';
 import { MeterGovernanceService } from './meter-governance.service';
+import { MeterExhaustionGuardService } from './meter-exhaustion-guard.service';
 import {
   MeterGovernanceController,
   PlatformMeterGovernanceController,
@@ -28,12 +29,14 @@ import { ApprovalsModule } from '../approvals/approvals.module';
     MeterDefinitionService,
     MeterGovernanceService,
     MeteringService,
+    MeterExhaustionGuardService,
     UsageCorrectionService,
   ],
   exports: [
     MeterDefinitionService,
     MeterGovernanceService,
     MeteringService,
+    MeterExhaustionGuardService,
     UsageCorrectionService,
   ],
 })
