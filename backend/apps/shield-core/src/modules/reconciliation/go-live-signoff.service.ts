@@ -10,7 +10,7 @@ export interface CategoryCheckResult {
 
 @Injectable()
 export class GoLiveSignoffService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) { }
 
   async generateGoLiveAuditReport(): Promise<{
     evaluatedAt: string;
@@ -27,7 +27,7 @@ export class GoLiveSignoffService {
       categoryCode: 'CAT_A',
       categoryName: 'Commercial account, tenant, legal entity',
       status: accountsCount >= 0 ? 'PASSED' : 'FAILED',
-      verificationDetails: `${accountsCount} commercial accounts active in binding registry`,
+      verificationDetails: `${accountsCount} commercial iyyyyyyyuiyuiyuiuaccounts active in binding registry`,
     });
 
     // Category B
