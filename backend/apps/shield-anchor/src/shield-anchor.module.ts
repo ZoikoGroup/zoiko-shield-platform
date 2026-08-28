@@ -19,6 +19,9 @@ import { ProductionCheckpointSigner } from './signing/production-checkpoint-sign
 import { HttpWitnessProvider } from './witnesses/http-witness-provider.service';
 import { Rfc3161WitnessService } from './witnesses/rfc3161/rfc3161-witness.service';
 import { EpochAggregatorService } from './merkle/epoch-aggregator.service';
+import { PqcDualSignerService } from './signing/pqc-dual-signer.service';
+import { TeeEnclaveAttestationService } from './enclave/tee-enclave-attestation.service';
+import { ZeroKnowledgeComplianceProofService } from './zk/zero-knowledge-compliance-proof.service';
 
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
@@ -41,8 +44,18 @@ import { EpochAggregatorService } from './merkle/epoch-aggregator.service';
     HttpWitnessProvider,
     Rfc3161WitnessService,
     EpochAggregatorService,
+    PqcDualSignerService,
+    TeeEnclaveAttestationService,
+    ZeroKnowledgeComplianceProofService,
     CheckpointBuilderService,
   ],
-  exports: [Rfc3161WitnessService, EpochAggregatorService, MerkleTreeService],
+  exports: [
+    Rfc3161WitnessService,
+    EpochAggregatorService,
+    MerkleTreeService,
+    PqcDualSignerService,
+    TeeEnclaveAttestationService,
+    ZeroKnowledgeComplianceProofService,
+  ],
 })
 export class ShieldAnchorModule {}
