@@ -77,6 +77,10 @@ import { DeveloperApiModule } from './modules/developer-api/developer-api.module
 import { WebhookModule } from './modules/webhook/webhook.module';
 import { ExportModule } from './modules/export/export.module';
 import { OffboardingModule } from './modules/offboarding/offboarding.module';
+import { CryptoGovernanceModule } from './modules/crypto-governance/crypto-governance.module';
+import { PrivacyModule } from './modules/privacy/privacy.module';
+import { BreakGlassModule } from './modules/break-glass/break-glass.module';
+import { VerifiableCredentialsModule } from './modules/verifiable-credentials/verifiable-credentials.module';
 import { OutboxPublisherService } from './outbox/outbox-publisher.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -172,6 +176,10 @@ import { HumanAuthorityModule } from './modules/human-authority/human-authority.
     WebhookModule,
     ExportModule,
     OffboardingModule,
+    CryptoGovernanceModule,
+    PrivacyModule,
+    BreakGlassModule,
+    VerifiableCredentialsModule,
   ],
   controllers: [ShieldCoreController],
   providers: [

@@ -24,6 +24,8 @@ import { ToolCapabilityService } from './tools/tool-capability.service';
 import { AgentRunnerService } from './agent/agent-runner.service';
 import { SecurityCopilotService } from './agent/security-copilot.service';
 import { PromptGuardrailService } from './security/prompt-guardrail.service';
+import { DifferentialPrivacyGuardService } from './privacy/differential-privacy-guard.service';
+import { AttackPathDiscoveryService } from './graph/attack-path-discovery.service';
 import { AiKillSwitchService } from './kill-switch/ai-kill-switch.service';
 
 import { ShieldCoreClient } from './internal-client/shield-core.client';
@@ -84,6 +86,8 @@ import { AiGovernanceViewsController } from './internal/ai-governance-views.cont
     AgentRunnerService,
     PromptGuardrailService,
     SecurityCopilotService,
+    DifferentialPrivacyGuardService,
+    AttackPathDiscoveryService,
 
     ShieldCoreClient,
 
@@ -106,6 +110,8 @@ import { AiGovernanceViewsController } from './internal/ai-governance-views.cont
     AgentRunnerService,
     PromptGuardrailService,
     SecurityCopilotService,
+    DifferentialPrivacyGuardService,
+    AttackPathDiscoveryService,
     AiKillSwitchService,
     AiRedTeamService,
     AiFinOpsBudgetService,

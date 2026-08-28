@@ -57,6 +57,10 @@ import { ThreatCorrelationService } from './detection/correlation/threat-correla
 
 import { AlertGeneratorController } from './alerts/alert-generator.controller';
 import { AlertGeneratorService } from './alerts/alert-generator.service';
+import { StixThreatIntelMatcherService } from './threat-intel/stix-threat-intel-matcher.service';
+import { CanaryHoneypotProbeService } from './canary/canary-honeypot-probe.service';
+import { EbpfRuntimeMonitorService } from './ebpf/ebpf-runtime-monitor.service';
+import { StreamThreatHuntingService } from './threat-hunting/stream-threat-hunting.service';
 
 import { MeteringController } from './metering/metering.controller';
 import { MeteringService } from './metering/metering.service';
@@ -192,6 +196,10 @@ import { IdempotencyService } from '../../shield-core/src/modules/idempotency/id
     TokenBucketRateLimiterService,
     AwsSqsIngestListener,
     AzureEventHubsIngestListener,
+    StixThreatIntelMatcherService,
+    CanaryHoneypotProbeService,
+    EbpfRuntimeMonitorService,
+    StreamThreatHuntingService,
     { provide: APP_GUARD, useClass: WorkloadAuthGuard },
   ],
   exports: [
@@ -200,6 +208,10 @@ import { IdempotencyService } from '../../shield-core/src/modules/idempotency/id
     TokenBucketRateLimiterService,
     AwsSqsIngestListener,
     AzureEventHubsIngestListener,
+    StixThreatIntelMatcherService,
+    CanaryHoneypotProbeService,
+    EbpfRuntimeMonitorService,
+    StreamThreatHuntingService,
   ],
 })
 export class ShieldIngestModule {}

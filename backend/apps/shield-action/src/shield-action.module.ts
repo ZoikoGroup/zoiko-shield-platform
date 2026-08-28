@@ -32,6 +32,9 @@ import { ActionExecutionRegistryService } from './execution-adapters/action-exec
 import { EntraUserActionAdapter } from './execution-adapters/entra-user.adapter';
 import { EdrIsolateActionAdapter } from './execution-adapters/edr-isolate.adapter';
 import { AwsIamActionAdapter } from './execution-adapters/aws-iam.adapter';
+import { Fido2StepupGuardService } from './auth/fido2-stepup-guard.service';
+import { DisasterRecoveryPartitionService } from './dr-orchestrator/disaster-recovery-partition.service';
+import { CspmRemediationEngineService } from './cspm/cspm-remediation-engine.service';
 
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
@@ -50,6 +53,9 @@ import { AwsIamActionAdapter } from './execution-adapters/aws-iam.adapter';
     PolicyReauthorizationService,
     ActionAuthorityService,
     CedarPolicyEvaluatorService,
+    Fido2StepupGuardService,
+    DisasterRecoveryPartitionService,
+    CspmRemediationEngineService,
     ApprovalReauthorizationService,
     ReceiptVerificationService,
     ReconciliationService,
@@ -70,6 +76,9 @@ import { AwsIamActionAdapter } from './execution-adapters/aws-iam.adapter';
     CedarPolicyEvaluatorService,
     CloudHsmSignerService,
     EmergencyFreezeLockdownService,
+    Fido2StepupGuardService,
+    DisasterRecoveryPartitionService,
+    CspmRemediationEngineService,
     ActionRollbackBrokerService,
     ActionRollbackOrchestratorService,
     ResponsePlaybookService,
