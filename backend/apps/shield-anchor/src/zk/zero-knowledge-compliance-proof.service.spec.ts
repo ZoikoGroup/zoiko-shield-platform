@@ -4,6 +4,7 @@ describe('ZeroKnowledgeComplianceProofService', () => {
   let zkService: ZeroKnowledgeComplianceProofService;
 
   beforeEach(() => {
+    process.env.NODE_ENV = 'test';
     zkService = new ZeroKnowledgeComplianceProofService();
   });
 

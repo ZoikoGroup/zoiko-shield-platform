@@ -41,6 +41,12 @@ export class ZeroKnowledgeComplianceProofService {
     minAllowed: number;
     maxAllowed: number;
   }): ZeroKnowledgeRangeProof {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'Production ZK range proofs require an approved Bulletproof or SNARK verifier; the local hash demo is disabled.',
+      );
+    }
+
     const proofId = `zk-proof-${crypto.randomUUID()}`;
     const generatedAt = new Date().toISOString();
 
@@ -93,6 +99,12 @@ export class ZeroKnowledgeComplianceProofService {
    * Publicly verifies a Zero-Knowledge Compliance Proof without inspecting raw telemetry.
    */
   verifyComplianceRangeProof(proof: ZeroKnowledgeRangeProof): ZkVerificationReceipt {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'Production ZK verification requires an approved Bulletproof or SNARK verifier; the local hash demo is disabled.',
+      );
+    }
+
     const receiptId = `zk-rcpt-${crypto.randomUUID()}`;
     const verifiedAt = new Date().toISOString();
 

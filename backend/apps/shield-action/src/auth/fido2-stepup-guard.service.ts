@@ -20,6 +20,13 @@ export interface Fido2ChallengeSession {
   expiresAt: number; // Unix epoch ms
 }
 
+interface RegisteredCredential {
+  credentialId: string;
+  analystId: string;
+  publicKeyPem: string;
+  signCount: number;
+}
+
 export interface Fido2AssertionPayload {
   challengeId: string;
   credentialId: string;
@@ -50,9 +57,38 @@ export interface StepUpAuthorizationGrant {
 export class Fido2StepupGuardService {
   private readonly logger = new Logger(Fido2StepupGuardService.name);
   private readonly activeChallenges = new Map<string, Fido2ChallengeSession>();
+  private readonly credentials = new Map<string, RegisteredCredential>();
+  private readonly rpId: string;
+  private readonly expectedOrigin: string;
 
   // Challenge TTL = 2 minutes (120,000ms)
   private readonly CHALLENGE_TTL_MS = 120_000;
+
+  constructor(
+    rpId = process.env.WEBAUTHN_RP_ID || 'security.zoikoshield.corp',
+    expectedOrigin = process.env.WEBAUTHN_ORIGIN || 'https://security.zoikoshield.corp',
+  ) {
+    this.rpId = rpId;
+    this.expectedOrigin = expectedOrigin;
+  }
+
+  registerCredential(credential: {
+    credentialId: string;
+    analystId: string;
+    publicKeyPem: string;
+    signCount?: number;
+  }): void {
+    if (!credential.credentialId || !credential.analystId || !credential.publicKeyPem) {
+      throw new UnauthorizedException('Incomplete WebAuthn credential registration');
+    }
+
+    this.credentials.set(credential.credentialId, {
+      credentialId: credential.credentialId,
+      analystId: credential.analystId,
+      publicKeyPem: credential.publicKeyPem,
+      signCount: credential.signCount ?? 0,
+    });
+  }
 
   /**
    * Generates a cryptographic WebAuthn challenge for an action proposal.
@@ -108,12 +144,42 @@ export class Fido2StepupGuardService {
       throw new ForbiddenException('FIDO2 challenge mismatch');
     }
 
+    if (clientData.type !== 'webauthn.get' || clientData.origin !== this.expectedOrigin) {
+      throw new ForbiddenException('Invalid WebAuthn client data binding');
+    }
+
+    const credential = this.credentials.get(assertion.credentialId);
+    if (!credential || credential.analystId !== session.analystId) {
+      throw new UnauthorizedException('WebAuthn credential is not registered for this analyst');
+    }
+
     // Verify ECDSA signature over authenticatorData || clientDataHash
     const clientDataHash = crypto
       .createHash('sha256')
       .update(Buffer.from(assertion.clientDataJsonBase64, 'base64'))
       .digest();
     const authDataBuf = Buffer.from(assertion.authenticatorDataBase64, 'base64');
+    if (authDataBuf.length < 37) {
+      throw new UnauthorizedException('Invalid WebAuthn authenticator data');
+    }
+
+    const expectedRpIdHash = crypto.createHash('sha256').update(this.rpId).digest();
+    if (!crypto.timingSafeEqual(authDataBuf.subarray(0, 32), expectedRpIdHash)) {
+      throw new ForbiddenException('WebAuthn RP ID hash mismatch');
+    }
+
+    const flags = authDataBuf[32];
+    const userPresenceVerified = (flags & 0x01) !== 0;
+    const userVerificationVerified = (flags & 0x04) !== 0;
+    if (!userPresenceVerified || !userVerificationVerified) {
+      throw new ForbiddenException('WebAuthn user presence and verification are required');
+    }
+
+    const signCount = authDataBuf.readUInt32BE(33);
+    if (credential.signCount > 0 && signCount > 0 && signCount <= credential.signCount) {
+      throw new ForbiddenException('WebAuthn signature counter did not advance');
+    }
+
     const signedBuffer = Buffer.concat([authDataBuf, clientDataHash]);
 
     try {
@@ -121,7 +187,7 @@ export class Fido2StepupGuardService {
       verify.update(signedBuffer);
       verify.end();
       const isValid = verify.verify(
-        assertion.publicKeyPem,
+        credential.publicKeyPem,
         Buffer.from(assertion.signatureHex, 'hex'),
       );
 
@@ -135,6 +201,7 @@ export class Fido2StepupGuardService {
 
     // Consume challenge
     this.activeChallenges.delete(assertion.challengeId);
+    credential.signCount = signCount;
 
     const grantId = `grant-fido2-${crypto.randomUUID()}`;
     const grantExpiresAt = new Date(Date.now() + 60_000).toISOString(); // 1 minute execution window
@@ -153,8 +220,8 @@ export class Fido2StepupGuardService {
       proposalId: session.proposalId,
       actionType: session.actionType,
       fido2Verified: true,
-      userPresenceVerified: true,
-      userVerificationVerified: true,
+      userPresenceVerified,
+      userVerificationVerified,
       expiresAt: grantExpiresAt,
       stepUpAttestationDigest,
     };

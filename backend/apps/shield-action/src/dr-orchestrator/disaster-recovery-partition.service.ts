@@ -21,7 +21,7 @@ export interface FailoverExecutionResult {
   newLeaderRegion: string;
   reconciledOutboxEventsCount: number;
   merkleAnchorDriftDetected: boolean;
-  status: 'FAILOVER_SUCCESS_ZERO_DRIFT';
+  status: 'FAILOVER_SUCCESS_ZERO_DRIFT' | 'FAILOVER_SUCCESS_RECONCILIATION_REQUIRED';
   failoverAttestationDigest: string;
   executedAt: string;
 }
@@ -100,7 +100,13 @@ export class DisasterRecoveryPartitionService {
     // Promote standby to active leader
     eligibleStandby.role = 'ACTIVE_PRIMARY';
     const failoverId = `dr-failover-${crypto.randomUUID()}`;
-    const reconciledOutboxEventsCount = 14; // Reconciled pending ledger batches
+    const leaderSequence = currentLeader?.lastCommittedEpochSequence ?? 0;
+    const reconciledOutboxEventsCount = Math.max(
+      0,
+      leaderSequence - eligibleStandby.lastCommittedEpochSequence,
+    );
+    const merkleAnchorDriftDetected =
+      eligibleStandby.lastCommittedEpochSequence !== leaderSequence;
 
     const failoverAttestationDigest = crypto
       .createHash('sha256')
@@ -118,8 +124,10 @@ export class DisasterRecoveryPartitionService {
       newLeaderCloudProvider: eligibleStandby.cloudProvider,
       newLeaderRegion: eligibleStandby.region,
       reconciledOutboxEventsCount,
-      merkleAnchorDriftDetected: false,
-      status: 'FAILOVER_SUCCESS_ZERO_DRIFT',
+      merkleAnchorDriftDetected,
+      status: merkleAnchorDriftDetected
+        ? 'FAILOVER_SUCCESS_RECONCILIATION_REQUIRED'
+        : 'FAILOVER_SUCCESS_ZERO_DRIFT',
       failoverAttestationDigest,
       executedAt: new Date().toISOString(),
     };

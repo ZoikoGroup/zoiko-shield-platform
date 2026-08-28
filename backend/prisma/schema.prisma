@@ -6,6 +6,27 @@ datasource db {
   provider = "postgresql"
 }
 
+/**
+ * Durable subject-key lifecycle record. The wrapped key is never stored in
+ * plaintext; wrapping is performed by the configured KMS/key-encryption key.
+ */
+model SubjectEncryptionKey {
+  id                     String    @id @default(uuid())
+  tenant_id              String
+  subject_id             String
+  key_version            Int       @default(1)
+  wrapped_key            String
+  wrapping_key_ref       String
+  status                 String    @default("ACTIVE")
+  shredded_at            DateTime?
+  erasure_certificate_id String?   @unique
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
+
+  @@unique([tenant_id, subject_id, key_version])
+  @@index([tenant_id, subject_id, status])
+}
+
 enum ConnectorState {
   NOT_CONNECTED
   AWAITING_ADMIN_CONSENT

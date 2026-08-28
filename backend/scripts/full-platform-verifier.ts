@@ -13,7 +13,7 @@ import { RegulatoryControlsSeeder } from '../apps/shield-core/src/seeds/regulato
 import { DetectionRulesSeeder } from '../apps/shield-core/src/seeds/detection-rules.seeder';
 
 /**
- * ZoikoShield Phase 3 Full Platform Multi-Tenant Verification Runner
+ * ZoikoShield Phase 3 Full Platform Multi-Tenant Simulation Verifier
  * Validates the complete integrated stack:
  * Multi-Tenant Commercial Account -> Multi-Source Ingestion (Okta, CrowdStrike, SentinelOne)
  * -> OCSF Normalization -> Detection Engine -> SOAR Execution (AWS IAM, Entra, EDR)
@@ -22,7 +22,7 @@ import { DetectionRulesSeeder } from '../apps/shield-core/src/seeds/detection-ru
 async function runFullPlatformVerifier() {
   const logger = new Logger('FullPlatformVerifier');
   logger.log('========================================================================');
-  logger.log(' Starting ZoikoShield Multi-Tenant Full Platform Verification Sequence  ');
+  logger.log(' Starting ZoikoShield Multi-Tenant Synthetic Platform Verification Sequence ');
   logger.log('========================================================================');
 
   let stepsPassed = 0;
@@ -264,7 +264,8 @@ async function runFullPlatformVerifier() {
   // Verification Summary
   // -------------------------------------------------------------------------
   logger.log('\n========================================================================');
-  logger.log(` Multi-Tenant Full Platform Verification Completed: ${stepsPassed}/${totalSteps} Stages Passed! `);
+  logger.log(` Synthetic Platform Verification Completed: ${stepsPassed}/${totalSteps} Stages Passed! `);
+  logger.log(' This runner validates in-process synthetic flows; it is not production integration evidence.');
   logger.log('========================================================================\n');
 }
 

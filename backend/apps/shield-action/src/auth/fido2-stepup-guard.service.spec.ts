@@ -15,6 +15,12 @@ describe('Fido2StepupGuardService', () => {
       namedCurve: 'prime256v1',
     });
     const publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
+    const credentialId = 'yubikey-5-nfc-credential-id-12345';
+    fido2Guard.registerCredential({
+      credentialId,
+      analystId: 'soc-lead@enterprise.com',
+      publicKeyPem,
+    });
 
     // 1. Issue Challenge
     const session = fido2Guard.issueChallenge({
@@ -39,7 +45,7 @@ describe('Fido2StepupGuardService', () => {
 
     // 3. Build AuthenticatorData (with User Presence and User Verification flags set)
     const authDataBuf = Buffer.concat([
-      crypto.randomBytes(32), // RP ID Hash
+      crypto.createHash('sha256').update('security.zoikoshield.corp').digest(),
       Buffer.from([0x05]), // Flags: UP (0x01) + UV (0x04)
       Buffer.from([0, 0, 0, 1]), // Sign count
     ]);
@@ -54,7 +60,7 @@ describe('Fido2StepupGuardService', () => {
     // 5. Verify & Grant Step-Up Authorization
     const grant = fido2Guard.verifyAssertionAndGrant({
       challengeId: session.challengeId,
-      credentialId: 'yubikey-5-nfc-credential-id-12345',
+      credentialId,
       authenticatorDataBase64,
       clientDataJsonBase64,
       signatureHex,
