@@ -9,7 +9,10 @@ import {
 } from '../../core/connector.interface';
 import { ConnectorContext } from '../../core/connector-context';
 import { ConnectorRegistry } from '../../core/connector-registry';
-import { CortexXdrNormalizerService, OcsfSecurityFinding } from './cortex-xdr.normalizer';
+import {
+  CortexXdrNormalizerService,
+  OcsfSecurityFinding,
+} from './cortex-xdr.normalizer';
 import { CortexXdrIncident } from './cortex-xdr.types';
 
 @Injectable()
@@ -31,7 +34,9 @@ export class CortexXdrProvider implements SecurityConnector, OnModuleInit {
     context: ConnectorContext,
     input: ConnectInput,
   ): Promise<ConnectionResult> {
-    this.logger.log(`Connecting Palo Alto Cortex XDR for tenant=${context.tenantId}`);
+    this.logger.log(
+      `Connecting Palo Alto Cortex XDR for tenant=${context.tenantId}`,
+    );
     return {
       status: 'CONNECTED',
       connectedAt: new Date().toISOString(),
@@ -50,7 +55,9 @@ export class CortexXdrProvider implements SecurityConnector, OnModuleInit {
   }
 
   async sync(context: ConnectorContext): Promise<SyncResult> {
-    this.logger.log(`Syncing Cortex XDR incidents for tenant=${context.tenantId}`);
+    this.logger.log(
+      `Syncing Cortex XDR incidents for tenant=${context.tenantId}`,
+    );
     return {
       recordsProcessed: 0,
       syncedAt: new Date().toISOString(),

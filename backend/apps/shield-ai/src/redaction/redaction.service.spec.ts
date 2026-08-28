@@ -17,16 +17,20 @@ describe('RedactionService (Secret & PII Scrubbing)', () => {
   });
 
   it('redacts AWS access key IDs', () => {
-    const input = 'Error encountered with AWS key AKIAIOSFODNN7EXAMPLE during retrieval';
+    const input =
+      'Error encountered with AWS key AKIAIOSFODNN7EXAMPLE during retrieval';
     const result = service.redact(input);
 
     expect(result.redactionCount).toBe(1);
-    expect(result.redacted).toBe('Error encountered with AWS key [REDACTED:AWS_ACCESS_KEY] during retrieval');
+    expect(result.redacted).toBe(
+      'Error encountered with AWS key [REDACTED:AWS_ACCESS_KEY] during retrieval',
+    );
     expect(result.redacted).not.toContain('AKIAIOSFODNN7EXAMPLE');
   });
 
   it('redacts Bearer authentication tokens', () => {
-    const input = 'Authorization header: Bearer ya29.a0AfH6SMD_secret_token_value';
+    const input =
+      'Authorization header: Bearer ya29.a0AfH6SMD_secret_token_value';
     const result = service.redact(input);
 
     expect(result.redactionCount).toBe(1);
@@ -35,7 +39,8 @@ describe('RedactionService (Secret & PII Scrubbing)', () => {
   });
 
   it('redacts JWT tokens', () => {
-    const input = 'Session token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.doNotLeakThisSignature';
+    const input =
+      'Session token: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.doNotLeakThisSignature';
     const result = service.redact(input);
 
     expect(result.redactionCount).toBe(1);
@@ -44,7 +49,8 @@ describe('RedactionService (Secret & PII Scrubbing)', () => {
   });
 
   it('redacts generic secret and API key assignments', () => {
-    const input = 'Config: api_key="sk_live_9928173491823719" and password=SuperSecretPassword123!';
+    const input =
+      'Config: api_key="sk_live_9928173491823719" and password=SuperSecretPassword123!';
     const result = service.redact(input);
 
     expect(result.redactionCount).toBeGreaterThanOrEqual(2);
@@ -54,7 +60,8 @@ describe('RedactionService (Secret & PII Scrubbing)', () => {
   });
 
   it('leaves clean prompt text unmodified', () => {
-    const input = 'Explain the security impact of ransomware encryption on financial database hosts.';
+    const input =
+      'Explain the security impact of ransomware encryption on financial database hosts.';
     const result = service.redact(input);
 
     expect(result.redactionCount).toBe(0);

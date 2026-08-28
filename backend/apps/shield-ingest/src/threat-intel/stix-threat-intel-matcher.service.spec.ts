@@ -1,4 +1,7 @@
-import { StixThreatIntelMatcherService, StixBundle } from './stix-threat-intel-matcher.service';
+import {
+  StixThreatIntelMatcherService,
+  StixBundle,
+} from './stix-threat-intel-matcher.service';
 
 describe('StixThreatIntelMatcherService', () => {
   let matcher: StixThreatIntelMatcherService;
@@ -28,7 +31,9 @@ describe('StixThreatIntelMatcherService', () => {
           name: 'Malicious C2 IP',
           pattern: "[ipv4-addr:value = '198.51.100.44']",
           confidence: 95,
-          external_references: [{ source_name: 'mitre-attack', external_id: 'T1071.001' }],
+          external_references: [
+            { source_name: 'mitre-attack', external_id: 'T1071.001' },
+          ],
         },
         {
           type: 'indicator',
@@ -36,15 +41,20 @@ describe('StixThreatIntelMatcherService', () => {
           name: 'C2 Exfiltration Domain',
           pattern: "[domain-name:value = 'c2-dropzone.ru']",
           confidence: 90,
-          external_references: [{ source_name: 'mitre-attack', external_id: 'T1567' }],
+          external_references: [
+            { source_name: 'mitre-attack', external_id: 'T1567' },
+          ],
         },
         {
           type: 'indicator',
           id: 'indicator--hash-01',
           name: 'Payload Dropper Hash',
-          pattern: "[file:hashes.'SHA-256' = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855']",
+          pattern:
+            "[file:hashes.'SHA-256' = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855']",
           confidence: 98,
-          external_references: [{ source_name: 'mitre-attack', external_id: 'T1059.001' }],
+          external_references: [
+            { source_name: 'mitre-attack', external_id: 'T1059.001' },
+          ],
         },
       ],
     };
@@ -56,7 +66,9 @@ describe('StixThreatIntelMatcherService', () => {
     const match = matcher.matchTelemetryObservables({
       ipAddresses: ['198.51.100.44'],
       domains: ['benign.corp'],
-      fileHashes: ['e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'],
+      fileHashes: [
+        'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+      ],
     });
 
     expect(match.isMatched).toBe(true);

@@ -4,7 +4,8 @@ import { CommercialEventPublisherService } from './commercial-event-publisher.se
 
 export interface ContractMilestoneResult {
   contractId: string;
-  milestone: 'NOTICE_30_DAYS' | 'WARNING_7_DAYS' | 'EXPIRED' | 'RENEWAL_PROCESSED';
+  milestone:
+    'NOTICE_30_DAYS' | 'WARNING_7_DAYS' | 'EXPIRED' | 'RENEWAL_PROCESSED';
   termEnd: Date;
   status: string;
   actionTaken: string;
@@ -41,7 +42,8 @@ export class ContractRenewalWorker {
 
       if (diffDays <= 0) {
         // Contract has expired
-        const newStatus = contract.status === 'CANCEL_AT_TERM' ? 'TERMINATED' : 'PAST_DUE';
+        const newStatus =
+          contract.status === 'CANCEL_AT_TERM' ? 'TERMINATED' : 'PAST_DUE';
         await (this.prisma as any).contract.update({
           where: { id: contract.id },
           data: { status: newStatus },
@@ -70,7 +72,9 @@ export class ContractRenewalWorker {
           actionTaken: `Transitioned to ${newStatus}`,
         });
       } else if (diffDays <= 7) {
-        this.logger.warn(`Contract ${contract.id} is 7 days from expiration (termEnd: ${termEnd.toISOString()})`);
+        this.logger.warn(
+          `Contract ${contract.id} is 7 days from expiration (termEnd: ${termEnd.toISOString()})`,
+        );
         results.push({
           contractId: contract.id,
           milestone: 'WARNING_7_DAYS',
@@ -79,7 +83,9 @@ export class ContractRenewalWorker {
           actionTaken: 'Emitted 7-day expiration warning event',
         });
       } else if (diffDays <= 30) {
-        this.logger.log(`Contract ${contract.id} is 30 days from expiration (termEnd: ${termEnd.toISOString()})`);
+        this.logger.log(
+          `Contract ${contract.id} is 30 days from expiration (termEnd: ${termEnd.toISOString()})`,
+        );
         results.push({
           contractId: contract.id,
           milestone: 'NOTICE_30_DAYS',

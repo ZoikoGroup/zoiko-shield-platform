@@ -12,7 +12,9 @@ describe('WitnessService', () => {
 
   const mockPrismaService = {
     witnessReceipt: {
-      create: jest.fn().mockImplementation(({ data }) => Promise.resolve({ ...data })),
+      create: jest
+        .fn()
+        .mockImplementation(({ data }) => Promise.resolve({ ...data })),
     },
   };
 
@@ -75,7 +77,9 @@ describe('WitnessService', () => {
 
     const result = await service.collectReceipts('chk-001', 'merkle-root-abc');
 
-    expect(mockMockWitnessProvider.attest).toHaveBeenCalledWith('merkle-root-abc');
+    expect(mockMockWitnessProvider.attest).toHaveBeenCalledWith(
+      'merkle-root-abc',
+    );
     expect(mockPrismaService.witnessReceipt.create).toHaveBeenCalled();
     expect(result.witnessAssuranceState).toBe('TEST_ONLY');
     expect(result.receipts.length).toBe(1);
@@ -87,9 +91,14 @@ describe('WitnessService', () => {
     process.env.NODE_ENV = 'production';
 
     try {
-      const result = await service.collectReceipts('chk-002', 'merkle-root-xyz');
+      const result = await service.collectReceipts(
+        'chk-002',
+        'merkle-root-xyz',
+      );
 
-      expect(mockHttpWitnessProvider.attestAll).toHaveBeenCalledWith('merkle-root-xyz');
+      expect(mockHttpWitnessProvider.attestAll).toHaveBeenCalledWith(
+        'merkle-root-xyz',
+      );
       expect(mockPrismaService.witnessReceipt.create).toHaveBeenCalledTimes(2);
       expect(result.witnessAssuranceState).toBe('WITNESS_FULL');
       expect(result.receipts.length).toBe(2);

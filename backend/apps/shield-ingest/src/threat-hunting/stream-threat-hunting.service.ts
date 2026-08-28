@@ -65,14 +65,20 @@ export class StreamThreatHuntingService {
 
     for (const event of this.ringBuffer) {
       // 1. Severity filter
-      if (predicate.minSeverityId !== undefined && event.severityId < predicate.minSeverityId) {
+      if (
+        predicate.minSeverityId !== undefined &&
+        event.severityId < predicate.minSeverityId
+      ) {
         continue;
       }
 
       // 2. Process name pattern filter
       if (
         predicate.processNamePattern &&
-        (!event.actor.processName || !event.actor.processName.toLowerCase().includes(predicate.processNamePattern.toLowerCase()))
+        (!event.actor.processName ||
+          !event.actor.processName
+            .toLowerCase()
+            .includes(predicate.processNamePattern.toLowerCase()))
       ) {
         continue;
       }
@@ -80,7 +86,8 @@ export class StreamThreatHuntingService {
       // 3. Source IP filter
       if (
         predicate.sourceIpPattern &&
-        (!event.actor.sourceIp || !event.actor.sourceIp.includes(predicate.sourceIpPattern))
+        (!event.actor.sourceIp ||
+          !event.actor.sourceIp.includes(predicate.sourceIpPattern))
       ) {
         continue;
       }
@@ -88,7 +95,10 @@ export class StreamThreatHuntingService {
       // 4. User Name filter
       if (
         predicate.userNamePattern &&
-        (!event.actor.userName || !event.actor.userName.toLowerCase().includes(predicate.userNamePattern.toLowerCase()))
+        (!event.actor.userName ||
+          !event.actor.userName
+            .toLowerCase()
+            .includes(predicate.userNamePattern.toLowerCase()))
       ) {
         continue;
       }
@@ -99,7 +109,14 @@ export class StreamThreatHuntingService {
 
       const queryDigest = crypto
         .createHash('sha256')
-        .update(JSON.stringify({ matchId, queryId: predicate.queryId, eventId: event.eventId, matchedAt }))
+        .update(
+          JSON.stringify({
+            matchId,
+            queryId: predicate.queryId,
+            eventId: event.eventId,
+            matchedAt,
+          }),
+        )
         .digest('hex');
 
       matches.push({

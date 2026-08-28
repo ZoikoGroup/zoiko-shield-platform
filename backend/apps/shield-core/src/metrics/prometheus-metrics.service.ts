@@ -99,7 +99,11 @@ export class PrometheusMetricsService {
     }
   }
 
-  incrementCounter(name: string, value: number = 1, labels: MetricLabels = {}): void {
+  incrementCounter(
+    name: string,
+    value: number = 1,
+    labels: MetricLabels = {},
+  ): void {
     const counter = this.counters.get(name);
     if (!counter) return;
 
@@ -120,7 +124,11 @@ export class PrometheusMetricsService {
     gauge.values.set(labelKey, { value, labels });
   }
 
-  observeHistogram(name: string, value: number, labels: MetricLabels = {}): void {
+  observeHistogram(
+    name: string,
+    value: number,
+    labels: MetricLabels = {},
+  ): void {
     const histogram = this.histograms.get(name);
     if (!histogram) return;
 
@@ -170,7 +178,9 @@ export class PrometheusMetricsService {
       const count = hist.records.length;
 
       for (const bucket of hist.buckets) {
-        const bucketCount = hist.records.filter((r) => r.value <= bucket).length;
+        const bucketCount = hist.records.filter(
+          (r) => r.value <= bucket,
+        ).length;
         lines.push(`${hist.name}_bucket{le="${bucket}"} ${bucketCount}`);
       }
       lines.push(`${hist.name}_bucket{le="+Inf"} ${count}`);

@@ -38,10 +38,20 @@ export interface SovereigntyComplianceDecision {
 export class DataSovereigntyGuardService {
   private readonly logger = new Logger(DataSovereigntyGuardService.name);
 
-  private readonly POLICIES: Record<SovereignJurisdiction, DataResidencyPolicy> = {
+  private readonly POLICIES: Record<
+    SovereignJurisdiction,
+    DataResidencyPolicy
+  > = {
     EU_SOVEREIGN: {
       jurisdiction: 'EU_SOVEREIGN',
-      permittedRegions: ['europe-west1', 'europe-west3', 'europe-west4', 'europe-north1', 'eu-central-1', 'eu-west-1'],
+      permittedRegions: [
+        'europe-west1',
+        'europe-west3',
+        'europe-west4',
+        'europe-north1',
+        'eu-central-1',
+        'eu-west-1',
+      ],
       crossBorderTransferAllowed: false,
       mandatoryKmsKeyRegion: 'europe-west3',
     },
@@ -53,13 +63,22 @@ export class DataSovereigntyGuardService {
     },
     US_GOVCLOUD: {
       jurisdiction: 'US_GOVCLOUD',
-      permittedRegions: ['us-gov-east-1', 'us-gov-west-1', 'us-east-1', 'us-central1'],
+      permittedRegions: [
+        'us-gov-east-1',
+        'us-gov-west-1',
+        'us-east-1',
+        'us-central1',
+      ],
       crossBorderTransferAllowed: false,
       mandatoryKmsKeyRegion: 'us-gov-east-1',
     },
     APAC_SOVEREIGN: {
       jurisdiction: 'APAC_SOVEREIGN',
-      permittedRegions: ['asia-southeast1', 'asia-northeast1', 'ap-southeast-1'],
+      permittedRegions: [
+        'asia-southeast1',
+        'asia-northeast1',
+        'ap-southeast-1',
+      ],
       crossBorderTransferAllowed: false,
       mandatoryKmsKeyRegion: 'asia-southeast1',
     },
@@ -77,15 +96,19 @@ export class DataSovereigntyGuardService {
   assertSovereignRouting(
     input: TelemetryRoutingAssessment,
   ): SovereigntyComplianceDecision {
-    const policy = this.POLICIES[input.jurisdiction] || this.POLICIES.GLOBAL_COMMERCIAL;
+    const policy =
+      this.POLICIES[input.jurisdiction] || this.POLICIES.GLOBAL_COMMERCIAL;
     const isTargetPermitted =
-      policy.permittedRegions.includes('*') || policy.permittedRegions.includes(input.targetStorageRegion);
+      policy.permittedRegions.includes('*') ||
+      policy.permittedRegions.includes(input.targetStorageRegion);
 
     const assessmentId = `sovereignty-${crypto.randomUUID()}`;
 
     if (!isTargetPermitted) {
       const reason = `Cross-border data transfer prohibited under ${input.jurisdiction}. Target region '${input.targetStorageRegion}' is not in permitted sovereign perimeter: [${policy.permittedRegions.join(', ')}]`;
-      this.logger.warn(`🚨 [DATA FENCE BLOCK] Tenant ${input.tenantId} attempted unapproved routing to ${input.targetStorageRegion}`);
+      this.logger.warn(
+        `🚨 [DATA FENCE BLOCK] Tenant ${input.tenantId} attempted unapproved routing to ${input.targetStorageRegion}`,
+      );
 
       throw new ForbiddenException(reason);
     }

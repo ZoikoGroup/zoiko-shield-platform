@@ -32,7 +32,9 @@ describe('DisasterRecoveryPartitionService', () => {
 
     // Verify new topology leadership
     const updatedTopology = drService.getClusterTopology();
-    const newLeader = updatedTopology.find((n) => n.nodeId === 'node-azure-eu-west-1-standby');
+    const newLeader = updatedTopology.find(
+      (n) => n.nodeId === 'node-azure-eu-west-1-standby',
+    );
     expect(newLeader?.role).toBe('ACTIVE_PRIMARY');
   });
 });

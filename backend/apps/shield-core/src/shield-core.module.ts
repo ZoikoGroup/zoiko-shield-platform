@@ -189,4 +189,4 @@ import { HumanAuthorityModule } from './modules/human-authority/human-authority.
     { provide: APP_GUARD, useClass: DeclaredAccessGuard },
   ],
 })
-export class ShieldCoreModule { }
+export class ShieldCoreModule {}

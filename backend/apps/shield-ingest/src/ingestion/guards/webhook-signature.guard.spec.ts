@@ -35,7 +35,11 @@ describe('WebhookSignatureGuard', () => {
     process.env = originalEnv;
   });
 
-  function createMockContext(headers: Record<string, string>, params: any = { connectorId: 'conn-1' }, rawBodyStr = '{"event":"test"}'): ExecutionContext {
+  function createMockContext(
+    headers: Record<string, string>,
+    params: any = { connectorId: 'conn-1' },
+    rawBodyStr = '{"event":"test"}',
+  ): ExecutionContext {
     const request = {
       headers,
       params,
@@ -119,7 +123,8 @@ describe('WebhookSignatureGuard', () => {
 
     const context = createMockContext(
       {
-        'x-signature': 'sha256=invalid-tampered-hash-00000000000000000000000000000000000000000000',
+        'x-signature':
+          'sha256=invalid-tampered-hash-00000000000000000000000000000000000000000000',
         'x-timestamp': timestamp,
         'x-webhook-nonce': nonce,
       },

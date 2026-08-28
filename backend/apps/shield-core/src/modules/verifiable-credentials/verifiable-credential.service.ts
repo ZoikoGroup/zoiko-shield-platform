@@ -4,7 +4,8 @@ import * as crypto from 'crypto';
 export interface VerifiableCredentialClaim {
   operatorId: string;
   tenantId: string;
-  role: 'SECOPS_PRIVILEGED_OPERATOR' | 'SECURITY_ENGINEER' | 'COMPLIANCE_AUDITOR';
+  role:
+    'SECOPS_PRIVILEGED_OPERATOR' | 'SECURITY_ENGINEER' | 'COMPLIANCE_AUDITOR';
   clearanceLevel: 'TIER_1_CRITICAL' | 'TIER_2_ELEVATED' | 'TIER_3_READONLY';
   grantedScopes: string[];
 }
@@ -56,7 +57,9 @@ export class VerifiableCredentialService {
 
   private readonly issuerDid = `did:key:zIssuer${crypto
     .createHash('sha256')
-    .update(this.issuerKeyPair.publicKey.export({ type: 'spki', format: 'der' }))
+    .update(
+      this.issuerKeyPair.publicKey.export({ type: 'spki', format: 'der' }),
+    )
     .digest('hex')
     .slice(0, 32)}`;
 
@@ -74,7 +77,9 @@ export class VerifiableCredentialService {
   }): W3CVerifiableCredential {
     const vcId = `urn:uuid:${crypto.randomUUID()}`;
     const issuanceDate = new Date().toISOString();
-    const expirationDate = new Date(Date.now() + req.validityDurationHours * 3600 * 1000).toISOString();
+    const expirationDate = new Date(
+      Date.now() + req.validityDurationHours * 3600 * 1000,
+    ).toISOString();
 
     const unsignedVcPayload = {
       '@context': [
@@ -112,7 +117,9 @@ export class VerifiableCredentialService {
       },
     };
 
-    this.logger.log(`Issued W3C Verifiable Credential [${signedVc.id}] to Subject [${req.subjectDid}]`);
+    this.logger.log(
+      `Issued W3C Verifiable Credential [${signedVc.id}] to Subject [${req.subjectDid}]`,
+    );
     return signedVc;
   }
 
@@ -124,12 +131,16 @@ export class VerifiableCredentialService {
     const exp = new Date(vc.expirationDate).getTime();
 
     if (now > exp) {
-      this.logger.warn(`🚨 [VC REJECTED] Verifiable Credential ${vc.id} expired at ${vc.expirationDate}!`);
+      this.logger.warn(
+        `🚨 [VC REJECTED] Verifiable Credential ${vc.id} expired at ${vc.expirationDate}!`,
+      );
       throw new UnauthorizedException('Verifiable credential expired');
     }
 
     if (vc.issuer.id !== this.issuerDid) {
-      this.logger.warn(`🚨 [VC REJECTED] Untrusted Issuer DID: ${vc.issuer.id}`);
+      this.logger.warn(
+        `🚨 [VC REJECTED] Untrusted Issuer DID: ${vc.issuer.id}`,
+      );
       throw new UnauthorizedException('Untrusted credential issuer');
     }
 
@@ -139,10 +150,18 @@ export class VerifiableCredentialService {
     verifier.update(JSON.stringify(unsignedVcPayload));
     verifier.end();
 
-    const isSigValid = verifier.verify(this.issuerKeyPair.publicKey, proof.jwsSignatureHex, 'hex');
+    const isSigValid = verifier.verify(
+      this.issuerKeyPair.publicKey,
+      proof.jwsSignatureHex,
+      'hex',
+    );
     if (!isSigValid) {
-      this.logger.warn(`🚨 [VC REJECTED] Cryptographic signature mismatch on VC ${vc.id}!`);
-      throw new UnauthorizedException('Invalid cryptographic proof signature on credential');
+      this.logger.warn(
+        `🚨 [VC REJECTED] Cryptographic signature mismatch on VC ${vc.id}!`,
+      );
+      throw new UnauthorizedException(
+        'Invalid cryptographic proof signature on credential',
+      );
     }
 
     const verifiedAt = new Date().toISOString();
@@ -151,7 +170,9 @@ export class VerifiableCredentialService {
       .update(JSON.stringify({ vcId: vc.id, proof: vc.proof, verifiedAt }))
       .digest('hex');
 
-    this.logger.log(`✔ Verified W3C Verifiable Credential [${vc.id}] for Operator [${vc.credentialSubject.claims.operatorId}]`);
+    this.logger.log(
+      `✔ Verified W3C Verifiable Credential [${vc.id}] for Operator [${vc.credentialSubject.claims.operatorId}]`,
+    );
 
     return {
       isValid: true,

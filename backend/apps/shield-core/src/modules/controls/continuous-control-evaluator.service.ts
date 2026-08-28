@@ -1,6 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
-import { RegulatoryControlsSeeder, RegulatoryControlDefinition } from '../../seeds/regulatory-controls.seeder';
+import {
+  RegulatoryControlsSeeder,
+  RegulatoryControlDefinition,
+} from '../../seeds/regulatory-controls.seeder';
 import { MerkleTreeService } from '../../../../shield-anchor/src/merkle/merkle-tree.service';
 
 export interface ControlEvaluationInput {
@@ -77,12 +80,17 @@ export class ContinuousControlEvaluatorService {
         details: evalResult.details,
       });
 
-      const hash = crypto.createHash('sha256').update(evidencePayload).digest('hex');
+      const hash = crypto
+        .createHash('sha256')
+        .update(evidencePayload)
+        .digest('hex');
       evidenceHashes.push(hash);
     }
 
     const merkleBuild = this.merkleTreeService.build(evidenceHashes);
-    const compliantCount = evaluations.filter((e) => e.status === 'COMPLIANT').length;
+    const compliantCount = evaluations.filter(
+      (e) => e.status === 'COMPLIANT',
+    ).length;
     const score = Math.round((compliantCount / evaluations.length) * 100);
 
     return {
@@ -144,7 +152,8 @@ export class ContinuousControlEvaluatorService {
           complianceScore = 70.0;
           details.reason = `${snap.unresolvedHighSeverityThreats} unresolved critical/high security anomalies pending review`;
         } else {
-          details.reason = 'Continuous Merkle log verification and zero open critical threats';
+          details.reason =
+            'Continuous Merkle log verification and zero open critical threats';
         }
         break;
 
@@ -164,12 +173,14 @@ export class ContinuousControlEvaluatorService {
           complianceScore = 60.0;
           details.reason = `${snap.unresolvedHighSeverityThreats} unmitigated security findings exceeding prompt detection SLA`;
         } else {
-          details.reason = 'Sub-second OCSF detection pipeline meeting DORA Article 10 SLA';
+          details.reason =
+            'Sub-second OCSF detection pipeline meeting DORA Article 10 SLA';
         }
         break;
 
       default:
-        details.reason = 'Standard operational posture verified within tolerance limits';
+        details.reason =
+          'Standard operational posture verified within tolerance limits';
         break;
     }
 

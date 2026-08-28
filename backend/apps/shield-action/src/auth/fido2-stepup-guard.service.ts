@@ -1,4 +1,9 @@
-import { Injectable, Logger, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ForbiddenException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import * as crypto from 'crypto';
 
 export interface Fido2ChallengeRequest {
@@ -66,7 +71,8 @@ export class Fido2StepupGuardService {
 
   constructor(
     rpId = process.env.WEBAUTHN_RP_ID || 'security.zoikoshield.corp',
-    expectedOrigin = process.env.WEBAUTHN_ORIGIN || 'https://security.zoikoshield.corp',
+    expectedOrigin = process.env.WEBAUTHN_ORIGIN ||
+      'https://security.zoikoshield.corp',
   ) {
     this.rpId = rpId;
     this.expectedOrigin = expectedOrigin;
@@ -78,8 +84,14 @@ export class Fido2StepupGuardService {
     publicKeyPem: string;
     signCount?: number;
   }): void {
-    if (!credential.credentialId || !credential.analystId || !credential.publicKeyPem) {
-      throw new UnauthorizedException('Incomplete WebAuthn credential registration');
+    if (
+      !credential.credentialId ||
+      !credential.analystId ||
+      !credential.publicKeyPem
+    ) {
+      throw new UnauthorizedException(
+        'Incomplete WebAuthn credential registration',
+      );
     }
 
     this.credentials.set(credential.credentialId, {
@@ -111,7 +123,9 @@ export class Fido2StepupGuardService {
     };
 
     this.activeChallenges.set(challengeId, session);
-    this.logger.log(`Issued FIDO2 Challenge [${challengeId}] for Analyst: ${req.analystId}, Action: ${req.actionType}`);
+    this.logger.log(
+      `Issued FIDO2 Challenge [${challengeId}] for Analyst: ${req.analystId}, Action: ${req.actionType}`,
+    );
 
     return session;
   }
@@ -119,11 +133,15 @@ export class Fido2StepupGuardService {
   /**
    * Verifies WebAuthn assertion signature and returns a signed Step-Up Authorization Grant.
    */
-  verifyAssertionAndGrant(assertion: Fido2AssertionPayload): StepUpAuthorizationGrant {
+  verifyAssertionAndGrant(
+    assertion: Fido2AssertionPayload,
+  ): StepUpAuthorizationGrant {
     const session = this.activeChallenges.get(assertion.challengeId);
 
     if (!session) {
-      throw new UnauthorizedException('FIDO2 challenge not found or already consumed');
+      throw new UnauthorizedException(
+        'FIDO2 challenge not found or already consumed',
+      );
     }
 
     if (Date.now() > session.expiresAt) {
@@ -134,7 +152,10 @@ export class Fido2StepupGuardService {
     // Parse and verify clientDataJSON
     let clientData: any;
     try {
-      const rawJson = Buffer.from(assertion.clientDataJsonBase64, 'base64').toString('utf-8');
+      const rawJson = Buffer.from(
+        assertion.clientDataJsonBase64,
+        'base64',
+      ).toString('utf-8');
       clientData = JSON.parse(rawJson);
     } catch {
       throw new UnauthorizedException('Invalid clientDataJSON encoding');
@@ -144,13 +165,18 @@ export class Fido2StepupGuardService {
       throw new ForbiddenException('FIDO2 challenge mismatch');
     }
 
-    if (clientData.type !== 'webauthn.get' || clientData.origin !== this.expectedOrigin) {
+    if (
+      clientData.type !== 'webauthn.get' ||
+      clientData.origin !== this.expectedOrigin
+    ) {
       throw new ForbiddenException('Invalid WebAuthn client data binding');
     }
 
     const credential = this.credentials.get(assertion.credentialId);
     if (!credential || credential.analystId !== session.analystId) {
-      throw new UnauthorizedException('WebAuthn credential is not registered for this analyst');
+      throw new UnauthorizedException(
+        'WebAuthn credential is not registered for this analyst',
+      );
     }
 
     // Verify ECDSA signature over authenticatorData || clientDataHash
@@ -158,13 +184,21 @@ export class Fido2StepupGuardService {
       .createHash('sha256')
       .update(Buffer.from(assertion.clientDataJsonBase64, 'base64'))
       .digest();
-    const authDataBuf = Buffer.from(assertion.authenticatorDataBase64, 'base64');
+    const authDataBuf = Buffer.from(
+      assertion.authenticatorDataBase64,
+      'base64',
+    );
     if (authDataBuf.length < 37) {
       throw new UnauthorizedException('Invalid WebAuthn authenticator data');
     }
 
-    const expectedRpIdHash = crypto.createHash('sha256').update(this.rpId).digest();
-    if (!crypto.timingSafeEqual(authDataBuf.subarray(0, 32), expectedRpIdHash)) {
+    const expectedRpIdHash = crypto
+      .createHash('sha256')
+      .update(this.rpId)
+      .digest();
+    if (
+      !crypto.timingSafeEqual(authDataBuf.subarray(0, 32), expectedRpIdHash)
+    ) {
       throw new ForbiddenException('WebAuthn RP ID hash mismatch');
     }
 
@@ -172,12 +206,20 @@ export class Fido2StepupGuardService {
     const userPresenceVerified = (flags & 0x01) !== 0;
     const userVerificationVerified = (flags & 0x04) !== 0;
     if (!userPresenceVerified || !userVerificationVerified) {
-      throw new ForbiddenException('WebAuthn user presence and verification are required');
+      throw new ForbiddenException(
+        'WebAuthn user presence and verification are required',
+      );
     }
 
     const signCount = authDataBuf.readUInt32BE(33);
-    if (credential.signCount > 0 && signCount > 0 && signCount <= credential.signCount) {
-      throw new ForbiddenException('WebAuthn signature counter did not advance');
+    if (
+      credential.signCount > 0 &&
+      signCount > 0 &&
+      signCount <= credential.signCount
+    ) {
+      throw new ForbiddenException(
+        'WebAuthn signature counter did not advance',
+      );
     }
 
     const signedBuffer = Buffer.concat([authDataBuf, clientDataHash]);
@@ -192,11 +234,15 @@ export class Fido2StepupGuardService {
       );
 
       if (!isValid) {
-        throw new ForbiddenException('FIDO2 hardware signature verification failed');
+        throw new ForbiddenException(
+          'FIDO2 hardware signature verification failed',
+        );
       }
     } catch (err: any) {
       if (err instanceof ForbiddenException) throw err;
-      throw new ForbiddenException(`Cryptographic assertion failed: ${err.message}`);
+      throw new ForbiddenException(
+        `Cryptographic assertion failed: ${err.message}`,
+      );
     }
 
     // Consume challenge
@@ -208,10 +254,18 @@ export class Fido2StepupGuardService {
 
     const stepUpAttestationDigest = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ grantId, session, credentialId: assertion.credentialId }))
+      .update(
+        JSON.stringify({
+          grantId,
+          session,
+          credentialId: assertion.credentialId,
+        }),
+      )
       .digest('hex');
 
-    this.logger.log(`✔ Step-Up Grant [${grantId}] issued for Proposal: ${session.proposalId}`);
+    this.logger.log(
+      `✔ Step-Up Grant [${grantId}] issued for Proposal: ${session.proposalId}`,
+    );
 
     return {
       grantId,

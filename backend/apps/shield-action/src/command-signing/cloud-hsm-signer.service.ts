@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
-import { CommandSigner, SignableCommand, SignedCommand } from './command-signer.interface';
+import {
+  CommandSigner,
+  SignableCommand,
+  SignedCommand,
+} from './command-signer.interface';
 
 export interface HsmKeyPair {
   keyId: string;

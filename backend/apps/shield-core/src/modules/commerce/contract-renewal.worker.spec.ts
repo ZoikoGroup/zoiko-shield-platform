@@ -25,7 +25,10 @@ describe('ContractRenewalWorker', () => {
       providers: [
         ContractRenewalWorker,
         { provide: PrismaService, useValue: mockPrisma },
-        { provide: CommercialEventPublisherService, useValue: mockEventPublisher },
+        {
+          provide: CommercialEventPublisherService,
+          useValue: mockEventPublisher,
+        },
       ],
     }).compile();
 
@@ -41,7 +44,10 @@ describe('ContractRenewalWorker', () => {
     };
 
     mockPrisma.contract.findMany.mockResolvedValue([expiredContract]);
-    mockPrisma.contract.update.mockResolvedValue({ ...expiredContract, status: 'PAST_DUE' });
+    mockPrisma.contract.update.mockResolvedValue({
+      ...expiredContract,
+      status: 'PAST_DUE',
+    });
 
     const results = await worker.evaluateExpiringContracts(now);
 
@@ -70,7 +76,10 @@ describe('ContractRenewalWorker', () => {
     };
 
     mockPrisma.contract.findMany.mockResolvedValue([cancelContract]);
-    mockPrisma.contract.update.mockResolvedValue({ ...cancelContract, status: 'TERMINATED' });
+    mockPrisma.contract.update.mockResolvedValue({
+      ...cancelContract,
+      status: 'TERMINATED',
+    });
 
     const results = await worker.evaluateExpiringContracts(now);
 

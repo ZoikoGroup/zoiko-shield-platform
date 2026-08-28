@@ -56,21 +56,29 @@ export class PqcDualSignerService {
     this.pqcPrivateKey = pqcKeys.secretKey;
     this.pqcPublicKeyBase64 = Buffer.from(pqcKeys.publicKey).toString('base64');
 
-    this.logger.log(`Initialized PQC Hybrid Dual-Signer [KeyId: ${this.keyId}] (ECDSA-P256 + ML-DSA-65)`);
+    this.logger.log(
+      `Initialized PQC Hybrid Dual-Signer [KeyId: ${this.keyId}] (ECDSA-P256 + ML-DSA-65)`,
+    );
   }
 
   /**
    * Generates a hybrid dual-signature over payload using both Classical and Post-Quantum algorithms.
    */
-  async signHybrid(payload: string | Buffer): Promise<HybridDualSignatureResult> {
-    const dataBuffer = Buffer.isBuffer(payload) ? payload : Buffer.from(payload, 'utf-8');
+  async signHybrid(
+    payload: string | Buffer,
+  ): Promise<HybridDualSignatureResult> {
+    const dataBuffer = Buffer.isBuffer(payload)
+      ? payload
+      : Buffer.from(payload, 'utf-8');
     const signatureId = `sig-pqc-${crypto.randomUUID()}`;
 
     // 1. Classical ECDSA P-256 Signature
     const classicalSigner = crypto.createSign('SHA256');
     classicalSigner.update(dataBuffer);
     classicalSigner.end();
-    const classicalSignatureHex = classicalSigner.sign(this.classicalPrivateKey).toString('hex');
+    const classicalSignatureHex = classicalSigner
+      .sign(this.classicalPrivateKey)
+      .toString('hex');
 
     // 2. FIPS 204 ML-DSA-65 signature.
     const pqcSignatureHex = Buffer.from(
@@ -84,7 +92,10 @@ export class PqcDualSignerService {
       cSig: classicalSignatureHex,
       qSig: pqcSignatureHex,
     });
-    const hybridCombinedSignatureBase64 = Buffer.from(combinedContainer, 'utf-8').toString('base64');
+    const hybridCombinedSignatureBase64 = Buffer.from(
+      combinedContainer,
+      'utf-8',
+    ).toString('base64');
 
     return {
       signatureId,
@@ -102,8 +113,13 @@ export class PqcDualSignerService {
   /**
    * Verifies both Classical ECDSA and Post-Quantum ML-DSA signatures.
    */
-  verifyHybrid(payload: string | Buffer, sigResult: HybridDualSignatureResult): HybridVerificationResult {
-    const dataBuffer = Buffer.isBuffer(payload) ? payload : Buffer.from(payload, 'utf-8');
+  verifyHybrid(
+    payload: string | Buffer,
+    sigResult: HybridDualSignatureResult,
+  ): HybridVerificationResult {
+    const dataBuffer = Buffer.isBuffer(payload)
+      ? payload
+      : Buffer.from(payload, 'utf-8');
 
     // 1. Verify Classical Signature
     let classicalValid = false;

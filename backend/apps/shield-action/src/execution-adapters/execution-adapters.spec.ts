@@ -93,7 +93,9 @@ describe('ActionExecutionRegistry & Adapters', () => {
 
     expect(receipt.status).toBe('EXECUTED');
     expect(receipt.actionType).toBe('REVOKE_IAM_SESSION');
-    expect(receipt.targetRef).toBe('arn:aws:iam::123456789012:role/CompromisedDevRole');
+    expect(receipt.targetRef).toBe(
+      'arn:aws:iam::123456789012:role/CompromisedDevRole',
+    );
     expect(receipt.observedEffect.sessionsRevoked).toBe(true);
     expect(receipt.signature).toBeDefined();
 

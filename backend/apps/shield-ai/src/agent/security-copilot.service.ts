@@ -57,7 +57,9 @@ export class SecurityCopilotService {
   async conductInvestigation(
     input: CopilotInvestigationInput,
   ): Promise<CopilotInvestigationReport> {
-    this.logger.log(`Conducting Copilot Investigation for Tenant ${input.tenantId}, Incident: ${input.incidentId}`);
+    this.logger.log(
+      `Conducting Copilot Investigation for Tenant ${input.tenantId}, Incident: ${input.incidentId}`,
+    );
 
     // 1. Guardrail inspection
     const guard = this.guardrailService.inspectAndSanitize(input.userQuery);
@@ -67,30 +69,44 @@ export class SecurityCopilotService {
       );
     }
 
-    const host = input.telemetryContext?.affectedHost || 'srv-prod-app-01.internal';
-    const user = input.telemetryContext?.affectedUser || 'lead.engineer@acme.corp';
-    const tactics = input.telemetryContext?.mitreTactics || ['Initial Access', 'Execution', 'Exfiltration'];
+    const host =
+      input.telemetryContext?.affectedHost || 'srv-prod-app-01.internal';
+    const user =
+      input.telemetryContext?.affectedUser || 'lead.engineer@acme.corp';
+    const tactics = input.telemetryContext?.mitreTactics || [
+      'Initial Access',
+      'Execution',
+      'Exfiltration',
+    ];
 
-    const executiveSummary =
-      `AI Copilot Analysis for Incident [${input.incidentId}]: Identified coordinated lateral movement originating from principal [${user}] onto host [${host}]. Correlated evidence indicates high confidence multi-stage exploit attempt.`;
+    const executiveSummary = `AI Copilot Analysis for Incident [${input.incidentId}]: Identified coordinated lateral movement originating from principal [${user}] onto host [${host}]. Correlated evidence indicates high confidence multi-stage exploit attempt.`;
 
     const actions = [
       {
         actionType: 'ISOLATE_ENDPOINT',
         target: host,
-        rationale: 'Prevent outbound C2 communication and network lateral movement',
+        rationale:
+          'Prevent outbound C2 communication and network lateral movement',
       },
       {
         actionType: 'DISABLE_USER_ACCOUNT',
         target: user,
-        rationale: 'Revoke active authentication tokens following credential compromise',
+        rationale:
+          'Revoke active authentication tokens following credential compromise',
       },
     ];
 
     const investigationId = `copilot-inv-${crypto.randomUUID()}`;
     const investigationDigest = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ tenantId: input.tenantId, incidentId: input.incidentId, executiveSummary, actions }))
+      .update(
+        JSON.stringify({
+          tenantId: input.tenantId,
+          incidentId: input.incidentId,
+          executiveSummary,
+          actions,
+        }),
+      )
       .digest('hex');
 
     return {

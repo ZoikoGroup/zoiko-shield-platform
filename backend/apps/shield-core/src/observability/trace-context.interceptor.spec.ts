@@ -16,7 +16,8 @@ describe('TraceContextInterceptor', () => {
     const req: any = { headers: {} };
     const res: any = { setHeader: jest.fn() };
     const context: Partial<ExecutionContext> = {
-      switchToHttp: () => ({ getRequest: () => req, getResponse: () => res } as any),
+      switchToHttp: () =>
+        ({ getRequest: () => req, getResponse: () => res }) as any,
     };
     const next: CallHandler = { handle: () => of('test-result') };
 
@@ -43,7 +44,8 @@ describe('TraceContextInterceptor', () => {
     const req: any = { headers: { [W3C_TRACEPARENT_HEADER]: inboundHeader } };
     const res: any = { setHeader: jest.fn() };
     const context: Partial<ExecutionContext> = {
-      switchToHttp: () => ({ getRequest: () => req, getResponse: () => res } as any),
+      switchToHttp: () =>
+        ({ getRequest: () => req, getResponse: () => res }) as any,
     };
     const next: CallHandler = { handle: () => of('propagated') };
 

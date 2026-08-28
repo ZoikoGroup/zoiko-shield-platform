@@ -1,4 +1,7 @@
-import { EpochAggregatorService, TenantEpochInput } from './epoch-aggregator.service';
+import {
+  EpochAggregatorService,
+  TenantEpochInput,
+} from './epoch-aggregator.service';
 import { MerkleTreeService } from './merkle-tree.service';
 import { Rfc3161WitnessService } from '../witnesses/rfc3161/rfc3161-witness.service';
 

@@ -163,7 +163,10 @@ export class CortexXdrNormalizerService {
   }
 
   private extractMitreAttacks(alert: CortexXdrAlert) {
-    const attacks: Array<{ tactic: { name: string }; technique: { name: string } }> = [];
+    const attacks: Array<{
+      tactic: { name: string };
+      technique: { name: string };
+    }> = [];
     const tactics = alert.mitre_tactic_id_and_name ?? [];
     const techniques = alert.mitre_technique_id_and_name ?? [];
 
@@ -171,7 +174,9 @@ export class CortexXdrNormalizerService {
     for (let i = 0; i < maxLen; i++) {
       attacks.push({
         tactic: { name: tactics[i] || 'Execution' },
-        technique: { name: techniques[i] || 'Command and Scripting Interpreter' },
+        technique: {
+          name: techniques[i] || 'Command and Scripting Interpreter',
+        },
       });
     }
 

@@ -119,9 +119,16 @@ describe('AuditPackageExportService', () => {
       package_envelope_hash: 'env-hash-abc',
     });
 
-    await service.exportToDirectory(tenantId, packageId, '/tmp/export-dir', false);
+    await service.exportToDirectory(
+      tenantId,
+      packageId,
+      '/tmp/export-dir',
+      false,
+    );
 
-    expect(fs.mkdirSync).toHaveBeenCalledWith('/tmp/export-dir', { recursive: true });
+    expect(fs.mkdirSync).toHaveBeenCalledWith('/tmp/export-dir', {
+      recursive: true,
+    });
     expect(fs.writeFileSync).toHaveBeenCalled();
   });
 });

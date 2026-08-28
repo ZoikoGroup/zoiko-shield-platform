@@ -41,7 +41,9 @@ export class SentinelOneProvider implements SecurityConnector, OnModuleInit {
   }
 
   async testConnection(context: ConnectorContext): Promise<HealthResult> {
-    this.logger.log(`Testing SentinelOne health for tenant=${context.tenantId}`);
+    this.logger.log(
+      `Testing SentinelOne health for tenant=${context.tenantId}`,
+    );
     return {
       status: 'HEALTHY',
       lastCheckedAt: new Date().toISOString(),
@@ -50,7 +52,9 @@ export class SentinelOneProvider implements SecurityConnector, OnModuleInit {
   }
 
   async sync(context: ConnectorContext): Promise<SyncResult> {
-    this.logger.log(`Syncing SentinelOne threats for tenant=${context.tenantId}`);
+    this.logger.log(
+      `Syncing SentinelOne threats for tenant=${context.tenantId}`,
+    );
     return {
       recordsProcessed: 0,
       syncedAt: new Date().toISOString(),

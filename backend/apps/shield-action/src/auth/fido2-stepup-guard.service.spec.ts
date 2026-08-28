@@ -14,7 +14,9 @@ describe('Fido2StepupGuardService', () => {
     const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', {
       namedCurve: 'prime256v1',
     });
-    const publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
+    const publicKeyPem = publicKey
+      .export({ type: 'spki', format: 'pem' })
+      .toString();
     const credentialId = 'yubikey-5-nfc-credential-id-12345';
     fido2Guard.registerCredential({
       credentialId,
@@ -40,8 +42,13 @@ describe('Fido2StepupGuardService', () => {
       challenge: session.challengeBase64,
       origin: 'https://security.zoikoshield.corp',
     };
-    const clientDataJsonBase64 = Buffer.from(JSON.stringify(clientDataObj)).toString('base64');
-    const clientDataHash = crypto.createHash('sha256').update(Buffer.from(clientDataJsonBase64, 'base64')).digest();
+    const clientDataJsonBase64 = Buffer.from(
+      JSON.stringify(clientDataObj),
+    ).toString('base64');
+    const clientDataHash = crypto
+      .createHash('sha256')
+      .update(Buffer.from(clientDataJsonBase64, 'base64'))
+      .digest();
 
     // 3. Build AuthenticatorData (with User Presence and User Verification flags set)
     const authDataBuf = Buffer.concat([
@@ -81,7 +88,9 @@ describe('Fido2StepupGuardService', () => {
         challengeId: 'non-existent-challenge-id',
         credentialId: 'cred-123',
         authenticatorDataBase64: Buffer.from('test').toString('base64'),
-        clientDataJsonBase64: Buffer.from(JSON.stringify({ challenge: 'xyz' })).toString('base64'),
+        clientDataJsonBase64: Buffer.from(
+          JSON.stringify({ challenge: 'xyz' }),
+        ).toString('base64'),
         signatureHex: 'deadbeef',
         publicKeyPem: 'test',
       });

@@ -10,7 +10,11 @@ export interface StixObject {
   valid_from?: string;
   labels?: string[];
   confidence?: number;
-  external_references?: Array<{ source_name: string; external_id?: string; url?: string }>;
+  external_references?: Array<{
+    source_name: string;
+    external_id?: string;
+    url?: string;
+  }>;
 }
 
 export interface StixBundle {
@@ -55,9 +59,14 @@ export class StixThreatIntelMatcherService {
   /**
    * Ingests and indexes a STIX 2.1 Threat Intel Bundle.
    */
-  ingestStixBundle(bundle: StixBundle): { indexedCount: number; bundleId: string } {
+  ingestStixBundle(bundle: StixBundle): {
+    indexedCount: number;
+    bundleId: string;
+  } {
     let count = 0;
-    this.logger.log(`Ingesting STIX 2.1 Threat Bundle [${bundle.id}] with ${bundle.objects.length} objects...`);
+    this.logger.log(
+      `Ingesting STIX 2.1 Threat Bundle [${bundle.id}] with ${bundle.objects.length} objects...`,
+    );
 
     // 1. Identify Threat Actors and Malware in the bundle
     const threatActors = bundle.objects
@@ -97,7 +106,9 @@ export class StixThreatIntelMatcherService {
         }
 
         // Parse Domain Indicator
-        const domainMatch = obj.pattern.match(/domain-name:value\s*=\s*'([^']+)'/i);
+        const domainMatch = obj.pattern.match(
+          /domain-name:value\s*=\s*'([^']+)'/i,
+        );
         if (domainMatch) {
           const domain = domainMatch[1];
           const ioc: IndexedIoc = {
@@ -114,7 +125,9 @@ export class StixThreatIntelMatcherService {
         }
 
         // Parse SHA-256 Hash Indicator
-        const hashMatch = obj.pattern.match(/file:hashes\.'SHA-256'\s*=\s*'([^']+)'/i);
+        const hashMatch = obj.pattern.match(
+          /file:hashes\.'SHA-256'\s*=\s*'([^']+)'/i,
+        );
         if (hashMatch) {
           const hash = hashMatch[1];
           const ioc: IndexedIoc = {
@@ -132,7 +145,9 @@ export class StixThreatIntelMatcherService {
       }
     }
 
-    this.logger.log(`✔ Indexed ${count} threat intelligence IOCs from bundle ${bundle.id}`);
+    this.logger.log(
+      `✔ Indexed ${count} threat intelligence IOCs from bundle ${bundle.id}`,
+    );
     return { indexedCount: count, bundleId: bundle.id };
   }
 
@@ -165,10 +180,22 @@ export class StixThreatIntelMatcherService {
     }
 
     const isMatched = matchedIocs.length > 0;
-    const maxConfidence = isMatched ? Math.max(...matchedIocs.map((i) => i.confidence)) : 0;
-    const threatActors = Array.from(new Set(matchedIocs.map((i) => i.threatActor).filter(Boolean) as string[]));
-    const malwareFamilies = Array.from(new Set(matchedIocs.map((i) => i.malwareFamily).filter(Boolean) as string[]));
-    const mitreTechniques = Array.from(new Set(matchedIocs.flatMap((i) => i.mitreTechniques)));
+    const maxConfidence = isMatched
+      ? Math.max(...matchedIocs.map((i) => i.confidence))
+      : 0;
+    const threatActors = Array.from(
+      new Set(
+        matchedIocs.map((i) => i.threatActor).filter(Boolean) as string[],
+      ),
+    );
+    const malwareFamilies = Array.from(
+      new Set(
+        matchedIocs.map((i) => i.malwareFamily).filter(Boolean) as string[],
+      ),
+    );
+    const mitreTechniques = Array.from(
+      new Set(matchedIocs.flatMap((i) => i.mitreTechniques)),
+    );
 
     const enrichmentDigest = crypto
       .createHash('sha256')

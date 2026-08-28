@@ -51,13 +51,18 @@ describe('DatabaseResilienceService', () => {
       .mockRejectedValueOnce(new Error('Transient connection drop'))
       .mockResolvedValueOnce('recovered-data');
 
-    const result = await service.executeWithRetry(op, { initialDelayMs: 10, maxRetries: 2 });
+    const result = await service.executeWithRetry(op, {
+      initialDelayMs: 10,
+      maxRetries: 2,
+    });
     expect(result).toBe('recovered-data');
     expect(op).toHaveBeenCalledTimes(2);
   });
 
   it('trips circuit breaker to OPEN after exceeding failure threshold', async () => {
-    mockPrismaService.$queryRawUnsafe.mockRejectedValue(new Error('Fatal DB failure'));
+    mockPrismaService.$queryRawUnsafe.mockRejectedValue(
+      new Error('Fatal DB failure'),
+    );
 
     for (let i = 0; i < 5; i++) {
       await service.checkHealth();
@@ -67,7 +72,9 @@ describe('DatabaseResilienceService', () => {
 
     // Subsequent operation should reject immediately
     const op = jest.fn();
-    await expect(service.executeWithRetry(op)).rejects.toThrow('Database circuit breaker is OPEN');
+    await expect(service.executeWithRetry(op)).rejects.toThrow(
+      'Database circuit breaker is OPEN',
+    );
     expect(op).not.toHaveBeenCalled();
   });
 });

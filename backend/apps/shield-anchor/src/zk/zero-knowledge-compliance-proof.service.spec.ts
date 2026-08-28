@@ -13,8 +13,8 @@ describe('ZeroKnowledgeComplianceProofService', () => {
     const proof = zkService.generateComplianceRangeProof({
       statement: 'SOC2_TYPE2_AVAILABILITY_MONTHLY_UPTIME',
       privateValue: 99.994, // True private SLA metric
-      minAllowed: 99.90,
-      maxAllowed: 100.00,
+      minAllowed: 99.9,
+      maxAllowed: 100.0,
     });
 
     expect(proof.proofId).toBeDefined();

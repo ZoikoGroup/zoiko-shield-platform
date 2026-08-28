@@ -28,7 +28,9 @@ describe('ContinuousControlEvaluatorService', () => {
     expect(report.totalControlsEvaluated).toBeGreaterThan(0);
     expect(report.nonCompliantControlsCount).toBe(0);
     expect(report.merkleEvidenceRoot).toBeDefined();
-    expect(report.evaluations.every((e) => e.status === 'COMPLIANT')).toBe(true);
+    expect(report.evaluations.every((e) => e.status === 'COMPLIANT')).toBe(
+      true,
+    );
   });
 
   it('should detect compliance gaps when telemetry violates thresholds', async () => {
@@ -47,13 +49,19 @@ describe('ContinuousControlEvaluatorService', () => {
     expect(report.overallComplianceScore).toBeLessThan(100);
     expect(report.nonCompliantControlsCount).toBeGreaterThan(0);
 
-    const mfaEval = report.evaluations.find((e) => e.controlCode === 'SOC2-CC6.1');
+    const mfaEval = report.evaluations.find(
+      (e) => e.controlCode === 'SOC2-CC6.1',
+    );
     expect(mfaEval?.status).toBe('NON_COMPLIANT');
 
-    const keyEval = report.evaluations.find((e) => e.controlCode === 'ISO27001-A.5.15');
+    const keyEval = report.evaluations.find(
+      (e) => e.controlCode === 'ISO27001-A.5.15',
+    );
     expect(keyEval?.status).toBe('NON_COMPLIANT');
 
-    const doraEval = report.evaluations.find((e) => e.controlCode === 'DORA-ART9');
+    const doraEval = report.evaluations.find(
+      (e) => e.controlCode === 'DORA-ART9',
+    );
     expect(doraEval?.status).toBe('GAP_DETECTED');
   });
 });

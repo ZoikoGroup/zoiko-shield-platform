@@ -59,7 +59,14 @@ export class TransactionalEmailService {
     const receiptId = `ntf-rcpt-${crypto.randomUUID()}`;
     const contentDigest = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ tenantId: input.tenantId, templateKey: input.templateKey, htmlBody, recipients: input.recipients }))
+      .update(
+        JSON.stringify({
+          tenantId: input.tenantId,
+          templateKey: input.templateKey,
+          htmlBody,
+          recipients: input.recipients,
+        }),
+      )
       .digest('hex');
 
     this.logger.log(

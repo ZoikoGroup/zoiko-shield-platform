@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import crypto from 'crypto';
-import { SentinelOneThreatPayload, OcsfSecurityFindingEvent } from './sentinelone.types';
+import {
+  SentinelOneThreatPayload,
+  OcsfSecurityFindingEvent,
+} from './sentinelone.types';
 
 @Injectable()
 export class SentinelOneNormalizerService {
@@ -23,7 +26,10 @@ export class SentinelOneNormalizerService {
       severity = { id: 1, label: 'LOW' };
     }
 
-    const attacks: Array<{ tactic: { name: string }; technique: { name: string } }> = [];
+    const attacks: Array<{
+      tactic: { name: string };
+      technique: { name: string };
+    }> = [];
     if (payload.indicators) {
       for (const ind of payload.indicators) {
         const tacticName = ind.tactics?.[0]?.name || 'Execution';
@@ -35,7 +41,10 @@ export class SentinelOneNormalizerService {
       }
     }
 
-    const hashes: Array<{ algorithm: 'SHA-256' | 'SHA-1' | 'MD5'; value: string }> = [];
+    const hashes: Array<{
+      algorithm: 'SHA-256' | 'SHA-1' | 'MD5';
+      value: string;
+    }> = [];
     if (payload.threatInfo.sha256) {
       hashes.push({ algorithm: 'SHA-256', value: payload.threatInfo.sha256 });
     }

@@ -1,6 +1,15 @@
-import { ForbiddenException, Injectable, Logger, Optional } from '@nestjs/common';
+import {
+  ForbiddenException,
+  Injectable,
+  Logger,
+  Optional,
+} from '@nestjs/common';
 import * as crypto from 'crypto';
-import { DecryptCommand, GenerateDataKeyCommand, KMSClient } from '@aws-sdk/client-kms';
+import {
+  DecryptCommand,
+  GenerateDataKeyCommand,
+  KMSClient,
+} from '@aws-sdk/client-kms';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface EncryptedSubjectPayload {
@@ -57,13 +66,22 @@ export class CryptographicShreddingService {
       this.wrappingKey = Buffer.alloc(0);
     } else {
       if (process.env.NODE_ENV === 'production') {
-        throw new Error('SUBJECT_KEY_KMS_KEY_ID must be configured in production');
+        throw new Error(
+          'SUBJECT_KEY_KMS_KEY_ID must be configured in production',
+        );
       }
       if (!configuredKey) {
-        throw new Error('SUBJECT_KEY_WRAPPING_SECRET must be configured outside production');
+        throw new Error(
+          'SUBJECT_KEY_WRAPPING_SECRET must be configured outside production',
+        );
       }
-      this.wrappingKey = crypto.createHash('sha256').update(configuredKey).digest();
-      this.wrappingKeyRef = process.env.SUBJECT_KEY_WRAPPING_KEY_REF || 'env:SUBJECT_KEY_WRAPPING_SECRET';
+      this.wrappingKey = crypto
+        .createHash('sha256')
+        .update(configuredKey)
+        .digest();
+      this.wrappingKeyRef =
+        process.env.SUBJECT_KEY_WRAPPING_KEY_REF ||
+        'env:SUBJECT_KEY_WRAPPING_SECRET';
     }
   }
 
@@ -78,22 +96,35 @@ export class CryptographicShreddingService {
     const iv = crypto.randomBytes(12);
     const cipher = crypto.createCipheriv('aes-256-gcm', this.wrappingKey, iv);
     const ciphertext = Buffer.concat([cipher.update(key), cipher.final()]);
-    return Buffer.concat([iv, cipher.getAuthTag(), ciphertext]).toString('base64');
+    return Buffer.concat([iv, cipher.getAuthTag(), ciphertext]).toString(
+      'base64',
+    );
   }
 
   private unwrapKey(wrappedKey: string): Buffer {
     const data = Buffer.from(wrappedKey, 'base64');
-    const decipher = crypto.createDecipheriv('aes-256-gcm', this.wrappingKey, data.subarray(0, 12));
+    const decipher = crypto.createDecipheriv(
+      'aes-256-gcm',
+      this.wrappingKey,
+      data.subarray(0, 12),
+    );
     decipher.setAuthTag(data.subarray(12, 28));
-    return Buffer.concat([decipher.update(data.subarray(28)), decipher.final()]);
+    return Buffer.concat([
+      decipher.update(data.subarray(28)),
+      decipher.final(),
+    ]);
   }
 
   private async generateWrappedKey(): Promise<string> {
     if (this.kmsClient && this.kmsKeyId) {
       const result = await this.kmsClient.send(
-        new GenerateDataKeyCommand({ KeyId: this.kmsKeyId, KeySpec: 'AES_256' }),
+        new GenerateDataKeyCommand({
+          KeyId: this.kmsKeyId,
+          KeySpec: 'AES_256',
+        }),
       );
-      if (!result.CiphertextBlob) throw new Error('KMS returned no wrapped subject key');
+      if (!result.CiphertextBlob)
+        throw new Error('KMS returned no wrapped subject key');
       return Buffer.from(result.CiphertextBlob).toString('base64');
     }
     return this.wrapKey(crypto.randomBytes(32));
@@ -102,15 +133,21 @@ export class CryptographicShreddingService {
   private async unwrapStoredKey(wrappedKey: string): Promise<Buffer> {
     if (this.kmsClient) {
       const result = await this.kmsClient.send(
-        new DecryptCommand({ CiphertextBlob: Buffer.from(wrappedKey, 'base64') }),
+        new DecryptCommand({
+          CiphertextBlob: Buffer.from(wrappedKey, 'base64'),
+        }),
       );
-      if (!result.Plaintext) throw new Error('KMS returned no subject key plaintext');
+      if (!result.Plaintext)
+        throw new Error('KMS returned no subject key plaintext');
       return Buffer.from(result.Plaintext);
     }
     return this.unwrapKey(wrappedKey);
   }
 
-  private async loadKey(tenantId: string, subjectId: string): Promise<Buffer | undefined> {
+  private async loadKey(
+    tenantId: string,
+    subjectId: string,
+  ): Promise<Buffer | undefined> {
     const vaultKey = this.getKeyVaultIndex(tenantId, subjectId);
     if (this.prisma) {
       const record = await this.prisma.subjectEncryptionKey.findFirst({
@@ -123,9 +160,23 @@ export class CryptographicShreddingService {
     return this.subjectKeyVault.get(vaultKey);
   }
 
-  async provisionSubjectKey(tenantId: string, subjectId: string): Promise<void> {
+  async provisionSubjectKey(
+    tenantId: string,
+    subjectId: string,
+  ): Promise<void> {
     const vaultKey = this.getKeyVaultIndex(tenantId, subjectId);
-    if (this.shreddedSubjects.has(vaultKey) || (this.prisma && await this.loadKey(tenantId, subjectId) === undefined && await this.prisma.subjectEncryptionKey.findFirst({ where: { tenant_id: tenantId, subject_id: subjectId, status: 'SHREDDED' } }))) {
+    if (
+      this.shreddedSubjects.has(vaultKey) ||
+      (this.prisma &&
+        (await this.loadKey(tenantId, subjectId)) === undefined &&
+        (await this.prisma.subjectEncryptionKey.findFirst({
+          where: {
+            tenant_id: tenantId,
+            subject_id: subjectId,
+            status: 'SHREDDED',
+          },
+        })))
+    ) {
       throw new ForbiddenException(
         `Subject '${subjectId}' has been cryptographically shredded and cannot be re-encrypted in this key domain.`,
       );
@@ -145,17 +196,24 @@ export class CryptographicShreddingService {
     } else if (!this.subjectKeyVault.has(vaultKey)) {
       const sek = crypto.randomBytes(32); // 256-bit AES key
       this.subjectKeyVault.set(vaultKey, sek);
-      this.logger.log(`Provisioned SEK for Subject: ${subjectId} (Tenant: ${tenantId})`);
+      this.logger.log(
+        `Provisioned SEK for Subject: ${subjectId} (Tenant: ${tenantId})`,
+      );
     }
   }
 
   /**
    * Encrypts sensitive subject PII using their dedicated Subject Encryption Key.
    */
-  async encryptSubjectPii(tenantId: string, subjectId: string, plaintextPii: string): Promise<EncryptedSubjectPayload> {
+  async encryptSubjectPii(
+    tenantId: string,
+    subjectId: string,
+    plaintextPii: string,
+  ): Promise<EncryptedSubjectPayload> {
     await this.provisionSubjectKey(tenantId, subjectId);
     const sek = await this.loadKey(tenantId, subjectId);
-    if (!sek) throw new ForbiddenException('Subject encryption key is unavailable');
+    if (!sek)
+      throw new ForbiddenException('Subject encryption key is unavailable');
 
     const iv = crypto.randomBytes(12); // GCM 96-bit IV
     const cipher = crypto.createCipheriv('aes-256-gcm', sek, iv);
@@ -182,7 +240,9 @@ export class CryptographicShreddingService {
     const sek = await this.loadKey(payload.tenantId, payload.subjectId);
 
     if (!sek) {
-      this.logger.warn(`🚨 Decryption rejected: Subject ${payload.subjectId} key has been permanently shredded!`);
+      this.logger.warn(
+        `🚨 Decryption rejected: Subject ${payload.subjectId} key has been permanently shredded!`,
+      );
       throw new ForbiddenException(
         `Data for subject '${payload.subjectId}' has been cryptographically shredded per GDPR/HIPAA Right-to-be-Forgotten. Key is unrecoverable.`,
       );
@@ -204,7 +264,10 @@ export class CryptographicShreddingService {
   /**
    * Cryptographically shreds the subject key, rendering all past and future ciphertexts unrecoverable.
    */
-  async shredSubjectKey(tenantId: string, subjectId: string): Promise<ErasureCertificate> {
+  async shredSubjectKey(
+    tenantId: string,
+    subjectId: string,
+  ): Promise<ErasureCertificate> {
     const vaultKey = this.getKeyVaultIndex(tenantId, subjectId);
     const existingKey = await this.loadKey(tenantId, subjectId);
     const keyExisted = Boolean(existingKey);
@@ -217,7 +280,11 @@ export class CryptographicShreddingService {
     if (this.prisma) {
       await this.prisma.subjectEncryptionKey.updateMany({
         where: { tenant_id: tenantId, subject_id: subjectId, status: 'ACTIVE' },
-        data: { status: 'SHREDDED', shredded_at: new Date(), wrapped_key: 'SHREDDED' },
+        data: {
+          status: 'SHREDDED',
+          shredded_at: new Date(),
+          wrapped_key: 'SHREDDED',
+        },
       });
     }
     this.shreddedSubjects.add(vaultKey);
@@ -227,10 +294,20 @@ export class CryptographicShreddingService {
 
     const proofOfObliterationDigest = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ certificateId, tenantId, subjectId, shreddedAt, status: 'OBLITERATED' }))
+      .update(
+        JSON.stringify({
+          certificateId,
+          tenantId,
+          subjectId,
+          shreddedAt,
+          status: 'OBLITERATED',
+        }),
+      )
       .digest('hex');
 
-    this.logger.log(`✔ Cryptographically Shredded SEK for Subject [${subjectId}] -> Proof: ${proofOfObliterationDigest}`);
+    this.logger.log(
+      `✔ Cryptographically Shredded SEK for Subject [${subjectId}] -> Proof: ${proofOfObliterationDigest}`,
+    );
 
     return {
       certificateId,

@@ -30,7 +30,9 @@ export interface ZkVerificationReceipt {
  */
 @Injectable()
 export class ZeroKnowledgeComplianceProofService {
-  private readonly logger = new Logger(ZeroKnowledgeComplianceProofService.name);
+  private readonly logger = new Logger(
+    ZeroKnowledgeComplianceProofService.name,
+  );
 
   /**
    * Generates a Non-Interactive Zero-Knowledge (NIZK) Range Proof for private compliance telemetry.
@@ -50,8 +52,13 @@ export class ZeroKnowledgeComplianceProofService {
     const proofId = `zk-proof-${crypto.randomUUID()}`;
     const generatedAt = new Date().toISOString();
 
-    if (req.privateValue < req.minAllowed || req.privateValue > req.maxAllowed) {
-      throw new Error(`Cannot generate valid ZK proof: Private value ${req.privateValue} is outside range [${req.minAllowed}, ${req.maxAllowed}]`);
+    if (
+      req.privateValue < req.minAllowed ||
+      req.privateValue > req.maxAllowed
+    ) {
+      throw new Error(
+        `Cannot generate valid ZK proof: Private value ${req.privateValue} is outside range [${req.minAllowed}, ${req.maxAllowed}]`,
+      );
     }
 
     // 1. Generate Blinding Factor (r)
@@ -67,7 +74,10 @@ export class ZeroKnowledgeComplianceProofService {
 
     // 3. Generate Fiat-Shamir NIZK Challenge: e = SHA256(statement || min || max || C)
     const challengeInput = `${req.statement}:${req.minAllowed}:${req.maxAllowed}:${pedersenCommitment.toString('hex')}`;
-    const nizkChallenge = crypto.createHash('sha256').update(challengeInput).digest();
+    const nizkChallenge = crypto
+      .createHash('sha256')
+      .update(challengeInput)
+      .digest();
 
     // 4. Compute NIZK Response: z = SHA256(blindingFactor || e)
     const nizkResponse = crypto
@@ -80,7 +90,9 @@ export class ZeroKnowledgeComplianceProofService {
       .update(`${req.statement}:${req.minAllowed}:${req.maxAllowed}`)
       .digest('hex');
 
-    this.logger.log(`Generated ZK Compliance Proof [${proofId}] for statement: "${req.statement}"`);
+    this.logger.log(
+      `Generated ZK Compliance Proof [${proofId}] for statement: "${req.statement}"`,
+    );
 
     return {
       proofId,
@@ -98,7 +110,9 @@ export class ZeroKnowledgeComplianceProofService {
   /**
    * Publicly verifies a Zero-Knowledge Compliance Proof without inspecting raw telemetry.
    */
-  verifyComplianceRangeProof(proof: ZeroKnowledgeRangeProof): ZkVerificationReceipt {
+  verifyComplianceRangeProof(
+    proof: ZeroKnowledgeRangeProof,
+  ): ZkVerificationReceipt {
     if (process.env.NODE_ENV === 'production') {
       throw new Error(
         'Production ZK verification requires an approved Bulletproof or SNARK verifier; the local hash demo is disabled.',
@@ -110,16 +124,30 @@ export class ZeroKnowledgeComplianceProofService {
 
     // Reconstruct and verify challenge consistency
     const expectedChallengeInput = `${proof.statement}:${proof.minAllowed}:${proof.maxAllowed}:${proof.pedersenCommitmentHex}`;
-    const expectedChallengeHex = crypto.createHash('sha256').update(expectedChallengeInput).digest('hex');
+    const expectedChallengeHex = crypto
+      .createHash('sha256')
+      .update(expectedChallengeInput)
+      .digest('hex');
 
-    const isProofValid = proof.nizkChallengeHex === expectedChallengeHex && proof.nizkResponseHex.length === 64;
+    const isProofValid =
+      proof.nizkChallengeHex === expectedChallengeHex &&
+      proof.nizkResponseHex.length === 64;
 
     const attestationDigest = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ receiptId, proofId: proof.proofId, isProofValid, verifiedAt }))
+      .update(
+        JSON.stringify({
+          receiptId,
+          proofId: proof.proofId,
+          isProofValid,
+          verifiedAt,
+        }),
+      )
       .digest('hex');
 
-    this.logger.log(`✔ Verified Zero-Knowledge Proof [${proof.proofId}] -> Status: VALID (Zero Raw Data Leakage)`);
+    this.logger.log(
+      `✔ Verified Zero-Knowledge Proof [${proof.proofId}] -> Status: VALID (Zero Raw Data Leakage)`,
+    );
 
     return {
       receiptId,

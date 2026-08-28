@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 
-export type EbpfSyscallType = 'sys_enter_execve' | 'sys_enter_connect' | 'sys_enter_ptrace' | 'container_escape_attempt';
+export type EbpfSyscallType =
+  | 'sys_enter_execve'
+  | 'sys_enter_connect'
+  | 'sys_enter_ptrace'
+  | 'container_escape_attempt';
 
 export interface RawEbpfProbeEvent {
   probeId: string;
@@ -66,14 +70,19 @@ export class EbpfRuntimeMonitorService {
     let threatDetails: OcsfContainerRuntimeFinding['threatDetails'] | undefined;
 
     // Detect Container Breakout / Privilege Escalation Attacks
-    if (raw.syscall === 'container_escape_attempt' || (raw.containerId && raw.binaryPath === '/nsenter')) {
+    if (
+      raw.syscall === 'container_escape_attempt' ||
+      (raw.containerId && raw.binaryPath === '/nsenter')
+    ) {
       severityId = 6; // Critical
       threatDetails = {
         isBreakoutAttempt: true,
         ruleName: 'EBPF-RULE-CONTAINER-ESCAPE-DETECTED',
         mitreTechniqueId: 'T1611', // Escape to Host
       };
-      this.logger.error(`🚨 [EBPF CONTAINER ESCAPE DETECTED] Host: ${raw.hostName} Container: ${raw.containerName || raw.containerId} Process: ${raw.binaryPath}`);
+      this.logger.error(
+        `🚨 [EBPF CONTAINER ESCAPE DETECTED] Host: ${raw.hostName} Container: ${raw.containerName || raw.containerId} Process: ${raw.binaryPath}`,
+      );
     } else if (raw.syscall === 'sys_enter_ptrace') {
       severityId = 5; // High
       threatDetails = {
@@ -81,7 +90,9 @@ export class EbpfRuntimeMonitorService {
         ruleName: 'EBPF-RULE-PROCESS-INJECTION-PTRACE',
         mitreTechniqueId: 'T1055', // Process Injection
       };
-      this.logger.warn(`🚨 [EBPF PTRACE INJECTION] Host: ${raw.hostName} Target PID: ${raw.targetPid} by PID: ${raw.pid}`);
+      this.logger.warn(
+        `🚨 [EBPF PTRACE INJECTION] Host: ${raw.hostName} Target PID: ${raw.targetPid} by PID: ${raw.pid}`,
+      );
     }
 
     const canonicalHash = crypto
