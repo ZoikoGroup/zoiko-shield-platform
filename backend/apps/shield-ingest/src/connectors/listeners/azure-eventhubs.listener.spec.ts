@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { AzureEventHubsIngestListener, EventHubConsumerOptions, EventHubReceivedEventData } from './azure-eventhubs.listener';
+import {
+  AzureEventHubsIngestListener,
+  EventHubConsumerOptions,
+  EventHubReceivedEventData,
+} from './azure-eventhubs.listener';
 import { RawIngestService } from '../../ingestion/raw-ingest.service';
 import { TokenBucketRateLimiterService } from '../../ingestion/rate-limiter/token-bucket-limiter.service';
 
@@ -36,9 +40,13 @@ describe('AzureEventHubsIngestListener', () => {
       ],
     }).compile();
 
-    listener = module.get<AzureEventHubsIngestListener>(AzureEventHubsIngestListener);
+    listener = module.get<AzureEventHubsIngestListener>(
+      AzureEventHubsIngestListener,
+    );
     rawIngestService = module.get<RawIngestService>(RawIngestService);
-    rateLimiter = module.get<TokenBucketRateLimiterService>(TokenBucketRateLimiterService);
+    rateLimiter = module.get<TokenBucketRateLimiterService>(
+      TokenBucketRateLimiterService,
+    );
   });
 
   it('should be defined', () => {
@@ -46,18 +54,31 @@ describe('AzureEventHubsIngestListener', () => {
   });
 
   it('processes partition batch successfully and updates lastSequenceNumber', async () => {
-    mockRateLimiter.consume.mockReturnValue({ allowed: true, remainingTokens: 95, tenantId: defaultOptions.tenantId });
-    mockRawIngestService.processWebhookPayload.mockResolvedValue({ id: 'evt-eh-1', processingStatus: 'ACCEPTED' });
+    mockRateLimiter.consume.mockReturnValue({
+      allowed: true,
+      remainingTokens: 95,
+      tenantId: defaultOptions.tenantId,
+    });
+    mockRawIngestService.processWebhookPayload.mockResolvedValue({
+      id: 'evt-eh-1',
+      processingStatus: 'ACCEPTED',
+    });
 
     const events: EventHubReceivedEventData[] = [
       {
-        body: { operationName: 'Microsoft.Compute/virtualMachines/write', status: 'Succeeded' },
+        body: {
+          operationName: 'Microsoft.Compute/virtualMachines/write',
+          status: 'Succeeded',
+        },
         sequenceNumber: 101,
         offset: '2048',
         enqueuedTimeUtc: new Date(),
       },
       {
-        body: { operationName: 'Microsoft.Network/networkSecurityGroups/write', status: 'Succeeded' },
+        body: {
+          operationName: 'Microsoft.Network/networkSecurityGroups/write',
+          status: 'Succeeded',
+        },
         sequenceNumber: 102,
         offset: '2112',
         enqueuedTimeUtc: new Date(),
@@ -74,11 +95,18 @@ describe('AzureEventHubsIngestListener', () => {
   });
 
   it('throttles events when tenant rate limit is exceeded', async () => {
-    mockRateLimiter.consume.mockReturnValue({ allowed: false, remainingTokens: 0, retryAfterMs: 300, tenantId: defaultOptions.tenantId });
+    mockRateLimiter.consume.mockReturnValue({
+      allowed: false,
+      remainingTokens: 0,
+      retryAfterMs: 300,
+      tenantId: defaultOptions.tenantId,
+    });
 
     const events: EventHubReceivedEventData[] = [
       {
-        body: { operationName: 'Microsoft.Authorization/roleAssignments/write' },
+        body: {
+          operationName: 'Microsoft.Authorization/roleAssignments/write',
+        },
         sequenceNumber: 103,
         offset: '2200',
         enqueuedTimeUtc: new Date(),

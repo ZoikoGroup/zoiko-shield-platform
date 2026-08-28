@@ -72,8 +72,14 @@ export class BreakGlassQuorumService {
     totalSharesN: number;
     custodians: { custodianId: string; custodianRole: string }[];
   }): BreakGlassVaultSession {
-    if (req.thresholdK < 2 || req.thresholdK > req.totalSharesN || req.totalSharesN > 255) {
-      throw new Error(`Invalid threshold: k=${req.thresholdK}, n=${req.totalSharesN}`);
+    if (
+      req.thresholdK < 2 ||
+      req.thresholdK > req.totalSharesN ||
+      req.totalSharesN > 255
+    ) {
+      throw new Error(
+        `Invalid threshold: k=${req.thresholdK}, n=${req.totalSharesN}`,
+      );
     }
     if (req.custodians.length !== req.totalSharesN) {
       throw new Error(`Custodian list length must equal totalSharesN`);
@@ -123,7 +129,9 @@ export class BreakGlassQuorumService {
     }
 
     const sessionId = `bg-session-${crypto.randomUUID()}`;
-    this.logger.log(`Provisioned Break-Glass Quorum Vault [${sessionId}] (${k}-of-${n} threshold)`);
+    this.logger.log(
+      `Provisioned Break-Glass Quorum Vault [${sessionId}] (${k}-of-${n} threshold)`,
+    );
 
     return {
       sessionId,
@@ -184,7 +192,13 @@ export class BreakGlassQuorumService {
 
     const breakGlassAttestationDigest = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ sessionId, participants: uniqueShares.map((s) => s.custodianId), unlockedAt }))
+      .update(
+        JSON.stringify({
+          sessionId,
+          participants: uniqueShares.map((s) => s.custodianId),
+          unlockedAt,
+        }),
+      )
       .digest('hex');
 
     this.logger.warn(

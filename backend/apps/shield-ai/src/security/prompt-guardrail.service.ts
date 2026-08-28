@@ -25,10 +25,26 @@ export class PromptGuardrailService {
   ];
 
   private readonly SECRET_PATTERNS = [
-    { name: 'AWS_ACCESS_KEY', regex: /AKIA[0-9A-Z]{16}/g, replacement: '[REDACTED_AWS_KEY]' },
-    { name: 'BEARER_TOKEN', regex: /Bearer\s+[A-Za-z0-9\-_]{20,}/g, replacement: 'Bearer [REDACTED_TOKEN]' },
-    { name: 'API_KEY_GENERIC', regex: /api[_-]?key\s*[:=]\s*['"]?[A-Za-z0-9]{20,}['"]?/gi, replacement: 'api_key: [REDACTED_KEY]' },
-    { name: 'PASSWORD_FIELD', regex: /password\s*[:=]\s*['"]?[^,\s'"]{4,}['"]?/gi, replacement: 'password: [REDACTED_PASSWORD]' },
+    {
+      name: 'AWS_ACCESS_KEY',
+      regex: /AKIA[0-9A-Z]{16}/g,
+      replacement: '[REDACTED_AWS_KEY]',
+    },
+    {
+      name: 'BEARER_TOKEN',
+      regex: /Bearer\s+[A-Za-z0-9\-_]{20,}/g,
+      replacement: 'Bearer [REDACTED_TOKEN]',
+    },
+    {
+      name: 'API_KEY_GENERIC',
+      regex: /api[_-]?key\s*[:=]\s*['"]?[A-Za-z0-9]{20,}['"]?/gi,
+      replacement: 'api_key: [REDACTED_KEY]',
+    },
+    {
+      name: 'PASSWORD_FIELD',
+      regex: /password\s*[:=]\s*['"]?[^,\s'"]{4,}['"]?/gi,
+      replacement: 'password: [REDACTED_PASSWORD]',
+    },
   ];
 
   /**
@@ -54,7 +70,9 @@ export class PromptGuardrailService {
       const matches = redactedText.match(sec.regex);
       if (matches) {
         redactedTokensCount += matches.length;
-        detectedThreats.push(`Sensitive Secret Exposed: ${sec.name} (${matches.length} found)`);
+        detectedThreats.push(
+          `Sensitive Secret Exposed: ${sec.name} (${matches.length} found)`,
+        );
         redactedText = redactedText.replace(sec.regex, sec.replacement);
       }
     }
@@ -62,11 +80,20 @@ export class PromptGuardrailService {
     const isClean = !injectionDetected;
     const sanitizationDigest = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ promptLength: prompt.length, isClean, injectionDetected, redactedTokensCount }))
+      .update(
+        JSON.stringify({
+          promptLength: prompt.length,
+          isClean,
+          injectionDetected,
+          redactedTokensCount,
+        }),
+      )
       .digest('hex');
 
     if (injectionDetected) {
-      this.logger.warn(`🚨 Prompt injection attempt detected! Threats: [${detectedThreats.join(', ')}]`);
+      this.logger.warn(
+        `🚨 Prompt injection attempt detected! Threats: [${detectedThreats.join(', ')}]`,
+      );
     }
 
     return {

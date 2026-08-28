@@ -1,7 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 
-export type CanaryType = 'AWS_ACCESS_KEY' | 'ENTRA_SERVICE_PRINCIPAL' | 'DATABASE_CREDENTIAL' | 'HONEY_FILE';
+export type CanaryType =
+  | 'AWS_ACCESS_KEY'
+  | 'ENTRA_SERVICE_PRINCIPAL'
+  | 'DATABASE_CREDENTIAL'
+  | 'HONEY_FILE';
 
 export interface CanaryToken {
   tokenId: string;
@@ -62,7 +66,9 @@ export class CanaryHoneypotProbeService {
     };
 
     this.activeCanaryRegistry.set(req.decoyIdentifier.toLowerCase(), token);
-    this.logger.log(`Deployed Canary Decoy [${token.tokenId}] (${token.canaryType}): ${token.decoyIdentifier}`);
+    this.logger.log(
+      `Deployed Canary Decoy [${token.tokenId}] (${token.canaryType}): ${token.decoyIdentifier}`,
+    );
     return token;
   }
 
@@ -76,7 +82,9 @@ export class CanaryHoneypotProbeService {
     userAgent?: string;
     actionAttempted: string;
   }): HoneypotTriggerAlert | null {
-    const canary = this.activeCanaryRegistry.get(event.accessedIdentifier.toLowerCase());
+    const canary = this.activeCanaryRegistry.get(
+      event.accessedIdentifier.toLowerCase(),
+    );
 
     if (!canary || !canary.isActive) {
       return null;
@@ -116,6 +124,8 @@ export class CanaryHoneypotProbeService {
    * Lists all active canaries for a tenant.
    */
   getActiveCanaries(tenantId: string): CanaryToken[] {
-    return Array.from(this.activeCanaryRegistry.values()).filter((c) => c.tenantId === tenantId);
+    return Array.from(this.activeCanaryRegistry.values()).filter(
+      (c) => c.tenantId === tenantId,
+    );
   }
 }

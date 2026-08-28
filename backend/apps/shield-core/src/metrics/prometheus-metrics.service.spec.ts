@@ -23,11 +23,19 @@ describe('PrometheusMetricsService', () => {
   });
 
   it('increments counters with labels correctly', () => {
-    service.incrementCounter('zoiko_events_ingested_total', 5, { tenant_id: 'ten-01', provider: 'okta' });
-    service.incrementCounter('zoiko_events_ingested_total', 3, { tenant_id: 'ten-01', provider: 'okta' });
+    service.incrementCounter('zoiko_events_ingested_total', 5, {
+      tenant_id: 'ten-01',
+      provider: 'okta',
+    });
+    service.incrementCounter('zoiko_events_ingested_total', 3, {
+      tenant_id: 'ten-01',
+      provider: 'okta',
+    });
 
     const output = service.exportPrometheusText();
-    expect(output).toContain('zoiko_events_ingested_total{provider="okta",tenant_id="ten-01"} 8');
+    expect(output).toContain(
+      'zoiko_events_ingested_total{provider="okta",tenant_id="ten-01"} 8',
+    );
   });
 
   it('updates gauge values accurately', () => {
@@ -37,12 +45,24 @@ describe('PrometheusMetricsService', () => {
   });
 
   it('records histogram observations and computes sum and bucket counts', () => {
-    service.observeHistogram('zoiko_detection_evaluation_duration_seconds', 0.02);
-    service.observeHistogram('zoiko_detection_evaluation_duration_seconds', 0.15);
+    service.observeHistogram(
+      'zoiko_detection_evaluation_duration_seconds',
+      0.02,
+    );
+    service.observeHistogram(
+      'zoiko_detection_evaluation_duration_seconds',
+      0.15,
+    );
 
     const output = service.exportPrometheusText();
-    expect(output).toContain('zoiko_detection_evaluation_duration_seconds_count 2');
-    expect(output).toContain('zoiko_detection_evaluation_duration_seconds_bucket{le="+Inf"} 2');
-    expect(output).toContain('zoiko_detection_evaluation_duration_seconds_sum 0.170000');
+    expect(output).toContain(
+      'zoiko_detection_evaluation_duration_seconds_count 2',
+    );
+    expect(output).toContain(
+      'zoiko_detection_evaluation_duration_seconds_bucket{le="+Inf"} 2',
+    );
+    expect(output).toContain(
+      'zoiko_detection_evaluation_duration_seconds_sum 0.170000',
+    );
   });
 });

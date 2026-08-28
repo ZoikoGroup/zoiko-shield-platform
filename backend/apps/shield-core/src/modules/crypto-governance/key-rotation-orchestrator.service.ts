@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 
-export type KeyStatus = 'ACTIVE' | 'RETIRED_READ_ONLY' | 'COMPROMISED' | 'DESTROYED';
+export type KeyStatus =
+  'ACTIVE' | 'RETIRED_READ_ONLY' | 'COMPROMISED' | 'DESTROYED';
 
 export interface ManagedCryptoKey {
   keyId: string;
@@ -55,7 +56,10 @@ export class KeyRotationOrchestratorService {
       version: 1,
       status: 'ACTIVE',
       algorithm: 'AES-256-GCM',
-      derivedKeyDigest: crypto.createHash('sha256').update(rawKeyMaterial).digest('hex'),
+      derivedKeyDigest: crypto
+        .createHash('sha256')
+        .update(rawKeyMaterial)
+        .digest('hex'),
       createdAt: new Date(now).toISOString(),
       expiresAt: new Date(now + this.CRYPTO_PERIOD_MS).toISOString(),
     };
@@ -70,7 +74,9 @@ export class KeyRotationOrchestratorService {
    */
   rotateTenantMasterKey(tenantId: string): KeyRotationReceipt {
     const keys = this.tenantKeyStore.get(tenantId) || [];
-    const activeKey = keys.find((k) => k.status === 'ACTIVE' && k.keyType === 'TENANT_MASTER_KEY');
+    const activeKey = keys.find(
+      (k) => k.status === 'ACTIVE' && k.keyType === 'TENANT_MASTER_KEY',
+    );
 
     if (!activeKey) {
       const initial = this.initializeTenantMasterKey(tenantId);
@@ -80,7 +86,10 @@ export class KeyRotationOrchestratorService {
         oldKeyId: 'NONE',
         newKeyId: initial.keyId,
         newVersion: 1,
-        forwardSecrecyProofDigest: crypto.createHash('sha256').update(initial.keyId).digest('hex'),
+        forwardSecrecyProofDigest: crypto
+          .createHash('sha256')
+          .update(initial.keyId)
+          .digest('hex'),
         rotatedAt: new Date().toISOString(),
       };
     }
@@ -101,7 +110,10 @@ export class KeyRotationOrchestratorService {
       version: newVersion,
       status: 'ACTIVE',
       algorithm: 'AES-256-GCM',
-      derivedKeyDigest: crypto.createHash('sha256').update(newRawKeyMaterial).digest('hex'),
+      derivedKeyDigest: crypto
+        .createHash('sha256')
+        .update(newRawKeyMaterial)
+        .digest('hex'),
       createdAt: new Date(now).toISOString(),
       expiresAt: new Date(now + this.CRYPTO_PERIOD_MS).toISOString(),
     };
@@ -112,10 +124,19 @@ export class KeyRotationOrchestratorService {
     const rotationId = `rot-${crypto.randomUUID()}`;
     const forwardSecrecyProofDigest = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ rotationId, oldKeyId: activeKey.keyId, newKeyId, newVersion }))
+      .update(
+        JSON.stringify({
+          rotationId,
+          oldKeyId: activeKey.keyId,
+          newKeyId,
+          newVersion,
+        }),
+      )
       .digest('hex');
 
-    this.logger.log(`✔ Rotated TMK for Tenant ${tenantId}: v${activeKey.version} (${activeKey.keyId}) -> v${newVersion} (${newKeyId})`);
+    this.logger.log(
+      `✔ Rotated TMK for Tenant ${tenantId}: v${activeKey.version} (${activeKey.keyId}) -> v${newVersion} (${newKeyId})`,
+    );
 
     return {
       rotationId,

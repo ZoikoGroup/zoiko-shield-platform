@@ -1,5 +1,13 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
-import { ActionRollbackBrokerService, ActionReceipt } from './action-rollback-broker.service';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
+import {
+  ActionRollbackBrokerService,
+  ActionReceipt,
+} from './action-rollback-broker.service';
 import { ActionExecutionRegistryService } from '../execution-adapters/action-execution-registry.service';
 import { ExecutionReceipt } from '../execution-adapters/action-execution.interface';
 
@@ -31,7 +39,9 @@ export class ActionRollbackOrchestratorService {
     rollbackToken: string,
     environmentId: string = 'production',
   ): Promise<RollbackExecutionResult> {
-    this.logger.log(`Initiating rollback orchestration for tenant=${tenantId} using token=${rollbackToken}`);
+    this.logger.log(
+      `Initiating rollback orchestration for tenant=${tenantId} using token=${rollbackToken}`,
+    );
 
     let executedReceipt: ExecutionReceipt | null = null;
 
@@ -39,7 +49,9 @@ export class ActionRollbackOrchestratorService {
       tenantId,
       rollbackToken,
       async (compensatingAction) => {
-        const adapter = this.executionRegistry.getAdapter(compensatingAction.actionType);
+        const adapter = this.executionRegistry.getAdapter(
+          compensatingAction.actionType,
+        );
 
         if (!adapter) {
           throw new BadRequestException(
@@ -66,7 +78,9 @@ export class ActionRollbackOrchestratorService {
     );
 
     if (!executedReceipt) {
-      throw new Error('Rollback execution failed to produce an execution receipt');
+      throw new Error(
+        'Rollback execution failed to produce an execution receipt',
+      );
     }
 
     return {

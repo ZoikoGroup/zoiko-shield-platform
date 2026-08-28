@@ -9,7 +9,9 @@ describe('TokenBucketRateLimiterService', () => {
       providers: [TokenBucketRateLimiterService],
     }).compile();
 
-    service = module.get<TokenBucketRateLimiterService>(TokenBucketRateLimiterService);
+    service = module.get<TokenBucketRateLimiterService>(
+      TokenBucketRateLimiterService,
+    );
   });
 
   it('should be defined', () => {
@@ -18,7 +20,10 @@ describe('TokenBucketRateLimiterService', () => {
 
   it('allows consumption within burst capacity', () => {
     const tenantId = 'tenant-rate-01';
-    const decision = service.consume(tenantId, 10, { capacity: 100, refillRatePerSec: 10 });
+    const decision = service.consume(tenantId, 10, {
+      capacity: 100,
+      refillRatePerSec: 10,
+    });
 
     expect(decision.allowed).toBe(true);
     expect(decision.remainingTokens).toBe(90);
@@ -31,7 +36,10 @@ describe('TokenBucketRateLimiterService', () => {
     service.consume(tenantId, 50, { capacity: 50, refillRatePerSec: 10 });
 
     // Next request exceeds
-    const decision = service.consume(tenantId, 5, { capacity: 50, refillRatePerSec: 10 });
+    const decision = service.consume(tenantId, 5, {
+      capacity: 50,
+      refillRatePerSec: 10,
+    });
 
     expect(decision.allowed).toBe(false);
     expect(decision.remainingTokens).toBe(0);
@@ -46,7 +54,10 @@ describe('TokenBucketRateLimiterService', () => {
     // Wait 100ms (should refill ~10 tokens)
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    const decision = service.consume(tenantId, 5, { capacity: 20, refillRatePerSec: 100 });
+    const decision = service.consume(tenantId, 5, {
+      capacity: 20,
+      refillRatePerSec: 100,
+    });
     expect(decision.allowed).toBe(true);
   });
 
@@ -58,7 +69,10 @@ describe('TokenBucketRateLimiterService', () => {
     service.reset(tenantId);
     expect(service.getActiveTenantCount()).toBe(0);
 
-    const freshDecision = service.consume(tenantId, 10, { capacity: 50, refillRatePerSec: 10 });
+    const freshDecision = service.consume(tenantId, 10, {
+      capacity: 50,
+      refillRatePerSec: 10,
+    });
     expect(freshDecision.allowed).toBe(true);
     expect(freshDecision.remainingTokens).toBe(40);
   });

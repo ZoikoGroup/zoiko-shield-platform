@@ -13,7 +13,9 @@ describe('SentinelOneProvider', () => {
     }).compile();
 
     provider = module.get<SentinelOneProvider>(SentinelOneProvider);
-    normalizer = module.get<SentinelOneNormalizerService>(SentinelOneNormalizerService);
+    normalizer = module.get<SentinelOneNormalizerService>(
+      SentinelOneNormalizerService,
+    );
   });
 
   it('should be defined', () => {
@@ -32,10 +34,9 @@ describe('SentinelOneProvider', () => {
       traceId: 'trace-1',
     };
 
-    const connResult = await provider.connect(
-      mockContext,
-      { apiUrl: 'https://test.sentinelone.net' },
-    );
+    const connResult = await provider.connect(mockContext, {
+      apiUrl: 'https://test.sentinelone.net',
+    });
     expect(connResult.status).toBe('CONNECTED');
 
     const health = await provider.testConnection(mockContext);
@@ -64,14 +65,20 @@ describe('SentinelOneProvider', () => {
         filePath: 'C:\\Windows\\Temp\\payload.exe',
         processUser: 'NT AUTHORITY\\SYSTEM',
         commandLine: 'payload.exe -k -s',
-        sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+        sha256:
+          'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
       },
       indicators: [
         {
           category: 'Ransomware Activity',
           description: 'High entropy file writes detected',
           tactics: [{ name: 'Impact', source: 'MITRE' }],
-          techniques: [{ name: 'Data Encrypted for Impact', link: 'https://attack.mitre.org/techniques/T1486/' }],
+          techniques: [
+            {
+              name: 'Data Encrypted for Impact',
+              link: 'https://attack.mitre.org/techniques/T1486/',
+            },
+          ],
         },
       ],
     };
@@ -86,7 +93,10 @@ describe('SentinelOneProvider', () => {
       traceId: 'trace-primary',
     };
 
-    const response = await provider.handleWebhook(mockThreatPayload, webhookContext);
+    const response = await provider.handleWebhook(
+      mockThreatPayload,
+      webhookContext,
+    );
 
     expect(response.success).toBe(true);
     expect(response.event).toBeDefined();
@@ -98,6 +108,8 @@ describe('SentinelOneProvider', () => {
     expect(response.event.process?.file.hashes[0].value).toBe(
       'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
     );
-    expect(response.event.attacks?.[0].technique.name).toBe('Data Encrypted for Impact');
+    expect(response.event.attacks?.[0].technique.name).toBe(
+      'Data Encrypted for Impact',
+    );
   });
 });

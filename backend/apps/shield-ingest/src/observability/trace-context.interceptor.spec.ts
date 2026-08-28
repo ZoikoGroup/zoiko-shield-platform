@@ -16,7 +16,8 @@ describe('ShieldIngest TraceContextInterceptor', () => {
     const req: any = { headers: {} };
     const res: any = { setHeader: jest.fn() };
     const context: Partial<ExecutionContext> = {
-      switchToHttp: () => ({ getRequest: () => req, getResponse: () => res } as any),
+      switchToHttp: () =>
+        ({ getRequest: () => req, getResponse: () => res }) as any,
     };
     const next: CallHandler = { handle: () => of({ success: true }) };
 

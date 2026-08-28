@@ -8,7 +8,8 @@ describe('PqcDualSignerService', () => {
   });
 
   it('should generate a valid hybrid classical + post-quantum dual signature container', async () => {
-    const epochMerkleRoot = '12d464dee4f94e6b6ba280e7753cf9e80b44c409b0576f33f83467fe048410b3';
+    const epochMerkleRoot =
+      '12d464dee4f94e6b6ba280e7753cf9e80b44c409b0576f33f83467fe048410b3';
     const sigResult = await pqcSigner.signHybrid(epochMerkleRoot);
 
     expect(sigResult.signatureId).toBeDefined();

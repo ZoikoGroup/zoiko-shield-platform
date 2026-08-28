@@ -17,11 +17,20 @@ describe('BreakGlassQuorumService', () => {
       thresholdK: 3,
       totalSharesN: 5,
       custodians: [
-        { custodianId: 'ciso-alice', custodianRole: 'CHIEF_INFORMATION_SECURITY_OFFICER' },
+        {
+          custodianId: 'ciso-alice',
+          custodianRole: 'CHIEF_INFORMATION_SECURITY_OFFICER',
+        },
         { custodianId: 'dpo-bob', custodianRole: 'DATA_PROTECTION_OFFICER' },
-        { custodianId: 'lead-secops-charlie', custodianRole: 'LEAD_SECOPS_ENGINEER' },
+        {
+          custodianId: 'lead-secops-charlie',
+          custodianRole: 'LEAD_SECOPS_ENGINEER',
+        },
         { custodianId: 'vp-infra-diana', custodianRole: 'VP_INFRASTRUCTURE' },
-        { custodianId: 'legal-counsel-edward', custodianRole: 'GENERAL_COUNSEL' },
+        {
+          custodianId: 'legal-counsel-edward',
+          custodianRole: 'GENERAL_COUNSEL',
+        },
       ],
     });
 
@@ -38,7 +47,11 @@ describe('BreakGlassQuorumService', () => {
 
     expect(result.quorumMet).toBe(true);
     expect(result.recoveredSecret).toBe(originalSecret);
-    expect(result.participatingCustodians).toEqual(['ciso-alice', 'lead-secops-charlie', 'legal-counsel-edward']);
+    expect(result.participatingCustodians).toEqual([
+      'ciso-alice',
+      'lead-secops-charlie',
+      'legal-counsel-edward',
+    ]);
     expect(result.breakGlassAttestationDigest).toBeDefined();
   });
 
@@ -60,7 +73,10 @@ describe('BreakGlassQuorumService', () => {
     });
 
     // Only 2 shares provided (threshold is 3)
-    const insufficientShares = [vaultSession.custodianShares[0], vaultSession.custodianShares[1]];
+    const insufficientShares = [
+      vaultSession.custodianShares[0],
+      vaultSession.custodianShares[1],
+    ];
 
     expect(() => {
       quorumService.reconstructMasterSecret(insufficientShares, 3);

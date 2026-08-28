@@ -46,7 +46,11 @@ describe('CloudHsmSignerService', () => {
       payload: { hostId: 'PROD-SRV-99', action: 'TERMINATE_HOST' }, // Tampered action
     };
 
-    const isValid = signer.verifySignature(tamperedCommand, 'LIVE', signed.signature);
+    const isValid = signer.verifySignature(
+      tamperedCommand,
+      'LIVE',
+      signed.signature,
+    );
     expect(isValid).toBe(false);
   });
 });

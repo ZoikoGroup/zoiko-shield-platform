@@ -1,7 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 
-export type NodeType = 'IDENTITY_USER' | 'IAM_ROLE' | 'COMPUTE_INSTANCE' | 'STORAGE_BUCKET' | 'DATABASE';
+export type NodeType =
+  | 'IDENTITY_USER'
+  | 'IAM_ROLE'
+  | 'COMPUTE_INSTANCE'
+  | 'STORAGE_BUCKET'
+  | 'DATABASE';
 
 export interface GraphNode {
   id: string;
@@ -13,7 +18,12 @@ export interface GraphNode {
 export interface GraphEdge {
   sourceId: string;
   targetId: string;
-  relationship: 'ASSUMES_ROLE' | 'CAN_EXECUTE' | 'HAS_READ_ACCESS' | 'NETWORK_PEERED' | 'KEY_DECRYPT_PERMISSION';
+  relationship:
+    | 'ASSUMES_ROLE'
+    | 'CAN_EXECUTE'
+    | 'HAS_READ_ACCESS'
+    | 'NETWORK_PEERED'
+    | 'KEY_DECRYPT_PERMISSION';
   weight: number;
 }
 
@@ -56,17 +66,23 @@ export class AttackPathDiscoveryService {
   /**
    * Finds the shortest lateral movement path from compromised initial entry point to crown jewel asset.
    */
-  findShortestAttackPath(startNodeId: string, targetCrownJewelId: string): DiscoveredAttackPath | null {
+  findShortestAttackPath(
+    startNodeId: string,
+    targetCrownJewelId: string,
+  ): DiscoveredAttackPath | null {
     const startNode = this.nodes.get(startNodeId);
     const targetNode = this.nodes.get(targetCrownJewelId);
 
     if (!startNode || !targetNode) {
-      throw new Error(`Invalid graph nodes: Start '${startNodeId}' or Target '${targetCrownJewelId}' not registered`);
+      throw new Error(
+        `Invalid graph nodes: Start '${startNodeId}' or Target '${targetCrownJewelId}' not registered`,
+      );
     }
 
-    const queue: { nodeId: string; path: { from: string; to: string; relationship: string }[] }[] = [
-      { nodeId: startNodeId, path: [] },
-    ];
+    const queue: {
+      nodeId: string;
+      path: { from: string; to: string; relationship: string }[];
+    }[] = [{ nodeId: startNodeId, path: [] }];
     const visited = new Set<string>([startNodeId]);
 
     while (queue.length > 0) {
@@ -77,12 +93,23 @@ export class AttackPathDiscoveryService {
         const pathId = `path-${crypto.randomUUID().slice(0, 8)}`;
         const totalRiskScore = 95 - current.path.length * 5;
         // Choke point is intermediate hop 1 or 2
-        const chokePointIndex = Math.max(0, Math.floor(current.path.length / 2));
-        const criticalChokePointNodeId = current.path[chokePointIndex]?.from || startNodeId;
+        const chokePointIndex = Math.max(
+          0,
+          Math.floor(current.path.length / 2),
+        );
+        const criticalChokePointNodeId =
+          current.path[chokePointIndex]?.from || startNodeId;
 
         const analysisDigest = crypto
           .createHash('sha256')
-          .update(JSON.stringify({ pathId, startNodeId, targetCrownJewelId, hops: current.path }))
+          .update(
+            JSON.stringify({
+              pathId,
+              startNodeId,
+              targetCrownJewelId,
+              hops: current.path,
+            }),
+          )
           .digest('hex');
 
         const remediationRecommendation = `Sever relationship '${current.path[chokePointIndex]?.relationship || 'ACCESS'}' at node '${criticalChokePointNodeId}' to eliminate lateral progression.`;
@@ -109,7 +136,14 @@ export class AttackPathDiscoveryService {
           visited.add(edge.targetId);
           queue.push({
             nodeId: edge.targetId,
-            path: [...current.path, { from: edge.sourceId, to: edge.targetId, relationship: edge.relationship }],
+            path: [
+              ...current.path,
+              {
+                from: edge.sourceId,
+                to: edge.targetId,
+                relationship: edge.relationship,
+              },
+            ],
           });
         }
       }

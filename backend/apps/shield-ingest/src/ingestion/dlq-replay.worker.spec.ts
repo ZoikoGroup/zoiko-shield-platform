@@ -44,7 +44,9 @@ describe('DLQReplayWorker', () => {
         tenantId: 'tenant-100',
         environmentId: 'env-prod',
         connectorId: 'conn-okta-01',
-        rawPayload: JSON.stringify({ eventType: 'user.authentication.auth_via_mfa' }),
+        rawPayload: JSON.stringify({
+          eventType: 'user.authentication.auth_via_mfa',
+        }),
         status: 'PENDING_REVIEW',
       },
     ]);
@@ -64,7 +66,10 @@ describe('DLQReplayWorker', () => {
     expect(result.totalProcessed).toBe(1);
     expect(result.replayedCount).toBe(1);
     expect(result.failedCount).toBe(0);
-    expect(mockQuarantineService.markReprocessed).toHaveBeenCalledWith('tenant-100', 'quar-1');
+    expect(mockQuarantineService.markReprocessed).toHaveBeenCalledWith(
+      'tenant-100',
+      'quar-1',
+    );
   });
 
   it('should record failure if re-ingest throws an error', async () => {
@@ -79,7 +84,9 @@ describe('DLQReplayWorker', () => {
       },
     ]);
 
-    mockRawIngestService.processWebhookPayload.mockRejectedValue(new Error('Downstream DB error'));
+    mockRawIngestService.processWebhookPayload.mockRejectedValue(
+      new Error('Downstream DB error'),
+    );
 
     const result = await worker.replayQuarantineBatch('tenant-100');
 

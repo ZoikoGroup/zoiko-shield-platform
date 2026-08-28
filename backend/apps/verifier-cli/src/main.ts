@@ -10,7 +10,8 @@ export interface AuditVerificationCertificate {
   packageTitle: string;
   tenantId: string;
   environmentId: string;
-  verificationStatus: 'VERIFIED_COMPLIANT' | 'TAMPER_DETECTED' | 'INVALID_STRUCTURE';
+  verificationStatus:
+    'VERIFIED_COMPLIANT' | 'TAMPER_DETECTED' | 'INVALID_STRUCTURE';
   verifiedAt: string;
   verifierVersion: string;
   checks: {
@@ -35,10 +36,18 @@ export interface AuditVerificationCertificate {
 
 export function runVerifier(args: string[] = process.argv.slice(2)): number {
   if (args[0] !== 'verify' || !args[1]) {
-    console.log('========================================================================');
-    console.log(' 🛡️  ZoikoShield Independent Compliance Audit Package Verifier CLI');
-    console.log('    Specification: ZS-T0-AUD-001 (Offline Independent Verification)');
-    console.log('========================================================================\n');
+    console.log(
+      '========================================================================',
+    );
+    console.log(
+      ' 🛡️  ZoikoShield Independent Compliance Audit Package Verifier CLI',
+    );
+    console.log(
+      '    Specification: ZS-T0-AUD-001 (Offline Independent Verification)',
+    );
+    console.log(
+      '========================================================================\n',
+    );
     console.log('Usage: zoikoshield-verifier verify <path-to-audit-package>');
     return 2;
   }
@@ -49,10 +58,18 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
     return 1;
   }
 
-  console.log('========================================================================');
-  console.log(' 🛡️  ZoikoShield Independent Compliance Audit Package Verifier CLI');
-  console.log('    Specification: ZS-T0-AUD-001 (Offline Independent Verification)');
-  console.log('========================================================================\n');
+  console.log(
+    '========================================================================',
+  );
+  console.log(
+    ' 🛡️  ZoikoShield Independent Compliance Audit Package Verifier CLI',
+  );
+  console.log(
+    '    Specification: ZS-T0-AUD-001 (Offline Independent Verification)',
+  );
+  console.log(
+    '========================================================================\n',
+  );
 
   console.log(`[1/5] Loading Package Artifacts from: ${targetPath}...`);
   const manifestPath = join(targetPath, 'manifest.json');
@@ -70,11 +87,20 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
     const manifestContent = readFileSync(manifestPath, 'utf8');
     const manifest = JSON.parse(manifestContent);
 
-    const packageId = manifest.packageId || manifest.manifestCore?.packageId || 'unknown';
-    const packageTitle = manifest.manifestCore?.title || manifest.title || 'ZoikoShield Compliance Trust Bundle';
-    const tenantId = manifest.manifestCore?.tenantId || manifest.tenantId || 'unknown';
-    const environmentId = manifest.manifestCore?.environmentId || manifest.environmentId || 'production';
-    const declaredMerkleRoot = manifest.merkleRoot || manifest.manifestCore?.merkleRoot;
+    const packageId =
+      manifest.packageId || manifest.manifestCore?.packageId || 'unknown';
+    const packageTitle =
+      manifest.manifestCore?.title ||
+      manifest.title ||
+      'ZoikoShield Compliance Trust Bundle';
+    const tenantId =
+      manifest.manifestCore?.tenantId || manifest.tenantId || 'unknown';
+    const environmentId =
+      manifest.manifestCore?.environmentId ||
+      manifest.environmentId ||
+      'production';
+    const declaredMerkleRoot =
+      manifest.merkleRoot || manifest.manifestCore?.merkleRoot;
     const declaredCoreHash = manifest.manifestCoreHash;
 
     console.log(`  ✔ Package ID: ${packageId}`);
@@ -89,11 +115,19 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
     if (existsSync(envelopePath)) {
       const envelope = JSON.parse(readFileSync(envelopePath, 'utf8'));
       declaredEnvelopeHash = envelope.packageEnvelopeHash;
-      const recomputedEnvelopeHash = crypto.createHash('sha256').update(manifestContent).digest('hex');
-      envelopeIntegrity = declaredEnvelopeHash === recomputedEnvelopeHash || declaredEnvelopeHash.length === 64;
+      const recomputedEnvelopeHash = crypto
+        .createHash('sha256')
+        .update(manifestContent)
+        .digest('hex');
+      envelopeIntegrity =
+        declaredEnvelopeHash === recomputedEnvelopeHash ||
+        declaredEnvelopeHash.length === 64;
       console.log(`  ✔ Package Envelope Hash: ${declaredEnvelopeHash}`);
     } else {
-      declaredEnvelopeHash = crypto.createHash('sha256').update(manifestContent).digest('hex');
+      declaredEnvelopeHash = crypto
+        .createHash('sha256')
+        .update(manifestContent)
+        .digest('hex');
       console.log(`  ✔ Recomputed Package Hash: ${declaredEnvelopeHash}`);
     }
 
@@ -101,9 +135,14 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
     console.log('\n[3/5] Verifying ManifestCore Cryptographic Binding...');
     let manifestCoreHashMatch = true;
     if (manifest.manifestCore && declaredCoreHash) {
-      const recomputedCore = crypto.createHash('sha256').update(JSON.stringify(manifest.manifestCore)).digest('hex');
+      const recomputedCore = crypto
+        .createHash('sha256')
+        .update(JSON.stringify(manifest.manifestCore))
+        .digest('hex');
       manifestCoreHashMatch = recomputedCore === declaredCoreHash;
-      console.log(`  ✔ ManifestCore Hash Match: ${manifestCoreHashMatch ? 'VERIFIED' : 'FAILED'}`);
+      console.log(
+        `  ✔ ManifestCore Hash Match: ${manifestCoreHashMatch ? 'VERIFIED' : 'FAILED'}`,
+      );
     }
 
     // 3. Evidence Files Integrity Verification
@@ -125,25 +164,34 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
         const expectedFile = join(evidenceDir, `${entry.type}.json`);
         if (existsSync(expectedFile)) {
           const fileContent = readFileSync(expectedFile, 'utf8');
-          const fileHash = crypto.createHash('sha256').update(JSON.stringify(JSON.parse(fileContent))).digest('hex');
+          const fileHash = crypto
+            .createHash('sha256')
+            .update(JSON.stringify(JSON.parse(fileContent)))
+            .digest('hex');
           if (fileHash === entry.contentHash) {
             validFiles++;
           } else {
             corruptedFiles++;
-            console.error(`  ❌ Evidence mismatch for ${entry.type}: declared ${entry.contentHash}, found ${fileHash}`);
+            console.error(
+              `  ❌ Evidence mismatch for ${entry.type}: declared ${entry.contentHash}, found ${fileHash}`,
+            );
           }
         } else {
           validFiles++; // Raw payload verified via entryHash
         }
       }
-      console.log(`  ✔ Evidence Index: ${validFiles}/${totalFiles} Records Verified`);
+      console.log(
+        `  ✔ Evidence Index: ${validFiles}/${totalFiles} Records Verified`,
+      );
     } else {
       totalFiles = 1;
       validFiles = 1;
     }
 
     // 4. Merkle Tree & Proof Recomputation
-    console.log('\n[5/5] Reconstructing Domain-Separated Merkle Tree (ZS-MERKLE-V1)...');
+    console.log(
+      '\n[5/5] Reconstructing Domain-Separated Merkle Tree (ZS-MERKLE-V1)...',
+    );
     const merkleService = new MerkleTreeService();
     let recomputedMerkleRoot = declaredMerkleRoot;
     let merkleRootIntegrity = true;
@@ -154,11 +202,15 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
       merkleRootIntegrity = recomputedTree.root === declaredMerkleRoot;
       console.log(`  ✔ Declared Merkle Root:   ${declaredMerkleRoot}`);
       console.log(`  ✔ Recomputed Merkle Root: ${recomputedTree.root}`);
-      console.log(`  ✔ Merkle Integrity Check: ${merkleRootIntegrity ? 'VALID' : 'FAILED'}`);
+      console.log(
+        `  ✔ Merkle Integrity Check: ${merkleRootIntegrity ? 'VALID' : 'FAILED'}`,
+      );
     }
 
-    const witnessAttestationValid = !!manifest.transparencyWitness || !!manifest.proofEnvelope;
-    const humanApprovalBindingValid = !!manifest.humanApproval || !!manifest.auditPackageApproval;
+    const witnessAttestationValid =
+      !!manifest.transparencyWitness || !!manifest.proofEnvelope;
+    const humanApprovalBindingValid =
+      !!manifest.humanApproval || !!manifest.auditPackageApproval;
 
     const isFullyCompliant =
       envelopeIntegrity &&
@@ -168,7 +220,10 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
 
     const certificateId = `cert-aud-${crypto.randomUUID()}`;
     const certSigPayload = `${certificateId}:${packageId}:${declaredMerkleRoot}:${isFullyCompliant}`;
-    const certificateSignature = crypto.createHash('sha256').update(certSigPayload).digest('hex');
+    const certificateSignature = crypto
+      .createHash('sha256')
+      .update(certSigPayload)
+      .digest('hex');
 
     const certificate: AuditVerificationCertificate = {
       certificateId,
@@ -176,7 +231,9 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
       packageTitle,
       tenantId,
       environmentId,
-      verificationStatus: isFullyCompliant ? 'VERIFIED_COMPLIANT' : 'TAMPER_DETECTED',
+      verificationStatus: isFullyCompliant
+        ? 'VERIFIED_COMPLIANT'
+        : 'TAMPER_DETECTED',
       verifiedAt: new Date().toISOString(),
       verifierVersion: '1.0.0',
       checks: {
@@ -202,15 +259,21 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
     const certPath = join(targetPath, 'audit_certificate.json');
     writeFileSync(certPath, JSON.stringify(certificate, null, 2), 'utf8');
 
-    console.log('\n========================================================================');
+    console.log(
+      '\n========================================================================',
+    );
     if (isFullyCompliant) {
-      console.log(' 🎉 AUDIT PACKAGE VERIFIED SUCCESSFULLY (100% TAMPER-FREE)!');
+      console.log(
+        ' 🎉 AUDIT PACKAGE VERIFIED SUCCESSFULLY (100% TAMPER-FREE)!',
+      );
       console.log(` 📜 Verification Certificate Issued: ${certPath}`);
       console.log(` 🔒 Certificate Signature: ${certificateSignature}`);
     } else {
       console.log(' ❌ VERIFICATION FAILED: TAMPERING OR CORRUPTION DETECTED!');
     }
-    console.log('========================================================================\n');
+    console.log(
+      '========================================================================\n',
+    );
 
     return isFullyCompliant ? 0 : 1;
   } catch (err: any) {

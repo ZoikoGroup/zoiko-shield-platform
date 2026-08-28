@@ -59,7 +59,8 @@ export class CedarPolicyEvaluatorService {
         conditions: {
           unless: { 'context.approverCount': { gte: 2 } },
         },
-        description: 'Forbid critical cloud termination without dual-key authorization (R4 quorum)',
+        description:
+          'Forbid critical cloud termination without dual-key authorization (R4 quorum)',
       },
       {
         policyId: 'cedar-pol-002',
@@ -70,7 +71,8 @@ export class CedarPolicyEvaluatorService {
         conditions: {
           when: { 'context.threatSeverity': { in: ['CRITICAL', 'HIGH'] } },
         },
-        description: 'Permit endpoint quarantine by SecOps on Critical/High threats',
+        description:
+          'Permit endpoint quarantine by SecOps on Critical/High threats',
       },
       {
         policyId: 'cedar-pol-003',
@@ -81,7 +83,8 @@ export class CedarPolicyEvaluatorService {
         conditions: {
           when: { 'context.approverCount': { gte: 1 } },
         },
-        description: 'Permit identity suspension with at least 1 human approval',
+        description:
+          'Permit identity suspension with at least 1 human approval',
       },
       {
         policyId: 'cedar-pol-004',
@@ -103,7 +106,9 @@ export class CedarPolicyEvaluatorService {
 
   registerPolicy(policy: CedarPolicyStatement): void {
     this.policies.set(policy.policyId, policy);
-    this.logger.log(`Registered Cedar Policy '${policy.policyId}': ${policy.description}`);
+    this.logger.log(
+      `Registered Cedar Policy '${policy.policyId}': ${policy.description}`,
+    );
   }
 
   getPolicies(): CedarPolicyStatement[] {
@@ -147,13 +152,26 @@ export class CedarPolicyEvaluatorService {
 
     const evaluationDigest = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ input, decision, reason, matchedPermits, matchedForbids }))
+      .update(
+        JSON.stringify({
+          input,
+          decision,
+          reason,
+          matchedPermits,
+          matchedForbids,
+        }),
+      )
       .digest('hex');
 
     return {
       decision,
       reason,
-      matchedPolicies: decision === 'ALLOW' ? matchedPermits : (matchedForbids.length ? matchedForbids : []),
+      matchedPolicies:
+        decision === 'ALLOW'
+          ? matchedPermits
+          : matchedForbids.length
+            ? matchedForbids
+            : [],
       evaluationTimestamp: new Date().toISOString(),
       evaluationDigest,
     };
@@ -165,7 +183,10 @@ export class CedarPolicyEvaluatorService {
     return false;
   }
 
-  private evalConditions(conditions?: CedarPolicyStatement['conditions'], ctx?: Record<string, any>): boolean {
+  private evalConditions(
+    conditions?: CedarPolicyStatement['conditions'],
+    ctx?: Record<string, any>,
+  ): boolean {
     if (!conditions) return true;
     const context = ctx ?? {};
 
@@ -197,7 +218,11 @@ export class CedarPolicyEvaluatorService {
   }
 
   private evaluatePredicate(actual: any, expected: any): boolean {
-    if (typeof expected === 'object' && expected !== null && !Array.isArray(expected)) {
+    if (
+      typeof expected === 'object' &&
+      expected !== null &&
+      !Array.isArray(expected)
+    ) {
       if ('gte' in expected && typeof actual === 'number') {
         return actual >= expected.gte;
       }

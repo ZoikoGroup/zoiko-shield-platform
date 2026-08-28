@@ -39,6 +39,12 @@ export class Rfc3161WitnessService implements WitnessProvider {
   }
 
   async attest(merkleRoot: string): Promise<WitnessReceiptResult> {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'External RFC 3161 TSA configuration is required in production; local signing is demo-only.',
+      );
+    }
+
     const genTime = new Date().toISOString();
     const serialNumber = `tsa-sn-${crypto.randomBytes(8).toString('hex')}`;
     const nonce = crypto.randomBytes(8).toString('hex');

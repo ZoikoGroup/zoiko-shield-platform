@@ -3,7 +3,12 @@ import * as crypto from 'crypto';
 
 export interface SecurityTelemetryEvent {
   eventId: string;
-  source: 'IDENTITY_OKTA' | 'CLOUD_GUARDDUTY' | 'EDR_CORTEX' | 'EDR_CROWDSTRIKE' | 'AUDIT_CLOUDTRAIL';
+  source:
+    | 'IDENTITY_OKTA'
+    | 'CLOUD_GUARDDUTY'
+    | 'EDR_CORTEX'
+    | 'EDR_CROWDSTRIKE'
+    | 'AUDIT_CLOUDTRAIL';
   eventTime: number;
   principalUser?: string;
   targetHost?: string;
@@ -54,7 +59,9 @@ export class ThreatCorrelationService {
     events: SecurityTelemetryEvent[],
     windowMinutes: number = 30,
   ): CorrelatedThreatIncident[] {
-    this.logger.log(`Evaluating ${events.length} telemetry events for multi-vector threat correlation...`);
+    this.logger.log(
+      `Evaluating ${events.length} telemetry events for multi-vector threat correlation...`,
+    );
 
     const incidents: CorrelatedThreatIncident[] = [];
     if (events.length === 0) return incidents;
@@ -63,7 +70,11 @@ export class ThreatCorrelationService {
     const entityGroups = new Map<string, SecurityTelemetryEvent[]>();
 
     for (const evt of events) {
-      const pivotKey = evt.principalUser || evt.targetHost || evt.targetIp || 'global-unassigned';
+      const pivotKey =
+        evt.principalUser ||
+        evt.targetHost ||
+        evt.targetIp ||
+        'global-unassigned';
       if (!entityGroups.has(pivotKey)) {
         entityGroups.set(pivotKey, []);
       }
@@ -87,12 +98,28 @@ export class ThreatCorrelationService {
       }
 
       const killChainStages = Array.from(
-        new Set(groupEvents.map((e) => e.mitreTactic || 'Execution').filter(Boolean)),
+        new Set(
+          groupEvents.map((e) => e.mitreTactic || 'Execution').filter(Boolean),
+        ),
       );
 
-      const users = Array.from(new Set(groupEvents.map((e) => e.principalUser).filter((u): u is string => !!u)));
-      const hosts = Array.from(new Set(groupEvents.map((e) => e.targetHost).filter((h): h is string => !!h)));
-      const ips = Array.from(new Set(groupEvents.map((e) => e.targetIp).filter((i): i is string => !!i)));
+      const users = Array.from(
+        new Set(
+          groupEvents
+            .map((e) => e.principalUser)
+            .filter((u): u is string => !!u),
+        ),
+      );
+      const hosts = Array.from(
+        new Set(
+          groupEvents.map((e) => e.targetHost).filter((h): h is string => !!h),
+        ),
+      );
+      const ips = Array.from(
+        new Set(
+          groupEvents.map((e) => e.targetIp).filter((i): i is string => !!i),
+        ),
+      );
 
       // Multi-stage progression escalates severity to CRITICAL
       const isMultiStage = killChainStages.length >= 2;
@@ -110,7 +137,13 @@ export class ThreatCorrelationService {
       const incidentId = `inc-corr-${crypto.randomUUID()}`;
       const correlationDigest = crypto
         .createHash('sha256')
-        .update(JSON.stringify({ tenantId, pivot, eventIds: groupEvents.map((e) => e.eventId) }))
+        .update(
+          JSON.stringify({
+            tenantId,
+            pivot,
+            eventIds: groupEvents.map((e) => e.eventId),
+          }),
+        )
         .digest('hex');
 
       incidents.push({
@@ -125,7 +158,8 @@ export class ThreatCorrelationService {
         events: groupEvents,
         recommendedPlaybook: {
           playbookKey: 'PB-ENTERPRISE-CONTAINMENT-01',
-          playbookName: 'Multi-Vector Autonomous Host & User Containment Playbook',
+          playbookName:
+            'Multi-Vector Autonomous Host & User Containment Playbook',
           requiredAuthority: isMultiStage ? 'R1' : 'R2',
           actions,
         },

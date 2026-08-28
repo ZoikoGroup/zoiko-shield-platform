@@ -69,8 +69,7 @@ export class TraceContextInterceptor implements NestInterceptor {
     const res = http.getResponse();
 
     const rawHeader = req?.headers?.[W3C_TRACEPARENT_HEADER] as
-      | string
-      | undefined;
+      string | undefined;
     let traceData = TraceContextInterceptor.parseTraceparent(rawHeader);
 
     if (!traceData) {

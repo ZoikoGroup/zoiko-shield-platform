@@ -12,7 +12,6 @@ export interface DifferentialPrivacyQuery {
 export interface DifferentialPrivacyResult {
   tenantId: string;
   metricName: string;
-  trueValue: number;
   perturbedValue: number;
   noiseAdded: number;
   remainingEpsilonBudget: number;
@@ -37,8 +36,8 @@ export class DifferentialPrivacyGuardService {
    * Samples a random number from Laplace distribution: Laplace(0, scale)
    */
   private sampleLaplaceNoise(scale: number): number {
-    // Generate uniform random u in (-0.5, 0.5)
-    const u = Math.random() - 0.5;
+    // Use a cryptographically strong uniform sample for the mechanism.
+    const u = crypto.randomBytes(6).readUIntBE(0, 6) / 0x1000000000000 - 0.5;
     // Laplace quantile function: -scale * sgn(u) * ln(1 - 2|u|)
     const sgn = u < 0 ? -1 : 1;
     return -scale * sgn * Math.log(1 - 2 * Math.abs(u));
@@ -48,10 +47,14 @@ export class DifferentialPrivacyGuardService {
    * Applies the Laplace Mechanism to protect a numerical security aggregation.
    */
   perturbMetric(query: DifferentialPrivacyQuery): DifferentialPrivacyResult {
-    let currentBudget = this.tenantEpsilonBudgets.get(query.tenantId) ?? this.DEFAULT_TOTAL_BUDGET;
+    let currentBudget =
+      this.tenantEpsilonBudgets.get(query.tenantId) ??
+      this.DEFAULT_TOTAL_BUDGET;
 
     if (currentBudget < query.epsilonCost) {
-      this.logger.warn(`🚨 [PRIVACY BUDGET EXHAUSTED] Tenant ${query.tenantId} epsilon budget remaining: ${currentBudget.toFixed(2)}`);
+      this.logger.warn(
+        `🚨 [PRIVACY BUDGET EXHAUSTED] Tenant ${query.tenantId} epsilon budget remaining: ${currentBudget.toFixed(2)}`,
+      );
       throw new ForbiddenException(
         `Differential privacy epsilon budget exhausted for tenant '${query.tenantId}'. Cannot execute query without risking membership leakage.`,
       );
@@ -68,17 +71,23 @@ export class DifferentialPrivacyGuardService {
 
     const privacyProofDigest = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ query, perturbedValue, noiseAdded, remainingBudget: currentBudget }))
+      .update(
+        JSON.stringify({
+          query,
+          perturbedValue,
+          noiseAdded,
+          remainingBudget: currentBudget,
+        }),
+      )
       .digest('hex');
 
     this.logger.log(
-      `✔ Perturbed Metric [${query.metricName}] True: ${query.trueValue} -> Sanitized: ${perturbedValue} (Noise: ${noiseAdded.toFixed(4)}, Epsilon Left: ${currentBudget.toFixed(2)})`,
+      `✔ Perturbed Metric [${query.metricName}] -> Sanitized: ${perturbedValue} (Noise: ${noiseAdded.toFixed(4)}, Epsilon Left: ${currentBudget.toFixed(2)})`,
     );
 
     return {
       tenantId: query.tenantId,
       metricName: query.metricName,
-      trueValue: query.trueValue,
       perturbedValue,
       noiseAdded,
       remainingEpsilonBudget: Number(currentBudget.toFixed(2)),

@@ -17,7 +17,7 @@ describe('DifferentialPrivacyGuardService', () => {
       epsilonCost: 0.5,
     });
 
-    expect(res.trueValue).toBe(42);
+    expect('trueValue' in res).toBe(false);
     expect(res.perturbedValue).toBeDefined();
     expect(typeof res.perturbedValue).toBe('number');
     expect(res.mechanism).toBe('LAPLACE_MECHANISM');

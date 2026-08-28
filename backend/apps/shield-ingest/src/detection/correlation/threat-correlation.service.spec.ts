@@ -1,4 +1,7 @@
-import { ThreatCorrelationService, SecurityTelemetryEvent } from './threat-correlation.service';
+import {
+  ThreatCorrelationService,
+  SecurityTelemetryEvent,
+} from './threat-correlation.service';
 
 describe('ThreatCorrelationService', () => {
   let correlationService: ThreatCorrelationService;
@@ -8,7 +11,10 @@ describe('ThreatCorrelationService', () => {
   });
 
   it('should return empty list when given empty events array', () => {
-    const results = correlationService.correlateTelemetryStream('tenant-01', []);
+    const results = correlationService.correlateTelemetryStream(
+      'tenant-01',
+      [],
+    );
     expect(results).toEqual([]);
   });
 
@@ -24,7 +30,9 @@ describe('ThreatCorrelationService', () => {
       payload: {},
     };
 
-    const results = correlationService.correlateTelemetryStream('tenant-01', [singleEvent]);
+    const results = correlationService.correlateTelemetryStream('tenant-01', [
+      singleEvent,
+    ]);
     expect(results.length).toBe(0);
   });
 
@@ -67,7 +75,11 @@ describe('ThreatCorrelationService', () => {
       },
     ];
 
-    const results = correlationService.correlateTelemetryStream('tenant-01', attackStream, 30);
+    const results = correlationService.correlateTelemetryStream(
+      'tenant-01',
+      attackStream,
+      30,
+    );
     expect(results.length).toBe(1);
 
     const inc = results[0];

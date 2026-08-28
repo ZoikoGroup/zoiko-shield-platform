@@ -25,7 +25,9 @@ export interface SlaCreditSettlementResult {
 
 @Injectable()
 export class AutomatedSlaCreditSettlementService {
-  private readonly logger = new Logger(AutomatedSlaCreditSettlementService.name);
+  private readonly logger = new Logger(
+    AutomatedSlaCreditSettlementService.name,
+  );
 
   /**
    * Evaluates SLA commitments and calculates automated service credits.
@@ -39,31 +41,49 @@ export class AutomatedSlaCreditSettlementService {
     // 1. Availability SLA Evaluation (Target: 99.99%)
     if (metric.measuredUptimePercent < 95.0) {
       creditPercentage = Math.max(creditPercentage, 50);
-      breachReasons.push(`Major Availability Outage: Measured uptime ${metric.measuredUptimePercent}% (< 95.0%) -> 50% Credit`);
+      breachReasons.push(
+        `Major Availability Outage: Measured uptime ${metric.measuredUptimePercent}% (< 95.0%) -> 50% Credit`,
+      );
     } else if (metric.measuredUptimePercent < 99.0) {
       creditPercentage = Math.max(creditPercentage, 25);
-      breachReasons.push(`Availability Degradation: Measured uptime ${metric.measuredUptimePercent}% (< 99.0%) -> 25% Credit`);
+      breachReasons.push(
+        `Availability Degradation: Measured uptime ${metric.measuredUptimePercent}% (< 99.0%) -> 25% Credit`,
+      );
     } else if (metric.measuredUptimePercent < 99.99) {
       creditPercentage = Math.max(creditPercentage, 10);
-      breachReasons.push(`Availability Target Missed: Measured uptime ${metric.measuredUptimePercent}% (< 99.99%) -> 10% Credit`);
+      breachReasons.push(
+        `Availability Target Missed: Measured uptime ${metric.measuredUptimePercent}% (< 99.99%) -> 10% Credit`,
+      );
     }
 
     // 2. Incident MTTR SLA Evaluation (Target: 15 minutes for P1 incidents)
     if (metric.p1IncidentCount > 0 && metric.averageP1MttrMinutes > 60) {
       creditPercentage = Math.max(creditPercentage, 30);
-      breachReasons.push(`P1 MTTR Severe Breach: Avg response time was ${metric.averageP1MttrMinutes}m (Target: 15m) -> 30% Credit`);
+      breachReasons.push(
+        `P1 MTTR Severe Breach: Avg response time was ${metric.averageP1MttrMinutes}m (Target: 15m) -> 30% Credit`,
+      );
     } else if (metric.p1IncidentCount > 0 && metric.averageP1MttrMinutes > 15) {
       creditPercentage = Math.max(creditPercentage, 15);
-      breachReasons.push(`P1 MTTR Target Missed: Avg response time was ${metric.averageP1MttrMinutes}m (Target: 15m) -> 15% Credit`);
+      breachReasons.push(
+        `P1 MTTR Target Missed: Avg response time was ${metric.averageP1MttrMinutes}m (Target: 15m) -> 15% Credit`,
+      );
     }
 
     const isBreached = creditPercentage > 0;
-    const creditAmountUsd = (metric.monthlyContractValueUsd * creditPercentage) / 100;
+    const creditAmountUsd =
+      (metric.monthlyContractValueUsd * creditPercentage) / 100;
     const settlementId = `sla-set-${crypto.randomUUID()}`;
 
     const settlementDigest = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ settlementId, metric, creditPercentage, creditAmountUsd }))
+      .update(
+        JSON.stringify({
+          settlementId,
+          metric,
+          creditPercentage,
+          creditAmountUsd,
+        }),
+      )
       .digest('hex');
 
     if (isBreached) {
@@ -71,7 +91,9 @@ export class AutomatedSlaCreditSettlementService {
         `🚨 [SLA BREACH DETECTED] Tenant ${metric.tenantId} credit due: $${creditAmountUsd} (${creditPercentage}% of $${metric.monthlyContractValueUsd})`,
       );
     } else {
-      this.logger.log(`✔ [SLA COMPLIANT] Tenant ${metric.tenantId} met all 99.99% availability and MTTR commitments`);
+      this.logger.log(
+        `✔ [SLA COMPLIANT] Tenant ${metric.tenantId} met all 99.99% availability and MTTR commitments`,
+      );
     }
 
     return {
@@ -82,7 +104,9 @@ export class AutomatedSlaCreditSettlementService {
       breachReasons,
       creditPercentage,
       creditAmountUsd,
-      invoiceAdjustmentStatus: isBreached ? 'CREDIT_ISSUED_AUTOMATICALLY' : 'NO_CREDIT_DUE',
+      invoiceAdjustmentStatus: isBreached
+        ? 'CREDIT_ISSUED_AUTOMATICALLY'
+        : 'NO_CREDIT_DUE',
       settlementDigest,
       settledAt: new Date().toISOString(),
     };

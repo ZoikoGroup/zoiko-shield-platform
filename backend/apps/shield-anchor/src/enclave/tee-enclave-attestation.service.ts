@@ -1,7 +1,8 @@
 import { Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import * as crypto from 'crypto';
 
-export type EnclaveArchitecture = 'AMD_SEV_SNP' | 'INTEL_SGX_TDX' | 'AWS_NITRO_ENCLAVE';
+export type EnclaveArchitecture =
+  'AMD_SEV_SNP' | 'INTEL_SGX_TDX' | 'AWS_NITRO_ENCLAVE';
 
 export interface EnclaveAttestationQuote {
   architecture: EnclaveArchitecture;
@@ -41,20 +42,30 @@ export class TeeEnclaveAttestationService {
   /**
    * Verifies hardware quote attestation from isolated confidential enclave.
    */
-  verifyEnclaveQuote(quote: EnclaveAttestationQuote): EnclaveVerificationReceipt {
+  verifyEnclaveQuote(
+    quote: EnclaveAttestationQuote,
+  ): EnclaveVerificationReceipt {
     const receiptId = `tee-rcpt-${crypto.randomUUID()}`;
     const attestedAt = new Date().toISOString();
 
     // 1. Verify production non-debug mode
     if (!quote.isProductionMode) {
-      this.logger.warn(`🚨 [TEE REJECTED] Enclave is running in insecure DEBUG mode!`);
-      throw new UnauthorizedException('Confidential enclave quote rejected: Enclave running in debug mode');
+      this.logger.warn(
+        `🚨 [TEE REJECTED] Enclave is running in insecure DEBUG mode!`,
+      );
+      throw new UnauthorizedException(
+        'Confidential enclave quote rejected: Enclave running in debug mode',
+      );
     }
 
     // 2. Validate PCR0 Measurement against authorized goldset image
     if (!this.authorizedPcr0Set.has(quote.pcr0Measurement.toLowerCase())) {
-      this.logger.warn(`🚨 [TEE REJECTED] Untrusted PCR0 measurement: ${quote.pcr0Measurement}`);
-      throw new UnauthorizedException('Confidential enclave quote rejected: Unauthorized enclave binary measurement');
+      this.logger.warn(
+        `🚨 [TEE REJECTED] Untrusted PCR0 measurement: ${quote.pcr0Measurement}`,
+      );
+      throw new UnauthorizedException(
+        'Confidential enclave quote rejected: Unauthorized enclave binary measurement',
+      );
     }
 
     // 3. Compute Enclave Identity Attestation Digest
@@ -73,7 +84,9 @@ export class TeeEnclaveAttestationService {
       )
       .digest('hex');
 
-    this.logger.log(`✔ Verified Hardware Enclave [${quote.architecture}] -> Identity Digest: ${enclaveIdentityDigest.slice(0, 32)}...`);
+    this.logger.log(
+      `✔ Verified Hardware Enclave [${quote.architecture}] -> Identity Digest: ${enclaveIdentityDigest.slice(0, 32)}...`,
+    );
 
     return {
       receiptId,

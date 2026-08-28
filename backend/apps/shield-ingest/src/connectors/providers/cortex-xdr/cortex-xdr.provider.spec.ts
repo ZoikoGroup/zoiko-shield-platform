@@ -52,18 +52,24 @@ describe('CortexXdrProvider and CortexXdrNormalizerService', () => {
           name: 'Suspicious PowerShell Download Cradle',
           category: 'INITIAL_ACCESS',
           severity: 'high',
-          description: 'PowerShell executed with hidden window downloading remote payload',
+          description:
+            'PowerShell executed with hidden window downloading remote payload',
           event_timestamp: 1718000000000,
           source: 'XDR_AGENT',
           host_name: 'ws-exec-laptop-14',
           host_ip: '10.100.4.15',
           user_name: 'CORP\\alice.smith',
           action_taken: 'BLOCKED',
-          mitre_tactic_id_and_name: ['Execution', 'Command and Scripting Interpreter'],
+          mitre_tactic_id_and_name: [
+            'Execution',
+            'Command and Scripting Interpreter',
+          ],
           mitre_technique_id_and_name: ['T1059.001'],
           causality_actor_process_image_name: 'powershell.exe',
-          causality_actor_process_command_line: 'powershell.exe -ExecutionPolicy Bypass -enc SQBFAFg...',
-          causality_actor_process_sha256: '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
+          causality_actor_process_command_line:
+            'powershell.exe -ExecutionPolicy Bypass -enc SQBFAFg...',
+          causality_actor_process_sha256:
+            '9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08',
         },
         {
           alert_id: 'ALT-992',
@@ -81,7 +87,8 @@ describe('CortexXdrProvider and CortexXdrNormalizerService', () => {
           mitre_tactic_id_and_name: ['Impact', 'Inhibit System Recovery'],
           mitre_technique_id_and_name: ['T1490'],
           causality_actor_process_image_name: 'vssadmin.exe',
-          causality_actor_process_command_line: 'vssadmin.exe delete shadows /all /quiet',
+          causality_actor_process_command_line:
+            'vssadmin.exe delete shadows /all /quiet',
         },
       ],
     };
@@ -92,7 +99,9 @@ describe('CortexXdrProvider and CortexXdrNormalizerService', () => {
 
     const firstFinding = result.findings[0];
     expect(firstFinding.class_uid).toBe(2001);
-    expect(firstFinding.finding.title).toBe('Suspicious PowerShell Download Cradle');
+    expect(firstFinding.finding.title).toBe(
+      'Suspicious PowerShell Download Cradle',
+    );
     expect(firstFinding.finding.severity).toBe('HIGH');
     expect(firstFinding.device?.hostname).toBe('ws-exec-laptop-14');
     expect(firstFinding.process?.name).toBe('powershell.exe');

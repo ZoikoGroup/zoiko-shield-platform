@@ -4,7 +4,10 @@ import * as crypto from 'crypto';
 import { runVerifier } from './main';
 
 describe('Verifier CLI (Offline Independent Auditor Tool)', () => {
-  const testPackageDir = path.resolve(__dirname, '../../../dist/test-audit-package');
+  const testPackageDir = path.resolve(
+    __dirname,
+    '../../../dist/test-audit-package',
+  );
 
   beforeAll(() => {
     fs.mkdirSync(path.join(testPackageDir, 'evidence'), { recursive: true });
@@ -12,8 +15,14 @@ describe('Verifier CLI (Offline Independent Auditor Tool)', () => {
 
     const packageId = 'test-pkg-001';
     const evidencePayload = { mfaEnforced: true, users: 100 };
-    const contentHash = crypto.createHash('sha256').update(JSON.stringify(evidencePayload)).digest('hex');
-    const entryHash = crypto.createHash('sha256').update(`0000:${contentHash}:1`).digest('hex');
+    const contentHash = crypto
+      .createHash('sha256')
+      .update(JSON.stringify(evidencePayload))
+      .digest('hex');
+    const entryHash = crypto
+      .createHash('sha256')
+      .update(`0000:${contentHash}:1`)
+      .digest('hex');
 
     const manifestCore = {
       packageId,
@@ -22,7 +31,10 @@ describe('Verifier CLI (Offline Independent Auditor Tool)', () => {
       environmentId: 'test',
       merkleRoot: 'test-root-hash',
     };
-    const manifestCoreHash = crypto.createHash('sha256').update(JSON.stringify(manifestCore)).digest('hex');
+    const manifestCoreHash = crypto
+      .createHash('sha256')
+      .update(JSON.stringify(manifestCore))
+      .digest('hex');
 
     const manifest = {
       packageId,
@@ -33,9 +45,21 @@ describe('Verifier CLI (Offline Independent Auditor Tool)', () => {
       humanApproval: { approver: 'auditor@test.com' },
     };
 
-    fs.writeFileSync(path.join(testPackageDir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8');
-    fs.writeFileSync(path.join(testPackageDir, 'envelope.json'), JSON.stringify({ packageId, packageEnvelopeHash: 'a'.repeat(64) }), 'utf8');
-    fs.writeFileSync(path.join(testPackageDir, 'evidence', 'ACCESS_MFA.json'), JSON.stringify(evidencePayload, null, 2), 'utf8');
+    fs.writeFileSync(
+      path.join(testPackageDir, 'manifest.json'),
+      JSON.stringify(manifest, null, 2),
+      'utf8',
+    );
+    fs.writeFileSync(
+      path.join(testPackageDir, 'envelope.json'),
+      JSON.stringify({ packageId, packageEnvelopeHash: 'a'.repeat(64) }),
+      'utf8',
+    );
+    fs.writeFileSync(
+      path.join(testPackageDir, 'evidence', 'ACCESS_MFA.json'),
+      JSON.stringify(evidencePayload, null, 2),
+      'utf8',
+    );
   });
 
   afterAll(() => {

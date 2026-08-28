@@ -77,10 +77,13 @@ export class AwsSqsIngestListener implements OnModuleDestroy {
       // 2. Parse SQS payload
       let parsedPayload: any;
       try {
-        parsedPayload = typeof msg.body === 'string' ? JSON.parse(msg.body) : msg.body;
+        parsedPayload =
+          typeof msg.body === 'string' ? JSON.parse(msg.body) : msg.body;
       } catch (err: any) {
         result.errorCount++;
-        this.logger.error(`Failed to parse SQS message ${msg.messageId} body: ${err.message}`);
+        this.logger.error(
+          `Failed to parse SQS message ${msg.messageId} body: ${err.message}`,
+        );
         // Treat as poisoned message or forward to DLQ
         continue;
       }

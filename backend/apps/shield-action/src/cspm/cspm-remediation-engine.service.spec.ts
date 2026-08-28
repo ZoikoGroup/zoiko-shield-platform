@@ -32,7 +32,8 @@ describe('CspmRemediationEngineService', () => {
       tenantId: 'tenant-enterprise-01',
       cloudProvider: 'AWS' as const,
       violationType: 'AWS_SECURITY_GROUP_OPEN_INGRESS' as const,
-      resourceArn: 'arn:aws:ec2:us-east-1:123456789012:security-group/sg-019283019283',
+      resourceArn:
+        'arn:aws:ec2:us-east-1:123456789012:security-group/sg-019283019283',
       detectedAt: new Date().toISOString(),
     };
 

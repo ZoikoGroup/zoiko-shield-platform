@@ -34,12 +34,16 @@ export class EmergencyFreezeLockdownService {
     const freezeId = `frz-${crypto.randomUUID()}`;
     const now = new Date();
     const activeUntil = input.durationMinutes
-      ? new Date(now.getTime() + input.durationMinutes * 60 * 1000).toISOString()
+      ? new Date(
+          now.getTime() + input.durationMinutes * 60 * 1000,
+        ).toISOString()
       : undefined;
 
     const refusalDigest = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ ...input, freezeId, activeFrom: now.toISOString() }))
+      .update(
+        JSON.stringify({ ...input, freezeId, activeFrom: now.toISOString() }),
+      )
       .digest('hex');
 
     const record: ActiveFreezeRecord = {
@@ -68,7 +72,9 @@ export class EmergencyFreezeLockdownService {
   releaseFreeze(freezeId: string, releasedBy: string): boolean {
     if (!this.activeFreezes.has(freezeId)) return false;
     this.activeFreezes.delete(freezeId);
-    this.logger.log(`✔ [FREEZE RELEASED] Freeze ID ${freezeId} released by ${releasedBy}`);
+    this.logger.log(
+      `✔ [FREEZE RELEASED] Freeze ID ${freezeId} released by ${releasedBy}`,
+    );
     return true;
   }
 

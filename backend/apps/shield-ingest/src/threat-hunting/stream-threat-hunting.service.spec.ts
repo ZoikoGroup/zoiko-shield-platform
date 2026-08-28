@@ -14,7 +14,11 @@ describe('StreamThreatHuntingService', () => {
       tenantId: 'tenant-01',
       classUid: 1001,
       severityId: 1, // Low
-      actor: { userName: 'alice', processName: 'node.exe', sourceIp: '10.0.0.1' },
+      actor: {
+        userName: 'alice',
+        processName: 'node.exe',
+        sourceIp: '10.0.0.1',
+      },
       rawPayload: {},
       timestampEpochMs: Date.now(),
     });
@@ -24,7 +28,11 @@ describe('StreamThreatHuntingService', () => {
       tenantId: 'tenant-01',
       classUid: 4001,
       severityId: 5, // High
-      actor: { userName: 'compromised-admin', processName: 'powershell.exe', sourceIp: '198.51.100.22' },
+      actor: {
+        userName: 'compromised-admin',
+        processName: 'powershell.exe',
+        sourceIp: '198.51.100.22',
+      },
       rawPayload: { command: 'Invoke-Mimikatz' },
       timestampEpochMs: Date.now(),
     });

@@ -14,7 +14,15 @@ describe('Fido2StepupGuardService', () => {
     const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', {
       namedCurve: 'prime256v1',
     });
-    const publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
+    const publicKeyPem = publicKey
+      .export({ type: 'spki', format: 'pem' })
+      .toString();
+    const credentialId = 'yubikey-5-nfc-credential-id-12345';
+    fido2Guard.registerCredential({
+      credentialId,
+      analystId: 'soc-lead@enterprise.com',
+      publicKeyPem,
+    });
 
     // 1. Issue Challenge
     const session = fido2Guard.issueChallenge({
@@ -34,12 +42,17 @@ describe('Fido2StepupGuardService', () => {
       challenge: session.challengeBase64,
       origin: 'https://security.zoikoshield.corp',
     };
-    const clientDataJsonBase64 = Buffer.from(JSON.stringify(clientDataObj)).toString('base64');
-    const clientDataHash = crypto.createHash('sha256').update(Buffer.from(clientDataJsonBase64, 'base64')).digest();
+    const clientDataJsonBase64 = Buffer.from(
+      JSON.stringify(clientDataObj),
+    ).toString('base64');
+    const clientDataHash = crypto
+      .createHash('sha256')
+      .update(Buffer.from(clientDataJsonBase64, 'base64'))
+      .digest();
 
     // 3. Build AuthenticatorData (with User Presence and User Verification flags set)
     const authDataBuf = Buffer.concat([
-      crypto.randomBytes(32), // RP ID Hash
+      crypto.createHash('sha256').update('security.zoikoshield.corp').digest(),
       Buffer.from([0x05]), // Flags: UP (0x01) + UV (0x04)
       Buffer.from([0, 0, 0, 1]), // Sign count
     ]);
@@ -54,7 +67,7 @@ describe('Fido2StepupGuardService', () => {
     // 5. Verify & Grant Step-Up Authorization
     const grant = fido2Guard.verifyAssertionAndGrant({
       challengeId: session.challengeId,
-      credentialId: 'yubikey-5-nfc-credential-id-12345',
+      credentialId,
       authenticatorDataBase64,
       clientDataJsonBase64,
       signatureHex,
@@ -75,7 +88,9 @@ describe('Fido2StepupGuardService', () => {
         challengeId: 'non-existent-challenge-id',
         credentialId: 'cred-123',
         authenticatorDataBase64: Buffer.from('test').toString('base64'),
-        clientDataJsonBase64: Buffer.from(JSON.stringify({ challenge: 'xyz' })).toString('base64'),
+        clientDataJsonBase64: Buffer.from(
+          JSON.stringify({ challenge: 'xyz' }),
+        ).toString('base64'),
         signatureHex: 'deadbeef',
         publicKeyPem: 'test',
       });

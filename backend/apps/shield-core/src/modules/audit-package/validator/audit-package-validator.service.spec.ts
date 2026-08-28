@@ -27,7 +27,9 @@ describe('AuditPackageValidatorService', () => {
       riskAcceptance: {
         findMany: jest.fn().mockResolvedValue([]),
       },
-      $transaction: jest.fn().mockImplementation((promises) => Promise.all(promises)),
+      $transaction: jest
+        .fn()
+        .mockImplementation((promises) => Promise.all(promises)),
     };
 
     auditPackageService = {
@@ -53,13 +55,17 @@ describe('AuditPackageValidatorService', () => {
       ],
     }).compile();
 
-    service = module.get<AuditPackageValidatorService>(AuditPackageValidatorService);
+    service = module.get<AuditPackageValidatorService>(
+      AuditPackageValidatorService,
+    );
   });
 
   it('should throw NotFoundException if manifest does not exist', async () => {
     prisma.auditPackageManifest.findUnique.mockResolvedValue(null);
 
-    await expect(service.validate(tenantId, packageId)).rejects.toThrow(NotFoundException);
+    await expect(service.validate(tenantId, packageId)).rejects.toThrow(
+      NotFoundException,
+    );
   });
 
   it('should validate a complete and verified manifest successfully', async () => {
@@ -149,7 +155,11 @@ describe('AuditPackageValidatorService', () => {
     expect(result.ready).toBe(false);
     expect(result.blockingIssues.length).toBeGreaterThan(0);
     expect(result.blockingIssues).toContain('Scope is not populated');
-    expect(result.blockingIssues).toContain('One or more evidence items are not integrity-VERIFIED');
-    expect(result.blockingIssues).toContain('One or more assessments in scope have EVIDENCE_INCOMPLETE status');
+    expect(result.blockingIssues).toContain(
+      'One or more evidence items are not integrity-VERIFIED',
+    );
+    expect(result.blockingIssues).toContain(
+      'One or more assessments in scope have EVIDENCE_INCOMPLETE status',
+    );
   });
 });

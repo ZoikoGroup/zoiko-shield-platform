@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 
-export type NodeRole = 'ACTIVE_PRIMARY' | 'STANDBY_SOVEREIGN_REPLICA' | 'DEGRADED_PARTITIONED';
+export type NodeRole =
+  'ACTIVE_PRIMARY' | 'STANDBY_SOVEREIGN_REPLICA' | 'DEGRADED_PARTITIONED';
 
 export interface CloudNodeState {
   nodeId: string;
@@ -21,7 +22,8 @@ export interface FailoverExecutionResult {
   newLeaderRegion: string;
   reconciledOutboxEventsCount: number;
   merkleAnchorDriftDetected: boolean;
-  status: 'FAILOVER_SUCCESS_ZERO_DRIFT';
+  status:
+    'FAILOVER_SUCCESS_ZERO_DRIFT' | 'FAILOVER_SUCCESS_RECONCILIATION_REQUIRED';
   failoverAttestationDigest: string;
   executedAt: string;
 }
@@ -73,7 +75,9 @@ export class DisasterRecoveryPartitionService {
     if (node) {
       node.isHealthy = false;
       node.role = 'DEGRADED_PARTITIONED';
-      this.logger.warn(`🚨 [CSP OUTAGE SIMULATION] Node ${node.nodeId} (${node.cloudProvider} ${node.region}) marked as PARTITIONED!`);
+      this.logger.warn(
+        `🚨 [CSP OUTAGE SIMULATION] Node ${node.nodeId} (${node.cloudProvider} ${node.region}) marked as PARTITIONED!`,
+      );
     }
   }
 
@@ -81,13 +85,17 @@ export class DisasterRecoveryPartitionService {
    * Executes automated cross-cloud failover to the most synchronous sovereign standby replica.
    */
   executeAutomatedFailover(): FailoverExecutionResult {
-    const currentLeader = this.nodes.find((n) => n.role === 'ACTIVE_PRIMARY' || n.role === 'DEGRADED_PARTITIONED');
+    const currentLeader = this.nodes.find(
+      (n) => n.role === 'ACTIVE_PRIMARY' || n.role === 'DEGRADED_PARTITIONED',
+    );
     const eligibleStandby = this.nodes.find(
       (n) => n.role === 'STANDBY_SOVEREIGN_REPLICA' && n.isHealthy,
     );
 
     if (!eligibleStandby) {
-      throw new Error('Disaster recovery failed: No healthy sovereign standby nodes available for failover promotion');
+      throw new Error(
+        'Disaster recovery failed: No healthy sovereign standby nodes available for failover promotion',
+      );
     }
 
     const previousLeaderId = currentLeader ? currentLeader.nodeId : 'UNKNOWN';
@@ -100,11 +108,24 @@ export class DisasterRecoveryPartitionService {
     // Promote standby to active leader
     eligibleStandby.role = 'ACTIVE_PRIMARY';
     const failoverId = `dr-failover-${crypto.randomUUID()}`;
-    const reconciledOutboxEventsCount = 14; // Reconciled pending ledger batches
+    const leaderSequence = currentLeader?.lastCommittedEpochSequence ?? 0;
+    const reconciledOutboxEventsCount = Math.max(
+      0,
+      leaderSequence - eligibleStandby.lastCommittedEpochSequence,
+    );
+    const merkleAnchorDriftDetected =
+      eligibleStandby.lastCommittedEpochSequence !== leaderSequence;
 
     const failoverAttestationDigest = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ failoverId, previousLeaderId, newLeader: eligibleStandby.nodeId, sequence: eligibleStandby.lastCommittedEpochSequence }))
+      .update(
+        JSON.stringify({
+          failoverId,
+          previousLeaderId,
+          newLeader: eligibleStandby.nodeId,
+          sequence: eligibleStandby.lastCommittedEpochSequence,
+        }),
+      )
       .digest('hex');
 
     this.logger.log(
@@ -118,8 +139,10 @@ export class DisasterRecoveryPartitionService {
       newLeaderCloudProvider: eligibleStandby.cloudProvider,
       newLeaderRegion: eligibleStandby.region,
       reconciledOutboxEventsCount,
-      merkleAnchorDriftDetected: false,
-      status: 'FAILOVER_SUCCESS_ZERO_DRIFT',
+      merkleAnchorDriftDetected,
+      status: merkleAnchorDriftDetected
+        ? 'FAILOVER_SUCCESS_RECONCILIATION_REQUIRED'
+        : 'FAILOVER_SUCCESS_ZERO_DRIFT',
       failoverAttestationDigest,
       executedAt: new Date().toISOString(),
     };

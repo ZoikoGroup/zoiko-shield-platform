@@ -30,7 +30,12 @@ export interface MeterExhaustionDecision {
   status: MeterExhaustionStatus;
   capacityPercentage: number;
   isIngestPermitted: boolean;
-  throttleAction: 'NONE' | 'SOFT_ALERT' | 'ESCALATE_UPSELL' | 'RATE_LIMIT_50PCT' | 'HARD_BLOCK';
+  throttleAction:
+    | 'NONE'
+    | 'SOFT_ALERT'
+    | 'ESCALATE_UPSELL'
+    | 'RATE_LIMIT_50PCT'
+    | 'HARD_BLOCK';
   reason: string;
   auditDigest: string;
   evaluatedAt: string;
@@ -70,9 +75,14 @@ export class MeterExhaustionGuardService {
   /**
    * Evaluates real-time quota consumption and determines throttle/enforcement state.
    */
-  evaluateMeterExhaustion(input: MeterAssessmentInput): MeterExhaustionDecision {
-    const quota = this.PLAN_QUOTAS[input.planTier] || this.PLAN_QUOTAS.PROFESSIONAL;
-    const capacityPct = Math.round((input.currentIngestGb / quota.monthlyIngestGbLimit) * 100);
+  evaluateMeterExhaustion(
+    input: MeterAssessmentInput,
+  ): MeterExhaustionDecision {
+    const quota =
+      this.PLAN_QUOTAS[input.planTier] || this.PLAN_QUOTAS.PROFESSIONAL;
+    const capacityPct = Math.round(
+      (input.currentIngestGb / quota.monthlyIngestGbLimit) * 100,
+    );
 
     let status: MeterExhaustionStatus = 'NORMAL';
     let isIngestPermitted = true;

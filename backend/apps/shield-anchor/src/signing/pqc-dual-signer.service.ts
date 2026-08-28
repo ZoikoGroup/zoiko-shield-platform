@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
+import { ml_dsa65 } from '@noble/post-quantum/ml-dsa.js';
 
 export interface HybridDualSignatureResult {
   signatureId: string;
@@ -35,8 +36,7 @@ export class PqcDualSignerService {
   private readonly classicalPrivateKey: crypto.KeyObject;
   private readonly classicalPublicKeyPem: string;
 
-  // Simulated Lattice-Based ML-DSA-65 Key Material
-  private readonly pqcPrivateKeySeed: Buffer;
+  private readonly pqcPrivateKey: Uint8Array;
   private readonly pqcPublicKeyBase64: string;
 
   constructor() {
@@ -51,36 +51,39 @@ export class PqcDualSignerService {
       .export({ type: 'spki', format: 'pem' })
       .toString();
 
-    // 2. Initialize Quantum-Resistant ML-DSA-65 Key Material (NIST FIPS 204 Lattice Parameters)
-    this.pqcPrivateKeySeed = crypto.randomBytes(64); // ML-DSA-65 512-bit seed
-    const pqcPub = crypto.createHash('sha3-512').update(this.pqcPrivateKeySeed).digest();
-    this.pqcPublicKeyBase64 = pqcPub.toString('base64');
+    // 2. Initialize FIPS 204 ML-DSA-65 key material.
+    const pqcKeys = ml_dsa65.keygen();
+    this.pqcPrivateKey = pqcKeys.secretKey;
+    this.pqcPublicKeyBase64 = Buffer.from(pqcKeys.publicKey).toString('base64');
 
-    this.logger.log(`Initialized PQC Hybrid Dual-Signer [KeyId: ${this.keyId}] (ECDSA-P256 + ML-DSA-65)`);
+    this.logger.log(
+      `Initialized PQC Hybrid Dual-Signer [KeyId: ${this.keyId}] (ECDSA-P256 + ML-DSA-65)`,
+    );
   }
 
   /**
    * Generates a hybrid dual-signature over payload using both Classical and Post-Quantum algorithms.
    */
-  async signHybrid(payload: string | Buffer): Promise<HybridDualSignatureResult> {
-    const dataBuffer = Buffer.isBuffer(payload) ? payload : Buffer.from(payload, 'utf-8');
+  async signHybrid(
+    payload: string | Buffer,
+  ): Promise<HybridDualSignatureResult> {
+    const dataBuffer = Buffer.isBuffer(payload)
+      ? payload
+      : Buffer.from(payload, 'utf-8');
     const signatureId = `sig-pqc-${crypto.randomUUID()}`;
 
     // 1. Classical ECDSA P-256 Signature
     const classicalSigner = crypto.createSign('SHA256');
     classicalSigner.update(dataBuffer);
     classicalSigner.end();
-    const classicalSignatureHex = classicalSigner.sign(this.classicalPrivateKey).toString('hex');
+    const classicalSignatureHex = classicalSigner
+      .sign(this.classicalPrivateKey)
+      .toString('hex');
 
-    // 2. Post-Quantum Lattice ML-DSA-65 Signature Computation
-    // Bound to domain separator and private seed with SHAKE-256 / SHA3-512
-    const pqcHash = crypto
-      .createHash('sha3-512')
-      .update(Buffer.from('ML_DSA_65_DOMAIN_SEP:'))
-      .update(this.pqcPrivateKeySeed)
-      .update(dataBuffer)
-      .digest();
-    const pqcSignatureHex = pqcHash.toString('hex');
+    // 2. FIPS 204 ML-DSA-65 signature.
+    const pqcSignatureHex = Buffer.from(
+      ml_dsa65.sign(new Uint8Array(dataBuffer), this.pqcPrivateKey),
+    ).toString('hex');
 
     // 3. Hybrid Combined Container Signature
     const combinedContainer = JSON.stringify({
@@ -89,7 +92,10 @@ export class PqcDualSignerService {
       cSig: classicalSignatureHex,
       qSig: pqcSignatureHex,
     });
-    const hybridCombinedSignatureBase64 = Buffer.from(combinedContainer, 'utf-8').toString('base64');
+    const hybridCombinedSignatureBase64 = Buffer.from(
+      combinedContainer,
+      'utf-8',
+    ).toString('base64');
 
     return {
       signatureId,
@@ -107,8 +113,13 @@ export class PqcDualSignerService {
   /**
    * Verifies both Classical ECDSA and Post-Quantum ML-DSA signatures.
    */
-  verifyHybrid(payload: string | Buffer, sigResult: HybridDualSignatureResult): HybridVerificationResult {
-    const dataBuffer = Buffer.isBuffer(payload) ? payload : Buffer.from(payload, 'utf-8');
+  verifyHybrid(
+    payload: string | Buffer,
+    sigResult: HybridDualSignatureResult,
+  ): HybridVerificationResult {
+    const dataBuffer = Buffer.isBuffer(payload)
+      ? payload
+      : Buffer.from(payload, 'utf-8');
 
     // 1. Verify Classical Signature
     let classicalValid = false;
@@ -124,16 +135,14 @@ export class PqcDualSignerService {
       classicalValid = false;
     }
 
-    // 2. Verify Post-Quantum Signature
+    // 2. Verify FIPS 204 ML-DSA-65 signature.
     let pqcValid = false;
     try {
-      const expectedPqcHash = crypto
-        .createHash('sha3-512')
-        .update(Buffer.from('ML_DSA_65_DOMAIN_SEP:'))
-        .update(this.pqcPrivateKeySeed)
-        .update(dataBuffer)
-        .digest('hex');
-      pqcValid = expectedPqcHash === sigResult.pqcSignatureHex;
+      pqcValid = ml_dsa65.verify(
+        new Uint8Array(Buffer.from(sigResult.pqcSignatureHex, 'hex')),
+        new Uint8Array(dataBuffer),
+        new Uint8Array(Buffer.from(sigResult.pqcPublicKeyBase64, 'base64')),
+      );
     } catch {
       pqcValid = false;
     }

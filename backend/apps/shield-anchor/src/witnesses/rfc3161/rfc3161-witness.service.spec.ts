@@ -8,6 +8,7 @@ describe('Rfc3161WitnessService (Public RFC 3161 Timestamping)', () => {
   let service: Rfc3161WitnessService;
 
   beforeEach(async () => {
+    process.env.NODE_ENV = 'test';
     const module: TestingModule = await Test.createTestingModule({
       providers: [Rfc3161WitnessService],
     }).compile();
