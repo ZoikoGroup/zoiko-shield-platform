@@ -61,6 +61,9 @@ import { StixThreatIntelMatcherService } from './threat-intel/stix-threat-intel-
 import { CanaryHoneypotProbeService } from './canary/canary-honeypot-probe.service';
 import { EbpfRuntimeMonitorService } from './ebpf/ebpf-runtime-monitor.service';
 import { StreamThreatHuntingService } from './threat-hunting/stream-threat-hunting.service';
+import { MpcThreatMatcherService } from './mpc-intel/mpc-threat-matcher.service';
+import { TierAWindowedDetectorService } from './detection/tier-a/tier-a-windowed-detector.service';
+import { ClickhouseAnalyticalDetectorService } from './analytics/clickhouse-analytical-detector.service';
 
 import { MeteringController } from './metering/metering.controller';
 import { MeteringService } from './metering/metering.service';
@@ -200,6 +203,9 @@ import { IdempotencyService } from '../../shield-core/src/modules/idempotency/id
     CanaryHoneypotProbeService,
     EbpfRuntimeMonitorService,
     StreamThreatHuntingService,
+    MpcThreatMatcherService,
+    TierAWindowedDetectorService,
+    ClickhouseAnalyticalDetectorService,
     { provide: APP_GUARD, useClass: WorkloadAuthGuard },
   ],
   exports: [
@@ -212,6 +218,9 @@ import { IdempotencyService } from '../../shield-core/src/modules/idempotency/id
     CanaryHoneypotProbeService,
     EbpfRuntimeMonitorService,
     StreamThreatHuntingService,
+    MpcThreatMatcherService,
+    TierAWindowedDetectorService,
+    ClickhouseAnalyticalDetectorService,
   ],
 })
 export class ShieldIngestModule {}

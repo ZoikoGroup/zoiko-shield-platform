@@ -26,6 +26,8 @@ import { SecurityCopilotService } from './agent/security-copilot.service';
 import { PromptGuardrailService } from './security/prompt-guardrail.service';
 import { DifferentialPrivacyGuardService } from './privacy/differential-privacy-guard.service';
 import { AttackPathDiscoveryService } from './graph/attack-path-discovery.service';
+import { IncidentRcaGeneratorService } from './rca/incident-rca-generator.service';
+import { ModelArmorSafetyGatewayService } from './gateway/model-armor-safety-gateway.service';
 import { AiKillSwitchService } from './kill-switch/ai-kill-switch.service';
 
 import { ShieldCoreClient } from './internal-client/shield-core.client';
@@ -88,6 +90,8 @@ import { AiGovernanceViewsController } from './internal/ai-governance-views.cont
     SecurityCopilotService,
     DifferentialPrivacyGuardService,
     AttackPathDiscoveryService,
+    IncidentRcaGeneratorService,
+    ModelArmorSafetyGatewayService,
 
     ShieldCoreClient,
 
@@ -112,6 +116,8 @@ import { AiGovernanceViewsController } from './internal/ai-governance-views.cont
     SecurityCopilotService,
     DifferentialPrivacyGuardService,
     AttackPathDiscoveryService,
+    IncidentRcaGeneratorService,
+    ModelArmorSafetyGatewayService,
     AiKillSwitchService,
     AiRedTeamService,
     AiFinOpsBudgetService,

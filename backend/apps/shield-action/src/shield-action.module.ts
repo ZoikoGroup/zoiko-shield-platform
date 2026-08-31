@@ -35,6 +35,10 @@ import { AwsIamActionAdapter } from './execution-adapters/aws-iam.adapter';
 import { Fido2StepupGuardService } from './auth/fido2-stepup-guard.service';
 import { DisasterRecoveryPartitionService } from './dr-orchestrator/disaster-recovery-partition.service';
 import { CspmRemediationEngineService } from './cspm/cspm-remediation-engine.service';
+import { EbpfNetworkEnforcerService } from './microsegmentation/ebpf-network-enforcer.service';
+import { SoarCircuitBreakerService } from './circuit-breaker/soar-circuit-breaker.service';
+import { CedarTenantIsolationService } from './policy/cedar-tenant-isolation.service';
+import { SignedCommandBrokerService } from './broker/signed-command-broker.service';
 
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
@@ -56,6 +60,10 @@ import { CspmRemediationEngineService } from './cspm/cspm-remediation-engine.ser
     Fido2StepupGuardService,
     DisasterRecoveryPartitionService,
     CspmRemediationEngineService,
+    EbpfNetworkEnforcerService,
+    SoarCircuitBreakerService,
+    CedarTenantIsolationService,
+    SignedCommandBrokerService,
     ApprovalReauthorizationService,
     ReceiptVerificationService,
     ReconciliationService,
@@ -79,6 +87,10 @@ import { CspmRemediationEngineService } from './cspm/cspm-remediation-engine.ser
     Fido2StepupGuardService,
     DisasterRecoveryPartitionService,
     CspmRemediationEngineService,
+    EbpfNetworkEnforcerService,
+    SoarCircuitBreakerService,
+    CedarTenantIsolationService,
+    SignedCommandBrokerService,
     ActionRollbackBrokerService,
     ActionRollbackOrchestratorService,
     ResponsePlaybookService,

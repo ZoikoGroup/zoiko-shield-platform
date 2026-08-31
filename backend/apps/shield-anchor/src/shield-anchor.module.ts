@@ -22,6 +22,8 @@ import { EpochAggregatorService } from './merkle/epoch-aggregator.service';
 import { PqcDualSignerService } from './signing/pqc-dual-signer.service';
 import { TeeEnclaveAttestationService } from './enclave/tee-enclave-attestation.service';
 import { ZeroKnowledgeComplianceProofService } from './zk/zero-knowledge-compliance-proof.service';
+import { PqcBftConsensusService } from './consensus/pqc-bft-consensus.service';
+import { CosignBinaryAttestorService } from './supply-chain/cosign-binary-attestor.service';
 
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
@@ -47,6 +49,8 @@ import { ZeroKnowledgeComplianceProofService } from './zk/zero-knowledge-complia
     PqcDualSignerService,
     TeeEnclaveAttestationService,
     ZeroKnowledgeComplianceProofService,
+    PqcBftConsensusService,
+    CosignBinaryAttestorService,
     CheckpointBuilderService,
   ],
   exports: [
@@ -56,6 +60,8 @@ import { ZeroKnowledgeComplianceProofService } from './zk/zero-knowledge-complia
     PqcDualSignerService,
     TeeEnclaveAttestationService,
     ZeroKnowledgeComplianceProofService,
+    PqcBftConsensusService,
+    CosignBinaryAttestorService,
   ],
 })
 export class ShieldAnchorModule {}
