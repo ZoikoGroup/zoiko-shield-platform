@@ -81,6 +81,11 @@ import { CryptoGovernanceModule } from './modules/crypto-governance/crypto-gover
 import { PrivacyModule } from './modules/privacy/privacy.module';
 import { BreakGlassModule } from './modules/break-glass/break-glass.module';
 import { VerifiableCredentialsModule } from './modules/verifiable-credentials/verifiable-credentials.module';
+import { HomomorphicModule } from './modules/homomorphic/homomorphic.module';
+import { DevicePostureModule } from './modules/device-posture/device-posture.module';
+import { CryptoEscrowModule } from './modules/crypto-escrow/crypto-escrow.module';
+import { WorkflowModule } from './modules/workflows/workflow.module';
+import { ObservabilityExporterModule } from './modules/observability/observability-exporter.module';
 import { OutboxPublisherService } from './outbox/outbox-publisher.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -180,6 +185,11 @@ import { HumanAuthorityModule } from './modules/human-authority/human-authority.
     PrivacyModule,
     BreakGlassModule,
     VerifiableCredentialsModule,
+    HomomorphicModule,
+    DevicePostureModule,
+    CryptoEscrowModule,
+    WorkflowModule,
+    ObservabilityExporterModule,
   ],
   controllers: [ShieldCoreController],
   providers: [
