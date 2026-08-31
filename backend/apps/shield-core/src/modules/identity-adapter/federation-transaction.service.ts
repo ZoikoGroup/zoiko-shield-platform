@@ -19,6 +19,8 @@ export interface FederationTransactionSecretPayload extends Record<
   nonce?: string;
   pkceCodeVerifier?: string;
   invitationToken?: string;
+  accessDisclosureVersion?: string;
+  accessDisclosureAcceptedAt?: string;
   returnTo?: string;
 }
 

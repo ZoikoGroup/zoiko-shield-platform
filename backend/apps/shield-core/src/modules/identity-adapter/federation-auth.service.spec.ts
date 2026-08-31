@@ -90,6 +90,7 @@ describe('FederationAuthService', () => {
       auth as any,
       { applicationRedirect: jest.fn() } as any,
       events as any,
+      { isOwnerInvitation: jest.fn().mockResolvedValue(false) } as any,
     );
 
     await expect(

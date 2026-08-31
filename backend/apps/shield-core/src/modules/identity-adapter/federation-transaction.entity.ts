@@ -37,7 +37,8 @@ export class FederationTransaction {
   protocol: FederationProtocol;
 
   // AES-256-GCM envelope containing nonce, PKCE verifier, optional invitation
-  // token, and return path. The key is runtime-injected and not stored here.
+  // and consent context, and return path. The key is runtime-injected and not
+  // stored here.
   @Column({ type: 'text' })
   encryptedPayload: string;
 

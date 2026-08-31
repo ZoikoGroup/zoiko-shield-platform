@@ -6,26 +6,29 @@ import {
   OnModuleInit,
 } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
+import { createHash, randomBytes } from 'crypto';
+import { DataSource, Raw } from 'typeorm';
 import { Tenant } from '../tenant/tenant.entity';
 import { LegalEntity } from '../legal-entity/legal-entity.entity';
 import { Environment } from '../environment/environment.entity';
 import { TenantMembership } from '../authorization/entities/tenant-membership.entity';
 import { Role } from '../authorization/entities/role.entity';
 import { Permission } from '../authorization/entities/permission.entity';
-import { PolicyAcceptance } from '../identity-adapter/policy-acceptance.entity';
 import { Principal } from '../identity-adapter/principal.entity';
 import { IdentityEvent } from '../identity-adapter/identity-event.entity';
 import { PolicyService } from '../identity-adapter/policy.service';
+import { MailService } from '../identity-adapter/mail.service';
+import { ZoikoIdProviderBootstrapService } from '../identity-adapter/zoikoid-provider-bootstrap.service';
 import { PERMISSION_CODES } from '../authorization/constants';
+import { Invitation } from '../authorization/entities/invitation.entity';
 import { OnboardTenantDto } from './dto/onboard-tenant.dto';
 import { SessionMetadata } from '../identity-adapter/session.service';
 import { OnboardingReadinessService } from './onboarding-readiness.service';
-import { EvidenceService } from '../evidence/services/evidence.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 const TENANT_OWNER_ROLE_CODE = 'TENANT_OWNER';
 const PRIVACY_LEGAL_REVIEWER_ROLE_CODE = 'PRIVACY_LEGAL_REVIEWER';
+const OWNER_INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 @Injectable()
 export class OnboardingService implements OnModuleInit {
@@ -33,7 +36,8 @@ export class OnboardingService implements OnModuleInit {
     @InjectDataSource() private readonly dataSource: DataSource,
     private readonly policyService: PolicyService,
     private readonly readinessService: OnboardingReadinessService,
-    private readonly evidenceService: EvidenceService,
+    private readonly mailService: MailService,
+    private readonly zoikoIdProviders: ZoikoIdProviderBootstrapService,
     private readonly prisma: PrismaService,
   ) {}
 
@@ -120,6 +124,7 @@ export class OnboardingService implements OnModuleInit {
     metadata: SessionMetadata,
   ) {
     this.readinessService.assertReady(dto);
+    const ownerEmail = dto.ownerEmail.trim().toLowerCase();
     const activeDisclosure =
       await this.policyService.findActive('ACCESS_DISCLOSURE');
     if (
@@ -162,23 +167,33 @@ export class OnboardingService implements OnModuleInit {
       );
     }
 
+    const rawInvitationToken = randomBytes(32).toString('hex');
+    const invitationTokenHash = createHash('sha256')
+      .update(rawInvitationToken)
+      .digest('hex');
+    const invitationExpiresAt = new Date(Date.now() + OWNER_INVITATION_TTL_MS);
+
     const provisioning = await this.dataSource.transaction(async (manager) => {
       const tenantRepo = manager.getRepository(Tenant);
       const legalEntityRepo = manager.getRepository(LegalEntity);
       const environmentRepo = manager.getRepository(Environment);
       const membershipRepo = manager.getRepository(TenantMembership);
+      const invitationRepo = manager.getRepository(Invitation);
       const roleRepo = manager.getRepository(Role);
-      const policyAcceptanceRepo = manager.getRepository(PolicyAcceptance);
       const eventRepo = manager.getRepository(IdentityEvent);
       const principalRepo = manager.getRepository(Principal);
 
       let customerPrincipal = await principalRepo.findOne({
-        where: { email: dto.ownerEmail },
+        where: {
+          email: Raw((column) => `LOWER(${column}) = :ownerEmail`, {
+            ownerEmail,
+          }),
+        },
       });
       if (!customerPrincipal) {
         customerPrincipal = await principalRepo.save(
           principalRepo.create({
-            email: dto.ownerEmail,
+            email: ownerEmail,
             principalType: 'HUMAN',
             status: 'ACTIVE',
             source: 'ONBOARDING',
@@ -224,6 +239,15 @@ export class OnboardingService implements OnModuleInit {
         }),
       );
 
+      const identityProvider = await this.zoikoIdProviders.provisionForTenant(
+        manager,
+        {
+          tenantId: tenant.id,
+          environmentId: environment.id,
+          actorId: principalId,
+        },
+      );
+
       const ownerRole = await roleRepo.findOne({
         where: { code: TENANT_OWNER_ROLE_CODE, roleLevel: 'TENANT' },
       });
@@ -237,18 +261,24 @@ export class OnboardingService implements OnModuleInit {
         membershipRepo.create({
           tenantId: tenant.id,
           principalId: customerPrincipal.id,
-          status: 'ACTIVE',
+          status: 'PENDING',
           source: 'BOOTSTRAP',
           roles: [ownerRole],
         }),
       );
 
-      await policyAcceptanceRepo.save(
-        policyAcceptanceRepo.create({
-          principalId: customerPrincipal.id,
+      const ownerInvitation = await invitationRepo.save(
+        invitationRepo.create({
+          tokenHash: invitationTokenHash,
+          tenantId: tenant.id,
+          invitedEmail: ownerEmail,
+          roleId: ownerRole.id,
+          invitedById: principalId,
+          purpose: 'OWNER_ACTIVATION',
+          invitedPrincipalId: customerPrincipal.id,
           policyDocumentId: activeDisclosure.id,
-          ipAddress: metadata.ipAddress,
-          userAgent: metadata.userAgent,
+          status: 'PENDING',
+          expiresAt: invitationExpiresAt,
         }),
       );
 
@@ -262,6 +292,9 @@ export class OnboardingService implements OnModuleInit {
             tenantSlug: tenant.slug,
             legalEntityId: legalEntity.id,
             environmentId: environment.id,
+            identityProviderConfigurationId: identityProvider.id,
+            ownerInvitationId: ownerInvitation.id,
+            ownerInvitationExpiresAt: ownerInvitation.expiresAt.toISOString(),
             accessDisclosureVersion: activeDisclosure.version,
           },
         }),
@@ -271,7 +304,9 @@ export class OnboardingService implements OnModuleInit {
         tenant,
         legalEntity,
         environment,
+        identityProvider,
         membership,
+        ownerInvitation,
         customerPrincipalId: customerPrincipal.id,
       };
     });
@@ -304,64 +339,31 @@ export class OnboardingService implements OnModuleInit {
       });
     });
 
-    const acceptanceEvidence = await this.evidenceService.createEvidence({
-      tenantId: provisioning.tenant.id,
-      environmentId: provisioning.environment.id,
-      legalEntityId: provisioning.legalEntity.id,
-      region: provisioning.tenant.dataResidencyRegion,
-      evidenceType: 'POLICY_ACCEPTANCE',
-      producingService: 'shield-core',
-      sourceSystemId: 'identity-adapter',
-      sourceObjectId: activeDisclosure.id,
-      purpose: 'TENANT_ONBOARDING',
-      dataClass: provisioning.tenant.dataClass,
-      retentionProfile: provisioning.tenant.retentionPolicyRef,
-      content: {
-        tenantId: provisioning.tenant.id,
-        principalId: provisioning.customerPrincipalId,
-        policyDocumentId: activeDisclosure.id,
-        policyVersion: activeDisclosure.version,
-        policyContentHash: activeDisclosure.contentHash,
-        acceptedAt: new Date().toISOString(),
-      },
-    });
-
-    const tenant = await this.dataSource.transaction(async (manager) => {
-      const tenantRepo = manager.getRepository(Tenant);
-      const eventRepo = manager.getRepository(IdentityEvent);
-      const current = await tenantRepo.findOneByOrFail({
-        id: provisioning.tenant.id,
-      });
-      current.status = 'ACTIVE';
-      current.onboardingCompletedAt = new Date();
-      const activated = await tenantRepo.save(current);
-      await eventRepo.save(
-        eventRepo.create({
-          eventType: 'tenant_onboarded',
-          principalId: provisioning.customerPrincipalId,
-          actorId: principalId,
-          tenantId: activated.id,
-          data: {
-            legalEntityId: provisioning.legalEntity.id,
-            environmentId: provisioning.environment.id,
-            orderId: order.id,
-            commercialAccountId: order.commercial_account_id,
-            acceptanceEvidenceId: acceptanceEvidence.id,
-            accessDisclosureVersion: activeDisclosure.version,
-          },
-        }),
-      );
-      return activated;
+    const activationUrl = await this.mailService.sendOwnerInvitation({
+      email: ownerEmail,
+      tenantName: provisioning.tenant.name,
+      token: rawInvitationToken,
+      expiresAt: provisioning.ownerInvitation.expiresAt,
     });
 
     return {
-      tenant,
+      tenant: provisioning.tenant,
       legalEntity: provisioning.legalEntity,
       environment: provisioning.environment,
+      identityProvider: {
+        id: provisioning.identityProvider.id,
+        name: provisioning.identityProvider.name,
+        protocol: provisioning.identityProvider.protocol,
+      },
       membership: provisioning.membership,
       orderId: order.id,
       commercialAccountId: order.commercial_account_id,
-      acceptanceEvidenceId: acceptanceEvidence.id,
+      ownerInvitation: {
+        invitationId: provisioning.ownerInvitation.id,
+        expiresAt: provisioning.ownerInvitation.expiresAt,
+        delivery: 'EMAIL',
+        ...(process.env.NODE_ENV !== 'production' ? { activationUrl } : {}),
+      },
     };
   }
 }

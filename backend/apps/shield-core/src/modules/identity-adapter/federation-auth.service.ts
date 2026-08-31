@@ -28,6 +28,10 @@ import { SessionContextService } from './session-context.service';
 import { SessionMetadata } from './session.service';
 import { AuthService, TokenPair } from './auth.service';
 import { AuthenticatedUser } from './interfaces/jwt-payload.interface';
+import {
+  OwnerFederatedActivationService,
+  OwnerInvitationConsent,
+} from './owner-federated-activation.service';
 
 export interface FederationLoginResult {
   user: AuthenticatedUser;
@@ -50,11 +54,37 @@ export class FederationAuthService {
     private readonly auth: AuthService,
     private readonly runtime: FederationRuntimeService,
     private readonly events: IdentityEventService,
+    private readonly ownerActivations: OwnerFederatedActivationService,
   ) {}
 
   async start(
     dto: StartSsoDto,
     metadata: SessionMetadata,
+  ): Promise<{ authorizationUrl: string; protocol: string }> {
+    return this.startTransaction(dto, metadata);
+  }
+
+  async startOwnerInvitation(
+    input: StartSsoDto & {
+      invitationToken: string;
+      accessDisclosureVersion: string;
+      accessDisclosureAcceptedAt: string;
+    },
+    metadata: SessionMetadata,
+  ): Promise<{ authorizationUrl: string; protocol: string }> {
+    return this.startTransaction(input, metadata, {
+      accessDisclosureVersion: input.accessDisclosureVersion,
+      accessDisclosureAcceptedAt: input.accessDisclosureAcceptedAt,
+    });
+  }
+
+  private async startTransaction(
+    dto: StartSsoDto,
+    metadata: SessionMetadata,
+    ownerConsent?: {
+      accessDisclosureVersion: string;
+      accessDisclosureAcceptedAt: string;
+    },
   ): Promise<{ authorizationUrl: string; protocol: string }> {
     const provider = await this.providers.findActiveForStart(
       dto.tenantSlug,
@@ -72,6 +102,7 @@ export class FederationAuthService {
         ...(dto.invitationToken
           ? { invitationToken: dto.invitationToken }
           : {}),
+        ...(ownerConsent ?? {}),
         returnTo: dto.returnTo ?? '/',
       },
       requestIp: metadata.ipAddress,
@@ -123,6 +154,16 @@ export class FederationAuthService {
         consumed.secrets.invitationToken,
         consumed.secrets.returnTo,
         metadata,
+        {
+          accessDisclosureVersion:
+            consumed.secrets.accessDisclosureVersion,
+          accessDisclosureAcceptedAt:
+            consumed.secrets.accessDisclosureAcceptedAt,
+          metadata: {
+            ipAddress: consumed.transaction.requestIp ?? undefined,
+            userAgent: consumed.transaction.requestUserAgent ?? undefined,
+          },
+        },
       );
     } catch (error) {
       await this.recordFailure(provider.id, provider.tenantId, 'OIDC', error);
@@ -150,6 +191,16 @@ export class FederationAuthService {
         consumed.secrets.invitationToken,
         consumed.secrets.returnTo,
         metadata,
+        {
+          accessDisclosureVersion:
+            consumed.secrets.accessDisclosureVersion,
+          accessDisclosureAcceptedAt:
+            consumed.secrets.accessDisclosureAcceptedAt,
+          metadata: {
+            ipAddress: consumed.transaction.requestIp ?? undefined,
+            userAgent: consumed.transaction.requestUserAgent ?? undefined,
+          },
+        },
       );
     } catch (error) {
       await this.recordFailure(provider.id, provider.tenantId, 'SAML', error);
@@ -165,6 +216,7 @@ export class FederationAuthService {
     invitationToken: string | undefined,
     returnTo: string | undefined,
     metadata: SessionMetadata,
+    ownerConsent: OwnerInvitationConsent,
   ): Promise<FederationLoginResult> {
     const resolved = await this.resolvePrincipal(
       provider.id,
@@ -172,6 +224,7 @@ export class FederationAuthService {
       provider.protocol,
       assertion,
       invitationToken,
+      ownerConsent,
     );
     const binding = await this.sessionContext.resolveBinding({
       principalId: resolved.principal.id,
@@ -210,7 +263,22 @@ export class FederationAuthService {
     protocol: 'OIDC' | 'SAML',
     assertion: FederationAssertion,
     invitationToken?: string,
+    ownerConsent?: OwnerInvitationConsent,
   ): Promise<{ principal: Principal; externalIdentity: ExternalIdentity }> {
+    if (
+      invitationToken &&
+      (await this.ownerActivations.isOwnerInvitation(invitationToken, tenantId))
+    ) {
+      return this.ownerActivations.complete({
+        providerConfigurationId,
+        tenantId,
+        protocol,
+        assertion,
+        invitationToken,
+        consent: ownerConsent ?? { metadata: {} },
+      });
+    }
+
     const externalRepository = this.dataSource.getRepository(ExternalIdentity);
     let externalIdentity = await externalRepository.findOne({
       where: { issuer: assertion.issuer, subject: assertion.subject },
@@ -267,6 +335,7 @@ export class FederationAuthService {
           where: {
             tokenHash: this.hashToken(invitationToken),
             tenantId,
+            purpose: 'TENANT_MEMBERSHIP',
             status: 'PENDING',
             expiresAt: MoreThan(new Date()),
           },
@@ -448,6 +517,7 @@ export class FederationAuthService {
       where: {
         tokenHash: this.hashToken(invitationToken),
         tenantId,
+        purpose: 'TENANT_MEMBERSHIP',
         status: 'PENDING',
         expiresAt: MoreThan(new Date()),
       },

@@ -2,6 +2,7 @@ import { Type } from 'class-transformer';
 import {
   IsIn,
   IsDefined,
+  IsEmail,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -103,7 +104,7 @@ export class OnboardTenantDto {
   @Type(() => OnboardLegalEntityDto)
   legalEntity: OnboardLegalEntityDto;
 
-  @IsString()
+  @IsEmail()
   @IsNotEmpty()
   ownerEmail: string;
 

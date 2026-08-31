@@ -43,6 +43,10 @@ import { IdentityProviderConfigurationService } from './identity-provider-config
 import { FederationAuthService } from './federation-auth.service';
 import { FederationController } from './federation.controller';
 import { IdentityProviderConfigurationController } from './identity-provider-configuration.controller';
+import { ZoikoIdProviderBootstrapService } from './zoikoid-provider-bootstrap.service';
+import { OwnerFederatedActivationService } from './owner-federated-activation.service';
+import { EvidenceModule } from '../evidence/evidence.module';
+import { LegalEntity } from '../legal-entity/legal-entity.entity';
 
 @Module({
   imports: [
@@ -65,8 +69,10 @@ import { IdentityProviderConfigurationController } from './identity-provider-con
       Role,
       Tenant,
       Environment,
+      LegalEntity,
     ]),
     AuthorizationModule,
+    EvidenceModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
@@ -107,12 +113,17 @@ import { IdentityProviderConfigurationController } from './identity-provider-con
     SessionContextService,
     IdentityProviderConfigurationService,
     FederationAuthService,
+    ZoikoIdProviderBootstrapService,
+    OwnerFederatedActivationService,
   ],
   exports: [
     PrincipalService,
     IdentityEventService,
     PolicyService,
     SessionService,
+    MailService,
+    FederationAuthService,
+    ZoikoIdProviderBootstrapService,
   ],
 })
 export class IdentityAdapterModule {}

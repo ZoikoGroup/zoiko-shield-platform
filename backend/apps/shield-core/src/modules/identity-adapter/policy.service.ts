@@ -84,6 +84,26 @@ export class PolicyService implements OnModuleInit {
     return this.policyDocumentRepository.findOne({ where: { kind, version } });
   }
 
+  contentFor(document: PolicyDocument): string {
+    const content =
+      document.kind === 'ACCESS_DISCLOSURE'
+        ? (process.env.ACCESS_DISCLOSURE_TEXT ??
+          DEVELOPMENT_ACCESS_DISCLOSURE_TEXT)
+        : document.kind === 'TERMS_OF_SERVICE'
+          ? (process.env.TERMS_OF_SERVICE_TEXT ?? DEVELOPMENT_TERMS_TEXT)
+          : null;
+    if (
+      !content ||
+      createHash('sha256').update(content).digest('hex') !==
+        document.contentHash
+    ) {
+      throw new Error(
+        `Configured content does not match policy ${document.kind} version ${document.version}`,
+      );
+    }
+    return content;
+  }
+
   async recordAcceptance(
     principalId: string,
     policyDocumentId: string,
