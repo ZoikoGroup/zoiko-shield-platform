@@ -93,6 +93,46 @@ describe('AuthorizationDecisionService', () => {
     expect(authorization.hasTenantAccess).not.toHaveBeenCalled();
   });
 
+  it('resolves a cross-cutting permission from PLATFORM_SCOPE while retaining the real target tenant', async () => {
+    const { service, authorization, prisma } = setup();
+    authorization.getPermissionCodesForPrincipal.mockResolvedValue([
+      'deletion:approve',
+    ]);
+
+    const result = await service.evaluate({
+      ...input,
+      tenantId: 'tenant-a',
+      authorizationScopeId: '00000000-0000-0000-0000-000000000000',
+      action: 'deletion:approve',
+      resourceType: 'DeletionRequest',
+      resourceTenantId: 'tenant-a',
+      requiredPermissions: ['deletion:approve'],
+      effectClass: 'DESTRUCTIVE',
+    });
+
+    expect(result.decision).toBe('PERMIT');
+    expect(authorization.hasTenantAccess).toHaveBeenCalledWith(
+      '00000000-0000-0000-0000-000000000000',
+      'principal-1',
+    );
+    expect(prisma.authorizationDecision.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({ tenant_id: 'tenant-a' }),
+    });
+  });
+
+  it('does not let PLATFORM_SCOPE authorize an ordinary tenant permission', async () => {
+    const { service, authorization } = setup();
+
+    const result = await service.evaluate({
+      ...input,
+      authorizationScopeId: '00000000-0000-0000-0000-000000000000',
+    });
+
+    expect(result.decision).toBe('DENY');
+    expect(result.reasonCode).toBe('AUTHORIZATION_SCOPE_MISMATCH');
+    expect(authorization.hasTenantAccess).not.toHaveBeenCalled();
+  });
+
   it('denies a principal without active tenant membership', async () => {
     const { service, authorization } = setup();
     authorization.hasTenantAccess.mockResolvedValue(false);

@@ -56,7 +56,13 @@ describe('TenantOffboardingService (SEC-02)', () => {
     exportWorkerMock = { run: jest.fn() };
     apiClientMock = { suspend: jest.fn(), revoke: jest.fn() };
     legalHoldMock = {};
-    deletionRequestMock = { request: jest.fn() };
+    deletionRequestMock = {
+      request: jest.fn(),
+      approve: jest.fn(),
+      markRunning: jest.fn(),
+      markBackupExpiryPending: jest.fn(),
+      assertTenantOwnership: jest.fn(),
+    };
     deletionTaskMock = { executeTask: jest.fn() };
     backupExpiryMock = { recordPending: jest.fn() };
     attestationMock = { issue: jest.fn() };
@@ -233,7 +239,7 @@ describe('TenantOffboardingService (SEC-02)', () => {
     expect(deletionRequestMock.request).not.toHaveBeenCalled();
   });
 
-  it('an approved (non-blocked) deletion request executes its tasks and records pending backup expiry', async () => {
+  it('submitting deletion creates a pending approval state without executing any destructive task', async () => {
     prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({
       id: 'run-1',
       tenant_id: 'tenant-1',
@@ -242,7 +248,47 @@ describe('TenantOffboardingService (SEC-02)', () => {
     });
     deletionRequestMock.request.mockResolvedValue({
       id: 'del-1',
+      status: 'VALIDATING',
+    });
+    prismaMock.tenantOffboardingRun.update.mockResolvedValue({
+      id: 'run-1',
+      status: 'DELETION_PENDING',
+    });
+
+    const run = await service.startDeletion('tenant-1', 'run-1', 'admin');
+
+    expect(run.status).toBe('DELETION_PENDING');
+    expect(deletionRequestMock.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: 'tenant-1',
+        requestAuthority: 'TENANT_OFFBOARDING',
+        scope: { all: true },
+        identityVerificationStatus: 'NOT_APPLICABLE',
+      }),
+    );
+    expect(deletionTaskMock.executeTask).not.toHaveBeenCalled();
+    expect(backupExpiryMock.recordPending).not.toHaveBeenCalled();
+  });
+
+  it('a separate approved decision executes deletion tasks and records pending backup expiry', async () => {
+    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({
+      id: 'run-1',
+      tenant_id: 'tenant-1',
+      status: 'DELETION_PENDING',
+      requested_by: 'requester',
+      deletion_request_id: 'del-1',
+    });
+    deletionRequestMock.approve.mockResolvedValue({
+      id: 'del-1',
       status: 'APPROVED',
+    });
+    deletionRequestMock.markRunning.mockResolvedValue({
+      id: 'del-1',
+      status: 'RUNNING',
+    });
+    deletionRequestMock.markBackupExpiryPending.mockResolvedValue({
+      id: 'del-1',
+      status: 'BACKUP_EXPIRY_PENDING',
     });
     prismaMock.tenantOffboardingRun.update.mockResolvedValue({
       id: 'run-1',
@@ -253,10 +299,26 @@ describe('TenantOffboardingService (SEC-02)', () => {
       { id: 'task-2' },
     ]);
 
-    await service.startDeletion('tenant-1', 'run-1', 'admin');
+    await service.approveAndExecuteDeletion(
+      'tenant-1',
+      'run-1',
+      'reviewer',
+      'Identity and legal-hold review completed',
+    );
 
+    expect(deletionRequestMock.approve).toHaveBeenCalledWith({
+      tenantId: 'tenant-1',
+      authorizationScopeId: undefined,
+      deletionRequestId: 'del-1',
+      approvedBy: 'reviewer',
+      decisionReason: 'Identity and legal-hold review completed',
+    });
     expect(deletionTaskMock.executeTask).toHaveBeenCalledTimes(2);
     expect(backupExpiryMock.recordPending).toHaveBeenCalledWith(
+      'tenant-1',
+      'del-1',
+    );
+    expect(deletionRequestMock.markBackupExpiryPending).toHaveBeenCalledWith(
       'tenant-1',
       'del-1',
     );

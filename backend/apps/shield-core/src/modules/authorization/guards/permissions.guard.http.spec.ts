@@ -1,4 +1,4 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
 import { PermissionsGuard } from './permissions.guard';
@@ -48,7 +48,61 @@ class PartnerScopeProbeController {
   }
 }
 
+@UseGuards(PermissionsGuard)
+@Controller('api/v1/tenants/:tenantId/cross-cutting-probe')
+class CrossCuttingProbeController {
+  @Post()
+  @RequirePermissions('legal_hold:create')
+  create(@Param('tenantId') tenantId: string) {
+    return { tenantId };
+  }
+}
+
 describe('PermissionsGuard tenant isolation over HTTP', () => {
+  it('allows a PLATFORM_SCOPE membership to exercise only a declared cross-cutting permission against one real target tenant', async () => {
+    const authorizationDecision = {
+      evaluate: jest.fn().mockResolvedValue({
+        authorizationDecisionId: 'decision-1',
+        decision: 'PERMIT',
+        reasonCode: 'POLICY_PERMIT',
+        obligations: [],
+      }),
+    };
+    const testingModule = await Test.createTestingModule({
+      controllers: [CrossCuttingProbeController],
+      providers: [
+        PermissionsGuard,
+        {
+          provide: AuthorizationDecisionService,
+          useValue: authorizationDecision,
+        },
+      ],
+    }).compile();
+    const app = testingModule.createNestApplication();
+    app.use((req: any, _res: any, next: () => void) => {
+      req.user = {
+        id: 'platform-lawyer-1',
+        tenantId: '00000000-0000-0000-0000-000000000000',
+        assurance: 'FEDERATED_MFA',
+      };
+      next();
+    });
+    await app.init();
+
+    await request(app.getHttpServer())
+      .post('/api/v1/tenants/tenant-a/cross-cutting-probe')
+      .expect(201, { tenantId: 'tenant-a' });
+    expect(authorizationDecision.evaluate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: 'tenant-a',
+        authorizationScopeId: '00000000-0000-0000-0000-000000000000',
+        requiredPermissions: ['legal_hold:create'],
+      }),
+    );
+
+    await app.close();
+  });
+
   it('allows an active membership and denies another tenant with the same JWT principal', async () => {
     const authorizationDecision = {
       evaluate: jest.fn().mockResolvedValue({

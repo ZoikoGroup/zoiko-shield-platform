@@ -140,6 +140,7 @@ services:
       EMAIL_APP_PASSWORD: ${EMAIL_APP_PASSWORD:-}
       SERVICE_NAME: shield-core
       WORKLOAD_IDENTITY_DEV_SECRET: ${WORKLOAD_IDENTITY_DEV_SECRET:-local-workload-identity-change-me}
+      SUBJECT_KEY_WRAPPING_SECRET: ${SUBJECT_KEY_WRAPPING_SECRET:-local-subject-key-wrapping-change-me}
       SHIELD_AI_BASE_URL: http://shield-ai:3003
       SHIELD_ANCHOR_BASE_URL: http://shield-anchor:3005
     volumes:

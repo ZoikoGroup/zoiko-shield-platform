@@ -29,6 +29,7 @@ export class HumanAuthorityGuard implements CanActivate {
       body?: {
         humanAuthority?: HumanAuthorityAttestationDto;
         workOrderId?: string;
+        runId?: string;
       };
       user?: AuthenticatedUser;
     }>();
@@ -36,13 +37,24 @@ export class HumanAuthorityGuard implements CanActivate {
     const attestation = request.body?.humanAuthority;
     const resourceId = requirement.resourceParam
       ? request.params?.[requirement.resourceParam]
-      : (request.params?.id ?? request.body?.workOrderId ?? 'UNSPECIFIED');
+      : (request.params?.id ??
+        request.body?.workOrderId ??
+        request.body?.runId ??
+        request.params?.tenantId ??
+        'UNSPECIFIED');
     await this.authority.authorize({
-      tenantId: requireTenantId(request.headers['x-tenant-id'], user?.tenantId),
-      environmentId: requireEnvironmentId(
-        request.headers['x-environment-id'],
-        user?.environmentId,
-      ),
+      // PermissionsGuard has already resolved the real target tenant. For a
+      // PLATFORM_SCOPE actor this intentionally differs from the membership
+      // scope carried by the session.
+      tenantId: requireTenantId(request.headers['x-tenant-id']),
+      environmentId: requirement.tenantScoped
+        ? (request.headers['x-environment-id'] ??
+          user?.environmentId ??
+          'TENANT_CONTROL_PLANE')
+        : requireEnvironmentId(
+            request.headers['x-environment-id'],
+            user?.environmentId,
+          ),
       actionClass: requirement.actionClass,
       resourceType: requirement.resourceType,
       resourceId: resourceId ?? 'UNSPECIFIED',

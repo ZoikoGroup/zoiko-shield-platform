@@ -194,7 +194,12 @@ export class TenantOffboardingService {
     return updated;
   }
 
-  async startDeletion(tenantId: string, runId: string, requestedBy: string) {
+  async startDeletion(
+    tenantId: string,
+    runId: string,
+    requestedBy: string,
+    authorizationScopeId?: string,
+  ) {
     const run = await this.assertOwnership(tenantId, runId);
     if (run.status !== 'CONNECTOR_REVOCATION') {
       throw new ConflictException(
@@ -204,11 +209,14 @@ export class TenantOffboardingService {
 
     const deletionRequest = await this.deletionRequestService.request({
       tenantId,
+      authorizationScopeId,
       requestedBy,
+      requestAuthority: 'TENANT_OFFBOARDING',
       reason: 'Tenant offboarding',
       scope: { all: true },
+      identityVerificationStatus: 'NOT_APPLICABLE',
     });
-    await this.prisma.tenantOffboardingRun.update({
+    return this.prisma.tenantOffboardingRun.update({
       where: { id: run.id },
       data: {
         deletion_request_id: deletionRequest.id,
@@ -218,10 +226,38 @@ export class TenantOffboardingService {
             : 'DELETION_PENDING',
       },
     });
+  }
+
+  /**
+   * Maker-checker boundary: submission never deletes. A different, explicitly
+   * authorized human approves the request before any store task can start.
+   */
+  async approveAndExecuteDeletion(
+    tenantId: string,
+    runId: string,
+    approvedBy: string,
+    decisionReason: string,
+    authorizationScopeId?: string,
+  ) {
+    const run = await this.assertOwnership(tenantId, runId);
+    if (run.status !== 'DELETION_PENDING' || !run.deletion_request_id) {
+      throw new ConflictException(
+        `Offboarding run '${runId}' is not awaiting deletion approval (currently ${run.status})`,
+      );
+    }
+
+    const deletionRequest = await this.deletionRequestService.approve({
+      tenantId,
+      authorizationScopeId,
+      deletionRequestId: run.deletion_request_id,
+      approvedBy,
+      decisionReason,
+    });
 
     if (deletionRequest.status === 'BLOCKED_BY_HOLD') {
-      return this.prisma.tenantOffboardingRun.findUniqueOrThrow({
+      return this.prisma.tenantOffboardingRun.update({
         where: { id: run.id },
+        data: { status: 'BLOCKED' },
       });
     }
 
@@ -237,6 +273,7 @@ export class TenantOffboardingService {
       where: { id: run.id },
       data: { status: 'DELETING' },
     });
+    await this.deletionRequestService.markRunning(tenantId, deletionRequest.id);
 
     const tasks = await this.prisma.deletionTask.findMany({
       where: { deletion_request_id: deletionRequest.id },
@@ -245,14 +282,28 @@ export class TenantOffboardingService {
       try {
         await this.deletionTaskService.executeTask(task.id);
       } catch (error) {
+        const currentRequest =
+          await this.deletionRequestService.assertTenantOwnership(
+            tenantId,
+            deletionRequest.id,
+          );
         await this.prisma.tenantOffboardingRun.update({
           where: { id: run.id },
-          data: { status: 'FAILED' },
+          data: {
+            status:
+              currentRequest.status === 'BLOCKED_BY_HOLD'
+                ? 'BLOCKED'
+                : 'FAILED',
+          },
         });
         throw error;
       }
     }
     await this.backupExpiryService.recordPending(tenantId, deletionRequest.id);
+    await this.deletionRequestService.markBackupExpiryPending(
+      tenantId,
+      deletionRequest.id,
+    );
 
     await this.prisma.outboxEvent.create({
       data: this.outbox.build({
