@@ -54,9 +54,21 @@ describe('SloMetricsExporterService (LAB 16 Observability & SLO Exporter)', () =
 
     expect(snapshot.snapshotId).toBeDefined();
     expect(snapshot.promQlFormattedMetrics.length).toBeGreaterThanOrEqual(7);
-    expect(snapshot.promQlFormattedMetrics.some((m) => m.includes('zoikoshield_ingest_acceptance_rate'))).toBe(true);
-    expect(snapshot.promQlFormattedMetrics.some((m) => m.includes('zoikoshield_ai_grounding_score'))).toBe(true);
-    expect(snapshot.promQlFormattedMetrics.some((m) => m.includes('zoikoshield_tenant_cost_usd'))).toBe(true);
+    expect(
+      snapshot.promQlFormattedMetrics.some((m) =>
+        m.includes('zoikoshield_ingest_acceptance_rate'),
+      ),
+    ).toBe(true);
+    expect(
+      snapshot.promQlFormattedMetrics.some((m) =>
+        m.includes('zoikoshield_ai_grounding_score'),
+      ),
+    ).toBe(true);
+    expect(
+      snapshot.promQlFormattedMetrics.some((m) =>
+        m.includes('zoikoshield_tenant_cost_usd'),
+      ),
+    ).toBe(true);
     expect(snapshot.attestationDigest).toHaveLength(64);
   });
 });

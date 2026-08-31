@@ -59,7 +59,12 @@ export class SoarCircuitBreakerService {
   /**
    * Evaluates if a SOAR response action is permitted before dispatch.
    */
-  canExecuteAction(tenantId: string, playbookId: string, targetResource: string, maxBlastRadiusLimit = 5): CircuitBreakerStatus {
+  canExecuteAction(
+    tenantId: string,
+    playbookId: string,
+    targetResource: string,
+    maxBlastRadiusLimit = 5,
+  ): CircuitBreakerStatus {
     const key = `${tenantId}:${playbookId}`;
     const entry = this.getOrCreateEntry(key, maxBlastRadiusLimit);
     entry.maxBlastRadiusLimit = maxBlastRadiusLimit;
@@ -70,9 +75,12 @@ export class SoarCircuitBreakerService {
         playbookId,
         state: 'OPEN',
         totalExecutions: entry.executions.length,
-        failureCount: entry.executions.filter((e) => e.status === 'FAILED').length,
+        failureCount: entry.executions.filter((e) => e.status === 'FAILED')
+          .length,
         errorRatePercentage: this.calculateErrorRate(entry.executions),
-        distinctTargetResourcesCount: new Set(entry.executions.map((e) => e.targetResource)).size,
+        distinctTargetResourcesCount: new Set(
+          entry.executions.map((e) => e.targetResource),
+        ).size,
         maxBlastRadiusLimit: entry.maxBlastRadiusLimit,
         isActionAllowed: false,
         tripReason: entry.tripReason,
@@ -80,17 +88,23 @@ export class SoarCircuitBreakerService {
     }
 
     // Check potential blast radius overflow
-    const currentTargets = new Set(entry.executions.map((e) => e.targetResource));
+    const currentTargets = new Set(
+      entry.executions.map((e) => e.targetResource),
+    );
     currentTargets.add(targetResource);
 
     if (currentTargets.size > entry.maxBlastRadiusLimit) {
-      this.tripCircuit(key, `Blast radius ceiling exceeded: Attempted targets (${currentTargets.size}) exceeds limit (${entry.maxBlastRadiusLimit})`);
+      this.tripCircuit(
+        key,
+        `Blast radius ceiling exceeded: Attempted targets (${currentTargets.size}) exceeds limit (${entry.maxBlastRadiusLimit})`,
+      );
       return {
         tenantId,
         playbookId,
         state: 'OPEN',
         totalExecutions: entry.executions.length,
-        failureCount: entry.executions.filter((e) => e.status === 'FAILED').length,
+        failureCount: entry.executions.filter((e) => e.status === 'FAILED')
+          .length,
         errorRatePercentage: this.calculateErrorRate(entry.executions),
         distinctTargetResourcesCount: currentTargets.size,
         maxBlastRadiusLimit: entry.maxBlastRadiusLimit,
@@ -104,7 +118,8 @@ export class SoarCircuitBreakerService {
       playbookId,
       state: entry.state,
       totalExecutions: entry.executions.length,
-      failureCount: entry.executions.filter((e) => e.status === 'FAILED').length,
+      failureCount: entry.executions.filter((e) => e.status === 'FAILED')
+        .length,
       errorRatePercentage: this.calculateErrorRate(entry.executions),
       distinctTargetResourcesCount: currentTargets.size,
       maxBlastRadiusLimit: entry.maxBlastRadiusLimit,
@@ -127,11 +142,16 @@ export class SoarCircuitBreakerService {
     }
 
     const errorRate = this.calculateErrorRate(entry.executions);
-    const failureCount = entry.executions.filter((e) => e.status === 'FAILED').length;
+    const failureCount = entry.executions.filter(
+      (e) => e.status === 'FAILED',
+    ).length;
 
     // Trip if error rate > 20% with at least 3 executions, or 3 consecutive failures
     if (entry.executions.length >= 3 && (errorRate > 20 || failureCount >= 3)) {
-      this.tripCircuit(key, `Error rate threshold breached (${errorRate.toFixed(1)}% failures over ${entry.executions.length} actions)`);
+      this.tripCircuit(
+        key,
+        `Error rate threshold breached (${errorRate.toFixed(1)}% failures over ${entry.executions.length} actions)`,
+      );
     }
 
     return {
@@ -141,7 +161,9 @@ export class SoarCircuitBreakerService {
       totalExecutions: entry.executions.length,
       failureCount,
       errorRatePercentage: errorRate,
-      distinctTargetResourcesCount: new Set(entry.executions.map((e) => e.targetResource)).size,
+      distinctTargetResourcesCount: new Set(
+        entry.executions.map((e) => e.targetResource),
+      ).size,
       maxBlastRadiusLimit: entry.maxBlastRadiusLimit,
       isActionAllowed: entry.state !== 'OPEN',
       tripReason: entry.tripReason,
@@ -161,10 +183,21 @@ export class SoarCircuitBreakerService {
     const receiptId = `trip-rcpt-${crypto.randomUUID()}`;
     const attestationDigest = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ receiptId, key, previousState, currentState: 'OPEN', reason, trippedAt: entry.trippedAt }))
+      .update(
+        JSON.stringify({
+          receiptId,
+          key,
+          previousState,
+          currentState: 'OPEN',
+          reason,
+          trippedAt: entry.trippedAt,
+        }),
+      )
       .digest('hex');
 
-    this.logger.error(`🚨 [CIRCUIT BREAKER TRIPPED] Playbook '${key}' is now OPEN (HALTED). Reason: ${reason}`);
+    this.logger.error(
+      `🚨 [CIRCUIT BREAKER TRIPPED] Playbook '${key}' is now OPEN (HALTED). Reason: ${reason}`,
+    );
 
     return {
       receiptId,
@@ -189,7 +222,9 @@ export class SoarCircuitBreakerService {
       entry.executions = [];
       entry.tripReason = undefined;
       entry.trippedAt = undefined;
-      this.logger.log(`✔ Circuit breaker reset for Playbook '${key}' -> State: CLOSED`);
+      this.logger.log(
+        `✔ Circuit breaker reset for Playbook '${key}' -> State: CLOSED`,
+      );
     }
   }
 

@@ -23,7 +23,8 @@ export interface HumanDecisionSignal {
   workflowId: string;
   tenantId: string;
   authorizingPrincipal: string;
-  verdict: 'APPROVE_CONTAINMENT' | 'DISMISS_FALSE_POSITIVE' | 'ESCALATE_TO_SOC_TIER3';
+  verdict:
+    'APPROVE_CONTAINMENT' | 'DISMISS_FALSE_POSITIVE' | 'ESCALATE_TO_SOC_TIER3';
   rationale: string;
   timestamp: string;
 }
@@ -54,7 +55,11 @@ export class InvestigateAlertWorkflowService {
     {
       input: InvestigationInput;
       state: WorkflowState;
-      history: Array<{ transition: string; timestamp: string; reference: string }>;
+      history: Array<{
+        transition: string;
+        timestamp: string;
+        reference: string;
+      }>;
       humanDecision?: HumanDecisionSignal;
       executedActions: string[];
       createdAt: string;
@@ -65,11 +70,16 @@ export class InvestigateAlertWorkflowService {
   /**
    * Executes or resumes the durable case investigation workflow.
    */
-  startWorkflow(input: InvestigationInput): { workflowId: string; state: WorkflowState } {
+  startWorkflow(input: InvestigationInput): {
+    workflowId: string;
+    state: WorkflowState;
+  } {
     // Check idempotency
     if (this.workflowStore.has(input.workflowId)) {
       const existing = this.workflowStore.get(input.workflowId)!;
-      this.logger.log(`✔ Resuming existing workflow '${input.workflowId}' in state: ${existing.state}`);
+      this.logger.log(
+        `✔ Resuming existing workflow '${input.workflowId}' in state: ${existing.state}`,
+      );
       return { workflowId: input.workflowId, state: existing.state };
     }
 
@@ -105,7 +115,8 @@ export class InvestigateAlertWorkflowService {
       input,
       state: nextState,
       history,
-      executedActions: nextState === 'RESOLVED' ? ['AUTO_SUPPRESS_AND_LOG'] : [],
+      executedActions:
+        nextState === 'RESOLVED' ? ['AUTO_SUPPRESS_AND_LOG'] : [],
       createdAt: now,
       updatedAt: new Date().toISOString(),
     });

@@ -4,7 +4,11 @@ import * as crypto from 'crypto';
 export interface SignedCommandEnvelope {
   commandId: string;
   tenantId: string;
-  actionType: 'REVOKE_IAM_SESSION' | 'ISOLATE_ENDPOINT' | 'DISABLE_USER_ACCOUNT' | 'QUARANTINE_SUBNET';
+  actionType:
+    | 'REVOKE_IAM_SESSION'
+    | 'ISOLATE_ENDPOINT'
+    | 'DISABLE_USER_ACCOUNT'
+    | 'QUARANTINE_SUBNET';
   targetRef: string;
   authorityLevel: 'R0' | 'R1' | 'R2' | 'R3' | 'R4';
   approvalRef: string;
@@ -20,7 +24,11 @@ export interface GovernedActionExecutionReceipt {
   tenantId: string;
   actionType: string;
   targetRef: string;
-  executionStatus: 'EXECUTED_SUCCESSFULLY' | 'REJECTED_VALIDATION_FAILURE' | 'REJECTED_EXPIRED_COMMAND' | 'REJECTED_REPLAY_NONCE';
+  executionStatus:
+    | 'EXECUTED_SUCCESSFULLY'
+    | 'REJECTED_VALIDATION_FAILURE'
+    | 'REJECTED_EXPIRED_COMMAND'
+    | 'REJECTED_REPLAY_NONCE';
   observedState: 'TARGET_CONTAINED' | 'NO_CHANGE';
   rollbackReceiptId?: string;
   executedAt: string;
@@ -75,37 +83,75 @@ export class SignedCommandBrokerService {
   /**
    * Validates and dispatches a signed command envelope to customer execution adapters.
    */
-  dispatchGovernedCommand(envelope: SignedCommandEnvelope): GovernedActionExecutionReceipt {
+  dispatchGovernedCommand(
+    envelope: SignedCommandEnvelope,
+  ): GovernedActionExecutionReceipt {
     const receiptId = `rcpt-gov-${crypto.randomUUID()}`;
     const executedAt = new Date().toISOString();
 
     // 1. Replay prevention: check nonce
     if (this.consumedNonces.has(envelope.nonce)) {
-      this.logger.error(`🚨 [REPLAY ATTACK INTERCEPTED] Command '${envelope.commandId}' attempted with consumed nonce: ${envelope.nonce}`);
-      return this.buildReceipt(receiptId, envelope, 'REJECTED_REPLAY_NONCE', 'NO_CHANGE', executedAt);
+      this.logger.error(
+        `🚨 [REPLAY ATTACK INTERCEPTED] Command '${envelope.commandId}' attempted with consumed nonce: ${envelope.nonce}`,
+      );
+      return this.buildReceipt(
+        receiptId,
+        envelope,
+        'REJECTED_REPLAY_NONCE',
+        'NO_CHANGE',
+        executedAt,
+      );
     }
     this.consumedNonces.add(envelope.nonce);
 
     // 2. Check expiration
     if (new Date(envelope.expiresAt).getTime() < Date.now()) {
-      this.logger.warn(`🛑 [EXPIRED COMMAND REJECTED] Command '${envelope.commandId}' expired at ${envelope.expiresAt}`);
-      return this.buildReceipt(receiptId, envelope, 'REJECTED_EXPIRED_COMMAND', 'NO_CHANGE', executedAt);
+      this.logger.warn(
+        `🛑 [EXPIRED COMMAND REJECTED] Command '${envelope.commandId}' expired at ${envelope.expiresAt}`,
+      );
+      return this.buildReceipt(
+        receiptId,
+        envelope,
+        'REJECTED_EXPIRED_COMMAND',
+        'NO_CHANGE',
+        executedAt,
+      );
     }
 
     // 3. Signature verification
     const expectedPayload = `${envelope.commandId}|${envelope.tenantId}|${envelope.actionType}|${envelope.targetRef}|${envelope.authorityLevel}|${envelope.approvalRef}|${envelope.policyVersion}|${envelope.expiresAt}|${envelope.nonce}`;
-    const expectedSignature = crypto.createHash('sha256').update(expectedPayload).digest('hex');
+    const expectedSignature = crypto
+      .createHash('sha256')
+      .update(expectedPayload)
+      .digest('hex');
 
     if (envelope.signature !== expectedSignature) {
-      this.logger.error(`🛑 [INVALID SIGNATURE] Command '${envelope.commandId}' signature mismatch.`);
-      return this.buildReceipt(receiptId, envelope, 'REJECTED_VALIDATION_FAILURE', 'NO_CHANGE', executedAt);
+      this.logger.error(
+        `🛑 [INVALID SIGNATURE] Command '${envelope.commandId}' signature mismatch.`,
+      );
+      return this.buildReceipt(
+        receiptId,
+        envelope,
+        'REJECTED_VALIDATION_FAILURE',
+        'NO_CHANGE',
+        executedAt,
+      );
     }
 
     // 4. Successful execution & rollback compensation generation
     const rollbackReceiptId = `rb-rcpt-${crypto.randomUUID()}`;
-    this.logger.log(`✔ [SOAR ACTION EXECUTED] Dispatched '${envelope.actionType}' on '${envelope.targetRef}' for Tenant '${envelope.tenantId}' (Receipt: ${receiptId})`);
+    this.logger.log(
+      `✔ [SOAR ACTION EXECUTED] Dispatched '${envelope.actionType}' on '${envelope.targetRef}' for Tenant '${envelope.tenantId}' (Receipt: ${receiptId})`,
+    );
 
-    return this.buildReceipt(receiptId, envelope, 'EXECUTED_SUCCESSFULLY', 'TARGET_CONTAINED', executedAt, rollbackReceiptId);
+    return this.buildReceipt(
+      receiptId,
+      envelope,
+      'EXECUTED_SUCCESSFULLY',
+      'TARGET_CONTAINED',
+      executedAt,
+      rollbackReceiptId,
+    );
   }
 
   private buildReceipt(
@@ -118,7 +164,16 @@ export class SignedCommandBrokerService {
   ): GovernedActionExecutionReceipt {
     const attestationDigest = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ receiptId, commandId: envelope.commandId, tenantId: envelope.tenantId, status, observedState, executedAt }))
+      .update(
+        JSON.stringify({
+          receiptId,
+          commandId: envelope.commandId,
+          tenantId: envelope.tenantId,
+          status,
+          observedState,
+          executedAt,
+        }),
+      )
       .digest('hex');
 
     return {

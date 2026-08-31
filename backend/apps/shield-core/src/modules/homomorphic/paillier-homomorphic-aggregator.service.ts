@@ -43,7 +43,8 @@ function modPow(base: bigint, exp: bigint, mod: bigint): bigint {
 }
 
 function modInv(a: bigint, m: bigint): bigint {
-  let [m0, x0, x1] = [m, 0n, 1n];
+  const m0 = m;
+  let [x0, x1] = [0n, 1n];
   if (m === 1n) return 0n;
   while (a > 1n) {
     const q = a / m;
@@ -64,7 +65,9 @@ function L(u: bigint, n: bigint): bigint {
  */
 @Injectable()
 export class PaillierHomomorphicAggregatorService {
-  private readonly logger = new Logger(PaillierHomomorphicAggregatorService.name);
+  private readonly logger = new Logger(
+    PaillierHomomorphicAggregatorService.name,
+  );
 
   // Standard Demo Paillier Keys (p = 61, q = 53 for deterministic simulation & fast testing, or 512-bit safe primes)
   private readonly p = 61n;
@@ -72,8 +75,11 @@ export class PaillierHomomorphicAggregatorService {
   private readonly n = this.p * this.q; // 3233n
   private readonly nSquared = this.n * this.n; // 10452289n
   private readonly g = this.n + 1n; // g = n + 1
-  private readonly lambda = (this.p - 1n) * (this.q - 1n) / 2n; // 1560n
-  private readonly mu = modInv(L(modPow(this.g, this.lambda, this.nSquared), this.n), this.n);
+  private readonly lambda = ((this.p - 1n) * (this.q - 1n)) / 2n; // 1560n
+  private readonly mu = modInv(
+    L(modPow(this.g, this.lambda, this.nSquared), this.n),
+    this.n,
+  );
 
   public readonly publicKey: PaillierPublicKey = {
     n: this.n,

@@ -41,8 +41,14 @@ export class PqcBftConsensusService {
   // 4 Sovereign Validator Nodes (N = 3f + 1 where f = 1, Quorum = 2f + 1 = 3)
   private readonly validators: BftValidatorNode[] = [
     { nodeId: 'node-aws-us-east-1', pqcPublicKeyHex: 'dilithium5_pk_aws_01' },
-    { nodeId: 'node-azure-eu-west-1', pqcPublicKeyHex: 'dilithium5_pk_azure_02' },
-    { nodeId: 'node-gcp-europe-west3', pqcPublicKeyHex: 'dilithium5_pk_gcp_03' },
+    {
+      nodeId: 'node-azure-eu-west-1',
+      pqcPublicKeyHex: 'dilithium5_pk_azure_02',
+    },
+    {
+      nodeId: 'node-gcp-europe-west3',
+      pqcPublicKeyHex: 'dilithium5_pk_gcp_03',
+    },
     { nodeId: 'node-oci-ap-tokyo-1', pqcPublicKeyHex: 'dilithium5_pk_oci_04' },
   ];
 
@@ -53,7 +59,10 @@ export class PqcBftConsensusService {
   /**
    * Executes a complete 3-phase PQC-BFT consensus round to seal a Merkle epoch root.
    */
-  executeConsensusRound(epochNumber: number, merkleRootHex: string): BftConsensusFinalityCertificate {
+  executeConsensusRound(
+    epochNumber: number,
+    merkleRootHex: string,
+  ): BftConsensusFinalityCertificate {
     const committedAt = new Date().toISOString();
     const primaryNode = this.validators[0];
 
@@ -62,10 +71,15 @@ export class PqcBftConsensusService {
       epochNumber,
       merkleRootHex,
       proposerNodeId: primaryNode.nodeId,
-      pqcSignatureHex: crypto.createHash('sha256').update(`PRE_PREPARE:${epochNumber}:${merkleRootHex}`).digest('hex'),
+      pqcSignatureHex: crypto
+        .createHash('sha256')
+        .update(`PRE_PREPARE:${epochNumber}:${merkleRootHex}`)
+        .digest('hex'),
       timestamp: committedAt,
     };
-    this.logger.log(`[PQC-BFT Epoch ${epochNumber}] Phase 1 (PRE-PREPARE) proposed by ${primaryNode.nodeId}`);
+    this.logger.log(
+      `[PQC-BFT Epoch ${epochNumber}] Phase 1 (PRE-PREPARE) proposed by ${primaryNode.nodeId}`,
+    );
 
     // Phase 2: Prepare (Collect 2f + 1 validator votes)
     const prepareVotes: string[] = [];
@@ -76,9 +90,13 @@ export class PqcBftConsensusService {
     }
 
     if (prepareVotes.length < this.quorumThreshold) {
-      throw new Error(`PQC-BFT Prepare quorum failed: Received ${prepareVotes.length} votes, required ${this.quorumThreshold}`);
+      throw new Error(
+        `PQC-BFT Prepare quorum failed: Received ${prepareVotes.length} votes, required ${this.quorumThreshold}`,
+      );
     }
-    this.logger.log(`[PQC-BFT Epoch ${epochNumber}] Phase 2 (PREPARE) reached quorum with ${prepareVotes.length} validator signatures`);
+    this.logger.log(
+      `[PQC-BFT Epoch ${epochNumber}] Phase 2 (PREPARE) reached quorum with ${prepareVotes.length} validator signatures`,
+    );
 
     // Phase 3: Commit (Collect 2f + 1 commit signatures)
     const commitVotes: string[] = [];
@@ -91,7 +109,15 @@ export class PqcBftConsensusService {
     const certificateId = `pqc-bft-cert-${crypto.randomUUID()}`;
     const aggregatedBftDigest = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ certificateId, epochNumber, merkleRootHex, commitVotes, committedAt }))
+      .update(
+        JSON.stringify({
+          certificateId,
+          epochNumber,
+          merkleRootHex,
+          commitVotes,
+          committedAt,
+        }),
+      )
       .digest('hex');
 
     this.logger.log(

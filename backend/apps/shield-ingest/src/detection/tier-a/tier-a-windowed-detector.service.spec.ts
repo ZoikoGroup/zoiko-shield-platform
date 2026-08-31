@@ -1,4 +1,7 @@
-import { TierAWindowedDetectorService, TierARuleContract } from './tier-a-windowed-detector.service';
+import {
+  TierAWindowedDetectorService,
+  TierARuleContract,
+} from './tier-a-windowed-detector.service';
 
 describe('TierAWindowedDetectorService', () => {
   let detectorService: TierAWindowedDetectorService;

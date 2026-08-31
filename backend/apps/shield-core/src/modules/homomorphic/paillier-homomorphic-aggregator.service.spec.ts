@@ -24,12 +24,27 @@ describe('PaillierHomomorphicAggregatorService', () => {
 
   it('should homomorphically aggregate multi-tenant telemetry payloads', () => {
     const payloads = [
-      { metricName: 'api_calls_count', tenantId: 'tenant-a', ciphertextHex: homoService.encrypt(120).toString(16) },
-      { metricName: 'api_calls_count', tenantId: 'tenant-b', ciphertextHex: homoService.encrypt(80).toString(16) },
-      { metricName: 'api_calls_count', tenantId: 'tenant-c', ciphertextHex: homoService.encrypt(50).toString(16) },
+      {
+        metricName: 'api_calls_count',
+        tenantId: 'tenant-a',
+        ciphertextHex: homoService.encrypt(120).toString(16),
+      },
+      {
+        metricName: 'api_calls_count',
+        tenantId: 'tenant-b',
+        ciphertextHex: homoService.encrypt(80).toString(16),
+      },
+      {
+        metricName: 'api_calls_count',
+        tenantId: 'tenant-c',
+        ciphertextHex: homoService.encrypt(50).toString(16),
+      },
     ];
 
-    const receipt = homoService.aggregateEncryptedMetrics('api_calls_count', payloads);
+    const receipt = homoService.aggregateEncryptedMetrics(
+      'api_calls_count',
+      payloads,
+    );
 
     expect(receipt.receiptId).toBeDefined();
     expect(receipt.contributingTenantsCount).toBe(3);

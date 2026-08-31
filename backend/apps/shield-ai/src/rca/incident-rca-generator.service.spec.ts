@@ -52,9 +52,15 @@ describe('IncidentRcaGeneratorService', () => {
     expect(report.rootCauseHypothesis).toContain('MFA_FATIGUE_ATTEMPT');
     expect(report.timelineChronology.length).toBe(3);
     expect(report.mitreMappings.length).toBeGreaterThanOrEqual(2);
-    expect(report.identifiedBlastRadius.compromisedAccounts).toContain('compromised.admin@enterprise.com');
-    expect(report.identifiedBlastRadius.affectedHosts).toContain('host-production-worker-01');
-    expect(report.identifiedBlastRadius.isolatedPods).toContain('pod-payment-vault');
+    expect(report.identifiedBlastRadius.compromisedAccounts).toContain(
+      'compromised.admin@enterprise.com',
+    );
+    expect(report.identifiedBlastRadius.affectedHosts).toContain(
+      'host-production-worker-01',
+    );
+    expect(report.identifiedBlastRadius.isolatedPods).toContain(
+      'pod-payment-vault',
+    );
     expect(report.containmentRecommendations.length).toBeGreaterThan(0);
     expect(report.provenanceAttestationDigest).toBeDefined();
   });

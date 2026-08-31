@@ -44,7 +44,9 @@ export interface AnalyticalDetectionFinding {
  */
 @Injectable()
 export class ClickhouseAnalyticalDetectorService {
-  private readonly logger = new Logger(ClickhouseAnalyticalDetectorService.name);
+  private readonly logger = new Logger(
+    ClickhouseAnalyticalDetectorService.name,
+  );
 
   // In-memory simulated ClickHouse MergeTree storage partitioned by (tenant_id, toYYYYMM(event_time))
   private readonly mergeTreeStore = new Map<string, SecurityEventRecord[]>();
@@ -52,7 +54,10 @@ export class ClickhouseAnalyticalDetectorService {
   /**
    * Ingests a batch of normalized security events into the MergeTree partitioned store.
    */
-  insertEvents(events: SecurityEventRecord[]): { insertedCount: number; partitions: string[] } {
+  insertEvents(events: SecurityEventRecord[]): {
+    insertedCount: number;
+    partitions: string[];
+  } {
     const affectedPartitions = new Set<string>();
 
     for (const evt of events) {
@@ -66,16 +71,24 @@ export class ClickhouseAnalyticalDetectorService {
       this.mergeTreeStore.get(partitionKey)!.push(evt);
     }
 
-    return { insertedCount: events.length, partitions: Array.from(affectedPartitions) };
+    return {
+      insertedCount: events.length,
+      partitions: Array.from(affectedPartitions),
+    };
   }
 
   /**
    * Executes a parameterized, tenant-scoped analytical query over partitioned MergeTree data.
    * Strictly enforces LAB 09 mandate: no ad-hoc SQL, no concatenation, no cross-tenant scans.
    */
-  executeParameterizedDetection(spec: ParameterizedQuerySpec, ruleId: string): AnalyticalDetectionFinding {
+  executeParameterizedDetection(
+    spec: ParameterizedQuerySpec,
+    ruleId: string,
+  ): AnalyticalDetectionFinding {
     if (!spec.tenantId || spec.tenantId.trim() === '') {
-      throw new Error('LAB 09 Invariant Violation: Parameterized query must specify explicit tenant_id.');
+      throw new Error(
+        'LAB 09 Invariant Violation: Parameterized query must specify explicit tenant_id.',
+      );
     }
 
     const findingId = `find-ch-${crypto.randomUUID()}`;

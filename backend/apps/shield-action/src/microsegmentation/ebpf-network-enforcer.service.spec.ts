@@ -33,13 +33,20 @@ describe('EbpfNetworkEnforcerService', () => {
   it('should instantly isolate compromised pod with QUARANTINE_ISOLATE action at priority 1', () => {
     const tenantId = 'tenant-enterprise-01';
 
-    const quarantineReceipt = enforcerService.quarantinePodNetwork(tenantId, 'app=compromised-worker-pod');
+    const quarantineReceipt = enforcerService.quarantinePodNetwork(
+      tenantId,
+      'app=compromised-worker-pod',
+    );
 
     expect(quarantineReceipt.enforcedAction).toBe('QUARANTINE_ISOLATE');
-    expect(quarantineReceipt.targetPodSelector).toBe('app=compromised-worker-pod');
+    expect(quarantineReceipt.targetPodSelector).toBe(
+      'app=compromised-worker-pod',
+    );
 
     const rules = enforcerService.getActiveRules(tenantId);
-    const quarantineRule = rules.find((r) => r.sourcePodSelector === 'app=compromised-worker-pod');
+    const quarantineRule = rules.find(
+      (r) => r.sourcePodSelector === 'app=compromised-worker-pod',
+    );
     expect(quarantineRule?.priority).toBe(1);
     expect(quarantineRule?.destinationCidrOrPod).toBe('0.0.0.0/0');
   });

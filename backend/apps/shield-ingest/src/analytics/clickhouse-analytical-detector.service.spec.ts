@@ -1,4 +1,7 @@
-import { ClickhouseAnalyticalDetectorService, SecurityEventRecord } from './clickhouse-analytical-detector.service';
+import {
+  ClickhouseAnalyticalDetectorService,
+  SecurityEventRecord,
+} from './clickhouse-analytical-detector.service';
 
 describe('ClickhouseAnalyticalDetectorService (LAB 09 Parameterized Analytical Queries)', () => {
   let chService: ClickhouseAnalyticalDetectorService;

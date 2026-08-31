@@ -23,7 +23,8 @@ export interface DevicePostureAttestationReceipt {
   tenantId: string;
   postureScore: number; // 0..100
   trustTier: 'TRUSTED_TIER_1' | 'ACCEPTABLE_TIER_2' | 'UNTRUSTED_QUARANTINE';
-  actionEnforced: 'ALLOW_SESSION' | 'REQUIRE_STEPUP_MFA' | 'REVOKE_ACTIVE_SESSION';
+  actionEnforced:
+    'ALLOW_SESSION' | 'REQUIRE_STEPUP_MFA' | 'REVOKE_ACTIVE_SESSION';
   attestationDigest: string;
   evaluatedAt: string;
 }
@@ -39,7 +40,9 @@ export class DevicePostureAttestationService {
   /**
    * Evaluates endpoint security signals and computes dynamic trust score.
    */
-  evaluateDevicePosture(telemetry: DeviceTelemetrySignal): DevicePostureAttestationReceipt {
+  evaluateDevicePosture(
+    telemetry: DeviceTelemetrySignal,
+  ): DevicePostureAttestationReceipt {
     const receiptId = `posture-rcpt-${crypto.randomUUID()}`;
     const evaluatedAt = new Date().toISOString();
 
@@ -59,10 +62,19 @@ export class DevicePostureAttestationService {
 
     // 5. Impossible Travel Geo-Velocity Check: 10 pts
     let impossibleTravelDetected = false;
-    if (telemetry.lastGeoLatitude !== undefined && telemetry.lastGeoLongitude !== undefined && telemetry.lastSignalEpochMs) {
-      const timeDiffHours = (Date.now() - telemetry.lastSignalEpochMs) / (1000 * 3600);
-      const latDiff = Math.abs(telemetry.geoLatitude - telemetry.lastGeoLatitude);
-      const lonDiff = Math.abs(telemetry.geoLongitude - telemetry.lastGeoLongitude);
+    if (
+      telemetry.lastGeoLatitude !== undefined &&
+      telemetry.lastGeoLongitude !== undefined &&
+      telemetry.lastSignalEpochMs
+    ) {
+      const timeDiffHours =
+        (Date.now() - telemetry.lastSignalEpochMs) / (1000 * 3600);
+      const latDiff = Math.abs(
+        telemetry.geoLatitude - telemetry.lastGeoLatitude,
+      );
+      const lonDiff = Math.abs(
+        telemetry.geoLongitude - telemetry.lastGeoLongitude,
+      );
       // Rough distance metric: > 30 degrees latitude or longitude in < 1 hour is physically impossible
       if ((latDiff > 30 || lonDiff > 30) && timeDiffHours < 1.0) {
         impossibleTravelDetected = true;
@@ -73,11 +85,15 @@ export class DevicePostureAttestationService {
       postureScore += 10;
     } else {
       postureScore = Math.max(0, postureScore - 50); // Severe penalty for impossible velocity
-      this.logger.warn(`🚨 [IMPOSSIBLE TRAVEL DETECTED] Operator ${telemetry.operatorId} moved across continents in under an hour!`);
+      this.logger.warn(
+        `🚨 [IMPOSSIBLE TRAVEL DETECTED] Operator ${telemetry.operatorId} moved across continents in under an hour!`,
+      );
     }
 
-    let trustTier: 'TRUSTED_TIER_1' | 'ACCEPTABLE_TIER_2' | 'UNTRUSTED_QUARANTINE';
-    let actionEnforced: 'ALLOW_SESSION' | 'REQUIRE_STEPUP_MFA' | 'REVOKE_ACTIVE_SESSION';
+    let trustTier:
+      'TRUSTED_TIER_1' | 'ACCEPTABLE_TIER_2' | 'UNTRUSTED_QUARANTINE';
+    let actionEnforced:
+      'ALLOW_SESSION' | 'REQUIRE_STEPUP_MFA' | 'REVOKE_ACTIVE_SESSION';
 
     if (postureScore >= 85) {
       trustTier = 'TRUSTED_TIER_1';
@@ -85,19 +101,33 @@ export class DevicePostureAttestationService {
     } else if (postureScore >= 60) {
       trustTier = 'ACCEPTABLE_TIER_2';
       actionEnforced = 'REQUIRE_STEPUP_MFA';
-      this.logger.warn(`⚠️ [DEGRADED DEVICE POSTURE] Score: ${postureScore}/100. Enforcing Step-Up MFA.`);
+      this.logger.warn(
+        `⚠️ [DEGRADED DEVICE POSTURE] Score: ${postureScore}/100. Enforcing Step-Up MFA.`,
+      );
     } else {
       trustTier = 'UNTRUSTED_QUARANTINE';
       actionEnforced = 'REVOKE_ACTIVE_SESSION';
-      this.logger.error(`🚨 [DEVICE COMPROMISED/UNTRUSTED] Score: ${postureScore}/100. Revoking active OAuth/JWT sessions!`);
+      this.logger.error(
+        `🚨 [DEVICE COMPROMISED/UNTRUSTED] Score: ${postureScore}/100. Revoking active OAuth/JWT sessions!`,
+      );
     }
 
     const attestationDigest = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ receiptId, deviceId: telemetry.deviceId, postureScore, actionEnforced, evaluatedAt }))
+      .update(
+        JSON.stringify({
+          receiptId,
+          deviceId: telemetry.deviceId,
+          postureScore,
+          actionEnforced,
+          evaluatedAt,
+        }),
+      )
       .digest('hex');
 
-    this.logger.log(`Evaluated Device Posture [${telemetry.deviceId}] -> Score: ${postureScore}/100 (${trustTier}) -> Action: ${actionEnforced}`);
+    this.logger.log(
+      `Evaluated Device Posture [${telemetry.deviceId}] -> Score: ${postureScore}/100 (${trustTier}) -> Action: ${actionEnforced}`,
+    );
 
     return {
       receiptId,

@@ -1,7 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 
-export type AuthorityLevel = 'R0_READ_ONLY' | 'R1_DIAGNOSTIC' | 'R2_GOVERNED_CONTAINMENT' | 'R3_PRIVILEGED_ELEVATION' | 'R4_EMERGENCY_FREEZE';
+export type AuthorityLevel =
+  | 'R0_READ_ONLY'
+  | 'R1_DIAGNOSTIC'
+  | 'R2_GOVERNED_CONTAINMENT'
+  | 'R3_PRIVILEGED_ELEVATION'
+  | 'R4_EMERGENCY_FREEZE';
 
 export interface CedarDecisionContext {
   principal: {
@@ -62,33 +67,69 @@ export class CedarTenantIsolationService {
   /**
    * Deterministically evaluates Cedar authorization policies and executes tenant isolation checks.
    */
-  evaluateAuthorization(context: CedarDecisionContext, isPolicyEngineAvailable = true): CedarAuthorizationResult {
+  evaluateAuthorization(
+    context: CedarDecisionContext,
+    isPolicyEngineAvailable = true,
+  ): CedarAuthorizationResult {
     const decisionId = `authz-dec-${crypto.randomUUID()}`;
     const evaluatedAt = new Date().toISOString();
 
     // 1. Fail-closed: Policy Bundle Unavailable
     if (!isPolicyEngineAvailable || !context.governance.policyBundleVersion) {
-      return this.buildResult(decisionId, 'DENY', 'DENIED_POLICY_BUNDLE_UNAVAILABLE', context, evaluatedAt);
+      return this.buildResult(
+        decisionId,
+        'DENY',
+        'DENIED_POLICY_BUNDLE_UNAVAILABLE',
+        context,
+        evaluatedAt,
+      );
     }
 
     // 2. Strict AI Boundary: AI Agent cannot directly access or execute privileged resources
     if (context.principal.type === 'AI_AGENT') {
-      return this.buildResult(decisionId, 'DENY', 'DENIED_AI_AGENT_DIRECT_RESOURCE_ACCESS', context, evaluatedAt);
+      return this.buildResult(
+        decisionId,
+        'DENY',
+        'DENIED_AI_AGENT_DIRECT_RESOURCE_ACCESS',
+        context,
+        evaluatedAt,
+      );
     }
 
     // 3. Strict Tenant Isolation (Cross-tenant access prohibited)
     if (context.principal.tenantId !== context.resource.tenantId) {
-      return this.buildResult(decisionId, 'DENY', 'DENIED_CROSS_TENANT_ACCESS', context, evaluatedAt);
+      return this.buildResult(
+        decisionId,
+        'DENY',
+        'DENIED_CROSS_TENANT_ACCESS',
+        context,
+        evaluatedAt,
+      );
     }
 
     // 4. Legal Entity Boundary
     if (context.principal.legalEntityId !== context.resource.legalEntityId) {
-      return this.buildResult(decisionId, 'DENY', 'DENIED_WRONG_LEGAL_ENTITY', context, evaluatedAt);
+      return this.buildResult(
+        decisionId,
+        'DENY',
+        'DENIED_WRONG_LEGAL_ENTITY',
+        context,
+        evaluatedAt,
+      );
     }
 
     // 5. Missing Mandatory Purpose
-    if (!context.governance.purpose || context.governance.purpose.trim() === '') {
-      return this.buildResult(decisionId, 'DENY', 'DENIED_MISSING_PURPOSE', context, evaluatedAt);
+    if (
+      !context.governance.purpose ||
+      context.governance.purpose.trim() === ''
+    ) {
+      return this.buildResult(
+        decisionId,
+        'DENY',
+        'DENIED_MISSING_PURPOSE',
+        context,
+        evaluatedAt,
+      );
     }
 
     // 6. Stale or Expired Approval on R2+ actions
@@ -97,22 +138,52 @@ export class CedarTenantIsolationService {
         context.action.authorityLevel === 'R3_PRIVILEGED_ELEVATION') &&
       (!context.governance.approvalRef || context.governance.isApprovalStale)
     ) {
-      return this.buildResult(decisionId, 'DENY', 'DENIED_STALE_OR_EXPIRED_APPROVAL', context, evaluatedAt);
+      return this.buildResult(
+        decisionId,
+        'DENY',
+        'DENIED_STALE_OR_EXPIRED_APPROVAL',
+        context,
+        evaluatedAt,
+      );
     }
 
     // 7. Support User Access requires Customer JIT Grant
-    if (context.principal.type === 'SUPPORT_DELEGATE' && !context.governance.hasCustomerSupportGrant) {
-      return this.buildResult(decisionId, 'DENY', 'DENIED_SUPPORT_WITHOUT_CUSTOMER_JIT_GRANT', context, evaluatedAt);
+    if (
+      context.principal.type === 'SUPPORT_DELEGATE' &&
+      !context.governance.hasCustomerSupportGrant
+    ) {
+      return this.buildResult(
+        decisionId,
+        'DENY',
+        'DENIED_SUPPORT_WITHOUT_CUSTOMER_JIT_GRANT',
+        context,
+        evaluatedAt,
+      );
     }
 
     // 8. Role Entitlement Check
     const requiredRole = this.getRequiredRole(context.action.authorityLevel);
-    if (!context.principal.roles.includes(requiredRole) && !context.principal.roles.includes('SUPER_ADMIN')) {
-      return this.buildResult(decisionId, 'DENY', 'DENIED_REVOKED_OR_INSUFFICIENT_ROLE', context, evaluatedAt);
+    if (
+      !context.principal.roles.includes(requiredRole) &&
+      !context.principal.roles.includes('SUPER_ADMIN')
+    ) {
+      return this.buildResult(
+        decisionId,
+        'DENY',
+        'DENIED_REVOKED_OR_INSUFFICIENT_ROLE',
+        context,
+        evaluatedAt,
+      );
     }
 
     // Permit
-    return this.buildResult(decisionId, 'ALLOW', 'PERMITTED_BY_POLICY', context, evaluatedAt);
+    return this.buildResult(
+      decisionId,
+      'ALLOW',
+      'PERMITTED_BY_POLICY',
+      context,
+      evaluatedAt,
+    );
   }
 
   private getRequiredRole(level: AuthorityLevel): string {
@@ -152,9 +223,13 @@ export class CedarTenantIsolationService {
       .digest('hex');
 
     if (decision === 'DENY') {
-      this.logger.warn(`🛑 [CEDAR AUTHZ DENIED] ${reasonCode} for Principal '${context.principal.id}' on Action '${context.action.name}'`);
+      this.logger.warn(
+        `🛑 [CEDAR AUTHZ DENIED] ${reasonCode} for Principal '${context.principal.id}' on Action '${context.action.name}'`,
+      );
     } else {
-      this.logger.log(`✔ [CEDAR AUTHZ PERMITTED] Action '${context.action.name}' allowed for Principal '${context.principal.id}'`);
+      this.logger.log(
+        `✔ [CEDAR AUTHZ PERMITTED] Action '${context.action.name}' allowed for Principal '${context.principal.id}'`,
+      );
     }
 
     return {

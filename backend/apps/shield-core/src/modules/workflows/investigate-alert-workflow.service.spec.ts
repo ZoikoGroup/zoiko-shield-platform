@@ -17,7 +17,10 @@ describe('InvestigateAlertWorkflowService', () => {
       tenantId: 'tenant-enterprise-01',
       alertCandidateId: 'cand-9988',
       severity: 'CRITICAL',
-      evidenceOpaquePointers: ['gcs://zs-evidence-eu/sha256-a1b2c3d4', 'alloydb://events/row-1002'],
+      evidenceOpaquePointers: [
+        'gcs://zs-evidence-eu/sha256-a1b2c3d4',
+        'alloydb://events/row-1002',
+      ],
       targetResource: 'host-k8s-node-09',
     };
 
@@ -39,7 +42,9 @@ describe('InvestigateAlertWorkflowService', () => {
     const result = workflowService.recordHumanDecision(signal);
     expect(result.status).toBe('RESOLVED');
     expect(result.finalVerdict).toBe('APPROVE_CONTAINMENT');
-    expect(result.executedActions).toContain('EXECUTE_ISOLATE_ENDPOINT_PLAYBOOK');
+    expect(result.executedActions).toContain(
+      'EXECUTE_ISOLATE_ENDPOINT_PLAYBOOK',
+    );
     expect(result.historyRecordCount).toBeGreaterThanOrEqual(4);
   });
 

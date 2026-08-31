@@ -32,9 +32,18 @@ export class SplitKmsEscrowService {
   private readonly logger = new Logger(SplitKmsEscrowService.name);
 
   // Mock Root Keys for Simulated Cloud KMS Providers (256-bit keys)
-  private readonly awsKmsRootKey = crypto.createHash('sha256').update('AWS_HSM_ROOT_KEY_MATERIAL').digest();
-  private readonly azureKmsRootKey = crypto.createHash('sha256').update('AZURE_HSM_ROOT_KEY_MATERIAL').digest();
-  private readonly gcpKmsRootKey = crypto.createHash('sha256').update('GCP_HSM_ROOT_KEY_MATERIAL').digest();
+  private readonly awsKmsRootKey = crypto
+    .createHash('sha256')
+    .update('AWS_HSM_ROOT_KEY_MATERIAL')
+    .digest();
+  private readonly azureKmsRootKey = crypto
+    .createHash('sha256')
+    .update('AZURE_HSM_ROOT_KEY_MATERIAL')
+    .digest();
+  private readonly gcpKmsRootKey = crypto
+    .createHash('sha256')
+    .update('GCP_HSM_ROOT_KEY_MATERIAL')
+    .digest();
 
   /**
    * Generates a 256-bit master data key, splits it across 3 cloud KMS providers, and wraps each share.
@@ -87,7 +96,9 @@ export class SplitKmsEscrowService {
     const createdEpochMs = Date.now();
     const attestationDigest = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ keyId, tenantId, purpose, shares, createdEpochMs }))
+      .update(
+        JSON.stringify({ keyId, tenantId, purpose, shares, createdEpochMs }),
+      )
       .digest('hex');
 
     this.logger.log(
@@ -111,13 +122,23 @@ export class SplitKmsEscrowService {
   /**
    * Reconstructs the 256-bit master key by unwrapping all 3 cloud KMS shares.
    */
-  unwrapAndReconstructMasterKey(wrappedPackage: SplitWrappedKeyPackage): string {
-    const awsShareMeta = wrappedPackage.shares.find((s) => s.provider === 'AWS_KMS');
-    const azureShareMeta = wrappedPackage.shares.find((s) => s.provider === 'AZURE_KEY_VAULT');
-    const gcpShareMeta = wrappedPackage.shares.find((s) => s.provider === 'GCP_KMS');
+  unwrapAndReconstructMasterKey(
+    wrappedPackage: SplitWrappedKeyPackage,
+  ): string {
+    const awsShareMeta = wrappedPackage.shares.find(
+      (s) => s.provider === 'AWS_KMS',
+    );
+    const azureShareMeta = wrappedPackage.shares.find(
+      (s) => s.provider === 'AZURE_KEY_VAULT',
+    );
+    const gcpShareMeta = wrappedPackage.shares.find(
+      (s) => s.provider === 'GCP_KMS',
+    );
 
     if (!awsShareMeta || !azureShareMeta || !gcpShareMeta) {
-      throw new Error('Incomplete multi-cloud key shares: All 3 cloud providers required for reconstruction');
+      throw new Error(
+        'Incomplete multi-cloud key shares: All 3 cloud providers required for reconstruction',
+      );
     }
 
     const share1 = this.decryptShare(awsShareMeta, this.awsKmsRootKey);
@@ -129,7 +150,9 @@ export class SplitKmsEscrowService {
       reconstructedMasterKey[i] = share1[i] ^ share2[i] ^ share3[i];
     }
 
-    this.logger.log(`✔ Reconstructed Master Key for Key [${wrappedPackage.keyId}] from Multi-Cloud Escrow Shares`);
+    this.logger.log(
+      `✔ Reconstructed Master Key for Key [${wrappedPackage.keyId}] from Multi-Cloud Escrow Shares`,
+    );
     return reconstructedMasterKey.toString('hex');
   }
 

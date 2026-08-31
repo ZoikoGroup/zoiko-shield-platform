@@ -1,4 +1,7 @@
-import { CedarTenantIsolationService, CedarDecisionContext } from './cedar-tenant-isolation.service';
+import {
+  CedarTenantIsolationService,
+  CedarDecisionContext,
+} from './cedar-tenant-isolation.service';
 
 describe('CedarTenantIsolationService (LAB 12 Negative Authorization Matrix)', () => {
   let cedarService: CedarTenantIsolationService;
@@ -95,7 +98,10 @@ describe('CedarTenantIsolationService (LAB 12 Negative Authorization Matrix)', (
     const ctx: CedarDecisionContext = {
       ...validBaseContext,
       principal: { ...validBaseContext.principal, type: 'SUPPORT_DELEGATE' },
-      governance: { ...validBaseContext.governance, hasCustomerSupportGrant: false },
+      governance: {
+        ...validBaseContext.governance,
+        hasCustomerSupportGrant: false,
+      },
     };
     const res = cedarService.evaluateAuthorization(ctx);
     expect(res.decision).toBe('DENY');

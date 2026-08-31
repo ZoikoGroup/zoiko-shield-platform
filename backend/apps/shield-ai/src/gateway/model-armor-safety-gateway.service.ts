@@ -47,7 +47,10 @@ export class ModelArmorSafetyGatewayService {
   /**
    * Evaluates AI request through redaction, Model Armor screening, and deterministic fallback.
    */
-  processAiInference(request: AiGatewayRequest, isModelProviderAvailable = true): AiGatewayResponse {
+  processAiInference(
+    request: AiGatewayRequest,
+    isModelProviderAvailable = true,
+  ): AiGatewayResponse {
     const requestId = request.requestId || `ai-req-${crypto.randomUUID()}`;
     const evaluatedAt = new Date().toISOString();
     const modelVersion = 'gemini-1.5-pro-002-vertex';
@@ -60,21 +63,36 @@ export class ModelArmorSafetyGatewayService {
 
     // 2. Check for Prompt Injection / Adversarial jailbreaks
     for (const pattern of this.injectionSignatures) {
-      if (pattern.test(request.prompt) || request.contextTelemetry.some((t) => pattern.test(t))) {
+      if (
+        pattern.test(request.prompt) ||
+        request.contextTelemetry.some((t) => pattern.test(t))
+      ) {
         triggeredFilters.push(`PROMPT_INJECTION_DETECTED:${pattern.source}`);
       }
     }
 
     // 3. Fail-Closed Fallback on Injection Attack OR Provider Outage
     if (triggeredFilters.length > 0 || !isModelProviderAvailable) {
-      const reason = triggeredFilters.length > 0 ? 'MALICIOUS_PROMPT_INJECTION' : 'VERTEX_AI_PROVIDER_OUTAGE';
-      this.logger.warn(`⚠️ [AI GATEWAY DEGRADED TO DETERMINISTIC FALLBACK] Reason: ${reason} for Request '${requestId}'`);
+      const reason =
+        triggeredFilters.length > 0
+          ? 'MALICIOUS_PROMPT_INJECTION'
+          : 'VERTEX_AI_PROVIDER_OUTAGE';
+      this.logger.warn(
+        `⚠️ [AI GATEWAY DEGRADED TO DETERMINISTIC FALLBACK] Reason: ${reason} for Request '${requestId}'`,
+      );
 
       const fallbackOutput = `[DETERMINISTIC FALLBACK ENGINE]: The AI investigation route was bypassed due to safety policy (${reason}). Telemetry analyzed deterministically: observed ${request.contextTelemetry.length} event items. Recommend executing standard playbook triage without unverified generative advice.`;
 
       const attestationDigest = crypto
         .createHash('sha256')
-        .update(JSON.stringify({ requestId, verdict: 'FALLBACK_DETERMINISTIC_WORKFLOW', reason, evaluatedAt }))
+        .update(
+          JSON.stringify({
+            requestId,
+            verdict: 'FALLBACK_DETERMINISTIC_WORKFLOW',
+            reason,
+            evaluatedAt,
+          }),
+        )
         .digest('hex');
 
       return {
@@ -84,8 +102,13 @@ export class ModelArmorSafetyGatewayService {
         modelVersion: 'rule-engine-v1.0.0',
         verdict: 'FALLBACK_DETERMINISTIC_WORKFLOW',
         sanitizedOutput: fallbackOutput,
-        citations: request.contextTelemetry.map((t, idx) => `deterministic-ref-0${idx + 1}`),
-        safetyFiltersTriggered: triggeredFilters.length > 0 ? triggeredFilters : ['PROVIDER_OUTAGE_FALLBACK'],
+        citations: request.contextTelemetry.map(
+          (t, idx) => `deterministic-ref-0${idx + 1}`,
+        ),
+        safetyFiltersTriggered:
+          triggeredFilters.length > 0
+            ? triggeredFilters
+            : ['PROVIDER_OUTAGE_FALLBACK'],
         tokensUsed: 0,
         costUsd: 0.0,
         evaluatedAt,
@@ -98,10 +121,22 @@ export class ModelArmorSafetyGatewayService {
 
     const attestationDigest = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ requestId, verdict: 'PERMITTED_AI_OUTPUT', promptHash: crypto.createHash('sha256').update(redactedPrompt).digest('hex'), evaluatedAt }))
+      .update(
+        JSON.stringify({
+          requestId,
+          verdict: 'PERMITTED_AI_OUTPUT',
+          promptHash: crypto
+            .createHash('sha256')
+            .update(redactedPrompt)
+            .digest('hex'),
+          evaluatedAt,
+        }),
+      )
       .digest('hex');
 
-    this.logger.log(`✔ [AI GATEWAY PERMITTED] Generated verified response for Request '${requestId}' via '${modelRoute}'`);
+    this.logger.log(
+      `✔ [AI GATEWAY PERMITTED] Generated verified response for Request '${requestId}' via '${modelRoute}'`,
+    );
 
     return {
       requestId,
@@ -110,7 +145,10 @@ export class ModelArmorSafetyGatewayService {
       modelVersion,
       verdict: 'PERMITTED_AI_OUTPUT',
       sanitizedOutput: safeOutput,
-      citations: ['gcs://zs-evidence-eu/ocsf-auth-3002', 'gcs://zs-evidence-eu/crowdstrike-edr-finding'],
+      citations: [
+        'gcs://zs-evidence-eu/ocsf-auth-3002',
+        'gcs://zs-evidence-eu/crowdstrike-edr-finding',
+      ],
       safetyFiltersTriggered: [],
       tokensUsed: 420,
       costUsd: 0.00105,
@@ -121,8 +159,17 @@ export class ModelArmorSafetyGatewayService {
 
   private redactSensitiveData(text: string): string {
     return text
-      .replace(/[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+/g, '[REDACTED_EMAIL]')
-      .replace(/\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14})\b/g, '[REDACTED_PAN]')
-      .replace(/(?:bearer|token|secret|password|api[_-]?key)\s*[:=]\s*[^\s]+/gi, '[REDACTED_SECRET]');
+      .replace(
+        /[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+/g,
+        '[REDACTED_EMAIL]',
+      )
+      .replace(
+        /\b(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14})\b/g,
+        '[REDACTED_PAN]',
+      )
+      .replace(
+        /(?:bearer|token|secret|password|api[_-]?key)\s*[:=]\s*[^\s]+/gi,
+        '[REDACTED_SECRET]',
+      );
   }
 }

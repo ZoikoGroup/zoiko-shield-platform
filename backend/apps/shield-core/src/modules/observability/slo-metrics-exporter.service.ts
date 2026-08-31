@@ -113,10 +113,19 @@ export class SloMetricsExporterService {
 
     const attestationDigest = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ snapshotId, tenantId, timestamp, promQlFormattedMetrics }))
+      .update(
+        JSON.stringify({
+          snapshotId,
+          tenantId,
+          timestamp,
+          promQlFormattedMetrics,
+        }),
+      )
       .digest('hex');
 
-    this.logger.log(`✔ Generated LAB 16 SLO Metrics Snapshot for Tenant '${tenantId}' (${promQlFormattedMetrics.length} PromQL metrics)`);
+    this.logger.log(
+      `✔ Generated LAB 16 SLO Metrics Snapshot for Tenant '${tenantId}' (${promQlFormattedMetrics.length} PromQL metrics)`,
+    );
 
     return {
       snapshotId,

@@ -98,7 +98,10 @@ export class EbpfNetworkEnforcerService {
   /**
    * Instantly quarantines and network-isolates a compromised Pod at the eBPF XDP hook level.
    */
-  quarantinePodNetwork(tenantId: string, podSelector: string): EbpfEnforcementReceipt {
+  quarantinePodNetwork(
+    tenantId: string,
+    podSelector: string,
+  ): EbpfEnforcementReceipt {
     const receipt = this.applyMicrosegmentationRule({
       tenantId,
       sourcePodSelector: podSelector,
@@ -109,7 +112,9 @@ export class EbpfNetworkEnforcerService {
       priority: 1, // Highest priority drop rule
     });
 
-    this.logger.warn(`🚨 [KERNEL XDP DROP ACTIVE] Pod '${podSelector}' is isolated from all egress and ingress networks!`);
+    this.logger.warn(
+      `🚨 [KERNEL XDP DROP ACTIVE] Pod '${podSelector}' is isolated from all egress and ingress networks!`,
+    );
     return receipt;
   }
 
@@ -117,6 +122,8 @@ export class EbpfNetworkEnforcerService {
    * Retrieves all active kernel rules for a tenant.
    */
   getActiveRules(tenantId: string): EbpfNetworkRule[] {
-    return Array.from(this.activeKernelRules.values()).filter((r) => r.tenantId === tenantId && r.isActive);
+    return Array.from(this.activeKernelRules.values()).filter(
+      (r) => r.tenantId === tenantId && r.isActive,
+    );
   }
 }

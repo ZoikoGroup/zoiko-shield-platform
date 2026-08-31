@@ -65,14 +65,25 @@ export class TierAWindowedDetectorService {
     const windowKey = `${event.tenantId}:${rule.ruleId}:${event.entityKey}`;
 
     // LAB 08 Binding Invariant: Missing data must produce explicit INCOMPLETE state, never silently low risk.
-    if (isStreamDegradedOrMissingContext || !event.entityKey || event.schemaName !== rule.requiredSchema) {
+    if (
+      isStreamDegradedOrMissingContext ||
+      !event.entityKey ||
+      event.schemaName !== rule.requiredSchema
+    ) {
       this.logger.warn(
         `⚠️ [TIER-A DETECTOR INCOMPLETE] Rule '${rule.ruleId}' encountered missing/degraded data stream for partition '${partitionKey}'. State: INCOMPLETE_MISSING_DATA`,
       );
 
       const attestationDigest = crypto
         .createHash('sha256')
-        .update(JSON.stringify({ candidateId, ruleId: rule.ruleId, state: 'INCOMPLETE_MISSING_DATA', emittedAt }))
+        .update(
+          JSON.stringify({
+            candidateId,
+            ruleId: rule.ruleId,
+            state: 'INCOMPLETE_MISSING_DATA',
+            emittedAt,
+          }),
+        )
         .digest('hex');
 
       return {
@@ -81,7 +92,9 @@ export class TierAWindowedDetectorService {
         ruleVersion: rule.version,
         tenantId: event.tenantId,
         partitionKey,
-        windowStart: new Date(Date.now() - rule.windowSeconds * 1000).toISOString(),
+        windowStart: new Date(
+          Date.now() - rule.windowSeconds * 1000,
+        ).toISOString(),
         windowEnd: emittedAt,
         detectionState: 'INCOMPLETE_MISSING_DATA',
         aggregatedEventCount: 0,
@@ -100,9 +113,12 @@ export class TierAWindowedDetectorService {
     // Append event and prune events outside the window + grace period
     windowEvents.push(event);
     const eventTimeMs = new Date(event.timestamp).getTime();
-    const windowThresholdMs = eventTimeMs - (rule.windowSeconds + rule.graceSeconds) * 1000;
+    const windowThresholdMs =
+      eventTimeMs - (rule.windowSeconds + rule.graceSeconds) * 1000;
 
-    const activeEvents = windowEvents.filter((e) => new Date(e.timestamp).getTime() >= windowThresholdMs);
+    const activeEvents = windowEvents.filter(
+      (e) => new Date(e.timestamp).getTime() >= windowThresholdMs,
+    );
     this.eventWindows.set(windowKey, activeEvents);
 
     // Apply rule predicate filter

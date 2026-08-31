@@ -30,7 +30,10 @@ export class MpcThreatMatcherService {
   private readonly logger = new Logger(MpcThreatMatcherService.name);
 
   // Global Threat Feed Provider Secret Key (k_B)
-  private readonly feedSecretKey = crypto.createHash('sha256').update('GLOBAL_THREAT_FEED_KEY_MATERIAL').digest();
+  private readonly feedSecretKey = crypto
+    .createHash('sha256')
+    .update('GLOBAL_THREAT_FEED_KEY_MATERIAL')
+    .digest();
 
   // Mock Global Known Malicious Indicators (Pre-blinded by Feed Provider)
   private readonly globalMaliciousDataset = [
@@ -47,7 +50,8 @@ export class MpcThreatMatcherService {
       confidence: 0.95,
     },
     {
-      rawIoc: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+      rawIoc:
+        'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
       iocType: 'FILE_HASH_SHA256' as const,
       campaign: 'Lazarus_Backdoor_Payload',
       confidence: 0.98,
@@ -59,7 +63,10 @@ export class MpcThreatMatcherService {
    * Blinded Hash = HMAC-SHA256(tenantSecretKey, rawIoc)
    */
   blindIndicator(rawIoc: string, tenantSecretKey: string): string {
-    return crypto.createHmac('sha256', tenantSecretKey).update(rawIoc.trim().toLowerCase()).digest('hex');
+    return crypto
+      .createHmac('sha256', tenantSecretKey)
+      .update(rawIoc.trim().toLowerCase())
+      .digest('hex');
   }
 
   /**
@@ -77,9 +84,14 @@ export class MpcThreatMatcherService {
 
     // Compute double-blinded hashes for global indicators using both keys
     for (const globalItem of this.globalMaliciousDataset) {
-      const tenantBlinded = this.blindIndicator(globalItem.rawIoc, tenantSecretKey);
-      
-      const foundQuery = blindedQueries.find((q) => q.blindedIndicatorHash === tenantBlinded);
+      const tenantBlinded = this.blindIndicator(
+        globalItem.rawIoc,
+        tenantSecretKey,
+      );
+
+      const foundQuery = blindedQueries.find(
+        (q) => q.blindedIndicatorHash === tenantBlinded,
+      );
       if (foundQuery) {
         matches.push({
           iocType: globalItem.iocType,
