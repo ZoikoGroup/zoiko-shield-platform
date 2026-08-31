@@ -35,6 +35,8 @@ tags:
     description: Tenant onboarding workflow
   - name: Offboarding
     description: Tenant offboarding, legal hold, data freeze and deletion attestations
+  - name: Privacy
+    description: Data-deletion requests and scoped legal holds
   - name: Customer
     description: Customer account & segment management
   - name: Organization
@@ -35663,17 +35665,14 @@ paths:
     post:
       tags:
         - Offboarding
-      summary:
-        "Revoke connectors and run the deletion workflow (blocked by any intersecting\
-        \ active legal hold \u2014 explicit BLOCKED_BY_HOLD state, never silently\
-        \ retained or silently deleted)"
+      summary: Revoke connectors and submit the whole-tenant deletion request for independent approval
       description:
         Best-effort revokes all connectors for the tenant, then requires
         the run to be in CONNECTOR_REVOCATION before opening a DeletionRequest scoped
         to the whole tenant. If the request is BLOCKED_BY_HOLD, the run moves to BLOCKED
-        and stops \u2014 no deletion tasks run. Otherwise the run proceeds through
-        DELETING, executes every DeletionTask, records pending backup expiry, and
-        advances to BACKUP_EXPIRY_PENDING.
+        and stops \u2014 no deletion tasks run. Otherwise the run moves to
+        DELETION_PENDING. Submission never creates or executes deletion tasks; a
+        different MFA-authenticated actor with deletion:approve must use approve-deletion.
       security:
         - CookieAuth: []
         - BearerAuth: []
@@ -35693,9 +35692,7 @@ paths:
               $ref: "#/components/schemas/PostTenantsByTenantIdOffboardingStartDeletionRequest"
       responses:
         "200":
-          description:
-            Run advances to BACKUP_EXPIRY_PENDING, or to BLOCKED if a legal
-            hold intersects the deletion scope
+          description: Run advances to DELETION_PENDING, or BLOCKED when a legal hold intersects the scope
           content:
             application/json:
               schema:
@@ -45404,7 +45401,7 @@ paths:
                   attestation:
                     { $ref: "#/components/schemas/DeletionAttestationResponse" }
         "403":
-          description: Missing deletion:request permission
+          description: Missing deletion:approve permission
           content:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
@@ -45419,6 +45416,202 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
       operationId: postTenantsByTenantIdOffboardingIssueAttestation
+  /api/v1/tenants/{tenantId}/offboarding/approve-deletion:
+    post:
+      tags: [Offboarding]
+      summary: Independently approve and execute a pending whole-tenant deletion
+      description: Requires deletion:approve, MFA, explicit human authority, and a different actor from the requester. Rechecks legal holds before approval and before every store task.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [runId, decisionReason, humanAuthority]
+              properties:
+                runId: { type: string, format: uuid }
+                decisionReason: { type: string, minLength: 10 }
+                humanAuthority:
+                  type: object
+                  required: [decisionOrigin, humanConfirmation, authorityStatement]
+                  properties:
+                    decisionOrigin: { type: string, enum: [HUMAN, AI_ASSISTED, AI_AUTONOMOUS] }
+                    humanConfirmation: { type: boolean }
+                    authorityStatement: { type: string, minLength: 12 }
+                    aiOutputId: { type: string, format: uuid }
+                    aiHumanReviewId: { type: string, format: uuid }
+      responses:
+        "201":
+          description: Deletion reconciled and run advanced to BACKUP_EXPIRY_PENDING, or BLOCKED after a hold conflict
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TenantOffboardingRunResponse" }
+        "403":
+          description: Approval permission, MFA, maker-checker, or human-authority requirement failed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: Run is not pending approval, identity review is incomplete, or a legal hold blocks deletion
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: postTenantsByTenantIdOffboardingApproveDeletion
+  /api/v1/tenants/{tenantId}/privacy/deletion-requests:
+    post:
+      tags: [Privacy]
+      summary: Submit a tenant-bound data deletion request
+      description: Requires deletion:request and MFA. Submission records identity/scope/deadline context and never executes deletion.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subjectReference, requestAuthority, reason, scope]
+              properties:
+                subjectReference: { type: string, minLength: 3 }
+                requestAuthority:
+                  type: string
+                  enum: [DATA_SUBJECT, AUTHORIZED_REPRESENTATIVE, TENANT_CONTROLLER]
+                reason: { type: string, minLength: 10 }
+                scope: { type: object, additionalProperties: true }
+                statutoryDeadlineAt: { type: string, format: date-time }
+      responses:
+        "201":
+          description: Deletion request created in VALIDATING or BLOCKED_BY_HOLD
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "403":
+          description: Missing deletion:request permission or required assurance
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: postTenantsByTenantIdPrivacyDeletionRequests
+    get:
+      tags: [Privacy]
+      summary: List deletion requests for the tenant
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Tenant-scoped deletion requests
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object, additionalProperties: true }
+      operationId: getTenantsByTenantIdPrivacyDeletionRequests
+  /api/v1/tenants/{tenantId}/privacy/deletion-requests/{requestId}:
+    get:
+      tags: [Privacy]
+      summary: Get one tenant-scoped deletion request
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: requestId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Deletion request
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "404":
+          description: Request does not exist in the tenant
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: getTenantsByTenantIdPrivacyDeletionRequestsByRequestId
+  /api/v1/tenants/{tenantId}/privacy/legal-holds:
+    post:
+      tags: [Privacy]
+      summary: Create a scoped legal hold
+      description: Requires legal_hold:create, MFA and explicit human legal authority. Matching in-flight deletion requests are moved to BLOCKED_BY_HOLD.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [scope, authority, reason, reviewAt, humanAuthority]
+              properties:
+                scope: { type: object, additionalProperties: true }
+                authority: { type: string, minLength: 3 }
+                reason: { type: string, minLength: 10 }
+                reviewAt: { type: string, format: date-time }
+                endsAt: { type: string, format: date-time }
+                humanAuthority: { type: object, additionalProperties: true }
+      responses:
+        "201":
+          description: Active legal hold created
+          content:
+            application/json:
+              schema: { type: object, additionalProperties: true }
+        "403":
+          description: Missing legal_hold:create permission, MFA or human authority
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: postTenantsByTenantIdPrivacyLegalHolds
+    get:
+      tags: [Privacy]
+      summary: List currently active legal holds for the tenant
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: Active legal holds
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object, additionalProperties: true }
+      operationId: getTenantsByTenantIdPrivacyLegalHolds
   /api/v1/response-proposals/{proposalId}/simulate:
     post:
       tags: [ResponseProposals]

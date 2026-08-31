@@ -25,6 +25,7 @@ import { EvidenceService } from '../evidence/services/evidence.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 const TENANT_OWNER_ROLE_CODE = 'TENANT_OWNER';
+const PRIVACY_LEGAL_REVIEWER_ROLE_CODE = 'PRIVACY_LEGAL_REVIEWER';
 
 @Injectable()
 export class OnboardingService implements OnModuleInit {
@@ -41,7 +42,7 @@ export class OnboardingService implements OnModuleInit {
     const permissionRepository = this.dataSource.getRepository(Permission);
     const roleRepository = this.dataSource.getRepository(Role);
 
-    const codes = [
+    const ownerCodes = [
       PERMISSION_CODES.TENANT_MEMBER_INVITE,
       PERMISSION_CODES.TENANT_MANAGE,
       PERMISSION_CODES.TENANT_RESOURCE_READ,
@@ -50,17 +51,22 @@ export class OnboardingService implements OnModuleInit {
       PERMISSION_CODES.TENANT_IDENTITY_PROVIDER_MANAGE,
       PERMISSION_CODES.TENANT_OFFBOARDING_START,
       PERMISSION_CODES.DELETION_REQUEST,
+    ];
+    const reviewerCodes = [
+      PERMISSION_CODES.TENANT_RESOURCE_READ,
+      PERMISSION_CODES.TENANT_RESOURCE_WRITE,
+      PERMISSION_CODES.DELETION_APPROVE,
       PERMISSION_CODES.LEGAL_HOLD_CREATE,
     ];
-    const permissions = [];
-    for (const code of codes) {
+    const permissionsByCode = new Map<string, Permission>();
+    for (const code of [...new Set([...ownerCodes, ...reviewerCodes])]) {
       let permission = await permissionRepository.findOne({ where: { code } });
       if (!permission) {
         permission = await permissionRepository.save(
           permissionRepository.create({ code }),
         );
       }
-      permissions.push(permission);
+      permissionsByCode.set(code, permission);
     }
 
     const existing = await roleRepository.findOne({
@@ -73,12 +79,38 @@ export class OnboardingService implements OnModuleInit {
           code: TENANT_OWNER_ROLE_CODE,
           name: 'Tenant Owner',
           roleLevel: 'TENANT',
-          permissions,
+          permissions: ownerCodes.map((code) => permissionsByCode.get(code)!),
         }),
       );
     } else {
-      existing.permissions = permissions;
+      existing.permissions = ownerCodes.map((code) =>
+        permissionsByCode.get(code)!,
+      );
       await roleRepository.save(existing);
+    }
+
+    const reviewer = await roleRepository.findOne({
+      where: {
+        code: PRIVACY_LEGAL_REVIEWER_ROLE_CODE,
+        roleLevel: 'TENANT',
+      },
+    });
+    const reviewerPermissions = reviewerCodes.map((code) =>
+      permissionsByCode.get(code)!,
+    );
+    if (!reviewer) {
+      await roleRepository.save(
+        roleRepository.create({
+          tenantId: null,
+          code: PRIVACY_LEGAL_REVIEWER_ROLE_CODE,
+          name: 'Privacy and Legal Reviewer',
+          roleLevel: 'TENANT',
+          permissions: reviewerPermissions,
+        }),
+      );
+    } else {
+      reviewer.permissions = reviewerPermissions;
+      await roleRepository.save(reviewer);
     }
   }
 

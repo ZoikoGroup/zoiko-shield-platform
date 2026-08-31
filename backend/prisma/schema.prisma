@@ -5264,29 +5264,43 @@ model LegalHold {
   created_by                String
   authorization_decision_id String
   created_at                DateTime  @default(now())
+  released_by               String?
+  release_reason            String?
+  released_at               DateTime?
 
   @@index([tenant_id])
+  @@index([tenant_id, status])
 }
 
 model DeletionRequest {
-  id                        String    @id @default(uuid())
-  tenant_id                 String
-  requested_by              String
-  reason                    String
-  scope                     String    @default("{}")
-  status                    String    @default("REQUESTED") // REQUESTED|VALIDATING|BLOCKED_BY_HOLD|APPROVED|RUNNING|RECONCILING|BACKUP_EXPIRY_PENDING|COMPLETED|FAILED
-  legal_hold_state          String    @default("NONE")
-  authorization_decision_id String
-  created_at                DateTime  @default(now())
-  approved_at               DateTime?
-  started_at                DateTime?
-  completed_at              DateTime?
+  id                           String    @id @default(uuid())
+  tenant_id                    String
+  requested_by                 String
+  request_authority            String    @default("TENANT_CONTROLLER")
+  subject_reference            String?
+  reason                       String
+  scope                        String    @default("{}")
+  status                       String    @default("REQUESTED") // REQUESTED|VALIDATING|BLOCKED_BY_HOLD|APPROVED|REJECTED|RUNNING|RECONCILING|BACKUP_EXPIRY_PENDING|COMPLETED|FAILED
+  identity_verification_status String    @default("PENDING") // PENDING|VERIFIED|NOT_APPLICABLE|FAILED
+  statutory_deadline_at        DateTime?
+  legal_hold_state             String    @default("NONE")
+  conflicting_legal_hold_ids   String    @default("[]")
+  authorization_decision_id    String
+  created_at                   DateTime  @default(now())
+  reviewed_by                  String?
+  reviewed_at                  DateTime?
+  decision_reason              String?
+  outcome                      String?
+  approved_at                  DateTime?
+  started_at                   DateTime?
+  completed_at                 DateTime?
 
   tasks        DeletionTask[]
   backupExpiry BackupExpiryRecord[]
   attestation  DeletionAttestation?
 
   @@index([tenant_id])
+  @@index([tenant_id, status])
 }
 
 model DeletionTask {

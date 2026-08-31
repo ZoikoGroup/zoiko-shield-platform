@@ -7,7 +7,11 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthorizationService } from '../authorization/authorization.service';
-import { PERMISSION_CODES } from '../authorization/constants';
+import {
+  CROSS_CUTTING_PERMISSION_CODES,
+  PERMISSION_CODES,
+  PLATFORM_SCOPE,
+} from '../authorization/constants';
 import type { Assurance } from '../identity-adapter/session.entity';
 
 export type AuthorizationDecisionEffect =
@@ -30,6 +34,7 @@ export interface RequiredRelationship {
 export interface EvaluateInput {
   actorId: string;
   tenantId: string;
+  authorizationScopeId?: string;
   action: string;
   resourceType: string;
   resourceId?: string;
@@ -180,6 +185,7 @@ export class AuthorizationDecisionService {
     ].sort();
     return {
       ...input,
+      authorizationScopeId: input.authorizationScopeId ?? input.tenantId,
       action: input.action?.trim(),
       resourceType: input.resourceType?.trim(),
       resourceTenantId: input.resourceTenantId ?? input.tenantId,
@@ -202,6 +208,7 @@ export class AuthorizationDecisionService {
     if (
       !input.actorId ||
       !input.tenantId ||
+      !input.authorizationScopeId ||
       !input.action ||
       !input.resourceType ||
       !input.purpose ||
@@ -233,6 +240,25 @@ export class AuthorizationDecisionService {
       };
     }
 
+    const usesPlatformCrossCuttingScope =
+      input.authorizationScopeId === PLATFORM_SCOPE &&
+      input.tenantId !== PLATFORM_SCOPE;
+    if (
+      input.authorizationScopeId !== input.tenantId &&
+      (!usesPlatformCrossCuttingScope ||
+        input.requiredPermissions.some(
+          (permission) => !CROSS_CUTTING_PERMISSION_CODES.has(permission),
+        ))
+    ) {
+      return {
+        decision: 'DENY',
+        reasonCode: 'AUTHORIZATION_SCOPE_MISMATCH',
+        reason:
+          'The membership scope cannot authorize this target tenant and action',
+        obligations: ['DENY_EXECUTION', 'AUDIT_ISOLATION_VIOLATION'],
+      };
+    }
+
     if (input.riskState && BLOCKED_RISK_STATES.has(input.riskState)) {
       return {
         decision: 'DENY',
@@ -256,7 +282,7 @@ export class AuthorizationDecisionService {
 
     if (
       !(await this.authorizationService.hasTenantAccess(
-        input.tenantId,
+        input.authorizationScopeId,
         input.actorId,
       ))
     ) {
@@ -270,7 +296,7 @@ export class AuthorizationDecisionService {
 
     const grantedPermissions =
       await this.authorizationService.getPermissionCodesForPrincipal(
-        input.tenantId,
+        input.authorizationScopeId,
         input.actorId,
       );
     const missingPermissions = input.requiredPermissions.filter(
@@ -291,9 +317,11 @@ export class AuthorizationDecisionService {
           where: { principal_id: input.actorId },
         })
       : null;
-    const hasDelegatedOperatorPermission = grantedPermissions.includes(
-      PERMISSION_CODES.TENANT_PARTNER_DELEGATION_USE,
-    );
+    const hasDelegatedOperatorPermission =
+      !usesPlatformCrossCuttingScope &&
+      grantedPermissions.includes(
+        PERMISSION_CODES.TENANT_PARTNER_DELEGATION_USE,
+      );
     if (partnerContext || hasDelegatedOperatorPermission) {
       if (!partnerContext || partnerContext.status !== 'ACTIVE') {
         return {

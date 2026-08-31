@@ -6,6 +6,7 @@ import { ExportModule } from '../export/export.module';
 import { DeveloperApiModule } from '../developer-api/developer-api.module';
 import { OutboxService } from '../../outbox/outbox.service';
 import { OffboardingController } from './offboarding.controller';
+import { PrivacyOperationsController } from './privacy-operations.controller';
 import { LegalHoldService } from './legal-hold/legal-hold.service';
 import { DeletionRequestService } from './deletion/deletion-request.service';
 import { DeletionTaskService } from './deletion/deletion-task.service';
@@ -21,7 +22,7 @@ import { TenantOffboardingService } from './lifecycle/tenant-offboarding.service
     ExportModule,
     DeveloperApiModule,
   ],
-  controllers: [OffboardingController],
+  controllers: [OffboardingController, PrivacyOperationsController],
   providers: [
     OutboxService,
     LegalHoldService,

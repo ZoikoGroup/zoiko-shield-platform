@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ObjectStorageService } from '../../evidence/storage/object-storage.service';
+import { DeletionRequestService } from './deletion-request.service';
 
 const NO_STORE_POPULATED = JSON.stringify({
   outcome: 'NOT_APPLICABLE',
@@ -36,12 +37,19 @@ export class DeletionTaskService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly objectStorage: ObjectStorageService,
+    private readonly deletionRequestService: DeletionRequestService,
   ) {}
 
   async executeTask(taskId: string): Promise<void> {
     const task = await this.prisma.deletionTask.findUniqueOrThrow({
       where: { id: taskId },
     });
+    // A legal hold may be created after approval. Re-evaluate the request at
+    // every store boundary so a stale approval can never authorize later work.
+    await this.deletionRequestService.assertExecutable(
+      task.tenant_id,
+      task.deletion_request_id,
+    );
     await this.prisma.deletionTask.update({
       where: { id: task.id },
       data: { status: 'RUNNING', started_at: new Date() },

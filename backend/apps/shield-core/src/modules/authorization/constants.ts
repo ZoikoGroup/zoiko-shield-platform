@@ -51,6 +51,18 @@ export const PERMISSION_CODES = {
   TENANT_IDENTITY_PROVIDER_MANAGE: 'tenant:identity-provider:manage',
   TENANT_OFFBOARDING_START: 'tenant_offboarding:start',
   DELETION_REQUEST: 'deletion:request',
+  DELETION_APPROVE: 'deletion:approve',
   LEGAL_HOLD_CREATE: 'legal_hold:create',
   DETECTION_MANAGE: 'platform:detection:manage',
 } as const;
+
+/**
+ * These permissions may be granted through either a real tenant membership or
+ * the PLATFORM_SCOPE membership. Their enforcement still requires one explicit
+ * target tenant; PLATFORM_SCOPE is an authorization scope, never a data scope.
+ */
+export const CROSS_CUTTING_PERMISSION_CODES: ReadonlySet<string> = new Set([
+  PERMISSION_CODES.DELETION_REQUEST,
+  PERMISSION_CODES.DELETION_APPROVE,
+  PERMISSION_CODES.LEGAL_HOLD_CREATE,
+]);

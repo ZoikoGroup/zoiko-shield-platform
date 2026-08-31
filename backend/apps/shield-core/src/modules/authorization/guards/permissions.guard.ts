@@ -8,7 +8,11 @@ import {
 import { Reflector } from '@nestjs/core';
 import { PERMISSIONS_KEY } from '../decorators/require-permissions.decorator';
 import type { AuthenticatedUser } from '../../identity-adapter/interfaces/jwt-payload.interface';
-import { PERMISSION_CODES, PLATFORM_SCOPE } from '../constants';
+import {
+  CROSS_CUTTING_PERMISSION_CODES,
+  PERMISSION_CODES,
+  PLATFORM_SCOPE,
+} from '../constants';
 import { PLATFORM_PERMISSIONS_KEY } from '../decorators/require-platform-permissions.decorator';
 import { REQUIRED_ASSURANCE_KEY } from '../decorators/require-assurance.decorator';
 import type { Assurance } from '../../identity-adapter/session.entity';
@@ -77,7 +81,7 @@ export class PermissionsGuard implements CanActivate {
       );
     }
     const suppliedTenantId = distinctTenantIds[0];
-    const tenantId = user.tenantId;
+    const authorizationScopeId = user.tenantId;
 
     if (suppliedTenantId === 'default-tenant') {
       throw new BadRequestException(
@@ -85,22 +89,50 @@ export class PermissionsGuard implements CanActivate {
       );
     }
 
-    if (suppliedTenantId && suppliedTenantId !== tenantId) {
+    if (!authorizationScopeId) {
+      throw new ForbiddenException('The session has no tenant binding');
+    }
+
+    const hasOnlyCrossCuttingPermissions =
+      Boolean(declaredPermissions?.length) &&
+      declaredPermissions!.every((permission) =>
+        CROSS_CUTTING_PERMISSION_CODES.has(permission),
+      );
+    const usesPlatformCrossCuttingScope =
+      authorizationScopeId === PLATFORM_SCOPE &&
+      Boolean(suppliedTenantId) &&
+      suppliedTenantId !== PLATFORM_SCOPE &&
+      hasOnlyCrossCuttingPermissions;
+
+    if (
+      suppliedTenantId &&
+      suppliedTenantId !== authorizationScopeId &&
+      !usesPlatformCrossCuttingScope
+    ) {
       throw new ForbiddenException(
         'The requested tenant does not match the tenant-bound session',
       );
     }
 
-    if (!tenantId) {
-      throw new ForbiddenException('The session has no tenant binding');
+    if (hasOnlyCrossCuttingPermissions && suppliedTenantId === PLATFORM_SCOPE) {
+      throw new BadRequestException(
+        'Cross-cutting operations require a real target tenant',
+      );
     }
+
+    const tenantId = usesPlatformCrossCuttingScope
+      ? suppliedTenantId!
+      : authorizationScopeId;
 
     request.headers['x-tenant-id'] = tenantId;
     request.tenantId = tenantId;
 
     // A method-level PlatformPermissionsGuard is the sole PDP for an explicit
     // platform operation; do not also require customer-tenant base actions.
-    if (platformPermissions?.length && tenantId === PLATFORM_SCOPE) {
+    if (
+      platformPermissions?.length &&
+      authorizationScopeId === PLATFORM_SCOPE
+    ) {
       return true;
     }
 
@@ -109,7 +141,10 @@ export class PermissionsGuard implements CanActivate {
       ? PERMISSION_CODES.TENANT_RESOURCE_READ
       : PERMISSION_CODES.TENANT_RESOURCE_WRITE;
     const requiredPermissions = [
-      ...new Set([basePermission, ...(declaredPermissions ?? [])]),
+      ...new Set([
+        ...(usesPlatformCrossCuttingScope ? [] : [basePermission]),
+        ...(declaredPermissions ?? []),
+      ]),
     ];
     const action =
       declaredPermissions?.find(
@@ -132,6 +167,7 @@ export class PermissionsGuard implements CanActivate {
     const result = await this.authorizationDecisionService.evaluate({
       actorId: user.id,
       tenantId,
+      authorizationScopeId,
       environmentId: user.environmentId,
       action,
       effectClass: read ? 'READ' : 'WRITE',
