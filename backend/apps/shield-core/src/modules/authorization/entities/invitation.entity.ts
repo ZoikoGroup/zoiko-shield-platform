@@ -7,11 +7,7 @@ import {
 } from 'typeorm';
 
 export type InvitationStatus =
-  | 'PENDING'
-  | 'ACCEPTED'
-  | 'CONSUMED'
-  | 'EXPIRED'
-  | 'REVOKED';
+  'PENDING' | 'ACCEPTED' | 'CONSUMED' | 'EXPIRED' | 'REVOKED';
 export type InvitationPurpose = 'TENANT_MEMBERSHIP' | 'OWNER_ACTIVATION';
 
 @Entity({ name: 'invitations', schema: 'authorization' })

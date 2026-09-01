@@ -13,10 +13,7 @@ function sessionMetadataFrom(req: Request): SessionMetadata {
   };
 }
 
-@Controller([
-  'api/v1/auth/owner-invitations',
-  'auth/owner-invitations',
-])
+@Controller(['api/v1/auth/owner-invitations', 'auth/owner-invitations'])
 export class OwnerActivationController {
   constructor(
     private readonly ownerActivationService: OwnerActivationService,

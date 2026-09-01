@@ -9,11 +9,7 @@ import {
 } from 'typeorm';
 import { Role } from './role.entity';
 
-export type MembershipStatus =
-  | 'PENDING'
-  | 'ACTIVE'
-  | 'SUSPENDED'
-  | 'REMOVED';
+export type MembershipStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REMOVED';
 
 @Entity({ name: 'tenant_memberships', schema: 'authorization' })
 @Index(['tenantId', 'principalId'], { unique: true })

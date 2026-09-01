@@ -155,8 +155,7 @@ export class FederationAuthService {
         consumed.secrets.returnTo,
         metadata,
         {
-          accessDisclosureVersion:
-            consumed.secrets.accessDisclosureVersion,
+          accessDisclosureVersion: consumed.secrets.accessDisclosureVersion,
           accessDisclosureAcceptedAt:
             consumed.secrets.accessDisclosureAcceptedAt,
           metadata: {
@@ -192,8 +191,7 @@ export class FederationAuthService {
         consumed.secrets.returnTo,
         metadata,
         {
-          accessDisclosureVersion:
-            consumed.secrets.accessDisclosureVersion,
+          accessDisclosureVersion: consumed.secrets.accessDisclosureVersion,
           accessDisclosureAcceptedAt:
             consumed.secrets.accessDisclosureAcceptedAt,
           metadata: {
