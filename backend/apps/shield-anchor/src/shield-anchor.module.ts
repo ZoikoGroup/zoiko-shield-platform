@@ -24,6 +24,8 @@ import { TeeEnclaveAttestationService } from './enclave/tee-enclave-attestation.
 import { ZeroKnowledgeComplianceProofService } from './zk/zero-knowledge-compliance-proof.service';
 import { PqcBftConsensusService } from './consensus/pqc-bft-consensus.service';
 import { CosignBinaryAttestorService } from './supply-chain/cosign-binary-attestor.service';
+import { SbomDriftVerifierService } from './supply-chain/sbom-drift-verifier.service';
+import { BatchMerkleCheckpointerService } from './merkle/batch-merkle-checkpointer.service';
 
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
@@ -51,6 +53,8 @@ import { CosignBinaryAttestorService } from './supply-chain/cosign-binary-attest
     ZeroKnowledgeComplianceProofService,
     PqcBftConsensusService,
     CosignBinaryAttestorService,
+    SbomDriftVerifierService,
+    BatchMerkleCheckpointerService,
     CheckpointBuilderService,
   ],
   exports: [
@@ -62,6 +66,8 @@ import { CosignBinaryAttestorService } from './supply-chain/cosign-binary-attest
     ZeroKnowledgeComplianceProofService,
     PqcBftConsensusService,
     CosignBinaryAttestorService,
+    SbomDriftVerifierService,
+    BatchMerkleCheckpointerService,
   ],
 })
 export class ShieldAnchorModule {}

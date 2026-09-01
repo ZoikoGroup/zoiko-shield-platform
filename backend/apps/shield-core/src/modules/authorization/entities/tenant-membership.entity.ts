@@ -26,9 +26,18 @@ export class TenantMembership {
   @Column({ type: 'varchar', default: 'ACTIVE' })
   status: MembershipStatus;
 
-  // "INVITATION" | "SCIM" | "BOOTSTRAP" — how this membership was established.
+  // "INVITATION" | "SCIM" | "BOOTSTRAP" | "JIT_ELEVATION" — how this membership was established.
   @Column({ type: 'varchar', default: 'INVITATION' })
   source: string;
+
+  @Column({ type: 'timestamp with time zone', nullable: true })
+  expiresAt: Date | null;
+
+  @Column({ type: 'text', nullable: true })
+  elevationPurpose: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  elevationApprovedBy: string | null;
 
   @ManyToMany(() => Role)
   @JoinTable({

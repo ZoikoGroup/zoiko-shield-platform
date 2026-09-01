@@ -39,6 +39,7 @@ import { EbpfNetworkEnforcerService } from './microsegmentation/ebpf-network-enf
 import { SoarCircuitBreakerService } from './circuit-breaker/soar-circuit-breaker.service';
 import { CedarTenantIsolationService } from './policy/cedar-tenant-isolation.service';
 import { SignedCommandBrokerService } from './broker/signed-command-broker.service';
+import { TemporalContainmentEscalationService } from './orchestration/temporal-containment-escalation.service';
 
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
@@ -64,6 +65,7 @@ import { SignedCommandBrokerService } from './broker/signed-command-broker.servi
     SoarCircuitBreakerService,
     CedarTenantIsolationService,
     SignedCommandBrokerService,
+    TemporalContainmentEscalationService,
     ApprovalReauthorizationService,
     ReceiptVerificationService,
     ReconciliationService,
@@ -91,6 +93,7 @@ import { SignedCommandBrokerService } from './broker/signed-command-broker.servi
     SoarCircuitBreakerService,
     CedarTenantIsolationService,
     SignedCommandBrokerService,
+    TemporalContainmentEscalationService,
     ActionRollbackBrokerService,
     ActionRollbackOrchestratorService,
     ResponsePlaybookService,

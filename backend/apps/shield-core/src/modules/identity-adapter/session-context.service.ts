@@ -46,6 +46,13 @@ export class SessionContextService {
         'ACTIVE_TENANT_MEMBERSHIP_REQUIRED: No active membership exists for this tenant',
       );
     }
+    if (membership.expiresAt && new Date(membership.expiresAt) <= new Date()) {
+      membership.status = 'REMOVED';
+      await this.memberships.save(membership);
+      throw new ForbiddenException(
+        'MEMBERSHIP_EXPIRED: The temporary JIT elevation membership has expired',
+      );
+    }
     if (!membership.roles?.length) {
       throw new ForbiddenException(
         'APPROVED_ROLE_REQUIRED: The active membership has no approved role',

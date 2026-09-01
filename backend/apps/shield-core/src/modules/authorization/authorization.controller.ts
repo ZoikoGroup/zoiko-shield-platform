@@ -26,10 +26,15 @@ import { AuthenticationOnlyEndpoint } from '../../security/endpoint-access.decor
 
 import { Delete } from '@nestjs/common';
 
+import { JitElevationService } from './jit-elevation.service';
+
 @UseGuards(JwtAuthGuard)
 @Controller(['api/v1', ''])
 export class AuthorizationController {
-  constructor(private readonly authorizationService: AuthorizationService) {}
+  constructor(
+    private readonly authorizationService: AuthorizationService,
+    private readonly jitElevationService: JitElevationService,
+  ) {}
 
   /** Returns all tenant memberships for the caller, with roles and permissions. */
   @UseGuards(PermissionsGuard)
@@ -174,5 +179,86 @@ export class AuthorizationController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.authorizationService.removeMember(tenantId, memberId, user.id);
+  }
+
+  // -------------------------------------------------------------------------
+  // JIT (Just-In-Time) Elevation Endpoints
+  // -------------------------------------------------------------------------
+
+  /** Super Admin requests JIT elevation to a target tenant with stated purpose. */
+  @UseGuards(PlatformPermissionsGuard)
+  @RequirePlatformPermissions(PERMISSION_CODES.PLATFORM_ROLE_MANAGE)
+  @Post('authz/jit/request')
+  async requestJitElevation(
+    @Body()
+    dto: {
+      targetTenantId: string;
+      statedPurpose: string;
+      requestedDurationMinutes?: number;
+      roleCode?: string;
+    },
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.jitElevationService.requestElevation({
+      superAdminPrincipalId: user.id,
+      targetTenantId: dto.targetTenantId,
+      statedPurpose: dto.statedPurpose,
+      requestedDurationMinutes: dto.requestedDurationMinutes,
+      roleCode: dto.roleCode,
+    });
+  }
+
+  /** Independent peer admin approves JIT elevation. */
+  @UseGuards(PlatformPermissionsGuard)
+  @RequirePlatformPermissions(PERMISSION_CODES.PLATFORM_ROLE_MANAGE)
+  @Post('authz/jit/:requestId/approve')
+  async approveJitElevation(
+    @Param('requestId') requestId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.jitElevationService.approveElevation({
+      requestId,
+      approverPrincipalId: user.id,
+    });
+  }
+
+  /** Peer admin rejects JIT elevation. */
+  @UseGuards(PlatformPermissionsGuard)
+  @RequirePlatformPermissions(PERMISSION_CODES.PLATFORM_ROLE_MANAGE)
+  @Post('authz/jit/:requestId/reject')
+  async rejectJitElevation(
+    @Param('requestId') requestId: string,
+    @Body() dto: { rejectionReason: string },
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.jitElevationService.rejectElevation({
+      requestId,
+      approverPrincipalId: user.id,
+      rejectionReason: dto.rejectionReason,
+    });
+  }
+
+  /** Revokes active JIT elevation before expiration. */
+  @UseGuards(PlatformPermissionsGuard)
+  @RequirePlatformPermissions(PERMISSION_CODES.PLATFORM_ROLE_MANAGE)
+  @Post('authz/jit/:requestId/revoke')
+  async revokeJitElevation(
+    @Param('requestId') requestId: string,
+    @Body() dto: { revocationReason: string },
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.jitElevationService.revokeElevation({
+      requestId,
+      revokerPrincipalId: user.id,
+      revocationReason: dto.revocationReason,
+    });
+  }
+
+  /** Customer-visible audit trail of all JIT elevation events for that tenant. */
+  @UseGuards(PermissionsGuard)
+  @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_READ)
+  @Get('tenants/:tenantId/jit-audit')
+  async getTenantJitAudit(@Param('tenantId') tenantId: string) {
+    return this.jitElevationService.getCustomerAuditTrail(tenantId);
   }
 }
