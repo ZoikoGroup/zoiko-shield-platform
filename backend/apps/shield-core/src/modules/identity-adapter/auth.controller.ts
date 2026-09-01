@@ -58,7 +58,7 @@ function recoveryGrantFrom(req: Request): string {
 
 @Controller(['api/v1/auth', 'auth'])
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(private readonly authService: AuthService) { }
 
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @PublicEndpoint()

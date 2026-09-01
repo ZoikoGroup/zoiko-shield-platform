@@ -87,6 +87,16 @@ export class QuarantineService {
     );
   }
 
+  getTenantsWithQuarantine(): string[] {
+    const tenants = new Set<string>();
+    for (const record of this.quarantinedEvents.values()) {
+      if (record.status === 'PENDING_REVIEW') {
+        tenants.add(record.tenantId);
+      }
+    }
+    return Array.from(tenants);
+  }
+
   markReprocessed(
     tenantId: string,
     quarantineId: string,

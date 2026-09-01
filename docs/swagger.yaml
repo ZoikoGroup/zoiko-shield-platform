@@ -45979,6 +45979,66 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
       operationId: getConnectorsByConnectorIdHealth
+  /api/v1/connectors/{connectorId}/heartbeat:
+    post:
+      tags: [ConnectorCatalog]
+      summary: Register active connector heartbeat
+      description: Active connector heartbeat registration and health state updating (OPS-INV-13).
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: connectorId
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - $ref: "#/components/parameters/TenantIdHeader"
+      responses:
+        "200":
+          description: Heartbeat recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+      operationId: postConnectorsByConnectorIdHeartbeat
+  /api/v1/dlq/auto-retry:
+    post:
+      tags: [ConnectorCatalog]
+      summary: Trigger DLQ auto-retry sweep
+      description: Triggers an automated DLQ auto-retry quarantine replay sweep for a tenant (OPS-INV-13).
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TenantIdHeader"
+        - name: limit
+          in: query
+          required: false
+          schema: { type: string }
+      responses:
+        "200":
+          description: DLQ auto-retry sweep results
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+      operationId: postDlqAutoRetry
+  /api/v1/dlq/metrics:
+    get:
+      tags: [ConnectorCatalog]
+      summary: Get DLQ metrics
+      description: Returns current DLQ quarantine and replay metrics.
+      security:
+        - InternalServiceAuth: []
+      responses:
+        "200":
+          description: DLQ quarantine metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+      operationId: getDlqMetrics
   /api/v1/control-evaluations/{evaluationId}:
     get:
       tags: [Controls]

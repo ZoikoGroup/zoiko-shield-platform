@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import {
   QuarantineService,
   QuarantinedEventRecord,
@@ -16,11 +17,36 @@ export interface DLQReplayBatchResult {
 @Injectable()
 export class DLQReplayWorker {
   private readonly logger = new Logger(DLQReplayWorker.name);
+  private isProcessing = false;
 
   constructor(
     private readonly quarantineService: QuarantineService,
     private readonly rawIngestService: RawIngestService,
   ) {}
+
+  /**
+   * Automated DLQ Auto-Retry Cron (OPS-INV-13 Specification)
+   * Runs every 30 seconds to automatically retry quarantined messages.
+   */
+  @Cron(CronExpression.EVERY_30_SECONDS)
+  async autoRetryQuarantinedWorker(): Promise<void> {
+    if (this.isProcessing) return;
+    this.isProcessing = true;
+    // Yield to the event loop so concurrent callers see the guard before we proceed.
+    await Promise.resolve();
+
+    try {
+      // Find all distinct tenants with quarantined messages
+      const tenants = this.quarantineService.getTenantsWithQuarantine();
+      for (const tenantId of tenants) {
+        await this.replayQuarantineBatch(tenantId, 25);
+      }
+    } catch (err: any) {
+      this.logger.error(`Error in automated DLQ auto-retry worker: ${err.message}`);
+    } finally {
+      this.isProcessing = false;
+    }
+  }
 
   async replayQuarantineBatch(
     tenantId: string,
@@ -96,10 +122,13 @@ export class DLQReplayWorker {
       }
     }
 
-    this.logger.log(
-      `DLQ replay completed for tenant=${tenantId}: ${result.replayedCount}/${result.totalProcessed} replayed`,
-    );
+    if (pendingEvents.length > 0) {
+      this.logger.log(
+        `DLQ replay completed for tenant=${tenantId}: ${result.replayedCount}/${result.totalProcessed} replayed`,
+      );
+    }
 
     return result;
   }
 }
+
