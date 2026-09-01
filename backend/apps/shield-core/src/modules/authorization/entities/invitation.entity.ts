@@ -6,7 +6,9 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 
-export type InvitationStatus = 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'REVOKED';
+export type InvitationStatus =
+  'PENDING' | 'ACCEPTED' | 'CONSUMED' | 'EXPIRED' | 'REVOKED';
+export type InvitationPurpose = 'TENANT_MEMBERSHIP' | 'OWNER_ACTIVATION';
 
 @Entity({ name: 'invitations', schema: 'authorization' })
 export class Invitation {
@@ -28,6 +30,15 @@ export class Invitation {
 
   @Column({ type: 'uuid' })
   invitedById: string;
+
+  @Column({ type: 'varchar', default: 'TENANT_MEMBERSHIP' })
+  purpose: InvitationPurpose;
+
+  @Column({ type: 'uuid', nullable: true })
+  invitedPrincipalId: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  policyDocumentId: string | null;
 
   @Column({ type: 'varchar', default: 'PENDING' })
   status: InvitationStatus;

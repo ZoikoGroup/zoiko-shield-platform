@@ -201,6 +201,9 @@ export class AuthorizationService {
         invitedEmail: data.invitedEmail,
         roleId: data.roleId,
         invitedById: data.invitedById,
+        purpose: 'TENANT_MEMBERSHIP',
+        invitedPrincipalId: null,
+        policyDocumentId: null,
         status: 'PENDING',
         expiresAt: new Date(Date.now() + INVITATION_TTL_MS),
       }),
@@ -222,6 +225,7 @@ export class AuthorizationService {
     const invitation = await this.invitationRepository.findOne({
       where: {
         tokenHash: this.hashToken(token),
+        purpose: 'TENANT_MEMBERSHIP',
         status: 'PENDING',
         expiresAt: MoreThan(new Date()),
       },

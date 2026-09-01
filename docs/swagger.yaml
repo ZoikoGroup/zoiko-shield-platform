@@ -959,6 +959,7 @@ components:
         status:
           type: string
           enum:
+            - PENDING
             - ACTIVE
             - SUSPENDED
             - REMOVED
@@ -1004,7 +1005,18 @@ components:
           format: uuid
         status:
           type: string
-          enum: [PENDING, ACCEPTED, EXPIRED, REVOKED]
+          enum: [PENDING, ACCEPTED, CONSUMED, EXPIRED, REVOKED]
+        purpose:
+          type: string
+          enum: [TENANT_MEMBERSHIP, OWNER_ACTIVATION]
+        invitedPrincipalId:
+          type: string
+          format: uuid
+          nullable: true
+        policyDocumentId:
+          type: string
+          format: uuid
+          nullable: true
         expiresAt:
           type: string
           format: date-time
@@ -1226,6 +1238,7 @@ components:
         - retentionPolicyRef
         - legalEntity
         - accessDisclosureVersion
+        - ownerEmail
       properties:
         orderId:
           type: string
@@ -1268,6 +1281,11 @@ components:
           type: string
           example: "1"
           description: Must match the currently active ACCESS_DISCLOSURE policy version
+        ownerEmail:
+          type: string
+          format: email
+          example: owner@acme.example
+          description: Email that must be returned as verified by ZoikoID when the owner accepts the invitation.
     LegalEntityResponse:
       type: object
       properties:
@@ -1348,7 +1366,7 @@ components:
           example: 1
     OnboardingResponse:
       type: object
-      description: Full result of tenant onboarding
+      description: Provisioning result. The tenant and owner membership remain pending until the emailed invitation is completed through ZoikoID.
       properties:
         tenant:
           $ref: "#/components/schemas/TenantFull"
@@ -1358,6 +1376,24 @@ components:
           $ref: "#/components/schemas/EnvironmentResponse"
         membership:
           $ref: "#/components/schemas/MembershipResponse"
+        identityProvider:
+          type: object
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string, enum: [ZoikoID] }
+            protocol: { type: string, enum: [OIDC] }
+          required: [id, name, protocol]
+        ownerInvitation:
+          type: object
+          properties:
+            invitationId: { type: string, format: uuid }
+            expiresAt: { type: string, format: date-time }
+            delivery: { type: string, enum: [EMAIL] }
+            activationUrl:
+              type: string
+              format: uri
+              description: Development only; omitted in production.
+          required: [invitationId, expiresAt, delivery]
         orderId:
           type: string
           format: uuid
@@ -1369,11 +1405,6 @@ components:
           description: The order's existing CommercialAccount — the tenant's
             entitlements are granted against this account, not a newly
             created one
-        acceptanceEvidenceId:
-          type: string
-          format: uuid
-          description: Evidence record capturing the ACCESS_DISCLOSURE policy
-            acceptance
     TenantOffboardingRunResponse:
       type: object
       description:
@@ -1897,6 +1928,68 @@ components:
               protocol: { type: string, enum: [OIDC, SAML] }
             required: [id, name, protocol]
       required: [tenant, identityProviders]
+    OwnerInvitationInspectResponse:
+      type: object
+      required: [tenant, environment, owner, accessDisclosure, identityProviders, expiresAt]
+      properties:
+        tenant:
+          type: object
+          required: [id, name, slug, status]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            slug: { type: string }
+            status: { type: string, enum: [PROVISIONING] }
+        environment:
+          type: object
+          required: [id, name, type, region]
+          properties:
+            id: { type: string, format: uuid }
+            name: { type: string }
+            type: { type: string }
+            region: { type: string }
+        owner:
+          type: object
+          required: [email, authentication]
+          properties:
+            email:
+              type: string
+              description: Masked invitation destination.
+              example: ow***@acme.example
+            authentication: { type: string, enum: [ZOIKOID] }
+        accessDisclosure:
+          type: object
+          required: [version, contentHash, content]
+          properties:
+            version: { type: string }
+            contentHash: { type: string }
+            content:
+              type: string
+              description: The exact approved disclosure whose SHA-256 hash is contentHash.
+        identityProviders:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [id, name, protocol]
+            properties:
+              id: { type: string, format: uuid }
+              name: { type: string, enum: [ZoikoID] }
+              protocol: { type: string, enum: [OIDC] }
+        expiresAt: { type: string, format: date-time }
+    OwnerInvitationStartRequest:
+      type: object
+      required: [identityProviderId, accessDisclosureVersion, accessDisclosureAccepted]
+      properties:
+        identityProviderId: { type: string, format: uuid }
+        accessDisclosureVersion: { type: string, maxLength: 120 }
+        accessDisclosureAccepted:
+          type: boolean
+          enum: [true]
+        returnTo:
+          type: string
+          pattern: "^/(?!/)"
+          default: /invitation-complete
     IdentityProviderConfigurationRequest:
       type: object
       properties:
@@ -25893,6 +25986,67 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ErrorResponse" }
       operationId: getAuthSsoDiscovery
+  /api/v1/auth/owner-invitations/{token}:
+    get:
+      tags: [Auth, Onboarding]
+      summary: Inspect a pending tenant-owner invitation
+      description: Validates the hashed single-use token and returns only masked owner details, the pinned access-disclosure version, and the platform-managed ZoikoID provider. It does not activate the tenant.
+      security: []
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema: { type: string, maxLength: 512 }
+      responses:
+        "200":
+          description: Invitation is pending and can begin ZoikoID authentication.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OwnerInvitationInspectResponse" }
+        "404":
+          description: Invitation is invalid, already used, or incomplete.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "410":
+          description: Invitation has expired.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: getOwnerInvitation
+  /api/v1/auth/owner-invitations/{token}/start:
+    post:
+      tags: [Auth, Onboarding]
+      summary: Accept disclosure and start ZoikoID owner authentication
+      description: Stores the invitation token and consent context only inside encrypted, ten-minute, single-use federation state. Navigate the browser to the returned authorizationUrl. The tenant remains PROVISIONING until the OIDC callback verifies issuer, signature, audience, nonce, PKCE, MFA, subject, and the invited email.
+      security: []
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema: { type: string, maxLength: 512 }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OwnerInvitationStartRequest" }
+      responses:
+        "201":
+          description: Single-use ZoikoID OIDC transaction created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SsoStartResponse" }
+        "404":
+          description: Invitation or selected ZoikoID provider is unavailable.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+        "409":
+          description: Tenant or policy is no longer awaiting this activation.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ErrorResponse" }
+      operationId: postOwnerInvitationStart
   /api/v1/auth/sso/start:
     post:
       tags: [Auth]
@@ -33609,25 +33763,7 @@ paths:
       tags:
         - Onboarding
       summary: Run tenant onboarding workflow
-      description: 'Provisions a new tenant against an approved, PROVISIONED
-        commercial order (spec \u00a77.2 \u2014 PROVISIONING requires an approved
-        order/entitlement as evidence; there is no self-service tenant
-        creation). Validates and claims the order first \u2014 fails closed
-        before any tenant row is created if it does not exist, is not
-        PROVISIONED, or was already claimed by another tenant. Then creates
-        the Tenant, a LegalEntity, an Environment (defaults to Production),
-        assigns the calling principal as TENANT_OWNER with tenant:member:invite
-        and tenant:manage permissions, records ACCESS_DISCLOSURE policy
-        acceptance, grants one Entitlement per distinct offer family present
-        on the order''s product lines (against the order''s existing
-        CommercialAccount \u2014 never a self-granted account/entitlement),
-        activates the tenant, and emits tenant_provisioning_started and
-        tenant_onboarded identity events. The tenantSlug must be unique and
-        URL-safe. The accessDisclosureVersion must match the currently
-        active ACCESS_DISCLOSURE policy version. Note: this spans multiple
-        transactions (order validation, tenant provisioning, order
-        claim/entitlement grant, evidence creation, activation) rather than
-        one single atomic transaction.'
+      description: Provisions a new tenant against an approved, PROVISIONED commercial order. It creates the tenant in PROVISIONING, the owner principal with unverified email, a PENDING TENANT_OWNER membership, a platform-managed ZoikoID OIDC configuration, and a seven-day single-use email invitation. Order-derived entitlements are granted, but policy acceptance and tenant activation are deliberately deferred. The owner follows the email link, accepts the pinned ACCESS_DISCLOSURE, authenticates with ZoikoID, and only the validated OIDC callback atomically links the external identity, activates the membership and tenant, and records acceptance evidence.
       security:
         - CookieAuth: []
         - BearerAuth: []
@@ -33639,9 +33775,7 @@ paths:
               $ref: "#/components/schemas/OnboardTenantRequest"
       responses:
         "201":
-          description:
-            "Onboarding completed \u2014 tenant, legal entity, environment,\
-            \ TENANT_OWNER membership, and order-derived entitlements provisioned"
+          description: Tenant resources and entitlements provisioned; owner invitation emailed and activation pending.
           content:
             application/json:
               schema:

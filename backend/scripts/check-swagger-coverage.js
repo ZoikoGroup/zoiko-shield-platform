@@ -126,6 +126,8 @@ const approvedPublicOperations = new Set([
   'post:/auth/password-recovery/verify',
   'get:/api/v1/auth/sso/discovery/{tenantSlug}',
   'post:/api/v1/auth/sso/start',
+  'get:/api/v1/auth/owner-invitations/{token}',
+  'post:/api/v1/auth/owner-invitations/{token}/start',
   'get:/api/v1/auth/sso/oidc/callback',
   'post:/api/v1/auth/sso/saml/callback',
   'get:/api/v1/auth/sso/saml/metadata/{tenantSlug}/{providerId}',
