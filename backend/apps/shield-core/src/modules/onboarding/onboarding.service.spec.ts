@@ -4,7 +4,8 @@ import { getDataSourceToken } from '@nestjs/typeorm';
 import { OnboardingService } from './onboarding.service';
 import { PolicyService } from '../identity-adapter/policy.service';
 import { OnboardingReadinessService } from './onboarding-readiness.service';
-import { EvidenceService } from '../evidence/services/evidence.service';
+import { MailService } from '../identity-adapter/mail.service';
+import { ZoikoIdProviderBootstrapService } from '../identity-adapter/zoikoid-provider-bootstrap.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
 function fakeRepo(overrides: Partial<Record<string, jest.Mock>> = {}) {
@@ -46,7 +47,8 @@ describe('OnboardingService (spec §7.2 order gate)', () => {
   let dataSourceMock: any;
   let policyMock: any;
   let readinessMock: any;
-  let evidenceMock: any;
+  let mailMock: any;
+  let zoikoIdProvidersMock: any;
   let ownerRoleRepo: any;
   let tenantRepo: any;
 
@@ -73,6 +75,7 @@ describe('OnboardingService (spec §7.2 order gate)', () => {
       LegalEntity: fakeRepo(),
       Environment: fakeRepo(),
       TenantMembership: fakeRepo(),
+      Invitation: fakeRepo(),
       Role: ownerRoleRepo,
       PolicyAcceptance: fakeRepo(),
       IdentityEvent: fakeRepo(),
@@ -103,8 +106,19 @@ describe('OnboardingService (spec §7.2 order gate)', () => {
 
     policyMock = { findActive: jest.fn().mockResolvedValue(activeDisclosure) };
     readinessMock = { assertReady: jest.fn() };
-    evidenceMock = {
-      createEvidence: jest.fn().mockResolvedValue({ id: 'evidence-1' }),
+    mailMock = {
+      sendOwnerInvitation: jest
+        .fn()
+        .mockResolvedValue(
+          'http://localhost:3000/accept-invite?token=development-token',
+        ),
+    };
+    zoikoIdProvidersMock = {
+      provisionForTenant: jest.fn().mockResolvedValue({
+        id: 'zoikoid-provider-1',
+        name: 'ZoikoID',
+        protocol: 'OIDC',
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -113,7 +127,11 @@ describe('OnboardingService (spec §7.2 order gate)', () => {
         { provide: getDataSourceToken(), useValue: dataSourceMock },
         { provide: PolicyService, useValue: policyMock },
         { provide: OnboardingReadinessService, useValue: readinessMock },
-        { provide: EvidenceService, useValue: evidenceMock },
+        { provide: MailService, useValue: mailMock },
+        {
+          provide: ZoikoIdProviderBootstrapService,
+          useValue: zoikoIdProvidersMock,
+        },
         { provide: PrismaService, useValue: prismaMock },
       ],
     }).compile();
@@ -211,6 +229,27 @@ describe('OnboardingService (spec §7.2 order gate)', () => {
     });
     expect(result.orderId).toBe('order-1');
     expect(result.commercialAccountId).toBe('acct-1');
+    expect(result.tenant.status).toBe('PROVISIONING');
+    expect(result.membership.status).toBe('PENDING');
+    expect(result.identityProvider).toEqual({
+      id: 'zoikoid-provider-1',
+      name: 'ZoikoID',
+      protocol: 'OIDC',
+    });
+    expect(result.ownerInvitation).toEqual(
+      expect.objectContaining({
+        invitationId: expect.any(String),
+        delivery: 'EMAIL',
+      }),
+    );
+    expect(mailMock.sendOwnerInvitation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'owner@example.com',
+        tenantName: 'Acme Corp',
+        token: expect.any(String),
+        expiresAt: expect.any(Date),
+      }),
+    );
   });
 
   it('fails the onboard when the order is claimed concurrently by another tenant', async () => {

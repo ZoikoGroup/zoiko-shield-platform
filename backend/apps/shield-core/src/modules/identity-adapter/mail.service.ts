@@ -57,4 +57,37 @@ export class MailService implements OnModuleInit {
       text: `Your verification code is ${code}. It expires in 10 minutes.`,
     });
   }
+
+  async sendOwnerInvitation(input: {
+    email: string;
+    tenantName: string;
+    token: string;
+    expiresAt: Date;
+  }): Promise<string> {
+    const appBaseUrl = this.configService
+      .get<string>('APP_BASE_URL', 'http://localhost:3000')
+      .replace(/\/$/, '');
+    const activationUrl = `${appBaseUrl}/accept-invite?token=${encodeURIComponent(input.token)}`;
+
+    if (!this.transporter) {
+      this.logger.log(
+        `Owner activation for ${input.email} (${input.tenantName}): ${activationUrl} (expires ${input.expiresAt.toISOString()})`,
+      );
+      return activationUrl;
+    }
+
+    await this.transporter.sendMail({
+      from: this.fromAddress,
+      to: input.email,
+      subject: `Activate your ${input.tenantName} ZoikoShield account`,
+      text: [
+        `You have been invited to activate the ZoikoShield tenant ${input.tenantName}.`,
+        `Open this single-use link, accept the access disclosure, and authenticate with ZoikoID: ${activationUrl}`,
+        `The link expires at ${input.expiresAt.toISOString()}.`,
+        'If you were not expecting this invitation, do not use the link.',
+      ].join('\n\n'),
+    });
+
+    return activationUrl;
+  }
 }

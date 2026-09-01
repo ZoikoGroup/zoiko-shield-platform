@@ -239,6 +239,7 @@ export class OidcFederationService {
       assurance: hasMfa ? 'FEDERATED_MFA' : 'FEDERATED',
       claimProfile: {
         email,
+        emailVerified: claims.email_verified === true,
         ...(fullName ? { name: fullName } : {}),
         amr,
         ...(typeof claims.acr === 'string' ? { acr: claims.acr } : {}),

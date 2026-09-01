@@ -6,8 +6,8 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 
-// §7.2 Tenant lifecycle. PROVISIONING is the only state a tenant is created
-// in; onboarding activates it in the same transaction that creates it.
+// §7.2 Tenant lifecycle. A tenant is created in PROVISIONING and becomes
+// ACTIVE only after the invited owner completes identity and policy checks.
 export type TenantStatus =
   | 'PROVISIONING'
   | 'ACTIVE'
