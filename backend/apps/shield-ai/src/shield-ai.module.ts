@@ -28,7 +28,11 @@ import { DifferentialPrivacyGuardService } from './privacy/differential-privacy-
 import { AttackPathDiscoveryService } from './graph/attack-path-discovery.service';
 import { IncidentRcaGeneratorService } from './rca/incident-rca-generator.service';
 import { ModelArmorSafetyGatewayService } from './gateway/model-armor-safety-gateway.service';
+import { AiSafetyCircuitBreakerService } from './gateway/ai-safety-circuit-breaker.service';
 import { AiKillSwitchService } from './kill-switch/ai-kill-switch.service';
+import { TimeSeriesAnomalyDetectorService } from './analytics/time-series-anomaly-detector.service';
+import { AutonomousRedTeamAgentService } from './adversarial/autonomous-red-team-agent.service';
+import { PlaybookOptimizerAgentService } from './optimization/playbook-optimizer-agent.service';
 
 import { ShieldCoreClient } from './internal-client/shield-core.client';
 
@@ -74,6 +78,9 @@ import { AiGovernanceViewsController } from './internal/ai-governance-views.cont
     AiFinOpsBudgetService,
     SafeDegradationService,
     AiObservabilityMetricsService,
+    TimeSeriesAnomalyDetectorService,
+    AutonomousRedTeamAgentService,
+    PlaybookOptimizerAgentService,
 
     RedactionService,
     UsageControlService,
@@ -92,6 +99,7 @@ import { AiGovernanceViewsController } from './internal/ai-governance-views.cont
     AttackPathDiscoveryService,
     IncidentRcaGeneratorService,
     ModelArmorSafetyGatewayService,
+    AiSafetyCircuitBreakerService,
 
     ShieldCoreClient,
 
@@ -118,6 +126,7 @@ import { AiGovernanceViewsController } from './internal/ai-governance-views.cont
     AttackPathDiscoveryService,
     IncidentRcaGeneratorService,
     ModelArmorSafetyGatewayService,
+    AiSafetyCircuitBreakerService,
     AiKillSwitchService,
     AiRedTeamService,
     AiFinOpsBudgetService,
@@ -126,6 +135,9 @@ import { AiGovernanceViewsController } from './internal/ai-governance-views.cont
     EvaluationRunnerService,
     ScheduledGoldsetRunnerWorker,
     AiDecisionLedgerService,
+    TimeSeriesAnomalyDetectorService,
+    AutonomousRedTeamAgentService,
+    PlaybookOptimizerAgentService,
   ],
 })
 export class ShieldAiModule {}

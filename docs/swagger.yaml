@@ -47248,3 +47248,221 @@ paths:
             text/plain:
               schema:
                 type: string
+
+  /api/v1/authz/jit/request:
+    post:
+      tags:
+        - RBAC
+      summary: Request Just-In-Time (JIT) tenant access elevation
+      description: Super Admin requests scoped, time-bound access to a tenant with stated business purpose.
+      operationId: postAuthzJitRequest
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - targetTenantId
+                - statedPurpose
+              properties:
+                targetTenantId:
+                  type: string
+                statedPurpose:
+                  type: string
+                requestedDurationMinutes:
+                  type: integer
+                  default: 60
+                roleCode:
+                  type: string
+                  default: TENANT_ADMIN
+      responses:
+        '201':
+          description: JIT elevation request created
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/authz/jit/{requestId}/approve:
+    post:
+      tags:
+        - RBAC
+      summary: Approve pending JIT elevation request
+      description: Dual-authorization peer admin approval to grant temporary scoped tenant membership.
+      operationId: postAuthzJitApprove
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: JIT elevation request approved
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/authz/jit/{requestId}/reject:
+    post:
+      tags:
+        - RBAC
+      summary: Reject pending JIT elevation request
+      description: Reject requested JIT access with justification reason.
+      operationId: postAuthzJitReject
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rejectionReason
+              properties:
+                rejectionReason:
+                  type: string
+      responses:
+        '200':
+          description: JIT elevation request rejected
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/authz/jit/{requestId}/revoke:
+    post:
+      tags:
+        - RBAC
+      summary: Revoke active JIT elevation
+      description: Prematurely revoke an active JIT elevation session.
+      operationId: postAuthzJitRevoke
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - revocationReason
+              properties:
+                revocationReason:
+                  type: string
+      responses:
+        '200':
+          description: JIT elevation revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/tenants/{tenantId}/jit-audit:
+    get:
+      tags:
+        - RBAC
+      summary: Get customer-visible JIT audit trail
+      description: Retrieve immutable customer-visible audit logs of all JIT elevation events for a given tenant.
+      operationId: getTenantsTenantIdJitAudit
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Customer-visible JIT audit records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+

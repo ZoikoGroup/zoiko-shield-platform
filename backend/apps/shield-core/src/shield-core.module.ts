@@ -30,6 +30,7 @@ import { Permission } from './modules/authorization/entities/permission.entity';
 import { Role } from './modules/authorization/entities/role.entity';
 import { TenantMembership } from './modules/authorization/entities/tenant-membership.entity';
 import { Invitation } from './modules/authorization/entities/invitation.entity';
+import { JitElevationRequest } from './modules/authorization/entities/jit-elevation-request.entity';
 import { Tenant } from './modules/tenant/tenant.entity';
 import { LegalEntity } from './modules/legal-entity/legal-entity.entity';
 import { Environment } from './modules/environment/environment.entity';
@@ -86,7 +87,11 @@ import { DevicePostureModule } from './modules/device-posture/device-posture.mod
 import { CryptoEscrowModule } from './modules/crypto-escrow/crypto-escrow.module';
 import { WorkflowModule } from './modules/workflows/workflow.module';
 import { ObservabilityExporterModule } from './modules/observability/observability-exporter.module';
+import { DiagnosticsModule } from './modules/diagnostics/diagnostics.module';
+import { RateLimitingModule } from './modules/rate-limiting/rate-limiting.module';
+import { WorkloadIdentityModule } from './modules/workload-identity/workload-identity.module';
 import { OutboxPublisherService } from './outbox/outbox-publisher.service';
+import { DistributedOutboxRelayService } from './modules/outbox/distributed-outbox-relay.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { HumanAuthorityModule } from './modules/human-authority/human-authority.module';
@@ -118,6 +123,7 @@ import { HumanAuthorityModule } from './modules/human-authority/human-authority.
         Role,
         TenantMembership,
         Invitation,
+        JitElevationRequest,
         Tenant,
         LegalEntity,
         Environment,
@@ -190,11 +196,15 @@ import { HumanAuthorityModule } from './modules/human-authority/human-authority.
     CryptoEscrowModule,
     WorkflowModule,
     ObservabilityExporterModule,
+    DiagnosticsModule,
+    RateLimitingModule,
+    WorkloadIdentityModule,
   ],
   controllers: [ShieldCoreController],
   providers: [
     ShieldCoreService,
     OutboxPublisherService,
+    DistributedOutboxRelayService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: DeclaredAccessGuard },
   ],
