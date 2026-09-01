@@ -18,12 +18,18 @@ import {
 } from './connector-catalog.service';
 import { requireTenantId } from '../security/tenant-context';
 import { IdempotencyService } from '../../../shield-core/src/modules/idempotency/idempotency.service';
+import { ConnectorHealthService } from './services/health.service';
+import { DLQReplayWorker } from '../ingestion/dlq-replay.worker';
+import { DlqReplayQuarantineService } from '../dlq/dlq-replay-quarantine.service';
 
 @Controller('api/v1')
 export class ConnectorCatalogController {
   constructor(
     private readonly connectorCatalogService: ConnectorCatalogService,
     @Optional() private readonly idempotencyService?: IdempotencyService,
+    @Optional() private readonly connectorHealthService?: ConnectorHealthService,
+    @Optional() private readonly dlqWorker?: DLQReplayWorker,
+    @Optional() private readonly dlqService?: DlqReplayQuarantineService,
   ) {}
 
   /**
@@ -237,6 +243,71 @@ export class ConnectorCatalogController {
       statusCode: HttpStatus.OK,
       message: 'Connector disabled',
       data: result,
+    };
+  }
+
+  /**
+   * POST /api/v1/connectors/:connectorId/heartbeat
+   * Register active connector heartbeat (OPS-INV-13 Specification)
+   */
+  @Post('connectors/:connectorId/heartbeat')
+  async recordConnectorHeartbeat(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('connectorId') connectorId: string,
+    @Body() body?: { lagMs?: number; errorRate?: number; eventsProcessed?: number; statusMessage?: string },
+  ) {
+    const tenantId = requireTenantId(headerTenantId);
+    if (!this.connectorHealthService) {
+      return { statusCode: HttpStatus.OK, message: 'Heartbeat acknowledged' };
+    }
+    const status = await this.connectorHealthService.recordHeartbeat(
+      connectorId,
+      tenantId,
+      body,
+    );
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Connector heartbeat recorded successfully',
+      data: status,
+    };
+  }
+
+  /**
+   * POST /api/v1/dlq/auto-retry
+   * Trigger automated DLQ auto-retry sweep for a tenant (OPS-INV-13 Specification)
+   */
+  @Post('dlq/auto-retry')
+  async triggerDlqAutoRetry(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Query('limit') limitQuery?: string,
+  ) {
+    const tenantId = requireTenantId(headerTenantId);
+    const limit = limitQuery ? parseInt(limitQuery, 10) : 50;
+
+    if (!this.dlqWorker) {
+      return { statusCode: HttpStatus.OK, message: 'DLQ worker not configured' };
+    }
+
+    const result = await this.dlqWorker.replayQuarantineBatch(tenantId, limit);
+    return {
+      statusCode: HttpStatus.OK,
+      message: 'Automated DLQ retry sweep executed',
+      data: result,
+    };
+  }
+
+  /**
+   * GET /api/v1/dlq/metrics
+   * Query DLQ quarantine metrics
+   */
+  @Get('dlq/metrics')
+  async getDlqMetrics() {
+    const metrics = this.dlqService
+      ? this.dlqService.getMetrics()
+      : { totalQuarantined: 0, activeQuarantined: 0, replayedSuccess: 0, replayedFailed: 0 };
+    return {
+      statusCode: HttpStatus.OK,
+      data: metrics,
     };
   }
 
