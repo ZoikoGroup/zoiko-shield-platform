@@ -32,6 +32,8 @@ export class DLQReplayWorker {
   async autoRetryQuarantinedWorker(): Promise<void> {
     if (this.isProcessing) return;
     this.isProcessing = true;
+    // Yield to the event loop so concurrent callers see the guard before we proceed.
+    await Promise.resolve();
 
     try {
       // Find all distinct tenants with quarantined messages
