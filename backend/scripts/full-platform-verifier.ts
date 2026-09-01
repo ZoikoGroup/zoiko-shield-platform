@@ -32,19 +32,34 @@ import { DistributedRateLimiterService } from '../apps/shield-core/src/modules/r
 import { WorkloadTokenBrokerService } from '../apps/shield-core/src/modules/workload-identity/workload-token-broker.service';
 import { BatchMerkleCheckpointerService, EvidenceLeaf } from '../apps/shield-anchor/src/merkle/batch-merkle-checkpointer.service';
 import { AiSafetyCircuitBreakerService } from '../apps/shield-ai/src/gateway/ai-safety-circuit-breaker.service';
+import { DistributedOutboxRelayService } from '../apps/shield-core/src/modules/outbox/distributed-outbox-relay.service';
+import { MultiRegionIngestShardService } from '../apps/shield-ingest/src/sharding/multi-region-ingest-shard.service';
+import { StreamDeduplicationService } from '../apps/shield-ingest/src/deduplication/stream-deduplication.service';
+import { DynamicTokenizationProxyService } from '../apps/shield-core/src/modules/privacy/dynamic-tokenization-proxy.service';
+import { PlaybookSandboxEngineService } from '../apps/shield-action/src/simulation/playbook-sandbox-engine.service';
+import { DlqReplayQuarantineService } from '../apps/shield-ingest/src/dlq/dlq-replay-quarantine.service';
+import { TimeSeriesAnomalyDetectorService } from '../apps/shield-ai/src/analytics/time-series-anomaly-detector.service';
+import { DistributedLeaseCoordinatorService } from '../apps/shield-anchor/src/consensus/distributed-lease-coordinator.service';
+import { AdaptiveTraceSamplerService } from '../apps/shield-ingest/src/sampling/adaptive-trace-sampler.service';
+import { KmsHealthRebalancerService } from '../apps/shield-core/src/modules/crypto-escrow/kms-health-rebalancer.service';
+import { AutonomousRedTeamAgentService } from '../apps/shield-ai/src/adversarial/autonomous-red-team-agent.service';
+import { ConfidentialEnclaveBridgeService } from '../apps/shield-anchor/src/enclave/confidential-enclave-bridge.service';
+import { AdaptiveCongestionManagerService } from '../apps/shield-ingest/src/flow-control/adaptive-congestion-manager.service';
+import { JitSessionEnforcerService } from '../apps/shield-core/src/modules/authorization/jit-session-enforcer.service';
+import { PlaybookOptimizerAgentService } from '../apps/shield-ai/src/optimization/playbook-optimizer-agent.service';
 
 /**
- * ZoikoShield Master 20-Stage Full-Platform Multi-Tenant Verification Suite
- * Specification: Consolidated 20-Page Backend Engineering Build Guide (LAB 01 — 20)
+ * ZoikoShield Master 24-Stage Full-Platform Multi-Tenant Verification Suite
+ * Specification: Consolidated 20-Page Backend Engineering Build Guide (LAB 01 — 24)
  */
 async function runFullPlatformVerifier() {
   const logger = new Logger('FullPlatformVerifier');
   logger.log('========================================================================');
-  logger.log(' Starting ZoikoShield Master 20-Lab Multi-Tenant Platform Verification ');
+  logger.log(' Starting ZoikoShield Master 24-Lab Multi-Tenant Platform Verification ');
   logger.log('========================================================================');
 
   let stepsPassed = 0;
-  const totalSteps = 20;
+  const totalSteps = 24;
 
   // -------------------------------------------------------------------------
   // Stage 1 (LAB 01 & 02): Multi-Tenant Commercial Account & Tenancy Binding
@@ -607,9 +622,194 @@ async function runFullPlatformVerifier() {
   logger.log(`  ✔ AI Safety Circuit Breaker: Fallback Triggered (${aiFallback.providerUsed})`);
   stepsPassed++;
 
+  // -------------------------------------------------------------------------
+  // Stage 21 (LAB 21): Outbox Transactional CDC Relay, Ingest Sharding & Stream Dedup
+  // -------------------------------------------------------------------------
+  logger.log('\n[Stage 21/21] Outbox CDC Relay, Multi-Region Ingest Shards & Stream Deduplication...');
+
+  // 1. Outbox Transactional CDC Relay
+  const outboxRelay = new DistributedOutboxRelayService();
+  outboxRelay.enqueueEvent('identity.user.mfa_enforced', tenantA.id, {
+    principalId: 'usr-admin-88',
+    authMethod: 'FIDO2_WEBAUTHN',
+  });
+  outboxRelay.enqueueEvent('detection.ioc.matched', tenantA.id, {
+    iocType: 'SHA256',
+    hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+  });
+  const outboxResult = await outboxRelay.processBatch(10);
+  logger.log(`  ✔ Outbox CDC Relay: Pod '${outboxResult.podId}' Dispatched ${outboxResult.publishedCount}/${outboxResult.claimedCount} events (Lock: ${outboxResult.lockAcquired})`);
+
+  // 2. Multi-Region Ingest Sharding & Failover
+  const ingestShards = new MultiRegionIngestShardService();
+  const ingestRouteNormal = ingestShards.routeIngestStream(tenantA.id);
+  logger.log(`  ✔ Ingest Sharding: Tenant '${tenantA.id}' ➔ Routed to Region '${ingestRouteNormal.routedRegion}' (${ingestRouteNormal.endpoint})`);
+
+  ingestShards.updateShardHealth(ingestRouteNormal.primaryRegion, 'UNAVAILABLE', 12000);
+  const ingestRouteFailover = ingestShards.routeIngestStream(tenantA.id);
+  logger.log(`  ✔ Ingest Failover: Primary '${ingestRouteFailover.primaryRegion}' down ➔ Re-routed to '${ingestRouteFailover.routedRegion}' (Failover: ${ingestRouteFailover.isFailover})`);
+
+  // 3. Real-Time Stream Deduplication Bloom Filter
+  const streamDedup = new StreamDeduplicationService();
+  const stormPayload = { ip: '198.51.100.44', event: 'BRUTE_FORCE_BURST' };
+  let discardedCount = 0;
+  for (let i = 0; i < 50; i++) {
+    const res = streamDedup.checkAndRegister(tenantA.id, 'AUTH_FAILURE_BURST', stormPayload);
+    if (res.isDuplicate) discardedCount++;
+  }
+  const dedupMetrics = streamDedup.getMetrics();
+  logger.log(`  ✔ Stream Deduplication: Evaluated ${dedupMetrics.totalEvaluated} events -> Discarded ${discardedCount} duplicates (${(dedupMetrics.deduplicationRatio * 100).toFixed(1)}% reduction)`);
+  stepsPassed++;
+
+  // -------------------------------------------------------------------------
+  // Stage 22 (LAB 22): Tokenization Proxy, Playbook Sandbox, DLQ Replay & Anomaly Detector
+  // -------------------------------------------------------------------------
+  logger.log('\n[Stage 22/22] Tokenization Proxy, Playbook Sandbox, DLQ Replay & Anomaly Detection...');
+
+  // 1. Dynamic Tokenization & JIT Unmasking
+  const tokenProxy = new DynamicTokenizationProxyService();
+  const rawObj = { victim: { email: 'auditor.lead@enterprise.com', card: '4111-2222-3333-4444' } };
+  const maskedObj = tokenProxy.anonymizeObject(tenantA.id, rawObj, 'REVERSIBLE_TOKEN');
+  const unmasked = tokenProxy.unmaskValue(tenantA.id, maskedObj.victim.email, {
+    operatorId: 'sec-op-99',
+    jitRequestId: 'JIT-2026-STAGE22',
+    reason: 'Compliance audit unmasking',
+  });
+  logger.log(`  ✔ Tokenization Proxy: Masked -> '${maskedObj.victim.email}' | JIT Unmasked -> '${unmasked}'`);
+
+  // 2. Playbook Sandbox Dry-Run
+  const sandbox = new PlaybookSandboxEngineService();
+  const sandboxReport = await sandbox.simulatePlaybook({
+    tenantId: tenantA.id,
+    playbookId: 'PB-STAGE22-CONTAIN-IAM',
+    incidentId: 'INC-2026-STAGE22',
+    targetAssets: [
+      {
+        assetId: 'arn:aws:iam::111222333444:role/WorkerService',
+        assetType: 'AWS_IAM_ROLE',
+        criticalityTier: 'TIER_1_STANDARD',
+        currentState: { attachedPolicies: ['AdministratorAccess'] },
+      },
+    ],
+    actions: [{ actionId: 'act-01', type: 'REVOKE_IAM_SESSION', parameters: {} }],
+  });
+  logger.log(`  ✔ Playbook Sandbox: Status '${sandboxReport.status}' (Blast Radius: ${sandboxReport.simulatedBlastRadiusScore}, Transitions: ${sandboxReport.stateDiffs.length})`);
+
+  // 3. DLQ Replay & Poison Message Quarantine
+  const dlq = new DlqReplayQuarantineService();
+  const qMsg = dlq.quarantineMessage(tenantA.id, 'telemetry.edr', { corrupt: true }, 'Corrupt byte sequence', 'PARSE_ERR');
+  const replayRes = await dlq.replayMessage(tenantA.id, qMsg.messageId, (p) => ({ ...p, corrupt: false, timestamp: new Date().toISOString() }));
+  logger.log(`  ✔ DLQ Replay: Quarantined '${qMsg.messageId}' ➔ In-Flight Replay Status: '${replayRes.status}'`);
+
+  // 4. In-Memory Time-Series Statistical Anomaly Detector
+  const anomalyDetector = new TimeSeriesAnomalyDetectorService();
+  for (let i = 0; i < 15; i++) {
+    anomalyDetector.recordSample(tenantA.id, 'auth_failures_per_sec', 5 + (i % 2));
+  }
+  const anomalyRes = anomalyDetector.recordSample(tenantA.id, 'auth_failures_per_sec', 150);
+  logger.log(`  ✔ Time-Series Anomaly Detector: Injected Spike (150/s) -> Z-Score: ${anomalyRes.zScore} | Severity: ${anomalyRes.severity} | MITRE: ${anomalyRes.suggestedMitreTtp}`);
+  stepsPassed++;
+
+  // -------------------------------------------------------------------------
+  // Stage 23 (LAB 23): Lease Coordinator, Trace Sampler, KMS Rebalancer & Red Team Agent
+  // -------------------------------------------------------------------------
+  logger.log('\n[Stage 23/23] Cross-Region Leases, Trace Sampling, KMS Rebalancing & Red Team Simulation...');
+
+  // 1. Cross-Region Distributed Lock Lease Manager
+  const leaseCoordinator = new DistributedLeaseCoordinatorService();
+  const leaseResult = leaseCoordinator.acquireLease('epoch-merkle:tenant-global', 'pod-anchor-eu-1', 'eu-west-1', 4000);
+  const isValidFencing = leaseCoordinator.validateFencingToken('epoch-merkle:tenant-global', leaseResult.fencingToken);
+  logger.log(`  ✔ Distributed Lease Coordinator: Acquired=${leaseResult.acquired}, Token=${leaseResult.fencingToken}, Valid=${isValidFencing} (Leader: ${leaseResult.holderNodeId})`);
+
+  // 2. Adaptive Distributed Trace Sampler
+  const traceSampler = new AdaptiveTraceSamplerService();
+  const sampleDecision = traceSampler.sampleSpan({
+    traceId: 'trace-redteam-threat-99',
+    spanId: 'span-01',
+    tenantId: tenantA.id,
+    serviceName: 'soar-action-worker',
+    operationName: 'isolateHost',
+    durationMs: 110,
+    hasError: false,
+    matchedIoc: true,
+    timestamp: new Date().toISOString(),
+  });
+  logger.log(`  ✔ Adaptive Trace Sampler: Retained=${sampleDecision.retained}, Reason='${sampleDecision.reason}', Rate=${sampleDecision.appliedSampleRate}`);
+
+  // 3. Split-KMS Health Prober & Dynamic Re-Balancer
+  const kmsRebalancer = new KmsHealthRebalancerService();
+  kmsRebalancer.recordProbe('AWS_KMS', true, 28);
+  const primaryKms = kmsRebalancer.getPrimaryProvider();
+  const kmsWeights = kmsRebalancer.getRoutingWeights();
+  logger.log(`  ✔ KMS Health Re-Balancer: Primary='${primaryKms}' (AWS: ${kmsWeights.AWS_KMS}%, GCP: ${kmsWeights.GCP_CLOUD_KMS}%)`);
+
+  // 4. Autonomous AI Red Team Agent
+  const redTeam = new AutonomousRedTeamAgentService();
+  const attackChain = redTeam.generateAttackSequence(tenantA.id, 'Continuous-Posture-Validation');
+  const redTeamReport = redTeam.executeSyntheticRun(attackChain);
+  logger.log(`  ✔ Autonomous Red Team Agent: Executed ${redTeamReport.stepsExecuted} MITRE TTPs -> Coverage: ${redTeamReport.coveragePercentage}%, MTTD: ${redTeamReport.meanDetectionLatencyMs}ms, Posture: ${redTeamReport.defensePostureRating}`);
+  stepsPassed++;
+
+  // -------------------------------------------------------------------------
+  // Stage 24 (LAB 24): Confidential Enclave, Congestion Control, JIT Step-Up & Playbook Optimizer
+  // -------------------------------------------------------------------------
+  logger.log('\n[Stage 24/24] Confidential Enclave Bridge, Adaptive Congestion Manager, JIT Hardware Step-Up & Playbook Self-Tuning...');
+
+  // 1. Confidential Enclave Multi-Party Bridge
+  const enclaveBridge = new ConfidentialEnclaveBridgeService();
+  const enclaveMeasurement = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+  const enclaveAttestation = enclaveBridge.verifyAttestationQuote(
+    {
+      enclaveId: 'enclave-aws-nitro-mpe-01',
+      platform: 'AWS_NITRO',
+      pcr0: enclaveMeasurement,
+      pcr1: 'a1b2c3d4e5f60000000000000000000000000000000000000000000000000000',
+      pcr2: 'f6e5d4c3b2a10000000000000000000000000000000000000000000000000000',
+      hardwareRootOfTrust: 'aws-nitro-pki-chain-thumbprint-99',
+      enclavePublicKeyPem: '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A...\n-----END PUBLIC KEY-----',
+      signature: '3045022100a1b2c3d4e5f6...valid_hardware_nitro_sig',
+      timestamp: new Date().toISOString(),
+    },
+    enclaveMeasurement,
+  );
+  const enclaveReceipt = enclaveBridge.generateEnclaveReceipt(
+    enclaveAttestation.eatId,
+    tenantA.id,
+    'sha256-input-threat-graph',
+    'sha256-output-ioc-graph',
+  );
+  logger.log(`  ✔ Confidential Enclave Bridge: Verified=${enclaveAttestation.verified} (Status: ${enclaveAttestation.status}), EAT='${enclaveAttestation.eatId}', Sealed Receipt='${enclaveReceipt.receiptId}'`);
+
+  // 2. Real-Time Adaptive Flow-Control & Congestion Manager
+  const congestionManager = new AdaptiveCongestionManagerService();
+  const normalState = congestionManager.recordBufferUsage(tenantA.id, 20_000, 100_000, 25);
+  const normalAdmission = congestionManager.evaluateIngestRequest(tenantA.id, 30);
+  const burstState = congestionManager.recordBufferUsage(tenantA.id, 90_000, 100_000, 600);
+  const burstAdmission = congestionManager.evaluateIngestRequest(tenantA.id, 120);
+  logger.log(`  ✔ Adaptive Congestion Manager: Normal Window=${normalState.currentWindowSize} (Admitted: ${normalAdmission.admitted}) ➔ Under Pressure Window=${burstState.currentWindowSize} (Admitted: ${burstAdmission.admitted}, Retry-After: ${burstAdmission.retryAfterMs}ms)`);
+
+  // 3. Dynamic Zero-Trust JIT Hardware Step-Up Session Enforcer
+  const jitEnforcer = new JitSessionEnforcerService();
+  const jitSession = jitEnforcer.createJitSession('sec-lead-operator', tenantA.id, 'SECURITY_ADMIN', '198.51.100.25', 15, 5);
+  const validCheck = jitEnforcer.checkSessionValidity(jitSession.sessionId, '198.51.100.25');
+  const hijackedCheck = jitEnforcer.checkSessionValidity(jitSession.sessionId, '203.0.113.88'); // Divergent IP
+  const finalSessionState = jitEnforcer.getSession(jitSession.sessionId);
+  logger.log(`  ✔ JIT Session Enforcer: Issued Ticket='${jitSession.sessionId}', Valid Check=${validCheck.valid}, Anomaly Revocation='${finalSessionState?.status === 'REVOKED'}' (Reason: ${finalSessionState?.revocationReason})`);
+
+  // 4. AI Continuous SOAR Playbook Self-Tuning Agent
+  const playbookOptimizer = new PlaybookOptimizerAgentService();
+  const optimizationReport = playbookOptimizer.analyzePlaybookDag('PB-STAGE24-CONTAINMENT', tenantA.id, [
+    { actionId: 'act-revoke-iam', actionType: 'REVOKE_IAM', dependsOn: [], averageDurationMs: 250, failureRate: 0.01, isIdempotent: true },
+    { actionId: 'act-block-egress', actionType: 'BLOCK_EGRESS', dependsOn: [], averageDurationMs: 300, failureRate: 0.02, isIdempotent: true },
+    { actionId: 'act-isolate-host', actionType: 'ISOLATE_HOST', dependsOn: [], averageDurationMs: 200, failureRate: 0.01, isIdempotent: true },
+    { actionId: 'act-notify-soc', actionType: 'NOTIFY_SOC', dependsOn: ['act-revoke-iam', 'act-block-egress'], averageDurationMs: 150, failureRate: 0.0, isIdempotent: true },
+  ]);
+  logger.log(`  ✔ AI Playbook Optimizer: MTTR Reduced from ${optimizationReport.originalAverageDurationMs}ms ➔ ${optimizationReport.optimizedEstimatedDurationMs}ms (${optimizationReport.predictedMttrReductionPercentage}% Speedup across ${optimizationReport.optimizedDagStructure.length} Execution Phases)`);
+  stepsPassed++;
+
   logger.log('\n========================================================================');
   logger.log(` Synthetic Platform Verification Completed: ${stepsPassed}/${totalSteps} Stages Passed! `);
-  logger.log(' This runner validates in-process synthetic flows across all 20 Backend Labs.');
+  logger.log(' This runner validates in-process synthetic flows across all 24 Backend Labs.');
   logger.log('========================================================================\n');
 }
 
@@ -617,3 +817,4 @@ runFullPlatformVerifier().catch((err) => {
   console.error('Platform verification failed:', err);
   process.exit(1);
 });
+

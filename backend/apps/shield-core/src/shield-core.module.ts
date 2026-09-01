@@ -91,6 +91,7 @@ import { DiagnosticsModule } from './modules/diagnostics/diagnostics.module';
 import { RateLimitingModule } from './modules/rate-limiting/rate-limiting.module';
 import { WorkloadIdentityModule } from './modules/workload-identity/workload-identity.module';
 import { OutboxPublisherService } from './outbox/outbox-publisher.service';
+import { DistributedOutboxRelayService } from './modules/outbox/distributed-outbox-relay.service';
 import { PrismaModule } from './prisma/prisma.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { HumanAuthorityModule } from './modules/human-authority/human-authority.module';
@@ -203,6 +204,7 @@ import { HumanAuthorityModule } from './modules/human-authority/human-authority.
   providers: [
     ShieldCoreService,
     OutboxPublisherService,
+    DistributedOutboxRelayService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: DeclaredAccessGuard },
   ],

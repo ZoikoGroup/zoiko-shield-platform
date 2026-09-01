@@ -7,6 +7,7 @@ import { Invitation } from './entities/invitation.entity';
 import { JitElevationRequest } from './entities/jit-elevation-request.entity';
 import { AuthorizationService } from './authorization.service';
 import { JitElevationService } from './jit-elevation.service';
+import { JitSessionEnforcerService } from './jit-session-enforcer.service';
 import { AuthorizationController } from './authorization.controller';
 import { PermissionsGuard } from './guards/permissions.guard';
 import { PlatformPermissionsGuard } from './guards/platform-permissions.guard';
@@ -33,6 +34,7 @@ import { AuthorizationDecisionService } from '../authorization-decision/authoriz
   providers: [
     AuthorizationService,
     JitElevationService,
+    JitSessionEnforcerService,
     AuthorizationDecisionService,
     PermissionsGuard,
     PlatformPermissionsGuard,
@@ -40,6 +42,7 @@ import { AuthorizationDecisionService } from '../authorization-decision/authoriz
   exports: [
     AuthorizationService,
     JitElevationService,
+    JitSessionEnforcerService,
     AuthorizationDecisionService,
     PermissionsGuard,
     PlatformPermissionsGuard,

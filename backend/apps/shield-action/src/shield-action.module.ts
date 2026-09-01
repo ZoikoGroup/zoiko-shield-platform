@@ -40,6 +40,7 @@ import { SoarCircuitBreakerService } from './circuit-breaker/soar-circuit-breake
 import { CedarTenantIsolationService } from './policy/cedar-tenant-isolation.service';
 import { SignedCommandBrokerService } from './broker/signed-command-broker.service';
 import { TemporalContainmentEscalationService } from './orchestration/temporal-containment-escalation.service';
+import { PlaybookSandboxEngineService } from './simulation/playbook-sandbox-engine.service';
 
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
@@ -66,6 +67,7 @@ import { TemporalContainmentEscalationService } from './orchestration/temporal-c
     CedarTenantIsolationService,
     SignedCommandBrokerService,
     TemporalContainmentEscalationService,
+    PlaybookSandboxEngineService,
     ApprovalReauthorizationService,
     ReceiptVerificationService,
     ReconciliationService,
@@ -94,6 +96,7 @@ import { TemporalContainmentEscalationService } from './orchestration/temporal-c
     CedarTenantIsolationService,
     SignedCommandBrokerService,
     TemporalContainmentEscalationService,
+    PlaybookSandboxEngineService,
     ActionRollbackBrokerService,
     ActionRollbackOrchestratorService,
     ResponsePlaybookService,

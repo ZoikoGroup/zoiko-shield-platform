@@ -64,6 +64,11 @@ import { StreamThreatHuntingService } from './threat-hunting/stream-threat-hunti
 import { MpcThreatMatcherService } from './mpc-intel/mpc-threat-matcher.service';
 import { TierAWindowedDetectorService } from './detection/tier-a/tier-a-windowed-detector.service';
 import { ClickhouseAnalyticalDetectorService } from './analytics/clickhouse-analytical-detector.service';
+import { MultiRegionIngestShardService } from './sharding/multi-region-ingest-shard.service';
+import { StreamDeduplicationService } from './deduplication/stream-deduplication.service';
+import { DlqReplayQuarantineService } from './dlq/dlq-replay-quarantine.service';
+import { AdaptiveTraceSamplerService } from './sampling/adaptive-trace-sampler.service';
+import { AdaptiveCongestionManagerService } from './flow-control/adaptive-congestion-manager.service';
 
 import { MeteringController } from './metering/metering.controller';
 import { MeteringService } from './metering/metering.service';
@@ -206,6 +211,11 @@ import { IdempotencyService } from '../../shield-core/src/modules/idempotency/id
     MpcThreatMatcherService,
     TierAWindowedDetectorService,
     ClickhouseAnalyticalDetectorService,
+    MultiRegionIngestShardService,
+    StreamDeduplicationService,
+    DlqReplayQuarantineService,
+    AdaptiveTraceSamplerService,
+    AdaptiveCongestionManagerService,
     { provide: APP_GUARD, useClass: WorkloadAuthGuard },
   ],
   exports: [
@@ -221,6 +231,11 @@ import { IdempotencyService } from '../../shield-core/src/modules/idempotency/id
     MpcThreatMatcherService,
     TierAWindowedDetectorService,
     ClickhouseAnalyticalDetectorService,
+    MultiRegionIngestShardService,
+    StreamDeduplicationService,
+    DlqReplayQuarantineService,
+    AdaptiveTraceSamplerService,
+    AdaptiveCongestionManagerService,
   ],
 })
 export class ShieldIngestModule {}
