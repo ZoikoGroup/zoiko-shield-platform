@@ -23,7 +23,7 @@ services:
     restart: unless-stopped
     command: ["redis-server", "--save", "", "--appendonly", "no"]
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "${REDIS_PORT:-6380}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -47,7 +47,7 @@ services:
       - --pandaproxy-addr=PLAINTEXT://0.0.0.0:8082
       - --advertise-pandaproxy-addr=PLAINTEXT://redpanda:8082
     ports:
-      - "${REDPANDA_KAFKA_PORT:-9092}:9092"
+      - "${REDPANDA_KAFKA_PORT:-9093}:9092"
       - "${REDPANDA_PROXY_PORT:-8082}:8082"
     volumes:
       - redpanda_data:/var/lib/redpanda/data

@@ -4,6 +4,7 @@ FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY prisma ./prisma
+COPY prisma.config.ts ./
 RUN npm ci
 
 FROM node:22-alpine AS build
@@ -25,6 +26,7 @@ RUN npm prune --omit=dev && npm cache clean --force
 
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/prisma ./prisma
+COPY --from=build /app/prisma.config.ts ./prisma.config.ts
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 
 RUN addgroup -S shield && adduser -S shield -G shield

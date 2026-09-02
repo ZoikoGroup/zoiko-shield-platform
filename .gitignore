@@ -3,9 +3,12 @@
 .env.*
 !.env.example
 
-# Node
+# Node & Next.js
 node_modules/
 dist/
+.next/
+out/
+build/
 
 # OS
 .DS_Store
