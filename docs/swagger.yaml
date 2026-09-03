@@ -47526,3 +47526,775 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/v1/actions/simulate:
+    post:
+      tags:
+        - ResponseProposals
+      summary: Simulate SOAR containment or remediation action
+      description: Pre-execution dry-run simulation generating a cryptographically signed receipt with expected infrastructure state deltas and blast radius.
+      operationId: simulateSoarAction
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tenantId:
+                  type: string
+                caseId:
+                  type: string
+                actionType:
+                  type: string
+                targetResource:
+                  type: string
+                parameters:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '200':
+          description: Signed simulation receipt
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/actions/rollback:
+    post:
+      tags:
+        - ResponseProposals
+      summary: Rollback executed SOAR action
+      description: Redeem single-use cryptographic rollback token to execute pre-generated compensating action.
+      operationId: rollbackSoarAction
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rollbackToken
+              properties:
+                rollbackToken:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Rollback execution result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad request or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/actions/freeze:
+    post:
+      tags:
+        - ResponseProposals
+      summary: Engage or release emergency SOAR kill-switch freeze
+      description: Lockdown automated action dispatches across GLOBAL, TENANT, ACTION_TYPE, or CONNECTOR scopes.
+      operationId: toggleEmergencyFreeze
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - scope
+                - reason
+              properties:
+                scope:
+                  type: string
+                  enum: [GLOBAL, TENANT, ACTION_TYPE, CONNECTOR]
+                reason:
+                  type: string
+                scopeTarget:
+                  type: string
+      responses:
+        '200':
+          description: Freeze status update result
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/actions/receipts/{receiptId}:
+    get:
+      tags:
+        - ResponseProposals
+      summary: Get action simulation receipt by ID
+      description: Retrieve cryptographically signed pre-execution dry-run receipt.
+      operationId: getActionReceiptById
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: receiptId
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Simulation receipt details
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Receipt not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ai/copilot/hunt:
+    post:
+      tags:
+        - CaseAI
+      summary: Execute autonomous ReAct threat hunt
+      description: Multi-turn ReAct reasoning loop with tool execution across evidence ledger, MITRE ATT&CK, attack graphs, and blast radius predictors.
+      operationId: executeThreatHunt
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - hypothesis
+              properties:
+                hypothesis:
+                  type: string
+                caseId:
+                  type: string
+                maxIterations:
+                  type: number
+      responses:
+        '200':
+          description: ReAct execution trace and synthesis
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ai/red-team/simulate-scenario:
+    post:
+      tags:
+        - CaseAI
+      summary: Simulate autonomous adversary purple-team scenario
+      description: Multi-stage continuous attack simulation with synthetic OCSF telemetry generation and detection rule validation.
+      operationId: simulateRedTeamScenario
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - scenarioType
+              properties:
+                scenarioType:
+                  type: string
+                targetHost:
+                  type: string
+                targetUser:
+                  type: string
+      responses:
+        '200':
+          description: Multi-stage simulation results and detection efficacy
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ai/rca/generate:
+    post:
+      tags:
+        - CaseAI
+      summary: Generate root cause analysis (RCA) for incident
+      description: Generates deterministic root cause analysis with evidence citations from the immutable evidence ledger.
+      operationId: generateIncidentRca
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - caseId
+              properties:
+                caseId:
+                  type: string
+      responses:
+        '200':
+          description: Root cause analysis document
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/anchor/batches/seal:
+    post:
+      tags:
+        - AuditPackages
+      summary: Seal Merkle evidence batch and generate signed checkpoint
+      description: Builds domain-separated binary Merkle tree (ZS-MERKLE-V1) and applies dual-witness signatures (ECDSA P-256 + Dilithium3 and RFC-3161 TSA).
+      operationId: sealAnchorBatch
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - epochNumber
+                - evidenceIds
+              properties:
+                epochNumber:
+                  type: number
+                evidenceIds:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Sealed checkpoint receipt
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/anchor/proofs/verify:
+    post:
+      tags:
+        - AuditPackages
+      summary: Verify Merkle inclusion proof
+      description: Mathematically verifies whether leaf digest resolves to declared Merkle root without tampering.
+      operationId: verifyMerkleProof
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rootHash
+                - leafHash
+                - proof
+              properties:
+                rootHash:
+                  type: string
+                leafHash:
+                  type: string
+                leafIndex:
+                  type: number
+                proof:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Verification outcome
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/anchor/receipts/{epochNumber}:
+    get:
+      tags:
+        - AuditPackages
+      summary: Get Merkle epoch checkpoint receipt
+      description: Retrieve dual-witness signed checkpoint receipt for an epoch.
+      operationId: getAnchorReceiptByEpoch
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: epochNumber
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Signed epoch receipt
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Receipt not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/anchor/proofs/{epochNumber}/{leafIndex}:
+    get:
+      tags:
+        - AuditPackages
+      summary: Get Merkle inclusion proof for leaf in epoch
+      description: Returns cryptographic sibling hashes path proving evidence inclusion in epoch root.
+      operationId: getAnchorProofForLeaf
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: epochNumber
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: leafIndex
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Inclusion proof object
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Proof not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /internal/v1/cases/{caseId}/detections:
+    get:
+      tags:
+        - InternalMicroservices
+      summary: Internal service endpoint to retrieve case detection matches
+      description: Internal multi-dimensional RAG endpoint to retrieve detection rule matches linked to case.
+      operationId: getInternalCaseDetections
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Linked detection matches
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+        '401':
+          description: Unauthorized internal service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /internal/v1/cases/{caseId}/context-snapshot:
+    get:
+      tags:
+        - InternalMicroservices
+      summary: Internal service endpoint to retrieve case context snapshots
+      description: Internal multi-dimensional RAG endpoint to retrieve security context snapshots linked to case.
+      operationId: getInternalCaseContextSnapshot
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Linked context snapshots
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+        '401':
+          description: Unauthorized internal service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /internal/v1/cases/{caseId}/entities:
+    get:
+      tags:
+        - InternalMicroservices
+      summary: Internal service endpoint to retrieve case identity entities
+      description: Internal multi-dimensional RAG endpoint to retrieve identity entities linked to case.
+      operationId: getInternalCaseEntities
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Linked identity entities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+        '401':
+          description: Unauthorized internal service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /internal/v1/cases/{caseId}/assets:
+    get:
+      tags:
+        - InternalMicroservices
+      summary: Internal service endpoint to retrieve case security assets
+      description: Internal multi-dimensional RAG endpoint to retrieve security assets linked to case.
+      operationId: getInternalCaseAssets
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Linked security assets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+        '401':
+          description: Unauthorized internal service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /internal/v1/cases/{caseId}/connectors-health:
+    get:
+      tags:
+        - InternalMicroservices
+      summary: Internal service endpoint to retrieve connector health for case
+      description: Internal multi-dimensional RAG endpoint to retrieve connector health telemetry linked to case.
+      operationId: getInternalCaseConnectorsHealth
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Connector health telemetry
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+        '401':
+          description: Unauthorized internal service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/events/publish:
+    post:
+      tags:
+        - Notifications
+      summary: Publish real-time event to SSE broadcaster
+      description: Broadcasts a real-time event to connected SSE subscribers across tenant channels.
+      operationId: publishRealtimeEvent
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+                - type
+                - tenantId
+                - timestamp
+                - data
+              properties:
+                id:
+                  type: string
+                type:
+                  type: string
+                tenantId:
+                  type: string
+                timestamp:
+                  type: string
+                data:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '202':
+          description: Broadcast queued successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+

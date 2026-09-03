@@ -201,4 +201,11 @@ export class BatchMerkleCheckpointerService {
 
     return isValid;
   }
+
+  /**
+   * Retrieves a previously sealed epoch Merkle checkpoint by epoch number.
+   */
+  getEpochCheckpoint(epochNumber: number): EpochMerkleCheckpoint | undefined {
+    return this.epochHistory.get(epochNumber);
+  }
 }

@@ -2,6 +2,8 @@ import { Injectable, Logger, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { DetectionRule } from '../runtime/detection-rule.interface';
 import { SuspiciousLoginRule } from '../rules/suspicious-login/suspicious-login.rule';
+import { SuspiciousProcessRule } from '../rules/suspicious-process/suspicious-process.rule';
+import { CloudPrivilegeEscalationRule } from '../rules/cloud-privilege-escalation/cloud-privilege-escalation.rule';
 
 /**
  * Loads active DetectionVersions and resolves the DetectionRule
@@ -17,8 +19,12 @@ export class DetectionRegistryService {
   constructor(
     private readonly prisma: PrismaService,
     suspiciousLoginRule: SuspiciousLoginRule,
+    suspiciousProcessRule: SuspiciousProcessRule,
+    cloudPrivilegeEscalationRule: CloudPrivilegeEscalationRule,
   ) {
     this.registerRule(suspiciousLoginRule);
+    this.registerRule(suspiciousProcessRule);
+    this.registerRule(cloudPrivilegeEscalationRule);
   }
 
   registerRule(rule: DetectionRule): void {

@@ -4,6 +4,8 @@ import { KafkaModule } from './kafka/kafka.module';
 import { ShieldAiController } from './shield-ai.controller';
 
 import { MockModelProvider } from './provider-registry/mock-model-provider';
+import { GeminiModelProvider } from './provider-registry/gemini-model-provider';
+import { OpenAiModelProvider } from './provider-registry/openai-model-provider';
 import { ProviderRegistryService } from './provider-registry/provider-registry.service';
 import { ModelRegistryService } from './model-registry/model-registry.service';
 import { PromptRegistryService } from './prompt-registry/prompt-registry.service';
@@ -23,6 +25,7 @@ import { ToolBrokerService } from './tools/tool-broker/tool-broker.service';
 import { ToolCapabilityService } from './tools/tool-capability.service';
 import { AgentRunnerService } from './agent/agent-runner.service';
 import { SecurityCopilotService } from './agent/security-copilot.service';
+import { ThreatHuntingCopilotService } from './agent/threat-hunting-copilot.service';
 import { PromptGuardrailService } from './security/prompt-guardrail.service';
 import { DifferentialPrivacyGuardService } from './privacy/differential-privacy-guard.service';
 import { AttackPathDiscoveryService } from './graph/attack-path-discovery.service';
@@ -32,6 +35,7 @@ import { AiSafetyCircuitBreakerService } from './gateway/ai-safety-circuit-break
 import { AiKillSwitchService } from './kill-switch/ai-kill-switch.service';
 import { TimeSeriesAnomalyDetectorService } from './analytics/time-series-anomaly-detector.service';
 import { AutonomousRedTeamAgentService } from './adversarial/autonomous-red-team-agent.service';
+import { RedTeamScenarioGeneratorService } from './adversarial/red-team-scenario-generator.service';
 import { PlaybookOptimizerAgentService } from './optimization/playbook-optimizer-agent.service';
 
 import { ShieldCoreClient } from './internal-client/shield-core.client';
@@ -67,6 +71,8 @@ import { AiGovernanceViewsController } from './internal/ai-governance-views.cont
 
   providers: [
     MockModelProvider,
+    GeminiModelProvider,
+    OpenAiModelProvider,
     ProviderRegistryService,
     ModelRegistryService,
     PromptRegistryService,
@@ -100,6 +106,8 @@ import { AiGovernanceViewsController } from './internal/ai-governance-views.cont
     IncidentRcaGeneratorService,
     ModelArmorSafetyGatewayService,
     AiSafetyCircuitBreakerService,
+    ThreatHuntingCopilotService,
+    RedTeamScenarioGeneratorService,
 
     ShieldCoreClient,
 
@@ -116,6 +124,8 @@ import { AiGovernanceViewsController } from './internal/ai-governance-views.cont
     DetectionExplanationService,
   ],
   exports: [
+    ThreatHuntingCopilotService,
+    RedTeamScenarioGeneratorService,
     DetectionCandidateService,
     DetectionExplanationService,
     ToolCapabilityService,
