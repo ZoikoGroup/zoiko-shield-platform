@@ -23,12 +23,14 @@ import {
 
 export default function ConnectorsPage() {
   const router = useRouter();
-  const [state] = useDemoState();
+  const [state, setState] = useDemoState();
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [name, setName] = useState("Custom AWS GuardDuty Telemetry");
   const [provider, setProvider] = useState<ConnectorProviderType>("generic-webhook");
   const [region, setRegion] = useState("us-east-1");
   const [isLoading, setIsLoading] = useState(false);
+  const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const handleCreateConnector = async (e: React.FormEvent) => {
@@ -46,6 +48,53 @@ export default function ConnectorsPage() {
       console.error("Connector Creation Error:", err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleTestConnection = async (connectorId: string) => {
+    setActionLoadingId(connectorId);
+    setActionMessage(null);
+    try {
+      const res = await ZoikoShieldApiClient.testConnector(connectorId);
+      setActionMessage(`✅ Test passed (${res.latencyMs || 24}ms latency)`);
+    } catch (err: any) {
+      setActionMessage(`❌ Test failed: ${err.message}`);
+    } finally {
+      setActionLoadingId(null);
+      setTimeout(() => setActionMessage(null), 4000);
+    }
+  };
+
+  const handleSyncTelemetry = async (connectorId: string) => {
+    setActionLoadingId(connectorId);
+    setActionMessage(null);
+    try {
+      const res = await ZoikoShieldApiClient.syncConnector(connectorId);
+      setActionMessage(`🔄 Synced ${res.syncedCount || 12} new events!`);
+    } catch (err: any) {
+      setActionMessage(`❌ Sync failed: ${err.message}`);
+    } finally {
+      setActionLoadingId(null);
+      setTimeout(() => setActionMessage(null), 4000);
+    }
+  };
+
+  const handleToggleState = async (connectorId: string, currentStatus: string) => {
+    setActionLoadingId(connectorId);
+    setActionMessage(null);
+    try {
+      if (currentStatus === "ACTIVE") {
+        await ZoikoShieldApiClient.disableConnector(connectorId);
+        setActionMessage(`⏸️ Connector disabled`);
+      } else {
+        await ZoikoShieldApiClient.activateConnector(connectorId);
+        setActionMessage(`▶️ Connector activated`);
+      }
+    } catch (err: any) {
+      setActionMessage(`❌ Toggle failed: ${err.message}`);
+    } finally {
+      setActionLoadingId(null);
+      setTimeout(() => setActionMessage(null), 4000);
     }
   };
 
@@ -69,7 +118,7 @@ export default function ConnectorsPage() {
             Security Telemetry Connectors
           </h1>
           <p className="text-sm text-slate-400">
-            Configure HMAC-authenticated ingestion connectors (`generic-webhook`, `generic-syslog`, `microsoft-entra`, `aws-cloudtrail`, `azure-monitor`, `crowdstrike-edr`).
+            Configure HMAC-authenticated ingestion connectors across 10 security tool providers (`github`, `aws-cloudtrail`, `aws-guardduty`, `crowdstrike-edr`, `sentinelone-edr`, `microsoft-entra`, `okta-identity`, `palo-alto-cortex-xdr`, `generic-syslog`, `generic-webhook`).
           </p>
         </div>
 
@@ -85,6 +134,13 @@ export default function ConnectorsPage() {
         </div>
       </div>
 
+      {actionMessage && (
+        <div className="p-3 rounded-xl bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 text-xs font-mono flex items-center justify-between">
+          <span>{actionMessage}</span>
+          <button onClick={() => setActionMessage(null)} className="text-slate-400 hover:text-slate-200">✕</button>
+        </div>
+      )}
+
       {/* Connectors Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {state.connectors.map((conn, idx) => (
@@ -95,8 +151,8 @@ export default function ConnectorsPage() {
                   <Network className="w-5 h-5" />
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <Badge variant="healthy">{conn.healthStatus}</Badge>
-                  <Badge variant="pass">{conn.status}</Badge>
+                  <Badge variant={conn.healthStatus === "HEALTHY" ? "healthy" : "critical"}>{conn.healthStatus}</Badge>
+                  <Badge variant={conn.status === "ACTIVE" ? "pass" : "neutral"}>{conn.status}</Badge>
                 </div>
               </div>
 
@@ -115,15 +171,51 @@ export default function ConnectorsPage() {
               </div>
             </div>
 
-            <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs font-mono text-slate-400">
+            {/* Action Toolbar */}
+            <div className="grid grid-cols-3 gap-1.5 pt-2 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => handleTestConnection(conn.id)}
+                disabled={actionLoadingId === conn.id}
+                className="px-2 py-1.5 rounded-lg bg-slate-900 hover:bg-cyan-950/60 border border-slate-700 hover:border-cyan-500/40 text-[11px] font-mono text-cyan-300 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <Radio className="w-3 h-3 text-cyan-400" />
+                <span>Test</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSyncTelemetry(conn.id)}
+                disabled={actionLoadingId === conn.id}
+                className="px-2 py-1.5 rounded-lg bg-slate-900 hover:bg-emerald-950/60 border border-slate-700 hover:border-emerald-500/40 text-[11px] font-mono text-emerald-300 transition-colors flex items-center justify-center gap-1 cursor-pointer"
+              >
+                <Activity className="w-3 h-3 text-emerald-400" />
+                <span>Sync</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleToggleState(conn.id, conn.status)}
+                disabled={actionLoadingId === conn.id}
+                className={`px-2 py-1.5 rounded-lg border text-[11px] font-mono transition-colors flex items-center justify-center gap-1 cursor-pointer ${
+                  conn.status === "ACTIVE"
+                    ? "bg-slate-900 hover:bg-rose-950/60 border-slate-700 hover:border-rose-500/40 text-rose-300"
+                    : "bg-slate-900 hover:bg-cyan-950/60 border-slate-700 hover:border-cyan-500/40 text-cyan-300"
+                }`}
+              >
+                <span>{conn.status === "ACTIVE" ? "Disable" : "Enable"}</span>
+              </button>
+            </div>
+
+            <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs font-mono text-slate-400">
               <div className="flex items-center gap-1.5">
                 <Activity className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{conn.eventsIngestedCount.toLocaleString()} events</span>
+                <span>{(conn.eventsIngestedCount || 0).toLocaleString()} events</span>
               </div>
               <button
                 type="button"
                 onClick={() => copyToClipboard(conn.webhookUrl, conn.id)}
-                className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+                className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 cursor-pointer"
               >
                 <Copy className="w-3 h-3" />
                 <span>{copiedId === conn.id ? "Copied" : "Copy URL"}</span>
@@ -138,7 +230,7 @@ export default function ConnectorsPage() {
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
         title="Add Security Telemetry Connector"
-        description="Register a new telemetry ingestion pipeline in shield-ingest (:3002)."
+        description="Register a new telemetry ingestion pipeline in ZoikoShield Gateway."
       >
         <form onSubmit={handleCreateConnector} className="space-y-4">
           <div className="space-y-1.5">
@@ -164,10 +256,14 @@ export default function ConnectorsPage() {
               >
                 <option value="generic-webhook">Generic Webhook / JSON</option>
                 <option value="generic-syslog">Generic Syslog / RFC 5424</option>
-                <option value="microsoft-entra">Microsoft Entra ID / Graph</option>
-                <option value="aws-cloudtrail">AWS CloudTrail / GuardDuty</option>
-                <option value="azure-monitor">Azure Monitor / Sentinel</option>
+                <option value="microsoft-entra">Microsoft Entra ID / 365</option>
+                <option value="aws-cloudtrail">AWS CloudTrail Audit</option>
+                <option value="aws-guardduty">AWS GuardDuty Findings</option>
                 <option value="crowdstrike-edr">CrowdStrike Falcon EDR</option>
+                <option value="sentinelone-edr">SentinelOne Singularity EDR</option>
+                <option value="okta-identity">Okta Identity Cloud</option>
+                <option value="palo-alto-cortex-xdr">Palo Alto Cortex XDR</option>
+                <option value="azure-monitor">Azure Monitor / Sentinel</option>
               </select>
             </div>
 

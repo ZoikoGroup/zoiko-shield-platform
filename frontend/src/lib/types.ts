@@ -79,7 +79,7 @@ export interface Connector {
   provider: ConnectorProviderType;
   sourceRegion: string;
   environmentId?: string;
-  status: 'ACTIVE' | 'INACTIVE' | 'TESTING';
+  status: 'ACTIVE' | 'INACTIVE' | 'TESTING' | 'DISABLED';
   healthStatus: 'HEALTHY' | 'DEGRADED' | 'UNHEALTHY';
   hmacSecret: string;
   webhookUrl: string;
