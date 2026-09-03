@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards } from '@nestjs/common';
+import { InternalAuthGuard } from './internal-client/internal-auth.guard';
 import {
   ThreatHuntingCopilotService,
   type ThreatHuntingQueryInput,
@@ -46,6 +47,7 @@ export class IncidentTelemetryDto implements IncidentTelemetryInput {
   attackGraphPath?: string[];
 }
 
+@UseGuards(InternalAuthGuard)
 @Controller()
 export class ShieldAiController {
   constructor(

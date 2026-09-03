@@ -31,8 +31,9 @@ export class EventStreamService {
       filter((event) => event.tenantId === tenantId || event.tenantId === 'GLOBAL'),
       map((event) => {
         return {
+          type: event.type,
           data: event,
-        } as MessageEvent;
+        } as unknown as MessageEvent;
       }),
     );
   }

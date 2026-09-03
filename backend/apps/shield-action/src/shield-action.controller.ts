@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Body, Param, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { SimulationService } from './simulation/simulation.service';
 import { ActionRollbackBrokerService } from './rollback/action-rollback-broker.service';
 import { FreezeControllerService } from './freeze-controller/freeze-controller.service';
+import { InternalAuthGuard } from './internal-client/internal-auth.guard';
 
 export class SimulateActionDto {
   tenantId!: string;
@@ -23,6 +24,7 @@ export class CreateFreezeDto {
   durationMinutes?: number;
 }
 
+@UseGuards(InternalAuthGuard)
 @Controller()
 export class ShieldActionController {
   constructor(

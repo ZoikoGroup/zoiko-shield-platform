@@ -6,9 +6,12 @@ import {
   Post,
   Body,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { EventStreamService } from './event-stream.service';
+import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 
 export class PublishRealtimeEventDto {
   id!: string;
@@ -23,6 +26,7 @@ export class PublishRealtimeEventDto {
   data!: Record<string, unknown>;
 }
 
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/events')
 export class EventStreamController {
   constructor(private readonly eventStreamService: EventStreamService) {}

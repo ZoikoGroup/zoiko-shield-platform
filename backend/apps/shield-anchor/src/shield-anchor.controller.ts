@@ -1,4 +1,5 @@
-import { Controller, Get, Post, Body, Param, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, NotFoundException, UseGuards } from '@nestjs/common';
+import { InternalAuthGuard } from './internal-client/internal-auth.guard';
 import {
   BatchMerkleCheckpointerService,
   type EvidenceLeaf,
@@ -25,6 +26,7 @@ export class VerifyProofDto implements MerkleInclusionProof {
   epochNumber!: number;
 }
 
+@UseGuards(InternalAuthGuard)
 @Controller()
 export class ShieldAnchorController {
   constructor(
