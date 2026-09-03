@@ -26,7 +26,9 @@ export type BadgeVariant =
   | "simulated"
   | "active"
   | "healthy"
-  | "neutral";
+  | "neutral"
+  | "llm-enabled"
+  | "llm-disabled";
 
 interface BadgeProps {
   variant?: BadgeVariant;

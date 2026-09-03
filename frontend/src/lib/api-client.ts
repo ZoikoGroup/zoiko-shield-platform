@@ -54,8 +54,8 @@ export class ZoikoShieldApiClient {
         const role = email.includes("owner")
           ? "TENANT_OWNER"
           : email.includes("admin")
-          ? "SUPER_ADMIN"
-          : "SECURITY_ANALYST";
+            ? "SUPER_ADMIN"
+            : "SECURITY_ANALYST";
         return {
           userId: `usr-${generateUUID().slice(0, 8)}`,
           email,
@@ -240,6 +240,84 @@ export class ZoikoShieldApiClient {
     }
     saveDemoState(state);
     return conn;
+  }
+
+  static async disableConnector(connectorId: string): Promise<Connector> {
+    const conn = await this.safeFetch<Connector>(
+      `/api/v1/connectors/${connectorId}/disable`,
+      { method: "POST" },
+      () => {
+        const state = getState();
+        const found = state.connectors.find((c) => c.id === connectorId);
+        if (found) {
+          found.status = "DISABLED";
+          found.healthStatus = "DEGRADED";
+          return found;
+        }
+        throw new Error("Connector not found");
+      }
+    );
+
+    const state = getState();
+    const existing = state.connectors.find((c) => c.id === connectorId);
+    if (existing) {
+      existing.status = "DISABLED";
+      existing.healthStatus = "DEGRADED";
+    }
+    saveDemoState(state);
+    return conn;
+  }
+
+  static async testConnector(connectorId: string): Promise<{ success: boolean; latencyMs: number; provider: string; message: string }> {
+    return this.safeFetch(
+      `/api/v1/connectors/${connectorId}/test`,
+      { method: "POST" },
+      () => ({
+        success: true,
+        latencyMs: Math.floor(Math.random() * 40) + 10,
+        provider: "generic-webhook",
+        message: `Connection test passed for ${connectorId}`,
+      })
+    );
+  }
+
+  static async syncConnector(connectorId: string): Promise<{ status: string; syncedCount: number; lastSyncAt: string }> {
+    const res = await this.safeFetch<{ status: string; syncedCount: number; lastSyncAt: string }>(
+      `/api/v1/connectors/${connectorId}/sync`,
+      { method: "POST" },
+      () => ({
+        status: "SUCCESS",
+        syncedCount: Math.floor(Math.random() * 50) + 10,
+        lastSyncAt: new Date().toISOString(),
+      })
+    );
+
+    const state = getState();
+    const conn = state.connectors.find((c) => c.id === connectorId);
+    if (conn) {
+      conn.eventsIngestedCount += res.syncedCount || 15;
+      conn.lastEventAt = new Date().toISOString();
+      saveDemoState(state);
+    }
+    return res;
+  }
+
+  static async getEvents(params?: { limit?: number; connectorId?: string }): Promise<{ total: number; data: TelemetryNormalized[] }> {
+    const query = new URLSearchParams();
+    if (params?.limit) query.set("limit", String(params.limit));
+    if (params?.connectorId) query.set("connectorId", params.connectorId);
+
+    return this.safeFetch(
+      `/api/v1/events?${query.toString()}`,
+      { method: "GET" },
+      () => {
+        const state = getState();
+        return {
+          total: state.normalizedEvents.length,
+          data: state.normalizedEvents,
+        };
+      }
+    );
   }
 
   // --- Step 5: Webhook Ingestion & Normalization ---
