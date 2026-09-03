@@ -5,6 +5,9 @@ import {
   CANONICAL_TOPICS,
 } from '../kafka/kafka.producer.service';
 import { requireRegion } from '../security/tenant-context';
+import { EntraOcsfAdapter } from './adapters/entra.adapter';
+import { CrowdStrikeOcsfAdapter } from './adapters/crowdstrike.adapter';
+import { CloudTrailOcsfAdapter } from './adapters/cloudtrail.adapter';
 
 export interface ReprocessResult {
   quarantineId: string;
@@ -66,36 +69,101 @@ export class NormalizationService {
       );
     }
 
-    // Determine normalized event fields
-    const eventClass =
-      payload.eventClass ||
-      payload.eventType ||
-      (payload.user ? 'AUTHENTICATION' : 'SECURITY_LOG');
-    const eventCategory = payload.eventCategory || 'AUDIT';
-    const eventActivity =
-      payload.eventActivity || payload.eventType || 'LOG_ENTRY';
-    const severity = (payload.severity || 'INFORMATIONAL').toUpperCase();
+    // Lookup connector instance to determine provider type
+    const connectorInstance = this.prisma.connectorInstance
+      ? await this.prisma.connectorInstance.findUnique({
+          where: { id: rawEvent.connector_id },
+          include: { definition: true },
+        })
+      : null;
+    const provider = connectorInstance?.definition?.provider || rawEvent.source_type || 'generic-webhook';
 
-    const actorUserId =
-      payload.actorUserId || payload.user?.id || payload.userId || undefined;
-    const actorEmail =
-      payload.actorEmail ||
-      payload.user?.email ||
-      payload.userEmail ||
-      undefined;
-    const sourceIp =
-      payload.sourceIp || payload.clientIp || payload.ipAddress || undefined;
-    const destinationIp =
-      payload.destinationIp || payload.targetIp || undefined;
-    const resourceId = payload.resourceId || payload.targetId || undefined;
-    const resourceType =
-      payload.resourceType || payload.targetType || undefined;
-    const action = payload.action || payload.eventType || 'EXECUTE';
-    const outcome = (
-      payload.outcome ||
-      payload.result ||
-      'SUCCESS'
-    ).toUpperCase();
+    let eventClass: string;
+    let eventCategory: string;
+    let eventActivity: string;
+    let severity: string;
+    let actorUserId: string | undefined;
+    let actorEmail: string | undefined;
+    let sourceIp: string | undefined;
+    let destinationIp: string | undefined;
+    let resourceId: string | undefined;
+    let resourceType: string | undefined;
+    let action: string;
+    let outcome: string;
+
+    if (provider === 'microsoft-entra' || payload.eventType === 'signinLogs') {
+      const ocsf = EntraOcsfAdapter.normalize(payload);
+      eventClass = ocsf.eventClass;
+      eventCategory = ocsf.eventCategory;
+      eventActivity = ocsf.eventActivity;
+      severity = ocsf.severity;
+      actorUserId = ocsf.actorUserId;
+      actorEmail = ocsf.actorEmail;
+      sourceIp = ocsf.sourceIp;
+      destinationIp = ocsf.destinationIp;
+      resourceId = ocsf.resourceId;
+      resourceType = ocsf.resourceType;
+      action = ocsf.action;
+      outcome = ocsf.outcome;
+    } else if (provider === 'crowdstrike-edr' || payload.CommandLine || payload.FileName) {
+      const ocsf = CrowdStrikeOcsfAdapter.normalize(payload);
+      eventClass = ocsf.eventClass;
+      eventCategory = ocsf.eventCategory;
+      eventActivity = ocsf.eventActivity;
+      severity = ocsf.severity;
+      actorUserId = ocsf.actorUserId;
+      actorEmail = ocsf.actorEmail;
+      sourceIp = ocsf.sourceIp;
+      destinationIp = ocsf.destinationIp;
+      resourceId = ocsf.resourceId;
+      resourceType = ocsf.resourceType;
+      action = ocsf.action;
+      outcome = ocsf.outcome;
+    } else if (provider === 'aws-cloudtrail' || provider === 'aws-guardduty' || payload.eventSource === 'aws.iam') {
+      const ocsf = CloudTrailOcsfAdapter.normalize(payload);
+      eventClass = ocsf.eventClass;
+      eventCategory = ocsf.eventCategory;
+      eventActivity = ocsf.eventActivity;
+      severity = ocsf.severity;
+      actorUserId = ocsf.actorUserId;
+      actorEmail = ocsf.actorEmail;
+      sourceIp = ocsf.sourceIp;
+      destinationIp = ocsf.destinationIp;
+      resourceId = ocsf.resourceId;
+      resourceType = ocsf.resourceType;
+      action = ocsf.action;
+      outcome = ocsf.outcome;
+    } else {
+      eventClass =
+        payload.eventClass ||
+        payload.eventType ||
+        (payload.user ? 'AUTHENTICATION' : 'SECURITY_LOG');
+      eventCategory = payload.eventCategory || 'AUDIT';
+      eventActivity =
+        payload.eventActivity || payload.eventType || 'LOG_ENTRY';
+      severity = (payload.severity || 'INFORMATIONAL').toUpperCase();
+
+      actorUserId =
+        payload.actorUserId || payload.user?.id || payload.userId || undefined;
+      actorEmail =
+        payload.actorEmail ||
+        payload.user?.email ||
+        payload.userEmail ||
+        undefined;
+      sourceIp =
+        payload.sourceIp || payload.clientIp || payload.ipAddress || undefined;
+      destinationIp =
+        payload.destinationIp || payload.targetIp || undefined;
+      resourceId = payload.resourceId || payload.targetId || undefined;
+      resourceType =
+        payload.resourceType || payload.targetType || undefined;
+      action = payload.action || payload.eventType || 'EXECUTE';
+      outcome = (
+        payload.outcome ||
+        payload.result ||
+        'SUCCESS'
+      ).toUpperCase();
+    }
 
     const occurredAt = payload.occurredAt
       ? new Date(payload.occurredAt)

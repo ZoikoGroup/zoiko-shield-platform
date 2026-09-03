@@ -95,6 +95,7 @@ import { DistributedOutboxRelayService } from './modules/outbox/distributed-outb
 import { PrismaModule } from './prisma/prisma.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { HumanAuthorityModule } from './modules/human-authority/human-authority.module';
+import { EventStreamModule } from './modules/events/event-stream.module';
 
 @Module({
   imports: [
@@ -199,6 +200,7 @@ import { HumanAuthorityModule } from './modules/human-authority/human-authority.
     DiagnosticsModule,
     RateLimitingModule,
     WorkloadIdentityModule,
+    EventStreamModule,
   ],
   controllers: [ShieldCoreController],
   providers: [

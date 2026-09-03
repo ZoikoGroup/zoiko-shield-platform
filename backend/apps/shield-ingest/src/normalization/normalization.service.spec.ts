@@ -48,6 +48,12 @@ describe('NormalizationService', () => {
       connectorHealthStatus: {
         findFirst: jest.fn().mockResolvedValue({ state: 'HEALTHY' }),
       },
+      connectorInstance: {
+        findUnique: jest.fn().mockResolvedValue({
+          id: 'conn-123',
+          definition: { provider: 'generic-webhook' },
+        }),
+      },
     };
 
     kafkaMock = {

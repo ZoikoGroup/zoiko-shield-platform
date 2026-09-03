@@ -64,4 +64,33 @@ export class FreezeControllerService {
 
     return { frozen: false };
   }
+
+  /**
+   * Creates a new operational freeze / emergency kill-switch rule.
+   */
+  async createFreeze(params: {
+    tenantId: string;
+    scope: 'GLOBAL' | 'TENANT' | 'ACTION_TYPE' | 'CONNECTOR';
+    scopeRef?: string;
+    reason: string;
+    actorId: string;
+    durationMinutes?: number;
+  }) {
+    const now = new Date();
+    const activeUntil = params.durationMinutes
+      ? new Date(now.getTime() + params.durationMinutes * 60000)
+      : null;
+
+    return this.prisma.freeze.create({
+      data: {
+        tenant_id: params.tenantId,
+        scope: params.scope,
+        scope_ref: params.scopeRef,
+        reason: params.reason,
+        created_by: params.actorId,
+        active_from: now,
+        active_until: activeUntil,
+      },
+    });
+  }
 }

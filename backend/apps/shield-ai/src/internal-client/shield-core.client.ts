@@ -6,7 +6,7 @@ const SHIELD_CORE_BASE_URL =
   process.env.SHIELD_CORE_BASE_URL || 'http://localhost:3001';
 
 /**
- * shield-ai's only path to Case/Alert/Evidence/Detection/Identity/Asset
+ * shield-ai's only path to Case/Alert/Evidence/Detection/Identity/Asset/Connector
  * data — always this authenticated internal client, never a direct Prisma
  * read of shield-core-owned tables (spec §1).
  */
@@ -33,6 +33,36 @@ export class ShieldCoreClient {
   async getCaseEvidence(tenantId: string, caseId: string): Promise<any> {
     return this.get(
       `/internal/v1/cases/${caseId}/evidence?tenantId=${encodeURIComponent(tenantId)}`,
+    );
+  }
+
+  async getCaseDetections(tenantId: string, caseId: string): Promise<any> {
+    return this.get(
+      `/internal/v1/cases/${caseId}/detections?tenantId=${encodeURIComponent(tenantId)}`,
+    );
+  }
+
+  async getCaseContextSnapshot(tenantId: string, caseId: string): Promise<any> {
+    return this.get(
+      `/internal/v1/cases/${caseId}/context-snapshot?tenantId=${encodeURIComponent(tenantId)}`,
+    );
+  }
+
+  async getCaseEntities(tenantId: string, caseId: string): Promise<any> {
+    return this.get(
+      `/internal/v1/cases/${caseId}/entities?tenantId=${encodeURIComponent(tenantId)}`,
+    );
+  }
+
+  async getCaseAssets(tenantId: string, caseId: string): Promise<any> {
+    return this.get(
+      `/internal/v1/cases/${caseId}/assets?tenantId=${encodeURIComponent(tenantId)}`,
+    );
+  }
+
+  async getCaseConnectorsHealth(tenantId: string, caseId: string): Promise<any> {
+    return this.get(
+      `/internal/v1/cases/${caseId}/connectors-health?tenantId=${encodeURIComponent(tenantId)}`,
     );
   }
 

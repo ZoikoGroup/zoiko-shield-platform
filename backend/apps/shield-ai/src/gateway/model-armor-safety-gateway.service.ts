@@ -33,15 +33,21 @@ export interface AiGatewayResponse {
 export class ModelArmorSafetyGatewayService {
   private readonly logger = new Logger(ModelArmorSafetyGatewayService.name);
 
-  // High-risk prompt injection & jailbreak indicators per LAB 13
+  // High-risk prompt injection & jailbreak indicators per ZS-ENG-AI-001 §05
   private readonly injectionSignatures = [
     /ignore (all )?previous instructions/i,
     /system prompt override/i,
     /drop (all )?tables/i,
     /you are now in god mode/i,
-    /reveal master key/i,
+    /reveal (the )?master key/i,
     /disable security controls/i,
-    /exfiltrate credentials/i,
+    /exfiltrate (all )?credentials/i,
+    /do anything now|dan mode/i,
+    /bypass (all )?(safety|ethical) (filters|guardrails)/i,
+    /repeat (everything|all instructions) above/i,
+    /print (the )?(system|internal) prompt/i,
+    /roleplay as (an )?unrestricted/i,
+    /developer mode (enabled|on)/i,
   ];
 
   /**

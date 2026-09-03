@@ -17,16 +17,19 @@ export class WebhookSignatureGuard implements CanActivate {
 
     const signature =
       (headers['x-hub-signature-256'] as string) ||
+      (headers['x-webhook-signature'] as string) ||
+      (headers['x-signature-sha256'] as string) ||
       (headers['x-signature'] as string);
 
     if (!signature) {
       throw new UnauthorizedException(
-        'Missing required webhook HMAC signature header (x-signature or x-hub-signature-256)',
+        'Missing required webhook HMAC signature header (x-webhook-signature, x-signature, or x-hub-signature-256)',
       );
     }
 
     const timestampStr =
       (headers['x-timestamp'] as string) ||
+      (headers['x-webhook-timestamp'] as string) ||
       (headers['x-request-timestamp'] as string);
     const nonce = headers['x-webhook-nonce'] as string;
     if (!timestampStr || !nonce) {

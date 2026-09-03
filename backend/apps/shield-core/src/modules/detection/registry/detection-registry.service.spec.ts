@@ -4,6 +4,8 @@ import { DetectionRegistryService } from './detection-registry.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { SuspiciousLoginRule } from '../rules/suspicious-login/suspicious-login.rule';
 import { SUSPICIOUS_LOGIN_KEY } from '../rules/suspicious-login/suspicious-login.schema';
+import { SuspiciousProcessRule } from '../rules/suspicious-process/suspicious-process.rule';
+import { CloudPrivilegeEscalationRule } from '../rules/cloud-privilege-escalation/cloud-privilege-escalation.rule';
 
 describe('DetectionRegistryService', () => {
   let service: DetectionRegistryService;
@@ -24,6 +26,8 @@ describe('DetectionRegistryService', () => {
         DetectionRegistryService,
         { provide: PrismaService, useValue: prismaMock },
         SuspiciousLoginRule,
+        SuspiciousProcessRule,
+        CloudPrivilegeEscalationRule,
       ],
     }).compile();
 
