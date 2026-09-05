@@ -47,6 +47,7 @@ import { PrismaModule } from './prisma/prisma.module';
 
 import { NormalizationController } from './normalization/normalization.controller';
 import { NormalizationService } from './normalization/normalization.service';
+import { CloudNormalizationBridgeService } from './normalization/cloud-normalization-bridge.service';
 
 import { AssetIdentityContextController } from './context/asset-identity-context.controller';
 import { AssetIdentityContextService } from './context/asset-identity-context.service';
@@ -173,6 +174,7 @@ import { IdempotencyService } from '../../shield-core/src/modules/idempotency/id
     RawIngestService,
     ConnectorCatalogService,
     NormalizationService,
+    CloudNormalizationBridgeService,
     AssetIdentityContextService,
     DetectionEngineService,
     ThreatCorrelationService,

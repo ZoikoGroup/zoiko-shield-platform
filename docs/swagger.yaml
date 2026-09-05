@@ -28754,6 +28754,168 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/PostIngestionWebhooksByConnectorIdRequest"
+
+  /api/v1/ingestion/webhooks/cloudtrail/{connectorId}:
+    post:
+      tags:
+        - WebhookIngestion
+      summary: Receive AWS CloudTrail event stream batch
+      parameters:
+        - name: connectorId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique connector ID identifying target CloudTrail integration.
+        - name: x-timestamp
+          in: header
+          required: true
+          schema: { type: integer, format: int64 }
+          description: Unix timestamp in seconds.
+        - name: x-webhook-nonce
+          in: header
+          required: true
+          schema: { type: string, minLength: 16 }
+          description: Single-use connector nonce.
+      responses:
+        "202":
+          description: AWS CloudTrail webhook batch accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostIngestionWebhooksByConnectorIdResponse"
+        "400":
+          description: Request validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Connector not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      operationId: postIngestionWebhooksCloudTrailByConnectorId
+      security:
+        - WebhookHmacAuth: []
+      description: Receives AWS CloudTrail multi-event bundles and normalizes to OCSF 3002/6003.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+
+  /api/v1/ingestion/webhooks/crowdstrike/{connectorId}:
+    post:
+      tags:
+        - WebhookIngestion
+      summary: Receive CrowdStrike Falcon detection stream
+      parameters:
+        - name: connectorId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique connector ID identifying target CrowdStrike integration.
+        - name: x-timestamp
+          in: header
+          required: true
+          schema: { type: integer, format: int64 }
+          description: Unix timestamp in seconds.
+        - name: x-webhook-nonce
+          in: header
+          required: true
+          schema: { type: string, minLength: 16 }
+          description: Single-use connector nonce.
+      responses:
+        "202":
+          description: CrowdStrike Falcon telemetry accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostIngestionWebhooksByConnectorIdResponse"
+        "400":
+          description: Request validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Connector not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      operationId: postIngestionWebhooksCrowdStrikeByConnectorId
+      security:
+        - WebhookHmacAuth: []
+      description: Receives CrowdStrike Falcon host process detection and normalizes to OCSF 1007.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+
+  /api/v1/ingestion/webhooks/okta/{connectorId}:
+    post:
+      tags:
+        - WebhookIngestion
+      summary: Receive Okta System Log event hook
+      parameters:
+        - name: connectorId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique connector ID identifying target Okta integration.
+        - name: x-timestamp
+          in: header
+          required: true
+          schema: { type: integer, format: int64 }
+          description: Unix timestamp in seconds.
+        - name: x-webhook-nonce
+          in: header
+          required: true
+          schema: { type: string, minLength: 16 }
+          description: Single-use connector nonce.
+      responses:
+        "202":
+          description: Okta event hook accepted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostIngestionWebhooksByConnectorIdResponse"
+        "400":
+          description: Request validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Connector not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      operationId: postIngestionWebhooksOktaByConnectorId
+      security:
+        - WebhookHmacAuth: []
+      description: Receives Okta authentication and session event hooks and normalizes to OCSF 3002.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
   /api/v1/metering/usage:
     get:
       tags:
@@ -47831,6 +47993,100 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/v1/ai/red-team/execute-chain:
+    post:
+      tags:
+        - CaseAI
+      summary: Execute Autonomous Multi-Stage Red Team Attack Chain
+      description: Executes an automated multi-stage MITRE ATT&CK adversary emulation chain and generates a cryptographically attested security posture scorecard.
+      operationId: executeRedTeamChain
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenantId
+              properties:
+                tenantId:
+                  type: string
+                scenarioName:
+                  type: string
+                targetHost:
+                  type: string
+                targetUser:
+                  type: string
+                intensityLevel:
+                  type: string
+                  enum: [LOW, MEDIUM, AGGRESSIVE]
+      responses:
+        '200':
+          description: Red-team execution report and defense posture scorecard
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ai/redteam/execute-chain:
+    post:
+      tags:
+        - CaseAI
+      summary: Execute Autonomous Red Team Attack Chain (Alias)
+      description: Alias endpoint for automated multi-stage MITRE ATT&CK adversary emulation chain execution.
+      operationId: executeRedTeamChainAlias
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenantId
+              properties:
+                tenantId:
+                  type: string
+                scenarioName:
+                  type: string
+                targetHost:
+                  type: string
+                targetUser:
+                  type: string
+                intensityLevel:
+                  type: string
+                  enum: [LOW, MEDIUM, AGGRESSIVE]
+      responses:
+        '200':
+          description: Red-team execution report
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/v1/ai/rca/generate:
     post:
       tags:
@@ -48296,5 +48552,554 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ai/threat-hunting/hunt:
+    post:
+      tags:
+        - InternalMicroservices
+      summary: Autonomous Threat Hunting ReAct Investigation
+      description: Conducts an autonomous threat hunting investigation using a grounded ReAct execution loop with live forensic tool calling, differential privacy, and attack graph traversal.
+      operationId: huntAutonomousThreat
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenantId
+                - analystId
+                - query
+              properties:
+                tenantId:
+                  type: string
+                analystId:
+                  type: string
+                caseId:
+                  type: string
+                query:
+                  type: string
+                maxIterations:
+                  type: integer
+                seedContext:
+                  type: object
+                  additionalProperties: true
+      responses:
+        '200':
+          description: Structured Threat Hunting Report
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized internal service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Rejected by Model Armor prompt guardrails
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/action/approvals/two-man/submit:
+    post:
+      tags:
+        - InternalMicroservices
+      summary: Submit a Two-Man Rule Dual-Authorization Ticket
+      description: Submits a new dual-authorization ticket for high-impact (R3) or critical (R4) remediation actions requiring independent secondary approval.
+      operationId: submitTwoManTicket
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenantId
+                - initiatorId
+                - proposalId
+                - actionType
+                - targetResource
+                - authorityLevel
+                - rationale
+              properties:
+                tenantId:
+                  type: string
+                initiatorId:
+                  type: string
+                proposalId:
+                  type: string
+                actionType:
+                  type: string
+                targetResource:
+                  type: string
+                authorityLevel:
+                  type: string
+                  enum: [R0, R1, R2, R3, R4]
+                rationale:
+                  type: string
+                ttlMinutes:
+                  type: integer
+                environmentId:
+                  type: string
+      responses:
+        '201':
+          description: Two-man rule ticket created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized internal service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/action/approvals/two-man/approve:
+    post:
+      tags:
+        - InternalMicroservices
+      summary: Approve a Two-Man Rule Ticket
+      description: Approves a pending Two-Man Rule dual-authorization ticket by a distinct secondary operator, computing cryptographic HMAC attestation signature.
+      operationId: approveTwoManTicket
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenantId
+                - ticketId
+                - approverId
+              properties:
+                tenantId:
+                  type: string
+                ticketId:
+                  type: string
+                approverId:
+                  type: string
+                approvalNotes:
+                  type: string
+                fido2MfaToken:
+                  type: string
+      responses:
+        '200':
+          description: Two-man rule ticket approved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad request or expired ticket
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized internal service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Approver cannot be the same as initiator
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Ticket not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/action/approvals/two-man/reject:
+    post:
+      tags:
+        - InternalMicroservices
+      summary: Reject a Two-Man Rule Ticket
+      description: Rejects a pending Two-Man Rule dual-authorization ticket.
+      operationId: rejectTwoManTicket
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenantId
+                - ticketId
+                - rejectorId
+                - rejectionReason
+              properties:
+                tenantId:
+                  type: string
+                ticketId:
+                  type: string
+                rejectorId:
+                  type: string
+                rejectionReason:
+                  type: string
+      responses:
+        '200':
+          description: Two-man rule ticket rejected
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized internal service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Ticket not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/action/approvals/two-man/{ticketId}:
+    get:
+      tags:
+        - InternalMicroservices
+      summary: Fetch Two-Man Rule Ticket Status
+      description: Retrieves the current status, approval metadata, and cryptographic signature of a Two-Man Rule ticket.
+      operationId: getTwoManTicket
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: ticketId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: tenantId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Ticket details
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          description: Unauthorized internal service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Ticket not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/action/locks/acquire:
+    post:
+      tags:
+        - InternalMicroservices
+      summary: Acquire Distributed Action Lock
+      description: Acquires an exclusive distributed concurrency and idempotency lock on a target infrastructure asset.
+      operationId: acquireDistributedActionLock
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenantId
+                - actionType
+                - targetResource
+                - idempotencyKey
+                - ownerId
+              properties:
+                tenantId:
+                  type: string
+                actionType:
+                  type: string
+                targetResource:
+                  type: string
+                idempotencyKey:
+                  type: string
+                ownerId:
+                  type: string
+                ttlSeconds:
+                  type: integer
+      responses:
+        '200':
+          description: Lock acquired or idempotent re-entry granted
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized internal service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - Target asset is currently locked by another worker
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/action/locks/release:
+    post:
+      tags:
+        - InternalMicroservices
+      summary: Release Distributed Action Lock
+      description: Releases an exclusive distributed concurrency lock on an asset using the lockToken.
+      operationId: releaseDistributedActionLock
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenantId
+                - actionType
+                - targetResource
+                - lockToken
+              properties:
+                tenantId:
+                  type: string
+                actionType:
+                  type: string
+                targetResource:
+                  type: string
+                lockToken:
+                  type: string
+      responses:
+        '200':
+          description: Lock release result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '401':
+          description: Unauthorized internal service
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/action/ebpf/rules:
+    post:
+      tags:
+        - InternalMicroservices
+      summary: Apply eBPF Kernel Microsegmentation Rule
+      description: Applies a real-time TC/XDP microsegmentation packet filtering rule to the host kernel map.
+      operationId: applyEbpfMicrosegmentationRule
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenantId
+                - sourcePodSelector
+                - destinationCidrOrPod
+                - destinationPort
+                - protocol
+                - action
+              properties:
+                tenantId:
+                  type: string
+                sourcePodSelector:
+                  type: string
+                destinationCidrOrPod:
+                  type: string
+                destinationPort:
+                  type: integer
+                protocol:
+                  type: string
+                  enum: [TCP, UDP, ICMP, ALL]
+                action:
+                  type: string
+                  enum: [ALLOW, DROP, QUARANTINE_ISOLATE]
+                priority:
+                  type: integer
+      responses:
+        '200':
+          description: Enforcement receipt confirming kernel map update
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags:
+        - InternalMicroservices
+      summary: List Active eBPF Kernel Rules
+      description: Returns active microsegmentation rules loaded in kernel maps for a tenant.
+      operationId: getActiveEbpfRules
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: tenantId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of active kernel rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/action/ebpf/quarantine:
+    post:
+      tags:
+        - InternalMicroservices
+      summary: Quarantine Pod via eBPF XDP Drop Hook
+      description: Instantly isolates a compromised pod from all ingress and egress network traffic at the kernel level.
+      operationId: quarantinePodEbpf
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenantId
+                - podSelector
+              properties:
+                tenantId:
+                  type: string
+                podSelector:
+                  type: string
+      responses:
+        '200':
+          description: Quarantine enforcement receipt
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ingestion/webhooks/ebpf/{connectorId}:
+    post:
+      tags:
+        - Ingest
+      summary: Ingest High-Throughput Linux eBPF Kernel Probe Telemetry
+      description: Ingests raw syscall and ring buffer probe events from Linux host agents and normalizes them to OCSF schemas.
+      operationId: ingestEbpfKernelProbeWebhook
+      security:
+        - WebhookHmacAuth: []
+      parameters:
+        - name: connectorId
+          in: path
+          required: true
+          description: Unique identifier of the registered eBPF connector instance
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '202':
+          description: eBPF probe telemetry batch accepted for ingestion
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Invalid payload or signature
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+
+
 
 

@@ -16,6 +16,7 @@ import { CloudHsmSignerService } from './command-signing/cloud-hsm-signer.servic
 import { DispatcherService } from './dispatcher/dispatcher.service';
 import { PolicyReauthorizationService } from './policy/policy-reauthorization.service';
 import { ApprovalReauthorizationService } from './approval/approval-reauthorization.service';
+import { TwoManRuleService } from './approval/two-man-rule.service';
 import { ReceiptVerificationService } from './receipt-verification/receipt-verification.service';
 import { ReconciliationService } from './reconciliation/reconciliation.service';
 import { RollbackService } from './rollback/rollback.service';
@@ -40,6 +41,7 @@ import { SoarCircuitBreakerService } from './circuit-breaker/soar-circuit-breake
 import { CedarTenantIsolationService } from './policy/cedar-tenant-isolation.service';
 import { SignedCommandBrokerService } from './broker/signed-command-broker.service';
 import { TemporalContainmentEscalationService } from './orchestration/temporal-containment-escalation.service';
+import { DistributedActionLockService } from './orchestration/distributed-action-lock.service';
 import { PlaybookSandboxEngineService } from './simulation/playbook-sandbox-engine.service';
 
 @Module({
@@ -67,8 +69,10 @@ import { PlaybookSandboxEngineService } from './simulation/playbook-sandbox-engi
     CedarTenantIsolationService,
     SignedCommandBrokerService,
     TemporalContainmentEscalationService,
+    DistributedActionLockService,
     PlaybookSandboxEngineService,
     ApprovalReauthorizationService,
+    TwoManRuleService,
     ReceiptVerificationService,
     ReconciliationService,
     RollbackService,
@@ -96,7 +100,9 @@ import { PlaybookSandboxEngineService } from './simulation/playbook-sandbox-engi
     CedarTenantIsolationService,
     SignedCommandBrokerService,
     TemporalContainmentEscalationService,
+    DistributedActionLockService,
     PlaybookSandboxEngineService,
+    TwoManRuleService,
     ActionRollbackBrokerService,
     ActionRollbackOrchestratorService,
     ResponsePlaybookService,
