@@ -132,6 +132,55 @@ export class CompositeCorrelationService {
         },
       ],
     },
+    {
+      patternId: 'ZS-CORR-CONTAINER-ESCAPE-003',
+      name: 'eBPF Kernel Container Escape -> Root Shell -> Outbound C2',
+      description: 'Detects container breakout via eBPF runtime probes followed by root process execution and outbound network beaconing.',
+      severity: 'CRITICAL',
+      windowSeconds: 300,
+      stages: [
+        {
+          stageId: 'stage-1-ebpf-escape',
+          name: 'eBPF Container Escape Finding',
+          tactic: 'TA0004: Privilege Escalation',
+          technique: 'T1611: Escape to Host',
+          matcher: (event) => {
+            const raw = JSON.stringify(event.rawPayload || {}).toUpperCase();
+            return (
+              event.classUid === 2001 ||
+              event.categoryName === 'CONTAINER_RUNTIME' ||
+              raw.includes('ESCAPE') ||
+              raw.includes('SYS_ADMIN') ||
+              raw.includes('RELEASE_AGENT')
+            );
+          },
+        },
+        {
+          stageId: 'stage-2-root-execve',
+          name: 'Root Process Execution / Shell Spawn',
+          tactic: 'TA0002: Execution',
+          technique: 'T1059.004: Unix Shell',
+          matcher: (event) => {
+            const raw = JSON.stringify(event.rawPayload || {}).toLowerCase();
+            return (
+              (event.classUid === 4001 || event.classUid === 1007 || event.categoryName === 'PROCESS_ACTIVITY') &&
+              (raw.includes('/bin/sh') || raw.includes('/bin/bash') || raw.includes('execve') || raw.includes('root'))
+            );
+          },
+        },
+        {
+          stageId: 'stage-3-outbound-c2',
+          name: 'Outbound Network Beaconing',
+          tactic: 'TA0011: Command and Control',
+          technique: 'T1071.001: Web Protocols',
+          matcher: (event) =>
+            event.classUid === 4002 ||
+            event.categoryName === 'NETWORK_ACTIVITY' ||
+            event.activityName === 'OUTBOUND_CONNECT' ||
+            event.activityName === 'CONNECT',
+        },
+      ],
+    },
   ];
 
   constructor(@Optional() private readonly alertService?: AlertService) {}

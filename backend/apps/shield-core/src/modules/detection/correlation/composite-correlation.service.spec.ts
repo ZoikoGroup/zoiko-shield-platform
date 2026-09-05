@@ -155,4 +155,54 @@ describe('CompositeCorrelationService', () => {
     expect(res?.patternId).toBe('ZS-CORR-CLOUD-PRIV-002');
     expect(res?.matchedEventIds).toEqual(['evt-cloud-01', 'evt-cloud-02']);
   });
+
+  it('should detect eBPF Kernel Container Escape pattern', async () => {
+    const tenantId = 'tenant-k8s-01';
+    const targetHost = 'k8s-node-worker-09';
+    const now = new Date();
+
+    // Stage 1: eBPF Container Escape
+    await service.processEvent({
+      eventId: 'evt-ebpf-esc-01',
+      tenantId,
+      classUid: 2001,
+      categoryName: 'CONTAINER_RUNTIME',
+      activityName: 'CONTAINER_ESCAPE_FINDING',
+      severity: 'CRITICAL',
+      timestamp: new Date(now.getTime() - 40000),
+      targetHost,
+      rawPayload: { rule: 'EBPF-RULE-CONTAINER-ESCAPE-DETECTED', capability: 'SYS_ADMIN' },
+    });
+
+    // Stage 2: Root process execution
+    await service.processEvent({
+      eventId: 'evt-ebpf-esc-02',
+      tenantId,
+      classUid: 4001,
+      categoryName: 'PROCESS_ACTIVITY',
+      activityName: 'PROCESS_EXEC',
+      severity: 'CRITICAL',
+      timestamp: new Date(now.getTime() - 20000),
+      targetHost,
+      rawPayload: { binary: '/bin/bash', user: 'root', syscall: 'execve' },
+    });
+
+    // Stage 3: Outbound C2 connect
+    const res = await service.processEvent({
+      eventId: 'evt-ebpf-esc-03',
+      tenantId,
+      classUid: 4002,
+      categoryName: 'NETWORK_ACTIVITY',
+      activityName: 'OUTBOUND_CONNECT',
+      severity: 'HIGH',
+      timestamp: now,
+      targetHost,
+      rawPayload: { destinationIp: '198.51.100.99', destinationPort: 4444 },
+    });
+
+    expect(res).not.toBeNull();
+    expect(res?.patternId).toBe('ZS-CORR-CONTAINER-ESCAPE-003');
+    expect(res?.severity).toBe('CRITICAL');
+    expect(res?.matchedEventIds).toEqual(['evt-ebpf-esc-01', 'evt-ebpf-esc-02', 'evt-ebpf-esc-03']);
+  });
 });

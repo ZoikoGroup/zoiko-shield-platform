@@ -8,6 +8,8 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { KafkaProducerService } from '../kafka/kafka.producer.service';
 import { MeteringService } from '../metering/metering.service';
+import { StreamDeduplicationService } from '../deduplication/stream-deduplication.service';
+import { DlqReplayQuarantineService } from '../dlq/dlq-replay-quarantine.service';
 import * as crypto from 'crypto';
 import { IsISO8601, IsOptional, IsString, MaxLength } from 'class-validator';
 
@@ -57,6 +59,8 @@ export class RawIngestService {
     private readonly prisma: PrismaService,
     private readonly kafkaProducer: KafkaProducerService,
     @Optional() private readonly meteringService?: MeteringService,
+    @Optional() private readonly deduplicationService?: StreamDeduplicationService,
+    @Optional() private readonly dlqService?: DlqReplayQuarantineService,
   ) {}
 
   /**
@@ -104,7 +108,50 @@ export class RawIngestService {
     // Extract source event ID if provided
     const sourceEventId = payload.sourceEventId || payload.eventId || undefined;
 
-    // Deduplication check: if sourceEventId exists, check if already recorded
+    // 1. High-Performance In-Memory Bloom Filter Stream Deduplication
+    if (this.deduplicationService) {
+      const dedupResult = this.deduplicationService.checkAndRegister(
+        tenantId,
+        payload.eventType || connector.authentication_type || 'generic.webhook',
+        payload,
+      );
+      if (dedupResult.isDuplicate) {
+        this.logger.warn(
+          `Stream duplicate discarded by Bloom filter for connector ${connectorId}, eventDigest: ${dedupResult.eventDigest}`,
+        );
+
+        if (this.meteringService) {
+          try {
+            await this.meteringService.recordUsageObservation({
+              tenantId,
+              environmentId,
+              sourceType: connector.authentication_type || 'WEBHOOK',
+              rawEventId: `dedup-${dedupResult.eventDigest.substring(0, 16)}`,
+              usageState: 'DUPLICATE',
+              acceptedQuantity: 0,
+              billableQuantity: 0,
+            });
+          } catch (err) {
+            this.logger.warn(
+              `Failed to record duplicate usage observation: ${err}`,
+            );
+          }
+        }
+
+        return {
+          id: `dedup-${dedupResult.eventDigest.substring(0, 16)}`,
+          tenantId,
+          environmentId,
+          connectorId,
+          sourceEventId,
+          payloadHash: dedupResult.eventDigest,
+          processingStatus: 'DUPLICATE_IGNORED',
+          receivedAt: new Date(),
+        };
+      }
+    }
+
+    // Deduplication check: if sourceEventId exists, check if already recorded in database
     if (sourceEventId) {
       const existing = await this.prisma.rawEvent.findFirst({
         where: {
@@ -161,6 +208,17 @@ export class RawIngestService {
       Object.keys(payload).length === 0
     ) {
       processingStatus = 'QUARANTINED';
+
+      // Record in Dead-Letter Queue Quarantine Service if available
+      if (this.dlqService) {
+        this.dlqService.quarantineMessage(
+          tenantId,
+          'telemetry.ingested',
+          payload,
+          routeMismatch ? 'ROUTE_AUTHORIZATION_MISMATCH' : 'MALFORMED_OR_EMPTY_PAYLOAD',
+          routeMismatch ? 'ROUTE_MISMATCH' : 'SCHEMA_VALIDATION_ERROR',
+        );
+      }
     }
 
     // Parse occurred_at timestamp

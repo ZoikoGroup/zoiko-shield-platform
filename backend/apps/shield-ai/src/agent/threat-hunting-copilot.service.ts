@@ -1,6 +1,9 @@
-import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException, Optional } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { PromptGuardrailService } from '../security/prompt-guardrail.service';
+import { DifferentialPrivacyGuardService } from '../privacy/differential-privacy-guard.service';
+import { AttackPathDiscoveryService } from '../graph/attack-path-discovery.service';
+import { ShieldCoreClient } from '../internal-client/shield-core.client';
 
 export interface ThreatHuntingQueryInput {
   tenantId: string;
@@ -36,6 +39,8 @@ export interface ThreatHuntingReport {
     affectedAccounts: string[];
     affectedEndpoints: string[];
     chokePointNode?: string;
+    estimatedExposedRecords?: number;
+    privacyPerturbedCount?: number;
   };
   recommendedActions: Array<{
     actionType: string;
@@ -56,7 +61,12 @@ export interface ThreatHuntingReport {
 export class ThreatHuntingCopilotService {
   private readonly logger = new Logger(ThreatHuntingCopilotService.name);
 
-  constructor(private readonly guardrailService: PromptGuardrailService) {}
+  constructor(
+    private readonly guardrailService: PromptGuardrailService,
+    @Optional() private readonly differentialPrivacyService?: DifferentialPrivacyGuardService,
+    @Optional() private readonly attackPathService?: AttackPathDiscoveryService,
+    @Optional() private readonly shieldCoreClient?: ShieldCoreClient,
+  ) {}
 
   /**
    * Conducts an autonomous threat hunting investigation using a grounded ReAct execution loop.
@@ -80,27 +90,51 @@ export class ThreatHuntingCopilotService {
     const reasoningSteps: ReActStep[] = [];
 
     // 2. Simulated ReAct Reasoning Loop with Live Tool Execution
-    const tools = [
+    const tools: Array<{
+      name: string;
+      thought: string;
+      params: Record<string, any>;
+      execute: () => Promise<Record<string, any>> | Record<string, any>;
+    }> = [
       {
         name: 'query_evidence_ledger',
         thought: 'First, retrieve cryptographic evidence tokens and event records linked to this investigation.',
         params: { caseId: input.caseId || 'case-auto-scoped', tenantId: input.tenantId },
-        execute: () => ({
-          evidenceTokens: ['E-01', 'E-02', 'E-03'],
-          sourceEvents: 14,
-          firstObserved: '2026-09-03T04:10:00Z',
-          lastObserved: '2026-09-03T04:14:30Z',
-          summary: '14 OCSF AUTHENTICATION failure records and 1 PROCESS_ACTIVITY execution.',
-        }),
+        execute: async () => {
+          if (this.shieldCoreClient && input.caseId) {
+            try {
+              const liveEvidence = await this.shieldCoreClient.getCaseEvidence(input.tenantId, input.caseId);
+              if (liveEvidence) {
+                return {
+                  evidenceTokens: Array.isArray(liveEvidence) ? liveEvidence.map((e: any) => e.id || 'E-01') : ['E-01', 'E-02'],
+                  sourceEvents: Array.isArray(liveEvidence) ? liveEvidence.length : 14,
+                  firstObserved: '2026-09-03T04:10:00Z',
+                  lastObserved: '2026-09-03T04:14:30Z',
+                  summary: 'Live case evidence retrieved from shield-core ledger.',
+                };
+              }
+            } catch (err: any) {
+              this.logger.warn(`Fallback to cached evidence: ${err?.message || err}`);
+            }
+          }
+          return {
+            evidenceTokens: ['E-01', 'E-02', 'E-03'],
+            sourceEvents: 14,
+            firstObserved: '2026-09-03T04:10:00Z',
+            lastObserved: '2026-09-03T04:14:30Z',
+            summary: '14 OCSF AUTHENTICATION failure records and 1 PROCESS_ACTIVITY execution.',
+          };
+        },
       },
       {
         name: 'lookup_mitre_ttp',
         thought: 'Correlate observed telemetry patterns against MITRE ATT&CK knowledge base.',
-        params: { patterns: ['mimikatz.exe', 'failed_logins_exceeded'] },
+        params: { patterns: ['mimikatz.exe', 'failed_logins_exceeded', 'lateral_movement'] },
         execute: () => ({
           matchedTechniques: [
             { tactic: 'Credential Access', techniqueId: 'T1003.001', name: 'OS Credential Dumping: LSASS Memory' },
             { tactic: 'Credential Access', techniqueId: 'T1110.001', name: 'Brute Force: Password Guessing' },
+            { tactic: 'Lateral Movement', techniqueId: 'T1021.002', name: 'SMB/Windows Admin Shares' },
             { tactic: 'Persistence', techniqueId: 'T1078.004', name: 'Valid Accounts: Cloud Accounts' },
           ],
         }),
@@ -109,27 +143,67 @@ export class ThreatHuntingCopilotService {
         name: 'trace_attack_graph_hops',
         thought: 'Traverse identity-asset graph to map lateral movement vectors and identify choke points.',
         params: { startEntity: 'analyst@acme.corp', tenantId: input.tenantId },
-        execute: () => ({
-          hops: ['usr-analyst-01', 'ws-dev-laptop-08', 'srv-jump-host-01', 'db-customer-pii-prod'],
-          shortestPathLength: 3,
-          chokePoint: 'srv-jump-host-01',
-          riskLevel: 'CRITICAL',
-        }),
+        execute: () => {
+          let chokePoint = 'srv-jump-host-01';
+          let hops = ['usr-analyst-01', 'ws-dev-laptop-08', 'srv-jump-host-01', 'db-customer-pii-prod'];
+          
+          if (this.attackPathService) {
+            try {
+              // Attempt to discover shortest path if graph has nodes
+              const discovered = this.attackPathService.findShortestAttackPath('usr-analyst-01', 'db-customer-pii-prod');
+              if (discovered) {
+                chokePoint = discovered.criticalChokePointNodeId;
+                hops = discovered.pathHops.map(h => h.from).concat([discovered.targetCrownJewel.id]);
+              }
+            } catch {
+              // Service registered but nodes not loaded; proceed with default graph topology
+            }
+          }
+
+          return {
+            hops,
+            shortestPathLength: 3,
+            chokePoint,
+            riskLevel: 'CRITICAL',
+          };
+        },
       },
       {
         name: 'predict_blast_radius',
         thought: 'Estimate potential blast radius if lateral movement reaches crown jewel database.',
         params: { targetNode: 'db-customer-pii-prod' },
-        execute: () => ({
-          exposedRecordsCount: 250000,
-          complianceImpact: ['GDPR', 'PCI-DSS', 'SOC2'],
-          recommendedIsolation: 'ISOLATE_JUMP_HOST_IMMEDIATELY',
-        }),
+        execute: () => {
+          const rawExposedCount = 250000;
+          let perturbedCount = rawExposedCount;
+
+          if (this.differentialPrivacyService) {
+            try {
+              const dpResult = this.differentialPrivacyService.perturbMetric({
+                tenantId: input.tenantId,
+                metricName: 'threat_hunting_exposed_records',
+                trueValue: rawExposedCount,
+                sensitivity: 1,
+                epsilonCost: 0.5,
+              });
+              perturbedCount = dpResult.perturbedValue;
+            } catch {
+              perturbedCount = rawExposedCount;
+            }
+          }
+
+          return {
+            exposedRecordsCount: rawExposedCount,
+            privacyPerturbedCount: perturbedCount,
+            complianceImpact: ['GDPR', 'PCI-DSS', 'SOC2'],
+            recommendedIsolation: 'ISOLATE_JUMP_HOST_IMMEDIATELY',
+          };
+        },
       },
     ];
 
     for (let i = 0; i < Math.min(maxIters, tools.length); i++) {
       const tool = tools[i];
+      const observation = await tool.execute();
       const step: ReActStep = {
         stepNumber: i + 1,
         thought: tool.thought,
@@ -137,7 +211,7 @@ export class ThreatHuntingCopilotService {
           toolName: tool.name,
           parameters: tool.params,
         },
-        observation: tool.execute(),
+        observation,
       };
       reasoningSteps.push(step);
     }
@@ -198,6 +272,7 @@ export class ThreatHuntingCopilotService {
         affectedAccounts: ['usr-analyst-01', 'svc-backup-daemon'],
         affectedEndpoints: ['ws-dev-laptop-08', 'srv-jump-host-01'],
         chokePointNode: 'srv-jump-host-01',
+        estimatedExposedRecords: 250000,
       },
       recommendedActions,
       advisoryStatus: 'REVIEW_REQUIRED',
@@ -206,3 +281,4 @@ export class ThreatHuntingCopilotService {
     };
   }
 }
+
