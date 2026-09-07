@@ -15,6 +15,7 @@ import { Session } from '../identity-adapter/session.entity';
 import { IdentityEvent } from '../identity-adapter/identity-event.entity';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { AuthorizationDecisionService } from '../authorization-decision/authorization-decision.service';
+import { CedarPolicyEvaluatorService } from './cedar-policy-evaluator.service';
 
 @Global()
 @Module({
@@ -35,6 +36,7 @@ import { AuthorizationDecisionService } from '../authorization-decision/authoriz
     AuthorizationService,
     JitElevationService,
     JitSessionEnforcerService,
+    CedarPolicyEvaluatorService,
     AuthorizationDecisionService,
     PermissionsGuard,
     PlatformPermissionsGuard,
@@ -43,6 +45,7 @@ import { AuthorizationDecisionService } from '../authorization-decision/authoriz
     AuthorizationService,
     JitElevationService,
     JitSessionEnforcerService,
+    CedarPolicyEvaluatorService,
     AuthorizationDecisionService,
     PermissionsGuard,
     PlatformPermissionsGuard,

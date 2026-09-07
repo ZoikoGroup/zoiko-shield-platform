@@ -1,0 +1,25 @@
+# ZoikoShield Code Owners & Review Governance (LAB 02 & Section 11)
+# Enforces mandatory two-reviewer requirement on security-sensitive paths
+
+# Global default
+* @ZoikoGroup/backend-leads
+
+# Tenant Isolation & Authorization (High Blast Radius)
+/backend/apps/shield-core/src/modules/tenant/        @ZoikoGroup/security-leads @ZoikoGroup/core-maintainers
+/backend/apps/shield-core/src/modules/authorization/ @ZoikoGroup/security-leads @ZoikoGroup/core-maintainers
+/backend/apps/shield-core/src/modules/authorization-decision/ @ZoikoGroup/security-leads @ZoikoGroup/core-maintainers
+
+# Evidence Ledger & Cryptographic Anchoring
+/backend/apps/shield-anchor/                        @ZoikoGroup/crypto-leads @ZoikoGroup/assurance-leads
+/backend/tools/independent-verifier/                @ZoikoGroup/crypto-leads @ZoikoGroup/assurance-leads
+/backend/apps/shield-core/src/modules/evidence/     @ZoikoGroup/crypto-leads @ZoikoGroup/assurance-leads
+
+# Action Broker & Governed SOAR Dispatch
+/backend/apps/shield-action/                        @ZoikoGroup/security-leads @ZoikoGroup/response-leads
+
+# AI Gateway & Adversarial Controls
+/backend/apps/shield-ai/                            @ZoikoGroup/ai-leads @ZoikoGroup/security-leads
+
+# Infrastructure-as-Code & CI/CD Pipelines
+/infrastructure/                                    @ZoikoGroup/infra-leads @ZoikoGroup/security-leads
+/.github/                                           @ZoikoGroup/infra-leads @ZoikoGroup/security-leads
