@@ -1,0 +1,225 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shield-core
+  namespace: zoikoshield
+  labels:
+    app.kubernetes.io/name: shield-core
+    app.kubernetes.io/part-of: zoikoshield-platform
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: shield-core
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: shield-core
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+      containers:
+        - name: core
+          image: gcr.io/zoikoshield-artifacts/shield-core:v1.0.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - containerPort: 3000
+              name: http
+            - containerPort: 9090
+              name: metrics
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2000m"
+              memory: "4Gi"
+          readinessProbe:
+            httpGet:
+              path: /health/readiness
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health/liveness
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shield-ingest
+  namespace: zoikoshield
+  labels:
+    app.kubernetes.io/name: shield-ingest
+    app.kubernetes.io/part-of: zoikoshield-platform
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: shield-ingest
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: shield-ingest
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+      containers:
+        - name: ingest
+          image: gcr.io/zoikoshield-artifacts/shield-ingest:v1.0.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - containerPort: 3001
+              name: http
+            - containerPort: 9090
+              name: metrics
+          resources:
+            requests:
+              cpu: "1000m"
+              memory: "2Gi"
+            limits:
+              cpu: "4000m"
+              memory: "8Gi"
+          readinessProbe:
+            httpGet:
+              path: /health/readiness
+              port: 3001
+            initialDelaySeconds: 5
+            periodSeconds: 10
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shield-ai
+  namespace: zoikoshield
+  labels:
+    app.kubernetes.io/name: shield-ai
+    app.kubernetes.io/part-of: zoikoshield-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: shield-ai
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: shield-ai
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: ai-gateway
+          image: gcr.io/zoikoshield-artifacts/shield-ai:v1.0.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - containerPort: 3002
+              name: http
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2000m"
+              memory: "4Gi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shield-action
+  namespace: zoikoshield
+  labels:
+    app.kubernetes.io/name: shield-action
+    app.kubernetes.io/part-of: zoikoshield-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: shield-action
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: shield-action
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: action-broker
+          image: gcr.io/zoikoshield-artifacts/shield-action:v1.0.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - containerPort: 3003
+              name: http
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2000m"
+              memory: "2Gi"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shield-anchor
+  namespace: zoikoshield
+  labels:
+    app.kubernetes.io/name: shield-anchor
+    app.kubernetes.io/part-of: zoikoshield-platform
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: shield-anchor
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: shield-anchor
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+      containers:
+        - name: anchor-sealer
+          image: gcr.io/zoikoshield-artifacts/shield-anchor:v1.0.0
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          ports:
+            - containerPort: 3004
+              name: http
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2000m"
+              memory: "4Gi"

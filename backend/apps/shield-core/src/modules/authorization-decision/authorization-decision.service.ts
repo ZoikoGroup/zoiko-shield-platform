@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { AuthorizationService } from '../authorization/authorization.service';
+import { CedarPolicyEvaluatorService } from '../authorization/cedar-policy-evaluator.service';
 import {
   CROSS_CUTTING_PERMISSION_CODES,
   PERMISSION_CODES,
@@ -39,6 +40,8 @@ export interface EvaluateInput {
   resourceType: string;
   resourceId?: string;
   resourceTenantId?: string;
+  legalEntityId?: string;
+  resourceLegalEntityId?: string;
   environmentId?: string | null;
   purpose?: string;
   effectClass?: AuthorizationEffectClass;
@@ -54,6 +57,13 @@ export interface EvaluateInput {
   partnerDelegationScope?: string;
   partnerCommercialAccountId?: string;
   partnerManagingOrganizationId?: string;
+  actorType?: 'HUMAN' | 'AI_AGENT' | 'WORKLOAD' | 'SUPPORT_OPERATOR';
+  isSupportUser?: boolean;
+  hasCustomerApproval?: boolean;
+  approvalExpired?: boolean;
+  approverCount?: number;
+  roleName?: string;
+  isSimulation?: boolean;
 }
 
 export interface AuthorizationDecisionResult {
@@ -114,6 +124,7 @@ export class AuthorizationDecisionService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly authorizationService: AuthorizationService,
+    private readonly cedarEvaluator?: CedarPolicyEvaluatorService,
   ) {}
 
   async evaluate(input: EvaluateInput): Promise<AuthorizationDecisionResult> {
@@ -189,8 +200,11 @@ export class AuthorizationDecisionService {
       action: input.action?.trim(),
       resourceType: input.resourceType?.trim(),
       resourceTenantId: input.resourceTenantId ?? input.tenantId,
+      legalEntityId: input.legalEntityId?.trim(),
+      resourceLegalEntityId: input.resourceLegalEntityId?.trim(),
       environmentId: input.environmentId ?? null,
-      purpose: input.purpose?.trim() || 'interactive-api',
+      purpose:
+        input.purpose !== undefined ? input.purpose.trim() : 'interactive-api',
       effectClass: input.effectClass ?? 'READ',
       requiredPermissions: permissions,
       policyVersion: input.policyVersion?.trim() || '1.0',
@@ -199,6 +213,13 @@ export class AuthorizationDecisionService {
       partnerCommercialAccountId: input.partnerCommercialAccountId?.trim(),
       partnerManagingOrganizationId:
         input.partnerManagingOrganizationId?.trim(),
+      actorType: input.actorType ?? 'HUMAN',
+      isSupportUser: input.isSupportUser ?? false,
+      hasCustomerApproval: input.hasCustomerApproval ?? false,
+      approvalExpired: input.approvalExpired ?? false,
+      approverCount: input.approverCount ?? 0,
+      roleName: input.roleName,
+      isSimulation: input.isSimulation ?? false,
     };
   }
 
@@ -229,6 +250,62 @@ export class AuthorizationDecisionService {
         reason: 'The requested policy does not apply to this context',
         obligations: ['DENY_EXECUTION'],
       };
+    }
+
+    if (this.cedarEvaluator) {
+      const principal =
+        input.actorType === 'AI_AGENT'
+          ? 'Principal::"ai-agent"'
+          : input.actorType === 'SUPPORT_OPERATOR'
+            ? 'Principal::"support-operator"'
+            : `Role::"${input.roleName || 'SecOpsAnalyst'}"`;
+      const cedarDecision = this.cedarEvaluator.evaluate({
+        principal,
+        action: input.action.startsWith('Action::')
+          ? input.action
+          : `Action::"${input.action}"`,
+        resource: input.resourceType.startsWith('Resource::')
+          ? input.resourceType
+          : `Resource::"${input.resourceType}"`,
+        context: {
+          tenantId: input.tenantId,
+          resourceTenantId: input.resourceTenantId,
+          legalEntityId: input.legalEntityId,
+          resourceLegalEntityId: input.resourceLegalEntityId,
+          environmentId: input.environmentId ?? undefined,
+          purpose: input.purpose,
+          actorType: input.actorType,
+          isSupportUser: input.isSupportUser,
+          hasCustomerApproval: input.hasCustomerApproval,
+          approverCount: input.approverCount,
+          approvalExpired: input.approvalExpired,
+          riskState: input.riskState,
+          isSimulation: input.isSimulation,
+          isTenantAuthorized: true,
+          policyVersion: input.policyVersion,
+        },
+      });
+
+      if (cedarDecision.decision === 'INDETERMINATE') {
+        return {
+          decision: 'INDETERMINATE',
+          reasonCode: cedarDecision.reasonCode || 'POLICY_DEPENDENCY_UNAVAILABLE',
+          reason: cedarDecision.reason,
+          obligations: cedarDecision.obligations,
+        };
+      }
+
+      if (
+        cedarDecision.decision === 'DENY' &&
+        cedarDecision.reasonCode === 'CEDAR_FORBID_TRIGGERED'
+      ) {
+        return {
+          decision: 'DENY',
+          reasonCode: 'CEDAR_FORBID_TRIGGERED',
+          reason: cedarDecision.reason,
+          obligations: cedarDecision.obligations,
+        };
+      }
     }
 
     if (input.resourceTenantId !== input.tenantId) {

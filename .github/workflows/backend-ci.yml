@@ -50,5 +50,12 @@ jobs:
       - run: npm run build
       - run: npm run swagger:check
       - run: npm test -- --runInBand
+      - name: Execute Cross-Satellite Golden Spine E2E Suite
+        run: npm run test:e2e:spine
+      - name: Execute Satellite E2E Integration Suites
+        run: |
+          npm run test:e2e:action
+          npm run test:e2e:ai
+          npm run test:e2e:anchor
       - name: Ensure schema and migrations match
         run: npx prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --exit-code

@@ -3,6 +3,7 @@ import {
   Logger,
   ForbiddenException,
   UnauthorizedException,
+  Optional,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 
@@ -70,12 +71,14 @@ export class Fido2StepupGuardService {
   private readonly CHALLENGE_TTL_MS = 120_000;
 
   constructor(
-    rpId = process.env.WEBAUTHN_RP_ID || 'security.zoikoshield.corp',
-    expectedOrigin = process.env.WEBAUTHN_ORIGIN ||
-      'https://security.zoikoshield.corp',
+    @Optional() rpId?: string,
+    @Optional() expectedOrigin?: string,
   ) {
-    this.rpId = rpId;
-    this.expectedOrigin = expectedOrigin;
+    this.rpId = rpId || process.env.WEBAUTHN_RP_ID || 'security.zoikoshield.corp';
+    this.expectedOrigin =
+      expectedOrigin ||
+      process.env.WEBAUTHN_ORIGIN ||
+      'https://security.zoikoshield.corp';
   }
 
   registerCredential(credential: {
