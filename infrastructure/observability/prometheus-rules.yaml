@@ -1,0 +1,101 @@
+groups:
+  - name: zoikoshield-platform-slo-alerts
+    rules:
+      # --- INGESTION SLI / SLO (LAB 16 / §12) ---
+      - alert: ZoikoShieldIngestionLagCritical
+        expr: histogram_quantile(0.99, sum(rate(zoikoshield_ingest_lag_ms_bucket[5m])) by (le, tenant_id, cell)) > 500
+        for: 2m
+        labels:
+          severity: critical
+          tier: P0
+          domain: ingestion
+        annotations:
+          summary: "Tenant {{ $labels.tenant_id }} ingestion p99 lag exceeds 500ms SLO threshold (value: {{ $value }}ms)"
+          runbook_url: "https://docs.zoikoshield.corp/runbooks/LAB16-ingestion-lag.md"
+
+      - alert: ZoikoShieldQuarantineBurst
+        expr: sum(rate(zoikoshield_ingest_quarantined_total[5m])) by (tenant_id, cell) > 10
+        for: 1m
+        labels:
+          severity: warning
+          tier: P1
+          domain: ingestion
+        annotations:
+          summary: "Elevated malformed telemetry quarantine rate for tenant {{ $labels.tenant_id }}"
+
+      # --- DETECTION PIPELINE SLI / SLO (LAB 08 / §12) ---
+      - alert: ZoikoShieldDetectionLatencyBreached
+        expr: histogram_quantile(0.99, sum(rate(zoikoshield_detection_p99_latency_ms_bucket[5m])) by (le, cell, rule_id)) > 1000
+        for: 2m
+        labels:
+          severity: critical
+          tier: P0
+          domain: detection
+        annotations:
+          summary: "Tier-A detection pipeline p99 latency exceeded 1000ms SLO target"
+          runbook_url: "https://docs.zoikoshield.corp/runbooks/LAB08-kafka-detection.md"
+
+      # --- AI SAFETY & GROUNDING SLI / SLO (LAB 13 / §12) ---
+      - alert: ZoikoShieldAiGroundingDegraded
+        expr: zoikoshield_ai_grounding_score < 0.950
+        for: 5m
+        labels:
+          severity: critical
+          tier: P0
+          domain: ai-gateway
+        annotations:
+          summary: "AI Grounding score dropped below 0.950 minimum threshold (current: {{ $value }})"
+          runbook_url: "https://docs.zoikoshield.corp/runbooks/LAB13-ai-grounding.md"
+
+      - alert: ZoikoShieldAiAdversarialAttackSpike
+        expr: sum(rate(zoikoshield_ai_prompt_injection_blocked_total[5m])) by (tenant_id) > 5
+        for: 1m
+        labels:
+          severity: high
+          tier: P1
+          domain: ai-gateway
+        annotations:
+          summary: "Adversarial prompt injection attempt spike against tenant {{ $labels.tenant_id }}"
+
+      # --- EVIDENCE LEDGER & ASSURANCE SLI / SLO (LAB 11 / §12) ---
+      - alert: ZoikoShieldEvidenceFreshnessBreached
+        expr: zoikoshield_evidence_freshness_seconds > 60
+        for: 2m
+        labels:
+          severity: critical
+          tier: P0
+          domain: evidence-ledger
+        annotations:
+          summary: "Evidence freshness exceeded 60s max threshold (value: {{ $value }}s)"
+          runbook_url: "https://docs.zoikoshield.corp/runbooks/LAB11-evidence-freshness.md"
+
+      - alert: ZoikoShieldMerkleCheckpointLag
+        expr: time() - zoikoshield_anchor_last_checkpoint_timestamp_seconds > 300
+        for: 3m
+        labels:
+          severity: high
+          tier: P1
+          domain: evidence-anchor
+        annotations:
+          summary: "Evidence anchor epoch checkpoint interval lagging beyond 5 minutes"
+
+      # --- SOAR ACTION BROKER SLI / SLO (LAB 15 / §12) ---
+      - alert: ZoikoShieldActionReplayAnomaly
+        expr: sum(rate(zoikoshield_action_replay_rejected_total[5m])) by (tenant_id) > 0
+        for: 30s
+        labels:
+          severity: critical
+          tier: P0
+          domain: action-broker
+        annotations:
+          summary: "Replay attack detected on Action Broker command envelope for tenant {{ $labels.tenant_id }}"
+
+      - alert: ZoikoShieldActionFreezeActive
+        expr: zoikoshield_action_freeze_active == 1
+        for: 1m
+        labels:
+          severity: warning
+          tier: P1
+          domain: action-broker
+        annotations:
+          summary: "Emergency action freeze currently active on scope {{ $labels.scope }} for tenant {{ $labels.tenant_id }}"

@@ -1,0 +1,38 @@
+{
+  "generatedAt": "2026-09-07T11:52:57.942Z",
+  "slos": {
+    "ingestP99Ms": 500,
+    "detectP99Ms": 1000,
+    "evidenceWallS": 60,
+    "memoryDeltaMb": 100
+  },
+  "results": [
+    {
+      "label": "ingestion_normalization",
+      "count": 1000,
+      "p50": 4.51,
+      "p99": 7.03,
+      "maxMs": 7.37
+    },
+    {
+      "label": "detection_evaluation",
+      "count": 200,
+      "p50": 2.47,
+      "p99": 5.06,
+      "maxMs": 5.63
+    },
+    {
+      "label": "evidence_freshness",
+      "count": 50,
+      "wallMs": 2,
+      "sloSeconds": 60
+    },
+    {
+      "label": "memory_ceiling",
+      "rssBefore": 217.35546875,
+      "rssAfter": 219.01953125,
+      "deltaMb": 1.6640625,
+      "sloMb": 100
+    }
+  ]
+}
