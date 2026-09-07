@@ -13,53 +13,60 @@ describe('SloMetricsExporterService & Distributed Tracing (LAB 16 Observability)
       providers: [SloMetricsExporterService, TelemetryTracingInterceptor],
     }).compile();
 
-    sloExporter = module.get<SloMetricsExporterService>(SloMetricsExporterService);
-    tracingInterceptor = module.get<TelemetryTracingInterceptor>(TelemetryTracingInterceptor);
+    sloExporter = module.get<SloMetricsExporterService>(
+      SloMetricsExporterService,
+    );
+    tracingInterceptor = module.get<TelemetryTracingInterceptor>(
+      TelemetryTracingInterceptor,
+    );
   });
 
   describe('PromQL SLO Metrics Exporter', () => {
     it('should generate compliant PromQL metrics and SHA-256 attestation digest', () => {
-      const snapshot = sloExporter.generateSloMetricsSnapshot('tenant-bank-01', {
-        ingestion: {
-          tenantId: 'tenant-bank-01',
-          acceptanceRatePercentage: 99.98,
-          lagMs: 142,
-          normalizationSuccessPercentage: 100,
-          quarantineCount: 0,
-          connectorState: 'HEALTHY',
+      const snapshot = sloExporter.generateSloMetricsSnapshot(
+        'tenant-bank-01',
+        {
+          ingestion: {
+            tenantId: 'tenant-bank-01',
+            acceptanceRatePercentage: 99.98,
+            lagMs: 142,
+            normalizationSuccessPercentage: 100,
+            quarantineCount: 0,
+            connectorState: 'HEALTHY',
+          },
+          detection: {
+            tenantId: 'tenant-bank-01',
+            p99LatencyMs: 412,
+            replayDeterminismPercentage: 100,
+            falsePositiveReviewRate: 0.02,
+            stateStoreHealth: 'OPTIMAL',
+          },
+          caseResponse: {
+            tenantId: 'tenant-bank-01',
+            alertToTriageAvgSeconds: 12,
+            caseAgeHours: 0.5,
+            approvalLatencySeconds: 15,
+            executedActionsCount: 4,
+            rollbackActionsCount: 0,
+          },
+          evidence: {
+            tenantId: 'tenant-bank-01',
+            freshnessSeconds: 18,
+            completenessPercentage: 100,
+            ledgerVerifiedCount: 88,
+            anchorPublicationLatencyMs: 250,
+          },
+          aiGateway: {
+            tenantId: 'tenant-bank-01',
+            modelVersion: 'vertex-gemini-1.5-pro',
+            avgGroundingScore: 0.985,
+            citationValidityPercentage: 100,
+            blockedVerdictsCount: 0,
+            totalTokensUsed: 15200,
+            tenantAttributableCostUsd: 0.0456,
+          },
         },
-        detection: {
-          tenantId: 'tenant-bank-01',
-          p99LatencyMs: 412,
-          replayDeterminismPercentage: 100,
-          falsePositiveReviewRate: 0.02,
-          stateStoreHealth: 'OPTIMAL',
-        },
-        caseResponse: {
-          tenantId: 'tenant-bank-01',
-          alertToTriageAvgSeconds: 12,
-          caseAgeHours: 0.5,
-          approvalLatencySeconds: 15,
-          executedActionsCount: 4,
-          rollbackActionsCount: 0,
-        },
-        evidence: {
-          tenantId: 'tenant-bank-01',
-          freshnessSeconds: 18,
-          completenessPercentage: 100,
-          ledgerVerifiedCount: 88,
-          anchorPublicationLatencyMs: 250,
-        },
-        aiGateway: {
-          tenantId: 'tenant-bank-01',
-          modelVersion: 'vertex-gemini-1.5-pro',
-          avgGroundingScore: 0.985,
-          citationValidityPercentage: 100,
-          blockedVerdictsCount: 0,
-          totalTokensUsed: 15200,
-          tenantAttributableCostUsd: 0.0456,
-        },
-      });
+      );
 
       expect(snapshot.snapshotId).toBeDefined();
       expect(snapshot.promQlFormattedMetrics.length).toBeGreaterThanOrEqual(7);
@@ -87,13 +94,16 @@ describe('SloMetricsExporterService & Distributed Tracing (LAB 16 Observability)
     });
 
     it('should propagate incoming W3C traceparent and issue a new child span ID', () => {
-      const incoming = '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01';
+      const incoming =
+        '00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01';
       const context = tracingInterceptor.parseOrCreateTraceContext(incoming);
 
       expect(context.traceId).toBe('4bf92f3577b34da6a3ce929d0e0e4736');
       expect(context.parentSpanId).toBe('00f067aa0ba902b7');
       expect(context.spanId).not.toBe('00f067aa0ba902b7');
-      expect(context.traceparent).toMatch(/^00-4bf92f3577b34da6a3ce929d0e0e4736-[0-9a-f]{16}-01$/);
+      expect(context.traceparent).toMatch(
+        /^00-4bf92f3577b34da6a3ce929d0e0e4736-[0-9a-f]{16}-01$/,
+      );
     });
 
     it('should intercept execution and set traceparent header on response', (done) => {
@@ -112,13 +122,18 @@ describe('SloMetricsExporterService & Distributed Tracing (LAB 16 Observability)
         handle: () => of({ success: true }),
       };
 
-      tracingInterceptor.intercept(mockExecutionContext, mockCallHandler).subscribe({
-        next: (val) => {
-          expect(val).toEqual({ success: true });
-          expect(setHeaderSpy).toHaveBeenCalledWith('traceparent', expect.stringMatching(/^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/));
-          done();
-        },
-      });
+      tracingInterceptor
+        .intercept(mockExecutionContext, mockCallHandler)
+        .subscribe({
+          next: (val) => {
+            expect(val).toEqual({ success: true });
+            expect(setHeaderSpy).toHaveBeenCalledWith(
+              'traceparent',
+              expect.stringMatching(/^00-[0-9a-f]{32}-[0-9a-f]{16}-01$/),
+            );
+            done();
+          },
+        });
     });
   });
 });

@@ -38,7 +38,11 @@ export class GeminiModelProvider implements ModelProvider {
 
         const payload = {
           system_instruction: {
-            parts: [{ text: `${input.systemPrompt}\n\nSecurity Retrieval Context:\n${input.retrievalContext}` }],
+            parts: [
+              {
+                text: `${input.systemPrompt}\n\nSecurity Retrieval Context:\n${input.retrievalContext}`,
+              },
+            ],
           },
           contents: [
             {
@@ -110,7 +114,10 @@ export class GeminiModelProvider implements ModelProvider {
           threshold: 3,
           windowSeconds: 120,
         },
-        requiredEventTypes: ['cloud.iam.policy_change', 'auth.privilege_escalation'],
+        requiredEventTypes: [
+          'cloud.iam.policy_change',
+          'auth.privilege_escalation',
+        ],
         requiredFields: ['principalEmail', 'targetPolicyArn'],
         allowedMissingDataBehavior: 'INDETERMINATE',
         syntheticTestEvents: [

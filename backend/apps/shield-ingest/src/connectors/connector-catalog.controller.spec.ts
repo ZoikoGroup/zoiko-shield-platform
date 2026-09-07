@@ -224,7 +224,10 @@ describe('ConnectorCatalogController — OPS-INV-13 Heartbeat & DLQ', () => {
 
   describe('POST /dlq/auto-retry (OPS-INV-13)', () => {
     it('triggers DLQ replay batch and returns result metrics', async () => {
-      const result = await controller.triggerDlqAutoRetry('tenant-dlq-01', '25');
+      const result = await controller.triggerDlqAutoRetry(
+        'tenant-dlq-01',
+        '25',
+      );
 
       expect(result.statusCode).toBe(200);
       expect(result.data?.totalProcessed).toBe(3);

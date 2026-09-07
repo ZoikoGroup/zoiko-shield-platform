@@ -11,16 +11,24 @@ describe('AutonomousRedTeamAgentService & PlaybookOptimizerAgentService (LAB 23 
       providers: [AutonomousRedTeamAgentService, PlaybookOptimizerAgentService],
     }).compile();
 
-    redTeamAgent = module.get<AutonomousRedTeamAgentService>(AutonomousRedTeamAgentService);
-    playbookOptimizer = module.get<PlaybookOptimizerAgentService>(PlaybookOptimizerAgentService);
+    redTeamAgent = module.get<AutonomousRedTeamAgentService>(
+      AutonomousRedTeamAgentService,
+    );
+    playbookOptimizer = module.get<PlaybookOptimizerAgentService>(
+      PlaybookOptimizerAgentService,
+    );
   });
 
   describe('Autonomous Red Team Attack Simulation', () => {
     it('should generate multi-stage MITRE ATT&CK chain for Cloud-Ransomware scenario', () => {
       const tenantId = 'tenant-enterprise-sec';
-      const chain = redTeamAgent.generateAttackSequence(tenantId, 'Cloud-Ransomware-Exfil', {
-        intensityLevel: 'AGGRESSIVE',
-      });
+      const chain = redTeamAgent.generateAttackSequence(
+        tenantId,
+        'Cloud-Ransomware-Exfil',
+        {
+          intensityLevel: 'AGGRESSIVE',
+        },
+      );
 
       expect(chain.chainId).toBeDefined();
       expect(chain.steps.length).toBe(4);
@@ -78,7 +86,11 @@ describe('AutonomousRedTeamAgentService & PlaybookOptimizerAgentService (LAB 23 
         },
       ];
 
-      const report = playbookOptimizer.analyzePlaybookDag(playbookId, tenantId, actions);
+      const report = playbookOptimizer.analyzePlaybookDag(
+        playbookId,
+        tenantId,
+        actions,
+      );
 
       expect(report.originalAverageDurationMs).toBe(900); // 300 + 450 + 150
       expect(report.optimizedEstimatedDurationMs).toBe(600); // max(300, 450) + 150

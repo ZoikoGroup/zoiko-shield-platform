@@ -32,7 +32,8 @@ describe('BackupExpiryService (spec §18/§19/§70 — honest backup retention d
       await service.recordPending(TENANT_ID, DELETION_REQUEST_ID);
 
       expect(prisma.backupExpiryRecord.create).toHaveBeenCalledTimes(1);
-      const createdData = prisma.backupExpiryRecord.create.mock.calls[0][0].data;
+      const createdData =
+        prisma.backupExpiryRecord.create.mock.calls[0][0].data;
       expect(createdData.tenant_id).toBe(TENANT_ID);
       expect(createdData.deletion_request_id).toBe(DELETION_REQUEST_ID);
       expect(createdData.status).toBe('PENDING');
@@ -49,8 +50,12 @@ describe('BackupExpiryService (spec §18/§19/§70 — honest backup retention d
       const thirtyFiveDaysMs = 35 * 24 * 60 * 60 * 1000;
 
       // Allow ±5 seconds for test execution time
-      expect(retainedUntilMs).toBeGreaterThanOrEqual(before + thirtyFiveDaysMs - 5000);
-      expect(retainedUntilMs).toBeLessThanOrEqual(after + thirtyFiveDaysMs + 5000);
+      expect(retainedUntilMs).toBeGreaterThanOrEqual(
+        before + thirtyFiveDaysMs - 5000,
+      );
+      expect(retainedUntilMs).toBeLessThanOrEqual(
+        after + thirtyFiveDaysMs + 5000,
+      );
     });
 
     it('assigns a unique ID to every created record', async () => {
@@ -137,8 +142,16 @@ describe('BackupExpiryService (spec §18/§19/§70 — honest backup retention d
       const futureDate = new Date(Date.now() + 86400000 * 10);
 
       prisma.backupExpiryRecord.findMany.mockResolvedValue([
-        { id: 'rec-past', status: 'PENDING', final_expiry_expected_at: pastDate },
-        { id: 'rec-future', status: 'PENDING', final_expiry_expected_at: futureDate },
+        {
+          id: 'rec-past',
+          status: 'PENDING',
+          final_expiry_expected_at: pastDate,
+        },
+        {
+          id: 'rec-future',
+          status: 'PENDING',
+          final_expiry_expected_at: futureDate,
+        },
       ]);
 
       const result = await service.checkAndVerifyExpired(DELETION_REQUEST_ID);

@@ -54,15 +54,23 @@ describe('LAB 08 — Tier-A Detection & Deterministic Replay Engine', () => {
     if (!tenantId || !entityKey) return null;
 
     // 2. Window aggregate & threshold evaluation
-    const matchingEvents = events.filter((e) => e.tenantId === tenantId && e.entityKey === entityKey);
-    const aggregatedScore = matchingEvents.reduce((acc, curr) => acc + curr.threatScore, 0);
+    const matchingEvents = events.filter(
+      (e) => e.tenantId === tenantId && e.entityKey === entityKey,
+    );
+    const aggregatedScore = matchingEvents.reduce(
+      (acc, curr) => acc + curr.threatScore,
+      0,
+    );
 
     if (aggregatedScore < 50) return null;
 
     // 3. Construct deterministic alert candidate hash
     const eventIds = matchingEvents.map((e) => e.eventId).sort();
     const deterministicPayload = `${rule.ruleId}|${rule.version}|${tenantId}|${entityKey}|${aggregatedScore}|${eventIds.join(',')}`;
-    const deterministicHash = crypto.createHash('sha256').update(deterministicPayload).digest('hex');
+    const deterministicHash = crypto
+      .createHash('sha256')
+      .update(deterministicPayload)
+      .digest('hex');
 
     return {
       alertCandidateId: `alt-cand-${deterministicHash.slice(0, 16)}`,
@@ -122,7 +130,10 @@ describe('LAB 08 — Tier-A Detection & Deterministic Replay Engine', () => {
       expect(liveAlert!.aggregatedThreatScore).toBe(60);
 
       // Replay run over same fixture
-      const replayAlert = executeDetectionEngine(sampleRule, fixedEventsFixture);
+      const replayAlert = executeDetectionEngine(
+        sampleRule,
+        fixedEventsFixture,
+      );
       expect(replayAlert).not.toBeNull();
 
       // Invariant: alert hash and evidence linkage must be identical

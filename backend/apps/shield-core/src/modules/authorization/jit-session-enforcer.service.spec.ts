@@ -28,7 +28,10 @@ describe('JitSessionEnforcerService', () => {
     expect(session.status).toBe('ACTIVE');
     expect(session.elevatedRole).toBe('SECURITY_ADMIN');
 
-    const check = service.checkSessionValidity(session.sessionId, '198.51.100.25');
+    const check = service.checkSessionValidity(
+      session.sessionId,
+      '198.51.100.25',
+    );
     expect(check.valid).toBe(true);
     expect(check.status).toBe('ACTIVE');
   });
@@ -43,7 +46,10 @@ describe('JitSessionEnforcerService', () => {
       5,
     );
 
-    const check = service.checkSessionValidity(session.sessionId, '203.0.113.88'); // Divergent IP
+    const check = service.checkSessionValidity(
+      session.sessionId,
+      '203.0.113.88',
+    ); // Divergent IP
     expect(check.valid).toBe(false);
     expect(check.status).toBe('REVOKED');
     expect(check.reason).toContain('IP divergence');

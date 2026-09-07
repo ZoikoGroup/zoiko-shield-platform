@@ -85,11 +85,9 @@ describe('WebhookIngestController', () => {
 
     expect(response.statusCode).toBe(HttpStatus.ACCEPTED);
     expect(response.message).toContain('AWS CloudTrail');
-    expect(normalizationBridgeMock.normalizeCloudTrailRecord).toHaveBeenCalledWith(
-      payload.Records[0],
-      'tenant-1',
-      'dev',
-    );
+    expect(
+      normalizationBridgeMock.normalizeCloudTrailRecord,
+    ).toHaveBeenCalledWith(payload.Records[0], 'tenant-1', 'dev');
   });
 
   it('should accept CrowdStrike Falcon webhook and normalize detection payload', async () => {
@@ -106,7 +104,9 @@ describe('WebhookIngestController', () => {
 
     expect(response.statusCode).toBe(HttpStatus.ACCEPTED);
     expect(response.message).toContain('CrowdStrike Falcon');
-    expect(normalizationBridgeMock.normalizeCrowdStrikeDetection).toHaveBeenCalled();
+    expect(
+      normalizationBridgeMock.normalizeCrowdStrikeDetection,
+    ).toHaveBeenCalled();
   });
 
   it('should accept Okta event hook and normalize event', async () => {

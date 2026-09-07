@@ -11,8 +11,12 @@ describe('StreamThreatHuntingService & Deduplication (LAB 19 Real-Time Stream Th
       providers: [StreamThreatHuntingService, StreamDeduplicationService],
     }).compile();
 
-    huntingService = module.get<StreamThreatHuntingService>(StreamThreatHuntingService);
-    dedupService = module.get<StreamDeduplicationService>(StreamDeduplicationService);
+    huntingService = module.get<StreamThreatHuntingService>(
+      StreamThreatHuntingService,
+    );
+    dedupService = module.get<StreamDeduplicationService>(
+      StreamDeduplicationService,
+    );
   });
 
   describe('In-Flight Stream Threat Hunting', () => {
@@ -89,13 +93,25 @@ describe('StreamThreatHuntingService & Deduplication (LAB 19 Real-Time Stream Th
     it('should accept first unique event and discard subsequent identical burst duplicates', () => {
       const tenantId = 'tenant-gamma';
       const eventType = 'AUTH_FAILED_BURST';
-      const rawPayload = { username: 'attacker', srcIp: '198.51.100.99', attempt: 1 };
+      const rawPayload = {
+        username: 'attacker',
+        srcIp: '198.51.100.99',
+        attempt: 1,
+      };
 
-      const firstCheck = dedupService.checkAndRegister(tenantId, eventType, rawPayload);
+      const firstCheck = dedupService.checkAndRegister(
+        tenantId,
+        eventType,
+        rawPayload,
+      );
       expect(firstCheck.isDuplicate).toBe(false);
 
       // Subsequent duplicate in the same sliding window
-      const secondCheck = dedupService.checkAndRegister(tenantId, eventType, rawPayload);
+      const secondCheck = dedupService.checkAndRegister(
+        tenantId,
+        eventType,
+        rawPayload,
+      );
       expect(secondCheck.isDuplicate).toBe(true);
       expect(secondCheck.fingerprint).toBe(firstCheck.fingerprint);
 

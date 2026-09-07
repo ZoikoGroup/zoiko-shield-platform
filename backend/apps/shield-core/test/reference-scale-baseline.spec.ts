@@ -40,7 +40,13 @@ async function measureParallel(
   label: string,
   count: number,
   task: (i: number) => Promise<unknown>,
-): Promise<{ label: string; count: number; p50: number; p99: number; maxMs: number }> {
+): Promise<{
+  label: string;
+  count: number;
+  p50: number;
+  p99: number;
+  maxMs: number;
+}> {
   const timings: number[] = [];
 
   const tasks = Array.from({ length: count }, (_, i) =>
@@ -138,13 +144,27 @@ describe('G1-PERF-01: Reference-Scale Performance Baseline', () => {
         },
       };
 
-      const result = await measureParallel('ingestion_normalization', 1000, async (i) => {
-        const payload: SentinelOneThreatPayload = { ...RAW_PAYLOAD, id: `s1-perf-${i}` };
-        normalizer.normalizeThreat(payload, 'perf-tenant', 'env-perf', 'GLOBAL');
-      });
+      const result = await measureParallel(
+        'ingestion_normalization',
+        1000,
+        async (i) => {
+          const payload: SentinelOneThreatPayload = {
+            ...RAW_PAYLOAD,
+            id: `s1-perf-${i}`,
+          };
+          normalizer.normalizeThreat(
+            payload,
+            'perf-tenant',
+            'env-perf',
+            'GLOBAL',
+          );
+        },
+      );
 
       results.push(result);
-      console.log(`[INGEST] ${result.count}x: p50=${result.p50}ms  p99=${result.p99}ms  max=${result.maxMs}ms`);
+      console.log(
+        `[INGEST] ${result.count}x: p50=${result.p50}ms  p99=${result.p99}ms  max=${result.maxMs}ms`,
+      );
 
       expect(result.p99).toBeLessThan(SLO_INGEST_P99_MS);
     }, 30_000);
@@ -168,20 +188,26 @@ describe('G1-PERF-01: Reference-Scale Performance Baseline', () => {
         matchPredicate: (e) => e.schemaName === 'ocsf.authentication.v1',
       };
 
-      const result = await measureParallel('detection_evaluation', 200, async (i) => {
-        const event: NormalizedStreamEvent = {
-          eventId: `evt-perf-${i}`,
-          tenantId: 'perf-tenant',
-          entityKey: `perf-user-${i % 10}`,
-          schemaName: 'ocsf.authentication.v1',
-          timestamp: new Date().toISOString(),
-          payload: { severity: 5 },
-        };
-        detector.processStreamEvent(rule, event, false);
-      });
+      const result = await measureParallel(
+        'detection_evaluation',
+        200,
+        async (i) => {
+          const event: NormalizedStreamEvent = {
+            eventId: `evt-perf-${i}`,
+            tenantId: 'perf-tenant',
+            entityKey: `perf-user-${i % 10}`,
+            schemaName: 'ocsf.authentication.v1',
+            timestamp: new Date().toISOString(),
+            payload: { severity: 5 },
+          };
+          detector.processStreamEvent(rule, event, false);
+        },
+      );
 
       results.push(result);
-      console.log(`[DETECT] ${result.count}x: p50=${result.p50}ms  p99=${result.p99}ms  max=${result.maxMs}ms`);
+      console.log(
+        `[DETECT] ${result.count}x: p50=${result.p50}ms  p99=${result.p99}ms  max=${result.maxMs}ms`,
+      );
 
       expect(result.p99).toBeLessThan(SLO_DETECT_P99_MS);
     }, 30_000);
@@ -223,7 +249,9 @@ describe('G1-PERF-01: Reference-Scale Performance Baseline', () => {
         sloSeconds: SLO_EVIDENCE_WALL_S,
       });
 
-      console.log(`[EVID] 50 checkpoints: wall=${wallS.toFixed(2)}s  SLO=${SLO_EVIDENCE_WALL_S}s`);
+      console.log(
+        `[EVID] 50 checkpoints: wall=${wallS.toFixed(2)}s  SLO=${SLO_EVIDENCE_WALL_S}s`,
+      );
       expect(wallS).toBeLessThan(SLO_EVIDENCE_WALL_S);
     }, 70_000);
   });
@@ -278,7 +306,9 @@ describe('G1-PERF-01: Reference-Scale Performance Baseline', () => {
         sloMb: SLO_MEMORY_DELTA_MB,
       });
 
-      console.log(`[MEM] RSS before=${(rssBefore / 1e6).toFixed(1)}MB  after=${(rssAfter / 1e6).toFixed(1)}MB  delta=${deltaMb.toFixed(1)}MB`);
+      console.log(
+        `[MEM] RSS before=${(rssBefore / 1e6).toFixed(1)}MB  after=${(rssAfter / 1e6).toFixed(1)}MB  delta=${deltaMb.toFixed(1)}MB`,
+      );
       expect(deltaMb).toBeLessThan(SLO_MEMORY_DELTA_MB);
     }, 30_000);
   });

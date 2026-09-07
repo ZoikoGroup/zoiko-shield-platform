@@ -32,7 +32,9 @@ describe('LAB 09 — ClickHouse Analytical Detections & Parameterized SQL', () =
       expect(plan.params.tenantId).toBe('tenant-alpha');
       expect(plan.params.actorId).toBe('actor-attacker-01');
       expect(plan.partitionKey).toBe('tenant-alpha:202609');
-      expect(plan.pscEndpoint).toBe('clickhouse-psc.prod.zoikoshield.internal:8443');
+      expect(plan.pscEndpoint).toBe(
+        'clickhouse-psc.prod.zoikoshield.internal:8443',
+      );
 
       // Crucial: query text must NEVER contain raw literal values
       expect(plan.query).not.toContain("'tenant-alpha'");
@@ -41,10 +43,10 @@ describe('LAB 09 — ClickHouse Analytical Detections & Parameterized SQL', () =
 
     it('should REJECT injection attempts in tenant identifier', () => {
       expect(() => {
-        detectorService.buildAnalyticalQueryPlan(
-          "tenant-alpha' OR 1=1 --",
-          { start: '2026-09-01T00:00:00Z', end: '2026-09-07T00:00:00Z' },
-        );
+        detectorService.buildAnalyticalQueryPlan("tenant-alpha' OR 1=1 --", {
+          start: '2026-09-01T00:00:00Z',
+          end: '2026-09-07T00:00:00Z',
+        });
       }).toThrow(BadRequestException);
     });
   });
@@ -78,10 +80,10 @@ describe('LAB 09 — ClickHouse Analytical Detections & Parameterized SQL', () =
         },
       ];
 
-      const plan = detectorService.buildAnalyticalQueryPlan(
-        'tenant-alpha',
-        { start: '2026-09-01T00:00:00Z', end: '2026-09-07T00:00:00Z' },
-      );
+      const plan = detectorService.buildAnalyticalQueryPlan('tenant-alpha', {
+        start: '2026-09-01T00:00:00Z',
+        end: '2026-09-07T00:00:00Z',
+      });
 
       const result = detectorService.executeTierBDetection(plan, mockEvents);
 

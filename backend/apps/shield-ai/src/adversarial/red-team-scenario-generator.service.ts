@@ -3,7 +3,10 @@ import * as crypto from 'crypto';
 
 export interface RedTeamScenarioRequest {
   tenantId: string;
-  scenarioType: 'RANSOMWARE_STAGING' | 'CREDENTIAL_STUFFING_BURST' | 'CLOUD_IAM_PRIVILEGE_ESCALATION';
+  scenarioType:
+    | 'RANSOMWARE_STAGING'
+    | 'CREDENTIAL_STUFFING_BURST'
+    | 'CLOUD_IAM_PRIVILEGE_ESCALATION';
   targetHost?: string;
   targetUser?: string;
   intensityLevel?: 'LOW' | 'MEDIUM' | 'AGGRESSIVE';
@@ -78,7 +81,8 @@ export class RedTeamScenarioGeneratorService {
           stageName: 'Credential Access (LSASS Dumping)',
           mitreTactic: 'Credential Access',
           mitreTechniqueId: 'T1003.001',
-          commandExecuted: 'powershell.exe -enc c2VrdXJsc2E6OmxvZ29ucGFzc3dvcmRz',
+          commandExecuted:
+            'powershell.exe -enc c2VrdXJsc2E6OmxvZ29ucGFzc3dvcmRz',
           simulatedOcsfEvent: {
             eventClass: 'PROCESS_ACTIVITY',
             eventCategory: 'HOST_SYSTEM',
@@ -114,7 +118,8 @@ export class RedTeamScenarioGeneratorService {
           stageName: 'Cloud Discovery / IAM Enumeration',
           mitreTactic: 'Discovery',
           mitreTechniqueId: 'T1087.004',
-          commandExecuted: 'aws iam list-attached-user-policies --user-name contractor',
+          commandExecuted:
+            'aws iam list-attached-user-policies --user-name contractor',
           simulatedOcsfEvent: {
             eventClass: 'CLOUD_AUDIT',
             eventCategory: 'CLOUD_INFRASTRUCTURE',
@@ -130,7 +135,8 @@ export class RedTeamScenarioGeneratorService {
           stageName: 'Privilege Escalation / Admin Role Attachment',
           mitreTactic: 'Privilege Escalation',
           mitreTechniqueId: 'T1098',
-          commandExecuted: 'aws iam attach-user-policy --user-name contractor --policy-arn arn:aws:iam::aws:policy/AdministratorAccess',
+          commandExecuted:
+            'aws iam attach-user-policy --user-name contractor --policy-arn arn:aws:iam::aws:policy/AdministratorAccess',
           simulatedOcsfEvent: {
             eventClass: 'SECURITY_FINDING',
             eventCategory: 'CLOUD_INFRASTRUCTURE',
@@ -138,7 +144,8 @@ export class RedTeamScenarioGeneratorService {
             outcome: 'SUCCESS',
             actor: user,
             targetResource: 'AdministratorAccess',
-            rawSnippet: 'Unauthorized AdministratorAccess policy attachment to non-admin contractor',
+            rawSnippet:
+              'Unauthorized AdministratorAccess policy attachment to non-admin contractor',
           },
         },
       ];

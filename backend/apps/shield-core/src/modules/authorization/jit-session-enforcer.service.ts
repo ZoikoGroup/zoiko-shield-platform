@@ -82,16 +82,31 @@ export class JitSessionEnforcerService {
   ): StepUpResult {
     const session = this.sessions.get(sessionId);
     if (!session) {
-      return { success: false, sessionId, nextStepUpDueAt: '', reason: 'Session does not exist' };
+      return {
+        success: false,
+        sessionId,
+        nextStepUpDueAt: '',
+        reason: 'Session does not exist',
+      };
     }
 
     if (session.status === 'REVOKED' || session.status === 'EXPIRED') {
-      return { success: false, sessionId, nextStepUpDueAt: '', reason: `Session is ${session.status}` };
+      return {
+        success: false,
+        sessionId,
+        nextStepUpDueAt: '',
+        reason: `Session is ${session.status}`,
+      };
     }
 
     // Validate signature format
     if (!challengeResponseSignature || challengeResponseSignature.length < 16) {
-      return { success: false, sessionId, nextStepUpDueAt: '', reason: 'Invalid hardware signature' };
+      return {
+        success: false,
+        sessionId,
+        nextStepUpDueAt: '',
+        reason: 'Invalid hardware signature',
+      };
     }
 
     const now = Date.now();
@@ -114,10 +129,19 @@ export class JitSessionEnforcerService {
   /**
    * Checks whether the JIT session is valid, unexpired, and not drifted.
    */
-  checkSessionValidity(sessionId: string, currentClientIp: string): SessionValidityResult {
+  checkSessionValidity(
+    sessionId: string,
+    currentClientIp: string,
+  ): SessionValidityResult {
     const session = this.sessions.get(sessionId);
     if (!session) {
-      return { valid: false, sessionId, operatorId: 'unknown', status: 'REVOKED', reason: 'Session not found' };
+      return {
+        valid: false,
+        sessionId,
+        operatorId: 'unknown',
+        status: 'REVOKED',
+        reason: 'Session not found',
+      };
     }
 
     const now = Date.now();
@@ -157,7 +181,8 @@ export class JitSessionEnforcerService {
         sessionId,
         operatorId: session.operatorId,
         status: 'STEP_UP_REQUIRED',
-        reason: 'Hardware WebAuthn re-attestation required for high-privilege action',
+        reason:
+          'Hardware WebAuthn re-attestation required for high-privilege action',
       };
     }
 
@@ -179,7 +204,9 @@ export class JitSessionEnforcerService {
     session.status = 'REVOKED';
     session.revocationReason = reason;
 
-    this.logger.warn(`🚫 [JIT SESSION REVOKED] Session '${sessionId}' revoked. Reason: ${reason}`);
+    this.logger.warn(
+      `🚫 [JIT SESSION REVOKED] Session '${sessionId}' revoked. Reason: ${reason}`,
+    );
     return true;
   }
 

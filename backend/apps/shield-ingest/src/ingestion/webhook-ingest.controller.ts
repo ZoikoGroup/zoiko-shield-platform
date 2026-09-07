@@ -92,7 +92,11 @@ export class WebhookIngestController {
       },
     );
 
-    if (this.normalizationBridge && payload.Records && Array.isArray(payload.Records)) {
+    if (
+      this.normalizationBridge &&
+      payload.Records &&
+      Array.isArray(payload.Records)
+    ) {
       for (const record of payload.Records) {
         await this.normalizationBridge.normalizeCloudTrailRecord(
           record,
@@ -104,7 +108,8 @@ export class WebhookIngestController {
 
     return {
       statusCode: HttpStatus.ACCEPTED,
-      message: 'AWS CloudTrail webhook batch accepted for ingestion and normalization',
+      message:
+        'AWS CloudTrail webhook batch accepted for ingestion and normalization',
       data: result,
     };
   }
@@ -142,7 +147,8 @@ export class WebhookIngestController {
 
     return {
       statusCode: HttpStatus.ACCEPTED,
-      message: 'CrowdStrike Falcon telemetry accepted for ingestion and normalization',
+      message:
+        'CrowdStrike Falcon telemetry accepted for ingestion and normalization',
       data: result,
     };
   }
@@ -194,7 +200,9 @@ export class WebhookIngestController {
     @Headers() headers: Record<string, string | string[] | undefined>,
     @Body() payload: IngestPayloadDto,
   ) {
-    this.logger.log(`Received eBPF kernel probe stream for connector: ${connectorId}`);
+    this.logger.log(
+      `Received eBPF kernel probe stream for connector: ${connectorId}`,
+    );
     const result = await this.rawIngestService.processWebhookPayload(
       connectorId,
       headers,
@@ -217,4 +225,3 @@ export class WebhookIngestController {
     };
   }
 }
-

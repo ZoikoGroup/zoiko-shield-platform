@@ -7,7 +7,8 @@ import {
 describe('ConfidentialEnclaveBridgeService', () => {
   let service: ConfidentialEnclaveBridgeService;
 
-  const validPcr0 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
+  const validPcr0 =
+    'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
   const mockQuote: EnclaveAttestationQuote = {
     enclaveId: 'enclave-nitro-secops-01',
     platform: 'AWS_NITRO',
@@ -15,7 +16,8 @@ describe('ConfidentialEnclaveBridgeService', () => {
     pcr1: 'a1b2c3d4e5f60000000000000000000000000000000000000000000000000000',
     pcr2: 'f6e5d4c3b2a10000000000000000000000000000000000000000000000000000',
     hardwareRootOfTrust: 'aws-nitro-pki-chain-thumbprint-99',
-    enclavePublicKeyPem: '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A...\n-----END PUBLIC KEY-----',
+    enclavePublicKeyPem:
+      '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A...\n-----END PUBLIC KEY-----',
     signature: '3045022100a1b2c3d4e5f6...valid_hardware_nitro_sig',
     timestamp: new Date().toISOString(),
   };
@@ -25,7 +27,9 @@ describe('ConfidentialEnclaveBridgeService', () => {
       providers: [ConfidentialEnclaveBridgeService],
     }).compile();
 
-    service = module.get<ConfidentialEnclaveBridgeService>(ConfidentialEnclaveBridgeService);
+    service = module.get<ConfidentialEnclaveBridgeService>(
+      ConfidentialEnclaveBridgeService,
+    );
   });
 
   it('should successfully verify a valid hardware quote and issue an EAT token', () => {
@@ -37,7 +41,10 @@ describe('ConfidentialEnclaveBridgeService', () => {
   });
 
   it('should reject quotes with mismatched PCR0 measurement', () => {
-    const alteredQuote = { ...mockQuote, pcr0: 'deadbeef00000000000000000000000000000000000000000000000000000000' };
+    const alteredQuote = {
+      ...mockQuote,
+      pcr0: 'deadbeef00000000000000000000000000000000000000000000000000000000',
+    };
     const token = service.verifyAttestationQuote(alteredQuote, validPcr0);
     expect(token.verified).toBe(false);
     expect(token.status).toBe('PCR_MISMATCH');

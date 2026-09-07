@@ -102,7 +102,8 @@ export class ConnectorHealthService {
       const now = Date.now();
 
       for (const instance of activeInstances) {
-        const statusRecord = instance.connectorHealthStatus || (instance as any).healthStatus;
+        const statusRecord =
+          instance.connectorHealthStatus || (instance as any).healthStatus;
         const lastSeen = statusRecord?.lastSuccessfulConnectionAt
           ? new Date(statusRecord.lastSuccessfulConnectionAt).getTime()
           : 0;
@@ -141,7 +142,9 @@ export class ConnectorHealthService {
         }
       }
     } catch (err: any) {
-      this.logger.error(`Error in monitorConnectorHeartbeats cron: ${err.message}`);
+      this.logger.error(
+        `Error in monitorConnectorHeartbeats cron: ${err.message}`,
+      );
     } finally {
       this.isSweeping = false;
     }
@@ -259,4 +262,3 @@ export class ConnectorHealthService {
     }
   }
 }
-

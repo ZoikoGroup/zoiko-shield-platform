@@ -162,6 +162,7 @@ export default function ConnectorsPage() {
                   Provider: {conn.provider}
                 </span>
               </div>
+              
 
               <div className="p-3 rounded-lg bg-slate-950/80 border border-slate-800/80 font-mono text-[11px] space-y-1.5">
                 <div className="text-slate-400">Connector ID:</div>

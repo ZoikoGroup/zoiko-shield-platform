@@ -48,7 +48,11 @@ describe('DeletionAttestationService (spec §71 — honest deletion disclosure)'
       prisma.backupExpiryRecord.findMany.mockResolvedValue([]);
       prisma.legalHold.findMany.mockResolvedValue([]);
 
-      const result = await service.issue(TENANT_ID, DELETION_REQUEST_ID, ISSUED_BY);
+      const result = await service.issue(
+        TENANT_ID,
+        DELETION_REQUEST_ID,
+        ISSUED_BY,
+      );
 
       expect(prisma.deletionAttestation.create).toHaveBeenCalledTimes(1);
       const created = prisma.deletionAttestation.create.mock.calls[0][0].data;
@@ -85,7 +89,9 @@ describe('DeletionAttestationService (spec §71 — honest deletion disclosure)'
       const limitationsJson =
         prisma.deletionAttestation.create.mock.calls[0][0].data.limitations;
       const limitations = JSON.parse(limitationsJson) as string[];
-      expect(limitations.some((l) => l.includes('OPENSEARCH_SECONDARY'))).toBe(true);
+      expect(limitations.some((l) => l.includes('OPENSEARCH_SECONDARY'))).toBe(
+        true,
+      );
     });
 
     it('includes active legal holds in retained_scopes (honest disclosure)', async () => {
@@ -144,7 +150,12 @@ describe('DeletionAttestationService (spec §71 — honest deletion disclosure)'
     it('throws ConflictException when any deletion task is still PENDING', async () => {
       prisma.deletionTask.findMany.mockResolvedValue([
         COMPLETED_TASK,
-        { ...COMPLETED_TASK, id: 'task-2', status: 'PENDING', verification_result: null },
+        {
+          ...COMPLETED_TASK,
+          id: 'task-2',
+          status: 'PENDING',
+          verification_result: null,
+        },
       ]);
 
       await expect(

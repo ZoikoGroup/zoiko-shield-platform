@@ -39,14 +39,17 @@ function getRouteHandlers(controller: any): Array<{
   const prototype = controller.prototype;
 
   return Object.getOwnPropertyNames(prototype)
-    .filter((key) => key !== 'constructor' && typeof prototype[key] === 'function')
+    .filter(
+      (key) => key !== 'constructor' && typeof prototype[key] === 'function',
+    )
     .map((key) => {
       const method = prototype[key];
       const httpMethod: string =
         Reflect.getMetadata('method', method) ?? 'UNKNOWN';
       const routePath: string = Reflect.getMetadata('path', method) ?? '';
       const guards: any[] = Reflect.getMetadata('__guards__', method) ?? [];
-      const classGuards: any[] = Reflect.getMetadata('__guards__', controller) ?? [];
+      const classGuards: any[] =
+        Reflect.getMetadata('__guards__', controller) ?? [];
 
       return {
         name: key,
@@ -64,7 +67,10 @@ const WRITE_METHODS = new Set([
   RequestMethod.PUT,
   RequestMethod.DELETE,
   RequestMethod.PATCH,
-  1, 2, 3, 4,
+  1,
+  2,
+  3,
+  4,
 ]);
 
 // ─── Controllers Under Audit ──────────────────────────────────────────────────
@@ -79,12 +85,13 @@ const ALL_AUDITED_CONTROLLERS = [
 // ─── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('G1-CONTRACT-01: API Contract Audit — Route Invariant Verification', () => {
-
   describe('Invariant 1: All write operations are guarded', () => {
     for (const { name, cls } of ALL_AUDITED_CONTROLLERS) {
       it(`${name} — every POST/PUT/PATCH/DELETE handler is behind a guard`, () => {
         const routes = getRouteHandlers(cls);
-        const writeRoutes = routes.filter((r) => WRITE_METHODS.has(Number(r.httpMethod)));
+        const writeRoutes = routes.filter((r) =>
+          WRITE_METHODS.has(Number(r.httpMethod)),
+        );
         const unguardedWrites = writeRoutes.filter((r) => !r.hasGuard);
 
         expect(unguardedWrites).toEqual([]);
@@ -125,12 +132,14 @@ describe('G1-CONTRACT-01: API Contract Audit — Route Invariant Verification', 
         const prefix = getControllerRoutePrefix(cls);
         const classGuards: any[] = Reflect.getMetadata('__guards__', cls) ?? [];
         const routes = getRouteHandlers(cls);
-        const writeRoutes = routes.filter((r) => WRITE_METHODS.has(Number(r.httpMethod)));
+        const writeRoutes = routes.filter((r) =>
+          WRITE_METHODS.has(Number(r.httpMethod)),
+        );
         const unguardedWrites = writeRoutes.filter((r) => !r.hasGuard);
 
         results.push(
           `[${name}]  prefix=${prefix}  class-guards=${classGuards.length}  ` +
-          `write-routes=${writeRoutes.length}  unguarded-writes=${unguardedWrites.length}`,
+            `write-routes=${writeRoutes.length}  unguarded-writes=${unguardedWrites.length}`,
         );
       }
 
@@ -140,7 +149,9 @@ describe('G1-CONTRACT-01: API Contract Audit — Route Invariant Verification', 
       // All controllers must have zero unguarded write routes
       for (const { cls } of ALL_AUDITED_CONTROLLERS) {
         const routes = getRouteHandlers(cls);
-        const writeRoutes = routes.filter((r) => WRITE_METHODS.has(Number(r.httpMethod)));
+        const writeRoutes = routes.filter((r) =>
+          WRITE_METHODS.has(Number(r.httpMethod)),
+        );
         const unguardedWrites = writeRoutes.filter((r) => !r.hasGuard);
         expect(unguardedWrites).toHaveLength(0);
       }

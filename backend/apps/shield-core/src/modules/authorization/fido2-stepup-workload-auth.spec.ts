@@ -19,7 +19,9 @@ describe('Fido2StepupGuardService & WorkloadTokenBrokerService (LAB 21 Zero-Trus
     }).compile();
 
     fido2Guard = module.get<Fido2StepupGuardService>(Fido2StepupGuardService);
-    workloadBroker = module.get<WorkloadTokenBrokerService>(WorkloadTokenBrokerService);
+    workloadBroker = module.get<WorkloadTokenBrokerService>(
+      WorkloadTokenBrokerService,
+    );
   });
 
   describe('FIDO2 WebAuthn Hardware Step-Up Attestation', () => {
@@ -28,7 +30,9 @@ describe('Fido2StepupGuardService & WorkloadTokenBrokerService (LAB 21 Zero-Trus
       const { privateKey, publicKey } = crypto.generateKeyPairSync('ec', {
         namedCurve: 'prime256v1',
       });
-      const publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
+      const publicKeyPem = publicKey
+        .export({ type: 'spki', format: 'pem' })
+        .toString();
 
       const credentialId = 'cred-fido2-hardware-key-01';
       const analystId = 'analyst-alice-lead';
@@ -57,7 +61,9 @@ describe('Fido2StepupGuardService & WorkloadTokenBrokerService (LAB 21 Zero-Trus
         challenge: challenge.challengeBase64,
         origin: 'https://security.zoikoshield.corp',
       };
-      const clientDataJsonBase64 = Buffer.from(JSON.stringify(clientDataObj)).toString('base64');
+      const clientDataJsonBase64 = Buffer.from(
+        JSON.stringify(clientDataObj),
+      ).toString('base64');
       const clientDataHash = crypto
         .createHash('sha256')
         .update(Buffer.from(clientDataJsonBase64, 'base64'))
@@ -101,10 +107,17 @@ describe('Fido2StepupGuardService & WorkloadTokenBrokerService (LAB 21 Zero-Trus
 
   describe('SPIFFE Zero-Trust Workload Token Broker', () => {
     it('should issue and verify short-lived workload tokens between microservices', () => {
-      const issued = workloadBroker.issueToken('shield-core', 'shield-action', 'tenant-bank-99', 300);
+      const issued = workloadBroker.issueToken(
+        'shield-core',
+        'shield-action',
+        'tenant-bank-99',
+        300,
+      );
 
       expect(issued.token).toBeDefined();
-      expect(issued.spiffeId).toBe('spiffe://zoikoshield.internal/ns/production/sa/shield-core');
+      expect(issued.spiffeId).toBe(
+        'spiffe://zoikoshield.internal/ns/production/sa/shield-core',
+      );
       expect(issued.nonce).toBeDefined();
 
       const claims = workloadBroker.verifyToken(issued.token, 'shield-action');
@@ -114,24 +127,34 @@ describe('Fido2StepupGuardService & WorkloadTokenBrokerService (LAB 21 Zero-Trus
     });
 
     it('should REJECT workload token replay attacks when nonce is reused', () => {
-      const issued = workloadBroker.issueToken('shield-ingest', 'shield-core', 'tenant-bank-99', 300);
+      const issued = workloadBroker.issueToken(
+        'shield-ingest',
+        'shield-core',
+        'tenant-bank-99',
+        300,
+      );
 
       // First verification succeeds
       workloadBroker.verifyToken(issued.token, 'shield-core');
 
       // Replay attempt must fail
-      expect(() => workloadBroker.verifyToken(issued.token, 'shield-core')).toThrow(
-        /WORKLOAD_REPLAY_ATTACK_DETECTED/,
-      );
+      expect(() =>
+        workloadBroker.verifyToken(issued.token, 'shield-core'),
+      ).toThrow(/WORKLOAD_REPLAY_ATTACK_DETECTED/);
     });
 
     it('should REJECT token when presented to a different target satellite service', () => {
-      const issued = workloadBroker.issueToken('shield-core', 'shield-ai', 'tenant-bank-99', 300);
+      const issued = workloadBroker.issueToken(
+        'shield-core',
+        'shield-ai',
+        'tenant-bank-99',
+        300,
+      );
 
       // Presented to shield-action instead of shield-ai
-      expect(() => workloadBroker.verifyToken(issued.token, 'shield-action')).toThrow(
-        /WORKLOAD_TARGET_MISMATCH/,
-      );
+      expect(() =>
+        workloadBroker.verifyToken(issued.token, 'shield-action'),
+      ).toThrow(/WORKLOAD_TARGET_MISMATCH/);
     });
   });
 });

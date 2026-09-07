@@ -59,7 +59,8 @@ export class RawIngestService {
     private readonly prisma: PrismaService,
     private readonly kafkaProducer: KafkaProducerService,
     @Optional() private readonly meteringService?: MeteringService,
-    @Optional() private readonly deduplicationService?: StreamDeduplicationService,
+    @Optional()
+    private readonly deduplicationService?: StreamDeduplicationService,
     @Optional() private readonly dlqService?: DlqReplayQuarantineService,
   ) {}
 
@@ -215,7 +216,9 @@ export class RawIngestService {
           tenantId,
           'telemetry.ingested',
           payload,
-          routeMismatch ? 'ROUTE_AUTHORIZATION_MISMATCH' : 'MALFORMED_OR_EMPTY_PAYLOAD',
+          routeMismatch
+            ? 'ROUTE_AUTHORIZATION_MISMATCH'
+            : 'MALFORMED_OR_EMPTY_PAYLOAD',
           routeMismatch ? 'ROUTE_MISMATCH' : 'SCHEMA_VALIDATION_ERROR',
         );
       }

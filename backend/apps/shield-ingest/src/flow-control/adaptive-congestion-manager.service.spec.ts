@@ -10,7 +10,9 @@ describe('AdaptiveCongestionManagerService', () => {
       providers: [AdaptiveCongestionManagerService],
     }).compile();
 
-    service = module.get<AdaptiveCongestionManagerService>(AdaptiveCongestionManagerService);
+    service = module.get<AdaptiveCongestionManagerService>(
+      AdaptiveCongestionManagerService,
+    );
   });
 
   it('should maintain healthy admission under normal buffer utilization', () => {
@@ -45,7 +47,12 @@ describe('AdaptiveCongestionManagerService', () => {
     expect(congestedState?.currentWindowSize).toBe(100);
 
     // Drain buffer
-    const recoveredState = service.recordBufferUsage(tenantId, 10_000, 100_000, 10);
+    const recoveredState = service.recordBufferUsage(
+      tenantId,
+      10_000,
+      100_000,
+      10,
+    );
     expect(recoveredState.isCongested).toBe(false);
     expect(recoveredState.currentWindowSize).toBe(110); // 100 + 10 = 110
   });

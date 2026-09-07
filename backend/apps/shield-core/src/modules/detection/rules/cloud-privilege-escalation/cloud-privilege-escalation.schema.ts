@@ -6,20 +6,21 @@ export interface CloudPrivilegeEscalationConfiguration {
   severityLevel: string;
 }
 
-export const DEFAULT_CLOUD_PRIVILEGE_ESCALATION_CONFIG: CloudPrivilegeEscalationConfiguration = {
-  escalationActions: [
-    'AttachRolePolicy',
-    'AttachUserPolicy',
-    'PutUserPolicy',
-    'PutRolePolicy',
-    'CreateAccessKey',
-    'AddUserToGroup',
-  ],
-  sensitivePolicies: [
-    'AdministratorAccess',
-    'PowerUserAccess',
-    'IAMFullAccess',
-    '*:*',
-  ],
-  severityLevel: 'HIGH',
-};
+export const DEFAULT_CLOUD_PRIVILEGE_ESCALATION_CONFIG: CloudPrivilegeEscalationConfiguration =
+  {
+    escalationActions: [
+      'AttachRolePolicy',
+      'AttachUserPolicy',
+      'PutUserPolicy',
+      'PutRolePolicy',
+      'CreateAccessKey',
+      'AddUserToGroup',
+    ],
+    sensitivePolicies: [
+      'AdministratorAccess',
+      'PowerUserAccess',
+      'IAMFullAccess',
+      '*:*',
+    ],
+    severityLevel: 'HIGH',
+  };

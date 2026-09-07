@@ -93,7 +93,9 @@ describe('LAB 10 — Temporal Case & Evidence Workflows', () => {
 
       expect(outcome.status).toBe('RESOLVED');
       expect(outcome.finalVerdict).toBe('APPROVE_CONTAINMENT');
-      expect(outcome.executedActions).toContain('EXECUTE_ISOLATE_ENDPOINT_PLAYBOOK');
+      expect(outcome.executedActions).toContain(
+        'EXECUTE_ISOLATE_ENDPOINT_PLAYBOOK',
+      );
       expect(outcome.attestationDigest).toHaveLength(64);
     });
 

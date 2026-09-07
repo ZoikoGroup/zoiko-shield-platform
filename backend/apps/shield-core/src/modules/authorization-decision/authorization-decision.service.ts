@@ -289,7 +289,8 @@ export class AuthorizationDecisionService {
       if (cedarDecision.decision === 'INDETERMINATE') {
         return {
           decision: 'INDETERMINATE',
-          reasonCode: cedarDecision.reasonCode || 'POLICY_DEPENDENCY_UNAVAILABLE',
+          reasonCode:
+            cedarDecision.reasonCode || 'POLICY_DEPENDENCY_UNAVAILABLE',
           reason: cedarDecision.reason,
           obligations: cedarDecision.obligations,
         };

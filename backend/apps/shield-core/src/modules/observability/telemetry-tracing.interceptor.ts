@@ -31,7 +31,8 @@ export class TelemetryTracingInterceptor implements NestInterceptor {
     const req = http.getRequest();
     const res = http.getResponse();
 
-    const incomingTraceparent = req?.headers?.['traceparent'] as string | undefined;
+    const incomingTraceparent = req?.headers?.['traceparent'] as
+      string | undefined;
     const traceContext = this.parseOrCreateTraceContext(incomingTraceparent);
 
     // Attach to request context for downstream service calls

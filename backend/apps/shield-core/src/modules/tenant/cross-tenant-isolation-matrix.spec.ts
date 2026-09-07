@@ -10,10 +10,18 @@ describe('Store-by-Store Tenant Isolation Negative Matrix', () => {
       tenant: {
         findUnique: jest.fn().mockImplementation(({ where }) => {
           if (where.id === 'tenant-alpha') {
-            return Promise.resolve({ id: 'tenant-alpha', name: 'Alpha Corp', status: 'ACTIVE' });
+            return Promise.resolve({
+              id: 'tenant-alpha',
+              name: 'Alpha Corp',
+              status: 'ACTIVE',
+            });
           }
           if (where.id === 'tenant-beta') {
-            return Promise.resolve({ id: 'tenant-beta', name: 'Beta Ltd', status: 'ACTIVE' });
+            return Promise.resolve({
+              id: 'tenant-beta',
+              name: 'Beta Ltd',
+              status: 'ACTIVE',
+            });
           }
           return Promise.resolve(null);
         }),
@@ -25,7 +33,9 @@ describe('Store-by-Store Tenant Isolation Negative Matrix', () => {
             throw new Error('UNBOUNDED_CROSS_TENANT_QUERY_PROHIBITED');
           }
           if (where.tenant_id === 'tenant-alpha') {
-            return Promise.resolve([{ id: 'case-alpha-1', tenant_id: 'tenant-alpha' }]);
+            return Promise.resolve([
+              { id: 'case-alpha-1', tenant_id: 'tenant-alpha' },
+            ]);
           }
           return Promise.resolve([]);
         }),
@@ -54,36 +64,57 @@ describe('Store-by-Store Tenant Isolation Negative Matrix', () => {
       });
 
       expect(records.length).toBe(1);
-      expect(records.every((r: any) => r.tenant_id === 'tenant-alpha')).toBe(true);
-      expect(records.some((r: any) => r.tenant_id === 'tenant-beta')).toBe(false);
+      expect(records.every((r: any) => r.tenant_id === 'tenant-alpha')).toBe(
+        true,
+      );
+      expect(records.some((r: any) => r.tenant_id === 'tenant-beta')).toBe(
+        false,
+      );
     });
   });
 
   describe('Object Storage & Evidence Vault Tenant Prefix Isolation', () => {
     it('should validate tenant-prefixed storage URIs and prevent path traversal across tenants', () => {
-      const validateStoragePath = (tenantId: string, objectPath: string): boolean => {
+      const validateStoragePath = (
+        tenantId: string,
+        objectPath: string,
+      ): boolean => {
         // Enforce gs://{bucket}/{tenant_id}/... format and prevent ../ directory traversal
-        if (objectPath.includes('..') || objectPath.includes('/../')) return false;
+        if (objectPath.includes('..') || objectPath.includes('/../'))
+          return false;
         const prefix = `gs://zs-evidence-vault/${tenantId}/`;
         return objectPath.startsWith(prefix);
       };
 
       expect(
-        validateStoragePath('tenant-alpha', 'gs://zs-evidence-vault/tenant-alpha/2026/09/ev-001.json'),
+        validateStoragePath(
+          'tenant-alpha',
+          'gs://zs-evidence-vault/tenant-alpha/2026/09/ev-001.json',
+        ),
       ).toBe(true);
       expect(
-        validateStoragePath('tenant-alpha', 'gs://zs-evidence-vault/tenant-beta/2026/09/ev-001.json'),
+        validateStoragePath(
+          'tenant-alpha',
+          'gs://zs-evidence-vault/tenant-beta/2026/09/ev-001.json',
+        ),
       ).toBe(false);
       expect(
-        validateStoragePath('tenant-alpha', 'gs://zs-evidence-vault/tenant-alpha/../tenant-beta/ev-001.json'),
+        validateStoragePath(
+          'tenant-alpha',
+          'gs://zs-evidence-vault/tenant-alpha/../tenant-beta/ev-001.json',
+        ),
       ).toBe(false);
     });
   });
 
   describe('Kafka Topic Key & Partition Isolation', () => {
     it('should enforce tenant-prefixed partition keys for all emitted domain events', () => {
-      const formatEventPartitionKey = (tenantId: string, entityId: string): string => {
-        if (!tenantId || !entityId) throw new Error('MISSING_TENANT_PARTITION_KEY');
+      const formatEventPartitionKey = (
+        tenantId: string,
+        entityId: string,
+      ): string => {
+        if (!tenantId || !entityId)
+          throw new Error('MISSING_TENANT_PARTITION_KEY');
         return `${tenantId}:${entityId}`;
       };
 
@@ -96,10 +127,14 @@ describe('Store-by-Store Tenant Isolation Negative Matrix', () => {
 
   describe('ClickHouse Partitioning & Analytics Guard', () => {
     it('should reject raw SQL string concatenation and enforce parameterized tenant scoping', () => {
-      const generateAnalyticsQuery = (tenantId: string, timeRange: { start: string; end: string }) => {
+      const generateAnalyticsQuery = (
+        tenantId: string,
+        timeRange: { start: string; end: string },
+      ) => {
         // Must return parameterized query with SQL parameters, never inline unsanitized strings
         return {
-          query: 'SELECT count() as total_events FROM security_events WHERE tenant_id = {tenantId:String} AND event_time >= {start:DateTime64} AND event_time <= {end:DateTime64}',
+          query:
+            'SELECT count() as total_events FROM security_events WHERE tenant_id = {tenantId:String} AND event_time >= {start:DateTime64} AND event_time <= {end:DateTime64}',
           params: {
             tenantId,
             start: timeRange.start,

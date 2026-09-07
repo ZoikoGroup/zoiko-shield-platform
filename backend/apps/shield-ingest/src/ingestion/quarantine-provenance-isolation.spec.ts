@@ -53,12 +53,16 @@ describe('LAB 07 — OCSF Ingestion Normalization & Quarantine Provenance', () =
         errorMessage: 'Unsupported schema version 9.9',
       });
 
-      const alphaRecords = quarantineService.listQuarantinedEvents('tenant-alpha');
-      const betaRecords = quarantineService.listQuarantinedEvents('tenant-beta');
+      const alphaRecords =
+        quarantineService.listQuarantinedEvents('tenant-alpha');
+      const betaRecords =
+        quarantineService.listQuarantinedEvents('tenant-beta');
 
       expect(alphaRecords.length).toBeGreaterThanOrEqual(1);
       expect(betaRecords.length).toBeGreaterThanOrEqual(1);
-      expect(alphaRecords.every((r) => r.tenantId === 'tenant-alpha')).toBe(true);
+      expect(alphaRecords.every((r) => r.tenantId === 'tenant-alpha')).toBe(
+        true,
+      );
       expect(betaRecords.every((r) => r.tenantId === 'tenant-beta')).toBe(true);
     });
   });

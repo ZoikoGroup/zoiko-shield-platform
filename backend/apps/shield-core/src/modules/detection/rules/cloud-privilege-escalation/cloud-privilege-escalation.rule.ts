@@ -49,9 +49,10 @@ export class CloudPrivilegeEscalationRule implements DetectionRule {
     const isEscalationAction = config.escalationActions.some((action) =>
       actionName.toLowerCase().includes(action.toLowerCase()),
     );
-    const isSensitivePolicy = config.sensitivePolicies.some((policy) =>
-      resourceName.toLowerCase().includes(policy.toLowerCase()) ||
-      actionName.toLowerCase().includes(policy.toLowerCase()),
+    const isSensitivePolicy = config.sensitivePolicies.some(
+      (policy) =>
+        resourceName.toLowerCase().includes(policy.toLowerCase()) ||
+        actionName.toLowerCase().includes(policy.toLowerCase()),
     );
 
     factors.push({
@@ -73,7 +74,9 @@ export class CloudPrivilegeEscalationRule implements DetectionRule {
       incompleteData = true;
       reasons.push('Actor authorization context unresolved');
     } else {
-      const isPrivilegedUser = input.identity.identity_type === 'ROOT' || input.identity.identity_type === 'ADMIN';
+      const isPrivilegedUser =
+        input.identity.identity_type === 'ROOT' ||
+        input.identity.identity_type === 'ADMIN';
       factors.push({
         name: 'ACTOR_AUTHORIZATION_CONTEXT',
         contribution: isPrivilegedUser ? 10 : 30, // Higher risk when standard user executes admin policy attachment

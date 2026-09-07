@@ -14,7 +14,9 @@ describe('LAB 15 — Action Broker & Governed Response Hard Boundaries', () => {
       providers: [SignedCommandBrokerService, CloudHsmSignerService],
     }).compile();
 
-    brokerService = module.get<SignedCommandBrokerService>(SignedCommandBrokerService);
+    brokerService = module.get<SignedCommandBrokerService>(
+      SignedCommandBrokerService,
+    );
     hsmSigner = module.get<CloudHsmSignerService>(CloudHsmSignerService);
   });
 

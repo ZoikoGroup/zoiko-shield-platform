@@ -1,5 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { MultiRegionIngestShardService, IngestRegion } from './multi-region-ingest-shard.service';
+import {
+  MultiRegionIngestShardService,
+  IngestRegion,
+} from './multi-region-ingest-shard.service';
 
 describe('MultiRegionIngestShardService (LAB 16 Multi-Region & Sovereign Ingest Sharding)', () => {
   let shardService: MultiRegionIngestShardService;
@@ -9,7 +12,9 @@ describe('MultiRegionIngestShardService (LAB 16 Multi-Region & Sovereign Ingest 
       providers: [MultiRegionIngestShardService],
     }).compile();
 
-    shardService = module.get<MultiRegionIngestShardService>(MultiRegionIngestShardService);
+    shardService = module.get<MultiRegionIngestShardService>(
+      MultiRegionIngestShardService,
+    );
   });
 
   it('should deterministically assign primary regional shard based on tenant ID', () => {

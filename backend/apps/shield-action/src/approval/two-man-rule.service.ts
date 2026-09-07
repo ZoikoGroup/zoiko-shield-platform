@@ -8,10 +8,7 @@ import {
 import * as crypto from 'crypto';
 
 export type TwoManRuleStatus =
-  | 'PENDING_SECOND_APPROVAL'
-  | 'APPROVED'
-  | 'REJECTED'
-  | 'EXPIRED';
+  'PENDING_SECOND_APPROVAL' | 'APPROVED' | 'REJECTED' | 'EXPIRED';
 
 export interface TwoManRuleTicketInput {
   tenantId: string;
@@ -63,7 +60,8 @@ export interface TwoManRuleTicket {
 export class TwoManRuleService {
   private readonly logger = new Logger(TwoManRuleService.name);
   private readonly secretSigningKey =
-    process.env.TWO_MAN_SIGNING_KEY || 'zoiko-two-man-rule-ephemeral-secret-key-2026';
+    process.env.TWO_MAN_SIGNING_KEY ||
+    'zoiko-two-man-rule-ephemeral-secret-key-2026';
 
   // In-memory registry of two-man authorization tickets
   private readonly tickets = new Map<string, TwoManRuleTicket>();
@@ -80,7 +78,9 @@ export class TwoManRuleService {
 
     const ttlMinutes = input.ttlMinutes ?? 15;
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + ttlMinutes * 60 * 1000).toISOString();
+    const expiresAt = new Date(
+      now.getTime() + ttlMinutes * 60 * 1000,
+    ).toISOString();
     const createdAt = now.toISOString();
     const ticketId = `ticket-2man-${crypto.randomUUID()}`;
 
@@ -126,7 +126,9 @@ export class TwoManRuleService {
 
     if (nowTime > expiryTime) {
       ticket.status = 'EXPIRED';
-      this.logger.warn(`🛑 [TWO-MAN RULE TICKET EXPIRED] Ticket '${input.ticketId}' has expired.`);
+      this.logger.warn(
+        `🛑 [TWO-MAN RULE TICKET EXPIRED] Ticket '${input.ticketId}' has expired.`,
+      );
       throw new BadRequestException(
         `Two-man rule ticket '${input.ticketId}' has expired at ${ticket.expiresAt}.`,
       );
@@ -281,7 +283,8 @@ export class TwoManRuleService {
     if (!ticket.approvalSignature || !ticket.approvedBy) {
       return {
         valid: false,
-        reason: 'Ticket is missing cryptographic approval signature or approver identity.',
+        reason:
+          'Ticket is missing cryptographic approval signature or approver identity.',
       };
     }
 

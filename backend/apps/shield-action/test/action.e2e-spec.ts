@@ -28,7 +28,9 @@ describe('ShieldAction Application Endpoints (e2e)', () => {
           target_resource: 'host-10.0.1.45',
           status: 'PENDING_APPROVAL',
         }),
-        update: jest.fn().mockResolvedValue({ id: 'prop-1', status: 'EXECUTED' }),
+        update: jest
+          .fn()
+          .mockResolvedValue({ id: 'prop-1', status: 'EXECUTED' }),
       },
       actionReceipt: {
         create: jest.fn().mockResolvedValue({
@@ -203,7 +205,8 @@ describe('ShieldAction Application Endpoints (e2e)', () => {
       })
       .expect(201);
 
-    const ticketId = submitRes.body.ticketId || submitRes.body.id || 'ticket-123';
+    const ticketId =
+      submitRes.body.ticketId || submitRes.body.id || 'ticket-123';
 
     await request(app.getHttpServer())
       .post('/api/v1/action/approvals/two-man/approve')

@@ -35,7 +35,8 @@ export interface AnalyticalDetectionResult {
 @Injectable()
 export class ClickHouseDetectorService {
   private readonly logger = new Logger(ClickHouseDetectorService.name);
-  private readonly pscEndpoint = 'clickhouse-psc.prod.zoikoshield.internal:8443';
+  private readonly pscEndpoint =
+    'clickhouse-psc.prod.zoikoshield.internal:8443';
 
   /**
    * Generates a safe, parameterized ClickHouse analytical detection query.
@@ -55,7 +56,11 @@ export class ClickHouseDetectorService {
     }
 
     // Prohibit raw SQL injection tokens or LLM free-text queries
-    if (tenantId.includes("'") || tenantId.includes(';') || tenantId.includes('--')) {
+    if (
+      tenantId.includes("'") ||
+      tenantId.includes(';') ||
+      tenantId.includes('--')
+    ) {
       throw new BadRequestException('ILLEGAL_CHARACTERS_IN_TENANT_IDENTIFIER');
     }
 

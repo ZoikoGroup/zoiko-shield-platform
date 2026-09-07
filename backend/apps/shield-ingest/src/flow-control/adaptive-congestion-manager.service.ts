@@ -38,7 +38,10 @@ export class AdaptiveCongestionManagerService {
     maxBufferBytes: number,
     queueDepth: number,
   ): CongestionState {
-    const utilization = Math.min(1.0, currentBufferBytes / Math.max(1, maxBufferBytes));
+    const utilization = Math.min(
+      1.0,
+      currentBufferBytes / Math.max(1, maxBufferBytes),
+    );
     const now = new Date().toISOString();
 
     const existing = this.states.get(tenantId) || {
@@ -96,7 +99,11 @@ export class AdaptiveCongestionManagerService {
   ): IngestAdmissionDecision {
     const state = this.states.get(tenantId);
 
-    if (state && state.isCongested && currentInFlightCount >= state.currentWindowSize) {
+    if (
+      state &&
+      state.isCongested &&
+      currentInFlightCount >= state.currentWindowSize
+    ) {
       return {
         admitted: false,
         tenantId,

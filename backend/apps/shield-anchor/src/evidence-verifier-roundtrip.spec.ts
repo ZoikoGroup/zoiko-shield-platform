@@ -3,7 +3,10 @@ import * as path from 'path';
 import * as os from 'os';
 import * as crypto from 'crypto';
 import { verifyPackageDirectory } from '../../../tools/independent-verifier/src/verify';
-import { hashCanonicalJson, sha256Hex } from '../../../tools/independent-verifier/src/hashing/hash';
+import {
+  hashCanonicalJson,
+  sha256Hex,
+} from '../../../tools/independent-verifier/src/hashing/hash';
 import { MerkleTreeService } from './merkle/merkle-tree.service';
 
 describe('LAB 11 — Evidence Ledger & Independent Offline Verifier Round-Trip', () => {
@@ -20,7 +23,10 @@ describe('LAB 11 — Evidence Ledger & Independent Offline Verifier Round-Trip',
     }
   });
 
-  function createSampleVerifiedPackage(targetDir: string, tamperFn?: (pkg: any) => void) {
+  function createSampleVerifiedPackage(
+    targetDir: string,
+    tamperFn?: (pkg: any) => void,
+  ) {
     const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', {
       namedCurve: 'prime256v1',
       publicKeyEncoding: { type: 'spki', format: 'pem' },
@@ -28,7 +34,12 @@ describe('LAB 11 — Evidence Ledger & Independent Offline Verifier Round-Trip',
     });
 
     const tenantId = 'tenant-corp-01';
-    const evidence1 = { evidenceId: 'ev-001', tenantId, status: 'COMPLIANT', timestamp: '2026-09-01T10:00:00Z' };
+    const evidence1 = {
+      evidenceId: 'ev-001',
+      tenantId,
+      status: 'COMPLIANT',
+      timestamp: '2026-09-01T10:00:00Z',
+    };
     const rawEvidenceBytes = Buffer.from(JSON.stringify(evidence1), 'utf-8');
     const ev1Hash = sha256Hex(rawEvidenceBytes);
 
@@ -42,7 +53,10 @@ describe('LAB 11 — Evidence Ledger & Independent Offline Verifier Round-Trip',
       sequence: 1,
       evidenceId: 'ev-001',
       previousEntryHash: null as string | null,
-      evidenceMetadata: { collector: 'aws-audit-collector', sourceVersion: '1.0' },
+      evidenceMetadata: {
+        collector: 'aws-audit-collector',
+        sourceVersion: '1.0',
+      },
     };
     const { contentHash: entry1Hash } = hashCanonicalJson({
       tenantId: entry1Core.tenantId,
@@ -57,8 +71,14 @@ describe('LAB 11 — Evidence Ledger & Independent Offline Verifier Round-Trip',
     const manifestCore = {
       tenantId,
       scope: { frameworks: ['SOC2-TYPE-2', 'ISO-27001'] },
-      period: { startTime: '2026-09-01T00:00:00Z', endTime: '2026-09-07T00:00:00Z' },
-      schemaBundle: { id: 'sb-v1', hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855' },
+      period: {
+        startTime: '2026-09-01T00:00:00Z',
+        endTime: '2026-09-07T00:00:00Z',
+      },
+      schemaBundle: {
+        id: 'sb-v1',
+        hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+      },
       frameworkVersions: ['SOC2-2026'],
       mappingVersions: ['MAP-2026.08'],
       evidenceIndex: [
@@ -159,7 +179,7 @@ describe('LAB 11 — Evidence Ledger & Independent Offline Verifier Round-Trip',
       approvedAt: '2026-09-07T08:30:00Z',
     };
 
-    let manifest: any = {
+    const manifest: any = {
       ...manifestCore,
       proofEnvelope,
       auditPackageApproval,
@@ -177,19 +197,30 @@ describe('LAB 11 — Evidence Ledger & Independent Offline Verifier Round-Trip',
       packageEnvelopeHash,
     };
 
-    fs.writeFileSync(path.join(targetDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
-    fs.writeFileSync(path.join(targetDir, 'envelope.json'), JSON.stringify(envelope, null, 2));
+    fs.writeFileSync(
+      path.join(targetDir, 'manifest.json'),
+      JSON.stringify(manifest, null, 2),
+    );
+    fs.writeFileSync(
+      path.join(targetDir, 'envelope.json'),
+      JSON.stringify(envelope, null, 2),
+    );
   }
 
   it('Positive Round-Trip: should successfully verify clean signed evidence package with offline verifier', () => {
     createSampleVerifiedPackage(tempDir);
 
     const result = verifyPackageDirectory(tempDir);
-    if (result.overallResult !== 'CRYPTOGRAPHICALLY_VERIFIED_NOT_EXTERNALLY_WITNESSED') {
+    if (
+      result.overallResult !==
+      'CRYPTOGRAPHICALLY_VERIFIED_NOT_EXTERNALLY_WITNESSED'
+    ) {
       console.log('DEBUG VERIFIER RESULT:', JSON.stringify(result, null, 2));
     }
 
-    expect(result.overallResult).toBe('CRYPTOGRAPHICALLY_VERIFIED_NOT_EXTERNALLY_WITNESSED');
+    expect(result.overallResult).toBe(
+      'CRYPTOGRAPHICALLY_VERIFIED_NOT_EXTERNALLY_WITNESSED',
+    );
     expect(result.manifestValid).toBe(true);
     expect(result.schemaValid).toBe(true);
     expect(result.declaredEvidenceDigestsConsistent).toBe(true);
@@ -215,7 +246,13 @@ describe('LAB 11 — Evidence Ledger & Independent Offline Verifier Round-Trip',
   it('Tamper Negative 2 (Raw Byte Mutation): should report artifact byte mismatch when evidence content is altered', () => {
     createSampleVerifiedPackage(tempDir, ({ targetDir }) => {
       const evFilePath = path.join(targetDir, 'evidence', 'ev-001.json');
-      fs.writeFileSync(evFilePath, JSON.stringify({ evidenceId: 'ev-001', status: 'COMPROMISED_MUTATION' }));
+      fs.writeFileSync(
+        evFilePath,
+        JSON.stringify({
+          evidenceId: 'ev-001',
+          status: 'COMPROMISED_MUTATION',
+        }),
+      );
     });
 
     const result = verifyPackageDirectory(tempDir);
