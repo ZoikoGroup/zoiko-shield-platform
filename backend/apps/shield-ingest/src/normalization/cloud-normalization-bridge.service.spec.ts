@@ -146,7 +146,8 @@ describe('CloudNormalizationBridgeService', () => {
           timestamp: '2026-09-05T08:07:00.000Z',
           cmdline: 'powershell.exe -enc JABzACAAPQAgAE4AZQB3AC0ATwBiAGo...',
           filename: 'powershell.exe',
-          sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+          sha256:
+            'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
           user_name: 'corp\\secops',
           tactic: 'Execution',
           technique: 'Command and Scripting Interpreter',

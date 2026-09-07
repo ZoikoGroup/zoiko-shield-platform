@@ -60,7 +60,10 @@ export class ShieldCoreClient {
     );
   }
 
-  async getCaseConnectorsHealth(tenantId: string, caseId: string): Promise<any> {
+  async getCaseConnectorsHealth(
+    tenantId: string,
+    caseId: string,
+  ): Promise<any> {
     return this.get(
       `/internal/v1/cases/${caseId}/connectors-health?tenantId=${encodeURIComponent(tenantId)}`,
     );

@@ -28,9 +28,12 @@ export interface ControlEvaluationResult {
 }
 
 describe('LAB 10 — Continuous Assurance Control Evaluator Engine', () => {
-  function evaluateControl(input: ControlEvaluationInput): ControlEvaluationResult {
+  function evaluateControl(
+    input: ControlEvaluationInput,
+  ): ControlEvaluationResult {
     const now = Date.now();
-    const evidenceAgeSeconds = (now - new Date(input.evidenceCollectedAt).getTime()) / 1000;
+    const evidenceAgeSeconds =
+      (now - new Date(input.evidenceCollectedAt).getTime()) / 1000;
 
     // 1. Freshness check (LAB 10 requirement: render explicit STALE state)
     if (evidenceAgeSeconds > input.freshnessMaxSeconds) {
@@ -52,7 +55,8 @@ describe('LAB 10 — Continuous Assurance Control Evaluator Engine', () => {
         controlId: input.controlId,
         tenantId: input.tenantId,
         status: 'INCOMPLETE_DATA',
-        reason: 'Mandatory telemetry fields missing from evidence collector output',
+        reason:
+          'Mandatory telemetry fields missing from evidence collector output',
         evidenceDigest: 'incomplete-data-digest',
         evaluatedAt: new Date().toISOString(),
       };
@@ -68,7 +72,8 @@ describe('LAB 10 — Continuous Assurance Control Evaluator Engine', () => {
         controlId: input.controlId,
         tenantId: input.tenantId,
         status: 'COMPLIANT',
-        reason: 'All control requirements satisfied: MFA enforced and standing admins <= 5',
+        reason:
+          'All control requirements satisfied: MFA enforced and standing admins <= 5',
         evidenceDigest: 'valid-evidence-sha256-hash',
         evaluatedAt: new Date().toISOString(),
       };
@@ -79,7 +84,8 @@ describe('LAB 10 — Continuous Assurance Control Evaluator Engine', () => {
       controlId: input.controlId,
       tenantId: input.tenantId,
       status: 'NON_COMPLIANT',
-      reason: 'Standing admins exceed policy threshold or MFA not enforced on all accounts',
+      reason:
+        'Standing admins exceed policy threshold or MFA not enforced on all accounts',
       evidenceDigest: 'non-compliant-evidence-digest',
       evaluatedAt: new Date().toISOString(),
     };

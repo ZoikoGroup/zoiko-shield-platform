@@ -27,7 +27,8 @@ export class ConnectorCatalogController {
   constructor(
     private readonly connectorCatalogService: ConnectorCatalogService,
     @Optional() private readonly idempotencyService?: IdempotencyService,
-    @Optional() private readonly connectorHealthService?: ConnectorHealthService,
+    @Optional()
+    private readonly connectorHealthService?: ConnectorHealthService,
     @Optional() private readonly dlqWorker?: DLQReplayWorker,
     @Optional() private readonly dlqService?: DlqReplayQuarantineService,
   ) {}
@@ -254,7 +255,13 @@ export class ConnectorCatalogController {
   async recordConnectorHeartbeat(
     @Headers('x-tenant-id') headerTenantId: string,
     @Param('connectorId') connectorId: string,
-    @Body() body?: { lagMs?: number; errorRate?: number; eventsProcessed?: number; statusMessage?: string },
+    @Body()
+    body?: {
+      lagMs?: number;
+      errorRate?: number;
+      eventsProcessed?: number;
+      statusMessage?: string;
+    },
   ) {
     const tenantId = requireTenantId(headerTenantId);
     if (!this.connectorHealthService) {
@@ -285,7 +292,10 @@ export class ConnectorCatalogController {
     const limit = limitQuery ? parseInt(limitQuery, 10) : 50;
 
     if (!this.dlqWorker) {
-      return { statusCode: HttpStatus.OK, message: 'DLQ worker not configured' };
+      return {
+        statusCode: HttpStatus.OK,
+        message: 'DLQ worker not configured',
+      };
     }
 
     const result = await this.dlqWorker.replayQuarantineBatch(tenantId, limit);
@@ -304,7 +314,12 @@ export class ConnectorCatalogController {
   async getDlqMetrics() {
     const metrics = this.dlqService
       ? this.dlqService.getMetrics()
-      : { totalQuarantined: 0, activeQuarantined: 0, replayedSuccess: 0, replayedFailed: 0 };
+      : {
+          totalQuarantined: 0,
+          activeQuarantined: 0,
+          replayedSuccess: 0,
+          replayedFailed: 0,
+        };
     return {
       statusCode: HttpStatus.OK,
       data: metrics,

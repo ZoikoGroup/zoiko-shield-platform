@@ -178,7 +178,9 @@ describe('ConnectorHealthService', () => {
           id: 'inst-deg-1',
           tenant_id: 'tenant-sweep',
           state: 'HEALTHY',
-          connectorHealthStatus: { lastSuccessfulConnectionAt: eightySecondsAgo },
+          connectorHealthStatus: {
+            lastSuccessfulConnectionAt: eightySecondsAgo,
+          },
         },
       ]);
 
@@ -230,9 +232,7 @@ describe('ConnectorHealthService', () => {
     });
 
     it('does not run if a sweep is already in progress (isSweeping guard)', async () => {
-      prismaMock.connectorInstance.findMany = jest
-        .fn()
-        .mockResolvedValue([]);
+      prismaMock.connectorInstance.findMany = jest.fn().mockResolvedValue([]);
 
       // Trigger two concurrent calls
       const p1 = service.monitorConnectorHeartbeats();

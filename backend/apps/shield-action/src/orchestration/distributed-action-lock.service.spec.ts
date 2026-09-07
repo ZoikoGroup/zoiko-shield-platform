@@ -32,7 +32,9 @@ describe('DistributedActionLockService', () => {
     expect(result.acquired).toBe(true);
     expect(result.status).toBe('ACQUIRED');
     expect(result.lockToken).toMatch(/^lock-tok-/);
-    expect(result.lockKey).toBe('tenant-bank-01:ISOLATE_ENDPOINT:srv-db-primary-01');
+    expect(result.lockKey).toBe(
+      'tenant-bank-01:ISOLATE_ENDPOINT:srv-db-primary-01',
+    );
 
     const lockInfo = service.isResourceLocked(
       'tenant-bank-01',

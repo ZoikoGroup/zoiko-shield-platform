@@ -26,7 +26,9 @@ describe('RedTeamScenarioGeneratorService', () => {
     expect(scenario.scenarioId).toMatch(/^redteam-/);
     expect(scenario.stages.length).toBe(3);
     expect(scenario.expectedDetectionRules).toContain('ZS-PROC-001');
-    expect(scenario.stages[1].simulatedOcsfEvent.eventClass).toBe('PROCESS_ACTIVITY');
+    expect(scenario.stages[1].simulatedOcsfEvent.eventClass).toBe(
+      'PROCESS_ACTIVITY',
+    );
     expect(scenario.purpleTeamExerciseDigest).toHaveLength(64);
   });
 

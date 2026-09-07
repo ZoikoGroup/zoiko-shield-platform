@@ -23,12 +23,27 @@ export interface NormalizedOcsfEvent {
 
 export class EntraOcsfAdapter {
   static normalize(payload: Record<string, any>): NormalizedOcsfEvent {
-    const isSignIn = payload.eventType === 'signinLogs' || payload.userPrincipalName || payload.ipAddress;
-    const isSuccess = payload.status?.errorCode === 0 || payload.result === 'SUCCESS' || payload.outcome === 'SUCCESS';
+    const isSignIn =
+      payload.eventType === 'signinLogs' ||
+      payload.userPrincipalName ||
+      payload.ipAddress;
+    const isSuccess =
+      payload.status?.errorCode === 0 ||
+      payload.result === 'SUCCESS' ||
+      payload.outcome === 'SUCCESS';
 
-    const actorUserId = payload.userId || payload.user?.id || payload.userPrincipalName || 'usr-entra-unknown';
-    const actorEmail = payload.userPrincipalName || payload.user?.email || payload.userEmail || actorUserId;
-    const sourceIp = payload.ipAddress || payload.clientIp || payload.sourceIp || '0.0.0.0';
+    const actorUserId =
+      payload.userId ||
+      payload.user?.id ||
+      payload.userPrincipalName ||
+      'usr-entra-unknown';
+    const actorEmail =
+      payload.userPrincipalName ||
+      payload.user?.email ||
+      payload.userEmail ||
+      actorUserId;
+    const sourceIp =
+      payload.ipAddress || payload.clientIp || payload.sourceIp || '0.0.0.0';
 
     return {
       eventClass: 'AUTHENTICATION',

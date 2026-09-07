@@ -7,7 +7,10 @@ import { NormalizedOcsfEvent } from './entra.adapter';
 
 export class CloudTrailOcsfAdapter {
   static normalize(payload: Record<string, any>): NormalizedOcsfEvent {
-    const isFinding = payload.detailType === 'GuardDuty Finding' || payload.findingType || payload.type;
+    const isFinding =
+      payload.detailType === 'GuardDuty Finding' ||
+      payload.findingType ||
+      payload.type;
     const errorCode = payload.errorCode || payload.errorMessage;
     const outcome = errorCode ? 'FAILED' : 'SUCCESS';
 
@@ -16,10 +19,13 @@ export class CloudTrailOcsfAdapter {
       payload.userIdentity?.userName ||
       payload.actorUserId ||
       'arn:aws:iam::account:root';
-    const actorEmail = payload.userIdentity?.sessionContext?.sessionIssuer?.userName || actorUserId;
+    const actorEmail =
+      payload.userIdentity?.sessionContext?.sessionIssuer?.userName ||
+      actorUserId;
     const sourceIp = payload.sourceIPAddress || payload.sourceIp || '0.0.0.0';
 
-    const eventName = payload.eventName || payload.findingType || 'AWS_API_CALL';
+    const eventName =
+      payload.eventName || payload.findingType || 'AWS_API_CALL';
     const isPrivilegeEscalation =
       eventName.includes('AttachRolePolicy') ||
       eventName.includes('PutUserPolicy') ||
@@ -30,12 +36,20 @@ export class CloudTrailOcsfAdapter {
       eventClass: isFinding ? 'SECURITY_FINDING' : 'CLOUD_AUDIT',
       eventCategory: 'CLOUD_INFRASTRUCTURE',
       eventActivity: eventName,
-      severity: isPrivilegeEscalation ? 'HIGH' : isFinding ? 'MEDIUM' : 'INFORMATIONAL',
+      severity: isPrivilegeEscalation
+        ? 'HIGH'
+        : isFinding
+          ? 'MEDIUM'
+          : 'INFORMATIONAL',
       actorUserId,
       actorEmail,
       sourceIp,
       destinationIp: payload.destinationIp || '169.254.169.254',
-      resourceId: payload.requestParameters?.roleName || payload.resources?.[0]?.ARN || payload.awsRegion || 'aws-resource',
+      resourceId:
+        payload.requestParameters?.roleName ||
+        payload.resources?.[0]?.ARN ||
+        payload.awsRegion ||
+        'aws-resource',
       resourceType: 'AWS_IAM_ROLE',
       action: eventName,
       outcome,

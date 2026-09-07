@@ -25,7 +25,8 @@ describe('LAB 18 — Production Readiness & Game Day Launch Rehearsal (G2 Gate)'
       scenarioId: id,
       name,
       injectedFailure,
-      expectedBehavior: 'Fail-closed or deterministic safe degradation with zero data loss',
+      expectedBehavior:
+        'Fail-closed or deterministic safe degradation with zero data loss',
       actualBehavior: outcome.actual,
       safeDegradationVerified: outcome.safeDegraded,
       tamperOrDataLossDetected: outcome.dataLoss,
@@ -43,7 +44,8 @@ describe('LAB 18 — Production Readiness & Game Day Launch Rehearsal (G2 Gate)'
         'Connector Permission Revocation',
         'HTTP 403 / AWS AssumeRole Access Denied',
         () => ({
-          actual: 'Connector transitioned to DEGRADED_PERMISSION_REVOKED; telemetry diverted to pending retry buffer',
+          actual:
+            'Connector transitioned to DEGRADED_PERMISSION_REVOKED; telemetry diverted to pending retry buffer',
           safeDegraded: true,
           dataLoss: false,
         }),
@@ -58,7 +60,8 @@ describe('LAB 18 — Production Readiness & Game Day Launch Rehearsal (G2 Gate)'
         'Kafka Backlog & Deterministic Replay',
         'Consumer lag spike > 50,000 events',
         () => ({
-          actual: 'Adaptive rate limiter throttled upstream ingress; worker catchup replay verified identical alert candidates',
+          actual:
+            'Adaptive rate limiter throttled upstream ingress; worker catchup replay verified identical alert candidates',
           safeDegraded: true,
           dataLoss: false,
         }),
@@ -73,7 +76,8 @@ describe('LAB 18 — Production Readiness & Game Day Launch Rehearsal (G2 Gate)'
         'ClickHouse Query Saturation',
         'ClickHouse concurrency limit reached (HTTP 429)',
         () => ({
-          actual: 'Tier-B queries queued with exponential backoff; Tier-A real-time stream detections unaffected',
+          actual:
+            'Tier-B queries queued with exponential backoff; Tier-A real-time stream detections unaffected',
           safeDegraded: true,
           dataLoss: false,
         }),
@@ -88,7 +92,8 @@ describe('LAB 18 — Production Readiness & Game Day Launch Rehearsal (G2 Gate)'
         'AlloyDB Primary Failover & Restore',
         'Primary database instance ungraceful termination',
         () => ({
-          actual: 'Prisma pool reconnected to standby replica in 4.2s; outbox relay reconciled uncommitted rows',
+          actual:
+            'Prisma pool reconnected to standby replica in 4.2s; outbox relay reconciled uncommitted rows',
           safeDegraded: true,
           dataLoss: false,
         }),
@@ -103,7 +108,8 @@ describe('LAB 18 — Production Readiness & Game Day Launch Rehearsal (G2 Gate)'
         'Temporal Worker Outage',
         'Worker container OOM-killed during investigation workflow',
         () => ({
-          actual: 'New worker polled task queue; state machine resumed exactly from AWAITING_HUMAN_DECISION',
+          actual:
+            'New worker polled task queue; state machine resumed exactly from AWAITING_HUMAN_DECISION',
           safeDegraded: true,
           dataLoss: false,
         }),
@@ -118,7 +124,8 @@ describe('LAB 18 — Production Readiness & Game Day Launch Rehearsal (G2 Gate)'
         'Evidence Anchor Outage',
         'HSM Key Service 503 unavailable during checkpoint build',
         () => ({
-          actual: 'Ledger sequence committed locally; checkpoint builder entered RETRY_BUFFERED state',
+          actual:
+            'Ledger sequence committed locally; checkpoint builder entered RETRY_BUFFERED state',
           safeDegraded: true,
           dataLoss: false,
         }),
@@ -133,7 +140,8 @@ describe('LAB 18 — Production Readiness & Game Day Launch Rehearsal (G2 Gate)'
         'AI Provider & Model Armor Outage',
         'Vertex AI regional gateway timeout',
         () => ({
-          actual: 'SafeDegradationService engaged FALLBACK_DETERMINISTIC; analyst notified of rule-based triage',
+          actual:
+            'SafeDegradationService engaged FALLBACK_DETERMINISTIC; analyst notified of rule-based triage',
           safeDegraded: true,
           dataLoss: false,
         }),
@@ -148,7 +156,8 @@ describe('LAB 18 — Production Readiness & Game Day Launch Rehearsal (G2 Gate)'
         'Emergency Action Broker Freeze',
         'SOC Analyst triggered Emergency Kill-Switch / Freeze for tenant-alpha',
         () => ({
-          actual: 'Action broker blocked all outbound commands with FROZEN_TENANT_REJECTED receipt',
+          actual:
+            'Action broker blocked all outbound commands with FROZEN_TENANT_REJECTED receipt',
           safeDegraded: true,
           dataLoss: false,
         }),
@@ -163,7 +172,8 @@ describe('LAB 18 — Production Readiness & Game Day Launch Rehearsal (G2 Gate)'
         'Identity Session Invalidation & Token Revocation',
         'Auth token revoked via IdP webhook',
         () => ({
-          actual: 'PermissionsGuard and Cedar PDP immediately denied requests with 403 Forbidden',
+          actual:
+            'PermissionsGuard and Cedar PDP immediately denied requests with 403 Forbidden',
           safeDegraded: true,
           dataLoss: false,
         }),
@@ -178,7 +188,8 @@ describe('LAB 18 — Production Readiness & Game Day Launch Rehearsal (G2 Gate)'
         'Regional Service Interruption & Rollback',
         'Simulated regional routing failure and deployment bad-canary',
         () => ({
-          actual: 'Cloud Deploy promoted prior verified digest; health probes returned green in 12s',
+          actual:
+            'Cloud Deploy promoted prior verified digest; health probes returned green in 12s',
           safeDegraded: true,
           dataLoss: false,
         }),

@@ -49,8 +49,10 @@ export class SuspiciousProcessRule implements DetectionRule {
     const nameMatch = config.suspiciousProcessNames.some((name) =>
       processName.includes(name.toLowerCase()),
     );
-    const commandMatch = config.suspiciousCommandLinePatterns.some((pat) =>
-      actionDetails.includes(pat.toLowerCase()) || processName.includes(pat.toLowerCase()),
+    const commandMatch = config.suspiciousCommandLinePatterns.some(
+      (pat) =>
+        actionDetails.includes(pat.toLowerCase()) ||
+        processName.includes(pat.toLowerCase()),
     );
 
     factors.push({
@@ -64,7 +66,9 @@ export class SuspiciousProcessRule implements DetectionRule {
     });
 
     if (input.asset) {
-      const isCriticalAsset = input.asset.criticality === 'HIGH' || input.asset.criticality === 'CRITICAL';
+      const isCriticalAsset =
+        input.asset.criticality === 'HIGH' ||
+        input.asset.criticality === 'CRITICAL';
       factors.push({
         name: 'ASSET_CRITICALITY',
         contribution: isCriticalAsset ? 20 : 5,

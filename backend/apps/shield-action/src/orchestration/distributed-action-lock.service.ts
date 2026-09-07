@@ -196,7 +196,9 @@ export class DistributedActionLockService {
     }
 
     const now = Date.now();
-    existingLock.expiresAt = new Date(now + extensionSeconds * 1000).toISOString();
+    existingLock.expiresAt = new Date(
+      now + extensionSeconds * 1000,
+    ).toISOString();
     this.logger.log(
       `✔ [LOCK HEARTBEAT EXTENDED] Lock '${lockKey}' extended by ${extensionSeconds}s.`,
     );

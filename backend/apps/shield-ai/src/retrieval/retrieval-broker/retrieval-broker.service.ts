@@ -45,24 +45,45 @@ export class RetrievalBrokerService {
       this.shieldCoreClient.getCaseTimeline(input.tenantId, input.caseId),
       this.shieldCoreClient.getCaseEvidence(input.tenantId, input.caseId),
       this.shieldCoreClient.getCaseDetections(input.tenantId, input.caseId),
-      this.shieldCoreClient.getCaseContextSnapshot(input.tenantId, input.caseId),
+      this.shieldCoreClient.getCaseContextSnapshot(
+        input.tenantId,
+        input.caseId,
+      ),
       this.shieldCoreClient.getCaseEntities(input.tenantId, input.caseId),
       this.shieldCoreClient.getCaseAssets(input.tenantId, input.caseId),
-      this.shieldCoreClient.getCaseConnectorsHealth(input.tenantId, input.caseId),
+      this.shieldCoreClient.getCaseConnectorsHealth(
+        input.tenantId,
+        input.caseId,
+      ),
     ]);
 
     const caseRow = caseRes.status === 'fulfilled' ? caseRes.value?.data : null;
     if (!caseRow) {
-      throw new Error(`Failed to retrieve case ${input.caseId} from shield-core`);
+      throw new Error(
+        `Failed to retrieve case ${input.caseId} from shield-core`,
+      );
     }
 
-    const timelineEntries: any[] = timelineRes.status === 'fulfilled' ? timelineRes.value?.data ?? [] : [];
-    const evidenceLinks: any[] = evidenceRes.status === 'fulfilled' ? evidenceRes.value?.data ?? [] : [];
-    const detections: any[] = detectionsRes.status === 'fulfilled' ? detectionsRes.value?.data ?? [] : [];
-    const contextSnapshot: any = contextRes.status === 'fulfilled' ? contextRes.value?.data ?? null : null;
-    const entities: any[] = entitiesRes.status === 'fulfilled' ? entitiesRes.value?.data ?? [] : [];
-    const assets: any[] = assetsRes.status === 'fulfilled' ? assetsRes.value?.data ?? [] : [];
-    const connectors: any[] = connectorsRes.status === 'fulfilled' ? connectorsRes.value?.data ?? [] : [];
+    const timelineEntries: any[] =
+      timelineRes.status === 'fulfilled' ? (timelineRes.value?.data ?? []) : [];
+    const evidenceLinks: any[] =
+      evidenceRes.status === 'fulfilled' ? (evidenceRes.value?.data ?? []) : [];
+    const detections: any[] =
+      detectionsRes.status === 'fulfilled'
+        ? (detectionsRes.value?.data ?? [])
+        : [];
+    const contextSnapshot: any =
+      contextRes.status === 'fulfilled'
+        ? (contextRes.value?.data ?? null)
+        : null;
+    const entities: any[] =
+      entitiesRes.status === 'fulfilled' ? (entitiesRes.value?.data ?? []) : [];
+    const assets: any[] =
+      assetsRes.status === 'fulfilled' ? (assetsRes.value?.data ?? []) : [];
+    const connectors: any[] =
+      connectorsRes.status === 'fulfilled'
+        ? (connectorsRes.value?.data ?? [])
+        : [];
 
     const sourceRefs: string[] = [
       `case:${caseRow.id}`,

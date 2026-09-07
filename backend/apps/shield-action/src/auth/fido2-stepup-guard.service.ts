@@ -70,11 +70,9 @@ export class Fido2StepupGuardService {
   // Challenge TTL = 2 minutes (120,000ms)
   private readonly CHALLENGE_TTL_MS = 120_000;
 
-  constructor(
-    @Optional() rpId?: string,
-    @Optional() expectedOrigin?: string,
-  ) {
-    this.rpId = rpId || process.env.WEBAUTHN_RP_ID || 'security.zoikoshield.corp';
+  constructor(@Optional() rpId?: string, @Optional() expectedOrigin?: string) {
+    this.rpId =
+      rpId || process.env.WEBAUTHN_RP_ID || 'security.zoikoshield.corp';
     this.expectedOrigin =
       expectedOrigin ||
       process.env.WEBAUTHN_ORIGIN ||

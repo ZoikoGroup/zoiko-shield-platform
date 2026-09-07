@@ -13,7 +13,8 @@ export type DataClassification =
   | 'DC-5_EVIDENCE_LEGAL'
   | 'DC-6_SECRET_MATERIAL';
 
-export type IntegrityState = 'VERIFIED' | 'UNVERIFIED' | 'TAMPERED' | 'QUARANTINED';
+export type IntegrityState =
+  'VERIFIED' | 'UNVERIFIED' | 'TAMPERED' | 'QUARANTINED';
 
 export interface CanonicalContextEnvelope {
   tenant_id: string;
@@ -74,7 +75,8 @@ export function createCanonicalContext(
     occurred_at: params.occurred_at || now,
     observed_at: params.observed_at || now,
     recorded_at: params.recorded_at || now,
-    schema_or_contract_version: params.schema_or_contract_version || params.contract_version,
+    schema_or_contract_version:
+      params.schema_or_contract_version || params.contract_version,
     integrity_state: params.integrity_state || 'VERIFIED',
   };
 }

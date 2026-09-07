@@ -9,11 +9,18 @@ describe('DynamicTokenizationProxyService & DifferentialPrivacyGuardService (LAB
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [DynamicTokenizationProxyService, DifferentialPrivacyGuardService],
+      providers: [
+        DynamicTokenizationProxyService,
+        DifferentialPrivacyGuardService,
+      ],
     }).compile();
 
-    tokenProxy = module.get<DynamicTokenizationProxyService>(DynamicTokenizationProxyService);
-    diffPrivacyGuard = module.get<DifferentialPrivacyGuardService>(DifferentialPrivacyGuardService);
+    tokenProxy = module.get<DynamicTokenizationProxyService>(
+      DynamicTokenizationProxyService,
+    );
+    diffPrivacyGuard = module.get<DifferentialPrivacyGuardService>(
+      DifferentialPrivacyGuardService,
+    );
   });
 
   describe('PII Anonymization & Format-Preserving Encryption (FPE)', () => {
@@ -25,7 +32,11 @@ describe('DynamicTokenizationProxyService & DifferentialPrivacyGuardService (LAB
         action: 'USER_LOGIN',
       };
 
-      const masked = tokenProxy.anonymizeObject('tenant-fintech-01', rawTelemetry, 'FULL_MASK');
+      const masked = tokenProxy.anonymizeObject(
+        'tenant-fintech-01',
+        rawTelemetry,
+        'FULL_MASK',
+      );
 
       expect(masked.userEmail).toBe('a***h@enterprise.com');
       expect(masked.creditCard).toBe('4111-XXXX-XXXX-4444');
@@ -37,7 +48,11 @@ describe('DynamicTokenizationProxyService & DifferentialPrivacyGuardService (LAB
       const tenantId = 'tenant-healthcare-01';
       const originalSsn = '123-45-6789';
 
-      const token = tokenProxy.generateReversibleToken(tenantId, originalSsn, 'SSN');
+      const token = tokenProxy.generateReversibleToken(
+        tenantId,
+        originalSsn,
+        'SSN',
+      );
       expect(token).toMatch(/^fpe_ssn_[0-9a-f]{16}$/);
 
       // Unmask with valid JIT context
@@ -57,7 +72,11 @@ describe('DynamicTokenizationProxyService & DifferentialPrivacyGuardService (LAB
 
     it('should REJECT unmasking when JIT authorization context is missing', () => {
       const tenantId = 'tenant-healthcare-01';
-      const token = tokenProxy.generateReversibleToken(tenantId, 'sensitive-secret', 'RAW');
+      const token = tokenProxy.generateReversibleToken(
+        tenantId,
+        'sensitive-secret',
+        'RAW',
+      );
 
       expect(() =>
         tokenProxy.unmaskValue(tenantId, token, {

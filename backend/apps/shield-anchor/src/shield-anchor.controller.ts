@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Param, NotFoundException, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  NotFoundException,
+  UseGuards,
+} from '@nestjs/common';
 import { InternalAuthGuard } from './internal-client/internal-auth.guard';
 import {
   BatchMerkleCheckpointerService,
@@ -73,7 +81,11 @@ export class ShieldAnchorController {
   @Post('api/v1/anchor/proofs/verify')
   verifyProof(@Body() body: VerifyProofDto) {
     const valid = this.checkpointerService.verifyInclusionProof(body);
-    return { valid, epochNumber: body.epochNumber, verifiedAt: new Date().toISOString() };
+    return {
+      valid,
+      epochNumber: body.epochNumber,
+      verifiedAt: new Date().toISOString(),
+    };
   }
 
   @Get('api/v1/anchor/receipts/:epochNumber')
@@ -81,7 +93,9 @@ export class ShieldAnchorController {
     const epochNum = parseInt(epochNumber, 10);
     const checkpoint = this.checkpointerService.getEpochCheckpoint(epochNum);
     if (!checkpoint) {
-      throw new NotFoundException(`Checkpoint for epoch #${epochNumber} not found`);
+      throw new NotFoundException(
+        `Checkpoint for epoch #${epochNumber} not found`,
+      );
     }
     return checkpoint;
   }

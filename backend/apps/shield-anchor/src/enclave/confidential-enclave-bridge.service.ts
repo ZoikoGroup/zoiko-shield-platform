@@ -67,7 +67,10 @@ export class ConfidentialEnclaveBridgeService {
         verified: false,
         issuedAt: new Date(now).toISOString(),
         expiresAt: new Date(now).toISOString(),
-        enclavePublicKeyHash: crypto.createHash('sha256').update(quote.enclavePublicKeyPem).digest('hex'),
+        enclavePublicKeyHash: crypto
+          .createHash('sha256')
+          .update(quote.enclavePublicKeyPem)
+          .digest('hex'),
         status: 'PCR_MISMATCH',
         receiptProof: '',
       };
@@ -82,13 +85,19 @@ export class ConfidentialEnclaveBridgeService {
         verified: false,
         issuedAt: new Date(now).toISOString(),
         expiresAt: new Date(now).toISOString(),
-        enclavePublicKeyHash: crypto.createHash('sha256').update(quote.enclavePublicKeyPem).digest('hex'),
+        enclavePublicKeyHash: crypto
+          .createHash('sha256')
+          .update(quote.enclavePublicKeyPem)
+          .digest('hex'),
         status: 'SIGNATURE_INVALID',
         receiptProof: '',
       };
     }
 
-    const pubKeyHash = crypto.createHash('sha256').update(quote.enclavePublicKeyPem).digest('hex');
+    const pubKeyHash = crypto
+      .createHash('sha256')
+      .update(quote.enclavePublicKeyPem)
+      .digest('hex');
     const receiptProof = crypto
       .createHash('sha256')
       .update(`${quote.enclaveId}:${quote.pcr0}:${pubKeyHash}:${now}`)
@@ -126,7 +135,9 @@ export class ConfidentialEnclaveBridgeService {
   ): ConfidentialComputeReceipt {
     const token = this.tokens.get(eatTokenId);
     if (!token || !token.verified) {
-      throw new Error(`Cannot seal execution: Enclave token '${eatTokenId}' is missing or unverified.`);
+      throw new Error(
+        `Cannot seal execution: Enclave token '${eatTokenId}' is missing or unverified.`,
+      );
     }
 
     const receiptId = `cce-${crypto.randomBytes(8).toString('hex')}`;

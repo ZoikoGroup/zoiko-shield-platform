@@ -82,7 +82,8 @@ export class CedarPolicyEvaluatorService {
         conditions: {
           unless: { 'context.isSimulation': true },
         },
-        description: 'Forbid AI agents from direct authoritative resource access or mutation (TUT-03)',
+        description:
+          'Forbid AI agents from direct authoritative resource access or mutation (TUT-03)',
       },
       // 2. LAB 12 Rule: Forbid cross-tenant access unconditionally
       {
@@ -106,7 +107,8 @@ export class CedarPolicyEvaluatorService {
         conditions: {
           when: { 'context.isLegalEntityMismatch': true },
         },
-        description: 'Forbid cross-legal-entity resource access without explicit cross-entity delegation',
+        description:
+          'Forbid cross-legal-entity resource access without explicit cross-entity delegation',
       },
       // 3. LAB 12 Rule: Forbid support user access without customer approval
       {
@@ -118,7 +120,8 @@ export class CedarPolicyEvaluatorService {
         conditions: {
           unless: { 'context.hasCustomerApproval': true },
         },
-        description: 'Forbid support operator access without explicit customer-approved JIT grant (Section 6)',
+        description:
+          'Forbid support operator access without explicit customer-approved JIT grant (Section 6)',
       },
       // 4. LAB 12 Rule: Forbid operations with stale/expired approvals
       {
@@ -130,7 +133,8 @@ export class CedarPolicyEvaluatorService {
         conditions: {
           when: { 'context.approvalExpired': true },
         },
-        description: 'Forbid execution when approval or JIT delegation has expired',
+        description:
+          'Forbid execution when approval or JIT delegation has expired',
       },
       // 5. Standard Permit: SOC Analysts reading and triaging cases in active investigation
       {
@@ -144,7 +148,8 @@ export class CedarPolicyEvaluatorService {
             'context.purpose': 'investigation',
           },
         },
-        description: 'Permit SOC analysts to read cases under investigation purpose (LAB 12 example)',
+        description:
+          'Permit SOC analysts to read cases under investigation purpose (LAB 12 example)',
       },
       // 6. Standard Permit: Tenant resource read/write when purpose is valid and tenant matches
       {
@@ -158,7 +163,8 @@ export class CedarPolicyEvaluatorService {
             'context.isTenantAuthorized': true,
           },
         },
-        description: 'Permit operations when tenant context is verified and active membership is confirmed',
+        description:
+          'Permit operations when tenant context is verified and active membership is confirmed',
       },
     ];
 
@@ -169,7 +175,9 @@ export class CedarPolicyEvaluatorService {
 
   registerPolicy(policy: CedarPolicyStatement): void {
     this.policies.set(policy.policyId, policy);
-    this.logger.log(`Registered Cedar Policy '${policy.policyId}': ${policy.description}`);
+    this.logger.log(
+      `Registered Cedar Policy '${policy.policyId}': ${policy.description}`,
+    );
   }
 
   getPolicies(): CedarPolicyStatement[] {
@@ -189,10 +197,14 @@ export class CedarPolicyEvaluatorService {
       return {
         decision: 'INDETERMINATE',
         reasonCode: 'POLICY_DEPENDENCY_UNAVAILABLE',
-        reason: 'The Cedar policy bundle engine is currently unavailable (fail-closed)',
+        reason:
+          'The Cedar policy bundle engine is currently unavailable (fail-closed)',
         matchedPolicies: [],
         evaluationTimestamp: new Date().toISOString(),
-        evaluationDigest: crypto.createHash('sha256').update(`UNAVAILABLE:${JSON.stringify(input)}`).digest('hex'),
+        evaluationDigest: crypto
+          .createHash('sha256')
+          .update(`UNAVAILABLE:${JSON.stringify(input)}`)
+          .digest('hex'),
         obligations: ['DENY_EXECUTION', 'RETRY_WITH_FRESH_CONTEXT'],
       };
     }
@@ -310,7 +322,11 @@ export class CedarPolicyEvaluatorService {
   }
 
   private evaluatePredicate(actual: any, expected: any): boolean {
-    if (typeof expected === 'object' && expected !== null && !Array.isArray(expected)) {
+    if (
+      typeof expected === 'object' &&
+      expected !== null &&
+      !Array.isArray(expected)
+    ) {
       if ('gte' in expected && typeof actual === 'number') {
         return actual >= expected.gte;
       }

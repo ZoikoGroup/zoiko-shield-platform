@@ -40,7 +40,12 @@ export interface CompositeAlertMatch {
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM';
   confidence: number;
   matchedEventIds: string[];
-  stagesMatched: { stageId: string; name: string; eventId: string; timestamp: Date }[];
+  stagesMatched: {
+    stageId: string;
+    name: string;
+    eventId: string;
+    timestamp: Date;
+  }[];
   firstSeen: Date;
   lastSeen: Date;
 }
@@ -59,7 +64,8 @@ export class CompositeCorrelationService {
     {
       patternId: 'ZS-CORR-RANSOMWARE-001',
       name: 'Multi-Stage Ransomware Killchain (Initial Access -> PowerShell -> Shadow Copy Deletion)',
-      description: 'Detects lateral movement followed by obfuscated script execution and volume shadow copy inhibition within 5 minutes.',
+      description:
+        'Detects lateral movement followed by obfuscated script execution and volume shadow copy inhibition within 5 minutes.',
       severity: 'CRITICAL',
       windowSeconds: 300,
       stages: [
@@ -81,8 +87,11 @@ export class CompositeCorrelationService {
           matcher: (event) => {
             const raw = JSON.stringify(event.rawPayload || {}).toLowerCase();
             return (
-              (event.classUid === 1007 || event.categoryName === 'PROCESS_ACTIVITY') &&
-              (raw.includes('powershell') || raw.includes('-enc') || raw.includes('hidden'))
+              (event.classUid === 1007 ||
+                event.categoryName === 'PROCESS_ACTIVITY') &&
+              (raw.includes('powershell') ||
+                raw.includes('-enc') ||
+                raw.includes('hidden'))
             );
           },
         },
@@ -94,8 +103,11 @@ export class CompositeCorrelationService {
           matcher: (event) => {
             const raw = JSON.stringify(event.rawPayload || {}).toLowerCase();
             return (
-              (event.classUid === 1007 || event.categoryName === 'PROCESS_ACTIVITY') &&
-              (raw.includes('vssadmin') || raw.includes('shadows') || raw.includes('bcedit'))
+              (event.classUid === 1007 ||
+                event.categoryName === 'PROCESS_ACTIVITY') &&
+              (raw.includes('vssadmin') ||
+                raw.includes('shadows') ||
+                raw.includes('bcedit'))
             );
           },
         },
@@ -104,7 +116,8 @@ export class CompositeCorrelationService {
     {
       patternId: 'ZS-CORR-CLOUD-PRIV-002',
       name: 'Cloud IAM Privilege Escalation -> Resource Exfiltration',
-      description: 'Detects IAM policy modification followed by sensitive data exfiltration or secrets retrieval.',
+      description:
+        'Detects IAM policy modification followed by sensitive data exfiltration or secrets retrieval.',
       severity: 'CRITICAL',
       windowSeconds: 600,
       stages: [
@@ -135,7 +148,8 @@ export class CompositeCorrelationService {
     {
       patternId: 'ZS-CORR-CONTAINER-ESCAPE-003',
       name: 'eBPF Kernel Container Escape -> Root Shell -> Outbound C2',
-      description: 'Detects container breakout via eBPF runtime probes followed by root process execution and outbound network beaconing.',
+      description:
+        'Detects container breakout via eBPF runtime probes followed by root process execution and outbound network beaconing.',
       severity: 'CRITICAL',
       windowSeconds: 300,
       stages: [
@@ -163,8 +177,13 @@ export class CompositeCorrelationService {
           matcher: (event) => {
             const raw = JSON.stringify(event.rawPayload || {}).toLowerCase();
             return (
-              (event.classUid === 4001 || event.classUid === 1007 || event.categoryName === 'PROCESS_ACTIVITY') &&
-              (raw.includes('/bin/sh') || raw.includes('/bin/bash') || raw.includes('execve') || raw.includes('root'))
+              (event.classUid === 4001 ||
+                event.classUid === 1007 ||
+                event.categoryName === 'PROCESS_ACTIVITY') &&
+              (raw.includes('/bin/sh') ||
+                raw.includes('/bin/bash') ||
+                raw.includes('execve') ||
+                raw.includes('root'))
             );
           },
         },
@@ -188,8 +207,11 @@ export class CompositeCorrelationService {
   /**
    * Evaluates an incoming normalized OCSF event against all registered multi-stage killchain patterns.
    */
-  async processEvent(event: OcsfCorrelationEvent): Promise<CompositeAlertMatch | null> {
-    const entityKey = event.targetHost || event.actor || event.sourceIp || 'global-entity';
+  async processEvent(
+    event: OcsfCorrelationEvent,
+  ): Promise<CompositeAlertMatch | null> {
+    const entityKey =
+      event.targetHost || event.actor || event.sourceIp || 'global-entity';
 
     for (const pattern of this.patterns) {
       const correlationKey = `${event.tenantId}:${pattern.patternId}:${entityKey}`;

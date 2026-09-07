@@ -114,6 +114,23 @@ describe('NormalizationService', () => {
     );
   });
 
+  it('should return the existing NormalizedEvent instead of re-normalizing an already-NORMALIZED raw event', async () => {
+    prismaMock.rawEvent.findUnique.mockResolvedValue({
+      ...mockRawEvent,
+      processing_status: 'NORMALIZED',
+    });
+    prismaMock.normalizedEvent.findFirst = jest.fn().mockResolvedValue({
+      id: 'norm-existing',
+      raw_event_id: 'raw-100',
+    });
+
+    const result = await service.normalizeRawEvent('raw-100');
+
+    expect(result).toHaveProperty('id', 'norm-existing');
+    expect(prismaMock.normalizedEvent.create).not.toHaveBeenCalled();
+    expect(kafkaMock.publishEvent).not.toHaveBeenCalled();
+  });
+
   it('should quarantine a raw event with malformed JSON payload', async () => {
     const malformedRawEvent = {
       ...mockRawEvent,

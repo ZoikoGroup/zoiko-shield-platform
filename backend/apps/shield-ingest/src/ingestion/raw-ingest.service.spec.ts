@@ -123,7 +123,8 @@ describe('RawIngestService', () => {
       ],
     }).compile();
 
-    const serviceWithDedup = moduleWithDedup.get<RawIngestService>(RawIngestService);
+    const serviceWithDedup =
+      moduleWithDedup.get<RawIngestService>(RawIngestService);
     prismaMock.connectorInstance.findUnique.mockResolvedValue(mockConnector);
 
     const result = await serviceWithDedup.processWebhookPayload(
@@ -151,7 +152,8 @@ describe('RawIngestService', () => {
       ],
     }).compile();
 
-    const serviceWithDlq = moduleWithDlq.get<RawIngestService>(RawIngestService);
+    const serviceWithDlq =
+      moduleWithDlq.get<RawIngestService>(RawIngestService);
     prismaMock.connectorInstance.findUnique.mockResolvedValue({
       ...mockConnector,
       source_region: undefined, // Causes quarantine

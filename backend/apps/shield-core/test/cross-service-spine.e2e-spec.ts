@@ -5,8 +5,14 @@ import { CedarPolicyEvaluatorService } from '../src/modules/authorization/cedar-
 import { ModelArmorSafetyGatewayService } from '../../shield-ai/src/gateway/model-armor-safety-gateway.service';
 import { SafeDegradationService } from '../../shield-ai/src/degradation/safe-degradation.service';
 import { SignedCommandBrokerService } from '../../shield-action/src/broker/signed-command-broker.service';
-import { BatchMerkleCheckpointerService, EvidenceLeaf } from '../../shield-anchor/src/merkle/batch-merkle-checkpointer.service';
-import { isSupportedTreeProfile, recomputeRootFromLeaves } from '../../../tools/independent-verifier/src/merkle/merkle';
+import {
+  BatchMerkleCheckpointerService,
+  EvidenceLeaf,
+} from '../../shield-anchor/src/merkle/batch-merkle-checkpointer.service';
+import {
+  isSupportedTreeProfile,
+  recomputeRootFromLeaves,
+} from '../../../tools/independent-verifier/src/merkle/merkle';
 import { sha256Hex } from '../../../tools/independent-verifier/src/hashing/hash';
 
 describe('Cross-Service Golden Spine E2E (TUT-01 Reference Vertical Slice)', () => {
@@ -51,7 +57,11 @@ describe('Cross-Service Golden Spine E2E (TUT-01 Reference Vertical Slice)', () 
       },
     };
 
-    const normalized = s1Normalizer.normalizeThreat(rawPayload as any, tenantId, environmentId);
+    const normalized = s1Normalizer.normalizeThreat(
+      rawPayload as any,
+      tenantId,
+      environmentId,
+    );
 
     expect(normalized).toBeDefined();
     expect(normalized.tenant_id).toBe(tenantId);
@@ -170,20 +180,27 @@ describe('Cross-Service Golden Spine E2E (TUT-01 Reference Vertical Slice)', () 
         evidenceId: 'ev-spine-001',
         tenantId,
         eventType: 'MALWARE_DETECTION_OCSF',
-        payloadDigest: crypto.createHash('sha256').update('ocsf-mimikatz-record').digest('hex'),
+        payloadDigest: crypto
+          .createHash('sha256')
+          .update('ocsf-mimikatz-record')
+          .digest('hex'),
         timestamp: new Date().toISOString(),
       },
       {
         evidenceId: 'ev-spine-002',
         tenantId,
         eventType: 'ACTION_EXECUTION_RECEIPT',
-        payloadDigest: crypto.createHash('sha256').update('action-receipt-isolate-host').digest('hex'),
+        payloadDigest: crypto
+          .createHash('sha256')
+          .update('action-receipt-isolate-host')
+          .digest('hex'),
         timestamp: new Date().toISOString(),
       },
     ];
 
     // Build Merkle epoch checkpoint
-    const epochCheckpoint = merkleCheckpointer.buildEpochCheckpoint(evidenceItems);
+    const epochCheckpoint =
+      merkleCheckpointer.buildEpochCheckpoint(evidenceItems);
     expect(epochCheckpoint.epochNumber).toBeGreaterThan(0);
     expect(epochCheckpoint.merkleRoot).toBeDefined();
 
@@ -196,7 +213,9 @@ describe('Cross-Service Golden Spine E2E (TUT-01 Reference Vertical Slice)', () 
     expect(inclusionProof?.merkleRoot).toBe(epochCheckpoint.merkleRoot);
 
     // Verify inclusion proof
-    const isValidProof = merkleCheckpointer.verifyInclusionProof(inclusionProof!);
+    const isValidProof = merkleCheckpointer.verifyInclusionProof(
+      inclusionProof!,
+    );
     expect(isValidProof).toBe(true);
 
     // Verify standalone zero-dependency offline verifier functions

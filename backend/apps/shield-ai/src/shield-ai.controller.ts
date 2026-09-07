@@ -28,7 +28,10 @@ export class ThreatHuntingQueryDto implements ThreatHuntingQueryInput {
 
 export class RedTeamScenarioDto implements RedTeamScenarioRequest {
   tenantId!: string;
-  scenarioType!: 'RANSOMWARE_STAGING' | 'CREDENTIAL_STUFFING_BURST' | 'CLOUD_IAM_PRIVILEGE_ESCALATION';
+  scenarioType!:
+    | 'RANSOMWARE_STAGING'
+    | 'CREDENTIAL_STUFFING_BURST'
+    | 'CLOUD_IAM_PRIVILEGE_ESCALATION';
   targetHost?: string;
   targetUser?: string;
   intensityLevel?: 'LOW' | 'MEDIUM' | 'AGGRESSIVE';

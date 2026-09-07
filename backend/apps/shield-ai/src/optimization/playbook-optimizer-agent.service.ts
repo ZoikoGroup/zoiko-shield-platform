@@ -67,8 +67,13 @@ export class PlaybookOptimizerAgentService {
 
     let speedupMs = 0;
     if (independentActions.length > 1) {
-      const sequentialTime = independentActions.reduce((sum, a) => sum + a.averageDurationMs, 0);
-      const parallelTime = Math.max(...independentActions.map((a) => a.averageDurationMs));
+      const sequentialTime = independentActions.reduce(
+        (sum, a) => sum + a.averageDurationMs,
+        0,
+      );
+      const parallelTime = Math.max(
+        ...independentActions.map((a) => a.averageDurationMs),
+      );
       const phase1Speedup = sequentialTime - parallelTime;
       speedupMs += phase1Speedup;
 
@@ -92,9 +97,16 @@ export class PlaybookOptimizerAgentService {
       },
     ];
 
-    const optimizedEstimatedDuration = Math.max(50, originalTotalDuration - speedupMs);
+    const optimizedEstimatedDuration = Math.max(
+      50,
+      originalTotalDuration - speedupMs,
+    );
     const reductionPercentage = Number(
-      (((originalTotalDuration - optimizedEstimatedDuration) / Math.max(1, originalTotalDuration)) * 100).toFixed(1),
+      (
+        ((originalTotalDuration - optimizedEstimatedDuration) /
+          Math.max(1, originalTotalDuration)) *
+        100
+      ).toFixed(1),
     );
 
     const report: PlaybookOptimizationReport = {

@@ -46,6 +46,19 @@ export class NormalizationService {
       throw new NotFoundException(`RawEvent '${rawEventId}' not found`);
     }
 
+    if (rawEvent.processing_status === 'NORMALIZED') {
+      const existing = await this.prisma.normalizedEvent.findFirst({
+        where: { raw_event_id: rawEvent.id },
+        orderBy: { recorded_at: 'desc' },
+      });
+      if (existing) {
+        this.logger.debug(
+          `Raw event ${rawEventId} already normalized, skipping re-normalization`,
+        );
+        return existing;
+      }
+    }
+
     let payload: Record<string, any> = {};
     try {
       payload = JSON.parse(rawEvent.raw_payload_reference);
@@ -76,7 +89,10 @@ export class NormalizationService {
           include: { definition: true },
         })
       : null;
-    const provider = connectorInstance?.definition?.provider || rawEvent.source_type || 'generic-webhook';
+    const provider =
+      connectorInstance?.definition?.provider ||
+      rawEvent.source_type ||
+      'generic-webhook';
 
     let eventClass: string;
     let eventCategory: string;
@@ -105,7 +121,11 @@ export class NormalizationService {
       resourceType = ocsf.resourceType;
       action = ocsf.action;
       outcome = ocsf.outcome;
-    } else if (provider === 'crowdstrike-edr' || payload.CommandLine || payload.FileName) {
+    } else if (
+      provider === 'crowdstrike-edr' ||
+      payload.CommandLine ||
+      payload.FileName
+    ) {
       const ocsf = CrowdStrikeOcsfAdapter.normalize(payload);
       eventClass = ocsf.eventClass;
       eventCategory = ocsf.eventCategory;
@@ -119,7 +139,11 @@ export class NormalizationService {
       resourceType = ocsf.resourceType;
       action = ocsf.action;
       outcome = ocsf.outcome;
-    } else if (provider === 'aws-cloudtrail' || provider === 'aws-guardduty' || payload.eventSource === 'aws.iam') {
+    } else if (
+      provider === 'aws-cloudtrail' ||
+      provider === 'aws-guardduty' ||
+      payload.eventSource === 'aws.iam'
+    ) {
       const ocsf = CloudTrailOcsfAdapter.normalize(payload);
       eventClass = ocsf.eventClass;
       eventCategory = ocsf.eventCategory;
@@ -139,8 +163,7 @@ export class NormalizationService {
         payload.eventType ||
         (payload.user ? 'AUTHENTICATION' : 'SECURITY_LOG');
       eventCategory = payload.eventCategory || 'AUDIT';
-      eventActivity =
-        payload.eventActivity || payload.eventType || 'LOG_ENTRY';
+      eventActivity = payload.eventActivity || payload.eventType || 'LOG_ENTRY';
       severity = (payload.severity || 'INFORMATIONAL').toUpperCase();
 
       actorUserId =
@@ -152,17 +175,11 @@ export class NormalizationService {
         undefined;
       sourceIp =
         payload.sourceIp || payload.clientIp || payload.ipAddress || undefined;
-      destinationIp =
-        payload.destinationIp || payload.targetIp || undefined;
+      destinationIp = payload.destinationIp || payload.targetIp || undefined;
       resourceId = payload.resourceId || payload.targetId || undefined;
-      resourceType =
-        payload.resourceType || payload.targetType || undefined;
+      resourceType = payload.resourceType || payload.targetType || undefined;
       action = payload.action || payload.eventType || 'EXECUTE';
-      outcome = (
-        payload.outcome ||
-        payload.result ||
-        'SUCCESS'
-      ).toUpperCase();
+      outcome = (payload.outcome || payload.result || 'SUCCESS').toUpperCase();
     }
 
     const occurredAt = payload.occurredAt

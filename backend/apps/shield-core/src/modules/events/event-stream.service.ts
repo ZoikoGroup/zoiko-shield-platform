@@ -4,7 +4,12 @@ import { filter, map } from 'rxjs/operators';
 
 export interface ShieldRealtimeEvent {
   id: string;
-  type: 'ALERT_CREATED' | 'CASE_UPDATED' | 'MERKLE_EPOCH_SEALED' | 'ACTION_EXECUTED' | 'CORRELATION_MATCH';
+  type:
+    | 'ALERT_CREATED'
+    | 'CASE_UPDATED'
+    | 'MERKLE_EPOCH_SEALED'
+    | 'ACTION_EXECUTED'
+    | 'CORRELATION_MATCH';
   tenantId: string;
   timestamp: string;
   data: Record<string, unknown>;
@@ -19,7 +24,9 @@ export class EventStreamService {
    * Publishes an event to all active real-time subscribers.
    */
   publishEvent(event: ShieldRealtimeEvent): void {
-    this.logger.debug(`[Realtime SSE Broadcast] Type: ${event.type} | Tenant: ${event.tenantId}`);
+    this.logger.debug(
+      `[Realtime SSE Broadcast] Type: ${event.type} | Tenant: ${event.tenantId}`,
+    );
     this.eventBus$.next(event);
   }
 
@@ -28,7 +35,9 @@ export class EventStreamService {
    */
   getEventStreamForTenant(tenantId: string): Observable<MessageEvent> {
     return this.eventBus$.pipe(
-      filter((event) => event.tenantId === tenantId || event.tenantId === 'GLOBAL'),
+      filter(
+        (event) => event.tenantId === tenantId || event.tenantId === 'GLOBAL',
+      ),
       map((event) => {
         return {
           type: event.type,

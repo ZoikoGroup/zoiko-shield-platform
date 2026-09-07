@@ -43,6 +43,9 @@ export class EventStreamController {
   @Post('publish')
   publishEvent(@Body() event: PublishRealtimeEventDto) {
     this.eventStreamService.publishEvent(event);
-    return { statusCode: HttpStatus.ACCEPTED, message: 'Event broadcast queued' };
+    return {
+      statusCode: HttpStatus.ACCEPTED,
+      message: 'Event broadcast queued',
+    };
   }
 }

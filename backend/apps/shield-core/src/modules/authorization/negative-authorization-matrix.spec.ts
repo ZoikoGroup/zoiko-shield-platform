@@ -6,7 +6,10 @@ import {
 import { AuthorizationService } from './authorization.service';
 import { CedarPolicyEvaluatorService } from './cedar-policy-evaluator.service';
 import { PrismaService } from '../../prisma/prisma.service';
-import { ForbiddenException, ServiceUnavailableException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 
 describe('LAB 12 — Negative Authorization & Cedar Policy Test Matrix', () => {
   let authDecisionService: AuthorizationDecisionService;
@@ -45,17 +48,19 @@ describe('LAB 12 — Negative Authorization & Cedar Policy Test Matrix', () => {
         }
         return Promise.resolve(true);
       }),
-      getPermissionCodesForPrincipal: jest.fn().mockImplementation((tenantId, actorId) => {
-        if (actorId === 'user-no-perm') {
-          return Promise.resolve([]);
-        }
-        return Promise.resolve([
-          'tenant:resource:read',
-          'tenant:resource:write',
-          'case.read',
-          'case.write',
-        ]);
-      }),
+      getPermissionCodesForPrincipal: jest
+        .fn()
+        .mockImplementation((tenantId, actorId) => {
+          if (actorId === 'user-no-perm') {
+            return Promise.resolve([]);
+          }
+          return Promise.resolve([
+            'tenant:resource:read',
+            'tenant:resource:write',
+            'case.read',
+            'case.write',
+          ]);
+        }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -67,8 +72,12 @@ describe('LAB 12 — Negative Authorization & Cedar Policy Test Matrix', () => {
       ],
     }).compile();
 
-    authDecisionService = module.get<AuthorizationDecisionService>(AuthorizationDecisionService);
-    cedarEvaluator = module.get<CedarPolicyEvaluatorService>(CedarPolicyEvaluatorService);
+    authDecisionService = module.get<AuthorizationDecisionService>(
+      AuthorizationDecisionService,
+    );
+    cedarEvaluator = module.get<CedarPolicyEvaluatorService>(
+      CedarPolicyEvaluatorService,
+    );
   });
 
   describe('LAB 12 Mandatory Negative Test Cases', () => {
@@ -87,8 +96,12 @@ describe('LAB 12 — Negative Authorization & Cedar Policy Test Matrix', () => {
       });
 
       expect(result.decision).toBe('DENY');
-      expect(['CROSS_TENANT_RESOURCE', 'CEDAR_FORBID_TRIGGERED']).toContain(result.reasonCode);
-      expect(() => assertPermittedAuthorization(result)).toThrow(ForbiddenException);
+      expect(['CROSS_TENANT_RESOURCE', 'CEDAR_FORBID_TRIGGERED']).toContain(
+        result.reasonCode,
+      );
+      expect(() => assertPermittedAuthorization(result)).toThrow(
+        ForbiddenException,
+      );
     });
 
     // 2. Same tenant / wrong legal entity
@@ -107,7 +120,9 @@ describe('LAB 12 — Negative Authorization & Cedar Policy Test Matrix', () => {
 
       expect(result.decision).toBe('DENY');
       expect(result.reasonCode).toBe('CEDAR_FORBID_TRIGGERED');
-      expect(() => assertPermittedAuthorization(result)).toThrow(ForbiddenException);
+      expect(() => assertPermittedAuthorization(result)).toThrow(
+        ForbiddenException,
+      );
     });
 
     // 3. Stale / expired approval reference
@@ -125,7 +140,9 @@ describe('LAB 12 — Negative Authorization & Cedar Policy Test Matrix', () => {
 
       expect(result.decision).toBe('DENY');
       expect(result.reasonCode).toBe('CEDAR_FORBID_TRIGGERED');
-      expect(() => assertPermittedAuthorization(result)).toThrow(ForbiddenException);
+      expect(() => assertPermittedAuthorization(result)).toThrow(
+        ForbiddenException,
+      );
     });
 
     // 4. Missing / unauthorized purpose
@@ -142,7 +159,9 @@ describe('LAB 12 — Negative Authorization & Cedar Policy Test Matrix', () => {
 
       expect(result.decision).toBe('INDETERMINATE');
       expect(result.reasonCode).toBe('MANDATORY_CONTEXT_MISSING');
-      expect(() => assertPermittedAuthorization(result)).toThrow(ServiceUnavailableException);
+      expect(() => assertPermittedAuthorization(result)).toThrow(
+        ServiceUnavailableException,
+      );
     });
 
     // 5. Revoked role / expired JIT elevation
@@ -159,7 +178,9 @@ describe('LAB 12 — Negative Authorization & Cedar Policy Test Matrix', () => {
 
       expect(result.decision).toBe('DENY');
       expect(result.reasonCode).toBe('ACTIVE_MEMBERSHIP_REQUIRED');
-      expect(() => assertPermittedAuthorization(result)).toThrow(ForbiddenException);
+      expect(() => assertPermittedAuthorization(result)).toThrow(
+        ForbiddenException,
+      );
     });
 
     // 6. Policy bundle unavailable (fail-closed)
@@ -178,7 +199,9 @@ describe('LAB 12 — Negative Authorization & Cedar Policy Test Matrix', () => {
 
       expect(result.decision).toBe('INDETERMINATE');
       expect(result.reasonCode).toBe('POLICY_DEPENDENCY_UNAVAILABLE');
-      expect(() => assertPermittedAuthorization(result)).toThrow(ServiceUnavailableException);
+      expect(() => assertPermittedAuthorization(result)).toThrow(
+        ServiceUnavailableException,
+      );
     });
 
     // 7. Support user without customer approval
@@ -198,7 +221,9 @@ describe('LAB 12 — Negative Authorization & Cedar Policy Test Matrix', () => {
 
       expect(result.decision).toBe('DENY');
       expect(result.reasonCode).toBe('CEDAR_FORBID_TRIGGERED');
-      expect(() => assertPermittedAuthorization(result)).toThrow(ForbiddenException);
+      expect(() => assertPermittedAuthorization(result)).toThrow(
+        ForbiddenException,
+      );
     });
 
     // 8. AI agent attempting direct resource access
@@ -217,7 +242,9 @@ describe('LAB 12 — Negative Authorization & Cedar Policy Test Matrix', () => {
 
       expect(result.decision).toBe('DENY');
       expect(result.reasonCode).toBe('CEDAR_FORBID_TRIGGERED');
-      expect(() => assertPermittedAuthorization(result)).toThrow(ForbiddenException);
+      expect(() => assertPermittedAuthorization(result)).toThrow(
+        ForbiddenException,
+      );
     });
   });
 

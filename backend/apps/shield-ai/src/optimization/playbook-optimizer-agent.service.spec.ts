@@ -12,7 +12,9 @@ describe('PlaybookOptimizerAgentService', () => {
       providers: [PlaybookOptimizerAgentService],
     }).compile();
 
-    service = module.get<PlaybookOptimizerAgentService>(PlaybookOptimizerAgentService);
+    service = module.get<PlaybookOptimizerAgentService>(
+      PlaybookOptimizerAgentService,
+    );
   });
 
   it('should analyze sequential playbook actions and recommend parallel execution grouping', () => {

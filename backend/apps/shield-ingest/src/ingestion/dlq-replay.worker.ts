@@ -42,7 +42,9 @@ export class DLQReplayWorker {
         await this.replayQuarantineBatch(tenantId, 25);
       }
     } catch (err: any) {
-      this.logger.error(`Error in automated DLQ auto-retry worker: ${err.message}`);
+      this.logger.error(
+        `Error in automated DLQ auto-retry worker: ${err.message}`,
+      );
     } finally {
       this.isProcessing = false;
     }
@@ -131,4 +133,3 @@ export class DLQReplayWorker {
     return result;
   }
 }
-

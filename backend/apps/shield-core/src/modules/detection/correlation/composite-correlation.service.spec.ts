@@ -12,7 +12,9 @@ describe('CompositeCorrelationService', () => {
       providers: [CompositeCorrelationService],
     }).compile();
 
-    service = module.get<CompositeCorrelationService>(CompositeCorrelationService);
+    service = module.get<CompositeCorrelationService>(
+      CompositeCorrelationService,
+    );
     service.clearState();
   });
 
@@ -51,7 +53,9 @@ describe('CompositeCorrelationService', () => {
       severity: 'HIGH',
       timestamp: new Date(now.getTime() - 30000),
       targetHost,
-      rawPayload: { commandLine: 'powershell.exe -Enc SGVsbG8= -WindowStyle Hidden' },
+      rawPayload: {
+        commandLine: 'powershell.exe -Enc SGVsbG8= -WindowStyle Hidden',
+      },
     };
 
     const res2 = await service.processEvent(stage2);
@@ -171,7 +175,10 @@ describe('CompositeCorrelationService', () => {
       severity: 'CRITICAL',
       timestamp: new Date(now.getTime() - 40000),
       targetHost,
-      rawPayload: { rule: 'EBPF-RULE-CONTAINER-ESCAPE-DETECTED', capability: 'SYS_ADMIN' },
+      rawPayload: {
+        rule: 'EBPF-RULE-CONTAINER-ESCAPE-DETECTED',
+        capability: 'SYS_ADMIN',
+      },
     });
 
     // Stage 2: Root process execution
@@ -203,6 +210,10 @@ describe('CompositeCorrelationService', () => {
     expect(res).not.toBeNull();
     expect(res?.patternId).toBe('ZS-CORR-CONTAINER-ESCAPE-003');
     expect(res?.severity).toBe('CRITICAL');
-    expect(res?.matchedEventIds).toEqual(['evt-ebpf-esc-01', 'evt-ebpf-esc-02', 'evt-ebpf-esc-03']);
+    expect(res?.matchedEventIds).toEqual([
+      'evt-ebpf-esc-01',
+      'evt-ebpf-esc-02',
+      'evt-ebpf-esc-03',
+    ]);
   });
 });

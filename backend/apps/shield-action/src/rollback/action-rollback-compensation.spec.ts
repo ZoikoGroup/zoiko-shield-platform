@@ -24,7 +24,10 @@ describe('LAB 15 — SOAR Response Reversible Rollback & Compensation', () => {
         targetIdentifier: 'host-web-srv-01',
         status: 'SUCCESS',
         beforeState: { networkStatus: 'CONNECTED', isolationState: 'NONE' },
-        afterState: { networkStatus: 'QUARANTINED', isolationState: 'ISOLATED' },
+        afterState: {
+          networkStatus: 'QUARANTINED',
+          isolationState: 'ISOLATED',
+        },
         compensatingAction: {
           actionType: 'UNISOLATE_ENDPOINT',
           targetIdentifier: 'host-web-srv-01',
@@ -90,7 +93,10 @@ describe('LAB 15 — SOAR Response Reversible Rollback & Compensation', () => {
       });
 
       // First rollback succeeds
-      await rollbackBroker.executeRollback('tenant-alpha', receipt.rollbackToken);
+      await rollbackBroker.executeRollback(
+        'tenant-alpha',
+        receipt.rollbackToken,
+      );
 
       // Second rollback attempt with consumed token must fail
       await expect(

@@ -41,7 +41,9 @@ describe('FinancialPeriodCloseService (ZS-FIN-PERIOD-CLOSE)', () => {
       ],
     }).compile();
 
-    service = module.get<FinancialPeriodCloseService>(FinancialPeriodCloseService);
+    service = module.get<FinancialPeriodCloseService>(
+      FinancialPeriodCloseService,
+    );
   });
 
   // ─── Happy Path ───────────────────────────────────────────────────────────

@@ -1,6 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EventStreamService } from './event-stream.service';
-import { EventStreamController, PublishRealtimeEventDto } from './event-stream.controller';
+import {
+  EventStreamController,
+  PublishRealtimeEventDto,
+} from './event-stream.controller';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { firstValueFrom } from 'rxjs';
@@ -69,7 +72,9 @@ describe('EventStreamService & EventStreamController', () => {
     const stream$ = service.getEventStreamForTenant(targetTenant);
 
     const sub = stream$.subscribe((event) => {
-      expect((event.data as PublishRealtimeEventDto).tenantId).toBe(targetTenant);
+      expect((event.data as PublishRealtimeEventDto).tenantId).toBe(
+        targetTenant,
+      );
       sub.unsubscribe();
       done();
     });

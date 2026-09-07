@@ -242,7 +242,7 @@ export default function IngestionPage() {
             </span>
             <p className="text-[10px] font-mono text-slate-400 truncate">{preset.desc}</p>
           </button>
-        ))}
+        ))}  
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

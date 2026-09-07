@@ -90,4 +90,3 @@ describe('AutonomousRedTeamAgentService', () => {
     expect(report.defensePostureRating).toBe('RESILIENT');
   });
 });
-
