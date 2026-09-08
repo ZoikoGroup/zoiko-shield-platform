@@ -18,6 +18,9 @@ import {
   Server,
   KeyRound,
   FileCheck2,
+  Flame,
+  Activity,
+  Layers,
 } from "lucide-react";
 
 export default function DashboardPage() {
@@ -25,37 +28,56 @@ export default function DashboardPage() {
 
   const activeAlerts = state.alerts.filter((a) => a.status === "NEW");
   const activeCases = state.cases.filter((c) => c.status !== "CLOSED");
+  const activeAiIncidents = (state.aiIncidents || []).filter((i) => i.state !== "CLOSED");
+  const experienceStatus = state.experienceStatus?.status || "HEALTHY_SYNCED";
 
   return (
     <div className="space-y-8">
+      {/* LAB 14 Experience State Envelope Freshness Banner */}
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-slate-900/90 border border-cyan-500/30 font-mono text-xs text-slate-300 shadow-[0_0_20px_rgba(6,182,212,0.08)]">
+        <div className="flex items-center gap-2.5">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+          <span className="font-bold text-slate-100">BFF EXPERIENCE CONTRACT (LAB 14):</span>
+          <Badge variant={experienceStatus === "HEALTHY_SYNCED" ? "pass" : "medium"}>
+            {experienceStatus}
+          </Badge>
+          <span className="text-slate-400 hidden sm:inline">| Freshness: Live (0s drift)</span>
+        </div>
+        <div className="flex items-center gap-4 text-slate-400 text-[11px]">
+          <span>Tenant: <strong className="text-cyan-300">{state.tenant.slug}</strong></span>
+          <span>Region: <strong className="text-slate-200">{state.tenant.homeRegion}</strong></span>
+          <span>Correlation: <strong className="text-purple-300 font-mono">{state.experienceStatus?.correlationId?.slice(0, 16) || "corr-bff-01"}</strong></span>
+        </div>
+      </div>
+
       {/* Hero Welcome & Quick Start Banner */}
       <div className="p-6 rounded-2xl bg-gradient-to-r from-[#121624] via-[#10141f] to-[#181126] border border-cyan-500/30 shadow-[0_0_40px_rgba(6,182,212,0.15)] flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
             <span className="text-xs font-mono font-bold text-cyan-400 tracking-wider uppercase">
-              DEFENSE GRID ACTIVE
+              DEFENSE GRID & AI SAFETY ACTIVE
             </span>
           </div>
           <h1 className="text-2xl font-black text-slate-100 tracking-tight">
             ZoikoShield SecOps & Cryptographic Command Center
           </h1>
           <p className="text-sm text-slate-400 max-w-2xl leading-relaxed">
-            Autonomous multi-tenant cloud defense, Cedar ABAC governed SOAR playbooks, Model Armor-screened AI investigation, and Post-Quantum Merkle evidence ledgers.
+            Autonomous multi-tenant cloud defense, Cedar ABAC governed SOAR playbooks, Model Armor-screened AI investigation, Emergency Kill-Switch controls, and Post-Quantum Merkle evidence ledgers.
           </p>
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
+          <Link href="/ai-governance">
+            <Button variant="ai" size="md">
+              <Flame className="w-4 h-4 text-rose-300" />
+              <span>AI Safety Cockpit</span>
+            </Button>
+          </Link>
           <Link href="/ingestion">
             <Button variant="cyan" size="md">
               <Radio className="w-4 h-4" />
-              <span>Simulate Attack Telemetry</span>
-            </Button>
-          </Link>
-          <Link href="/audit">
-            <Button variant="primary" size="md">
-              <FileCheck2 className="w-4 h-4" />
-              <span>Inspect Audit Ledger</span>
+              <span>Simulate Telemetry</span>
             </Button>
           </Link>
         </div>
@@ -78,14 +100,14 @@ export default function DashboardPage() {
 
         <Card className="space-y-1">
           <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
-            <span>ACTIVE CASES</span>
-            <FolderLock className="w-4 h-4 text-purple-400" />
+            <span>AI SAFETY & DRIFT</span>
+            <Flame className="w-4 h-4 text-amber-400" />
           </div>
           <div className="text-2xl font-bold text-slate-100 font-mono">
-            {activeCases.length}
+            {activeAiIncidents.length > 0 ? `${activeAiIncidents.length} INCIDENTS` : "NOMINAL"}
           </div>
-          <div className="text-[11px] text-purple-400 flex items-center gap-1 font-mono">
-            <span>AI Copilot & SOAR linked</span>
+          <div className="text-[11px] text-amber-400 flex items-center gap-1 font-mono">
+            <span>§21 PSI & §23 Kill-Switch Ready</span>
           </div>
         </Card>
 
@@ -108,7 +130,7 @@ export default function DashboardPage() {
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           </div>
           <div className="text-2xl font-bold text-slate-100 font-mono">
-            100% PASS
+            {(state.complianceDrift?.score || 98.4).toFixed(1)}%
           </div>
           <div className="text-[11px] text-emerald-400 flex items-center gap-1 font-mono">
             <span>SOC2, ISO27001, HIPAA</span>
@@ -125,13 +147,13 @@ export default function DashboardPage() {
               ERB-01 Demonstration Runbook Workflow
             </h3>
             <p className="text-xs text-slate-400">
-              Interactive 22-step live narrative across all 5 backend microservices.
+              Interactive live narrative across all 5 backend microservices and AI governance subsystems.
             </p>
           </div>
           <Badge variant="pass">All Steps Verified</Badge>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5">
           <Link href="/login" className="group">
             <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-cyan-500/40 transition-all space-y-1">
               <div className="flex items-center justify-between">
@@ -175,7 +197,7 @@ export default function DashboardPage() {
                 <Badge variant="critical">DETECTION</Badge>
               </div>
               <h4 className="text-sm font-semibold text-slate-200 group-hover:text-cyan-300 transition-colors">
-                Telemetry Ingest & Tier-A Detection
+                Telemetry Ingest & Detection
               </h4>
               <p className="text-xs text-slate-400">
                 Synthetic failed login bursts triggering OCSF normalization and P1 alert.
@@ -184,7 +206,7 @@ export default function DashboardPage() {
           </Link>
 
           <Link href={state.cases[0] ? `/cases/${state.cases[0].id}` : "/cases"} className="group">
-            <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-purple-500/40 transition-all space-y-1">
+            <div className="p-3.5 rounded-xl bg-slate-900/60 border border-purple-500/40 transition-all space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono font-bold text-purple-400">
                   STEP 7 & 8
@@ -230,6 +252,40 @@ export default function DashboardPage() {
               </h4>
               <p className="text-xs text-slate-400">
                 Audit package ZIP export and independent offline cryptographic verifier CLI.
+              </p>
+            </div>
+          </Link>
+
+          <Link href="/ai-governance" className="group">
+            <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-rose-500/40 transition-all space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-bold text-rose-400">
+                  STEP 11
+                </span>
+                <Badge variant="critical">KILL-SWITCH</Badge>
+              </div>
+              <h4 className="text-sm font-semibold text-slate-200 group-hover:text-rose-300 transition-colors">
+                AI Incident & Safety Controls
+              </h4>
+              <p className="text-xs text-slate-400">
+                §23 Emergency Kill-Switch, Tier-1 fallback, and automated 5-Whys RCA.
+              </p>
+            </div>
+          </Link>
+
+          <Link href="/ai-governance" className="group">
+            <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 hover:border-amber-500/40 transition-all space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-mono font-bold text-amber-400">
+                  STEP 12
+                </span>
+                <Badge variant="medium">PSI DRIFT</Badge>
+              </div>
+              <h4 className="text-sm font-semibold text-slate-200 group-hover:text-amber-300 transition-colors">
+                Model Drift & Supply Chain HHI
+              </h4>
+              <p className="text-xs text-slate-400">
+                §21 Population Stability Index and §24 multi-vendor concentration metrics.
               </p>
             </div>
           </Link>

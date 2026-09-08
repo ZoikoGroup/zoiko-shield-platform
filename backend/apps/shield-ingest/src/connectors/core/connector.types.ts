@@ -12,7 +12,9 @@ export type ConnectorProviderKey =
   | 'okta-identity'
   | 'crowdstrike-edr'
   | 'sentinelone-edr'
-  | 'palo-alto-cortex-xdr';
+  | 'palo-alto-cortex-xdr'
+  | 'microsoft-defender-edr'
+  | 'gcp-scc';
 
 export type ConnectorCategory =
   | 'Webhook Ingestion'

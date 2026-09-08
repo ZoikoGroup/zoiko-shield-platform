@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConnectorCatalogController } from './connector-catalog.controller';
 import { ConnectorCatalogService } from './connector-catalog.service';
-import { IdempotencyService } from '../../../shield-core/src/modules/idempotency/idempotency.service';
+import { IdempotencyService } from '../idempotency/idempotency.service';
 import { ConnectorHealthService } from './services/health.service';
 import { DLQReplayWorker } from '../ingestion/dlq-replay.worker';
 import { DlqReplayQuarantineService } from '../dlq/dlq-replay-quarantine.service';

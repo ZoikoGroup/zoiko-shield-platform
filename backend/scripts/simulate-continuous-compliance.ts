@@ -11,25 +11,25 @@ import 'dotenv/config';
 import 'reflect-metadata';
 import * as crypto from 'crypto';
 import { ContinuousControlEvaluatorService } from '../apps/shield-core/src/modules/controls/continuous-control-evaluator.service';
+import { ComplianceDriftDetectorService } from '../apps/shield-core/src/modules/controls/compliance-drift-detector.service';
 import { RegulatoryControlsSeeder } from '../apps/shield-core/src/seeds/regulatory-controls.seeder';
-import { MerkleTreeService } from '../apps/shield-anchor/src/merkle/merkle-tree.service';
 
 async function main() {
   console.log('========================================================================');
   console.log(' 🛡️  ZoikoShield Continuous Compliance & Control Evaluation Simulator');
-  console.log('    Specification: ZS-T0-AUD-001 (Automated Continuous Assurance)');
+  console.log('    Specification: ZS-T0-AUD-001 / §55 (Automated Continuous Assurance)');
   console.log('========================================================================\n');
 
   const tenantId = `tenant-${crypto.randomUUID().slice(0, 8)}`;
   const environmentId = 'production';
-  console.log(`[1/3] Initializing Continuous Control Evaluation for Tenant: ${tenantId}...`);
+  console.log(`[1/4] Initializing Continuous Control Evaluation for Tenant: ${tenantId}...`);
 
   const seeder = new RegulatoryControlsSeeder();
-  const merkleService = new MerkleTreeService();
-  const evaluator = new ContinuousControlEvaluatorService(seeder, merkleService);
+  const evaluator = new ContinuousControlEvaluatorService(seeder);
+  const driftDetector = new ComplianceDriftDetectorService();
 
   // Scenario 1: Baseline 100% Compliant Posture
-  console.log('\n[2/3] Evaluating Baseline Production Security Posture...');
+  console.log('\n[2/4] Evaluating Baseline Production Security Posture...');
   const healthyReport = await evaluator.evaluateFrameworkControls({
     tenantId,
     environmentId,
@@ -52,8 +52,11 @@ async function main() {
     console.log(`      Digest: ${evalItem.evidenceDigest.slice(0, 24)}... | Detail: ${evalItem.details.reason}`);
   }
 
+  const baselineDrift = driftDetector.detectDrift(healthyReport);
+  console.log(`  ✔ Baseline Drift Check: ${baselineDrift.severity} (Drift: ${baselineDrift.driftPercentage}%)`);
+
   // Scenario 2: Drift & Gap Detection Posture
-  console.log('\n[3/3] Simulating Telemetry Drift (MFA Bypass & Overdue KMS Key Rotation)...');
+  console.log('\n[3/4] Simulating Telemetry Drift (MFA Bypass & Overdue KMS Key Rotation)...');
   const driftReport = await evaluator.evaluateFrameworkControls({
     tenantId,
     environmentId,
@@ -77,8 +80,18 @@ async function main() {
     console.log(`      Score: ${evalItem.complianceScore}% | Detail: ${evalItem.details.reason}`);
   }
 
+  // Scenario 3: Real-Time Drift Classification & SLA Alarms
+  console.log('\n[4/4] Evaluating Real-Time Compliance Drift Alarm & Recommendations...');
+  const activeDrift = driftDetector.detectDrift(driftReport, { targetSlaThreshold: 90.0 });
+  console.log(`  🚨 Drift Severity:        ${activeDrift.severity}`);
+  console.log(`  🚨 Baseline Score:        ${activeDrift.baselineScore}% -> Current: ${activeDrift.currentScore}%`);
+  console.log(`  🚨 Measured Drift:        ${activeDrift.driftPercentage}% reduction`);
+  console.log(`  🚨 Degraded Controls:     ${activeDrift.driftedControls.map((c) => c.controlCode).join(', ')}`);
+  console.log(`  🛡️  Remediation Action:   ${activeDrift.recommendation}`);
+  console.log(`  🔒 Evidence Digest:       ${activeDrift.evidenceDigest}`);
+
   console.log('\n========================================================================');
-  console.log(' 🎉 CONTINUOUS CONTROL EVALUATION SIMULATION COMPLETED!');
+  console.log(' 🎉 CONTINUOUS CONTROL EVALUATION & DRIFT SIMULATION COMPLETED!');
   console.log('========================================================================\n');
 }
 

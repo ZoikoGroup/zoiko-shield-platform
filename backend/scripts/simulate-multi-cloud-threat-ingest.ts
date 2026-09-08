@@ -14,19 +14,21 @@ import * as crypto from 'crypto';
 import { OktaNormalizerService } from '../apps/shield-ingest/src/connectors/providers/okta/okta.normalizer';
 import { AwsGuardDutyNormalizerService } from '../apps/shield-ingest/src/connectors/providers/aws-guardduty/aws-guardduty.normalizer';
 import { CortexXdrNormalizerService } from '../apps/shield-ingest/src/connectors/providers/cortex-xdr/cortex-xdr.normalizer';
+import { MicrosoftDefenderNormalizerService } from '../apps/shield-ingest/src/connectors/providers/microsoft-defender/microsoft-defender.normalizer';
+import { GcpSccNormalizerService } from '../apps/shield-ingest/src/connectors/providers/gcp-scc/gcp-scc.normalizer';
 import { MerkleTreeService } from '../apps/shield-anchor/src/merkle/merkle-tree.service';
 
 async function main() {
   console.log('========================================================================');
   console.log(' 🌐 ZoikoShield Multi-Cloud Threat Ingestion & Correlation Simulator');
-  console.log('    OCSF v1.1.0 Multi-Vector Ingestion: Okta | GuardDuty | Cortex XDR');
+  console.log('    OCSF v1.1.0 Ingestion: Okta | AWS GuardDuty | Cortex XDR | Defender | GCP SCC');
   console.log('========================================================================\n');
 
   const tenantId = `tenant-${crypto.randomUUID().slice(0, 8)}`;
-  console.log(`[1/5] Initializing Ingestion Pipeline for Tenant: ${tenantId}...`);
+  console.log(`[1/6] Initializing Ingestion Pipeline for Tenant: ${tenantId}...`);
 
   // 1. Ingest Okta Identity Telemetry
-  console.log('\n[2/5] Ingesting Identity Telemetry (Okta System Log)...');
+  console.log('\n[2/6] Ingesting Identity Telemetry (Okta System Log)...');
   const oktaNormalizer = new OktaNormalizerService();
   const oktaRawEvent = {
     uuid: `okta-${crypto.randomUUID()}`,
@@ -59,7 +61,7 @@ async function main() {
   console.log(`  ✔ Geo-Anomaly Detected: ${oktaRawEvent.client.geographicalContext.city}, ${oktaRawEvent.client.geographicalContext.country}`);
 
   // 2. Ingest AWS GuardDuty Cloud Finding
-  console.log('\n[3/5] Ingesting Cloud Workload Telemetry (AWS GuardDuty)...');
+  console.log('\n[3/6] Ingesting Cloud Workload Telemetry (AWS GuardDuty)...');
   const guardDutyNormalizer = new AwsGuardDutyNormalizerService();
   const guardDutyRawFinding = {
     schemaVersion: '2.0',
@@ -100,72 +102,60 @@ async function main() {
   console.log(`  ✔ Target Resource: EC2 ${guardDutyRawFinding.resource.instanceDetails.instanceId} (${guardDutyRawFinding.resource.instanceDetails.instanceType})`);
   console.log(`  ✔ Severity Score: ${ocsfCloudFinding.severity_id} (${ocsfCloudFinding.severity})`);
 
-  // 3. Ingest Palo Alto Cortex XDR Ransomware Finding
-  console.log('\n[4/5] Ingesting Endpoint Telemetry (Palo Alto Cortex XDR)...');
-  const cortexNormalizer = new CortexXdrNormalizerService();
-  const cortexRawIncident = {
-    incident_id: 'INC-CORTEX-9941',
-    creation_time: Date.now(),
-    modification_time: Date.now(),
-    status: 'under_investigation' as const,
-    severity: 'critical' as const,
-    description: 'Multi-stage ransomware attack: credential dumping & volume shadow copy deletion',
-    alert_count: 2,
-    hosts: ['srv-prod-db-01'],
-    users: ['CORP\\svc-app-admin'],
-    alerts: [
-      {
-        alert_id: 'ALT-PANW-001',
-        detector_id: 'Cortex-Analytics',
-        name: 'Mimikatz LSASS Memory Injection',
-        category: 'CREDENTIAL_ACCESS',
-        severity: 'critical' as const,
-        description: 'LSASS process memory opened with PROCESS_ALL_ACCESS',
-        event_timestamp: Date.now() - 60000,
-        source: 'XDR_AGENT',
-        host_name: 'srv-prod-db-01',
-        host_ip: '10.0.10.50',
-        user_name: 'CORP\\svc-app-admin',
-        action_taken: 'BLOCKED' as const,
-        mitre_tactic_id_and_name: ['Credential Access'],
-        mitre_technique_id_and_name: ['T1003.001'],
-        causality_actor_process_image_name: 'mimikatz.exe',
-        causality_actor_process_command_line: 'mimikatz.exe privilege::debug sekurlsa::logonpasswords exit',
-        causality_actor_process_sha256: '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8',
-      },
-      {
-        alert_id: 'ALT-PANW-002',
-        detector_id: 'Cortex-BTP',
-        name: 'VSS Shadow Copy Invalidation',
-        category: 'IMPACT',
-        severity: 'critical' as const,
-        description: 'Command executed to wipe backup shadow storage',
-        event_timestamp: Date.now(),
-        source: 'XDR_AGENT',
-        host_name: 'srv-prod-db-01',
-        host_ip: '10.0.10.50',
-        user_name: 'CORP\\svc-app-admin',
-        action_taken: 'QUARANTINED' as const,
-        mitre_tactic_id_and_name: ['Impact'],
-        mitre_technique_id_and_name: ['T1490'],
-        causality_actor_process_image_name: 'vssadmin.exe',
-        causality_actor_process_command_line: 'vssadmin.exe delete shadows /all /quiet',
-      },
-    ],
+  // 3. Ingest Microsoft Defender for Endpoint EDR Finding
+  console.log('\n[4/6] Ingesting Microsoft Defender for Endpoint Telemetry...');
+  const defenderNormalizer = new MicrosoftDefenderNormalizerService();
+  const defenderAlert = {
+    id: `da-${crypto.randomUUID().slice(0, 12)}`,
+    incidentId: 5521,
+    title: 'Suspicious PowerShell command line executed',
+    description: 'Obfuscated PowerShell downloaded payload from external C2 endpoint',
+    severity: 'High' as const,
+    status: 'New' as const,
+    category: 'Execution',
+    mitreTechniques: ['T1059.001', 'T1105'],
+    alertCreationTime: new Date().toISOString(),
+    computerDnsName: 'WIN-APP-PROD-01.corp.internal',
+    machineId: 'mach-msft-88912',
+    loggedOnUsers: [{ accountName: 'sec_admin', domainName: 'CORP' }],
   };
 
-  const ocsfCortexFindings = cortexNormalizer.normalizeIncident(cortexRawIncident);
-  console.log(`  ✔ Ingested & Normalized ${ocsfCortexFindings.length} OCSF Class 2001 Security Findings`);
-  for (const f of ocsfCortexFindings) {
-    console.log(`    - [${f.finding.severity}] ${f.finding.title} | Host: ${f.device?.hostname} | Hash: ${f.process?.file?.hashes?.[0]?.value?.slice(0, 16) || 'N/A'}...`);
-  }
+  const ocsfDefenderFinding = defenderNormalizer.normalizeAlert(defenderAlert, tenantId, 'production', 'GLOBAL');
+  console.log(`  ✔ Ingested & Normalized to OCSF Class ${ocsfDefenderFinding.class_uid} (Security Finding)`);
+  console.log(`  ✔ Endpoint: ${ocsfDefenderFinding.device?.hostname} | User: ${ocsfDefenderFinding.actor?.user?.name}`);
+  console.log(`  ✔ MITRE Techniques: ${ocsfDefenderFinding.attacks?.map((a) => a.technique.name).join(', ')}`);
 
-  // 4. Correlate and Build Tamper-Proof Ingestion Evidence Chain
-  console.log('\n[5/5] Correlating Cross-Cloud Telemetry & Merkle Tree Anchoring...');
+  // 4. Ingest GCP Security Command Center Finding
+  console.log('\n[5/6] Ingesting GCP Security Command Center (SCC) Finding...');
+  const gcpSccNormalizer = new GcpSccNormalizerService();
+  const gcpSccFinding = {
+    name: `organizations/1029384756/sources/123/findings/${crypto.randomUUID().slice(0, 8)}`,
+    parent: 'organizations/1029384756/sources/123',
+    resourceName: '//cloudresourcemanager.googleapis.com/projects/zoikoshield-prod',
+    state: 'ACTIVE' as const,
+    category: 'PERSISTENCE_SERVICE_ACCOUNT_KEY_CREATED',
+    externalUri: 'https://console.cloud.google.com/security/command-center/findings',
+    eventTime: new Date().toISOString(),
+    createTime: new Date().toISOString(),
+    severity: 'HIGH' as const,
+    findingClass: 'THREAT' as const,
+    indicator: {
+      ipAddresses: ['198.51.100.42'],
+      domains: ['malicious-c2.corp'],
+    },
+  };
+
+  const ocsfGcpFinding = gcpSccNormalizer.normalizeFinding(gcpSccFinding, tenantId, 'production', 'europe-west3');
+  console.log(`  ✔ Ingested & Normalized to OCSF Class ${ocsfGcpFinding.class_uid} (Security Finding)`);
+  console.log(`  ✔ Resource: ${ocsfGcpFinding.finding.title} | Category: ${ocsfGcpFinding.finding.types?.[0]}`);
+
+  // 5. Correlate and Build Tamper-Proof Ingestion Evidence Chain
+  console.log('\n[6/6] Correlating Multi-Cloud Telemetry & Merkle Tree Anchoring...');
   const normalizedRecords = [
     JSON.stringify(ocsfAuthEvent),
     JSON.stringify(ocsfCloudFinding),
-    ...ocsfCortexFindings.map((f) => JSON.stringify(f)),
+    JSON.stringify(ocsfDefenderFinding),
+    JSON.stringify(ocsfGcpFinding),
   ];
 
   const leafHashes = normalizedRecords.map((r) => crypto.createHash('sha256').update(r).digest('hex'));
@@ -174,7 +164,7 @@ async function main() {
 
   console.log(`  ✔ Total Ingested Events: ${normalizedRecords.length}`);
   console.log(`  ✔ Cross-Telemetry Correlated Merkle Root: ${merkleResult.root}`);
-  console.log(`  ✔ Multi-Vector Threat Confirmed: Coordinated Identity Compromise + AWS Cloud Exploit + Ransomware Host Quarantine`);
+  console.log(`  ✔ Multi-Vector Threat Confirmed: Okta Impossible Travel + AWS Mining + Defender EDR C2 + GCP Service Account Persistence`);
 
   console.log('\n========================================================================');
   console.log(' 🎉 MULTI-CLOUD THREAT INGESTION & OCSF NORMALIZATION VERIFIED!');

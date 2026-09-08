@@ -17,7 +17,7 @@ import {
   CreateConnectorDto,
 } from './connector-catalog.service';
 import { requireTenantId } from '../security/tenant-context';
-import { IdempotencyService } from '../../../shield-core/src/modules/idempotency/idempotency.service';
+import { IdempotencyService } from '../idempotency/idempotency.service';
 import { ConnectorHealthService } from './services/health.service';
 import { DLQReplayWorker } from '../ingestion/dlq-replay.worker';
 import { DlqReplayQuarantineService } from '../dlq/dlq-replay-quarantine.service';

@@ -314,3 +314,92 @@ export interface EnclaveAttestationReceipt {
   status: 'VALID' | 'TAMPERED';
   verifiedAt: string;
 }
+
+// ----------------------------------------------------------------------------
+// AI Safety Incident Lifecycle (§23), Drift Monitoring (§21), Supply Chain (§24)
+// ----------------------------------------------------------------------------
+
+export type AiIncidentSeverity = 'SEV1_CRITICAL' | 'SEV2_HIGH' | 'SEV3_MEDIUM' | 'SEV4_LOW';
+export type AiIncidentState =
+  | 'DECLARED'
+  | 'CONTAINED_KILL_SWITCH'
+  | 'FALLBACK_ACTIVE'
+  | 'ROOT_CAUSE_ANALYZED'
+  | 'RESOLVED'
+  | 'CLOSED';
+
+export type AiIncidentTrigger =
+  | 'PROMPT_INJECTION'
+  | 'MODEL_HALLUCINATION'
+  | 'MODEL_DRIFT_CRITICAL'
+  | 'DATA_LEAKAGE'
+  | 'TOOL_MISUSE'
+  | 'OPERATOR_MANUAL';
+
+export interface AiIncident {
+  id: string;
+  tenantId: string;
+  title: string;
+  severity: AiIncidentSeverity;
+  state: AiIncidentState;
+  trigger: AiIncidentTrigger;
+  affectedModel: string;
+  killSwitchEngaged: boolean;
+  fallbackModeActive: boolean;
+  rootCauseSummary?: string;
+  declaredBy: string;
+  createdAt: string;
+  resolvedAt?: string;
+}
+
+export interface ModelDriftReport {
+  modelId: string;
+  status: 'STABLE' | 'WARNING_DRIFT_DETECTED' | 'CRITICAL_DRIFT_DETECTED';
+  populationStabilityIndex: number;
+  tokenLengthPsi: number;
+  confidenceShiftPct: number;
+  evaluatedAt: string;
+}
+
+export interface AiSupplyChainReport {
+  hhiIndex: number;
+  concentrationLevel: 'LOW' | 'MODERATE' | 'HIGH_CONCENTRATION';
+  primaryProvider: string;
+  providerShares: Record<string, number>;
+  allTier1FallbackReady: boolean;
+}
+
+export interface ComplianceDriftState {
+  tenantId: string;
+  status: 'COMPLIANT' | 'WARNING_DRIFT' | 'CRITICAL_DRIFT';
+  score: number;
+  lastAssessedAt: string;
+  slaAlarms: Array<{
+    alarmId: string;
+    controlId: string;
+    severity: 'WARNING' | 'CRITICAL';
+    reason: string;
+    triggeredAt: string;
+  }>;
+}
+
+export interface ExperienceStateEnvelope<T> {
+  status:
+    | 'LOADING'
+    | 'PARTIAL'
+    | 'STALE'
+    | 'DEGRADED'
+    | 'UNAUTHORIZED'
+    | 'UNAVAILABLE'
+    | 'RECOVERY_IN_PROGRESS'
+    | 'HEALTHY_SYNCED';
+  data?: T;
+  isPartial: boolean;
+  isStale: boolean;
+  staleGracePeriodSeconds?: number;
+  degradedReason?: string;
+  lastSyncedAt: string;
+  correlationId: string;
+  tenantId: string;
+}
+

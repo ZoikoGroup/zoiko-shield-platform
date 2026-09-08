@@ -12,6 +12,14 @@ import {
   AuditPackage,
   JitElevationSession,
   EnclaveAttestationReceipt,
+  AiIncident,
+  AiIncidentSeverity,
+  AiIncidentState,
+  AiIncidentTrigger,
+  ModelDriftReport,
+  AiSupplyChainReport,
+  ComplianceDriftState,
+  ExperienceStateEnvelope,
 } from "./types";
 import { useState, useEffect } from "react";
 
@@ -30,6 +38,11 @@ export interface DemoState {
   jitSessions: JitElevationSession[];
   enclaveAttestation?: EnclaveAttestationReceipt;
   lastSimulatedEvent?: Record<string, unknown>;
+  aiIncidents: AiIncident[];
+  modelDriftReports: ModelDriftReport[];
+  aiSupplyChain: AiSupplyChainReport;
+  complianceDrift: ComplianceDriftState;
+  experienceStatus: ExperienceStateEnvelope<any>;
 }
 
 const STATIC_TIMESTAMP = "2026-09-02T08:00:00.000Z";
@@ -387,6 +400,102 @@ export function getDefaultStaticState(): DemoState {
     },
   };
 
+  const initialAiIncidents: AiIncident[] = [
+    {
+      id: "ai-inc-2026-001",
+      tenantId: DEFAULT_TENANT.id,
+      title: "Indirect Prompt Injection in Ingest Log Summarizer Agent",
+      severity: "SEV1_CRITICAL",
+      state: "CONTAINED_KILL_SWITCH",
+      trigger: "PROMPT_INJECTION",
+      affectedModel: "gemini-1.5-pro",
+      killSwitchEngaged: true,
+      fallbackModeActive: false,
+      rootCauseSummary: "External adversary injected base64 delimiter sequence in syslog header attempting instruction override during Tier-B narrative generation.",
+      declaredBy: "Sarah Chen (Lead Analyst)",
+      createdAt: "2026-09-02T07:15:00.000Z",
+    },
+    {
+      id: "ai-inc-2026-002",
+      tenantId: DEFAULT_TENANT.id,
+      title: "Population Stability Index Drift Detected on Embedding Normalizer",
+      severity: "SEV2_HIGH",
+      state: "FALLBACK_ACTIVE",
+      trigger: "MODEL_DRIFT_CRITICAL",
+      affectedModel: "text-embedding-004",
+      killSwitchEngaged: false,
+      fallbackModeActive: true,
+      rootCauseSummary: "Distributional shift in ingress telemetry tokens exceeded PSI critical threshold (0.284 > 0.25). Deterministic rule fallback automatically engaged.",
+      declaredBy: "Automated Drift Monitor",
+      createdAt: "2026-09-02T06:30:00.000Z",
+    },
+  ];
+
+  const initialModelDrift: ModelDriftReport[] = [
+    {
+      modelId: "gemini-1.5-pro",
+      status: "STABLE",
+      populationStabilityIndex: 0.042,
+      tokenLengthPsi: 0.028,
+      confidenceShiftPct: -1.4,
+      evaluatedAt: STATIC_TIMESTAMP,
+    },
+    {
+      modelId: "text-embedding-004",
+      status: "CRITICAL_DRIFT_DETECTED",
+      populationStabilityIndex: 0.284,
+      tokenLengthPsi: 0.195,
+      confidenceShiftPct: -8.7,
+      evaluatedAt: STATIC_TIMESTAMP,
+    },
+    {
+      modelId: "claude-3-5-sonnet",
+      status: "STABLE",
+      populationStabilityIndex: 0.031,
+      tokenLengthPsi: 0.019,
+      confidenceShiftPct: 0.4,
+      evaluatedAt: STATIC_TIMESTAMP,
+    },
+  ];
+
+  const initialAiSupplyChain: AiSupplyChainReport = {
+    hhiIndex: 4200,
+    concentrationLevel: "MODERATE",
+    primaryProvider: "Google Cloud Vertex AI",
+    providerShares: {
+      "Google Cloud Vertex AI (Gemini)": 60,
+      "Anthropic (Claude)": 30,
+      "Self-Hosted Tier-1 (vLLM / Llama-3)": 10,
+    },
+    allTier1FallbackReady: true,
+  };
+
+  const initialComplianceDrift: ComplianceDriftState = {
+    tenantId: DEFAULT_TENANT.id,
+    status: "COMPLIANT",
+    score: 98.4,
+    lastAssessedAt: STATIC_TIMESTAMP,
+    slaAlarms: [
+      {
+        alarmId: "sla-alarm-cc6.1-01",
+        controlId: "SOC2-CC6.1",
+        severity: "WARNING",
+        reason: "Telemetry latency exceeded 45s threshold on secondary syslog connector (target < 30s).",
+        triggeredAt: "2026-09-02T07:45:00.000Z",
+      },
+    ],
+  };
+
+  const initialExperienceStatus: ExperienceStateEnvelope<any> = {
+    status: "HEALTHY_SYNCED",
+    isPartial: false,
+    isStale: false,
+    staleGracePeriodSeconds: 120,
+    lastSyncedAt: STATIC_TIMESTAMP,
+    correlationId: "corr-bff-synced-20260902-001",
+    tenantId: DEFAULT_TENANT.id,
+  };
+
   return {
     currentStep: 1,
     session: DEFAULT_SESSION,
@@ -423,6 +532,11 @@ export function getDefaultStaticState(): DemoState {
       status: "VALID",
       verifiedAt: STATIC_TIMESTAMP,
     },
+    aiIncidents: initialAiIncidents,
+    modelDriftReports: initialModelDrift,
+    aiSupplyChain: initialAiSupplyChain,
+    complianceDrift: initialComplianceDrift,
+    experienceStatus: initialExperienceStatus,
   };
 }
 

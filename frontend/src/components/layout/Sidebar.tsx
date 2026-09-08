@@ -21,11 +21,14 @@ import {
   Users,
   Building,
   LogIn,
+  Flame,
 } from "lucide-react";
 
 export const Sidebar: React.FC = () => {
   const pathname = usePathname();
   const [state] = useDemoState();
+
+  const activeAiIncidents = (state.aiIncidents || []).filter((i) => i.state !== "CLOSED").length;
 
   const navGroups = [
     {
@@ -55,6 +58,13 @@ export const Sidebar: React.FC = () => {
           icon: <FolderLock className="w-4 h-4" />,
           badge: state.cases.length || undefined,
           badgeVariant: "ai" as const,
+        },
+        {
+          label: "AI Safety & Incidents",
+          href: "/ai-governance",
+          icon: <Flame className="w-4 h-4" />,
+          badge: activeAiIncidents > 0 ? `${activeAiIncidents} ACTIVE` : "SAFE",
+          badgeVariant: activeAiIncidents > 0 ? ("critical" as const) : ("ai" as const),
         },
         {
           label: "Threat Hunting Copilot",

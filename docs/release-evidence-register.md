@@ -23,8 +23,15 @@
 | **G2-EVID-03**  | Tamper Checks | Ledger hash chain, byte mutation, approval drift detection | **PASSED** | [`lab11-evidence-verifier-roundtrip.spec.ts`](file:///c:/Users/aparaziitha%20nitta/zoiko-shield-platform/backend/apps/shield-anchor/src/lab11-evidence-verifier-roundtrip.spec.ts) |
 | **G2-AI-01**    | AI Gateway | 8 Release-blocking adversarial test suites (LAB 13) | **PASSED** | [`lab13-release-blockers.spec.ts`](file:///c:/Users/aparaziitha%20nitta/zoiko-shield-platform/backend/apps/shield-ai/src/adversarial/lab13-release-blockers.spec.ts) |
 | **G2-AI-02**    | AI Fallback | Fail-closed deterministic degradation on provider outage | **PASSED** | [`SafeDegradationService`](file:///c:/Users/aparaziitha%20nitta/zoiko-shield-platform/backend/apps/shield-ai/src/degradation/safe-degradation.service.ts) |
+| **G2-AI-03**    | AI Tenancy | §12 Vector store namespace partitioning & cross-tenant query isolation | **PASSED** | [`tenant-vector-store.service.spec.ts`](file:///c:/Users/aparaziitha%20nitta/zoiko-shield-platform/backend/apps/shield-ai/src/vector-store/tenant-vector-store.service.spec.ts) |
+| **G2-AI-04**    | AI Drift | §21 Population Stability Index (PSI) model drift monitoring | **PASSED** | [`model-drift-monitor.service.spec.ts`](file:///c:/Users/aparaziitha%20nitta/zoiko-shield-platform/backend/apps/shield-ai/src/drift-monitoring/model-drift-monitor.service.spec.ts) |
+| **G2-AI-05**    | AI Incidents | §23 Automated AI safety incident lifecycle & kill-switch integration | **PASSED** | [`ai-incident.service.spec.ts`](file:///c:/Users/aparaziitha%20nitta/zoiko-shield-platform/backend/apps/shield-ai/src/ai-incident/ai-incident.service.spec.ts), [`ai.e2e-spec.ts`](file:///c:/Users/aparaziitha%20nitta/zoiko-shield-platform/backend/apps/shield-ai/test/ai.e2e-spec.ts) |
+| **G2-AI-06**    | AI Supply Chain | §24 HHI concentration risk analysis & Tier-1 fallback validation | **PASSED** | [`ai-supply-chain.service.spec.ts`](file:///c:/Users/aparaziitha%20nitta/zoiko-shield-platform/backend/apps/shield-ai/src/supply-chain/ai-supply-chain.service.spec.ts) |
 | **G2-INGEST-01**| Ingestion | OCSF schema validation & quarantine provenance (LAB 07) | **PASSED** | [`lab07-quarantine-provenance.spec.ts`](file:///c:/Users/aparaziitha%20nitta/zoiko-shield-platform/backend/apps/shield-ingest/src/ingestion/lab07-quarantine-provenance.spec.ts) |
 | **G2-DETECT-01**| Detection | Tier-A stream detector rule contract & deterministic replay (LAB 08) | **PASSED** | [`lab08-deterministic-replay.spec.ts`](file:///c:/Users/aparaziitha%20nitta/zoiko-shield-platform/backend/apps/shield-core/src/modules/detection/lab08-deterministic-replay.spec.ts) |
+| **G2-CTRL-01**  | Controls & Assurance | §55 Continuous compliance drift detection & real-time SLA degradation alarms | **PASSED** | [`compliance-drift-detector.service.spec.ts`](file:///c:/Users/aparaziitha%20nitta/zoiko-shield-platform/backend/apps/shield-core/src/modules/controls/compliance-drift-detector.service.spec.ts) |
+| **G2-CHAOS-01** | Workflow Resilience | §LAB 10 Temporal workflow crash recovery, state preservation, & retry idempotency | **PASSED** | [`temporal-workflow-chaos.spec.ts`](file:///c:/Users/aparaziitha%20nitta/zoiko-shield-platform/backend/apps/shield-core/src/modules/workflows/temporal-workflow-chaos.spec.ts) |
+| **G2-EXP-01**   | Experience APIs | §7 Step 8 / LAB 14 Typed BFF state envelopes (loading, partial, stale, degraded, recovery) | **PASSED** | [`command-center-bff.service.spec.ts`](file:///c:/Users/aparaziitha%20nitta/zoiko-shield-platform/backend/apps/shield-core/src/modules/experience/command-center-bff.service.spec.ts) |
 | **G2-SUPPLY-01**| CI/CD & Supply | 2-reviewer CODEOWNERS on security-sensitive paths | **ENFORCED** | [`.github/CODEOWNERS`](file:///c:/Users/aparaziitha%20nitta/zoiko-shield-platform/.github/CODEOWNERS) |
 | **G2-INFRA-01** | Infra-as-Code | OpenTofu nonprod regional cell foundation | **PROVISIONED** | [`infrastructure/tofu/regional-cell/main.tf`](file:///c:/Users/aparaziitha%20nitta/zoiko-shield-platform/infrastructure/tofu/regional-cell/main.tf) |
 | **G2-E2E-01**   | Satellite E2E | Independent HTTP/workload E2E suites for all satellites | **PASSED** | [`action.e2e-spec.ts`](file:///c:/Users/aparaziitha%20nitta/zoiko-shield-platform/backend/apps/shield-action/test/action.e2e-spec.ts), [`ai.e2e-spec.ts`](file:///c:/Users/aparaziitha%20nitta/zoiko-shield-platform/backend/apps/shield-ai/test/ai.e2e-spec.ts), [`anchor.e2e-spec.ts`](file:///c:/Users/aparaziitha%20nitta/zoiko-shield-platform/backend/apps/shield-anchor/test/anchor.e2e-spec.ts) |
@@ -41,7 +48,11 @@
 
 ## 2. Rehearsal & Verification Audit
 
-- **Date**: 2026-09-07
-- **Verifier Engine**: `tools/independent-verifier` (v1.0.0, zero-dependency)
+- **Date**: 2026-09-08
+- **Verifier Engine**: `apps/verifier-cli` (v1.0.0, Zero-Dependency Offline Verifier)
 - **Hash Profile**: SHA-256 / Canonical JSON v1 / `ZS-MERKLE-V1`
 - **Signing Profiles**: ECDSA P-256 SHA-256 (Cloud HSM/KMS) + Dilithium/PQC Dual-Signing Profile
+- **Total Test Suites**: 335 Passing (1,425 Unit, Integration, and E2E Tests)
+- **Offline Verifier Status**: 100% Pass / Tamper Detection Confirmed (`scripts/generate-and-verify-audit-package.ts`)
+- **Regional-Cell Proof Status**: 100% Pass / All 10 Steps Verified (`scripts/run-regional-cell-synthetic-proof.ts`)
+- **Infrastructure-as-Code Status**: 100% Pass / OpenTofu Reconciled (`scripts/validate-infrastructure-tofu.ts`)

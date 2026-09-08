@@ -4,7 +4,7 @@ import {
   RegulatoryControlsSeeder,
   RegulatoryControlDefinition,
 } from '../../seeds/regulatory-controls.seeder';
-import { MerkleTreeService } from '../../../../shield-anchor/src/merkle/merkle-tree.service';
+import { computeDomainSeparatedMerkleRoot } from '../../common/merkle.util';
 
 export interface ControlEvaluationInput {
   tenantId: string;
@@ -49,7 +49,6 @@ export class ContinuousControlEvaluatorService {
 
   constructor(
     private readonly controlsSeeder: RegulatoryControlsSeeder,
-    private readonly merkleTreeService: MerkleTreeService,
   ) {}
 
   /**
@@ -87,7 +86,7 @@ export class ContinuousControlEvaluatorService {
       evidenceHashes.push(hash);
     }
 
-    const merkleBuild = this.merkleTreeService.build(evidenceHashes);
+    const merkleRoot = computeDomainSeparatedMerkleRoot(evidenceHashes);
     const compliantCount = evaluations.filter(
       (e) => e.status === 'COMPLIANT',
     ).length;
@@ -102,7 +101,7 @@ export class ContinuousControlEvaluatorService {
       compliantControlsCount: compliantCount,
       nonCompliantControlsCount: evaluations.length - compliantCount,
       evaluations,
-      merkleEvidenceRoot: merkleBuild.root,
+      merkleEvidenceRoot: merkleRoot,
       assessedAt: new Date().toISOString(),
     };
   }

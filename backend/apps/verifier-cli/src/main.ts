@@ -2,7 +2,7 @@
 import { existsSync, readFileSync, writeFileSync, readdirSync } from 'fs';
 import { resolve, join } from 'path';
 import * as crypto from 'crypto';
-import { MerkleTreeService } from '../../shield-anchor/src/merkle/merkle-tree.service';
+import { StandaloneMerkleVerifier } from './merkle/standalone-merkle-verifier';
 
 export interface AuditVerificationCertificate {
   certificateId: string;
@@ -192,7 +192,7 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
     console.log(
       '\n[5/5] Reconstructing Domain-Separated Merkle Tree (ZS-MERKLE-V1)...',
     );
-    const merkleService = new MerkleTreeService();
+    const merkleService = new StandaloneMerkleVerifier();
     let recomputedMerkleRoot = declaredMerkleRoot;
     let merkleRootIntegrity = true;
 

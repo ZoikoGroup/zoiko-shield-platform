@@ -99,8 +99,19 @@ resource "google_storage_bucket" "evidence_vault" {
     default_kms_key_name = google_kms_crypto_key.evidence_cmek.id
   }
 
-  retention_policy {
+    retention_policy {
     is_locked        = false # Keep unlocked during staging; permanent lock applied at GA
     retention_period = 220752000 # 7 years in seconds (2555 days)
   }
 }
+
+# 4. Security Project: Binary Authorization Attestor & Supply Chain Signing Keys (LAB 17)
+resource "google_binary_authorization_attestor" "cosign_attestor" {
+  name    = "zs-${var.environment}-cosign-attestor"
+  project = var.project_security_id
+
+  attestation_authority_note {
+    note_reference = "projects/${var.project_security_id}/notes/zs-cosign-authority"
+  }
+}
+

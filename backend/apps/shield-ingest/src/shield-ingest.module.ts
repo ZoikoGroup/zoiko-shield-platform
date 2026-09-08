@@ -38,6 +38,10 @@ import { SentinelOneProvider } from './connectors/providers/sentinelone/sentinel
 import { SentinelOneNormalizerService } from './connectors/providers/sentinelone/sentinelone.normalizer';
 import { CortexXdrProvider } from './connectors/providers/cortex-xdr/cortex-xdr.provider';
 import { CortexXdrNormalizerService } from './connectors/providers/cortex-xdr/cortex-xdr.normalizer';
+import { MicrosoftDefenderProvider } from './connectors/providers/microsoft-defender/microsoft-defender.provider';
+import { MicrosoftDefenderNormalizerService } from './connectors/providers/microsoft-defender/microsoft-defender.normalizer';
+import { GcpSccProvider } from './connectors/providers/gcp-scc/gcp-scc.provider';
+import { GcpSccNormalizerService } from './connectors/providers/gcp-scc/gcp-scc.normalizer';
 import { DLQReplayWorker } from './ingestion/dlq-replay.worker';
 import { TokenBucketRateLimiterService } from './ingestion/rate-limiter/token-bucket-limiter.service';
 import { AwsSqsIngestListener } from './connectors/listeners/aws-sqs.listener';
@@ -105,17 +109,7 @@ import { WorkloadAuthGuard } from './security/workload-auth.guard';
 import { WebhookSignatureGuard } from './ingestion/guards/webhook-signature.guard';
 import { OutboxService } from './outbox/outbox.service';
 import { OutboxPublisherService } from './outbox/outbox-publisher.service';
-import { PrismaService as IngestPrismaService } from './prisma/prisma.service';
-import { PrismaService as CorePrismaService } from '../../shield-core/src/prisma/prisma.service';
-import { EvidenceService as CanonicalEvidenceService } from '../../shield-core/src/modules/evidence/services/evidence.service';
-import { EvidenceVerificationService } from '../../shield-core/src/modules/evidence/verification/evidence-verification.service';
-import { EvidenceRepository } from '../../shield-core/src/modules/evidence/repositories/evidence.repository';
-import { EvidenceLedgerService } from '../../shield-core/src/modules/evidence/ledger/evidence-ledger.service';
-import { EvidenceLineageService } from '../../shield-core/src/modules/evidence/lineage/evidence-lineage.service';
-import { ContentHashService } from '../../shield-core/src/modules/evidence/hashing/content-hash.service';
-import { ObjectStorageService } from '../../shield-core/src/modules/evidence/storage/object-storage.service';
-import { OutboxService as CoreOutboxService } from '../../shield-core/src/outbox/outbox.service';
-import { IdempotencyService } from '../../shield-core/src/modules/idempotency/idempotency.service';
+import { IdempotencyService } from './idempotency/idempotency.service';
 
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
@@ -170,6 +164,10 @@ import { IdempotencyService } from '../../shield-core/src/modules/idempotency/id
     SentinelOneNormalizerService,
     CortexXdrProvider,
     CortexXdrNormalizerService,
+    MicrosoftDefenderProvider,
+    MicrosoftDefenderNormalizerService,
+    GcpSccProvider,
+    GcpSccNormalizerService,
     DLQReplayWorker,
     QuarantineService,
     RawIngestService,
@@ -195,15 +193,6 @@ import { IdempotencyService } from '../../shield-core/src/modules/idempotency/id
     OutboxService,
     OutboxPublisherService,
     IdempotencyService,
-    { provide: CorePrismaService, useExisting: IngestPrismaService },
-    CoreOutboxService,
-    ContentHashService,
-    ObjectStorageService,
-    EvidenceRepository,
-    EvidenceLedgerService,
-    EvidenceLineageService,
-    CanonicalEvidenceService,
-    EvidenceVerificationService,
     WebhookSignatureGuard,
     TokenBucketRateLimiterService,
     AwsSqsIngestListener,
