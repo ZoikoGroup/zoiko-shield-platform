@@ -93,7 +93,7 @@ export class ZoikoShieldApiClient {
     homeRegion: string;
   }): Promise<Tenant> {
     const newTenant = await this.safeFetch<Tenant>(
-      "/api/v1/onboarding/organization",
+      "/api/v1/onboarding",
       { method: "POST", body: JSON.stringify(data) },
       () => {
         return {
@@ -476,7 +476,7 @@ export class ZoikoShieldApiClient {
   // --- Step 8: AI Investigation Summary ---
   static async generateAiInvestigationSummary(caseId: string): Promise<AiInvestigationSummary> {
     const summary = await this.safeFetch<AiInvestigationSummary>(
-      `/api/v1/ai/cases/${caseId}/summary`,
+      `/api/v1/cases/${caseId}/ai/summary`,
       { method: "POST" },
       () => {
         const state = getState();
@@ -713,331 +713,137 @@ export class ZoikoShieldApiClient {
     return pkg;
   }
 
-  // --- Step 11: AI Safety Incident Lifecycle (§23) & Emergency Kill-Switch ---
-  static async getAiIncidents(tenantId?: string): Promise<AiIncident[]> {
-    return this.safeFetch<AiIncident[]>(
-      `/api/v1/ai-governance/incidents?tenantId=${tenantId || "default"}`,
+  // --- GET: Fetch alerts from backend ---
+  static async getAlerts(params?: { status?: string; limit?: number }): Promise<Alert[]> {
+    const query = new URLSearchParams();
+    if (params?.status) query.set("status", params.status);
+    if (params?.limit) query.set("limit", String(params.limit));
+    return this.safeFetch(
+      `/api/v1/alerts?${query.toString()}`,
       { method: "GET" },
       () => {
         const state = getState();
-        return state.aiIncidents;
+        return state.alerts;
       }
     );
   }
 
-  static async declareAiIncident(data: {
-    tenantId: string;
-    title: string;
-    severity: AiIncidentSeverity;
-    trigger: AiIncidentTrigger;
-    affectedModel: string;
-    declaredBy: string;
-  }): Promise<AiIncident> {
-    const incident = await this.safeFetch<AiIncident>(
-      "/api/v1/ai-governance/incidents/declare",
-      { method: "POST", body: JSON.stringify(data) },
-      () => {
-        return {
-          id: `ai-inc-${generateUUID().slice(0, 8)}`,
-          tenantId: data.tenantId,
-          title: data.title,
-          severity: data.severity,
-          state: "DECLARED",
-          trigger: data.trigger,
-          affectedModel: data.affectedModel,
-          killSwitchEngaged: false,
-          fallbackModeActive: false,
-          declaredBy: data.declaredBy,
-          createdAt: new Date().toISOString(),
-        };
-      }
-    );
-
-    const state = getState();
-    state.aiIncidents = [incident, ...state.aiIncidents.filter((i) => i.id !== incident.id)];
-    saveDemoState(state);
-    return incident;
-  }
-
-  static async containAiIncident(incidentId: string, actionReason?: string): Promise<AiIncident> {
-    const incident = await this.safeFetch<AiIncident>(
-      `/api/v1/ai-governance/incidents/${incidentId}/contain`,
-      { method: "POST", body: JSON.stringify({ actionReason: actionReason || "Emergency Kill-Switch Engaged (Simulation Mode)" }) },
+  // --- GET: Fetch cases from backend ---
+  static async getCases(): Promise<Case[]> {
+    return this.safeFetch(
+      "/api/v1/cases",
+      { method: "GET" },
       () => {
         const state = getState();
-        const found = state.aiIncidents.find((i) => i.id === incidentId);
-        if (found) {
-          found.state = "CONTAINED_KILL_SWITCH";
-          found.killSwitchEngaged = true;
-          return found;
-        }
-        throw new Error("AI Incident not found");
+        return state.cases;
       }
     );
-
-    const state = getState();
-    const existing = state.aiIncidents.find((i) => i.id === incidentId);
-    if (existing) {
-      existing.state = "CONTAINED_KILL_SWITCH";
-      existing.killSwitchEngaged = true;
-    }
-    saveDemoState(state);
-    return incident;
   }
 
-  static async activateAiFallback(incidentId: string, targetTier1Provider?: string): Promise<AiIncident> {
-    const incident = await this.safeFetch<AiIncident>(
-      `/api/v1/ai-governance/incidents/${incidentId}/fallback`,
-      { method: "POST", body: JSON.stringify({ targetProvider: targetTier1Provider || "Anthropic Claude / Deterministic Rule Engine" }) },
+  // --- GET: Fetch connectors from backend ---
+  static async getConnectors(): Promise<Connector[]> {
+    const res = await this.safeFetch<{ data: Connector[] } | Connector[]>(
+      "/api/v1/connectors",
+      { method: "GET" },
       () => {
         const state = getState();
-        const found = state.aiIncidents.find((i) => i.id === incidentId);
-        if (found) {
-          found.state = "FALLBACK_ACTIVE";
-          found.fallbackModeActive = true;
-          return found;
-        }
-        throw new Error("AI Incident not found");
+        return { data: state.connectors };
       }
     );
-
-    const state = getState();
-    const existing = state.aiIncidents.find((i) => i.id === incidentId);
-    if (existing) {
-      existing.state = "FALLBACK_ACTIVE";
-      existing.fallbackModeActive = true;
-    }
-    saveDemoState(state);
-    return incident;
+    // Handle both array and {data:[]} shapes
+    return Array.isArray(res) ? res : ((res as any).data ?? []);
   }
 
-  static async analyzeAiIncidentRca(incidentId: string): Promise<{
-    incident: AiIncident;
-    rcaSummary: string;
-    fiveWhys: string[];
-    rootCauseClass: string;
-    recommendedFixes: string[];
-  }> {
-    const result = await this.safeFetch<{
-      incident: AiIncident;
-      rcaSummary: string;
-      fiveWhys: string[];
-      rootCauseClass: string;
-      recommendedFixes: string[];
-    }>(
-      `/api/v1/ai-governance/incidents/${incidentId}/rca`,
+  // --- GET: Fetch control tests from backend ---
+  static async getControlTests(): Promise<ControlTest[]> {
+    return this.safeFetch(
+      "/api/v1/control-evaluations",
+      { method: "GET" },
+      () => {
+        const state = getState();
+        return state.controlTests;
+      }
+    );
+  }
+
+  // --- GET: Fetch audit packages from backend ---
+  static async getAuditPackages(): Promise<AuditPackage[]> {
+    return this.safeFetch(
+      "/api/v1/audit-packages",
+      { method: "GET" },
+      () => {
+        const state = getState();
+        return state.auditPackages;
+      }
+    );
+  }
+
+  // --- Emergency SOAR Freeze ---
+  static async freezeSOAR(scope: string, reason: string): Promise<{ frozen: boolean; mode: string; freezeId: string; initiatedBy: string; timestamp: string }> {
+    return this.safeFetch(
+      "/api/v1/response/freeze",
+      { method: "POST", body: JSON.stringify({ scope, reason }) },
+      () => ({
+        frozen: true,
+        mode: "EMERGENCY_FREEZE",
+        freezeId: `frz-${generateUUID().slice(0, 8)}`,
+        initiatedBy: getState().session.email,
+        timestamp: new Date().toISOString(),
+      })
+    );
+  }
+
+  // --- Release Emergency SOAR Freeze ---
+  // Note: the backend scopes an active freeze to the tenant (via x-tenant-id), not
+  // a freezeId, so freezeId is accepted for caller compatibility but not sent.
+  static async releaseFreezeSOAR(_freezeId: string): Promise<{ frozen: boolean; releasedAt: string }> {
+    return this.safeFetch(
+      "/api/v1/response/unfreeze",
       { method: "POST" },
-      () => {
-        const state = getState();
-        const found = state.aiIncidents.find((i) => i.id === incidentId);
-        const rcaSummary =
-          "Automated RCA Engine (§23): Adversarial injection payload successfully bypassed pre-filter due to zero-width unicode whitespace obfuscation. Model output deviated from grounded facts, triggering Model Armor circuit breaker.";
-        if (found) {
-          found.state = "ROOT_CAUSE_ANALYZED";
-          found.rootCauseSummary = rcaSummary;
-        }
-        return {
-          incident: found || {
-            id: incidentId,
-            tenantId: "default",
-            title: "Prompt Injection Incident",
-            severity: "SEV1_CRITICAL",
-            state: "ROOT_CAUSE_ANALYZED",
-            trigger: "PROMPT_INJECTION",
-            affectedModel: "gemini-1.5-pro",
-            killSwitchEngaged: true,
-            fallbackModeActive: true,
-            rootCauseSummary: rcaSummary,
-            declaredBy: "Security Analyst",
-            createdAt: new Date().toISOString(),
-          },
-          rcaSummary,
-          fiveWhys: [
-            "Why 1: Log Summarizer generated hallucinations -> Model instruction was superseded by input payload.",
-            "Why 2: Input payload was parsed as system instruction -> Delimiter tags were unescaped in raw syslog stream.",
-            "Why 3: Unescaped delimiter tags passed regex filter -> Adversary encoded tags with zero-width whitespace.",
-            "Why 4: Unicode normalization was omitted before regex pass -> Sanitizer assumed UTF-8 ASCII strict compliance.",
-            "Why 5: Lack of NFKD unicode canonicalization in ingest Tier-A preprocessor.",
-          ],
-          rootCauseClass: "UNESCAPED_INPUT_DELIMITER_UNICODE_CONFUSABLE",
-          recommendedFixes: [
-            "Deploy NFKD Unicode Normalization filter in Ingest Preprocessor",
-            "Update Model Armor prompt injection classifier confidence threshold from 0.80 to 0.65",
-            "Enforce strict XML-tag containment on raw log variables in prompt template",
-          ],
-        };
-      }
-    );
-
-    const state = getState();
-    const existing = state.aiIncidents.find((i) => i.id === incidentId);
-    if (existing) {
-      existing.state = "ROOT_CAUSE_ANALYZED";
-      existing.rootCauseSummary = result.rcaSummary;
-    }
-    saveDemoState(state);
-    return result;
-  }
-
-  static async resolveAiIncident(incidentId: string, resolutionNotes: string): Promise<AiIncident> {
-    const incident = await this.safeFetch<AiIncident>(
-      `/api/v1/ai-governance/incidents/${incidentId}/resolve`,
-      { method: "POST", body: JSON.stringify({ resolutionNotes }) },
-      () => {
-        const state = getState();
-        const found = state.aiIncidents.find((i) => i.id === incidentId);
-        if (found) {
-          found.state = "RESOLVED";
-          found.resolvedAt = new Date().toISOString();
-          return found;
-        }
-        throw new Error("AI Incident not found");
-      }
-    );
-
-    const state = getState();
-    const existing = state.aiIncidents.find((i) => i.id === incidentId);
-    if (existing) {
-      existing.state = "RESOLVED";
-      existing.resolvedAt = incident.resolvedAt;
-    }
-    saveDemoState(state);
-    return incident;
-  }
-
-  static async closeAiIncident(incidentId: string): Promise<AiIncident> {
-    const incident = await this.safeFetch<AiIncident>(
-      `/api/v1/ai-governance/incidents/${incidentId}/close`,
-      { method: "POST" },
-      () => {
-        const state = getState();
-        const found = state.aiIncidents.find((i) => i.id === incidentId);
-        if (found) {
-          found.state = "CLOSED";
-          return found;
-        }
-        throw new Error("AI Incident not found");
-      }
-    );
-
-    const state = getState();
-    const existing = state.aiIncidents.find((i) => i.id === incidentId);
-    if (existing) {
-      existing.state = "CLOSED";
-    }
-    saveDemoState(state);
-    return incident;
-  }
-
-  // --- Step 12: Model Drift & PSI Monitoring (§21) ---
-  static async getModelDriftMetrics(): Promise<ModelDriftReport[]> {
-    return this.safeFetch<ModelDriftReport[]>(
-      "/api/v1/ai-governance/model-drift",
-      { method: "GET" },
-      () => {
-        const state = getState();
-        return state.modelDriftReports;
-      }
+      () => ({
+        frozen: false,
+        releasedAt: new Date().toISOString(),
+      })
     );
   }
 
-  // --- Step 13: AI Supply Chain Concentration Risk (§24) ---
-  static async getAiSupplyChainRisk(): Promise<AiSupplyChainReport> {
-    return this.safeFetch<AiSupplyChainReport>(
-      "/api/v1/ai-governance/supply-chain-risk",
-      { method: "GET" },
-      () => {
-        const state = getState();
-        return state.aiSupplyChain;
-      }
+  // --- Request JIT Elevation ---
+  static async requestJitElevation(targetTenantId: string, justification: string, durationMinutes: number): Promise<{ requestId: string; status: string; expiresAt: string; requestedRole: string; approverPeerAdmin: string }> {
+    return this.safeFetch(
+      "/api/v1/authz/jit/request",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          targetTenantId,
+          statedPurpose: justification,
+          requestedDurationMinutes: durationMinutes,
+        }),
+      },
+      () => ({
+        requestId: `jit-req-${generateUUID().slice(0, 8)}`,
+        status: "APPROVED_ACTIVE",
+        requestedRole: "SUPER_ADMIN",
+        approverPeerAdmin: "alex.kumar@acme.com",
+        expiresAt: new Date(Date.now() + durationMinutes * 60 * 1000).toISOString(),
+        justification,
+        auditSignature: sha256Mock("jit" + Date.now()),
+      })
     );
   }
 
-  // --- Step 14: Continuous Compliance Drift & Real-Time SLA Alarms (§55) ---
-  static async getComplianceDriftAssessment(): Promise<ComplianceDriftState> {
-    return this.safeFetch<ComplianceDriftState>(
-      "/api/v1/compliance/drift-assessment",
-      { method: "GET" },
-      () => {
-        const state = getState();
-        return state.complianceDrift;
-      }
-    );
-  }
-
-  static async remediateComplianceDrift(alarmId: string): Promise<{
-    success: boolean;
-    remediatedAlarmId: string;
-    updatedScore: number;
-  }> {
-    const result = await this.safeFetch<{
-      success: boolean;
-      remediatedAlarmId: string;
-      updatedScore: number;
-    }>(
-      `/api/v1/compliance/drift-assessment/alarms/${alarmId}/remediate`,
-      { method: "POST" },
-      () => {
-        const state = getState();
-        state.complianceDrift.slaAlarms = state.complianceDrift.slaAlarms.filter((a) => a.alarmId !== alarmId);
-        state.complianceDrift.score = Math.min(100, state.complianceDrift.score + 1.6);
-        return {
-          success: true,
-          remediatedAlarmId: alarmId,
-          updatedScore: state.complianceDrift.score,
-        };
-      }
-    );
-
-    const state = getState();
-    state.complianceDrift.slaAlarms = state.complianceDrift.slaAlarms.filter((a) => a.alarmId !== alarmId);
-    state.complianceDrift.score = result.updatedScore;
-    saveDemoState(state);
-    return result;
-  }
-
-  // --- Step 15: Command Center Experience State Contract (LAB 14) ---
-  static async getCommandCenterOverview(): Promise<
-    ExperienceStateEnvelope<{
-      stats: Record<string, unknown>;
-      alerts: Alert[];
-      incidents: AiIncident[];
-      complianceScore: number;
-    }>
-  > {
-    return this.safeFetch<
-      ExperienceStateEnvelope<{
-        stats: Record<string, unknown>;
-        alerts: Alert[];
-        incidents: AiIncident[];
-        complianceScore: number;
-      }>
-    >(
-      "/api/v1/experience/command-center-overview",
-      { method: "GET" },
-      () => {
-        const state = getState();
-        return {
-          status: "HEALTHY_SYNCED",
-          isPartial: false,
-          isStale: false,
-          staleGracePeriodSeconds: 120,
-          lastSyncedAt: new Date().toISOString(),
-          correlationId: `corr-${generateUUID().slice(0, 8)}`,
-          tenantId: state.tenant.id,
-          data: {
-            stats: {
-              activeConnectors: state.connectors.length,
-              activeCases: state.cases.filter((c) => c.status !== "CLOSED").length,
-              activeAlerts: state.alerts.filter((a) => a.status === "NEW").length,
-              auditPackages: state.auditPackages.length,
-            },
-            alerts: state.alerts,
-            incidents: state.aiIncidents,
-            complianceScore: state.complianceDrift.score,
-          },
-        };
-      }
+  // --- Revoke JIT Session ---
+  static async revokeJitElevation(
+    sessionId: string,
+    revocationReason: string = "Analyst-initiated revocation via console"
+  ): Promise<{ revoked: boolean; revokedAt: string }> {
+    return this.safeFetch(
+      `/api/v1/authz/jit/${sessionId}/revoke`,
+      { method: "POST", body: JSON.stringify({ revocationReason }) },
+      () => ({
+        revoked: true,
+        revokedAt: new Date().toISOString(),
+      })
     );
   }
 }
+

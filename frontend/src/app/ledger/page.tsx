@@ -1,6 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useDemoState } from "@/lib/demo-state";
+import { ZoikoShieldApiClient } from "@/lib/api-client";
+import { truncateHash } from "@/lib/utils";
 import { Card } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
@@ -11,10 +14,6 @@ import {
   Layers,
   ShieldCheck,
   Download,
-  Share2,
-  FileCheck2,
-  Search,
-  Key,
 } from "lucide-react";
 
 interface MerkleLeafNode {
@@ -26,43 +25,79 @@ interface MerkleLeafNode {
 }
 
 export default function MerkleLedgerExplorerPage() {
-  const [epochNumber, setEpochNumber] = useState(1043);
-  const [selectedLeafIndex, setSelectedLeafIndex] = useState(1);
+  const [state] = useDemoState();
+  const [selectedLeafIndex, setSelectedLeafIndex] = useState(0);
   const [isVerifying, setIsVerifying] = useState(false);
   const [verificationResult, setVerificationResult] = useState<boolean | null>(true);
+  const [isExporting, setIsExporting] = useState(false);
 
-  const leaves: MerkleLeafNode[] = [
-    {
-      index: 0,
-      evidenceId: "evid-8f7a9c2b-01",
-      eventType: "AUTHENTICATION",
-      payloadDigest: "42e40754484f33ba20d0eb3f18a228f4a3e7b3...",
-      leafHash: "a1c4e90812bd56ff34aa9812cc457812...",
-    },
-    {
-      index: 1,
-      evidenceId: "evid-9c1a4b5d-02",
-      eventType: "PROCESS_ACTIVITY",
-      payloadDigest: "8f3b198c2274ad9910c2e391b8a472c1998311...",
-      leafHash: "d3e712ba990145fc88ab1024ee591233...",
-    },
-    {
-      index: 2,
-      evidenceId: "evid-0a2b8e7c-03",
-      eventType: "NETWORK_FLOW",
-      payloadDigest: "c1852cc7cd42fc54d89a2b7190e34190881922...",
-      leafHash: "f5b891a27719ce3400ab819211c47881...",
-    },
-    {
-      index: 3,
-      evidenceId: "evid-3d9a1f4e-04",
-      eventType: "IAM_POLICY_CHANGE",
-      payloadDigest: "230859eadba14f7389ab2201994ce381710928...",
-      leafHash: "e8912ba45590c71188af291033b56719...",
-    },
-  ];
+  // Derive epoch number from real audit packages or cases
+  const epochNumber =
+    state.auditPackages[0]?.manifest?.epochMerkleRoot
+      ? 1043
+      : state.cases[0]?.evidenceList[0]?.merkleEpoch ?? 1043;
 
-  const merkleRoot = "33b510f06a084d53a2901198c471ba9844e1290bb3410928aa7819ce012891bb";
+  // Derive Merkle root from real audit package or case evidence
+  const merkleRoot =
+    state.auditPackages[0]?.manifest?.epochMerkleRoot ??
+    state.cases[0]?.evidenceList[0]?.merkleRootHash ??
+    "33b510f06a084d53a2901198c471ba9844e1290bb3410928aa7819ce012891bb";
+
+  // Build leaf nodes from real evidence records across all cases
+  const leaves: MerkleLeafNode[] = (() => {
+    const allEvidence = state.cases.flatMap((c) => c.evidenceList);
+    if (allEvidence.length > 0) {
+      return allEvidence.slice(0, 8).map((ev, idx) => ({
+        index: idx,
+        evidenceId: ev.id,
+        eventType: ev.evidenceType,
+        payloadDigest: ev.contentHash ? ev.contentHash.slice(0, 42) + "..." : "pending...",
+        leafHash: ev.contentHash ? ev.contentHash.slice(0, 32) + "..." : "pending...",
+      }));
+    }
+    // Fallback to normalized events if no cases yet
+    if (state.normalizedEvents.length > 0) {
+      return state.normalizedEvents.slice(0, 4).map((ev, idx) => ({
+        index: idx,
+        evidenceId: `evid-${ev.id}`,
+        eventType: ev.eventClass ?? "SECURITY_EVENT",
+        payloadDigest: ev.rawPayloadHash ? ev.rawPayloadHash.slice(0, 42) + "..." : "pending...",
+        leafHash: ev.rawPayloadHash ? ev.rawPayloadHash.slice(0, 32) + "..." : "pending...",
+      }));
+    }
+    // Static fallback before any events ingested
+    return [
+      {
+        index: 0,
+        evidenceId: "evid-8f7a9c2b-01",
+        eventType: "AUTHENTICATION",
+        payloadDigest: "42e40754484f33ba20d0eb3f18a228f4a3e7b3...",
+        leafHash: "a1c4e90812bd56ff34aa9812cc457812...",
+      },
+      {
+        index: 1,
+        evidenceId: "evid-9c1a4b5d-02",
+        eventType: "PROCESS_ACTIVITY",
+        payloadDigest: "8f3b198c2274ad9910c2e391b8a472c1998311...",
+        leafHash: "d3e712ba990145fc88ab1024ee591233...",
+      },
+      {
+        index: 2,
+        evidenceId: "evid-0a2b8e7c-03",
+        eventType: "NETWORK_FLOW",
+        payloadDigest: "c1852cc7cd42fc54d89a2b7190e34190881922...",
+        leafHash: "f5b891a27719ce3400ab819211c47881...",
+      },
+      {
+        index: 3,
+        evidenceId: "evid-3d9a1f4e-04",
+        eventType: "IAM_POLICY_CHANGE",
+        payloadDigest: "230859eadba14f7389ab2201994ce381710928...",
+        leafHash: "e8912ba45590c71188af291033b56719...",
+      },
+    ];
+  })();
+
   const witness1 = "PRIMARY_SOVEREIGN_WITNESS (ECDSA P-256 + Dilithium3)";
   const witness2 = "INDEPENDENT_REKOR_TSA (RFC-3161 Timestamped)";
 
@@ -73,6 +108,17 @@ export default function MerkleLedgerExplorerPage() {
       setIsVerifying(false);
       setVerificationResult(true);
     }, 1200);
+  };
+
+  const handleExportAuditPackage = async () => {
+    setIsExporting(true);
+    try {
+      await ZoikoShieldApiClient.generateAuditPackage();
+    } catch (err) {
+      console.error("Audit package export error:", err);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   return (
@@ -88,13 +134,15 @@ export default function MerkleLedgerExplorerPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl font-bold text-white tracking-wide">
-                    Cryptographic Evidence & Merkle Anchoring Explorer
+                    Cryptographic Evidence &amp; Merkle Anchoring Explorer
                   </h1>
                   <Badge variant="anchored">ZS-MERKLE-V1 Profile</Badge>
                   <Badge variant="pass">Dual-Witness Sealed</Badge>
                 </div>
                 <p className="text-xs text-slate-400">
-                  Specification: <span className="font-mono text-cyan-400">ZS-ENG-EVID-001</span> & <span className="font-mono text-cyan-400">ZS-T0-TECH-001</span> §08
+                  Specification:{" "}
+                  <span className="font-mono text-cyan-400">ZS-ENG-EVID-001</span> &amp;{" "}
+                  <span className="font-mono text-cyan-400">ZS-T0-TECH-001</span> §08
                 </p>
               </div>
             </div>
@@ -102,7 +150,11 @@ export default function MerkleLedgerExplorerPage() {
 
           <div className="flex items-center gap-3 font-mono text-xs">
             <div className="px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-300">
-              Active Epoch: <span className="text-cyan-400 font-bold">#{epochNumber}</span>
+              Active Epoch:{" "}
+              <span className="text-cyan-400 font-bold">#{epochNumber}</span>
+            </div>
+            <div className="px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-300">
+              {leaves.length} Leaf{leaves.length !== 1 ? "ves" : ""} Anchored
             </div>
           </div>
         </div>
@@ -146,7 +198,8 @@ export default function MerkleLedgerExplorerPage() {
                 <Button
                   variant="outline"
                   className="w-full py-2 flex items-center justify-center gap-2 border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10 font-bold"
-                  onClick={() => alert("Exporting signed offline audit bundle ZIP...")}
+                  onClick={handleExportAuditPackage}
+                  isLoading={isExporting}
                 >
                   <Download className="w-4 h-4" />
                   <span>Export Signed Audit Package</span>
@@ -163,7 +216,8 @@ export default function MerkleLedgerExplorerPage() {
             </div>
 
             <p className="text-slate-400 text-[11px]">
-              Verifies whether evidence item #{selectedLeafIndex} is mathematically cryptographically included in Root Hash:
+              Verifies whether evidence item #{selectedLeafIndex} is mathematically
+              cryptographically included in Root Hash:
             </p>
 
             <Button
@@ -183,7 +237,8 @@ export default function MerkleLedgerExplorerPage() {
               <div className="p-3 rounded bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-[11px] flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span>
-                  <strong>Proof Cryptographically Valid!</strong> Leaf hash correctly resolves to Merkle root with zero discrepancies.
+                  <strong>Proof Cryptographically Valid!</strong> Leaf hash correctly resolves to
+                  Merkle root with zero discrepancies.
                 </span>
               </div>
             )}
@@ -200,7 +255,9 @@ export default function MerkleLedgerExplorerPage() {
                   Domain-Separated Binary Merkle Tree (ZS-MERKLE-V1) Leaves
                 </h2>
               </div>
-              <span className="text-xs font-mono text-slate-400">{leaves.length} Leaves in Batch</span>
+              <span className="text-xs font-mono text-slate-400">
+                {leaves.length} Leaves in Batch
+              </span>
             </div>
 
             <div className="space-y-3">
@@ -219,7 +276,9 @@ export default function MerkleLedgerExplorerPage() {
                       <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">
                         LEAF #{leaf.index}
                       </span>
-                      <span className="text-slate-200 font-bold">{leaf.evidenceId}</span>
+                      <span className="text-slate-200 font-bold truncate max-w-[180px]">
+                        {leaf.evidenceId}
+                      </span>
                     </div>
                     <Badge variant="neutral">{leaf.eventType}</Badge>
                   </div>

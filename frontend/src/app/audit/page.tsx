@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
@@ -23,6 +23,11 @@ import {
 export default function AuditPage() {
   const router = useRouter();
   const [state] = useDemoState();
+
+  useEffect(() => {
+    ZoikoShieldApiClient.getAuditPackages().catch(() => {/* backend offline — demo state used */});
+  }, []);
+
   const [isGenerating, setIsGenerating] = useState(false);
 
   const latestPackage = state.auditPackages[0];

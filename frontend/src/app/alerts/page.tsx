@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
@@ -21,6 +21,11 @@ export default function AlertsPage() {
   const router = useRouter();
   const [state] = useDemoState();
   const [isPromoting, setIsPromoting] = useState<string | null>(null);
+
+  // Fetch live alerts from backend on mount
+  useEffect(() => {
+    ZoikoShieldApiClient.getAlerts().catch(() => {/* backend offline — demo state used */});
+  }, []);
 
   const handlePromote = async (alertId: string, alertTitle: string) => {
     setIsPromoting(alertId);

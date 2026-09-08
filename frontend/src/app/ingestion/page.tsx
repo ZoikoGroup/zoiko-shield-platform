@@ -21,7 +21,7 @@ export default function IngestionPage() {
   const router = useRouter();
   const [state] = useDemoState();
   const [selectedConnectorId, setSelectedConnectorId] = useState(
-    "conn-webhook-gateway-01"
+    state.connectors[0]?.id ?? "conn-webhook-gateway-01"
   );
   const [rawJson, setRawJson] = useState(`{
   "eventName": "AttachUserPolicy",

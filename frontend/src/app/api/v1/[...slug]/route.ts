@@ -27,6 +27,11 @@ function resolveServicePort(method: string, path: string): number {
   ) {
     return 3002;
   }
+  // Collision 3: normalized events list/detail/replay live on shield-ingest:3002
+  // (events/publish is the exception - that stays on shield-core:3001)
+  if (path.startsWith("events") && !path.startsWith("events/publish")) {
+    return 3002;
+  }
   // All other core routes: Auth, Onboarding, Tenants, Invitations, Alerts (read/triage), Cases (CRUD/timeline/read evidence/decisions), AI proxies, Response Proposals, Audit Packages, JIT live on shield-core:3001
   return 3001;
 }

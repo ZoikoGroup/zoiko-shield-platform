@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
@@ -24,6 +24,11 @@ import {
 export default function ConnectorsPage() {
   const router = useRouter();
   const [state, setState] = useDemoState();
+
+  useEffect(() => {
+    ZoikoShieldApiClient.getConnectors().catch(() => {/* backend offline — demo state used */});
+  }, []);
+
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [name, setName] = useState("Custom AWS GuardDuty Telemetry");
   const [provider, setProvider] = useState<ConnectorProviderType>("generic-webhook");

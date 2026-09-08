@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
+import { useDemoState } from "@/lib/demo-state";
+import { ZoikoShieldApiClient } from "@/lib/api-client";
 import { Card } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
@@ -19,6 +21,7 @@ import {
   Zap,
 } from "lucide-react";
 
+
 interface AttackStage {
   stageNumber: number;
   name: string;
@@ -31,6 +34,7 @@ interface AttackStage {
 }
 
 export default function RedTeamSimulatorPage() {
+  const [state] = useDemoState();
   const [scenarioType, setScenarioType] = useState<
     "RANSOMWARE_STAGING" | "CLOUD_PRIVILEGE_ESCALATION" | "SUPPLY_CHAIN_INJECTION"
   >("RANSOMWARE_STAGING");
@@ -38,7 +42,12 @@ export default function RedTeamSimulatorPage() {
   const [targetHost, setTargetHost] = useState("srv-db-prod-02");
   const [targetUser, setTargetUser] = useState("victim.analyst@acme.corp");
   const [isSimulating, setIsSimulating] = useState(false);
-  const [simulationComplete, setSimulationComplete] = useState(true);
+  const [simulationComplete, setSimulationComplete] = useState(false);
+  const [simulatedStages, setSimulatedStages] = useState<number[]>([]);
+  const [simError, setSimError] = useState<string | null>(null);
+
+  // Use first connector in state (or fallback)
+  const connectorId = state.connectors[0]?.id ?? "conn-webhook-gateway-01";
 
   const stages: AttackStage[] = [
     {
@@ -50,12 +59,15 @@ export default function RedTeamSimulatorPage() {
       samplePayload: {
         eventActivity: "LOGIN_ATTEMPT",
         actor: targetUser,
+        email: targetUser,
         sourceIp: "198.51.100.99",
         outcome: "SUCCESS",
         authProtocol: "OIDC_TOKEN_REFRESH",
+        severity: "HIGH",
+        action: "AUTH_OIDC_TOKEN",
       },
       expectedRule: "ZS-AUTH-001 (Impossible Geo-Travel Detection)",
-      detectionStatus: "DETECTED",
+      detectionStatus: simulatedStages.includes(1) ? "DETECTED" : "PENDING",
     },
     {
       stageNumber: 2,
@@ -68,9 +80,13 @@ export default function RedTeamSimulatorPage() {
         commandLine: "powershell.exe -Enc SGVsbG8gV29ybGQ= -WindowStyle Hidden",
         parentProcess: "svchost.exe",
         host: targetHost,
+        action: "EXEC_POWERSHELL",
+        severity: "HIGH",
+        outcome: "SUCCESS",
+        email: targetUser,
       },
       expectedRule: "ZS-PROC-001 (Encoded PowerShell Execution)",
-      detectionStatus: "DETECTED",
+      detectionStatus: simulatedStages.includes(2) ? "DETECTED" : "PENDING",
     },
     {
       stageNumber: 3,
@@ -82,19 +98,36 @@ export default function RedTeamSimulatorPage() {
         processName: "vssadmin.exe",
         commandLine: "vssadmin delete shadows /all /quiet",
         host: targetHost,
-        user: targetUser,
+        action: "ADMIN_DELETE_SHADOW_COPY",
+        severity: "CRITICAL",
+        outcome: "SUCCESS",
+        email: targetUser,
       },
       expectedRule: "ZS-IMPACT-002 (Volume Shadow Copy Deletion)",
-      detectionStatus: "DETECTED",
+      detectionStatus: simulatedStages.includes(3) ? "DETECTED" : "PENDING",
     },
   ];
 
-  const handleRunSimulation = () => {
+  const handleRunSimulation = async () => {
     setIsSimulating(true);
-    setTimeout(() => {
-      setIsSimulating(false);
+    setSimulationComplete(false);
+    setSimulatedStages([]);
+    setSimError(null);
+
+    try {
+      for (const stage of stages) {
+        await ZoikoShieldApiClient.sendSyntheticTelemetry(connectorId, stage.samplePayload);
+        setSimulatedStages((prev) => [...prev, stage.stageNumber]);
+        // Small delay between stages for visual feedback
+        await new Promise((r) => setTimeout(r, 400));
+      }
       setSimulationComplete(true);
-    }, 1800);
+    } catch (err: any) {
+      console.error("Red-team simulation error:", err);
+      setSimError(err.message ?? "Simulation failed.");
+    } finally {
+      setIsSimulating(false);
+    }
   };
 
   return (
@@ -193,8 +226,21 @@ export default function RedTeamSimulatorPage() {
                   </>
                 )}
               </Button>
+
+              {/* Connector indicator */}
+              <div className="text-[10px] text-slate-500 text-center font-mono">
+                Injecting via connector:{" "}
+                <span className="text-cyan-400">{connectorId}</span>
+              </div>
+
+              {simError && (
+                <div className="p-2.5 rounded-lg bg-rose-950/30 border border-rose-500/30 text-rose-300 text-[11px]">
+                  ❌ {simError}
+                </div>
+              )}
             </div>
           </Card>
+
 
           {/* Validation Metrics */}
           <Card className="p-5 space-y-3 font-mono text-xs">

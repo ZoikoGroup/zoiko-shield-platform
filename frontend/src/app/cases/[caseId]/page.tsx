@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useDemoState, getInitialDemoState } from "@/lib/demo-state";
+import { ZoikoShieldApiClient } from "@/lib/api-client";
 import { Case, AiInvestigationSummary } from "@/lib/types";
 import { formatTimestamp } from "@/lib/utils";
 import { Card } from "@/ui/Card";
@@ -30,6 +31,10 @@ export default function CaseWorkspacePage() {
 
   const [state, setState] = useDemoState();
   const [activeTab, setActiveTab] = useState<string>("overview");
+
+  useEffect(() => {
+    ZoikoShieldApiClient.getCases().catch(() => {/* backend offline — demo state used */});
+  }, []);
 
   const currentCase: Case | undefined =
     state.cases.find((c) => c.id === caseId) || state.cases[0];
@@ -125,7 +130,11 @@ export default function CaseWorkspacePage() {
           </div>
           <div>
             <span className="text-slate-500 block text-[10px]">MERKLE EPOCH:</span>
-            <span className="text-emerald-400 font-bold">#1043 (Sealed)</span>
+            <span className="text-emerald-400 font-bold">
+              {currentCase.evidenceList[0]?.merkleEpoch 
+                ? `#${currentCase.evidenceList[0].merkleEpoch} (Sealed)` 
+                : "#1043 (Sealed)"}
+            </span>
           </div>
         </div>
       </div>

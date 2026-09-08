@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { useDemoState } from "@/lib/demo-state";
+import { ZoikoShieldApiClient } from "@/lib/api-client";
 import { Card } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
@@ -38,6 +39,7 @@ export default function ThreatHuntingPage() {
   const [isHunting, setIsHunting] = useState(false);
   const [huntCompleted, setHuntCompleted] = useState(false);
   const [selectedTool, setSelectedTool] = useState<string>("all");
+  const [huntError, setHuntError] = useState<string | null>(null);
 
   const [reasoningTrace, setReasoningTrace] = useState<StepTrace[]>([
     {
@@ -68,7 +70,7 @@ export default function ThreatHuntingPage() {
       action: "trace_attack_graph_hops",
       toolInput: JSON.stringify({ startNode: "usr-compromised-analyst", maxHops: 3 }),
       observation:
-        "Discovered 3-hop critical attack path: Developer Laptop -> Bastion Host (ec2-jump-01) -> Production Customer Database (srv-db-prod-01).",
+        "Discovered 3-hop critical attack path: Developer Laptop → Bastion Host (ec2-jump-01) → Production Customer Database (srv-db-prod-01).",
     },
     {
       step: 4,
@@ -81,14 +83,70 @@ export default function ThreatHuntingPage() {
     },
   ]);
 
-  const handleStartHunt = () => {
+  // Use the first available case ID, or a fallback
+  const activeCaseId = state.cases[0]?.id ?? "case-demo-01";
+
+  const handleStartHunt = async () => {
     setIsHunting(true);
     setHuntCompleted(false);
+    setHuntError(null);
 
-    setTimeout(() => {
-      setIsHunting(false);
+    try {
+      // Call the real AI investigation summary API for the active case
+      const aiSummary = await ZoikoShieldApiClient.generateAiInvestigationSummary(activeCaseId);
+
+      // Build a ReAct-style trace from the real AI output
+      const newTrace: StepTrace[] = [
+        {
+          step: 1,
+          thought: "Querying Evidence Ledger for telemetry anchored in Merkle epoch.",
+          action: "query_evidence_ledger",
+          toolInput: JSON.stringify({
+            caseId: activeCaseId,
+            query: "eventType:AUTHENTICATION AND outcome:FAILED",
+          }),
+          observation:
+            aiSummary.citations.length > 0
+              ? `Retrieved ${aiSummary.citations.length} cryptographically-verified evidence citation(s). ${aiSummary.citations[0]?.description ?? ""}`
+              : "Retrieved evidence digests from anchored Merkle epoch #1043.",
+        },
+        {
+          step: 2,
+          thought: aiSummary.hypotheses[0]?.title
+            ? `Evaluating hypothesis: "${aiSummary.hypotheses[0].title}"`
+            : "Correlating observed OCSF events against known adversary TTPs in MITRE ATT&CK.",
+          action: "lookup_mitre_ttp",
+          toolInput: JSON.stringify({
+            assessment: aiSummary.threatAssessment,
+            likelihood: aiSummary.hypotheses[0]?.likelihood ?? "HIGH",
+          }),
+          observation:
+            aiSummary.hypotheses[0]?.supportingEvidence?.join(", ") ??
+            "MITRE T1110 (Brute Force) and T1078 (Valid Accounts) matched with high confidence.",
+        },
+        {
+          step: 3,
+          thought: "Synthesizing executive threat narrative from AI investigation.",
+          action: "synthesize_threat_narrative",
+          toolInput: JSON.stringify({ modelArmorVerdict: aiSummary.modelArmorVerdict }),
+          observation: aiSummary.executiveSummary,
+        },
+        {
+          step: 4,
+          thought: "Evaluating recommended containment actions from AI analysis.",
+          action: "predict_blast_radius",
+          toolInput: JSON.stringify({ recommendedActions: aiSummary.recommendedActions }),
+          observation: aiSummary.recommendedActions.join(" | "),
+        },
+      ];
+      setReasoningTrace(newTrace);
       setHuntCompleted(true);
-    }, 1500);
+    } catch (err: any) {
+      console.error("Threat hunt error:", err);
+      setHuntError(err.message ?? "AI investigation failed.");
+    } finally {
+      setIsHunting(false);
+    }
   };
 
   const availableTools = [
@@ -137,7 +195,9 @@ export default function ThreatHuntingPage() {
                   <Badge variant="healthy">Model Armor Protected</Badge>
                 </div>
                 <p className="text-xs text-slate-400">
-                  Specification: <span className="font-mono text-cyan-400">ZS-ENG-AI-001</span> §14 & <span className="font-mono text-cyan-400">ZS-T0-TECH-001</span> §09
+                  Specification:{" "}
+                  <span className="font-mono text-cyan-400">ZS-ENG-AI-001</span> §14 &amp;{" "}
+                  <span className="font-mono text-cyan-400">ZS-T0-TECH-001</span> §09
                 </p>
               </div>
             </div>
@@ -148,7 +208,10 @@ export default function ThreatHuntingPage() {
               Provider: <span className="text-purple-400 font-bold">Google Gemini 2.0 / Vertex AI</span>
             </div>
             <div className="px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-300">
-              Safety Gateway: <span className="text-emerald-400 font-bold">ARMORED (Zero Prompt Injection)</span>
+              Case:{" "}
+              <span className="text-cyan-400 font-bold font-mono">
+                {state.cases[0]?.id ?? "No active case"}
+              </span>
             </div>
           </div>
         </div>
@@ -176,6 +239,19 @@ export default function ThreatHuntingPage() {
                 className="w-full px-3 py-2 text-xs bg-slate-950 border border-slate-800 rounded-xl text-slate-200 focus:outline-none focus:border-purple-500 font-mono resize-none leading-relaxed"
                 placeholder="Enter threat hunting hypothesis..."
               />
+
+              {!state.cases[0] && (
+                <div className="p-2.5 rounded-lg bg-amber-950/30 border border-amber-500/30 text-amber-300 text-[11px] font-mono">
+                  ⚠️ No active case found. Run telemetry ingestion first to generate a case for AI
+                  analysis.
+                </div>
+              )}
+
+              {huntError && (
+                <div className="p-2.5 rounded-lg bg-rose-950/30 border border-rose-500/30 text-rose-300 text-[11px] font-mono">
+                  ❌ {huntError}
+                </div>
+              )}
 
               <Button
                 variant="primary"
@@ -241,13 +317,19 @@ export default function ThreatHuntingPage() {
               <div className="flex items-center gap-2">
                 <Terminal className="w-5 h-5 text-purple-400" />
                 <h2 className="text-sm font-bold text-slate-100">
-                  ReAct Reasoning Loop & Step Trace Execution
+                  ReAct Reasoning Loop &amp; Step Trace Execution
                 </h2>
               </div>
 
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-                <span className="text-xs font-mono text-slate-400">Step Cycle: Active (4/4 Steps Completed)</span>
+                <span
+                  className={`w-2.5 h-2.5 rounded-full ${isHunting ? "bg-amber-500 animate-pulse" : "bg-emerald-500 animate-pulse"}`}
+                />
+                <span className="text-xs font-mono text-slate-400">
+                  {isHunting
+                    ? "AI Agent Running..."
+                    : `Step Cycle: Active (${reasoningTrace.length}/4 Steps Completed)`}
+                </span>
               </div>
             </div>
 
@@ -295,12 +377,39 @@ export default function ThreatHuntingPage() {
             <div className="p-4 rounded-xl bg-gradient-to-r from-purple-950/40 to-cyan-950/40 border border-purple-500/40 space-y-2">
               <div className="flex items-center gap-2 text-xs font-bold text-purple-300 font-mono">
                 <Sparkles className="w-4 h-4 text-purple-400" />
-                <span>THREAT COPILOT SYNTHESIS & RECOMMENDED CONTAINMENT</span>
+                <span>THREAT COPILOT SYNTHESIS &amp; RECOMMENDED CONTAINMENT</span>
               </div>
               <p className="text-xs text-slate-200 leading-relaxed font-mono">
-                ✔ <strong className="text-white">Confirmed Threat:</strong> Active lateral movement identified along attack path: <span className="text-cyan-300 font-bold">usr-analyst ➔ ec2-jump-01 ➔ srv-db-prod-01</span>.
-                <br />
-                ✔ <strong className="text-white">Recommended Governed SOAR Action:</strong> Dispatch <span className="text-rose-400 font-bold">ISOLATE_ENDPOINT</span> on <span className="text-amber-300 font-mono">srv-db-prod-01</span> via Authority Tier <span className="text-purple-300 font-bold">R2 (Containment with Single-Use Rollback Token)</span>.
+                {huntCompleted && state.cases[0]?.aiSummary ? (
+                  <>
+                    ✔{" "}
+                    <strong className="text-white">AI Analysis Complete:</strong>{" "}
+                    {state.cases[0].aiSummary.executiveSummary}
+                    <br />✔{" "}
+                    <strong className="text-white">Recommended Actions:</strong>{" "}
+                    {state.cases[0].aiSummary.recommendedActions?.join(" | ")}
+                  </>
+                ) : (
+                  <>
+                    ✔{" "}
+                    <strong className="text-white">Confirmed Threat:</strong> Active lateral
+                    movement identified along attack path:{" "}
+                    <span className="text-cyan-300 font-bold">
+                      usr-analyst ➔ ec2-jump-01 ➔ srv-db-prod-01
+                    </span>
+                    .
+                    <br />✔{" "}
+                    <strong className="text-white">Recommended Governed SOAR Action:</strong>{" "}
+                    Dispatch{" "}
+                    <span className="text-rose-400 font-bold">ISOLATE_ENDPOINT</span> on{" "}
+                    <span className="text-amber-300 font-mono">srv-db-prod-01</span> via Authority
+                    Tier{" "}
+                    <span className="text-purple-300 font-bold">
+                      R2 (Containment with Single-Use Rollback Token)
+                    </span>
+                    .
+                  </>
+                )}
               </p>
             </div>
           </Card>
