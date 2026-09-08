@@ -30,6 +30,21 @@ export interface StepUpResult {
   reason?: string;
 }
 
+/**
+ * Proof that a WebAuthn assertion was cryptographically verified. Only
+ * WebauthnService produces this — the enforcer deliberately does not verify
+ * signatures itself, so it can never appear to have checked something it did
+ * not. Anything older than this window must re-assert.
+ */
+export interface VerifiedWebauthnStepUp {
+  principalId: string;
+  credentialId: string;
+  userVerified: boolean;
+  verifiedAt: number;
+}
+
+const STEP_UP_PROOF_MAX_AGE_MS = 60_000;
+
 @Injectable()
 export class JitSessionEnforcerService {
   private readonly logger = new Logger(JitSessionEnforcerService.name);
@@ -74,11 +89,13 @@ export class JitSessionEnforcerService {
   }
 
   /**
-   * Validates a WebAuthn / FIDO2 cryptographic challenge-response signature to extend step-up freshness.
+   * Extends step-up freshness from an already-verified WebAuthn assertion.
+   * The proof must belong to this session's operator, have carried a user
+   * verification gesture, and be recent enough that it cannot be stockpiled.
    */
-  verifyHardwareStepUp(
+  recordVerifiedStepUp(
     sessionId: string,
-    challengeResponseSignature: string,
+    verification: VerifiedWebauthnStepUp,
   ): StepUpResult {
     const session = this.sessions.get(sessionId);
     if (!session) {
@@ -99,13 +116,31 @@ export class JitSessionEnforcerService {
       };
     }
 
-    // Validate signature format
-    if (!challengeResponseSignature || challengeResponseSignature.length < 16) {
+    if (verification?.principalId !== session.operatorId) {
       return {
         success: false,
         sessionId,
         nextStepUpDueAt: '',
-        reason: 'Invalid hardware signature',
+        reason: 'Step-up proof belongs to a different operator',
+      };
+    }
+
+    if (!verification.userVerified) {
+      return {
+        success: false,
+        sessionId,
+        nextStepUpDueAt: '',
+        reason: 'Step-up proof lacks a user-verification gesture',
+      };
+    }
+
+    const proofAge = Date.now() - verification.verifiedAt;
+    if (!(proofAge >= 0 && proofAge <= STEP_UP_PROOF_MAX_AGE_MS)) {
+      return {
+        success: false,
+        sessionId,
+        nextStepUpDueAt: '',
+        reason: 'Step-up proof is stale',
       };
     }
 
@@ -116,7 +151,7 @@ export class JitSessionEnforcerService {
     const nextDue = new Date(now + session.stepUpIntervalMs).toISOString();
 
     this.logger.log(
-      `🛡️ [JIT STEP-UP REFRESHED] Hardware FIDO2 challenge verified for session '${sessionId}'. Next step-up due at ${nextDue}`,
+      `🛡️ [JIT STEP-UP REFRESHED] Accepted verified passkey assertion (credential '${verification.credentialId}') for session '${sessionId}'. Next step-up due at ${nextDue}`,
     );
 
     return {

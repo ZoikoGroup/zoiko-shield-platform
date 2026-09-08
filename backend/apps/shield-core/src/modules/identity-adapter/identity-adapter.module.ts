@@ -9,6 +9,8 @@ import { LocalCredential } from './local-credential.entity';
 import { ExternalIdentity } from './external-identity.entity';
 import { Session } from './session.entity';
 import { VerificationChallenge } from './verification-challenge.entity';
+import { WebauthnCredential } from './webauthn-credential.entity';
+import { WebauthnChallenge } from './webauthn-challenge.entity';
 import { RecoveryGrant } from './recovery-grant.entity';
 import { PolicyDocument } from './policy-document.entity';
 import { PolicyAcceptance } from './policy-acceptance.entity';
@@ -16,6 +18,7 @@ import { IdentityEvent } from './identity-event.entity';
 import { PrincipalService } from './principal.service';
 import { SessionService } from './session.service';
 import { VerificationChallengeService } from './verification-challenge.service';
+import { WebauthnService } from './webauthn.service';
 import { RecoveryGrantService } from './recovery-grant.service';
 import { PolicyService } from './policy.service';
 import { IdentityEventService } from './identity-event.service';
@@ -56,6 +59,8 @@ import { LegalEntity } from '../legal-entity/legal-entity.entity';
       ExternalIdentity,
       Session,
       VerificationChallenge,
+      WebauthnCredential,
+      WebauthnChallenge,
       RecoveryGrant,
       PolicyDocument,
       PolicyAcceptance,
@@ -99,6 +104,7 @@ import { LegalEntity } from '../legal-entity/legal-entity.entity';
     PrincipalService,
     SessionService,
     VerificationChallengeService,
+    WebauthnService,
     RecoveryGrantService,
     PolicyService,
     IdentityEventService,
@@ -122,6 +128,7 @@ import { LegalEntity } from '../legal-entity/legal-entity.entity';
     PolicyService,
     SessionService,
     MailService,
+    WebauthnService,
     FederationAuthService,
     ZoikoIdProviderBootstrapService,
   ],

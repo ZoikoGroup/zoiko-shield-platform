@@ -26,6 +26,7 @@ import { RawIngestService } from './ingestion/raw-ingest.service';
 import { QuarantineService } from './ingestion/quarantine.service';
 import { ConnectorCatalogController } from './connectors/connector-catalog.controller';
 import { ConnectorCatalogService } from './connectors/connector-catalog.service';
+import { ShieldCoreClient } from './internal-client/shield-core.client';
 import { AwsCloudTrailProvider } from './connectors/providers/aws-cloudtrail/aws-cloudtrail.provider';
 import { AwsCloudTrailNormalizerService } from './connectors/providers/aws-cloudtrail/aws-cloudtrail.normalizer';
 import { SyslogTlsProvider } from './connectors/providers/syslog-tls/syslog-tls.provider';
@@ -172,6 +173,7 @@ import { IdempotencyService } from './idempotency/idempotency.service';
     QuarantineService,
     RawIngestService,
     ConnectorCatalogService,
+    ShieldCoreClient,
     NormalizationService,
     CloudNormalizationBridgeService,
     TelemetryIngestedConsumer,

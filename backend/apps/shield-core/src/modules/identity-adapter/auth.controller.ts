@@ -1,7 +1,9 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
+  Param,
   Post,
   Req,
   Res,
@@ -20,6 +22,13 @@ import { CurrentUser } from './decorators/current-user.decorator';
 import type { AuthenticatedUser } from './interfaces/jwt-payload.interface';
 import type { SessionMetadata } from './session.service';
 import { SwitchTenantSessionDto } from './dto/switch-tenant-session.dto';
+import { WebauthnService } from './webauthn.service';
+import {
+  PasskeyLoginDto,
+  PasskeyStepUpDto,
+  VerifyWebauthnRegistrationDto,
+  WebauthnAuthenticationOptionsDto,
+} from './dto/webauthn.dto';
 import {
   REFRESH_TOKEN_COOKIE,
   RECOVERY_GRANT_COOKIE,
@@ -58,7 +67,10 @@ function recoveryGrantFrom(req: Request): string {
 
 @Controller(['api/v1/auth', 'auth'])
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly webauthnService: WebauthnService,
+  ) {}
 
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @PublicEndpoint()
@@ -110,6 +122,105 @@ export class AuthController {
   ) {
     const { user, ...tokens } = await this.authService.login(
       dto,
+      sessionMetadataFrom(req),
+    );
+    setAuthCookies(res, tokens);
+    return { user };
+  }
+
+  // --- WebAuthn / passkey ---------------------------------------------------
+
+  @UseGuards(JwtAuthGuard)
+  @AuthenticationOnlyEndpoint()
+  @Post('passkeys/registration/options')
+  passkeyRegistrationOptions(@CurrentUser() user: AuthenticatedUser) {
+    return this.webauthnService.createRegistrationOptions(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @AuthenticationOnlyEndpoint()
+  @Post('passkeys/registration')
+  registerPasskey(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: VerifyWebauthnRegistrationDto,
+  ) {
+    return this.webauthnService.verifyRegistration(user.id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @AuthenticationOnlyEndpoint()
+  @Get('passkeys')
+  listPasskeys(@CurrentUser() user: AuthenticatedUser) {
+    return this.webauthnService.listCredentials(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @AuthenticationOnlyEndpoint()
+  @Delete('passkeys/:id')
+  async revokePasskey(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    await this.webauthnService.revokeCredential(user.id, id);
+    return { success: true };
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @PublicEndpoint()
+  @Post('passkeys/authentication/options')
+  passkeyAuthenticationOptions(@Body() dto: WebauthnAuthenticationOptionsDto) {
+    return this.webauthnService.createAuthenticationOptions(dto.email);
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @PublicEndpoint()
+  @Post('passkeys/authentication')
+  async loginWithPasskey(
+    @Body() dto: PasskeyLoginDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const verification = await this.webauthnService.verifyAssertion(
+      dto,
+      'AUTHENTICATION',
+    );
+    const { user, ...tokens } = await this.authService.loginWithPasskey(
+      verification,
+      dto,
+      sessionMetadataFrom(req),
+    );
+    setAuthCookies(res, tokens);
+    return { user };
+  }
+
+  /**
+   * Re-asserts a passkey on an existing session to raise its assurance to
+   * PASSKEY, which is what unlocks endpoints gated by @RequireAssurance.
+   */
+  @UseGuards(JwtAuthGuard)
+  @AuthenticationOnlyEndpoint()
+  @Post('passkeys/step-up/options')
+  passkeyStepUpOptions(@CurrentUser() user: AuthenticatedUser) {
+    return this.webauthnService.createStepUpOptions(user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @AuthenticationOnlyEndpoint()
+  @Post('passkeys/step-up')
+  async passkeyStepUp(
+    @CurrentUser() currentUser: AuthenticatedUser,
+    @Body() dto: PasskeyStepUpDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const verification = await this.webauthnService.verifyAssertion(
+      dto,
+      'STEP_UP',
+      currentUser.id,
+    );
+    const { user, ...tokens } = await this.authService.loginWithPasskey(
+      verification,
+      { tenantId: currentUser.tenantId, environmentId: dto.environmentId },
       sessionMetadataFrom(req),
     );
     setAuthCookies(res, tokens);

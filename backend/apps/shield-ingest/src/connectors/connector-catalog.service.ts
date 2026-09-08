@@ -3,12 +3,18 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   requireEnvironmentId,
   requireRegion,
 } from '../security/tenant-context';
+import {
+  ShieldCoreClient,
+  ShieldCoreUnreachableError,
+  TenantNotFoundError,
+} from '../internal-client/shield-core.client';
 import { ConnectorRegistry } from './core/connector-registry';
 import { ConnectorSyncService } from './services/sync.service';
 import { randomUUID } from 'crypto';
@@ -71,6 +77,7 @@ export class ConnectorCatalogService {
     private readonly prisma: PrismaService,
     private readonly registry: ConnectorRegistry,
     private readonly syncService: ConnectorSyncService,
+    private readonly shieldCore: ShieldCoreClient,
   ) {}
 
   /**
@@ -131,6 +138,12 @@ export class ConnectorCatalogService {
       `Creating connector '${dto.name}' for tenant ${dto.tenantId}`,
     );
 
+    const sourceRegion = requireRegion(dto.sourceRegion);
+    await this.assertSourceRegionWithinTenantResidency(
+      dto.tenantId,
+      sourceRegion,
+    );
+
     // Ensure definition exists or create default definition
     let definition = await this.prisma.connectorDefinition.findUnique({
       where: { provider: dto.provider },
@@ -154,7 +167,7 @@ export class ConnectorCatalogService {
         connectorDefId: definition.id,
         name: dto.name,
         authentication_type: dto.authenticationType || 'API_KEY',
-        source_region: requireRegion(dto.sourceRegion),
+        source_region: sourceRegion,
         state: 'NOT_CONNECTED',
       },
       include: {
@@ -173,6 +186,38 @@ export class ConnectorCatalogService {
     }
 
     return connector;
+  }
+
+  /**
+   * A connector must not collect into a region the tenant never committed to
+   * at onboarding. The committed region is shield-core-owned, so an
+   * unverifiable answer fails closed rather than trusting the caller's
+   * sourceRegion.
+   */
+  private async assertSourceRegionWithinTenantResidency(
+    tenantId: string,
+    sourceRegion: string,
+  ): Promise<void> {
+    let residency;
+    try {
+      residency = await this.shieldCore.getTenantResidency(tenantId);
+    } catch (err) {
+      if (err instanceof TenantNotFoundError) {
+        throw new NotFoundException(err.message);
+      }
+      if (err instanceof ShieldCoreUnreachableError) {
+        throw new ServiceUnavailableException(
+          'Tenant data-residency could not be verified; connector creation refused',
+        );
+      }
+      throw err;
+    }
+
+    if (sourceRegion !== residency.dataResidencyRegion) {
+      throw new BadRequestException(
+        `Source region '${sourceRegion}' violates the tenant's committed data-residency region '${residency.dataResidencyRegion}'`,
+      );
+    }
   }
 
   /**
