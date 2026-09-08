@@ -48129,8 +48129,386 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-        '403':
-          description: Forbidden
+  /api/v1/ai/incidents:
+    post:
+      tags:
+        - CaseAI
+      summary: Declare an AI safety or alignment incident (§23)
+      description: Declares a new AI incident with tenant isolation, severity classification, blast radius tracking, and evidence ledger linkage.
+      operationId: declareAiIncident
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+                - category
+                - severity
+                - description
+              properties:
+                title:
+                  type: string
+                category:
+                  type: string
+                  enum: [MODEL_DRIFT_EXCEEDED, ADVERSARIAL_EVASION_ATTEMPT, PROMPT_INJECTION_DETECTED, MODEL_HALLUCINATION, TOOL_CALL_ABUSE, DATA_EXFILTRATION_ATTEMPT, SAFE_DEGRADATION_TRIGGERED, UNSPECIFIED_AI_RISK]
+                severity:
+                  type: string
+                  enum: [SEV1_CRITICAL, SEV2_HIGH, SEV3_MEDIUM, SEV4_LOW]
+                description:
+                  type: string
+                affectedModel:
+                  type: string
+                affectedPromptProfile:
+                  type: string
+                blastRadiusScope:
+                  type: string
+                detectedBy:
+                  type: string
+                evidencePointers:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: AI incident declared
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    get:
+      tags:
+        - CaseAI
+      summary: List AI safety incidents for tenant (§23)
+      description: Retrieves filtered list of AI incidents for the authorized tenant.
+      operationId: listAiIncidents
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: severity
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of AI incidents
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ai/incidents/metrics:
+    get:
+      tags:
+        - CaseAI
+      summary: Get AI incident telemetry metrics (§23)
+      description: Returns aggregate incident counts, active kill switches, severity breakdowns, and MTTR metrics.
+      operationId: getAiIncidentMetrics
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: AI incident metrics summary
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ai/incidents/{id}:
+    get:
+      tags:
+        - CaseAI
+      summary: Get AI incident details by ID (§23)
+      description: Retrieves full incident lifecycle record including timeline and RCA status.
+      operationId: getAiIncidentById
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: AI incident details
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '404':
+          description: Incident not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ai/incidents/{id}/contain:
+    post:
+      tags:
+        - CaseAI
+      summary: Contain AI incident via emergency kill switch (§23)
+      description: Immediately halts model routing, tenant agent execution, or tool access for the affected scope.
+      operationId: containAiIncident
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reason
+                - killSwitchScope
+                - targetId
+              properties:
+                reason:
+                  type: string
+                killSwitchScope:
+                  type: string
+                  enum: [TENANT_GLOBAL, MODEL_ROUTE, AGENT_WORKFLOW, TOOL_SET]
+                targetId:
+                  type: string
+                containedBy:
+                  type: string
+      responses:
+        '200':
+          description: AI incident contained
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ai/incidents/{id}/fallback:
+    post:
+      tags:
+        - CaseAI
+      summary: Activate deterministic fallback for AI incident (§23)
+      description: Routes AI operations to safe deterministic rules or cached static synthesis.
+      operationId: fallbackAiIncident
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fallbackStrategy
+              properties:
+                fallbackStrategy:
+                  type: string
+                  enum: [DETERMINISTIC_RULES, STATIC_SYNTHESIS, HUMAN_ONLY, REPLAY_PREVIOUS_GOLD_SET]
+                fallbackNotes:
+                  type: string
+      responses:
+        '200':
+          description: Deterministic fallback active
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ai/incidents/{id}/rca:
+    post:
+      tags:
+        - CaseAI
+      summary: Complete root cause analysis (RCA) for AI incident (§23)
+      description: Documents root cause findings, contributing factors, and preventative actions.
+      operationId: completeAiIncidentRca
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rootCauseSummary
+              properties:
+                rootCauseSummary:
+                  type: string
+                contributingFactors:
+                  type: array
+                  items:
+                    type: string
+                preventativeActions:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: RCA recorded for AI incident
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ai/incidents/{id}/resolve:
+    post:
+      tags:
+        - CaseAI
+      summary: Resolve AI safety incident (§23)
+      description: Marks AI incident resolved and optionally disengages active kill switches.
+      operationId: resolveAiIncident
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - resolutionSummary
+              properties:
+                resolutionSummary:
+                  type: string
+                disengageKillSwitch:
+                  type: boolean
+                resolvedBy:
+                  type: string
+      responses:
+        '200':
+          description: AI incident marked resolved
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/v1/ai/incidents/{id}/close:
+    post:
+      tags:
+        - CaseAI
+      summary: Close AI safety incident (§23)
+      description: Finalizes and archives AI incident lifecycle record.
+      operationId: closeAiIncident
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: AI incident closed
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Bad request
           content:
             application/json:
               schema:
@@ -49099,7 +49477,95 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/v1/experience/command-center/overview:
+    get:
+      summary: Customer & Analyst Command Center Posture Overview (LAB 14)
+      operationId: getCommandCenterOverview
+      tags:
+        - Experience
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: x-tenant-id
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-correlation-id
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Command center overview state envelope
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
 
+  /api/v1/experience/command-center/cases/{caseId}:
+    get:
+      summary: Case Triage Detail with Grounded AI Citations
+      operationId: getCommandCenterCaseDetail
+      tags:
+        - Experience
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: x-tenant-id
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-correlation-id
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Case triage detail state envelope
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
 
-
+  /api/v1/experience/command-center/evidence-freshness:
+    get:
+      summary: Continuous Assurance Evidence Freshness Stream
+      operationId: getCommandCenterEvidenceFreshness
+      tags:
+        - Experience
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: x-tenant-id
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: x-correlation-id
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Evidence freshness state envelope
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
 

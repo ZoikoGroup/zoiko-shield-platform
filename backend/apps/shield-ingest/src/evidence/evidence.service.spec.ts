@@ -1,42 +1,39 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { EvidenceService } from './evidence.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { EvidenceService as CanonicalEvidenceService } from '../../../shield-core/src/modules/evidence/services/evidence.service';
-import { EvidenceVerificationService } from '../../../shield-core/src/modules/evidence/verification/evidence-verification.service';
 
-describe('EvidenceService (Step 12)', () => {
+describe('EvidenceService in shield-ingest (Decoupled)', () => {
   let service: EvidenceService;
   let prismaMock: any;
-  let canonicalEvidenceMock: any;
-  let verificationMock: any;
 
   beforeEach(async () => {
     prismaMock = {
-      evidenceRecord: { findMany: jest.fn() },
+      evidenceRecord: {
+        create: jest.fn(),
+        findFirst: jest.fn(),
+        findMany: jest.fn(),
+      },
+      outboxEvent: {
+        create: jest.fn(),
+      },
     };
-    canonicalEvidenceMock = {
-      createEvidence: jest.fn(),
-      getById: jest.fn(),
-    };
-    verificationMock = { verify: jest.fn() };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EvidenceService,
         { provide: PrismaService, useValue: prismaMock },
-        { provide: CanonicalEvidenceService, useValue: canonicalEvidenceMock },
-        { provide: EvidenceVerificationService, useValue: verificationMock },
       ],
     }).compile();
 
     service = module.get<EvidenceService>(EvidenceService);
   });
 
-  it('routes evidence creation through the canonical object-store, ledger, and outbox write path', async () => {
-    canonicalEvidenceMock.createEvidence.mockResolvedValue({
-      id: 'ev-1',
-      content_hash: 'sha256',
-    });
+  it('creates evidence record and outbox event with SHA-256 hash', async () => {
+    prismaMock.evidenceRecord.create.mockImplementation((args: any) => ({
+      id: args.data.id,
+      ...args.data,
+    }));
+    prismaMock.outboxEvent.create.mockResolvedValue({ id: 'outbox-1' });
 
     const result = await service.createEvidence({
       tenantId: 'tenant-1',
@@ -48,25 +45,24 @@ describe('EvidenceService (Step 12)', () => {
       rawContent: 'User auth failure at 2026-08-10T12:00:00Z',
     });
 
-    expect(result.id).toBe('ev-1');
-    expect(canonicalEvidenceMock.createEvidence).toHaveBeenCalledWith(
+    expect(result.id).toBeDefined();
+    expect(result.content_hash).toBeDefined();
+    expect(prismaMock.evidenceRecord.create).toHaveBeenCalled();
+    expect(prismaMock.outboxEvent.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        tenantId: 'tenant-1',
-        environmentId: 'env-1',
-        region: 'eu-west-1',
-        caseId: 'case-1',
-        content: expect.objectContaining({
-          rawContent: 'User auth failure at 2026-08-10T12:00:00Z',
+        data: expect.objectContaining({
+          event_type: 'evidence.created',
+          tenant_id: 'tenant-1',
         }),
       }),
     );
   });
 
-  it('re-reads object bytes through the canonical independent verification path', async () => {
-    verificationMock.verify.mockResolvedValue({
-      integrityState: 'VERIFIED',
-      contentHash: 'expected-hash',
-      storedHash: 'expected-hash',
+  it('verifies stored cryptographic hash', async () => {
+    prismaMock.evidenceRecord.findFirst.mockResolvedValue({
+      id: 'ev-1',
+      tenant_id: 'tenant-1',
+      content_hash: 'abc123hash',
     });
 
     const verifyResult = await service.verifyEvidenceIntegrity(
@@ -74,7 +70,6 @@ describe('EvidenceService (Step 12)', () => {
       'ev-1',
     );
     expect(verifyResult.isIntegrityValid).toBe(true);
-    expect(verifyResult.recomputedHash).toBe('expected-hash');
-    expect(verificationMock.verify).toHaveBeenCalledWith('tenant-1', 'ev-1');
+    expect(verifyResult.storedHash).toBe('abc123hash');
   });
 });

@@ -96,6 +96,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { HumanAuthorityModule } from './modules/human-authority/human-authority.module';
 import { EventStreamModule } from './modules/events/event-stream.module';
+import { ExperienceModule } from './modules/experience/experience.module';
 
 @Module({
   imports: [
@@ -201,6 +202,7 @@ import { EventStreamModule } from './modules/events/event-stream.module';
     RateLimitingModule,
     WorkloadIdentityModule,
     EventStreamModule,
+    ExperienceModule,
   ],
   controllers: [ShieldCoreController],
   providers: [

@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { AiIncidentService } from '../ai-incident/ai-incident.service';
 
 export type AiSafeOperatingState =
   | 'NOMINAL'
@@ -32,6 +33,35 @@ export interface DegradationResolution {
 @Injectable()
 export class SafeDegradationService {
   private readonly logger = new Logger(SafeDegradationService.name);
+
+  constructor(
+    @Optional() private readonly incidentService?: AiIncidentService,
+  ) {}
+
+  async recordIncidentForAnomaly(
+    tenantId: string,
+    state: AiSafeOperatingState,
+    detail?: string,
+  ) {
+    if (!this.incidentService || !tenantId) return;
+
+    if (state === 'INJECTION_DETECTED') {
+      await this.incidentService.declareIncident(tenantId, {
+        title: 'Adversarial Prompt Injection Intercepted',
+        category: 'PROMPT_INJECTION_EXPLOIT',
+        severity: 'SEV1_CRITICAL',
+        description: detail || 'Malicious prompt injection pattern blocked at gateway.',
+        autoContain: true,
+      });
+    } else if (state === 'QUALITY_DRIFT') {
+      await this.incidentService.declareIncident(tenantId, {
+        title: 'AI Output Quality or Confidence Drift Detected',
+        category: 'DRIFT_ANOMALY',
+        severity: 'SEV2_HIGH',
+        description: detail || 'Inference metrics drifted beyond acceptable tolerance threshold.',
+      });
+    }
+  }
 
   resolveOperatingMode(
     state: AiSafeOperatingState,

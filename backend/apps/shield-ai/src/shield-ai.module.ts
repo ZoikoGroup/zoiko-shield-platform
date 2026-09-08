@@ -59,6 +59,11 @@ import { AiObservabilityMetricsService } from './observability/ai-observability-
 import { UseCaseController } from './internal/use-case.controller';
 import { AiOutputController } from './internal/ai-output.controller';
 import { AiGovernanceViewsController } from './internal/ai-governance-views.controller';
+import { AiIncidentController } from './ai-incident/ai-incident.controller';
+import { AiIncidentService } from './ai-incident/ai-incident.service';
+import { TenantVectorStoreService } from './vector-store/tenant-vector-store.service';
+import { ModelDriftMonitorService } from './drift-monitoring/model-drift-monitor.service';
+import { AiSupplyChainService } from './supply-chain/ai-supply-chain.service';
 
 @Module({
   imports: [PrismaModule, KafkaModule],
@@ -67,6 +72,7 @@ import { AiGovernanceViewsController } from './internal/ai-governance-views.cont
     UseCaseController,
     AiOutputController,
     AiGovernanceViewsController,
+    AiIncidentController,
   ],
 
   providers: [
@@ -122,6 +128,10 @@ import { AiGovernanceViewsController } from './internal/ai-governance-views.cont
     ResponseRecommendationService,
     DetectionCandidateService,
     DetectionExplanationService,
+    TenantVectorStoreService,
+    AiIncidentService,
+    ModelDriftMonitorService,
+    AiSupplyChainService,
   ],
   exports: [
     ThreatHuntingCopilotService,
@@ -148,6 +158,10 @@ import { AiGovernanceViewsController } from './internal/ai-governance-views.cont
     TimeSeriesAnomalyDetectorService,
     AutonomousRedTeamAgentService,
     PlaybookOptimizerAgentService,
+    TenantVectorStoreService,
+    AiIncidentService,
+    ModelDriftMonitorService,
+    AiSupplyChainService,
   ],
 })
 export class ShieldAiModule {}

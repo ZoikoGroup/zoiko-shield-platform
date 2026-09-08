@@ -1,14 +1,12 @@
 import { ContinuousControlEvaluatorService } from './continuous-control-evaluator.service';
 import { RegulatoryControlsSeeder } from '../../seeds/regulatory-controls.seeder';
-import { MerkleTreeService } from '../../../../shield-anchor/src/merkle/merkle-tree.service';
 
 describe('ContinuousControlEvaluatorService', () => {
   let evaluator: ContinuousControlEvaluatorService;
 
   beforeEach(() => {
     const seeder = new RegulatoryControlsSeeder();
-    const merkle = new MerkleTreeService();
-    evaluator = new ContinuousControlEvaluatorService(seeder, merkle);
+    evaluator = new ContinuousControlEvaluatorService(seeder);
   });
 
   it('should evaluate framework controls with 100% compliance on healthy telemetry', async () => {

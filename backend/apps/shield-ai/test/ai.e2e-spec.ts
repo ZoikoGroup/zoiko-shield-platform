@@ -154,4 +154,122 @@ describe('ShieldAi Application Endpoints (e2e)', () => {
     expect(res.body).toBeDefined();
     expect(res.body.incidentId).toBe('inc-2026-001');
   });
+
+  describe('AI Incident Lifecycle Management (§23 E2E)', () => {
+    let incidentId: string;
+
+    it('7. POST /api/v1/ai/incidents (Declare incident)', async () => {
+      const res = await request(app.getHttpServer())
+        .post('/api/v1/ai/incidents')
+        .set(getHeaders())
+        .set('x-tenant-id', tenantId)
+        .send({
+          title: 'Model Hallucination in Firewall Synthesis',
+          category: 'MODEL_HALLUCINATION',
+          severity: 'SEV2_HIGH',
+          description: 'Model recommended opening port 22 to 0.0.0.0/0',
+          affectedModel: 'claude-3-5-sonnet',
+        })
+        .expect(201);
+
+      expect(res.body.data).toBeDefined();
+      expect(res.body.data.status).toBe('DECLARED');
+      incidentId = res.body.data.id;
+    });
+
+    it('8. GET /api/v1/ai/incidents (List incidents)', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/ai/incidents')
+        .set(getHeaders())
+        .set('x-tenant-id', tenantId)
+        .expect(200);
+
+      expect(res.body.data).toBeInstanceOf(Array);
+      expect(res.body.data.length).toBeGreaterThan(0);
+    });
+
+    it('9. POST /api/v1/ai/incidents/:id/contain (Engage KillSwitch)', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/ai/incidents/${incidentId}/contain`)
+        .set(getHeaders())
+        .set('x-tenant-id', tenantId)
+        .send({
+          reason: 'Emergency containment for model route',
+          killSwitchScope: 'MODEL_ROUTE',
+          targetId: 'claude-3-5-sonnet',
+          containedBy: 'soc-lead-bob',
+        })
+        .expect(200);
+
+      expect(res.body.data.status).toBe('CONTAINED_KILL_SWITCH');
+      expect(res.body.data.killSwitchActive).toBe(true);
+    });
+
+    it('10. POST /api/v1/ai/incidents/:id/fallback (Activate Fallback)', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/ai/incidents/${incidentId}/fallback`)
+        .set(getHeaders())
+        .set('x-tenant-id', tenantId)
+        .send({
+          fallbackStrategy: 'DETERMINISTIC_RULES',
+          fallbackNotes: 'Routing to deterministic regex generator',
+        })
+        .expect(200);
+
+      expect(res.body.data.status).toBe('FALLBACK_ACTIVE');
+    });
+
+    it('11. POST /api/v1/ai/incidents/:id/rca (Complete RCA)', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/ai/incidents/${incidentId}/rca`)
+        .set(getHeaders())
+        .set('x-tenant-id', tenantId)
+        .send({
+          rootCauseSummary: 'Few-shot prompt sample contained conflicting firewall rule snippet',
+          contributingFactors: ['Outdated few-shot example'],
+          preventativeActions: ['Updated gold-set prompt template'],
+        })
+        .expect(200);
+
+      expect(res.body.data.status).toBe('ROOT_CAUSE_ANALYZED');
+    });
+
+    it('12. POST /api/v1/ai/incidents/:id/resolve (Resolve Incident)', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/ai/incidents/${incidentId}/resolve`)
+        .set(getHeaders())
+        .set('x-tenant-id', tenantId)
+        .send({
+          resolutionSummary: 'Updated prompt template verified and redeployed to production',
+          disengageKillSwitch: true,
+          resolvedBy: 'soc-lead-bob',
+        })
+        .expect(200);
+
+      expect(res.body.data.status).toBe('RESOLVED');
+      expect(res.body.data.killSwitchActive).toBe(false);
+    });
+
+    it('13. POST /api/v1/ai/incidents/:id/close (Close Incident)', async () => {
+      const res = await request(app.getHttpServer())
+        .post(`/api/v1/ai/incidents/${incidentId}/close`)
+        .set(getHeaders())
+        .set('x-tenant-id', tenantId)
+        .send({})
+        .expect(200);
+
+      expect(res.body.data.status).toBe('CLOSED');
+      expect(res.body.data.closedAt).toBeDefined();
+    });
+
+    it('14. GET /api/v1/ai/incidents/metrics (Incident Metrics)', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/api/v1/ai/incidents/metrics')
+        .set(getHeaders())
+        .set('x-tenant-id', tenantId)
+        .expect(200);
+
+      expect(res.body.data.totalIncidents).toBeGreaterThan(0);
+    });
+  });
 });
