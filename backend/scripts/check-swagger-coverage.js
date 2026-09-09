@@ -137,6 +137,7 @@ const approvedPublicOperations = new Set([
   'post:/api/v1/payments/webhook',
   'get:/metrics',
   'get:/',
+  'get:/api/v1/governance/disclosures',
 ]);
 const undocumentedSecurity = [];
 for (const [route, definition] of Object.entries(specification.paths ?? {})) {

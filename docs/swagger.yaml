@@ -49569,3 +49569,311 @@ paths:
         '401':
           description: Unauthorized
 
+  /api/v1/ai/decisions:
+    get:
+      summary: List AI Human-in-the-Loop Review Envelopes
+      operationId: listAiDecisionEnvelopes
+      tags:
+        - AIGovernance
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: x-tenant-id
+          in: header
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          required: false
+          description: Filter envelopes by DecisionState (PENDING_REVIEW, ACCEPTED, etc.)
+          schema:
+            type: string
+        - name: useCase
+          in: query
+          required: false
+          description: Filter envelopes by use-case label
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Paginated list of AI review envelopes for the tenant
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+
+  /api/v1/ai/decisions/{envelopeId}:
+    get:
+      summary: Get an AI Review Envelope by ID
+      operationId: getAiDecisionEnvelope
+      tags:
+        - AIGovernance
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: envelopeId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: x-tenant-id
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: AI review envelope detail
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+        '404':
+          description: Envelope not found
+
+  /api/v1/ai/decisions/{envelopeId}/accept:
+    post:
+      summary: Accept an AI Recommendation
+      operationId: acceptAiDecisionRecommendation
+      tags:
+        - AIGovernance
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: envelopeId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: x-tenant-id
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decidedBy, rationale]
+              properties:
+                decidedBy:
+                  type: string
+                rationale:
+                  type: string
+      responses:
+        '200':
+          description: Decision recorded — recommendation accepted
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+
+  /api/v1/ai/decisions/{envelopeId}/modify:
+    post:
+      summary: Modify and Override an AI Recommendation
+      operationId: modifyAiDecisionRecommendation
+      tags:
+        - AIGovernance
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: envelopeId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: x-tenant-id
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decidedBy, rationale, modifiedContent]
+              properties:
+                decidedBy:
+                  type: string
+                rationale:
+                  type: string
+                modifiedContent:
+                  type: string
+      responses:
+        '200':
+          description: Decision recorded — recommendation modified
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+
+  /api/v1/ai/decisions/{envelopeId}/reject:
+    post:
+      summary: Reject an AI Recommendation
+      operationId: rejectAiDecisionRecommendation
+      tags:
+        - AIGovernance
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: envelopeId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: x-tenant-id
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decidedBy, rationale]
+              properties:
+                decidedBy:
+                  type: string
+                rationale:
+                  type: string
+      responses:
+        '200':
+          description: Decision recorded — recommendation rejected
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+
+  /api/v1/ai/decisions/{envelopeId}/escalate:
+    post:
+      summary: Escalate an AI Recommendation to a Higher Authority Tier
+      operationId: escalateAiDecisionRecommendation
+      tags:
+        - AIGovernance
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: envelopeId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: x-tenant-id
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [decidedBy, rationale, escalatedToRole]
+              properties:
+                decidedBy:
+                  type: string
+                rationale:
+                  type: string
+                escalatedToRole:
+                  type: string
+      responses:
+        '200':
+          description: Decision recorded — recommendation escalated
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+
+  /api/v1/ai/decisions/{envelopeId}/verify-action:
+    post:
+      summary: Verify Whether a Role Is Permitted to Act on an AI Envelope
+      operationId: verifyAiDecisionActionPermission
+      tags:
+        - AIGovernance
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: envelopeId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: x-tenant-id
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role:
+                  type: string
+                responseAuthorityTier:
+                  type: string
+                  description: Optional ResponseAuthorityTier override (R1/R2/R3)
+      responses:
+        '200':
+          description: Action permission result for the given role
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          description: Unauthorized
+        '403':
+          description: Role not permitted to act on this envelope
+
+  /api/v1/governance/disclosures:
+    get:
+      summary: Customer Disclosures and Known-Limitations Register
+      operationId: getGovernanceDisclosures
+      tags:
+        - AIGovernance
+      security: []
+      responses:
+        '200':
+          description: Public G1 launch gate status, regulatory boundaries, certified connectors scope, and AI safety governance disclosures
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  g1LaunchGateStatus:
+                    type: string
+                  responseAuthorityLevel:
+                    type: string
+                  regulatoryBoundary:
+                    type: object
+                  certifiedConnectorsScope:
+                    type: object
+                  aiSafetyGovernance:
+                    type: object
+                  disclosedAt:
+                    type: string
+                    format: date-time
+

@@ -7,6 +7,7 @@ import {
   Headers,
   Query,
   BadRequestException,
+  UseGuards,
 } from '@nestjs/common';
 import {
   DecisionRightsService,
@@ -14,6 +15,7 @@ import {
   ActorAuthorizationContext,
 } from './decision-rights.service';
 import { DecisionState, ResponseAuthorityTier } from './ai-review-envelope.interface';
+import { InternalAuthGuard } from '../internal-client/internal-auth.guard';
 
 export class AcceptDecisionDto {
   decidedBy!: string;
@@ -42,6 +44,7 @@ export class VerifyActionDto {
   responseAuthorityTier?: ResponseAuthorityTier;
 }
 
+@UseGuards(InternalAuthGuard)
 @Controller('api/v1/ai/decisions')
 export class DecisionRightsController {
   constructor(private readonly decisionRightsService: DecisionRightsService) {}
