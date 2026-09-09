@@ -2,6 +2,8 @@
 
 import React, { useState } from "react";
 import { useDemoState } from "@/lib/demo-state";
+import { ZoikoShieldApiClient } from "@/lib/api-client";
+import { truncateHash } from "@/lib/utils";
 import { Card } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
@@ -10,40 +12,67 @@ import {
   Unlock,
   AlertOctagon,
   RotateCcw,
-  ShieldAlert,
-  Server,
   FileCheck2,
   CheckCircle2,
-  Cpu,
-  Flame,
-  Key,
 } from "lucide-react";
 
 export default function ActionsAndFreezePage() {
   const [state] = useDemoState();
   const [freezeScope, setFreezeScope] = useState<"GLOBAL" | "TENANT" | "ACTION_TYPE" | "CONNECTOR">("TENANT");
-  const [freezeReason, setFreezeReason] = useState("Suspected compromised lateral credentials under investigation");
+  const [freezeReason, setFreezeReason] = useState(
+    "Suspected compromised lateral credentials under investigation"
+  );
   const [isFrozen, setIsFrozen] = useState(false);
   const [activeFreezeId, setActiveFreezeId] = useState<string | null>(null);
+  const [freezeLoading, setFreezeLoading] = useState(false);
 
-  const [rollbackToken, setRollbackToken] = useState("rb-tok-8f7a9c2b-e102-4b71-9f1c-7e8293740192");
+  const [rollbackToken, setRollbackToken] = useState(
+    () =>
+      state.cases[0]?.responseProposal?.id ??
+      "rb-tok-8f7a9c2b-e102-4b71-9f1c-7e8293740192"
+  );
+  const [rollbackLoading, setRollbackLoading] = useState(false);
   const [rollbackSuccess, setRollbackSuccess] = useState(false);
+  const [rollbackError, setRollbackError] = useState<string | null>(null);
 
-  const handleToggleFreeze = () => {
-    if (isFrozen) {
-      setIsFrozen(false);
-      setActiveFreezeId(null);
-    } else {
-      setIsFrozen(true);
-      setActiveFreezeId(`frz-${Math.random().toString(36).substring(2, 10)}`);
+  // Real simulation receipt from demo state (populated after case/response simulation)
+  const simulationReceipt = state.cases[0]?.simulationReceipt;
+  const responseProposal = state.cases[0]?.responseProposal;
+
+  const handleToggleFreeze = async () => {
+    setFreezeLoading(true);
+    try {
+      if (isFrozen && activeFreezeId) {
+        await ZoikoShieldApiClient.releaseFreezeSOAR(activeFreezeId);
+        setIsFrozen(false);
+        setActiveFreezeId(null);
+      } else {
+        const result = await ZoikoShieldApiClient.freezeSOAR(freezeScope, freezeReason);
+        setIsFrozen(true);
+        setActiveFreezeId(result.freezeId);
+      }
+    } catch (err: any) {
+      console.error("Freeze toggle error:", err);
+    } finally {
+      setFreezeLoading(false);
     }
   };
 
-  const handleExecuteRollback = () => {
-    setRollbackSuccess(true);
-    setTimeout(() => {
-      setRollbackSuccess(false);
-    }, 4000);
+  const handleExecuteRollback = async () => {
+    setRollbackLoading(true);
+    setRollbackError(null);
+    setRollbackSuccess(false);
+    try {
+      // Use the real response proposal ID from state if available, else the entered token
+      const proposalId = responseProposal?.id ?? rollbackToken;
+      await ZoikoShieldApiClient.simulateResponseProposal(proposalId);
+      setRollbackSuccess(true);
+      setTimeout(() => setRollbackSuccess(false), 5000);
+    } catch (err: any) {
+      setRollbackError(err.message ?? "Rollback failed");
+    } finally {
+      setRollbackLoading(false);
+    }
   };
 
   return (
@@ -59,7 +88,7 @@ export default function ActionsAndFreezePage() {
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl font-bold text-white tracking-wide">
-                    Governed SOAR Response & Emergency Freeze Console
+                    Governed SOAR Response &amp; Emergency Freeze Console
                   </h1>
                   <Badge variant={isFrozen ? "critical" : "healthy"}>
                     {isFrozen ? "LOCKDOWN ACTIVE" : "OPERATIONAL"}
@@ -67,7 +96,9 @@ export default function ActionsAndFreezePage() {
                   <Badge variant="neutral">R0–R4 Authority Tiers</Badge>
                 </div>
                 <p className="text-xs text-slate-400">
-                  Specification: <span className="font-mono text-cyan-400">ZS-ENG-DRS-001</span> & <span className="font-mono text-cyan-400">ZS-ENG-EVID-001</span>
+                  Specification:{" "}
+                  <span className="font-mono text-cyan-400">ZS-ENG-DRS-001</span> &amp;{" "}
+                  <span className="font-mono text-cyan-400">ZS-ENG-EVID-001</span>
                 </p>
               </div>
             </div>
@@ -125,6 +156,7 @@ export default function ActionsAndFreezePage() {
               <Button
                 variant="primary"
                 onClick={handleToggleFreeze}
+                isLoading={freezeLoading}
                 className={`w-full py-2.5 font-bold flex items-center justify-center gap-2 ${
                   isFrozen
                     ? "bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-900/40 animate-pulse"
@@ -146,9 +178,15 @@ export default function ActionsAndFreezePage() {
 
               {isFrozen && activeFreezeId && (
                 <div className="p-3 rounded-lg bg-rose-950/40 border border-rose-500/40 text-[11px] text-rose-300 space-y-1">
-                  <div>🚨 <strong className="text-white">Active Freeze ID:</strong> {activeFreezeId}</div>
-                  <div>Scope: {freezeScope} | Locked by: sec-ops@enterprise.corp</div>
-                  <div className="text-slate-400 text-[10px]">All automated SOAR mutations blocked with zero bypass.</div>
+                  <div>
+                    🚨 <strong className="text-white">Active Freeze ID:</strong> {activeFreezeId}
+                  </div>
+                  <div>
+                    Scope: {freezeScope} | Locked by: {state.session?.email ?? "sec-ops@enterprise.corp"}
+                  </div>
+                  <div className="text-slate-400 text-[10px]">
+                    All automated SOAR mutations blocked with zero bypass.
+                  </div>
                 </div>
               )}
             </div>
@@ -164,33 +202,58 @@ export default function ActionsAndFreezePage() {
             </div>
 
             <div className="space-y-3 font-mono text-xs">
-              <div className="space-y-1.5">
-                <label className="text-slate-400">Cryptographic Rollback Token:</label>
-                <input
-                  type="text"
-                  value={rollbackToken}
-                  onChange={(e) => setRollbackToken(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-cyan-300 font-bold focus:outline-none focus:border-cyan-500"
-                />
-              </div>
+              {responseProposal ? (
+                <div className="p-2.5 rounded-lg bg-cyan-950/30 border border-cyan-500/30 text-cyan-300 text-[11px]">
+                  ✓ Live proposal from case{" "}
+                  <span className="font-bold">{state.cases[0]?.id}</span>:
+                  <br />
+                  <span className="text-slate-300">{responseProposal.id}</span>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  <label className="text-slate-400">Cryptographic Rollback Token:</label>
+                  <input
+                    type="text"
+                    value={rollbackToken}
+                    onChange={(e) => setRollbackToken(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-cyan-300 font-bold focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
+              )}
 
               <Button
                 variant="outline"
                 className="w-full py-2 flex items-center justify-center gap-2 border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/10"
                 onClick={handleExecuteRollback}
+                isLoading={rollbackLoading}
               >
                 <RotateCcw className="w-4 h-4" />
-                <span>Redeem & Execute Rollback</span>
+                <span>Redeem &amp; Execute Rollback</span>
               </Button>
 
+              {rollbackError && (
+                <div className="p-3 rounded-lg bg-rose-950/30 border border-rose-500/30 text-[11px] text-rose-300">
+                  ❌ {rollbackError}
+                </div>
+              )}
+
               {rollbackSuccess && (
-                <div className="p-3 rounded-lg bg-emerald-950/40 border border-emerald-500/40 text-[11px] text-emerald-300 space-y-1 animate-fadeIn">
+                <div className="p-3 rounded-lg bg-emerald-950/40 border border-emerald-500/40 text-[11px] text-emerald-300 space-y-1">
                   <div className="font-bold flex items-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                     <span>Compensating Action Dispatched!</span>
                   </div>
-                  <div>Executed: <strong className="text-white">UNISOLATE_ENDPOINT</strong> on srv-db-prod-02</div>
-                  <div className="text-slate-400 text-[10px]">Rollback token invalidated immediately after use.</div>
+                  <div>
+                    Executed:{" "}
+                    <strong className="text-white">
+                      {simulationReceipt?.stateDiffs?.[0]?.rollbackCommand ?? "UNISOLATE_ENDPOINT"}
+                    </strong>{" "}
+                    on{" "}
+                    {simulationReceipt?.stateDiffs?.[0]?.target ?? "srv-db-prod-02"}
+                  </div>
+                  <div className="text-slate-400 text-[10px]">
+                    Rollback token invalidated immediately after use.
+                  </div>
                 </div>
               )}
             </div>
@@ -204,43 +267,106 @@ export default function ActionsAndFreezePage() {
               <div className="flex items-center gap-2">
                 <FileCheck2 className="w-5 h-5 text-cyan-400" />
                 <h2 className="text-sm font-bold text-slate-100">
-                  Pre-Execution Dry-Run Simulation Receipts & Receipts Ledger
+                  Pre-Execution Dry-Run Simulation Receipts &amp; Receipts Ledger
                 </h2>
               </div>
               <Badge variant="anchored">Cryptographically Signed</Badge>
             </div>
 
             <div className="space-y-4">
-              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 font-mono text-xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">
-                      RECEIPT #rcpt-f2092389-00c4
-                    </span>
-                    <span className="text-slate-300 font-bold">EDR Host Containment</span>
+              {simulationReceipt ? (
+                /* Real simulation receipt from demo state */
+                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 font-mono text-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">
+                        RECEIPT #{simulationReceipt.id}
+                      </span>
+                      <span className="text-slate-300 font-bold">
+                        {responseProposal?.actionType ?? "SOAR Response"}
+                      </span>
+                    </div>
+                    <Badge variant="healthy">SIMULATED &amp; SIGNED</Badge>
                   </div>
-                  <Badge variant="healthy">SIMULATED & SIGNED</Badge>
-                </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px]">
-                  <div className="p-2.5 rounded bg-slate-900/60 border border-slate-800">
-                    <span className="text-slate-400 font-bold">Action Type:</span>
-                    <div className="text-rose-400 font-bold mt-0.5">ISOLATE_ENDPOINT</div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px]">
+                    <div className="p-2.5 rounded bg-slate-900/60 border border-slate-800">
+                      <span className="text-slate-400 font-bold">Action Type:</span>
+                      <div className="text-rose-400 font-bold mt-0.5">
+                        {responseProposal?.actionType ?? "RESET_USER_SESSIONS"}
+                      </div>
+                    </div>
+                    <div className="p-2.5 rounded bg-slate-900/60 border border-slate-800">
+                      <span className="text-slate-400 font-bold">Target Asset:</span>
+                      <div className="text-amber-300 font-bold mt-0.5">
+                        {responseProposal?.targetAsset ?? "victim.engineer@acme.com"}
+                      </div>
+                    </div>
+                    <div className="p-2.5 rounded bg-slate-900/60 border border-slate-800">
+                      <span className="text-slate-400 font-bold">Authority Tier:</span>
+                      <div className="text-purple-400 font-bold mt-0.5">
+                        {responseProposal?.authorityLevel ?? "R1_RECOMMEND"}
+                      </div>
+                    </div>
                   </div>
-                  <div className="p-2.5 rounded bg-slate-900/60 border border-slate-800">
-                    <span className="text-slate-400 font-bold">Target Host:</span>
-                    <div className="text-amber-300 font-bold mt-0.5">srv-db-prod-02</div>
-                  </div>
-                  <div className="p-2.5 rounded bg-slate-900/60 border border-slate-800">
-                    <span className="text-slate-400 font-bold">Authority Tier:</span>
-                    <div className="text-purple-400 font-bold mt-0.5">R2 (Containment)</div>
+
+                  <div className="p-3 rounded-lg bg-slate-900/40 border border-slate-800 space-y-2 text-[11px]">
+                    <div className="text-cyan-400 font-bold">PREDICTED INFRASTRUCTURE STATE DELTA:</div>
+                    {simulationReceipt.stateDiffs?.map((diff, i) => (
+                      <div key={i} className="space-y-1 text-slate-300">
+                        <div>
+                          <span className="text-slate-500">Target:</span> {diff.target}
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Before:</span> {diff.beforeState}
+                        </div>
+                        <div>
+                          <span className="text-slate-500">After:</span> {diff.afterState}
+                        </div>
+                        <div>
+                          <span className="text-slate-500">Rollback:</span> {diff.rollbackCommand}
+                        </div>
+                      </div>
+                    ))}
+                    <div className="pt-1 border-t border-slate-800">
+                      <span className="text-slate-500">Safety Hash:</span>{" "}
+                      <span className="text-cyan-300">
+                        {simulationReceipt.safetyAttestationHash?.slice(0, 32) ?? ""}...
+                      </span>
+                    </div>
                   </div>
                 </div>
+              ) : (
+                /* No simulation receipt yet — static example */
+                <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 font-mono text-xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">
+                        RECEIPT #rcpt-f2092389-00c4
+                      </span>
+                      <span className="text-slate-300 font-bold">EDR Host Containment</span>
+                    </div>
+                    <Badge variant="healthy">SIMULATED &amp; SIGNED</Badge>
+                  </div>
 
-                {/* State Delta & Blast Radius */}
-                <div className="p-3 rounded-lg bg-slate-900/40 border border-slate-800 space-y-2 text-[11px]">
-                  <div className="text-cyan-400 font-bold">PREDICTED INFRASTRUCTURE STATE DELTA:</div>
-                  <pre className="text-[10px] text-slate-300 overflow-x-auto leading-relaxed">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px]">
+                    <div className="p-2.5 rounded bg-slate-900/60 border border-slate-800">
+                      <span className="text-slate-400 font-bold">Action Type:</span>
+                      <div className="text-rose-400 font-bold mt-0.5">ISOLATE_ENDPOINT</div>
+                    </div>
+                    <div className="p-2.5 rounded bg-slate-900/60 border border-slate-800">
+                      <span className="text-slate-400 font-bold">Target Host:</span>
+                      <div className="text-amber-300 font-bold mt-0.5">srv-db-prod-02</div>
+                    </div>
+                    <div className="p-2.5 rounded bg-slate-900/60 border border-slate-800">
+                      <span className="text-slate-400 font-bold">Authority Tier:</span>
+                      <div className="text-purple-400 font-bold mt-0.5">R2 (Containment)</div>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-slate-900/40 border border-slate-800 space-y-2 text-[11px]">
+                    <div className="text-cyan-400 font-bold">PREDICTED INFRASTRUCTURE STATE DELTA:</div>
+                    <pre className="text-[10px] text-slate-300 overflow-x-auto leading-relaxed">
 {`{
   "targetHost": "srv-db-prod-02",
   "expectedState": "NETWORK_ISOLATED",
@@ -253,9 +379,15 @@ export default function ActionsAndFreezePage() {
   "compensatingAction": "UNISOLATE_ENDPOINT",
   "rollbackTokenHash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 }`}
-                  </pre>
+                    </pre>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-amber-950/20 border border-amber-500/20 text-amber-300 text-[11px]">
+                    ℹ️ No live simulation receipt yet. Complete the Case → Response Simulator flow to
+                    see real receipt data here.
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </Card>
         </div>

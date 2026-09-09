@@ -1,9 +1,10 @@
 "use client";
 
-import React from "react";
+import React, { useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useDemoState } from "@/lib/demo-state";
+import { ZoikoShieldApiClient } from "@/lib/api-client";
 import { formatTimestamp } from "@/lib/utils";
 import { Card } from "@/ui/Card";
 import { Button } from "@/ui/Button";
@@ -13,6 +14,11 @@ import { FolderLock, Plus, ArrowRight, ShieldCheck, Sparkles } from "lucide-reac
 export default function CasesListPage() {
   const router = useRouter();
   const [state] = useDemoState();
+
+  // Fetch live cases from backend on mount
+  useEffect(() => {
+    ZoikoShieldApiClient.getCases().catch(() => {/* backend offline — demo state used */});
+  }, []);
 
   return (
     <div className="space-y-6">

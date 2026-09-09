@@ -2,8 +2,9 @@
 
 import React, { useState } from "react";
 import { useDemoState, saveDemoState } from "@/lib/demo-state";
+import { ZoikoShieldApiClient } from "@/lib/api-client";
 import { JitElevationSession } from "@/lib/types";
-import { formatTimestamp, truncateHash, generateUUID } from "@/lib/utils";
+import { formatTimestamp } from "@/lib/utils";
 import { Card } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
@@ -28,38 +29,51 @@ export default function JitEnclavePage() {
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleRequestElevation = (e: React.FormEvent) => {
+  const handleRequestElevation = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setTimeout(() => {
-      const now = Date.now();
-      const expires = new Date(now + durationMinutes * 60 * 1000).toISOString();
+    try {
+      const result = await ZoikoShieldApiClient.requestJitElevation(state.tenant.id, justification, durationMinutes);
+      // Build a JitElevationSession from the API response and persist to state
       const newSession: JitElevationSession = {
-        sessionId: `jit-sess-${generateUUID().slice(0, 8)}`,
+        sessionId: result.requestId,
         operatorId: state.session.userId,
         targetTenantId: state.tenant.id,
-        elevatedRole: "SUPER_ADMIN",
+        elevatedRole: result.requestedRole,
         status: "ACTIVE",
         clientIp: "127.0.0.1",
         statedPurpose: justification,
         issuedAt: new Date().toISOString(),
-        expiresAt: expires,
+        expiresAt: result.expiresAt,
         hardwareStepUpVerified: true,
       };
-      state.jitSessions.unshift(newSession);
-      saveDemoState(state);
+      const updated = { ...state, jitSessions: [newSession, ...state.jitSessions] };
+      saveDemoState(updated);
       setIsElevationModalOpen(false);
+    } catch (err) {
+      console.error("JIT elevation error:", err);
+    } finally {
       setIsSubmitting(false);
-    }, 400);
-  };
-
-  const handleRevoke = (sessionId: string) => {
-    const s = state.jitSessions.find((x) => x.sessionId === sessionId);
-    if (s) {
-      s.status = "REVOKED";
-      saveDemoState(state);
     }
   };
+
+  const handleRevoke = async (sessionId: string) => {
+    try {
+      await ZoikoShieldApiClient.revokeJitElevation(sessionId);
+      // Reflect revocation in state
+      const updated = {
+        ...state,
+        jitSessions: state.jitSessions.map((s) =>
+          s.sessionId === sessionId ? { ...s, status: "REVOKED" as const } : s
+        ),
+      };
+      saveDemoState(updated);
+    } catch (err) {
+      console.error("JIT revoke error:", err);
+    }
+  };
+
+
 
   return (
     <div className="space-y-6">

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
@@ -21,6 +21,11 @@ import {
 export default function ControlsPage() {
   const router = useRouter();
   const [state] = useDemoState();
+
+  useEffect(() => {
+    ZoikoShieldApiClient.getControlTests().catch(() => {/* backend offline — demo state used */});
+  }, []);
+
   const [evaluatingId, setEvaluatingId] = useState<string | null>(null);
 
   const handleEvaluate = async (controlId: string) => {
