@@ -65,14 +65,19 @@ import { TenantVectorStoreService } from './vector-store/tenant-vector-store.ser
 import { ModelDriftMonitorService } from './drift-monitoring/model-drift-monitor.service';
 import { AiSupplyChainService } from './supply-chain/ai-supply-chain.service';
 
+import { DecisionRightsModule } from './decision-rights/decision-rights.module';
+import { DecisionRightsService } from './decision-rights/decision-rights.service';
+import { DecisionRightsController } from './decision-rights/decision-rights.controller';
+
 @Module({
-  imports: [PrismaModule, KafkaModule],
+  imports: [PrismaModule, KafkaModule, DecisionRightsModule],
   controllers: [
     ShieldAiController,
     UseCaseController,
     AiOutputController,
     AiGovernanceViewsController,
     AiIncidentController,
+    DecisionRightsController,
   ],
 
   providers: [
@@ -162,6 +167,7 @@ import { AiSupplyChainService } from './supply-chain/ai-supply-chain.service';
     AiIncidentService,
     ModelDriftMonitorService,
     AiSupplyChainService,
+    DecisionRightsService,
   ],
 })
 export class ShieldAiModule {}

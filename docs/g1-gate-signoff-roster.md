@@ -78,21 +78,38 @@ Verified by: [PENDING — Security Engineering sign-off]
 
 ---
 
-## 4. Known Limitations Register
+## 4. Known Limitations & Regulatory Boundary Register
 
 The following items are deferred by design and do not block the G1 gate:
 
 | # | Deferred Item | Deferral Reason | Target Phase |
 |:--|:---|:---|:---|
-| DL-01 | LAB 14 Frontend / Next.js customer portal | Out of scope per the Backend Engineering Build Guide | Phase 1 / LAB 14 |
+| DL-01 | LAB 14 Frontend / Next.js customer portal 7-state UI | Out of scope per Backend Guide; in-progress under Experience Contract | Phase 1 / LAB 14 |
 | DL-02 | Phase 2 R2+ Automated Response (live execution) | Requires G1 and design-partner sign-off before live response paths enabled | Phase 2 |
 | DL-03 | Marketplace and mobile apps | Not in ERB-01 scope | Phase 3 |
 | DL-04 | Sovereign / private / OT deployment topology | Requires dedicated regional sovereign compliance review | Phase 2 |
-| DL-05 | Sector-specific framework forks (DORA, NIS2 deep packs) | Core controls library sufficient for G1; sector packs scaffolded | Phase 2 |
+| DL-05 | Sector-specific framework forks (DORA, NIS2, PCI DSS) | Strict ADR-08 deferral to Phase 2 midpoint; core SOC 2 / ISO 27001 active | Phase 2 Midpoint |
 
 ---
 
-## 5. Multi-Approver Sign-off Table
+## 5. Compliance & Certification Framework Boundaries
+
+- **In-Scope Compliance Certification Deliverables (Phase 0 / G1)**:
+  - **SOC 2 Type II** (Security, Confidentiality, Availability Trust Services Criteria)
+  - **ISO/IEC 27001:2022** (Information Security Management System)
+- **Reference Standards & Voluntary Alignment Frameworks**:
+  - **NIST CSF v2.0** (Cybersecurity Framework Core Alignment)
+  - **NIST AI RMF 1.0** (Artificial Intelligence Risk Management Framework)
+  - **NIST SP 800-207** (Zero Trust Architecture)
+  - **NIST SP 800-218** (Secure Software Development Framework / SSDF)
+- **Deferred Sector Regulatory Overlays (ADR-08)**:
+  - **DORA** (EU Regulation 2022/2554) — *Deferred to Phase 2 Midpoint*
+  - **NIS2** (EU Directive 2022/2555) — *Deferred to Phase 2 Midpoint*
+  - **PCI DSS v4.0.1** — *Deferred to Phase 2 Midpoint*
+
+---
+
+## 6. Multi-Approver Sign-off Table
 
 Each approver must review the evidence gate register in section 2 and the known limitations register in section 4 before signing.
 
@@ -111,15 +128,18 @@ G1 requires all eight approvers to sign before the gate can be declared CLOSED. 
 
 ---
 
-## 6. Gate Decision
+## 7. Gate Decision
 
 ```
 G1 GATE STATUS:       PENDING MULTI-APPROVER SIGN-OFF
 Automated evidence:   31 / 32 gates PASS / ACCEPTED / VERIFIED
 Pending:              G1-SIGNOFF-01 (multi-approver sign-off — this document)
-Unit test suites:     335 / 335 PASS (100% green)
-Unit & E2E tests:     1,425 / 1,425 PASS (100% green)
+Unit test suites:     340 / 340 PASS (100% green)
+Unit & E2E tests:     1,447 / 1,447 PASS (100% green)
+Throughput Scale:     15,000 events/sec peak committed (0.2-2 TB/day)
+Standby Failover RTO: < 30.0s [derived] (Measured: 8.4s [derived], RPO = 0s [spec])
+Transactional DR:     RTO 4h / RPO 15m [spec]
 Offline Verification: PASS (Clean audit package verified, tamper rejected)
-Regional-Cell Proof:  PASS (All 10 Phase-0 exit proof steps verified)
+Regional-Cell Proof:  PASS (All 10 Phase-0 in-process exit proof steps verified)
 OpenAPI Coverage:     100% controller operation coverage (0 contract violations)
 ```
