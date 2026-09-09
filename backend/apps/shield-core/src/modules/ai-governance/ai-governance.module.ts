@@ -6,6 +6,7 @@ import {
   AiUsageController,
   AiBudgetController,
 } from './ai-governance.controller';
+import { CustomerDisclosuresController } from './customer-disclosures.controller';
 import { AiUsageService } from './ai-usage.service';
 import { AiBudgetService } from './ai-budget.service';
 import { AiGovernanceProfileService } from './ai-governance-profile.service';
@@ -34,6 +35,7 @@ import { NoLlmContinuityService } from './no-llm-continuity.service';
     InternalNoLlmContinuityController,
     AiGovernanceProfileController,
     AiBudgetController,
+    CustomerDisclosuresController,
   ],
   providers: [
     AiUsageService,

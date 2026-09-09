@@ -110,6 +110,7 @@ import { WebhookSignatureGuard } from './ingestion/guards/webhook-signature.guar
 import { OutboxService } from './outbox/outbox.service';
 import { OutboxPublisherService } from './outbox/outbox-publisher.service';
 import { IdempotencyService } from './idempotency/idempotency.service';
+import { ConnectorPermissionDriftService } from './drift/connector-permission-drift.service';
 
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
@@ -209,6 +210,7 @@ import { IdempotencyService } from './idempotency/idempotency.service';
     DlqReplayQuarantineService,
     AdaptiveTraceSamplerService,
     AdaptiveCongestionManagerService,
+    ConnectorPermissionDriftService,
     { provide: APP_GUARD, useClass: WorkloadAuthGuard },
   ],
   exports: [
@@ -229,6 +231,7 @@ import { IdempotencyService } from './idempotency/idempotency.service';
     DlqReplayQuarantineService,
     AdaptiveTraceSamplerService,
     AdaptiveCongestionManagerService,
+    ConnectorPermissionDriftService,
   ],
 })
 export class ShieldIngestModule {}

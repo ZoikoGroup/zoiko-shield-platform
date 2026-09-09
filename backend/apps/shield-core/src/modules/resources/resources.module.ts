@@ -10,6 +10,7 @@ import { ResourceObservationService } from './resource-observation.service';
 import { ResourceCoverageService } from './resource-coverage.service';
 import { ResourceCountingService } from './resource-counting.service';
 import { ResourceDeduplicationService } from './resource-deduplication.service';
+import { AssetIdentityContextService } from './asset-identity-context.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { ApprovalsModule } from '../approvals/approvals.module';
 
@@ -27,6 +28,7 @@ import { ApprovalsModule } from '../approvals/approvals.module';
     ResourceCoverageService,
     ResourceCountingService,
     ResourceDeduplicationService,
+    AssetIdentityContextService,
   ],
   exports: [
     ProtectedResourceDefinitionService,
@@ -34,6 +36,7 @@ import { ApprovalsModule } from '../approvals/approvals.module';
     ResourceCoverageService,
     ResourceCountingService,
     ResourceDeduplicationService,
+    AssetIdentityContextService,
   ],
 })
 export class ResourcesModule {}
