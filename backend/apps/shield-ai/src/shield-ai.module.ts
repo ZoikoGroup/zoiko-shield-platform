@@ -66,8 +66,6 @@ import { ModelDriftMonitorService } from './drift-monitoring/model-drift-monitor
 import { AiSupplyChainService } from './supply-chain/ai-supply-chain.service';
 
 import { DecisionRightsModule } from './decision-rights/decision-rights.module';
-import { DecisionRightsService } from './decision-rights/decision-rights.service';
-import { DecisionRightsController } from './decision-rights/decision-rights.controller';
 
 @Module({
   imports: [PrismaModule, KafkaModule, DecisionRightsModule],
@@ -77,7 +75,6 @@ import { DecisionRightsController } from './decision-rights/decision-rights.cont
     AiOutputController,
     AiGovernanceViewsController,
     AiIncidentController,
-    DecisionRightsController,
   ],
 
   providers: [
@@ -167,7 +164,7 @@ import { DecisionRightsController } from './decision-rights/decision-rights.cont
     AiIncidentService,
     ModelDriftMonitorService,
     AiSupplyChainService,
-    DecisionRightsService,
+    DecisionRightsModule,
   ],
 })
 export class ShieldAiModule {}
