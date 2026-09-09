@@ -34,7 +34,7 @@ jobs:
           cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci
 
       - name: Generate Prisma Client
         run: npx prisma generate
@@ -66,7 +66,7 @@ jobs:
           cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci
 
       - name: Generate Prisma Client
         run: npx prisma generate
@@ -103,7 +103,7 @@ jobs:
           cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci
 
       - name: Generate Prisma Client
         run: npx prisma generate
@@ -204,7 +204,7 @@ jobs:
           cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci --legacy-peer-deps
+        run: npm ci
 
       - name: Generate Prisma Client
         run: npx prisma generate
@@ -212,7 +212,7 @@ jobs:
       - name: Run offline verifier CLI smoke test
         run: |
           echo "Verifier smoke test — confirming binary is runnable"
-          npx ts-node tools/independent-verifier/src/cli.ts --help 2>&1 || true
+          npx ts-node apps/verifier-cli/src/main.ts || true
 
       - name: Confirm no release blockers in code
         run: |
