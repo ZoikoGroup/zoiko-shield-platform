@@ -3,7 +3,7 @@
 import React, { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useDemoState, saveDemoState, resetDemoState } from "@/lib/demo-state";
-import { Button } from "@/ui/Button";
+import { Button } from "@/components/ui/Button";
 import {
   PlayCircle,
   RotateCcw,
@@ -30,23 +30,21 @@ export const DEMO_STEPS = [
 export const DemoGuideBar: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
-  const [state, setState] = useDemoState();
+  const [state, setDemoState, isHydrated] = useDemoState();
   const [isMinimized, setIsMinimized] = useState<boolean>(false);
 
   const currentStepObj = DEMO_STEPS.find((s) => s.step === state.currentStep) || DEMO_STEPS[0];
 
   const handleNextStep = () => {
     const nextStep = Math.min(state.currentStep + 1, DEMO_STEPS.length);
-    state.currentStep = nextStep;
-    saveDemoState(state);
+    setDemoState({ ...state, currentStep: nextStep });
     const targetRoute = DEMO_STEPS.find((s) => s.step === nextStep)?.route || "/";
     router.push(targetRoute);
   };
 
   const handlePrevStep = () => {
     const prevStep = Math.max(state.currentStep - 1, 1);
-    state.currentStep = prevStep;
-    saveDemoState(state);
+    setDemoState({ ...state, currentStep: prevStep });
     const targetRoute = DEMO_STEPS.find((s) => s.step === prevStep)?.route || "/";
     router.push(targetRoute);
   };
@@ -54,10 +52,11 @@ export const DemoGuideBar: React.FC = () => {
   const handleReset = () => {
     if (confirm("Reset demo data to initial state?")) {
       const fresh = resetDemoState();
-      setState(fresh);
+      setDemoState(fresh);
       router.push("/");
     }
   };
+
 
   if (isMinimized) {
     return (
@@ -102,8 +101,7 @@ export const DemoGuideBar: React.FC = () => {
             <button
               key={s.step}
               onClick={() => {
-                state.currentStep = s.step;
-                saveDemoState(state);
+                setDemoState({ ...state, currentStep: s.step });
                 router.push(s.route);
               }}
               className={`px-2.5 py-1 rounded text-xs font-mono transition-all ${

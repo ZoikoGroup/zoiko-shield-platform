@@ -11,7 +11,8 @@ export interface GcpSccFindingPayload {
   createTime: string;
   severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
   canonicalHighPriorityType?: string;
-  findingClass?: 'THREAT' | 'VULNERABILITY' | 'MISCONFIGURATION' | 'OBSERVATION';
+  findingClass?:
+    'THREAT' | 'VULNERABILITY' | 'MISCONFIGURATION' | 'OBSERVATION';
   indicator?: {
     ipAddresses?: string[];
     domains?: string[];

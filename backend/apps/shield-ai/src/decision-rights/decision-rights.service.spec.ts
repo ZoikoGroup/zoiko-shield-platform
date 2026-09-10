@@ -15,7 +15,10 @@ describe('DecisionRightsService (§16 Human Oversight & Decision-Rights Engine)'
   let service: DecisionRightsService;
   let mockKafkaProducer: Partial<KafkaProducerService>;
 
-  const validEnvelopeInput: CreateEnvelopeInput<{ recommendation: string; targetResource: string }> = {
+  const validEnvelopeInput: CreateEnvelopeInput<{
+    recommendation: string;
+    targetResource: string;
+  }> = {
     tenantId: 'tenant-test-01',
     environmentId: 'env-prod-01',
     aiLabelAndUseCaseName: {
@@ -47,15 +50,18 @@ describe('DecisionRightsService (§16 Human Oversight & Decision-Rights Engine)'
     alternativeHypothesesOrActions: [
       {
         title: 'Network Quarantine Only',
-        rationale: 'Isolate host without revoking IAM credentials to preserve telemetry',
-        tradeOffs: 'Higher risk of credential reuse against other cloud resources',
+        rationale:
+          'Isolate host without revoking IAM credentials to preserve telemetry',
+        tradeOffs:
+          'Higher risk of credential reuse against other cloud resources',
       },
     ],
     expectedImpactAndReversibility: {
       blastRadius: 'Single IAM role and single EC2 bastion host',
       isReversible: true,
       reversibilityTier: 'R2',
-      compensationPlan: 'Re-enable IAM policy attachment via 1-click compensation receipt',
+      compensationPlan:
+        'Re-enable IAM policy attachment via 1-click compensation receipt',
     },
     requiredAuthorityAndApprovals: {
       requiredRole: 'SECURITY_OPERATIONS_LEAD',
@@ -68,7 +74,8 @@ describe('DecisionRightsService (§16 Human Oversight & Decision-Rights Engine)'
       customerAffecting: true,
     },
     payload: {
-      recommendation: 'Revoke IAM policy AdministratorAccess and isolate bastion-srv-01',
+      recommendation:
+        'Revoke IAM policy AdministratorAccess and isolate bastion-srv-01',
       targetResource: 'arn:aws:iam::123456789012:role/compromised-role',
     },
   };
@@ -101,22 +108,35 @@ describe('DecisionRightsService (§16 Human Oversight & Decision-Rights Engine)'
         'REJECT',
         'ESCALATE',
       ]);
-      expect(envelope.aiLabelAndUseCaseName.useCaseName).toBe('RESPONSE_RECOMMENDATION');
+      expect(envelope.aiLabelAndUseCaseName.useCaseName).toBe(
+        'RESPONSE_RECOMMENDATION',
+      );
       expect(envelope.sourcesAndSpans.length).toBe(1);
       expect(envelope.calibratedConfidenceAndUncertainty.score).toBe(0.92);
-      expect(envelope.expectedImpactAndReversibility.reversibilityTier).toBe('R2');
-      expect(envelope.requiredAuthorityAndApprovals.requiredRole).toBe('SECURITY_OPERATIONS_LEAD');
+      expect(envelope.expectedImpactAndReversibility.reversibilityTier).toBe(
+        'R2',
+      );
+      expect(envelope.requiredAuthorityAndApprovals.requiredRole).toBe(
+        'SECURITY_OPERATIONS_LEAD',
+      );
       expect(envelope.appealOrFeedbackRoute.customerAffecting).toBe(true);
     });
 
     it('should reject envelope creation if AI label or use-case name is missing', () => {
-      const invalid = { ...validEnvelopeInput, aiLabelAndUseCaseName: undefined as any };
-      expect(() => service.wrapInEnvelope(invalid)).toThrow(BadRequestException);
+      const invalid = {
+        ...validEnvelopeInput,
+        aiLabelAndUseCaseName: undefined as any,
+      };
+      expect(() => service.wrapInEnvelope(invalid)).toThrow(
+        BadRequestException,
+      );
     });
 
     it('should reject envelope creation if sources/spans are missing or empty', () => {
       const invalid = { ...validEnvelopeInput, sourcesAndSpans: [] };
-      expect(() => service.wrapInEnvelope(invalid)).toThrow(BadRequestException);
+      expect(() => service.wrapInEnvelope(invalid)).toThrow(
+        BadRequestException,
+      );
     });
 
     it('should reject envelope creation if calibrated confidence score is out of bounds', () => {
@@ -129,17 +149,29 @@ describe('DecisionRightsService (§16 Human Oversight & Decision-Rights Engine)'
           uncertaintyFactors: [],
         },
       };
-      expect(() => service.wrapInEnvelope(invalid)).toThrow(BadRequestException);
+      expect(() => service.wrapInEnvelope(invalid)).toThrow(
+        BadRequestException,
+      );
     });
 
     it('should reject envelope creation if expected impact / reversibility is missing', () => {
-      const invalid = { ...validEnvelopeInput, expectedImpactAndReversibility: undefined as any };
-      expect(() => service.wrapInEnvelope(invalid)).toThrow(BadRequestException);
+      const invalid = {
+        ...validEnvelopeInput,
+        expectedImpactAndReversibility: undefined as any,
+      };
+      expect(() => service.wrapInEnvelope(invalid)).toThrow(
+        BadRequestException,
+      );
     });
 
     it('should reject envelope creation if required authority is missing', () => {
-      const invalid = { ...validEnvelopeInput, requiredAuthorityAndApprovals: undefined as any };
-      expect(() => service.wrapInEnvelope(invalid)).toThrow(BadRequestException);
+      const invalid = {
+        ...validEnvelopeInput,
+        requiredAuthorityAndApprovals: undefined as any,
+      };
+      expect(() => service.wrapInEnvelope(invalid)).toThrow(
+        BadRequestException,
+      );
     });
   });
 
@@ -153,14 +185,17 @@ describe('DecisionRightsService (§16 Human Oversight & Decision-Rights Engine)'
         {
           decision: 'ACCEPT',
           decidedBy: 'lead-analyst@zoiko.com',
-          rationale: 'Confirmed malicious API activity in CloudTrail; blast radius verified safe.',
+          rationale:
+            'Confirmed malicious API activity in CloudTrail; blast radius verified safe.',
         },
       );
 
       expect(updated.controls.state).toBe('ACCEPTED');
       expect(updated.controls.availableTransitions).toEqual([]);
       expect(updated.humanDecisionAndRationale.decision).toBe('ACCEPT');
-      expect(updated.humanDecisionAndRationale.decidedBy).toBe('lead-analyst@zoiko.com');
+      expect(updated.humanDecisionAndRationale.decidedBy).toBe(
+        'lead-analyst@zoiko.com',
+      );
       expect(updated.humanDecisionAndRationale.rationale).toBe(
         'Confirmed malicious API activity in CloudTrail; blast radius verified safe.',
       );
@@ -192,8 +227,10 @@ describe('DecisionRightsService (§16 Human Oversight & Decision-Rights Engine)'
         {
           decision: 'MODIFY',
           decidedBy: 'lead-analyst@zoiko.com',
-          rationale: 'Modifying containment to exclude staging bastion from isolation.',
-          modifiedContent: 'Revoke IAM policy AdministratorAccess only (leave host online for forensic dump)',
+          rationale:
+            'Modifying containment to exclude staging bastion from isolation.',
+          modifiedContent:
+            'Revoke IAM policy AdministratorAccess only (leave host online for forensic dump)',
         },
       );
 
@@ -229,7 +266,8 @@ describe('DecisionRightsService (§16 Human Oversight & Decision-Rights Engine)'
         {
           decision: 'REJECT',
           decidedBy: 'lead-analyst@zoiko.com',
-          rationale: 'False positive: Authorized DevOps disaster recovery test in progress.',
+          rationale:
+            'False positive: Authorized DevOps disaster recovery test in progress.',
         },
       );
 
@@ -246,7 +284,8 @@ describe('DecisionRightsService (§16 Human Oversight & Decision-Rights Engine)'
         {
           decision: 'ESCALATE',
           decidedBy: 'junior-analyst@zoiko.com',
-          rationale: 'Potential executive account compromise; requires CISO authorization.',
+          rationale:
+            'Potential executive account compromise; requires CISO authorization.',
           escalatedToRole: 'CHIEF_INFORMATION_SECURITY_OFFICER',
         },
       );
@@ -289,10 +328,14 @@ describe('DecisionRightsService (§16 Human Oversight & Decision-Rights Engine)'
       const envelope = service.wrapInEnvelope(validEnvelopeInput);
 
       expect(() =>
-        service.assertActionPermitted(validEnvelopeInput.tenantId, envelope.envelopeId, {
-          role: 'SECURITY_OPERATIONS_LEAD',
-          responseAuthorityTier: 'R2',
-        }),
+        service.assertActionPermitted(
+          validEnvelopeInput.tenantId,
+          envelope.envelopeId,
+          {
+            role: 'SECURITY_OPERATIONS_LEAD',
+            responseAuthorityTier: 'R2',
+          },
+        ),
       ).toThrow(PreconditionFailedException);
     });
 
@@ -310,10 +353,14 @@ describe('DecisionRightsService (§16 Human Oversight & Decision-Rights Engine)'
       );
 
       expect(() =>
-        service.assertActionPermitted(validEnvelopeInput.tenantId, envelope.envelopeId, {
-          role: 'SECURITY_OPERATIONS_LEAD',
-          responseAuthorityTier: 'R2',
-        }),
+        service.assertActionPermitted(
+          validEnvelopeInput.tenantId,
+          envelope.envelopeId,
+          {
+            role: 'SECURITY_OPERATIONS_LEAD',
+            responseAuthorityTier: 'R2',
+          },
+        ),
       ).toThrow(ForbiddenException);
     });
 
@@ -332,10 +379,14 @@ describe('DecisionRightsService (§16 Human Oversight & Decision-Rights Engine)'
 
       // Required is R2; requesting actor is R1
       expect(() =>
-        service.assertActionPermitted(validEnvelopeInput.tenantId, envelope.envelopeId, {
-          role: 'JUNIOR_ANALYST',
-          responseAuthorityTier: 'R1',
-        }),
+        service.assertActionPermitted(
+          validEnvelopeInput.tenantId,
+          envelope.envelopeId,
+          {
+            role: 'JUNIOR_ANALYST',
+            responseAuthorityTier: 'R1',
+          },
+        ),
       ).toThrow(ForbiddenException);
     });
 
@@ -377,7 +428,10 @@ describe('DecisionRightsService (§16 Human Oversight & Decision-Rights Engine)'
 
     it('should throw NotFoundException for non-existent envelope ID', () => {
       expect(() =>
-        service.getEnvelope(validEnvelopeInput.tenantId, 'env-non-existent-999'),
+        service.getEnvelope(
+          validEnvelopeInput.tenantId,
+          'env-non-existent-999',
+        ),
       ).toThrow(NotFoundException);
     });
 

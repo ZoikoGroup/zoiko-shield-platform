@@ -16,15 +16,43 @@ import {
   ArrowRight,
   ShieldCheck,
   RotateCcw,
+  RefreshCw,
 } from "lucide-react";
+import {
+  LoadingState,
+  StaleState,
+  DegradedState,
+  UnavailableState,
+} from "@/components/states/mandatory-ui-states";
 
 export default function ControlsPage() {
   const router = useRouter();
   const [state] = useDemoState();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isStale, setIsStale] = useState(false);
 
   useEffect(() => {
-    ZoikoShieldApiClient.getControlTests().catch(() => {/* backend offline — demo state used */});
+    setIsLoading(true);
+    ZoikoShieldApiClient.getControlTests()
+      .catch(() => {
+        setIsStale(true);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
+
+  const refreshControls = async () => {
+    setIsLoading(true);
+    try {
+      await ZoikoShieldApiClient.getControlTests();
+      setIsStale(false);
+    } catch {
+      setIsStale(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const [evaluatingId, setEvaluatingId] = useState<string | null>(null);
 
@@ -64,7 +92,7 @@ export default function ControlsPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <Button variant="cyan" onClick={handleEvaluateAll}>
+          <Button variant="cyan" onClick={() => handleEvaluateAll()}>
             <Play className="w-3.5 h-3.5" />
             <span>Evaluate All Controls</span>
           </Button>
@@ -74,6 +102,23 @@ export default function ControlsPage() {
           </Button>
         </div>
       </div>
+
+      {/* Mandatory UI States */}
+      {isLoading && (
+        <LoadingState
+          title="Loading Security Controls Matrix..."
+          message="Evaluating automated compliance controls on shield-ingest (:3002)."
+          regionalCell="us-east-1"
+        />
+      )}
+
+      {isStale && !isLoading && (
+        <StaleState
+          title="Cached Compliance Controls View"
+          message="Showing latest verified control evaluation snapshot."
+          retryAction={refreshControls}
+        />
+      )}
 
       {/* Controls Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

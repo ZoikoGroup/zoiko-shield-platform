@@ -19,15 +19,44 @@ import {
   Shield,
   Activity,
   Layers,
+  RefreshCw,
 } from "lucide-react";
+import {
+  LoadingState,
+  PartialState,
+  StaleState,
+  UnavailableState,
+  DegradedState,
+} from "@/components/states/mandatory-ui-states";
 
 export default function ConnectorsPage() {
   const router = useRouter();
   const [state, setState] = useDemoState();
+  const [isFetchingConnectors, setIsFetchingConnectors] = useState(false);
+  const [isStale, setIsStale] = useState(false);
 
   useEffect(() => {
-    ZoikoShieldApiClient.getConnectors().catch(() => {/* backend offline — demo state used */});
+    setIsFetchingConnectors(true);
+    ZoikoShieldApiClient.getConnectors()
+      .catch(() => {
+        setIsStale(true);
+      })
+      .finally(() => {
+        setIsFetchingConnectors(false);
+      });
   }, []);
+
+  const refreshConnectors = async () => {
+    setIsFetchingConnectors(true);
+    try {
+      await ZoikoShieldApiClient.getConnectors();
+      setIsStale(false);
+    } catch {
+      setIsStale(true);
+    } finally {
+      setIsFetchingConnectors(false);
+    }
+  };
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [name, setName] = useState("Custom AWS GuardDuty Telemetry");
@@ -144,6 +173,33 @@ export default function ConnectorsPage() {
           <span>{actionMessage}</span>
           <button onClick={() => setActionMessage(null)} className="text-slate-400 hover:text-slate-200">✕</button>
         </div>
+      )}
+
+      {/* Mandatory UI States Integration */}
+      {isFetchingConnectors && (
+        <LoadingState
+          title="Loading Telemetry Connectors..."
+          message="Synchronizing connector states from shield-ingest (port 3002)."
+          regionalCell="us-east-1"
+        />
+      )}
+
+      {isStale && !isFetchingConnectors && (
+        <StaleState
+          title="Cached Connector View"
+          message="Displaying cached connector configurations."
+          retryAction={refreshConnectors}
+        />
+      )}
+
+      {state.connectors.some((c) => c.status === "DISABLED") && (
+        <PartialState
+          title="Degraded Telemetry Ingestion"
+          message="One or more connectors are disabled. Telemetry ingestion across these providers is halted."
+          connectorsActive={state.connectors.filter((c) => c.status === "ACTIVE").length}
+          connectorsTotal={state.connectors.length}
+          retryAction={refreshConnectors}
+        />
       )}
 
       {/* Connectors Grid */}

@@ -15,17 +15,46 @@ import {
   Sparkles,
   Layers,
   Search,
+  RefreshCw,
 } from "lucide-react";
+import {
+  LoadingState,
+  PartialState,
+  StaleState,
+  DegradedState,
+  UnavailableState,
+} from "@/components/states/mandatory-ui-states";
 
 export default function AlertsPage() {
   const router = useRouter();
   const [state] = useDemoState();
   const [isPromoting, setIsPromoting] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isStale, setIsStale] = useState(false);
 
   // Fetch live alerts from backend on mount
   useEffect(() => {
-    ZoikoShieldApiClient.getAlerts().catch(() => {/* backend offline — demo state used */});
+    setIsLoading(true);
+    ZoikoShieldApiClient.getAlerts()
+      .catch(() => {
+        setIsStale(true);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
+
+  const refreshAlerts = async () => {
+    setIsLoading(true);
+    try {
+      await ZoikoShieldApiClient.getAlerts();
+      setIsStale(false);
+    } catch {
+      setIsStale(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handlePromote = async (alertId: string, alertTitle: string) => {
     setIsPromoting(alertId);
@@ -76,9 +105,43 @@ export default function AlertsPage() {
         </div>
       </div>
 
+      {/* Mandatory UI States Integration */}
+      {isLoading && (
+        <LoadingState
+          title="Loading Security Alerts..."
+          message="Fetching normalized anomaly detections from regional ingestion cell."
+          regionalCell="us-east-1"
+        />
+      )}
+
+      {isStale && !isLoading && (
+        <StaleState
+          title="Cached Alerts View"
+          message="Showing last verified detections from local state cache."
+          retryAction={refreshAlerts}
+        />
+      )}
+
+      {state.connectors.some((c) => c.status === "DISABLED") && (
+        <PartialState
+          title="Partial Telemetry Ingestion Active"
+          message="Some security connectors are disabled or offline. Detections may be incomplete."
+          connectorsActive={state.connectors.filter((c) => c.status === "ACTIVE").length}
+          connectorsTotal={state.connectors.length}
+          retryAction={refreshAlerts}
+        />
+      )}
+
       {/* Alerts List */}
       <div className="space-y-3">
-        {state.alerts.map((alert, idx) => (
+        {state.alerts.length === 0 && !isLoading ? (
+          <UnavailableState
+            title="No Active Alerts in Queue"
+            message="No active threat detections in queue. Ingest security feeds to trigger detections."
+            retryAction={() => router.push("/ingestion")}
+          />
+        ) : (
+          state.alerts.map((alert, idx) => (
           <Card
             key={alert.id || idx}
             variant="cyber"
@@ -144,7 +207,7 @@ export default function AlertsPage() {
               )}
             </div>
           </Card>
-        ))}
+        )))}
       </div>
     </div>
   );

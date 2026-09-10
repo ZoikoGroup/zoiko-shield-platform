@@ -14,7 +14,10 @@ import {
   RecordDecisionInput,
   ActorAuthorizationContext,
 } from './decision-rights.service';
-import { DecisionState, ResponseAuthorityTier } from './ai-review-envelope.interface';
+import {
+  DecisionState,
+  ResponseAuthorityTier,
+} from './ai-review-envelope.interface';
 import { InternalAuthGuard } from '../internal-client/internal-auth.guard';
 
 export class AcceptDecisionDto {

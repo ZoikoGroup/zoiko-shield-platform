@@ -2,6 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { runVerifier } from './main';
+import { StandaloneMerkleVerifier } from './merkle/standalone-merkle-verifier';
 
 describe('Verifier CLI (Offline Independent Auditor Tool)', () => {
   const testPackageDir = path.resolve(
@@ -24,12 +25,16 @@ describe('Verifier CLI (Offline Independent Auditor Tool)', () => {
       .update(`0000:${contentHash}:1`)
       .digest('hex');
 
+    const merkleVerifier = new StandaloneMerkleVerifier();
+    const merkleTree = merkleVerifier.build([entryHash]);
+    const merkleRoot = merkleTree.root;
+
     const manifestCore = {
       packageId,
       title: 'Test Compliance Package',
       tenantId: 'tenant-test-01',
       environmentId: 'test',
-      merkleRoot: 'test-root-hash',
+      merkleRoot,
     };
     const manifestCoreHash = crypto
       .createHash('sha256')
@@ -40,7 +45,7 @@ describe('Verifier CLI (Offline Independent Auditor Tool)', () => {
       packageId,
       manifestCore,
       manifestCoreHash,
-      merkleRoot: 'test-root-hash',
+      merkleRoot,
       transparencyWitness: { witnessId: 'rekor-01' },
       humanApproval: { approver: 'auditor@test.com' },
     };
@@ -58,6 +63,11 @@ describe('Verifier CLI (Offline Independent Auditor Tool)', () => {
     fs.writeFileSync(
       path.join(testPackageDir, 'evidence', 'ACCESS_MFA.json'),
       JSON.stringify(evidencePayload, null, 2),
+      'utf8',
+    );
+    fs.writeFileSync(
+      path.join(testPackageDir, 'evidence_index.jsonl'),
+      JSON.stringify({ type: 'ACCESS_MFA', contentHash, entryHash }) + '\n',
       'utf8',
     );
   });

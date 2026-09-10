@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
 import crypto from 'crypto';
 import {
   ActionExecutionAdapter,
@@ -24,6 +24,18 @@ export class AwsIamActionAdapter implements ActionExecutionAdapter {
   }
 
   async execute(context: ActionExecutionContext): Promise<ExecutionReceipt> {
+    if (
+      !context.isSimulation &&
+      (context.actionType === 'REVOKE_IAM_SESSION' ||
+        context.actionType === 'ATTACH_DENY_ALL_POLICY' ||
+        context.actionType === 'DEACTIVATE_ACCESS_KEYS' ||
+        context.actionType === 'RESET_IAM_USER_CREDENTIALS')
+    ) {
+      throw new ForbiddenException(
+        'Live R2 automated response is strictly disabled prior to G1 release gate ratification (Master Build Plan §2, §18). Only R0 observation and R1 simulation are permitted.',
+      );
+    }
+
     this.logger.log(
       `Executing AWS IAM action '${context.actionType}' on target '${context.targetRef}' (Simulation: ${context.isSimulation})`,
     );

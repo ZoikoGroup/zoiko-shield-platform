@@ -93,7 +93,8 @@ describe('MicrosoftDefenderProvider & Normalizer', () => {
         id: 'da63765100000000000',
         incidentId: 4410,
         title: 'Suspicious PowerShell command line executed',
-        description: 'PowerShell downloaded an encoded script from an external IP',
+        description:
+          'PowerShell downloaded an encoded script from an external IP',
         severity: 'High',
         status: 'New',
         category: 'Execution',
@@ -101,9 +102,7 @@ describe('MicrosoftDefenderProvider & Normalizer', () => {
         alertCreationTime: '2026-09-08T08:00:00.000Z',
         computerDnsName: 'WIN-SRV-CORP-01',
         machineId: 'mach-9921',
-        loggedOnUsers: [
-          { accountName: 'sec_admin', domainName: 'CORP' },
-        ],
+        loggedOnUsers: [{ accountName: 'sec_admin', domainName: 'CORP' }],
       };
 
       const event = normalizer.normalizeAlert(
@@ -114,13 +113,17 @@ describe('MicrosoftDefenderProvider & Normalizer', () => {
       );
 
       expect(event.metadata.version).toBe('1.1.0');
-      expect(event.metadata.product.name).toBe('Microsoft Defender for Endpoint');
+      expect(event.metadata.product.name).toBe(
+        'Microsoft Defender for Endpoint',
+      );
       expect(event.category_uid).toBe(2);
       expect(event.class_uid).toBe(2001);
       expect(event.severity).toBe('HIGH');
       expect(event.severity_id).toBe(4);
       expect(event.finding.uid).toBe('da63765100000000000');
-      expect(event.finding.title).toBe('Suspicious PowerShell command line executed');
+      expect(event.finding.title).toBe(
+        'Suspicious PowerShell command line executed',
+      );
       expect(event.device?.hostname).toBe('WIN-SRV-CORP-01');
       expect(event.actor?.user?.name).toBe('sec_admin');
       expect(event.actor?.user?.domain).toBe('CORP');

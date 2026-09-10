@@ -85,7 +85,7 @@ export const VerifierTerminal: React.FC<VerifierTerminalProps> = ({
           <Button
             size="sm"
             variant="cyan"
-            onClick={handleRunVerification}
+            onClick={() => handleRunVerification()}
             isLoading={isRunning}
           >
             <Play className="w-3.5 h-3.5" />

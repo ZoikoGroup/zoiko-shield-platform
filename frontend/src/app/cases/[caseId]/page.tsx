@@ -156,7 +156,9 @@ export default function CaseWorkspacePage() {
           <AiSummaryPanel
             caseId={currentCase.id}
             aiSummary={currentCase.aiSummary}
+            aiReviewEnvelope={currentCase.aiReviewEnvelope}
             onGenerateSuccess={() => setState(getInitialDemoState())}
+            onDecisionSuccess={() => setState(getInitialDemoState())}
           />
         )}
 

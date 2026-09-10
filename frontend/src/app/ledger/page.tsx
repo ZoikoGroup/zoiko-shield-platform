@@ -14,7 +14,14 @@ import {
   Layers,
   ShieldCheck,
   Download,
+  RefreshCw,
 } from "lucide-react";
+import {
+  LoadingState,
+  StaleState,
+  PartialState,
+  UnavailableState,
+} from "@/components/states/mandatory-ui-states";
 
 interface MerkleLeafNode {
   index: number;
@@ -198,7 +205,7 @@ export default function MerkleLedgerExplorerPage() {
                 <Button
                   variant="outline"
                   className="w-full py-2 flex items-center justify-center gap-2 border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10 font-bold"
-                  onClick={handleExportAuditPackage}
+                  onClick={() => handleExportAuditPackage()}
                   isLoading={isExporting}
                 >
                   <Download className="w-4 h-4" />
@@ -223,7 +230,7 @@ export default function MerkleLedgerExplorerPage() {
             <Button
               variant="primary"
               className="w-full py-2 flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-500 font-bold"
-              onClick={handleVerifyInclusionProof}
+              onClick={() => handleVerifyInclusionProof()}
               disabled={isVerifying}
             >
               {isVerifying ? (

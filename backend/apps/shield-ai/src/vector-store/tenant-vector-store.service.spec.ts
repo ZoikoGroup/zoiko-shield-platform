@@ -30,7 +30,8 @@ describe('TenantVectorStoreService (§12 Vector Store & Tenant Isolation)', () =
       const upsertRes = await service.upsert(tenantId, namespace, [
         {
           id: 'doc-1',
-          content: 'Password complexity requirements: minimum 14 characters with MFA',
+          content:
+            'Password complexity requirements: minimum 14 characters with MFA',
           embedding: [1, 0, 0],
           classification: 'INTERNAL',
           metadata: { category: 'auth' },
@@ -57,7 +58,9 @@ describe('TenantVectorStoreService (§12 Vector Store & Tenant Isolation)', () =
       expect(searchResults).toHaveLength(1);
       expect(searchResults[0].document.id).toBe('doc-1');
       expect(searchResults[0].score).toBeGreaterThan(0.9);
-      expect(searchResults[0].document.content).toContain('Password complexity');
+      expect(searchResults[0].document.content).toContain(
+        'Password complexity',
+      );
     });
   });
 
@@ -100,7 +103,8 @@ describe('TenantVectorStoreService (§12 Vector Store & Tenant Isolation)', () =
 
       // Verify that NO documents from Tenant B leaked into Tenant A's results
       const leakedDocs = resultsTenantA.filter(
-        (r) => r.document.tenantId === tenantB || r.document.id === 'ir-doc-beta',
+        (r) =>
+          r.document.tenantId === tenantB || r.document.id === 'ir-doc-beta',
       );
       expect(leakedDocs).toHaveLength(0);
 

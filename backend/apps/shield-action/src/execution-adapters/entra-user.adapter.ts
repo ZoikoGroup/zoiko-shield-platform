@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
 import crypto from 'crypto';
 import {
   ActionExecutionAdapter,
@@ -22,6 +22,17 @@ export class EntraUserActionAdapter implements ActionExecutionAdapter {
   }
 
   async execute(context: ActionExecutionContext): Promise<ExecutionReceipt> {
+    if (
+      !context.isSimulation &&
+      (context.actionType === 'DISABLE_USER_ACCOUNT' ||
+        context.actionType === 'REVOKE_USER_SESSIONS' ||
+        context.actionType === 'FORCE_PASSWORD_RESET')
+    ) {
+      throw new ForbiddenException(
+        'Live R2 automated response is strictly disabled prior to G1 release gate ratification (Master Build Plan §2, §18). Only R0 observation and R1 simulation are permitted.',
+      );
+    }
+
     this.logger.log(
       `Executing Entra ID action '${context.actionType}' on target '${context.targetRef}' (Simulation: ${context.isSimulation})`,
     );

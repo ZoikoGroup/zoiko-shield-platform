@@ -50,14 +50,17 @@ describe('CommandCenterBffService (LAB 14 Experience State Contracts)', () => {
     service.setTenantTelemetryState(tenantId, {
       lastTelemetryTime: Date.now() - 5000,
       isDegraded: true,
-      degradedReason: 'AWS GuardDuty ingestion connector rate limited; AI Copilot in deterministic fallback mode',
+      degradedReason:
+        'AWS GuardDuty ingestion connector rate limited; AI Copilot in deterministic fallback mode',
     });
 
     const envelope = await service.getOverview(tenantId, 'corr-003');
 
     expect(envelope.status).toBe('DEGRADED');
     expect(envelope.isPartial).toBe(true);
-    expect(envelope.degradedReason).toContain('AWS GuardDuty ingestion connector');
+    expect(envelope.degradedReason).toContain(
+      'AWS GuardDuty ingestion connector',
+    );
     expect(envelope.data!.securityScore).toBe(78);
   });
 

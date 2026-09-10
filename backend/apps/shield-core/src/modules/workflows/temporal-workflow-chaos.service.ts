@@ -32,7 +32,7 @@ export interface WorkerCrashSimulationReport {
 /**
  * Temporal Durable Workflow Chaos & Resilience Engine
  * Specification: MASTER_BUILD_PLAN.md §4 & §LAB 10 (Deterministic Durable Workflow Engine)
- * 
+ *
  * Verifies:
  * 1. Zero state loss upon unexpected worker process termination.
  * 2. Deterministic event replay with bit-identical state reconstitution.
@@ -55,7 +55,10 @@ export class TemporalWorkflowChaosService {
   >();
 
   // Activity execution ledger to verify side-effect deduplication
-  private readonly activityExecutionLedger = new Map<string, ActivityExecutionRecord>();
+  private readonly activityExecutionLedger = new Map<
+    string,
+    ActivityExecutionRecord
+  >();
 
   // Signal mailbox for buffering signals during worker outage
   private readonly offlineSignalMailbox: HumanDecisionSignal[] = [];
@@ -70,7 +73,11 @@ export class TemporalWorkflowChaosService {
   /**
    * Initializes or records a workflow execution in the durable event journal.
    */
-  recordWorkflowEvent(workflowId: string, eventType: string, payload: any): void {
+  recordWorkflowEvent(
+    workflowId: string,
+    eventType: string,
+    payload: any,
+  ): void {
     if (!this.durableEventStore.has(workflowId)) {
       this.durableEventStore.set(workflowId, []);
     }
@@ -127,7 +134,9 @@ export class TemporalWorkflowChaosService {
    * Recovers the worker process, replays durable history from the event store,
    * verifies determinism, and processes buffered offline signals.
    */
-  recoverWorkerAndReplayHistory(workflowId: string): WorkerCrashSimulationReport {
+  recoverWorkerAndReplayHistory(
+    workflowId: string,
+  ): WorkerCrashSimulationReport {
     this.isWorkerOnline = true;
     this.logger.log(
       `🔄 [WORKER RECOVERED] Restarting worker and replaying durable history for '${workflowId}'...`,
@@ -135,7 +144,9 @@ export class TemporalWorkflowChaosService {
 
     const events = this.durableEventStore.get(workflowId) || [];
     if (events.length === 0) {
-      throw new Error(`Cannot recover workflow '${workflowId}': No durable events found.`);
+      throw new Error(
+        `Cannot recover workflow '${workflowId}': No durable events found.`,
+      );
     }
 
     // Step 1: Calculate pre-crash history digest

@@ -86,4 +86,3 @@ describe('ContinuousControlEvaluatorService', () => {
     expect(doraEval?.status).toBe('GAP_DETECTED');
   });
 });
-
