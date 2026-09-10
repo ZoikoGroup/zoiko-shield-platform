@@ -51,9 +51,7 @@ export interface FrameworkAssessmentReport {
 export class ContinuousControlEvaluatorService {
   private readonly logger = new Logger(ContinuousControlEvaluatorService.name);
 
-  constructor(
-    private readonly controlsSeeder: RegulatoryControlsSeeder,
-  ) {}
+  constructor(private readonly controlsSeeder: RegulatoryControlsSeeder) {}
 
   /**
    * Evaluates all active regulatory framework controls against current environment telemetry snapshot.

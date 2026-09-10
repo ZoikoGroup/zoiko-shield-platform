@@ -70,12 +70,13 @@ export class MicrosoftDefenderNormalizerService {
         status: payload.status,
         types: [payload.category || 'Endpoint Alert'],
       },
-      device: payload.machineId || payload.computerDnsName
-        ? {
-            uid: payload.machineId,
-            hostname: payload.computerDnsName,
-          }
-        : undefined,
+      device:
+        payload.machineId || payload.computerDnsName
+          ? {
+              uid: payload.machineId,
+              hostname: payload.computerDnsName,
+            }
+          : undefined,
       actor: primaryUser
         ? {
             user: {

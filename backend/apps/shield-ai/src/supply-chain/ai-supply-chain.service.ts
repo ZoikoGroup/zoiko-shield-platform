@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 
 export interface ProviderRouteConfig {
   providerKey: string; // 'anthropic' | 'openai' | 'aws-bedrock' | 'google-vertex' | 'self-hosted'
@@ -16,7 +12,8 @@ export interface ProviderRouteConfig {
 
 export interface UseCaseFallbackConfig {
   useCaseKey: string;
-  criticalityTier: 'TIER_1_MISSION_CRITICAL' | 'TIER_2_OPERATIONAL' | 'TIER_3_NON_CRITICAL';
+  criticalityTier:
+    'TIER_1_MISSION_CRITICAL' | 'TIER_2_OPERATIONAL' | 'TIER_3_NON_CRITICAL';
   primaryProvider: string;
   fallbackProvider: string;
   fallbackModel: string;
@@ -27,9 +24,13 @@ export interface UseCaseFallbackConfig {
 export interface ConcentrationRiskReport {
   generatedAt: string;
   totalProviders: number;
-  providerDistribution: Record<string, { requestCount: number; percentage: number }>;
+  providerDistribution: Record<
+    string,
+    { requestCount: number; percentage: number }
+  >;
   hhiScore: number; // Herfindahl-Hirschman Index (0 - 10,000)
-  concentrationRiskLevel: 'LOW_DIVERSIFIED' | 'MODERATE' | 'HIGH_CONCENTRATION_RISK';
+  concentrationRiskLevel:
+    'LOW_DIVERSIFIED' | 'MODERATE' | 'HIGH_CONCENTRATION_RISK';
   missingFallbackUseCases: string[];
   dataSovereigntyWarnings: string[];
 }
@@ -105,7 +106,9 @@ export class AiSupplyChainService {
   /**
    * Assess supply chain concentration risk and fallback readiness
    */
-  assessConcentrationRisk(targetZone?: 'US' | 'EU' | 'UK'): ConcentrationRiskReport {
+  assessConcentrationRisk(
+    targetZone?: 'US' | 'EU' | 'UK',
+  ): ConcentrationRiskReport {
     let totalInferences = 0;
     for (const count of this.inferenceCounts.values()) {
       totalInferences += count;
@@ -142,7 +145,8 @@ export class AiSupplyChainService {
 
     const hhiScore = Math.round(sumSquaredShares);
 
-    let concentrationRiskLevel: 'LOW_DIVERSIFIED' | 'MODERATE' | 'HIGH_CONCENTRATION_RISK' =
+    let concentrationRiskLevel:
+      'LOW_DIVERSIFIED' | 'MODERATE' | 'HIGH_CONCENTRATION_RISK' =
       'LOW_DIVERSIFIED';
 
     if (hhiScore >= 2500) {
@@ -156,7 +160,9 @@ export class AiSupplyChainService {
     for (const fb of this.useCaseFallbacks.values()) {
       if (
         fb.criticalityTier === 'TIER_1_MISSION_CRITICAL' &&
-        (!fb.fallbackReady || !fb.fallbackProvider || fb.primaryProvider === fb.fallbackProvider)
+        (!fb.fallbackReady ||
+          !fb.fallbackProvider ||
+          fb.primaryProvider === fb.fallbackProvider)
       ) {
         missingFallbackUseCases.push(fb.useCaseKey);
       }
@@ -166,7 +172,10 @@ export class AiSupplyChainService {
     const dataSovereigntyWarnings: string[] = [];
     if (targetZone) {
       for (const p of this.providers.values()) {
-        if (p.dataSovereigntyZone !== targetZone && p.dataSovereigntyZone !== 'GLOBAL') {
+        if (
+          p.dataSovereigntyZone !== targetZone &&
+          p.dataSovereigntyZone !== 'GLOBAL'
+        ) {
           dataSovereigntyWarnings.push(
             `Provider [${p.providerKey}] operates in zone [${p.dataSovereigntyZone}], which does not match required zone [${targetZone}]`,
           );

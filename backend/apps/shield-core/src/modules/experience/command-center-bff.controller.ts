@@ -1,10 +1,4 @@
-import {
-  Controller,
-  Get,
-  Param,
-  Headers,
-  UseGuards,
-} from '@nestjs/common';
+import { Controller, Get, Param, Headers, UseGuards } from '@nestjs/common';
 import { CommandCenterBffService } from './command-center-bff.service';
 import { InternalAuthGuard } from '../../internal-client/internal-auth.guard';
 import {

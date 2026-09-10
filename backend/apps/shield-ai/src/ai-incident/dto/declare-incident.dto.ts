@@ -1,8 +1,5 @@
 export type AiIncidentSeverity =
-  | 'SEV1_CRITICAL'
-  | 'SEV2_HIGH'
-  | 'SEV3_MEDIUM'
-  | 'SEV4_LOW';
+  'SEV1_CRITICAL' | 'SEV2_HIGH' | 'SEV3_MEDIUM' | 'SEV4_LOW';
 
 export type AiIncidentStatus =
   | 'DECLARED'
@@ -33,13 +30,25 @@ export class DeclareAiIncidentDto {
 
 export class ContainIncidentDto {
   reason!: string;
-  killSwitchScope!: 'GLOBAL' | 'TENANT' | 'FEATURE' | 'PROMPT' | 'MODEL_ROUTE' | 'PROVIDER' | 'AGENT' | 'TOOL';
+  killSwitchScope!:
+    | 'GLOBAL'
+    | 'TENANT'
+    | 'FEATURE'
+    | 'PROMPT'
+    | 'MODEL_ROUTE'
+    | 'PROVIDER'
+    | 'AGENT'
+    | 'TOOL';
   targetId!: string;
   containedBy!: string;
 }
 
 export class FallbackIncidentDto {
-  fallbackStrategy!: 'DETERMINISTIC_RULES' | 'SECONDARY_MODEL' | 'CACHED_RESPONSE' | 'DEGRADED_PASS_THROUGH';
+  fallbackStrategy!:
+    | 'DETERMINISTIC_RULES'
+    | 'SECONDARY_MODEL'
+    | 'CACHED_RESPONSE'
+    | 'DEGRADED_PASS_THROUGH';
   secondaryModel?: string;
   fallbackNotes?: string;
 }

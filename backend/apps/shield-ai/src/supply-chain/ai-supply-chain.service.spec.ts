@@ -65,8 +65,12 @@ describe('AiSupplyChainService (§24 AI Supply Chain & Concentration Risk)', () 
       });
 
       const report = service.assessConcentrationRisk();
-      expect(report.missingFallbackUseCases).toContain('TIER_1_SOC_ALERT_TRIAGE');
-      expect(report.missingFallbackUseCases).not.toContain('TIER_1_FIREWALL_VALIDATION');
+      expect(report.missingFallbackUseCases).toContain(
+        'TIER_1_SOC_ALERT_TRIAGE',
+      );
+      expect(report.missingFallbackUseCases).not.toContain(
+        'TIER_1_FIREWALL_VALIDATION',
+      );
     });
   });
 
@@ -75,8 +79,8 @@ describe('AiSupplyChainService (§24 AI Supply Chain & Concentration Risk)', () 
       const report = service.assessConcentrationRisk('EU');
 
       expect(report.dataSovereigntyWarnings.length).toBeGreaterThan(0);
-      const hasUsWarning = report.dataSovereigntyWarnings.some((w) =>
-        w.includes('anthropic') && w.includes('US'),
+      const hasUsWarning = report.dataSovereigntyWarnings.some(
+        (w) => w.includes('anthropic') && w.includes('US'),
       );
       expect(hasUsWarning).toBe(true);
     });

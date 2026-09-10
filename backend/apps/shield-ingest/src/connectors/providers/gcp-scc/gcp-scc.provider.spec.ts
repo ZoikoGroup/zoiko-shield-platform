@@ -54,7 +54,9 @@ describe('GcpSccProvider & Normalizer', () => {
       });
 
       expect(result.status).toBe('FAILED');
-      expect(result.error).toContain('serviceAccountKey or OAuth credentials mandatory');
+      expect(result.error).toContain(
+        'serviceAccountKey or OAuth credentials mandatory',
+      );
     });
 
     it('successfully connects when serviceAccountKey provided', async () => {
@@ -87,7 +89,8 @@ describe('GcpSccProvider & Normalizer', () => {
       const payload: GcpSccFindingPayload = {
         name: 'organizations/11223344/sources/556677/findings/f-99881',
         parent: 'organizations/11223344/sources/556677',
-        resourceName: '//compute.googleapis.com/projects/my-gcp-proj/zones/us-central1-a/instances/prod-vm-01',
+        resourceName:
+          '//compute.googleapis.com/projects/my-gcp-proj/zones/us-central1-a/instances/prod-vm-01',
         state: 'ACTIVE',
         category: 'PERSISTENCE: IAM_ADMIN_ROLE_ASSIGNED',
         severity: 'CRITICAL',
@@ -104,7 +107,9 @@ describe('GcpSccProvider & Normalizer', () => {
       );
 
       expect(event.metadata.version).toBe('1.1.0');
-      expect(event.metadata.product.name).toBe('Google Cloud Security Command Center');
+      expect(event.metadata.product.name).toBe(
+        'Google Cloud Security Command Center',
+      );
       expect(event.category_uid).toBe(2);
       expect(event.class_uid).toBe(2001);
       expect(event.severity).toBe('CRITICAL');

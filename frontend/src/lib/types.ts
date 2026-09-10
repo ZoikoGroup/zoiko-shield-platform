@@ -383,6 +383,19 @@ export interface ComplianceDriftState {
   }>;
 }
 
+// ----------------------------------------------------------------------------
+// WebAuthn / Passkeys (identity-adapter auth.controller passkeys/* routes)
+// ----------------------------------------------------------------------------
+
+export interface RegisteredPasskey {
+  id: string;
+  credentialId: string;
+  label: string | null;
+  transports: string | null;
+  createdAt: string;
+  lastUsedAt: string | null;
+}
+
 export interface ExperienceStateEnvelope<T> {
   status:
     | 'LOADING'

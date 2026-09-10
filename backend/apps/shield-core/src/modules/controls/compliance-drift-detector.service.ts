@@ -55,7 +55,8 @@ export class ComplianceDriftDetectorService {
   ): ComplianceDriftRecord {
     const slaThreshold = options?.targetSlaThreshold ?? 90.0;
     const key = `${report.tenantId}:${report.environmentId}`;
-    const baseline = this.frameworkBaselines.get(key) ?? report.overallComplianceScore;
+    const baseline =
+      this.frameworkBaselines.get(key) ?? report.overallComplianceScore;
 
     // Record baseline if not set
     if (!this.frameworkBaselines.has(key)) {
@@ -63,7 +64,8 @@ export class ComplianceDriftDetectorService {
     }
 
     const currentScore = report.overallComplianceScore;
-    const driftPercentage = baseline > 0 ? ((baseline - currentScore) / baseline) * 100 : 0;
+    const driftPercentage =
+      baseline > 0 ? ((baseline - currentScore) / baseline) * 100 : 0;
 
     // Detect degraded controls
     const driftedControls = report.evaluations
@@ -72,7 +74,9 @@ export class ComplianceDriftDetectorService {
         controlCode: e.controlCode,
         previousStatus: 'COMPLIANT',
         currentStatus: e.status,
-        reason: e.details?.reason || 'Non-compliance detected against current telemetry',
+        reason:
+          e.details?.reason ||
+          'Non-compliance detected against current telemetry',
       }));
 
     // Detect stale evidence
@@ -89,13 +93,22 @@ export class ComplianceDriftDetectorService {
 
     // Determine severity
     let severity: 'NORMAL' | 'WARNING' | 'CRITICAL_SLA_BREACH' = 'NORMAL';
-    if (currentScore < slaThreshold || driftedControls.length >= 3 || staleEvidenceControls.length >= 2) {
+    if (
+      currentScore < slaThreshold ||
+      driftedControls.length >= 3 ||
+      staleEvidenceControls.length >= 2
+    ) {
       severity = 'CRITICAL_SLA_BREACH';
-    } else if (currentScore < baseline || driftedControls.length > 0 || staleEvidenceControls.length > 0) {
+    } else if (
+      currentScore < baseline ||
+      driftedControls.length > 0 ||
+      staleEvidenceControls.length > 0
+    ) {
       severity = 'WARNING';
     }
 
-    let recommendation = 'Posture is compliant and aligned with established SLA thresholds.';
+    let recommendation =
+      'Posture is compliant and aligned with established SLA thresholds.';
     if (severity === 'CRITICAL_SLA_BREACH') {
       recommendation = `Immediate remediation required: Compliance score (${currentScore}%) dropped below contractual threshold (${slaThreshold}%). Prioritize: ${driftedControls.map((d) => d.controlCode).join(', ')}`;
     } else if (severity === 'WARNING') {
@@ -111,7 +124,10 @@ export class ComplianceDriftDetectorService {
       staleEvidenceControls,
       evaluatedAt: report.assessedAt,
     });
-    const evidenceDigest = crypto.createHash('sha256').update(evidencePayload).digest('hex');
+    const evidenceDigest = crypto
+      .createHash('sha256')
+      .update(evidencePayload)
+      .digest('hex');
 
     const driftRecord: ComplianceDriftRecord = {
       driftId,
@@ -152,7 +168,11 @@ export class ComplianceDriftDetectorService {
   /**
    * Resets tenant baseline for periodic re-certifications.
    */
-  setBaseline(tenantId: string, environmentId: string, baselineScore: number): void {
+  setBaseline(
+    tenantId: string,
+    environmentId: string,
+    baselineScore: number,
+  ): void {
     this.frameworkBaselines.set(`${tenantId}:${environmentId}`, baselineScore);
   }
 

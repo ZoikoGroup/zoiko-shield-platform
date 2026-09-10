@@ -50,7 +50,8 @@ export class SafeDegradationService {
         title: 'Adversarial Prompt Injection Intercepted',
         category: 'PROMPT_INJECTION_EXPLOIT',
         severity: 'SEV1_CRITICAL',
-        description: detail || 'Malicious prompt injection pattern blocked at gateway.',
+        description:
+          detail || 'Malicious prompt injection pattern blocked at gateway.',
         autoContain: true,
       });
     } else if (state === 'QUALITY_DRIFT') {
@@ -58,7 +59,9 @@ export class SafeDegradationService {
         title: 'AI Output Quality or Confidence Drift Detected',
         category: 'DRIFT_ANOMALY',
         severity: 'SEV2_HIGH',
-        description: detail || 'Inference metrics drifted beyond acceptable tolerance threshold.',
+        description:
+          detail ||
+          'Inference metrics drifted beyond acceptable tolerance threshold.',
       });
     }
   }

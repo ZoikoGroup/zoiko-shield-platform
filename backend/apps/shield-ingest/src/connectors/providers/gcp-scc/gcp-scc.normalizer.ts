@@ -1,9 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import crypto from 'crypto';
-import {
-  GcpSccFindingPayload,
-  OcsfCloudFindingEvent,
-} from './gcp-scc.types';
+import { GcpSccFindingPayload, OcsfCloudFindingEvent } from './gcp-scc.types';
 
 @Injectable()
 export class GcpSccNormalizerService {

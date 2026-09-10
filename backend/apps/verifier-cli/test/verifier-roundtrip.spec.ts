@@ -27,8 +27,14 @@ describe('Verifier CLI <-> Shield Anchor Cryptographic Round-Trip Test (TUT-05)'
     });
 
     it('produces identical domain-separated branch hashes (0x01 prefix)', () => {
-      const left = Buffer.from('1111111111111111111111111111111111111111111111111111111111111111', 'hex');
-      const right = Buffer.from('2222222222222222222222222222222222222222222222222222222222222222', 'hex');
+      const left = Buffer.from(
+        '1111111111111111111111111111111111111111111111111111111111111111',
+        'hex',
+      );
+      const right = Buffer.from(
+        '2222222222222222222222222222222222222222222222222222222222222222',
+        'hex',
+      );
 
       const anchorBranch = anchorMerkle.hashBranch(left, right);
       const standaloneBranch = standaloneVerifier.hashBranch(left, right);
@@ -107,7 +113,8 @@ describe('Verifier CLI <-> Shield Anchor Cryptographic Round-Trip Test (TUT-05)'
         i === 0
           ? {
               ...step,
-              siblingHash: 'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
+              siblingHash:
+                'ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff',
             }
           : step,
       );
