@@ -8,6 +8,7 @@ import { JitElevationRequest } from './entities/jit-elevation-request.entity';
 import { AuthorizationService } from './authorization.service';
 import { JitElevationService } from './jit-elevation.service';
 import { JitSessionEnforcerService } from './jit-session-enforcer.service';
+import { JitSessionWitnessService } from './jit-session-witness.service';
 import { AuthorizationController } from './authorization.controller';
 import { PermissionsGuard } from './guards/permissions.guard';
 import { PlatformPermissionsGuard } from './guards/platform-permissions.guard';
@@ -36,6 +37,7 @@ import { CedarPolicyEvaluatorService } from './cedar-policy-evaluator.service';
     AuthorizationService,
     JitElevationService,
     JitSessionEnforcerService,
+    JitSessionWitnessService,
     CedarPolicyEvaluatorService,
     AuthorizationDecisionService,
     PermissionsGuard,
@@ -45,6 +47,7 @@ import { CedarPolicyEvaluatorService } from './cedar-policy-evaluator.service';
     AuthorizationService,
     JitElevationService,
     JitSessionEnforcerService,
+    JitSessionWitnessService,
     CedarPolicyEvaluatorService,
     AuthorizationDecisionService,
     PermissionsGuard,

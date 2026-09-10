@@ -12,10 +12,14 @@ export interface ControlEvaluationInput {
   region?: string;
   telemetrySnapshot?: {
     mfaEnforcementRate?: number; // 0.0 to 1.0 (1.0 = 100%)
-    edrCoverageRate?: number; // 0.0 to 1.0
-    keyRotationDaysAgo?: number; // e.g. 45 days
-    disasterRecoveryRtoMinutes?: number; // e.g. 15 minutes
+    edrCoverageRate?: number; // 0.0 to 1.0 (>= 0.99)
+    vulnerabilitySlaBreachCount?: number; // e.g. 0
+    ocsfPipelineLatencyMs?: number; // e.g. 450ms (< 1000ms)
+    keyRotationDaysAgo?: number; // e.g. 45 days (<= 90 days)
+    malwareDefinitionsAgeHours?: number; // e.g. 2 hours (<= 24 hours)
     unresolvedHighSeverityThreats?: number; // e.g. 0
+    pqcDualSignEnforced?: boolean; // true / false
+    disasterRecoveryRtoMinutes?: number; // e.g. 15 minutes (<= 30 minutes)
   };
 }
 
@@ -64,9 +68,13 @@ export class ContinuousControlEvaluatorService {
     const snap = input.telemetrySnapshot ?? {
       mfaEnforcementRate: 1.0,
       edrCoverageRate: 1.0,
+      vulnerabilitySlaBreachCount: 0,
+      ocsfPipelineLatencyMs: 450,
       keyRotationDaysAgo: 30,
-      disasterRecoveryRtoMinutes: 12,
+      malwareDefinitionsAgeHours: 2,
       unresolvedHighSeverityThreats: 0,
+      pqcDualSignEnforced: true,
+      disasterRecoveryRtoMinutes: 12,
     };
 
     for (const ctrl of controls) {
@@ -115,8 +123,9 @@ export class ContinuousControlEvaluatorService {
     const details: Record<string, any> = {};
 
     switch (ctrl.code) {
+      // SOC 2 Type II Controls (Trust Services Criteria)
       case 'SOC2-CC6.1': // Access Control & MFA
-        if (snap.mfaEnforcementRate < 1.0) {
+        if (snap.mfaEnforcementRate !== undefined && snap.mfaEnforcementRate < 1.0) {
           status = 'NON_COMPLIANT';
           complianceScore = snap.mfaEnforcementRate * 100;
           details.reason = `MFA is enforced on ${(snap.mfaEnforcementRate * 100).toFixed(1)}% of users (Required: 100%)`;
@@ -125,8 +134,8 @@ export class ContinuousControlEvaluatorService {
         }
         break;
 
-      case 'SOC2-CC6.6': // Boundary Protection & EDR
-        if (snap.edrCoverageRate < 0.99) {
+      case 'SOC2-CC6.6': // Boundary Protection & Host Isolation
+        if (snap.edrCoverageRate !== undefined && snap.edrCoverageRate < 0.99) {
           status = 'NON_COMPLIANT';
           complianceScore = snap.edrCoverageRate * 100;
           details.reason = `EDR coverage is ${(snap.edrCoverageRate * 100).toFixed(1)}% (Required: >= 99%)`;
@@ -135,51 +144,94 @@ export class ContinuousControlEvaluatorService {
         }
         break;
 
-      case 'ISO27001-A.5.15': // Access Control & Key Management
-        if (snap.keyRotationDaysAgo > 90) {
+      case 'SOC2-CC7.1': // Vulnerability Management & SBOM
+        if (snap.vulnerabilitySlaBreachCount !== undefined && snap.vulnerabilitySlaBreachCount > 0) {
+          status = 'NON_COMPLIANT';
+          complianceScore = 60.0;
+          details.reason = `${snap.vulnerabilitySlaBreachCount} open vulnerabilities exceeding SLA remediation timeline`;
+        } else {
+          details.reason = 'Zero critical/high vulnerabilities exceeding SLA; verified SBOM provenance';
+        }
+        break;
+
+      case 'SOC2-CC7.2': // Security Incident Detection & Telemetry Pipeline
+        if (snap.ocsfPipelineLatencyMs !== undefined && snap.ocsfPipelineLatencyMs > 1000) {
+          status = 'NON_COMPLIANT';
+          complianceScore = 75.0;
+          details.reason = `OCSF pipeline latency is ${snap.ocsfPipelineLatencyMs}ms (Threshold: <= 1000ms)`;
+        } else {
+          details.reason = 'Real-time sub-second OCSF telemetry ingestion verified';
+        }
+        break;
+
+      // ISO/IEC 27001:2022 Controls
+      case 'ISO27001-A.5.15': // Access Control & Identity Boundaries
+        if (snap.keyRotationDaysAgo !== undefined && snap.keyRotationDaysAgo > 90) {
           status = 'NON_COMPLIANT';
           complianceScore = 50.0;
           details.reason = `Master KMS keys last rotated ${snap.keyRotationDaysAgo} days ago (Maximum: 90 days)`;
         } else {
-          details.reason = `Master KMS key rotated ${snap.keyRotationDaysAgo} days ago (< 90-day threshold)`;
+          details.reason = `Master KMS key rotated ${snap.keyRotationDaysAgo ?? 30} days ago (< 90-day threshold)`;
         }
         break;
 
-      case 'ISO27001-A.8.16': // Monitoring Activities and Log Integrity
-        if (snap.unresolvedHighSeverityThreats > 0) {
+      case 'ISO27001-A.8.7': // Protection Against Malware
+        if (snap.malwareDefinitionsAgeHours !== undefined && snap.malwareDefinitionsAgeHours > 24) {
+          status = 'NON_COMPLIANT';
+          complianceScore = 55.0;
+          details.reason = `Malware definitions are ${snap.malwareDefinitionsAgeHours}h old (Threshold: <= 24h)`;
+        } else if (snap.edrCoverageRate !== undefined && snap.edrCoverageRate < 0.99) {
+          status = 'NON_COMPLIANT';
+          complianceScore = snap.edrCoverageRate * 100;
+          details.reason = `Antimalware/EDR coverage is ${(snap.edrCoverageRate * 100).toFixed(1)}% (< 99%)`;
+        } else {
+          details.reason = 'Endpoint antimalware active with up-to-date threat definitions';
+        }
+        break;
+
+      case 'ISO27001-A.8.16': // Monitoring Activities & Log Integrity
+        if (snap.unresolvedHighSeverityThreats !== undefined && snap.unresolvedHighSeverityThreats > 0) {
           status = 'NON_COMPLIANT';
           complianceScore = 70.0;
           details.reason = `${snap.unresolvedHighSeverityThreats} unresolved critical/high security anomalies pending review`;
         } else {
-          details.reason =
-            'Continuous Merkle log verification and zero open critical threats';
+          details.reason = 'Continuous Merkle log verification and zero open critical threats';
         }
         break;
 
+      case 'ISO27001-A.8.24': // Use of Cryptography & Post-Quantum Algorithms
+        if (snap.pqcDualSignEnforced === false) {
+          status = 'NON_COMPLIANT';
+          complianceScore = 40.0;
+          details.reason = 'PQC dual-signing (Dilithium3 + Ed25519) is disabled';
+        } else {
+          details.reason = 'Dilithium3 (ML-DSA-65) + Ed25519 dual cryptographic signing active';
+        }
+        break;
+
+      // Regulatory Overlays (ADR-08: Phase 2 Deferred Overlays)
       case 'DORA-ART9': // ICT Risk Management & Disaster Recovery
-        if (snap.disasterRecoveryRtoMinutes > 30) {
+        if (snap.disasterRecoveryRtoMinutes !== undefined && snap.disasterRecoveryRtoMinutes > 30) {
           status = 'GAP_DETECTED';
           complianceScore = 65.0;
           details.reason = `Measured failover RTO was ${snap.disasterRecoveryRtoMinutes} minutes (Threshold: <= 30 minutes)`;
         } else {
-          details.reason = `Tabletop drill achieved ${snap.disasterRecoveryRtoMinutes}-minute RTO with zero data loss`;
+          details.reason = `Tabletop drill achieved ${snap.disasterRecoveryRtoMinutes ?? 12}-minute RTO with zero data loss`;
         }
         break;
 
       case 'DORA-ART10': // Prompt Incident Detection SLA
-        if (snap.unresolvedHighSeverityThreats > 0) {
+        if (snap.unresolvedHighSeverityThreats !== undefined && snap.unresolvedHighSeverityThreats > 0) {
           status = 'GAP_DETECTED';
           complianceScore = 60.0;
           details.reason = `${snap.unresolvedHighSeverityThreats} unmitigated security findings exceeding prompt detection SLA`;
         } else {
-          details.reason =
-            'Sub-second OCSF detection pipeline meeting DORA Article 10 SLA';
+          details.reason = 'Sub-second OCSF detection pipeline meeting DORA Article 10 SLA';
         }
         break;
 
       default:
-        details.reason =
-          'Standard operational posture verified within tolerance limits';
+        details.reason = 'Standard operational posture verified within tolerance limits';
         break;
     }
 

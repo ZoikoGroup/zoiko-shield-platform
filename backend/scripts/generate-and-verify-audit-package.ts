@@ -46,26 +46,40 @@ async function main() {
   const soc2ContentHash = crypto.createHash('sha256').update(JSON.stringify(soc2Evidence)).digest('hex');
   writeFileSync(join(outDir, 'evidence', 'soc2_access.json'), JSON.stringify(soc2Evidence, null, 2), 'utf8');
 
-  // Evidence Item 2: ISO 27001 Encryption
+  // Evidence Item 2: ISO 27001:2022 Cryptography & PQC
   const isoEvidence = {
-    controlId: 'ISO-A.10.1.1',
+    controlId: 'ISO27001-A.8.24',
     framework: 'ISO/IEC 27001:2022',
     tenantId,
     timestamp: new Date().toISOString(),
     kmsKeyRotationDays: 30,
-    aes256GcmEnforced: true,
+    pqcDualSignEnforced: true,
+    algorithms: ['ML-DSA-65 (Dilithium3)', 'Ed25519'],
     status: 'COMPLIANT',
   };
   const isoContentHash = crypto.createHash('sha256').update(JSON.stringify(isoEvidence)).digest('hex');
-  writeFileSync(join(outDir, 'evidence', 'iso_encryption.json'), JSON.stringify(isoEvidence, null, 2), 'utf8');
+  writeFileSync(join(outDir, 'evidence', 'iso_cryptography.json'), JSON.stringify(isoEvidence, null, 2), 'utf8');
 
-  // Evidence Item 3: DORA Operational Resilience
-  const doraEvidence = {
-    controlId: 'DORA-ART-11',
-    framework: 'DORA (EU Regulation 2022/2554)',
+  // Evidence Item 3: ISO 27001:2022 Monitoring Activities & Log Integrity
+  const isoLogEvidence = {
+    controlId: 'ISO27001-A.8.16',
+    framework: 'ISO/IEC 27001:2022',
     tenantId,
     timestamp: new Date().toISOString(),
-    disasterRecoveryRtoMinutes: 14,
+    merkleLogAnchoringEnforced: true,
+    unresolvedHighSeverityThreats: 0,
+    status: 'COMPLIANT',
+  };
+  const isoLogContentHash = crypto.createHash('sha256').update(JSON.stringify(isoLogEvidence)).digest('hex');
+  writeFileSync(join(outDir, 'evidence', 'iso_log_integrity.json'), JSON.stringify(isoLogEvidence, null, 2), 'utf8');
+
+  // Evidence Item 4: DORA Operational Resilience (ADR-08: Phase 2 Deferred Overlay)
+  const doraEvidence = {
+    controlId: 'DORA-ART9',
+    framework: 'DORA (EU Regulation 2022/2554 [derived])',
+    tenantId,
+    timestamp: new Date().toISOString(),
+    disasterRecoveryRtoMinutes: 12,
     multiRegionActiveActive: true,
     status: 'COMPLIANT',
   };
@@ -75,7 +89,8 @@ async function main() {
   // Build Evidence Index
   const entries = [
     { type: 'soc2_access', contentHash: soc2ContentHash, entryHash: crypto.createHash('sha256').update(`soc2_access:${soc2ContentHash}`).digest('hex') },
-    { type: 'iso_encryption', contentHash: isoContentHash, entryHash: crypto.createHash('sha256').update(`iso_encryption:${isoContentHash}`).digest('hex') },
+    { type: 'iso_cryptography', contentHash: isoContentHash, entryHash: crypto.createHash('sha256').update(`iso_cryptography:${isoContentHash}`).digest('hex') },
+    { type: 'iso_log_integrity', contentHash: isoLogContentHash, entryHash: crypto.createHash('sha256').update(`iso_log_integrity:${isoLogContentHash}`).digest('hex') },
     { type: 'dora_resilience', contentHash: doraContentHash, entryHash: crypto.createHash('sha256').update(`dora_resilience:${doraContentHash}`).digest('hex') },
   ];
 

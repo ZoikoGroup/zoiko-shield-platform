@@ -31,13 +31,13 @@ export class TenantMembership {
   source: string;
 
   @Column({ type: 'timestamp with time zone', nullable: true })
-  expiresAt: Date | null;
-
-  @Column({ type: 'text', nullable: true })
-  elevationPurpose: string | null;
+  expiresAt?: Date | null;
 
   @Column({ type: 'varchar', nullable: true })
-  elevationApprovedBy: string | null;
+  elevationPurpose?: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  elevationApprovedBy?: string | null;
 
   @ManyToMany(() => Role)
   @JoinTable({
@@ -51,3 +51,4 @@ export class TenantMembership {
   @CreateDateColumn()
   joinedAt: Date;
 }
+

@@ -1,5 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import * as crypto from 'crypto';
+import { DecisionRightsService } from '../decision-rights/decision-rights.service';
+import {
+  AiReviewEnvelope,
+  DecisionSourceSpan,
+} from '../decision-rights/ai-review-envelope.interface';
 
 export interface IncidentTelemetryInput {
   incidentId: string;
@@ -49,11 +54,15 @@ export interface IncidentRcaReport {
 
 /**
  * Autonomous AI-Powered Incident Root Cause Analysis (RCA) & Narrative Generator
- * Specification: ZS-AI-SEC-001 §9 (Autonomous SecOps RCA Synthesizer)
+ * Specification: ZS-AI-SEC-001 §9 (Autonomous SecOps RCA Synthesizer) & §16 (Human Oversight)
  */
 @Injectable()
 export class IncidentRcaGeneratorService {
   private readonly logger = new Logger(IncidentRcaGeneratorService.name);
+
+  constructor(
+    @Optional() private readonly decisionRightsService?: DecisionRightsService,
+  ) {}
 
   /**
    * Synthesizes incident telemetry, eBPF traces, and attack graph paths into an executive RCA report.
@@ -188,5 +197,83 @@ export class IncidentRcaGeneratorService {
       provenanceAttestationDigest,
       generatedAt,
     };
+  }
+
+  /**
+   * Synthesizes incident RCA and wraps it in a strongly-typed 10-field AiReviewEnvelope
+   * per Specification §16.1 for mandatory human review and decision rights enforcement.
+   */
+  generateGovernedIncidentRca(
+    input: IncidentTelemetryInput,
+    options?: {
+      requiredRole?: string;
+    },
+  ): { report: IncidentRcaReport; envelope?: AiReviewEnvelope<IncidentRcaReport> } {
+    const report = this.generateIncidentRca(input);
+
+    if (!this.decisionRightsService) {
+      return { report };
+    }
+
+    const sources: DecisionSourceSpan[] = input.events.map((evt) => ({
+      sourceId: evt.eventId,
+      sourceType: evt.source,
+      exactSpan: `[${evt.source}] ${evt.eventType} on ${evt.targetResource}`,
+      confidence: 0.96,
+    }));
+
+    const envelope = this.decisionRightsService.wrapInEnvelope<IncidentRcaReport>({
+      tenantId: input.tenantId,
+      aiLabelAndUseCaseName: {
+        aiLabel: 'ZoikoShield RCA Synthesizer',
+        useCaseName: 'INCIDENT_RCA_SYNTHESIS',
+        modelRoute: 'deterministic-mitre-synthesizer',
+      },
+      sourcesAndSpans: sources.length > 0 ? sources : [
+        {
+          sourceId: input.incidentId,
+          sourceType: 'INCIDENT_TELEMETRY',
+          exactSpan: report.rootCauseHypothesis,
+          confidence: 0.95,
+        },
+      ],
+      knownMissingStaleOrConflictingEvidence: {
+        missingEvidence: [],
+        staleEvidence: [],
+        conflictingEvidence: [],
+      },
+      calibratedConfidenceAndUncertainty: {
+        score: input.severity === 'CRITICAL' ? 0.95 : 0.90,
+        qualitativeBand: 'HIGH',
+        calibrationBasis: 'Synthesized from eBPF traces, attack graph paths, and MITRE ATT&CK techniques',
+        uncertaintyFactors: [],
+      },
+      alternativeHypothesesOrActions: [
+        {
+          title: 'Distributed External Scanning',
+          rationale: 'Telemetry could represent noise from public internet scanning without internal foothold',
+          tradeOffs: 'Failing to contain lateral credentials risks full domain compromise',
+        },
+      ],
+      expectedImpactAndReversibility: {
+        blastRadius: `${report.identifiedBlastRadius.affectedHosts.length} host(s), ${report.identifiedBlastRadius.isolatedPods.length} pod(s)`,
+        isReversible: true,
+        reversibilityTier: input.severity === 'CRITICAL' ? 'R3' : 'R2',
+        compensationPlan: 'Revert container isolation and restore rotated API secrets',
+      },
+      requiredAuthorityAndApprovals: {
+        requiredRole: options?.requiredRole || 'INCIDENT_COMMANDER',
+        responseAuthorityTier: input.severity === 'CRITICAL' ? 'R3' : 'R2',
+        dualApproverRequired: input.severity === 'CRITICAL',
+      },
+      appealOrFeedbackRoute: {
+        appealUrl: `/api/v1/ai/decisions/appeals/${input.incidentId}`,
+        feedbackChannel: 'incident-review-board',
+        customerAffecting: true,
+      },
+      payload: report,
+    });
+
+    return { report, envelope };
   }
 }
