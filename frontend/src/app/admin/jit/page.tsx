@@ -19,6 +19,12 @@ import {
   Clock,
   Fingerprint,
 } from "lucide-react";
+import {
+  UnauthorizedState,
+  LoadingState,
+  RecoveryState,
+  StaleState,
+} from "@/components/states/mandatory-ui-states";
 
 export default function JitEnclavePage() {
   const [state] = useDemoState();

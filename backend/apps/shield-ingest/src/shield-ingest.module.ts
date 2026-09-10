@@ -42,6 +42,10 @@ import { MicrosoftDefenderProvider } from './connectors/providers/microsoft-defe
 import { MicrosoftDefenderNormalizerService } from './connectors/providers/microsoft-defender/microsoft-defender.normalizer';
 import { GcpSccProvider } from './connectors/providers/gcp-scc/gcp-scc.provider';
 import { GcpSccNormalizerService } from './connectors/providers/gcp-scc/gcp-scc.normalizer';
+import { SnykProvider } from './connectors/providers/snyk-vulnerability/snyk-vulnerability.provider';
+import { SnykNormalizerService } from './connectors/providers/snyk-vulnerability/snyk-vulnerability.normalizer';
+import { JiraTicketingProvider } from './connectors/providers/jira-ticketing/jira-ticketing.provider';
+import { JiraNormalizerService } from './connectors/providers/jira-ticketing/jira-ticketing.normalizer';
 import { DLQReplayWorker } from './ingestion/dlq-replay.worker';
 import { TokenBucketRateLimiterService } from './ingestion/rate-limiter/token-bucket-limiter.service';
 import { AwsSqsIngestListener } from './connectors/listeners/aws-sqs.listener';
@@ -169,6 +173,10 @@ import { ConnectorPermissionDriftService } from './drift/connector-permission-dr
     MicrosoftDefenderNormalizerService,
     GcpSccProvider,
     GcpSccNormalizerService,
+    SnykProvider,
+    SnykNormalizerService,
+    JiraTicketingProvider,
+    JiraNormalizerService,
     DLQReplayWorker,
     QuarantineService,
     RawIngestService,

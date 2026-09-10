@@ -44,6 +44,12 @@ import { TemporalContainmentEscalationService } from './orchestration/temporal-c
 import { DistributedActionLockService } from './orchestration/distributed-action-lock.service';
 import { PlaybookSandboxEngineService } from './simulation/playbook-sandbox-engine.service';
 
+import { LiveActionExecutorService } from './executors/live-action-executor.service';
+import { DualCustodyApprovalsService } from './approvals/dual-custody-approvals.service';
+import { AutomatedRollbackOrchestratorService } from './executors/automated-rollback-orchestrator.service';
+import { DualCustodyQuorumService } from './dual-custody/dual-custody-quorum.service';
+import { CompensatingActionService } from './rollback/compensating-action.service';
+
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
   controllers: [ShieldActionController],
@@ -86,6 +92,11 @@ import { PlaybookSandboxEngineService } from './simulation/playbook-sandbox-engi
     EntraUserActionAdapter,
     EdrIsolateActionAdapter,
     AwsIamActionAdapter,
+    LiveActionExecutorService,
+    DualCustodyApprovalsService,
+    AutomatedRollbackOrchestratorService,
+    DualCustodyQuorumService,
+    CompensatingActionService,
   ],
   exports: [
     ActionAuthorityService,
@@ -107,6 +118,11 @@ import { PlaybookSandboxEngineService } from './simulation/playbook-sandbox-engi
     ActionRollbackOrchestratorService,
     ResponsePlaybookService,
     ActionExecutionRegistryService,
+    LiveActionExecutorService,
+    DualCustodyApprovalsService,
+    AutomatedRollbackOrchestratorService,
+    DualCustodyQuorumService,
+    CompensatingActionService,
   ],
 })
 export class ShieldActionModule {}

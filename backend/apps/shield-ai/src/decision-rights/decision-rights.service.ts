@@ -326,11 +326,27 @@ export class DecisionRightsService {
           'ai.decision_rights.recorded',
           {
             tenantId,
+            environmentId: envelope.environmentId,
             envelopeId,
             state: newState,
             decision: input.decision,
             decidedBy: input.decidedBy,
+            rationale: input.rationale,
+            modifiedContent: input.modifiedContent,
+            escalatedToRole: input.escalatedToRole,
+            decidedAt,
             evidenceRef,
+            aiLabelAndUseCaseName: envelope.aiLabelAndUseCaseName,
+            sourcesAndSpans: envelope.sourcesAndSpans,
+            calibratedConfidenceAndUncertainty:
+              envelope.calibratedConfidenceAndUncertainty,
+            expectedImpactAndReversibility:
+              envelope.expectedImpactAndReversibility,
+            requiredAuthorityAndApprovals:
+              envelope.requiredAuthorityAndApprovals,
+            caseId:
+              (envelope.payload as any)?.caseId ||
+              (envelope.payload as any)?.case_id,
           },
           { correlationId: envelopeId },
         );

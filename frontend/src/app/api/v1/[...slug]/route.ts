@@ -3,6 +3,37 @@ import crypto from "crypto";
 
 // Service port mapping based on technical ground truth
 function resolveServicePort(method: string, path: string): number {
+  // shield-anchor: port 3005
+  if (
+    path.startsWith("anchor") ||
+    path.startsWith("checkpoints") ||
+    path.startsWith("witnesses") ||
+    path.startsWith("merkle")
+  ) {
+    return 3005;
+  }
+
+  // shield-ai: port 3003
+  if (
+    path.startsWith("ai/") ||
+    path.startsWith("ai-governance") ||
+    path.startsWith("ai") ||
+    path.startsWith("decisions") ||
+    path.includes("/ai/")
+  ) {
+    return 3003;
+  }
+
+  // shield-action: port 3004
+  if (
+    path.startsWith("actions") ||
+    path.startsWith("response-proposals") ||
+    path.startsWith("response/") ||
+    path.startsWith("soar")
+  ) {
+    return 3004;
+  }
+
   // Collision 1: Alert create-case / assign live on shield-ingest:3002
   if (method === "POST" && path.includes("alerts/") && (path.endsWith("/create-case") || path.endsWith("/assign"))) {
     return 3002;
@@ -32,7 +63,7 @@ function resolveServicePort(method: string, path: string): number {
   if (path.startsWith("events") && !path.startsWith("events/publish")) {
     return 3002;
   }
-  // All other core routes: Auth, Onboarding, Tenants, Invitations, Alerts (read/triage), Cases (CRUD/timeline/read evidence/decisions), AI proxies, Response Proposals, Audit Packages, JIT live on shield-core:3001
+  // All other core routes: Auth, Onboarding, Tenants, Invitations, Alerts (read/triage), Cases (CRUD/timeline/read evidence), Audit Packages, JIT live on shield-core:3001
   return 3001;
 }
 
@@ -735,6 +766,169 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
         { headers: { "X-ZoikoShield-Source": "simulated" } }
       );
     }
+  }
+
+  // Route: /api/v1/ai/decisions/:envelopeId/*
+  if (path.startsWith("ai/decisions") || path.startsWith("decisions")) {
+    const envelopeId = slugArray[2] || slugArray[1] || "env-01";
+    const baseEnvelope = {
+      envelopeId,
+      tenantId,
+      environmentId: "PRODUCTION-US-EAST",
+      createdAt: now,
+      aiLabelAndUseCaseName: {
+        aiLabel: "AI Generated - Human Oversight Mandatory",
+        useCaseName: "Threat-Investigation-Copilot",
+        modelRoute: "vertex-ai/gemini-1.5-pro",
+        version: "v2.4.0",
+      },
+      sourcesAndSpans: [
+        {
+          sourceId: "ev-telemetry-01",
+          sourceType: "OCSF_AUTH_LOG",
+          exactSpan: "5 consecutive failed logins within 4.2s from IP 198.51.100.42 targeting account victim.engineer@acme.com",
+          confidence: 0.96,
+        },
+        {
+          sourceId: "ev-merkle-anchor-1043",
+          sourceType: "MERKLE_TREE_WITNESS",
+          exactSpan: "Leaf 0x4f9a... verified against Epoch #1043 root with 0x00 domain separator",
+          confidence: 1.0,
+        },
+      ],
+      knownMissingStaleOrConflictingEvidence: {
+        missingEvidence: ["Egress firewall flow telemetry for attacking ASN"],
+        staleEvidence: ["GeoIP database cached 18h ago"],
+        conflictingEvidence: [],
+      },
+      calibratedConfidenceAndUncertainty: {
+        score: 0.94,
+        qualitativeBand: "HIGH",
+        calibrationBasis: "Brier-calibrated ensemble over 1,400 historical credential stuffing incidents",
+        uncertaintyFactors: ["Residential proxy rotation risk (<6% false attribution)"],
+      },
+      alternativeHypothesesOrActions: [
+        {
+          title: "Legitimate user forgot corporate VPN password rotation",
+          rationale: "User password changed 24h prior, possible stale credential cache",
+          tradeOffs: "Lower risk but does not explain sub-second 5x burst cadence",
+        },
+        {
+          title: "Automated distributed credential stuffing botnet",
+          rationale: "Cadence matches Mirai/DarkGate brute-force cluster signatures",
+          tradeOffs: "High confidence match with MITRE T1110.001 technique",
+        },
+      ],
+      expectedImpactAndReversibility: {
+        blastRadius: "Low (single user identity & 3 active session tokens)",
+        isReversible: true,
+        reversibilityTier: "R1",
+        compensationPlan: "RESTORE_USER_SESSION_CACHE via SOAR rollback adapter",
+      },
+      requiredAuthorityAndApprovals: {
+        requiredRole: "SECURITY_ANALYST",
+        responseAuthorityTier: "R1",
+        dualApproverRequired: false,
+      },
+      controls: {
+        availableTransitions: ["ACCEPT", "MODIFY", "REJECT", "ESCALATE"],
+        state: "UNREVIEWED",
+      },
+      humanDecisionAndRationale: {},
+      appealOrFeedbackRoute: {
+        appealUrl: `https://trust.zoikoshield.io/appeals/decisions/${envelopeId}`,
+        feedbackChannel: "secops-ai-oversight@acme.com",
+        customerAffecting: true,
+      },
+      payload: {
+        executiveSummary: "Autonomous AI investigation confirms high-severity credential brute-force telemetry against corporate accounts from attacking IP 198.51.100.42. MITRE T1110.001 detected.",
+        threatAssessment: "MITRE ATT&CK T1110 (Brute Force) & T1078 (Valid Accounts). Recommended immediate session invalidation.",
+      },
+    };
+
+    if (path.endsWith("/accept")) {
+      return NextResponse.json(
+        {
+          ...baseEnvelope,
+          controls: { ...baseEnvelope.controls, state: "ACCEPTED" },
+          humanDecisionAndRationale: {
+            decidedBy: parsedBody.decidedBy || "usr-sarah-chen-01",
+            decision: "ACCEPT",
+            rationale: parsedBody.rationale || "Verified against cryptographic Merkle evidence",
+            decidedAt: now,
+            evidenceRef: `ev-ai-dec-${generateUUID().slice(0, 8)}`,
+          },
+        },
+        { headers: { "X-ZoikoShield-Source": "simulated" } }
+      );
+    }
+
+    if (path.endsWith("/modify")) {
+      return NextResponse.json(
+        {
+          ...baseEnvelope,
+          controls: { ...baseEnvelope.controls, state: "MODIFIED" },
+          humanDecisionAndRationale: {
+            decidedBy: parsedBody.decidedBy || "usr-sarah-chen-01",
+            decision: "MODIFY",
+            rationale: parsedBody.rationale || "Modified assessment scope before authorization",
+            modifiedContent: parsedBody.modifiedContent || "Adjusted threat rating and recommended containment scope",
+            decidedAt: now,
+            evidenceRef: `ev-ai-dec-${generateUUID().slice(0, 8)}`,
+          },
+        },
+        { headers: { "X-ZoikoShield-Source": "simulated" } }
+      );
+    }
+
+    if (path.endsWith("/reject")) {
+      return NextResponse.json(
+        {
+          ...baseEnvelope,
+          controls: { ...baseEnvelope.controls, state: "REJECTED" },
+          humanDecisionAndRationale: {
+            decidedBy: parsedBody.decidedBy || "usr-sarah-chen-01",
+            decision: "REJECT",
+            rationale: parsedBody.rationale || "Determined to be benign credential synchronization issue",
+            decidedAt: now,
+            evidenceRef: `ev-ai-dec-${generateUUID().slice(0, 8)}`,
+          },
+        },
+        { headers: { "X-ZoikoShield-Source": "simulated" } }
+      );
+    }
+
+    if (path.endsWith("/escalate")) {
+      return NextResponse.json(
+        {
+          ...baseEnvelope,
+          controls: { ...baseEnvelope.controls, state: "ESCALATED" },
+          humanDecisionAndRationale: {
+            decidedBy: parsedBody.decidedBy || "usr-sarah-chen-01",
+            decision: "ESCALATE",
+            rationale: parsedBody.rationale || "Escalated for Tier-2 SOC Lead and Incident Commander review",
+            escalatedToRole: parsedBody.escalatedToRole || "INCIDENT_COMMANDER",
+            decidedAt: now,
+            evidenceRef: `ev-ai-dec-${generateUUID().slice(0, 8)}`,
+          },
+        },
+        { headers: { "X-ZoikoShield-Source": "simulated" } }
+      );
+    }
+
+    if (path.endsWith("/verify-action")) {
+      return NextResponse.json(
+        {
+          permitted: true,
+          role: parsedBody.role || "SECURITY_ANALYST",
+          responseAuthorityTier: parsedBody.responseAuthorityTier || "R1",
+          verifiedAt: now,
+        },
+        { headers: { "X-ZoikoShield-Source": "simulated" } }
+      );
+    }
+
+    return NextResponse.json(baseEnvelope, { headers: { "X-ZoikoShield-Source": "simulated" } });
   }
 
   // Route: /api/v1/cases/:caseId/ai/summary or ai routes

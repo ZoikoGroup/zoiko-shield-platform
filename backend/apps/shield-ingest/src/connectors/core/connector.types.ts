@@ -14,11 +14,15 @@ export type ConnectorProviderKey =
   | 'sentinelone-edr'
   | 'palo-alto-cortex-xdr'
   | 'microsoft-defender-edr'
-  | 'gcp-scc';
+  | 'gcp-scc'
+  | 'snyk-vulnerability'
+  | 'jira-ticketing';
 
 export type ConnectorCategory =
   | 'Webhook Ingestion'
   | 'Syslog Ingestion'
   | 'Identity / Productivity'
   | 'Cloud Infrastructure'
-  | 'EDR';
+  | 'EDR'
+  | 'Vulnerability Management'
+  | 'Ticketing / Incident Management';

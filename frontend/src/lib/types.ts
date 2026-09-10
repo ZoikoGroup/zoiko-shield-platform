@@ -253,6 +253,7 @@ export interface Case {
   timeline: TimelineEntry[];
   evidenceList: EvidenceRecord[];
   aiSummary?: AiInvestigationSummary;
+  aiReviewEnvelope?: AiReviewEnvelope;
   decision?: HumanDecision;
   responseProposal?: ResponseProposal;
   simulationReceipt?: SimulationReceipt;
@@ -401,5 +402,100 @@ export interface ExperienceStateEnvelope<T> {
   lastSyncedAt: string;
   correlationId: string;
   tenantId: string;
+}
+
+// ----------------------------------------------------------------------------
+// 10-Field Mandatory Review Envelope per Spec §16.1
+// ----------------------------------------------------------------------------
+
+export type DecisionState = 'UNREVIEWED' | 'ACCEPTED' | 'MODIFIED' | 'REJECTED' | 'ESCALATED';
+export type DecisionTransition = 'ACCEPT' | 'MODIFY' | 'REJECT' | 'ESCALATE';
+export type ResponseAuthorityTier = 'R0' | 'R1' | 'R2' | 'R3' | 'R4';
+export type QualitativeConfidenceBand = 'HIGH' | 'MEDIUM' | 'LOW';
+
+export interface AiLabelAndUseCase {
+  aiLabel: string;
+  useCaseName: string;
+  modelRoute: string;
+  version?: string;
+}
+
+export interface DecisionSourceSpan {
+  sourceId: string;
+  sourceType: string;
+  version?: number;
+  exactSpan: string;
+  confidence: number;
+}
+
+export interface EvidenceCompletenessState {
+  missingEvidence: string[];
+  staleEvidence: string[];
+  conflictingEvidence: string[];
+}
+
+export interface CalibratedConfidence {
+  score: number;
+  qualitativeBand: QualitativeConfidenceBand;
+  calibrationBasis: string;
+  uncertaintyFactors: string[];
+}
+
+export interface AlternativeHypothesisOrAction {
+  title: string;
+  rationale: string;
+  tradeOffs: string;
+}
+
+export interface ExpectedImpactAndReversibility {
+  blastRadius: string;
+  isReversible: boolean;
+  reversibilityTier: ResponseAuthorityTier;
+  compensationPlan?: string;
+}
+
+export interface RequiredAuthorityAndApprovals {
+  requiredRole: string;
+  responseAuthorityTier: ResponseAuthorityTier;
+  dualApproverRequired: boolean;
+}
+
+export interface DecisionControls {
+  availableTransitions: DecisionTransition[];
+  state: DecisionState;
+}
+
+export interface RecordedHumanDecision {
+  decidedBy?: string;
+  decision?: DecisionTransition;
+  rationale?: string;
+  modifiedContent?: string;
+  decidedAt?: string;
+  escalatedToRole?: string;
+  evidenceRef?: string;
+}
+
+export interface AppealOrFeedbackRoute {
+  appealUrl: string;
+  feedbackChannel: string;
+  customerAffecting: boolean;
+}
+
+export interface AiReviewEnvelope<T = any> {
+  envelopeId: string;
+  tenantId: string;
+  environmentId: string;
+  createdAt: string;
+  aiLabelAndUseCaseName: AiLabelAndUseCase;
+  sourcesAndSpans: DecisionSourceSpan[];
+  knownMissingStaleOrConflictingEvidence: EvidenceCompletenessState;
+  calibratedConfidenceAndUncertainty: CalibratedConfidence;
+  alternativeHypothesesOrActions: AlternativeHypothesisOrAction[];
+  expectedImpactAndReversibility: ExpectedImpactAndReversibility;
+  requiredAuthorityAndApprovals: RequiredAuthorityAndApprovals;
+  controls: DecisionControls;
+  humanDecisionAndRationale: RecordedHumanDecision;
+  appealOrFeedbackRoute: AppealOrFeedbackRoute;
+  payload: T;
 }
 

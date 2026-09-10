@@ -545,10 +545,13 @@ export function getInitialDemoState(): DemoState {
     try {
       const saved = localStorage.getItem("zoikoshield_demo_state");
       if (saved) {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === "object" && parsed.session && parsed.tenant) {
+          return parsed;
+        }
       }
     } catch {
-      // Fallback
+      // Fallback to static state
     }
   }
   return getDefaultStaticState();
@@ -558,9 +561,16 @@ export function saveDemoState(state: DemoState) {
   if (typeof window !== "undefined") {
     try {
       localStorage.setItem("zoikoshield_demo_state", JSON.stringify(state));
-      window.dispatchEvent(new Event("demo-state-updated"));
+      // Dispatch custom event asynchronously to prevent synchronous re-entrant render loops
+      setTimeout(() => {
+        try {
+          window.dispatchEvent(new CustomEvent("demo-state-updated", { detail: state }));
+        } catch {
+          // Ignore event dispatch failure in sandboxed frames
+        }
+      }, 0);
     } catch {
-      // Storage full / private mode
+      // Storage quota exceeded or private mode
     }
   }
 }
@@ -568,8 +578,18 @@ export function saveDemoState(state: DemoState) {
 export function resetDemoState(): DemoState {
   const initial = getDefaultStaticState();
   if (typeof window !== "undefined") {
-    localStorage.removeItem("zoikoshield_demo_state");
-    window.dispatchEvent(new Event("demo-state-updated"));
+    try {
+      localStorage.removeItem("zoikoshield_demo_state");
+      setTimeout(() => {
+        try {
+          window.dispatchEvent(new CustomEvent("demo-state-updated", { detail: initial }));
+        } catch {
+          // Ignore event dispatch failure
+        }
+      }, 0);
+    } catch {
+      // Fallback
+    }
   }
   return initial;
 }
@@ -579,10 +599,21 @@ export function useDemoState(): [DemoState, (state: DemoState) => void, boolean]
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
-    setState(getInitialDemoState());
+    try {
+      setState(getInitialDemoState());
+    } catch {
+      // Keep static state
+    }
     setIsHydrated(true);
 
-    const handleUpdate = () => setState(getInitialDemoState());
+    const handleUpdate = () => {
+      try {
+        setState(getInitialDemoState());
+      } catch {
+        // Safe fallback
+      }
+    };
+
     window.addEventListener("demo-state-updated", handleUpdate);
     window.addEventListener("storage", handleUpdate);
     return () => {
@@ -598,3 +629,4 @@ export function useDemoState(): [DemoState, (state: DemoState) => void, boolean]
 
   return [state, setDemoState, isHydrated];
 }
+

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useDemoState } from "@/lib/demo-state";
@@ -10,15 +10,42 @@ import { Card } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
 import { FolderLock, Plus, ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
+import {
+  LoadingState,
+  StaleState,
+  UnavailableState,
+  PartialState,
+} from "@/components/states/mandatory-ui-states";
 
 export default function CasesListPage() {
   const router = useRouter();
   const [state] = useDemoState();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isStale, setIsStale] = useState(false);
 
   // Fetch live cases from backend on mount
   useEffect(() => {
-    ZoikoShieldApiClient.getCases().catch(() => {/* backend offline — demo state used */});
+    setIsLoading(true);
+    ZoikoShieldApiClient.getCases()
+      .catch(() => {
+        setIsStale(true);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
+
+  const refreshCases = async () => {
+    setIsLoading(true);
+    try {
+      await ZoikoShieldApiClient.getCases();
+      setIsStale(false);
+    } catch {
+      setIsStale(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -39,8 +66,32 @@ export default function CasesListPage() {
         </div>
       </div>
 
+      {/* Mandatory UI States */}
+      {isLoading && (
+        <LoadingState
+          title="Loading Incident Cases..."
+          message="Querying authenticated cases bound to Evidence Ledgers."
+          regionalCell="us-east-1"
+        />
+      )}
+
+      {isStale && !isLoading && (
+        <StaleState
+          title="Cached Cases Directory"
+          message="Displaying cached incident workspaces from local state store."
+          retryAction={refreshCases}
+        />
+      )}
+
       <div className="space-y-3">
-        {state.cases.map((c, idx) => (
+        {state.cases.length === 0 && !isLoading ? (
+          <UnavailableState
+            title="No Open Cases"
+            message="No incident cases currently open. Promote a detection alert to open a workspace."
+            retryAction={() => router.push("/alerts")}
+          />
+        ) : (
+          state.cases.map((c, idx) => (
           <Link key={c.id || idx} href={`/cases/${c.id}`} className="block group">
             <Card
               variant="cyber"
@@ -83,7 +134,7 @@ export default function CasesListPage() {
               </div>
             </Card>
           </Link>
-        ))}
+        )))}
       </div>
     </div>
   );

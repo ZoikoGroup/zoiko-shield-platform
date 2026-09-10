@@ -19,6 +19,13 @@ import {
   Activity,
   Layers,
 } from "lucide-react";
+import {
+  LoadingState,
+  PartialState,
+  StaleState,
+  DegradedState,
+  RecoveryState,
+} from "@/components/states/mandatory-ui-states";
 
 export default function DashboardPage() {
   const [state] = useDemoState();
@@ -106,6 +113,24 @@ export default function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      {/* Mandatory UI States Integration */}
+      {state.connectors.some((c) => c.status === "DISABLED") && (
+        <PartialState
+          title="Partial Telemetry Ingestion Active"
+          message="Some security telemetry feeds are disabled or pending synchronization."
+          connectorsActive={activeConnectors.length}
+          connectorsTotal={state.connectors.length}
+        />
+      )}
+
+      {(state.aiIncidents || []).some((i) => i.killSwitchEngaged) && (
+        <DegradedState
+          title="AI Safety Guardrail Degraded (Deterministic Rule Engine Active)"
+          message="One or more LLM models are under emergency containment. Autonomous actions fallback to strict rule validation."
+          fallbackReason="AI_GOVERNANCE_KILL_SWITCH_ACTIVE"
+        />
+      )}
 
       {/* Top Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

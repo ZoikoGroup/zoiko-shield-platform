@@ -3,9 +3,9 @@
 import React, { useState } from "react";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
-import { Card } from "@/ui/Card";
-import { Button } from "@/ui/Button";
-import { Badge } from "@/ui/Badge";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
 import {
   Compass,
   Sparkles,
@@ -22,6 +22,12 @@ import {
   Database,
   Cpu,
 } from "lucide-react";
+import {
+  LoadingState,
+  DegradedState,
+  PartialState,
+  StaleState,
+} from "@/components/states/mandatory-ui-states";
 
 interface StepTrace {
   step: number;
@@ -205,7 +211,7 @@ export default function ThreatHuntingPage() {
 
           <div className="flex items-center gap-3 font-mono text-xs">
             <div className="px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-300">
-              Provider: <span className="text-purple-400 font-bold">Google Gemini 2.0 / Vertex AI</span>
+              Provider: <span className="text-purple-400 font-bold">Vertex AI Gemini (gemini-1.5-pro-002 [derived])</span>
             </div>
             <div className="px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-300">
               Case:{" "}
@@ -256,7 +262,7 @@ export default function ThreatHuntingPage() {
               <Button
                 variant="primary"
                 className="w-full py-2.5 font-bold flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-cyan-600 hover:from-purple-500 hover:to-cyan-500 shadow-lg shadow-purple-900/30"
-                onClick={handleStartHunt}
+                onClick={() => handleStartHunt()}
                 disabled={isHunting}
               >
                 {isHunting ? (
@@ -334,6 +340,22 @@ export default function ThreatHuntingPage() {
             </div>
 
             {/* ReAct Trace Step Cards */}
+            {isHunting && (
+              <LoadingState
+                title="Executing ReAct Threat Hunting Reasoning Loop..."
+                message="Querying sovereign Merkle evidence ledger and correlating MITRE ATT&CK enterprise vectors."
+                regionalCell="us-east-1"
+              />
+            )}
+
+            {huntError && (
+              <DegradedState
+                title="Threat Copilot Fallback Engaged"
+                message="Live Vertex AI inference unavailable. Reverting to deterministic signature and graph correlation."
+                fallbackReason={huntError}
+              />
+            )}
+
             <div className="space-y-4">
               {reasoningTrace.map((trace) => (
                 <div

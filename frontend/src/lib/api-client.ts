@@ -21,6 +21,9 @@ import {
   AiSupplyChainReport,
   ComplianceDriftState,
   ExperienceStateEnvelope,
+  AiReviewEnvelope,
+  DecisionTransition,
+  DecisionState,
 } from "./types";
 import { getInitialDemoState, saveDemoState, DemoState } from "./demo-state";
 import { generateUUID, sha256Mock } from "./utils";
@@ -473,7 +476,7 @@ export class ZoikoShieldApiClient {
     return newCase;
   }
 
-  // --- Step 8: AI Investigation Summary ---
+  // --- Step 8: AI Investigation Summary & 10-Field AiReviewEnvelope ---
   static async generateAiInvestigationSummary(caseId: string): Promise<AiInvestigationSummary> {
     const summary = await this.safeFetch<AiInvestigationSummary>(
       `/api/v1/cases/${caseId}/ai/summary`,
@@ -486,6 +489,7 @@ export class ZoikoShieldApiClient {
           : "victim.engineer@acme.com";
 
         return {
+          outputId: `ai-out-${generateUUID().slice(0, 8)}`,
           aiRunId: `ai-run-${generateUUID().slice(0, 8)}`,
           caseId,
           status: "REVIEW_REQUIRED",
@@ -505,6 +509,12 @@ export class ZoikoShieldApiClient {
               likelihood: "HIGH",
               supportingEvidence: ["Sub-second event burst", "Known proxy CIDR"],
             },
+            {
+              id: "hyp-02",
+              title: "Legitimate User Forgot Password",
+              likelihood: "LOW",
+              supportingEvidence: ["Corporate IP range", "Previous auth success"],
+            },
           ],
           recommendedActions: [
             "Execute SOAR Session Reset for target user",
@@ -519,11 +529,87 @@ export class ZoikoShieldApiClient {
     const currentCase = state.cases.find((c) => c.id === caseId);
     if (currentCase) {
       currentCase.aiSummary = summary;
+
+      // Construct the 10-Field AiReviewEnvelope
+      const envelopeId = `env-${generateUUID().slice(0, 8)}`;
+      const envelope: AiReviewEnvelope = {
+        envelopeId,
+        tenantId: state.tenant.id,
+        environmentId: state.tenant.environmentName,
+        createdAt: new Date().toISOString(),
+        aiLabelAndUseCaseName: {
+          aiLabel: "AI Generated - Human Oversight Mandatory",
+          useCaseName: "Threat-Investigation-Copilot",
+          modelRoute: "vertex-ai/gemini-1.5-pro",
+          version: "v2.4.0",
+        },
+        sourcesAndSpans: [
+          {
+            sourceId: currentCase?.evidenceList[0]?.id || "ev-telemetry-01",
+            sourceType: "OCSF_AUTH_LOG",
+            exactSpan: "5 consecutive failed logins within 4.2s from IP 198.51.100.42 targeting account victim.engineer@acme.com",
+            confidence: 0.96,
+          },
+          {
+            sourceId: "ev-merkle-anchor-1043",
+            sourceType: "MERKLE_TREE_WITNESS",
+            exactSpan: "Leaf 0x4f9a... verified against Epoch #1043 root with 0x00 domain separator",
+            confidence: 1.0,
+          },
+        ],
+        knownMissingStaleOrConflictingEvidence: {
+          missingEvidence: ["Egress firewall flow telemetry for attacking ASN"],
+          staleEvidence: ["GeoIP database cached 18h ago"],
+          conflictingEvidence: [],
+        },
+        calibratedConfidenceAndUncertainty: {
+          score: 0.94,
+          qualitativeBand: "HIGH",
+          calibrationBasis: "Brier-calibrated ensemble over 1,400 historical credential stuffing incidents",
+          uncertaintyFactors: ["Residential proxy rotation risk (<6% false attribution)"],
+        },
+        alternativeHypothesesOrActions: [
+          {
+            title: "Legitimate user forgot corporate VPN password rotation",
+            rationale: "User password changed 24h prior, possible stale credential cache",
+            tradeOffs: "Lower risk but does not explain sub-second 5x burst cadence",
+          },
+          {
+            title: "Automated distributed credential stuffing botnet",
+            rationale: "Cadence matches Mirai/DarkGate brute-force cluster signatures",
+            tradeOffs: "High confidence match with MITRE T1110.001 technique",
+          },
+        ],
+        expectedImpactAndReversibility: {
+          blastRadius: "Low (single user identity & 3 active session tokens)",
+          isReversible: true,
+          reversibilityTier: "R1",
+          compensationPlan: "RESTORE_USER_SESSION_CACHE via SOAR rollback adapter",
+        },
+        requiredAuthorityAndApprovals: {
+          requiredRole: "SECURITY_ANALYST",
+          responseAuthorityTier: "R1",
+          dualApproverRequired: false,
+        },
+        controls: {
+          availableTransitions: ["ACCEPT", "MODIFY", "REJECT", "ESCALATE"],
+          state: "UNREVIEWED",
+        },
+        humanDecisionAndRationale: {},
+        appealOrFeedbackRoute: {
+          appealUrl: `https://trust.zoikoshield.io/appeals/cases/${caseId}/decisions/${envelopeId}`,
+          feedbackChannel: "secops-ai-oversight@acme.com",
+          customerAffecting: true,
+        },
+        payload: summary,
+      };
+
+      currentCase.aiReviewEnvelope = envelope;
       currentCase.timeline.push({
         id: `tl-${generateUUID().slice(0, 6)}`,
         timestamp: new Date().toISOString(),
         title: "AI Investigation Narrative Synthesized",
-        description: "AI Copilot generated attack timeline with 1 verified citation under Model Armor screening.",
+        description: "AI Copilot generated attack timeline with 10-field review envelope under Model Armor screening.",
         actor: "shield-ai / ModelArmorGateway",
         type: "AI_INVESTIGATED",
       });
@@ -531,6 +617,140 @@ export class ZoikoShieldApiClient {
     state.currentStep = 8;
     saveDemoState(state);
     return summary;
+  }
+
+  static async getAiReviewEnvelope(envelopeId: string): Promise<AiReviewEnvelope> {
+    return this.safeFetch<AiReviewEnvelope>(
+      `/api/v1/ai/decisions/${envelopeId}`,
+      { method: "GET" },
+      () => {
+        const state = getState();
+        for (const c of state.cases) {
+          if (c.aiReviewEnvelope?.envelopeId === envelopeId) {
+            return c.aiReviewEnvelope;
+          }
+        }
+        throw new Error("AiReviewEnvelope not found");
+      }
+    );
+  }
+
+  static async recordDecisionRightsAction(
+    envelopeId: string,
+    action: DecisionTransition,
+    payload: {
+      decidedBy: string;
+      rationale: string;
+      modifiedContent?: string;
+      escalatedToRole?: string;
+      caseId?: string;
+    }
+  ): Promise<AiReviewEnvelope> {
+    const endpointMap: Record<DecisionTransition, string> = {
+      ACCEPT: `/api/v1/ai/decisions/${envelopeId}/accept`,
+      MODIFY: `/api/v1/ai/decisions/${envelopeId}/modify`,
+      REJECT: `/api/v1/ai/decisions/${envelopeId}/reject`,
+      ESCALATE: `/api/v1/ai/decisions/${envelopeId}/escalate`,
+    };
+
+    const endpoint = endpointMap[action] || `/api/v1/ai/decisions/${envelopeId}/accept`;
+
+    const updatedEnvelope = await this.safeFetch<AiReviewEnvelope>(
+      endpoint,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      () => {
+        const state = getState();
+        const nowStr = new Date().toISOString();
+        const stateMap: Record<DecisionTransition, any> = {
+          ACCEPT: "ACCEPTED",
+          MODIFY: "MODIFIED",
+          REJECT: "REJECTED",
+          ESCALATE: "ESCALATED",
+        };
+
+        let targetCase = state.cases.find(
+          (c) => c.aiReviewEnvelope?.envelopeId === envelopeId || c.id === payload.caseId
+        );
+        if (!targetCase && state.cases.length > 0) targetCase = state.cases[0];
+
+        const env = targetCase?.aiReviewEnvelope || {
+          envelopeId,
+          tenantId: state.tenant.id,
+          environmentId: state.tenant.environmentName,
+          createdAt: nowStr,
+          aiLabelAndUseCaseName: {
+            aiLabel: "AI Generated - Human Oversight Mandatory",
+            useCaseName: "Threat-Investigation-Copilot",
+            modelRoute: "vertex-ai/gemini-1.5-pro",
+          },
+          sourcesAndSpans: [],
+          knownMissingStaleOrConflictingEvidence: { missingEvidence: [], staleEvidence: [], conflictingEvidence: [] },
+          calibratedConfidenceAndUncertainty: { score: 0.94, qualitativeBand: "HIGH", calibrationBasis: "Calibrated", uncertaintyFactors: [] },
+          alternativeHypothesesOrActions: [],
+          expectedImpactAndReversibility: { blastRadius: "Low", isReversible: true, reversibilityTier: "R1" },
+          requiredAuthorityAndApprovals: { requiredRole: "SECURITY_ANALYST", responseAuthorityTier: "R1", dualApproverRequired: false },
+          controls: { availableTransitions: [], state: stateMap[action] },
+          humanDecisionAndRationale: {
+            decidedBy: payload.decidedBy,
+            decision: action,
+            rationale: payload.rationale,
+            modifiedContent: payload.modifiedContent,
+            escalatedToRole: payload.escalatedToRole,
+            decidedAt: nowStr,
+            evidenceRef: `ev-ai-dec-${generateUUID().slice(0, 8)}`,
+          },
+          appealOrFeedbackRoute: {
+            appealUrl: `https://trust.zoikoshield.io/appeals/decisions/${envelopeId}`,
+            feedbackChannel: "secops-ai-oversight@acme.com",
+            customerAffecting: true,
+          },
+          payload: {},
+        };
+
+        env.controls.state = stateMap[action];
+        env.humanDecisionAndRationale = {
+          decidedBy: payload.decidedBy,
+          decision: action,
+          rationale: payload.rationale,
+          modifiedContent: payload.modifiedContent,
+          escalatedToRole: payload.escalatedToRole,
+          decidedAt: nowStr,
+          evidenceRef: `ev-ai-dec-${generateUUID().slice(0, 8)}`,
+        };
+
+        return env;
+      }
+    );
+
+    const state = getState();
+    const targetCase = state.cases.find(
+      (c) => c.aiReviewEnvelope?.envelopeId === envelopeId || c.id === payload.caseId
+    );
+    if (targetCase) {
+      targetCase.aiReviewEnvelope = updatedEnvelope;
+      if (targetCase.aiSummary) {
+        targetCase.aiSummary.status =
+          action === "ACCEPT" ? "ACCEPTED" : action === "REJECT" ? "REJECTED" : "REVIEW_REQUIRED";
+        targetCase.aiSummary.rationale = payload.rationale;
+        if (payload.modifiedContent) {
+          targetCase.aiSummary.modifiedContent = payload.modifiedContent;
+        }
+      }
+      targetCase.timeline.push({
+        id: `tl-${generateUUID().slice(0, 6)}`,
+        timestamp: new Date().toISOString(),
+        title: `AI Oversight Decision: ${action}`,
+        description: `Analyst ${payload.decidedBy} executed ${action}: "${payload.rationale}" (Anchored Ref: ${updatedEnvelope.humanDecisionAndRationale?.evidenceRef || "ev-ledger-pending"})`,
+        actor: payload.decidedBy,
+        type: "DECISION_RECORDED",
+      });
+      saveDemoState(state);
+    }
+
+    return updatedEnvelope;
   }
 
   // --- Step 9: Human Decision & Response Simulation ---

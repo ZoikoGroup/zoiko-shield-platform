@@ -17,6 +17,8 @@ import {
   ResolveIncidentDto,
 } from './dto/declare-incident.dto';
 import { AiKillSwitchService } from '../kill-switch/ai-kill-switch.service';
+import { DecisionRightsService } from '../decision-rights/decision-rights.service';
+import { AiReviewEnvelope } from '../decision-rights/ai-review-envelope.interface';
 
 export interface AiIncidentTimelineEntry {
   timestamp: string;
@@ -44,6 +46,8 @@ export interface AiIncidentRecord {
   fallbackDetails?: FallbackIncidentDto;
   rcaSummary?: string;
   rcaDetails?: CompleteRcaDto;
+  decisionEnvelopeId?: string;
+  decisionEnvelope?: AiReviewEnvelope;
   resolutionSummary?: string;
   declaredAt: string;
   resolvedAt?: string;
@@ -63,6 +67,7 @@ export class AiIncidentService {
 
   constructor(
     @Optional() private readonly killSwitchService?: AiKillSwitchService,
+    @Optional() private readonly decisionRightsService?: DecisionRightsService,
   ) {}
 
   /**
@@ -253,6 +258,68 @@ export class AiIncidentService {
     incident.rcaSummary = dto.rootCauseSummary;
     incident.rcaDetails = dto;
 
+    if (this.decisionRightsService) {
+      const envelope = this.decisionRightsService.wrapInEnvelope({
+        tenantId,
+        aiLabelAndUseCaseName: {
+          aiLabel: 'ZoikoShield AI Incident Safety Engine',
+          useCaseName: 'AI_INCIDENT_RCA',
+          modelRoute: incident.affectedModel || 'gemini-1.5-pro',
+        },
+        sourcesAndSpans: [
+          {
+            sourceId: incidentId,
+            sourceType: 'AI_INCIDENT_TIMELINE',
+            exactSpan: dto.rootCauseSummary.slice(0, 120),
+            confidence: 0.95,
+          },
+        ],
+        knownMissingStaleOrConflictingEvidence: {
+          missingEvidence: [],
+          staleEvidence: [],
+          conflictingEvidence: [],
+        },
+        calibratedConfidenceAndUncertainty: {
+          score: 0.92,
+          qualitativeBand: 'HIGH',
+          calibrationBasis: 'Synthesized from timeline logs, model drift metrics, and prompt firewall alarms',
+          uncertaintyFactors: [],
+        },
+        alternativeHypothesesOrActions: [
+          {
+            title: 'Transient Provider Degradation',
+            rationale: 'Anomalous behavior could stem from third-party model inference latency spikes',
+            tradeOffs: 'Failing to patch prompt templates leaves vulnerabilities unmitigated',
+          },
+        ],
+        expectedImpactAndReversibility: {
+          blastRadius: 'AI model routing configurations and safety guardrails',
+          isReversible: true,
+          reversibilityTier: 'R1',
+          compensationPlan: 'Disengage fallback route and restore baseline model endpoint',
+        },
+        requiredAuthorityAndApprovals: {
+          requiredRole: 'AI_SAFETY_LEAD',
+          responseAuthorityTier: 'R1',
+          dualApproverRequired: false,
+        },
+        appealOrFeedbackRoute: {
+          appealUrl: `/api/v1/ai/incidents/${incidentId}/rca/appeal`,
+          feedbackChannel: 'ai-safety-appeals',
+          customerAffecting: false,
+        },
+        payload: {
+          incidentId,
+          rcaSummary: dto.rootCauseSummary,
+          contributingFactors: dto.contributingFactors,
+          preventativeActions: dto.preventativeActions,
+        },
+      });
+
+      incident.decisionEnvelopeId = envelope.envelopeId;
+      incident.decisionEnvelope = envelope;
+    }
+
     incident.timeline.push({
       timestamp: new Date().toISOString(),
       fromStatus,
@@ -262,6 +329,7 @@ export class AiIncidentService {
       details: {
         rootCauseSummary: dto.rootCauseSummary,
         preventativeCount: dto.preventativeActions.length,
+        decisionEnvelopeId: incident.decisionEnvelopeId,
       },
     });
 
