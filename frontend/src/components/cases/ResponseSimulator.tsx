@@ -96,7 +96,7 @@ export const ResponseSimulator: React.FC<ResponseSimulatorProps> = ({
             <Button
               size="sm"
               variant={isOrgFrozen ? "danger" : "outline"}
-              onClick={handleToggleFreeze}
+              onClick={() => handleToggleFreeze()}
               className="text-[10px] font-mono h-7"
             >
               <AlertOctagon className="w-3 h-3 text-rose-400" />
@@ -165,7 +165,7 @@ export const ResponseSimulator: React.FC<ResponseSimulatorProps> = ({
             <Button
               variant="primary"
               size="sm"
-              onClick={handleRecordDecision}
+              onClick={() => handleRecordDecision()}
               isLoading={isRecordingDecision}
             >
               <CheckCircle2 className="w-3.5 h-3.5" />
@@ -224,7 +224,7 @@ export const ResponseSimulator: React.FC<ResponseSimulatorProps> = ({
               <div className="pt-2">
                 <Button
                   variant="ai"
-                  onClick={handleSimulate}
+                  onClick={() => handleSimulate()}
                   isLoading={isSimulating}
                 >
                   <Play className="w-4 h-4" />

@@ -63,6 +63,7 @@ import { AiIncidentController } from './ai-incident/ai-incident.controller';
 import { AiIncidentService } from './ai-incident/ai-incident.service';
 import { TenantVectorStoreService } from './vector-store/tenant-vector-store.service';
 import { ModelDriftMonitorService } from './drift-monitoring/model-drift-monitor.service';
+import { AiDriftMonitorService } from './drift-monitoring/ai-drift-monitor.service';
 import { AiSupplyChainService } from './supply-chain/ai-supply-chain.service';
 
 import { DecisionRightsModule } from './decision-rights/decision-rights.module';
@@ -133,6 +134,7 @@ import { DecisionRightsModule } from './decision-rights/decision-rights.module';
     TenantVectorStoreService,
     AiIncidentService,
     ModelDriftMonitorService,
+    AiDriftMonitorService,
     AiSupplyChainService,
   ],
   exports: [
@@ -163,6 +165,7 @@ import { DecisionRightsModule } from './decision-rights/decision-rights.module';
     TenantVectorStoreService,
     AiIncidentService,
     ModelDriftMonitorService,
+    AiDriftMonitorService,
     AiSupplyChainService,
     DecisionRightsModule,
   ],

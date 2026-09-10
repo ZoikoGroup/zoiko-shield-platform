@@ -5,7 +5,11 @@ export interface CustomerDisclosuresResponse {
   responseAuthorityLevel: 'R1_RECOMMEND_AND_SIMULATE_ONLY';
   regulatoryBoundary: {
     activeFrameworks: string[];
-    deferredOverlays: Array<{ framework: string; deferredUntil: string; reason: string }>;
+    deferredOverlays: Array<{
+      framework: string;
+      deferredUntil: string;
+      reason: string;
+    }>;
   };
   certifiedConnectorsScope: {
     p0Certified: string[];
@@ -31,17 +35,22 @@ export class CustomerDisclosuresController {
       g1LaunchGateStatus: 'PENDING MULTI-APPROVER SIGN-OFF',
       responseAuthorityLevel: 'R1_RECOMMEND_AND_SIMULATE_ONLY',
       regulatoryBoundary: {
-        activeFrameworks: ['SOC 2 Type II (CC6.1, CC6.6)', 'ISO/IEC 27001:2022 (A.9.4, A.12.1)'],
+        activeFrameworks: [
+          'SOC 2 Type II (CC6.1, CC6.6)',
+          'ISO/IEC 27001:2022 (A.9.4, A.12.1)',
+        ],
         deferredOverlays: [
           {
             framework: 'DORA',
             deferredUntil: 'Phase 2 Midpoint (per ADR-08)',
-            reason: 'Requires signed production pipeline and legal readiness certification',
+            reason:
+              'Requires signed production pipeline and legal readiness certification',
           },
           {
             framework: 'NIS2',
             deferredUntil: 'Phase 2 Midpoint (per ADR-08)',
-            reason: 'Requires sector overlay selection and legal readiness certification',
+            reason:
+              'Requires sector overlay selection and legal readiness certification',
           },
         ],
       },
@@ -55,12 +64,16 @@ export class CustomerDisclosuresController {
           'Jira',
           'Snyk',
         ],
-        p1Deferred: ['GCP Security Command Center', 'Microsoft Defender for Endpoint'],
+        p1Deferred: [
+          'GCP Security Command Center',
+          'Microsoft Defender for Endpoint',
+        ],
       },
       aiSafetyGovernance: {
         modelArmorSafetyStatus: 'ENFORCED_WITH_ZERO_BYPASS',
         promptInjectionProtection: true,
-        deterministicFallbackEngine: 'Tier-1 Deterministic RCA (Continuity Active)',
+        deterministicFallbackEngine:
+          'Tier-1 Deterministic RCA (Continuity Active)',
       },
       disclosedAt: new Date().toISOString(),
     };

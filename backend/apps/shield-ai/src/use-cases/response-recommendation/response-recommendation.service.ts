@@ -55,7 +55,9 @@ export class ResponseRecommendationService {
             {
               sourceId: context.correlationId || 'ctx-source-01',
               sourceType: 'CASE_TELEMETRY',
-              exactSpan: (output.content || '').slice(0, 100) || 'Action recommendation generated from case context',
+              exactSpan:
+                (output.content || '').slice(0, 100) ||
+                'Action recommendation generated from case context',
               confidence: 0.95,
             },
           ];
@@ -77,18 +79,23 @@ export class ResponseRecommendationService {
       calibratedConfidenceAndUncertainty: {
         score: 0.94,
         qualitativeBand: 'HIGH',
-        calibrationBasis: 'Corroborated by SOC incident telemetry and automated containment playbooks',
+        calibrationBasis:
+          'Corroborated by SOC incident telemetry and automated containment playbooks',
         uncertaintyFactors: [],
       },
       alternativeHypothesesOrActions: [
         {
           title: 'Manual Triage & Observation',
-          rationale: 'Leave workload in current state and observe lateral activity',
-          tradeOffs: 'Higher risk of data exfiltration during observation window',
+          rationale:
+            'Leave workload in current state and observe lateral activity',
+          tradeOffs:
+            'Higher risk of data exfiltration during observation window',
         },
       ],
       expectedImpactAndReversibility: {
-        blastRadius: options?.blastRadius || 'Target workload and active credential sessions',
+        blastRadius:
+          options?.blastRadius ||
+          'Target workload and active credential sessions',
         isReversible: true,
         reversibilityTier: options?.reversibilityTier || 'R2',
         compensationPlan: '1-click rollback via ActionRollbackBrokerService',

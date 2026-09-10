@@ -20,6 +20,12 @@ import {
   RotateCcw,
   Zap,
 } from "lucide-react";
+import {
+  LoadingState,
+  RecoveryState,
+  DegradedState,
+  UnavailableState,
+} from "@/components/states/mandatory-ui-states";
 
 
 interface AttackStage {
@@ -211,7 +217,7 @@ export default function RedTeamSimulatorPage() {
               <Button
                 variant="primary"
                 className="w-full py-2.5 font-bold flex items-center justify-center gap-2 bg-gradient-to-r from-rose-600 to-purple-600 hover:from-rose-500 hover:to-purple-500 shadow-lg shadow-rose-900/30"
-                onClick={handleRunSimulation}
+                onClick={() => handleRunSimulation()}
                 disabled={isSimulating}
               >
                 {isSimulating ? (

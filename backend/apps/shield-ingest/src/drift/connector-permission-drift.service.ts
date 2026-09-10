@@ -52,12 +52,12 @@ export const P0_CONNECTOR_BASELINES: Record<string, RequiredPermissionSpec> = {
     requiredScopes: ['investigation:read', 'alerts:read', 'endpoint:read'],
     criticalScopes: ['alerts:read'],
   },
-  'jira': {
+  jira: {
     provider: 'jira',
     requiredScopes: ['read:jira-work', 'read:jira-user'],
     criticalScopes: ['read:jira-work'],
   },
-  'snyk': {
+  snyk: {
     provider: 'snyk',
     requiredScopes: ['org:read', 'project:read', 'vuln:read'],
     criticalScopes: ['vuln:read'],
@@ -163,7 +163,10 @@ export class ConnectorPermissionDriftService {
       );
 
       // Reconcile in PermissionService to emit drift event
-      await this.permissionService.reconcileGranted(instanceId, activelyGranted);
+      await this.permissionService.reconcileGranted(
+        instanceId,
+        activelyGranted,
+      );
 
       // Publish structured drift telemetry
       await this.kafkaProducer.publishEvent(
@@ -192,7 +195,10 @@ export class ConnectorPermissionDriftService {
       }
     } else {
       // Reconcile all granted
-      await this.permissionService.reconcileGranted(instanceId, activelyGranted);
+      await this.permissionService.reconcileGranted(
+        instanceId,
+        activelyGranted,
+      );
     }
 
     return result;

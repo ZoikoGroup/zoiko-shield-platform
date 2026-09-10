@@ -16,7 +16,9 @@ describe('AuditorEvidenceExportService', () => {
       ],
     }).compile();
 
-    service = module.get<AuditorEvidenceExportService>(AuditorEvidenceExportService);
+    service = module.get<AuditorEvidenceExportService>(
+      AuditorEvidenceExportService,
+    );
   });
 
   it('should be defined', () => {
@@ -51,4 +53,3 @@ describe('AuditorEvidenceExportService', () => {
     expect(result.chainOfCustodyAuditTrail).toHaveLength(2);
   });
 });
-

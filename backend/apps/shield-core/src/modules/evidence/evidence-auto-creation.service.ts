@@ -5,12 +5,14 @@ import { EvidenceService } from './services/evidence.service';
 
 /** Must match shield-ingest's ALERT_TOPICS.ALERT_CREATED exactly (apps/shield-ingest/src/alerts/events/alert-events.ts) — no shared package exists yet, so this string is duplicated deliberately rather than silently drifting. */
 const ALERT_CREATED_TOPIC = 'alert.created.v1';
+/** Must match shield-ai's CANONICAL_TOPICS.AI_OUTPUT_REVIEWED (apps/shield-ai/src/kafka/kafka-producer.service.ts). */
+const AI_OUTPUT_REVIEWED_TOPIC = 'ai.output.reviewed.v1';
 
 /**
- * Automatic evidence creation (spec §36). Two trigger paths:
- *  1. Consumed alert.created (Kafka) — shield-core's first-ever consumer
- *     use case: an Alert appearing is itself evidence-worthy.
- *  2. In-process calls from case-management (decisions/transitions),
+ * Automatic evidence creation (spec §36). Three trigger paths:
+ *  1. Consumed alert.created (Kafka) — shield-core's consumer for alert appearance.
+ *  2. Consumed ai.output.reviewed.v1 (Kafka) — shield-ai human oversight decisions (§16/§36).
+ *  3. In-process calls from case-management (decisions/transitions),
  *     since those happen in the same app — no Kafka round-trip needed.
  */
 @Injectable()
@@ -26,6 +28,10 @@ export class EvidenceAutoCreationService implements OnModuleInit {
     this.kafkaConsumer.registerHandler(
       ALERT_CREATED_TOPIC,
       this.handleAlertCreated.bind(this),
+    );
+    this.kafkaConsumer.registerHandler(
+      AI_OUTPUT_REVIEWED_TOPIC,
+      this.handleAiDecisionRecorded.bind(this),
     );
   }
 
@@ -120,5 +126,76 @@ export class EvidenceAutoCreationService implements OnModuleInit {
         actorId: params.actorId,
       },
     });
+  }
+
+  private async handleAiDecisionRecorded(
+    envelope: EventEnvelope<any>,
+  ): Promise<void> {
+    const {
+      tenantId,
+      environmentId = 'default-env',
+      region = 'eu-west-1',
+      envelopeId,
+      state,
+      decision,
+      decidedBy,
+      rationale,
+      modifiedContent,
+      escalatedToRole,
+      evidenceRef,
+      aiLabelAndUseCaseName,
+      sourcesAndSpans,
+      calibratedConfidenceAndUncertainty,
+      expectedImpactAndReversibility,
+      requiredAuthorityAndApprovals,
+      caseId,
+    } = envelope.payload ?? {};
+
+    if (!tenantId || !envelopeId || !decision || !decidedBy) {
+      this.logger.warn(
+        `Received incomplete ai.decision_rights.recorded payload: ${JSON.stringify(envelope.payload)}`,
+      );
+      return;
+    }
+
+    try {
+      await this.evidenceService.createEvidence({
+        tenantId,
+        environmentId,
+        region,
+        evidenceType: 'AI_HUMAN_DECISION_RECORD',
+        producingService: 'shield-ai-decision-rights',
+        sourceSystemId: 'shield-ai',
+        sourceObjectId: envelopeId,
+        purpose: 'DECISION_RECORD',
+        caseId: caseId || undefined,
+        addedBy: decidedBy,
+        content: {
+          envelopeId,
+          decisionState: state,
+          decision,
+          decidedBy,
+          rationale,
+          modifiedContent,
+          escalatedToRole,
+          evidenceRef,
+          aiLabelAndUseCaseName,
+          sourcesAndSpans,
+          calibratedConfidenceAndUncertainty,
+          expectedImpactAndReversibility,
+          requiredAuthorityAndApprovals,
+          triggeringEvent: envelope.eventType,
+          recordedAt: new Date().toISOString(),
+        },
+      });
+      this.logger.log(
+        `✔ Anchored AI human decision record into Evidence Ledger for envelope '${envelopeId}' (Tenant: ${tenantId})`,
+      );
+    } catch (err) {
+      this.logger.error(
+        `Failed to anchor AI human decision for envelope '${envelopeId}': ${(err as Error).message}`,
+      );
+      throw err;
+    }
   }
 }

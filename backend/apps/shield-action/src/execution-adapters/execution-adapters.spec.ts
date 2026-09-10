@@ -35,7 +35,31 @@ describe('ActionExecutionRegistry & Adapters', () => {
     expect(edrAdapter).toBeDefined();
   });
 
-  it('executes Entra ID DISABLE_USER_ACCOUNT action and returns signed receipt', async () => {
+  it('executes Entra ID DISABLE_USER_ACCOUNT simulation and returns signed simulation receipt', async () => {
+    const context: ActionExecutionContext = {
+      tenantId: 'tenant-123',
+      commandId: 'cmd-001',
+      actionType: 'DISABLE_USER_ACCOUNT',
+      targetRef: 'compromised-user@acme.com',
+      authorityLevel: 'R1',
+      approvalRef: 'appr-999',
+      isSimulation: true,
+    };
+
+    const receipt = await registry.executeAction(context);
+
+    expect(receipt.status).toBe('SIMULATED');
+    expect(receipt.actionType).toBe('DISABLE_USER_ACCOUNT');
+    expect(receipt.targetRef).toBe('compromised-user@acme.com');
+    expect(receipt.observedEffect.accountDisabled).toBe(true);
+    expect(receipt.signature).toBeDefined();
+    expect(receipt.rollbackCapability.supported).toBe(true);
+
+    const rollbackResult = await registry.rollbackAction(receipt);
+    expect(rollbackResult.status).toBe('ROLLED_BACK');
+  });
+
+  it('rejects live un-simulated execution before G1 gate ratification with ForbiddenException', async () => {
     const context: ActionExecutionContext = {
       tenantId: 'tenant-123',
       commandId: 'cmd-001',
@@ -46,17 +70,9 @@ describe('ActionExecutionRegistry & Adapters', () => {
       isSimulation: false,
     };
 
-    const receipt = await registry.executeAction(context);
-
-    expect(receipt.status).toBe('EXECUTED');
-    expect(receipt.actionType).toBe('DISABLE_USER_ACCOUNT');
-    expect(receipt.targetRef).toBe('compromised-user@acme.com');
-    expect(receipt.observedEffect.accountDisabled).toBe(true);
-    expect(receipt.signature).toBeDefined();
-    expect(receipt.rollbackCapability.supported).toBe(true);
-
-    const rollbackResult = await registry.rollbackAction(receipt);
-    expect(rollbackResult.status).toBe('ROLLED_BACK');
+    await expect(registry.executeAction(context)).rejects.toThrow(
+      /Live R2 automated response is strictly disabled prior to G1 release gate ratification/,
+    );
   });
 
   it('executes EDR ISOLATE_ENDPOINT simulation and returns simulated receipt', async () => {
@@ -78,20 +94,20 @@ describe('ActionExecutionRegistry & Adapters', () => {
     expect(receipt.observedEffect.executionMode).toBe('SIMULATED');
   });
 
-  it('executes AWS IAM REVOKE_IAM_SESSION action and returns signed receipt', async () => {
+  it('executes AWS IAM REVOKE_IAM_SESSION simulation and returns signed simulation receipt', async () => {
     const context: ActionExecutionContext = {
       tenantId: 'tenant-123',
       commandId: 'cmd-003',
       actionType: 'REVOKE_IAM_SESSION',
       targetRef: 'arn:aws:iam::123456789012:role/CompromisedDevRole',
-      authorityLevel: 'R2',
+      authorityLevel: 'R1',
       approvalRef: 'appr-1001',
-      isSimulation: false,
+      isSimulation: true,
     };
 
     const receipt = await registry.executeAction(context);
 
-    expect(receipt.status).toBe('EXECUTED');
+    expect(receipt.status).toBe('SIMULATED');
     expect(receipt.actionType).toBe('REVOKE_IAM_SESSION');
     expect(receipt.targetRef).toBe(
       'arn:aws:iam::123456789012:role/CompromisedDevRole',

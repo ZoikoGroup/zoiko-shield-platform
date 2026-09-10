@@ -15,7 +15,14 @@ import {
   ShieldAlert,
   ArrowRight,
   Activity,
+  RefreshCw,
 } from "lucide-react";
+import {
+  LoadingState,
+  PartialState,
+  DegradedState,
+  StaleState,
+} from "@/components/states/mandatory-ui-states";
 
 export default function IngestionPage() {
   const router = useRouter();
@@ -219,7 +226,7 @@ export default function IngestionPage() {
         </div>
 
         <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={fetchLiveEvents} isLoading={isLoadingLive}>
+          <Button variant="outline" onClick={() => fetchLiveEvents()} isLoading={isLoadingLive}>
             <span>Refresh Events Backbone</span>
           </Button>
           <Button variant="cyan" onClick={() => router.push("/alerts")}>
@@ -279,7 +286,7 @@ export default function IngestionPage() {
             </span>
             <Button
               variant="primary"
-              onClick={handleSend}
+              onClick={() => handleSend()}
               isLoading={isSending}
             >
               <Send className="w-3.5 h-3.5" />

@@ -3,11 +3,11 @@
 import React, { useState } from "react";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
-import { Card } from "@/ui/Card";
-import { Badge } from "@/ui/Badge";
-import { Button } from "@/ui/Button";
-import { Tabs } from "@/ui/Tabs";
-import { Modal } from "@/ui/Modal";
+import { Card } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { Tabs } from "@/components/ui/Tabs";
+import { Modal } from "@/components/ui/Modal";
 import {
   AiIncident,
   AiIncidentSeverity,
@@ -33,6 +33,13 @@ import {
   Cpu,
   ShieldX,
 } from "lucide-react";
+import {
+  DegradedState,
+  RecoveryState,
+  LoadingState,
+  StaleState,
+  UnavailableState,
+} from "@/components/states/mandatory-ui-states";
 
 export default function AiGovernancePage() {
   const [state, , isHydrated] = useDemoState();
@@ -262,6 +269,24 @@ export default function AiGovernancePage() {
         </Card>
       </div>
 
+      {/* Mandatory UI States Integration */}
+      {incidents.some((i) => i.killSwitchEngaged) && (
+        <DegradedState
+          title="AI Safety Kill-Switch Engaged (Deterministic Fallback Active)"
+          message="One or more LLM models are contained under emergency circuit breaker. Deterministic rules active."
+          fallbackReason="EMERGENCY_AI_KILL_SWITCH_TRIGGERED"
+        />
+      )}
+
+      {incidents.some((i) => i.fallbackModeActive && !i.killSwitchEngaged) && (
+        <RecoveryState
+          title="AI Multi-Vendor Tier-1 Failover in Progress"
+          message="Routing inference queries to certified Tier-1 secondary model fallback provider."
+          rollbackStage="Active Anthropic Claude / Deterministic Rule Switchover"
+          progressPercent={85}
+        />
+      )}
+
       {/* Tabs */}
       <Tabs
         activeTab={activeTab}
@@ -297,8 +322,8 @@ export default function AiGovernancePage() {
       {activeTab === "incidents" && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 gap-4">
-            {incidents.map((incident) => (
-              <Card key={incident.id} className="space-y-4 border-l-4 border-l-rose-500">
+            {incidents.map((incident, idx) => (
+              <Card key={`${incident.id || "inc"}-${idx}`} className="space-y-4 border-l-4 border-l-rose-500">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-800">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2.5 flex-wrap">
@@ -432,9 +457,9 @@ export default function AiGovernancePage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {modelDrifts.map((report) => (
+              {modelDrifts.map((report, idx) => (
                 <div
-                  key={report.modelId}
+                  key={`${report.modelId || "model"}-${idx}`}
                   className={`p-4 rounded-xl border ${
                     report.status === "CRITICAL_DRIFT_DETECTED"
                       ? "bg-rose-950/20 border-rose-500/40"
@@ -566,9 +591,9 @@ export default function AiGovernancePage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {complianceDrift.slaAlarms.map((alarm) => (
+                {complianceDrift.slaAlarms.map((alarm, idx) => (
                   <div
-                    key={alarm.alarmId}
+                    key={`${alarm.alarmId || "alarm"}-${idx}`}
                     className="p-4 rounded-xl bg-amber-950/20 border border-amber-500/40 flex flex-col md:flex-row md:items-center justify-between gap-4 font-mono text-xs"
                   >
                     <div className="space-y-1">

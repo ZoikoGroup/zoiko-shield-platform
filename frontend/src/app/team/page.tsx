@@ -24,6 +24,12 @@ import {
   Trash2,
   PlusCircle,
 } from "lucide-react";
+import {
+  LoadingState,
+  UnauthorizedState,
+  PartialState,
+  StaleState,
+} from "@/components/states/mandatory-ui-states";
 
 export default function TeamPage() {
   const router = useRouter();

@@ -4,9 +4,9 @@ import React, { useState } from "react";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
 import { truncateHash } from "@/lib/utils";
-import { Card } from "@/ui/Card";
-import { Button } from "@/ui/Button";
-import { Badge } from "@/ui/Badge";
+import { Card } from "@/components/ui/Card";
+import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
 import {
   Lock,
   Unlock,
@@ -14,7 +14,16 @@ import {
   RotateCcw,
   FileCheck2,
   CheckCircle2,
+  ShieldAlert,
+  Fingerprint,
 } from "lucide-react";
+import {
+  DegradedState,
+  RecoveryState,
+  UnauthorizedState,
+  UnavailableState,
+} from "@/components/states/mandatory-ui-states";
+import { DualCustodyApprovalModal } from "@/components/cases/DualCustodyApprovalModal";
 
 export default function ActionsAndFreezePage() {
   const [state] = useDemoState();
@@ -29,11 +38,20 @@ export default function ActionsAndFreezePage() {
   const [rollbackToken, setRollbackToken] = useState(
     () =>
       state.cases[0]?.responseProposal?.id ??
-      "rb-tok-8f7a9c2b-e102-4b71-9f1c-7e8293740192"
+      "ZS-ROLLBACK-TOKEN-8F7A9C2B"
   );
   const [rollbackLoading, setRollbackLoading] = useState(false);
   const [rollbackSuccess, setRollbackSuccess] = useState(false);
   const [rollbackError, setRollbackError] = useState<string | null>(null);
+  const [rollbackProgress, setRollbackProgress] = useState(0);
+  const [rollbackStageText, setRollbackStageText] = useState("");
+  const [isDualCustodyOpen, setIsDualCustodyOpen] = useState(false);
+  const [quorumReceipt, setQuorumReceipt] = useState<{
+    quorumId: string;
+    approver1: string;
+    approver2: string;
+    rollbackToken: string;
+  } | null>(null);
 
   // Real simulation receipt from demo state (populated after case/response simulation)
   const simulationReceipt = state.cases[0]?.simulationReceipt;
@@ -62,12 +80,25 @@ export default function ActionsAndFreezePage() {
     setRollbackLoading(true);
     setRollbackError(null);
     setRollbackSuccess(false);
+    setRollbackProgress(25);
+    setRollbackStageText("Validating token signature & single-use authorization");
+
     try {
-      // Use the real response proposal ID from state if available, else the entered token
+      await new Promise((r) => setTimeout(r, 400));
+      setRollbackProgress(50);
+      setRollbackStageText("Dispatching compensating adapter (RESTORE_USER_SESSION_CACHE / UNISOLATE_ENDPOINT)");
+
+      await new Promise((r) => setTimeout(r, 500));
+      setRollbackProgress(75);
+      setRollbackStageText("Reconciling endpoint connectivity & identity cache");
+
       const proposalId = responseProposal?.id ?? rollbackToken;
       await ZoikoShieldApiClient.simulateResponseProposal(proposalId);
+
+      setRollbackProgress(100);
+      setRollbackStageText("Compensating rollback successfully finalized & anchored");
       setRollbackSuccess(true);
-      setTimeout(() => setRollbackSuccess(false), 5000);
+      setTimeout(() => setRollbackSuccess(false), 8000);
     } catch (err: any) {
       setRollbackError(err.message ?? "Rollback failed");
     } finally {
@@ -111,6 +142,24 @@ export default function ActionsAndFreezePage() {
           </div>
         </div>
       </div>
+
+      {/* Mandatory UI States */}
+      {isFrozen && (
+        <DegradedState
+          title="Emergency Autonomous Freeze Active (SOAR Halted)"
+          message={`Tenant automation frozen: "${freezeReason}". Scope: ${freezeScope}. All live actions require human step-up authorization.`}
+          fallbackReason="SOAR_EMERGENCY_KILLSWITCH_ENGAGED"
+        />
+      )}
+
+      {rollbackLoading && (
+        <RecoveryState
+          title="Executing Automated Compensation Rollback"
+          message="Reverting modified session credentials and restoring pre-incident state diff."
+          rollbackStage="SOAR Compensating Action Adapter"
+          progressPercent={65}
+        />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Emergency Freeze Controller */}
@@ -202,16 +251,41 @@ export default function ActionsAndFreezePage() {
             </div>
 
             <div className="space-y-3 font-mono text-xs">
+              {/* Dual-Custody Quorum Validation Trigger (Simulation & Governance Mode) */}
+              <div className="p-3 rounded-xl bg-slate-950/80 border border-purple-500/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-purple-300 font-bold flex items-center gap-1.5 text-xs">
+                    <Fingerprint className="w-4 h-4 text-purple-400" />
+                    Dual-Custody Quorum Validation
+                  </span>
+                  <Badge variant={quorumReceipt ? "healthy" : "ai"}>
+                    {quorumReceipt ? "QUORUM ATTESTED" : "FIDO2 2-OF-N (SIMULATION)"}
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Verify 2-of-N hardware attestation quorum and generate pre-computed rollback tokens in simulation mode (Live execution gated per Master Build Plan §2, §18).
+                </p>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setIsDualCustodyOpen(true)}
+                  className="w-full text-xs font-mono bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500"
+                >
+                  <Lock className="w-3.5 h-3.5" /> Validate Dual-Custody Quorum &amp; Challenge
+                </Button>
+              </div>
+
+              {/* Single-Use Token Rollback Section */}
               {responseProposal ? (
                 <div className="p-2.5 rounded-lg bg-cyan-950/30 border border-cyan-500/30 text-cyan-300 text-[11px]">
-                  ✓ Live proposal from case{" "}
+                  ✓ Active Token from case{" "}
                   <span className="font-bold">{state.cases[0]?.id}</span>:
                   <br />
-                  <span className="text-slate-300">{responseProposal.id}</span>
+                  <span className="text-slate-300">{quorumReceipt?.rollbackToken || responseProposal.id}</span>
                 </div>
               ) : (
                 <div className="space-y-1.5">
-                  <label className="text-slate-400">Cryptographic Rollback Token:</label>
+                  <label className="text-slate-400">Single-Use Rollback Token:</label>
                   <input
                     type="text"
                     value={rollbackToken}
@@ -228,32 +302,24 @@ export default function ActionsAndFreezePage() {
                 isLoading={rollbackLoading}
               >
                 <RotateCcw className="w-4 h-4" />
-                <span>Redeem &amp; Execute Rollback</span>
+                <span>Redeem Single-Use Token &amp; Execute Rollback</span>
               </Button>
+
+              {/* Multi-Stage Recovery State Visualizer */}
+              {(rollbackLoading || rollbackSuccess) && (
+                <RecoveryState
+                  title="Automated Rollback Compensation Active"
+                  message="Executing compensating action across certified provider adapters."
+                  rollbackStage={rollbackStageText}
+                  progressPercent={rollbackProgress}
+                  rollbackToken={quorumReceipt?.rollbackToken || rollbackToken}
+                  isReverted={rollbackSuccess}
+                />
+              )}
 
               {rollbackError && (
                 <div className="p-3 rounded-lg bg-rose-950/30 border border-rose-500/30 text-[11px] text-rose-300">
                   ❌ {rollbackError}
-                </div>
-              )}
-
-              {rollbackSuccess && (
-                <div className="p-3 rounded-lg bg-emerald-950/40 border border-emerald-500/40 text-[11px] text-emerald-300 space-y-1">
-                  <div className="font-bold flex items-center gap-1.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    <span>Compensating Action Dispatched!</span>
-                  </div>
-                  <div>
-                    Executed:{" "}
-                    <strong className="text-white">
-                      {simulationReceipt?.stateDiffs?.[0]?.rollbackCommand ?? "UNISOLATE_ENDPOINT"}
-                    </strong>{" "}
-                    on{" "}
-                    {simulationReceipt?.stateDiffs?.[0]?.target ?? "srv-db-prod-02"}
-                  </div>
-                  <div className="text-slate-400 text-[10px]">
-                    Rollback token invalidated immediately after use.
-                  </div>
                 </div>
               )}
             </div>
@@ -392,6 +458,23 @@ export default function ActionsAndFreezePage() {
           </Card>
         </div>
       </div>
+
+      {/* Dual-Custody Approval Modal */}
+      <DualCustodyApprovalModal
+        isOpen={isDualCustodyOpen}
+        onClose={() => setIsDualCustodyOpen(false)}
+        caseId={state.cases[0]?.id || "case-live-01"}
+        proposalId={state.cases[0]?.responseProposal?.id || "prop-isolate-r2"}
+        actionType="ISOLATE_ENDPOINT"
+        targetResource="srv-db-prod-02"
+        blastRadiusScore={0.05}
+        reversibilityTier="R1"
+        rollbackCommand="UNISOLATE_ENDPOINT"
+        onQuorumApproved={(receipt) => {
+          setQuorumReceipt(receipt);
+          setRollbackToken(receipt.rollbackToken);
+        }}
+      />
     </div>
   );
 }

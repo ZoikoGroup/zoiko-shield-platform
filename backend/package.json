@@ -66,7 +66,7 @@
     "simulate:crypto-shredding": "ts-node -r tsconfig-paths/register ./scripts/simulate-cryptographic-shredding.ts",
     "simulate:diff-privacy": "ts-node -r tsconfig-paths/register ./scripts/simulate-differential-privacy-guard.ts",
     "simulate:canary-honeypot": "ts-node -r tsconfig-paths/register ./scripts/simulate-canary-honeypot-pipeline.ts",
-    "simulate:dr-failover": "ts-node -r tsconfig-paths/register ./scripts/simulate-disaster-recovery-failover.ts",
+    "simulate:dr-failover": "ts-node -r tsconfig-paths/register ./scripts/simulate-regional-standby-failover.ts",
     "simulate:attack-path": "ts-node -r tsconfig-paths/register ./scripts/simulate-attack-path-discovery.ts",
     "simulate:ebpf-kernel": "ts-node -r tsconfig-paths/register ./scripts/simulate-ebpf-kernel-telemetry.ts",
     "simulate:break-glass": "ts-node -r tsconfig-paths/register ./scripts/simulate-break-glass-quorum.ts",

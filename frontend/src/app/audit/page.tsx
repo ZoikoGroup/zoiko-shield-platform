@@ -18,15 +18,43 @@ import {
   Shield,
   KeyRound,
   ArrowRight,
+  RefreshCw,
 } from "lucide-react";
+import {
+  LoadingState,
+  StaleState,
+  UnavailableState,
+  DegradedState,
+} from "@/components/states/mandatory-ui-states";
 
 export default function AuditPage() {
   const router = useRouter();
   const [state] = useDemoState();
+  const [isLoading, setIsLoading] = useState(false);
+  const [isStale, setIsStale] = useState(false);
 
   useEffect(() => {
-    ZoikoShieldApiClient.getAuditPackages().catch(() => {/* backend offline — demo state used */});
+    setIsLoading(true);
+    ZoikoShieldApiClient.getAuditPackages()
+      .catch(() => {
+        setIsStale(true);
+      })
+      .finally(() => {
+        setIsLoading(false);
+      });
   }, []);
+
+  const refreshAuditPackages = async () => {
+    setIsLoading(true);
+    try {
+      await ZoikoShieldApiClient.getAuditPackages();
+      setIsStale(false);
+    } catch {
+      setIsStale(true);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -64,7 +92,7 @@ export default function AuditPage() {
         <div className="flex items-center gap-3">
           <Button
             variant="primary"
-            onClick={handleGenerate}
+            onClick={() => handleGenerate()}
             isLoading={isGenerating}
           >
             <Lock className="w-4 h-4" />
@@ -76,6 +104,23 @@ export default function AuditPage() {
           </Button>
         </div>
       </div>
+
+      {/* Mandatory UI States */}
+      {isLoading && (
+        <LoadingState
+          title="Loading Audit Packages..."
+          message="Retrieving Merkle epoch manifests and quantum-safe signatures."
+          regionalCell="us-east-1"
+        />
+      )}
+
+      {isStale && !isLoading && (
+        <StaleState
+          title="Cached Audit Export View"
+          message="Showing last verified package manifest from local cache."
+          retryAction={refreshAuditPackages}
+        />
+      )}
 
       {/* Package Details Card */}
       {latestPackage ? (
@@ -152,7 +197,7 @@ export default function AuditPage() {
       ) : (
         <Card className="py-12 text-center text-slate-400 space-y-3 font-mono text-xs">
           <p>No audit package generated yet.</p>
-          <Button variant="primary" onClick={handleGenerate} isLoading={isGenerating}>
+          <Button variant="primary" onClick={() => handleGenerate()} isLoading={isGenerating}>
             Generate Sealed Audit Package
           </Button>
         </Card>
