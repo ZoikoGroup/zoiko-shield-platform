@@ -51,4 +51,3 @@ export class TenantMembership {
   @CreateDateColumn()
   joinedAt: Date;
 }
-

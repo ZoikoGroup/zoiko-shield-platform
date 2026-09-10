@@ -5,7 +5,12 @@ import { KafkaProducerService } from '../../kafka/kafka-producer.service';
 
 export interface ControlEvaluationSpec {
   controlId: string;
-  framework: 'SOC2_CC6_1' | 'ISO_27001_A_9_2' | 'HIPAA_164_312' | 'DORA_ICT_SEC' | 'NIS2_RISK_MGMT';
+  framework:
+    | 'SOC2_CC6_1'
+    | 'ISO_27001_A_9_2'
+    | 'HIPAA_164_312'
+    | 'DORA_ICT_SEC'
+    | 'NIS2_RISK_MGMT';
   title: string;
   description: string;
   maxFreshnessSeconds: number;
@@ -30,7 +35,7 @@ export interface CollectorRunResult {
 
 /**
  * Continuous Assurance Scheduled Collector & Evaluator Engine (Spec §8 & LAB 10)
- * 
+ *
  * Capabilities:
  * 1. Evaluates cloud configuration and live telemetry against regulatory control specs.
  * 2. Enforces cryptographic data completeness and freshness constraints.
@@ -39,7 +44,9 @@ export interface CollectorRunResult {
  */
 @Injectable()
 export class ContinuousAssuranceCollectorService {
-  private readonly logger = new Logger(ContinuousAssuranceCollectorService.name);
+  private readonly logger = new Logger(
+    ContinuousAssuranceCollectorService.name,
+  );
 
   private readonly controlSpecs: Map<string, ControlEvaluationSpec> = new Map([
     [
@@ -48,7 +55,8 @@ export class ContinuousAssuranceCollectorService {
         controlId: 'SOC2-CC6.1',
         framework: 'SOC2_CC6_1',
         title: 'Logical Access & Multi-Factor Authentication Enforcement',
-        description: 'Verifies 100% of privileged identities enforce hardware MFA and zero unmanaged standing admin accounts exist.',
+        description:
+          'Verifies 100% of privileged identities enforce hardware MFA and zero unmanaged standing admin accounts exist.',
         maxFreshnessSeconds: 300,
         evaluatorFn: (data) => {
           const mfaRate = data.mfaEnforcementRate ?? 100;
@@ -71,7 +79,8 @@ export class ContinuousAssuranceCollectorService {
         controlId: 'ISO27001-A.9.2',
         framework: 'ISO_27001_A_9_2',
         title: 'User Access Provisioning & JIT Elevation Governance',
-        description: 'Ensures all high-privilege access is granted via time-bounded JIT elevation with peer approval.',
+        description:
+          'Ensures all high-privilege access is granted via time-bounded JIT elevation with peer approval.',
         maxFreshnessSeconds: 600,
         evaluatorFn: (data) => {
           const jitEnforced = data.jitElevationActive !== false;
@@ -94,7 +103,8 @@ export class ContinuousAssuranceCollectorService {
         controlId: 'HIPAA-164.312',
         framework: 'HIPAA_164_312',
         title: 'Cryptographic Integrity & Audit Controls',
-        description: 'Validates SHA-256 evidence hashing, binary Merkle tree batching, and dual-signature audit packages.',
+        description:
+          'Validates SHA-256 evidence hashing, binary Merkle tree batching, and dual-signature audit packages.',
         maxFreshnessSeconds: 900,
         evaluatorFn: (data) => {
           const merkleCheckpointed = data.merkleEpochValid !== false;
@@ -173,7 +183,8 @@ export class ContinuousAssuranceCollectorService {
     }
 
     const totalControls = this.controlSpecs.size;
-    const overallScore = totalControls > 0 ? Number((totalScore / totalControls).toFixed(1)) : 100;
+    const overallScore =
+      totalControls > 0 ? Number((totalScore / totalControls).toFixed(1)) : 100;
 
     const result: CollectorRunResult = {
       tenantId,

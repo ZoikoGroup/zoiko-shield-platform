@@ -2,7 +2,7 @@
  * AI Review Envelope Interface
  * Specification: ZoikoShield Combined Engineering Specifications §16 & §16.1
  * "Figure 11 - Human oversight and AI decision-rights model."
- * 
+ *
  * 16.1 Effective-review interface — every AI output surfaced for a decision must carry:
  * 1. AI label and use-case name
  * 2. Sources and exact supporting spans
@@ -17,11 +17,7 @@
  */
 
 export type DecisionState =
-  | 'UNREVIEWED'
-  | 'ACCEPTED'
-  | 'MODIFIED'
-  | 'REJECTED'
-  | 'ESCALATED';
+  'UNREVIEWED' | 'ACCEPTED' | 'MODIFIED' | 'REJECTED' | 'ESCALATED';
 
 export type DecisionTransition = 'ACCEPT' | 'MODIFY' | 'REJECT' | 'ESCALATE';
 

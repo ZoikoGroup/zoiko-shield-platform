@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync, writeFileSync, readdirSync } from 'fs';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { resolve, join } from 'path';
 import * as crypto from 'crypto';
 import { StandaloneMerkleVerifier } from './merkle/standalone-merkle-verifier';
@@ -75,7 +75,6 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
   const manifestPath = join(targetPath, 'manifest.json');
   const envelopePath = join(targetPath, 'envelope.json');
   const evidenceIndexPath = join(targetPath, 'evidence_index.jsonl');
-  const proofsPath = join(targetPath, 'proofs', 'merkle_proofs.json');
   const evidenceDir = join(targetPath, 'evidence');
 
   if (!existsSync(manifestPath)) {
@@ -159,7 +158,7 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
       for (const line of lines) {
         if (!line.trim()) continue;
         const entry = JSON.parse(line);
-        leafHashes.push(entry.entryHash);
+        leafHashes.push(String(entry.entryHash || ''));
 
         const expectedFile = join(evidenceDir, `${entry.type}.json`);
         if (existsSync(expectedFile)) {

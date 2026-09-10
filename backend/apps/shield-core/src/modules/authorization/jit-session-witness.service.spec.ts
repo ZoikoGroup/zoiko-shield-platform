@@ -95,8 +95,16 @@ describe('JitSessionWitnessService', () => {
       );
 
       const audit = await service.sealTerminalSessionAudit(session.sessionId, [
-        { command: 'GET /api/v1/evidence/ledger', executedAt: new Date().toISOString(), result: '200 OK' },
-        { command: 'POST /api/v1/controls/evaluate', executedAt: new Date().toISOString(), result: '200 OK' },
+        {
+          command: 'GET /api/v1/evidence/ledger',
+          executedAt: new Date().toISOString(),
+          result: '200 OK',
+        },
+        {
+          command: 'POST /api/v1/controls/evaluate',
+          executedAt: new Date().toISOString(),
+          result: '200 OK',
+        },
       ]);
 
       expect(audit.sessionId).toBe(session.sessionId);

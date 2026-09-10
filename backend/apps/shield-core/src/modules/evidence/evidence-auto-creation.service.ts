@@ -22,7 +22,7 @@ export class EvidenceAutoCreationService implements OnModuleInit {
   constructor(
     private readonly kafkaConsumer: KafkaConsumerService,
     private readonly evidenceService: EvidenceService,
-  ) { }
+  ) {}
 
   onModuleInit(): void {
     this.kafkaConsumer.registerHandler(

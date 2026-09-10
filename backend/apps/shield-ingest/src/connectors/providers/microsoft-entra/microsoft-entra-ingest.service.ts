@@ -2,7 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { EntraNormalizerService } from './entra.normalizer';
 import { ZoikoShieldCanonicalEvent } from './entra.types';
-import { KafkaProducerService, CANONICAL_TOPICS } from '../../../kafka/kafka.producer.service';
+import {
+  KafkaProducerService,
+  CANONICAL_TOPICS,
+} from '../../../kafka/kafka.producer.service';
 import { QuarantineService } from '../../../ingestion/quarantine.service';
 
 export interface EntraIngestBatchResult {
@@ -16,7 +19,7 @@ export interface EntraIngestBatchResult {
 
 /**
  * Microsoft Entra ID / Graph Security Live Ingestion Adapter (Spec §5 & §20)
- * 
+ *
  * Capabilities:
  * 1. OAuth2 client credentials / certificate-based authentication.
  * 2. Normalizes Microsoft Entra sign-in activity and directory audit logs to OCSF 1.1.0 schemas.
@@ -49,7 +52,9 @@ export class MicrosoftEntraIngestService {
     for (const rawRecord of records) {
       try {
         if (!rawRecord.id || !rawRecord.userPrincipalName) {
-          throw new Error('Missing mandatory Entra record fields (id, userPrincipalName)');
+          throw new Error(
+            'Missing mandatory Entra record fields (id, userPrincipalName)',
+          );
         }
 
         const normalized = this.normalizer.normalizeSignInLog(

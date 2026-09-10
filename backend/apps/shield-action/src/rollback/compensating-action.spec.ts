@@ -4,7 +4,11 @@ import {
   RollbackCompensationPlan,
   RollbackProgressTelemetry,
 } from './compensating-action.service';
-import { ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 
 describe('CompensatingActionService', () => {
   let service: CompensatingActionService;
@@ -66,7 +70,9 @@ describe('CompensatingActionService', () => {
       'analyst.lead@acme.com',
     );
 
-    expect(service.isTokenConsumed(samplePlan.singleUseRollbackToken)).toBe(true);
+    expect(service.isTokenConsumed(samplePlan.singleUseRollbackToken)).toBe(
+      true,
+    );
 
     // Second execution with same token MUST throw ForbiddenException
     await expect(

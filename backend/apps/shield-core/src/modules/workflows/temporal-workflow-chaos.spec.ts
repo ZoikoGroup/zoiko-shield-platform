@@ -39,9 +39,16 @@ describe('TemporalWorkflowChaosService (LAB 10 & §13 Workflow Resilience)', () 
     expect(started.state).toBe('AWAITING_HUMAN_DECISION');
 
     // Record baseline events in durable journal
-    chaosService.recordWorkflowEvent(workflowId, 'WORKFLOW_STARTED', { workflowId, tenantId });
-    chaosService.recordWorkflowEvent(workflowId, 'EVIDENCE_GATHERED', { count: 2 });
-    chaosService.recordWorkflowEvent(workflowId, 'PLAYBOOK_EVALUATED', { recommendation: 'CONTAIN_ROLE' });
+    chaosService.recordWorkflowEvent(workflowId, 'WORKFLOW_STARTED', {
+      workflowId,
+      tenantId,
+    });
+    chaosService.recordWorkflowEvent(workflowId, 'EVIDENCE_GATHERED', {
+      count: 2,
+    });
+    chaosService.recordWorkflowEvent(workflowId, 'PLAYBOOK_EVALUATED', {
+      recommendation: 'CONTAIN_ROLE',
+    });
 
     // Simulate worker hard crash
     const crashReport = chaosService.simulateWorkerCrash(workflowId);
@@ -49,10 +56,13 @@ describe('TemporalWorkflowChaosService (LAB 10 & §13 Workflow Resilience)', () 
     expect(crashReport.lastPersistedEventId).toBe(3);
 
     // Recover worker and replay history
-    const recoveryReport = chaosService.recoverWorkerAndReplayHistory(workflowId);
+    const recoveryReport =
+      chaosService.recoverWorkerAndReplayHistory(workflowId);
     expect(recoveryReport.determinismVerified).toBe(true);
     expect(recoveryReport.recoveredAtState).toBe('AWAITING_HUMAN_DECISION');
-    expect(recoveryReport.historyDigestBefore).toBe(recoveryReport.historyDigestAfter);
+    expect(recoveryReport.historyDigestBefore).toBe(
+      recoveryReport.historyDigestAfter,
+    );
     expect(recoveryReport.duplicateSideEffectsDetected).toBe(0);
   });
 
@@ -69,9 +79,16 @@ describe('TemporalWorkflowChaosService (LAB 10 & §13 Workflow Resilience)', () 
       targetResource: 'host-k8s-master-01',
     });
 
-    chaosService.recordWorkflowEvent(workflowId, 'WORKFLOW_STARTED', { workflowId, tenantId });
-    chaosService.recordWorkflowEvent(workflowId, 'EVIDENCE_GATHERED', { count: 1 });
-    chaosService.recordWorkflowEvent(workflowId, 'PLAYBOOK_EVALUATED', { recommendation: 'ISOLATE_HOST' });
+    chaosService.recordWorkflowEvent(workflowId, 'WORKFLOW_STARTED', {
+      workflowId,
+      tenantId,
+    });
+    chaosService.recordWorkflowEvent(workflowId, 'EVIDENCE_GATHERED', {
+      count: 1,
+    });
+    chaosService.recordWorkflowEvent(workflowId, 'PLAYBOOK_EVALUATED', {
+      recommendation: 'ISOLATE_HOST',
+    });
 
     // Worker crashes
     chaosService.simulateWorkerCrash(workflowId);
@@ -92,7 +109,8 @@ describe('TemporalWorkflowChaosService (LAB 10 & §13 Workflow Resilience)', () 
     expect(bufferResult.queuePosition).toBe(1);
 
     // Worker restarts, replays history, and consumes buffered signal
-    const recoveryReport = chaosService.recoverWorkerAndReplayHistory(workflowId);
+    const recoveryReport =
+      chaosService.recoverWorkerAndReplayHistory(workflowId);
     expect(recoveryReport.recoveredAtState).toBe('RESOLVED');
     expect(recoveryReport.determinismVerified).toBe(true);
 
@@ -100,7 +118,9 @@ describe('TemporalWorkflowChaosService (LAB 10 & §13 Workflow Resilience)', () 
     const finalResult = workflowService.getWorkflowStatus(workflowId);
     expect(finalResult).toBeDefined();
     expect(finalResult!.state).toBe('RESOLVED');
-    expect(finalResult!.executedActions).toContain('EXECUTE_ISOLATE_ENDPOINT_PLAYBOOK');
+    expect(finalResult!.executedActions).toContain(
+      'EXECUTE_ISOLATE_ENDPOINT_PLAYBOOK',
+    );
   });
 
   it('3. should execute activities idempotently across transient chaos retries without duplicate side-effects', async () => {

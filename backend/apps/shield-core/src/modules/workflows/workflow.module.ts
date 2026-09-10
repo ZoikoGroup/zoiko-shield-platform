@@ -7,4 +7,3 @@ import { TemporalWorkflowChaosService } from './temporal-workflow-chaos.service'
   exports: [InvestigateAlertWorkflowService, TemporalWorkflowChaosService],
 })
 export class WorkflowModule {}
-

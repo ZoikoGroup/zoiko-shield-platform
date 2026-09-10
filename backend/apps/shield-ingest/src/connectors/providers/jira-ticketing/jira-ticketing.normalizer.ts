@@ -40,7 +40,8 @@ export class JiraNormalizerService {
       },
       category_uid: 2, // Findings
       class_uid: 2001, // Security Finding
-      activity_id: payload.status === 'Resolved' || payload.status === 'Closed' ? 2 : 1,
+      activity_id:
+        payload.status === 'Resolved' || payload.status === 'Closed' ? 2 : 1,
       severity_id: severity.id,
       severity: severity.label,
       time: payload.created || new Date().toISOString(),

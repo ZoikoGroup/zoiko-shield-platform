@@ -53,7 +53,9 @@ export class DoraNis2PciEvaluatorService {
     input: SectorControlEvaluationInput,
   ): SectorControlEvaluationResult {
     if (!input.tenantId || !input.controlId || !input.framework) {
-      throw new BadRequestException('tenantId, controlId, and framework are mandatory.');
+      throw new BadRequestException(
+        'tenantId, controlId, and framework are mandatory.',
+      );
     }
 
     const evaluatedAt = new Date().toISOString();
@@ -66,7 +68,8 @@ export class DoraNis2PciEvaluatorService {
 
     switch (input.controlId) {
       case 'DORA-ART10-BACKUP-RESILIENCE': {
-        controlTitle = 'DORA Art 10: ICT Systems Backup & Automated Failover Recovery';
+        controlTitle =
+          'DORA Art 10: ICT Systems Backup & Automated Failover Recovery';
         const rto = input.observedMetrics.rtoActualSeconds ?? 45;
         const rpo = input.observedMetrics.rpoActualSeconds ?? 0;
 
@@ -83,7 +86,8 @@ export class DoraNis2PciEvaluatorService {
       }
 
       case 'DORA-ART11-ANOMALY-DETECTION-LATENCY': {
-        controlTitle = 'DORA Art 11: Anomaly Detection & Incident Response Latency';
+        controlTitle =
+          'DORA Art 11: Anomaly Detection & Incident Response Latency';
         const latency = input.observedMetrics.detectionLatencySeconds ?? 18;
 
         if (latency > 60) {
@@ -103,7 +107,8 @@ export class DoraNis2PciEvaluatorService {
       }
 
       case 'NIS2-ART21-SUPPLY-CHAIN-EARLY-WARNING': {
-        controlTitle = 'NIS2 Art 21: Supply Chain Incident Notification & Early Warning';
+        controlTitle =
+          'NIS2 Art 21: Supply Chain Incident Notification & Early Warning';
         const hours = input.observedMetrics.incidentReportingHours ?? 4;
 
         if (hours > 24) {
@@ -119,13 +124,15 @@ export class DoraNis2PciEvaluatorService {
       }
 
       case 'PCI-DSS-REQ10.2-AUDIT-IMMUTABILITY': {
-        controlTitle = 'PCI DSS v4.0 Req 10.2: Cryptographic Audit Trail Immutability';
+        controlTitle =
+          'PCI DSS v4.0 Req 10.2: Cryptographic Audit Trail Immutability';
         const anchored = input.observedMetrics.merkleEpochAnchored ?? true;
 
         if (!anchored || input.evidenceDigests.length === 0) {
           result = 'FAIL';
           complianceScore = 0;
-          rationale = 'Audit trail telemetry missing post-quantum Merkle epoch anchor or SHA-256 evidence digests.';
+          rationale =
+            'Audit trail telemetry missing post-quantum Merkle epoch anchor or SHA-256 evidence digests.';
         } else {
           result = 'PASS';
           complianceScore = 100;
@@ -135,7 +142,9 @@ export class DoraNis2PciEvaluatorService {
       }
 
       default:
-        throw new BadRequestException(`Unknown sector controlId: ${input.controlId}`);
+        throw new BadRequestException(
+          `Unknown sector controlId: ${input.controlId}`,
+        );
     }
 
     const attestationDigest = crypto

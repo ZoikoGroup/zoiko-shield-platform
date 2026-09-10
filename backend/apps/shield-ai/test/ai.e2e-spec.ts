@@ -225,7 +225,8 @@ describe('ShieldAi Application Endpoints (e2e)', () => {
         .set(getHeaders())
         .set('x-tenant-id', tenantId)
         .send({
-          rootCauseSummary: 'Few-shot prompt sample contained conflicting firewall rule snippet',
+          rootCauseSummary:
+            'Few-shot prompt sample contained conflicting firewall rule snippet',
           contributingFactors: ['Outdated few-shot example'],
           preventativeActions: ['Updated gold-set prompt template'],
         })
@@ -240,7 +241,8 @@ describe('ShieldAi Application Endpoints (e2e)', () => {
         .set(getHeaders())
         .set('x-tenant-id', tenantId)
         .send({
-          resolutionSummary: 'Updated prompt template verified and redeployed to production',
+          resolutionSummary:
+            'Updated prompt template verified and redeployed to production',
           disengageKillSwitch: true,
           resolvedBy: 'soc-lead-bob',
         })

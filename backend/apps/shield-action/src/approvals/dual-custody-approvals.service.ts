@@ -1,4 +1,9 @@
-import { Injectable, Logger, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import * as crypto from 'crypto';
 
 export interface ApprovalRequest {
@@ -24,7 +29,7 @@ export interface ApprovalRequest {
 
 /**
  * Dual-Custody Approval Quorum Service (Spec §15 & LAB 15)
- * 
+ *
  * Enforces:
  * 1. Single approval sufficient for R0/R1 actions.
  * 2. Mandatory dual-custody (Two-Man Rule) for R2+ actions.
@@ -65,7 +70,10 @@ export class DualCustodyApprovalsService {
         role: initiatorRole,
         signedAt: now.toISOString(),
       },
-      status: authorityLevel === 'R0' || authorityLevel === 'R1' ? 'APPROVED' : 'PENDING_APPROVAL',
+      status:
+        authorityLevel === 'R0' || authorityLevel === 'R1'
+          ? 'APPROVED'
+          : 'PENDING_APPROVAL',
       expiresAt,
     };
 
@@ -88,7 +96,9 @@ export class DualCustodyApprovalsService {
 
     if (new Date() > new Date(request.expiresAt)) {
       request.status = 'EXPIRED';
-      throw new ForbiddenException(`Approval request ${approvalId} has expired`);
+      throw new ForbiddenException(
+        `Approval request ${approvalId} has expired`,
+      );
     }
 
     // Invariant: Segregation of duties - Approver cannot be the Initiator

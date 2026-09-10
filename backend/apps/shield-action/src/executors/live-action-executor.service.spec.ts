@@ -18,9 +18,15 @@ describe('LiveActionExecutor & DualCustody & Rollback (Spec §15 & LAB 15)', () 
       ],
     }).compile();
 
-    actionExecutor = module.get<LiveActionExecutorService>(LiveActionExecutorService);
-    dualCustodyService = module.get<DualCustodyApprovalsService>(DualCustodyApprovalsService);
-    rollbackService = module.get<AutomatedRollbackOrchestratorService>(AutomatedRollbackOrchestratorService);
+    actionExecutor = module.get<LiveActionExecutorService>(
+      LiveActionExecutorService,
+    );
+    dualCustodyService = module.get<DualCustodyApprovalsService>(
+      DualCustodyApprovalsService,
+    );
+    rollbackService = module.get<AutomatedRollbackOrchestratorService>(
+      AutomatedRollbackOrchestratorService,
+    );
   });
 
   it('should allow single-analyst execution for R1 recommendation actions', async () => {
@@ -36,7 +42,9 @@ describe('LiveActionExecutor & DualCustody & Rollback (Spec §15 & LAB 15)', () 
     expect(receipt.actionType).toBe('BLOCK_PERIMETER_IP');
     expect(receipt.observedEffect.ipBlocked).toBe('198.51.100.42');
     expect(receipt.rollbackCapability.supported).toBe(true);
-    expect(receipt.rollbackCapability.rollbackAction).toBe('REMOVE_WAF_IP_RULE');
+    expect(receipt.rollbackCapability.rollbackAction).toBe(
+      'REMOVE_WAF_IP_RULE',
+    );
   });
 
   it('should enforce Dual-Custody Two-Man Rule for R2+ live actions', async () => {
@@ -65,7 +73,11 @@ describe('LiveActionExecutor & DualCustody & Rollback (Spec §15 & LAB 15)', () 
 
     // 3. Analyst Alice cannot self-approve (segregation of duties)
     expect(() =>
-      dualCustodyService.approveRequest(approval.approvalId, 'analyst-alice', 'SECURITY_ANALYST'),
+      dualCustodyService.approveRequest(
+        approval.approvalId,
+        'analyst-alice',
+        'SECURITY_ANALYST',
+      ),
     ).toThrow(ForbiddenException);
 
     // 4. Security Officer Bob approves -> APPROVED
@@ -87,7 +99,9 @@ describe('LiveActionExecutor & DualCustody & Rollback (Spec §15 & LAB 15)', () 
     });
 
     expect(receipt.status).toBe('EXECUTED');
-    expect(receipt.observedEffect.userPrincipal).toBe('compromised.admin@acme.com');
+    expect(receipt.observedEffect.userPrincipal).toBe(
+      'compromised.admin@acme.com',
+    );
   });
 
   it('should execute automated compensation rollback for executed action', async () => {

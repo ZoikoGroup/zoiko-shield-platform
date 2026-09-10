@@ -23,7 +23,9 @@ export interface SimilaritySearchParams {
   queryEmbedding: number[];
   topK?: number;
   minScore?: number;
-  filterClassification?: Array<'PUBLIC' | 'INTERNAL' | 'CONFIDENTIAL' | 'RESTRICTED'>;
+  filterClassification?: Array<
+    'PUBLIC' | 'INTERNAL' | 'CONFIDENTIAL' | 'RESTRICTED'
+  >;
   metadataFilter?: Record<string, any>;
 }
 
@@ -53,9 +55,15 @@ export class TenantVectorStoreService {
   /**
    * Helper to build strict composite partition key
    */
-  private buildPartitionKey(tenantId: string, namespace: string, docId: string): string {
+  private buildPartitionKey(
+    tenantId: string,
+    namespace: string,
+    docId: string,
+  ): string {
     if (!tenantId || !namespace || !docId) {
-      throw new BadRequestException('tenantId, namespace, and docId are required for partition key');
+      throw new BadRequestException(
+        'tenantId, namespace, and docId are required for partition key',
+      );
     }
     return `${tenantId}:${namespace}:${docId}`;
   }
@@ -102,7 +110,9 @@ export class TenantVectorStoreService {
     }>,
   ): Promise<{ upsertedCount: number; documentIds: string[] }> {
     if (!tenantId) {
-      throw new ForbiddenException('Tenant ID is required for vector operations');
+      throw new ForbiddenException(
+        'Tenant ID is required for vector operations',
+      );
     }
 
     const docIds: string[] = [];

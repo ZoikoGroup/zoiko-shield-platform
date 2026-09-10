@@ -11,7 +11,8 @@ describe('ContinuousAssuranceCollector & DriftMonitor (Spec §8 & §55)', () => 
   const mockEvidenceService = {
     createEvidence: jest.fn().mockImplementation((input) => ({
       id: `ev-mock-${Date.now()}`,
-      content_hash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+      content_hash:
+        'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
       ...input,
     })),
   };
@@ -30,8 +31,12 @@ describe('ContinuousAssuranceCollector & DriftMonitor (Spec §8 & §55)', () => 
       ],
     }).compile();
 
-    collectorService = module.get<ContinuousAssuranceCollectorService>(ContinuousAssuranceCollectorService);
-    driftService = module.get<ComplianceDriftMonitorService>(ComplianceDriftMonitorService);
+    collectorService = module.get<ContinuousAssuranceCollectorService>(
+      ContinuousAssuranceCollectorService,
+    );
+    driftService = module.get<ComplianceDriftMonitorService>(
+      ComplianceDriftMonitorService,
+    );
     jest.clearAllMocks();
   });
 
@@ -64,16 +69,20 @@ describe('ContinuousAssuranceCollector & DriftMonitor (Spec §8 & §55)', () => 
       'tenant-soc2-test',
       {
         ingestionLatencyMs: 45000, // Breaches 30,000ms threshold
-        complianceScore: 78.5,     // Breaches 95.0% threshold (CRITICAL)
+        complianceScore: 78.5, // Breaches 95.0% threshold (CRITICAL)
         activeConnectorCount: 3,
-        unmanagedAdminCount: 8,    // Breaches ceiling of 5
+        unmanagedAdminCount: 8, // Breaches ceiling of 5
       },
     );
 
     expect(driftResult.status).toBe('NON_COMPLIANT');
     expect(driftResult.activeAlarms.length).toBe(3);
     expect(driftResult.activeAlarms.map((a) => a.controlId)).toEqual(
-      expect.arrayContaining(['SOC2-CC6.1-LATENCY', 'ISO27001-A.9.2-POSTURE', 'SOC2-CC6.1-IAM']),
+      expect.arrayContaining([
+        'SOC2-CC6.1-LATENCY',
+        'ISO27001-A.9.2-POSTURE',
+        'SOC2-CC6.1-IAM',
+      ]),
     );
     expect(mockKafkaProducer.publishEvent).toHaveBeenCalledTimes(1);
   });

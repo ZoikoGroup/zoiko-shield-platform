@@ -1,7 +1,13 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ModelDriftMonitorService, DriftEvaluationResult } from './model-drift-monitor.service';
+import {
+  ModelDriftMonitorService,
+  DriftEvaluationResult,
+} from './model-drift-monitor.service';
 import { AiKillSwitchService } from '../kill-switch/ai-kill-switch.service';
-import { SafeDegradationService, DegradationResolution } from '../degradation/safe-degradation.service';
+import {
+  SafeDegradationService,
+  DegradationResolution,
+} from '../degradation/safe-degradation.service';
 
 export interface AiDriftGuardrailReport {
   evaluation: DriftEvaluationResult;

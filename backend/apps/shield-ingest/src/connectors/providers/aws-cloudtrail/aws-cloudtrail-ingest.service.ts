@@ -1,8 +1,14 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { AwsCloudTrailNormalizerService } from './aws-cloudtrail.normalizer';
-import { CloudTrailRawRecord, CloudTrailNormalizedEvent } from './aws-cloudtrail.types';
-import { KafkaProducerService, CANONICAL_TOPICS } from '../../../kafka/kafka.producer.service';
+import {
+  CloudTrailRawRecord,
+  CloudTrailNormalizedEvent,
+} from './aws-cloudtrail.types';
+import {
+  KafkaProducerService,
+  CANONICAL_TOPICS,
+} from '../../../kafka/kafka.producer.service';
 import { QuarantineService } from '../../../ingestion/quarantine.service';
 
 export interface CloudTrailIngestBatchResult {
@@ -16,7 +22,7 @@ export interface CloudTrailIngestBatchResult {
 
 /**
  * AWS CloudTrail Live Ingestion Adapter (Spec §5 & §20)
- * 
+ *
  * Capabilities:
  * 1. Validates AWS SigV4 authorization signatures on webhook/SQS batch payloads.
  * 2. Computes raw SHA-256 digests for cryptographic provenance.
@@ -44,7 +50,10 @@ export class AwsCloudTrailIngestService {
   ): boolean {
     if (!signatureHeader || !secretKey) return false;
 
-    const payloadBuffer = typeof rawPayload === 'string' ? Buffer.from(rawPayload, 'utf8') : rawPayload;
+    const payloadBuffer =
+      typeof rawPayload === 'string'
+        ? Buffer.from(rawPayload, 'utf8')
+        : rawPayload;
     const computedSignature = crypto
       .createHmac('sha256', secretKey)
       .update(payloadBuffer)
@@ -74,8 +83,14 @@ export class AwsCloudTrailIngestService {
 
     for (const rawRecord of records) {
       try {
-        if (!rawRecord.eventID || !rawRecord.eventName || !rawRecord.eventSource) {
-          throw new Error('Missing mandatory CloudTrail record fields (eventID, eventName, eventSource)');
+        if (
+          !rawRecord.eventID ||
+          !rawRecord.eventName ||
+          !rawRecord.eventSource
+        ) {
+          throw new Error(
+            'Missing mandatory CloudTrail record fields (eventID, eventName, eventSource)',
+          );
         }
 
         const normalized = this.normalizer.normalizeRecord(

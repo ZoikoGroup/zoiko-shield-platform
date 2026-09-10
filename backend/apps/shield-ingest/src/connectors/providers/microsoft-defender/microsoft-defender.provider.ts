@@ -13,7 +13,9 @@ import { MicrosoftDefenderNormalizerService } from './microsoft-defender.normali
 import { MicrosoftDefenderAlertPayload } from './microsoft-defender.types';
 
 @Injectable()
-export class MicrosoftDefenderProvider implements SecurityConnector, OnModuleInit {
+export class MicrosoftDefenderProvider
+  implements SecurityConnector, OnModuleInit
+{
   private readonly logger = new Logger(MicrosoftDefenderProvider.name);
 
   constructor(
@@ -84,7 +86,11 @@ export class MicrosoftDefenderProvider implements SecurityConnector, OnModuleIni
 
   async getPermissions(context: ConnectorContext): Promise<PermissionResult> {
     return {
-      granted: ['Alert.Read.All', 'Machine.Read.All', 'SecurityIncident.Read.All'],
+      granted: [
+        'Alert.Read.All',
+        'Machine.Read.All',
+        'SecurityIncident.Read.All',
+      ],
       missing: [],
     };
   }

@@ -208,7 +208,10 @@ export class IncidentRcaGeneratorService {
     options?: {
       requiredRole?: string;
     },
-  ): { report: IncidentRcaReport; envelope?: AiReviewEnvelope<IncidentRcaReport> } {
+  ): {
+    report: IncidentRcaReport;
+    envelope?: AiReviewEnvelope<IncidentRcaReport>;
+  } {
     const report = this.generateIncidentRca(input);
 
     if (!this.decisionRightsService) {
@@ -222,57 +225,65 @@ export class IncidentRcaGeneratorService {
       confidence: 0.96,
     }));
 
-    const envelope = this.decisionRightsService.wrapInEnvelope<IncidentRcaReport>({
-      tenantId: input.tenantId,
-      aiLabelAndUseCaseName: {
-        aiLabel: 'ZoikoShield RCA Synthesizer',
-        useCaseName: 'INCIDENT_RCA_SYNTHESIS',
-        modelRoute: 'deterministic-mitre-synthesizer',
-      },
-      sourcesAndSpans: sources.length > 0 ? sources : [
-        {
-          sourceId: input.incidentId,
-          sourceType: 'INCIDENT_TELEMETRY',
-          exactSpan: report.rootCauseHypothesis,
-          confidence: 0.95,
+    const envelope =
+      this.decisionRightsService.wrapInEnvelope<IncidentRcaReport>({
+        tenantId: input.tenantId,
+        aiLabelAndUseCaseName: {
+          aiLabel: 'ZoikoShield RCA Synthesizer',
+          useCaseName: 'INCIDENT_RCA_SYNTHESIS',
+          modelRoute: 'deterministic-mitre-synthesizer',
         },
-      ],
-      knownMissingStaleOrConflictingEvidence: {
-        missingEvidence: [],
-        staleEvidence: [],
-        conflictingEvidence: [],
-      },
-      calibratedConfidenceAndUncertainty: {
-        score: input.severity === 'CRITICAL' ? 0.95 : 0.90,
-        qualitativeBand: 'HIGH',
-        calibrationBasis: 'Synthesized from eBPF traces, attack graph paths, and MITRE ATT&CK techniques',
-        uncertaintyFactors: [],
-      },
-      alternativeHypothesesOrActions: [
-        {
-          title: 'Distributed External Scanning',
-          rationale: 'Telemetry could represent noise from public internet scanning without internal foothold',
-          tradeOffs: 'Failing to contain lateral credentials risks full domain compromise',
+        sourcesAndSpans:
+          sources.length > 0
+            ? sources
+            : [
+                {
+                  sourceId: input.incidentId,
+                  sourceType: 'INCIDENT_TELEMETRY',
+                  exactSpan: report.rootCauseHypothesis,
+                  confidence: 0.95,
+                },
+              ],
+        knownMissingStaleOrConflictingEvidence: {
+          missingEvidence: [],
+          staleEvidence: [],
+          conflictingEvidence: [],
         },
-      ],
-      expectedImpactAndReversibility: {
-        blastRadius: `${report.identifiedBlastRadius.affectedHosts.length} host(s), ${report.identifiedBlastRadius.isolatedPods.length} pod(s)`,
-        isReversible: true,
-        reversibilityTier: input.severity === 'CRITICAL' ? 'R3' : 'R2',
-        compensationPlan: 'Revert container isolation and restore rotated API secrets',
-      },
-      requiredAuthorityAndApprovals: {
-        requiredRole: options?.requiredRole || 'INCIDENT_COMMANDER',
-        responseAuthorityTier: input.severity === 'CRITICAL' ? 'R3' : 'R2',
-        dualApproverRequired: input.severity === 'CRITICAL',
-      },
-      appealOrFeedbackRoute: {
-        appealUrl: `/api/v1/ai/decisions/appeals/${input.incidentId}`,
-        feedbackChannel: 'incident-review-board',
-        customerAffecting: true,
-      },
-      payload: report,
-    });
+        calibratedConfidenceAndUncertainty: {
+          score: input.severity === 'CRITICAL' ? 0.95 : 0.9,
+          qualitativeBand: 'HIGH',
+          calibrationBasis:
+            'Synthesized from eBPF traces, attack graph paths, and MITRE ATT&CK techniques',
+          uncertaintyFactors: [],
+        },
+        alternativeHypothesesOrActions: [
+          {
+            title: 'Distributed External Scanning',
+            rationale:
+              'Telemetry could represent noise from public internet scanning without internal foothold',
+            tradeOffs:
+              'Failing to contain lateral credentials risks full domain compromise',
+          },
+        ],
+        expectedImpactAndReversibility: {
+          blastRadius: `${report.identifiedBlastRadius.affectedHosts.length} host(s), ${report.identifiedBlastRadius.isolatedPods.length} pod(s)`,
+          isReversible: true,
+          reversibilityTier: input.severity === 'CRITICAL' ? 'R3' : 'R2',
+          compensationPlan:
+            'Revert container isolation and restore rotated API secrets',
+        },
+        requiredAuthorityAndApprovals: {
+          requiredRole: options?.requiredRole || 'INCIDENT_COMMANDER',
+          responseAuthorityTier: input.severity === 'CRITICAL' ? 'R3' : 'R2',
+          dualApproverRequired: input.severity === 'CRITICAL',
+        },
+        appealOrFeedbackRoute: {
+          appealUrl: `/api/v1/ai/decisions/appeals/${input.incidentId}`,
+          feedbackChannel: 'incident-review-board',
+          customerAffecting: true,
+        },
+        payload: report,
+      });
 
     return { report, envelope };
   }

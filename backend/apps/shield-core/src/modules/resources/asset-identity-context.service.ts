@@ -8,10 +8,7 @@ export type CriticalityTier =
   | 'TIER_3_DEVELOPMENT';
 
 export type ServiceDowntimeScope =
-  | 'NONE'
-  | 'ISOLATED_HOST'
-  | 'TENANT_DEGRADED'
-  | 'SERVICE_INTERRUPTED';
+  'NONE' | 'ISOLATED_HOST' | 'TENANT_DEGRADED' | 'SERVICE_INTERRUPTED';
 
 export type BlastRiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
@@ -77,7 +74,15 @@ export class AssetIdentityContextService {
   ): Promise<ActorIdentityContext> {
     // Attempt local identity lookup if matching email/principal pattern
     let isPrivileged = false;
-    const privilegedKeywords = ['admin', 'secops', 'root', 'infra', 'ciso', 'devops', 'break-glass'];
+    const privilegedKeywords = [
+      'admin',
+      'secops',
+      'root',
+      'infra',
+      'ciso',
+      'devops',
+      'break-glass',
+    ];
     const actorLower = actorId.toLowerCase();
 
     if (privilegedKeywords.some((kw) => actorLower.includes(kw))) {
@@ -87,19 +92,31 @@ export class AssetIdentityContextService {
     const defaultTier: CriticalityTier = isPrivileged
       ? 'TIER_0_MISSION_CRITICAL'
       : actorId.includes('host') || actorId.includes('srv-')
-      ? 'TIER_1_BUSINESS_CRITICAL'
-      : 'TIER_2_OPERATIONAL';
+        ? 'TIER_1_BUSINESS_CRITICAL'
+        : 'TIER_2_OPERATIONAL';
 
     return {
       tenantId,
-      actorType: hints?.actorType ?? (actorId.includes('@') ? 'USER' : actorId.startsWith('arn:') ? 'CLOUD_ROLE' : 'HOST'),
+      actorType:
+        hints?.actorType ??
+        (actorId.includes('@')
+          ? 'USER'
+          : actorId.startsWith('arn:')
+            ? 'CLOUD_ROLE'
+            : 'HOST'),
       actorId,
       displayName: hints?.displayName ?? actorId.split('@')[0],
-      department: hints?.department ?? (isPrivileged ? 'Security Engineering' : 'Corporate IT'),
-      privilegedRoles: hints?.privilegedRoles ?? (isPrivileged ? ['SecurityAdmin', 'GlobalReader'] : ['StandardUser']),
+      department:
+        hints?.department ??
+        (isPrivileged ? 'Security Engineering' : 'Corporate IT'),
+      privilegedRoles:
+        hints?.privilegedRoles ??
+        (isPrivileged ? ['SecurityAdmin', 'GlobalReader'] : ['StandardUser']),
       criticalityTier: hints?.criticalityTier ?? defaultTier,
       activeSessionsCount: hints?.activeSessionsCount ?? (isPrivileged ? 3 : 1),
-      dependentServices: hints?.dependentServices ?? (isPrivileged ? ['prod-auth-gateway', 'audit-pipeline'] : []),
+      dependentServices:
+        hints?.dependentServices ??
+        (isPrivileged ? ['prod-auth-gateway', 'audit-pipeline'] : []),
       lastObservedAt: hints?.lastObservedAt ?? new Date(),
     };
   }
@@ -126,11 +143,12 @@ export class AssetIdentityContextService {
     // 1. Criticality Tier evaluation
     switch (context.criticalityTier) {
       case 'TIER_0_MISSION_CRITICAL':
-        score += 0.40;
+        score += 0.4;
         collateralFactors.push({
           factor: 'CRITICALITY_TIER_0',
-          weight: 0.40,
-          description: 'Target actor holds mission-critical operational authority or Tier-0 access.',
+          weight: 0.4,
+          description:
+            'Target actor holds mission-critical operational authority or Tier-0 access.',
         });
         break;
       case 'TIER_1_BUSINESS_CRITICAL':
@@ -142,11 +160,12 @@ export class AssetIdentityContextService {
         });
         break;
       case 'TIER_2_OPERATIONAL':
-        score += 0.10;
+        score += 0.1;
         collateralFactors.push({
           factor: 'CRITICALITY_TIER_2',
-          weight: 0.10,
-          description: 'Standard operational workload or standard business identity.',
+          weight: 0.1,
+          description:
+            'Standard operational workload or standard business identity.',
         });
         break;
       default:
@@ -155,7 +174,7 @@ export class AssetIdentityContextService {
 
     // 2. Privileged Roles Impact
     if (context.privilegedRoles.length > 0) {
-      const privWeight = Math.min(0.20, context.privilegedRoles.length * 0.08);
+      const privWeight = Math.min(0.2, context.privilegedRoles.length * 0.08);
       score += privWeight;
       collateralFactors.push({
         factor: 'PRIVILEGED_ROLES',
@@ -166,7 +185,7 @@ export class AssetIdentityContextService {
 
     // 3. Dependent Services Impact
     if (context.dependentServices.length > 0) {
-      const depWeight = Math.min(0.25, context.dependentServices.length * 0.10);
+      const depWeight = Math.min(0.25, context.dependentServices.length * 0.1);
       score += depWeight;
       collateralFactors.push({
         factor: 'DOWNSTREAM_SERVICES',
@@ -184,15 +203,20 @@ export class AssetIdentityContextService {
       collateralFactors.push({
         factor: 'CONTAINMENT_ISOLATION',
         weight: 0.15,
-        description: 'Network or host isolation restricts all inbound/outbound communication.',
+        description:
+          'Network or host isolation restricts all inbound/outbound communication.',
       });
-    } else if (actionUpper.includes('TERMINATE') || actionUpper.includes('REVOKE')) {
+    } else if (
+      actionUpper.includes('TERMINATE') ||
+      actionUpper.includes('REVOKE')
+    ) {
       score += 0.08;
       serviceDowntime = 'NONE';
       collateralFactors.push({
         factor: 'SESSION_REVOCATION',
         weight: 0.08,
-        description: 'Active credentials and authentication tokens will be invalidated.',
+        description:
+          'Active credentials and authentication tokens will be invalidated.',
       });
     }
 
@@ -200,7 +224,7 @@ export class AssetIdentityContextService {
     const finalScore = Math.min(1.0, Math.max(0.0, Number(score.toFixed(2))));
 
     let riskLevel: BlastRiskLevel = 'LOW';
-    if (finalScore >= 0.70) riskLevel = 'CRITICAL';
+    if (finalScore >= 0.7) riskLevel = 'CRITICAL';
     else if (finalScore >= 0.45) riskLevel = 'HIGH';
     else if (finalScore >= 0.25) riskLevel = 'MEDIUM';
 
@@ -236,7 +260,10 @@ export class AssetIdentityContextService {
   ): RollbackCompensationPlan {
     const actionUpper = actionType.toUpperCase();
 
-    if (actionUpper.includes('ISOLATE_HOST') || actionUpper.includes('EDR_ISOLATION')) {
+    if (
+      actionUpper.includes('ISOLATE_HOST') ||
+      actionUpper.includes('EDR_ISOLATION')
+    ) {
       return {
         compensationActionType: 'UNISOLATE_EDR_HOST',
         targetId,
@@ -250,7 +277,10 @@ export class AssetIdentityContextService {
       };
     }
 
-    if (actionUpper.includes('RESET_USER_SESSIONS') || actionUpper.includes('REVOKE_TOKENS')) {
+    if (
+      actionUpper.includes('RESET_USER_SESSIONS') ||
+      actionUpper.includes('REVOKE_TOKENS')
+    ) {
       return {
         compensationActionType: 'RESTORE_USER_SESSION_CACHE',
         targetId,
@@ -264,7 +294,10 @@ export class AssetIdentityContextService {
       };
     }
 
-    if (actionUpper.includes('QUARANTINE_FILE') || actionUpper.includes('BLOCK_HASH')) {
+    if (
+      actionUpper.includes('QUARANTINE_FILE') ||
+      actionUpper.includes('BLOCK_HASH')
+    ) {
       return {
         compensationActionType: 'RESTORE_QUARANTINED_FILE',
         targetId,

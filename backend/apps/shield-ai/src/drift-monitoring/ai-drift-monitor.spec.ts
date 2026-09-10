@@ -23,7 +23,9 @@ describe('AiDriftMonitorService', () => {
     }).compile();
 
     service = module.get<AiDriftMonitorService>(AiDriftMonitorService);
-    driftService = module.get<ModelDriftMonitorService>(ModelDriftMonitorService);
+    driftService = module.get<ModelDriftMonitorService>(
+      ModelDriftMonitorService,
+    );
     killSwitchService = module.get<AiKillSwitchService>(AiKillSwitchService);
 
     // Register baseline profile
@@ -81,7 +83,7 @@ describe('AiDriftMonitorService', () => {
       driftService.recordObservation({
         modelId,
         timestamp: new Date().toISOString(),
-        confidenceScore: 0.40, // Severe drop from 0.95 (shift: 0.55)
+        confidenceScore: 0.4, // Severe drop from 0.95 (shift: 0.55)
         latencyMs: 500, // 4x baseline latency
         tokenCount: 900,
         predictedCategory: 'UNKNOWN_ANOMALY',

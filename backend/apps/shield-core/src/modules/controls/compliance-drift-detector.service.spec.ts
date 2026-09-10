@@ -23,15 +23,21 @@ describe('ComplianceDriftDetectorService', () => {
 
   const mockReport = (
     overallScore: number,
-    evaluations: Array<{ controlCode: string; status: 'COMPLIANT' | 'NON_COMPLIANT' | 'GAP_DETECTED' }>,
+    evaluations: Array<{
+      controlCode: string;
+      status: 'COMPLIANT' | 'NON_COMPLIANT' | 'GAP_DETECTED';
+    }>,
   ): FrameworkAssessmentReport => ({
     assessmentId: 'asmt-test-01',
     tenantId,
     environmentId,
     overallComplianceScore: overallScore,
     totalControlsEvaluated: evaluations.length,
-    compliantControlsCount: evaluations.filter((e) => e.status === 'COMPLIANT').length,
-    nonCompliantControlsCount: evaluations.filter((e) => e.status !== 'COMPLIANT').length,
+    compliantControlsCount: evaluations.filter((e) => e.status === 'COMPLIANT')
+      .length,
+    nonCompliantControlsCount: evaluations.filter(
+      (e) => e.status !== 'COMPLIANT',
+    ).length,
     evaluations: evaluations.map((e) => ({
       controlCode: e.controlCode,
       framework: 'SOC2',
@@ -81,7 +87,9 @@ describe('ComplianceDriftDetectorService', () => {
       expect(drift.driftPercentage).toBe(10);
       expect(drift.driftedControls).toHaveLength(1);
       expect(drift.driftedControls[0].controlCode).toBe('ISO27001-A.5.15');
-      expect(drift.recommendation).toContain('Investigate minor compliance drift');
+      expect(drift.recommendation).toContain(
+        'Investigate minor compliance drift',
+      );
     });
   });
 
@@ -141,8 +149,14 @@ describe('ComplianceDriftDetectorService', () => {
       const tenantA = 'tenant-a';
       const tenantB = 'tenant-b';
 
-      const reportA = { ...mockReport(80, [{ controlCode: 'C1', status: 'NON_COMPLIANT' }]), tenantId: tenantA };
-      const reportB = { ...mockReport(100, [{ controlCode: 'C1', status: 'COMPLIANT' }]), tenantId: tenantB };
+      const reportA = {
+        ...mockReport(80, [{ controlCode: 'C1', status: 'NON_COMPLIANT' }]),
+        tenantId: tenantA,
+      };
+      const reportB = {
+        ...mockReport(100, [{ controlCode: 'C1', status: 'COMPLIANT' }]),
+        tenantId: tenantB,
+      };
 
       service.detectDrift(reportA);
       service.detectDrift(reportB);

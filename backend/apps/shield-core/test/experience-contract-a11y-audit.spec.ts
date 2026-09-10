@@ -2,8 +2,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 describe('G1-EXPERIENCE-01: Experience Contract & Accessibility Audit (Test Family #19)', () => {
-  const frontendAppDir = path.resolve(__dirname, '../../../../frontend/src/app');
-  const componentsDir = path.resolve(__dirname, '../../../../frontend/src/components');
+  const frontendAppDir = path.resolve(
+    __dirname,
+    '../../../../frontend/src/app',
+  );
+  const componentsDir = path.resolve(
+    __dirname,
+    '../../../../frontend/src/components',
+  );
 
   const requiredRoutes = [
     'alerts',
@@ -33,7 +39,10 @@ describe('G1-EXPERIENCE-01: Experience Contract & Accessibility Audit (Test Fami
   });
 
   it('Invariant 2: Mandatory UI States component provides all 7 required experience contract states', () => {
-    const statesFilePath = path.join(componentsDir, 'states/mandatory-ui-states.tsx');
+    const statesFilePath = path.join(
+      componentsDir,
+      'states/mandatory-ui-states.tsx',
+    );
     expect(fs.existsSync(statesFilePath)).toBe(true);
 
     const statesContent = fs.readFileSync(statesFilePath, 'utf8');
@@ -53,7 +62,10 @@ describe('G1-EXPERIENCE-01: Experience Contract & Accessibility Audit (Test Fami
   });
 
   it('Invariant 3: Screen-reader accessibility (aria-live, role=status/alert) is enforced on state boundaries', () => {
-    const statesFilePath = path.join(componentsDir, 'states/mandatory-ui-states.tsx');
+    const statesFilePath = path.join(
+      componentsDir,
+      'states/mandatory-ui-states.tsx',
+    );
     const statesContent = fs.readFileSync(statesFilePath, 'utf8');
 
     // Accessibility attributes required by Test Family #19
@@ -63,7 +75,10 @@ describe('G1-EXPERIENCE-01: Experience Contract & Accessibility Audit (Test Fami
   });
 
   it('Invariant 4: UnauthorizedState binds to Cedar/FIDO2 re-authorization challenges', () => {
-    const statesFilePath = path.join(componentsDir, 'states/mandatory-ui-states.tsx');
+    const statesFilePath = path.join(
+      componentsDir,
+      'states/mandatory-ui-states.tsx',
+    );
     const statesContent = fs.readFileSync(statesFilePath, 'utf8');
 
     expect(statesContent).toContain('cedarPolicyDenialReason');
@@ -71,7 +86,10 @@ describe('G1-EXPERIENCE-01: Experience Contract & Accessibility Audit (Test Fami
   });
 
   it('Invariant 5: UnavailableState provides RTO/RPO target guidance and regional failover telemetry', () => {
-    const statesFilePath = path.join(componentsDir, 'states/mandatory-ui-states.tsx');
+    const statesFilePath = path.join(
+      componentsDir,
+      'states/mandatory-ui-states.tsx',
+    );
     const statesContent = fs.readFileSync(statesFilePath, 'utf8');
 
     expect(statesContent).toContain('rtoTargetMinutes');
@@ -80,7 +98,10 @@ describe('G1-EXPERIENCE-01: Experience Contract & Accessibility Audit (Test Fami
   });
 
   it('Invariant 6: RecoveryState reflects in-flight compensating rollback token & progress', () => {
-    const statesFilePath = path.join(componentsDir, 'states/mandatory-ui-states.tsx');
+    const statesFilePath = path.join(
+      componentsDir,
+      'states/mandatory-ui-states.tsx',
+    );
     const statesContent = fs.readFileSync(statesFilePath, 'utf8');
 
     expect(statesContent).toContain('rollbackToken');

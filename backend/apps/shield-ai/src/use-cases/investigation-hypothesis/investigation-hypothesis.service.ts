@@ -46,7 +46,9 @@ export class InvestigationHypothesisService {
             {
               sourceId: context.correlationId || 'ctx-hypo-01',
               sourceType: 'INVESTIGATION_CONTEXT',
-              exactSpan: (output.content || '').slice(0, 100) || 'Investigation hypotheses synthesized from context',
+              exactSpan:
+                (output.content || '').slice(0, 100) ||
+                'Investigation hypotheses synthesized from context',
               confidence: 0.91,
             },
           ];
@@ -68,13 +70,15 @@ export class InvestigationHypothesisService {
       calibratedConfidenceAndUncertainty: {
         score: 0.88,
         qualitativeBand: 'HIGH',
-        calibrationBasis: 'Synthesized from timeline chronology and MITRE technique mapping',
+        calibrationBasis:
+          'Synthesized from timeline chronology and MITRE technique mapping',
         uncertaintyFactors: [],
       },
       alternativeHypothesesOrActions: [
         {
           title: 'Benign Administrative Anomaly',
-          rationale: 'Activity matches scheduled maintenance pattern without malicious payload',
+          rationale:
+            'Activity matches scheduled maintenance pattern without malicious payload',
           tradeOffs: 'Premature closure risks missing low-and-slow persistence',
         },
       ],

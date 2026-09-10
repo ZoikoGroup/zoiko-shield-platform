@@ -38,10 +38,7 @@ describe('JiraTicketingProvider', () => {
 
   it('should register with connector registry onModuleInit', () => {
     provider.onModuleInit();
-    expect(registry.register).toHaveBeenCalledWith(
-      'jira-ticketing',
-      provider,
-    );
+    expect(registry.register).toHaveBeenCalledWith('jira-ticketing', provider);
   });
 
   it('should connect successfully with valid hostUrl and apiToken', async () => {

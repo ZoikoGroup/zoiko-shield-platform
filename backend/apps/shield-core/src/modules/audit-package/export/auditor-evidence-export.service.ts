@@ -84,7 +84,9 @@ export class AuditorEvidenceExportService {
         evidenceRecordIds: ['ev-edr-cortex-003', 'ev-network-policy-004'],
         merkleLeafHashes: [
           this.hashContent('ev-edr-cortex-003:EDR_ISOLATION_PROVEN'),
-          this.hashContent('ev-network-policy-004:NETWORK_SEGMENTATION_VERIFIED'),
+          this.hashContent(
+            'ev-network-policy-004:NETWORK_SEGMENTATION_VERIFIED',
+          ),
         ],
         evaluatorVersion: 'v2.1.0',
         chainOfCustodyHash: this.hashContent('CC6.6-CUSTODY-VERIFIED'),
@@ -184,15 +186,21 @@ export class AuditorEvidenceExportService {
       controlsCount: controls.length,
     });
 
-    const pqcSignatureDilithium3 = this.hashContent(`ML-DSA-65:DILITHIUM3:${manifestCoreHash}`);
-    const classicalSignatureEd25519 = this.hashContent(`ED25519:${manifestCoreHash}`);
+    const pqcSignatureDilithium3 = this.hashContent(
+      `ML-DSA-65:DILITHIUM3:${manifestCoreHash}`,
+    );
+    const classicalSignatureEd25519 = this.hashContent(
+      `ED25519:${manifestCoreHash}`,
+    );
 
     const chainOfCustodyAuditTrail = [
       {
         action: 'AUDIT_PACKAGE_GENERATED',
         actor: params.requestedBy,
         timestamp: new Date(),
-        signatureDigest: this.hashContent(`${packageId}:INITIATED:${params.requestedBy}`),
+        signatureDigest: this.hashContent(
+          `${packageId}:INITIATED:${params.requestedBy}`,
+        ),
       },
       {
         action: 'CONTINUOUS_ASSURANCE_SEALED',
@@ -226,7 +234,9 @@ export class AuditorEvidenceExportService {
   private calculateDomainSeparatedMerkleRoot(leaves: string[]): string {
     if (leaves.length === 0) return this.hashContent('EMPTY_MERKLE_TREE');
     let currentLevel = leaves.map((leaf) =>
-      createHash('sha256').update(Buffer.concat([Buffer.from([0x00]), Buffer.from(leaf, 'hex')])).digest('hex'),
+      createHash('sha256')
+        .update(Buffer.concat([Buffer.from([0x00]), Buffer.from(leaf, 'hex')]))
+        .digest('hex'),
     );
 
     while (currentLevel.length > 1) {

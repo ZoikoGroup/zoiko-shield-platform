@@ -4,7 +4,11 @@ import {
   DualCustodyQuorumRequest,
   ApproverIdentity,
 } from './dual-custody-quorum.service';
-import { ForbiddenException, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 
 describe('DualCustodyQuorumService', () => {
   let service: DualCustodyQuorumService;
@@ -55,7 +59,9 @@ describe('DualCustodyQuorumService', () => {
     expect(quorum.quorumId).toMatch(/^quorum-/);
     expect(quorum.status).toBe('PENDING_SECOND_SIGNATURE');
     expect(quorum.singleUseRollbackToken).toMatch(/^ZS-ROLLBACK-TOKEN-/);
-    expect(quorum.compensatingPlan.rollbackCommand).toBe('UNQUARANTINE_ENDPOINT');
+    expect(quorum.compensatingPlan.rollbackCommand).toBe(
+      'UNQUARANTINE_ENDPOINT',
+    );
   });
 
   it('should reject initiation if initiator FIDO2 signature is omitted', () => {
@@ -67,7 +73,9 @@ describe('DualCustodyQuorumService', () => {
       },
     };
 
-    expect(() => service.initiateQuorum(invalidRequest)).toThrow(ForbiddenException);
+    expect(() => service.initiateQuorum(invalidRequest)).toThrow(
+      ForbiddenException,
+    );
   });
 
   it('should strictly reject self-approval by the initiator (Two-Man rule non-negotiable invariant)', () => {
@@ -75,7 +83,11 @@ describe('DualCustodyQuorumService', () => {
 
     // Initiator attempts to approve their own request as secondary approver
     expect(() =>
-      service.signSecondApproval(sampleRequest.tenantId, quorum.quorumId, initiator),
+      service.signSecondApproval(
+        sampleRequest.tenantId,
+        quorum.quorumId,
+        initiator,
+      ),
     ).toThrow(ForbiddenException);
   });
 
@@ -125,13 +137,21 @@ describe('DualCustodyQuorumService', () => {
     const quorum = service.initiateQuorum(expiredRequest);
 
     expect(() =>
-      service.signSecondApproval(sampleRequest.tenantId, quorum.quorumId, secondaryApprover),
+      service.signSecondApproval(
+        sampleRequest.tenantId,
+        quorum.quorumId,
+        secondaryApprover,
+      ),
     ).toThrow(BadRequestException);
   });
 
   it('should throw NotFoundException for unknown quorum IDs', () => {
     expect(() =>
-      service.signSecondApproval(sampleRequest.tenantId, 'quorum-unknown-999', secondaryApprover),
+      service.signSecondApproval(
+        sampleRequest.tenantId,
+        'quorum-unknown-999',
+        secondaryApprover,
+      ),
     ).toThrow(NotFoundException);
   });
 });

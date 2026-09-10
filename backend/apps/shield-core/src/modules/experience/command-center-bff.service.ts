@@ -10,7 +10,7 @@ import {
 /**
  * Customer & Analyst Experience Command Center BFF Service
  * Specification: MASTER_BUILD_PLAN.md §7 Step 8 (Experience-Facing APIs / LAB 14)
- * 
+ *
  * Enforces explicit UI state envelopes:
  * - LOADING: Initial query processing
  * - PARTIAL: Asynchronous telemetry or AI narrative incomplete
@@ -85,7 +85,8 @@ export class CommandCenterBffService {
 
     const overviewData: CommandCenterOverviewData = {
       tenantId,
-      securityScore: status === 'HEALTHY_SYNCED' ? 96 : status === 'DEGRADED' ? 78 : 88,
+      securityScore:
+        status === 'HEALTHY_SYNCED' ? 96 : status === 'DEGRADED' ? 78 : 88,
       compliancePosturePct: status === 'HEALTHY_SYNCED' ? 100 : 92.5,
       activeIncidentsCount: 1,
       unresolvedAlertsCount: 3,

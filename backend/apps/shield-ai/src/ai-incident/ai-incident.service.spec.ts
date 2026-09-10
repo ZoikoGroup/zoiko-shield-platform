@@ -32,7 +32,8 @@ describe('AiIncidentService (§23 AI Incident Lifecycle Management)', () => {
       const incident = await service.declareIncident(
         tenantId,
         {
-          title: 'Critical Model Hallucination in Automated Firewall Rule Generator',
+          title:
+            'Critical Model Hallucination in Automated Firewall Rule Generator',
           category: 'MODEL_HALLUCINATION',
           severity: 'SEV1_CRITICAL',
           description: 'Model attempted to delete 0.0.0.0/0 whitelist route',
@@ -80,7 +81,8 @@ describe('AiIncidentService (§23 AI Incident Lifecycle Management)', () => {
         title: 'Prompt Injection Bypass in Log Triage',
         category: 'PROMPT_INJECTION_EXPLOIT',
         severity: 'SEV2_HIGH',
-        description: 'Attacker bypassed canary token via markdown block obfuscation',
+        description:
+          'Attacker bypassed canary token via markdown block obfuscation',
         affectedPromptKey: 'triage-system-prompt-v2',
       });
       expect(inc1.status).toBe('DECLARED');
@@ -105,16 +107,24 @@ describe('AiIncidentService (§23 AI Incident Lifecycle Management)', () => {
 
       // 4. RCA
       const inc4 = await service.completeRca(tenantId, inc1.id, {
-        rootCauseSummary: 'Unsanitized user comments in triage prompt allowed jailbreak markdown escape',
-        contributingFactors: ['Missing markdown sanitizer', 'Prompt delimiter collision'],
-        preventativeActions: ['Added AST delimiter isolation filter', 'Updated canary tokens'],
+        rootCauseSummary:
+          'Unsanitized user comments in triage prompt allowed jailbreak markdown escape',
+        contributingFactors: [
+          'Missing markdown sanitizer',
+          'Prompt delimiter collision',
+        ],
+        preventativeActions: [
+          'Added AST delimiter isolation filter',
+          'Updated canary tokens',
+        ],
       });
       expect(inc4.status).toBe('ROOT_CAUSE_ANALYZED');
       expect(inc4.rcaSummary).toContain('Unsanitized user comments');
 
       // 5. Resolve
       const inc5 = await service.resolveIncident(tenantId, inc1.id, {
-        resolutionSummary: 'Sanitizer deployed to production. Prompt v3 validated with zero bypass.',
+        resolutionSummary:
+          'Sanitizer deployed to production. Prompt v3 validated with zero bypass.',
         disengageKillSwitch: true,
         resolvedBy: 'soc-lead-bob',
       });

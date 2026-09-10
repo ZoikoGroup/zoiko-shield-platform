@@ -12,7 +12,9 @@ describe('DoraNis2PciEvaluatorService', () => {
       providers: [DoraNis2PciEvaluatorService],
     }).compile();
 
-    service = module.get<DoraNis2PciEvaluatorService>(DoraNis2PciEvaluatorService);
+    service = module.get<DoraNis2PciEvaluatorService>(
+      DoraNis2PciEvaluatorService,
+    );
   });
 
   it('should evaluate DORA Art 10 Backup & Resilience control as PASS when RTO < 60s and RPO = 0s', () => {
@@ -34,7 +36,9 @@ describe('DoraNis2PciEvaluatorService', () => {
     expect(result.complianceScore).toBeGreaterThanOrEqual(90);
     expect(result.controlTitle).toContain('DORA Art 10');
     expect(result.attestationDigest).toBeDefined();
-    expect(result.disclaimer).toContain('does not constitute statutory certification');
+    expect(result.disclaimer).toContain(
+      'does not constitute statutory certification',
+    );
   });
 
   it('should evaluate DORA Art 10 as FAIL if RTO exceeds 60s SLA', () => {
@@ -80,7 +84,9 @@ describe('DoraNis2PciEvaluatorService', () => {
       environmentId: 'prod-eu-west-1',
       controlId: 'PCI-DSS-REQ10.2-AUDIT-IMMUTABILITY',
       framework: 'PCI_DSS_V4',
-      evidenceDigests: ['e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'],
+      evidenceDigests: [
+        'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+      ],
       observedMetrics: {
         merkleEpochAnchored: true,
       },

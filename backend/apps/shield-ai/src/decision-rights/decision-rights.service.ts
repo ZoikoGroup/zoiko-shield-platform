@@ -64,7 +64,7 @@ const AUTHORITY_TIER_WEIGHTS: Record<ResponseAuthorityTier, number> = {
 /**
  * Human Oversight & Decision-Rights Engine
  * Specification: ZoikoShield Combined Engineering Specifications §16 & §16.1
- * 
+ *
  * Enforces:
  * 1. 10 mandatory fields in every AiReviewEnvelope surfaced for human review.
  * 2. Strict validation: envelope rejected if missing calibrated confidence, sources, or required authority.
@@ -168,7 +168,8 @@ export class DecisionRightsService {
         staleEvidence:
           input.knownMissingStaleOrConflictingEvidence?.staleEvidence || [],
         conflictingEvidence:
-          input.knownMissingStaleOrConflictingEvidence?.conflictingEvidence || [],
+          input.knownMissingStaleOrConflictingEvidence?.conflictingEvidence ||
+          [],
       },
       calibratedConfidenceAndUncertainty: {
         score,
@@ -212,9 +213,7 @@ export class DecisionRightsService {
   getEnvelope(tenantId: string, envelopeId: string): AiReviewEnvelope {
     const envelope = this.envelopes.get(envelopeId);
     if (!envelope) {
-      throw new NotFoundException(
-        `AiReviewEnvelope '${envelopeId}' not found`,
-      );
+      throw new NotFoundException(`AiReviewEnvelope '${envelopeId}' not found`);
     }
     if (envelope.tenantId !== tenantId) {
       throw new ForbiddenException(

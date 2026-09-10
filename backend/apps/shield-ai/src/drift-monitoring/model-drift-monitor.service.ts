@@ -41,7 +41,10 @@ export interface DriftEvaluationResult {
   latencyMultiplier: number; // Current avg latency / baseline avg latency
   categoryDriftDistance: number; // Total variation distance or Jensen-Shannon divergence
   embeddingCentroidDistance?: number; // Cosine distance between baseline centroid and current centroid
-  recommendation: 'NO_ACTION' | 'SCHEDULE_RECALIBRATION' | 'TRIGGER_MODEL_FAILOVER_OR_CONTAINMENT';
+  recommendation:
+    | 'NO_ACTION'
+    | 'SCHEDULE_RECALIBRATION'
+    | 'TRIGGER_MODEL_FAILOVER_OR_CONTAINMENT';
 }
 
 /**
@@ -120,7 +123,9 @@ export class ModelDriftMonitorService {
   evaluateDrift(modelId: string, minSampleSize = 10): DriftEvaluationResult {
     const baseline = this.baselines.get(modelId);
     if (!baseline) {
-      throw new NotFoundException(`No baseline profile registered for model '${modelId}'`);
+      throw new NotFoundException(
+        `No baseline profile registered for model '${modelId}'`,
+      );
     }
 
     const window = this.observations.get(modelId) || [];
@@ -145,7 +150,9 @@ export class ModelDriftMonitorService {
       window.reduce((acc, o) => acc + o.confidenceScore, 0) / sampleSize;
     const avgLiveLatency =
       window.reduce((acc, o) => acc + o.latencyMs, 0) / sampleSize;
-    const confidenceShift = Math.abs(avgLiveConfidence - baseline.avgConfidence);
+    const confidenceShift = Math.abs(
+      avgLiveConfidence - baseline.avgConfidence,
+    );
     const latencyMultiplier =
       baseline.avgLatencyMs > 0 ? avgLiveLatency / baseline.avgLatencyMs : 1.0;
 
@@ -192,12 +199,21 @@ export class ModelDriftMonitorService {
     // 3. Approximate Population Stability Index (PSI)
     // PSI = confidenceShift * 2 + categoryDriftDistance + (latencyMultiplier > 2.0 ? 0.15 : 0)
     const psiScore = Number(
-      (confidenceShift * 2.0 + categoryDriftDistance * 0.8 + (latencyMultiplier > 1.8 ? 0.1 : 0.0)).toFixed(4),
+      (
+        confidenceShift * 2.0 +
+        categoryDriftDistance * 0.8 +
+        (latencyMultiplier > 1.8 ? 0.1 : 0.0)
+      ).toFixed(4),
     );
 
     // 4. Determine status & recommendation
-    let driftStatus: 'STABLE' | 'WARNING_DRIFT_DETECTED' | 'CRITICAL_DRIFT_DETECTED' = 'STABLE';
-    let recommendation: 'NO_ACTION' | 'SCHEDULE_RECALIBRATION' | 'TRIGGER_MODEL_FAILOVER_OR_CONTAINMENT' = 'NO_ACTION';
+    let driftStatus:
+      'STABLE' | 'WARNING_DRIFT_DETECTED' | 'CRITICAL_DRIFT_DETECTED' =
+      'STABLE';
+    let recommendation:
+      | 'NO_ACTION'
+      | 'SCHEDULE_RECALIBRATION'
+      | 'TRIGGER_MODEL_FAILOVER_OR_CONTAINMENT' = 'NO_ACTION';
 
     if (psiScore >= 0.25 || confidenceShift > 0.35 || latencyMultiplier > 3.0) {
       driftStatus = 'CRITICAL_DRIFT_DETECTED';
@@ -205,7 +221,11 @@ export class ModelDriftMonitorService {
       this.logger.error(
         `🚨 CRITICAL DRIFT DETECTED on model [${modelId}]: PSI=${psiScore}, ConfidenceShift=${confidenceShift.toFixed(3)}, LatencyMultiplier=${latencyMultiplier.toFixed(2)}x`,
       );
-    } else if (psiScore >= 0.1 || confidenceShift > 0.15 || latencyMultiplier > 1.5) {
+    } else if (
+      psiScore >= 0.1 ||
+      confidenceShift > 0.15 ||
+      latencyMultiplier > 1.5
+    ) {
       driftStatus = 'WARNING_DRIFT_DETECTED';
       recommendation = 'SCHEDULE_RECALIBRATION';
       this.logger.warn(

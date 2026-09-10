@@ -1,4 +1,9 @@
-import { Injectable, Logger, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 
 export type SectorOverlayType = 'DORA_EU' | 'NIS2_EU' | 'PCI_DSS_V4_0_1';
 
@@ -30,9 +35,11 @@ export class Adr08SectorRegistryService {
         'DORA_EU',
         {
           framework: 'DORA_EU',
-          displayName: 'Digital Operational Resilience Act (Regulation (EU) 2022/2554)',
+          displayName:
+            'Digital Operational Resilience Act (Regulation (EU) 2022/2554)',
           status: 'DEFERRED_PHASE2_MIDPOINT',
-          jurisdiction: 'European Union (Financial Entities & ICT Third Parties)',
+          jurisdiction:
+            'European Union (Financial Entities & ICT Third Parties)',
           legalReviewCompleted: false,
         },
       ],
@@ -84,7 +91,9 @@ export class Adr08SectorRegistryService {
 
     const overlay = this.overlays.get(framework);
     if (!overlay) {
-      throw new BadRequestException(`Unknown sector overlay framework '${framework}'.`);
+      throw new BadRequestException(
+        `Unknown sector overlay framework '${framework}'.`,
+      );
     }
 
     // Enforce single-overlay constraint per tenant

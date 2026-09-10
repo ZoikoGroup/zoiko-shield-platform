@@ -24,7 +24,10 @@ describe('AI Decision Evidence Anchoring & Merkle Verification (3-Service Integr
   const environmentId = 'PRODUCTION-EU-WEST';
   const region = 'eu-west-1';
 
-  const mockCapturedEvents: Record<string, Function[]> = {};
+  const mockCapturedEvents: Record<
+    string,
+    Array<(envelope: any) => Promise<void> | void>
+  > = {};
   const inMemoryStorage = new Map<string, Buffer>();
   const inMemoryEvidence: any[] = [];
   const inMemoryLedger: any[] = [];
@@ -51,12 +54,14 @@ describe('AI Decision Evidence Anchoring & Merkle Verification (3-Service Integr
   };
 
   const mockKafkaConsumer = {
-    registerHandler: jest.fn((topic: string, handler: Function) => {
-      if (!mockCapturedEvents[topic]) {
-        mockCapturedEvents[topic] = [];
-      }
-      mockCapturedEvents[topic].push(handler);
-    }),
+    registerHandler: jest.fn(
+      (topic: string, handler: (envelope: any) => Promise<void> | void) => {
+        if (!mockCapturedEvents[topic]) {
+          mockCapturedEvents[topic] = [];
+        }
+        mockCapturedEvents[topic].push(handler);
+      },
+    ),
   };
 
   const mockStorageService = {
@@ -156,7 +161,8 @@ describe('AI Decision Evidence Anchoring & Merkle Verification (3-Service Integr
         {
           sourceId: 'src-audit-log-01',
           sourceType: 'INGESTED_TELEMETRY',
-          exactSpan: 'Failed SSH auth burst (5 attempts in 3s) from 198.51.100.42',
+          exactSpan:
+            'Failed SSH auth burst (5 attempts in 3s) from 198.51.100.42',
           confidence: 0.95,
         },
       ],

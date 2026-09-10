@@ -31,7 +31,9 @@ describe('Incomplete AI Review Envelope Policy Rejection (Spec §16 & LAB 16)', 
       ],
     }).compile();
 
-    decisionRightsService = module.get<DecisionRightsService>(DecisionRightsService);
+    decisionRightsService = module.get<DecisionRightsService>(
+      DecisionRightsService,
+    );
   });
 
   it('Invariant 1: Rejects envelope creation when supporting sources and spans are missing', () => {

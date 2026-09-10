@@ -45,7 +45,8 @@ export interface DualCustodyQuorumReceipt {
   actionType: string;
   targetResource: string;
   authorityLevel: string;
-  status: 'PENDING_SECOND_SIGNATURE' | 'QUORUM_REACHED' | 'REJECTED' | 'EXPIRED';
+  status:
+    'PENDING_SECOND_SIGNATURE' | 'QUORUM_REACHED' | 'REJECTED' | 'EXPIRED';
   initiator: ApproverIdentity;
   secondaryApprover?: ApproverIdentity;
   quorumSignature?: string;
@@ -68,7 +69,8 @@ export interface DualCustodyQuorumReceipt {
 export class DualCustodyQuorumService {
   private readonly logger = new Logger(DualCustodyQuorumService.name);
   private readonly secretKey =
-    process.env.DUAL_CUSTODY_SECRET_KEY || 'zs-dual-custody-quantum-secret-2026';
+    process.env.DUAL_CUSTODY_SECRET_KEY ||
+    'zs-dual-custody-quantum-secret-2026';
 
   private readonly quorums = new Map<string, DualCustodyQuorumReceipt>();
 
@@ -76,7 +78,11 @@ export class DualCustodyQuorumService {
    * Initiates a new Dual-Custody Approval Quorum for live R2/R3/R4 containment actions.
    */
   initiateQuorum(request: DualCustodyQuorumRequest): DualCustodyQuorumReceipt {
-    if (!request.tenantId || !request.initiator?.userId || !request.proposalId) {
+    if (
+      !request.tenantId ||
+      !request.initiator?.userId ||
+      !request.proposalId
+    ) {
       throw new BadRequestException(
         'Missing required parameters: tenantId, proposalId, and initiator are mandatory.',
       );
@@ -90,7 +96,9 @@ export class DualCustodyQuorumService {
 
     const ttlMinutes = request.ttlMinutes ?? 15;
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + ttlMinutes * 60 * 1000).toISOString();
+    const expiresAt = new Date(
+      now.getTime() + ttlMinutes * 60 * 1000,
+    ).toISOString();
     const createdAt = now.toISOString();
     const quorumId = request.quorumId || `quorum-${crypto.randomUUID()}`;
     const singleUseRollbackToken = `ZS-ROLLBACK-TOKEN-${crypto.randomUUID()}`;
@@ -143,8 +151,12 @@ export class DualCustodyQuorumService {
 
     if (Date.now() > new Date(quorum.expiresAt).getTime()) {
       quorum.status = 'EXPIRED';
-      this.logger.warn(`🛑 [DUAL-CUSTODY EXPIRED] Quorum '${quorumId}' expired.`);
-      throw new BadRequestException(`Dual-custody quorum '${quorumId}' has expired.`);
+      this.logger.warn(
+        `🛑 [DUAL-CUSTODY EXPIRED] Quorum '${quorumId}' expired.`,
+      );
+      throw new BadRequestException(
+        `Dual-custody quorum '${quorumId}' has expired.`,
+      );
     }
 
     if (quorum.status !== 'PENDING_SECOND_SIGNATURE') {
@@ -239,7 +251,8 @@ export class DualCustodyQuorumService {
     if (!quorum.quorumSignature || !quorum.secondaryApprover) {
       return {
         valid: false,
-        reason: 'Quorum is missing cryptographic quorum signature or secondary approver.',
+        reason:
+          'Quorum is missing cryptographic quorum signature or secondary approver.',
       };
     }
 
@@ -250,7 +263,9 @@ export class DualCustodyQuorumService {
     const key = `${tenantId}:${quorumId}`;
     const quorum = this.quorums.get(key);
     if (!quorum) {
-      throw new NotFoundException(`Quorum '${quorumId}' not found for tenant '${tenantId}'.`);
+      throw new NotFoundException(
+        `Quorum '${quorumId}' not found for tenant '${tenantId}'.`,
+      );
     }
     return quorum;
   }

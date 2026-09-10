@@ -4,11 +4,7 @@ import * as crypto from 'crypto';
 export type CoreFramework = 'SOC2_TYPE2' | 'ISO_27001_2022';
 
 export type ControlState =
-  | 'COMPLETE'
-  | 'INCOMPLETE'
-  | 'STALE'
-  | 'UNKNOWN'
-  | 'FAILED';
+  'COMPLETE' | 'INCOMPLETE' | 'STALE' | 'UNKNOWN' | 'FAILED';
 
 export interface CoreControlEvaluationInput {
   tenantId: string;
@@ -119,7 +115,8 @@ export class CoreAssuranceEvaluatorService {
         } else {
           state = 'COMPLETE';
           complianceScore = 100;
-          rationale = '100% MFA enforcement verified across all active human and service identities.';
+          rationale =
+            '100% MFA enforcement verified across all active human and service identities.';
         }
         break;
       }
@@ -133,7 +130,8 @@ export class CoreAssuranceEvaluatorService {
         } else {
           state = 'COMPLETE';
           complianceScore = 100;
-          rationale = 'Zero unpatched critical vulnerabilities detected across certified vulnerability feeds (Snyk/Qualys).';
+          rationale =
+            'Zero unpatched critical vulnerabilities detected across certified vulnerability feeds (Snyk/Qualys).';
         }
         break;
       }
@@ -142,7 +140,8 @@ export class CoreAssuranceEvaluatorService {
       case 'ISO27001-A8.16-MONITORING': {
         state = 'COMPLETE';
         complianceScore = 98;
-        rationale = 'Tier-A real-time detection rules active with continuous Kafka telemetry correlation.';
+        rationale =
+          'Tier-A real-time detection rules active with continuous Kafka telemetry correlation.';
         break;
       }
 
@@ -151,11 +150,13 @@ export class CoreAssuranceEvaluatorService {
         if (!approved) {
           state = 'FAILED';
           complianceScore = 20;
-          rationale = 'Change deployed without recorded 2-reviewer peer sign-off in CODEOWNERS.';
+          rationale =
+            'Change deployed without recorded 2-reviewer peer sign-off in CODEOWNERS.';
         } else {
           state = 'COMPLETE';
           complianceScore = 100;
-          rationale = 'Peer review and signed artifact provenance recorded for release deployment.';
+          rationale =
+            'Peer review and signed artifact provenance recorded for release deployment.';
         }
         break;
       }
@@ -178,7 +179,8 @@ export class CoreAssuranceEvaluatorService {
       case 'SOC2-CC6.6-BOUNDARY-PROTECTION': {
         state = 'COMPLETE';
         complianceScore = 95;
-        rationale = 'Microsegmentation and egress firewall rules active with zero direct internet access from shield-core.';
+        rationale =
+          'Microsegmentation and egress firewall rules active with zero direct internet access from shield-core.';
         break;
       }
 
@@ -221,16 +223,26 @@ export class CoreAssuranceEvaluatorService {
     evaluatedAt: string,
   ): CoreControlEvaluationResult {
     const controlTitles: Record<string, string> = {
-      'SOC2-CC6.1-LOGICAL-ACCESS': 'SOC 2 CC6.1: Logical Access & Authentication Controls',
-      'SOC2-CC6.6-BOUNDARY-PROTECTION': 'SOC 2 CC6.6: Boundary Protection & Network Segmentation',
-      'SOC2-CC7.1-VULNERABILITY-MGMT': 'SOC 2 CC7.1: Vulnerability Detection & Patching Management',
-      'SOC2-CC7.2-INCIDENT-MONITORING': 'SOC 2 CC7.2: Security Incident Monitoring & Anomaly Detection',
-      'SOC2-CC7.3-CHANGE-CONTROL': 'SOC 2 CC7.3: Change Management & Signed Build Provenance',
-      'ISO27001-A5.15-ACCESS-CONTROL': 'ISO/IEC 27001 A.5.15: Access Control & Identity Governance',
-      'ISO27001-A8.15-LOGGING': 'ISO/IEC 27001 A.8.15: Security Event Logging & WORM Retention',
-      'ISO27001-A8.16-MONITORING': 'ISO/IEC 27001 A.8.16: Monitoring Activities & Real-time Correlation',
-      'ISO27001-A8.20-NETWORK-SECURITY': 'ISO/IEC 27001 A.8.20: Network Security & Isolation Controls',
-      'ISO27001-A8.24-CRYPTOGRAPHY': 'ISO/IEC 27001 A.8.24: Use of Cryptography & Key Management',
+      'SOC2-CC6.1-LOGICAL-ACCESS':
+        'SOC 2 CC6.1: Logical Access & Authentication Controls',
+      'SOC2-CC6.6-BOUNDARY-PROTECTION':
+        'SOC 2 CC6.6: Boundary Protection & Network Segmentation',
+      'SOC2-CC7.1-VULNERABILITY-MGMT':
+        'SOC 2 CC7.1: Vulnerability Detection & Patching Management',
+      'SOC2-CC7.2-INCIDENT-MONITORING':
+        'SOC 2 CC7.2: Security Incident Monitoring & Anomaly Detection',
+      'SOC2-CC7.3-CHANGE-CONTROL':
+        'SOC 2 CC7.3: Change Management & Signed Build Provenance',
+      'ISO27001-A5.15-ACCESS-CONTROL':
+        'ISO/IEC 27001 A.5.15: Access Control & Identity Governance',
+      'ISO27001-A8.15-LOGGING':
+        'ISO/IEC 27001 A.8.15: Security Event Logging & WORM Retention',
+      'ISO27001-A8.16-MONITORING':
+        'ISO/IEC 27001 A.8.16: Monitoring Activities & Real-time Correlation',
+      'ISO27001-A8.20-NETWORK-SECURITY':
+        'ISO/IEC 27001 A.8.20: Network Security & Isolation Controls',
+      'ISO27001-A8.24-CRYPTOGRAPHY':
+        'ISO/IEC 27001 A.8.24: Use of Cryptography & Key Management',
     };
 
     const attestationDigest = crypto

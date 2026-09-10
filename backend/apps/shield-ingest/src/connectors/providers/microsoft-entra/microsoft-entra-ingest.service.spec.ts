@@ -25,7 +25,9 @@ describe('MicrosoftEntraIngestService (Spec §5 & §20)', () => {
       ],
     }).compile();
 
-    service = module.get<MicrosoftEntraIngestService>(MicrosoftEntraIngestService);
+    service = module.get<MicrosoftEntraIngestService>(
+      MicrosoftEntraIngestService,
+    );
     jest.clearAllMocks();
   });
 
@@ -59,7 +61,9 @@ describe('MicrosoftEntraIngestService (Spec §5 & §20)', () => {
     expect(result.acceptedCount).toBe(1);
     expect(result.quarantinedCount).toBe(0);
     expect(result.normalizedEvents.length).toBe(1);
-    expect(result.normalizedEvents[0].user_identity.username).toBe('bob.security@acme.com');
+    expect(result.normalizedEvents[0].user_identity.username).toBe(
+      'bob.security@acme.com',
+    );
     expect(result.normalizedEvents[0].authentication_result).toBe('SUCCESS');
     expect(mockKafkaProducer.publishEvent).toHaveBeenCalledTimes(1);
   });

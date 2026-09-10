@@ -1,6 +1,7 @@
 import * as crypto from 'crypto';
 import { SnykNormalizerService } from '../src/connectors/providers/snyk-vulnerability/snyk-vulnerability.normalizer';
 import { JiraNormalizerService } from '../src/connectors/providers/jira-ticketing/jira-ticketing.normalizer';
+import { JiraIssuePayload } from '../src/connectors/providers/jira-ticketing/jira-ticketing.types';
 import { CrowdStrikeNormalizerService } from '../src/connectors/providers/crowdstrike/crowdstrike.normalizer';
 import { SyslogTlsNormalizerService } from '../src/connectors/providers/syslog-tls/syslog-tls.normalizer';
 import { AwsCloudTrailNormalizerService } from '../src/connectors/providers/aws-cloudtrail/aws-cloudtrail.normalizer';
@@ -51,7 +52,12 @@ describe('P0 Ingestion Connectors Certification Suite (ERB-01 / Master Build Pla
         .digest('hex');
 
       expect(computedSig).toBe(expectedSig);
-      expect(crypto.timingSafeEqual(Buffer.from(computedSig), Buffer.from(expectedSig))).toBe(true);
+      expect(
+        crypto.timingSafeEqual(
+          Buffer.from(computedSig),
+          Buffer.from(expectedSig),
+        ),
+      ).toBe(true);
     });
   });
 
@@ -64,7 +70,12 @@ describe('P0 Ingestion Connectors Certification Suite (ERB-01 / Master Build Pla
       expect(parsed).toBeDefined();
       expect(parsed?.hostname).toBe('firewall.corp.local');
 
-      const event = syslogNormalizer.normalizeMessage(parsed!, tenantId, environmentId, region);
+      const event = syslogNormalizer.normalizeMessage(
+        parsed!,
+        tenantId,
+        environmentId,
+        region,
+      );
 
       expect(event).toBeDefined();
       expect(event.provider).toBe('syslog-tls');
@@ -92,7 +103,12 @@ describe('P0 Ingestion Connectors Certification Suite (ERB-01 / Master Build Pla
         appDisplayName: 'ZoikoShield Portal',
       };
 
-      const event = entraNormalizer.normalizeSignInLog(entraAuditRecord, tenantId, environmentId, region);
+      const event = entraNormalizer.normalizeSignInLog(
+        entraAuditRecord,
+        tenantId,
+        environmentId,
+        region,
+      );
 
       expect(event).toBeDefined();
       expect(event.provider).toBe('microsoft-entra');
@@ -130,7 +146,12 @@ describe('P0 Ingestion Connectors Certification Suite (ERB-01 / Master Build Pla
         },
       };
 
-      const event = cloudTrailNormalizer.normalizeRecord(cloudTrailRecord, tenantId, environmentId, region);
+      const event = cloudTrailNormalizer.normalizeRecord(
+        cloudTrailRecord,
+        tenantId,
+        environmentId,
+        region,
+      );
 
       expect(event).toBeDefined();
       expect(event.provider).toBe('aws-cloudtrail');
@@ -159,13 +180,20 @@ describe('P0 Ingestion Connectors Certification Suite (ERB-01 / Master Build Pla
         project_name: 'zoikoshield-core',
       };
 
-      const event = snykNormalizer.normalizeFinding(snykFinding, tenantId, environmentId, region);
+      const event = snykNormalizer.normalizeFinding(
+        snykFinding,
+        tenantId,
+        environmentId,
+        region,
+      );
 
       expect(event).toBeDefined();
       expect(event.category_uid).toBe(2); // Findings
       expect(event.class_uid).toBe(2002); // Vulnerability Finding
       expect(event.severity).toBe('HIGH');
-      expect(event.vulnerability.name).toBe('Server-Side Request Forgery in axios');
+      expect(event.vulnerability.name).toBe(
+        'Server-Side Request Forgery in axios',
+      );
       expect(event.affected_resource.name).toBe('axios');
       expect(event.raw_payload_hash).toBeDefined();
     });
@@ -195,7 +223,8 @@ describe('P0 Ingestion Connectors Certification Suite (ERB-01 / Master Build Pla
             timestamp: '2026-09-10T12:00:00Z',
             cmdline: 'powershell.exe -enc SQBFAFgA...',
             filename: 'powershell.exe',
-            sha256: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+            sha256:
+              'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
             user_name: 'NT AUTHORITY\\SYSTEM',
             tactic: 'Execution',
             technique: 'Command and Scripting Interpreter: PowerShell',
@@ -203,7 +232,12 @@ describe('P0 Ingestion Connectors Certification Suite (ERB-01 / Master Build Pla
         ],
       };
 
-      const event = crowdStrikeNormalizer.normalizeDetection(csDetection, tenantId, environmentId, region);
+      const event = crowdStrikeNormalizer.normalizeDetection(
+        csDetection,
+        tenantId,
+        environmentId,
+        region,
+      );
 
       expect(event).toBeDefined();
       expect(event.category_uid).toBe(1); // System Activity
@@ -212,6 +246,40 @@ describe('P0 Ingestion Connectors Certification Suite (ERB-01 / Master Build Pla
       expect(event.process.name).toBe('powershell.exe');
       expect(event.attacks).toHaveLength(1);
       expect(event.attacks?.[0].tactic.name).toBe('Execution');
+      expect(event.raw_payload_hash).toBeDefined();
+    });
+  });
+
+  describe('7. Jira Security Ticketing Connector Normalization', () => {
+    it('should normalize Jira issue into OCSF 2001 Security Finding event', () => {
+      const jiraIssue: JiraIssuePayload = {
+        id: '10042',
+        key: 'SEC-101',
+        summary: 'Suspicious privilege escalation observed on Host-09',
+        description: 'Multiple failed sudo attempts followed by root session',
+        issue_type: 'Incident',
+        priority: 'High',
+        status: 'In Progress',
+        assignee_email: 'analyst@zoikogroup.com',
+        created: '2026-09-10T10:00:00Z',
+        project_key: 'SEC',
+      };
+
+      const event = jiraNormalizer.normalizeIssue(
+        jiraIssue,
+        tenantId,
+        environmentId,
+        region,
+      );
+
+      expect(event).toBeDefined();
+      expect(event.category_uid).toBe(2); // Findings
+      expect(event.class_uid).toBe(2001); // Security Finding
+      expect(event.severity).toBe('HIGH');
+      expect(event.finding_info.title).toBe(
+        '[SEC-101] Suspicious privilege escalation observed on Host-09',
+      );
+      expect(event.finding_info.uid).toBe('10042');
       expect(event.raw_payload_hash).toBeDefined();
     });
   });

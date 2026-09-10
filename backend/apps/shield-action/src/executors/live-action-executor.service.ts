@@ -1,12 +1,16 @@
 import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
 import * as crypto from 'crypto';
-import { ActionExecutionContext, ExecutionReceipt } from '../execution-adapters/action-execution.interface';
+import {
+  ActionExecutionContext,
+  ExecutionReceipt,
+} from '../execution-adapters/action-execution.interface';
 import { DualCustodyApprovalsService } from '../approvals/dual-custody-approvals.service';
 
 export interface LiveActionInput {
   tenantId: string;
   environmentId?: string;
-  actionType: 'BLOCK_PERIMETER_IP' | 'INVALIDATE_USER_SESSIONS' | 'QUARANTINE_DEVICE';
+  actionType:
+    'BLOCK_PERIMETER_IP' | 'INVALIDATE_USER_SESSIONS' | 'QUARANTINE_DEVICE';
   targetRef: string;
   authorityLevel: 'R0' | 'R1' | 'R2' | 'R3' | 'R4';
   approvalRef?: string;
@@ -16,7 +20,7 @@ export interface LiveActionInput {
 
 /**
  * Live SOAR Response Action Executor (Spec §15 & LAB 15)
- * 
+ *
  * Capabilities:
  * 1. Executes certified non-destructive actions (`BLOCK_PERIMETER_IP`, `INVALIDATE_USER_SESSIONS`).
  * 2. Enforces Dual-Custody Approval before R2+ live execution.
@@ -27,7 +31,9 @@ export interface LiveActionInput {
 export class LiveActionExecutorService {
   private readonly logger = new Logger(LiveActionExecutorService.name);
 
-  constructor(private readonly dualCustodyService: DualCustodyApprovalsService) {}
+  constructor(
+    private readonly dualCustodyService: DualCustodyApprovalsService,
+  ) {}
 
   /**
    * Executes or simulates a SOAR response action against certified infrastructure adapters.
@@ -39,8 +45,16 @@ export class LiveActionExecutorService {
     const now = new Date().toISOString();
 
     // Enforce Dual-Custody for live R2+ actions
-    if (!isSim && (input.authorityLevel === 'R2' || input.authorityLevel === 'R3' || input.authorityLevel === 'R4')) {
-      if (!input.approvalRef || !this.dualCustodyService.validateExecutionAuthority(input.approvalRef)) {
+    if (
+      !isSim &&
+      (input.authorityLevel === 'R2' ||
+        input.authorityLevel === 'R3' ||
+        input.authorityLevel === 'R4')
+    ) {
+      if (
+        !input.approvalRef ||
+        !this.dualCustodyService.validateExecutionAuthority(input.approvalRef)
+      ) {
         throw new ForbiddenException(
           `Dual-custody approval required: Action ${input.actionType} at authority level ${input.authorityLevel} requires verified two-man quorum.`,
         );
@@ -57,7 +71,9 @@ export class LiveActionExecutorService {
           wafAclUpdated: 'aws-waf-edge-perimeter-ipset',
           ttlSeconds: input.parameters?.ttlSeconds || 3600,
           ruleIndex: 42,
-          propagationStatus: isSim ? 'SIMULATED_PROPAGATION' : 'ACTIVE_IN_EDGE_POPS',
+          propagationStatus: isSim
+            ? 'SIMULATED_PROPAGATION'
+            : 'ACTIVE_IN_EDGE_POPS',
         };
         rollbackAction = 'REMOVE_WAF_IP_RULE';
         break;
@@ -93,7 +109,10 @@ export class LiveActionExecutorService {
       executedAt: now,
     });
 
-    const signature = crypto.createHash('sha256').update(payloadToSign).digest('hex');
+    const signature = crypto
+      .createHash('sha256')
+      .update(payloadToSign)
+      .digest('hex');
 
     const receipt: ExecutionReceipt = {
       receiptId,

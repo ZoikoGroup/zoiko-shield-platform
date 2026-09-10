@@ -79,7 +79,9 @@ export class AiIncidentService {
     actorId = 'system',
   ): Promise<AiIncidentRecord> {
     if (!tenantId) {
-      throw new BadRequestException('tenantId is required to declare an AI incident');
+      throw new BadRequestException(
+        'tenantId is required to declare an AI incident',
+      );
     }
 
     const incidentId = `ai-inc-${crypto.randomUUID()}`;
@@ -282,21 +284,25 @@ export class AiIncidentService {
         calibratedConfidenceAndUncertainty: {
           score: 0.92,
           qualitativeBand: 'HIGH',
-          calibrationBasis: 'Synthesized from timeline logs, model drift metrics, and prompt firewall alarms',
+          calibrationBasis:
+            'Synthesized from timeline logs, model drift metrics, and prompt firewall alarms',
           uncertaintyFactors: [],
         },
         alternativeHypothesesOrActions: [
           {
             title: 'Transient Provider Degradation',
-            rationale: 'Anomalous behavior could stem from third-party model inference latency spikes',
-            tradeOffs: 'Failing to patch prompt templates leaves vulnerabilities unmitigated',
+            rationale:
+              'Anomalous behavior could stem from third-party model inference latency spikes',
+            tradeOffs:
+              'Failing to patch prompt templates leaves vulnerabilities unmitigated',
           },
         ],
         expectedImpactAndReversibility: {
           blastRadius: 'AI model routing configurations and safety guardrails',
           isReversible: true,
           reversibilityTier: 'R1',
-          compensationPlan: 'Disengage fallback route and restore baseline model endpoint',
+          compensationPlan:
+            'Disengage fallback route and restore baseline model endpoint',
         },
         requiredAuthorityAndApprovals: {
           requiredRole: 'AI_SAFETY_LEAD',
@@ -358,7 +364,11 @@ export class AiIncidentService {
     }
 
     // Disengage kill switch if requested
-    if (dto.disengageKillSwitch && incident.killSwitchDetails && this.killSwitchService) {
+    if (
+      dto.disengageKillSwitch &&
+      incident.killSwitchDetails &&
+      this.killSwitchService
+    ) {
       this.killSwitchService.deactivateKillSwitch({
         scope: incident.killSwitchDetails.killSwitchScope,
         targetId: incident.killSwitchDetails.targetId,
@@ -455,7 +465,8 @@ export class AiIncidentService {
     }
 
     return results.sort(
-      (a, b) => new Date(b.declaredAt).getTime() - new Date(a.declaredAt).getTime(),
+      (a, b) =>
+        new Date(b.declaredAt).getTime() - new Date(a.declaredAt).getTime(),
     );
   }
 
@@ -477,11 +488,15 @@ export class AiIncidentService {
       totalIncidents: tenantIncs.length,
       activeIncidents: activeCount,
       criticalIncidents: criticalCount,
-      containedKillSwitches: tenantIncs.filter((i) => i.killSwitchActive).length,
+      containedKillSwitches: tenantIncs.filter((i) => i.killSwitchActive)
+        .length,
     };
   }
 
-  private getIncidentOrThrow(tenantId: string, incidentId: string): AiIncidentRecord {
+  private getIncidentOrThrow(
+    tenantId: string,
+    incidentId: string,
+  ): AiIncidentRecord {
     const inc = this.incidents.get(incidentId);
     if (!inc || inc.tenantId !== tenantId) {
       throw new NotFoundException(

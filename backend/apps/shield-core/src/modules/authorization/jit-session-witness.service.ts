@@ -1,6 +1,14 @@
-import { Injectable, Logger, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  UnauthorizedException,
+  BadRequestException,
+} from '@nestjs/common';
 import { createHash, randomUUID } from 'crypto';
-import { JitSessionEnforcerService, JitSession } from './jit-session-enforcer.service';
+import {
+  JitSessionEnforcerService,
+  JitSession,
+} from './jit-session-enforcer.service';
 
 export interface PeerApprovalToken {
   approverId: string;
@@ -87,14 +95,21 @@ export class JitSessionWitnessService {
    */
   async sealTerminalSessionAudit(
     sessionId: string,
-    commandHistory: Array<{ command: string; executedAt: string; result: string }>,
+    commandHistory: Array<{
+      command: string;
+      executedAt: string;
+      result: string;
+    }>,
   ): Promise<TerminalSessionAudit> {
     const session = this.sessionEnforcer.getSession(sessionId);
     if (!session) {
       throw new BadRequestException(`JIT Session '${sessionId}' not found`);
     }
 
-    this.sessionEnforcer.revokeSession(sessionId, 'SESSION_COMPLETED_AND_SEALED');
+    this.sessionEnforcer.revokeSession(
+      sessionId,
+      'SESSION_COMPLETED_AND_SEALED',
+    );
 
     const commandLogDigest = this.hashContent(commandHistory);
     const sessionClosedAt = new Date();

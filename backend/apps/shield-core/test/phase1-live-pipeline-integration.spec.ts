@@ -49,15 +49,18 @@ describe('Phase 1 Live Pipeline Integration (Ingest -> Core Assurance -> AI Enve
   const environmentId = 'PRODUCTION-AWS-US-EAST';
   const region = 'us-east-1';
 
-  const mockKafkaEvents: { topic: string; eventType: string; payload: any }[] = [];
+  const mockKafkaEvents: { topic: string; eventType: string; payload: any }[] =
+    [];
   const inMemoryEvidence: any[] = [];
   const inMemoryLedger: any[] = [];
   const inMemoryStorage = new Map<string, Buffer>();
 
   const mockKafkaProducer = {
-    publishEvent: jest.fn(async (topic: string, eventType: string, payload: any, context?: any) => {
-      mockKafkaEvents.push({ topic, eventType, payload });
-    }),
+    publishEvent: jest.fn(
+      async (topic: string, eventType: string, payload: any, context?: any) => {
+        mockKafkaEvents.push({ topic, eventType, payload });
+      },
+    ),
   };
 
   const mockStorageService = {
@@ -96,7 +99,9 @@ describe('Phase 1 Live Pipeline Integration (Ingest -> Core Assurance -> AI Enve
         },
         evidenceLedgerEntry: {
           findFirst: jest.fn().mockImplementation(async () => {
-            return inMemoryLedger.length > 0 ? inMemoryLedger[inMemoryLedger.length - 1] : null;
+            return inMemoryLedger.length > 0
+              ? inMemoryLedger[inMemoryLedger.length - 1]
+              : null;
           }),
           create: jest.fn(async ({ data }: any) => {
             inMemoryLedger.push(data);
@@ -122,12 +127,18 @@ describe('Phase 1 Live Pipeline Integration (Ingest -> Core Assurance -> AI Enve
         {
           provide: AwsCloudTrailIngestService,
           useFactory: () =>
-            new AwsCloudTrailIngestService(awsNormalizer, mockKafkaProducer as any),
+            new AwsCloudTrailIngestService(
+              awsNormalizer,
+              mockKafkaProducer as any,
+            ),
         },
         {
           provide: MicrosoftEntraIngestService,
           useFactory: () =>
-            new MicrosoftEntraIngestService(entraNormalizer, mockKafkaProducer as any),
+            new MicrosoftEntraIngestService(
+              entraNormalizer,
+              mockKafkaProducer as any,
+            ),
         },
         {
           provide: DecisionRightsService,
@@ -142,7 +153,10 @@ describe('Phase 1 Live Pipeline Integration (Ingest -> Core Assurance -> AI Enve
         {
           provide: ContinuousAssuranceCollectorService,
           useFactory: (evService: EvidenceService) =>
-            new ContinuousAssuranceCollectorService(evService, mockKafkaProducer as any),
+            new ContinuousAssuranceCollectorService(
+              evService,
+              mockKafkaProducer as any,
+            ),
           inject: [EvidenceService],
         },
         { provide: PrismaService, useValue: mockPrismaService },
@@ -154,19 +168,26 @@ describe('Phase 1 Live Pipeline Integration (Ingest -> Core Assurance -> AI Enve
       ],
     }).compile();
 
-    awsIngestService = module.get<AwsCloudTrailIngestService>(AwsCloudTrailIngestService);
-    entraIngestService = module.get<MicrosoftEntraIngestService>(MicrosoftEntraIngestService);
+    awsIngestService = module.get<AwsCloudTrailIngestService>(
+      AwsCloudTrailIngestService,
+    );
+    entraIngestService = module.get<MicrosoftEntraIngestService>(
+      MicrosoftEntraIngestService,
+    );
     assuranceCollector = module.get<ContinuousAssuranceCollectorService>(
       ContinuousAssuranceCollectorService,
     );
     evidenceService = module.get<EvidenceService>(EvidenceService);
-    decisionRightsService = module.get<DecisionRightsService>(DecisionRightsService);
+    decisionRightsService = module.get<DecisionRightsService>(
+      DecisionRightsService,
+    );
   });
 
   it('Stage 1: Ingest Live AWS CloudTrail & Microsoft Entra Telemetry with OCSF 1.1.0 Normalization', async () => {
     // 1. AWS CloudTrail Ingestion with SigV4 Verification
     const secretKey = 'us-east-1-secret-key';
-    const rawCloudTrailBody = '{"eventID":"evt-aws-001","eventName":"ConsoleLogin"}';
+    const rawCloudTrailBody =
+      '{"eventID":"evt-aws-001","eventName":"ConsoleLogin"}';
     const sigV4Header = crypto
       .createHmac('sha256', secretKey)
       .update(rawCloudTrailBody)
@@ -208,8 +229,12 @@ describe('Phase 1 Live Pipeline Integration (Ingest -> Core Assurance -> AI Enve
     expect(awsResult.quarantinedCount).toBe(0);
     expect(awsResult.normalizedEvents.length).toBe(1);
     expect(awsResult.normalizedEvents[0].provider).toBe('aws-cloudtrail');
-    expect(awsResult.normalizedEvents[0].event_type).toBe('aws.signin.ConsoleLogin');
-    expect(awsResult.normalizedEvents[0].network.source_ip).toBe('203.0.113.195');
+    expect(awsResult.normalizedEvents[0].event_type).toBe(
+      'aws.signin.ConsoleLogin',
+    );
+    expect(awsResult.normalizedEvents[0].network.source_ip).toBe(
+      '203.0.113.195',
+    );
     expect(awsResult.batchDigest).toBeDefined();
 
     // 2. Microsoft Entra Ingestion
@@ -240,8 +265,12 @@ describe('Phase 1 Live Pipeline Integration (Ingest -> Core Assurance -> AI Enve
     expect(entraResult.acceptedCount).toBe(1);
     expect(entraResult.quarantinedCount).toBe(0);
     expect(entraResult.normalizedEvents[0].provider).toBe('microsoft-entra');
-    expect(entraResult.normalizedEvents[0].event_type).toBe('security.identity.signin.v1');
-    expect(entraResult.normalizedEvents[0].authentication_result).toBe('FAILED');
+    expect(entraResult.normalizedEvents[0].event_type).toBe(
+      'security.identity.signin.v1',
+    );
+    expect(entraResult.normalizedEvents[0].authentication_result).toBe(
+      'FAILED',
+    );
     expect(entraResult.normalizedEvents[0].ip_address).toBe('198.51.100.77');
     expect(mockKafkaProducer.publishEvent).toHaveBeenCalled();
   });
@@ -332,7 +361,9 @@ describe('Phase 1 Live Pipeline Integration (Ingest -> Core Assurance -> AI Enve
     });
 
     expect(envelope.envelopeId).toMatch(/^env-/);
-    expect(envelope.requiredAuthorityAndApprovals.dualApproverRequired).toBe(true);
+    expect(envelope.requiredAuthorityAndApprovals.dualApproverRequired).toBe(
+      true,
+    );
     expect(envelope.controls.state).toBe('UNREVIEWED');
 
     // First Approver signs off in AI Decision Rights
@@ -342,7 +373,8 @@ describe('Phase 1 Live Pipeline Integration (Ingest -> Core Assurance -> AI Enve
       {
         decision: 'ACCEPT',
         decidedBy: 'sec-lead-alice',
-        rationale: 'Confirmed high-frequency brute force attempt on AWS root console.',
+        rationale:
+          'Confirmed high-frequency brute force attempt on AWS root console.',
       },
     );
 
@@ -367,7 +399,11 @@ describe('Phase 1 Live Pipeline Integration (Ingest -> Core Assurance -> AI Enve
 
     // 2. Segregation of duties violation check (Initiator cannot approve themselves)
     expect(() =>
-      dualCustodyService.approveRequest(approvalReq.approvalId, 'sec-lead-alice', 'SECURITY_ENGINEER'),
+      dualCustodyService.approveRequest(
+        approvalReq.approvalId,
+        'sec-lead-alice',
+        'SECURITY_ENGINEER',
+      ),
     ).toThrow(/Dual-custody segregation violation/);
 
     // 3. Second Approver approves
@@ -377,7 +413,9 @@ describe('Phase 1 Live Pipeline Integration (Ingest -> Core Assurance -> AI Enve
       'SECURITY_ADMIN',
     );
     expect(approvedReq.status).toBe('APPROVED');
-    expect(dualCustodyService.validateExecutionAuthority(approvalReq.approvalId)).toBe(true);
+    expect(
+      dualCustodyService.validateExecutionAuthority(approvalReq.approvalId),
+    ).toBe(true);
 
     // 4. Live Non-Destructive Action Execution
     const executionReceipt = await liveExecutor.executeAction({
@@ -399,7 +437,8 @@ describe('Phase 1 Live Pipeline Integration (Ingest -> Core Assurance -> AI Enve
     expect(executionReceipt.signature.length).toBe(64);
 
     // 5. Automated Compensation Rollback
-    const rollbackResult = await rollbackOrchestrator.executeRollback(executionReceipt);
+    const rollbackResult =
+      await rollbackOrchestrator.executeRollback(executionReceipt);
 
     expect(rollbackResult.status).toBe('REVERTED');
     expect(rollbackResult.compensatingAction).toBe('REMOVE_WAF_IP_RULE');
@@ -414,11 +453,23 @@ describe('Phase 1 Live Pipeline Integration (Ingest -> Core Assurance -> AI Enve
     const leaf3_assuranceHipaa = inMemoryLedger[2].entry_hash;
     const leaf4_telemetryIngest = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ tenantId, source: 'AWS_CLOUDTRAIL', targetIp: '203.0.113.195' }))
+      .update(
+        JSON.stringify({
+          tenantId,
+          source: 'AWS_CLOUDTRAIL',
+          targetIp: '203.0.113.195',
+        }),
+      )
       .digest('hex');
     const leaf5_soarActionReceipt = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ tenantId, actionId: 'cmd-block-001', status: 'SUCCESS' }))
+      .update(
+        JSON.stringify({
+          tenantId,
+          actionId: 'cmd-block-001',
+          status: 'SUCCESS',
+        }),
+      )
       .digest('hex');
 
     const allLeaves = [
@@ -439,7 +490,11 @@ describe('Phase 1 Live Pipeline Integration (Ingest -> Core Assurance -> AI Enve
     // Cryptographic inclusion verification for every single pipeline stage
     allLeaves.forEach((leafHash, index) => {
       const proof = merkleResult.proofs[index];
-      const isValid = merkleTreeService.verifyInclusion(leafHash, proof, merkleResult.root);
+      const isValid = merkleTreeService.verifyInclusion(
+        leafHash,
+        proof,
+        merkleResult.root,
+      );
       expect(isValid).toBe(true);
     });
   });

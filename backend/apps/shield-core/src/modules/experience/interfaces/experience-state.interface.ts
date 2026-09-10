@@ -1,7 +1,7 @@
 /**
  * Experience State Contract Interfaces
  * Specification: MASTER_BUILD_PLAN.md §7 Step 8 (Experience-Facing APIs / LAB 14)
- * 
+ *
  * Mandate:
  * "Every API exposes explicit loading, partial, stale, degraded, unauthorized, unavailable, and recovery states."
  */
@@ -46,7 +46,8 @@ export interface CaseTriageDetailData {
   tenantId: string;
   title: string;
   severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-  status: 'OPEN' | 'INVESTIGATING' | 'CONTAINMENT_PROPOSED' | 'RESOLVED' | 'CLOSED';
+  status:
+    'OPEN' | 'INVESTIGATING' | 'CONTAINMENT_PROPOSED' | 'RESOLVED' | 'CLOSED';
   aiSummary: {
     narrative: string;
     groundedCitations: string[];

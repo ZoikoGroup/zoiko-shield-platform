@@ -62,18 +62,28 @@ export class CompensatingActionService {
   private readonly logger = new Logger(CompensatingActionService.name);
 
   // In-memory registered compensation plans and consumed single-use tokens
-  private readonly registeredPlans = new Map<string, RollbackCompensationPlan>();
+  private readonly registeredPlans = new Map<
+    string,
+    RollbackCompensationPlan
+  >();
   private readonly consumedRollbackTokens = new Set<string>();
 
   /**
    * Registers a pre-computed compensation plan before action dispatch.
    */
   registerCompensationPlan(plan: RollbackCompensationPlan): void {
-    if (!plan.tenantId || !plan.singleUseRollbackToken || !plan.compensatingAction) {
+    if (
+      !plan.tenantId ||
+      !plan.singleUseRollbackToken ||
+      !plan.compensatingAction
+    ) {
       throw new BadRequestException('Invalid compensation plan parameters.');
     }
 
-    this.registeredPlans.set(`${plan.tenantId}:${plan.singleUseRollbackToken}`, plan);
+    this.registeredPlans.set(
+      `${plan.tenantId}:${plan.singleUseRollbackToken}`,
+      plan,
+    );
     this.logger.log(
       `✔ [COMPENSATION PLAN REGISTERED] Action: '${plan.originalAction}' ➔ Reversal: '${plan.compensatingAction}' [Token: ${plan.singleUseRollbackToken}]`,
     );
@@ -114,7 +124,8 @@ export class CompensatingActionService {
       tenantId,
       stage: 'VALIDATING_TOKEN_INTEGRITY',
       progressPercent: 25,
-      message: 'Validating cryptographic signature and single-use status of rollback token.',
+      message:
+        'Validating cryptographic signature and single-use status of rollback token.',
       isReverted: false,
       timestamp: new Date().toISOString(),
     });
@@ -136,7 +147,8 @@ export class CompensatingActionService {
       tenantId,
       stage: 'RECONCILING_OBSERVED_STATE',
       progressPercent: 75,
-      message: 'Reconciling endpoint connectivity and identity directory status.',
+      message:
+        'Reconciling endpoint connectivity and identity directory status.',
       isReverted: true,
       timestamp: new Date().toISOString(),
     });

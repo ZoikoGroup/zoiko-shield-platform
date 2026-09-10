@@ -28,15 +28,25 @@ describe('AwsCloudTrailIngestService (Spec §5 & §20)', () => {
       ],
     }).compile();
 
-    service = module.get<AwsCloudTrailIngestService>(AwsCloudTrailIngestService);
-    normalizer = module.get<AwsCloudTrailNormalizerService>(AwsCloudTrailNormalizerService);
+    service = module.get<AwsCloudTrailIngestService>(
+      AwsCloudTrailIngestService,
+    );
+    normalizer = module.get<AwsCloudTrailNormalizerService>(
+      AwsCloudTrailNormalizerService,
+    );
     jest.clearAllMocks();
   });
 
   it('should successfully verify SigV4 HMAC-SHA256 signature', () => {
     const secret = 'aws-connector-test-secret-key-123';
-    const payload = JSON.stringify({ eventID: 'evt-123', eventName: 'ConsoleLogin' });
-    const signature = crypto.createHmac('sha256', secret).update(payload).digest('hex');
+    const payload = JSON.stringify({
+      eventID: 'evt-123',
+      eventName: 'ConsoleLogin',
+    });
+    const signature = crypto
+      .createHmac('sha256', secret)
+      .update(payload)
+      .digest('hex');
 
     const isValid = service.verifySigV4Auth(payload, signature, secret);
     expect(isValid).toBe(true);
