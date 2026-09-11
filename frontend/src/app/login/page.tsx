@@ -5,8 +5,11 @@ import { useRouter } from "next/navigation";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
 import { Card } from "@/ui/Card";
 import { Button } from "@/ui/Button";
-import { Badge } from "@/ui/Badge";
 import { Lock, Mail, Key, ShieldCheck, ArrowRight, Sparkles } from "lucide-react";
+import {
+  LoadingState,
+  UnauthorizedState,
+} from "@/components/states/mandatory-ui-states";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,15 +17,20 @@ export default function LoginPage() {
   const [password, setPassword] = useState("Shield@SecOps2026!");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isUnauthorized, setIsUnauthorized] = useState(false);
 
   const handleLogin = async (targetEmail = email, targetPassword = password) => {
     setIsLoading(true);
     setError(null);
+    setIsUnauthorized(false);
     try {
       await ZoikoShieldApiClient.login(targetEmail, targetPassword);
       router.push("/onboarding");
     } catch (err: any) {
       setError(err.message || "Authentication failed");
+      if (err?.status === 401 || err?.status === 403 || err?.message?.includes("Cedar") || err?.message?.includes("FIDO2")) {
+        setIsUnauthorized(true);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -62,6 +70,24 @@ export default function LoginPage() {
           ERB-01 Step 1: Federated Login & Approved Password Fallback Session
         </p>
       </div>
+
+      {isLoading && (
+        <LoadingState
+          title="Verifying Analyst Credentials..."
+          message="Evaluating Cedar deterministic policy & issuing JWT bearer token."
+          regionalCell="us-east-1"
+        />
+      )}
+
+      {isUnauthorized && !isLoading && (
+        <UnauthorizedState
+          title="Authentication Step-Up Required"
+          message={error || "Cedar authorization policy rejected token issuance: FIDO2 WebAuthn biometric step-up or valid organization membership required."}
+          cedarPolicyDenialReason="CEDAR_POLICY_DENY: Authentication step-up required"
+          stepupChallengeRequired={true}
+          retryAction={() => setIsUnauthorized(false)}
+        />
+      )}
 
       <Card variant="cyber" className="space-y-6">
         <form

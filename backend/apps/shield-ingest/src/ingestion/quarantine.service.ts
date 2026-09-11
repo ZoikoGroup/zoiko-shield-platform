@@ -68,6 +68,27 @@ export class QuarantineService {
     return record;
   }
 
+  /**
+   * Positional parameters alias for quarantine method.
+   */
+  quarantinePayload(
+    tenantId: string,
+    environmentId: string,
+    connectorId: string,
+    rawPayload: string,
+    failureReason: QuarantineFailureReason | string,
+    errorMessage: string,
+  ): QuarantinedEventRecord {
+    return this.quarantine({
+      tenantId,
+      environmentId,
+      connectorId,
+      rawPayload,
+      failureReason: (failureReason as QuarantineFailureReason) || 'SCHEMA_MISMATCH',
+      errorMessage,
+    });
+  }
+
   getQuarantinedEvent(
     tenantId: string,
     quarantineId: string,

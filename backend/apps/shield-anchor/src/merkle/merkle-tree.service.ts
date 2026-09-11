@@ -99,6 +99,11 @@ export class MerkleTreeService {
     };
   }
 
+  /** Convenience alias to compute the Merkle root directly from leaves. */
+  computeRoot(leaves: string[]): string {
+    return this.build(leaves).root;
+  }
+
   /** Recomputes the root from a leaf's canonical bytes + its proof path — used both here and duplicated in the independent verifier. */
   verifyInclusion(
     canonicalLeafBytes: string,

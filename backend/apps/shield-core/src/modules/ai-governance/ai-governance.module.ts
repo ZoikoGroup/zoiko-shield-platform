@@ -19,6 +19,7 @@ import { ApprovalsModule } from '../approvals/approvals.module';
 import { EvidenceModule } from '../evidence/evidence.module';
 import { AuthorizationDecisionModule } from '../authorization-decision/authorization-decision.module';
 import { NoLlmContinuityService } from './no-llm-continuity.service';
+import { AiOutputGroundingService } from './ai-output-grounding.service';
 
 @Module({
   imports: [
@@ -44,6 +45,7 @@ import { NoLlmContinuityService } from './no-llm-continuity.service';
     AiProviderCostService,
     NoLlmContinuityService,
     AiTokenQuotaGuard,
+    AiOutputGroundingService,
   ],
   exports: [
     AiUsageService,
@@ -52,6 +54,7 @@ import { NoLlmContinuityService } from './no-llm-continuity.service';
     AiProviderCostService,
     NoLlmContinuityService,
     AiTokenQuotaGuard,
+    AiOutputGroundingService,
   ],
 })
 export class AiGovernanceModule {}

@@ -14,6 +14,14 @@ export interface ContinuousAssuranceControlExport {
   chainOfCustodyHash: string;
 }
 
+export interface StaleEvidenceRecord {
+  evidenceId: string;
+  controlId: string;
+  ageHours: number;
+  freshnessStatus: 'STALE' | 'AGING';
+  decayWarning: string;
+}
+
 export interface AuditorExportManifest {
   packageId: string;
   tenantId: string;
@@ -26,6 +34,11 @@ export interface AuditorExportManifest {
   merkleRoot: string;
   pqcSignatureDilithium3: string;
   classicalSignatureEd25519: string;
+  knownLimitations: {
+    staleEvidenceCount: number;
+    staleEvidenceRecords: StaleEvidenceRecord[];
+    disclosures: string[];
+  };
   chainOfCustodyAuditTrail: Array<{
     action: string;
     actor: string;
@@ -53,13 +66,15 @@ export class AuditorEvidenceExportService {
     environmentId?: string;
     regionalCell?: string;
     requestedBy: string;
+    customControls?: ContinuousAssuranceControlExport[];
+    evidenceDecayRecords?: StaleEvidenceRecord[];
   }): Promise<AuditorExportManifest> {
     const packageId = `audit-export-${randomUUID()}`;
     const environmentId = params.environmentId ?? 'production-cell-01';
     const regionalCell = params.regionalCell ?? 'eu-west-1';
 
-    // 1. Standard Continuous Assurance Controls [derived]
-    const controls: ContinuousAssuranceControlExport[] = [
+    // 1. Standard Continuous Assurance Controls [derived] or custom input
+    const controls: ContinuousAssuranceControlExport[] = params.customControls ?? [
       // SOC 2 Type II Controls
       {
         framework: 'SOC2_TYPE_II',
@@ -173,6 +188,39 @@ export class AuditorEvidenceExportService {
       },
     ];
 
+    // Evaluate known limitations & evidence decay
+    const staleRecords: StaleEvidenceRecord[] = params.evidenceDecayRecords ?? [];
+    const hasDegradedControls = controls.some((c) => c.status === 'DEGRADED');
+    const hasStaleEvidence = staleRecords.length > 0;
+
+    const overallCompliancePosture: 'AUDITOR_VERIFIED' | 'REVIEW_REQUIRED' =
+      hasDegradedControls || hasStaleEvidence
+        ? 'REVIEW_REQUIRED'
+        : 'AUDITOR_VERIFIED';
+
+    const disclosures: string[] = [];
+    if (hasStaleEvidence) {
+      disclosures.push(
+        `Disclosed ${staleRecords.length} evidence record(s) exhibiting telemetry decay past the active freshness threshold.`,
+      );
+    }
+    if (hasDegradedControls) {
+      disclosures.push(
+        'One or more security controls are operating in DEGRADED status pending remediation.',
+      );
+    }
+    if (disclosures.length === 0) {
+      disclosures.push(
+        'All continuous telemetry streams are fresh (<72h) and independently verifiable against cryptographic Merkle roots.',
+      );
+    }
+
+    const knownLimitations = {
+      staleEvidenceCount: staleRecords.length,
+      staleEvidenceRecords: staleRecords,
+      disclosures,
+    };
+
     // 2. Build Merkle Root over all control leaf digests
     const allLeafHashes = controls.flatMap((c) => c.merkleLeafHashes);
     const merkleRoot = this.calculateDomainSeparatedMerkleRoot(allLeafHashes);
@@ -184,6 +232,7 @@ export class AuditorEvidenceExportService {
       environmentId,
       merkleRoot,
       controlsCount: controls.length,
+      knownLimitations,
     });
 
     const pqcSignatureDilithium3 = this.hashContent(
@@ -217,11 +266,12 @@ export class AuditorEvidenceExportService {
       regionalCell,
       exportedAt: new Date(),
       totalControlsEvaluated: controls.length,
-      overallCompliancePosture: 'AUDITOR_VERIFIED',
+      overallCompliancePosture,
       controls,
       merkleRoot,
       pqcSignatureDilithium3,
       classicalSignatureEd25519,
+      knownLimitations,
       chainOfCustodyAuditTrail,
     };
   }

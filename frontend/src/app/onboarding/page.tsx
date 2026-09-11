@@ -7,6 +7,11 @@ import { Card } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
 import { Building2, Globe2, ShieldCheck, CheckCircle2, ArrowRight, Sparkles, FileText, Lock } from "lucide-react";
+import {
+  LoadingState,
+  UnauthorizedState,
+  UnavailableState,
+} from "@/components/states/mandatory-ui-states";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -19,6 +24,8 @@ export default function OnboardingPage() {
   const [dataClass, setDataClass] = useState<"PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED">("RESTRICTED");
   const [isLoading, setIsLoading] = useState(false);
   const [provisionedTenant, setProvisionedTenant] = useState<any>(null);
+  const [errorState, setErrorState] = useState<"UNAUTHORIZED" | "UNAVAILABLE" | null>(null);
+  const [errorReason, setErrorReason] = useState<string>("");
 
   const handleSeedOrder = () => {
     setOrderId(`ord-enterprise-${Math.random().toString(36).substring(2, 9)}-uuid`);
@@ -27,6 +34,7 @@ export default function OnboardingPage() {
   const handleOnboard = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setErrorState(null);
     try {
       const tenant = await ZoikoShieldApiClient.createOrganization({
         organizationName: orgName,
@@ -36,8 +44,15 @@ export default function OnboardingPage() {
         homeRegion: region,
       });
       setProvisionedTenant(tenant);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Onboarding Error:", err);
+      if (err?.status === 401 || err?.status === 403) {
+        setErrorState("UNAUTHORIZED");
+        setErrorReason(err?.message || "Cedar policy denied tenant provisioning authority (TENANT_ADMIN required).");
+      } else {
+        setErrorState("UNAVAILABLE");
+        setErrorReason(err?.message || "Regional cell provisioning gateway unreachable.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -59,6 +74,36 @@ export default function OnboardingPage() {
           Provision tenant isolation boundary bound to an approved Commercial Order (`orderId`), assign legal entity metadata, and bind `TENANT_OWNER` authority.
         </p>
       </div>
+
+      {/* Mandatory UI States Integration */}
+      {isLoading && (
+        <LoadingState
+          title="Provisioning Sovereign Tenancy..."
+          message="Allocating isolated database namespace, CMEK encryption keys, and binding TENANT_OWNER authority."
+          regionalCell={region}
+        />
+      )}
+
+      {errorState === "UNAUTHORIZED" && !isLoading && (
+        <UnauthorizedState
+          title="Provisioning Authority Denied"
+          message={errorReason || "Cedar policy requires TENANT_ADMIN role and valid FIDO2 biometric step-up to provision organization boundaries."}
+          cedarPolicyDenialReason="CEDAR_POLICY_DENY: TENANT_PROVISION_CHAIN requires TENANT_ADMIN role"
+          stepupChallengeRequired={true}
+          retryAction={() => setErrorState(null)}
+        />
+      )}
+
+      {errorState === "UNAVAILABLE" && !isLoading && (
+        <UnavailableState
+          title="Regional Cell Provisioning Standby"
+          message={errorReason || "Regional control plane endpoint is currently in standby failover mode. Please verify regional cell reachability."}
+          failoverRegion="eu-central-1"
+          rtoTargetMinutes={0.5}
+          rpoTargetMinutes={0}
+          retryAction={() => setErrorState(null)}
+        />
+      )}
 
       {!provisionedTenant ? (
         <Card variant="cyber">

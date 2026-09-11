@@ -278,4 +278,53 @@ describe('JitElevationService (Dual-Authorized Scoped & Time-Bound Tenant Access
     expect(trail[0].targetTenantId).toBe('tenant-acme-bank');
     expect(trail[0].customerVisibleAuditLogRef).toBeDefined();
   });
+
+  it('7. should verify FIDO2/WebAuthn step-up challenge with hardware attestation digest', async () => {
+    const req = await jitService.requestElevation({
+      superAdminPrincipalId: 'admin-super-01',
+      targetTenantId: 'tenant-acme-bank',
+      statedPurpose: 'Hardware MFA step-up verification test',
+    });
+
+    const verification = await jitService.verifyStepUpChallenge({
+      requestId: req.id,
+      principalId: 'admin-super-01',
+      clientDataJson: Buffer.from(JSON.stringify({ type: 'webauthn.get', challenge: 'test-challenge' })).toString('base64'),
+      signature: 'mock-fido2-signature-bytes',
+      authenticatorData: 'mock-auth-data',
+    });
+
+    expect(verification.verified).toBe(true);
+    expect(verification.hardwareProofDigest).toBeDefined();
+    expect(verification.hardwareProofDigest.length).toBe(64); // SHA-256 hex string
+    expect(events.some((e) => e.eventType === 'JIT_STEPUP_CHALLENGE_VERIFIED')).toBe(true);
+  });
+
+  it('8. should reject step-up challenge when signature or clientDataJson is missing', async () => {
+    const req = await jitService.requestElevation({
+      superAdminPrincipalId: 'admin-super-01',
+      targetTenantId: 'tenant-acme-bank',
+      statedPurpose: 'Hardware MFA step-up validation test',
+    });
+
+    await expect(
+      jitService.verifyStepUpChallenge({
+        requestId: req.id,
+        principalId: 'admin-super-01',
+        clientDataJson: '',
+        signature: '',
+      }),
+    ).rejects.toThrow('FIDO2_ATTESTATION_REQUIRED');
+  });
+
+  it('9. should reject step-up challenge when JIT request is not found', async () => {
+    await expect(
+      jitService.verifyStepUpChallenge({
+        requestId: 'non-existent-jit-req',
+        principalId: 'admin-super-01',
+        clientDataJson: 'dummy-client-data',
+        signature: 'dummy-sig',
+      }),
+    ).rejects.toThrow("JIT request 'non-existent-jit-req' not found");
+  });
 });
