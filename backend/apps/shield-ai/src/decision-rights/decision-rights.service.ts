@@ -5,8 +5,11 @@ import {
   ForbiddenException,
   BadRequestException,
   PreconditionFailedException,
+  OnModuleInit,
+  Optional,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
+import { PrismaService } from '../prisma/prisma.service';
 import {
   AiReviewEnvelope,
   DecisionState,
@@ -72,11 +75,66 @@ const AUTHORITY_TIER_WEIGHTS: Record<ResponseAuthorityTier, number> = {
  * 4. Gating rule: Downstream execution (shield-action) blocked unless state is ACCEPTED or MODIFIED.
  */
 @Injectable()
-export class DecisionRightsService {
+export class DecisionRightsService implements OnModuleInit {
   private readonly logger = new Logger(DecisionRightsService.name);
   private readonly envelopes = new Map<string, AiReviewEnvelope>();
 
-  constructor(private readonly kafkaProducer?: KafkaProducerService) {}
+  constructor(
+    private readonly kafkaProducer?: KafkaProducerService,
+    @Optional() private readonly prisma?: PrismaService,
+  ) {}
+
+  /**
+   * Rehydrates the in-memory map from Postgres on startup, so a restart
+   * doesn't lose envelopes declared before it. A no-op in contexts that
+   * construct this service directly without DI (tests, scripts) since
+   * Nest lifecycle hooks only fire for DI-managed instances - those keep
+   * their existing pure in-memory behavior unchanged.
+   */
+  async onModuleInit(): Promise<void> {
+    if (!this.prisma) return;
+    try {
+      const rows = await this.prisma.aiReviewEnvelope.findMany();
+      for (const row of rows) {
+        this.envelopes.set(row.id, JSON.parse(row.envelope_json));
+      }
+      if (rows.length > 0) {
+        this.logger.log(
+          `Rehydrated ${rows.length} AI review envelope(s) from Postgres`,
+        );
+      }
+    } catch (err) {
+      this.logger.error(
+        `Failed to rehydrate AI review envelopes from Postgres: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  /**
+   * Fire-and-forget write-through so wrapInEnvelope can stay synchronous
+   * for its ~10 existing call sites. recordHumanDecision (already async
+   * everywhere it's called) awaits this instead, since a lost decision
+   * record is worse than a lost first-draft envelope.
+   */
+  private persist(envelope: AiReviewEnvelope): Promise<void> {
+    if (!this.prisma) return Promise.resolve();
+    return this.prisma.aiReviewEnvelope
+      .upsert({
+        where: { id: envelope.envelopeId },
+        create: {
+          id: envelope.envelopeId,
+          tenant_id: envelope.tenantId,
+          envelope_json: JSON.stringify(envelope),
+        },
+        update: { envelope_json: JSON.stringify(envelope) },
+      })
+      .then(() => undefined)
+      .catch((err) => {
+        this.logger.warn(
+          `Failed to persist AI review envelope '${envelope.envelopeId}': ${(err as Error).message}`,
+        );
+      });
+  }
 
   /**
    * Wraps an AI output in a 10-field strongly-typed AiReviewEnvelope with strict invariant validation.
@@ -200,6 +258,7 @@ export class DecisionRightsService {
     };
 
     this.envelopes.set(envelopeId, envelope);
+    void this.persist(envelope);
     this.logger.log(
       `✔ Wrapped AI recommendation in AiReviewEnvelope [${envelopeId}] for use-case ${envelope.aiLabelAndUseCaseName.useCaseName} (Tenant: ${envelope.tenantId})`,
     );
@@ -316,6 +375,7 @@ export class DecisionRightsService {
     };
 
     this.envelopes.set(envelopeId, envelope);
+    await this.persist(envelope);
 
     // Emit event if Kafka producer is available
     if (this.kafkaProducer) {

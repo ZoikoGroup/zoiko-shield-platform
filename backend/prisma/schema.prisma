@@ -5453,3 +5453,66 @@ model ClaimEvaluation {
   @@index([case_id])
   @@map("claim_evaluations")
 }
+
+// ============================================================
+// §23: AI Incident Lifecycle (shield-ai)
+// Previously an in-memory Map on AiIncidentService - a process
+// restart silently erased incident/RCA/decision history. This
+// gives it the durability the audit trail already assumes.
+// ============================================================
+
+model AiIncident {
+  id                   String    @id
+  tenant_id            String
+  title                String
+  category             String
+  severity             String
+  status               String
+  description          String
+  affected_model       String?
+  affected_prompt_key  String?
+  affected_tool        String?
+  kill_switch_active   Boolean   @default(false)
+  kill_switch_details  String?
+  fallback_active      Boolean   @default(false)
+  fallback_details     String?
+  rca_summary          String?
+  rca_details          String?
+  decision_envelope_id String?
+  decision_envelope    String?
+  resolution_summary   String?
+  declared_at          DateTime
+  resolved_at          DateTime?
+  closed_at            DateTime?
+  timeline             String    @default("[]")
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+
+  @@index([tenant_id, status])
+  @@index([tenant_id, severity])
+  @@map("ai_incidents")
+}
+
+// ============================================================
+// §16: AI Review Envelope / Decision Rights (shield-ai)
+// Previously an in-memory Map on DecisionRightsService, so a
+// restart erased the human-oversight record an @RequireAssurance-
+// style downstream gate assumes still exists. DecisionRightsService
+// keeps its in-memory Map as the synchronous source of truth (its
+// wrapInEnvelope/getEnvelope/assertActionPermitted/listEnvelopes
+// methods are called synchronously in ~10 places across services,
+// scripts, and tests that construct it directly without DI) and
+// write-throughs to this table for durability, rehydrating the map
+// from here on module init.
+// ============================================================
+
+model AiReviewEnvelope {
+  id            String   @id
+  tenant_id     String
+  envelope_json String
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  @@index([tenant_id])
+  @@map("ai_review_envelopes")
+}

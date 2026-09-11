@@ -6,6 +6,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
+import { PrismaService } from '../prisma/prisma.service';
 import {
   AiIncidentCategory,
   AiIncidentSeverity,
@@ -19,6 +20,7 @@ import {
 import { AiKillSwitchService } from '../kill-switch/ai-kill-switch.service';
 import { DecisionRightsService } from '../decision-rights/decision-rights.service';
 import { AiReviewEnvelope } from '../decision-rights/ai-review-envelope.interface';
+import type { AiIncident as AiIncidentRow } from '@prisma/client';
 
 export interface AiIncidentTimelineEntry {
   timestamp: string;
@@ -55,17 +57,58 @@ export interface AiIncidentRecord {
   timeline: AiIncidentTimelineEntry[];
 }
 
+function parseJson<T>(value: string | null, fallback: T): T {
+  if (!value) return fallback;
+  try {
+    return JSON.parse(value) as T;
+  } catch {
+    return fallback;
+  }
+}
+
+function toRecord(row: AiIncidentRow): AiIncidentRecord {
+  return {
+    id: row.id,
+    tenantId: row.tenant_id,
+    title: row.title,
+    category: row.category as AiIncidentCategory,
+    severity: row.severity as AiIncidentSeverity,
+    status: row.status as AiIncidentStatus,
+    description: row.description,
+    affectedModel: row.affected_model ?? undefined,
+    affectedPromptKey: row.affected_prompt_key ?? undefined,
+    affectedTool: row.affected_tool ?? undefined,
+    killSwitchActive: row.kill_switch_active,
+    killSwitchDetails: parseJson(row.kill_switch_details, undefined as any),
+    fallbackActive: row.fallback_active,
+    fallbackDetails: parseJson(row.fallback_details, undefined as any),
+    rcaSummary: row.rca_summary ?? undefined,
+    rcaDetails: parseJson(row.rca_details, undefined as any),
+    decisionEnvelopeId: row.decision_envelope_id ?? undefined,
+    decisionEnvelope: parseJson(row.decision_envelope, undefined as any),
+    resolutionSummary: row.resolution_summary ?? undefined,
+    declaredAt: row.declared_at.toISOString(),
+    resolvedAt: row.resolved_at?.toISOString(),
+    closedAt: row.closed_at?.toISOString(),
+    timeline: parseJson(row.timeline, []),
+  };
+}
+
 /**
  * §23: AI Incident Lifecycle Management Service
  * Oversees the formal AI incident response state machine:
  * DECLARED -> CONTAINED_KILL_SWITCH -> FALLBACK_ACTIVE -> ROOT_CAUSE_ANALYZED -> RESOLVED -> CLOSED
+ *
+ * Persisted in Postgres via Prisma (`ai_incidents`) - this used to be an
+ * in-memory Map, which meant a process restart silently erased incident
+ * and RCA history that the audit trail assumes is durable.
  */
 @Injectable()
 export class AiIncidentService {
   private readonly logger = new Logger(AiIncidentService.name);
-  private readonly incidents = new Map<string, AiIncidentRecord>();
 
   constructor(
+    private readonly prisma: PrismaService,
     @Optional() private readonly killSwitchService?: AiKillSwitchService,
     @Optional() private readonly decisionRightsService?: DecisionRightsService,
   ) {}
@@ -85,38 +128,39 @@ export class AiIncidentService {
     }
 
     const incidentId = `ai-inc-${crypto.randomUUID()}`;
-    const now = new Date().toISOString();
+    const now = new Date();
 
-    const incident: AiIncidentRecord = {
-      id: incidentId,
-      tenantId,
-      title: dto.title,
-      category: dto.category,
-      severity: dto.severity,
-      status: 'DECLARED',
-      description: dto.description,
-      affectedModel: dto.affectedModel,
-      affectedPromptKey: dto.affectedPromptKey,
-      affectedTool: dto.affectedTool,
-      killSwitchActive: false,
-      fallbackActive: false,
-      declaredAt: now,
-      timeline: [
-        {
-          timestamp: now,
-          toStatus: 'DECLARED',
-          action: 'INCIDENT_DECLARED',
-          actor: actorId,
-          details: {
-            severity: dto.severity,
-            category: dto.category,
-            affectedModel: dto.affectedModel,
-          },
+    const timeline: AiIncidentTimelineEntry[] = [
+      {
+        timestamp: now.toISOString(),
+        toStatus: 'DECLARED',
+        action: 'INCIDENT_DECLARED',
+        actor: actorId,
+        details: {
+          severity: dto.severity,
+          category: dto.category,
+          affectedModel: dto.affectedModel,
         },
-      ],
-    };
+      },
+    ];
 
-    this.incidents.set(incidentId, incident);
+    await this.prisma.aiIncident.create({
+      data: {
+        id: incidentId,
+        tenant_id: tenantId,
+        title: dto.title,
+        category: dto.category,
+        severity: dto.severity,
+        status: 'DECLARED',
+        description: dto.description,
+        affected_model: dto.affectedModel,
+        affected_prompt_key: dto.affectedPromptKey,
+        affected_tool: dto.affectedTool,
+        declared_at: now,
+        timeline: JSON.stringify(timeline),
+      },
+    });
+
     this.logger.warn(
       `🚨 AI Incident Declared [${incidentId}] - ${dto.severity} - ${dto.title} for tenant ${tenantId}`,
     );
@@ -143,7 +187,7 @@ export class AiIncidentService {
       );
     }
 
-    return this.incidents.get(incidentId)!;
+    return this.getIncidentOrThrow(tenantId, incidentId);
   }
 
   /**
@@ -155,7 +199,7 @@ export class AiIncidentService {
     dto: ContainIncidentDto,
     actorId = 'soc-operator',
   ): Promise<AiIncidentRecord> {
-    const incident = this.getIncidentOrThrow(tenantId, incidentId);
+    const incident = await this.getIncidentOrThrow(tenantId, incidentId);
 
     if (
       incident.status !== 'DECLARED' &&
@@ -177,10 +221,6 @@ export class AiIncidentService {
     }
 
     const fromStatus = incident.status;
-    incident.status = 'CONTAINED_KILL_SWITCH';
-    incident.killSwitchActive = true;
-    incident.killSwitchDetails = dto;
-
     incident.timeline.push({
       timestamp: new Date().toISOString(),
       fromStatus,
@@ -190,11 +230,21 @@ export class AiIncidentService {
       details: { ...dto },
     });
 
+    await this.prisma.aiIncident.update({
+      where: { id: incidentId },
+      data: {
+        status: 'CONTAINED_KILL_SWITCH',
+        kill_switch_active: true,
+        kill_switch_details: JSON.stringify(dto),
+        timeline: JSON.stringify(incident.timeline),
+      },
+    });
+
     this.logger.log(
       `✔ Incident [${incidentId}] contained via ${dto.killSwitchScope}:${dto.targetId}`,
     );
 
-    return incident;
+    return this.getIncidentOrThrow(tenantId, incidentId);
   }
 
   /**
@@ -206,7 +256,7 @@ export class AiIncidentService {
     dto: FallbackIncidentDto,
     actorId = 'soc-operator',
   ): Promise<AiIncidentRecord> {
-    const incident = this.getIncidentOrThrow(tenantId, incidentId);
+    const incident = await this.getIncidentOrThrow(tenantId, incidentId);
 
     if (
       incident.status !== 'CONTAINED_KILL_SWITCH' &&
@@ -218,10 +268,6 @@ export class AiIncidentService {
     }
 
     const fromStatus = incident.status;
-    incident.status = 'FALLBACK_ACTIVE';
-    incident.fallbackActive = true;
-    incident.fallbackDetails = dto;
-
     incident.timeline.push({
       timestamp: new Date().toISOString(),
       fromStatus,
@@ -231,7 +277,17 @@ export class AiIncidentService {
       details: { ...dto },
     });
 
-    return incident;
+    await this.prisma.aiIncident.update({
+      where: { id: incidentId },
+      data: {
+        status: 'FALLBACK_ACTIVE',
+        fallback_active: true,
+        fallback_details: JSON.stringify(dto),
+        timeline: JSON.stringify(incident.timeline),
+      },
+    });
+
+    return this.getIncidentOrThrow(tenantId, incidentId);
   }
 
   /**
@@ -243,7 +299,7 @@ export class AiIncidentService {
     dto: CompleteRcaDto,
     actorId = 'ai-safety-engineer',
   ): Promise<AiIncidentRecord> {
-    const incident = this.getIncidentOrThrow(tenantId, incidentId);
+    const incident = await this.getIncidentOrThrow(tenantId, incidentId);
 
     if (
       incident.status !== 'FALLBACK_ACTIVE' &&
@@ -256,9 +312,8 @@ export class AiIncidentService {
     }
 
     const fromStatus = incident.status;
-    incident.status = 'ROOT_CAUSE_ANALYZED';
-    incident.rcaSummary = dto.rootCauseSummary;
-    incident.rcaDetails = dto;
+    let decisionEnvelopeId: string | undefined;
+    let decisionEnvelope: AiReviewEnvelope | undefined;
 
     if (this.decisionRightsService) {
       const envelope = this.decisionRightsService.wrapInEnvelope({
@@ -322,8 +377,8 @@ export class AiIncidentService {
         },
       });
 
-      incident.decisionEnvelopeId = envelope.envelopeId;
-      incident.decisionEnvelope = envelope;
+      decisionEnvelopeId = envelope.envelopeId;
+      decisionEnvelope = envelope;
     }
 
     incident.timeline.push({
@@ -335,11 +390,25 @@ export class AiIncidentService {
       details: {
         rootCauseSummary: dto.rootCauseSummary,
         preventativeCount: dto.preventativeActions.length,
-        decisionEnvelopeId: incident.decisionEnvelopeId,
+        decisionEnvelopeId,
       },
     });
 
-    return incident;
+    await this.prisma.aiIncident.update({
+      where: { id: incidentId },
+      data: {
+        status: 'ROOT_CAUSE_ANALYZED',
+        rca_summary: dto.rootCauseSummary,
+        rca_details: JSON.stringify(dto),
+        decision_envelope_id: decisionEnvelopeId,
+        decision_envelope: decisionEnvelope
+          ? JSON.stringify(decisionEnvelope)
+          : undefined,
+        timeline: JSON.stringify(incident.timeline),
+      },
+    });
+
+    return this.getIncidentOrThrow(tenantId, incidentId);
   }
 
   /**
@@ -351,7 +420,7 @@ export class AiIncidentService {
     dto: ResolveIncidentDto,
     actorId = 'soc-lead',
   ): Promise<AiIncidentRecord> {
-    const incident = this.getIncidentOrThrow(tenantId, incidentId);
+    const incident = await this.getIncidentOrThrow(tenantId, incidentId);
 
     if (
       incident.status !== 'ROOT_CAUSE_ANALYZED' &&
@@ -364,6 +433,7 @@ export class AiIncidentService {
     }
 
     // Disengage kill switch if requested
+    let killSwitchActive = incident.killSwitchActive;
     if (
       dto.disengageKillSwitch &&
       incident.killSwitchDetails &&
@@ -374,16 +444,14 @@ export class AiIncidentService {
         targetId: incident.killSwitchDetails.targetId,
         deactivatedBy: dto.resolvedBy || actorId,
       });
-      incident.killSwitchActive = false;
+      killSwitchActive = false;
     }
 
     const fromStatus = incident.status;
-    incident.status = 'RESOLVED';
-    incident.resolutionSummary = dto.resolutionSummary;
-    incident.resolvedAt = new Date().toISOString();
+    const resolvedAt = new Date();
 
     incident.timeline.push({
-      timestamp: incident.resolvedAt,
+      timestamp: resolvedAt.toISOString(),
       fromStatus,
       toStatus: 'RESOLVED',
       action: 'INCIDENT_RESOLVED',
@@ -394,7 +462,18 @@ export class AiIncidentService {
       },
     });
 
-    return incident;
+    await this.prisma.aiIncident.update({
+      where: { id: incidentId },
+      data: {
+        status: 'RESOLVED',
+        resolution_summary: dto.resolutionSummary,
+        resolved_at: resolvedAt,
+        kill_switch_active: killSwitchActive,
+        timeline: JSON.stringify(incident.timeline),
+      },
+    });
+
+    return this.getIncidentOrThrow(tenantId, incidentId);
   }
 
   /**
@@ -405,7 +484,7 @@ export class AiIncidentService {
     incidentId: string,
     actorId = 'soc-lead',
   ): Promise<AiIncidentRecord> {
-    const incident = this.getIncidentOrThrow(tenantId, incidentId);
+    const incident = await this.getIncidentOrThrow(tenantId, incidentId);
 
     if (incident.status !== 'RESOLVED') {
       throw new BadRequestException(
@@ -414,67 +493,67 @@ export class AiIncidentService {
     }
 
     const fromStatus = incident.status;
-    incident.status = 'CLOSED';
-    incident.closedAt = new Date().toISOString();
+    const closedAt = new Date();
 
     incident.timeline.push({
-      timestamp: incident.closedAt,
+      timestamp: closedAt.toISOString(),
       fromStatus,
       toStatus: 'CLOSED',
       action: 'INCIDENT_CLOSED',
       actor: actorId,
     });
 
-    return incident;
+    await this.prisma.aiIncident.update({
+      where: { id: incidentId },
+      data: {
+        status: 'CLOSED',
+        closed_at: closedAt,
+        timeline: JSON.stringify(incident.timeline),
+      },
+    });
+
+    return this.getIncidentOrThrow(tenantId, incidentId);
   }
 
   /**
    * Get single incident by ID
    */
-  getIncident(tenantId: string, incidentId: string): AiIncidentRecord {
+  async getIncident(
+    tenantId: string,
+    incidentId: string,
+  ): Promise<AiIncidentRecord> {
     return this.getIncidentOrThrow(tenantId, incidentId);
   }
 
   /**
    * List incidents for tenant with optional filtering
    */
-  listIncidents(
+  async listIncidents(
     tenantId: string,
     filters?: {
       status?: AiIncidentStatus;
       severity?: AiIncidentSeverity;
       category?: AiIncidentCategory;
     },
-  ): AiIncidentRecord[] {
-    const results: AiIncidentRecord[] = [];
+  ): Promise<AiIncidentRecord[]> {
+    const rows = await this.prisma.aiIncident.findMany({
+      where: {
+        tenant_id: tenantId,
+        ...(filters?.status && { status: filters.status }),
+        ...(filters?.severity && { severity: filters.severity }),
+        ...(filters?.category && { category: filters.category }),
+      },
+      orderBy: { declared_at: 'desc' },
+    });
 
-    for (const inc of this.incidents.values()) {
-      if (inc.tenantId !== tenantId) {
-        continue;
-      }
-      if (filters?.status && inc.status !== filters.status) {
-        continue;
-      }
-      if (filters?.severity && inc.severity !== filters.severity) {
-        continue;
-      }
-      if (filters?.category && inc.category !== filters.category) {
-        continue;
-      }
-      results.push(inc);
-    }
-
-    return results.sort(
-      (a, b) =>
-        new Date(b.declaredAt).getTime() - new Date(a.declaredAt).getTime(),
-    );
+    return rows.map(toRecord);
   }
 
   /**
    * Get tenant incident metrics
    */
-  getMetrics(tenantId: string) {
-    const tenantIncs = this.listIncidents(tenantId);
+  async getMetrics(tenantId: string) {
+    const tenantIncs = await this.listIncidents(tenantId);
 
     const activeCount = tenantIncs.filter(
       (i) => i.status !== 'RESOLVED' && i.status !== 'CLOSED',
@@ -493,20 +572,22 @@ export class AiIncidentService {
     };
   }
 
-  private getIncidentOrThrow(
+  private async getIncidentOrThrow(
     tenantId: string,
     incidentId: string,
-  ): AiIncidentRecord {
-    const inc = this.incidents.get(incidentId);
-    if (!inc || inc.tenantId !== tenantId) {
+  ): Promise<AiIncidentRecord> {
+    const row = await this.prisma.aiIncident.findUnique({
+      where: { id: incidentId },
+    });
+    if (!row || row.tenant_id !== tenantId) {
       throw new NotFoundException(
         `AI Incident '${incidentId}' not found for tenant '${tenantId}'`,
       );
     }
-    return inc;
+    return toRecord(row);
   }
 
-  clearAll(): void {
-    this.incidents.clear();
+  async clearAll(): Promise<void> {
+    await this.prisma.aiIncident.deleteMany({});
   }
 }

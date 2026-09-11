@@ -177,6 +177,7 @@ services:
       SHIELD_INGEST_PORT: 3002
       DATABASE_URL: ${DOCKER_DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
       KAFKA_BROKERS: redpanda:9092
+      SHIELD_CORE_BASE_URL: http://shield-core:3001
       WORKLOAD_IDENTITY_DEV_SECRET: ${WORKLOAD_IDENTITY_DEV_SECRET:-local-workload-identity-change-me}
       WEBHOOK_HMAC_SECRETS: ${WEBHOOK_HMAC_SECRETS:-}
       WEBHOOK_HMAC_SECRET: ${WEBHOOK_HMAC_SECRET:-}
