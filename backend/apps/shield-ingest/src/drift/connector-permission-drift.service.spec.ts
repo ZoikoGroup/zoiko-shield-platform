@@ -156,6 +156,44 @@ describe('ConnectorPermissionDriftService', () => {
         }),
       );
     });
+
+    it('should evaluate crowdstrike drift and detect critical detections:read loss', async () => {
+      const instanceId = 'inst-cs-01';
+      const tenantId = 'tenant-acme';
+      const provider = 'crowdstrike';
+      // Missing 'detections:read' which is in criticalScopes: ['alerts:read', 'detections:read']
+      const granted = ['alerts:read', 'devices:read'];
+
+      const result = await service.evaluateInstanceDrift(
+        instanceId,
+        tenantId,
+        provider,
+        granted,
+      );
+
+      expect(result.driftStatus).toBe('REVOKED');
+      expect(result.hasCriticalLoss).toBe(true);
+      expect(result.missingPermissions).toEqual(['detections:read']);
+    });
+
+    it('should evaluate github drift as DEGRADED when audit_log:read is missing but security_events:read is granted', async () => {
+      const instanceId = 'inst-gh-01';
+      const tenantId = 'tenant-acme';
+      const provider = 'github';
+      // Missing 'audit_log:read' which is non-critical (critical is 'security_events:read')
+      const granted = ['repo:status', 'security_events:read'];
+
+      const result = await service.evaluateInstanceDrift(
+        instanceId,
+        tenantId,
+        provider,
+        granted,
+      );
+
+      expect(result.driftStatus).toBe('DEGRADED');
+      expect(result.hasCriticalLoss).toBe(false);
+      expect(result.missingPermissions).toEqual(['audit_log:read']);
+    });
   });
 
   describe('sweepPermissionDrift', () => {

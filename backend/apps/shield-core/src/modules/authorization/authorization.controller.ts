@@ -254,6 +254,29 @@ export class AuthorizationController {
     });
   }
 
+  /** Validates FIDO2 / WebAuthn cryptographic step-up challenge for JIT elevation. */
+  @UseGuards(PlatformPermissionsGuard)
+  @RequirePlatformPermissions(PERMISSION_CODES.PLATFORM_ROLE_MANAGE)
+  @Post('authz/jit/:requestId/stepup')
+  async verifyJitStepUp(
+    @Param('requestId') requestId: string,
+    @Body()
+    dto: {
+      clientDataJson: string;
+      authenticatorData?: string;
+      signature: string;
+    },
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.jitElevationService.verifyStepUpChallenge({
+      requestId,
+      principalId: user.id,
+      clientDataJson: dto.clientDataJson,
+      authenticatorData: dto.authenticatorData,
+      signature: dto.signature,
+    });
+  }
+
   /** Customer-visible audit trail of all JIT elevation events for that tenant. */
   @UseGuards(PermissionsGuard)
   @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_READ)

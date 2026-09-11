@@ -24,6 +24,10 @@ import {
   AiReviewEnvelope,
   DecisionTransition,
   DecisionState,
+  IncidentResponseRetainer,
+  IncidentWorkOrder,
+  WorkOrderConsumptionRecord,
+  IncidentLegalSensitiveRecord,
 } from "./types";
 import { getInitialDemoState, saveDemoState, DemoState } from "./demo-state";
 import { generateUUID, sha256Mock } from "./utils";
@@ -1066,6 +1070,33 @@ export class ZoikoShieldApiClient {
     );
   }
 
+  // --- Verify JIT Step-Up Challenge (FIDO2 / WebAuthn) ---
+  static async verifyJitStepUp(
+    requestId: string,
+    principalId: string,
+    clientDataJson: string,
+    signature: string,
+    authenticatorData?: string
+  ): Promise<{ verified: boolean; hardwareProofDigest: string; verifiedAt: string }> {
+    return this.safeFetch(
+      `/api/v1/authz/jit/${requestId}/stepup`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          principalId,
+          clientDataJson,
+          signature,
+          authenticatorData: authenticatorData || "direct",
+        }),
+      },
+      () => ({
+        verified: true,
+        hardwareProofDigest: sha256Mock(`fido2-${requestId}-${Date.now()}`),
+        verifiedAt: new Date().toISOString(),
+      })
+    );
+  }
+
   // --- Step 11: AI Safety Incident Lifecycle (§23) & Emergency Kill-Switch ---
   static async getAiIncidents(tenantId?: string): Promise<AiIncident[]> {
     return this.safeFetch<AiIncident[]>(
@@ -1393,5 +1424,221 @@ export class ZoikoShieldApiClient {
       }
     );
   }
+
+  // --- Step 16: IR Retainer & Incident Work Orders (§16.4) ---
+  static async getIncidentRetainers(): Promise<IncidentResponseRetainer[]> {
+    return this.safeFetch<IncidentResponseRetainer[]>(
+      "/api/v1/ir/retainers",
+      { method: "GET" },
+      () => {
+        const state = getState();
+        return state.incidentRetainers || [];
+      }
+    );
+  }
+
+  static async getIncidentRetainerById(id: string): Promise<IncidentResponseRetainer | null> {
+    return this.safeFetch<IncidentResponseRetainer | null>(
+      `/api/v1/ir/retainers/${id}`,
+      { method: "GET" },
+      () => {
+        const state = getState();
+        return state.incidentRetainers?.find((r) => r.id === id) || null;
+      }
+    );
+  }
+
+  static async getIncidentWorkOrders(): Promise<IncidentWorkOrder[]> {
+    return this.safeFetch<IncidentWorkOrder[]>(
+      "/api/v1/ir/work-orders",
+      { method: "GET" },
+      () => {
+        const state = getState();
+        return state.incidentWorkOrders || [];
+      }
+    );
+  }
+
+  static async getIncidentWorkOrderById(id: string): Promise<IncidentWorkOrder | null> {
+    return this.safeFetch<IncidentWorkOrder | null>(
+      `/api/v1/ir/work-orders/${id}`,
+      { method: "GET" },
+      () => {
+        const state = getState();
+        return state.incidentWorkOrders?.find((w) => w.id === id) || null;
+      }
+    );
+  }
+
+  static async getWorkOrderConsumption(workOrderId: string): Promise<WorkOrderConsumptionRecord[]> {
+    return this.safeFetch<WorkOrderConsumptionRecord[]>(
+      `/api/v1/ir/work-orders/${workOrderId}/consumption`,
+      { method: "GET" },
+      () => {
+        const state = getState();
+        return (state.workOrderConsumption || []).filter((c) => c.workOrderId === workOrderId);
+      }
+    );
+  }
+
+  static async activateWorkOrder(data: {
+    retainerId: string;
+    incidentReference: string;
+    activationReason: string;
+    activationReference: string;
+    responseAuthority?: "R0" | "R1" | "R2" | "R3" | "R4";
+    authorityScope?: Record<string, unknown>;
+    customerCommandStructure?: Record<string, unknown>;
+    readinessEvidenceRefs: string[];
+    customerContact?: string;
+  }): Promise<IncidentWorkOrder> {
+    const newWorkOrder = await this.safeFetch<IncidentWorkOrder>(
+      "/api/v1/ir/work-orders",
+      { method: "POST", body: JSON.stringify(data) },
+      () => {
+        const state = getState();
+        const retainer = state.incidentRetainers?.find((r) => r.id === data.retainerId);
+        const totalIncluded = retainer?.includedHours || 40;
+        const totalConsumed = retainer?.consumedHours || 0;
+        const remaining = Math.max(0, totalIncluded - totalConsumed);
+        const created: IncidentWorkOrder = {
+          id: `wo-${generateUUID().slice(0, 8)}`,
+          tenantId: state.tenant.id,
+          environmentId: state.tenant.environmentName,
+          retainerId: data.retainerId,
+          incidentReference: data.incidentReference,
+          activationReason: data.activationReason,
+          activationReference: data.activationReference,
+          status: "ACTIVE",
+          responseAuthority: data.responseAuthority || "R2",
+          includedHours: totalIncluded,
+          consumedHours: 0,
+          remainingHours: remaining,
+          overageHours: 0,
+          forecastHours: 10,
+          warningThresholdPercent: retainer?.warningThresholdPercent || 80,
+          overagePolicy: retainer?.overagePolicy || "REQUIRE_APPROVAL",
+          evidenceRefs: data.readinessEvidenceRefs,
+          thirdPartyCosts: 0,
+          emergencyReconciliationStatus: "NOT_REQUIRED",
+          customerContact: data.customerContact || state.session?.fullName || "Sarah Chen",
+          createdAt: new Date().toISOString(),
+        };
+        return created;
+      }
+    );
+
+    const state = getState();
+    state.incidentWorkOrders = [newWorkOrder, ...(state.incidentWorkOrders || [])];
+    saveDemoState(state);
+    return newWorkOrder;
+  }
+
+  static async logWorkOrderHours(
+    workOrderId: string,
+    data: {
+      hours: number;
+      workDescription: string;
+      evidenceReference: string;
+    }
+  ): Promise<WorkOrderConsumptionRecord> {
+    const consumption = await this.safeFetch<WorkOrderConsumptionRecord>(
+      `/api/v1/ir/work-orders/${workOrderId}/hours`,
+      { method: "POST", body: JSON.stringify(data) },
+      () => {
+        const state = getState();
+        const rec: WorkOrderConsumptionRecord = {
+          id: `cons-${generateUUID().slice(0, 8)}`,
+          workOrderId,
+          tenantId: state.tenant.id,
+          hours: data.hours,
+          workDescription: data.workDescription,
+          evidenceReference: data.evidenceReference,
+          loggedBy: state.session?.userId || "usr-sarah-chen-01",
+          occurredAt: new Date().toISOString(),
+          createdAt: new Date().toISOString(),
+        };
+        return rec;
+      }
+    );
+
+    const state = getState();
+    state.workOrderConsumption = [consumption, ...(state.workOrderConsumption || [])];
+    const woIndex = (state.incidentWorkOrders || []).findIndex((w) => w.id === workOrderId);
+    if (woIndex >= 0) {
+      const wo = state.incidentWorkOrders[woIndex];
+      wo.consumedHours += data.hours;
+      wo.remainingHours = Math.max(0, wo.includedHours - wo.consumedHours);
+      if (wo.consumedHours > wo.includedHours) {
+        wo.overageHours = wo.consumedHours - wo.includedHours;
+      }
+      state.incidentWorkOrders[woIndex] = { ...wo };
+    }
+    const retId = state.incidentWorkOrders?.[woIndex]?.retainerId;
+    const retIndex = (state.incidentRetainers || []).findIndex((r) => r.id === retId);
+    if (retIndex >= 0) {
+      const ret = state.incidentRetainers[retIndex];
+      ret.consumedHours = (ret.consumedHours || 0) + data.hours;
+      ret.remainingHours = Math.max(0, ret.includedHours - ret.consumedHours);
+      state.incidentRetainers[retIndex] = { ...ret };
+    }
+    saveDemoState(state);
+    return consumption;
+  }
+
+  static async listLegalSensitiveRecords(
+    workOrderId: string,
+    accessReason: string
+  ): Promise<IncidentLegalSensitiveRecord[]> {
+    return this.safeFetch<IncidentLegalSensitiveRecord[]>(
+      `/api/v1/ir/legal-sensitive-records/work-orders/${workOrderId}?accessReason=${encodeURIComponent(accessReason)}`,
+      { method: "GET" },
+      () => {
+        const state = getState();
+        return (state.legalSensitiveRecords || []).filter((r) => r.workOrderId === workOrderId);
+      }
+    );
+  }
+
+  static async createLegalSensitiveRecord(data: {
+    workOrderId: string;
+    purpose: "LEGAL_DEFENSE" | "REGULATOR_INQUIRY" | "INSURER_PROOF" | "BREACH_NOTIFICATION" | "INCIDENT_COORDINATION";
+    privilegeStatus: "COUNSEL_ASSERTED" | "NO_PRIVILEGE_CLAIMED" | "UNDER_REVIEW";
+    notificationStatus: "COUNSEL_DETERMINED" | "STATUTORY_MANDATED" | "NOT_APPLICABLE";
+    counselControlled: boolean;
+    contentReference: string;
+    accessReason: string;
+  }): Promise<IncidentLegalSensitiveRecord> {
+    const record = await this.safeFetch<IncidentLegalSensitiveRecord>(
+      "/api/v1/ir/legal-sensitive-records",
+      { method: "POST", body: JSON.stringify(data) },
+      () => {
+        const state = getState();
+        const rec: IncidentLegalSensitiveRecord = {
+          id: `legal-rec-${generateUUID().slice(0, 8)}`,
+          workOrderId: data.workOrderId,
+          tenantId: state.tenant.id,
+          environmentId: state.tenant.environmentName,
+          purpose: data.purpose,
+          privilegeStatus: data.privilegeStatus,
+          notificationStatus: data.notificationStatus,
+          counselControlled: data.counselControlled,
+          contentReference: data.contentReference,
+          accessReason: data.accessReason,
+          noLegalAdviceWording:
+            "This work order does not establish legal privilege or provide a breach-notification, regulatory, or legal conclusion.",
+          recordedBy: state.session?.userId || "usr-sarah-chen-01",
+          createdAt: new Date().toISOString(),
+        };
+        return rec;
+      }
+    );
+
+    const state = getState();
+    state.legalSensitiveRecords = [record, ...(state.legalSensitiveRecords || [])];
+    saveDemoState(state);
+    return record;
+  }
 }
+
 

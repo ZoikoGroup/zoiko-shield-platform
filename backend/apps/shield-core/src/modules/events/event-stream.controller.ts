@@ -9,7 +9,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import { EventStreamService } from './event-stream.service';
+import { EventStreamService, SseMessage } from './event-stream.service';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 
@@ -20,7 +20,9 @@ export class PublishRealtimeEventDto {
     | 'CASE_UPDATED'
     | 'MERKLE_EPOCH_SEALED'
     | 'ACTION_EXECUTED'
-    | 'CORRELATION_MATCH';
+    | 'CORRELATION_MATCH'
+    | 'ROLLBACK_PROGRESS'
+    | 'AI_INCIDENT_DRIFT';
   tenantId!: string;
   timestamp!: string;
   data!: Record<string, unknown>;
@@ -33,11 +35,17 @@ export class EventStreamController {
 
   @Sse('stream')
   streamEvents(
-    @Headers('x-tenant-id') headerTenantId: string,
+    @Headers('x-tenant-id') headerTenantId?: string,
+    @Headers('last-event-id') lastEventId?: string,
     @Query('tenantId') queryTenantId?: string,
-  ): Observable<MessageEvent> {
+    @Query('lastEventId') queryLastEventId?: string,
+  ): Observable<SseMessage> {
     const tenantId = headerTenantId || queryTenantId || 'tenant-bank-01';
-    return this.eventStreamService.getEventStreamForTenant(tenantId);
+    const effectiveLastEventId = lastEventId || queryLastEventId;
+    return this.eventStreamService.getEventStreamForTenant(
+      tenantId,
+      effectiveLastEventId,
+    );
   }
 
   @Post('publish')

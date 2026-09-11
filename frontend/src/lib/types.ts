@@ -302,6 +302,7 @@ export interface JitElevationSession {
   issuedAt: string;
   expiresAt: string;
   hardwareStepUpVerified: boolean;
+  hardwareProofDigest?: string;
   peerApprover?: string;
   revocationReason?: string;
 }
@@ -497,5 +498,116 @@ export interface AiReviewEnvelope<T = any> {
   humanDecisionAndRationale: RecordedHumanDecision;
   appealOrFeedbackRoute: AppealOrFeedbackRoute;
   payload: T;
+}
+
+export interface IncidentResponseRetainer {
+  id: string;
+  tenantId: string;
+  environmentId: string;
+  contractId: string;
+  serviceObligationId: string;
+  priceBookId: string;
+  status: 'DRAFT' | 'PENDING_APPROVAL' | 'ACTIVE' | 'SUSPENDED' | 'EXPIRED';
+  termStart: string;
+  termEnd: string;
+  includedHours: number;
+  consumedHours?: number;
+  remainingHours?: number;
+  includedServices: string[];
+  responseWindow: {
+    coverage: string;
+    acknowledgementTargetMinutes: number;
+    activationResponseMinutes: number;
+  };
+  readinessObligations: {
+    namedContacts?: { required: boolean; contacts?: string[] };
+    accessProvisioning?: { required: boolean; status?: string };
+    evidencePreservation?: { required: boolean };
+    escalationPath?: { required: boolean; path?: string };
+  };
+  exclusions: string[];
+  maximumResponseAuthority: 'R0' | 'R1' | 'R2' | 'R3' | 'R4';
+  overagePolicy: 'BLOCK' | 'REQUIRE_APPROVAL' | 'ALLOW_CAPPED';
+  overageCapHours?: number;
+  overageRate?: number;
+  warningThresholdPercent: number;
+  rolloverPolicy: 'NONE' | 'CAPPED' | 'FULL';
+  rolloverCapHours?: number;
+  namedActivationPath?: Record<string, unknown>;
+  emergencyProvision?: {
+    enabled: boolean;
+    contractReference?: string;
+    reconciliationRequired?: boolean;
+  };
+  thirdPartyCostPolicy?: {
+    enabled: boolean;
+    contractReference?: string;
+    maxMarkupPercent?: number;
+    requiresNamedApproval?: boolean;
+  };
+  legalServiceScope?: {
+    included: boolean;
+    counselControlled: boolean;
+    contractReference?: string;
+  };
+  createdAt: string;
+}
+
+export interface IncidentWorkOrder {
+  id: string;
+  tenantId: string;
+  environmentId: string;
+  retainerId: string;
+  incidentReference: string;
+  activationReason: string;
+  activationReference: string;
+  status: 'ACTIVE' | 'PENDING_RECONCILIATION' | 'CLOSED';
+  responseAuthority: 'R0' | 'R1' | 'R2' | 'R3' | 'R4';
+  includedHours: number;
+  consumedHours: number;
+  remainingHours: number;
+  overageHours: number;
+  forecastHours: number;
+  warningThresholdPercent: number;
+  overagePolicy: 'BLOCK' | 'REQUIRE_APPROVAL' | 'ALLOW_CAPPED';
+  overageCapHours?: number;
+  evidenceRefs: string[];
+  thirdPartyCosts: number;
+  emergencyReconciliationStatus: 'NOT_REQUIRED' | 'PENDING' | 'RECONCILED';
+  customerContact?: string;
+  closureSummary?: string;
+  createdAt: string;
+  closedAt?: string;
+}
+
+export interface WorkOrderConsumptionRecord {
+  id: string;
+  workOrderId: string;
+  tenantId: string;
+  hours: number;
+  workDescription: string;
+  evidenceReference: string;
+  loggedBy: string;
+  occurredAt: string;
+  createdAt: string;
+}
+
+export interface IncidentLegalSensitiveRecord {
+  id: string;
+  workOrderId: string;
+  tenantId: string;
+  environmentId: string;
+  purpose: 'LEGAL_DEFENSE' | 'REGULATOR_INQUIRY' | 'INSURER_PROOF' | 'BREACH_NOTIFICATION' | 'INCIDENT_COORDINATION';
+  privilegeStatus: 'COUNSEL_ASSERTED' | 'NO_PRIVILEGE_CLAIMED' | 'UNDER_REVIEW';
+  notificationStatus: 'COUNSEL_DETERMINED' | 'STATUTORY_MANDATED' | 'NOT_APPLICABLE';
+  counselControlled: boolean;
+  separateLegalServiceRef?: string;
+  counselActorRef?: string;
+  conclusionReference?: string;
+  contentReference: string;
+  accessReason: string;
+  noLegalAdviceWording: string;
+  recordedBy: string;
+  createdAt: string;
 }
 

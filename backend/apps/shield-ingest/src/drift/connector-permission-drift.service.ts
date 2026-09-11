@@ -52,6 +52,20 @@ export const P0_CONNECTOR_BASELINES: Record<string, RequiredPermissionSpec> = {
     requiredScopes: ['investigation:read', 'alerts:read', 'endpoint:read'],
     criticalScopes: ['alerts:read'],
   },
+  crowdstrike: {
+    provider: 'crowdstrike',
+    requiredScopes: ['alerts:read', 'devices:read', 'detections:read'],
+    criticalScopes: ['alerts:read', 'detections:read'],
+  },
+  github: {
+    provider: 'github',
+    requiredScopes: [
+      'repo:status',
+      'security_events:read',
+      'audit_log:read',
+    ],
+    criticalScopes: ['security_events:read'],
+  },
   jira: {
     provider: 'jira',
     requiredScopes: ['read:jira-work', 'read:jira-user'],

@@ -65,6 +65,7 @@ import { TenantVectorStoreService } from './vector-store/tenant-vector-store.ser
 import { ModelDriftMonitorService } from './drift-monitoring/model-drift-monitor.service';
 import { AiDriftMonitorService } from './drift-monitoring/ai-drift-monitor.service';
 import { AiSupplyChainService } from './supply-chain/ai-supply-chain.service';
+import { AiSystemInventoryService } from './inventory/ai-system-inventory.service';
 
 import { DecisionRightsModule } from './decision-rights/decision-rights.module';
 
@@ -136,6 +137,7 @@ import { DecisionRightsModule } from './decision-rights/decision-rights.module';
     ModelDriftMonitorService,
     AiDriftMonitorService,
     AiSupplyChainService,
+    AiSystemInventoryService,
   ],
   exports: [
     ThreatHuntingCopilotService,
@@ -167,6 +169,7 @@ import { DecisionRightsModule } from './decision-rights/decision-rights.module';
     ModelDriftMonitorService,
     AiDriftMonitorService,
     AiSupplyChainService,
+    AiSystemInventoryService,
     DecisionRightsModule,
   ],
 })
