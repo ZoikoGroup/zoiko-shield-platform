@@ -17,7 +17,73 @@ describe('ShieldAi Application Endpoints (e2e)', () => {
     process.env.WORKLOAD_IDENTITY_DEV_SECRET = 'e2e-dev-secret-ai-12345';
     process.env.NODE_ENV = 'test';
 
+    const aiIncidentRows = new Map<string, any>();
+
     prismaMock = {
+      aiIncident: {
+        create: jest.fn().mockImplementation(({ data }: any) => {
+          const row = {
+            affected_model: null,
+            affected_prompt_key: null,
+            affected_tool: null,
+            kill_switch_active: false,
+            kill_switch_details: null,
+            fallback_active: false,
+            fallback_details: null,
+            rca_summary: null,
+            rca_details: null,
+            decision_envelope_id: null,
+            decision_envelope: null,
+            resolution_summary: null,
+            resolved_at: null,
+            closed_at: null,
+            timeline: '[]',
+            ...data,
+          };
+          aiIncidentRows.set(row.id, row);
+          return Promise.resolve(row);
+        }),
+        update: jest.fn().mockImplementation(({ where, data }: any) => {
+          const existing = aiIncidentRows.get(where.id);
+          const updated = { ...existing, ...data };
+          aiIncidentRows.set(where.id, updated);
+          return Promise.resolve(updated);
+        }),
+        findUnique: jest.fn().mockImplementation(({ where }: any) => {
+          return Promise.resolve(aiIncidentRows.get(where.id) ?? null);
+        }),
+        findMany: jest.fn().mockImplementation(({ where }: any) => {
+          const rows = [...aiIncidentRows.values()].filter((row) => {
+            if (where?.tenant_id && row.tenant_id !== where.tenant_id) {
+              return false;
+            }
+            if (where?.status && row.status !== where.status) {
+              return false;
+            }
+            if (where?.severity && row.severity !== where.severity) {
+              return false;
+            }
+            if (where?.category && row.category !== where.category) {
+              return false;
+            }
+            return true;
+          });
+          rows.sort(
+            (a, b) =>
+              new Date(b.declared_at).getTime() -
+              new Date(a.declared_at).getTime(),
+          );
+          return Promise.resolve(rows);
+        }),
+        deleteMany: jest.fn().mockImplementation(() => {
+          aiIncidentRows.clear();
+          return Promise.resolve({ count: 0 });
+        }),
+      },
+      aiReviewEnvelope: {
+        findMany: jest.fn().mockResolvedValue([]),
+        upsert: jest.fn().mockResolvedValue({}),
+      },
       aiDecisionRecord: {
         create: jest.fn().mockResolvedValue({
           id: 'dec-1',

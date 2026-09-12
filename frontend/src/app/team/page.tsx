@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
+import { isWebauthnSupported, createPasskeyCredential } from "@/lib/webauthn";
+import { RegisteredPasskey } from "@/lib/types";
 import { Card } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
@@ -18,6 +20,9 @@ import {
   ArrowRight,
   UserCheck,
   Sparkles,
+  Fingerprint,
+  Trash2,
+  PlusCircle,
 } from "lucide-react";
 import {
   LoadingState,
@@ -34,6 +39,52 @@ export default function TeamPage() {
   const [role, setRole] = useState<"SECURITY_ANALYST" | "AUDITOR" | "TENANT_ADMIN">("SECURITY_ANALYST");
   const [isLoading, setIsLoading] = useState(false);
   const [acceptingToken, setAcceptingToken] = useState<string | null>(null);
+
+  const [passkeys, setPasskeys] = useState<RegisteredPasskey[]>([]);
+  const [isPasskeyEnrolling, setIsPasskeyEnrolling] = useState(false);
+  const [revokingPasskeyId, setRevokingPasskeyId] = useState<string | null>(null);
+  const [passkeyError, setPasskeyError] = useState<string | null>(null);
+
+  useEffect(() => {
+    ZoikoShieldApiClient.listPasskeys()
+      .then(setPasskeys)
+      .catch(() => setPasskeys([]));
+  }, []);
+
+  const handleEnrollPasskey = async () => {
+    if (!isWebauthnSupported()) {
+      setPasskeyError("This browser does not support passkeys (WebAuthn).");
+      return;
+    }
+    setIsPasskeyEnrolling(true);
+    setPasskeyError(null);
+    try {
+      const options = await ZoikoShieldApiClient.getPasskeyRegistrationOptions();
+      const attestation = await createPasskeyCredential(options);
+      const created = await ZoikoShieldApiClient.registerPasskey({
+        ...attestation,
+        label: `${state.session.fullName}'s passkey`,
+      });
+      setPasskeys((prev) => [created, ...prev]);
+    } catch (err: any) {
+      setPasskeyError(err.message || "Passkey enrollment failed");
+    } finally {
+      setIsPasskeyEnrolling(false);
+    }
+  };
+
+  const handleRevokePasskey = async (id: string) => {
+    setRevokingPasskeyId(id);
+    setPasskeyError(null);
+    try {
+      await ZoikoShieldApiClient.revokePasskey(id);
+      setPasskeys((prev) => prev.filter((p) => p.id !== id));
+    } catch (err: any) {
+      setPasskeyError(err.message || "Unable to revoke passkey");
+    } finally {
+      setRevokingPasskeyId(null);
+    }
+  };
 
   const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,6 +193,70 @@ export default function TeamPage() {
             </tbody>
           </table>
         </div>
+      </Card>
+
+      {/* Passkeys (WebAuthn) */}
+      <Card className="space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+          <div>
+            <h3 className="font-semibold text-slate-100 flex items-center gap-2">
+              <Fingerprint className="w-4 h-4 text-cyan-400" />
+              Passkeys ({passkeys.length})
+            </h3>
+            <p className="text-[11px] font-mono text-slate-500 mt-0.5">
+              Enroll a FIDO2/WebAuthn passkey for {state.session.email} to unlock passwordless sign-in
+              and PASSKEY-assurance step-up.
+            </p>
+          </div>
+          <Button
+            variant="cyan"
+            size="sm"
+            isLoading={isPasskeyEnrolling}
+            onClick={handleEnrollPasskey}
+          >
+            <PlusCircle className="w-3.5 h-3.5" />
+            <span>Enroll Passkey</span>
+          </Button>
+        </div>
+
+        {passkeyError && (
+          <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-500/50 text-rose-300 text-xs font-mono">
+            {passkeyError}
+          </div>
+        )}
+
+        {passkeys.length === 0 ? (
+          <p className="text-xs font-mono text-slate-500 py-2">
+            No passkeys enrolled yet. Register one above, then use &quot;Sign in with Passkey&quot; on the
+            login screen.
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {passkeys.map((pk) => (
+              <div
+                key={pk.id}
+                className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between gap-3 text-xs font-mono"
+              >
+                <div>
+                  <span className="text-slate-200 font-semibold">{pk.label || "Unnamed passkey"}</span>
+                  <div className="text-[10px] text-slate-500 mt-0.5">
+                    Registered {new Date(pk.createdAt).toLocaleString()}
+                    {pk.lastUsedAt && ` • Last used ${new Date(pk.lastUsedAt).toLocaleString()}`}
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  isLoading={revokingPasskeyId === pk.id}
+                  onClick={() => handleRevokePasskey(pk.id)}
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Revoke</span>
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       {/* Pending Invitations */}

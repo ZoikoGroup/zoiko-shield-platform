@@ -9,6 +9,7 @@ import {
   Body,
   HttpStatus,
 } from '@nestjs/common';
+import { IsObject, IsOptional, IsString } from 'class-validator';
 import {
   DetectionEngineService,
   CreateDetectionRuleDto,
@@ -17,11 +18,17 @@ import {
 import { requireTenantId } from '../security/tenant-context';
 
 export class TestRuleRequestDto {
+  @IsObject()
   sampleEvent!: Record<string, any>;
 }
 
 export class ReplayDetectionsRequestDto {
+  @IsOptional()
+  @IsString()
   tenantId?: string;
+
+  @IsOptional()
+  @IsString()
   ruleId?: string;
 }
 

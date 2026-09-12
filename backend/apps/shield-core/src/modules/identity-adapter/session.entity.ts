@@ -23,7 +23,7 @@ export interface SessionBinding {
   membershipId: string;
   environmentId: string | null;
   region: string;
-  authenticationMethod: 'PASSWORD' | 'OIDC' | 'SAML';
+  authenticationMethod: 'PASSWORD' | 'OIDC' | 'SAML' | 'PASSKEY';
   issuer?: string | null;
   policyVersion: string;
   riskState?: string;

@@ -1,150 +1,242 @@
 import { createHash, randomUUID } from 'crypto';
+import { createWorkloadToken } from '../libs/security/src/workload-token';
 
 /**
- * ZoikoShield Regional-Cell Standby Failover Rehearsal Runner
- * Specification: MASTER_BUILD_PLAN.md §13 (Step 16: Regional Recovery Tests) & §15 (Operational Readiness)
+ * ZoikoShield Residency & Evidence-Durability Smoke Test
  *
- * Disclosures:
- * - Primary regional cell: eu-west-1
- * - Standby secondary failover region: eu-central-1 [derived]
- * - Maximum allowable RTO duration: < 30s [derived]
- * - Zero Merkle anchor drift guarantee: RPO = 0
+ * This replaces an earlier version of this script that printed a scripted
+ * "regional-cell standby failover" narrative (leader demotion, fencing
+ * tokens, Raft quorum, RTO/RPO figures) entirely from hardcoded literals,
+ * with zero network calls to any running service. Every number in that
+ * version was fabricated - it always printed PASS regardless of whether
+ * anything was actually running.
+ *
+ * There is no multi-region cell topology in this deployment today
+ * (docker-compose.yml runs one Postgres instance and one copy of each
+ * service; no leader election, no cross-region replication). So rather
+ * than simulate a capability that doesn't exist, this script makes real
+ * HTTP calls against the live stack and checks the two durability/
+ * isolation primitives that DO exist and that a regional-failover
+ * rehearsal would actually depend on:
+ *
+ *   1. Tenant data-residency enforcement (shield-ingest refuses to create
+ *      a connector whose sourceRegion doesn't match the tenant's committed
+ *      dataResidencyRegion - the mechanism that would stop a cell from
+ *      accepting out-of-region writes in the first place).
+ *   2. Evidence Merkle-anchoring integrity, including tamper detection
+ *      (shield-anchor's inclusion-proof verification actually rejects a
+ *      mutated proof rather than always returning true) - the mechanism
+ *      an RPO=0 claim after a failover would rely on.
+ *
+ * Cross-region leader promotion, fencing, and RTO/RPO are explicitly
+ * reported as NOT IMPLEMENTED below rather than faked.
  */
 
-interface FailoverStageResult {
+const SHIELD_INGEST_URL =
+  process.env.SHIELD_INGEST_URL || 'http://localhost:3002';
+const SHIELD_ANCHOR_URL =
+  process.env.SHIELD_ANCHOR_URL || 'http://localhost:3005';
+// A real, currently-ACTIVE tenant seeded in this local stack (region: eu-west-1).
+const TENANT_ID =
+  process.env.SMOKE_TEST_TENANT_ID || '186ac75b-273e-41f7-8016-2f2e2d828b60';
+const ENVIRONMENT_ID =
+  process.env.SMOKE_TEST_ENVIRONMENT_ID ||
+  'e0565b23-4bfa-4785-9020-ddbb0366293f';
+const TENANT_COMMITTED_REGION = process.env.SMOKE_TEST_TENANT_REGION || 'eu-west-1';
+const MISMATCHED_REGION = 'us-east-1';
+
+interface StageResult {
   step: number;
   name: string;
-  status: 'PASS' | 'FAIL';
+  status: 'PASS' | 'FAIL' | 'NOT_IMPLEMENTED';
   details: string;
 }
 
-function sha256(data: string | object): string {
-  const content = typeof data === 'string' ? data : JSON.stringify(data);
-  return createHash('sha256').update(content).digest('hex');
+process.env.SERVICE_NAME = process.env.SERVICE_NAME || 'dr-rehearsal-script';
+// Must match the docker-compose fallback (`${WORKLOAD_IDENTITY_DEV_SECRET:-local-workload-identity-change-me}`)
+// that shield-ingest/shield-anchor actually run with locally - backend/.env's
+// WORKLOAD_IDENTITY_DEV_SECRET is a separate, currently-unused placeholder for
+// host-mode (`nest start`) runs, not what the docker containers verify against.
+process.env.WORKLOAD_IDENTITY_DEV_SECRET =
+  process.env.WORKLOAD_IDENTITY_DEV_SECRET || 'local-workload-identity-change-me';
+
+function workloadAuthHeader(audience: string): Record<string, string> {
+  return { Authorization: `Bearer ${createWorkloadToken(audience)}` };
 }
 
-async function runRegionalStandbyFailoverSimulation() {
-  console.log('========================================================================');
-  console.log(' 🛡️  ZoikoShield Regional-Cell Standby Failover & Recovery Rehearsal');
-  console.log('    Specification: MASTER_BUILD_PLAN.md §13 (Step 16) & §15 (Operational)');
-  console.log('========================================================================\n');
+async function createConnector(sourceRegion: string) {
+  const res = await fetch(`${SHIELD_INGEST_URL}/api/v1/connectors`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-tenant-id': TENANT_ID,
+      ...workloadAuthHeader('shield-ingest'),
+    },
+    body: JSON.stringify({
+      name: `dr-rehearsal-probe-${randomUUID().slice(0, 8)}`,
+      provider: 'generic-webhook',
+      environmentId: ENVIRONMENT_ID,
+      sourceRegion,
+    }),
+  });
+  const body = await res.json().catch(() => ({}));
+  return { status: res.status, body };
+}
 
-  const tenantId = 'tenant-dr-drill-eu';
-  const primaryRegion = 'eu-west-1';
-  const standbyRegion = 'eu-central-1'; // [derived]
-  const failoverId = `dr-rehearsal-${randomUUID()}`;
-  const stages: FailoverStageResult[] = [];
+async function checkResidencyEnforcement(): Promise<StageResult[]> {
+  const stages: StageResult[] = [];
 
-  console.log(`[*] Target Drill Tenant:   ${tenantId}`);
-  console.log(`[*] Failover Drill ID:     ${failoverId}`);
-  console.log(`[*] Primary Active Cell:   ${primaryRegion}`);
-  console.log(`[*] Standby Target Cell:   ${standbyRegion} [derived]\n`);
-
-  // ── Step 1: Health Probe & Degradation Detection ──────────────────────────
-  console.log('[1/5] Simulating Primary Regional Cell Outage & Degradation Detection...');
-  const outageDetectionTimeMs = 1250; // 1.25s detection
-  const primaryState = 'CELL_PARTITION_UNAVAILABLE';
-
-  console.log(`  ✔ Injected Outage on Cell:   ${primaryRegion}`);
-  console.log(`  ✔ Health Probe Triggered:    DEGRADED (Detected in ${outageDetectionTimeMs}ms)`);
-  console.log(`  ✔ Cluster State:             ${primaryState}`);
-
+  console.log('[1/3] Verifying shield-ingest REJECTS an out-of-residency connector...');
+  const rejected = await createConnector(MISMATCHED_REGION);
+  const wasRejected = rejected.status >= 400 && rejected.status < 500;
+  const mentionsResidency = JSON.stringify(rejected.body)
+    .toLowerCase()
+    .includes('residency');
+  console.log(`  -> HTTP ${rejected.status}: ${JSON.stringify(rejected.body).slice(0, 160)}`);
   stages.push({
     step: 1,
-    name: 'Regional Cell Outage Detection',
-    status: 'PASS',
-    details: `Outage detected within ${outageDetectionTimeMs}ms (< 5s threshold)`,
+    name: 'Reject out-of-residency connector creation',
+    status: wasRejected && mentionsResidency ? 'PASS' : 'FAIL',
+    details: wasRejected && mentionsResidency
+      ? `Correctly rejected sourceRegion='${MISMATCHED_REGION}' against tenant committed region '${TENANT_COMMITTED_REGION}' (HTTP ${rejected.status})`
+      : `Expected a 4xx residency-violation response, got HTTP ${rejected.status}: ${JSON.stringify(rejected.body)}`,
   });
 
-  // ── Step 2: Leader Demotion & Fencing Token Invalidation ─────────────────
-  console.log('\n[2/5] Demoting Primary Leader & Revoking Distributed Leases...');
-  const fencingToken = sha256(`FENCE:${tenantId}:${Date.now()}`);
-  console.log(`  ✔ Demoted Leader Node:       cell-${primaryRegion}-node-01`);
-  console.log(`  ✔ Revoked Active Leases:     3 distributed worker leases revoked`);
-  console.log(`  ✔ Issued Fencing Token:      ${fencingToken.slice(0, 32)}...`);
-
+  console.log("\n[2/3] Verifying shield-ingest ACCEPTS an in-residency connector...");
+  const accepted = await createConnector(TENANT_COMMITTED_REGION);
+  const wasAccepted = accepted.status >= 200 && accepted.status < 300;
+  console.log(`  -> HTTP ${accepted.status}: ${JSON.stringify(accepted.body).slice(0, 160)}`);
   stages.push({
     step: 2,
-    name: 'Distributed Lease Revocation & Fencing',
-    status: 'PASS',
-    details: 'Old leader demoted and old lease fencing token invalidated to prevent split-brain',
+    name: 'Accept in-residency connector creation',
+    status: wasAccepted ? 'PASS' : 'FAIL',
+    details: wasAccepted
+      ? `Correctly accepted sourceRegion='${TENANT_COMMITTED_REGION}' matching tenant's committed region (HTTP ${accepted.status})`
+      : `Expected 2xx, got HTTP ${accepted.status}: ${JSON.stringify(accepted.body)}`,
   });
 
-  // ── Step 3: Standby Leader Promotion (eu-central-1 [derived]) ────────────
-  console.log(`\n[3/5] Promoting Standby Cell '${standbyRegion}' [derived] as Authoritative Leader...`);
-  const promotedLeaderNode = `cell-${standbyRegion}-node-01`;
-  console.log(`  ✔ Promoted New Leader:       ${promotedLeaderNode}`);
-  console.log(`  ✔ Acquired Consensus Quorum: 3/3 Raft Voter Nodes Confirmed in ${standbyRegion}`);
-  console.log(`  ✔ Active Status:             PROMOTED_AUTHORITATIVE`);
-
-  stages.push({
-    step: 3,
-    name: 'Standby Cell Leader Promotion',
-    status: 'PASS',
-    details: `Standby node in ${standbyRegion} [derived] promoted with 3/3 consensus quorum`,
-  });
-
-  // ── Step 4: Ledger Outbox Journal Replay & Merkle Anchor Synchronization ─
-  console.log('\n[4/5] Reconciling Append-Only Ledger Outbox & Merkle Anchor Alignment...');
-  const preFailoverMerkleHead = 'a7b3c2d1e0f9887766554433221100ffeeddccbbaa99887766554433221100ff';
-  const postFailoverMerkleHead = preFailoverMerkleHead; // Zero-drift
-  const reconciledOutboxCount = 14;
-
-  console.log(`  ✔ Reconciled Ledger Outbox:  ${reconciledOutboxCount} pending records replayed`);
-  console.log(`  ✔ Pre-Failover Merkle Root:  ${preFailoverMerkleHead.slice(0, 32)}...`);
-  console.log(`  ✔ Post-Failover Merkle Root: ${postFailoverMerkleHead.slice(0, 32)}...`);
-  console.log(`  ✔ Anchor Drift Detected:     NONE (RPO = 0 Guarantee Proven)`);
-
-  stages.push({
-    step: 4,
-    name: 'Zero-Drift Merkle Reconciliation',
-    status: 'PASS',
-    details: `Replayed ${reconciledOutboxCount} outbox records; Merkle root perfectly preserved (RPO = 0)`,
-  });
-
-  // ── Step 5: Traffic Resumption & Total RTO Verification ──────────────────
-  console.log('\n[5/5] Resuming Ingestion Pipeline & Verifying Recovery Time Objective (RTO)...');
-  const totalRtoSeconds = 8.4; // 8.4s
-  const isRtoCompliant = totalRtoSeconds < 30; // RTO < 30s [derived]
-
-  if (!isRtoCompliant) {
-    throw new Error(`Failover RTO exceeded target: ${totalRtoSeconds}s >= 30s`);
-  }
-
-  const failoverAttestation = {
-    failoverId,
-    tenantId,
-    timestamp: new Date().toISOString(),
-    primaryRegion,
-    standbyRegion,
-    totalRtoSeconds,
-    rpoDrift: 0,
-    attestationDigest: sha256({ failoverId, tenantId, postFailoverMerkleHead }),
-  };
-
-  console.log(`  ✔ Total Failover Elapsed:    ${totalRtoSeconds}s (Target: < 30s [derived])`);
-  console.log(`  ✔ Ingestion Status:          HEALTHY_RESUMED on ${standbyRegion}`);
-  console.log(`  🔒 Failover Attestation:     ${failoverAttestation.attestationDigest}`);
-
-  stages.push({
-    step: 5,
-    name: 'Traffic Resumption & RTO Verification',
-    status: 'PASS',
-    details: `Total recovery completed in ${totalRtoSeconds}s (< 30s target [derived]) with full pipeline resumption`,
-  });
-
-  console.log('\n========================================================================');
-  console.log(' 📊 REGIONAL STANDBY FAILOVER DRILL SUMMARY');
-  console.log('========================================================================');
-  for (const st of stages) {
-    console.log(` [${st.status}] Step ${st.step}: ${st.name.padEnd(42)} | ${st.details}`);
-  }
-  console.log('========================================================================');
-  console.log(' 🎉 REGIONAL-CELL STANDBY FAILOVER REHEARSAL SUCCEEDED (RPO=0, RTO < 30s)');
-  console.log('========================================================================\n');
+  return stages;
 }
 
-runRegionalStandbyFailoverSimulation().catch((err) => {
-  console.error('Fatal failover drill error:', err);
+async function checkEvidenceAnchoringIntegrity(): Promise<StageResult> {
+  console.log('\n[3/3] Verifying evidence Merkle-anchoring integrity & tamper detection...');
+
+  const leaves = [0, 1, 2].map((i) => ({
+    evidenceId: `dr-rehearsal-evidence-${i}-${randomUUID().slice(0, 8)}`,
+    tenantId: TENANT_ID,
+    eventType: 'DR_REHEARSAL_PROBE',
+    payloadDigest: createHash('sha256').update(`probe-payload-${i}`).digest('hex'),
+    timestamp: new Date().toISOString(),
+  }));
+
+  const sealRes = await fetch(`${SHIELD_ANCHOR_URL}/api/v1/anchor/batches/seal`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...workloadAuthHeader('shield-anchor'),
+    },
+    body: JSON.stringify({ items: leaves }),
+  });
+  if (!sealRes.ok) {
+    const body = await sealRes.text();
+    return {
+      step: 3,
+      name: 'Evidence Merkle-anchoring integrity',
+      status: 'FAIL',
+      details: `Failed to seal epoch batch: HTTP ${sealRes.status} ${body}`,
+    };
+  }
+  const checkpoint = await sealRes.json();
+  console.log(`  -> Sealed epoch #${checkpoint.epochNumber}, root ${checkpoint.merkleRoot.slice(0, 16)}...`);
+
+  const proofRes = await fetch(
+    `${SHIELD_ANCHOR_URL}/api/v1/anchor/proofs/${checkpoint.epochNumber}/0`,
+    { headers: workloadAuthHeader('shield-anchor') },
+  );
+  if (!proofRes.ok) {
+    return {
+      step: 3,
+      name: 'Evidence Merkle-anchoring integrity',
+      status: 'FAIL',
+      details: `Failed to generate inclusion proof: HTTP ${proofRes.status}`,
+    };
+  }
+  const proof = await proofRes.json();
+
+  const verifyGenuine = await fetch(`${SHIELD_ANCHOR_URL}/api/v1/anchor/proofs/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...workloadAuthHeader('shield-anchor') },
+    body: JSON.stringify(proof),
+  }).then((r) => r.json());
+  console.log(`  -> Genuine proof verification: valid=${verifyGenuine.valid}`);
+
+  const tamperedProof = { ...proof, leafHash: createHash('sha256').update('tampered').digest('hex') };
+  const verifyTampered = await fetch(`${SHIELD_ANCHOR_URL}/api/v1/anchor/proofs/verify`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...workloadAuthHeader('shield-anchor') },
+    body: JSON.stringify(tamperedProof),
+  }).then((r) => r.json());
+  console.log(`  -> Tampered proof verification: valid=${verifyTampered.valid} (expected false)`);
+
+  const pass = verifyGenuine.valid === true && verifyTampered.valid === false;
+  return {
+    step: 3,
+    name: 'Evidence Merkle-anchoring integrity & tamper detection',
+    status: pass ? 'PASS' : 'FAIL',
+    details: pass
+      ? `Genuine inclusion proof verified true; a hash-tampered copy of the same proof verified false (epoch #${checkpoint.epochNumber}, ${checkpoint.leafCount} leaves)`
+      : `Expected genuine=true/tampered=false, got genuine=${verifyGenuine.valid}/tampered=${verifyTampered.valid}`,
+  };
+}
+
+async function run() {
+  console.log('========================================================================');
+  console.log(' ZoikoShield Residency & Evidence-Durability Smoke Test');
+  console.log(' (NOT a cross-region failover rehearsal - see disclosure below)');
+  console.log('========================================================================\n');
+
+  const stages: StageResult[] = [];
+  try {
+    stages.push(...(await checkResidencyEnforcement()));
+    stages.push(await checkEvidenceAnchoringIntegrity());
+  } catch (err) {
+    console.error('\nFatal error while contacting the live stack:', err);
+    stages.push({
+      step: stages.length + 1,
+      name: 'Live stack reachability',
+      status: 'FAIL',
+      details: `Request failed: ${(err as Error).message}. Is docker compose up (shield-ingest:3002, shield-anchor:3005)?`,
+    });
+  }
+
+  console.log('\n========================================================================');
+  console.log(' SUMMARY');
+  console.log('========================================================================');
+  for (const st of stages) {
+    console.log(` [${st.status}] Step ${st.step}: ${st.name.padEnd(52)} | ${st.details}`);
+  }
+
+  console.log('\n------------------------------------------------------------------------');
+  console.log(' DISCLOSURE: capabilities this script does NOT test');
+  console.log('------------------------------------------------------------------------');
+  console.log(
+    ' [NOT_IMPLEMENTED] Cross-region cell failover: no multi-region topology exists\n' +
+    '                    in this deployment (single docker-compose stack, one\n' +
+    '                    Postgres instance). There is no leader election, fencing,\n' +
+    '                    or standby-cell promotion to rehearse, so no RTO/RPO figure\n' +
+    '                    is reported. Building that topology is tracked separately.',
+  );
+  console.log('========================================================================\n');
+
+  const failed = stages.some((s) => s.status === 'FAIL');
+  if (failed) {
+    console.error('RESULT: FAIL - one or more real checks against the live stack failed.');
+    process.exit(1);
+  }
+  console.log('RESULT: PASS - residency enforcement and evidence-anchoring integrity both verified live.');
+}
+
+run().catch((err) => {
+  console.error('Fatal smoke test error:', err);
   process.exit(1);
 });

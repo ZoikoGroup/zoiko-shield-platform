@@ -8,6 +8,10 @@ import { requireRegion } from '../security/tenant-context';
 import { EntraOcsfAdapter } from './adapters/entra.adapter';
 import { CrowdStrikeOcsfAdapter } from './adapters/crowdstrike.adapter';
 import { CloudTrailOcsfAdapter } from './adapters/cloudtrail.adapter';
+import { GuardDutyOcsfAdapter } from './adapters/guardduty.adapter';
+import { GithubOcsfAdapter } from './adapters/github.adapter';
+import { AzureOcsfAdapter } from './adapters/azure.adapter';
+import { GcpSccOcsfAdapter } from './adapters/gcp-scc.adapter';
 
 export interface ReprocessResult {
   quarantineId: string;
@@ -140,11 +144,79 @@ export class NormalizationService {
       action = ocsf.action;
       outcome = ocsf.outcome;
     } else if (
-      provider === 'aws-cloudtrail' ||
       provider === 'aws-guardduty' ||
+      payload.detailType === 'GuardDuty Finding' ||
+      (payload.type && payload.service?.action)
+    ) {
+      const ocsf = GuardDutyOcsfAdapter.normalize(payload);
+      eventClass = ocsf.eventClass;
+      eventCategory = ocsf.eventCategory;
+      eventActivity = ocsf.eventActivity;
+      severity = ocsf.severity;
+      actorUserId = ocsf.actorUserId;
+      actorEmail = ocsf.actorEmail;
+      sourceIp = ocsf.sourceIp;
+      destinationIp = ocsf.destinationIp;
+      resourceId = ocsf.resourceId;
+      resourceType = ocsf.resourceType;
+      action = ocsf.action;
+      outcome = ocsf.outcome;
+    } else if (
+      provider === 'gcp-scc' ||
+      (payload.category && payload.resourceName && payload.state)
+    ) {
+      const ocsf = GcpSccOcsfAdapter.normalize(payload);
+      eventClass = ocsf.eventClass;
+      eventCategory = ocsf.eventCategory;
+      eventActivity = ocsf.eventActivity;
+      severity = ocsf.severity;
+      actorUserId = ocsf.actorUserId;
+      actorEmail = ocsf.actorEmail;
+      sourceIp = ocsf.sourceIp;
+      destinationIp = ocsf.destinationIp;
+      resourceId = ocsf.resourceId;
+      resourceType = ocsf.resourceType;
+      action = ocsf.action;
+      outcome = ocsf.outcome;
+    } else if (
+      provider === 'azure-monitor' ||
+      (payload.operationName && payload.status && payload.subscriptionId)
+    ) {
+      const ocsf = AzureOcsfAdapter.normalize(payload);
+      eventClass = ocsf.eventClass;
+      eventCategory = ocsf.eventCategory;
+      eventActivity = ocsf.eventActivity;
+      severity = ocsf.severity;
+      actorUserId = ocsf.actorUserId;
+      actorEmail = ocsf.actorEmail;
+      sourceIp = ocsf.sourceIp;
+      destinationIp = ocsf.destinationIp;
+      resourceId = ocsf.resourceId;
+      resourceType = ocsf.resourceType;
+      action = ocsf.action;
+      outcome = ocsf.outcome;
+    } else if (
+      provider === 'aws-cloudtrail' ||
       payload.eventSource === 'aws.iam'
     ) {
       const ocsf = CloudTrailOcsfAdapter.normalize(payload);
+      eventClass = ocsf.eventClass;
+      eventCategory = ocsf.eventCategory;
+      eventActivity = ocsf.eventActivity;
+      severity = ocsf.severity;
+      actorUserId = ocsf.actorUserId;
+      actorEmail = ocsf.actorEmail;
+      sourceIp = ocsf.sourceIp;
+      destinationIp = ocsf.destinationIp;
+      resourceId = ocsf.resourceId;
+      resourceType = ocsf.resourceType;
+      action = ocsf.action;
+      outcome = ocsf.outcome;
+    } else if (
+      provider === 'github' ||
+      (payload.pusher && payload.repository && payload.commits)
+    ) {
+      const ocsf = GithubOcsfAdapter.normalize(payload);
       eventClass = ocsf.eventClass;
       eventCategory = ocsf.eventCategory;
       eventActivity = ocsf.eventActivity;

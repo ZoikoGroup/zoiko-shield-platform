@@ -21,6 +21,7 @@ import {
   AiSupplyChainReport,
   ComplianceDriftState,
   ExperienceStateEnvelope,
+  RegisteredPasskey,
   AiReviewEnvelope,
   DecisionTransition,
   DecisionState,
@@ -31,6 +32,21 @@ import {
 } from "./types";
 import { getInitialDemoState, saveDemoState, DemoState } from "./demo-state";
 import { generateUUID, sha256Mock } from "./utils";
+import type {
+  PasskeyAssertionPayload,
+  PasskeyAuthenticationOptions,
+  PasskeyRegistrationOptions,
+  PasskeyRegistrationPayload,
+} from "./webauthn";
+
+async function extractErrorMessage(res: Response, fallback: string): Promise<string> {
+  try {
+    const body = await res.json();
+    return body?.message || fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 function getState(): DemoState {
   return getInitialDemoState();
@@ -89,6 +105,96 @@ export class ZoikoShieldApiClient {
     state.currentStep = 2;
     saveDemoState(state);
     return session;
+  }
+
+  // --- WebAuthn / Passkey login ---
+  // Options are harmless to simulate offline (they carry no proof of anything);
+  // the assertion verify step below always hits the live backend since that is
+  // where the actual cryptographic proof-of-possession is checked.
+  static async getPasskeyLoginOptions(email: string): Promise<PasskeyAuthenticationOptions> {
+    return this.safeFetch<PasskeyAuthenticationOptions>(
+      "/api/v1/auth/passkeys/authentication/options",
+      { method: "POST", body: JSON.stringify({ email }) },
+      () => ({
+        challenge: generateUUID().replace(/-/g, ""),
+        rpId: typeof window !== "undefined" ? window.location.hostname : "localhost",
+        allowCredentials: [],
+        userVerification: "required",
+        timeout: 120_000,
+      })
+    );
+  }
+
+  static async loginWithPasskey(
+    assertion: PasskeyAssertionPayload,
+    tenantId: string,
+    environmentId?: string
+  ): Promise<UserSession> {
+    const res = await fetch("/api/v1/auth/passkeys/authentication", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ...assertion, tenantId, environmentId }),
+    });
+    if (!res.ok) {
+      throw new Error(await extractErrorMessage(res, "Passkey sign-in failed"));
+    }
+    const data = await res.json();
+    const user = data.user || {};
+    const session: UserSession = {
+      userId: user.id || user.userId || `usr-${generateUUID().slice(0, 8)}`,
+      email: user.email,
+      fullName: user.fullName || user.email?.split("@")[0]?.replace(".", " ").toUpperCase() || "Passkey User",
+      role: user.role || "SECURITY_ANALYST",
+      tenantId: user.tenantId || tenantId,
+      environment: user.environmentId || user.environment || getState().tenant.environmentName,
+      isAuthenticated: true,
+    };
+
+    const state = getState();
+    state.session = session;
+    state.currentStep = 2;
+    saveDemoState(state);
+    return session;
+  }
+
+  // --- WebAuthn / Passkey enrollment (requires an authenticated session) ---
+  static async getPasskeyRegistrationOptions(): Promise<PasskeyRegistrationOptions> {
+    const res = await fetch("/api/v1/auth/passkeys/registration/options", { method: "POST" });
+    if (!res.ok) {
+      throw new Error(await extractErrorMessage(res, "Unable to start passkey registration"));
+    }
+    return res.json();
+  }
+
+  static async registerPasskey(payload: PasskeyRegistrationPayload): Promise<RegisteredPasskey> {
+    const res = await fetch("/api/v1/auth/passkeys/registration", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) {
+      throw new Error(await extractErrorMessage(res, "Passkey registration failed"));
+    }
+    return res.json();
+  }
+
+  static async listPasskeys(): Promise<RegisteredPasskey[]> {
+    // The demo proxy's generic fallback returns a non-array {success, message}
+    // shape when the real backend isn't reachable, so the result is validated
+    // here rather than trusted as RegisteredPasskey[].
+    const res = await this.safeFetch<unknown>(
+      "/api/v1/auth/passkeys",
+      { method: "GET" },
+      () => []
+    );
+    return Array.isArray(res) ? (res as RegisteredPasskey[]) : [];
+  }
+
+  static async revokePasskey(id: string): Promise<void> {
+    const res = await fetch(`/api/v1/auth/passkeys/${id}`, { method: "DELETE" });
+    if (!res.ok) {
+      throw new Error(await extractErrorMessage(res, "Unable to revoke passkey"));
+    }
   }
 
   // --- Step 2: Organization Onboarding ---

@@ -8,7 +8,7 @@ import { verifyWorkloadToken } from '../../../../libs/security/src/workload-toke
 
 /**
  * Guards shield-core's /internal/v1/* endpoints — reachable only from
- * shield-ai/shield-action, never the frontend. Tokens are signed,
+ * shield-ai/shield-action/shield-ingest, never the frontend. Tokens are signed,
  * audience-bound, one-minute workload identity assertions.
  */
 @Injectable()

@@ -1,7 +1,68 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AiIncidentService } from './ai-incident.service';
 import { AiKillSwitchService } from '../kill-switch/ai-kill-switch.service';
+import { PrismaService } from '../prisma/prisma.service';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+
+/**
+ * In-memory stand-in for the `aiIncident` Prisma delegate, keyed by id.
+ * Exercises the same create/findUnique/findMany/update/deleteMany surface
+ * AiIncidentService calls, without needing a live Postgres connection for
+ * this unit test.
+ */
+function createInMemoryPrismaMock() {
+  const rows = new Map<string, any>();
+  return {
+    aiIncident: {
+      create: jest.fn(async ({ data }: any) => {
+        const row = {
+          affected_model: null,
+          affected_prompt_key: null,
+          affected_tool: null,
+          kill_switch_active: false,
+          kill_switch_details: null,
+          fallback_active: false,
+          fallback_details: null,
+          rca_summary: null,
+          rca_details: null,
+          decision_envelope_id: null,
+          decision_envelope: null,
+          resolution_summary: null,
+          resolved_at: null,
+          closed_at: null,
+          timeline: '[]',
+          ...data,
+        };
+        rows.set(row.id, row);
+        return row;
+      }),
+      findUnique: jest.fn(async ({ where: { id } }: any) => rows.get(id) ?? null),
+      findMany: jest.fn(async ({ where, orderBy }: any) => {
+        let results = [...rows.values()].filter(
+          (r) => r.tenant_id === where.tenant_id,
+        );
+        if (where.status) results = results.filter((r) => r.status === where.status);
+        if (where.severity) results = results.filter((r) => r.severity === where.severity);
+        if (where.category) results = results.filter((r) => r.category === where.category);
+        if (orderBy?.declared_at === 'desc') {
+          results.sort((a, b) => b.declared_at.getTime() - a.declared_at.getTime());
+        }
+        return results;
+      }),
+      update: jest.fn(async ({ where: { id }, data }: any) => {
+        const existing = rows.get(id);
+        const updated = { ...existing, ...data };
+        rows.set(id, updated);
+        return updated;
+      }),
+      deleteMany: jest.fn(async () => {
+        const count = rows.size;
+        rows.clear();
+        return { count };
+      }),
+    },
+  };
+}
 
 describe('AiIncidentService (§23 AI Incident Lifecycle Management)', () => {
   let service: AiIncidentService;
@@ -9,16 +70,20 @@ describe('AiIncidentService (§23 AI Incident Lifecycle Management)', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [AiIncidentService, AiKillSwitchService],
+      providers: [
+        AiIncidentService,
+        AiKillSwitchService,
+        { provide: PrismaService, useValue: createInMemoryPrismaMock() },
+      ],
     }).compile();
 
     service = module.get<AiIncidentService>(AiIncidentService);
     killSwitchService = module.get<AiKillSwitchService>(AiKillSwitchService);
-    service.clearAll();
+    await service.clearAll();
   });
 
-  afterEach(() => {
-    service.clearAll();
+  afterEach(async () => {
+    await service.clearAll();
   });
 
   it('should be defined', () => {
@@ -179,7 +244,7 @@ describe('AiIncidentService (§23 AI Incident Lifecycle Management)', () => {
         description: 'Med test',
       });
 
-      const metrics = service.getMetrics(tenantId);
+      const metrics = await service.getMetrics(tenantId);
       expect(metrics.totalIncidents).toBe(2);
       expect(metrics.criticalIncidents).toBe(1);
       expect(metrics.containedKillSwitches).toBe(1); // SEV1 auto-contained

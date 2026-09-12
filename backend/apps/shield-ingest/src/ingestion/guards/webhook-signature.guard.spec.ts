@@ -136,4 +136,75 @@ describe('WebhookSignatureGuard', () => {
       'Invalid webhook HMAC signature',
     );
   });
+
+  describe('GitHub-native delivery (X-GitHub-Delivery + X-Hub-Signature-256)', () => {
+    it('allows a genuine GitHub signature with no nonce/timestamp headers', async () => {
+      const rawBody = '{"ref":"refs/heads/main","commits":[]}';
+      const secret = 'super-secret-key-123';
+      const hash = crypto
+        .createHmac('sha256', secret)
+        .update(rawBody)
+        .digest('hex');
+
+      const context = createMockContext(
+        {
+          'x-hub-signature-256': `sha256=${hash}`,
+          'x-github-delivery': 'a1b2c3d4-e5f6-4789-a012-b3c4d5e6f789',
+          'x-github-event': 'push',
+        },
+        { connectorId: 'conn-1' },
+        rawBody,
+      );
+
+      const result = await guard.canActivate(context);
+      expect(result).toBe(true);
+      expect(mockPrisma.webhookReplayNonce.create).toHaveBeenCalled();
+    });
+
+    it('rejects a GitHub delivery with a tampered signature', async () => {
+      const rawBody = '{"ref":"refs/heads/main","commits":[]}';
+
+      const context = createMockContext(
+        {
+          'x-hub-signature-256':
+            'sha256=0000000000000000000000000000000000000000000000000000000000000000',
+          'x-github-delivery': 'a1b2c3d4-e5f6-4789-a012-b3c4d5e6f789',
+          'x-github-event': 'push',
+        },
+        { connectorId: 'conn-1' },
+        rawBody,
+      );
+
+      await expect(guard.canActivate(context)).rejects.toThrow(
+        'Invalid GitHub webhook HMAC signature',
+      );
+    });
+
+    it('rejects a replayed GitHub delivery id', async () => {
+      const rawBody = '{"ref":"refs/heads/main","commits":[]}';
+      const secret = 'super-secret-key-123';
+      const hash = crypto
+        .createHmac('sha256', secret)
+        .update(rawBody)
+        .digest('hex');
+
+      mockPrisma.webhookReplayNonce.create.mockRejectedValueOnce(
+        new Error('unique constraint violation'),
+      );
+
+      const context = createMockContext(
+        {
+          'x-hub-signature-256': `sha256=${hash}`,
+          'x-github-delivery': 'a1b2c3d4-e5f6-4789-a012-b3c4d5e6f789',
+          'x-github-event': 'push',
+        },
+        { connectorId: 'conn-1' },
+        rawBody,
+      );
+
+      await expect(guard.canActivate(context)).rejects.toThrow(
+        'Webhook delivery has already been processed',
+      );
+    });
+  });
 });

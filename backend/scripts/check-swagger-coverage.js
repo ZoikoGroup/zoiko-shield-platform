@@ -138,6 +138,8 @@ const approvedPublicOperations = new Set([
   'get:/metrics',
   'get:/',
   'get:/api/v1/governance/disclosures',
+  'post:/api/v1/auth/passkeys/authentication/options',
+  'post:/api/v1/auth/passkeys/authentication',
 ]);
 const undocumentedSecurity = [];
 for (const [route, definition] of Object.entries(specification.paths ?? {})) {

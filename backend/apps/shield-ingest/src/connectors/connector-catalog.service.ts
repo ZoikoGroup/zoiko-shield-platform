@@ -3,12 +3,18 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import {
   requireEnvironmentId,
   requireRegion,
 } from '../security/tenant-context';
+import {
+  ShieldCoreClient,
+  ShieldCoreUnreachableError,
+  TenantNotFoundError,
+} from '../internal-client/shield-core.client';
 import { ConnectorRegistry } from './core/connector-registry';
 import { ConnectorSyncService } from './services/sync.service';
 import { randomUUID } from 'crypto';
@@ -61,7 +67,30 @@ export interface ConnectorTypeDto {
   category: string;
   description: string;
   supportedAuthTypes: string[];
+  /**
+   * ERB-01 §15 commits exactly one certified EDR partner with eventual
+   * response authority (selected via ADR); any other EDR is BYO read-only
+   * ingestion only - never a peer with equal action capability. Omitted
+   * for non-EDR categories, where the distinction doesn't apply.
+   */
+  responseAuthority?: 'CERTIFIED_RESPONSE_PARTNER' | 'READ_ONLY_BYO_INGESTION';
 }
+
+/**
+ * ERB-01 §15: exactly one EDR partner is certified with (eventual) response
+ * authority; every other EDR provider is BYO read-only ingestion. Kept as a
+ * lookup here so both the catalog and connector-instance responses agree,
+ * rather than letting the labeling drift between the two.
+ */
+const EDR_RESPONSE_AUTHORITY: Record<
+  string,
+  'CERTIFIED_RESPONSE_PARTNER' | 'READ_ONLY_BYO_INGESTION'
+> = {
+  'crowdstrike-edr': 'CERTIFIED_RESPONSE_PARTNER',
+  'sentinelone-edr': 'READ_ONLY_BYO_INGESTION',
+  'palo-alto-cortex-xdr': 'READ_ONLY_BYO_INGESTION',
+  'microsoft-defender-edr': 'READ_ONLY_BYO_INGESTION',
+};
 
 @Injectable()
 export class ConnectorCatalogService {
@@ -71,10 +100,15 @@ export class ConnectorCatalogService {
     private readonly prisma: PrismaService,
     private readonly registry: ConnectorRegistry,
     private readonly syncService: ConnectorSyncService,
+    private readonly shieldCore: ShieldCoreClient,
   ) {}
 
   /**
    * Get list of supported initial connector categories (Step 5 MVP)
+   */
+  /**
+   * Kept in sync with what actually self-registers in ConnectorRegistry at
+   * boot (see shield-ingest.module.ts's providers array).
    */
   getConnectorTypes(): ConnectorTypeDto[] {
     return [
@@ -82,7 +116,8 @@ export class ConnectorCatalogService {
         id: 'generic-webhook',
         name: 'Generic Webhook Ingestion',
         category: 'Webhook Ingestion',
-        description: 'Ingest raw security logs directly via secure webhooks',
+        description:
+          'Ingest raw security logs directly via secure webhooks (also used for sources with no dedicated adapter, e.g. GitHub push events)',
         supportedAuthTypes: ['API_KEY', 'WEBHOOK_SECRET'],
       },
       {
@@ -100,6 +135,13 @@ export class ConnectorCatalogService {
         supportedAuthTypes: ['OAUTH', 'CLIENT_CREDENTIALS'],
       },
       {
+        id: 'okta-identity',
+        name: 'Okta',
+        category: 'Identity / Productivity',
+        description: 'Collect Okta identity and authentication event logs',
+        supportedAuthTypes: ['API_KEY'],
+      },
+      {
         id: 'aws-cloudtrail',
         name: 'AWS CloudTrail',
         category: 'Cloud Infrastructure',
@@ -107,18 +149,75 @@ export class ConnectorCatalogService {
         supportedAuthTypes: ['SERVICE_ACCOUNT', 'API_KEY'],
       },
       {
-        id: 'azure-monitor',
-        name: 'Azure Activity Logs',
+        id: 'aws-guardduty',
+        name: 'AWS GuardDuty',
         category: 'Cloud Infrastructure',
-        description: 'Ingest Azure Security Center and Activity events',
-        supportedAuthTypes: ['CLIENT_CREDENTIALS', 'SERVICE_ACCOUNT'],
+        description: 'Ingest Amazon GuardDuty threat detection findings',
+        supportedAuthTypes: ['SERVICE_ACCOUNT'],
+      },
+      {
+        id: 'azure-monitor',
+        name: 'Azure Monitor Activity Logs',
+        category: 'Cloud Infrastructure',
+        description: 'Ingest Azure Activity Log audit events via a service principal',
+        supportedAuthTypes: ['CLIENT_CREDENTIALS'],
+      },
+      {
+        id: 'gcp-scc',
+        name: 'Google Cloud Security Command Center',
+        category: 'Cloud Infrastructure',
+        description: 'Ingest GCP Security Command Center findings',
+        supportedAuthTypes: ['SERVICE_ACCOUNT', 'OAUTH'],
       },
       {
         id: 'crowdstrike-edr',
         name: 'CrowdStrike Falcon EDR',
         category: 'EDR',
-        description: 'Endpoint detection and response security telemetry',
+        description:
+          'The ERB-01 certified EDR partner (§15) - full ingestion plus eventual response-action authority once R2+ execution is ratified. All other EDR connectors are read-only BYO ingestion only.',
         supportedAuthTypes: ['CLIENT_CREDENTIALS', 'API_KEY'],
+        responseAuthority: 'CERTIFIED_RESPONSE_PARTNER',
+      },
+      {
+        id: 'sentinelone-edr',
+        name: 'SentinelOne',
+        category: 'EDR',
+        description:
+          'BYO EDR - read-only ingestion of endpoint telemetry. No response-action authority; CrowdStrike is the ERB-01 certified partner.',
+        supportedAuthTypes: ['API_KEY'],
+        responseAuthority: 'READ_ONLY_BYO_INGESTION',
+      },
+      {
+        id: 'palo-alto-cortex-xdr',
+        name: 'Palo Alto Cortex XDR',
+        category: 'EDR',
+        description:
+          'BYO EDR - read-only ingestion of endpoint telemetry. No response-action authority; CrowdStrike is the ERB-01 certified partner.',
+        supportedAuthTypes: ['CLIENT_CREDENTIALS', 'API_KEY'],
+        responseAuthority: 'READ_ONLY_BYO_INGESTION',
+      },
+      {
+        id: 'microsoft-defender-edr',
+        name: 'Microsoft Defender',
+        category: 'EDR',
+        description:
+          'BYO EDR - read-only ingestion of endpoint telemetry. No response-action authority; CrowdStrike is the ERB-01 certified partner.',
+        supportedAuthTypes: ['CLIENT_CREDENTIALS'],
+        responseAuthority: 'READ_ONLY_BYO_INGESTION',
+      },
+      {
+        id: 'snyk-vulnerability',
+        name: 'Snyk',
+        category: 'Vulnerability Management',
+        description: 'Ingest Snyk vulnerability findings',
+        supportedAuthTypes: ['API_KEY'],
+      },
+      {
+        id: 'jira-ticketing',
+        name: 'Jira',
+        category: 'Ticketing / Incident Management',
+        description: 'Sync security case tickets with Jira',
+        supportedAuthTypes: ['API_KEY'],
       },
     ];
   }
@@ -129,6 +228,12 @@ export class ConnectorCatalogService {
   async createConnector(dto: CreateConnectorDto) {
     this.logger.log(
       `Creating connector '${dto.name}' for tenant ${dto.tenantId}`,
+    );
+
+    const sourceRegion = requireRegion(dto.sourceRegion);
+    await this.assertSourceRegionWithinTenantResidency(
+      dto.tenantId,
+      sourceRegion,
     );
 
     // Ensure definition exists or create default definition
@@ -154,7 +259,7 @@ export class ConnectorCatalogService {
         connectorDefId: definition.id,
         name: dto.name,
         authentication_type: dto.authenticationType || 'API_KEY',
-        source_region: requireRegion(dto.sourceRegion),
+        source_region: sourceRegion,
         state: 'NOT_CONNECTED',
       },
       include: {
@@ -172,14 +277,55 @@ export class ConnectorCatalogService {
       });
     }
 
-    return connector;
+    return this.withResponseAuthority(connector);
+  }
+
+  private withResponseAuthority<
+    T extends { definition: { provider: string } },
+  >(connector: T): T & {
+    responseAuthority?: 'CERTIFIED_RESPONSE_PARTNER' | 'READ_ONLY_BYO_INGESTION';
+  } {
+    const responseAuthority = EDR_RESPONSE_AUTHORITY[connector.definition.provider];
+    return responseAuthority ? { ...connector, responseAuthority } : connector;
+  }
+
+  /**
+   * A connector must not collect into a region the tenant never committed to
+   * at onboarding. The committed region is shield-core-owned, so an
+   * unverifiable answer fails closed rather than trusting the caller's
+   * sourceRegion.
+   */
+  private async assertSourceRegionWithinTenantResidency(
+    tenantId: string,
+    sourceRegion: string,
+  ): Promise<void> {
+    let residency;
+    try {
+      residency = await this.shieldCore.getTenantResidency(tenantId);
+    } catch (err) {
+      if (err instanceof TenantNotFoundError) {
+        throw new NotFoundException(err.message);
+      }
+      if (err instanceof ShieldCoreUnreachableError) {
+        throw new ServiceUnavailableException(
+          'Tenant data-residency could not be verified; connector creation refused',
+        );
+      }
+      throw err;
+    }
+
+    if (sourceRegion !== residency.dataResidencyRegion) {
+      throw new BadRequestException(
+        `Source region '${sourceRegion}' violates the tenant's committed data-residency region '${residency.dataResidencyRegion}'`,
+      );
+    }
   }
 
   /**
    * List connectors for tenant
    */
   async getConnectors(tenantId: string) {
-    return this.prisma.connectorInstance.findMany({
+    const connectors = await this.prisma.connectorInstance.findMany({
       where: { tenant_id: tenantId, deletedAt: null },
       include: {
         definition: true,
@@ -187,6 +333,7 @@ export class ConnectorCatalogService {
       },
       orderBy: { createdAt: 'desc' },
     });
+    return connectors.map((c) => this.withResponseAuthority(c));
   }
 
   /**
@@ -206,7 +353,7 @@ export class ConnectorCatalogService {
       throw new NotFoundException(`Connector '${connectorId}' not found`);
     }
 
-    return connector;
+    return this.withResponseAuthority(connector);
   }
 
   /**

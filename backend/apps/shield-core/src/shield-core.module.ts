@@ -18,6 +18,8 @@ import { LocalCredential } from './modules/identity-adapter/local-credential.ent
 import { ExternalIdentity } from './modules/identity-adapter/external-identity.entity';
 import { Session } from './modules/identity-adapter/session.entity';
 import { VerificationChallenge } from './modules/identity-adapter/verification-challenge.entity';
+import { WebauthnCredential } from './modules/identity-adapter/webauthn-credential.entity';
+import { WebauthnChallenge } from './modules/identity-adapter/webauthn-challenge.entity';
 import { RecoveryGrant } from './modules/identity-adapter/recovery-grant.entity';
 import { PolicyDocument } from './modules/identity-adapter/policy-document.entity';
 import { PolicyAcceptance } from './modules/identity-adapter/policy-acceptance.entity';
@@ -113,6 +115,8 @@ import { ExperienceModule } from './modules/experience/experience.module';
         ExternalIdentity,
         Session,
         VerificationChallenge,
+        WebauthnCredential,
+        WebauthnChallenge,
         RecoveryGrant,
         PolicyDocument,
         PolicyAcceptance,

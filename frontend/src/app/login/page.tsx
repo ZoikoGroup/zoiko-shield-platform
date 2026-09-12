@@ -3,9 +3,11 @@
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
+import { useDemoState } from "@/lib/demo-state";
+import { isWebauthnSupported, requestPasskeyAssertion } from "@/lib/webauthn";
 import { Card } from "@/ui/Card";
 import { Button } from "@/ui/Button";
-import { Lock, Mail, Key, ShieldCheck, ArrowRight, Sparkles } from "lucide-react";
+import { Lock, Mail, Key, ShieldCheck, ArrowRight, Sparkles, Fingerprint } from "lucide-react";
 import {
   LoadingState,
   UnauthorizedState,
@@ -13,9 +15,11 @@ import {
 
 export default function LoginPage() {
   const router = useRouter();
+  const [state] = useDemoState();
   const [email, setEmail] = useState("analyst@zoikoshield-demo.com");
   const [password, setPassword] = useState("Shield@SecOps2026!");
   const [isLoading, setIsLoading] = useState(false);
+  const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isUnauthorized, setIsUnauthorized] = useState(false);
 
@@ -33,6 +37,25 @@ export default function LoginPage() {
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handlePasskeyLogin = async () => {
+    if (!isWebauthnSupported()) {
+      setError("This browser does not support passkeys (WebAuthn).");
+      return;
+    }
+    setIsPasskeyLoading(true);
+    setError(null);
+    try {
+      const options = await ZoikoShieldApiClient.getPasskeyLoginOptions(email);
+      const assertion = await requestPasskeyAssertion(options);
+      await ZoikoShieldApiClient.loginWithPasskey(assertion, state.tenant.id);
+      router.push("/onboarding");
+    } catch (err: any) {
+      setError(err.message || "Passkey sign-in failed");
+    } finally {
+      setIsPasskeyLoading(false);
     }
   };
 
@@ -141,6 +164,28 @@ export default function LoginPage() {
             <span>Authenticate & Issue JWT Bearer Token</span>
           </Button>
         </form>
+
+        <div className="flex items-center gap-3">
+          <div className="h-px flex-1 bg-slate-800" />
+          <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">or</span>
+          <div className="h-px flex-1 bg-slate-800" />
+        </div>
+
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          isLoading={isPasskeyLoading}
+          onClick={handlePasskeyLogin}
+        >
+          <Fingerprint className="w-4 h-4" />
+          <span>Sign in with Passkey (WebAuthn)</span>
+        </Button>
+        <p className="text-[11px] text-slate-500 -mt-2">
+          Requires a passkey already enrolled for this email under Team &amp; Invitations → Passkeys.
+          Raises session assurance to <span className="text-cyan-400 font-mono">PASSKEY</span>, unlocking
+          step-up gated (<span className="font-mono">@RequireAssurance</span>) actions.
+        </p>
 
         {/* Demo Quick-Select Presets */}
         <div className="pt-4 border-t border-slate-800 space-y-3">

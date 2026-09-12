@@ -61,7 +61,7 @@ export class AiIncidentController {
     if (!tenantId) {
       throw new BadRequestException('x-tenant-id header is required');
     }
-    const data = this.incidentService.listIncidents(tenantId, {
+    const data = await this.incidentService.listIncidents(tenantId, {
       status: status as any,
       severity: severity as any,
       category: category as any,
@@ -77,7 +77,7 @@ export class AiIncidentController {
     if (!tenantId) {
       throw new BadRequestException('x-tenant-id header is required');
     }
-    const data = this.incidentService.getMetrics(tenantId);
+    const data = await this.incidentService.getMetrics(tenantId);
     return {
       statusCode: HttpStatus.OK,
       data,
@@ -92,7 +92,7 @@ export class AiIncidentController {
     if (!tenantId) {
       throw new BadRequestException('x-tenant-id header is required');
     }
-    const data = this.incidentService.getIncident(tenantId, id);
+    const data = await this.incidentService.getIncident(tenantId, id);
     return {
       statusCode: HttpStatus.OK,
       data,

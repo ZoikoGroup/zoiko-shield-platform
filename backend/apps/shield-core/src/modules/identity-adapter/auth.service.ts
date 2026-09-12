@@ -22,6 +22,7 @@ import {
   JwtPayload,
 } from './interfaces/jwt-payload.interface';
 import { Assurance, SessionBinding } from './session.entity';
+import { VerifiedWebauthnAssertion } from './webauthn.service';
 import { Principal } from './principal.entity';
 import { SessionContextService } from './session-context.service';
 import { SwitchTenantSessionDto } from './dto/switch-tenant-session.dto';
@@ -109,6 +110,51 @@ export class AuthService {
       principalId: principal.id,
       tenantId: binding.tenantId,
       data: { authenticationMethod: 'PASSWORD' },
+    });
+    return { user: this.toAuthenticatedUser(principal, tokens), ...tokens };
+  }
+
+  /**
+   * Passkey login. The assertion is verified before this point, so there is no
+   * password to compare and no lockout counter to advance — possession of the
+   * authenticator plus its user-verification gesture is the whole proof, which
+   * is what earns the session PASSKEY assurance.
+   */
+  async loginWithPasskey(
+    verification: VerifiedWebauthnAssertion,
+    dto: { tenantId: string; environmentId?: string },
+    metadata: SessionMetadata,
+  ): Promise<{ user: AuthenticatedUser } & TokenPair> {
+    const principal = await this.principalService.findById(
+      verification.principalId,
+    );
+    if (!principal || principal.status !== 'ACTIVE') {
+      throw new UnauthorizedException('Invalid credentials');
+    }
+
+    const binding = await this.sessionContext.resolveBinding({
+      principalId: principal.id,
+      tenantId: dto.tenantId,
+      environmentId: dto.environmentId,
+      authenticationMethod: 'PASSKEY',
+      riskState: principal.riskState,
+    });
+
+    const tokens = await this.issueTokenPair(
+      principal,
+      'PASSKEY',
+      metadata,
+      binding,
+    );
+    await this.principalService.recordLogin(principal.id);
+    await this.eventService.record({
+      eventType: 'login_succeeded',
+      principalId: principal.id,
+      tenantId: binding.tenantId,
+      data: {
+        authenticationMethod: 'PASSKEY',
+        credentialId: verification.credentialId,
+      },
     });
     return { user: this.toAuthenticatedUser(principal, tokens), ...tokens };
   }

@@ -8,6 +8,7 @@ import {
   requireEnvironmentId,
   requireTenantId,
 } from '../security/tenant-context';
+import { OutboxService } from '../outbox/outbox.service';
 import crypto from 'crypto';
 
 export class CreateEvidenceDto {
@@ -34,7 +35,10 @@ export class CreateEvidenceDto {
 
 @Injectable()
 export class EvidenceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly outbox: OutboxService,
+  ) {}
 
   /**
    * Create an evidence record with cryptographic SHA-256 hash calculation (self-contained in ingest)
@@ -57,45 +61,78 @@ export class EvidenceService {
 
     const evidenceId = `ev-${crypto.randomUUID()}`;
 
-    const record = await (this.prisma as any).evidenceRecord.create({
-      data: {
-        id: evidenceId,
-        tenant_id: tenantId,
-        environment_id: environmentId,
-        legal_entity_id: dto.legalEntityId,
-        region: dto.region,
-        evidence_type: dto.evidenceType,
-        producing_service: 'shield-ingest',
-        source_system_id: 'ingest-api',
-        source_object_id: dto.title,
-        purpose: dto.description || dto.title,
-        retention_profile: dto.retentionDays
-          ? `${dto.retentionDays}_DAYS`
-          : undefined,
-        content_hash: contentHash,
-        content_size_bytes: Buffer.byteLength(dto.rawContent, 'utf8'),
-        added_by: dto.createdBy,
-        storage_uri: `s3://evidence-vault/${tenantId}/${evidenceId}.json`,
-        status: 'STORED',
-      },
-    });
+    // dto.caseId references Case, which is tenant-scoped - verify it exists
+    // for this tenant before writing anything, so a bad reference fails with
+    // a clean 404 instead of a raw FK-constraint 500 from the link insert.
+    if (dto.caseId) {
+      const caseExists = await (this.prisma as any).case.findFirst({
+        where: { id: dto.caseId, tenant_id: tenantId },
+        select: { id: true },
+      });
+      if (!caseExists) {
+        throw new NotFoundException(
+          `Case '${dto.caseId}' not found for tenant '${tenantId}'`,
+        );
+      }
+    }
 
-    // Record outbox event for asynchronous ledger Merkle sealing
-    await (this.prisma as any).outboxEvent.create({
-      data: {
-        event_type: 'evidence.created',
-        aggregate_type: 'evidence_record',
-        aggregate_id: record.id,
-        tenant_id: tenantId,
-        payload: JSON.stringify({
-          evidenceId: record.id,
-          contentHash,
-          evidenceType: dto.evidenceType,
+    // Evidence row, its optional case link, and the outbox event that
+    // triggers async Merkle sealing all commit atomically - a crash between
+    // them would otherwise leave evidence that's permanently invisible to
+    // the ledger, or a case link with no accompanying record.
+    const writes: any[] = [
+      (this.prisma as any).evidenceRecord.create({
+        data: {
+          id: evidenceId,
+          tenant_id: tenantId,
+          environment_id: environmentId,
+          legal_entity_id: dto.legalEntityId,
           region: dto.region,
-        }),
-      },
-    });
+          evidence_type: dto.evidenceType,
+          producing_service: 'shield-ingest',
+          source_system_id: 'ingest-api',
+          source_object_id: dto.title,
+          purpose: dto.description || dto.title,
+          retention_profile: dto.retentionDays
+            ? `${dto.retentionDays}_DAYS`
+            : undefined,
+          content_hash: contentHash,
+          size_bytes: Buffer.byteLength(dto.rawContent, 'utf8'),
+          vault_reference: `s3://evidence-vault/${tenantId}/${evidenceId}.json`,
+        },
+      }),
+    ];
 
+    if (dto.caseId) {
+      writes.push(
+        (this.prisma as any).caseEvidence.create({
+          data: {
+            tenant_id: tenantId,
+            case_id: dto.caseId,
+            evidence_id: evidenceId,
+            added_by: dto.createdBy || 'shield-ingest-api',
+          },
+        }),
+      );
+    }
+
+    writes.push(
+      (this.prisma as any).outboxEvent.create({
+        data: this.outbox.build({
+          tenantId,
+          topic: 'evidence.created.v1',
+          eventType: 'evidence.created',
+          payload: {
+            evidenceId,
+            contentHash,
+            evidenceType: dto.evidenceType,
+            region: dto.region,
+          },
+        }),
+      }),
+    );
+
+    const [record] = await this.prisma.$transaction(writes);
     return record;
   }
 

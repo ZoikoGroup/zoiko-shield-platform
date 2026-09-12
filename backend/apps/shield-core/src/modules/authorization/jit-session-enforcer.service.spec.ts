@@ -55,7 +55,7 @@ describe('JitSessionEnforcerService', () => {
     expect(check.reason).toContain('IP divergence');
   });
 
-  it('should successfully refresh step-up with valid hardware signature', () => {
+  it('should successfully refresh step-up with a verified passkey assertion', () => {
     const session = service.createJitSession(
       operatorId,
       tenantId,
@@ -65,11 +65,70 @@ describe('JitSessionEnforcerService', () => {
       5,
     );
 
-    const stepUp = service.verifyHardwareStepUp(
-      session.sessionId,
-      'fido2-webauthn-valid-challenge-signature-xyz',
-    );
+    const stepUp = service.recordVerifiedStepUp(session.sessionId, {
+      principalId: operatorId,
+      credentialId: 'cred-1',
+      userVerified: true,
+      verifiedAt: Date.now(),
+    });
     expect(stepUp.success).toBe(true);
     expect(stepUp.nextStepUpDueAt).toBeDefined();
+  });
+
+  it('rejects a step-up proof issued for a different operator', () => {
+    const session = service.createJitSession(
+      operatorId,
+      tenantId,
+      'SECURITY_ADMIN',
+      '198.51.100.25',
+    );
+
+    const stepUp = service.recordVerifiedStepUp(session.sessionId, {
+      principalId: 'operator-someone-else',
+      credentialId: 'cred-1',
+      userVerified: true,
+      verifiedAt: Date.now(),
+    });
+
+    expect(stepUp.success).toBe(false);
+    expect(stepUp.reason).toContain('different operator');
+  });
+
+  it('rejects a step-up proof without a user-verification gesture', () => {
+    const session = service.createJitSession(
+      operatorId,
+      tenantId,
+      'SECURITY_ADMIN',
+      '198.51.100.25',
+    );
+
+    const stepUp = service.recordVerifiedStepUp(session.sessionId, {
+      principalId: operatorId,
+      credentialId: 'cred-1',
+      userVerified: false,
+      verifiedAt: Date.now(),
+    });
+
+    expect(stepUp.success).toBe(false);
+    expect(stepUp.reason).toContain('user-verification');
+  });
+
+  it('rejects a stockpiled (stale) step-up proof', () => {
+    const session = service.createJitSession(
+      operatorId,
+      tenantId,
+      'SECURITY_ADMIN',
+      '198.51.100.25',
+    );
+
+    const stepUp = service.recordVerifiedStepUp(session.sessionId, {
+      principalId: operatorId,
+      credentialId: 'cred-1',
+      userVerified: true,
+      verifiedAt: Date.now() - 10 * 60 * 1000,
+    });
+
+    expect(stepUp.success).toBe(false);
+    expect(stepUp.reason).toContain('stale');
   });
 });
