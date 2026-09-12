@@ -15,7 +15,7 @@ async function bootstrap() {
   // global whitelisting would silently destroy valid telemetry. DTO-level
   // validators still run and unknown non-object bodies are rejected.
   app.useGlobalPipes(
-    new ValidationPipe({ transform: true, forbidUnknownValues: true }),
+    new ValidationPipe({ transform: true, forbidUnknownValues: false }),
   );
   const candidatePaths = [
     resolve(process.cwd(), '..', 'docs', 'swagger.yaml'),

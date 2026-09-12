@@ -6,6 +6,18 @@ import {
   ExecutionReceipt,
 } from './action-execution.interface';
 
+/**
+ * ERB-01 §15 commits exactly one certified EDR partner (CrowdStrike, per
+ * shield-ingest's connector-catalog.service.ts) with response authority;
+ * every other EDR is read-only BYO ingestion. That distinction isn't
+ * enforced here per-vendor: ActionExecutionContext carries no connector/
+ * provider identity, only tenant/action/target, so this adapter cannot tell
+ * which EDR a command's target belongs to without plumbing that identity
+ * through the whole response-proposal chain from shield-core. It doesn't
+ * need to yet - live execution (ISOLATE_ENDPOINT/QUARANTINE_FILE) is
+ * unconditionally forbidden below regardless of source until R2+ is
+ * ratified, so there is no live path this would currently gate.
+ */
 @Injectable()
 export class EdrIsolateActionAdapter implements ActionExecutionAdapter {
   private readonly logger = new Logger(EdrIsolateActionAdapter.name);

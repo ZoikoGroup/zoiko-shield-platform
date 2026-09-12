@@ -343,9 +343,7 @@ components:
                 type: array,
                 minItems: 3,
                 items: { type: string },
-                description: Must include DETECTIONS,
-                CASES,
-                and EVIDENCE.,
+                description: "Must include DETECTIONS, CASES, and EVIDENCE.",
               }
             connectors: { type: array, minItems: 1, items: { type: string } }
             responseTools: { type: array, minItems: 1, items: { type: string } }
@@ -478,7 +476,7 @@ components:
         customerAuthorizedAt:
           { type: string, format: date-time, nullable: true }
         estimatedThirdPartyCost:
-          { type: number, exclusiveMinimum: 0, nullable: true }
+          { type: number, minimum: 0, exclusiveMinimum: true, nullable: true }
     ReconcileManagedDefenseCapacityExceptionRequest:
       type: object
       required: [reconciliation, evidenceReference]
@@ -2273,6 +2271,7 @@ components:
         processorCustomerRef: { type: string, nullable: true }
         groupAccountId: { type: string, format: uuid, nullable: true }
         initialBinding:
+          type: object
           allOf:
             - $ref: "#/components/schemas/CommercialAccountBindingInput"
           nullable: true
@@ -5973,7 +5972,6 @@ components:
             - data
     PostCasesByCaseIdAiSummaryRequest:
       type: object
-      properties:
     PostCasesByCaseIdAiSummaryResponse:
       type: object
       properties:
@@ -12495,7 +12493,8 @@ components:
               quantity: { type: integer, minimum: 1, nullable: true }
               allocationPercent:
                 type: number
-                exclusiveMinimum: 0
+                minimum: 0
+                exclusiveMinimum: true
                 maximum: 100
                 nullable: true
               entitlementOfferType:
@@ -20378,6 +20377,7 @@ components:
           format: date-time
           nullable: true
         discountTerms:
+          type: object
           allOf:
             - $ref: "#/components/schemas/QuoteDiscountTerms"
           nullable: true
@@ -29985,7 +29985,6 @@ paths:
             type: string
             format: uuid
           description: Unique proposal ID identifying the target resource.
-        - $ref: "#/components/parameters/TenantIdHeader"
       responses:
         "200":
           description: Get response proposal successful.
@@ -38583,11 +38582,7 @@ paths:
           }
         "409":
           {
-            description: Contract,
-            scope,
-            meter,
-            price,
-            or effective window conflict.,
+            description: "Contract, scope, meter, price, or effective window conflict.",
           }
   /api/v1/metering/policies/{id}:
     get:
@@ -46043,6 +46038,7 @@ paths:
                   frozen: { type: boolean }
                   status: { type: string, enum: [FROZEN, OPERATIONAL] }
                   freeze:
+                    type: object
                     allOf:
                       - $ref: "#/components/schemas/ResponseFreezeRecord"
                     nullable: true

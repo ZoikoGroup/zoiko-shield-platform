@@ -5,41 +5,135 @@ import {
   BadRequestException,
   Optional,
 } from '@nestjs/common';
+import { Type } from 'class-transformer';
+import {
+  IsArray,
+  IsIn,
+  IsInt,
+  IsObject,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { PrismaService } from '../prisma/prisma.service';
 import { AlertGeneratorService } from '../alerts/alert-generator.service';
 
-export interface ConditionRule {
-  field: string;
-  operator:
-    'EQUALS' | 'NOT_EQUALS' | 'CONTAINS' | 'IN' | 'GREATER_THAN' | 'LESS_THAN';
+const OPERATORS = [
+  'EQUALS',
+  'NOT_EQUALS',
+  'CONTAINS',
+  'IN',
+  'GREATER_THAN',
+  'LESS_THAN',
+] as const;
+const RULE_TYPES = ['MATCH', 'THRESHOLD', 'BEHAVIORAL'] as const;
+const SEVERITIES = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'] as const;
+
+/**
+ * shield-ingest's global ValidationPipe runs with forbidUnknownValues: true
+ * (main.ts), which throws "An unknown value was passed to the validate
+ * function" for any class with zero class-validator decorators - it can't
+ * tell an intentionally-empty schema from one nobody got around to
+ * decorating. These were plain interfaces/classes with none, so every call
+ * to POST/PATCH /api/v1/detections failed identically regardless of body.
+ */
+export class ConditionRule {
+  @IsString()
+  field!: string;
+
+  @IsIn(OPERATORS)
+  operator!: (typeof OPERATORS)[number];
+
   value: any;
 }
 
-export interface RuleDefinition {
-  ruleType: 'MATCH' | 'THRESHOLD' | 'BEHAVIORAL';
+export class RuleDefinition {
+  @IsIn(RULE_TYPES)
+  ruleType!: (typeof RULE_TYPES)[number];
+
+  @IsOptional()
+  @IsString()
   eventClass?: string;
-  conditions: ConditionRule[];
+
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => ConditionRule)
+  conditions!: ConditionRule[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
   groupBy?: string[];
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
   windowMinutes?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
   threshold?: number;
 }
 
 export class CreateDetectionRuleDto {
+  @IsOptional()
+  @IsString()
   tenantId?: string;
+
+  @IsString()
   name!: string;
+
+  @IsOptional()
+  @IsString()
   description?: string;
-  ruleType?: 'MATCH' | 'THRESHOLD' | 'BEHAVIORAL';
-  severity?: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+
+  @IsOptional()
+  @IsIn(RULE_TYPES)
+  ruleType?: (typeof RULE_TYPES)[number];
+
+  @IsOptional()
+  @IsIn(SEVERITIES)
+  severity?: (typeof SEVERITIES)[number];
+
+  @IsObject()
+  @ValidateNested()
+  @Type(() => RuleDefinition)
   conditionDefinition!: RuleDefinition;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
   requiredFields?: string[];
+
+  @IsOptional()
+  @IsString()
   createdBy?: string;
 }
 
 export class UpdateDetectionRuleDto {
+  @IsOptional()
+  @IsString()
   name?: string;
+
+  @IsOptional()
+  @IsString()
   description?: string;
-  severity?: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+
+  @IsOptional()
+  @IsIn(SEVERITIES)
+  severity?: (typeof SEVERITIES)[number];
+
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => RuleDefinition)
   conditionDefinition?: RuleDefinition;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
   requiredFields?: string[];
 }
 

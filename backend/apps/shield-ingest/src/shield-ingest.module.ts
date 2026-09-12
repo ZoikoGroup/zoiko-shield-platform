@@ -29,6 +29,10 @@ import { ConnectorCatalogService } from './connectors/connector-catalog.service'
 import { ShieldCoreClient } from './internal-client/shield-core.client';
 import { AwsCloudTrailProvider } from './connectors/providers/aws-cloudtrail/aws-cloudtrail.provider';
 import { AwsCloudTrailNormalizerService } from './connectors/providers/aws-cloudtrail/aws-cloudtrail.normalizer';
+import { AwsGuardDutyProvider } from './connectors/providers/aws-guardduty/aws-guardduty.provider';
+import { AwsGuardDutyNormalizerService } from './connectors/providers/aws-guardduty/aws-guardduty.normalizer';
+import { AzureMonitorProvider } from './connectors/providers/azure-monitor/azure-monitor.provider';
+import { AzureMonitorNormalizerService } from './connectors/providers/azure-monitor/azure-monitor.normalizer';
 import { SyslogTlsProvider } from './connectors/providers/syslog-tls/syslog-tls.provider';
 import { SyslogTlsNormalizerService } from './connectors/providers/syslog-tls/syslog-tls.normalizer';
 import { OktaProvider } from './connectors/providers/okta/okta.provider';
@@ -160,6 +164,10 @@ import { ConnectorPermissionDriftService } from './drift/connector-permission-dr
     EntraEventHubConsumer,
     AwsCloudTrailProvider,
     AwsCloudTrailNormalizerService,
+    AwsGuardDutyProvider,
+    AwsGuardDutyNormalizerService,
+    AzureMonitorProvider,
+    AzureMonitorNormalizerService,
     SyslogTlsProvider,
     SyslogTlsNormalizerService,
     OktaProvider,

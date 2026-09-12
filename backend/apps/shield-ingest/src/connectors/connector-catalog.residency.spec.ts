@@ -34,7 +34,9 @@ describe('ConnectorCatalogService data-residency enforcement', () => {
         create: jest.fn().mockResolvedValue({ id: 'def-1' }),
       },
       connectorInstance: {
-        create: jest.fn().mockResolvedValue({ id: 'conn-1' }),
+        create: jest
+          .fn()
+          .mockResolvedValue({ id: 'conn-1', definition: { provider: 'generic-webhook' } }),
       },
       connectorCredentialReference: { create: jest.fn() },
     };
@@ -63,7 +65,10 @@ describe('ConnectorCatalogService data-residency enforcement', () => {
   it('creates the connector when sourceRegion matches the committed residency region', async () => {
     const connector = await service.createConnector(baseDto as any);
 
-    expect(connector).toEqual({ id: 'conn-1' });
+    expect(connector).toEqual({
+      id: 'conn-1',
+      definition: { provider: 'generic-webhook' },
+    });
     expect(shieldCoreMock.getTenantResidency).toHaveBeenCalledWith('tenant-1');
     expect(prismaMock.connectorInstance.create).toHaveBeenCalledWith(
       expect.objectContaining({
