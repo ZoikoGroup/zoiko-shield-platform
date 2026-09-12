@@ -136,7 +136,9 @@ import { ExperienceModule } from './modules/experience/experience.module';
         Customer,
         Organization,
       ],
-      synchronize: process.env.NODE_ENV !== 'production',
+      // Safety Rule: synchronize is strictly disabled by default to prevent silent table/data drops across restarts.
+      // Schema evolution is governed by controlled SQL / Prisma migrations.
+      synchronize: process.env.TYPEORM_SYNCHRONIZE === 'true',
       ssl: process.env.DATABASE_URL?.includes('sslmode=require')
         ? { rejectUnauthorized: false }
         : false,

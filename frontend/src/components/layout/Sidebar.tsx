@@ -22,6 +22,7 @@ import {
   Building,
   LogIn,
   Flame,
+  PhoneCall,
 } from "lucide-react";
 
 export const Sidebar: React.FC = () => {
@@ -85,6 +86,13 @@ export const Sidebar: React.FC = () => {
           href: "/actions",
           icon: <AlertOctagon className="w-4 h-4" />,
           badge: "R0-R4",
+          badgeVariant: "anchored" as const,
+        },
+        {
+          label: "IR Retainer & SLA",
+          href: "/ir-retainer",
+          icon: <PhoneCall className="w-4 h-4" />,
+          badge: "24x7",
           badgeVariant: "anchored" as const,
         },
       ],

@@ -47645,6 +47645,65 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
+  /api/v1/authz/jit/{requestId}/stepup:
+    post:
+      tags:
+        - RBAC
+      summary: Verify cryptographic hardware step-up challenge for JIT elevation
+      description: Validates FIDO2 / WebAuthn cryptographic step-up challenge signature for JIT elevation access.
+      operationId: postAuthzJitStepUp
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: requestId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - clientDataJson
+                - signature
+              properties:
+                clientDataJson:
+                  type: string
+                authenticatorData:
+                  type: string
+                signature:
+                  type: string
+      responses:
+        '200':
+          description: Step-up authentication challenge successfully verified
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+        '400':
+          description: Invalid request payload or malformed signature
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
   /api/v1/tenants/{tenantId}/jit-audit:
     get:
       tags:

@@ -28,12 +28,64 @@ import {
   UnavailableState,
   DegradedState,
 } from "@/components/states/mandatory-ui-states";
+import { useEventStream } from "@/lib/use-event-stream";
 
 export default function ConnectorsPage() {
   const router = useRouter();
   const [state, setState] = useDemoState();
   const [isFetchingConnectors, setIsFetchingConnectors] = useState(false);
   const [isStale, setIsStale] = useState(false);
+  const [driftAlerts, setDriftAlerts] = useState<Array<{ connectorId: string; provider: string; reason: string }>>([]);
+
+  // Subscribe to real-time SSE stream for instant connector health updates
+  const { isConnected: isSseConnected } = useEventStream({
+    tenantId: state.tenant.id,
+    enabled: true,
+    onEvent: (event) => {
+      const eventType = String(event.type);
+      if (eventType === "connector.permission.drift_detected" || eventType === "connector.health.changed") {
+        const payload = event.data;
+        if (payload?.instanceId) {
+          const instId = String(payload.instanceId);
+          setState((prev) => ({
+            ...prev,
+            connectors: prev.connectors.map((c) =>
+              c.id === instId
+                ? {
+                    ...c,
+                    healthStatus: payload.driftStatus === "REVOKED" ? ("UNHEALTHY" as const) : payload.driftStatus === "DEGRADED" ? ("DEGRADED" as const) : ("HEALTHY" as const),
+                  }
+                : c
+            ),
+          }));
+          if (payload.driftStatus === "DEGRADED" || payload.driftStatus === "REVOKED") {
+            const missing = Array.isArray(payload.missingPermissions) ? payload.missingPermissions.join(", ") : "Scope revoked";
+            setDriftAlerts((prev) => [
+              ...prev.filter((a) => a.connectorId !== instId),
+              {
+                connectorId: instId,
+                provider: String(payload.provider || "Connector"),
+                reason: missing,
+              },
+            ]);
+          }
+        }
+      } else if (eventType === "telemetry.ingested") {
+        const payload = event.data;
+        if (payload?.connectorId) {
+          const connId = String(payload.connectorId);
+          setState((prev) => ({
+            ...prev,
+            connectors: prev.connectors.map((c) =>
+              c.id === connId
+                ? { ...c, eventsIngestedCount: (c.eventsIngestedCount || 0) + 1 }
+                : c
+            ),
+          }));
+        }
+      }
+    },
+  });
 
   useEffect(() => {
     setIsFetchingConnectors(true);
@@ -147,6 +199,14 @@ export default function ConnectorsPage() {
             <span className="text-xs font-mono text-cyan-400 font-bold">
               INGESTION PIPELINE CONFIGURATION
             </span>
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold ${
+              isSseConnected
+                ? "bg-emerald-950/80 border border-emerald-500/40 text-emerald-300"
+                : "bg-amber-950/80 border border-amber-500/40 text-amber-300"
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${isSseConnected ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
+              {isSseConnected ? "SSE LIVE STREAM" : "POLLING FALLBACK"}
+            </span>
           </div>
           <h1 className="text-2xl font-black text-slate-100 tracking-tight">
             Security Telemetry Connectors
@@ -173,6 +233,16 @@ export default function ConnectorsPage() {
           <span>{actionMessage}</span>
           <button onClick={() => setActionMessage(null)} className="text-slate-400 hover:text-slate-200">✕</button>
         </div>
+      )}
+
+      {/* Real-Time Permission Drift Warning */}
+      {driftAlerts.length > 0 && (
+        <DegradedState
+          title="Connector Permission Drift Detected"
+          message={`Active credentials degraded for ${driftAlerts.map((d) => d.provider).join(", ")}. Required scopes were revoked by the upstream identity provider.`}
+          fallbackReason="UPSTREAM_SCOPE_REVOCATION_DETECTED"
+          retryAction={() => setDriftAlerts([])}
+        />
       )}
 
       {/* Mandatory UI States Integration */}

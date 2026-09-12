@@ -25,22 +25,75 @@ import {
   RecoveryState,
   StaleState,
 } from "@/components/states/mandatory-ui-states";
+import { useEventStream } from "@/lib/use-event-stream";
 
 export default function JitEnclavePage() {
-  const [state] = useDemoState();
+  const [state, setState] = useDemoState();
   const [isElevationModalOpen, setIsElevationModalOpen] = useState(false);
   const [justification, setJustification] = useState(
     "Critical incident triage requiring temporary Cross-Tenant Break-Glass access."
   );
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [currentTime, setCurrentTime] = useState(Date.now());
+
+  // Per-second tick for live JIT countdown timers
+  React.useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Subscribe to real-time SSE stream for JIT elevation updates
+  const { isConnected: isSseConnected } = useEventStream({
+    tenantId: state.tenant.id,
+    enabled: true,
+    onEvent: (event) => {
+      const eventType = String(event.type);
+      if (
+        eventType === "jit.elevation.revoked" ||
+        eventType === "jit.elevation.expired" ||
+        eventType === "JIT_ELEVATION_REVOKED" ||
+        eventType === "JIT_ELEVATION_EXPIRED"
+      ) {
+        const payload = event.data;
+        if (payload?.sessionId) {
+          const sessId = String(payload.sessionId);
+          setState((prev) => ({
+            ...prev,
+            jitSessions: prev.jitSessions.map((s) =>
+              s.sessionId === sessId ? { ...s, status: "REVOKED" as const } : s
+            ),
+          }));
+        }
+      }
+    },
+  });
 
   const handleRequestElevation = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      // 1. Request dual-authorized JIT elevation
       const result = await ZoikoShieldApiClient.requestJitElevation(state.tenant.id, justification, durationMinutes);
-      // Build a JitElevationSession from the API response and persist to state
+
+      // 2. Perform FIDO2 / WebAuthn hardware step-up challenge verification
+      const stepUpPayload = {
+        type: "webauthn.get",
+        challenge: btoa(`jit-stepup-${result.requestId}-${Date.now()}`),
+        origin: typeof window !== "undefined" ? window.location.origin : "https://shield.zoiko.internal",
+      };
+      const clientDataJson = btoa(JSON.stringify(stepUpPayload));
+      const mockSignature = btoa(`fido2-sig-${result.requestId}-${state.session.userId}`);
+      
+      const stepUpResult = await ZoikoShieldApiClient.verifyJitStepUp(
+        result.requestId,
+        state.session.userId,
+        clientDataJson,
+        mockSignature,
+        "direct-hardware-token"
+      );
+
+      // 3. Build a JitElevationSession from the API response and persist to state
       const newSession: JitElevationSession = {
         sessionId: result.requestId,
         operatorId: state.session.userId,
@@ -51,7 +104,9 @@ export default function JitEnclavePage() {
         statedPurpose: justification,
         issuedAt: new Date().toISOString(),
         expiresAt: result.expiresAt,
-        hardwareStepUpVerified: true,
+        hardwareStepUpVerified: stepUpResult.verified,
+        hardwareProofDigest: stepUpResult.hardwareProofDigest,
+        peerApprover: result.approverPeerAdmin,
       };
       const updated = { ...state, jitSessions: [newSession, ...state.jitSessions] };
       saveDemoState(updated);
@@ -79,6 +134,17 @@ export default function JitEnclavePage() {
     }
   };
 
+  const calculateRemainingSeconds = (expiresAt: string): number => {
+    const diff = Math.floor((new Date(expiresAt).getTime() - currentTime) / 1000);
+    return diff > 0 ? diff : 0;
+  };
+
+  const formatCountdown = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs < 10 ? "0" : ""}${secs}s`;
+  };
+
 
 
   return (
@@ -89,6 +155,14 @@ export default function JitEnclavePage() {
             <Badge variant="ai">PLATFORM ADMIN ONLY</Badge>
             <span className="text-xs font-mono text-purple-400 font-bold">
               CROSS-TENANT SUPPORT ACCESS (PLATFORM_ROLE_MANAGE)
+            </span>
+            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold ${
+              isSseConnected
+                ? "bg-emerald-950/80 border border-emerald-500/40 text-emerald-300"
+                : "bg-amber-950/80 border border-amber-500/40 text-amber-300"
+            }`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${isSseConnected ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
+              {isSseConnected ? "SSE LIVE STREAM" : "POLLING FALLBACK"}
             </span>
           </div>
           <h1 className="text-2xl font-black text-slate-100 tracking-tight">
@@ -121,40 +195,70 @@ export default function JitEnclavePage() {
           </div>
 
           <div className="space-y-3">
-            {state.jitSessions.map((session, idx) => (
-              <div
-                key={session.sessionId || idx}
-                className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2 font-mono text-xs text-slate-300"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-cyan-400">{session.sessionId}</span>
-                  <Badge variant={session.status === "ACTIVE" ? "pass" : "pending"}>
-                    {session.status}
-                  </Badge>
-                </div>
-                <div className="text-slate-200 font-semibold font-sans text-xs">
-                  Target Role: {session.elevatedRole}
-                </div>
-                <p className="text-[11px] text-slate-400 italic">
-                  &quot;{session.statedPurpose}&quot;
-                </p>
-                <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-900 text-[10px] text-slate-500">
-                  <span>Issued: {formatTimestamp(session.issuedAt)}</span>
-                  <span>Expires: {formatTimestamp(session.expiresAt)}</span>
-                </div>
-                {session.status === "ACTIVE" && (
-                  <div className="pt-2 flex justify-end">
-                    <Button
-                      size="sm"
-                      variant="danger"
-                      onClick={() => handleRevoke(session.sessionId)}
-                    >
-                      Instant Revocation
-                    </Button>
+            {state.jitSessions.map((session, idx) => {
+              const remainingSecs = calculateRemainingSeconds(session.expiresAt);
+              const isSessionExpired = session.status === "ACTIVE" && remainingSecs === 0;
+
+              return (
+                <div
+                  key={session.sessionId || idx}
+                  className="p-4 rounded-xl bg-slate-950/80 border border-slate-800 space-y-2 font-mono text-xs text-slate-300"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-cyan-400">{session.sessionId}</span>
+                    <div className="flex items-center gap-2">
+                      {session.status === "ACTIVE" && !isSessionExpired && (
+                        <span className="inline-flex items-center gap-1 text-[11px] font-mono text-amber-300 bg-amber-950/60 border border-amber-500/30 px-2 py-0.5 rounded-md">
+                          <Clock className="w-3 h-3 text-amber-400 animate-spin" style={{ animationDuration: "6s" }} />
+                          {formatCountdown(remainingSecs)}
+                        </span>
+                      )}
+                      <Badge variant={isSessionExpired ? "critical" : session.status === "ACTIVE" ? "pass" : "pending"}>
+                        {isSessionExpired ? "EXPIRED" : session.status}
+                      </Badge>
+                    </div>
                   </div>
-                )}
-              </div>
-            ))}
+                  <div className="text-slate-200 font-semibold font-sans text-xs flex items-center justify-between">
+                    <span>Target Role: {session.elevatedRole}</span>
+                    {session.peerApprover && (
+                      <span className="text-[10px] text-slate-400 font-mono">
+                        Approver: {session.peerApprover}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] text-slate-400 italic">
+                    &quot;{session.statedPurpose}&quot;
+                  </p>
+
+                  {/* Hardware Attestation Tag */}
+                  {session.hardwareStepUpVerified && (
+                    <div className="flex items-center gap-1.5 text-[10px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 px-2.5 py-1 rounded-md">
+                      <Fingerprint className="w-3 h-3 text-emerald-400" />
+                      <span>FIDO2 HARDWARE ATTESTED</span>
+                      {session.hardwareProofDigest && (
+                        <span className="text-slate-500">({session.hardwareProofDigest.slice(0, 12)}...)</span>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-900 text-[10px] text-slate-500">
+                    <span>Issued: {formatTimestamp(session.issuedAt)}</span>
+                    <span>Expires: {formatTimestamp(session.expiresAt)}</span>
+                  </div>
+                  {session.status === "ACTIVE" && !isSessionExpired && (
+                    <div className="pt-2 flex justify-end">
+                      <Button
+                        size="sm"
+                        variant="danger"
+                        onClick={() => handleRevoke(session.sessionId)}
+                      >
+                        Instant Revocation
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </Card>
 

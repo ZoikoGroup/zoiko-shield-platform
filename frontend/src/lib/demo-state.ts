@@ -20,6 +20,10 @@ import {
   AiSupplyChainReport,
   ComplianceDriftState,
   ExperienceStateEnvelope,
+  IncidentResponseRetainer,
+  IncidentWorkOrder,
+  WorkOrderConsumptionRecord,
+  IncidentLegalSensitiveRecord,
 } from "./types";
 import { useState, useEffect } from "react";
 
@@ -43,6 +47,10 @@ export interface DemoState {
   aiSupplyChain: AiSupplyChainReport;
   complianceDrift: ComplianceDriftState;
   experienceStatus: ExperienceStateEnvelope<any>;
+  incidentRetainers: IncidentResponseRetainer[];
+  incidentWorkOrders: IncidentWorkOrder[];
+  workOrderConsumption: WorkOrderConsumptionRecord[];
+  legalSensitiveRecords: IncidentLegalSensitiveRecord[];
 }
 
 const STATIC_TIMESTAMP = "2026-09-02T08:00:00.000Z";
@@ -537,6 +545,126 @@ export function getDefaultStaticState(): DemoState {
     aiSupplyChain: initialAiSupplyChain,
     complianceDrift: initialComplianceDrift,
     experienceStatus: initialExperienceStatus,
+    incidentRetainers: [
+      {
+        id: "ret-enterprise-annual-01",
+        tenantId: DEFAULT_TENANT.id,
+        environmentId: DEFAULT_TENANT.environmentName,
+        contractId: "contract-ent-ir-2026",
+        serviceObligationId: "ob-24x7-ir-sla-01",
+        priceBookId: "pb-tier1-enterprise-2026",
+        status: "ACTIVE",
+        termStart: "2026-09-01T00:00:00.000Z",
+        termEnd: "2027-09-01T00:00:00.000Z",
+        includedHours: 40,
+        consumedHours: 8,
+        remainingHours: 32,
+        includedServices: [
+          "24x7 Emergency Breach Response & Hotline",
+          "Forensic Triage & Root Cause Analysis",
+          "Threat Actor Quarantine & Containment",
+          "Executive Incident Briefing & Evidence Preservation",
+        ],
+        responseWindow: {
+          coverage: "24X7",
+          acknowledgementTargetMinutes: 30,
+          activationResponseMinutes: 60,
+        },
+        readinessObligations: {
+          namedContacts: { required: true, contacts: ["sarah.chen@acme.com", "ciso@acme.com"] },
+          accessProvisioning: { required: true, status: "VERIFIED" },
+          evidencePreservation: { required: true },
+          escalationPath: { required: true, path: "Tier-3 Emergency Hotline" },
+        },
+        exclusions: [
+          "General IT Administration & Routine Maintenance",
+          "Non-Contracted Legal Advice & Statutory Privilege Determination",
+          "Hardware Replacement & Physical Reconstruction",
+        ],
+        maximumResponseAuthority: "R2",
+        overagePolicy: "REQUIRE_APPROVAL",
+        overageCapHours: 20,
+        overageRate: 350,
+        warningThresholdPercent: 80,
+        rolloverPolicy: "CAPPED",
+        rolloverCapHours: 10,
+        legalServiceScope: {
+          included: false,
+          counselControlled: false,
+        },
+        createdAt: "2026-09-01T08:00:00.000Z",
+      },
+    ],
+    incidentWorkOrders: [
+      {
+        id: "wo-ransomware-triage-01",
+        tenantId: DEFAULT_TENANT.id,
+        environmentId: DEFAULT_TENANT.environmentName,
+        retainerId: "ret-enterprise-annual-01",
+        incidentReference: "INC-2026-8812",
+        activationReason: "Suspected Ransomware Lateral Movement in Staging VPC",
+        activationReference: "HOTLINE-AUTH-0911",
+        status: "ACTIVE",
+        responseAuthority: "R2",
+        includedHours: 40,
+        consumedHours: 8,
+        remainingHours: 32,
+        overageHours: 0,
+        forecastHours: 12,
+        warningThresholdPercent: 80,
+        overagePolicy: "REQUIRE_APPROVAL",
+        evidenceRefs: [
+          "evidence://vault/forensics-pcap-01",
+          "evidence://vault/edr-endpoint-isolate-01",
+        ],
+        thirdPartyCosts: 0,
+        emergencyReconciliationStatus: "NOT_REQUIRED",
+        customerContact: "Sarah Chen (Lead Analyst)",
+        createdAt: "2026-09-02T06:30:00.000Z",
+      },
+    ],
+    workOrderConsumption: [
+      {
+        id: "cons-01",
+        workOrderId: "wo-ransomware-triage-01",
+        tenantId: DEFAULT_TENANT.id,
+        hours: 5,
+        workDescription: "Memory dump extraction and C2 traffic isolation on staging domain controller",
+        evidenceReference: "evidence://vault/forensics-pcap-01",
+        loggedBy: "usr-sarah-chen-01",
+        occurredAt: "2026-09-02T07:00:00.000Z",
+        createdAt: "2026-09-02T07:15:00.000Z",
+      },
+      {
+        id: "cons-02",
+        workOrderId: "wo-ransomware-triage-01",
+        tenantId: DEFAULT_TENANT.id,
+        hours: 3,
+        workDescription: "Firewall egress quarantine verification and forensic timeline correlation",
+        evidenceReference: "evidence://vault/edr-endpoint-isolate-01",
+        loggedBy: "usr-sarah-chen-01",
+        occurredAt: "2026-09-02T07:30:00.000Z",
+        createdAt: "2026-09-02T07:45:00.000Z",
+      },
+    ],
+    legalSensitiveRecords: [
+      {
+        id: "legal-rec-01",
+        workOrderId: "wo-ransomware-triage-01",
+        tenantId: DEFAULT_TENANT.id,
+        environmentId: DEFAULT_TENANT.environmentName,
+        purpose: "REGULATOR_INQUIRY",
+        privilegeStatus: "NO_PRIVILEGE_CLAIMED",
+        notificationStatus: "NOT_APPLICABLE",
+        counselControlled: false,
+        contentReference: "evidence://vault/forensic-timeline-redacted",
+        accessReason: "Factual forensic timeline compilation for executive briefing",
+        noLegalAdviceWording:
+          "This work order does not establish legal privilege or provide a breach-notification, regulatory, or legal conclusion.",
+        recordedBy: "usr-sarah-chen-01",
+        createdAt: "2026-09-02T08:00:00.000Z",
+      },
+    ],
   };
 }
 
@@ -594,7 +722,11 @@ export function resetDemoState(): DemoState {
   return initial;
 }
 
-export function useDemoState(): [DemoState, (state: DemoState) => void, boolean] {
+export function useDemoState(): [
+  DemoState,
+  (state: DemoState | ((prev: DemoState) => DemoState)) => void,
+  boolean,
+] {
   const [state, setState] = useState<DemoState>(getDefaultStaticState);
   const [isHydrated, setIsHydrated] = useState(false);
 
@@ -622,9 +754,14 @@ export function useDemoState(): [DemoState, (state: DemoState) => void, boolean]
     };
   }, []);
 
-  const setDemoState = (newState: DemoState) => {
-    setState(newState);
-    saveDemoState(newState);
+  const setDemoState = (
+    newState: DemoState | ((prev: DemoState) => DemoState)
+  ) => {
+    setState((prev) => {
+      const resolved = typeof newState === "function" ? newState(prev) : newState;
+      saveDemoState(resolved);
+      return resolved;
+    });
   };
 
   return [state, setDemoState, isHydrated];
