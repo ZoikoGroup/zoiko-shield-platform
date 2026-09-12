@@ -35,6 +35,7 @@ jobs:
       JWT_SECRET: ci-only-jwt-secret
       WORKLOAD_IDENTITY_DEV_SECRET: ci-only-workload-secret
       DEV_SIMULATION_SIGNING_KEY: ci-only-simulation-secret
+      SUBJECT_KEY_WRAPPING_SECRET: ci-only-subject-key-wrapping-secret
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

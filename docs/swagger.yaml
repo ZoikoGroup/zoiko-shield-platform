@@ -1750,6 +1750,225 @@ components:
           type: boolean
       required:
         - success
+    WebauthnRegistrationOptions:
+      type: object
+      properties:
+        challenge:
+          type: string
+          description: Base64url single-use server-issued challenge.
+        rp:
+          type: object
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+          required: [id, name]
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+              description: Base64url-encoded principal ID.
+            name:
+              type: string
+            displayName:
+              type: string
+          required: [id, name, displayName]
+        pubKeyCredParams:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              alg:
+                type: integer
+            required: [type, alg]
+        excludeCredentials:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              id:
+                type: string
+            required: [type, id]
+        authenticatorSelection:
+          type: object
+          properties:
+            userVerification:
+              type: string
+            residentKey:
+              type: string
+          required: [userVerification, residentKey]
+        timeout:
+          type: integer
+        attestation:
+          type: string
+      required:
+        - challenge
+        - rp
+        - user
+        - pubKeyCredParams
+        - excludeCredentials
+        - authenticatorSelection
+        - timeout
+        - attestation
+    PostAuthPasskeysRegistrationRequest:
+      type: object
+      properties:
+        credentialId:
+          type: string
+          description: Base64url credential ID (PublicKeyCredential.id).
+        publicKeySpkiBase64:
+          type: string
+          description: Base64 SPKI DER public key from AuthenticatorAttestationResponse.getPublicKey().
+        clientDataJsonBase64:
+          type: string
+        label:
+          type: string
+        transports:
+          type: string
+      required:
+        - credentialId
+        - publicKeySpkiBase64
+        - clientDataJsonBase64
+    RegisteredPasskeySummary:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        credentialId:
+          type: string
+        label:
+          type: string
+          nullable: true
+        transports:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - id
+        - credentialId
+        - label
+        - transports
+        - createdAt
+        - lastUsedAt
+    DeleteAuthPasskeysResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+      required:
+        - success
+    WebauthnAuthenticationOptions:
+      type: object
+      properties:
+        challenge:
+          type: string
+        rpId:
+          type: string
+        allowCredentials:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              id:
+                type: string
+            required: [type, id]
+        userVerification:
+          type: string
+        timeout:
+          type: integer
+      required:
+        - challenge
+        - rpId
+        - allowCredentials
+        - userVerification
+        - timeout
+    PostAuthPasskeysAuthenticationOptionsRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+      required:
+        - email
+    PostAuthPasskeysAuthenticationRequest:
+      type: object
+      properties:
+        credentialId:
+          type: string
+        clientDataJsonBase64:
+          type: string
+        authenticatorDataBase64:
+          type: string
+        signatureBase64:
+          type: string
+        tenantId:
+          type: string
+          format: uuid
+        environmentId:
+          type: string
+          format: uuid
+      required:
+        - credentialId
+        - clientDataJsonBase64
+        - authenticatorDataBase64
+        - signatureBase64
+        - tenantId
+    PostAuthPasskeysStepUpRequest:
+      type: object
+      properties:
+        credentialId:
+          type: string
+        clientDataJsonBase64:
+          type: string
+        authenticatorDataBase64:
+          type: string
+        signatureBase64:
+          type: string
+        environmentId:
+          type: string
+          format: uuid
+      required:
+        - credentialId
+        - clientDataJsonBase64
+        - authenticatorDataBase64
+        - signatureBase64
+    GetInternalTenantResidencyResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            tenantId:
+              type: string
+              format: uuid
+            homeRegion:
+              type: string
+            dataResidencyRegion:
+              type: string
+            status:
+              type: string
+          required:
+            - tenantId
+            - homeRegion
+            - dataResidencyRegion
+            - status
+      required:
+        - data
     PostAuthPasswordRecoveryRequestRequest:
       type: object
       properties:
@@ -26351,6 +26570,266 @@ paths:
       description:
         Returns the authenticated principal and session claims resolved
         from the access token.
+  /api/v1/auth/passkeys/registration/options:
+    post:
+      tags:
+        - Auth
+      summary: Get WebAuthn passkey registration options
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        "201":
+          description: Get WebAuthn passkey registration options successful.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebauthnRegistrationOptions"
+        "401":
+          description: Authentication is missing or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      operationId: postAuthPasskeysRegistrationOptions
+      description:
+        Issues a single-use server challenge scoped to the authenticated
+        principal for navigator.credentials.create().
+  /api/v1/auth/passkeys/registration:
+    post:
+      tags:
+        - Auth
+      summary: Register a WebAuthn passkey
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostAuthPasskeysRegistrationRequest"
+      responses:
+        "201":
+          description: Register a WebAuthn passkey successful.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RegisteredPasskeySummary"
+        "400":
+          description: Request validation failed, or the challenge is unknown/expired/reused.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Authentication is missing or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      operationId: postAuthPasskeysRegistration
+      description:
+        Verifies the WebAuthn attestation against the previously issued
+        challenge and persists the credential's public key.
+  /api/v1/auth/passkeys:
+    get:
+      tags:
+        - Auth
+      summary: List registered passkeys
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        "200":
+          description: List registered passkeys successful.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RegisteredPasskeySummary"
+        "401":
+          description: Authentication is missing or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      operationId: getAuthPasskeys
+      description: Lists the authenticated principal's non-revoked passkeys.
+  /api/v1/auth/passkeys/{id}:
+    delete:
+      tags:
+        - Auth
+      summary: Revoke a passkey
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Passkey record ID to revoke.
+      responses:
+        "200":
+          description: Revoke a passkey successful.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteAuthPasskeysResponse"
+        "401":
+          description: Authentication is missing or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Passkey not found for this principal.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      operationId: deleteAuthPasskeysById
+      description: Revokes one of the authenticated principal's passkeys.
+  /api/v1/auth/passkeys/authentication/options:
+    post:
+      tags:
+        - Auth
+      summary: Get WebAuthn passkey sign-in options
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostAuthPasskeysAuthenticationOptionsRequest"
+      responses:
+        "201":
+          description: Get WebAuthn passkey sign-in options successful.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebauthnAuthenticationOptions"
+        "400":
+          description: Request validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      operationId: postAuthPasskeysAuthenticationOptions
+      description:
+        Issues a single-use challenge for passkey sign-in. A challenge is
+        issued even for an unknown email so the response cannot be used to
+        enumerate registered accounts.
+  /api/v1/auth/passkeys/authentication:
+    post:
+      tags:
+        - Auth
+      summary: Login with a WebAuthn passkey
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostAuthPasskeysAuthenticationRequest"
+      responses:
+        "201":
+          description: Login with a WebAuthn passkey successful.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostAuthLoginResponse"
+          headers:
+            Set-Cookie:
+              description:
+                httpOnly authentication, refresh, or recovery cookie set/cleared
+                by this operation.
+              schema:
+                type: string
+        "401":
+          description: Invalid, unknown, or replayed passkey assertion.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      operationId: postAuthPasskeysAuthentication
+      description:
+        Verifies a WebAuthn assertion and issues a tenant-bound session with
+        PASSKEY assurance. Login has no session to inherit a tenant from, so
+        the caller must name one explicitly.
+  /api/v1/auth/passkeys/step-up/options:
+    post:
+      tags:
+        - Auth
+      summary: Get WebAuthn step-up options
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        "201":
+          description: Get WebAuthn step-up options successful.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebauthnAuthenticationOptions"
+        "400":
+          description: No passkey is registered for this principal.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Authentication is missing or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      operationId: postAuthPasskeysStepUpOptions
+      description:
+        Issues a single-use challenge to re-assert a passkey on the current
+        session, raising its assurance to PASSKEY.
+  /api/v1/auth/passkeys/step-up:
+    post:
+      tags:
+        - Auth
+      summary: Step up the current session with a WebAuthn passkey
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PostAuthPasskeysStepUpRequest"
+      responses:
+        "201":
+          description: Step up the current session with a WebAuthn passkey successful.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostAuthLoginResponse"
+          headers:
+            Set-Cookie:
+              description:
+                httpOnly authentication, refresh, or recovery cookie set/cleared
+                by this operation.
+              schema:
+                type: string
+        "401":
+          description: Authentication is missing, or the passkey assertion is invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      operationId: postAuthPasskeysStepUp
+      description:
+        Re-asserts a passkey on the current session, raising it to PASSKEY
+        assurance so @RequireAssurance-gated endpoints unlock.
   /api/v1/commercial/group-accounts:
     post:
       tags: [Commercial]
@@ -30155,6 +30634,47 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/PostInternalCheckpointsRequest"
+  /internal/v1/tenants/{tenantId}/residency:
+    get:
+      tags:
+        - InternalMicroservices
+      summary: Get a tenant's committed data-residency region (Shield Core)
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique tenant ID identifying the target resource.
+      responses:
+        "200":
+          description: Get a tenant's committed data-residency region (Shield Core) successful.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetInternalTenantResidencyResponse"
+        "401":
+          description: Authentication is missing or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Tenant not found.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      operationId: getInternalTenantsResidency
+      description:
+        shield-ingest's only window into the tenant record. Residency is
+        decided once at onboarding and lives in shield-core's tenant table,
+        which a satellite cannot read locally and must not infer from a
+        client-supplied request field. Restricted to trusted services using
+        x-internal-service-token.
   /api/v1/alerts/{alertId}:
     get:
       tags:
