@@ -191,7 +191,15 @@ export default function ControlsPage() {
                     {ctrl.controlName}
                   </h3>
                 </div>
-                <Badge variant={ctrl.result === "PASS" ? "pass" : "fail"}>
+                <Badge
+                  variant={
+                    ctrl.result === "PASS"
+                      ? "pass"
+                      : ctrl.result === "PENDING"
+                        ? "pending"
+                        : "fail"
+                  }
+                >
                   {ctrl.result}
                 </Badge>
               </div>

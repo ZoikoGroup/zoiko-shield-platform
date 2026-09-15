@@ -2,9 +2,17 @@ export type ConnectorProviderType =
   | 'generic-webhook'
   | 'generic-syslog'
   | 'microsoft-entra'
+  | 'okta-identity'
   | 'aws-cloudtrail'
+  | 'aws-guardduty'
   | 'azure-monitor'
-  | 'crowdstrike-edr';
+  | 'gcp-scc'
+  | 'crowdstrike-edr'
+  | 'sentinelone-edr'
+  | 'palo-alto-cortex-xdr'
+  | 'microsoft-defender-edr'
+  | 'snyk-vulnerability'
+  | 'jira-ticketing';
 
 export type ControlFrameworkType =
   | 'SOC2_TYPE2'

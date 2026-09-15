@@ -152,15 +152,6 @@ export default function ActionsAndFreezePage() {
         />
       )}
 
-      {rollbackLoading && (
-        <RecoveryState
-          title="Executing Automated Compensation Rollback"
-          message="Reverting modified session credentials and restoring pre-incident state diff."
-          rollbackStage="SOAR Compensating Action Adapter"
-          progressPercent={65}
-        />
-      )}
-
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Emergency Freeze Controller */}
         <div className="space-y-6">

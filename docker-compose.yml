@@ -169,6 +169,8 @@ services:
         condition: service_healthy
       redpanda:
         condition: service_healthy
+      minio:
+        condition: service_healthy
       shield-core-migrate:
         condition: service_completed_successfully
     environment:
@@ -177,6 +179,9 @@ services:
       SHIELD_INGEST_PORT: 3002
       DATABASE_URL: ${DOCKER_DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
       KAFKA_BROKERS: redpanda:9092
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER:-shield}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-shield12345}
       SHIELD_CORE_BASE_URL: http://shield-core:3001
       WORKLOAD_IDENTITY_DEV_SECRET: ${WORKLOAD_IDENTITY_DEV_SECRET:-local-workload-identity-change-me}
       WEBHOOK_HMAC_SECRETS: ${WEBHOOK_HMAC_SECRETS:-}

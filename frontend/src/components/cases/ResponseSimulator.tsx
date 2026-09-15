@@ -37,6 +37,8 @@ export const ResponseSimulator: React.FC<ResponseSimulatorProps> = ({
   const [isRecordingDecision, setIsRecordingDecision] = useState(false);
   const [isSimulating, setIsSimulating] = useState(false);
   const [isOrgFrozen, setIsOrgFrozen] = useState(false);
+  const [activeFreezeId, setActiveFreezeId] = useState<string | null>(null);
+  const [isFreezing, setIsFreezing] = useState(false);
 
   const handleRecordDecision = async () => {
     setIsRecordingDecision(true);
@@ -69,8 +71,26 @@ export const ResponseSimulator: React.FC<ResponseSimulatorProps> = ({
     }
   };
 
-  const handleToggleFreeze = () => {
-    setIsOrgFrozen((prev) => !prev);
+  const handleToggleFreeze = async () => {
+    setIsFreezing(true);
+    try {
+      if (isOrgFrozen && activeFreezeId) {
+        await ZoikoShieldApiClient.releaseFreezeSOAR(activeFreezeId);
+        setIsOrgFrozen(false);
+        setActiveFreezeId(null);
+      } else {
+        const result = await ZoikoShieldApiClient.freezeSOAR(
+          "TENANT",
+          `Emergency freeze initiated from case ${currentCase.id} response workspace`
+        );
+        setIsOrgFrozen(true);
+        setActiveFreezeId(result.freezeId);
+      }
+    } catch (err) {
+      console.error("Freeze toggle error:", err);
+    } finally {
+      setIsFreezing(false);
+    }
   };
 
   const hasDecision = !!currentCase.decision;
@@ -97,6 +117,7 @@ export const ResponseSimulator: React.FC<ResponseSimulatorProps> = ({
               size="sm"
               variant={isOrgFrozen ? "danger" : "outline"}
               onClick={() => handleToggleFreeze()}
+              isLoading={isFreezing}
               className="text-[10px] font-mono h-7"
             >
               <AlertOctagon className="w-3 h-3 text-rose-400" />

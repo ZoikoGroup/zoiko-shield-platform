@@ -22,8 +22,6 @@ import {
 } from "lucide-react";
 import {
   LoadingState,
-  RecoveryState,
-  DegradedState,
   UnavailableState,
 } from "@/components/states/mandatory-ui-states";
 
@@ -168,6 +166,25 @@ export default function RedTeamSimulatorPage() {
           </div>
         </div>
       </div>
+
+      {isSimulating && (
+        <LoadingState
+          title="Injecting Synthetic Attack Telemetry..."
+          message={`Emitting staged adversary events for scenario "${scenarioType}" via connector ${connectorId}.`}
+          regionalCell="us-east-1"
+        />
+      )}
+
+      {simError && !isSimulating && (
+        <UnavailableState
+          title="Synthetic Telemetry Injection Failed"
+          message={simError}
+          failoverRegion="eu-central-1"
+          rtoTargetMinutes={0.5}
+          rpoTargetMinutes={0}
+          retryAction={() => setSimError(null)}
+        />
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Scenario Parameters */}
