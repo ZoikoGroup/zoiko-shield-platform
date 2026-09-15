@@ -9,6 +9,7 @@ import {
   requireTenantId,
 } from '../security/tenant-context';
 import { OutboxService } from '../outbox/outbox.service';
+import { ObjectStorageService } from './object-storage.service';
 import crypto from 'crypto';
 
 export class CreateEvidenceDto {
@@ -38,6 +39,7 @@ export class EvidenceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly outbox: OutboxService,
+    private readonly objectStorage: ObjectStorageService,
   ) {}
 
   /**
@@ -60,6 +62,15 @@ export class EvidenceService {
       .digest('hex');
 
     const evidenceId = `ev-${crypto.randomUUID()}`;
+    const objectKey = `${tenantId}/${evidenceId}`;
+
+    // Store the actual bytes before writing any metadata row that points at
+    // them, so a DB row's vault_reference never dangles at a missing object.
+    await this.objectStorage.putObject(
+      objectKey,
+      Buffer.from(dto.rawContent, 'utf8'),
+      'application/json',
+    );
 
     // dto.caseId references Case, which is tenant-scoped - verify it exists
     // for this tenant before writing anything, so a bad reference fails with
@@ -98,7 +109,7 @@ export class EvidenceService {
             : undefined,
           content_hash: contentHash,
           size_bytes: Buffer.byteLength(dto.rawContent, 'utf8'),
-          vault_reference: `s3://evidence-vault/${tenantId}/${evidenceId}.json`,
+          vault_reference: objectKey,
         },
       }),
     ];
@@ -163,17 +174,48 @@ export class EvidenceService {
   }
 
   /**
-   * Verify cryptographic SHA-256 integrity hash of stored evidence
+   * Verify cryptographic SHA-256 integrity hash of stored evidence.
+   * Re-reads the actual stored bytes from object storage and re-hashes
+   * them - a stale content_hash blindly echoed back would never catch
+   * tamper/corruption, and integrity_state must reflect the outcome or
+   * every subsequent read of the record keeps showing PENDING forever.
    */
   async verifyEvidenceIntegrity(tenantId: string, id: string) {
     const record = await this.getEvidenceById(tenantId, id);
+    if (!record.vault_reference) {
+      throw new BadRequestException(
+        `Evidence '${id}' has no stored object to verify against`,
+      );
+    }
+
+    let bytes: Buffer;
+    try {
+      bytes = await this.objectStorage.getObject(record.vault_reference);
+    } catch (err) {
+      throw new BadRequestException(
+        `Evidence '${id}' has no readable stored object at '${record.vault_reference}' - it may predate persisted object storage`,
+      );
+    }
+    const recomputedHash = crypto
+      .createHash('sha256')
+      .update(bytes)
+      .digest('hex');
+    const isIntegrityValid = recomputedHash === record.content_hash;
+    const integrityState = isIntegrityValid ? 'VERIFIED' : 'FAILED';
+    const verifiedAt = new Date();
+
+    await (this.prisma as any).evidenceRecord.update({
+      where: { id },
+      data: { integrity_state: integrityState },
+    });
+
     return {
       evidenceId: id,
       storedHash: record.content_hash,
-      recomputedHash: record.content_hash,
-      isIntegrityValid: true,
-      integrityState: 'VERIFIED',
-      verifiedAt: new Date(),
+      recomputedHash,
+      isIntegrityValid,
+      integrityState,
+      verifiedAt,
     };
   }
 }

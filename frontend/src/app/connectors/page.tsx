@@ -383,19 +383,23 @@ export default function ConnectorsPage() {
               <label className="text-xs font-mono text-slate-300">Provider Type:</label>
               <select
                 value={provider}
-                onChange={(e) => setProvider(e.target.value as any)}
+                onChange={(e) => setProvider(e.target.value as ConnectorProviderType)}
                 className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
               >
                 <option value="generic-webhook">Generic Webhook / JSON</option>
                 <option value="generic-syslog">Generic Syslog / RFC 5424</option>
                 <option value="microsoft-entra">Microsoft Entra ID / 365</option>
+                <option value="okta-identity">Okta Identity Cloud</option>
                 <option value="aws-cloudtrail">AWS CloudTrail Audit</option>
                 <option value="aws-guardduty">AWS GuardDuty Findings</option>
+                <option value="azure-monitor">Azure Monitor / Sentinel</option>
+                <option value="gcp-scc">GCP Security Command Center</option>
                 <option value="crowdstrike-edr">CrowdStrike Falcon EDR</option>
                 <option value="sentinelone-edr">SentinelOne Singularity EDR</option>
-                <option value="okta-identity">Okta Identity Cloud</option>
                 <option value="palo-alto-cortex-xdr">Palo Alto Cortex XDR</option>
-                <option value="azure-monitor">Azure Monitor / Sentinel</option>
+                <option value="microsoft-defender-edr">Microsoft Defender for Endpoint</option>
+                <option value="snyk-vulnerability">Snyk Vulnerability Findings</option>
+                <option value="jira-ticketing">Jira Ticketing</option>
               </select>
             </div>
 

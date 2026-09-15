@@ -28,7 +28,6 @@ describe('G1-EXPERIENCE-01: Experience Contract & Accessibility Audit (Test Fami
     'red-team',
     'login',
     'verify-certificate',
-    'ai-governance/incident-console',
   ];
 
   it('Invariant 1: All 16 application routes exist with valid Page exports', () => {

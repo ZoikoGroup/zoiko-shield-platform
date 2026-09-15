@@ -36,8 +36,9 @@ export default function CaseWorkspacePage() {
     ZoikoShieldApiClient.getCases().catch(() => {/* backend offline — demo state used */});
   }, []);
 
-  const currentCase: Case | undefined =
-    state.cases.find((c) => c.id === caseId) || state.cases[0];
+  const currentCase: Case | undefined = state.cases.find(
+    (c) => c.id === caseId
+  );
 
   if (!currentCase) {
     return (

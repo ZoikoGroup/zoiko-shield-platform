@@ -2,15 +2,19 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { EvidenceService } from './evidence.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { OutboxService } from '../outbox/outbox.service';
+import { ObjectStorageService } from './object-storage.service';
+import crypto from 'crypto';
 
 describe('EvidenceService in shield-ingest (Decoupled)', () => {
   let service: EvidenceService;
   let prismaMock: any;
+  let objectStorageMock: any;
 
   beforeEach(async () => {
     prismaMock = {
       evidenceRecord: {
         create: jest.fn(),
+        update: jest.fn(),
         findFirst: jest.fn(),
         findMany: jest.fn(),
       },
@@ -29,11 +33,17 @@ describe('EvidenceService in shield-ingest (Decoupled)', () => {
       $transaction: jest.fn((ops: any[]) => Promise.all(ops)),
     };
 
+    objectStorageMock = {
+      putObject: jest.fn().mockResolvedValue(undefined),
+      getObject: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         EvidenceService,
         OutboxService,
         { provide: PrismaService, useValue: prismaMock },
+        { provide: ObjectStorageService, useValue: objectStorageMock },
       ],
     }).compile();
 
@@ -67,9 +77,14 @@ describe('EvidenceService in shield-ingest (Decoupled)', () => {
       expect.objectContaining({
         data: expect.objectContaining({
           size_bytes: expect.any(Number),
-          vault_reference: expect.stringContaining('s3://evidence-vault/'),
+          vault_reference: expect.stringMatching(/^tenant-1\//),
         }),
       }),
+    );
+    expect(objectStorageMock.putObject).toHaveBeenCalledWith(
+      expect.stringMatching(/^tenant-1\//),
+      Buffer.from('User auth failure at 2026-08-10T12:00:00Z', 'utf8'),
+      'application/json',
     );
     const createdData = prismaMock.evidenceRecord.create.mock.calls[0][0].data;
     expect(createdData).not.toHaveProperty('content_size_bytes');
@@ -133,18 +148,72 @@ describe('EvidenceService in shield-ingest (Decoupled)', () => {
     expect(prismaMock.caseEvidence.create).not.toHaveBeenCalled();
   });
 
-  it('verifies stored cryptographic hash', async () => {
+  it('verifies stored cryptographic hash against the actual stored bytes and persists the outcome', async () => {
+    const storedBytes = Buffer.from('User auth failure at 2026-08-10T12:00:00Z');
+    const storedHash = crypto
+      .createHash('sha256')
+      .update(storedBytes)
+      .digest('hex');
     prismaMock.evidenceRecord.findFirst.mockResolvedValue({
       id: 'ev-1',
       tenant_id: 'tenant-1',
-      content_hash: 'abc123hash',
+      content_hash: storedHash,
+      vault_reference: 'tenant-1/ev-1',
     });
+    objectStorageMock.getObject.mockResolvedValue(storedBytes);
+    prismaMock.evidenceRecord.update.mockResolvedValue({});
 
     const verifyResult = await service.verifyEvidenceIntegrity(
       'tenant-1',
       'ev-1',
     );
     expect(verifyResult.isIntegrityValid).toBe(true);
-    expect(verifyResult.storedHash).toBe('abc123hash');
+    expect(verifyResult.integrityState).toBe('VERIFIED');
+    expect(verifyResult.storedHash).toBe(storedHash);
+    expect(verifyResult.recomputedHash).toBe(storedHash);
+    expect(objectStorageMock.getObject).toHaveBeenCalledWith('tenant-1/ev-1');
+    expect(prismaMock.evidenceRecord.update).toHaveBeenCalledWith({
+      where: { id: 'ev-1' },
+      data: { integrity_state: 'VERIFIED' },
+    });
+  });
+
+  it('rejects with a clean error when the stored object cannot be read (e.g. a pre-migration legacy vault_reference)', async () => {
+    prismaMock.evidenceRecord.findFirst.mockResolvedValue({
+      id: 'ev-1',
+      tenant_id: 'tenant-1',
+      content_hash: 'some-hash',
+      vault_reference: 's3://evidence-vault/tenant-1/ev-1.json',
+    });
+    objectStorageMock.getObject.mockRejectedValue(
+      new Error('XMinioInvalidObjectName: Object name contains unsupported characters.'),
+    );
+
+    await expect(
+      service.verifyEvidenceIntegrity('tenant-1', 'ev-1'),
+    ).rejects.toThrow(/no readable stored object/);
+    expect(prismaMock.evidenceRecord.update).not.toHaveBeenCalled();
+  });
+
+  it('flags a hash mismatch as FAILED instead of silently reporting success', async () => {
+    prismaMock.evidenceRecord.findFirst.mockResolvedValue({
+      id: 'ev-1',
+      tenant_id: 'tenant-1',
+      content_hash: 'expected-hash-that-will-not-match',
+      vault_reference: 'tenant-1/ev-1',
+    });
+    objectStorageMock.getObject.mockResolvedValue(Buffer.from('tampered content'));
+    prismaMock.evidenceRecord.update.mockResolvedValue({});
+
+    const verifyResult = await service.verifyEvidenceIntegrity(
+      'tenant-1',
+      'ev-1',
+    );
+    expect(verifyResult.isIntegrityValid).toBe(false);
+    expect(verifyResult.integrityState).toBe('FAILED');
+    expect(prismaMock.evidenceRecord.update).toHaveBeenCalledWith({
+      where: { id: 'ev-1' },
+      data: { integrity_state: 'FAILED' },
+    });
   });
 });
