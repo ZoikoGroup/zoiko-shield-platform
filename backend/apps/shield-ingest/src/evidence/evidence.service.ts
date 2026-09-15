@@ -188,7 +188,14 @@ export class EvidenceService {
       );
     }
 
-    const bytes = await this.objectStorage.getObject(record.vault_reference);
+    let bytes: Buffer;
+    try {
+      bytes = await this.objectStorage.getObject(record.vault_reference);
+    } catch (err) {
+      throw new BadRequestException(
+        `Evidence '${id}' has no readable stored object at '${record.vault_reference}' - it may predate persisted object storage`,
+      );
+    }
     const recomputedHash = crypto
       .createHash('sha256')
       .update(bytes)

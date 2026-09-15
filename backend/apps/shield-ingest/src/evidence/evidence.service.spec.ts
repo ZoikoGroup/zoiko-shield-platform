@@ -178,6 +178,23 @@ describe('EvidenceService in shield-ingest (Decoupled)', () => {
     });
   });
 
+  it('rejects with a clean error when the stored object cannot be read (e.g. a pre-migration legacy vault_reference)', async () => {
+    prismaMock.evidenceRecord.findFirst.mockResolvedValue({
+      id: 'ev-1',
+      tenant_id: 'tenant-1',
+      content_hash: 'some-hash',
+      vault_reference: 's3://evidence-vault/tenant-1/ev-1.json',
+    });
+    objectStorageMock.getObject.mockRejectedValue(
+      new Error('XMinioInvalidObjectName: Object name contains unsupported characters.'),
+    );
+
+    await expect(
+      service.verifyEvidenceIntegrity('tenant-1', 'ev-1'),
+    ).rejects.toThrow(/no readable stored object/);
+    expect(prismaMock.evidenceRecord.update).not.toHaveBeenCalled();
+  });
+
   it('flags a hash mismatch as FAILED instead of silently reporting success', async () => {
     prismaMock.evidenceRecord.findFirst.mockResolvedValue({
       id: 'ev-1',
