@@ -5,7 +5,10 @@ function makePrisma(rule: any, records: any[]) {
     expectedEvidenceRule: {
       findUniqueOrThrow: jest.fn().mockResolvedValue(rule),
     },
-    evidenceRecord: { findMany: jest.fn().mockResolvedValue(records) },
+    evidenceRecord: {
+      findMany: jest.fn().mockResolvedValue(records),
+      updateMany: jest.fn().mockResolvedValue({ count: records.length }),
+    },
     expectedEvidenceResult: { create: jest.fn(async ({ data }: any) => data) },
   } as any;
 }
@@ -88,5 +91,37 @@ describe('EvidenceMatcherService', () => {
       periodEnd: new Date('2026-01-31'),
     });
     expect(coverageState).toBe('PARTIAL');
+  });
+
+  it('writes the reconciled coverage back onto the matched evidence records', async () => {
+    const prisma = makePrisma({ ...baseRule, minimum_coverage: 3 }, [
+      { id: 'e1', freshness_state: 'CURRENT', integrity_state: 'VERIFIED' },
+      { id: 'e2', freshness_state: 'CURRENT', integrity_state: 'VERIFIED' },
+    ]);
+    const service = new EvidenceMatcherService(prisma);
+    await service.match({
+      tenantId: 't1',
+      ruleId: 'rule1',
+      periodStart: new Date('2026-01-01'),
+      periodEnd: new Date('2026-01-31'),
+    });
+
+    // Without this the field stays 'UNKNOWN' for the record's whole life.
+    expect(prisma.evidenceRecord.updateMany).toHaveBeenCalledWith({
+      where: { id: { in: ['e1', 'e2'] } },
+      data: { completeness_state: 'PARTIAL' },
+    });
+  });
+
+  it('touches no evidence records when nothing matched', async () => {
+    const prisma = makePrisma(baseRule, []);
+    const service = new EvidenceMatcherService(prisma);
+    await service.match({
+      tenantId: 't1',
+      ruleId: 'rule1',
+      periodStart: new Date('2026-01-01'),
+      periodEnd: new Date('2026-01-31'),
+    });
+    expect(prisma.evidenceRecord.updateMany).not.toHaveBeenCalled();
   });
 });

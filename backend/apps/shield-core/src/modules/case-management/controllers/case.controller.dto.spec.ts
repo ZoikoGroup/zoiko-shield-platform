@@ -1,6 +1,9 @@
 import { ValidationPipe } from '@nestjs/common';
 import {
   CreateCaseDto,
+  UpdateCaseDto,
+  AssignCaseDto,
+  LinkEvidenceDto,
   TransitionCaseDto,
   LinkAlertDto,
   AddNoteDto,
@@ -42,6 +45,50 @@ describe('CaseController DTOs survive the global whitelist ValidationPipe', () =
     );
     expect(result.alertId).toBe('alert-1');
     expect(result.title).toBe('Escalated');
+  });
+
+  it('CreateCaseDto keeps the standalone-case fields when no alertId is given', async () => {
+    const result = await pipe.transform(
+      {
+        title: 'Manual investigation',
+        environmentId: 'env-1',
+        region: 'us-east-1',
+        severity: 'CRITICAL',
+        priority: 'P1',
+      },
+      metadataFor(CreateCaseDto),
+    );
+    expect(result.title).toBe('Manual investigation');
+    expect(result.environmentId).toBe('env-1');
+    expect(result.region).toBe('us-east-1');
+    expect(result.severity).toBe('CRITICAL');
+    expect(result.priority).toBe('P1');
+  });
+
+  it('UpdateCaseDto keeps the updatable fields', async () => {
+    const result = await pipe.transform(
+      { title: 'Retitled', severity: 'MEDIUM', queue: 'TIER2' },
+      metadataFor(UpdateCaseDto),
+    );
+    expect(result.title).toBe('Retitled');
+    expect(result.severity).toBe('MEDIUM');
+    expect(result.queue).toBe('TIER2');
+  });
+
+  it('AssignCaseDto keeps ownerId', async () => {
+    const result = await pipe.transform(
+      { ownerId: 'analyst-2' },
+      metadataFor(AssignCaseDto),
+    );
+    expect(result.ownerId).toBe('analyst-2');
+  });
+
+  it('LinkEvidenceDto keeps evidenceId', async () => {
+    const result = await pipe.transform(
+      { evidenceId: 'ev-1' },
+      metadataFor(LinkEvidenceDto),
+    );
+    expect(result.evidenceId).toBe('ev-1');
   });
 
   it('LinkAlertDto keeps alertId and relationshipType', async () => {

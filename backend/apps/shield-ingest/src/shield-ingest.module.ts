@@ -89,9 +89,6 @@ import { MeteringController } from './metering/metering.controller';
 import { MeteringService } from './metering/metering.service';
 import { UsageThresholdDispatcherService } from './metering/usage-threshold-dispatcher.service';
 
-import { CaseManagementController } from './cases/case-management.controller';
-import { CaseManagementService } from './cases/case-management.service';
-
 import { HumanDecisionController } from './decisions/human-decision.controller';
 import { HumanDecisionService } from './decisions/human-decision.service';
 
@@ -135,7 +132,6 @@ import { ConnectorPermissionDriftService } from './drift/connector-permission-dr
     DetectionEngineController,
     AlertGeneratorController,
     MeteringController,
-    CaseManagementController,
     HumanDecisionController,
     DashboardController,
     EvidenceController,
@@ -201,7 +197,6 @@ import { ConnectorPermissionDriftService } from './drift/connector-permission-dr
     AlertGeneratorService,
     MeteringService,
     UsageThresholdDispatcherService,
-    CaseManagementService,
     HumanDecisionService,
     DashboardService,
     ReplayEngineService,

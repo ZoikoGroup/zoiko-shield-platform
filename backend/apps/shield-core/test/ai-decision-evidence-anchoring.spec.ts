@@ -76,6 +76,11 @@ describe('AI Decision Evidence Anchoring & Merkle Verification (3-Service Integr
   };
 
   const mockPrismaService: any = {
+    // Read outside any transaction by EvidenceAutoCreationService when it
+    // resolves a case's SOURCE evidence to use as the lineage parent.
+    caseEvidence: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
     $transaction: jest.fn(async (callback: any) => {
       const txMock: any = {
         $executeRawUnsafe: jest.fn().mockResolvedValue(1),

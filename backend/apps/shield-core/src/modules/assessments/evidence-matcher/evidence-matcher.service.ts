@@ -111,6 +111,19 @@ export class EvidenceMatcherService {
       },
     });
 
+    // This reconciliation is the only place that knows whether a record was
+    // part of a complete or a short expected population, so push the verdict
+    // back onto the records themselves. Without it EvidenceRecord.completeness_state
+    // stays 'UNKNOWN' for the record's entire life — a field that reads like an
+    // assurance signal but never carries one (spec §09: completeness cannot be
+    // inferred from the absence of errors).
+    if (observedCount > 0) {
+      await this.prisma.evidenceRecord.updateMany({
+        where: { id: { in: records.map((record) => record.id) } },
+        data: { completeness_state: coverageState },
+      });
+    }
+
     return { result, records, coverageState, freshnessState, integrityState };
   }
 }

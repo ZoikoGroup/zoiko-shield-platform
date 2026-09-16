@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -56,8 +57,11 @@ const DECISION_TYPES: DecisionType[] = [
 ];
 
 export class CreateCaseDto {
+  // Either alertId (escalate an existing alert) or title+environmentId+region
+  // (a bare, standalone case) must be supplied - see CaseController.create.
+  @IsOptional()
   @IsString()
-  alertId!: string;
+  alertId?: string;
 
   @IsOptional()
   @IsString()
@@ -66,6 +70,62 @@ export class CreateCaseDto {
   @IsOptional()
   @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  environmentId?: string;
+
+  @IsOptional()
+  @IsString()
+  region?: string;
+
+  @IsOptional()
+  @IsIn(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'])
+  severity?: string;
+
+  @IsOptional()
+  @IsIn(['P1', 'P2', 'P3', 'P4'])
+  priority?: string;
+
+  @IsOptional()
+  @IsString()
+  actorId?: string;
+}
+
+export class UpdateCaseDto {
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsIn(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'])
+  severity?: string;
+
+  @IsOptional()
+  @IsIn(['P1', 'P2', 'P3', 'P4'])
+  priority?: string;
+
+  @IsOptional()
+  @IsString()
+  queue?: string;
+}
+
+export class AssignCaseDto {
+  @IsString()
+  ownerId!: string;
+
+  @IsOptional()
+  @IsString()
+  actorId?: string;
+}
+
+export class LinkEvidenceDto {
+  @IsString()
+  evidenceId!: string;
 
   @IsOptional()
   @IsString()
@@ -173,12 +233,32 @@ export class CaseController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     const tenantId = this.resolveTenantId(headerTenantId);
-    const createdCase = await this.caseService.createFromAlert({
+
+    if (dto.alertId) {
+      const createdCase = await this.caseService.createFromAlert({
+        tenantId,
+        alertId: dto.alertId,
+        actorId: user.id,
+        title: dto.title,
+        description: dto.description,
+      });
+      return { statusCode: HttpStatus.CREATED, data: createdCase };
+    }
+
+    if (!dto.title || !dto.environmentId || !dto.region) {
+      throw new BadRequestException(
+        'A case requires either alertId, or title + environmentId + region for a standalone case',
+      );
+    }
+    const createdCase = await this.caseService.createStandalone({
       tenantId,
-      alertId: dto.alertId,
-      actorId: user.id,
+      environmentId: dto.environmentId,
+      region: dto.region,
       title: dto.title,
       description: dto.description,
+      severity: dto.severity,
+      priority: dto.priority,
+      actorId: user.id,
     });
     return { statusCode: HttpStatus.CREATED, data: createdCase };
   }
@@ -198,10 +278,36 @@ export class CaseController {
   async update(
     @Headers('x-tenant-id') headerTenantId: string,
     @Param('caseId') caseId: string,
+    @Body() dto: UpdateCaseDto,
   ) {
     const tenantId = this.resolveTenantId(headerTenantId);
-    const caseRow = await this.caseService.getById(tenantId, caseId);
+    const caseRow = await this.caseService.update({
+      tenantId,
+      caseId,
+      title: dto.title,
+      description: dto.description,
+      severity: dto.severity,
+      priority: dto.priority,
+      queue: dto.queue,
+    });
     return { statusCode: HttpStatus.OK, data: caseRow };
+  }
+
+  @Post(':caseId/assign')
+  async assign(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+    @Body() dto: AssignCaseDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = this.resolveTenantId(headerTenantId);
+    const updated = await this.caseService.assign({
+      tenantId,
+      caseId,
+      ownerId: dto.ownerId,
+      actorId: dto.actorId ?? user.id,
+    });
+    return { statusCode: HttpStatus.OK, data: updated };
   }
 
   @Post(':caseId/transition')
@@ -288,6 +394,23 @@ export class CaseController {
     await this.caseService.assertTenantOwnership(tenantId, caseId);
     const evidence = await this.caseService.getEvidenceLinks(tenantId, caseId);
     return { statusCode: HttpStatus.OK, data: evidence };
+  }
+
+  @Post(':caseId/evidence')
+  async linkEvidence(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+    @Body() dto: LinkEvidenceDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = this.resolveTenantId(headerTenantId);
+    const link = await this.caseService.linkEvidence({
+      tenantId,
+      caseId,
+      evidenceId: dto.evidenceId,
+      actorId: dto.actorId ?? user.id,
+    });
+    return { statusCode: HttpStatus.CREATED, data: link };
   }
 
   @Post(':caseId/decisions')
