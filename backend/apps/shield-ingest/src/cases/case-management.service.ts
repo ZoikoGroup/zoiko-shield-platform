@@ -281,7 +281,11 @@ export class CaseManagementService {
   }
 
   /**
-   * Link evidence record to case timeline
+   * Link an existing evidence record to a case: creates the actual
+   * CaseEvidence relation (which GET /api/v1/evidence?caseId= and the
+   * evidence ledger UI both query) alongside the timeline log entry -
+   * writing only the timeline entry looked like a real link but left the
+   * evidence permanently invisible to every case-scoped evidence query.
    */
   async linkEvidence(
     tenantId: string,
@@ -299,17 +303,29 @@ export class CaseManagementService {
       throw new NotFoundException(`Evidence '${evidenceId}' not found`);
     }
 
-    return this.timelineDelegate.create({
-      data: {
-        tenant_id: caseRecord.tenant_id,
-        case_id: caseId,
-        entry_type: 'EVIDENCE_LINKED',
-        actor_id: actorId,
-        title: 'Evidence Linked',
-        summary: `Linked evidence '${evidenceId}'`,
-        evidence_ref: evidenceId,
-      },
-    });
+    const [, timelineEntry] = await this.prisma.$transaction([
+      (this.prisma as any).caseEvidence.create({
+        data: {
+          tenant_id: caseRecord.tenant_id,
+          case_id: caseId,
+          evidence_id: evidenceId,
+          added_by: actorId,
+        },
+      }),
+      this.timelineDelegate.create({
+        data: {
+          tenant_id: caseRecord.tenant_id,
+          case_id: caseId,
+          entry_type: 'EVIDENCE_LINKED',
+          actor_id: actorId,
+          title: 'Evidence Linked',
+          summary: `Linked evidence '${evidenceId}'`,
+          evidence_ref: evidenceId,
+        },
+      }),
+    ]);
+
+    return timelineEntry;
   }
 
   /**

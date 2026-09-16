@@ -73,6 +73,7 @@ export class CaseService {
           severity: alert.severity,
           priority: alert.priority,
           status: 'NEW',
+          queue_id: 'DEFAULT',
           primary_identity_id: alert.primary_identity_id,
           primary_asset_id: alert.primary_asset_id,
           correlation_id: correlationId,

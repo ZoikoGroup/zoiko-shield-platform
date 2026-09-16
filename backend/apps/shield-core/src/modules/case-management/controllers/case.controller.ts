@@ -13,11 +13,9 @@ import {
 import { CaseService } from '../services/case.service';
 import { CaseTimelineService } from '../timeline/case-timeline.service';
 import { CaseNoteService } from '../notes/case-note.service';
-import {
-  CaseDecisionService,
-  DecisionType,
-} from '../decisions/case-decision.service';
-import {
+import { CaseDecisionService } from '../decisions/case-decision.service';
+import type { DecisionType } from '../decisions/case-decision.service';
+import type {
   CaseStatus,
   CaseDisposition,
 } from '../state-machine/case-state-machine.service';
@@ -26,39 +24,116 @@ import { PermissionsGuard } from '../../authorization/guards/permissions.guard';
 import { CurrentUser } from '../../identity-adapter/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../../identity-adapter/interfaces/jwt-payload.interface';
 import { requireTenantId } from '../../../tenant-context';
+import { IsIn, IsOptional, IsString } from 'class-validator';
+
+const CASE_STATUSES: CaseStatus[] = [
+  'NEW',
+  'TRIAGED',
+  'INVESTIGATING',
+  'CONTAINMENT_PENDING',
+  'CONTAINED',
+  'REMEDIATING',
+  'MONITORING',
+  'RESOLVED',
+  'CLOSED',
+];
+
+const CASE_DISPOSITIONS: CaseDisposition[] = [
+  'DUPLICATE',
+  'FALSE_POSITIVE',
+  'ACCEPTED_RISK',
+  'CUSTOMER_ACTION_REQUIRED',
+  'THIRD_PARTY_DEPENDENCY',
+  'LEGAL_HOLD',
+];
+
+const DECISION_TYPES: DecisionType[] = [
+  'FALSE_POSITIVE_DECISION',
+  'ESCALATE_TO_INCIDENT',
+  'RESPONSE_RECOMMENDATION',
+  'ACCEPT_RISK',
+  'CLOSE_CASE',
+];
 
 export class CreateCaseDto {
+  @IsString()
   alertId!: string;
+
+  @IsOptional()
+  @IsString()
   title?: string;
+
+  @IsOptional()
+  @IsString()
   description?: string;
+
+  @IsOptional()
+  @IsString()
   actorId?: string;
 }
 
 export class TransitionCaseDto {
+  @IsIn(CASE_STATUSES)
   toState!: CaseStatus;
+
+  @IsString()
   reason!: string;
+
+  @IsOptional()
+  @IsIn(CASE_DISPOSITIONS)
   disposition?: CaseDisposition;
+
+  @IsOptional()
+  @IsString()
   actorId?: string;
 }
 
 export class LinkAlertDto {
+  @IsString()
   alertId!: string;
+
+  @IsOptional()
+  @IsString()
   relationshipType?: string;
+
+  @IsOptional()
+  @IsString()
   actorId?: string;
 }
 
 export class AddNoteDto {
+  @IsString()
   content!: string;
+
+  @IsOptional()
+  @IsString()
   classification?: string;
+
+  @IsOptional()
+  @IsString()
   supersedesId?: string;
+
+  @IsOptional()
+  @IsString()
   actorId?: string;
 }
 
 export class RecordDecisionDto {
+  @IsIn(DECISION_TYPES)
   decisionType!: DecisionType;
+
+  @IsString()
   decision!: string;
+
+  @IsString()
   rationale!: string;
+
+  @IsOptional()
+  @IsString()
   policyVersion?: string;
+
+  @IsOptional()
+  @IsString()
   actorId?: string;
 }
 
