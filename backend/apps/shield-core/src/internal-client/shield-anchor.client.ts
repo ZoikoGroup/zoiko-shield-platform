@@ -98,4 +98,76 @@ export class ShieldAnchorClient {
     const body = await response.json();
     return body.data as ProofEnvelope;
   }
+
+  // --- Merkle Evidence Ledger & Inclusion Proofs ---
+  async sealEpochBatch(items: any[]): Promise<any> {
+    return this.post('/api/v1/anchor/batches/seal', { items });
+  }
+
+  async verifyProof(body: any): Promise<any> {
+    return this.post('/api/v1/anchor/proofs/verify', body);
+  }
+
+  async getReceipt(epochNumber: string | number): Promise<any> {
+    return this.get(`/api/v1/anchor/receipts/${epochNumber}`);
+  }
+
+  async getInclusionProof(epochNumber: string | number, leafIndex: string | number): Promise<any> {
+    return this.get(`/api/v1/anchor/proofs/${epochNumber}/${leafIndex}`);
+  }
+
+  private headers(extraHeaders?: Record<string, string>): Record<string, string> {
+    const traceId = (global as any).__currentTraceId || '0123456789abcdef0123456789abcdef';
+    const spanId = '0123456789abcdef';
+    return {
+      'Content-Type': 'application/json',
+      'traceparent': `00-${traceId}-${spanId}-01`,
+      'x-correlation-id': traceId,
+      ...workloadAuthorizationHeaders('shield-anchor'),
+      ...(extraHeaders || {}),
+    };
+  }
+
+  private async get(path: string): Promise<any> {
+    let response: Response;
+    try {
+      response = await fetch(`${SHIELD_ANCHOR_BASE_URL}${path}`, {
+        method: 'GET',
+        headers: this.headers(),
+      });
+    } catch (err) {
+      this.logger.error(`shield-anchor unreachable: ${(err as Error).message}`);
+      throw new ServiceUnavailableException('ANCHOR_UNAVAILABLE');
+    }
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      this.logger.warn(`shield-anchor GET returned ${response.status} for ${path}: ${text.slice(0, 300)}`);
+      throw new ServiceUnavailableException('ANCHOR_UNAVAILABLE');
+    }
+
+    return response.json();
+  }
+
+  private async post(path: string, body: unknown): Promise<any> {
+    let response: Response;
+    try {
+      response = await fetch(`${SHIELD_ANCHOR_BASE_URL}${path}`, {
+        method: 'POST',
+        headers: this.headers(),
+        body: JSON.stringify(body),
+      });
+    } catch (err) {
+      this.logger.error(`shield-anchor unreachable: ${(err as Error).message}`);
+      throw new ServiceUnavailableException('ANCHOR_UNAVAILABLE');
+    }
+
+    if (!response.ok) {
+      const text = await response.text().catch(() => '');
+      this.logger.warn(`shield-anchor POST returned ${response.status} for ${path}: ${text.slice(0, 300)}`);
+      throw new ServiceUnavailableException('ANCHOR_UNAVAILABLE');
+    }
+
+    return response.json();
+  }
 }

@@ -52,8 +52,23 @@ describe('AiSystemInventoryService (Section 05 AI Architecture & NIST/EU AI Act)
       humanOversightRequired: false,
     };
 
-    service.registerModel(customModel);
+    const registered = service.registerModel(customModel);
+    expect(registered.modelId).toBe('custom-local-llama');
+    expect(registered.lifecycleState).toBe('PROPOSED');
+    expect(registered.registeredAt).toBeDefined();
+
     const retrieved = service.getModelProfile('custom-local-llama');
-    expect(retrieved).toEqual(customModel);
+    expect(retrieved).toBeDefined();
+    expect(retrieved?.modelId).toBe('custom-local-llama');
+    expect(retrieved?.provider).toBe('Local');
+
+    // Test updating lifecycle state
+    const updated = service.updateModel('custom-local-llama', { lifecycleState: 'APPROVED_FOR_PRODUCTION' });
+    expect(updated.lifecycleState).toBe('APPROVED_FOR_PRODUCTION');
+
+    // Test decommissioning
+    const deleted = service.deleteModel('custom-local-llama');
+    expect(deleted).toBe(true);
+    expect(service.getModelProfile('custom-local-llama')?.lifecycleState).toBe('DECOMMISSIONED');
   });
 });

@@ -24,3 +24,9 @@ build/
 # Docs
 zoikoshield.postman_collection.json
 
+# Archives & Large Bundles
+*.zip
+*.tar.gz
+*.tgz
+
+

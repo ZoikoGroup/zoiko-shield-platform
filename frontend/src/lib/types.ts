@@ -393,6 +393,37 @@ export interface ComplianceDriftState {
   }>;
 }
 
+export type EuAiActRiskTier = 'MINIMAL_RISK' | 'LIMITED_RISK' | 'HIGH_RISK' | 'UNACCEPTABLE_RISK';
+export type NistAiRmfFunction = 'GOVERN' | 'MAP' | 'MEASURE' | 'MANAGE';
+export type AiLifecycleState = 'PROPOSED' | 'EVALUATING' | 'APPROVED_FOR_PRODUCTION' | 'DECOMMISSIONED';
+
+export interface AiModelProfile {
+  modelId: string;
+  provider: 'Google' | 'Anthropic' | 'OpenAI' | 'Local' | string;
+  modelFamily: string;
+  version: string;
+  euAiActClassification: EuAiActRiskTier;
+  nistRmfAlignment: NistAiRmfFunction[];
+  purpose: string;
+  primaryUseCaseKeys: string[];
+  deterministicFallbackEngine: string;
+  hhiWeight: number;
+  humanOversightRequired: boolean;
+  lifecycleState?: AiLifecycleState;
+  registeredAt?: string;
+  updatedAt?: string;
+}
+
+export interface AiSystemInventorySummary {
+  inventoryVersion: string;
+  totalRegisteredModels: number;
+  models: AiModelProfile[];
+  highRiskUseCasesCount: number;
+  providerConcentrationHhi: number;
+  governanceComplianceStatus: 'COMPLIANT_NIST_EU_AI_ACT' | 'NON_COMPLIANT';
+  assessedAt: string;
+}
+
 // ----------------------------------------------------------------------------
 // WebAuthn / Passkeys (identity-adapter auth.controller passkeys/* routes)
 // ----------------------------------------------------------------------------
@@ -632,3 +663,40 @@ export interface IncidentLegalSensitiveRecord {
   createdAt: string;
 }
 
+export interface MerkleEpochCheckpoint {
+  epochNumber: number;
+  merkleRoot: string;
+  leafCount: number;
+  pqcSignature: string;
+  ecdsaSignature: string;
+  witnessCount: number;
+  sealedAt: string;
+  enclaveAttestation?: {
+    pcr0: string;
+    pcr1: string;
+    pcr2: string;
+    mrSigner: string;
+    timestamp: string;
+  };
+  leaves?: Array<{
+    index: number;
+    evidenceId: string;
+    eventType: string;
+    payloadDigest: string;
+    leafHash: string;
+  }>;
+}
+
+export interface MerkleInclusionProof {
+  leafHash: string;
+  leafIndex: number;
+  auditPath: Array<{ position: 'left' | 'right'; hash: string }>;
+  merkleRoot: string;
+  epochNumber: number;
+}
+
+export interface MerkleVerificationResult {
+  valid: boolean;
+  epochNumber: number;
+  verifiedAt: string;
+}

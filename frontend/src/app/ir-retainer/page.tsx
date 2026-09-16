@@ -84,14 +84,18 @@ export default function IrRetainerPage() {
         ZoikoShieldApiClient.getIncidentRetainers(),
         ZoikoShieldApiClient.getIncidentWorkOrders(),
       ]);
-      setRetainers(rets);
-      setWorkOrders(wos);
-      if (wos.length > 0 && !selectedWorkOrder) {
-        setSelectedWorkOrder(wos[0]);
+      const safeRets = Array.isArray(rets) ? rets : Array.isArray((rets as any)?.data) ? (rets as any).data : state.incidentRetainers || [];
+      const safeWos = Array.isArray(wos) ? wos : Array.isArray((wos as any)?.data) ? (wos as any).data : state.incidentWorkOrders || [];
+      setRetainers(safeRets);
+      setWorkOrders(safeWos);
+      if (safeWos.length > 0 && !selectedWorkOrder) {
+        setSelectedWorkOrder(safeWos[0]);
       }
       setIsDegraded(false);
       setIsStale(false);
     } catch {
+      setRetainers(state.incidentRetainers || []);
+      setWorkOrders(state.incidentWorkOrders || []);
       setIsDegraded(true);
       setIsStale(true);
     } finally {
@@ -105,10 +109,12 @@ export default function IrRetainerPage() {
 
   useEffect(() => {
     if (selectedWorkOrder) {
-      ZoikoShieldApiClient.getWorkOrderConsumption(selectedWorkOrder.id).then(setConsumptionList);
-      ZoikoShieldApiClient.listLegalSensitiveRecords(selectedWorkOrder.id, legalAccessReason).then(
-        setLegalRecords
-      );
+      ZoikoShieldApiClient.getWorkOrderConsumption(selectedWorkOrder.id).then((res) => {
+        setConsumptionList(Array.isArray(res) ? res : Array.isArray((res as any)?.data) ? (res as any).data : state.workOrderConsumption || []);
+      });
+      ZoikoShieldApiClient.listLegalSensitiveRecords(selectedWorkOrder.id, legalAccessReason).then((res) => {
+        setLegalRecords(Array.isArray(res) ? res : Array.isArray((res as any)?.data) ? (res as any).data : state.legalSensitiveRecords || []);
+      });
     }
   }, [selectedWorkOrder, legalAccessReason, state.workOrderConsumption, state.legalSensitiveRecords]);
 
@@ -384,12 +390,12 @@ export default function IrRetainerPage() {
               Incident Work Orders
             </h3>
             <span className="text-xs font-mono text-slate-400">
-              {workOrders.length} Activated Work Orders
+              {(workOrders || []).length} Activated Work Orders
             </span>
           </div>
 
           <div className="space-y-3">
-            {workOrders.map((wo) => {
+            {(workOrders || []).map((wo) => {
               const isSelected = selectedWorkOrder?.id === wo.id;
               return (
                 <div

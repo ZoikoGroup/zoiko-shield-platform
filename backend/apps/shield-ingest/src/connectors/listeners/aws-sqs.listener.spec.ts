@@ -139,4 +139,70 @@ describe('AwsSqsIngestListener', () => {
     expect(result.processedCount).toBe(0);
     expect(result.deletedReceiptHandles).toHaveLength(0);
   });
+
+  it('routes poison and failed messages to DlqReplayQuarantineService when available', async () => {
+    const mockDlqService = {
+      quarantineMessage: jest.fn(),
+    };
+
+    const moduleWithDlq: TestingModule = await Test.createTestingModule({
+      providers: [
+        AwsSqsIngestListener,
+        { provide: RawIngestService, useValue: mockRawIngestService },
+        { provide: TokenBucketRateLimiterService, useValue: mockRateLimiter },
+        { provide: 'DlqReplayQuarantineService', useValue: mockDlqService },
+      ],
+    }).compile();
+
+    const listenerWithDlq = new AwsSqsIngestListener(
+      mockRawIngestService as any,
+      mockRateLimiter as any,
+      mockDlqService as any,
+    );
+
+    mockRateLimiter.consume.mockReturnValue({
+      allowed: true,
+      remainingTokens: 50,
+      tenantId: defaultOptions.tenantId,
+    });
+
+    // 1. Test malformed JSON
+    await listenerWithDlq.processMessageBatch(defaultOptions, [
+      {
+        messageId: 'msg-dlq-01',
+        receiptHandle: 'handle-dlq-01',
+        body: 'invalid-json-content',
+      },
+    ]);
+
+    expect(mockDlqService.quarantineMessage).toHaveBeenCalledWith(
+      defaultOptions.tenantId,
+      `sqs:${defaultOptions.queueUrl}`,
+      expect.objectContaining({ messageId: 'msg-dlq-01' }),
+      expect.stringContaining('Failed to parse SQS message body'),
+      'JSON_PARSE_ERROR',
+    );
+
+    // 2. Test ingest processing failure
+    mockRawIngestService.processWebhookPayload.mockRejectedValueOnce(
+      new Error('Kafka pipeline timeout'),
+    );
+
+    await listenerWithDlq.processMessageBatch(defaultOptions, [
+      {
+        messageId: 'msg-dlq-02',
+        receiptHandle: 'handle-dlq-02',
+        body: JSON.stringify({ event: 'Threat' }),
+      },
+    ]);
+
+    expect(mockDlqService.quarantineMessage).toHaveBeenCalledWith(
+      defaultOptions.tenantId,
+      `sqs:${defaultOptions.queueUrl}`,
+      { event: 'Threat' },
+      expect.stringContaining('Error ingesting SQS message: Kafka pipeline timeout'),
+      'INGEST_PROCESSING_ERROR',
+    );
+  });
 });
+

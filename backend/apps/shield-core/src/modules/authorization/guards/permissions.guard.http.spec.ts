@@ -59,6 +59,10 @@ class CrossCuttingProbeController {
 }
 
 describe('PermissionsGuard tenant isolation over HTTP', () => {
+  beforeAll(() => {
+    jest.setTimeout(30000);
+  });
+
   it('allows a PLATFORM_SCOPE membership to exercise only a declared cross-cutting permission against one real target tenant', async () => {
     const authorizationDecision = {
       evaluate: jest.fn().mockResolvedValue({

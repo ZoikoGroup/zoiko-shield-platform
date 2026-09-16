@@ -16,6 +16,11 @@ import {
   RefreshCw,
   ShieldCheck,
   ShieldAlert,
+  Fingerprint,
+  Users,
+  Lock,
+  Key,
+  Sparkles,
 } from "lucide-react";
 
 interface ResponseSimulatorProps {
@@ -39,6 +44,49 @@ export const ResponseSimulator: React.FC<ResponseSimulatorProps> = ({
   const [isOrgFrozen, setIsOrgFrozen] = useState(false);
   const [activeFreezeId, setActiveFreezeId] = useState<string | null>(null);
   const [isFreezing, setIsFreezing] = useState(false);
+
+  // Dual-Custody Quorum & FIDO2 Attestation State
+  const [quorumStep, setQuorumStep] = useState<
+    "IDLE" | "INITIATING" | "PENDING_SECOND" | "APPROVING_SECOND" | "FINALIZED"
+  >("IDLE");
+  const [quorumData, setQuorumData] = useState<{
+    quorumId: string;
+    rollbackToken: string;
+    signature: string;
+    secondaryApprover?: string;
+  } | null>(null);
+  const [initiatorFidoKey] = useState("YubiKey 5 FIPS (NFC #YK-9842)");
+  const [secondaryApproverName] = useState("David Ross (Incident Commander)");
+  const [secondaryFidoKey] = useState("Apple TouchID Secure Enclave (Passkey)");
+
+  const handleInitiateQuorum = async () => {
+    setQuorumStep("INITIATING");
+    // Simulate FIDO2 WebAuthn Hardware Presence Challenge
+    setTimeout(() => {
+      const qId = `quorum-${Date.now().toString(36)}`;
+      const rbToken = `ZS-ROLLBACK-TOKEN-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+      setQuorumData({
+        quorumId: qId,
+        rollbackToken: rbToken,
+        signature: "",
+      });
+      setQuorumStep("PENDING_SECOND");
+    }, 800);
+  };
+
+  const handleApproveSecondaryQuorum = async () => {
+    setQuorumStep("APPROVING_SECOND");
+    setTimeout(() => {
+      if (quorumData) {
+        setQuorumData({
+          ...quorumData,
+          secondaryApprover: secondaryApproverName,
+          signature: `ZS-QRM-SIG-${Math.random().toString(36).substring(2, 14).toUpperCase()}`,
+        });
+      }
+      setQuorumStep("FINALIZED");
+    }, 900);
+  };
 
   const handleRecordDecision = async () => {
     setIsRecordingDecision(true);
@@ -316,6 +364,119 @@ export const ResponseSimulator: React.FC<ResponseSimulatorProps> = ({
                 <span>Receipt ID: {receipt.id}</span>
                 <span>SHA-256 Attestation: {truncateHash(receipt.safetyAttestationHash, 8, 8)}</span>
               </div>
+            </div>
+          )}
+
+          {/* 3. Two-Man Rule Dual-Custody Approval Quorum (R2+ Containment Governance) */}
+          {receipt && (
+            <div className="rounded-2xl bg-gradient-to-b from-[#0f172a] to-[#090d16] border border-cyan-500/30 p-5 space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800">
+                <div className="flex items-center gap-2">
+                  <Badge variant="pass">2-MAN RULE QUORUM</Badge>
+                  <span className="text-xs font-mono font-bold text-cyan-400">
+                    FIDO2 Hardware Step-Up Reauthorization (R2/R3/R4)
+                  </span>
+                </div>
+                <Badge variant={quorumStep === "FINALIZED" ? "pass" : "pending"}>
+                  {quorumStep === "FINALIZED"
+                    ? "QUORUM REACHED (AUTHORIZED)"
+                    : quorumStep === "PENDING_SECOND"
+                    ? "AWAITING SECONDARY CO-SIGN"
+                    : "QUORUM REQUIRED"}
+                </Badge>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
+                {/* Approver 1: Lead Analyst Initiator */}
+                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800/80 space-y-2">
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <span className="flex items-center gap-1 font-semibold text-slate-200">
+                      <Fingerprint className="w-3.5 h-3.5 text-cyan-400" />
+                      1. Initiating Approver
+                    </span>
+                    <span className="text-cyan-400 font-bold">
+                      {quorumStep !== "IDLE" ? "ATTESTED" : "PENDING"}
+                    </span>
+                  </div>
+                  <div className="text-slate-100 font-bold">
+                    {currentCase.ownerName || "Sarah Chen (Security Operations Lead)"}
+                  </div>
+                  <div className="text-[10px] text-slate-500">
+                    Hardware Key: {initiatorFidoKey}
+                  </div>
+
+                  {(quorumStep === "IDLE" || quorumStep === "INITIATING") && (
+                    <Button
+                      variant="cyan"
+                      size="sm"
+                      className="w-full mt-2 text-[11px]"
+                      onClick={handleInitiateQuorum}
+                      isLoading={quorumStep === "INITIATING"}
+                    >
+                      <Fingerprint className="w-3.5 h-3.5" />
+                      <span>Initiate Quorum (Touch FIDO2 Key)</span>
+                    </Button>
+                  )}
+                </div>
+
+                {/* Approver 2: Incident Commander */}
+                <div className="p-3.5 rounded-xl bg-slate-950 border border-slate-800/80 space-y-2">
+                  <div className="flex items-center justify-between text-[11px] text-slate-400">
+                    <span className="flex items-center gap-1 font-semibold text-slate-200">
+                      <Users className="w-3.5 h-3.5 text-purple-400" />
+                      2. Secondary Approver (Distinct)
+                    </span>
+                    <span className="text-purple-400 font-bold">
+                      {quorumStep === "FINALIZED" ? "CO-SIGNED" : "REQUIRED"}
+                    </span>
+                  </div>
+                  <div className="text-slate-100 font-bold">{secondaryApproverName}</div>
+                  <div className="text-[10px] text-slate-500">
+                    Hardware Key: {secondaryFidoKey}
+                  </div>
+
+                  {(quorumStep === "PENDING_SECOND" || quorumStep === "APPROVING_SECOND") && (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      className="w-full mt-2 text-[11px] bg-purple-600 hover:bg-purple-500 text-white"
+                      onClick={handleApproveSecondaryQuorum}
+                      isLoading={quorumStep === "APPROVING_SECOND"}
+                    >
+                      <Key className="w-3.5 h-3.5" />
+                      <span>Co-Sign Quorum (Touch FIDO2 Key)</span>
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* Finalized Quorum Receipt & Rollback Token */}
+              {quorumStep === "FINALIZED" && quorumData && (
+                <div className="p-3.5 rounded-xl bg-emerald-950/30 border border-emerald-500/40 space-y-2 text-xs font-mono">
+                  <div className="flex items-center justify-between text-emerald-400 font-bold text-[11px]">
+                    <span className="flex items-center gap-1">
+                      <CheckCircle2 className="w-4 h-4" /> Cryptographic Dual-Custody Quorum Finalized
+                    </span>
+                    <span>Status: RATIFIED</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] pt-1">
+                    <div>
+                      <span className="text-slate-400 block text-[10px]">QUORUM ID:</span>
+                      <span className="text-slate-200 font-semibold">{quorumData.quorumId}</span>
+                    </div>
+                    <div>
+                      <span className="text-slate-400 block text-[10px]">SINGLE-USE ROLLBACK TOKEN:</span>
+                      <span className="text-amber-300 font-bold break-all">
+                        {quorumData.rollbackToken}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-[10px] text-slate-400 pt-1 border-t border-emerald-500/20 flex items-center justify-between">
+                    <span>Quorum Signature: {quorumData.signature}</span>
+                    <span className="text-emerald-400 font-semibold">Ready for G1 Production Dispatch</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </Card>
