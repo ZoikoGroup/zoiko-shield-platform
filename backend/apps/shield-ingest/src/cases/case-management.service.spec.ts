@@ -19,6 +19,13 @@ describe('CaseManagementService (Step 11)', () => {
         create: jest.fn(),
         findMany: jest.fn(),
       },
+      evidenceRecord: {
+        findFirst: jest.fn(),
+      },
+      caseEvidence: {
+        create: jest.fn(),
+      },
+      $transaction: jest.fn((ops: any[]) => Promise.all(ops)),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -115,5 +122,48 @@ describe('CaseManagementService (Step 11)', () => {
         entry_type: 'NOTE_ADDED',
       }),
     });
+  });
+
+  it('linking evidence creates the real CaseEvidence relation, not just a timeline entry', async () => {
+    prismaMock.case.findFirst.mockResolvedValue({
+      id: 'case-1',
+      tenant_id: 'tenant-1',
+    });
+    prismaMock.evidenceRecord.findFirst.mockResolvedValue({ id: 'ev-1' });
+    prismaMock.caseEvidence.create.mockResolvedValue({ id: 'link-1' });
+    prismaMock.caseTimeline.create.mockResolvedValue({
+      id: 'tl-1',
+      entry_type: 'EVIDENCE_LINKED',
+    });
+
+    await service.linkEvidence('tenant-1', 'case-1', 'ev-1', 'analyst-1');
+
+    expect(prismaMock.caseEvidence.create).toHaveBeenCalledWith({
+      data: {
+        tenant_id: 'tenant-1',
+        case_id: 'case-1',
+        evidence_id: 'ev-1',
+        added_by: 'analyst-1',
+      },
+    });
+    expect(prismaMock.caseTimeline.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        entry_type: 'EVIDENCE_LINKED',
+        evidence_ref: 'ev-1',
+      }),
+    });
+  });
+
+  it('rejects linking an evidence record that does not exist for the tenant', async () => {
+    prismaMock.case.findFirst.mockResolvedValue({
+      id: 'case-1',
+      tenant_id: 'tenant-1',
+    });
+    prismaMock.evidenceRecord.findFirst.mockResolvedValue(null);
+
+    await expect(
+      service.linkEvidence('tenant-1', 'case-1', 'ev-missing', 'analyst-1'),
+    ).rejects.toThrow(NotFoundException);
+    expect(prismaMock.caseEvidence.create).not.toHaveBeenCalled();
   });
 });
