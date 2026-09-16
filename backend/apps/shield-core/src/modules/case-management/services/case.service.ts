@@ -1,4 +1,5 @@
 import {
+  ConflictException,
   Injectable,
   Logger,
   NotFoundException,
@@ -16,6 +17,8 @@ import {
 import { CaseTimelineService } from '../timeline/case-timeline.service';
 import { EvidenceService } from '../../evidence/services/evidence.service';
 import { EvidenceAutoCreationService } from '../../evidence/evidence-auto-creation.service';
+import { SocSlaClockService } from '../../sla/soc-sla-clock.service';
+import { CaseQualityReviewService } from '../quality/case-quality-review.service';
 import { CASE_TOPICS } from '../events/case-events';
 
 @Injectable()
@@ -30,6 +33,8 @@ export class CaseService {
     private readonly timeline: CaseTimelineService,
     private readonly evidenceService: EvidenceService,
     private readonly evidenceAutoCreation: EvidenceAutoCreationService,
+    private readonly slaClock: SocSlaClockService,
+    private readonly qualityReview: CaseQualityReviewService,
   ) {}
 
   /**
@@ -361,6 +366,38 @@ export class CaseService {
     const caseRow = await this.getById(params.tenantId, params.caseId);
     this.stateMachine.assertValidTransition(caseRow.status, params.toState);
 
+    // A material outcome needs a second pair of eyes before it becomes the
+    // record of what happened — not after (spec: material dispositions and
+    // sampled closures require peer/supervisor review).
+    const requiredReview = this.qualityReview.requiresReview({
+      severity: caseRow.severity,
+      toState: params.toState,
+      disposition: params.disposition,
+    });
+    if (requiredReview) {
+      const approved = await this.qualityReview.hasApproval(
+        params.tenantId,
+        params.caseId,
+      );
+      if (!approved) {
+        const review = await this.qualityReview.request({
+          tenantId: params.tenantId,
+          caseId: params.caseId,
+          reviewType: requiredReview,
+          requestedBy: params.actorId,
+          trigger: `${caseRow.severity} case moving to ${params.toState}${
+            params.disposition ? ` (${params.disposition})` : ''
+          }`,
+        });
+        throw new ConflictException({
+          statusCode: 409,
+          error: 'CASE_QUALITY_REVIEW_REQUIRED',
+          message: `A ${requiredReview} must be approved by another reviewer before this case can move to ${params.toState}`,
+          reviewId: review.id,
+        });
+      }
+    }
+
     const extra: Record<string, unknown> = {};
     if (params.toState === 'RESOLVED') extra.resolved_at = new Date();
     if (params.toState === 'CLOSED') extra.closed_at = new Date();
@@ -415,7 +452,119 @@ export class CaseService {
       reason: params.reason,
     });
 
+    await this.syncSlaClockForTransition({
+      tenantId: params.tenantId,
+      caseId: params.caseId,
+      severity: caseRow.severity,
+      toState: params.toState,
+      actorId: params.actorId,
+    });
+
     return transition;
+  }
+
+  /**
+   * The triage clock starts when a case is actually picked up (TRIAGED) and
+   * stops when it reaches a terminal state — a clock that ran from case
+   * creation would bill queue time as response time, and one that never
+   * stopped could never produce a compliant measurement.
+   */
+  private async syncSlaClockForTransition(params: {
+    tenantId: string;
+    caseId: string;
+    severity: string;
+    toState: CaseStatus;
+    actorId: string;
+  }) {
+    try {
+      if (params.toState === 'TRIAGED') {
+        await this.slaClock.startTriageClock({
+          caseId: params.caseId,
+          tenantId: params.tenantId,
+          severity: params.severity,
+        });
+        await this.timeline.append({
+          tenantId: params.tenantId,
+          caseId: params.caseId,
+          entryType: 'STATUS_CHANGED',
+          actorId: params.actorId,
+          title: 'SLA triage clock started',
+          summary: `Response clock started for ${params.severity} severity`,
+        });
+        return;
+      }
+
+      if (params.toState === 'RESOLVED' || params.toState === 'CLOSED') {
+        const existing = await this.slaClock.getClock(params.caseId);
+        if (!existing || existing.stoppedAt) return;
+
+        const { isBreached, activeTriageMinutes } =
+          await this.slaClock.stopClock(params.caseId);
+        await this.timeline.append({
+          tenantId: params.tenantId,
+          caseId: params.caseId,
+          entryType: 'STATUS_CHANGED',
+          actorId: params.actorId,
+          title: isBreached
+            ? 'SLA triage clock stopped — target breached'
+            : 'SLA triage clock stopped — within target',
+          summary: `Net active triage: ${activeTriageMinutes}m`,
+        });
+      }
+    } catch (err) {
+      // SLA bookkeeping must never roll back or block the case transition
+      // itself — the state change is the security-relevant fact.
+      this.logger.error(
+        `SLA clock sync failed for case '${params.caseId}': ${(err as Error).message}`,
+      );
+    }
+  }
+
+  async pauseSlaClock(params: {
+    tenantId: string;
+    caseId: string;
+    reason: string;
+    actorId: string;
+  }) {
+    await this.getById(params.tenantId, params.caseId);
+    const clock = await this.slaClock.pauseClock(params.caseId, params.reason);
+    await this.timeline.append({
+      tenantId: params.tenantId,
+      caseId: params.caseId,
+      entryType: 'STATUS_CHANGED',
+      actorId: params.actorId,
+      title: 'SLA triage clock paused',
+      summary: params.reason,
+    });
+    return clock;
+  }
+
+  async resumeSlaClock(params: {
+    tenantId: string;
+    caseId: string;
+    actorId: string;
+  }) {
+    await this.getById(params.tenantId, params.caseId);
+    const clock = await this.slaClock.resumeClock(params.caseId);
+    await this.timeline.append({
+      tenantId: params.tenantId,
+      caseId: params.caseId,
+      entryType: 'STATUS_CHANGED',
+      actorId: params.actorId,
+      title: 'SLA triage clock resumed',
+      summary: 'Response clock resumed',
+    });
+    return clock;
+  }
+
+  async getSlaClock(tenantId: string, caseId: string) {
+    await this.getById(tenantId, caseId);
+    // Surfacing a stale RUNNING clock as on-time would understate a breach.
+    const existing = await this.slaClock.getClock(caseId);
+    if (!existing) return null;
+    return existing.status === 'RUNNING'
+      ? this.slaClock.markBreachedIfOverdue(caseId)
+      : existing;
   }
 
   async linkAlert(params: {

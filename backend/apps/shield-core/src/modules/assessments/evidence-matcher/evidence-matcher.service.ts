@@ -30,6 +30,10 @@ export class EvidenceMatcherService {
         tenant_id: params.tenantId,
         evidence_type: rule.evidence_type,
         source_system_id: rule.expected_source,
+        // Human-submitted evidence awaiting review cannot be counted toward
+        // coverage yet — unreviewed self-attestation is precisely what the
+        // manual-review requirement exists to hold back.
+        manual_review_required: false,
         OR: [
           {
             period_start: { lte: params.periodEnd },

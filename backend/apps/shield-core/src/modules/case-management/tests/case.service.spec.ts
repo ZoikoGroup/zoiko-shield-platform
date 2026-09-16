@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { CaseService } from '../services/case.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OutboxService } from '../../../outbox/outbox.service';
@@ -8,6 +12,8 @@ import { CaseStateMachineService } from '../state-machine/case-state-machine.ser
 import { CaseTimelineService } from '../timeline/case-timeline.service';
 import { EvidenceService } from '../../evidence/services/evidence.service';
 import { EvidenceAutoCreationService } from '../../evidence/evidence-auto-creation.service';
+import { SocSlaClockService } from '../../sla/soc-sla-clock.service';
+import { CaseQualityReviewService } from '../quality/case-quality-review.service';
 
 describe('CaseService', () => {
   let service: CaseService;
@@ -16,6 +22,8 @@ describe('CaseService', () => {
   let timelineMock: any;
   let evidenceServiceMock: any;
   let evidenceAutoCreationMock: any;
+  let slaClockMock: any;
+  let qualityReviewMock: any;
 
   const alert = {
     id: 'alert-1',
@@ -64,6 +72,21 @@ describe('CaseService', () => {
         .fn()
         .mockResolvedValue({ id: 'transition-evidence-1' }),
     };
+    slaClockMock = {
+      startTriageClock: jest.fn().mockResolvedValue({ status: 'RUNNING' }),
+      stopClock: jest
+        .fn()
+        .mockResolvedValue({ isBreached: false, activeTriageMinutes: 4 }),
+      pauseClock: jest.fn().mockResolvedValue({ status: 'PAUSED' }),
+      resumeClock: jest.fn().mockResolvedValue({ status: 'RUNNING' }),
+      getClock: jest.fn().mockResolvedValue({ status: 'RUNNING' }),
+      markBreachedIfOverdue: jest.fn().mockResolvedValue({ status: 'RUNNING' }),
+    };
+    qualityReviewMock = {
+      requiresReview: jest.fn().mockReturnValue(null),
+      hasApproval: jest.fn().mockResolvedValue(false),
+      request: jest.fn().mockResolvedValue({ id: 'review-1' }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -78,6 +101,8 @@ describe('CaseService', () => {
           provide: EvidenceAutoCreationService,
           useValue: evidenceAutoCreationMock,
         },
+        { provide: SocSlaClockService, useValue: slaClockMock },
+        { provide: CaseQualityReviewService, useValue: qualityReviewMock },
       ],
     }).compile();
 
@@ -286,6 +311,150 @@ describe('CaseService', () => {
         data: expect.objectContaining({ entry_type: 'EVIDENCE_ATTACHED' }),
       }),
     );
+  });
+
+  it('starts the SLA triage clock when a case is transitioned to TRIAGED', async () => {
+    caseRepoMock.findByTenantAndId.mockResolvedValue({
+      id: 'case-1',
+      tenant_id: 'tenant-a',
+      environment_id: 'env-1',
+      region: 'us',
+      severity: 'CRITICAL',
+      status: 'NEW',
+    });
+
+    await service.transition({
+      tenantId: 'tenant-a',
+      caseId: 'case-1',
+      toState: 'TRIAGED',
+      actorId: 'analyst-1',
+      reason: 'picked up',
+    });
+
+    expect(slaClockMock.startTriageClock).toHaveBeenCalledWith({
+      caseId: 'case-1',
+      tenantId: 'tenant-a',
+      severity: 'CRITICAL',
+    });
+  });
+
+  it('stops the SLA triage clock when a case reaches RESOLVED', async () => {
+    caseRepoMock.findByTenantAndId.mockResolvedValue({
+      id: 'case-1',
+      tenant_id: 'tenant-a',
+      environment_id: 'env-1',
+      region: 'us',
+      severity: 'HIGH',
+      status: 'INVESTIGATING',
+    });
+    slaClockMock.getClock.mockResolvedValue({ status: 'RUNNING' });
+
+    await service.transition({
+      tenantId: 'tenant-a',
+      caseId: 'case-1',
+      toState: 'RESOLVED',
+      actorId: 'analyst-1',
+      reason: 'done',
+    });
+
+    expect(slaClockMock.stopClock).toHaveBeenCalledWith('case-1');
+  });
+
+  it('does not fail the transition when SLA clock bookkeeping errors', async () => {
+    caseRepoMock.findByTenantAndId.mockResolvedValue({
+      id: 'case-1',
+      tenant_id: 'tenant-a',
+      environment_id: 'env-1',
+      region: 'us',
+      severity: 'HIGH',
+      status: 'NEW',
+    });
+    slaClockMock.startTriageClock.mockRejectedValue(new Error('clock down'));
+
+    const transition = await service.transition({
+      tenantId: 'tenant-a',
+      caseId: 'case-1',
+      toState: 'TRIAGED',
+      actorId: 'analyst-1',
+      reason: 'picked up',
+    });
+
+    // The state change is the security-relevant fact; SLA is bookkeeping.
+    expect(transition.id).toBe('transition-1');
+  });
+
+  it('blocks a material transition until a quality review is approved, opening one', async () => {
+    caseRepoMock.findByTenantAndId.mockResolvedValue({
+      id: 'case-1',
+      tenant_id: 'tenant-a',
+      environment_id: 'env-1',
+      region: 'us',
+      severity: 'CRITICAL',
+      status: 'RESOLVED',
+    });
+    qualityReviewMock.requiresReview.mockReturnValue('CLOSURE_REVIEW');
+    qualityReviewMock.hasApproval.mockResolvedValue(false);
+
+    await expect(
+      service.transition({
+        tenantId: 'tenant-a',
+        caseId: 'case-1',
+        toState: 'CLOSED',
+        actorId: 'analyst-1',
+        reason: 'closing out',
+      }),
+    ).rejects.toThrow(ConflictException);
+
+    expect(qualityReviewMock.request).toHaveBeenCalledWith(
+      expect.objectContaining({
+        caseId: 'case-1',
+        reviewType: 'CLOSURE_REVIEW',
+        requestedBy: 'analyst-1',
+      }),
+    );
+    // The case must not have moved.
+    expect(prismaMock.caseTransition.create).not.toHaveBeenCalled();
+  });
+
+  it('allows the material transition once a review has been approved', async () => {
+    caseRepoMock.findByTenantAndId.mockResolvedValue({
+      id: 'case-1',
+      tenant_id: 'tenant-a',
+      environment_id: 'env-1',
+      region: 'us',
+      severity: 'CRITICAL',
+      status: 'RESOLVED',
+    });
+    qualityReviewMock.requiresReview.mockReturnValue('CLOSURE_REVIEW');
+    qualityReviewMock.hasApproval.mockResolvedValue(true);
+
+    const transition = await service.transition({
+      tenantId: 'tenant-a',
+      caseId: 'case-1',
+      toState: 'CLOSED',
+      actorId: 'analyst-1',
+      reason: 'closing out',
+    });
+
+    expect(transition.id).toBe('transition-1');
+    expect(qualityReviewMock.request).not.toHaveBeenCalled();
+  });
+
+  it('re-checks an overdue RUNNING clock when the clock is read', async () => {
+    caseRepoMock.findByTenantAndId.mockResolvedValue({
+      id: 'case-1',
+      tenant_id: 'tenant-a',
+      status: 'TRIAGED',
+    });
+    slaClockMock.getClock.mockResolvedValue({ status: 'RUNNING' });
+    slaClockMock.markBreachedIfOverdue.mockResolvedValue({
+      status: 'BREACHED',
+    });
+
+    const clock = await service.getSlaClock('tenant-a', 'case-1');
+
+    expect(slaClockMock.markBreachedIfOverdue).toHaveBeenCalledWith('case-1');
+    expect(clock?.status).toBe('BREACHED');
   });
 
   it('rejects linking evidence that does not belong to the tenant', async () => {

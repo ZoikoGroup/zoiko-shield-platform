@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Injectable,
   Logger,
   NotFoundException,
@@ -12,6 +13,7 @@ import { ObjectStorageService } from '../storage/object-storage.service';
 import { EvidenceLedgerService } from '../ledger/evidence-ledger.service';
 import { EvidenceLineageService } from '../lineage/evidence-lineage.service';
 import { EvidenceRepository } from '../repositories/evidence.repository';
+import { CollectorSignatureService } from '../signing/collector-signature.service';
 import { EVIDENCE_TOPICS } from '../events/evidence-events';
 import { requireEnvironmentId, requireRegion } from '../../../tenant-context';
 
@@ -31,13 +33,21 @@ export interface CreateEvidenceInput {
   periodEnd?: Date;
   purpose: string;
   dataClass?: string;
-  content: Record<string, unknown>;
+  /** Structured evidence: canonicalized, then hashed. */
+  content?: Record<string, unknown>;
+  /** Opaque bytes (a human-uploaded artifact): hashed as-is. */
+  rawContent?: Buffer;
   mediaType?: string;
   retentionProfile?: string;
   parentEvidenceId?: string;
   lineageRelationship?: string;
   caseId?: string;
   addedBy?: string;
+  collectionMethod?: 'AUTOMATED' | 'MANUAL';
+  uploaderIdentity?: string;
+  uploadReason?: string;
+  manualReviewRequired?: boolean;
+  expiresAt?: Date;
 }
 
 /**
@@ -57,24 +67,51 @@ export class EvidenceService {
     private readonly ledgerService: EvidenceLedgerService,
     private readonly lineageService: EvidenceLineageService,
     private readonly evidenceRepository: EvidenceRepository,
+    private readonly collectorSignature: CollectorSignatureService,
   ) {}
 
   async createEvidence(input: CreateEvidenceInput) {
     const evidenceId = randomUUID();
-    const mediaType = input.mediaType ?? 'application/json';
-    const { contentHash, canonicalBytes } = this.hashService.hashCanonicalJson(
-      input.content,
-    );
+    const isRaw = Boolean(input.rawContent);
+    const mediaType =
+      input.mediaType ?? (isRaw ? 'application/octet-stream' : 'application/json');
+
+    if (!isRaw && !input.content) {
+      throw new BadRequestException(
+        'Evidence requires either structured content or raw bytes',
+      );
+    }
+
+    // Raw uploads are hashed exactly as received: canonicalizing someone
+    // else's artifact would hash something the uploader never handed us.
+    const { contentHash, bytes } = isRaw
+      ? {
+          contentHash: this.hashService.hash(input.rawContent!),
+          bytes: input.rawContent!,
+        }
+      : (() => {
+          const hashed = this.hashService.hashCanonicalJson(input.content!);
+          return {
+            contentHash: hashed.contentHash,
+            bytes: Buffer.from(hashed.canonicalBytes, 'utf-8'),
+          };
+        })();
 
     const objectKey = this.storageService.buildObjectKey(
       input.tenantId,
       evidenceId,
     );
-    await this.storageService.putObject(
-      objectKey,
-      Buffer.from(canonicalBytes, 'utf-8'),
-      mediaType,
-    );
+    await this.storageService.putObject(objectKey, bytes, mediaType);
+
+    const signature = await this.collectorSignature.sign({
+      contentHash,
+      tenantId: input.tenantId,
+      sourceSystemId: input.sourceSystemId,
+      evidenceType: input.evidenceType,
+      sourceObservedAt: input.sourceObservedAt,
+      collectorId: input.collectorId,
+      collectorVersion: input.collectorVersion,
+    });
 
     try {
       const evidence = await this.prisma.$transaction(
@@ -110,7 +147,7 @@ export class EvidenceService {
               content_hash: contentHash,
               hash_algorithm: 'SHA-256',
               media_type: mediaType,
-              size_bytes: Buffer.byteLength(canonicalBytes, 'utf-8'),
+              size_bytes: bytes.byteLength,
               vault_reference: objectKey,
               // We just wrote and hashed the bytes ourselves — that's not the
               // same claim as "independently re-verified from storage" (spec
@@ -119,6 +156,14 @@ export class EvidenceService {
               freshness_state: 'CURRENT',
               completeness_state: 'UNKNOWN',
               retention_profile: input.retentionProfile ?? 'STANDARD',
+              collection_method: input.collectionMethod ?? 'AUTOMATED',
+              uploader_identity: input.uploaderIdentity,
+              upload_reason: input.uploadReason,
+              manual_review_required: input.manualReviewRequired ?? false,
+              expires_at: input.expiresAt,
+              collector_signature: signature?.signature,
+              collector_signing_key_id: signature?.signingKeyId,
+              collector_nonce: signature?.nonce,
             },
           });
           await tx.outboxEvent.create({
@@ -202,6 +247,43 @@ export class EvidenceService {
         });
       throw error;
     }
+  }
+
+  /**
+   * Clears the review flag on human-submitted evidence. The reviewer may not
+   * be the uploader — self-attested manual evidence is exactly what the
+   * review requirement exists to catch.
+   */
+  async recordManualReview(params: {
+    tenantId: string;
+    evidenceId: string;
+    reviewerId: string;
+    comments?: string;
+  }) {
+    const evidence = await this.getById(params.tenantId, params.evidenceId);
+
+    if (evidence.collection_method !== 'MANUAL') {
+      throw new BadRequestException(
+        `Evidence '${params.evidenceId}' was not manually submitted and does not need manual review`,
+      );
+    }
+    if (evidence.uploader_identity === params.reviewerId) {
+      throw new ForbiddenException(
+        `Reviewer '${params.reviewerId}' cannot review evidence they uploaded themselves`,
+      );
+    }
+
+    return this.prisma.evidenceRecord.update({
+      where: { id: params.evidenceId },
+      data: {
+        manual_review_required: false,
+        manual_reviewed_by: params.reviewerId,
+        manual_reviewed_at: new Date(),
+        upload_reason: params.comments
+          ? `${evidence.upload_reason ?? ''} | review: ${params.comments}`
+          : evidence.upload_reason,
+      },
+    });
   }
 
   async getById(tenantId: string, evidenceId: string) {

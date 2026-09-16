@@ -1,205 +1,260 @@
-import {
-  Injectable,
-  Logger,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
-import { SlaMeasurementService } from './sla-measurement.service';
-import crypto from 'crypto';
 
 export type SocCoverageTier = 'BUSINESS_HOURS' | 'EXTENDED_HOURS' | '24_7';
+
+export type SocSlaClockStatus = 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'BREACHED';
 
 export interface TriageClockRecord {
   caseId: string;
   tenantId: string;
-  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
-  coverageTier: SocCoverageTier;
+  severity: string;
+  coverageTier: string;
   targetResponseMinutes: number;
-  status: 'RUNNING' | 'PAUSED' | 'COMPLETED' | 'BREACHED';
+  status: SocSlaClockStatus;
   startedAt: Date;
   pausedAt?: Date;
   totalPausedMs: number;
   stoppedAt?: Date;
   activeTriageDurationMinutes?: number;
   pauseReason?: string;
+  breachedAt?: Date;
 }
+
+const TARGET_RESPONSE_MINUTES: Record<string, number> = {
+  CRITICAL: 15,
+  HIGH: 60,
+  MEDIUM: 240,
+  LOW: 1440,
+};
 
 /**
  * ZS-COM-BILL-001 §9 E1, §16 L1 & Criteria SVC-01, SVC-04:
- * Real-time SOC investigation triage response clock tracker.
+ * SOC investigation triage response clock.
  *
- * Core Guarantees:
- * 1. Target Response Windows:
- *    - CRITICAL: 15 minutes (24/7)
- *    - HIGH: 60 minutes
- *    - MEDIUM: 240 minutes (4 hours)
- *    - LOW: 1440 minutes (24 hours)
- * 2. Automatic Pause States: Pauses clock when case enters
- *    CUSTOMER_ACTION_REQUIRED or THIRD_PARTY_DEPENDENCY.
- * 3. Contractual SLA Integration: Records breach in SlaMeasurementService
- *    without modifying historical security facts.
+ * Persisted in the CaseSlaClock table rather than an in-memory Map: a clock
+ * that forgets every elapsed minute on restart cannot support a breach
+ * claim, and the spec requires start/pause/resume/breach to be
+ * machine-readable and evidence-logged.
+ *
+ * Target response windows: CRITICAL 15m, HIGH 60m, MEDIUM 240m, LOW 1440m.
+ * Paused time never counts toward the target - net active time is what's
+ * measured against it.
  */
 @Injectable()
 export class SocSlaClockService {
   private readonly logger = new Logger(SocSlaClockService.name);
 
-  // In-memory clock records with persistence
-  private readonly clocks = new Map<string, TriageClockRecord>();
+  constructor(private readonly prisma: PrismaService) {}
 
-  constructor(
-    private readonly prisma: PrismaService,
-    private readonly measurementService: SlaMeasurementService,
-  ) {}
+  private toRecord(row: {
+    case_id: string;
+    tenant_id: string;
+    severity: string;
+    coverage_tier: string;
+    target_response_minutes: number;
+    status: string;
+    started_at: Date;
+    paused_at: Date | null;
+    pause_reason: string | null;
+    total_paused_ms: number;
+    stopped_at: Date | null;
+    active_triage_minutes: number | null;
+    breached_at: Date | null;
+  }): TriageClockRecord {
+    return {
+      caseId: row.case_id,
+      tenantId: row.tenant_id,
+      severity: row.severity,
+      coverageTier: row.coverage_tier,
+      targetResponseMinutes: row.target_response_minutes,
+      status: row.status as SocSlaClockStatus,
+      startedAt: row.started_at,
+      pausedAt: row.paused_at ?? undefined,
+      pauseReason: row.pause_reason ?? undefined,
+      totalPausedMs: row.total_paused_ms,
+      stoppedAt: row.stopped_at ?? undefined,
+      activeTriageDurationMinutes: row.active_triage_minutes ?? undefined,
+      breachedAt: row.breached_at ?? undefined,
+    };
+  }
 
-  /**
-   * Start triage clock upon Case creation
-   */
-  startTriageClock(params: {
+  private async requireClock(caseId: string) {
+    const row = await this.prisma.caseSlaClock.findUnique({
+      where: { case_id: caseId },
+    });
+    if (!row) {
+      throw new NotFoundException(
+        `Triage clock for case '${caseId}' not found`,
+      );
+    }
+    return row;
+  }
+
+  /** Idempotent: re-triaging a case does not restart an already-running clock. */
+  async startTriageClock(params: {
     caseId: string;
     tenantId: string;
-    severity: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+    severity: string;
     coverageTier?: SocCoverageTier;
-  }): TriageClockRecord {
-    const tier = params.coverageTier || '24_7';
-    let targetMinutes = 60;
-
-    switch (params.severity) {
-      case 'CRITICAL':
-        targetMinutes = 15;
-        break;
-      case 'HIGH':
-        targetMinutes = 60;
-        break;
-      case 'MEDIUM':
-        targetMinutes = 240;
-        break;
-      case 'LOW':
-        targetMinutes = 1440;
-        break;
+  }): Promise<TriageClockRecord> {
+    const existing = await this.prisma.caseSlaClock.findUnique({
+      where: { case_id: params.caseId },
+    });
+    if (existing) {
+      return this.toRecord(existing);
     }
 
-    const clock: TriageClockRecord = {
-      caseId: params.caseId,
-      tenantId: params.tenantId,
-      severity: params.severity,
-      coverageTier: tier,
-      targetResponseMinutes: targetMinutes,
-      status: 'RUNNING',
-      startedAt: new Date(),
-      totalPausedMs: 0,
-    };
+    const tier = params.coverageTier ?? '24_7';
+    const targetMinutes = TARGET_RESPONSE_MINUTES[params.severity] ?? 60;
 
-    this.clocks.set(params.caseId, clock);
+    const row = await this.prisma.caseSlaClock.create({
+      data: {
+        case_id: params.caseId,
+        tenant_id: params.tenantId,
+        severity: params.severity,
+        coverage_tier: tier,
+        target_response_minutes: targetMinutes,
+        status: 'RUNNING',
+        started_at: new Date(),
+        total_paused_ms: 0,
+      },
+    });
 
     this.logger.log(
-      `Started SOC Triage Clock for case '${params.caseId}' (Severity: ${params.severity}, Target: ${targetMinutes}m, Tier: ${tier})`,
+      `Started SOC triage clock for case '${params.caseId}' (severity ${params.severity}, target ${targetMinutes}m, tier ${tier})`,
     );
-
-    return clock;
+    return this.toRecord(row);
   }
 
-  /**
-   * Pause triage clock when customer action or third party is required
-   */
-  pauseClock(caseId: string, reason: string): TriageClockRecord {
-    const clock = this.clocks.get(caseId);
-    if (!clock) {
-      throw new NotFoundException(
-        `Triage clock for case '${caseId}' not found`,
-      );
+  async pauseClock(caseId: string, reason: string): Promise<TriageClockRecord> {
+    const row = await this.requireClock(caseId);
+    if (row.status !== 'RUNNING') {
+      return this.toRecord(row);
     }
 
-    if (clock.status === 'PAUSED') {
-      return clock;
-    }
-
-    clock.status = 'PAUSED';
-    clock.pausedAt = new Date();
-    clock.pauseReason = reason;
+    const updated = await this.prisma.caseSlaClock.update({
+      where: { case_id: caseId },
+      data: {
+        status: 'PAUSED',
+        paused_at: new Date(),
+        pause_reason: reason,
+      },
+    });
 
     this.logger.log(
-      `Paused SOC Triage Clock for case '${caseId}'. Reason: ${reason}`,
+      `Paused SOC triage clock for case '${caseId}'. Reason: ${reason}`,
     );
-
-    return clock;
+    return this.toRecord(updated);
   }
 
-  /**
-   * Resume triage clock when customer supplies input or third-party clears
-   */
-  resumeClock(caseId: string): TriageClockRecord {
-    const clock = this.clocks.get(caseId);
-    if (!clock) {
-      throw new NotFoundException(
-        `Triage clock for case '${caseId}' not found`,
-      );
+  async resumeClock(caseId: string): Promise<TriageClockRecord> {
+    const row = await this.requireClock(caseId);
+    if (row.status !== 'PAUSED') {
+      return this.toRecord(row);
     }
 
-    if (clock.status !== 'PAUSED') {
-      return clock;
-    }
+    const pausedMs = row.paused_at
+      ? Date.now() - row.paused_at.getTime()
+      : 0;
 
-    if (clock.pausedAt) {
-      const pauseDuration = Date.now() - clock.pausedAt.getTime();
-      clock.totalPausedMs += pauseDuration;
-      clock.pausedAt = undefined;
-    }
+    const updated = await this.prisma.caseSlaClock.update({
+      where: { case_id: caseId },
+      data: {
+        status: 'RUNNING',
+        paused_at: null,
+        pause_reason: null,
+        total_paused_ms: row.total_paused_ms + pausedMs,
+      },
+    });
 
-    clock.status = 'RUNNING';
-    clock.pauseReason = undefined;
-
-    this.logger.log(`Resumed SOC Triage Clock for case '${caseId}'`);
-
-    return clock;
+    this.logger.log(`Resumed SOC triage clock for case '${caseId}'`);
+    return this.toRecord(updated);
   }
 
-  /**
-   * Stop clock upon triage disposition & calculate SLA compliance
-   */
-  stopClock(caseId: string): {
+  async stopClock(caseId: string): Promise<{
     clock: TriageClockRecord;
     isBreached: boolean;
     activeTriageMinutes: number;
-  } {
-    const clock = this.clocks.get(caseId);
-    if (!clock) {
-      throw new NotFoundException(
-        `Triage clock for case '${caseId}' not found`,
-      );
-    }
-
+  }> {
+    const row = await this.requireClock(caseId);
     const now = new Date();
-    clock.stoppedAt = now;
 
-    if (clock.status === 'PAUSED' && clock.pausedAt) {
-      clock.totalPausedMs += now.getTime() - clock.pausedAt.getTime();
-      clock.pausedAt = undefined;
-    }
+    // A clock stopped while paused still owes that final pause interval.
+    const trailingPauseMs =
+      row.status === 'PAUSED' && row.paused_at
+        ? now.getTime() - row.paused_at.getTime()
+        : 0;
+    const totalPausedMs = row.total_paused_ms + trailingPauseMs;
 
-    const totalElapsedMs = now.getTime() - clock.startedAt.getTime();
-    const netActiveMs = Math.max(0, totalElapsedMs - clock.totalPausedMs);
+    const totalElapsedMs = now.getTime() - row.started_at.getTime();
+    const netActiveMs = Math.max(0, totalElapsedMs - totalPausedMs);
     const activeTriageMinutes = Math.round(netActiveMs / (60 * 1000));
+    const isBreached = activeTriageMinutes > row.target_response_minutes;
 
-    clock.activeTriageDurationMinutes = activeTriageMinutes;
-    const isBreached = activeTriageMinutes > clock.targetResponseMinutes;
-    clock.status = isBreached ? 'BREACHED' : 'COMPLETED';
+    const updated = await this.prisma.caseSlaClock.update({
+      where: { case_id: caseId },
+      data: {
+        status: isBreached ? 'BREACHED' : 'COMPLETED',
+        stopped_at: now,
+        paused_at: null,
+        total_paused_ms: totalPausedMs,
+        active_triage_minutes: activeTriageMinutes,
+        breached_at: isBreached ? now : null,
+      },
+    });
 
     this.logger.log(
-      `Stopped SOC Triage Clock for case '${caseId}'. Net Triage: ${activeTriageMinutes}m (Target: ${clock.targetResponseMinutes}m, Status: ${clock.status})`,
+      `Stopped SOC triage clock for case '${caseId}'. Net triage ${activeTriageMinutes}m against a ${row.target_response_minutes}m target (${updated.status})`,
     );
 
     return {
-      clock,
+      clock: this.toRecord(updated),
       isBreached,
       activeTriageMinutes,
     };
   }
 
+  async getClock(caseId: string): Promise<TriageClockRecord | undefined> {
+    const row = await this.prisma.caseSlaClock.findUnique({
+      where: { case_id: caseId },
+    });
+    return row ? this.toRecord(row) : undefined;
+  }
+
   /**
-   * Get live status of clock
+   * A clock that has blown its target while still running is already
+   * breached — waiting for someone to stop the case before admitting it
+   * would let a breach hide behind an open case indefinitely.
    */
-  getClock(caseId: string): TriageClockRecord | undefined {
-    return this.clocks.get(caseId);
+  async markBreachedIfOverdue(caseId: string): Promise<TriageClockRecord> {
+    const row = await this.requireClock(caseId);
+    if (row.status !== 'RUNNING') {
+      return this.toRecord(row);
+    }
+
+    const now = new Date();
+    const netActiveMs = Math.max(
+      0,
+      now.getTime() - row.started_at.getTime() - row.total_paused_ms,
+    );
+    const activeTriageMinutes = Math.round(netActiveMs / (60 * 1000));
+    if (activeTriageMinutes <= row.target_response_minutes) {
+      return this.toRecord(row);
+    }
+
+    const updated = await this.prisma.caseSlaClock.update({
+      where: { case_id: caseId },
+      data: {
+        status: 'BREACHED',
+        breached_at: now,
+        active_triage_minutes: activeTriageMinutes,
+      },
+    });
+
+    this.logger.warn(
+      `SOC triage clock for case '${caseId}' breached its ${row.target_response_minutes}m target (${activeTriageMinutes}m active)`,
+    );
+    return this.toRecord(updated);
   }
 }

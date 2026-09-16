@@ -11,6 +11,10 @@ import { EvidenceVerificationService } from './verification/evidence-verificatio
 import { EvidenceLedgerService } from './ledger/evidence-ledger.service';
 import { EvidenceAutoCreationService } from './evidence-auto-creation.service';
 import { OutboxService } from '../../outbox/outbox.service';
+import { CollectorSignatureService } from './signing/collector-signature.service';
+import { COLLECTOR_SIGNER } from './signing/collector-signer.interface';
+import { DevCollectorSigner } from './signing/dev-collector-signer.service';
+import { ProductionCollectorSigner } from './signing/production-collector-signer.service';
 
 @Module({
   imports: [PrismaModule, KafkaModule],
@@ -25,6 +29,16 @@ import { OutboxService } from '../../outbox/outbox.service';
     EvidenceLedgerService,
     EvidenceAutoCreationService,
     OutboxService,
+    CollectorSignatureService,
+    {
+      // Chosen at wiring time, not by a runtime flag: a production deploy
+      // gets the KMS signer or fails to boot.
+      provide: COLLECTOR_SIGNER,
+      useFactory: () =>
+        process.env.NODE_ENV === 'production'
+          ? new ProductionCollectorSigner()
+          : new DevCollectorSigner(),
+    },
   ],
   exports: [
     EvidenceService,

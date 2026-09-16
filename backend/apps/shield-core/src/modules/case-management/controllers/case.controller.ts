@@ -16,6 +16,11 @@ import { CaseTimelineService } from '../timeline/case-timeline.service';
 import { CaseNoteService } from '../notes/case-note.service';
 import { CaseDecisionService } from '../decisions/case-decision.service';
 import type { DecisionType } from '../decisions/case-decision.service';
+import { CaseQualityReviewService } from '../quality/case-quality-review.service';
+import type {
+  QualityReviewType,
+  QualityReviewDecision,
+} from '../quality/case-quality-review.service';
 import type {
   CaseStatus,
   CaseDisposition,
@@ -132,6 +137,33 @@ export class LinkEvidenceDto {
   actorId?: string;
 }
 
+export class PauseSlaClockDto {
+  @IsString()
+  reason!: string;
+
+  @IsOptional()
+  @IsString()
+  actorId?: string;
+}
+
+export class RequestQualityReviewDto {
+  @IsIn(['DISPOSITION_REVIEW', 'CLOSURE_REVIEW'])
+  reviewType!: QualityReviewType;
+
+  @IsOptional()
+  @IsString()
+  trigger?: string;
+}
+
+export class DecideQualityReviewDto {
+  @IsIn(['APPROVED', 'REJECTED'])
+  decision!: QualityReviewDecision;
+
+  @IsOptional()
+  @IsString()
+  comments?: string;
+}
+
 export class TransitionCaseDto {
   @IsIn(CASE_STATUSES)
   toState!: CaseStatus;
@@ -205,6 +237,7 @@ export class CaseController {
     private readonly timelineService: CaseTimelineService,
     private readonly noteService: CaseNoteService,
     private readonly decisionService: CaseDecisionService,
+    private readonly qualityReviewService: CaseQualityReviewService,
   ) {}
 
   private resolveTenantId(headerTenantId: string): string {
@@ -411,6 +444,101 @@ export class CaseController {
       actorId: dto.actorId ?? user.id,
     });
     return { statusCode: HttpStatus.CREATED, data: link };
+  }
+
+  @Get(':caseId/sla')
+  async getSlaClock(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+  ) {
+    const tenantId = this.resolveTenantId(headerTenantId);
+    const clock = await this.caseService.getSlaClock(tenantId, caseId);
+    return { statusCode: HttpStatus.OK, data: clock };
+  }
+
+  @Post(':caseId/sla/pause')
+  async pauseSlaClock(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+    @Body() dto: PauseSlaClockDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = this.resolveTenantId(headerTenantId);
+    const clock = await this.caseService.pauseSlaClock({
+      tenantId,
+      caseId,
+      reason: dto.reason,
+      actorId: dto.actorId ?? user.id,
+    });
+    return { statusCode: HttpStatus.OK, data: clock };
+  }
+
+  @Post(':caseId/sla/resume')
+  async resumeSlaClock(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = this.resolveTenantId(headerTenantId);
+    const clock = await this.caseService.resumeSlaClock({
+      tenantId,
+      caseId,
+      actorId: user.id,
+    });
+    return { statusCode: HttpStatus.OK, data: clock };
+  }
+
+  @Get(':caseId/quality-reviews')
+  async listQualityReviews(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+  ) {
+    const tenantId = this.resolveTenantId(headerTenantId);
+    await this.caseService.assertTenantOwnership(tenantId, caseId);
+    const reviews = await this.qualityReviewService.listForCase(
+      tenantId,
+      caseId,
+    );
+    return { statusCode: HttpStatus.OK, data: reviews };
+  }
+
+  @Post(':caseId/quality-reviews')
+  async requestQualityReview(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+    @Body() dto: RequestQualityReviewDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = this.resolveTenantId(headerTenantId);
+    await this.caseService.assertTenantOwnership(tenantId, caseId);
+    const review = await this.qualityReviewService.request({
+      tenantId,
+      caseId,
+      reviewType: dto.reviewType,
+      requestedBy: user.id,
+      trigger: dto.trigger ?? 'Manually requested',
+    });
+    return { statusCode: HttpStatus.CREATED, data: review };
+  }
+
+  @Post(':caseId/quality-reviews/:reviewId/decide')
+  async decideQualityReview(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+    @Param('reviewId') reviewId: string,
+    @Body() dto: DecideQualityReviewDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = this.resolveTenantId(headerTenantId);
+    await this.caseService.assertTenantOwnership(tenantId, caseId);
+    const review = await this.qualityReviewService.decide({
+      tenantId,
+      reviewId,
+      reviewerId: user.id,
+      decision: dto.decision,
+      comments: dto.comments,
+    });
+    return { statusCode: HttpStatus.OK, data: review };
   }
 
   @Post(':caseId/decisions')
