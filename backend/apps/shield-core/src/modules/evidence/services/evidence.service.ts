@@ -101,7 +101,12 @@ export class EvidenceService {
       input.tenantId,
       evidenceId,
     );
-    await this.storageService.putObject(objectKey, bytes, mediaType);
+    await this.storageService.putObject(
+      objectKey,
+      bytes,
+      mediaType,
+      input.retentionProfile ?? 'STANDARD',
+    );
 
     const signature = await this.collectorSignature.sign({
       contentHash,
