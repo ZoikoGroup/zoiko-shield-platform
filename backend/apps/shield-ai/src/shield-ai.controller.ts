@@ -82,7 +82,6 @@ export class IncidentTelemetryDto implements IncidentTelemetryInput {
   attackGraphPath?: string[];
 }
 
-@UseGuards(InternalAuthGuard)
 @Controller()
 export class ShieldAiController {
   constructor(
@@ -145,36 +144,43 @@ export class ShieldAiController {
     ].join('\n') + '\n';
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/ai/copilot/hunt')
   async threatHunt(@Body() body: ThreatHuntingQueryDto) {
     return this.threatHuntingService.hunt(body);
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/ai/threat-hunting/hunt')
   async threatHuntingHunt(@Body() body: ThreatHuntingQueryDto) {
     return this.threatHuntingService.hunt(body);
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/ai/red-team/simulate-scenario')
   simulateRedTeamScenario(@Body() body: RedTeamScenarioDto) {
     return this.redTeamService.generateScenario(body);
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/ai/red-team/execute-chain')
   executeRedTeamChain(@Body() body: ExecuteAttackChainDto) {
     return this.autonomousRedTeamAgent.executeChain(body);
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/ai/redteam/execute-chain')
   executeRedTeamChainAlias(@Body() body: ExecuteAttackChainDto) {
     return this.autonomousRedTeamAgent.executeChain(body);
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/ai/rca/generate')
   generateIncidentRca(@Body() body: IncidentTelemetryDto) {
     return this.rcaService.generateIncidentRca(body);
   }
 
+  @UseGuards(InternalAuthGuard)
   @Get('api/v1/ai/inventory')
   getInventory() {
     return {
@@ -183,6 +189,7 @@ export class ShieldAiController {
     };
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/ai/inventory')
   registerModel(@Body() body: AiModelProfile) {
     return {
@@ -191,6 +198,7 @@ export class ShieldAiController {
     };
   }
 
+  @UseGuards(InternalAuthGuard)
   @Get('api/v1/ai/inventory/:modelId')
   getModelProfile(@Param('modelId') modelId: string) {
     const profile = this.inventoryService.getModelProfile(modelId);
@@ -203,6 +211,7 @@ export class ShieldAiController {
     };
   }
 
+  @UseGuards(InternalAuthGuard)
   @Patch('api/v1/ai/inventory/:modelId')
   updateModel(
     @Param('modelId') modelId: string,
@@ -214,6 +223,7 @@ export class ShieldAiController {
     };
   }
 
+  @UseGuards(InternalAuthGuard)
   @Delete('api/v1/ai/inventory/:modelId')
   deleteModel(@Param('modelId') modelId: string) {
     const success = this.inventoryService.deleteModel(modelId);
@@ -226,6 +236,7 @@ export class ShieldAiController {
     };
   }
 
+  @UseGuards(InternalAuthGuard)
   @Get('api/v1/ai/supply-chain')
   getSupplyChain() {
     return {
@@ -234,6 +245,7 @@ export class ShieldAiController {
     };
   }
 
+  @UseGuards(InternalAuthGuard)
   @Get('api/v1/ai/finops/budget')
   getFinOpsBudget(@Query('tenantId') tenantId?: string) {
     return {
@@ -244,6 +256,7 @@ export class ShieldAiController {
     };
   }
 
+  @UseGuards(InternalAuthGuard)
   @Get('api/v1/ai/drift')
   getDriftEvaluation(
     @Query('modelId') modelId?: string,
@@ -257,6 +270,7 @@ export class ShieldAiController {
     };
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/ai/drift/evaluate')
   async enforceDrift(
     @Body()

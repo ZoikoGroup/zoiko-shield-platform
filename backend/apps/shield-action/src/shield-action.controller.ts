@@ -96,7 +96,6 @@ export class QuarantinePodDto {
   podSelector!: string;
 }
 
-@UseGuards(InternalAuthGuard)
 @Controller()
 export class ShieldActionController {
   constructor(
@@ -159,6 +158,7 @@ export class ShieldActionController {
     ].join('\n') + '\n';
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/actions/simulate')
   async simulateAction(@Body() body: SimulateActionDto) {
     return this.simulationService.simulate(
@@ -168,6 +168,7 @@ export class ShieldActionController {
     );
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/actions/rollback')
   async rollbackAction(@Body() body: RollbackActionDto) {
     return this.rollbackBroker.executeRollback(
@@ -176,11 +177,13 @@ export class ShieldActionController {
     );
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/actions/freeze')
   async createFreeze(@Body() body: CreateFreezeDto) {
     return this.freezeController.createFreeze(body);
   }
 
+  @UseGuards(InternalAuthGuard)
   @Get('api/v1/actions/receipts/:receiptId')
   async getReceipt(
     @Param('receiptId') receiptId: string,
@@ -191,16 +194,19 @@ export class ShieldActionController {
 
   // --- Two-Man Rule Dual-Authorization Endpoints ---
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/action/approvals/two-man/submit')
   submitTwoManTicket(@Body() body: SubmitTwoManTicketDto) {
     return this.twoManRuleService.submitTicket(body);
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/action/approvals/two-man/approve')
   approveTwoManTicket(@Body() body: ApproveTwoManTicketDto) {
     return this.twoManRuleService.approveTicket(body);
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/action/approvals/two-man/reject')
   rejectTwoManTicket(@Body() body: RejectTwoManTicketDto) {
     return this.twoManRuleService.rejectTicket(
@@ -211,6 +217,7 @@ export class ShieldActionController {
     );
   }
 
+  @UseGuards(InternalAuthGuard)
   @Get('api/v1/action/approvals/two-man/:ticketId')
   getTwoManTicket(
     @Param('ticketId') ticketId: string,
@@ -221,11 +228,13 @@ export class ShieldActionController {
 
   // --- Distributed Action Lock & Idempotency Endpoints ---
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/action/locks/acquire')
   acquireLock(@Body() body: AcquireLockDto) {
     return this.distributedLockService.acquireLock(body);
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/action/locks/release')
   releaseLock(@Body() body: ReleaseLockDto) {
     const released = this.distributedLockService.releaseLock(
@@ -239,6 +248,7 @@ export class ShieldActionController {
 
   // --- eBPF Kernel Microsegmentation Endpoints ---
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/action/ebpf/rules')
   applyEbpfRule(@Body() body: ApplyEbpfRuleDto) {
     if (!this.ebpfNetworkEnforcer) {
@@ -250,6 +260,7 @@ export class ShieldActionController {
     return this.ebpfNetworkEnforcer.applyMicrosegmentationRule(body);
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/action/ebpf/quarantine')
   quarantinePod(@Body() body: QuarantinePodDto) {
     if (!this.ebpfNetworkEnforcer) {
@@ -264,6 +275,7 @@ export class ShieldActionController {
     );
   }
 
+  @UseGuards(InternalAuthGuard)
   @Get('api/v1/action/ebpf/rules')
   getEbpfRules(@Query('tenantId') tenantId: string) {
     if (!this.ebpfNetworkEnforcer) {
@@ -274,6 +286,7 @@ export class ShieldActionController {
 
   // --- Dual-Custody Cryptographic Quorum Endpoints ---
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/action/dual-custody/initiate')
   initiateDualCustodyQuorum(@Body() body: any) {
     if (!this.dualCustodyQuorumService) {
@@ -282,6 +295,7 @@ export class ShieldActionController {
     return this.dualCustodyQuorumService.initiateQuorum(body);
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/action/dual-custody/approve')
   approveDualCustodyQuorum(
     @Body()
@@ -301,6 +315,7 @@ export class ShieldActionController {
     );
   }
 
+  @UseGuards(InternalAuthGuard)
   @Get('api/v1/action/dual-custody/:quorumId')
   getDualCustodyQuorum(
     @Param('quorumId') quorumId: string,
@@ -312,6 +327,7 @@ export class ShieldActionController {
     return this.dualCustodyQuorumService.getQuorum(tenantId, quorumId);
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/action/dual-custody/validate')
   validateDualCustodyQuorum(
     @Body()

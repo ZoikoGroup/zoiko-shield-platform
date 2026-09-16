@@ -35,7 +35,6 @@ export class VerifyProofDto implements MerkleInclusionProof {
   epochNumber!: number;
 }
 
-@UseGuards(InternalAuthGuard)
 @Controller()
 export class ShieldAnchorController {
   constructor(
@@ -90,11 +89,13 @@ export class ShieldAnchorController {
     ].join('\n') + '\n';
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/anchor/batches/seal')
   sealEpochBatch(@Body() body: SealEpochBatchDto) {
     return this.checkpointerService.buildEpochCheckpoint(body.items);
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/anchor/proofs/verify')
   verifyProof(@Body() body: VerifyProofDto) {
     const valid = this.checkpointerService.verifyInclusionProof(body);
@@ -105,6 +106,7 @@ export class ShieldAnchorController {
     };
   }
 
+  @UseGuards(InternalAuthGuard)
   @Get('api/v1/anchor/receipts/:epochNumber')
   getReceipt(@Param('epochNumber') epochNumber: string) {
     const epochNum = parseInt(epochNumber, 10);
@@ -117,6 +119,7 @@ export class ShieldAnchorController {
     return checkpoint;
   }
 
+  @UseGuards(InternalAuthGuard)
   @Get('api/v1/anchor/proofs/:epochNumber/:leafIndex')
   getInclusionProof(
     @Param('epochNumber') epochNumber: string,
