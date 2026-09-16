@@ -92,6 +92,11 @@ describe('CaseService', () => {
     });
 
     expect(createdCase.status).toBe('NEW');
+    expect(prismaMock.case.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ queue_id: 'DEFAULT' }),
+      }),
+    );
     expect(prismaMock.caseAlert.create).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({
