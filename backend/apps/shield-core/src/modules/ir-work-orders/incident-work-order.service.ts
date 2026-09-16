@@ -312,6 +312,14 @@ export class IncidentWorkOrderService {
     return workOrder;
   }
 
+  async list(tenantId: string, environmentId: string) {
+    return this.prisma.incidentWorkOrder.findMany({
+      where: { tenant_id: tenantId, environment_id: environmentId },
+      include: { retainer: true },
+      orderBy: { created_at: 'desc' },
+    });
+  }
+
   async activate(
     tenantId: string,
     environmentId: string,

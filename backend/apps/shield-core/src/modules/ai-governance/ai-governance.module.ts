@@ -7,6 +7,8 @@ import {
   AiBudgetController,
 } from './ai-governance.controller';
 import { CustomerDisclosuresController } from './customer-disclosures.controller';
+import { AiProxyController } from './ai-proxy.controller';
+import { ShieldAiClient } from '../../internal-client/shield-ai.client';
 import { AiUsageService } from './ai-usage.service';
 import { AiBudgetService } from './ai-budget.service';
 import { AiGovernanceProfileService } from './ai-governance-profile.service';
@@ -37,8 +39,10 @@ import { AiOutputGroundingService } from './ai-output-grounding.service';
     AiGovernanceProfileController,
     AiBudgetController,
     CustomerDisclosuresController,
+    AiProxyController,
   ],
   providers: [
+    ShieldAiClient,
     AiUsageService,
     AiBudgetService,
     AiGovernanceProfileService,
@@ -48,6 +52,7 @@ import { AiOutputGroundingService } from './ai-output-grounding.service';
     AiOutputGroundingService,
   ],
   exports: [
+    ShieldAiClient,
     AiUsageService,
     AiBudgetService,
     AiGovernanceProfileService,

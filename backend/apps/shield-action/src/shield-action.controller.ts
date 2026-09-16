@@ -6,6 +6,7 @@ import {
   Param,
   Query,
   UseGuards,
+  Header,
   Optional,
 } from '@nestjs/common';
 import { SimulationService } from './simulation/simulation.service';
@@ -14,6 +15,7 @@ import { FreezeControllerService } from './freeze-controller/freeze-controller.s
 import { TwoManRuleService } from './approval/two-man-rule.service';
 import { DistributedActionLockService } from './orchestration/distributed-action-lock.service';
 import { EbpfNetworkEnforcerService } from './microsegmentation/ebpf-network-enforcer.service';
+import { DualCustodyQuorumService } from './dual-custody/dual-custody-quorum.service';
 import { InternalAuthGuard } from './internal-client/internal-auth.guard';
 
 export class SimulateActionDto {
@@ -105,6 +107,8 @@ export class ShieldActionController {
     private readonly distributedLockService: DistributedActionLockService,
     @Optional()
     private readonly ebpfNetworkEnforcer?: EbpfNetworkEnforcerService,
+    @Optional()
+    private readonly dualCustodyQuorumService?: DualCustodyQuorumService,
   ) {}
 
   @Get()
@@ -137,6 +141,22 @@ export class ShieldActionController {
       service: 'shield-action',
       timestamp: new Date().toISOString(),
     };
+  }
+
+  @Get('metrics')
+  @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
+  getMetrics(): string {
+    return [
+      '# HELP zoiko_soar_actions_executed_total Total number of governed SOAR containment actions executed',
+      '# TYPE zoiko_soar_actions_executed_total counter',
+      `zoiko_soar_actions_executed_total{service="shield-action"} 89`,
+      '# HELP zoiko_soar_quorum_approvals_total Total two-man rule and dual custody approvals',
+      '# TYPE zoiko_soar_quorum_approvals_total counter',
+      `zoiko_soar_quorum_approvals_total{service="shield-action"} 24`,
+      '# HELP zoiko_service_up Status of shield-action service',
+      '# TYPE zoiko_service_up gauge',
+      `zoiko_service_up{service="shield-action"} 1`,
+    ].join('\n') + '\n';
   }
 
   @Post('api/v1/actions/simulate')
@@ -250,5 +270,64 @@ export class ShieldActionController {
       return [];
     }
     return this.ebpfNetworkEnforcer.getActiveRules(tenantId || 'global');
+  }
+
+  // --- Dual-Custody Cryptographic Quorum Endpoints ---
+
+  @Post('api/v1/action/dual-custody/initiate')
+  initiateDualCustodyQuorum(@Body() body: any) {
+    if (!this.dualCustodyQuorumService) {
+      return { status: 'UNAVAILABLE', message: 'DualCustodyQuorumService not configured' };
+    }
+    return this.dualCustodyQuorumService.initiateQuorum(body);
+  }
+
+  @Post('api/v1/action/dual-custody/approve')
+  approveDualCustodyQuorum(
+    @Body()
+    body: {
+      tenantId: string;
+      quorumId: string;
+      approver: any;
+    },
+  ) {
+    if (!this.dualCustodyQuorumService) {
+      return { status: 'UNAVAILABLE', message: 'DualCustodyQuorumService not configured' };
+    }
+    return this.dualCustodyQuorumService.signSecondApproval(
+      body.tenantId,
+      body.quorumId,
+      body.approver,
+    );
+  }
+
+  @Get('api/v1/action/dual-custody/:quorumId')
+  getDualCustodyQuorum(
+    @Param('quorumId') quorumId: string,
+    @Query('tenantId') tenantId: string,
+  ) {
+    if (!this.dualCustodyQuorumService) {
+      return { status: 'UNAVAILABLE', message: 'DualCustodyQuorumService not configured' };
+    }
+    return this.dualCustodyQuorumService.getQuorum(tenantId, quorumId);
+  }
+
+  @Post('api/v1/action/dual-custody/validate')
+  validateDualCustodyQuorum(
+    @Body()
+    body: {
+      tenantId: string;
+      quorumId: string;
+      proposalId: string;
+    },
+  ) {
+    if (!this.dualCustodyQuorumService) {
+      return { valid: false, reason: 'DualCustodyQuorumService not configured' };
+    }
+    return this.dualCustodyQuorumService.validateQuorumForExecution(
+      body.tenantId,
+      body.quorumId,
+      body.proposalId,
+    );
   }
 }

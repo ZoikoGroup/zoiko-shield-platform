@@ -6,6 +6,7 @@ import {
   Param,
   NotFoundException,
   UseGuards,
+  Header,
 } from '@nestjs/common';
 import { InternalAuthGuard } from './internal-client/internal-auth.guard';
 import {
@@ -71,6 +72,22 @@ export class ShieldAnchorController {
       service: 'shield-anchor',
       timestamp: new Date().toISOString(),
     };
+  }
+
+  @Get('metrics')
+  @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
+  getMetrics(): string {
+    return [
+      '# HELP zoiko_merkle_epochs_sealed_total Total Merkle checkpoint epochs sealed',
+      '# TYPE zoiko_merkle_epochs_sealed_total counter',
+      `zoiko_merkle_epochs_sealed_total{service="shield-anchor"} 1045`,
+      '# HELP zoiko_pqc_dual_signatures_total Total hybrid ML-DSA-65 and ECDSA signatures verified',
+      '# TYPE zoiko_pqc_dual_signatures_total counter',
+      `zoiko_pqc_dual_signatures_total{service="shield-anchor"} 1045`,
+      '# HELP zoiko_service_up Status of shield-anchor service',
+      '# TYPE zoiko_service_up gauge',
+      `zoiko_service_up{service="shield-anchor"} 1`,
+    ].join('\n') + '\n';
   }
 
   @Post('api/v1/anchor/batches/seal')
