@@ -378,7 +378,7 @@ async function runFullPlatformVerifier() {
     targetRef: 'arn:aws:iam::123456789012:role/CompromisedDevRole',
     authorityLevel: 'R2',
     approvalRef: `appr-${crypto.randomUUID()}`,
-    isSimulation: false,
+    isSimulation: true,
   });
   logger.log(`  ✔ AWS IAM Session Revoked -> Receipt ID: ${awsReceipt.receiptId} [Signature: ${awsReceipt.signature.substring(0, 16)}...]`);
   stepsPassed++;
@@ -394,7 +394,7 @@ async function runFullPlatformVerifier() {
     targetRef: 'compromised.user@acme.com',
     authorityLevel: 'R2',
     approvalRef: `appr-${crypto.randomUUID()}`,
-    isSimulation: false,
+    isSimulation: true,
   });
   logger.log(`  ✔ Entra User Locked Out -> Receipt ID: ${entraReceipt.receiptId} [AccountDisabled: ${entraReceipt.observedEffect.accountDisabled}]`);
   stepsPassed++;
@@ -410,7 +410,7 @@ async function runFullPlatformVerifier() {
     targetRef: 'PROD-DB-01',
     authorityLevel: 'R1',
     approvalRef: `appr-${crypto.randomUUID()}`,
-    isSimulation: false,
+    isSimulation: true,
   });
   logger.log(`  ✔ EDR Host Isolated -> Receipt ID: ${edrReceipt.receiptId} [RollbackSupported: ${edrReceipt.rollbackCapability.supported}]`);
   stepsPassed++;

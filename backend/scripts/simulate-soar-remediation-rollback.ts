@@ -73,7 +73,7 @@ async function main() {
       actionType: act.actionType,
       targetRef: act.target,
       parameters: {},
-      isSimulation: false,
+      isSimulation: true,
     });
 
     const brokerReceipt = broker.recordExecution({

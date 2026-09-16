@@ -13,6 +13,10 @@ import {
   AiIncidentSeverity,
   AiIncidentState,
   AiIncidentTrigger,
+  AiModelProfile,
+  AiLifecycleState,
+  EuAiActRiskTier,
+  NistAiRmfFunction,
 } from "@/lib/types";
 import {
   ShieldAlert,
@@ -32,6 +36,12 @@ import {
   Lock,
   Cpu,
   ShieldX,
+  Boxes,
+  PlusCircle,
+  ShieldCheck,
+  Trash2,
+  Sliders,
+  ExternalLink,
 } from "lucide-react";
 import {
   DegradedState,
@@ -61,9 +71,34 @@ export default function AiGovernancePage() {
   const [newModel, setNewModel] = useState("gemini-1.5-pro");
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
 
+  // Model Inventory State & Filters
+  const [isRegisteringModel, setIsRegisteringModel] = useState<boolean>(false);
+  const [inventorySearch, setInventorySearch] = useState<string>("");
+  const [filterLifecycle, setFilterLifecycle] = useState<string>("ALL");
+  const [filterRisk, setFilterRisk] = useState<string>("ALL");
+
+  // Register Model Form State
+  const [formModelId, setFormModelId] = useState("");
+  const [formProvider, setFormProvider] = useState<string>("Google");
+  const [formModelFamily, setFormModelFamily] = useState("Gemini");
+  const [formVersion, setFormVersion] = useState("1.5-pro-002");
+  const [formEuRisk, setFormEuRisk] = useState<EuAiActRiskTier>("LIMITED_RISK");
+  const [formNistFunctions, setFormNistFunctions] = useState<NistAiRmfFunction[]>([
+    "GOVERN",
+    "MAP",
+    "MEASURE",
+  ]);
+  const [formPurpose, setFormPurpose] = useState("");
+  const [formUseCases, setFormUseCases] = useState("RESPONSE_RECOMMENDATION, INVESTIGATION_HYPOTHESIS");
+  const [formFallbackEngine, setFormFallbackEngine] = useState("Tier-1 Deterministic RCA Rule Engine");
+  const [formHhiWeight, setFormHhiWeight] = useState<number>(0.2);
+  const [formHumanOversight, setFormHumanOversight] = useState<boolean>(true);
+  const [formLifecycleState, setFormLifecycleState] = useState<AiLifecycleState>("PROPOSED");
+
   if (!isHydrated) return null;
 
   const incidents = state.aiIncidents || [];
+  const models = state.aiModels || [];
   const modelDrifts = state.modelDriftReports || [];
   const supplyChain = state.aiSupplyChain || {
     hhiIndex: 4200,
@@ -160,6 +195,66 @@ export default function AiGovernancePage() {
     }
   };
 
+  const handleRegisterModel = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formModelId.trim()) return;
+
+    setActionLoadingId("register-model");
+    try {
+      await ZoikoShieldApiClient.registerAiModel({
+        modelId: formModelId.trim().toLowerCase().replace(/\s+/g, "-"),
+        provider: formProvider,
+        modelFamily: formModelFamily,
+        version: formVersion,
+        euAiActClassification: formEuRisk,
+        nistRmfAlignment: formNistFunctions,
+        purpose: formPurpose || "Automated telemetry and inference processing.",
+        primaryUseCaseKeys: formUseCases
+          .split(",")
+          .map((k) => k.trim())
+          .filter(Boolean),
+        deterministicFallbackEngine: formFallbackEngine,
+        hhiWeight: formHhiWeight,
+        humanOversightRequired: formHumanOversight,
+        lifecycleState: formLifecycleState,
+      });
+      setIsRegisteringModel(false);
+      setFormModelId("");
+      setFormPurpose("");
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleUpdateModelLifecycle = async (
+    modelId: string,
+    lifecycleState: AiLifecycleState
+  ) => {
+    setActionLoadingId(`lifecycle-${modelId}`);
+    try {
+      await ZoikoShieldApiClient.updateAiModel(modelId, { lifecycleState });
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const handleDecommissionModel = async (modelId: string) => {
+    setActionLoadingId(`delete-${modelId}`);
+    try {
+      await ZoikoShieldApiClient.deleteAiModel(modelId);
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const toggleNistFunction = (fn: NistAiRmfFunction) => {
+    if (formNistFunctions.includes(fn)) {
+      setFormNistFunctions(formNistFunctions.filter((f) => f !== fn));
+    } else {
+      setFormNistFunctions([...formNistFunctions, fn]);
+    }
+  };
+
   const getStateBadge = (st: AiIncidentState) => {
     switch (st) {
       case "DECLARED":
@@ -179,6 +274,36 @@ export default function AiGovernancePage() {
     }
   };
 
+  const getLifecycleBadge = (lifecycle?: AiLifecycleState) => {
+    switch (lifecycle) {
+      case "APPROVED_FOR_PRODUCTION":
+        return <Badge variant="pass">APPROVED FOR PROD</Badge>;
+      case "EVALUATING":
+        return <Badge variant="ai">EVALUATING</Badge>;
+      case "PROPOSED":
+        return <Badge variant="medium">PROPOSED</Badge>;
+      case "DECOMMISSIONED":
+        return <Badge variant="neutral">DECOMMISSIONED</Badge>;
+      default:
+        return <Badge variant="neutral">{lifecycle || "ACTIVE"}</Badge>;
+    }
+  };
+
+  const getRiskTierBadge = (tier: EuAiActRiskTier) => {
+    switch (tier) {
+      case "UNACCEPTABLE_RISK":
+        return <Badge variant="critical">UNACCEPTABLE RISK</Badge>;
+      case "HIGH_RISK":
+        return <Badge variant="high">HIGH RISK</Badge>;
+      case "LIMITED_RISK":
+        return <Badge variant="medium">LIMITED RISK</Badge>;
+      case "MINIMAL_RISK":
+        return <Badge variant="pass">MINIMAL RISK</Badge>;
+      default:
+        return <Badge variant="neutral">{tier}</Badge>;
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Header Banner */}
@@ -194,11 +319,15 @@ export default function AiGovernancePage() {
             AI Safety, Incident Lifecycle & Drift Operations
           </h1>
           <p className="text-sm text-slate-400 max-w-2xl leading-relaxed">
-            Deterministic circuit breakers, Emergency Kill-Switch controls, Population Stability Index (PSI) drift monitoring, and Multi-Vendor Supply Chain HHI concentration governance.
+            Deterministic circuit breakers, Emergency Kill-Switch controls, Model Inventory Registry (NIST/EU AI Act), PSI drift monitoring, and Multi-Vendor Supply Chain HHI governance.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <Button variant="secondary" size="md" onClick={() => setIsRegisteringModel(true)}>
+            <PlusCircle className="w-4 h-4 text-cyan-400" />
+            <span>Register AI Model</span>
+          </Button>
           <Button variant="cyan" size="md" onClick={() => setIsDeclaring(true)}>
             <Flame className="w-4 h-4 text-rose-400" />
             <span>Declare AI Incident</span>
@@ -215,10 +344,10 @@ export default function AiGovernancePage() {
       </div>
 
       {/* Top Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card className="space-y-1">
           <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
-            <span>ACTIVE AI INCIDENTS</span>
+            <span>ACTIVE INCIDENTS</span>
             <AlertOctagon className="w-4 h-4 text-rose-400" />
           </div>
           <div className="text-2xl font-bold text-slate-100 font-mono">
@@ -226,6 +355,19 @@ export default function AiGovernancePage() {
           </div>
           <div className="text-[11px] text-rose-400 font-mono">
             {incidents.filter((i) => i.killSwitchEngaged).length} Kill-Switch active
+          </div>
+        </Card>
+
+        <Card className="space-y-1">
+          <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
+            <span>AI SYSTEM INVENTORY</span>
+            <Boxes className="w-4 h-4 text-cyan-400" />
+          </div>
+          <div className="text-2xl font-bold text-slate-100 font-mono">
+            {models.filter((m) => m.lifecycleState !== "DECOMMISSIONED").length}
+          </div>
+          <div className="text-[11px] text-emerald-400 font-mono">
+            {models.filter((m) => m.lifecycleState === "APPROVED_FOR_PRODUCTION").length} Approved for Prod
           </div>
         </Card>
 
@@ -264,7 +406,7 @@ export default function AiGovernancePage() {
             {complianceDrift.score.toFixed(1)}%
           </div>
           <div className="text-[11px] text-emerald-400 font-mono">
-            {complianceDrift.slaAlarms.length} Real-Time SLA Alarms
+            {complianceDrift.slaAlarms.length} SLA Alarms
           </div>
         </Card>
       </div>
@@ -297,6 +439,12 @@ export default function AiGovernancePage() {
             label: "§23 Incident Lifecycle & Kill-Switch",
             icon: <Flame className="w-4 h-4" />,
             badge: incidents.filter((i) => i.state !== "CLOSED").length,
+          },
+          {
+            id: "inventory",
+            label: "§05 AI Model Inventory (NIST/EU)",
+            icon: <Boxes className="w-4 h-4" />,
+            badge: models.filter((m) => m.lifecycleState !== "DECOMMISSIONED").length,
           },
           {
             id: "drift",
@@ -439,7 +587,285 @@ export default function AiGovernancePage() {
         </div>
       )}
 
-      {/* Tab 2: §21 Model Stability & Population Stability Index (PSI) */}
+      {/* Tab 2: §05 AI System Inventory & Risk Registry (NIST/EU AI Act) */}
+      {activeTab === "inventory" && (
+        <div className="space-y-6">
+          <Card className="space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-3 border-b border-slate-800">
+              <div>
+                <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                  <Boxes className="w-4 h-4 text-cyan-400" />
+                  AI System Inventory & Risk Registry (§05)
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Governed under NIST AI RMF 1.0 (Govern, Map, Measure, Manage) and EU AI Act (Regulation EU 2024/1689).
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setIsRegisteringModel(true)}
+                >
+                  <PlusCircle className="w-3.5 h-3.5" />
+                  <span>Register Model Profile</span>
+                </Button>
+              </div>
+            </div>
+
+            {/* Filter and Search Bar */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs font-mono">
+              <div className="flex items-center gap-2 flex-1">
+                <input
+                  type="text"
+                  placeholder="Filter models by ID, provider, family, or purpose..."
+                  value={inventorySearch}
+                  onChange={(e) => setInventorySearch(e.target.value)}
+                  className="w-full max-w-sm px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-400 font-sans"
+                />
+              </div>
+
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400 text-[11px]">Lifecycle:</span>
+                  <select
+                    value={filterLifecycle}
+                    onChange={(e) => setFilterLifecycle(e.target.value)}
+                    className="px-2 py-1 bg-slate-900 border border-slate-700 rounded text-xs text-slate-200 focus:outline-none focus:border-cyan-400"
+                  >
+                    <option value="ALL">ALL STATES</option>
+                    <option value="APPROVED_FOR_PRODUCTION">APPROVED FOR PROD</option>
+                    <option value="EVALUATING">EVALUATING</option>
+                    <option value="PROPOSED">PROPOSED</option>
+                    <option value="DECOMMISSIONED">DECOMMISSIONED</option>
+                  </select>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <span className="text-slate-400 text-[11px]">EU Risk Tier:</span>
+                  <select
+                    value={filterRisk}
+                    onChange={(e) => setFilterRisk(e.target.value)}
+                    className="px-2 py-1 bg-slate-900 border border-slate-700 rounded text-xs text-slate-200 focus:outline-none focus:border-cyan-400"
+                  >
+                    <option value="ALL">ALL TIERS</option>
+                    <option value="MINIMAL_RISK">MINIMAL_RISK</option>
+                    <option value="LIMITED_RISK">LIMITED_RISK</option>
+                    <option value="HIGH_RISK">HIGH_RISK</option>
+                    <option value="UNACCEPTABLE_RISK">UNACCEPTABLE_RISK</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Model Registry Cards */}
+            <div className="grid grid-cols-1 gap-4">
+              {models
+                .filter((m) => {
+                  if (filterLifecycle !== "ALL" && m.lifecycleState !== filterLifecycle) return false;
+                  if (filterRisk !== "ALL" && m.euAiActClassification !== filterRisk) return false;
+                  if (inventorySearch.trim()) {
+                    const q = inventorySearch.toLowerCase();
+                    return (
+                      m.modelId.toLowerCase().includes(q) ||
+                      m.provider.toLowerCase().includes(q) ||
+                      m.modelFamily.toLowerCase().includes(q) ||
+                      m.purpose.toLowerCase().includes(q)
+                    );
+                  }
+                  return true;
+                })
+                .map((model, idx) => (
+                  <div
+                    key={`${model.modelId}-${idx}`}
+                    className={`p-5 rounded-xl border transition-all ${
+                      model.lifecycleState === "APPROVED_FOR_PRODUCTION"
+                        ? "bg-slate-900/80 border-slate-700 hover:border-cyan-500/40"
+                        : model.lifecycleState === "EVALUATING"
+                        ? "bg-cyan-950/20 border-cyan-500/30"
+                        : model.lifecycleState === "DECOMMISSIONED"
+                        ? "bg-slate-950/40 border-slate-800/80 opacity-60"
+                        : "bg-amber-950/20 border-amber-500/30"
+                    } space-y-4 font-mono text-xs`}
+                  >
+                    {/* Header Row */}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="px-2 py-0.5 rounded bg-purple-950/50 border border-purple-500/40 text-purple-300 font-bold text-[11px]">
+                            {model.provider}
+                          </span>
+                          <span className="font-bold text-sm text-cyan-300 font-sans">
+                            {model.modelId}
+                          </span>
+                          <span className="text-slate-400 text-[11px]">v{model.version}</span>
+                          <span className="text-slate-500 text-[11px]">({model.modelFamily})</span>
+                          {getLifecycleBadge(model.lifecycleState)}
+                          {getRiskTierBadge(model.euAiActClassification)}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 text-slate-400 text-[11px]">
+                        <span>
+                          Inference Share:{" "}
+                          <strong className="text-cyan-400 font-bold">
+                            {((model.hhiWeight || 0.1) * 100).toFixed(0)}%
+                          </strong>
+                        </span>
+                        <span>•</span>
+                        <span>
+                          Human Oversight:{" "}
+                          <strong
+                            className={
+                              model.humanOversightRequired ? "text-amber-400" : "text-emerald-400"
+                            }
+                          >
+                            {model.humanOversightRequired ? "MANDATORY (2-Man)" : "PERMITTED TIER-2"}
+                          </strong>
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Purpose Description */}
+                    <div className="space-y-1">
+                      <span className="text-[11px] text-slate-400 uppercase tracking-wider">
+                        Operational Mandate & Role:
+                      </span>
+                      <p className="text-slate-200 font-sans text-xs leading-relaxed">
+                        {model.purpose}
+                      </p>
+                    </div>
+
+                    {/* Details Grid: Use Cases, NIST Alignment & Fallback */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80 space-y-1.5">
+                        <span className="text-[11px] text-slate-400">PRIMARY USE CASES</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {model.primaryUseCaseKeys?.map((uc, uIdx) => (
+                            <span
+                              key={uIdx}
+                              className="px-1.5 py-0.5 rounded bg-cyan-950/60 text-cyan-300 border border-cyan-500/30 text-[10px]"
+                            >
+                              {uc}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80 space-y-1.5">
+                        <span className="text-[11px] text-slate-400">NIST AI RMF 1.0 FUNCTIONS</span>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          {model.nistRmfAlignment?.map((fn, fIdx) => (
+                            <span
+                              key={fIdx}
+                              className="px-1.5 py-0.5 rounded bg-emerald-950/60 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold"
+                            >
+                              {fn}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800/80 space-y-1">
+                        <span className="text-[11px] text-slate-400">DETERMINISTIC FALLBACK ENGINE</span>
+                        <p className="text-slate-300 text-[11px] font-mono truncate">
+                          {model.deterministicFallbackEngine || "Rule-Based Deterministic Fallback"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Lifecycle Action Bar */}
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 gap-2 flex-wrap">
+                      <div className="text-[11px] text-slate-500 font-mono">
+                        Updated: {model.updatedAt ? new Date(model.updatedAt).toLocaleDateString() : "Active"}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        {model.lifecycleState === "PROPOSED" && (
+                          <>
+                            <Button
+                              variant="ai"
+                              size="sm"
+                              isLoading={actionLoadingId === `lifecycle-${model.modelId}`}
+                              onClick={() => handleUpdateModelLifecycle(model.modelId, "EVALUATING")}
+                            >
+                              <Activity className="w-3.5 h-3.5" />
+                              <span>Begin Safety Evaluation</span>
+                            </Button>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              isLoading={actionLoadingId === `lifecycle-${model.modelId}`}
+                              onClick={() =>
+                                handleUpdateModelLifecycle(model.modelId, "APPROVED_FOR_PRODUCTION")
+                              }
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Approve for Production</span>
+                            </Button>
+                          </>
+                        )}
+
+                        {model.lifecycleState === "EVALUATING" && (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            isLoading={actionLoadingId === `lifecycle-${model.modelId}`}
+                            onClick={() =>
+                              handleUpdateModelLifecycle(model.modelId, "APPROVED_FOR_PRODUCTION")
+                            }
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>Conformity Pass: Approve for Prod</span>
+                          </Button>
+                        )}
+
+                        {model.lifecycleState === "APPROVED_FOR_PRODUCTION" && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            isLoading={actionLoadingId === `lifecycle-${model.modelId}`}
+                            onClick={() => handleUpdateModelLifecycle(model.modelId, "EVALUATING")}
+                          >
+                            <Sliders className="w-3.5 h-3.5" />
+                            <span>Revoke to Evaluation</span>
+                          </Button>
+                        )}
+
+                        {model.lifecycleState !== "DECOMMISSIONED" && (
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            isLoading={actionLoadingId === `delete-${model.modelId}`}
+                            onClick={() => handleDecommissionModel(model.modelId)}
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Decommission</span>
+                          </Button>
+                        )}
+
+                        {model.lifecycleState === "DECOMMISSIONED" && (
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            isLoading={actionLoadingId === `lifecycle-${model.modelId}`}
+                            onClick={() => handleUpdateModelLifecycle(model.modelId, "PROPOSED")}
+                          >
+                            <RefreshCw className="w-3.5 h-3.5" />
+                            <span>Re-propose Model</span>
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Tab 3: §21 Model Stability & Population Stability Index (PSI) */}
       {activeTab === "drift" && (
         <div className="space-y-6">
           <Card className="space-y-4">
@@ -621,6 +1047,198 @@ export default function AiGovernancePage() {
           </Card>
         </div>
       )}
+
+      {/* Register AI Model Modal */}
+      <Modal
+        isOpen={isRegisteringModel}
+        onClose={() => setIsRegisteringModel(false)}
+        title="Register AI Model Profile (§05)"
+        description="Add a new foundation model or local inference agent to the NIST AI RMF & EU AI Act governance registry."
+      >
+        <form onSubmit={handleRegisterModel} className="space-y-4 font-sans">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono text-slate-300">Model ID (Unique Identifier)</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. gpt-4o-security"
+                value={formModelId}
+                onChange={(e) => setFormModelId(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono text-slate-300">Provider</label>
+              <select
+                value={formProvider}
+                onChange={(e) => setFormProvider(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
+              >
+                <option value="Google">Google (Vertex AI)</option>
+                <option value="Anthropic">Anthropic (Claude)</option>
+                <option value="OpenAI">OpenAI (Azure / Direct)</option>
+                <option value="Local">Local (vLLM / Ollama)</option>
+                <option value="Mistral">Mistral AI</option>
+                <option value="Meta">Meta (Llama 3)</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono text-slate-300">Model Family</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. GPT-4, Claude, Gemini"
+                value={formModelFamily}
+                onChange={(e) => setFormModelFamily(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-sans"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono text-slate-300">Version / Checkpoint</label>
+              <input
+                type="text"
+                required
+                placeholder="e.g. 2026-05-preview"
+                value={formVersion}
+                onChange={(e) => setFormVersion(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono text-slate-300">EU AI Act Risk Classification</label>
+              <select
+                value={formEuRisk}
+                onChange={(e) => setFormEuRisk(e.target.value as EuAiActRiskTier)}
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
+              >
+                <option value="MINIMAL_RISK">MINIMAL_RISK (Unregulated / Broad Utility)</option>
+                <option value="LIMITED_RISK">LIMITED_RISK (Transparency & Labeling Mandated)</option>
+                <option value="HIGH_RISK">HIGH_RISK (Strict Conformity & Human-in-the-Loop)</option>
+                <option value="UNACCEPTABLE_RISK">UNACCEPTABLE_RISK (Prohibited)</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono text-slate-300">Initial Lifecycle State</label>
+              <select
+                value={formLifecycleState}
+                onChange={(e) => setFormLifecycleState(e.target.value as AiLifecycleState)}
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
+              >
+                <option value="PROPOSED">PROPOSED (Under Safety Review)</option>
+                <option value="EVALUATING">EVALUATING (Sandbox Testing)</option>
+                <option value="APPROVED_FOR_PRODUCTION">APPROVED_FOR_PRODUCTION</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-mono text-slate-300">NIST AI RMF 1.0 Aligned Core Functions</label>
+            <div className="flex items-center gap-2 flex-wrap text-xs font-mono">
+              {(["GOVERN", "MAP", "MEASURE", "MANAGE"] as NistAiRmfFunction[]).map((fn) => (
+                <button
+                  type="button"
+                  key={fn}
+                  onClick={() => toggleNistFunction(fn)}
+                  className={`px-3 py-1.5 rounded-lg border text-xs font-bold transition-all ${
+                    formNistFunctions.includes(fn)
+                      ? "bg-cyan-950/60 border-cyan-400 text-cyan-300 shadow-[0_0_10px_rgba(6,182,212,0.3)]"
+                      : "bg-slate-900/60 border-slate-700 text-slate-400"
+                  }`}
+                >
+                  {formNistFunctions.includes(fn) ? "✓ " : "+ "}
+                  {fn}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-mono text-slate-300">Purpose / Role Description</label>
+            <textarea
+              rows={2}
+              required
+              placeholder="Describe the operational mandate and security boundary of this model..."
+              value={formPurpose}
+              onChange={(e) => setFormPurpose(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-sans"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono text-slate-300">Primary Use Case Keys (comma-separated)</label>
+              <input
+                type="text"
+                required
+                placeholder="RESPONSE_RECOMMENDATION, INVESTIGATION_HYPOTHESIS"
+                value={formUseCases}
+                onChange={(e) => setFormUseCases(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono text-slate-300">Deterministic Fallback Engine</label>
+              <input
+                type="text"
+                required
+                placeholder="Tier-1 Deterministic RCA Rule Engine"
+                value={formFallbackEngine}
+                onChange={(e) => setFormFallbackEngine(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-sans"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono text-slate-300">HHI Inference Share Weight (0.05 - 1.0)</label>
+              <input
+                type="number"
+                step="0.05"
+                min="0.01"
+                max="1.0"
+                value={formHhiWeight}
+                onChange={(e) => setFormHhiWeight(parseFloat(e.target.value) || 0.1)}
+                className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
+              />
+            </div>
+
+            <div className="flex items-center gap-3 pt-4">
+              <input
+                type="checkbox"
+                id="humanOversight"
+                checked={formHumanOversight}
+                onChange={(e) => setFormHumanOversight(e.target.checked)}
+                className="w-4 h-4 rounded border-slate-700 bg-slate-900 text-cyan-400 focus:ring-0"
+              />
+              <label htmlFor="humanOversight" className="text-xs font-mono text-slate-200 cursor-pointer">
+                Mandatory Human Oversight (§08 Dual-Custody)
+              </label>
+            </div>
+          </div>
+
+          <div className="pt-3 border-t border-slate-800 flex justify-end gap-2">
+            <Button variant="ghost" size="sm" type="button" onClick={() => setIsRegisteringModel(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" size="sm" type="submit" isLoading={actionLoadingId === "register-model"}>
+              <PlusCircle className="w-3.5 h-3.5" />
+              <span>Register Model Profile</span>
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Declare Incident Modal */}
       <Modal

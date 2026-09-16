@@ -1,69 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 
-// Service port mapping based on technical ground truth
+// Service port mapping based on technical ground truth: all authenticated user traffic enters via shield-core:3001
 function resolveServicePort(method: string, path: string): number {
-  // shield-anchor: port 3005
-  if (
-    path.startsWith("anchor") ||
-    path.startsWith("checkpoints") ||
-    path.startsWith("witnesses") ||
-    path.startsWith("merkle")
-  ) {
-    return 3005;
+  // Public raw webhook ingestion routes to shield-ingest:3002 (protected by WebhookSignatureGuard)
+  if (path.startsWith("ingestion/webhooks")) {
+    return 3002;
   }
 
-  // shield-ai: port 3003
-  if (
-    path.startsWith("ai/") ||
-    path.startsWith("ai-governance") ||
-    path.startsWith("ai") ||
-    path.startsWith("decisions") ||
-    path.includes("/ai/")
-  ) {
-    return 3003;
-  }
-
-  // shield-action: port 3004
-  if (
-    path.startsWith("actions") ||
-    path.startsWith("response-proposals") ||
-    path.startsWith("response/") ||
-    path.startsWith("soar")
-  ) {
-    return 3004;
-  }
-
-  // Collision 1: Alert create-case / assign live on shield-ingest:3002
-  if (method === "POST" && path.includes("alerts/") && (path.endsWith("/create-case") || path.endsWith("/assign"))) {
-    return 3002;
-  }
-  // Collision 2: Case evidence write and case assign live on shield-ingest:3002
-  if (method === "POST" && path.includes("cases/") && (path.endsWith("/evidence") || path.endsWith("/assign"))) {
-    return 3002;
-  }
-  // Connectors, Ingestion, Normalization live on shield-ingest:3002
-  if (
-    path.startsWith("connectors") ||
-    path.startsWith("connector-types") ||
-    path.startsWith("ingestion")
-  ) {
-    return 3002;
-  }
-  // Controls, Objectives, Control-Tests, Control-Evaluations live on shield-ingest:3002
-  if (
-    path.startsWith("controls") ||
-    path.startsWith("control-tests") ||
-    path.startsWith("control-evaluations")
-  ) {
-    return 3002;
-  }
-  // Collision 3: normalized events list/detail/replay live on shield-ingest:3002
-  // (events/publish is the exception - that stays on shield-core:3001)
-  if (path.startsWith("events") && !path.startsWith("events/publish")) {
-    return 3002;
-  }
-  // All other core routes: Auth, Onboarding, Tenants, Invitations, Alerts (read/triage), Cases (CRUD/timeline/read evidence), Audit Packages, JIT live on shield-core:3001
+  // All other user-facing API operations route through shield-core:3001 (guarded by JwtAuthGuard + PermissionsGuard)
   return 3001;
 }
 
@@ -328,7 +273,11 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
   const method = req.method;
   const path = slugArray.join("/");
   const targetPort = resolveServicePort(method, path);
-  const targetUrl = `http://127.0.0.1:${targetPort}/api/v1/${path}${req.nextUrl.search}`;
+  const baseUrl =
+    targetPort === 3002
+      ? process.env.SHIELD_INGEST_URL || "http://127.0.0.1:3002"
+      : process.env.SHIELD_CORE_URL || "http://127.0.0.1:3001";
+  const targetUrl = `${baseUrl}/api/v1/${path}${req.nextUrl.search}`;
 
   let rawBodyText = "";
   let parsedBody: any = {};
@@ -351,40 +300,16 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
   // Build outbound headers
   const outboundHeaders: Record<string, string> = {
     "Content-Type": "application/json",
+    "x-tenant-id": tenantId,
   };
 
-  // 1. Forward Authorization or Cookies to shield-core
+  // 1. Forward Authorization and Cookies to shield-core (or shield-ingest)
   const authHeader = req.headers.get("authorization");
   if (authHeader) outboundHeaders["Authorization"] = authHeader;
   const cookieHeader = req.headers.get("cookie");
   if (cookieHeader) outboundHeaders["Cookie"] = cookieHeader;
 
-  // 2. Inject x-tenant-id and automatic Workload Token for shield-ingest (port 3002) calls
-  if (targetPort === 3002) {
-    outboundHeaders["x-tenant-id"] = tenantId;
-    if (!outboundHeaders["Authorization"]) {
-      const devSecret = process.env.WORKLOAD_IDENTITY_DEV_SECRET || "local-workload-identity-change-me";
-      const headerObj = { alg: "HS256", typ: "JWT" };
-      const nowSec = Math.floor(Date.now() / 1000);
-      const payloadObj = {
-        iat: nowSec,
-        exp: nowSec + 50,
-        aud: "shield-ingest",
-        iss: "zoikoshield-workload-identity",
-        sub: "frontend-gateway-proxy",
-        jti: crypto.randomUUID(),
-      };
-      const b64Header = Buffer.from(JSON.stringify(headerObj)).toString("base64url");
-      const b64Payload = Buffer.from(JSON.stringify(payloadObj)).toString("base64url");
-      const signature = crypto
-        .createHmac("sha256", devSecret)
-        .update(`${b64Header}.${b64Payload}`)
-        .digest("base64url");
-      outboundHeaders["Authorization"] = `Bearer ${b64Header}.${b64Payload}.${signature}`;
-    }
-  }
-
-  // 3. Server-side HMAC Signing for Webhook Ingestion
+  // 2. Server-side HMAC Signing for Webhook Ingestion
   if (path.startsWith("ingestion/webhooks/")) {
     const webhookSecret = process.env.WEBHOOK_HMAC_SECRET || "whsec_dev_local_secret_zoikoshield_2026";
     const hmac = crypto.createHmac("sha256", webhookSecret).update(rawBodyText).digest("hex");
@@ -929,6 +854,127 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
     }
 
     return NextResponse.json(baseEnvelope, { headers: { "X-ZoikoShield-Source": "simulated" } });
+  }
+
+  // Route: /api/v1/ai/inventory
+  if (path === "ai/inventory" || path.startsWith("ai/inventory")) {
+    if (method === "POST") {
+      return NextResponse.json(
+        {
+          status: "success",
+          data: {
+            ...parsedBody,
+            modelId: parsedBody.modelId || `custom-model-${generateUUID().slice(0, 6)}`,
+            lifecycleState: parsedBody.lifecycleState || "PROPOSED",
+            registeredAt: now,
+            updatedAt: now,
+          },
+        },
+        { headers: { "X-ZoikoShield-Source": "simulated" } }
+      );
+    }
+    if (method === "PATCH") {
+      return NextResponse.json(
+        {
+          status: "success",
+          data: {
+            modelId: slugArray[2] || "gemini-1.5-pro",
+            ...parsedBody,
+            updatedAt: now,
+          },
+        },
+        { headers: { "X-ZoikoShield-Source": "simulated" } }
+      );
+    }
+    if (method === "DELETE") {
+      return NextResponse.json(
+        {
+          status: "success",
+          data: { modelId: slugArray[2] || "gemini-1.5-pro", decommissioned: true },
+        },
+        { headers: { "X-ZoikoShield-Source": "simulated" } }
+      );
+    }
+    return NextResponse.json(
+      {
+        status: "success",
+        data: {
+          inventoryVersion: "1.0.0-NIST-EUAI",
+          totalRegisteredModels: 3,
+          models: [
+            {
+              modelId: "gemini-1.5-pro",
+              provider: "Google",
+              modelFamily: "Gemini",
+              version: "1.5-pro-002",
+              euAiActClassification: "LIMITED_RISK",
+              nistRmfAlignment: ["GOVERN", "MAP", "MEASURE", "MANAGE"],
+              purpose:
+                "Complex multi-vector threat correlation, case investigation, and incident RCA generation",
+              primaryUseCaseKeys: [
+                "RESPONSE_RECOMMENDATION",
+                "INVESTIGATION_HYPOTHESIS",
+                "INCIDENT_RCA",
+              ],
+              deterministicFallbackEngine:
+                "Tier-1 Deterministic RCA Engine (Rule-Based)",
+              hhiWeight: 0.6,
+              humanOversightRequired: true,
+              lifecycleState: "APPROVED_FOR_PRODUCTION",
+              registeredAt: now,
+              updatedAt: now,
+            },
+            {
+              modelId: "gemini-1.5-flash",
+              provider: "Google",
+              modelFamily: "Gemini",
+              version: "1.5-flash-002",
+              euAiActClassification: "MINIMAL_RISK",
+              nistRmfAlignment: ["GOVERN", "MAP", "MEASURE"],
+              purpose:
+                "Fast telemetry parsing, entity explanation, and query expansion",
+              primaryUseCaseKeys: [
+                "ENTITY_EXPLANATION",
+                "NEXT_QUERY",
+                "CASE_SUMMARY",
+              ],
+              deterministicFallbackEngine:
+                "Rule-Based Entity Lookup & Deterministic Cache",
+              hhiWeight: 0.3,
+              humanOversightRequired: false,
+              lifecycleState: "APPROVED_FOR_PRODUCTION",
+              registeredAt: now,
+              updatedAt: now,
+            },
+            {
+              modelId: "claude-3-5-sonnet",
+              provider: "Anthropic",
+              modelFamily: "Claude",
+              version: "3.5-sonnet-20241022",
+              euAiActClassification: "LIMITED_RISK",
+              nistRmfAlignment: ["GOVERN", "MAP", "MEASURE", "MANAGE"],
+              purpose:
+                "Secondary multi-provider failover for threat hypothesis and adversarial verification",
+              primaryUseCaseKeys: [
+                "INVESTIGATION_HYPOTHESIS",
+                "ADVERSARIAL_VERIFICATION",
+              ],
+              deterministicFallbackEngine: "Deterministic Threat Matrix Fallback",
+              hhiWeight: 0.1,
+              humanOversightRequired: true,
+              lifecycleState: "APPROVED_FOR_PRODUCTION",
+              registeredAt: now,
+              updatedAt: now,
+            },
+          ],
+          highRiskUseCasesCount: 2,
+          providerConcentrationHhi: 4200,
+          governanceComplianceStatus: "COMPLIANT_NIST_EU_AI_ACT",
+          assessedAt: now,
+        },
+      },
+      { headers: { "X-ZoikoShield-Source": "simulated" } }
+    );
   }
 
   // Route: /api/v1/cases/:caseId/ai/summary or ai routes

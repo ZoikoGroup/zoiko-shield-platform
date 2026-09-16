@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import * as crypto from 'crypto';
+import { PqcDualSignerService } from '../signing/pqc-dual-signer.service';
 
 export interface EvidenceLeaf {
   evidenceId: string;
@@ -26,6 +27,10 @@ export interface EpochMerkleCheckpoint {
   sealedAt: string;
   witnessAttestationId: string;
   witnessSignature: string;
+  pqcAlgorithm?: 'HYBRID_ECDSA_P256_ML_DSA_65';
+  pqcSignatureHex?: string;
+  classicalSignatureHex?: string;
+  hybridSignatureContainer?: string;
 }
 
 /**
@@ -37,6 +42,10 @@ export class BatchMerkleCheckpointerService {
   private readonly logger = new Logger(BatchMerkleCheckpointerService.name);
   private epochCounter = 0;
   private readonly epochHistory = new Map<number, EpochMerkleCheckpoint>();
+
+  constructor(
+    @Optional() private readonly pqcSigner?: PqcDualSignerService,
+  ) {}
 
   /**
    * Builds an epoch Merkle tree checkpoint from an array of evidence items.
@@ -104,6 +113,25 @@ export class BatchMerkleCheckpointerService {
     this.logger.log(
       `✔ [MERKLE CHECKPOINT SEALED] Epoch #${epochNumber} (${evidenceItems.length} leaves) -> Root: ${merkleRoot.substring(0, 16)}...`,
     );
+
+    return checkpoint;
+  }
+
+  /**
+   * Asynchronously builds an epoch checkpoint and signs it with FIPS 204 ML-DSA-65 & ECDSA P-256 PQC Dual-Signer.
+   */
+  async buildEpochCheckpointAsync(
+    evidenceItems: EvidenceLeaf[],
+  ): Promise<EpochMerkleCheckpoint> {
+    const checkpoint = this.buildEpochCheckpoint(evidenceItems);
+
+    if (this.pqcSigner) {
+      const hybridSig = await this.pqcSigner.signHybrid(checkpoint.merkleRoot);
+      checkpoint.pqcAlgorithm = 'HYBRID_ECDSA_P256_ML_DSA_65';
+      checkpoint.pqcSignatureHex = hybridSig.pqcSignatureHex;
+      checkpoint.classicalSignatureHex = hybridSig.classicalSignatureHex;
+      checkpoint.hybridSignatureContainer = hybridSig.hybridCombinedSignatureBase64;
+    }
 
     return checkpoint;
   }

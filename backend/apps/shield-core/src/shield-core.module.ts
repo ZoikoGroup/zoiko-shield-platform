@@ -99,6 +99,8 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { HumanAuthorityModule } from './modules/human-authority/human-authority.module';
 import { EventStreamModule } from './modules/events/event-stream.module';
 import { ExperienceModule } from './modules/experience/experience.module';
+import { ConnectorsProxyModule } from './modules/connectors-proxy/connectors-proxy.module';
+import { AnchorProxyModule } from './modules/anchor-proxy/anchor-proxy.module';
 
 @Module({
   imports: [
@@ -209,6 +211,8 @@ import { ExperienceModule } from './modules/experience/experience.module';
     WorkloadIdentityModule,
     EventStreamModule,
     ExperienceModule,
+    ConnectorsProxyModule,
+    AnchorProxyModule,
   ],
   controllers: [ShieldCoreController],
   providers: [

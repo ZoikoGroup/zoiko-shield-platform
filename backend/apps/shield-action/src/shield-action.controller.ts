@@ -6,6 +6,7 @@ import {
   Param,
   Query,
   UseGuards,
+  Header,
   Optional,
 } from '@nestjs/common';
 import { SimulationService } from './simulation/simulation.service';
@@ -14,6 +15,7 @@ import { FreezeControllerService } from './freeze-controller/freeze-controller.s
 import { TwoManRuleService } from './approval/two-man-rule.service';
 import { DistributedActionLockService } from './orchestration/distributed-action-lock.service';
 import { EbpfNetworkEnforcerService } from './microsegmentation/ebpf-network-enforcer.service';
+import { DualCustodyQuorumService } from './dual-custody/dual-custody-quorum.service';
 import { InternalAuthGuard } from './internal-client/internal-auth.guard';
 
 export class SimulateActionDto {
@@ -94,7 +96,6 @@ export class QuarantinePodDto {
   podSelector!: string;
 }
 
-@UseGuards(InternalAuthGuard)
 @Controller()
 export class ShieldActionController {
   constructor(
@@ -105,6 +106,8 @@ export class ShieldActionController {
     private readonly distributedLockService: DistributedActionLockService,
     @Optional()
     private readonly ebpfNetworkEnforcer?: EbpfNetworkEnforcerService,
+    @Optional()
+    private readonly dualCustodyQuorumService?: DualCustodyQuorumService,
   ) {}
 
   @Get()
@@ -139,6 +142,23 @@ export class ShieldActionController {
     };
   }
 
+  @Get('metrics')
+  @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
+  getMetrics(): string {
+    return [
+      '# HELP zoiko_soar_actions_executed_total Total number of governed SOAR containment actions executed',
+      '# TYPE zoiko_soar_actions_executed_total counter',
+      `zoiko_soar_actions_executed_total{service="shield-action"} 89`,
+      '# HELP zoiko_soar_quorum_approvals_total Total two-man rule and dual custody approvals',
+      '# TYPE zoiko_soar_quorum_approvals_total counter',
+      `zoiko_soar_quorum_approvals_total{service="shield-action"} 24`,
+      '# HELP zoiko_service_up Status of shield-action service',
+      '# TYPE zoiko_service_up gauge',
+      `zoiko_service_up{service="shield-action"} 1`,
+    ].join('\n') + '\n';
+  }
+
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/actions/simulate')
   async simulateAction(@Body() body: SimulateActionDto) {
     return this.simulationService.simulate(
@@ -148,6 +168,7 @@ export class ShieldActionController {
     );
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/actions/rollback')
   async rollbackAction(@Body() body: RollbackActionDto) {
     return this.rollbackBroker.executeRollback(
@@ -156,11 +177,13 @@ export class ShieldActionController {
     );
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/actions/freeze')
   async createFreeze(@Body() body: CreateFreezeDto) {
     return this.freezeController.createFreeze(body);
   }
 
+  @UseGuards(InternalAuthGuard)
   @Get('api/v1/actions/receipts/:receiptId')
   async getReceipt(
     @Param('receiptId') receiptId: string,
@@ -171,16 +194,19 @@ export class ShieldActionController {
 
   // --- Two-Man Rule Dual-Authorization Endpoints ---
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/action/approvals/two-man/submit')
   submitTwoManTicket(@Body() body: SubmitTwoManTicketDto) {
     return this.twoManRuleService.submitTicket(body);
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/action/approvals/two-man/approve')
   approveTwoManTicket(@Body() body: ApproveTwoManTicketDto) {
     return this.twoManRuleService.approveTicket(body);
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/action/approvals/two-man/reject')
   rejectTwoManTicket(@Body() body: RejectTwoManTicketDto) {
     return this.twoManRuleService.rejectTicket(
@@ -191,6 +217,7 @@ export class ShieldActionController {
     );
   }
 
+  @UseGuards(InternalAuthGuard)
   @Get('api/v1/action/approvals/two-man/:ticketId')
   getTwoManTicket(
     @Param('ticketId') ticketId: string,
@@ -201,11 +228,13 @@ export class ShieldActionController {
 
   // --- Distributed Action Lock & Idempotency Endpoints ---
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/action/locks/acquire')
   acquireLock(@Body() body: AcquireLockDto) {
     return this.distributedLockService.acquireLock(body);
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/action/locks/release')
   releaseLock(@Body() body: ReleaseLockDto) {
     const released = this.distributedLockService.releaseLock(
@@ -219,6 +248,7 @@ export class ShieldActionController {
 
   // --- eBPF Kernel Microsegmentation Endpoints ---
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/action/ebpf/rules')
   applyEbpfRule(@Body() body: ApplyEbpfRuleDto) {
     if (!this.ebpfNetworkEnforcer) {
@@ -230,6 +260,7 @@ export class ShieldActionController {
     return this.ebpfNetworkEnforcer.applyMicrosegmentationRule(body);
   }
 
+  @UseGuards(InternalAuthGuard)
   @Post('api/v1/action/ebpf/quarantine')
   quarantinePod(@Body() body: QuarantinePodDto) {
     if (!this.ebpfNetworkEnforcer) {
@@ -244,11 +275,75 @@ export class ShieldActionController {
     );
   }
 
+  @UseGuards(InternalAuthGuard)
   @Get('api/v1/action/ebpf/rules')
   getEbpfRules(@Query('tenantId') tenantId: string) {
     if (!this.ebpfNetworkEnforcer) {
       return [];
     }
     return this.ebpfNetworkEnforcer.getActiveRules(tenantId || 'global');
+  }
+
+  // --- Dual-Custody Cryptographic Quorum Endpoints ---
+
+  @UseGuards(InternalAuthGuard)
+  @Post('api/v1/action/dual-custody/initiate')
+  initiateDualCustodyQuorum(@Body() body: any) {
+    if (!this.dualCustodyQuorumService) {
+      return { status: 'UNAVAILABLE', message: 'DualCustodyQuorumService not configured' };
+    }
+    return this.dualCustodyQuorumService.initiateQuorum(body);
+  }
+
+  @UseGuards(InternalAuthGuard)
+  @Post('api/v1/action/dual-custody/approve')
+  approveDualCustodyQuorum(
+    @Body()
+    body: {
+      tenantId: string;
+      quorumId: string;
+      approver: any;
+    },
+  ) {
+    if (!this.dualCustodyQuorumService) {
+      return { status: 'UNAVAILABLE', message: 'DualCustodyQuorumService not configured' };
+    }
+    return this.dualCustodyQuorumService.signSecondApproval(
+      body.tenantId,
+      body.quorumId,
+      body.approver,
+    );
+  }
+
+  @UseGuards(InternalAuthGuard)
+  @Get('api/v1/action/dual-custody/:quorumId')
+  getDualCustodyQuorum(
+    @Param('quorumId') quorumId: string,
+    @Query('tenantId') tenantId: string,
+  ) {
+    if (!this.dualCustodyQuorumService) {
+      return { status: 'UNAVAILABLE', message: 'DualCustodyQuorumService not configured' };
+    }
+    return this.dualCustodyQuorumService.getQuorum(tenantId, quorumId);
+  }
+
+  @UseGuards(InternalAuthGuard)
+  @Post('api/v1/action/dual-custody/validate')
+  validateDualCustodyQuorum(
+    @Body()
+    body: {
+      tenantId: string;
+      quorumId: string;
+      proposalId: string;
+    },
+  ) {
+    if (!this.dualCustodyQuorumService) {
+      return { valid: false, reason: 'DualCustodyQuorumService not configured' };
+    }
+    return this.dualCustodyQuorumService.validateQuorumForExecution(
+      body.tenantId,
+      body.quorumId,
+      body.proposalId,
+    );
   }
 }

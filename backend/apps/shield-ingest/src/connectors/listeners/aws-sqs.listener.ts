@@ -1,6 +1,7 @@
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, Optional } from '@nestjs/common';
 import { RawIngestService } from '../../ingestion/raw-ingest.service';
 import { TokenBucketRateLimiterService } from '../../ingestion/rate-limiter/token-bucket-limiter.service';
+import { DlqReplayQuarantineService } from '../../dlq/dlq-replay-quarantine.service';
 
 export interface SqsMessagePayload {
   messageId: string;
@@ -37,6 +38,7 @@ export class AwsSqsIngestListener implements OnModuleDestroy {
   constructor(
     private readonly rawIngestService: RawIngestService,
     private readonly rateLimiter: TokenBucketRateLimiterService,
+    @Optional() private readonly dlqService?: DlqReplayQuarantineService,
   ) {}
 
   onModuleDestroy() {
@@ -84,6 +86,15 @@ export class AwsSqsIngestListener implements OnModuleDestroy {
         this.logger.error(
           `Failed to parse SQS message ${msg.messageId} body: ${err.message}`,
         );
+        if (this.dlqService) {
+          this.dlqService.quarantineMessage(
+            options.tenantId,
+            `sqs:${options.queueUrl}`,
+            { rawBody: msg.body, messageId: msg.messageId },
+            `Failed to parse SQS message body: ${err.message}`,
+            'JSON_PARSE_ERROR',
+          );
+        }
         // Treat as poisoned message or forward to DLQ
         continue;
       }
@@ -116,6 +127,15 @@ export class AwsSqsIngestListener implements OnModuleDestroy {
         this.logger.error(
           `Error ingesting SQS message ${msg.messageId}: ${err.message}`,
         );
+        if (this.dlqService) {
+          this.dlqService.quarantineMessage(
+            options.tenantId,
+            `sqs:${options.queueUrl}`,
+            parsedPayload,
+            `Error ingesting SQS message: ${err.message}`,
+            'INGEST_PROCESSING_ERROR',
+          );
+        }
       }
     }
 

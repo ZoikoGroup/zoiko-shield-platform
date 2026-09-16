@@ -16,6 +16,7 @@ import {
   AiIncidentSeverity,
   AiIncidentState,
   AiIncidentTrigger,
+  AiModelProfile,
   ModelDriftReport,
   AiSupplyChainReport,
   ComplianceDriftState,
@@ -43,6 +44,7 @@ export interface DemoState {
   enclaveAttestation?: EnclaveAttestationReceipt;
   lastSimulatedEvent?: Record<string, unknown>;
   aiIncidents: AiIncident[];
+  aiModels?: AiModelProfile[];
   modelDriftReports: ModelDriftReport[];
   aiSupplyChain: AiSupplyChainReport;
   complianceDrift: ComplianceDriftState;
@@ -466,6 +468,57 @@ export function getDefaultStaticState(): DemoState {
     },
   ];
 
+  const initialAiModels: AiModelProfile[] = [
+    {
+      modelId: "gemini-1.5-pro",
+      provider: "Google",
+      modelFamily: "Gemini",
+      version: "1.5-pro-002",
+      euAiActClassification: "LIMITED_RISK",
+      nistRmfAlignment: ["GOVERN", "MAP", "MEASURE", "MANAGE"],
+      purpose: "Complex multi-vector threat correlation, case investigation, and incident RCA generation",
+      primaryUseCaseKeys: ["RESPONSE_RECOMMENDATION", "INVESTIGATION_HYPOTHESIS", "INCIDENT_RCA"],
+      deterministicFallbackEngine: "Tier-1 Deterministic RCA Engine (Rule-Based)",
+      hhiWeight: 0.6,
+      humanOversightRequired: true,
+      lifecycleState: "APPROVED_FOR_PRODUCTION",
+      registeredAt: STATIC_TIMESTAMP,
+      updatedAt: STATIC_TIMESTAMP,
+    },
+    {
+      modelId: "gemini-1.5-flash",
+      provider: "Google",
+      modelFamily: "Gemini",
+      version: "1.5-flash-002",
+      euAiActClassification: "MINIMAL_RISK",
+      nistRmfAlignment: ["GOVERN", "MAP", "MEASURE"],
+      purpose: "Fast telemetry parsing, entity explanation, and query expansion",
+      primaryUseCaseKeys: ["ENTITY_EXPLANATION", "NEXT_QUERY", "CASE_SUMMARY"],
+      deterministicFallbackEngine: "Rule-Based Entity Lookup & Deterministic Cache",
+      hhiWeight: 0.3,
+      humanOversightRequired: false,
+      lifecycleState: "APPROVED_FOR_PRODUCTION",
+      registeredAt: STATIC_TIMESTAMP,
+      updatedAt: STATIC_TIMESTAMP,
+    },
+    {
+      modelId: "claude-3-5-sonnet",
+      provider: "Anthropic",
+      modelFamily: "Claude",
+      version: "3.5-sonnet-20241022",
+      euAiActClassification: "LIMITED_RISK",
+      nistRmfAlignment: ["GOVERN", "MAP", "MEASURE", "MANAGE"],
+      purpose: "Secondary multi-provider failover for threat hypothesis and adversarial verification",
+      primaryUseCaseKeys: ["INVESTIGATION_HYPOTHESIS", "ADVERSARIAL_VERIFICATION"],
+      deterministicFallbackEngine: "Deterministic Threat Matrix Fallback",
+      hhiWeight: 0.1,
+      humanOversightRequired: true,
+      lifecycleState: "APPROVED_FOR_PRODUCTION",
+      registeredAt: STATIC_TIMESTAMP,
+      updatedAt: STATIC_TIMESTAMP,
+    },
+  ];
+
   const initialAiSupplyChain: AiSupplyChainReport = {
     hhiIndex: 4200,
     concentrationLevel: "MODERATE",
@@ -541,6 +594,7 @@ export function getDefaultStaticState(): DemoState {
       verifiedAt: STATIC_TIMESTAMP,
     },
     aiIncidents: initialAiIncidents,
+    aiModels: initialAiModels,
     modelDriftReports: initialModelDrift,
     aiSupplyChain: initialAiSupplyChain,
     complianceDrift: initialComplianceDrift,

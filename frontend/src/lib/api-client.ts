@@ -17,6 +17,8 @@ import {
   AiIncidentSeverity,
   AiIncidentState,
   AiIncidentTrigger,
+  AiModelProfile,
+  AiSystemInventorySummary,
   ModelDriftReport,
   AiSupplyChainReport,
   ComplianceDriftState,
@@ -29,6 +31,9 @@ import {
   IncidentWorkOrder,
   WorkOrderConsumptionRecord,
   IncidentLegalSensitiveRecord,
+  MerkleEpochCheckpoint,
+  MerkleInclusionProof,
+  MerkleVerificationResult,
 } from "./types";
 import { getInitialDemoState, saveDemoState, DemoState } from "./demo-state";
 import { generateUUID, sha256Mock } from "./utils";
@@ -67,7 +72,11 @@ export class ZoikoShieldApiClient {
         },
       });
       if (res.ok) {
-        return (await res.json()) as T;
+        const json = await res.json();
+        if (json && typeof json === "object" && "data" in json && json.data !== undefined) {
+          return json.data as T;
+        }
+        return json as T;
       }
     } catch {
       // Backend not running -> fallback
@@ -1206,7 +1215,7 @@ export class ZoikoShieldApiClient {
   // --- Step 11: AI Safety Incident Lifecycle (§23) & Emergency Kill-Switch ---
   static async getAiIncidents(tenantId?: string): Promise<AiIncident[]> {
     return this.safeFetch<AiIncident[]>(
-      `/api/v1/ai-governance/incidents?tenantId=${tenantId || "default"}`,
+      `/api/v1/ai/incidents?tenantId=${tenantId || "default"}`,
       { method: "GET" },
       () => {
         const state = getState();
@@ -1224,7 +1233,7 @@ export class ZoikoShieldApiClient {
     declaredBy: string;
   }): Promise<AiIncident> {
     const incident = await this.safeFetch<AiIncident>(
-      "/api/v1/ai-governance/incidents/declare",
+      "/api/v1/ai/incidents",
       { method: "POST", body: JSON.stringify(data) },
       () => {
         return {
@@ -1251,7 +1260,7 @@ export class ZoikoShieldApiClient {
 
   static async containAiIncident(incidentId: string, actionReason?: string): Promise<AiIncident> {
     const incident = await this.safeFetch<AiIncident>(
-      `/api/v1/ai-governance/incidents/${incidentId}/contain`,
+      `/api/v1/ai/incidents/${incidentId}/contain`,
       { method: "POST", body: JSON.stringify({ actionReason: actionReason || "Emergency Kill-Switch Engaged (Simulation Mode)" }) },
       () => {
         const state = getState();
@@ -1277,7 +1286,7 @@ export class ZoikoShieldApiClient {
 
   static async activateAiFallback(incidentId: string, targetTier1Provider?: string): Promise<AiIncident> {
     const incident = await this.safeFetch<AiIncident>(
-      `/api/v1/ai-governance/incidents/${incidentId}/fallback`,
+      `/api/v1/ai/incidents/${incidentId}/fallback`,
       { method: "POST", body: JSON.stringify({ targetProvider: targetTier1Provider || "Anthropic Claude / Deterministic Rule Engine" }) },
       () => {
         const state = getState();
@@ -1315,7 +1324,7 @@ export class ZoikoShieldApiClient {
       rootCauseClass: string;
       recommendedFixes: string[];
     }>(
-      `/api/v1/ai-governance/incidents/${incidentId}/rca`,
+      `/api/v1/ai/incidents/${incidentId}/rca`,
       { method: "POST" },
       () => {
         const state = getState();
@@ -1371,7 +1380,7 @@ export class ZoikoShieldApiClient {
 
   static async resolveAiIncident(incidentId: string, resolutionNotes: string): Promise<AiIncident> {
     const incident = await this.safeFetch<AiIncident>(
-      `/api/v1/ai-governance/incidents/${incidentId}/resolve`,
+      `/api/v1/ai/incidents/${incidentId}/resolve`,
       { method: "POST", body: JSON.stringify({ resolutionNotes }) },
       () => {
         const state = getState();
@@ -1397,7 +1406,7 @@ export class ZoikoShieldApiClient {
 
   static async closeAiIncident(incidentId: string): Promise<AiIncident> {
     const incident = await this.safeFetch<AiIncident>(
-      `/api/v1/ai-governance/incidents/${incidentId}/close`,
+      `/api/v1/ai/incidents/${incidentId}/close`,
       { method: "POST" },
       () => {
         const state = getState();
@@ -1422,7 +1431,7 @@ export class ZoikoShieldApiClient {
   // --- Step 12: Model Drift & PSI Monitoring (§21) ---
   static async getModelDriftMetrics(): Promise<ModelDriftReport[]> {
     return this.safeFetch<ModelDriftReport[]>(
-      "/api/v1/ai-governance/model-drift",
+      "/api/v1/ai/drift",
       { method: "GET" },
       () => {
         const state = getState();
@@ -1434,7 +1443,7 @@ export class ZoikoShieldApiClient {
   // --- Step 13: AI Supply Chain Concentration Risk (§24) ---
   static async getAiSupplyChainRisk(): Promise<AiSupplyChainReport> {
     return this.safeFetch<AiSupplyChainReport>(
-      "/api/v1/ai-governance/supply-chain-risk",
+      "/api/v1/ai/supply-chain",
       { method: "GET" },
       () => {
         const state = getState();
@@ -1484,6 +1493,133 @@ export class ZoikoShieldApiClient {
     state.complianceDrift.score = result.updatedScore;
     saveDemoState(state);
     return result;
+  }
+
+  // --- Step 14.5: AI System Inventory & Risk Registry (§05 NIST/EU AI Act) ---
+  static async getAiInventory(): Promise<AiSystemInventorySummary> {
+    const res = await this.safeFetch<{ status?: string; data?: AiSystemInventorySummary } | AiSystemInventorySummary>(
+      "/api/v1/ai/inventory",
+      { method: "GET" },
+      () => {
+        const state = getState();
+        const models = state.aiModels || [];
+        const highRiskCount = models.filter(
+          (m) => (m.euAiActClassification === "HIGH_RISK" || m.euAiActClassification === "LIMITED_RISK") && m.lifecycleState !== "DECOMMISSIONED"
+        ).length;
+        let hhi = 0;
+        const providerShares: Record<string, number> = {};
+        for (const m of models) {
+          if (m.lifecycleState !== "DECOMMISSIONED") {
+            providerShares[m.provider] = (providerShares[m.provider] || 0) + m.hhiWeight;
+          }
+        }
+        for (const p of Object.keys(providerShares)) {
+          const sharePct = providerShares[p] * 100;
+          hhi += sharePct * sharePct;
+        }
+
+        return {
+          inventoryVersion: "1.0.0-NIST-EUAI",
+          totalRegisteredModels: models.filter((m) => m.lifecycleState !== "DECOMMISSIONED").length,
+          models,
+          highRiskUseCasesCount: highRiskCount,
+          providerConcentrationHhi: Math.round(hhi),
+          governanceComplianceStatus: "COMPLIANT_NIST_EU_AI_ACT",
+          assessedAt: new Date().toISOString(),
+        };
+      }
+    );
+    return (res as any).data || res;
+  }
+
+  static async getAiModel(modelId: string): Promise<AiModelProfile | null> {
+    const res = await this.safeFetch<{ status?: string; data?: AiModelProfile } | AiModelProfile>(
+      `/api/v1/ai/inventory/${encodeURIComponent(modelId)}`,
+      { method: "GET" },
+      () => {
+        const state = getState();
+        return (state.aiModels || []).find((m) => m.modelId === modelId) || null as any;
+      }
+    );
+    return (res as any).data || res;
+  }
+
+  static async registerAiModel(profile: AiModelProfile): Promise<AiModelProfile> {
+    const res = await this.safeFetch<{ status?: string; data?: AiModelProfile } | AiModelProfile>(
+      "/api/v1/ai/inventory",
+      {
+        method: "POST",
+        body: JSON.stringify(profile),
+      },
+      () => {
+        const state = getState();
+        const now = new Date().toISOString();
+        const model: AiModelProfile = {
+          ...profile,
+          lifecycleState: profile.lifecycleState || "PROPOSED",
+          registeredAt: now,
+          updatedAt: now,
+        };
+        state.aiModels = [...(state.aiModels || []).filter((m) => m.modelId !== model.modelId), model];
+        saveDemoState(state);
+        return model;
+      }
+    );
+    const model = (res as any).data || res;
+    const state = getState();
+    state.aiModels = [...(state.aiModels || []).filter((m) => m.modelId !== model.modelId), model];
+    saveDemoState(state);
+    return model;
+  }
+
+  static async updateAiModel(modelId: string, updates: Partial<AiModelProfile>): Promise<AiModelProfile> {
+    const res = await this.safeFetch<{ status?: string; data?: AiModelProfile } | AiModelProfile>(
+      `/api/v1/ai/inventory/${encodeURIComponent(modelId)}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify(updates),
+      },
+      () => {
+        const state = getState();
+        const existing = (state.aiModels || []).find((m) => m.modelId === modelId);
+        if (!existing) throw new Error("AI Model not found");
+        const updated: AiModelProfile = {
+          ...existing,
+          ...updates,
+          modelId,
+          updatedAt: new Date().toISOString(),
+        };
+        state.aiModels = (state.aiModels || []).map((m) => (m.modelId === modelId ? updated : m));
+        saveDemoState(state);
+        return updated;
+      }
+    );
+    const updated = (res as any).data || res;
+    const state = getState();
+    state.aiModels = (state.aiModels || []).map((m) => (m.modelId === modelId ? updated : m));
+    saveDemoState(state);
+    return updated;
+  }
+
+  static async deleteAiModel(modelId: string): Promise<boolean> {
+    await this.safeFetch(
+      `/api/v1/ai/inventory/${encodeURIComponent(modelId)}`,
+      { method: "DELETE" },
+      () => {
+        const state = getState();
+        state.aiModels = (state.aiModels || []).map((m) =>
+          m.modelId === modelId ? { ...m, lifecycleState: "DECOMMISSIONED" as const, updatedAt: new Date().toISOString() } : m
+        );
+        saveDemoState(state);
+        return { success: true };
+      }
+    );
+    const state = getState();
+    state.aiModels = (state.aiModels || []).map((m) =>
+      m.modelId === modelId ? { ...m, lifecycleState: "DECOMMISSIONED" as const, updatedAt: new Date().toISOString() } : m
+    );
+    saveDemoState(state);
+    return true;
   }
 
   // --- Step 15: Command Center Experience State Contract (LAB 14) ---
@@ -1744,6 +1880,86 @@ export class ZoikoShieldApiClient {
     state.legalSensitiveRecords = [record, ...(state.legalSensitiveRecords || [])];
     saveDemoState(state);
     return record;
+  }
+
+  // --- Step 15: Cryptographic Ledger & Merkle Proofs ---
+  static async getMerkleReceipt(epochNumber: number): Promise<MerkleEpochCheckpoint> {
+    return this.safeFetch<MerkleEpochCheckpoint>(
+      `/api/v1/anchor/receipts/${epochNumber}`,
+      { method: "GET" },
+      () => {
+        return {
+          epochNumber,
+          merkleRoot: "33b510f06a084d53a2901198c471ba9844e1290bb3410928aa7819ce012891bb",
+          leafCount: 4,
+          pqcSignature: "pqc_mldsa65_7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a",
+          ecdsaSignature: "ecdsa_p256_3045022100a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b202202a3b4c5d",
+          witnessCount: 3,
+          sealedAt: new Date().toISOString(),
+          enclaveAttestation: {
+            pcr0: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+            pcr1: "88a91a27719ce3400ab819211c478810298aef2230198754b209121873645123",
+            pcr2: "4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b",
+            mrSigner: "mrsigner_zoikoshield_enclave_prod_v1",
+            timestamp: new Date().toISOString(),
+          },
+        };
+      }
+    );
+  }
+
+  static async getMerkleInclusionProof(
+    epochNumber: number,
+    leafIndex: number
+  ): Promise<MerkleInclusionProof> {
+    return this.safeFetch<MerkleInclusionProof>(
+      `/api/v1/anchor/proofs/${epochNumber}/${leafIndex}`,
+      { method: "GET" },
+      () => {
+        return {
+          epochNumber,
+          leafIndex,
+          leafHash: "a1c4e90812bd56ff34aa9812cc457812ee491028374829102837461928374610",
+          merkleRoot: "33b510f06a084d53a2901198c471ba9844e1290bb3410928aa7819ce012891bb",
+          auditPath: [
+            { position: "right", hash: "d3e712ba990145fc88ab1024ee591233aa819284759201928475928374619283" },
+            { position: "right", hash: "f5b891a27719ce3400ab819211c4788192847592837461928475928374619283" },
+          ],
+        };
+      }
+    );
+  }
+
+  static async verifyMerkleProof(proof: MerkleInclusionProof): Promise<MerkleVerificationResult> {
+    return this.safeFetch<MerkleVerificationResult>(
+      "/api/v1/anchor/proofs/verify",
+      { method: "POST", body: JSON.stringify(proof) },
+      () => {
+        return {
+          valid: true,
+          epochNumber: proof.epochNumber,
+          verifiedAt: new Date().toISOString(),
+        };
+      }
+    );
+  }
+
+  static async sealEpochBatch(items: any[]): Promise<MerkleEpochCheckpoint> {
+    return this.safeFetch<MerkleEpochCheckpoint>(
+      "/api/v1/anchor/batches/seal",
+      { method: "POST", body: JSON.stringify({ items }) },
+      () => {
+        return {
+          epochNumber: Math.floor(Date.now() / 60000),
+          merkleRoot: sha256Mock(JSON.stringify(items)),
+          leafCount: items.length,
+          pqcSignature: `pqc_mldsa65_${sha256Mock(JSON.stringify(items)).slice(0, 32)}`,
+          ecdsaSignature: `ecdsa_p256_${sha256Mock(JSON.stringify(items)).slice(0, 32)}`,
+          witnessCount: 3,
+          sealedAt: new Date().toISOString(),
+        };
+      }
+    );
   }
 }
 

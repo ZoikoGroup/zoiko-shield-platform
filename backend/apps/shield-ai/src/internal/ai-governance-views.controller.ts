@@ -12,6 +12,10 @@ import { PrismaService } from '../prisma/prisma.service';
 import { AiKillSwitchService } from '../kill-switch/ai-kill-switch.service';
 import { AiFinOpsBudgetService } from '../usage-control/ai-finops-budget.service';
 import { TOOL_REGISTRY } from '../tools/tool-capability.service';
+import { AiSystemInventoryService } from '../inventory/ai-system-inventory.service';
+import { AiSupplyChainService } from '../supply-chain/ai-supply-chain.service';
+import { AiDriftMonitorService } from '../drift-monitoring/ai-drift-monitor.service';
+import { ModelDriftMonitorService } from '../drift-monitoring/model-drift-monitor.service';
 
 /**
  * ZS-ENG-AI-001 §28: Required Engineering and Governance Views (V01 to V30).
@@ -25,6 +29,10 @@ export class AiGovernanceViewsController {
     private readonly prisma: PrismaService,
     private readonly killSwitchService: AiKillSwitchService,
     private readonly finopsBudget: AiFinOpsBudgetService,
+    private readonly inventoryService: AiSystemInventoryService,
+    private readonly supplyChainService: AiSupplyChainService,
+    private readonly aiDriftMonitor: AiDriftMonitorService,
+    private readonly modelDriftService: ModelDriftMonitorService,
   ) {}
 
   /**
@@ -165,6 +173,88 @@ export class AiGovernanceViewsController {
       statusCode: HttpStatus.OK,
       message: `Kill switch '${body.scope}:${body.targetId}' updated to ${body.active ? 'ACTIVE (KILLED)' : 'INACTIVE (RESTORED)'}`,
       data: this.killSwitchService.listActiveSwitches(),
+    };
+  }
+
+  /**
+   * V05: AI System Inventory & Risk Classification
+   * NIST AI RMF & EU AI Act model inventory, classification, and oversight criteria
+   */
+  @Get('v05-inventory')
+  async getInventoryView() {
+    const summary = this.inventoryService.computeInventorySummary();
+    return {
+      statusCode: HttpStatus.OK,
+      data: summary,
+    };
+  }
+
+  /**
+   * V08: AI Supply Chain & Provider Concentration Risk
+   * Herfindahl-Hirschman Index (HHI), provider diversification, and fallback readiness
+   */
+  @Get('v08-supply-chain')
+  async getSupplyChainView() {
+    const report = this.supplyChainService.assessConcentrationRisk();
+    return {
+      statusCode: HttpStatus.OK,
+      data: report,
+    };
+  }
+
+  /**
+   * V21: Model Drift & PSI Evaluation View
+   * Drift status, PSI score, confidence shift, and latency distribution
+   */
+  @Get('v21-drift')
+  async getDriftEvaluationView(
+    @Query('modelId') modelId?: string,
+    @Query('minSampleSize') minSampleSize?: string,
+  ) {
+    const targetModel = modelId || 'gemini-1.5-pro';
+    const sampleSize = minSampleSize ? parseInt(minSampleSize, 10) : 10;
+    const evaluation = this.modelDriftService.evaluateDrift(targetModel, sampleSize);
+    return {
+      statusCode: HttpStatus.OK,
+      data: evaluation,
+    };
+  }
+
+  /**
+   * V21: Autonomous Drift Evaluation & Containment Enforcement
+   */
+  @Post('v21-drift/enforce')
+  async enforceDriftContainment(
+    @Body()
+    body: {
+      modelId: string;
+      tenantId: string;
+      minSampleSize?: number;
+    },
+  ) {
+    const report = await this.aiDriftMonitor.evaluateAndEnforce(
+      body.modelId,
+      body.tenantId,
+      body.minSampleSize || 10,
+    );
+    return {
+      statusCode: HttpStatus.OK,
+      data: report,
+    };
+  }
+
+  /**
+   * V22: AI FinOps & Token Budget View
+   * Per-tenant token consumption, rate window utilization, and budget ceilings
+   */
+  @Get('v22-finops-budget')
+  async getFinOpsBudgetView(@Query('tenantId') tenantId?: string) {
+    const summary = this.finopsBudget.getTenantUsageSummary(
+      tenantId || '00000000-0000-4000-8000-000000000001',
+    );
+    return {
+      statusCode: HttpStatus.OK,
+      data: summary,
     };
   }
 }

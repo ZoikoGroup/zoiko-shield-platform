@@ -95,4 +95,44 @@ describe('BatchMerkleCheckpointerService (High-Throughput Evidence Anchoring)', 
     const isValid = checkpointer.verifyInclusionProof(proof);
     expect(isValid).toBe(false);
   });
+
+  it('4. should asynchronously seal epoch with PQC FIPS 204 ML-DSA-65 & ECDSA P-256 hybrid signature', async () => {
+    const mockPqcSigner = {
+      signHybrid: jest.fn().mockResolvedValue({
+        signatureId: 'sig-pqc-test',
+        algorithmSuite: 'HYBRID_ECDSA_P256_ML_DSA_65',
+        keyId: 'pqc-hsm-01',
+        classicalSignatureHex: 'deadbeefclassical',
+        pqcSignatureHex: 'cafebabepqc',
+        hybridCombinedSignatureBase64: 'ZXhhbXBsZWh5YnJpZA==',
+        classicalPublicKeyPem: '-----BEGIN PUBLIC KEY-----...',
+        pqcPublicKeyBase64: 'pqcpubkey...',
+        signedAt: new Date().toISOString(),
+      }),
+    };
+
+    const pqcCheckpointer = new BatchMerkleCheckpointerService(
+      mockPqcSigner as any,
+    );
+
+    const items: EvidenceLeaf[] = [
+      {
+        evidenceId: 'evi-pqc-1',
+        tenantId: 'tenant-quantum',
+        eventType: 'CONFIDENTIAL_COMPUTE_EXECUTION',
+        payloadDigest: 'sha256:99887766',
+        timestamp: new Date().toISOString(),
+      },
+    ];
+
+    const checkpoint = await pqcCheckpointer.buildEpochCheckpointAsync(items);
+
+    expect(checkpoint.epochNumber).toBe(1);
+    expect(checkpoint.pqcAlgorithm).toBe('HYBRID_ECDSA_P256_ML_DSA_65');
+    expect(checkpoint.pqcSignatureHex).toBe('cafebabepqc');
+    expect(checkpoint.classicalSignatureHex).toBe('deadbeefclassical');
+    expect(checkpoint.hybridSignatureContainer).toBe('ZXhhbXBsZWh5YnJpZA==');
+    expect(mockPqcSigner.signHybrid).toHaveBeenCalledWith(checkpoint.merkleRoot);
+  });
 });
+

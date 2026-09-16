@@ -135,6 +135,21 @@ export class IncidentResponseRetainerController {
 export class IncidentWorkOrderController {
   constructor(private readonly workOrders: IncidentWorkOrderService) {}
 
+  @Get()
+  async list(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const scope = boundary(headerTenantId, user);
+    return {
+      statusCode: HttpStatus.OK,
+      data: await this.workOrders.list(
+        scope.tenantId,
+        scope.environmentId,
+      ),
+    };
+  }
+
   @Post()
   @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_WRITE)
   @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')

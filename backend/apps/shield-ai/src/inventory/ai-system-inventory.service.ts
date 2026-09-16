@@ -2,10 +2,11 @@ import { Injectable } from '@nestjs/common';
 
 export type EuAiActRiskTier = 'MINIMAL_RISK' | 'LIMITED_RISK' | 'HIGH_RISK' | 'UNACCEPTABLE_RISK';
 export type NistAiRmfFunction = 'GOVERN' | 'MAP' | 'MEASURE' | 'MANAGE';
+export type AiLifecycleState = 'PROPOSED' | 'EVALUATING' | 'APPROVED_FOR_PRODUCTION' | 'DECOMMISSIONED';
 
 export interface AiModelProfile {
   modelId: string;
-  provider: 'Google' | 'Anthropic' | 'OpenAI' | 'Local';
+  provider: 'Google' | 'Anthropic' | 'OpenAI' | 'Local' | string;
   modelFamily: string;
   version: string;
   euAiActClassification: EuAiActRiskTier;
@@ -15,6 +16,9 @@ export interface AiModelProfile {
   deterministicFallbackEngine: string;
   hhiWeight: number; // For HHI provider concentration tracking
   humanOversightRequired: boolean;
+  lifecycleState?: AiLifecycleState;
+  registeredAt?: string;
+  updatedAt?: string;
 }
 
 export interface AiSystemInventorySummary {
@@ -40,6 +44,7 @@ export class AiSystemInventoryService {
   }
 
   private seedDefaultInventory(): void {
+    const now = new Date().toISOString();
     const defaultProfiles: AiModelProfile[] = [
       {
         modelId: 'gemini-1.5-pro',
@@ -53,6 +58,9 @@ export class AiSystemInventoryService {
         deterministicFallbackEngine: 'Tier-1 Deterministic RCA Engine (Rule-Based)',
         hhiWeight: 0.6,
         humanOversightRequired: true,
+        lifecycleState: 'APPROVED_FOR_PRODUCTION',
+        registeredAt: now,
+        updatedAt: now,
       },
       {
         modelId: 'gemini-1.5-flash',
@@ -66,6 +74,9 @@ export class AiSystemInventoryService {
         deterministicFallbackEngine: 'Rule-Based Entity Lookup & Deterministic Cache',
         hhiWeight: 0.3,
         humanOversightRequired: false,
+        lifecycleState: 'APPROVED_FOR_PRODUCTION',
+        registeredAt: now,
+        updatedAt: now,
       },
       {
         modelId: 'claude-3-5-sonnet',
@@ -79,6 +90,9 @@ export class AiSystemInventoryService {
         deterministicFallbackEngine: 'Deterministic Threat Matrix Fallback',
         hhiWeight: 0.1,
         humanOversightRequired: true,
+        lifecycleState: 'APPROVED_FOR_PRODUCTION',
+        registeredAt: now,
+        updatedAt: now,
       },
     ];
 
@@ -95,8 +109,43 @@ export class AiSystemInventoryService {
     return Array.from(this.registeredModels.values());
   }
 
-  public registerModel(profile: AiModelProfile): void {
-    this.registeredModels.set(profile.modelId, profile);
+  public registerModel(profile: AiModelProfile): AiModelProfile {
+    const now = new Date().toISOString();
+    const model: AiModelProfile = {
+      ...profile,
+      lifecycleState: profile.lifecycleState || 'PROPOSED',
+      registeredAt: profile.registeredAt || now,
+      updatedAt: now,
+      hhiWeight: profile.hhiWeight ?? 0.05,
+      nistRmfAlignment: profile.nistRmfAlignment || ['GOVERN', 'MEASURE'],
+      primaryUseCaseKeys: profile.primaryUseCaseKeys || ['CUSTOM_INFERENCE'],
+      deterministicFallbackEngine: profile.deterministicFallbackEngine || 'Deterministic Rule Fallback',
+    };
+    this.registeredModels.set(model.modelId, model);
+    return model;
+  }
+
+  public updateModel(modelId: string, updates: Partial<AiModelProfile>): AiModelProfile {
+    const existing = this.registeredModels.get(modelId);
+    if (!existing) {
+      throw new Error(`AI Model profile '${modelId}' not found in registry`);
+    }
+    const updated: AiModelProfile = {
+      ...existing,
+      ...updates,
+      modelId, // Preserve primary key
+      updatedAt: new Date().toISOString(),
+    };
+    this.registeredModels.set(modelId, updated);
+    return updated;
+  }
+
+  public deleteModel(modelId: string): boolean {
+    const existing = this.registeredModels.get(modelId);
+    if (!existing) return false;
+    existing.lifecycleState = 'DECOMMISSIONED';
+    existing.updatedAt = new Date().toISOString();
+    return true;
   }
 
   public computeInventorySummary(): AiSystemInventorySummary {
@@ -105,7 +154,9 @@ export class AiSystemInventoryService {
     // Compute HHI provider concentration index: sum of (share * 100)^2
     const providerShares: Record<string, number> = {};
     for (const model of models) {
-      providerShares[model.provider] = (providerShares[model.provider] || 0) + model.hhiWeight;
+      if (model.lifecycleState !== 'DECOMMISSIONED') {
+        providerShares[model.provider] = (providerShares[model.provider] || 0) + model.hhiWeight;
+      }
     }
 
     let hhi = 0;
@@ -115,12 +166,12 @@ export class AiSystemInventoryService {
     }
 
     const highRiskCount = models.filter(
-      (m) => m.euAiActClassification === 'HIGH_RISK' || m.euAiActClassification === 'LIMITED_RISK',
+      (m) => (m.euAiActClassification === 'HIGH_RISK' || m.euAiActClassification === 'LIMITED_RISK') && m.lifecycleState !== 'DECOMMISSIONED',
     ).length;
 
     return {
       inventoryVersion: '1.0.0-NIST-EUAI',
-      totalRegisteredModels: models.length,
+      totalRegisteredModels: models.filter((m) => m.lifecycleState !== 'DECOMMISSIONED').length,
       models,
       highRiskUseCasesCount: highRiskCount,
       providerConcentrationHhi: Math.round(hhi),
