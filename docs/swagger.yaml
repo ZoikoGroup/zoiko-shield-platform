@@ -16866,6 +16866,252 @@ components:
       required:
         - statusCode
         - data
+    GetCasesByCaseIdSlaResponse:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+          example: 200
+        data:
+          type: object
+          nullable: true
+          description: Null when no triage clock has been started for the case yet.
+          properties:
+            caseId:
+              type: string
+              format: uuid
+            tenantId:
+              type: string
+              format: uuid
+            severity:
+              type: string
+              enum: [CRITICAL, HIGH, MEDIUM, LOW]
+            coverageTier:
+              type: string
+              enum: [BUSINESS_HOURS, EXTENDED_HOURS, '24_7']
+            targetResponseMinutes:
+              type: integer
+              description: CRITICAL 15, HIGH 60, MEDIUM 240, LOW 1440.
+            status:
+              type: string
+              enum: [RUNNING, PAUSED, COMPLETED, BREACHED]
+            startedAt:
+              type: string
+              format: date-time
+            pausedAt:
+              type: string
+              format: date-time
+              nullable: true
+            pauseReason:
+              type: string
+              nullable: true
+            totalPausedMs:
+              type: integer
+            stoppedAt:
+              type: string
+              format: date-time
+              nullable: true
+            activeTriageDurationMinutes:
+              type: integer
+              nullable: true
+              description: Elapsed time minus paused time.
+            breachedAt:
+              type: string
+              format: date-time
+              nullable: true
+    PostCasesByCaseIdSlaPauseRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          description: Why the clock is being paused, e.g. CUSTOMER_ACTION_REQUIRED.
+        actorId:
+          type: string
+          format: uuid
+          nullable: true
+      required:
+        - reason
+    GetCasesByCaseIdQualityReviewsResponse:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+          example: 200
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CaseQualityReview'
+    CaseQualityReview:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        case_id:
+          type: string
+          format: uuid
+        review_type:
+          type: string
+          enum: [DISPOSITION_REVIEW, CLOSURE_REVIEW]
+        trigger:
+          type: string
+          description: What caused the review to be opened.
+        requested_by:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [PENDING, APPROVED, REJECTED]
+        reviewer_id:
+          type: string
+          format: uuid
+          nullable: true
+        comments:
+          type: string
+          nullable: true
+        decided_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+    PostCasesByCaseIdQualityReviewsRequest:
+      type: object
+      properties:
+        reviewType:
+          type: string
+          enum: [DISPOSITION_REVIEW, CLOSURE_REVIEW]
+        trigger:
+          type: string
+          nullable: true
+      required:
+        - reviewType
+    PostCasesByCaseIdQualityReviewsResponse:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+          example: 201
+        data:
+          $ref: '#/components/schemas/CaseQualityReview'
+    PostCasesByCaseIdQualityReviewsDecideRequest:
+      type: object
+      properties:
+        decision:
+          type: string
+          enum: [APPROVED, REJECTED]
+        comments:
+          type: string
+          nullable: true
+      required:
+        - decision
+    PostEvidenceManualRequest:
+      type: object
+      properties:
+        file:
+          type: string
+          format: binary
+          description: The uploaded artifact. Hashed exactly as received.
+        environmentId:
+          type: string
+        region:
+          type: string
+        evidenceType:
+          type: string
+        purpose:
+          type: string
+        reason:
+          type: string
+          description: Why a human is submitting this rather than a collector producing it.
+        caseId:
+          type: string
+          format: uuid
+          nullable: true
+        dataClass:
+          type: string
+          nullable: true
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        reviewRequired:
+          type: string
+          description: >-
+            Multipart fields arrive as strings; anything other than 'false' leaves the review requirement in place.
+          nullable: true
+      required:
+        - file
+        - environmentId
+        - region
+        - evidenceType
+        - purpose
+        - reason
+    PostEvidenceManualReviewRequest:
+      type: object
+      properties:
+        comments:
+          type: string
+          nullable: true
+    PostEvidenceManualResponse:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+          example: 201
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            tenant_id:
+              type: string
+              format: uuid
+            evidence_type:
+              type: string
+            content_hash:
+              type: string
+            hash_algorithm:
+              type: string
+              example: SHA-256
+            media_type:
+              type: string
+            size_bytes:
+              type: integer
+            vault_reference:
+              type: string
+            integrity_state:
+              type: string
+              enum: [PENDING, VERIFIED, FAILED, SIGNATURE_FAILED]
+            collection_method:
+              type: string
+              enum: [AUTOMATED, MANUAL]
+            uploader_identity:
+              type: string
+              nullable: true
+            upload_reason:
+              type: string
+              nullable: true
+            manual_review_required:
+              type: boolean
+            manual_reviewed_by:
+              type: string
+              nullable: true
+            manual_reviewed_at:
+              type: string
+              format: date-time
+              nullable: true
+            expires_at:
+              type: string
+              format: date-time
+              nullable: true
+            created_at:
+              type: string
+              format: date-time
     PostCasesByCaseIdAssignRequest:
       type: object
       properties:
@@ -32205,7 +32451,6 @@ paths:
       security:
         - CookieAuth: []
         - BearerAuth: []
-        - InternalServiceAuth: []
       description: >-
         List incident cases. Applies the documented path, query, and tenant filters and returns the current persisted or
         computed result using the response model below.
@@ -32275,7 +32520,6 @@ paths:
       security:
         - CookieAuth: []
         - BearerAuth: []
-        - InternalServiceAuth: []
       description: >-
         Create case from alert. Validates the documented request and returns the created or resulting resource.
         State-changing operations also enforce the service lifecycle and conflict rules.
@@ -33038,7 +33282,6 @@ paths:
       security:
         - CookieAuth: []
         - BearerAuth: []
-        - InternalServiceAuth: []
       description: >-
         Get case details. Applies the documented path, query, and tenant filters and returns the current persisted or
         computed result using the response model below.
@@ -33084,7 +33327,6 @@ paths:
       security:
         - CookieAuth: []
         - BearerAuth: []
-        - InternalServiceAuth: []
       description: >-
         Update case fields. Validates the requested update or lifecycle transition and returns the updated resource
         without changing fields outside the documented request.
@@ -33143,7 +33385,6 @@ paths:
       security:
         - CookieAuth: []
         - BearerAuth: []
-        - InternalServiceAuth: []
       description: >-
         Transition case state (state-machine gated). Validates the documented request and returns the created or
         resulting resource. State-changing operations also enforce the service lifecycle and conflict rules.
@@ -33224,7 +33465,6 @@ paths:
       security:
         - CookieAuth: []
         - BearerAuth: []
-        - InternalServiceAuth: []
       description: >-
         Get case timeline. Applies the documented path, query, and tenant filters and returns the current persisted or
         computed result using the response model below.
@@ -33271,7 +33511,6 @@ paths:
       security:
         - CookieAuth: []
         - BearerAuth: []
-        - InternalServiceAuth: []
       description: >-
         Add analyst note to case. Validates the documented request and returns the created or resulting resource.
         State-changing operations also enforce the service lifecycle and conflict rules.
@@ -33352,7 +33591,8 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postCasesByCaseIdEvidence
       security:
-        - InternalServiceAuth: []
+        - CookieAuth: []
+        - BearerAuth: []
   /api/v1/cases/{caseId}/decisions:
     post:
       tags:
@@ -40001,7 +40241,324 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postCasesByCaseIdAssign
       security:
-        - InternalServiceAuth: []
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/cases/{caseId}/sla:
+    get:
+      tags:
+        - CaseManagement
+      summary: Get the SOC triage SLA clock for a case
+      description: >-
+        Get the SOC triage SLA clock for a case. A clock still running past its target is reported as BREACHED rather
+        than waiting for the case to close.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique case ID identifying the target resource.
+      responses:
+        '200':
+          description: Get the SOC triage SLA clock for a case successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCasesByCaseIdSlaResponse'
+        '404':
+          description: The referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getCasesByCaseIdSla
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/cases/{caseId}/sla/pause:
+    post:
+      tags:
+        - CaseManagement
+      summary: Pause the SOC triage SLA clock
+      description: >-
+        Pause the SOC triage SLA clock. Paused time is excluded from the measured triage duration.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique case ID identifying the target resource.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostCasesByCaseIdSlaPauseRequest'
+      responses:
+        '200':
+          description: Pause the SOC triage SLA clock successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCasesByCaseIdSlaResponse'
+        '404':
+          description: The referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postCasesByCaseIdSlaPause
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/cases/{caseId}/sla/resume:
+    post:
+      tags:
+        - CaseManagement
+      summary: Resume the SOC triage SLA clock
+      description: >-
+        Resume the SOC triage SLA clock after a pause.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique case ID identifying the target resource.
+      responses:
+        '200':
+          description: Resume the SOC triage SLA clock successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCasesByCaseIdSlaResponse'
+        '404':
+          description: The referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postCasesByCaseIdSlaResume
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/cases/{caseId}/quality-reviews:
+    get:
+      tags:
+        - CaseManagement
+      summary: List quality reviews for a case
+      description: >-
+        List quality reviews for a case, including who requested each review and who decided it.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique case ID identifying the target resource.
+      responses:
+        '200':
+          description: List quality reviews for a case successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCasesByCaseIdQualityReviewsResponse'
+        '404':
+          description: The referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getCasesByCaseIdQualityReviews
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+    post:
+      tags:
+        - CaseManagement
+      summary: Request a quality review for a case
+      description: >-
+        Request a peer/supervisor quality review. High-severity closures and dispositions open one automatically; this
+        endpoint requests one explicitly.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique case ID identifying the target resource.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostCasesByCaseIdQualityReviewsRequest'
+      responses:
+        '201':
+          description: Request a quality review for a case successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostCasesByCaseIdQualityReviewsResponse'
+        '400':
+          description: Bad Request - Invalid payload or parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: The referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postCasesByCaseIdQualityReviews
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/cases/{caseId}/quality-reviews/{reviewId}/decide:
+    post:
+      tags:
+        - CaseManagement
+      summary: Decide a case quality review
+      description: >-
+        Approve or reject a quality review. The reviewer may not be the person who requested it (maker-checker), and a
+        review can only be decided once.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique case ID identifying the target resource.
+        - name: reviewId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique quality review ID identifying the target resource.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostCasesByCaseIdQualityReviewsDecideRequest'
+      responses:
+        '200':
+          description: Decide a case quality review successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostCasesByCaseIdQualityReviewsResponse'
+        '403':
+          description: Forbidden - the reviewer requested this review themselves.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Conflict - the review has already been decided.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postCasesByCaseIdQualityReviewsDecide
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/evidence/manual:
+    post:
+      tags:
+        - Evidence
+      summary: Upload manual evidence
+      description: >-
+        Submit human-uploaded evidence as multipart/form-data. Uploader identity and a reason are mandatory so manual
+        evidence is never indistinguishable from automated collection; the bytes take the same hash, vault and ledger
+        path as collector-produced evidence.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PostEvidenceManualRequest'
+      responses:
+        '201':
+          description: Upload manual evidence successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostEvidenceManualResponse'
+        '400':
+          description: Bad Request - Invalid payload or parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postEvidenceManual
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/evidence/{evidenceId}/manual-review:
+    post:
+      tags:
+        - Evidence
+      summary: Record review of manual evidence
+      description: >-
+        Sign off human-uploaded evidence so it can count toward coverage. The reviewer may not be the uploader.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: evidenceId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique evidence ID identifying the target resource.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostEvidenceManualReviewRequest'
+      responses:
+        '200':
+          description: Record review of manual evidence successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostEvidenceManualResponse'
+        '400':
+          description: Bad Request - the evidence was not manually submitted.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - the reviewer uploaded this evidence themselves.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postEvidenceByEvidenceIdManualReview
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
   /api/v1/dashboard/overview:
     get:
       tags:
