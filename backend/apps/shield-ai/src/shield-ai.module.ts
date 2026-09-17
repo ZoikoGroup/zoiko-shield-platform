@@ -59,7 +59,6 @@ import { AiObservabilityMetricsService } from './observability/ai-observability-
 import { UseCaseController } from './internal/use-case.controller';
 import { AiOutputController } from './internal/ai-output.controller';
 import { AiGovernanceViewsController } from './internal/ai-governance-views.controller';
-import { AiUseCaseRegistryController } from './internal/ai-use-case-registry.controller';
 import { AiIncidentController } from './ai-incident/ai-incident.controller';
 import { AiIncidentService } from './ai-incident/ai-incident.service';
 import { TenantVectorStoreService } from './vector-store/tenant-vector-store.service';
@@ -79,7 +78,6 @@ import { DecisionRightsModule } from './decision-rights/decision-rights.module';
     UseCaseController,
     AiOutputController,
     AiGovernanceViewsController,
-    AiUseCaseRegistryController,
     AiIncidentController,
   ],
 

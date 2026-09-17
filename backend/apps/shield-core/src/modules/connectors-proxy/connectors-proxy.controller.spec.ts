@@ -46,9 +46,6 @@ describe('ConnectorsProxyController', () => {
       testConnector: jest.fn().mockResolvedValue({ success: true, latencyMs: 42 }),
       syncConnector: jest.fn().mockResolvedValue({ status: 'SYNCED', count: 100 }),
       getConnectorHealth: jest.fn().mockResolvedValue({ healthStatus: 'HEALTHY' }),
-      listControlEvaluations: jest.fn().mockResolvedValue([]),
-      evaluateControl: jest.fn().mockResolvedValue({ controlId: 'SOC2-CC6.1', status: 'PASS' }),
-      listEvents: jest.fn().mockResolvedValue([]),
     };
 
     const module: TestingModule = await Test.createTestingModule({
