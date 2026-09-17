@@ -43,7 +43,7 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
       ' 🛡️  ZoikoShield Independent Compliance Audit Package Verifier CLI',
     );
     console.log(
-      '    Specification: ZS-T0-AUD-001 (Offline Independent Verification)',
+      '    Architecture: ADR-01 (Offline Independent Verification)',
     );
     console.log(
       '========================================================================\n',
@@ -65,7 +65,7 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
     ' 🛡️  ZoikoShield Independent Compliance Audit Package Verifier CLI',
   );
   console.log(
-    '    Specification: ZS-T0-AUD-001 (Offline Independent Verification)',
+    '    Architecture: ADR-01 (Offline Independent Verification)',
   );
   console.log(
     '========================================================================\n',

@@ -19,7 +19,7 @@ export type ControlFrameworkType =
   | 'ISO27001_2022'
   | 'DORA'
   | 'NIS2'
-  | 'HIPAA';
+  | 'PCI_DSS';
 
 export interface Tenant {
   id: string;
@@ -267,6 +267,42 @@ export interface Case {
   simulationReceipt?: SimulationReceipt;
 }
 
+export interface AttackPathNode {
+  nodeId: string;
+  stepNumber?: number;
+  label: string;
+  role: 'ENTRYPOINT' | 'PIVOT' | 'CROWN_JEWEL' | 'CONTAINMENT_TARGET';
+  mitreTechnique: string;
+  techniqueName?: string;
+  targetEntity?: string;
+  evidenceDigest?: string;
+  description: string;
+  severity?: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  riskScore?: number;
+  status?: 'DETECTED' | 'CORRELATED' | 'CONTAINED';
+  sourceIp?: string;
+  account?: string;
+}
+
+export interface AttackPathTrajectory {
+  pathId: string;
+  caseId: string;
+  alertId?: string;
+  title: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  totalHops?: number;
+  nodes: AttackPathNode[];
+  blastRadius: {
+    targetHost: string;
+    affectedAccounts?: number;
+    affectedConnections?: number;
+    projectedDowntimeSec: number;
+    isolationMechanism: string;
+    containmentSafetyVerdict?: 'SAFE_TO_EXECUTE' | 'REQUIRES_SUPER_ADMIN_ESCALATION';
+  };
+  generatedAt: string;
+}
+
 export interface ControlTest {
   id: string;
   controlId: string;
@@ -286,7 +322,8 @@ export interface AuditPackage {
   packageName: string;
   packageHash: string;
   dilithiumSignature: string;
-  ed25519Signature: string;
+  ecdsaP256Signature?: string;
+  ed25519Signature?: string;
   status: 'GENERATED' | 'VERIFIED' | 'EXPORTED';
   generatedAt: string;
   sizeBytes: number;

@@ -14,7 +14,7 @@ import { ZeroKnowledgeComplianceProofService } from '../apps/shield-anchor/src/z
 async function main() {
   console.log('========================================================================');
   console.log(' 🛡️  ZoikoShield Zero-Knowledge Compliance & Range Proof Simulator');
-  console.log('    Specification: ZS-T0-AUD-001 §10 (Privacy-Preserving Audit Attestation)');
+  console.log('    Architecture: ADR-08 & ADR-16 (Privacy-Preserving Audit Attestation)');
   console.log('========================================================================\n');
 
   const zkService = new ZeroKnowledgeComplianceProofService();

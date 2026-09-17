@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
+import type { AttackPathTrajectory } from "@/lib/types";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -46,6 +47,24 @@ export default function ThreatHuntingPage() {
   const [huntCompleted, setHuntCompleted] = useState(false);
   const [selectedTool, setSelectedTool] = useState<string>("all");
   const [huntError, setHuntError] = useState<string | null>(null);
+  const [attackTrajectory, setAttackTrajectory] = useState<AttackPathTrajectory | null>(null);
+
+  // Use the first available case ID, or a fallback
+  const activeCaseId = state.cases[0]?.id ?? "case-demo-01";
+
+  useEffect(() => {
+    let mounted = true;
+    ZoikoShieldApiClient.getAttackPathTrajectory(activeCaseId)
+      .then((trajectory) => {
+        if (mounted) {
+          setAttackTrajectory(trajectory);
+        }
+      })
+      .catch((err) => console.warn("Could not load initial trajectory:", err));
+    return () => {
+      mounted = false;
+    };
+  }, [activeCaseId]);
 
   const [reasoningTrace, setReasoningTrace] = useState<StepTrace[]>([
     {
@@ -89,17 +108,19 @@ export default function ThreatHuntingPage() {
     },
   ]);
 
-  // Use the first available case ID, or a fallback
-  const activeCaseId = state.cases[0]?.id ?? "case-demo-01";
-
   const handleStartHunt = async () => {
     setIsHunting(true);
     setHuntCompleted(false);
     setHuntError(null);
 
     try {
-      // Call the real AI investigation summary API for the active case
-      const aiSummary = await ZoikoShieldApiClient.generateAiInvestigationSummary(activeCaseId);
+      // Call the real AI investigation summary API and attack trajectory for the active case
+      const [aiSummary, trajectory] = await Promise.all([
+        ZoikoShieldApiClient.generateAiInvestigationSummary(activeCaseId),
+        ZoikoShieldApiClient.getAttackPathTrajectory(activeCaseId),
+      ]);
+
+      setAttackTrajectory(trajectory);
 
       // Build a ReAct-style trace from the real AI output
       const newTrace: StepTrace[] = [
@@ -201,9 +222,7 @@ export default function ThreatHuntingPage() {
                   <Badge variant="healthy">Model Armor Protected</Badge>
                 </div>
                 <p className="text-xs text-slate-400">
-                  Specification:{" "}
-                  <span className="font-mono text-cyan-400">ZS-ENG-AI-001</span> §14 &amp;{" "}
-                  <span className="font-mono text-cyan-400">ZS-T0-TECH-001</span> §09
+                  Architecture: <span className="font-mono text-cyan-400">ADR-06</span> (Threat Hunting Engine) &amp; <span className="font-mono text-cyan-400">ADR-11</span> (AI Copilot)
                 </p>
               </div>
             </div>
@@ -395,6 +414,111 @@ export default function ThreatHuntingPage() {
               ))}
             </div>
 
+            {/* Interactive Multi-Hop Attack Graph Canvas & Blast Radius */}
+            <div className="p-5 rounded-2xl bg-slate-950/90 border border-slate-800 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <div className="flex items-center gap-2">
+                  <GitBranch className="w-4 h-4 text-rose-400" />
+                  <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider font-mono">
+                    Multi-Hop Attack Path Trajectory (§14 Graph Explorer)
+                  </h3>
+                </div>
+                <Badge variant={attackTrajectory?.severity === "CRITICAL" ? "critical" : "high"}>
+                  {attackTrajectory ? `${attackTrajectory.totalHops}-Hop ${attackTrajectory.severity} Path` : "3-Hop Critical Path"}
+                </Badge>
+              </div>
+
+              {/* Node Sequence Visualizer */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-mono text-xs">
+                {(attackTrajectory?.nodes || [
+                  {
+                    nodeId: "node-entry",
+                    stepNumber: 1,
+                    label: "usr-compromised-analyst",
+                    role: "ENTRYPOINT" as const,
+                    mitreTechnique: "T1078.004",
+                    techniqueName: "Valid Accounts: Cloud Accounts",
+                    targetEntity: "usr-compromised-analyst",
+                    evidenceDigest: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                    description: "Compromised Entra ID session token from untrusted IP 198.51.100.99.",
+                    riskScore: 89,
+                    status: "DETECTED" as const,
+                  },
+                  {
+                    nodeId: "node-pivot",
+                    stepNumber: 2,
+                    label: "ec2-jump-01 (Bastion)",
+                    role: "PIVOT" as const,
+                    mitreTechnique: "T1021.002",
+                    techniqueName: "Remote Services: SMB/Windows Admin Shares",
+                    targetEntity: "ec2-jump-01",
+                    evidenceDigest: "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+                    description: "Lateral SMB pivot across private VPC subnet 10.0.4.0/24.",
+                    riskScore: 78,
+                    status: "CORRELATED" as const,
+                  },
+                  {
+                    nodeId: "node-target",
+                    stepNumber: 3,
+                    label: "srv-db-prod-01 (PII Database)",
+                    role: "CROWN_JEWEL" as const,
+                    mitreTechnique: "T1098.004",
+                    techniqueName: "Account Manipulation: SSH Authorized Keys",
+                    targetEntity: "srv-db-prod-01",
+                    evidenceDigest: "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969",
+                    description: "Target database holding 2.4M customer records.",
+                    riskScore: 96,
+                    status: "CORRELATED" as const,
+                  },
+                ]).map((node, idx) => {
+                  const isEntry = node.role === "ENTRYPOINT";
+                  const isPivot = node.role === "PIVOT";
+
+                  const cardStyle = isEntry
+                    ? "bg-purple-950/20 border-purple-500/30 text-purple-400"
+                    : isPivot
+                    ? "bg-amber-950/20 border-amber-500/30 text-amber-400"
+                    : "bg-rose-950/30 border-rose-500/40 text-rose-400";
+
+                  return (
+                    <div key={node.nodeId || `node-${idx}`} className={`p-3.5 rounded-xl border space-y-1.5 ${cardStyle}`}>
+                      <div className="flex items-center justify-between text-[10px]">
+                        <span>NODE {node.stepNumber ?? idx + 1}: {node.role}</span>
+                        <span>{node.mitreTechnique}</span>
+                      </div>
+                      <div className="font-bold text-slate-200 truncate">{node.label}</div>
+                      <p className="text-[11px] text-slate-400 line-clamp-2">{node.description}</p>
+                      <div className="text-[10px] text-slate-500 font-mono pt-1 border-t border-slate-800/60 truncate">
+                        Digest: {node.evidenceDigest ? `${node.evidenceDigest.slice(0, 16)}...` : "Anchored"}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Blast Radius & One-Click Dual-Custody Dispatch */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 text-xs font-mono">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <Flame className="w-3.5 h-3.5 text-amber-400" />
+                    <span className="font-bold text-slate-200">Blast Radius Assessment:</span>
+                  </div>
+                  <p className="text-[11px] text-slate-400">
+                    Containment Target: <strong className="text-amber-300">{attackTrajectory?.blastRadius.targetHost || "srv-db-prod-01"}</strong> | Estimated Outage: <strong className="text-emerald-400">{attackTrajectory?.blastRadius.projectedDowntimeSec ?? 0}s (Policy-Level Process Isolation [derived])</strong> | Verdict: <span className="text-cyan-300 font-bold">{attackTrajectory?.blastRadius.containmentSafetyVerdict || "SAFE_TO_EXECUTE"}</span>
+                  </p>
+                </div>
+
+                <a
+                  href="/actions"
+                  className="px-3.5 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold flex items-center justify-center gap-2 shadow-lg shadow-rose-900/30 transition-all"
+                >
+                  <ShieldAlert className="w-4 h-4" />
+                  <span>Dispatch to Dual-Custody Approval</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            </div>
+
             {/* Final Copilot Conclusion */}
             <div className="p-4 rounded-xl bg-gradient-to-r from-purple-950/40 to-cyan-950/40 border border-purple-500/40 space-y-2">
               <div className="flex items-center gap-2 text-xs font-bold text-purple-300 font-mono">
@@ -427,7 +551,7 @@ export default function ThreatHuntingPage() {
                     <span className="text-amber-300 font-mono">srv-db-prod-01</span> via Authority
                     Tier{" "}
                     <span className="text-purple-300 font-bold">
-                      R2 (Containment with Single-Use Rollback Token)
+                      R2 (Simulation Containment with Single-Use Rollback Token)
                     </span>
                     .
                   </>

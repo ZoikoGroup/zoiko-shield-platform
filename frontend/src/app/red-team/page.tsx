@@ -153,7 +153,7 @@ export default function RedTeamSimulatorPage() {
                   <Badge variant="neutral">OCSF v1.1.0 Synthetic Telemetry</Badge>
                 </div>
                 <p className="text-xs text-slate-400">
-                  Specification: <span className="font-mono text-cyan-400">ZS-ENG-AI-001</span> §15 & <span className="font-mono text-cyan-400">ZS-T0-TECH-001</span> §09
+                  Architecture: <span className="font-mono text-cyan-400">ADR-11</span> (AI Governance) &amp; <span className="font-mono text-cyan-400">ADR-12</span> (Continuous Red Team Replay)
                 </p>
               </div>
             </div>

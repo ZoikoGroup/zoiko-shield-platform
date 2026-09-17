@@ -63,7 +63,7 @@ export interface DualCustodyQuorumReceipt {
 
 /**
  * Dual-Custody Cryptographic Quorum Service
- * Specification: ZS-ENG-ACT-001 §8 (Dual-Custody Approvals) & ZS-T0-TECH-001 §6
+ * Architecture: ADR-04 (Dual-Custody Cryptographic Quorum)
  */
 @Injectable()
 export class DualCustodyQuorumService {

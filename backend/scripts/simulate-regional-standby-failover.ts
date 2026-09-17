@@ -191,8 +191,9 @@ async function checkEvidenceAnchoringIntegrity(): Promise<StageResult> {
 
 async function run() {
   console.log('========================================================================');
-  console.log(' ZoikoShield Residency & Evidence-Durability Smoke Test');
-  console.log(' (NOT a cross-region failover rehearsal - see disclosure below)');
+  console.log(' 🛡️  ZoikoShield ADR-16 Data Residency & Manual Evacuation Smoke Test');
+  console.log('    Specification: ADR-16 (Single Home Cell; No Auto Residency Breach)');
+  console.log('    Validates: Strict Residency Pinning + Epoch Merkle Proof Integrity');
   console.log('========================================================================\n');
 
   const stages: StageResult[] = [];

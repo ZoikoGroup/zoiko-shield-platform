@@ -44,8 +44,8 @@ export const VerifierTerminal: React.FC<VerifierTerminalProps> = ({
       `[INFO] Loading local audit manifest & unbundling ZIP package...`,
       `[INFO] Checking manifest checksum (SHA-256: ${truncateHash(auditPackage?.packageHash || "e3b0c442", 12, 8)})... OK`,
       `[INFO] Validating Hybrid Cryptographic Signatures:`,
-      `       ├─ Classical Ed25519 Signature Verification... VALID ✓`,
-      `       └─ Post-Quantum Dilithium3 ML-DSA Signature Verification... VALID ✓`,
+      `       ├─ Classical ECDSA-P256 Signature Verification... VALID ✓`,
+      `       └─ Post-Quantum ML-DSA-65 (FIPS 204) Signature Verification... VALID ✓`,
       `[INFO] Re-computing Merkle Tree inclusion proofs across ${auditPackage?.manifest?.evidenceCount || 14} Evidence Records...`,
       `[INFO] Merkle Root Hash: ${auditPackage?.manifest?.epochMerkleRoot || "7a8b9c0d1e2f3a4b5c6d7e8f"} [MATCH]`,
       `[INFO] Verifying RFC 3161 TSA Timestamp Token... VALID ✓`,
@@ -106,7 +106,7 @@ export const VerifierTerminal: React.FC<VerifierTerminalProps> = ({
               bash — zoikoshield-verifier (Standalone Zero-Dependency Binary)
             </span>
           </div>
-          <span className="text-[10px] text-cyan-400">PQC: ML-DSA-87 / Dilithium3</span>
+          <span className="text-[10px] text-cyan-400">PQC: ML-DSA-65 (FIPS 204)</span>
         </div>
 
         {/* Terminal Content */}

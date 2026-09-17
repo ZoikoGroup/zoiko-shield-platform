@@ -15,7 +15,7 @@ import { PqcBftConsensusService } from '../apps/shield-anchor/src/consensus/pqc-
 async function main() {
   console.log('========================================================================');
   console.log(' 🛡️  ZoikoShield Quantum-Resistant PQC-BFT State Consensus Simulator');
-  console.log('    Specification: ZS-T0-TECH-001 §16 (Post-Quantum Byzantine Ledger State)');
+  console.log('    Architecture: ADR-01 & ADR-16 (Post-Quantum Byzantine Ledger State)');
   console.log('========================================================================\n');
 
   const bftService = new PqcBftConsensusService();

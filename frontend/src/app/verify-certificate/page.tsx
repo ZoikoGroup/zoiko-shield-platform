@@ -150,7 +150,7 @@ export default function VerifyCertificatePage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Badge variant="pass">ZS-T0-AUD-001</Badge>
+            <Badge variant="pass">ZS-MERKLE-V1</Badge>
             <span className="text-xs font-mono text-cyan-400 font-bold">
               OFFLINE INDEPENDENT AUDITOR VERIFIER
             </span>
@@ -299,7 +299,7 @@ export default function VerifyCertificatePage() {
                   {certificate.cryptographicSummary.declaredMerkleRoot}
                 </div>
                 <div className="text-purple-400 font-bold flex items-center gap-1 pt-1">
-                  <Lock className="w-3 h-3" /> Certificate Signature (Dilithium3 / Ed25519):
+                  <Lock className="w-3 h-3" /> Certificate Signature (ML-DSA-65 / ECDSA-P256):
                 </div>
                 <div className="text-slate-300 break-all bg-slate-900 p-1.5 rounded border border-slate-800">
                   {certificate.cryptographicSummary.certificateSignature}

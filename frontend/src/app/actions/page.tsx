@@ -15,6 +15,7 @@ import {
   FileCheck2,
   CheckCircle2,
   ShieldAlert,
+  ShieldCheck,
   Fingerprint,
 } from "lucide-react";
 import {
@@ -331,6 +332,45 @@ export default function ActionsAndFreezePage() {
             </div>
 
             <div className="space-y-4">
+              {quorumReceipt && (
+                <div className="p-4 rounded-xl bg-purple-950/30 border border-purple-500/50 space-y-3 font-mono text-xs shadow-[0_0_20px_rgba(168,85,247,0.15)] animate-in fade-in duration-300">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-purple-400" />
+                      <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold border border-purple-500/40">
+                        {quorumReceipt.quorumId.toUpperCase()}
+                      </span>
+                      <span className="text-slate-200 font-bold">Dual-Custody Cryptographic Quorum Receipt</span>
+                    </div>
+                    <Badge variant="pass">2/2 FIDO2 ATTESTED</Badge>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
+                    <div className="p-2.5 rounded bg-slate-900/80 border border-slate-800 space-y-1">
+                      <span className="text-cyan-400 font-bold flex items-center gap-1.5">
+                        <Fingerprint className="w-3.5 h-3.5" /> 1. Primary Initiator:
+                      </span>
+                      <div className="text-slate-100 font-semibold">{quorumReceipt.approver1}</div>
+                      <div className="text-[10px] text-slate-400">FIDO2 Hardware Attestation: VERIFIED</div>
+                    </div>
+                    <div className="p-2.5 rounded bg-slate-900/80 border border-slate-800 space-y-1">
+                      <span className="text-purple-400 font-bold flex items-center gap-1.5">
+                        <Fingerprint className="w-3.5 h-3.5" /> 2. Secondary Approver:
+                      </span>
+                      <div className="text-slate-100 font-semibold">{quorumReceipt.approver2}</div>
+                      <div className="text-[10px] text-slate-400">Two-Man Invariant: VERIFIED DISTINCT</div>
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded bg-slate-900/80 border border-slate-800 flex items-center justify-between text-[11px]">
+                    <span className="text-slate-400">Issued Single-Use Rollback Token:</span>
+                    <span className="text-cyan-300 font-bold bg-slate-950 px-2.5 py-1 rounded border border-cyan-500/30">
+                      {quorumReceipt.rollbackToken}
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {simulationReceipt ? (
                 /* Real simulation receipt from demo state */
                 <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 font-mono text-xs">

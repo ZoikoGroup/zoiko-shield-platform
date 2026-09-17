@@ -36,6 +36,7 @@
     "check:platform-admin": "ts-node -r tsconfig-paths/register scripts/check-super-admin.ts",
     "test:invitation-email": "ts-node -r tsconfig-paths/register scripts/test-owner-invitation-email.ts",
     "demo:erb01": "ts-node -r tsconfig-paths/register ./scripts/erb01-demo-runner.ts",
+    "demo:erb01:full": "ts-node -r tsconfig-paths/register ./scripts/run-erb01-mvp-demonstration.ts",
     "migrate:deploy": "prisma migrate deploy && node scripts/run-typeorm-migrations.js",
     "order:generate": "ts-node -r tsconfig-paths/register scripts/generate-order-id.ts",
     "simulate:soc": "ts-node -r tsconfig-paths/register scripts/simulate-soc-lifecycle.ts",

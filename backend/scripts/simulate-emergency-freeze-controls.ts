@@ -16,7 +16,7 @@ import { EmergencyFreezeLockdownService } from '../apps/shield-action/src/freeze
 async function main() {
   console.log('========================================================================');
   console.log(' 🛡️  ZoikoShield Cloud HSM Signing & Emergency Freeze Controls Simulator');
-  console.log('    Specification: ZS-T0-TECH-001 §5.3 (Cloud HSM & Freeze Mechanics)');
+  console.log('    Architecture: ADR-04 (Cloud HSM & Emergency Freeze Controls)');
   console.log('========================================================================\n');
 
   const hsmSigner = new CloudHsmSignerService();
