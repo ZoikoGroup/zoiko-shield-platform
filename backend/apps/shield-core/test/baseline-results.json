@@ -1,5 +1,9 @@
 {
+<<<<<<< Updated upstream
   "generatedAt": "2026-09-17T12:19:19.805Z",
+=======
+  "generatedAt": "2026-09-17T15:27:33.447Z",
+>>>>>>> Stashed changes
   "slos": {
     "ingestP99Ms": 500,
     "detectP99Ms": 1000,
@@ -10,28 +14,50 @@
     {
       "label": "ingestion_normalization",
       "count": 1000,
+<<<<<<< Updated upstream
       "p50": 30.74,
       "p99": 71.28,
       "maxMs": 71.67
+=======
+      "p50": 32.66,
+      "p99": 52.1,
+      "maxMs": 53.87
+>>>>>>> Stashed changes
     },
     {
       "label": "detection_evaluation",
       "count": 200,
+<<<<<<< Updated upstream
       "p50": 6,
       "p99": 11.16,
       "maxMs": 12.01
+=======
+      "p50": 29.19,
+      "p99": 53.86,
+      "maxMs": 55.69
+>>>>>>> Stashed changes
     },
     {
       "label": "evidence_freshness",
       "count": 50,
+<<<<<<< Updated upstream
       "wallMs": 4,
+=======
+      "wallMs": 15,
+>>>>>>> Stashed changes
       "sloSeconds": 60
     },
     {
       "label": "memory_ceiling",
+<<<<<<< Updated upstream
       "rssBefore": 682.73046875,
       "rssAfter": 682.73046875,
       "deltaMb": 0,
+=======
+      "rssBefore": 454.8203125,
+      "rssAfter": 456.3203125,
+      "deltaMb": 1.5,
+>>>>>>> Stashed changes
       "sloMb": 100
     }
   ]
