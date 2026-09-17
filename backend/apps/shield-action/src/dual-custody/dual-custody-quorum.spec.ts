@@ -154,4 +154,70 @@ describe('DualCustodyQuorumService', () => {
       ),
     ).toThrow(NotFoundException);
   });
+
+  it('should reject replaying/re-signing an already finalized quorum', () => {
+    const quorum = service.initiateQuorum(sampleRequest);
+    service.signSecondApproval(
+      sampleRequest.tenantId,
+      quorum.quorumId,
+      secondaryApprover,
+    );
+
+    // Attempting to sign again should fail
+    const anotherApprover: ApproverIdentity = {
+      userId: 'usr-analyst-03',
+      fullName: 'Alice Smith',
+      role: 'INCIDENT_COMMANDER',
+      fido2WebAuthnSignature: 'fido2-sig-03',
+      signedAt: new Date().toISOString(),
+    };
+
+    expect(() =>
+      service.signSecondApproval(
+        sampleRequest.tenantId,
+        quorum.quorumId,
+        anotherApprover,
+      ),
+    ).toThrow(BadRequestException);
+  });
+
+  it('should enforce strict cross-tenant isolation (Tenant B cannot access or approve Tenant A quorum)', () => {
+    const quorum = service.initiateQuorum(sampleRequest);
+    const rogueTenantId = 'tenant-unauthorized-attacker';
+
+    expect(() =>
+      service.signSecondApproval(
+        rogueTenantId,
+        quorum.quorumId,
+        secondaryApprover,
+      ),
+    ).toThrow(NotFoundException);
+
+    const validation = service.validateQuorumForExecution(
+      rogueTenantId,
+      quorum.quorumId,
+      sampleRequest.proposalId,
+    );
+    expect(validation.valid).toBe(false);
+    expect(validation.reason).toContain('not found');
+  });
+
+  it('should reject execution validation if proposalId does not match the quorum', () => {
+    const quorum = service.initiateQuorum(sampleRequest);
+    service.signSecondApproval(
+      sampleRequest.tenantId,
+      quorum.quorumId,
+      secondaryApprover,
+    );
+
+    const validation = service.validateQuorumForExecution(
+      sampleRequest.tenantId,
+      quorum.quorumId,
+      'tampered-fake-proposal-id',
+    );
+
+    expect(validation.valid).toBe(false);
+    expect(validation.reason).toContain('does not match requested proposal');
+  });
 });
+

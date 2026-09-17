@@ -44,7 +44,7 @@ export interface VerificationResult {
 
 /**
  * Decentralized Verifiable Credentials (W3C DID/VC) Service
- * Specification: ZS-T0-TECH-001 §15 (Decentralized Identity & Zero-Trust Access)
+ * Architecture: ADR-05 (Decentralized Identity & Zero-Trust Access)
  */
 @Injectable()
 export class VerifiableCredentialService {

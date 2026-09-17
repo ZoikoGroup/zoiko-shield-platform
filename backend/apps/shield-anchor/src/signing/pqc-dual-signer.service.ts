@@ -23,7 +23,7 @@ export interface HybridVerificationResult {
 }
 
 /**
- * Post-Quantum Hybrid Dual-Signing Engine (ZS-T0-TECH-001 §5.3 / ZS-T0-AUD-001 §8)
+ * Post-Quantum Hybrid Dual-Signing Engine (ADR-01 / NIST FIPS 204 ML-DSA-65)
  * Combines Classical ECDSA P-256 with NIST FIPS 204 ML-DSA-65 (Crystals-Dilithium)
  * to future-proof Merkle epoch roots and compliance evidence against quantum decryption.
  */

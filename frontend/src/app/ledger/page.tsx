@@ -221,9 +221,7 @@ export default function MerkleLedgerExplorerPage() {
                   <Badge variant="pass">Dual-Witness Sealed</Badge>
                 </div>
                 <p className="text-xs text-slate-400">
-                  Specification:{" "}
-                  <span className="font-mono text-cyan-400">ZS-ENG-EVID-001</span> &amp;{" "}
-                  <span className="font-mono text-cyan-400">ZS-T0-TECH-001</span> §08
+                  Architecture: <span className="font-mono text-cyan-400">ADR-01</span> (Immutable Merkle Evidence Ledger) &amp; <span className="font-mono text-cyan-400">ZS-MERKLE-V1</span>
                 </p>
               </div>
             </div>

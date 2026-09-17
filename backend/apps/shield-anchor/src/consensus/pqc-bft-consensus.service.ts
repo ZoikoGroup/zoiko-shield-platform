@@ -32,7 +32,7 @@ export interface BftConsensusFinalityCertificate {
 
 /**
  * Quantum-Resistant Byzantine Fault-Tolerant (PQC-BFT) Consensus Engine
- * Specification: ZS-T0-TECH-001 §16 (Post-Quantum Distributed Ledger Consensus)
+ * Architecture: ADR-01 & ADR-16 (Post-Quantum Distributed Ledger Consensus)
  */
 @Injectable()
 export class PqcBftConsensusService {

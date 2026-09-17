@@ -4,7 +4,7 @@
  * Implements offline cryptographic verification of ZoikoShield audit packages
  * with zero dependencies on platform-internal code or services.
  *
- * Specification: ZS-T0-AUD-001 §4 / TUT-05 (Zero-Dependency Offline Verifier)
+ * Architecture: ADR-01 (Zero-Dependency Offline Verifier) & ZS-MERKLE-V1 Profile
  */
 import { createHash } from 'crypto';
 

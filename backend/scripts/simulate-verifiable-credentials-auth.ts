@@ -16,7 +16,7 @@ import { VerifiableCredentialService } from '../apps/shield-core/src/modules/ver
 async function main() {
   console.log('========================================================================');
   console.log(' 🛡️  ZoikoShield W3C Verifiable Credentials & DID Auth Simulator');
-  console.log('    Specification: ZS-T0-TECH-001 §15 (Decentralized Identity Authorization)');
+  console.log('    Architecture: ADR-05 (Decentralized Identity Authorization)');
   console.log('========================================================================\n');
 
   const vcService = new VerifiableCredentialService();

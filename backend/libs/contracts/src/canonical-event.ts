@@ -1,6 +1,6 @@
 /**
  * ZoikoShield Canonical Event Contract
- * Governed by ZS-ENG-INT-001 §07 & ZS-T0-TECH-001 §06
+ * Architecture: ADR-02 (Event Streaming & OCSF Normalization)
  * Standard event schema for telemetry ingestion, Kafka event backbone, and OCSF normalization.
  */
 

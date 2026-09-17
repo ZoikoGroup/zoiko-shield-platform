@@ -85,7 +85,7 @@ export default function AuditPage() {
             Audit Package Export & Offline Verifier
           </h1>
           <p className="text-sm text-slate-400">
-            Export hybrid Ed25519 + Dilithium3 sealed packages and execute standalone zero-dependency verification.
+            Export hybrid ECDSA-P256 + ML-DSA-65 (FIPS 204) sealed packages and execute standalone zero-dependency verification.
           </p>
         </div>
 
@@ -141,8 +141,8 @@ export default function AuditPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Badge variant="anchored">Dilithium3 Sealed</Badge>
-              <Badge variant="pass">Ed25519 Valid</Badge>
+              <Badge variant="anchored">ML-DSA-65 Sealed</Badge>
+              <Badge variant="pass">ECDSA-P256 Valid</Badge>
             </div>
           </div>
 
@@ -152,15 +152,15 @@ export default function AuditPage() {
                 Hybrid Cryptographic Seals:
               </span>
               <div>
-                <span className="text-slate-500">PQC DILITHIUM3:</span>
+                <span className="text-slate-500">PQC ML-DSA-65 (FIPS 204):</span>
                 <p className="text-emerald-400 truncate text-[11px]">
                   {latestPackage.dilithiumSignature}
                 </p>
               </div>
               <div>
-                <span className="text-slate-500">CLASSICAL ED25519:</span>
+                <span className="text-slate-500">CLASSICAL ECDSA-P256:</span>
                 <p className="text-cyan-300 truncate text-[11px]">
-                  {latestPackage.ed25519Signature}
+                  {latestPackage.ecdsaP256Signature || latestPackage.ed25519Signature}
                 </p>
               </div>
               <div>

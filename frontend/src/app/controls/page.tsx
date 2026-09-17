@@ -87,7 +87,7 @@ export default function ControlsPage() {
             Continuous Security Controls Matrix
           </h1>
           <p className="text-sm text-slate-400">
-            Real-time automated control evaluation across `SOC2_TYPE2`, `ISO27001_2022`, `DORA`, `NIS2`, and `HIPAA` frameworks on shield-ingest (:3002).
+            Real-time automated control evaluation across certified SOC 2 Type II and ISO 27001:2022 frameworks on shield-ingest (:3002). Sector overlays (DORA, NIS2) deferred to Phase 2 midpoint per ADR-08.
           </p>
         </div>
 

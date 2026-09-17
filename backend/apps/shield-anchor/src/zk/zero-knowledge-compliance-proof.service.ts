@@ -26,7 +26,7 @@ export interface ZkVerificationReceipt {
 
 /**
  * Zero-Knowledge Range & Compliance Proof Engine
- * Specification: ZS-T0-AUD-001 §10 (Privacy-Preserving Regulatory Attestation)
+ * Architecture: ADR-08 & ADR-16 (Privacy-Preserving Regulatory Attestation)
  */
 @Injectable()
 export class ZeroKnowledgeComplianceProofService {

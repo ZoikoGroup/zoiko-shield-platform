@@ -42,7 +42,7 @@ export default function DashboardPage() {
   const frameworkLabels =
     totalControls > 0
       ? [...new Set(state.controlTests.map((c) => c.framework.split("_")[0]))].join(", ")
-      : "SOC2, ISO27001, HIPAA";
+      : "SOC 2 Type II, ISO 27001:2022";
 
   // Compute connector health from actual connector data
   const activeConnectors = state.connectors.filter((c) => c.status === "ACTIVE");

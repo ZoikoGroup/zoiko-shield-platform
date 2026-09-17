@@ -66,6 +66,8 @@ import { ModelDriftMonitorService } from './drift-monitoring/model-drift-monitor
 import { AiDriftMonitorService } from './drift-monitoring/ai-drift-monitor.service';
 import { AiSupplyChainService } from './supply-chain/ai-supply-chain.service';
 import { AiSystemInventoryService } from './inventory/ai-system-inventory.service';
+import { GroundingGateGuard } from './security/grounding-gate.guard';
+import { AiUseCaseRegistryService as InventoryAiUseCaseRegistryService } from './inventory/ai-use-case-registry.service';
 
 import { DecisionRightsModule } from './decision-rights/decision-rights.module';
 
@@ -138,6 +140,8 @@ import { DecisionRightsModule } from './decision-rights/decision-rights.module';
     AiDriftMonitorService,
     AiSupplyChainService,
     AiSystemInventoryService,
+    InventoryAiUseCaseRegistryService,
+    GroundingGateGuard,
   ],
   exports: [
     ThreatHuntingCopilotService,
@@ -170,7 +174,9 @@ import { DecisionRightsModule } from './decision-rights/decision-rights.module';
     AiDriftMonitorService,
     AiSupplyChainService,
     AiSystemInventoryService,
+    InventoryAiUseCaseRegistryService,
+    GroundingGateGuard,
     DecisionRightsModule,
   ],
 })
-export class ShieldAiModule {}
+export class ShieldAiModule { }
