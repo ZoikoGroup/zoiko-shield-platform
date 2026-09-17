@@ -59,6 +59,7 @@ import { AiObservabilityMetricsService } from './observability/ai-observability-
 import { UseCaseController } from './internal/use-case.controller';
 import { AiOutputController } from './internal/ai-output.controller';
 import { AiGovernanceViewsController } from './internal/ai-governance-views.controller';
+import { AiUseCaseRegistryController } from './internal/ai-use-case-registry.controller';
 import { AiIncidentController } from './ai-incident/ai-incident.controller';
 import { AiIncidentService } from './ai-incident/ai-incident.service';
 import { TenantVectorStoreService } from './vector-store/tenant-vector-store.service';
@@ -66,6 +67,8 @@ import { ModelDriftMonitorService } from './drift-monitoring/model-drift-monitor
 import { AiDriftMonitorService } from './drift-monitoring/ai-drift-monitor.service';
 import { AiSupplyChainService } from './supply-chain/ai-supply-chain.service';
 import { AiSystemInventoryService } from './inventory/ai-system-inventory.service';
+import { GroundingGateGuard } from './security/grounding-gate.guard';
+import { AiUseCaseRegistryService as InventoryAiUseCaseRegistryService } from './inventory/ai-use-case-registry.service';
 
 import { DecisionRightsModule } from './decision-rights/decision-rights.module';
 
@@ -76,6 +79,7 @@ import { DecisionRightsModule } from './decision-rights/decision-rights.module';
     UseCaseController,
     AiOutputController,
     AiGovernanceViewsController,
+    AiUseCaseRegistryController,
     AiIncidentController,
   ],
 
@@ -138,6 +142,8 @@ import { DecisionRightsModule } from './decision-rights/decision-rights.module';
     AiDriftMonitorService,
     AiSupplyChainService,
     AiSystemInventoryService,
+    InventoryAiUseCaseRegistryService,
+    GroundingGateGuard,
   ],
   exports: [
     ThreatHuntingCopilotService,
@@ -170,6 +176,8 @@ import { DecisionRightsModule } from './decision-rights/decision-rights.module';
     AiDriftMonitorService,
     AiSupplyChainService,
     AiSystemInventoryService,
+    InventoryAiUseCaseRegistryService,
+    GroundingGateGuard,
     DecisionRightsModule,
   ],
 })

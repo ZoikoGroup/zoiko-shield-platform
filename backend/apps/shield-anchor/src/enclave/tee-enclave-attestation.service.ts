@@ -27,7 +27,7 @@ export interface EnclaveVerificationReceipt {
 
 /**
  * Confidential Computing & Hardware TEE Enclave Attestation Service
- * Specification: ZS-T0-TECH-001 §14 (Hardware Root of Trust & TEE Attestation)
+ * Architecture: ADR-16 (Hardware Root of Trust & TEE Attestation)
  */
 @Injectable()
 export class TeeEnclaveAttestationService {

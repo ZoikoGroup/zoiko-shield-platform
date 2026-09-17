@@ -15,7 +15,7 @@ import { PqcDualSignerService } from '../apps/shield-anchor/src/signing/pqc-dual
 async function main() {
   console.log('========================================================================');
   console.log(' 🛡️  ZoikoShield Post-Quantum Hybrid Dual-Signing Simulator');
-  console.log('    Specification: ZS-T0-TECH-001 §5.3 & ZS-T0-AUD-001 §8');
+  console.log('    Architecture: ADR-01 (PQC Dual-Signing: ECDSA-P256 + ML-DSA-65 FIPS 204)');
   console.log('========================================================================\n');
 
   const pqcSigner = new PqcDualSignerService();

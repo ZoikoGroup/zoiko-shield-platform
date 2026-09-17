@@ -14,7 +14,7 @@ import {
 /**
  * ZS-PROC-001: Suspicious Credential Dumping Process (MITRE ATT&CK T1003.001)
  * Evaluates OCSF PROCESS_ACTIVITY events for known credential dumpers (e.g. Mimikatz, Procdump, LSASS injection).
- * Governed by ZS-ENG-DRS-001 §07 & ZS-T0-TECH-001 §07.
+ * Architecture: ADR-03 (Deterministic Detection Engine & OCSF Rules)
  */
 @Injectable()
 export class SuspiciousProcessRule implements DetectionRule {

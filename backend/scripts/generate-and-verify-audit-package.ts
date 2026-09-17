@@ -17,7 +17,7 @@ import { runVerifier } from '../apps/verifier-cli/src/main';
 async function main() {
   console.log('========================================================================');
   console.log(' 🛡️  ZoikoShield Offline Audit Package Generator & Verifier Runner');
-  console.log('    Specification: ZS-T0-AUD-001 / TUT-05 (Zero-Dependency Verification)');
+  console.log('    Architecture: ADR-01 (Offline Independent Verification) & ZS-MERKLE-V1');
   console.log('========================================================================\n');
 
   const tenantId = `tenant-bank-${crypto.randomUUID().slice(0, 8)}`;

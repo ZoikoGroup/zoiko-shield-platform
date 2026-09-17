@@ -112,4 +112,33 @@ export class ConnectorsProxyController {
     const tenantId = requireTenantId(headerTenantId, user?.tenantId);
     return this.shieldIngestClient.getConnectorHealth(tenantId, id);
   }
+
+  @Get('control-evaluations')
+  async listControlEvaluations(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.listControlEvaluations(tenantId);
+  }
+
+  @Post('control-tests/:id/evaluate')
+  async evaluateControl(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: any,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.evaluateControl(tenantId, id, dto);
+  }
+
+  @Get('events')
+  async listEvents(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = requireTenantId(headerTenantId, user?.tenantId);
+    return this.shieldIngestClient.listEvents(tenantId);
+  }
 }

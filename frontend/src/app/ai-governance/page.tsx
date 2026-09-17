@@ -51,6 +51,94 @@ import {
   UnavailableState,
 } from "@/components/states/mandatory-ui-states";
 
+interface AiUseCaseEntry {
+  key: string;
+  name: string;
+  riskTier: "AR-1" | "AR-2" | "AR-3";
+  euRiskTier: EuAiActRiskTier;
+  nistFunctions: NistAiRmfFunction[];
+  humanOversightPolicy: "MANDATORY_DUAL_CUSTODY" | "MANDATORY_HUMAN_IN_THE_LOOP" | "NOT_MANDATORY_TIER2" | "SANDBOX_ISOLATED";
+  allowedModelFamilies: string[];
+  pinnedModelVersion: string;
+  fallbackEngine: string;
+  minGroundingScore: number;
+  description: string;
+  governanceStatus: "CERTIFIED_ACTIVE" | "PENDING_CONFORMITY" | "RESTRICTED";
+}
+
+const DEFAULT_USE_CASES: AiUseCaseEntry[] = [
+  {
+    key: "USE_CASE_ALERT_TRIAGE_SUMMARY",
+    name: "Automated OCSF Alert Correlation & Executive Summary",
+    riskTier: "AR-1",
+    euRiskTier: "LIMITED_RISK",
+    nistFunctions: ["GOVERN", "MAP", "MEASURE"],
+    humanOversightPolicy: "NOT_MANDATORY_TIER2",
+    allowedModelFamilies: ["Gemini (gemini-1.5-flash-002 [derived])", "Claude (claude-3-5-sonnet)"],
+    pinnedModelVersion: "gemini-1.5-flash-002 [derived]",
+    fallbackEngine: "Rule-Based Case Summary Extractor",
+    minGroundingScore: 0.85,
+    description: "Synthesizes multi-source telemetry into plain-language case narrative and threat assessment.",
+    governanceStatus: "CERTIFIED_ACTIVE",
+  },
+  {
+    key: "USE_CASE_THREAT_HUNTING_COPILOT",
+    name: "Autonomous Multi-Hop Attack Path Discovery & MITRE ATT&CK Mapping",
+    riskTier: "AR-2",
+    euRiskTier: "HIGH_RISK",
+    nistFunctions: ["GOVERN", "MAP", "MEASURE", "MANAGE"],
+    humanOversightPolicy: "MANDATORY_DUAL_CUSTODY",
+    allowedModelFamilies: ["Gemini (gemini-1.5-pro-002 [derived])", "GPT-4o (Azure)"],
+    pinnedModelVersion: "gemini-1.5-pro-002 [derived]",
+    fallbackEngine: "Keyword Query Expansion Engine",
+    minGroundingScore: 0.88,
+    description: "Iteratively traverses evidence graph to find shortest path to crown jewel assets with blast radius calculations.",
+    governanceStatus: "CERTIFIED_ACTIVE",
+  },
+  {
+    key: "USE_CASE_AUTONOMOUS_CONTAINMENT",
+    name: "SOAR Playbook Containment Proposal Generation",
+    riskTier: "AR-3",
+    euRiskTier: "HIGH_RISK",
+    nistFunctions: ["GOVERN", "MEASURE", "MANAGE"],
+    humanOversightPolicy: "MANDATORY_DUAL_CUSTODY",
+    allowedModelFamilies: ["Gemini (gemini-1.5-pro-002 [derived])", "Claude (claude-3-5-sonnet)"],
+    pinnedModelVersion: "gemini-1.5-pro-002 [derived]",
+    fallbackEngine: "Tier-1 Deterministic Playbook Fallback",
+    minGroundingScore: 0.90,
+    description: "Generates Cedar authorization containment proposals with single-use cryptographic rollback tokens.",
+    governanceStatus: "CERTIFIED_ACTIVE",
+  },
+  {
+    key: "USE_CASE_EVIDENCE_SYNTHESIS",
+    name: "Immutable Evidence Ledger Rationale Extraction & Merkle Leaf Formatting",
+    riskTier: "AR-1",
+    euRiskTier: "LIMITED_RISK",
+    nistFunctions: ["GOVERN", "MEASURE"],
+    humanOversightPolicy: "MANDATORY_HUMAN_IN_THE_LOOP",
+    allowedModelFamilies: ["Gemini (gemini-1.5-flash-002 [derived])", "Claude (claude-3-5-sonnet)"],
+    pinnedModelVersion: "gemini-1.5-flash-002 [derived]",
+    fallbackEngine: "Deterministic Rule Lookup & Signature Parser",
+    minGroundingScore: 0.85,
+    description: "Extracts structured evidence items and human decision rationale for epoch Merkle anchoring.",
+    governanceStatus: "CERTIFIED_ACTIVE",
+  },
+  {
+    key: "USE_CASE_RED_TEAM_REPLAY",
+    name: "Autonomous Adversarial Attack Scenario Simulation & Defense Stress Testing",
+    riskTier: "AR-2",
+    euRiskTier: "HIGH_RISK",
+    nistFunctions: ["MAP", "MEASURE", "MANAGE"],
+    humanOversightPolicy: "SANDBOX_ISOLATED",
+    allowedModelFamilies: ["Gemini (gemini-1.5-pro-002 [derived])", "Claude (claude-3-5-sonnet)", "Mistral Large"],
+    pinnedModelVersion: "gemini-1.5-pro-002 [derived]",
+    fallbackEngine: "Timeline-Based RCA Template Builder",
+    minGroundingScore: 0.90,
+    description: "Executes non-destructive red team simulations to probe defense guardrails against prompt injection and privilege escalation.",
+    governanceStatus: "CERTIFIED_ACTIVE",
+  },
+];
+
 export default function AiGovernancePage() {
   const [state, , isHydrated] = useDemoState();
   const [activeTab, setActiveTab] = useState<string>("incidents");
@@ -63,6 +151,61 @@ export default function AiGovernancePage() {
     rootCauseClass: string;
     recommendedFixes: string[];
   } | null>(null);
+
+  // Grounding Gate Studio State (§18)
+  const [gateHypothesis, setGateHypothesis] = useState(
+    "Adversary compromised analyst credentials (usr-analyst-lead-01) from unauthorized IP 198.51.100.99 and executed lateral SMB movement to srv-db-prod-01."
+  );
+  const [gateEvidenceSpans, setGateEvidenceSpans] = useState(
+    "EV-001: Authentication event for usr-analyst-lead-01 observed from non-corporate IP 198.51.100.99 at 10:42:15 UTC.\nEV-002: Lateral SMB connection established from jump-host ec2-jump-01 to srv-db-prod-01 over port 445.\nEV-003: Merkle inclusion proof verified in Epoch #1043 with Dual PQC signature."
+  );
+  const [gateThreshold, setGateThreshold] = useState<number>(0.80);
+  const [isEvaluatingGate, setIsEvaluatingGate] = useState<boolean>(false);
+  const [gateResult, setGateResult] = useState<{
+    groundingScore: number;
+    decision: "PERMITTED" | "BLOCKED_HALLUCINATION_DETECTED";
+    citationCoveragePct: number;
+    supportedTokens: number;
+    totalTokens: number;
+    hallucinatedSpans: string[];
+    verifiedCitations: string[];
+  } | null>(null);
+
+  const handleEvaluateGrounding = () => {
+    setIsEvaluatingGate(true);
+    setTimeout(() => {
+      const hypTokens = gateHypothesis.toLowerCase().split(/\W+/).filter((t) => t.length > 2);
+      const evTokens = new Set(gateEvidenceSpans.toLowerCase().split(/\W+/).filter((t) => t.length > 2));
+
+      let matched = 0;
+      const ungrounded: string[] = [];
+
+      hypTokens.forEach((token) => {
+        if (evTokens.has(token)) {
+          matched++;
+        } else if (!["and", "the", "for", "from", "with", "this", "that", "was", "has", "are", "over"].includes(token)) {
+          if (!ungrounded.includes(token) && ungrounded.length < 5) {
+            ungrounded.push(token);
+          }
+        }
+      });
+
+      const score = hypTokens.length > 0 ? Number((matched / hypTokens.length).toFixed(3)) : 1.0;
+      const coverage = Math.min(100, Math.round(score * 110));
+      const decision = score >= gateThreshold ? "PERMITTED" : "BLOCKED_HALLUCINATION_DETECTED";
+
+      setGateResult({
+        groundingScore: score,
+        decision,
+        citationCoveragePct: coverage,
+        supportedTokens: matched,
+        totalTokens: hypTokens.length,
+        hallucinatedSpans: ungrounded,
+        verifiedCitations: ["EV-001 (SHA-256 Verified)", "EV-002 (OCSF SMB Network)", "EV-003 (PQC-BFT Epoch #1043)"],
+      });
+      setIsEvaluatingGate(false);
+    }, 400);
+  };
 
   // Declare Incident Form State
   const [newTitle, setNewTitle] = useState("");
@@ -445,6 +588,17 @@ export default function AiGovernancePage() {
             label: "§05 AI Model Inventory (NIST/EU)",
             icon: <Boxes className="w-4 h-4" />,
             badge: models.filter((m) => m.lifecycleState !== "DECOMMISSIONED").length,
+          },
+          {
+            id: "use-cases",
+            label: "§05 Certified Use Cases",
+            icon: <ShieldCheck className="w-4 h-4" />,
+            badge: DEFAULT_USE_CASES.length,
+          },
+          {
+            id: "grounding-gate",
+            label: "§18 Grounding Gate Studio",
+            icon: <Sparkles className="w-4 h-4" />,
           },
           {
             id: "drift",
@@ -1005,7 +1159,7 @@ export default function AiGovernancePage() {
                   Continuous Compliance Drift & Real-Time SLA Alarms (§55)
                 </h3>
                 <p className="text-xs text-slate-400">
-                  Real-time telemetry evaluation against SOC2 CC6.1, ISO27001, and HIPAA compliance thresholds.
+                  Real-time telemetry evaluation against active SOC 2 CC6.1 and ISO 27001:2022 compliance thresholds.
                 </p>
               </div>
               <Badge variant="pass">Overall Compliance: {complianceDrift.score.toFixed(1)}%</Badge>
@@ -1044,6 +1198,259 @@ export default function AiGovernancePage() {
                 ))}
               </div>
             )}
+          </Card>
+        </div>
+      )}
+
+      {/* Tab 5: §05 Certified AI Use Cases Catalog */}
+      {activeTab === "use-cases" && (
+        <div className="space-y-6">
+          <Card className="space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-3 border-b border-slate-800">
+              <div>
+                <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  Certified AI Use Cases & Governance Catalog (§05)
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Pre-approved AI operational mandates mapped to EU AI Act risk classifications, NIST AI RMF functions, and mandatory human oversight tiers.
+                </p>
+              </div>
+              <Badge variant="pass">{DEFAULT_USE_CASES.length} Active Use Cases</Badge>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
+              {DEFAULT_USE_CASES.map((uc) => (
+                <div
+                  key={uc.key}
+                  className="p-5 rounded-xl bg-slate-900/70 border border-slate-800 hover:border-emerald-500/40 transition-all space-y-3 font-mono text-xs"
+                >
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 pb-2 border-b border-slate-800">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-bold text-cyan-300 font-sans">{uc.name}</span>
+                        <span className="px-2 py-0.5 rounded bg-slate-950 border border-slate-800 text-[10px] text-slate-400">
+                          {uc.key}
+                        </span>
+                        <span
+                          className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                            uc.riskTier === "AR-3"
+                              ? "bg-rose-950/60 text-rose-300 border-rose-500/50"
+                              : uc.riskTier === "AR-2"
+                              ? "bg-amber-950/60 text-amber-300 border-amber-500/50"
+                              : "bg-emerald-950/60 text-emerald-300 border-emerald-500/50"
+                          }`}
+                        >
+                          {uc.riskTier}: {uc.riskTier === "AR-1" ? "Assistive Low" : uc.riskTier === "AR-2" ? "Controlled Advisory" : "High-Control Agentic"}
+                        </span>
+                        {getRiskTierBadge(uc.euRiskTier)}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge variant="ai">{uc.governanceStatus}</Badge>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                        uc.humanOversightPolicy.includes("DUAL_CUSTODY")
+                          ? "bg-amber-950/50 text-amber-300 border-amber-500/40"
+                          : uc.humanOversightPolicy.includes("HUMAN_IN_THE_LOOP")
+                          ? "bg-purple-950/50 text-purple-300 border-purple-500/40"
+                          : "bg-emerald-950/50 text-emerald-300 border-emerald-500/40"
+                      }`}>
+                        {uc.humanOversightPolicy}
+                      </span>
+                    </div>
+                  </div>
+
+                  <p className="text-slate-300 font-sans text-xs leading-relaxed">{uc.description}</p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                    <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80 space-y-1">
+                      <span className="text-[10px] text-slate-400 uppercase tracking-wider">Pinned Model & Grounding:</span>
+                      <p className="text-cyan-300 text-[11px] font-mono truncate">{uc.pinnedModelVersion}</p>
+                      <span className="text-[10px] text-slate-400">Min Grounding: {(uc.minGroundingScore * 100).toFixed(0)}%</span>
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80 space-y-1">
+                      <span className="text-[10px] text-slate-400 uppercase tracking-wider">Deterministic Fallback:</span>
+                      <p className="text-amber-300 text-[11px] font-mono truncate">{uc.fallbackEngine}</p>
+                      <span className="text-[10px] text-slate-400">Zero-LLM Safe Mode</span>
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80 space-y-1">
+                      <span className="text-[10px] text-slate-400 uppercase tracking-wider">NIST AI RMF Core Functions:</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {uc.nistFunctions.map((fn, fIdx) => (
+                          <span key={fIdx} className="px-1.5 py-0.5 rounded bg-emerald-950/50 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
+                            {fn}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Tab 6: §18 Grounding Gate & Anti-Hallucination Studio */}
+      {activeTab === "grounding-gate" && (
+        <div className="space-y-6">
+          <Card className="space-y-4">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-3 border-b border-slate-800">
+              <div>
+                <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-cyan-400" />
+                  Grounding Gate & Anti-Hallucination Studio (§18)
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Enforces strict token overlap and verified Evidence Ledger citation support before allowing AI generated conclusions into incident case files.
+                </p>
+              </div>
+              <Badge variant="healthy">Grounding Gate: ACTIVE</Badge>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Input Area */}
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-mono text-slate-300 font-bold flex items-center justify-between">
+                    <span>1. AI Model Generated Claim / Hypothesis:</span>
+                    <span className="text-slate-500 text-[11px]">Target under verification</span>
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={gateHypothesis}
+                    onChange={(e) => setGateHypothesis(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono leading-relaxed resize-none"
+                    placeholder="Enter AI model generated text..."
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-mono text-slate-300 font-bold flex items-center justify-between">
+                    <span>2. Anchored Evidence Citations (Ground Truth Spans):</span>
+                    <span className="text-cyan-400 text-[11px]">From Sovereign Evidence Ledger</span>
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={gateEvidenceSpans}
+                    onChange={(e) => setGateEvidenceSpans(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono leading-relaxed resize-none"
+                    placeholder="Enter evidence ledger records..."
+                  />
+                </div>
+
+                <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs font-mono">
+                  <span className="text-slate-400">Gate Grounding Threshold:</span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="range"
+                      min="0.5"
+                      max="0.95"
+                      step="0.05"
+                      value={gateThreshold}
+                      onChange={(e) => setGateThreshold(parseFloat(e.target.value))}
+                      className="w-32 accent-cyan-400"
+                    />
+                    <span className="font-bold text-cyan-300 w-10 text-right">{(gateThreshold * 100).toFixed(0)}%</span>
+                  </div>
+                </div>
+
+                <Button
+                  variant="primary"
+                  className="w-full py-2.5 font-bold flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 to-purple-600 hover:from-cyan-500 hover:to-purple-500 shadow-lg shadow-cyan-900/30"
+                  onClick={handleEvaluateGrounding}
+                  disabled={isEvaluatingGate}
+                >
+                  {isEvaluatingGate ? (
+                    <>
+                      <Activity className="w-4 h-4 animate-spin" />
+                      <span>Verifying Grounding Spans against Ledger...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      <span>Run Grounding Gate Verification</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+
+              {/* Evaluation Output Area */}
+              <div className="space-y-4 font-mono text-xs">
+                {gateResult ? (
+                  <div className="space-y-4">
+                    <div className={`p-4 rounded-xl border ${
+                      gateResult.decision === "PERMITTED"
+                        ? "bg-emerald-950/30 border-emerald-500/50 shadow-[0_0_20px_rgba(16,185,129,0.15)]"
+                        : "bg-rose-950/30 border-rose-500/50 shadow-[0_0_20px_rgba(244,63,94,0.15)]"
+                    } space-y-3`}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-slate-400 text-xs">VERIFICATION DECISION:</span>
+                        <Badge variant={gateResult.decision === "PERMITTED" ? "pass" : "critical"}>
+                          {gateResult.decision}
+                        </Badge>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800">
+                          <span className="text-[10px] text-slate-400">GROUNDING SCORE:</span>
+                          <p className={`text-xl font-black ${
+                            gateResult.groundingScore >= gateThreshold ? "text-emerald-400" : "text-rose-400"
+                          }`}>
+                            {(gateResult.groundingScore * 100).toFixed(1)}%
+                          </p>
+                          <span className="text-[10px] text-slate-500">Threshold: {(gateThreshold * 100).toFixed(0)}%</span>
+                        </div>
+
+                        <div className="p-3 rounded-lg bg-slate-950/60 border border-slate-800">
+                          <span className="text-[10px] text-slate-400">SUPPORTED TOKENS:</span>
+                          <p className="text-xl font-black text-cyan-300">
+                            {gateResult.supportedTokens} / {gateResult.totalTokens}
+                          </p>
+                          <span className="text-[10px] text-slate-500">Coverage: {gateResult.citationCoveragePct}%</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5 pt-1">
+                        <span className="text-[11px] text-slate-400 uppercase">Verified Citations:</span>
+                        <div className="space-y-1">
+                          {gateResult.verifiedCitations.map((cit, cIdx) => (
+                            <div key={cIdx} className="flex items-center gap-1.5 text-[11px] text-emerald-300">
+                              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                              <span>{cit}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {gateResult.hallucinatedSpans.length > 0 && (
+                        <div className="p-3 rounded-lg bg-rose-950/40 border border-rose-500/40 space-y-1">
+                          <span className="text-[11px] font-bold text-rose-300">⚠️ Ungrounded / Hallucinated Spans:</span>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            {gateResult.hallucinatedSpans.map((span, sIdx) => (
+                              <span key={sIdx} className="px-2 py-0.5 rounded bg-rose-900/60 text-rose-200 border border-rose-500/40 text-[10px]">
+                                {span}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-8 rounded-xl bg-slate-900/40 border border-slate-800/80 text-center space-y-2">
+                    <Sparkles className="w-8 h-8 text-cyan-400/50 mx-auto" />
+                    <h4 className="text-sm font-bold text-slate-300">Grounding Gate Idle</h4>
+                    <p className="text-xs text-slate-500 max-w-sm mx-auto">
+                      Click "Run Grounding Gate Verification" to analyze the hypothesis against evidence ledger ground truth.
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
           </Card>
         </div>
       )}

@@ -39,7 +39,7 @@ export interface LockAcquireResult {
 /**
  * Distributed Action Lock & Concurrency Control Service
  * Prevents race conditions, duplicate executions, and contradictory remediation actions on target infrastructure.
- * Governed by ZS-ENG-INT-001 & ZS-T0-TECH-001 §6.
+ * Architecture: ADR-04 (Distributed Action Lock & Concurrency Control)
  */
 @Injectable()
 export class DistributedActionLockService {

@@ -30,7 +30,7 @@ export interface FailoverExecutionResult {
 
 /**
  * Multi-Cloud Disaster Recovery & Sovereign Partitioning Engine
- * Specification: ZS-T0-TECH-001 §11 (Cross-Cloud High Availability & Zero-Drift Failover)
+ * Architecture: ADR-16 (Cross-Cloud High Availability & Zero-Drift Failover)
  */
 @Injectable()
 export class DisasterRecoveryPartitionService {

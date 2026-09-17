@@ -14,7 +14,7 @@ import {
 /**
  * ZS-CLOUD-001: Cloud IAM Privilege Escalation (MITRE ATT&CK T1078.004 / T1098)
  * Evaluates OCSF CLOUD_AUDIT and SECURITY_FINDING events for unauthorized administrative policy assignments.
- * Governed by ZS-ENG-DRS-001 §07 & ZS-T0-TECH-001 §07.
+ * Architecture: ADR-03 (Deterministic Detection Engine & OCSF Rules)
  */
 @Injectable()
 export class CloudPrivilegeEscalationRule implements DetectionRule {

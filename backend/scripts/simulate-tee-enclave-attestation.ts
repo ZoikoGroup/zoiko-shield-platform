@@ -15,7 +15,7 @@ import { TeeEnclaveAttestationService } from '../apps/shield-anchor/src/enclave/
 async function main() {
   console.log('========================================================================');
   console.log(' 🛡️  ZoikoShield Confidential Computing Hardware TEE Attestation Simulator');
-  console.log('    Specification: ZS-T0-TECH-001 §14 (Hardware Root of Trust & Enclaves)');
+  console.log('    Architecture: ADR-16 (Hardware Root of Trust & TEE Enclaves)');
   console.log('========================================================================\n');
 
   const teeService = new TeeEnclaveAttestationService();

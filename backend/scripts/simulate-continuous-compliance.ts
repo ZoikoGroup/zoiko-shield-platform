@@ -17,7 +17,7 @@ import { RegulatoryControlsSeeder } from '../apps/shield-core/src/seeds/regulato
 async function main() {
   console.log('========================================================================');
   console.log(' 🛡️  ZoikoShield Continuous Compliance & Control Evaluation Simulator');
-  console.log('    Specification: ZS-T0-AUD-001 / §55 (Automated Continuous Assurance)');
+  console.log('    Architecture: ADR-08 (Automated Continuous Assurance)');
   console.log('========================================================================\n');
 
   const tenantId = `tenant-${crypto.randomUUID().slice(0, 8)}`;

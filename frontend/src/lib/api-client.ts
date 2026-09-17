@@ -34,6 +34,8 @@ import {
   MerkleEpochCheckpoint,
   MerkleInclusionProof,
   MerkleVerificationResult,
+  AttackPathTrajectory,
+  AttackPathNode,
 } from "./types";
 import { getInitialDemoState, saveDemoState, DemoState } from "./demo-state";
 import { generateUUID, sha256Mock } from "./utils";
@@ -1030,8 +1032,9 @@ export class ZoikoShieldApiClient {
           tenantId: state.tenant.id,
           packageName: `ZoikoShield-Audit-Package-${state.tenant.slug}-${new Date().toISOString().slice(0, 10)}.zip`,
           packageHash: sha256Mock(state.tenant.id + Date.now()),
-          dilithiumSignature: `pqc_dilithium3_${sha256Mock(generateUUID()).slice(0, 48)}`,
-          ed25519Signature: `ed25519_${sha256Mock(generateUUID()).slice(0, 48)}`,
+          dilithiumSignature: `pqc_mldsa65_${sha256Mock(generateUUID()).slice(0, 48)}`,
+          ecdsaP256Signature: `ecdsa_p256_${sha256Mock(generateUUID()).slice(0, 48)}`,
+          ed25519Signature: `ecdsa_p256_${sha256Mock(generateUUID()).slice(0, 48)}`,
           status: "VERIFIED",
           generatedAt: new Date().toISOString(),
           sizeBytes: 428190,
@@ -1957,6 +1960,86 @@ export class ZoikoShieldApiClient {
           ecdsaSignature: `ecdsa_p256_${sha256Mock(JSON.stringify(items)).slice(0, 32)}`,
           witnessCount: 3,
           sealedAt: new Date().toISOString(),
+        };
+      }
+    );
+  }
+
+  static async getAttackPathTrajectory(caseId: string): Promise<AttackPathTrajectory> {
+    return this.safeFetch<AttackPathTrajectory>(
+      `/api/v1/ai/cases/${caseId}/attack-path`,
+      { method: "GET" },
+      () => {
+        const state = getState();
+        const activeCase = state.cases.find((c) => c.id === caseId) || state.cases[0];
+        const linkedAlert = state.alerts.find((a) => (activeCase?.linkedAlertIds || []).includes(a.id)) || state.alerts[0];
+
+        const primaryUser = (linkedAlert?.affectedIdentities && linkedAlert.affectedIdentities[0]) || "usr-compromised-analyst";
+        const primaryAsset = (linkedAlert?.affectedAssets && linkedAlert.affectedAssets[0]) || "srv-db-prod-01";
+        const primaryTtp = linkedAlert?.mitreTechnique || "T1078.004";
+        const criticality: "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" =
+          (activeCase?.severity as any) === "CRITICAL" ? "CRITICAL" : "HIGH";
+
+        return {
+          pathId: `path-${generateUUID().slice(0, 8)}`,
+          caseId: activeCase?.id || caseId,
+          alertId: linkedAlert?.id,
+          title: `Live Multi-Hop Attack Trajectory for [${activeCase?.title || "Security Incident"}]`,
+          severity: criticality,
+          totalHops: 3,
+          nodes: [
+            {
+              nodeId: "node-entry",
+              stepNumber: 1,
+              label: primaryUser,
+              role: "ENTRYPOINT",
+              mitreTechnique: primaryTtp,
+              techniqueName: "Valid Accounts: Cloud Accounts",
+              targetEntity: primaryUser,
+              evidenceDigest: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+              description: `Compromised session token for identity '${primaryUser}' detected across authentication telemetry.`,
+              severity: "HIGH",
+              riskScore: 89,
+              status: "DETECTED",
+            },
+            {
+              nodeId: "node-pivot",
+              stepNumber: 2,
+              label: "ec2-jump-01 (Bastion Host)",
+              role: "PIVOT",
+              mitreTechnique: "T1021.002",
+              techniqueName: "Remote Services: SMB/Windows Admin Shares",
+              targetEntity: "ec2-jump-01",
+              evidenceDigest: "ca978112ca1bbdcafac231b39a23dc4da786eff8147c4e72b9807785afee48bb",
+              description: "Lateral SMB command execution pivot across private VPC subnet 10.0.4.0/24.",
+              severity: "HIGH",
+              riskScore: 78,
+              status: "CORRELATED",
+            },
+            {
+              nodeId: "node-target",
+              stepNumber: 3,
+              label: `${primaryAsset} (Crown Jewel Database)`,
+              role: "CROWN_JEWEL",
+              mitreTechnique: "T1098.004",
+              techniqueName: "Account Manipulation: SSH Authorized Keys",
+              targetEntity: primaryAsset,
+              evidenceDigest: "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969",
+              description: `Unauthorized privilege escalation attempt against crown jewel asset '${primaryAsset}'.`,
+              severity: criticality,
+              riskScore: 96,
+              status: "CORRELATED",
+            },
+          ],
+          blastRadius: {
+            targetHost: primaryAsset,
+            affectedAccounts: 1,
+            affectedConnections: 4,
+            projectedDowntimeSec: 0,
+            isolationMechanism: "Policy-Level Process Isolation [derived]",
+            containmentSafetyVerdict: "SAFE_TO_EXECUTE",
+          },
+          generatedAt: new Date().toISOString(),
         };
       }
     );

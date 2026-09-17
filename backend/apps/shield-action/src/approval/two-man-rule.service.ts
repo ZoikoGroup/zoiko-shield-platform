@@ -54,7 +54,7 @@ export interface TwoManRuleTicket {
 
 /**
  * Two-Man Rule Dual-Authorization Service for High-Impact (R3) & Critical (R4) Remediation Actions.
- * Governed by ZS-ENG-INT-001, ZS-T0-TECH-001 §6, and ZS-ENG-REQ-001 §9.
+ * Architecture: ADR-04 (Dual-Custody Approvals)
  */
 @Injectable()
 export class TwoManRuleService {

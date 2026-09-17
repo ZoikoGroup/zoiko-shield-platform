@@ -17,7 +17,7 @@ import { Rfc3161WitnessService } from '../apps/shield-anchor/src/witnesses/rfc31
 async function main() {
   console.log('========================================================================');
   console.log(' 🛡️  ZoikoShield RFC 3161 TSA Epoch Anchor & Witness Sealing Simulator');
-  console.log('    Specification: ZS-T0-TECH-001 §5.4 (Evidence Anchor Satellite)');
+  console.log('    Architecture: ADR-01 (Evidence Anchor & RFC 3161 Witness Sealing)');
   console.log('========================================================================\n');
 
   const merkleService = new MerkleTreeService();
