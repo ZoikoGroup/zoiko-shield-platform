@@ -181,4 +181,4 @@ import { DecisionRightsModule } from './decision-rights/decision-rights.module';
     DecisionRightsModule,
   ],
 })
-export class ShieldAiModule {}
+export class ShieldAiModule { }

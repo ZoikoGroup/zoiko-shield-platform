@@ -1,4 +1,5 @@
 import { Controller, Get } from '@nestjs/common';
+import { PublicEndpoint } from '../../security/endpoint-access.decorator';
 
 export interface CustomerDisclosuresResponse {
   g1LaunchGateStatus: 'PENDING MULTI-APPROVER SIGN-OFF' | 'APPROVED_GA';
@@ -27,6 +28,7 @@ export interface CustomerDisclosuresResponse {
  * Customer Disclosures & Known-Limitations Register Controller
  * Specification: MASTER_BUILD_PLAN.md §7 (Step 10: Customer Disclosures) & §10 (AI Implementation Rules)
  */
+@PublicEndpoint()
 @Controller('api/v1/governance/disclosures')
 export class CustomerDisclosuresController {
   @Get()

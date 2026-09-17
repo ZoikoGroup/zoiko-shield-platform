@@ -1,10 +1,12 @@
 import { Controller, Get, Header, Query } from '@nestjs/common';
+import { PublicEndpoint } from '../../security/endpoint-access.decorator';
 import { SloMetricsExporterService } from './slo-metrics-exporter.service';
 
 /**
  * OpenTelemetry & Prometheus Multi-Tenant Operational Metrics Endpoint
  * Specification: MASTER_BUILD_PLAN.md §15 (Observability & Operational Readiness)
  */
+@PublicEndpoint()
 @Controller()
 export class PrometheusMetricsController {
   constructor(private readonly sloExporter: SloMetricsExporterService) {}
