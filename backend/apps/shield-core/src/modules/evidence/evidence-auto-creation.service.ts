@@ -2,6 +2,7 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { KafkaConsumerService } from '../../kafka/kafka-consumer.service';
 import { EventEnvelope } from '../../kafka/kafka-producer.service';
 import { EvidenceService } from './services/evidence.service';
+import { PrismaService } from '../../prisma/prisma.service';
 
 /** Must match shield-ingest's ALERT_TOPICS.ALERT_CREATED exactly (apps/shield-ingest/src/alerts/events/alert-events.ts) — no shared package exists yet, so this string is duplicated deliberately rather than silently drifting. */
 const ALERT_CREATED_TOPIC = 'alert.created.v1';
@@ -22,7 +23,29 @@ export class EvidenceAutoCreationService implements OnModuleInit {
   constructor(
     private readonly kafkaConsumer: KafkaConsumerService,
     private readonly evidenceService: EvidenceService,
+    private readonly prisma: PrismaService,
   ) {}
+
+  /**
+   * A case's SOURCE evidence (written when the case was opened) is the root
+   * of that case's provenance chain, so every later evidence record about
+   * the same case hangs off it. Without this, EvidenceLineage has no writers
+   * at all and GET /evidence/:id/lineage returns [] for every record (spec
+   * §13 requires traversal from an assertion back to its sources with no
+   * dead end).
+   */
+  private async findCaseSourceEvidenceId(
+    tenantId: string,
+    caseId?: string,
+  ): Promise<string | undefined> {
+    if (!caseId) return undefined;
+    const sourceLink = await this.prisma.caseEvidence.findFirst({
+      where: { tenant_id: tenantId, case_id: caseId, relationship: 'SOURCE' },
+      orderBy: { added_at: 'asc' },
+      select: { evidence_id: true },
+    });
+    return sourceLink?.evidence_id;
+  }
 
   onModuleInit(): void {
     this.kafkaConsumer.registerHandler(
@@ -80,6 +103,10 @@ export class EvidenceAutoCreationService implements OnModuleInit {
     actorId: string;
     reason: string;
   }) {
+    const parentEvidenceId = await this.findCaseSourceEvidenceId(
+      params.tenantId,
+      params.caseId,
+    );
     return this.evidenceService.createEvidence({
       tenantId: params.tenantId,
       environmentId: params.environmentId,
@@ -89,6 +116,8 @@ export class EvidenceAutoCreationService implements OnModuleInit {
       sourceSystemId: 'shield-core-case',
       sourceObjectId: params.caseId,
       purpose: 'INVESTIGATION',
+      parentEvidenceId,
+      lineageRelationship: parentEvidenceId ? 'DERIVED_FROM' : undefined,
       content: {
         caseId: params.caseId,
         fromState: params.fromState,
@@ -109,6 +138,10 @@ export class EvidenceAutoCreationService implements OnModuleInit {
     rationale: string;
     actorId: string;
   }) {
+    const parentEvidenceId = await this.findCaseSourceEvidenceId(
+      params.tenantId,
+      params.caseId,
+    );
     return this.evidenceService.createEvidence({
       tenantId: params.tenantId,
       environmentId: params.environmentId,
@@ -118,6 +151,8 @@ export class EvidenceAutoCreationService implements OnModuleInit {
       sourceSystemId: 'shield-core-case',
       sourceObjectId: params.caseId,
       purpose: 'DECISION_RECORD',
+      parentEvidenceId,
+      lineageRelationship: parentEvidenceId ? 'DERIVED_FROM' : undefined,
       content: {
         caseId: params.caseId,
         decisionType: params.decisionType,
@@ -159,6 +194,10 @@ export class EvidenceAutoCreationService implements OnModuleInit {
     }
 
     try {
+      const parentEvidenceId = await this.findCaseSourceEvidenceId(
+        tenantId,
+        caseId || undefined,
+      );
       await this.evidenceService.createEvidence({
         tenantId,
         environmentId,
@@ -169,6 +208,8 @@ export class EvidenceAutoCreationService implements OnModuleInit {
         sourceObjectId: envelopeId,
         purpose: 'DECISION_RECORD',
         caseId: caseId || undefined,
+        parentEvidenceId,
+        lineageRelationship: parentEvidenceId ? 'DERIVED_FROM' : undefined,
         addedBy: decidedBy,
         content: {
           envelopeId,

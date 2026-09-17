@@ -13,6 +13,9 @@ import { ObjectStorageService } from '../src/modules/evidence/storage/object-sto
 import { EvidenceLedgerService } from '../src/modules/evidence/ledger/evidence-ledger.service';
 import { EvidenceLineageService } from '../src/modules/evidence/lineage/evidence-lineage.service';
 import { EvidenceRepository } from '../src/modules/evidence/repositories/evidence.repository';
+import { CollectorSignatureService } from '../src/modules/evidence/signing/collector-signature.service';
+import { DevCollectorSigner } from '../src/modules/evidence/signing/dev-collector-signer.service';
+import { COLLECTOR_SIGNER } from '../src/modules/evidence/signing/collector-signer.interface';
 
 describe('AI Decision Evidence Anchoring & Merkle Verification (3-Service Integration)', () => {
   let decisionRightsService: DecisionRightsService;
@@ -31,6 +34,7 @@ describe('AI Decision Evidence Anchoring & Merkle Verification (3-Service Integr
   const inMemoryStorage = new Map<string, Buffer>();
   const inMemoryEvidence: any[] = [];
   const inMemoryLedger: any[] = [];
+  const inMemorySigningKeys = new Map<string, any>();
 
   const mockKafkaProducer = {
     publishEvent: jest.fn(
@@ -76,6 +80,22 @@ describe('AI Decision Evidence Anchoring & Merkle Verification (3-Service Integr
   };
 
   const mockPrismaService: any = {
+    // Read outside any transaction by EvidenceAutoCreationService when it
+    // resolves a case's SOURCE evidence to use as the lineage parent.
+    caseEvidence: {
+      findFirst: jest.fn().mockResolvedValue(null),
+    },
+    // Collector signatures persist only the public key; keep it in memory so
+    // the signing path in this integration run is the real one.
+    signingKey: {
+      upsert: jest.fn(async ({ create }: any) => {
+        inMemorySigningKeys.set(create.key_id, create);
+        return create;
+      }),
+      findUnique: jest.fn(
+        async ({ where }: any) => inMemorySigningKeys.get(where.key_id) ?? null,
+      ),
+    },
     $transaction: jest.fn(async (callback: any) => {
       const txMock: any = {
         $executeRawUnsafe: jest.fn().mockResolvedValue(1),
@@ -129,6 +149,8 @@ describe('AI Decision Evidence Anchoring & Merkle Verification (3-Service Integr
         EvidenceLedgerService,
         EvidenceLineageService,
         EvidenceRepository,
+        CollectorSignatureService,
+        { provide: COLLECTOR_SIGNER, useClass: DevCollectorSigner },
         OutboxService,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: KafkaConsumerService, useValue: mockKafkaConsumer },

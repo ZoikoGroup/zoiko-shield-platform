@@ -5,6 +5,7 @@ import { OutboxService } from '../../../outbox/outbox.service';
 import { ContentHashService } from '../hashing/content-hash.service';
 import { ObjectStorageService } from '../storage/object-storage.service';
 import { EvidenceRepository } from '../repositories/evidence.repository';
+import { CollectorSignatureService } from '../signing/collector-signature.service';
 
 describe('EvidenceVerificationService', () => {
   let service: EvidenceVerificationService;
@@ -38,6 +39,13 @@ describe('EvidenceVerificationService', () => {
         ContentHashService,
         { provide: ObjectStorageService, useValue: storageMock },
         { provide: EvidenceRepository, useValue: evidenceRepoMock },
+        {
+          provide: CollectorSignatureService,
+          useValue: {
+            sign: jest.fn().mockResolvedValue(null),
+            verify: jest.fn().mockResolvedValue(null),
+          },
+        },
       ],
     }).compile();
 

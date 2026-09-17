@@ -70,6 +70,7 @@ export class EvidenceService {
       objectKey,
       Buffer.from(dto.rawContent, 'utf8'),
       'application/json',
+      dto.retentionDays ? `${dto.retentionDays}_DAYS` : 'STANDARD',
     );
 
     // dto.caseId references Case, which is tenant-scoped - verify it exists

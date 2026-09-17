@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -15,6 +16,11 @@ import { CaseTimelineService } from '../timeline/case-timeline.service';
 import { CaseNoteService } from '../notes/case-note.service';
 import { CaseDecisionService } from '../decisions/case-decision.service';
 import type { DecisionType } from '../decisions/case-decision.service';
+import { CaseQualityReviewService } from '../quality/case-quality-review.service';
+import type {
+  QualityReviewType,
+  QualityReviewDecision,
+} from '../quality/case-quality-review.service';
 import type {
   CaseStatus,
   CaseDisposition,
@@ -56,8 +62,11 @@ const DECISION_TYPES: DecisionType[] = [
 ];
 
 export class CreateCaseDto {
+  // Either alertId (escalate an existing alert) or title+environmentId+region
+  // (a bare, standalone case) must be supplied - see CaseController.create.
+  @IsOptional()
   @IsString()
-  alertId!: string;
+  alertId?: string;
 
   @IsOptional()
   @IsString()
@@ -69,7 +78,90 @@ export class CreateCaseDto {
 
   @IsOptional()
   @IsString()
+  environmentId?: string;
+
+  @IsOptional()
+  @IsString()
+  region?: string;
+
+  @IsOptional()
+  @IsIn(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'])
+  severity?: string;
+
+  @IsOptional()
+  @IsIn(['P1', 'P2', 'P3', 'P4'])
+  priority?: string;
+
+  @IsOptional()
+  @IsString()
   actorId?: string;
+}
+
+export class UpdateCaseDto {
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsOptional()
+  @IsIn(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'])
+  severity?: string;
+
+  @IsOptional()
+  @IsIn(['P1', 'P2', 'P3', 'P4'])
+  priority?: string;
+
+  @IsOptional()
+  @IsString()
+  queue?: string;
+}
+
+export class AssignCaseDto {
+  @IsString()
+  ownerId!: string;
+
+  @IsOptional()
+  @IsString()
+  actorId?: string;
+}
+
+export class LinkEvidenceDto {
+  @IsString()
+  evidenceId!: string;
+
+  @IsOptional()
+  @IsString()
+  actorId?: string;
+}
+
+export class PauseSlaClockDto {
+  @IsString()
+  reason!: string;
+
+  @IsOptional()
+  @IsString()
+  actorId?: string;
+}
+
+export class RequestQualityReviewDto {
+  @IsIn(['DISPOSITION_REVIEW', 'CLOSURE_REVIEW'])
+  reviewType!: QualityReviewType;
+
+  @IsOptional()
+  @IsString()
+  trigger?: string;
+}
+
+export class DecideQualityReviewDto {
+  @IsIn(['APPROVED', 'REJECTED'])
+  decision!: QualityReviewDecision;
+
+  @IsOptional()
+  @IsString()
+  comments?: string;
 }
 
 export class TransitionCaseDto {
@@ -145,6 +237,7 @@ export class CaseController {
     private readonly timelineService: CaseTimelineService,
     private readonly noteService: CaseNoteService,
     private readonly decisionService: CaseDecisionService,
+    private readonly qualityReviewService: CaseQualityReviewService,
   ) {}
 
   private resolveTenantId(headerTenantId: string): string {
@@ -173,12 +266,32 @@ export class CaseController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     const tenantId = this.resolveTenantId(headerTenantId);
-    const createdCase = await this.caseService.createFromAlert({
+
+    if (dto.alertId) {
+      const createdCase = await this.caseService.createFromAlert({
+        tenantId,
+        alertId: dto.alertId,
+        actorId: user.id,
+        title: dto.title,
+        description: dto.description,
+      });
+      return { statusCode: HttpStatus.CREATED, data: createdCase };
+    }
+
+    if (!dto.title || !dto.environmentId || !dto.region) {
+      throw new BadRequestException(
+        'A case requires either alertId, or title + environmentId + region for a standalone case',
+      );
+    }
+    const createdCase = await this.caseService.createStandalone({
       tenantId,
-      alertId: dto.alertId,
-      actorId: user.id,
+      environmentId: dto.environmentId,
+      region: dto.region,
       title: dto.title,
       description: dto.description,
+      severity: dto.severity,
+      priority: dto.priority,
+      actorId: user.id,
     });
     return { statusCode: HttpStatus.CREATED, data: createdCase };
   }
@@ -198,10 +311,36 @@ export class CaseController {
   async update(
     @Headers('x-tenant-id') headerTenantId: string,
     @Param('caseId') caseId: string,
+    @Body() dto: UpdateCaseDto,
   ) {
     const tenantId = this.resolveTenantId(headerTenantId);
-    const caseRow = await this.caseService.getById(tenantId, caseId);
+    const caseRow = await this.caseService.update({
+      tenantId,
+      caseId,
+      title: dto.title,
+      description: dto.description,
+      severity: dto.severity,
+      priority: dto.priority,
+      queue: dto.queue,
+    });
     return { statusCode: HttpStatus.OK, data: caseRow };
+  }
+
+  @Post(':caseId/assign')
+  async assign(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+    @Body() dto: AssignCaseDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = this.resolveTenantId(headerTenantId);
+    const updated = await this.caseService.assign({
+      tenantId,
+      caseId,
+      ownerId: dto.ownerId,
+      actorId: dto.actorId ?? user.id,
+    });
+    return { statusCode: HttpStatus.OK, data: updated };
   }
 
   @Post(':caseId/transition')
@@ -288,6 +427,118 @@ export class CaseController {
     await this.caseService.assertTenantOwnership(tenantId, caseId);
     const evidence = await this.caseService.getEvidenceLinks(tenantId, caseId);
     return { statusCode: HttpStatus.OK, data: evidence };
+  }
+
+  @Post(':caseId/evidence')
+  async linkEvidence(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+    @Body() dto: LinkEvidenceDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = this.resolveTenantId(headerTenantId);
+    const link = await this.caseService.linkEvidence({
+      tenantId,
+      caseId,
+      evidenceId: dto.evidenceId,
+      actorId: dto.actorId ?? user.id,
+    });
+    return { statusCode: HttpStatus.CREATED, data: link };
+  }
+
+  @Get(':caseId/sla')
+  async getSlaClock(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+  ) {
+    const tenantId = this.resolveTenantId(headerTenantId);
+    const clock = await this.caseService.getSlaClock(tenantId, caseId);
+    return { statusCode: HttpStatus.OK, data: clock };
+  }
+
+  @Post(':caseId/sla/pause')
+  async pauseSlaClock(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+    @Body() dto: PauseSlaClockDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = this.resolveTenantId(headerTenantId);
+    const clock = await this.caseService.pauseSlaClock({
+      tenantId,
+      caseId,
+      reason: dto.reason,
+      actorId: dto.actorId ?? user.id,
+    });
+    return { statusCode: HttpStatus.OK, data: clock };
+  }
+
+  @Post(':caseId/sla/resume')
+  async resumeSlaClock(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = this.resolveTenantId(headerTenantId);
+    const clock = await this.caseService.resumeSlaClock({
+      tenantId,
+      caseId,
+      actorId: user.id,
+    });
+    return { statusCode: HttpStatus.OK, data: clock };
+  }
+
+  @Get(':caseId/quality-reviews')
+  async listQualityReviews(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+  ) {
+    const tenantId = this.resolveTenantId(headerTenantId);
+    await this.caseService.assertTenantOwnership(tenantId, caseId);
+    const reviews = await this.qualityReviewService.listForCase(
+      tenantId,
+      caseId,
+    );
+    return { statusCode: HttpStatus.OK, data: reviews };
+  }
+
+  @Post(':caseId/quality-reviews')
+  async requestQualityReview(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+    @Body() dto: RequestQualityReviewDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = this.resolveTenantId(headerTenantId);
+    await this.caseService.assertTenantOwnership(tenantId, caseId);
+    const review = await this.qualityReviewService.request({
+      tenantId,
+      caseId,
+      reviewType: dto.reviewType,
+      requestedBy: user.id,
+      trigger: dto.trigger ?? 'Manually requested',
+    });
+    return { statusCode: HttpStatus.CREATED, data: review };
+  }
+
+  @Post(':caseId/quality-reviews/:reviewId/decide')
+  async decideQualityReview(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+    @Param('reviewId') reviewId: string,
+    @Body() dto: DecideQualityReviewDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    const tenantId = this.resolveTenantId(headerTenantId);
+    await this.caseService.assertTenantOwnership(tenantId, caseId);
+    const review = await this.qualityReviewService.decide({
+      tenantId,
+      reviewId,
+      reviewerId: user.id,
+      decision: dto.decision,
+      comments: dto.comments,
+    });
+    return { statusCode: HttpStatus.OK, data: review };
   }
 
   @Post(':caseId/decisions')

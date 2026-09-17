@@ -8,6 +8,7 @@ import { ObjectStorageService } from '../storage/object-storage.service';
 import { EvidenceLedgerService } from '../ledger/evidence-ledger.service';
 import { EvidenceLineageService } from '../lineage/evidence-lineage.service';
 import { EvidenceRepository } from '../repositories/evidence.repository';
+import { CollectorSignatureService } from '../signing/collector-signature.service';
 
 describe('EvidenceService', () => {
   let service: EvidenceService;
@@ -52,6 +53,13 @@ describe('EvidenceService', () => {
         { provide: EvidenceLedgerService, useValue: ledgerMock },
         { provide: EvidenceLineageService, useValue: lineageMock },
         { provide: EvidenceRepository, useValue: evidenceRepoMock },
+        {
+          provide: CollectorSignatureService,
+          useValue: {
+            sign: jest.fn().mockResolvedValue(null),
+            verify: jest.fn().mockResolvedValue(null),
+          },
+        },
       ],
     }).compile();
 

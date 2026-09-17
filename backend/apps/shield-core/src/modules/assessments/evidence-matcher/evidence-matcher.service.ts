@@ -30,6 +30,10 @@ export class EvidenceMatcherService {
         tenant_id: params.tenantId,
         evidence_type: rule.evidence_type,
         source_system_id: rule.expected_source,
+        // Human-submitted evidence awaiting review cannot be counted toward
+        // coverage yet — unreviewed self-attestation is precisely what the
+        // manual-review requirement exists to hold back.
+        manual_review_required: false,
         OR: [
           {
             period_start: { lte: params.periodEnd },
@@ -110,6 +114,19 @@ export class EvidenceMatcherService {
         gap_count: gapCount,
       },
     });
+
+    // This reconciliation is the only place that knows whether a record was
+    // part of a complete or a short expected population, so push the verdict
+    // back onto the records themselves. Without it EvidenceRecord.completeness_state
+    // stays 'UNKNOWN' for the record's entire life — a field that reads like an
+    // assurance signal but never carries one (spec §09: completeness cannot be
+    // inferred from the absence of errors).
+    if (observedCount > 0) {
+      await this.prisma.evidenceRecord.updateMany({
+        where: { id: { in: records.map((record) => record.id) } },
+        data: { completeness_state: coverageState },
+      });
+    }
 
     return { result, records, coverageState, freshnessState, integrityState };
   }

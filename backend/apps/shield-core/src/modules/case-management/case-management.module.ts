@@ -16,6 +16,8 @@ import { CaseDecisionService } from './decisions/case-decision.service';
 import { OutboxService } from '../../outbox/outbox.service';
 import { ShieldAiClient } from '../../internal-client/shield-ai.client';
 import { AiGovernanceModule } from '../ai-governance/ai-governance.module';
+import { SocSlaClockService } from '../sla/soc-sla-clock.service';
+import { CaseQualityReviewService } from './quality/case-quality-review.service';
 
 @Module({
   imports: [
@@ -36,6 +38,8 @@ import { AiGovernanceModule } from '../ai-governance/ai-governance.module';
     CaseDecisionService,
     OutboxService,
     ShieldAiClient,
+    SocSlaClockService,
+    CaseQualityReviewService,
   ],
   exports: [CaseService, CaseTimelineService],
 })

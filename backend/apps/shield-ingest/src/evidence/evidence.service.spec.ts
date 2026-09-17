@@ -85,6 +85,8 @@ describe('EvidenceService in shield-ingest (Decoupled)', () => {
       expect.stringMatching(/^tenant-1\//),
       Buffer.from('User auth failure at 2026-08-10T12:00:00Z', 'utf8'),
       'application/json',
+      // Drives the Object Lock retain-until date on the stored object.
+      'STANDARD',
     );
     const createdData = prismaMock.evidenceRecord.create.mock.calls[0][0].data;
     expect(createdData).not.toHaveProperty('content_size_bytes');

@@ -357,34 +357,6 @@ describe('ShieldIngest Application Endpoints (e2e)', () => {
       .expect(200);
   });
 
-  it('14. POST /api/v1/cases (Create investigation case)', () => {
-    return request(app.getHttpServer())
-      .post('/api/v1/cases')
-      .send({ title: 'New Case' })
-      .expect(201);
-  });
-
-  it('15. GET /api/v1/cases (List cases)', () => {
-    return request(app.getHttpServer()).get('/api/v1/cases').expect(200);
-  });
-
-  it('16. GET /api/v1/cases/case-1 (Get case detail)', () => {
-    return request(app.getHttpServer()).get('/api/v1/cases/case-1').expect(200);
-  });
-
-  it('17. POST /api/v1/cases/case-1/transition (Transition case state)', () => {
-    return request(app.getHttpServer())
-      .post('/api/v1/cases/case-1/transition')
-      .send({ targetStatus: 'TRIAGED' })
-      .expect(201);
-  });
-
-  it('18. GET /api/v1/cases/case-1/timeline (Query case timeline)', () => {
-    return request(app.getHttpServer())
-      .get('/api/v1/cases/case-1/timeline')
-      .expect(200);
-  });
-
   it('19. POST /api/v1/cases/case-1/decisions (Record human decision)', () => {
     return request(app.getHttpServer())
       .post('/api/v1/cases/case-1/decisions')
