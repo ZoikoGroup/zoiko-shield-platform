@@ -94,7 +94,7 @@ describe('Checkpoint 9 - Cross-Tenant Negative Isolation Integration Suite', () 
       // Attempting to verify Tenant A's leaf under an altered root or swapped leaf index fails
       const tamperedProof = {
         ...proofA,
-        leafHash: proofA.leafHash.replace('a', 'b'),
+        leafHash: proofA.leafHash.slice(0, -1) + (proofA.leafHash.endsWith('0') ? '1' : '0'),
       };
       expect(checkpointer.verifyInclusionProof(tamperedProof)).toBe(false);
     });
