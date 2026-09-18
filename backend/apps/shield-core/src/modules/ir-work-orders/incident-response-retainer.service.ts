@@ -3,7 +3,9 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { OfferEntitlementService } from '../commercial/offer-entitlement.service';
 import {
   ArrayNotEmpty,
   IsArray,
@@ -125,6 +127,7 @@ export class IncidentResponseRetainerService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly approvals: CommercialApprovalService,
+    @Optional() private readonly offerEntitlements?: OfferEntitlementService,
   ) {}
 
   private required(value: string, field: string) {
@@ -357,6 +360,13 @@ export class IncidentResponseRetainerService {
         'Incident Response retainer term must be an annual term between 300 and 370 days',
       );
     }
+
+    if (this.offerEntitlements) {
+      await this.offerEntitlements.assertIncidentResponseRetainerEntitled(tenantId, {
+        action: 'CREATE_INCIDENT_RESPONSE_RETAINER',
+      });
+    }
+
     const [contract, obligation, binding, price] = await Promise.all([
       this.prisma.contract.findUnique({ where: { id: dto.contractId } }),
       this.prisma.serviceObligation.findFirst({

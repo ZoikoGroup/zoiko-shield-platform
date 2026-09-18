@@ -1,6 +1,10 @@
 /**
- * OpenTofu Infrastructure-as-Code (IaC) Reconciliation & Validation Engine
+ * Infrastructure HCL Contract Linter & Static Verification Engine
  * Specification: MASTER_BUILD_PLAN.md §5 & §8 (Regional-Cell Foundation)
+ * 
+ * Note: This is a static TypeScript-based file contract and security invariant
+ * linter for OpenTofu/Terraform HCL configurations. It does NOT shell out to
+ * a live `tofu` or `terraform` binary CLI nor execute remote cloud reconciliation.
  * 
  * Verifies:
  * 1. OpenTofu syntax and provider version declarations (>= 1.8.0).
@@ -14,8 +18,9 @@ import { resolve } from 'path';
 
 async function main() {
   console.log('========================================================================');
-  console.log(' 🛡️  ZoikoShield OpenTofu Infrastructure Reconciliation & Validator');
+  console.log(' 🛡️  ZoikoShield Infrastructure HCL Contract Static Linter & Verifier');
   console.log('    Specification: MASTER_BUILD_PLAN.md §8 (Regional Tenant Cell Foundation)');
+  console.log('    Type: Static File Contract Validator (Non-CLI / In-Process)');
   console.log('========================================================================\n');
 
   const tofuDir = resolve(__dirname, '../../infrastructure/tofu/regional-cell');
@@ -87,7 +92,8 @@ async function main() {
   }
 
   console.log('\n========================================================================');
-  console.log(' 🎉 OPENTOFU REGIONAL-CELL INFRASTRUCTURE VALIDATION SUCCEEDED!');
+  console.log(' 🎉 REGIONAL-CELL HCL CONTRACT STATIC VALIDATION SUCCEEDED!');
+  console.log('    (Static file/schema verification passed; no live cloud execution)');
   console.log('========================================================================\n');
 }
 

@@ -4,7 +4,9 @@ import {
   ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { OfferEntitlementService } from '../commercial/offer-entitlement.service';
 import {
   ArrayNotEmpty,
   IsArray,
@@ -305,6 +307,7 @@ export class ManagedDefenseService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly approvals: CommercialApprovalService,
+    @Optional() private readonly offerEntitlements?: OfferEntitlementService,
   ) {}
 
   private parseArray(value: string): string[] {
@@ -439,6 +442,16 @@ export class ManagedDefenseService {
       throw new BadRequestException(
         'technologyScope.offerTypes must declare at least one entitled offer',
       );
+    }
+    if (!offerTypes.includes('MANAGED_DEFENSE')) {
+      throw new BadRequestException(
+        'technologyScope.offerTypes must include MANAGED_DEFENSE for Managed Defense profiles',
+      );
+    }
+    if (this.offerEntitlements) {
+      await this.offerEntitlements.assertManagedDefenseEntitled(tenantId, {
+        action: 'CREATE_MANAGED_DEFENSE_PROFILE',
+      });
     }
     const requiredCapabilities = ['DETECTIONS', 'CASES', 'EVIDENCE'];
     const declaredCapabilities = new Set(

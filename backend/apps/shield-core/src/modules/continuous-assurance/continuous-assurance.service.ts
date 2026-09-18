@@ -1,9 +1,12 @@
 import {
   BadRequestException,
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import { OfferEntitlementService } from '../commercial/offer-entitlement.service';
 import {
   ArrayNotEmpty,
   IsArray,
@@ -116,6 +119,7 @@ export class ContinuousAssuranceService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly approvals: CommercialApprovalService,
+    @Optional() private readonly offerEntitlements?: OfferEntitlementService,
   ) {}
 
   private nonEmpty(values: string[], field: string) {
@@ -266,6 +270,12 @@ export class ContinuousAssuranceService {
       throw new BadRequestException(
         'Every human obligation must explicitly state whether it was purchased',
       );
+    }
+
+    if (this.offerEntitlements) {
+      await this.offerEntitlements.assertContinuousAssuranceEntitled(tenantId, {
+        action: 'CREATE_CONTINUOUS_ASSURANCE_PROFILE',
+      });
     }
 
     const [

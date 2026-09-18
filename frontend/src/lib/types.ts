@@ -21,12 +21,27 @@ export type ControlFrameworkType =
   | 'NIS2'
   | 'PCI_DSS';
 
+export type ConnectorCertificationTier =
+  | 'P0_CERTIFIED'
+  | 'P1_PREVIEW'
+  | 'EXPERIMENTAL_UNCERTIFIED';
+
+export type CommercialOfferType =
+  | 'MANAGED_DEFENSE'
+  | 'CONTINUOUS_ASSURANCE'
+  | 'INCIDENT_RESPONSE_RETAINER'
+  | 'EXPOSURE_MANAGEMENT'
+  | 'AI_SECURITY';
+
 export interface Tenant {
   id: string;
   orderId?: string;
   organizationName: string;
   slug: string;
   legalEntityName: string;
+  planTier?: 'STANDARD' | 'PROFESSIONAL' | 'ENTERPRISE' | 'ENTERPRISE_PREMIUM';
+  activeOffers?: CommercialOfferType[];
+  isEnterprisePlus?: boolean;
   legalEntity?: {
     legalName: string;
     registrationNumber?: string;
@@ -93,6 +108,10 @@ export interface Connector {
   webhookUrl: string;
   eventsIngestedCount: number;
   lastEventAt?: string;
+  tier?: ConnectorCertificationTier;
+  isP1PreviewEnabled?: boolean;
+  ocsfStatus?: 'MAPPED_OCSF_V1' | 'SCHEMA_CUSTOM' | 'PENDING_MAPPING';
+  eventsPerMinute?: number;
 }
 
 export interface RawTelemetryEvent {
@@ -698,6 +717,19 @@ export interface IncidentLegalSensitiveRecord {
   noLegalAdviceWording: string;
   recordedBy: string;
   createdAt: string;
+}
+
+export interface IncidentLegalAccessEvent {
+  id: string;
+  recordId: string;
+  workOrderId: string;
+  tenantId: string;
+  accessorId: string;
+  accessorName: string;
+  accessReason: string;
+  purpose: 'LEGAL_DEFENSE' | 'REGULATOR_INQUIRY' | 'INSURER_PROOF' | 'BREACH_NOTIFICATION' | 'INCIDENT_COORDINATION';
+  timestamp: string;
+  ipAddress?: string;
 }
 
 export interface MerkleEpochCheckpoint {

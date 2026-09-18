@@ -66,10 +66,19 @@ export class ZoikoShieldApiClient {
     fallbackFn: () => T
   ): Promise<T> {
     try {
+      const state = getState();
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "x-tenant-id": state.tenant?.id || "00000000-0000-4000-8000-000000000001",
+        "x-environment-id": state.tenant?.environmentName || "PRODUCTION",
+      };
+      if (state.session?.token) {
+        headers["Authorization"] = `Bearer ${state.session.token}`;
+      }
       const res = await fetch(endpoint, {
         ...options,
         headers: {
-          "Content-Type": "application/json",
+          ...headers,
           ...options.headers,
         },
       });

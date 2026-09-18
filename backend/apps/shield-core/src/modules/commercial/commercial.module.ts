@@ -24,6 +24,7 @@ import { TrustCenterService } from './trust-center.service';
 import { ZoikoOneBundlingController } from './zoiko-one-bundling.controller';
 import { ZoikoOneBundlingService } from './zoiko-one-bundling.service';
 import { EntitlementEnforcementService } from './entitlement-enforcement.service';
+import { OfferEntitlementService } from './offer-entitlement.service';
 
 @Module({
   imports: [PrismaModule, SectorPacksModule, KillSwitchModule, ApprovalsModule],
@@ -45,6 +46,7 @@ import { EntitlementEnforcementService } from './entitlement-enforcement.service
     CorporateTransferScheduler,
     CommercialEntitlementService,
     EntitlementEnforcementService,
+    OfferEntitlementService,
     ClaimRegisterService,
     PilotLifecycleService,
     TrustCenterService,
@@ -56,6 +58,7 @@ import { EntitlementEnforcementService } from './entitlement-enforcement.service
     CorporateTransferService,
     CommercialEntitlementService,
     EntitlementEnforcementService,
+    OfferEntitlementService,
     ClaimRegisterService,
     PilotLifecycleService,
     TrustCenterService,

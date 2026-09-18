@@ -23,6 +23,7 @@ import {
   LogIn,
   Flame,
   PhoneCall,
+  Sliders,
 } from "lucide-react";
 
 export const Sidebar: React.FC = () => {
@@ -150,6 +151,13 @@ export const Sidebar: React.FC = () => {
     {
       label: "PLATFORM ADMIN (CROSS-TENANT)",
       items: [
+        {
+          label: "Operations & Entitlements",
+          href: "/admin",
+          icon: <Sliders className="w-4 h-4" />,
+          badge: "OPERATOR",
+          badgeVariant: "anchored" as const,
+        },
         {
           label: "Support Access & JIT",
           href: "/admin/jit",
