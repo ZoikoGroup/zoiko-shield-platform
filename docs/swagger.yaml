@@ -1643,14 +1643,20 @@ components:
             - ACCESS_FROZEN
             - CONNECTOR_REVOCATION
             - DELETION_PENDING
+            - RETENTION_WAIT
             - DELETING
+            - VERIFYING
             - BACKUP_EXPIRY_PENDING
             - COMPLETED
             - BLOCKED
             - FAILED
+            - ENGINEERING_REVIEW
           description: >-
-            The run's state machine position. BLOCKED means an active legal hold intersects the deletion scope; FAILED
-            means the final export did not complete.
+            The run's state machine position. BLOCKED means an active legal hold intersects the deletion scope;
+            RETENTION_WAIT means the deletion is approved but the tenant's retention period has not expired yet;
+            VERIFYING means destruction finished and independent reconciliation is running; FAILED means a step did not
+            complete; ENGINEERING_REVIEW means a store task exhausted its retries and needs a human. Access stays
+            revoked in every failure state.
         export_job_id:
           type: string
           format: uuid
@@ -15003,6 +15009,118 @@ components:
           format: uuid
       required:
         - runId
+    PostTenantsByTenantIdOffboardingResumeDeletionRequest:
+      type: object
+      properties:
+        runId:
+          type: string
+          format: uuid
+      required:
+        - runId
+    PostTenantsByTenantIdOffboardingRetentionPolicyRequest:
+      type: object
+      properties:
+        basis:
+          type: string
+          enum:
+            - CONTRACTUAL
+            - STATUTORY
+            - PLATFORM_DEFAULT
+          description: What kind of rule sets this period.
+        authority:
+          type: string
+          minLength: 3
+          description: The contract, regulation or standard the period comes from.
+        periodDays:
+          type: integer
+          minimum: 0
+          description: >-
+            How long the tenant's data is retained after offboarding removes access, before permanent deletion may
+            execute.
+        effectiveFrom:
+          type: string
+          format: date-time
+        effectiveTo:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+        - basis
+        - authority
+        - periodDays
+    TenantRetentionPolicyResponse:
+      type: object
+      description: >-
+        Raw TenantRetentionPolicy record — field names are snake_case, matching the Prisma model as returned.
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        basis:
+          type: string
+          enum:
+            - CONTRACTUAL
+            - STATUTORY
+            - PLATFORM_DEFAULT
+        authority:
+          type: string
+        period_days:
+          type: integer
+        effective_from:
+          type: string
+          format: date-time
+        effective_to:
+          type: string
+          format: date-time
+          nullable: true
+        created_by:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+    DeletionVerificationResponse:
+      type: object
+      nullable: true
+      description: >-
+        Independent post-deletion reconciliation. A deletion task reporting COMPLETED is the deleter's account of its
+        own work; this is a separate re-query of every store. No attestation may be issued unless the most recent
+        verification for the run is PASS.
+      properties:
+        id:
+          type: string
+          format: uuid
+        tenant_id:
+          type: string
+          format: uuid
+        deletion_request_id:
+          type: string
+          format: uuid
+        result:
+          type: string
+          enum:
+            - PASS
+            - FAIL
+        surfaces:
+          type: string
+          description: >-
+            JSON-encoded array of per-surface results, each with the surface name, whether it passed, its residual
+            count, its retained count and an explanation.
+        residual_count:
+          type: integer
+          description: Unauthorized survivors. Anything above zero blocks attestation and closure.
+        retained_count:
+          type: integer
+          description: >-
+            Records something explicitly permits to survive — a legal hold, the deletion-control contract, or an
+            immutable Object Lock window whose ciphertext is unreadable because the tenant's keys were shredded.
+        verified_by:
+          type: string
+        verified_at:
+          type: string
+          format: date-time
     PostTenantsByTenantIdOffboardingStartDeletionRequest:
       type: object
       properties:
@@ -38726,6 +38844,211 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postTenantsByTenantIdOffboardingStartDeletion
+  /api/v1/tenants/{tenantId}/offboarding/resume-deletion:
+    post:
+      tags:
+        - Offboarding
+      summary: Resume a purge that failed, crashed, or was waiting on retention expiry
+      description: >-
+        Re-enters the destructive phase for a run in RETENTION_WAIT, DELETING, VERIFYING or FAILED. Store tasks are
+        durable checkpoints: a COMPLETED task is never repeated, only incomplete work runs again, and nothing already
+        destroyed is rolled back. Retries per task are bounded — an exhausted task moves to ENGINEERING_REVIEW and will
+        not run again until a human clears it. Tenant access stays revoked throughout; a failed purge never restores it.
+        Retention eligibility and legal holds are re-evaluated at every store boundary, so a stale approval cannot
+        authorize later work.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique tenant ID identifying the target resource.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostTenantsByTenantIdOffboardingResumeDeletionRequest'
+      responses:
+        '200':
+          description: >-
+            Run advances to BACKUP_EXPIRY_PENDING once every store task completed and independent verification passed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantOffboardingRunResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Actor is not authorized to advance this offboarding run
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: TenantOffboardingRun not found for this tenant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: >-
+            Run is not in a resumable status, the retention period has still not expired, a legal hold now intersects
+            the scope, a store task is held for engineering review, or independent verification found unauthorized
+            residual data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postTenantsByTenantIdOffboardingResumeDeletion
+  /api/v1/tenants/{tenantId}/offboarding/deletion-verification:
+    get:
+      tags:
+        - Offboarding
+      summary: Get the latest independent deletion verification for this tenant
+      description: >-
+        Returns the most recent DeletionVerification for the tenant's latest offboarding run, or null if deletion has
+        not reached verification. This is the completion barrier: an attestation cannot be issued, and the run cannot
+        close, unless this reads PASS. A FAIL enumerates which surfaces still hold unauthorized residual data.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique tenant ID identifying the target resource.
+      responses:
+        '200':
+          description: The latest DeletionVerification, or null if none has been recorded yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeletionVerificationResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Actor is not authorized to view offboarding status for this tenant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getTenantsByTenantIdOffboardingDeletionVerification
+  /api/v1/tenants/{tenantId}/offboarding/retention-policy:
+    post:
+      tags:
+        - Offboarding
+      summary: Record the authoritative retention schedule for a tenant
+      description: >-
+        Sets how long this tenant's data is retained after offboarding removes access, before permanent deletion may
+        execute. Approval authorizes a destruction; this decides when it may actually happen, and the two are
+        deliberately separate. A deletion request stamps the policy in force when it is created, so the basis for the
+        gate stays auditable even after the policy changes. With no policy recorded and no configured platform default,
+        deletion fails closed rather than assuming immediate eligibility.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique tenant ID identifying the target resource.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostTenantsByTenantIdOffboardingRetentionPolicyRequest'
+      responses:
+        '201':
+          description: The recorded retention policy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantRetentionPolicyResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Actor is not authorized to set retention policy for this tenant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postTenantsByTenantIdOffboardingRetentionPolicy
+    get:
+      tags:
+        - Offboarding
+      summary: List the retention policies recorded for a tenant
+      description: >-
+        Returns every retention policy recorded for the tenant, most recently effective first. History is kept rather
+        than overwritten so a past deletion's eligibility basis stays reconstructable.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique tenant ID identifying the target resource.
+      responses:
+        '200':
+          description: Retention policies, most recently effective first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TenantRetentionPolicyResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Actor is not authorized to view offboarding status for this tenant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getTenantsByTenantIdOffboardingRetentionPolicy
   /api/v1/tenants/{tenantId}/offboarding/deletion-attestation:
     get:
       tags:

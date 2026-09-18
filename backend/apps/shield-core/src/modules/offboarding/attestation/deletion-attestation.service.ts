@@ -1,4 +1,4 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+import { Injectable, ConflictException, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ContentHashService } from '../../evidence/hashing/content-hash.service';
@@ -11,6 +11,8 @@ import { ContentHashService } from '../../evidence/hashing/content-hash.service'
  */
 @Injectable()
 export class DeletionAttestationService {
+  private readonly logger = new Logger(DeletionAttestationService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly hashService: ContentHashService,
@@ -32,6 +34,8 @@ export class DeletionAttestationService {
           task,
           result: JSON.parse(task.verification_result ?? '{}') as {
             outcome?: string;
+            wormProtectedVersions?: number;
+            physicalExpiryAt?: string | null;
           },
         };
       } catch {
@@ -43,9 +47,14 @@ export class DeletionAttestationService {
     if (
       results.some(
         ({ result }) =>
-          !['VERIFIED_DELETED', 'NOT_APPLICABLE'].includes(
-            result.outcome ?? '',
-          ),
+          ![
+            'VERIFIED_DELETED',
+            'NOT_APPLICABLE',
+            // Bytes an immutable Object Lock window forbids destroying. Not a
+            // deletion — a disclosed retention, valid only because the keys
+            // that could read them are shredded.
+            'LOGICALLY_DELETED_PENDING_PHYSICAL_EXPIRY',
+          ].includes(result.outcome ?? ''),
       )
     ) {
       throw new ConflictException(
@@ -73,13 +82,26 @@ export class DeletionAttestationService {
         scope: 'DELETION_CONTROL_AND_AUDIT_RECORDS',
         reason: 'Retained to prove and reconcile the deletion operation',
       },
-      {
-        scope: 'CLOSING_OPERATOR_MEMBERSHIP',
-        reason:
-          'Retained until attestation issuance, then removed during final closure',
-      },
+      ...results
+        .filter(
+          ({ result }) =>
+            result.outcome === 'LOGICALLY_DELETED_PENDING_PHYSICAL_EXPIRY',
+        )
+        .map(({ task, result }) => ({
+          scope: `${task.store_type}_WORM_PROTECTED_OBJECTS`,
+          reason: `${result.wormProtectedVersions ?? 0} object version(s) are held immutable by Object Lock until ${result.physicalExpiryAt ?? 'an undetermined date'} and cannot be destroyed before then; the tenant's encryption keys are shredded, so the retained ciphertext is unreadable`,
+        })),
     ];
     const limitations: string[] = [];
+    const wormRetained = results.filter(
+      ({ result }) =>
+        result.outcome === 'LOGICALLY_DELETED_PENDING_PHYSICAL_EXPIRY',
+    );
+    for (const { task, result } of wormRetained) {
+      limitations.push(
+        `${task.store_type}: ${result.wormProtectedVersions ?? 0} object version(s) remain physically stored under an immutable retention lock until ${result.physicalExpiryAt ?? 'an undetermined date'}; erasure is achieved cryptographically, not by physical destruction`,
+      );
+    }
     if (backupRecords.some((b) => b.status === 'PENDING'))
       limitations.push(
         'One or more backup classes remain PENDING expiry — see backupExpiryRefs',
@@ -92,9 +114,30 @@ export class DeletionAttestationService {
         `Stores not populated in this deployment: ${notApplicable.join(', ')}`,
       );
 
+    const verification = await this.prisma.deletionVerification.findFirst({
+      where: { deletion_request_id: deletionRequestId },
+      orderBy: { verified_at: 'desc' },
+    });
+    if (!verification || verification.result !== 'PASS') {
+      this.logger.error(
+        `Attestation attempted for tenant ${tenantId} (request ${deletionRequestId}) ${verification ? `with verification result ${verification.result}` : 'with no verification on record'} — refused`,
+      );
+      throw new ConflictException(
+        'An attestation may only be issued after an independent deletion verification has passed',
+      );
+    }
+
     const attestationBody = {
       tenantId,
       deletionRequestId,
+      verification: {
+        id: verification.id,
+        result: verification.result,
+        residualCount: verification.residual_count,
+        retainedCount: verification.retained_count,
+        verifiedAt: verification.verified_at.toISOString(),
+        surfaces: verification.surfaces,
+      },
       deletedScopes,
       retainedScopes,
       backupExpiryRefs: backupRecords.map((b) => ({

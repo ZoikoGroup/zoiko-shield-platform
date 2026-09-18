@@ -1,7 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { ConflictException, Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ObjectStorageService } from '../../evidence/storage/object-storage.service';
+import { CryptographicShreddingService } from '../../privacy/cryptographic-shredding.service';
 import { DeletionRequestService } from './deletion-request.service';
+
+/** Retries are bounded; an exhausted task stops and waits for a human. */
+export const MAX_DELETION_ATTEMPTS = 3;
 
 const NO_STORE_POPULATED = JSON.stringify({
   outcome: 'NOT_APPLICABLE',
@@ -11,12 +15,24 @@ const NO_STORE_POPULATED = JSON.stringify({
 const DELETION_CONTROL_TABLES = new Set([
   'DeletionRequest',
   'DeletionTask',
+  'DeletionVerification',
   'DeletionAttestation',
   'TenantOffboardingRun',
   'BackupExpiryRecord',
   'LegalHold',
+  // The retention determination is the basis on which the destruction was
+  // lawful; erasing it would erase the proof that the gate was honoured.
+  'TenantRetentionPolicy',
   'OutboxEvent',
 ]);
+
+/**
+ * Tenant-keyed tables a LATER task owns end to end. The generic authoritative
+ * sweep must not take them, or it would destroy the key material before
+ * CRYPTO_SHRED can shred it and issue a certificate — a vacuous "0 keys
+ * shredded" success instead of real, evidenced destruction.
+ */
+const TASK_OWNED_TABLES = new Set(['SubjectEncryptionKey']);
 
 /**
  * Derived storage must never remain an unmanaged copy after authoritative
@@ -37,22 +53,49 @@ export class DeletionTaskService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly objectStorage: ObjectStorageService,
+    private readonly shreddingService: CryptographicShreddingService,
     private readonly deletionRequestService: DeletionRequestService,
   ) {}
 
+  /**
+   * One store's worth of destruction, as a durable checkpoint.
+   *
+   * Reruns are safe and are the normal recovery path: a COMPLETED task is
+   * never repeated, a failed one resumes, and retries are bounded so a task
+   * that cannot succeed stops for a human instead of looping
+   * (ZS-ENG-OFF-DEL-001 decisions 1/4). Destructive work is never rolled
+   * back across stores — only re-attempted where it did not finish.
+   */
   async executeTask(taskId: string): Promise<void> {
     const task = await this.prisma.deletionTask.findUniqueOrThrow({
       where: { id: taskId },
     });
-    // A legal hold may be created after approval. Re-evaluate the request at
-    // every store boundary so a stale approval can never authorize later work.
+
+    // Completed work is a checkpoint, not something to redo.
+    if (task.status === 'COMPLETED') return;
+    if (task.status === 'ENGINEERING_REVIEW') {
+      throw new ConflictException(
+        `DeletionTask '${taskId}' exhausted its retries and is held for engineering review — it must be cleared deliberately before running again`,
+      );
+    }
+
+    // A legal hold may be created after approval, and retention eligibility is
+    // re-checked too. Re-evaluate the request at every store boundary so a
+    // stale approval can never authorize later work.
     await this.deletionRequestService.assertExecutable(
       task.tenant_id,
       task.deletion_request_id,
     );
+
+    const attempt = task.attempt + 1;
     await this.prisma.deletionTask.update({
       where: { id: task.id },
-      data: { status: 'RUNNING', started_at: new Date() },
+      data: {
+        status: 'RUNNING',
+        started_at: task.started_at ?? new Date(),
+        attempt,
+        last_attempt_at: new Date(),
+      },
     });
 
     try {
@@ -61,15 +104,13 @@ export class DeletionTaskService {
         case 'POSTGRES_AUTHORITY':
           verificationResult = await this.deleteAuthoritativeRows(
             task.tenant_id,
-            (
-              await this.prisma.deletionRequest.findUniqueOrThrow({
-                where: { id: task.deletion_request_id },
-              })
-            ).requested_by,
           );
           break;
         case 'OBJECT_STORAGE':
-          verificationResult = await this.deleteObjectStorage(task.tenant_id);
+          verificationResult = await this.purgeObjectStorage(task.tenant_id);
+          break;
+        case 'CRYPTO_SHRED':
+          verificationResult = await this.shredTenantKeys(task.tenant_id);
           break;
         case 'CONNECTOR_STATE':
           verificationResult = await this.revokeConnectorState(task.tenant_id);
@@ -83,25 +124,39 @@ export class DeletionTaskService {
           status: 'COMPLETED',
           completed_at: new Date(),
           verification_result: verificationResult,
+          last_checkpoint: 'STORE_COMPLETE',
+          error_code: null,
         },
       });
     } catch (err) {
+      const exhausted = attempt >= MAX_DELETION_ATTEMPTS;
       await this.prisma.deletionTask.update({
         where: { id: task.id },
         data: {
-          status: 'FAILED',
-          completed_at: new Date(),
+          // Not completed — a failed attempt must never look finished.
+          status: exhausted ? 'ENGINEERING_REVIEW' : 'FAILED',
+          last_checkpoint: 'STORE_INCOMPLETE',
           error_code: (err as Error).message.slice(0, 200),
         },
       });
+      // Operational signal: every destructive failure is logged, and an
+      // exhausted one is escalated. These are the alerting hooks required by
+      // ZS-ENG-OFF-DEL-001 §8; shield-core has no live metrics pipeline yet
+      // (PrometheusMetricsService is not registered in any module), so this is
+      // a log signal rather than a fabricated metric nothing emits.
+      this.logger.warn(
+        `DeletionTask ${task.id} (${task.store_type}, tenant ${task.tenant_id}) failed on attempt ${attempt}/${MAX_DELETION_ATTEMPTS}: ${(err as Error).message}`,
+      );
+      if (exhausted) {
+        this.logger.error(
+          `DeletionTask ${task.id} (${task.store_type}, tenant ${task.tenant_id}) exhausted ${MAX_DELETION_ATTEMPTS} attempts and is held for engineering review: ${(err as Error).message}`,
+        );
+      }
       throw err;
     }
   }
 
-  private async deleteAuthoritativeRows(
-    tenantId: string,
-    closingOperatorId: string,
-  ): Promise<string> {
+  private async deleteAuthoritativeRows(tenantId: string): Promise<string> {
     type TenantTable = { table_name: string };
     type ForeignKey = { child_table: string; parent_table: string };
     const tables = await this.prisma.$queryRaw<TenantTable[]>`
@@ -111,7 +166,10 @@ export class DeletionTaskService {
     `;
     const candidates = tables
       .map((row) => row.table_name)
-      .filter((name) => !DELETION_CONTROL_TABLES.has(name));
+      .filter(
+        (name) =>
+          !DELETION_CONTROL_TABLES.has(name) && !TASK_OWNED_TABLES.has(name),
+      );
     const candidateSet = new Set(candidates);
     const foreignKeys = await this.prisma.$queryRaw<ForeignKey[]>`
       SELECT child.relname AS child_table, parent.relname AS parent_table
@@ -161,27 +219,29 @@ export class DeletionTaskService {
       }
 
       // TypeORM owns these non-public schemas. Cross-tenant principals and
-      // global permissions remain; only membership and tenant-owned rows go.
-      counts['authorization.user_roles'] = await tx.$executeRawUnsafe(
-        'DELETE FROM authorization.user_roles WHERE membership_id IN (SELECT id FROM authorization.tenant_memberships WHERE "tenantId" = $1::uuid AND "principalId" <> $2::uuid)',
-        tenantId,
-        closingOperatorId,
-      );
-      counts['authorization.tenant_memberships'] = await tx.$executeRawUnsafe(
-        'DELETE FROM authorization.tenant_memberships WHERE "tenantId" = $1::uuid AND "principalId" <> $2::uuid',
-        tenantId,
-        closingOperatorId,
-      );
-      counts['authorization.invitations'] = await tx.$executeRawUnsafe(
-        'DELETE FROM authorization.invitations WHERE "tenantId" = $1',
+      // global permissions remain; every membership of THIS tenant goes,
+      // including the operator closing it (ZS-ENG-OFF-DEL-001 decision 3).
+      // Their attribution survives in the retained control tables
+      // (requested_by / reviewed_by / issued_by) as a non-authorizing
+      // reference — never as access that outlives the tenant.
+      counts['"authorization".user_roles'] = await tx.$executeRawUnsafe(
+        'DELETE FROM "authorization".user_roles WHERE membership_id IN (SELECT id FROM "authorization".tenant_memberships WHERE "tenantId" = $1::uuid)',
         tenantId,
       );
-      counts['authorization.role_permissions'] = await tx.$executeRawUnsafe(
-        'DELETE FROM authorization.role_permissions WHERE role_id IN (SELECT role.id FROM authorization.roles role WHERE role."tenantId" = $1::uuid AND NOT EXISTS (SELECT 1 FROM authorization.user_roles user_role WHERE user_role.role_id = role.id))',
+      counts['"authorization".tenant_memberships'] = await tx.$executeRawUnsafe(
+        'DELETE FROM "authorization".tenant_memberships WHERE "tenantId" = $1::uuid',
         tenantId,
       );
-      counts['authorization.roles'] = await tx.$executeRawUnsafe(
-        'DELETE FROM authorization.roles role WHERE role."tenantId" = $1::uuid AND NOT EXISTS (SELECT 1 FROM authorization.user_roles user_role WHERE user_role.role_id = role.id)',
+      counts['"authorization".invitations'] = await tx.$executeRawUnsafe(
+        'DELETE FROM "authorization".invitations WHERE "tenantId" = $1',
+        tenantId,
+      );
+      counts['"authorization".role_permissions'] = await tx.$executeRawUnsafe(
+        'DELETE FROM "authorization".role_permissions WHERE role_id IN (SELECT role.id FROM "authorization".roles role WHERE role."tenantId" = $1::uuid AND NOT EXISTS (SELECT 1 FROM "authorization".user_roles user_role WHERE user_role.role_id = role.id))',
+        tenantId,
+      );
+      counts['"authorization".roles'] = await tx.$executeRawUnsafe(
+        'DELETE FROM "authorization".roles role WHERE role."tenantId" = $1::uuid AND NOT EXISTS (SELECT 1 FROM "authorization".user_roles user_role WHERE user_role.role_id = role.id)',
         tenantId,
       );
       counts['identity.identity_events'] = await tx.$executeRawUnsafe(
@@ -218,8 +278,9 @@ export class DeletionTaskService {
     >(
       `
       SELECT (
-        (SELECT COUNT(*) FROM authorization.tenant_memberships WHERE "tenantId" = $1::uuid AND "principalId" <> $2::uuid) +
-        (SELECT COUNT(*) FROM authorization.invitations WHERE "tenantId" = $1::uuid) +
+        (SELECT COUNT(*) FROM "authorization".tenant_memberships WHERE "tenantId" = $1::uuid) +
+        (SELECT COUNT(*) FROM "authorization".roles WHERE "tenantId" = $1::uuid) +
+        (SELECT COUNT(*) FROM "authorization".invitations WHERE "tenantId" = $1::uuid) +
         (SELECT COUNT(*) FROM identity.identity_events WHERE "tenantId" = $1::uuid) +
         (SELECT COUNT(*) FROM tenant.customers WHERE "tenantId" = $1::uuid) +
         (SELECT COUNT(*) FROM tenant.organizations WHERE "tenantId" = $1::uuid) +
@@ -229,7 +290,6 @@ export class DeletionTaskService {
       )::bigint AS count
     `,
       tenantId,
-      closingOperatorId,
     );
     remainingRows += Number(typeOrmRemaining[0]?.count ?? 0);
     if (remainingRows !== 0)
@@ -241,20 +301,67 @@ export class DeletionTaskService {
       deletedRows: counts,
       remainingRows: 0,
       retainedAuditTables: [...DELETION_CONTROL_TABLES].sort(),
-      retainedClosingOperator: closingOperatorId,
+      deferredToLaterTask: [...TASK_OWNED_TABLES].sort(),
     });
   }
 
-  private async deleteObjectStorage(tenantId: string): Promise<string> {
-    const result = await this.objectStorage.deleteTenantObjects(tenantId);
-    if (result.remaining !== 0)
+  /**
+   * Evidence bytes live under Object Lock in COMPLIANCE mode, so versions
+   * inside their retain-until window cannot be destroyed by anyone. Deleting
+   * them makes them unreachable, not gone. Rather than report that as a
+   * verified deletion, this records what physically survives and until when;
+   * the CRYPTO_SHRED task removes the ability to read it, and the attestation
+   * discloses the expiry window.
+   */
+  private async purgeObjectStorage(tenantId: string): Promise<string> {
+    const result = await this.objectStorage.purgeTenantObjects(tenantId);
+    if (result.wormRetained === 0) {
+      return JSON.stringify({
+        outcome: 'VERIFIED_DELETED',
+        deletedObjects: result.permanentlyDeleted,
+        remainingObjects: 0,
+      });
+    }
+    return JSON.stringify({
+      outcome: 'LOGICALLY_DELETED_PENDING_PHYSICAL_EXPIRY',
+      permanentlyDeletedVersions: result.permanentlyDeleted,
+      deleteMarkersPlaced: result.deleteMarkersPlaced,
+      wormProtectedVersions: result.wormRetained,
+      physicalExpiryAt: result.physicalExpiryAt,
+      reason:
+        'Object Lock (COMPLIANCE) forbids destroying these versions before their retain-until date. Readability is removed by tenant key shredding; the physical expiry window is disclosed rather than claimed as deleted.',
+    });
+  }
+
+  private async shredTenantKeys(tenantId: string): Promise<string> {
+    const { certificates, remainingActiveKeys } =
+      await this.shreddingService.shredAllTenantKeys(tenantId);
+    if (remainingActiveKeys !== 0) {
       throw new Error(
-        `${result.remaining} tenant object(s) remain after object-storage deletion`,
+        `${remainingActiveKeys} active subject encryption key(s) remain after tenant key shredding`,
       );
+    }
+    // Shredded first, then removed: the certificates live on in this task's
+    // retained verification_result, so destroying the rows loses no evidence.
+    const removedKeyRows = await this.prisma.subjectEncryptionKey.deleteMany({
+      where: { tenant_id: tenantId },
+    });
+    const remainingKeyRows = await this.prisma.subjectEncryptionKey.count({
+      where: { tenant_id: tenantId },
+    });
+    if (remainingKeyRows !== 0) {
+      throw new Error(
+        `${remainingKeyRows} subject encryption key row(s) remain after tenant key shredding`,
+      );
+    }
     return JSON.stringify({
       outcome: 'VERIFIED_DELETED',
-      deletedObjects: result.deleted,
-      remainingObjects: 0,
+      shreddedSubjectKeys: certificates.length,
+      removedKeyRows: removedKeyRows.count,
+      remainingActiveKeys: 0,
+      proofOfObliterationDigests: certificates.map(
+        (certificate) => certificate.proofOfObliterationDigest,
+      ),
     });
   }
 

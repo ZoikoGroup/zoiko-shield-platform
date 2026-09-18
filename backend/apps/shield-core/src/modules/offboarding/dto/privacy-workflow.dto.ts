@@ -2,10 +2,12 @@ import { Type } from 'class-transformer';
 import {
   IsDefined,
   IsIn,
+  IsInt,
   IsISO8601,
   IsObject,
   IsOptional,
   IsString,
+  Min,
   MinLength,
   ValidateNested,
 } from 'class-validator';
@@ -85,4 +87,32 @@ export class OffboardingReasonDto {
 export class OffboardingRunDto {
   @IsString()
   runId!: string;
+}
+
+export const RETENTION_BASES = [
+  'CONTRACTUAL',
+  'STATUTORY',
+  'PLATFORM_DEFAULT',
+] as const;
+
+export class RecordRetentionPolicyDto {
+  @IsIn(RETENTION_BASES)
+  basis!: (typeof RETENTION_BASES)[number];
+
+  /** The contract, regulation or standard that sets this period. */
+  @IsString()
+  @MinLength(3)
+  authority!: string;
+
+  @IsInt()
+  @Min(0)
+  periodDays!: number;
+
+  @IsOptional()
+  @IsISO8601()
+  effectiveFrom?: string;
+
+  @IsOptional()
+  @IsISO8601()
+  effectiveTo?: string;
 }

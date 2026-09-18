@@ -264,6 +264,41 @@ export class CryptographicShreddingService {
   /**
    * Cryptographically shreds the subject key, rendering all past and future ciphertexts unrecoverable.
    */
+  /**
+   * Whole-tenant key destruction for the offboarding purge chain.
+   *
+   * This is what makes WORM-locked evidence bytes unreadable when they cannot
+   * be physically destroyed before their Object Lock retain-until date: the
+   * ciphertext may legally survive, the means to read it does not. Verifies
+   * that no ACTIVE key for the tenant remains, and fails rather than claiming
+   * a shred it did not achieve.
+   */
+  async shredAllTenantKeys(tenantId: string): Promise<{
+    certificates: ErasureCertificate[];
+    remainingActiveKeys: number;
+  }> {
+    if (!this.prisma) {
+      throw new Error(
+        'Cryptographic shredding requires database-backed key storage; refusing to claim a tenant key shred without it',
+      );
+    }
+    const keys = await this.prisma.subjectEncryptionKey.findMany({
+      where: { tenant_id: tenantId, status: 'ACTIVE' },
+      select: { subject_id: true },
+      distinct: ['subject_id'],
+    });
+
+    const certificates: ErasureCertificate[] = [];
+    for (const { subject_id: subjectId } of keys) {
+      certificates.push(await this.shredSubjectKey(tenantId, subjectId));
+    }
+
+    const remainingActiveKeys = await this.prisma.subjectEncryptionKey.count({
+      where: { tenant_id: tenantId, status: 'ACTIVE' },
+    });
+    return { certificates, remainingActiveKeys };
+  }
+
   async shredSubjectKey(
     tenantId: string,
     subjectId: string,

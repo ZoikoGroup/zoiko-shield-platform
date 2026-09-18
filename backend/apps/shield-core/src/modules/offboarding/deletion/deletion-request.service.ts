@@ -12,6 +12,7 @@ import {
   AuthorizationDecisionService,
 } from '../../authorization-decision/authorization-decision.service';
 import { LegalHoldService } from '../legal-hold/legal-hold.service';
+import { RetentionPolicyService } from '../retention/retention-policy.service';
 
 export interface CreateDeletionRequestInput {
   tenantId: string;
@@ -37,9 +38,16 @@ export interface ApproveDeletionRequestInput {
   decisionReason: string;
 }
 
+/**
+ * Execution order matters and is deliberate: relational rows (memberships
+ * included) go first, then object references, then the tenant's keys — so that
+ * anything Object Lock forbids destroying is at least left unreadable — then
+ * derived stores, then connector state.
+ */
 const STORE_TYPES = [
   'POSTGRES_AUTHORITY',
   'OBJECT_STORAGE',
+  'CRYPTO_SHRED',
   'SEARCH',
   'CACHE',
   'ANALYTICS',
@@ -49,7 +57,17 @@ const STORE_TYPES = [
   'CONNECTOR_STATE',
 ] as const;
 
+export const DELETION_STORE_ORDER: readonly string[] = STORE_TYPES;
+
 const REVIEWABLE_STATUSES = ['REQUESTED', 'VALIDATING', 'BLOCKED_BY_HOLD'];
+
+// A request that is approved but not yet retention-eligible is still on the
+// execution path — it is waiting, not rejected (ZS-ENG-OFF-DEL-001 §3.1).
+const EXECUTABLE_STATUSES = [
+  'APPROVED',
+  'AWAITING_RETENTION_EXPIRY',
+  'RUNNING',
+];
 
 /**
  * `deletion:request` submits a reviewable request only. A separate actor with
@@ -62,6 +80,7 @@ export class DeletionRequestService {
     private readonly prisma: PrismaService,
     private readonly authorizationDecisionService: AuthorizationDecisionService,
     private readonly legalHoldService: LegalHoldService,
+    private readonly retentionPolicyService: RetentionPolicyService,
   ) {}
 
   async request(input: CreateDeletionRequestInput) {
@@ -87,6 +106,16 @@ export class DeletionRequestService {
     );
     const blocked = conflictingHolds.length > 0;
 
+    // The retention clock runs from access removal. By the time a deletion
+    // request exists the tenant is already frozen and its connectors revoked,
+    // so "now" is the first moment the destruction pipeline owns the data.
+    const retention = await this.retentionPolicyService.resolve(input.tenantId);
+    const retentionClockStartedAt = new Date();
+    const retentionExpiresAt = this.retentionPolicyService.expiryFrom(
+      retentionClockStartedAt,
+      retention.periodDays,
+    );
+
     return this.prisma.deletionRequest.create({
       data: {
         id: randomUUID(),
@@ -100,6 +129,11 @@ export class DeletionRequestService {
         identity_verification_status:
           input.identityVerificationStatus ?? 'PENDING',
         statutory_deadline_at: input.statutoryDeadlineAt,
+        retention_policy_id: retention.policyId,
+        retention_basis: retention.basis,
+        retention_period_days: retention.periodDays,
+        retention_clock_started_at: retentionClockStartedAt,
+        retention_expires_at: retentionExpiresAt,
         legal_hold_state: blocked ? 'BLOCKED' : 'NONE',
         conflicting_legal_hold_ids: JSON.stringify(
           conflictingHolds.map((hold) => hold.id),
@@ -299,11 +333,34 @@ export class DeletionRequestService {
       tenantId,
       deletionRequestId,
     );
-    if (!['APPROVED', 'RUNNING'].includes(request.status)) {
+    if (!EXECUTABLE_STATUSES.includes(request.status)) {
       throw new ConflictException(
         `DeletionRequest '${deletionRequestId}' is not approved for execution (currently ${request.status})`,
       );
     }
+
+    // Retention eligibility first, then legal hold — approval alone never
+    // makes data destroyable (ZS-ENG-OFF-DEL-001 §3.1).
+    if (!request.retention_expires_at) {
+      throw new ConflictException(
+        `DeletionRequest '${deletionRequestId}' carries no retention determination — eligibility cannot be established, so it must not execute`,
+      );
+    }
+    if (request.retention_expires_at.getTime() > Date.now()) {
+      if (request.status !== 'AWAITING_RETENTION_EXPIRY') {
+        await this.prisma.deletionRequest.update({
+          where: { id: request.id },
+          data: {
+            status: 'AWAITING_RETENTION_EXPIRY',
+            outcome: 'AWAITING_RETENTION_EXPIRY',
+          },
+        });
+      }
+      throw new ConflictException(
+        `DeletionRequest '${deletionRequestId}' is not yet retention-eligible — the ${request.retention_period_days}-day ${request.retention_basis} retention period expires at ${request.retention_expires_at.toISOString()}`,
+      );
+    }
+
     const conflictingHolds = await this.findConflictingHolds(
       tenantId,
       this.parseScope(request.scope),

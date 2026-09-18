@@ -20,6 +20,8 @@ import { DeletionRequestService } from '../deletion/deletion-request.service';
 import { DeletionTaskService } from '../deletion/deletion-task.service';
 import { BackupExpiryService } from '../backup-expiry/backup-expiry.service';
 import { DeletionAttestationService } from '../attestation/deletion-attestation.service';
+import { DeletionVerificationService } from '../verification/deletion-verification.service';
+import { DELETION_STORE_ORDER } from '../deletion/deletion-request.service';
 
 /**
  * Spec §73's sequence, step by step — never destroys records before the
@@ -43,6 +45,7 @@ export class TenantOffboardingService {
     private readonly deletionTaskService: DeletionTaskService,
     private readonly backupExpiryService: BackupExpiryService,
     private readonly attestationService: DeletionAttestationService,
+    private readonly verificationService: DeletionVerificationService,
   ) {}
 
   async start(tenantId: string, requestedBy: string, reason: string) {
@@ -59,13 +62,16 @@ export class TenantOffboardingService {
     );
     const { authorizationDecisionId } = authorization;
 
+    // Idempotent — a repeated command returns the existing run (spec §87).
+    // FAILED and ENGINEERING_REVIEW runs are deliberately included: destructive
+    // work already committed under that run must be resumed from its
+    // checkpoints, never forked into a second run that cannot see them
+    // (ZS-ENG-OFF-DEL-001 decision 4).
     const existing = await this.prisma.tenantOffboardingRun.findFirst({
-      where: {
-        tenant_id: tenantId,
-        status: { notIn: ['COMPLETED', 'FAILED', 'BLOCKED'] },
-      },
+      where: { tenant_id: tenantId, status: { not: 'COMPLETED' } },
+      orderBy: { initiated_at: 'desc' },
     });
-    if (existing) return existing; // idempotent — repeated command returns the in-flight run (spec §87)
+    if (existing) return existing;
 
     const [run] = await this.prisma.$transaction([
       this.prisma.tenantOffboardingRun.create({
@@ -261,56 +267,119 @@ export class TenantOffboardingService {
       });
     }
 
+    // Retention eligibility is a gate of its own. Approval says the
+    // destruction is authorized; it does not say the data may go yet.
+    if (
+      deletionRequest.retention_expires_at &&
+      deletionRequest.retention_expires_at.getTime() > Date.now()
+    ) {
+      await this.prisma.deletionRequest.update({
+        where: { id: deletionRequest.id },
+        data: {
+          status: 'AWAITING_RETENTION_EXPIRY',
+          outcome: 'AWAITING_RETENTION_EXPIRY',
+        },
+      });
+      this.logger.log(
+        `Tenant ${tenantId} deletion approved but not yet retention-eligible; waiting until ${deletionRequest.retention_expires_at.toISOString()}`,
+      );
+      return this.prisma.tenantOffboardingRun.update({
+        where: { id: run.id },
+        data: { status: 'RETENTION_WAIT' },
+      });
+    }
+
+    return this.executeDeletion(tenantId, run.id, deletionRequest.id);
+  }
+
+  /**
+   * Resume a run whose destructive phase did not finish — after a failure, a
+   * worker restart, or the retention period elapsing. Completed store tasks
+   * are checkpoints and are not repeated; only incomplete work runs again, and
+   * tenant access stays revoked throughout (ZS-ENG-OFF-DEL-001 decision 4).
+   */
+  async resumeDeletion(tenantId: string, runId: string) {
+    const run = await this.assertOwnership(tenantId, runId);
+    const resumable = ['RETENTION_WAIT', 'DELETING', 'VERIFYING', 'FAILED'];
+    if (!resumable.includes(run.status) || !run.deletion_request_id) {
+      throw new ConflictException(
+        `Offboarding run '${runId}' cannot be resumed from status ${run.status}`,
+      );
+    }
+    return this.executeDeletion(tenantId, run.id, run.deletion_request_id);
+  }
+
+  /**
+   * The destructive phase, as a resumable saga. Store tasks run in a fixed
+   * order and each is its own durable checkpoint; nothing here rolls back a
+   * completed destruction, and no run reaches a closable state until an
+   * independent verification pass says the data is actually gone.
+   */
+  private async executeDeletion(
+    tenantId: string,
+    runId: string,
+    deletionRequestId: string,
+  ) {
     await this.prisma.outboxEvent.create({
       data: this.outbox.build({
         tenantId,
         topic: CANONICAL_TOPICS.TENANT_DELETION_STARTED,
         eventType: 'tenant.deletion.started',
-        payload: { deletionRequestId: deletionRequest.id },
+        payload: { deletionRequestId },
       }),
     });
     await this.prisma.tenantOffboardingRun.update({
-      where: { id: run.id },
+      where: { id: runId },
       data: { status: 'DELETING' },
     });
-    await this.deletionRequestService.markRunning(tenantId, deletionRequest.id);
+    await this.deletionRequestService.markRunning(tenantId, deletionRequestId);
 
     const tasks = await this.prisma.deletionTask.findMany({
-      where: { deletion_request_id: deletionRequest.id },
+      where: { deletion_request_id: deletionRequestId },
     });
-    for (const task of tasks) {
+    const ordered = [...tasks].sort(
+      (a, b) =>
+        DELETION_STORE_ORDER.indexOf(a.store_type) -
+        DELETION_STORE_ORDER.indexOf(b.store_type),
+    );
+    for (const task of ordered) {
       try {
         await this.deletionTaskService.executeTask(task.id);
       } catch (error) {
-        const currentRequest =
-          await this.deletionRequestService.assertTenantOwnership(
-            tenantId,
-            deletionRequest.id,
-          );
-        await this.prisma.tenantOffboardingRun.update({
-          where: { id: run.id },
-          data: {
-            status:
-              currentRequest.status === 'BLOCKED_BY_HOLD'
-                ? 'BLOCKED'
-                : 'FAILED',
-          },
-        });
+        await this.failRun(tenantId, runId, deletionRequestId);
         throw error;
       }
     }
-    await this.backupExpiryService.recordPending(tenantId, deletionRequest.id);
+
+    await this.backupExpiryService.recordPending(tenantId, deletionRequestId);
+
+    // The completion barrier. Task success is a claim; this is the check.
+    await this.prisma.tenantOffboardingRun.update({
+      where: { id: runId },
+      data: { status: 'VERIFYING' },
+    });
+    const verification = await this.verificationService.verify(
+      tenantId,
+      deletionRequestId,
+      'shield-core-deletion-verifier',
+    );
+    if (verification.result === 'FAIL') {
+      await this.failRun(tenantId, runId, deletionRequestId);
+      throw new ConflictException(
+        `Deletion verification failed for tenant '${tenantId}': ${verification.residualCount} unauthorized residual record(s) remain — the run cannot be attested or closed`,
+      );
+    }
+
     await this.deletionRequestService.markBackupExpiryPending(
       tenantId,
-      deletionRequest.id,
+      deletionRequestId,
     );
-
     await this.prisma.outboxEvent.create({
       data: this.outbox.build({
         tenantId,
         topic: CANONICAL_TOPICS.TENANT_DELETION_RECONCILED,
         eventType: 'tenant.deletion.reconciled',
-        payload: { deletionRequestId: deletionRequest.id },
+        payload: { deletionRequestId },
       }),
     });
     await this.prisma.outboxEvent.create({
@@ -318,13 +387,44 @@ export class TenantOffboardingService {
         tenantId,
         topic: CANONICAL_TOPICS.TENANT_BACKUP_EXPIRY_PENDING,
         eventType: 'tenant.backup_expiry.pending',
-        payload: { deletionRequestId: deletionRequest.id },
+        payload: { deletionRequestId },
       }),
     });
 
     return this.prisma.tenantOffboardingRun.update({
-      where: { id: run.id },
+      where: { id: runId },
       data: { status: 'BACKUP_EXPIRY_PENDING' },
+    });
+  }
+
+  /**
+   * Access stays revoked in every failure state. A run only leaves DELETING
+   * downward, never back toward a usable tenant.
+   */
+  private async failRun(
+    tenantId: string,
+    runId: string,
+    deletionRequestId: string,
+  ) {
+    const request = await this.deletionRequestService.assertTenantOwnership(
+      tenantId,
+      deletionRequestId,
+    );
+    const heldTasks = await this.prisma.deletionTask.count({
+      where: {
+        deletion_request_id: deletionRequestId,
+        status: 'ENGINEERING_REVIEW',
+      },
+    });
+    const status =
+      request.status === 'BLOCKED_BY_HOLD'
+        ? 'BLOCKED'
+        : heldTasks > 0
+          ? 'ENGINEERING_REVIEW'
+          : 'FAILED';
+    await this.prisma.tenantOffboardingRun.update({
+      where: { id: runId },
+      data: { status },
     });
   }
 
@@ -337,6 +437,22 @@ export class TenantOffboardingService {
     if (run.status !== 'BACKUP_EXPIRY_PENDING' || !run.deletion_request_id) {
       throw new ConflictException(
         `Offboarding run '${runId}' is not ready for attestation (currently ${run.status})`,
+      );
+    }
+
+    // Verification PASS is the precondition for saying anything was deleted.
+    // Completed tasks are not evidence; an independent reconciliation is.
+    const verification = await this.verificationService.latest(
+      run.deletion_request_id,
+    );
+    if (!verification) {
+      throw new ConflictException(
+        `Offboarding run '${runId}' has no independent deletion verification — an attestation cannot be issued without one`,
+      );
+    }
+    if (verification.result !== 'PASS') {
+      throw new ConflictException(
+        `Offboarding run '${runId}' last verified as ${verification.result} with ${verification.residual_count} unauthorized residual record(s) — an attestation cannot be issued until verification passes`,
       );
     }
 
@@ -354,24 +470,10 @@ export class TenantOffboardingService {
       }),
     });
 
-    await this.prisma.$transaction(async (tx) => {
-      await tx.$executeRawUnsafe(
-        'DELETE FROM authorization.user_roles WHERE membership_id IN (SELECT id FROM authorization.tenant_memberships WHERE "tenantId" = $1::uuid)',
-        tenantId,
-      );
-      await tx.$executeRawUnsafe(
-        'DELETE FROM authorization.tenant_memberships WHERE "tenantId" = $1::uuid',
-        tenantId,
-      );
-      await tx.$executeRawUnsafe(
-        'DELETE FROM authorization.role_permissions WHERE role_id IN (SELECT id FROM authorization.roles WHERE "tenantId" = $1::uuid)',
-        tenantId,
-      );
-      await tx.$executeRawUnsafe(
-        'DELETE FROM authorization.roles WHERE "tenantId" = $1::uuid',
-        tenantId,
-      );
-    });
+    // Memberships, roles and grants are not swept here. They belong to the
+    // authoritative deletion plan (ZS-ENG-OFF-DEL-001 architecture rule: one
+    // orchestration chain) and were removed and residual-verified during
+    // DELETING. Closure only records the outcome — it never destroys.
 
     // Backups may still be PENDING — that is disclosed in the attestation itself (spec §19/§71), closure does not wait on it.
     const [updated] = await this.prisma.$transaction([

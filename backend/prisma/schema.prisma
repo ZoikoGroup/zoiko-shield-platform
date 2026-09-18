@@ -5347,9 +5347,18 @@ model DeletionRequest {
   subject_reference            String?
   reason                       String
   scope                        String    @default("{}")
-  status                       String    @default("REQUESTED") // REQUESTED|VALIDATING|BLOCKED_BY_HOLD|APPROVED|REJECTED|RUNNING|RECONCILING|BACKUP_EXPIRY_PENDING|COMPLETED|FAILED
+  status                       String    @default("REQUESTED") // REQUESTED|VALIDATING|BLOCKED_BY_HOLD|APPROVED|AWAITING_RETENTION_EXPIRY|REJECTED|RUNNING|RECONCILING|VERIFYING|BACKUP_EXPIRY_PENDING|COMPLETED|FAILED|ENGINEERING_REVIEW
   identity_verification_status String    @default("PENDING") // PENDING|VERIFIED|NOT_APPLICABLE|FAILED
   statutory_deadline_at        DateTime?
+  // Retention eligibility is a hard gate, distinct from approval
+  // (ZS-ENG-OFF-DEL-001 §3.1). Approval authorizes the destruction; these
+  // fields decide when it may actually happen, and are stamped from the
+  // authoritative TenantRetentionPolicy when the request is created.
+  retention_policy_id          String?
+  retention_basis              String? // CONTRACTUAL|STATUTORY|PLATFORM_DEFAULT
+  retention_period_days        Int?
+  retention_clock_started_at   DateTime?
+  retention_expires_at         DateTime?
   legal_hold_state             String    @default("NONE")
   conflicting_legal_hold_ids   String    @default("[]")
   authorization_decision_id    String
@@ -5362,9 +5371,10 @@ model DeletionRequest {
   started_at                   DateTime?
   completed_at                 DateTime?
 
-  tasks        DeletionTask[]
-  backupExpiry BackupExpiryRecord[]
-  attestation  DeletionAttestation?
+  tasks         DeletionTask[]
+  backupExpiry  BackupExpiryRecord[]
+  attestation   DeletionAttestation?
+  verifications DeletionVerification[]
 
   @@index([tenant_id])
   @@index([tenant_id, status])
@@ -5378,13 +5388,59 @@ model DeletionTask {
   store_type          String // POSTGRES_AUTHORITY|OBJECT_STORAGE|SEARCH|CACHE|ANALYTICS|AI_MEMORY|EMBEDDINGS|EXPORT_CACHE|CONNECTOR_STATE
   object_type         String
   scope               String          @default("{}")
-  status              String          @default("PENDING") // PENDING|RUNNING|COMPLETED|FAILED
+  status              String          @default("PENDING") // PENDING|RUNNING|COMPLETED|FAILED|ENGINEERING_REVIEW
   started_at          DateTime?
   completed_at        DateTime?
   verification_result String?
   error_code          String?
+  // Durable checkpoint state: a rerun resumes incomplete work instead of
+  // repeating it, and retries are bounded (ZS-ENG-OFF-DEL-001 decisions 1/4).
+  attempt             Int             @default(0)
+  last_attempt_at     DateTime?
+  last_checkpoint     String?
+
+  @@unique([deletion_request_id, store_type])
+  @@index([deletion_request_id])
+  @@index([status])
+}
+
+/// The authoritative source for how long a tenant's data is retained after
+/// offboarding removes access, before permanent deletion may execute
+/// (ZS-ENG-OFF-DEL-001 §3.1 — retention eligibility is a hard gate; this
+/// standard defines engineering behavior, not the schedule itself, so the
+/// duration comes from a jurisdictional or contractual policy recorded here).
+model TenantRetentionPolicy {
+  id             String    @id @default(uuid())
+  tenant_id      String
+  basis          String // CONTRACTUAL|STATUTORY|PLATFORM_DEFAULT
+  authority      String // the contract, regulation or platform standard that sets it
+  period_days    Int
+  effective_from DateTime  @default(now())
+  effective_to   DateTime?
+  created_by     String
+  created_at     DateTime  @default(now())
+
+  @@index([tenant_id, effective_from])
+}
+
+/// Independent post-deletion reconciliation (ZS-ENG-OFF-DEL-001 decision 2).
+/// A deletion task reporting COMPLETED is not evidence that tenant data is
+/// gone; this is re-queried from the deletion manifest by a service that did
+/// not perform the deletion, and no attestation may issue without a PASS.
+model DeletionVerification {
+  id                  String          @id @default(uuid())
+  tenant_id           String
+  deletion_request_id String
+  request             DeletionRequest @relation(fields: [deletion_request_id], references: [id])
+  result              String // PASS|FAIL
+  surfaces            String          @default("[]") // per-surface pass/fail with residual and retained counts
+  residual_count      Int             @default(0)
+  retained_count      Int             @default(0)
+  verified_by         String
+  verified_at         DateTime        @default(now())
 
   @@index([deletion_request_id])
+  @@index([tenant_id, result])
 }
 
 model BackupExpiryRecord {
@@ -5424,7 +5480,7 @@ model TenantOffboardingRun {
   tenant_id                 String
   requested_by              String
   reason                    String
-  status                    String    @default("REQUESTED") // REQUESTED|VALIDATING|EXPORT_REQUIRED|EXPORTING|EXPORT_READY|ACCESS_FREEZE_PENDING|ACCESS_FROZEN|CONNECTOR_REVOCATION|DELETION_PENDING|DELETING|BACKUP_EXPIRY_PENDING|COMPLETED|BLOCKED|FAILED
+  status                    String    @default("REQUESTED") // REQUESTED|VALIDATING|EXPORT_REQUIRED|EXPORTING|EXPORT_READY|ACCESS_FREEZE_PENDING|ACCESS_FROZEN|CONNECTOR_REVOCATION|DELETION_PENDING|RETENTION_WAIT|DELETING|VERIFYING|BACKUP_EXPIRY_PENDING|COMPLETED|BLOCKED|FAILED|ENGINEERING_REVIEW
   export_job_id             String?
   deletion_request_id       String?
   initiated_at              DateTime  @default(now())

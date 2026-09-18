@@ -4,8 +4,8 @@ import {
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectCommand,
-  DeleteObjectsCommand,
-  ListObjectsV2Command,
+  ListObjectVersionsCommand,
+  GetObjectRetentionCommand,
   CreateBucketCommand,
   HeadBucketCommand,
   PutBucketVersioningCommand,
@@ -169,52 +169,187 @@ export class ObjectStorageService implements OnModuleInit {
     );
   }
 
-  async deleteTenantObjects(
-    tenantId: string,
-  ): Promise<{ deleted: number; remaining: number }> {
+  /**
+   * Tenant purge under Object Lock.
+   *
+   * A plain delete against a versioned, lock-enabled bucket only inserts a
+   * delete marker: the call succeeds, a subsequent ListObjectsV2 returns
+   * nothing, and every byte is still physically present under a COMPLIANCE
+   * retention that nobody — not even a root credential — can shorten.
+   * Reporting that as a verified deletion would be exactly the fabricated
+   * success ZS-ENG-OFF-DEL-001 §3.1 forbids.
+   *
+   * So this enumerates real versions, permanently destroys every one it is
+   * allowed to, and reports what WORM kept together with the date that
+   * retention actually expires. The tenant's key material is destroyed
+   * separately (the CRYPTO_SHRED task), which is what makes any retained
+   * ciphertext unreadable meanwhile; the residue is then disclosed in the
+   * attestation rather than hidden behind a delete marker.
+   */
+  async purgeTenantObjects(tenantId: string): Promise<{
+    permanentlyDeleted: number;
+    wormRetained: number;
+    deleteMarkersPlaced: number;
+    physicalExpiryAt: string | null;
+  }> {
     const prefix = `${tenantId}/`;
-    let deleted = 0;
-    let continuationToken: string | undefined;
+    let permanentlyDeleted = 0;
+    let wormRetained = 0;
+    let deleteMarkersPlaced = 0;
+    let physicalExpiry: Date | null = null;
+    const retainedKeys = new Set<string>();
+
+    let keyMarker: string | undefined;
+    let versionIdMarker: string | undefined;
     do {
       const page = await this.client.send(
-        new ListObjectsV2Command({
+        new ListObjectVersionsCommand({
           Bucket: EVIDENCE_BUCKET,
           Prefix: prefix,
-          ContinuationToken: continuationToken,
+          KeyMarker: keyMarker,
+          VersionIdMarker: versionIdMarker,
         }),
       );
-      const keys = (page.Contents ?? []).flatMap((entry) =>
-        entry.Key ? [{ Key: entry.Key }] : [],
-      );
-      if (keys.length > 0) {
-        const outcome = await this.client.send(
-          new DeleteObjectsCommand({
+
+      for (const version of page.Versions ?? []) {
+        if (!version.Key || !version.VersionId) continue;
+        try {
+          await this.client.send(
+            new DeleteObjectCommand({
+              Bucket: EVIDENCE_BUCKET,
+              Key: version.Key,
+              VersionId: version.VersionId,
+            }),
+          );
+          permanentlyDeleted += 1;
+        } catch {
+          // Refused by Object Lock. Record when these bytes actually become
+          // deletable instead of pretending they are already gone.
+          wormRetained += 1;
+          retainedKeys.add(version.Key);
+          const until = await this.retainUntil(version.Key, version.VersionId);
+          if (until && (!physicalExpiry || until > physicalExpiry)) {
+            physicalExpiry = until;
+          }
+        }
+      }
+
+      // Delete markers hold no data and are never locked.
+      for (const marker of page.DeleteMarkers ?? []) {
+        if (!marker.Key || !marker.VersionId) continue;
+        await this.client.send(
+          new DeleteObjectCommand({
             Bucket: EVIDENCE_BUCKET,
-            Delete: { Objects: keys, Quiet: true },
+            Key: marker.Key,
+            VersionId: marker.VersionId,
           }),
         );
-        if ((outcome.Errors ?? []).length > 0) {
-          throw new Error(
-            `Object storage deletion failed for ${(outcome.Errors ?? []).length} object(s)`,
-          );
-        }
-        deleted += keys.length;
       }
-      continuationToken = page.IsTruncated
-        ? page.NextContinuationToken
-        : undefined;
-    } while (continuationToken);
 
-    const verification = await this.client.send(
-      new ListObjectsV2Command({
-        Bucket: EVIDENCE_BUCKET,
-        Prefix: prefix,
-        MaxKeys: 1,
-      }),
-    );
+      keyMarker = page.IsTruncated ? page.NextKeyMarker : undefined;
+      versionIdMarker = page.IsTruncated ? page.NextVersionIdMarker : undefined;
+    } while (keyMarker || versionIdMarker);
+
+    // Whatever WORM kept must at least stop being reachable through a normal
+    // read, so cover each surviving key with a delete marker.
+    for (const key of retainedKeys) {
+      await this.client.send(
+        new DeleteObjectCommand({ Bucket: EVIDENCE_BUCKET, Key: key }),
+      );
+      deleteMarkersPlaced += 1;
+    }
+
     return {
-      deleted,
-      remaining: verification.KeyCount ?? verification.Contents?.length ?? 0,
+      permanentlyDeleted,
+      wormRetained,
+      deleteMarkersPlaced,
+      physicalExpiryAt: physicalExpiry ? physicalExpiry.toISOString() : null,
     };
+  }
+
+  /** Real (non-delete-marker) versions still stored for a tenant. */
+  async countTenantObjectVersions(tenantId: string): Promise<number> {
+    const prefix = `${tenantId}/`;
+    let total = 0;
+    let keyMarker: string | undefined;
+    let versionIdMarker: string | undefined;
+    do {
+      const page = await this.client.send(
+        new ListObjectVersionsCommand({
+          Bucket: EVIDENCE_BUCKET,
+          Prefix: prefix,
+          KeyMarker: keyMarker,
+          VersionIdMarker: versionIdMarker,
+        }),
+      );
+      total += (page.Versions ?? []).length;
+      keyMarker = page.IsTruncated ? page.NextKeyMarker : undefined;
+      versionIdMarker = page.IsTruncated ? page.NextVersionIdMarker : undefined;
+    } while (keyMarker || versionIdMarker);
+    return total;
+  }
+
+  /**
+   * Splits what is still physically stored for a tenant into versions a
+   * retention lock explains, and versions nothing explains. Only the second
+   * kind is a residual: an unauthorized survivor that must block attestation.
+   */
+  async classifyTenantObjectVersions(tenantId: string): Promise<{
+    lockRetained: number;
+    unexplained: number;
+    maxRetainUntil: string | null;
+  }> {
+    const prefix = `${tenantId}/`;
+    let lockRetained = 0;
+    let unexplained = 0;
+    let maxRetainUntil: Date | null = null;
+    let keyMarker: string | undefined;
+    let versionIdMarker: string | undefined;
+    do {
+      const page = await this.client.send(
+        new ListObjectVersionsCommand({
+          Bucket: EVIDENCE_BUCKET,
+          Prefix: prefix,
+          KeyMarker: keyMarker,
+          VersionIdMarker: versionIdMarker,
+        }),
+      );
+      for (const version of page.Versions ?? []) {
+        if (!version.Key || !version.VersionId) continue;
+        const until = await this.retainUntil(version.Key, version.VersionId);
+        if (until && until.getTime() > Date.now()) {
+          lockRetained += 1;
+          if (!maxRetainUntil || until > maxRetainUntil) maxRetainUntil = until;
+        } else {
+          unexplained += 1;
+        }
+      }
+      keyMarker = page.IsTruncated ? page.NextKeyMarker : undefined;
+      versionIdMarker = page.IsTruncated ? page.NextVersionIdMarker : undefined;
+    } while (keyMarker || versionIdMarker);
+    return {
+      lockRetained,
+      unexplained,
+      maxRetainUntil: maxRetainUntil ? maxRetainUntil.toISOString() : null,
+    };
+  }
+
+  private async retainUntil(
+    key: string,
+    versionId: string,
+  ): Promise<Date | null> {
+    try {
+      const retention = await this.client.send(
+        new GetObjectRetentionCommand({
+          Bucket: EVIDENCE_BUCKET,
+          Key: key,
+          VersionId: versionId,
+        }),
+      );
+      const until = retention.Retention?.RetainUntilDate;
+      return until ? new Date(until) : null;
+    } catch {
+      return null;
+    }
   }
 }
