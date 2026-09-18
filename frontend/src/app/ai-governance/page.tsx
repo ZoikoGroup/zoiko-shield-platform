@@ -1944,7 +1944,7 @@ export default function AiGovernancePage() {
                     <Sparkles className="w-8 h-8 text-cyan-400/50 mx-auto" />
                     <h4 className="text-sm font-bold text-slate-300">Grounding Gate Idle</h4>
                     <p className="text-xs text-slate-500 max-w-sm mx-auto">
-                      Click "Run Grounding Gate Verification" to analyze the hypothesis against evidence ledger ground truth.
+                      Click &quot;Run Grounding Gate Verification&quot; to analyze the hypothesis against evidence ledger ground truth.
                     </p>
                   </div>
                 )}

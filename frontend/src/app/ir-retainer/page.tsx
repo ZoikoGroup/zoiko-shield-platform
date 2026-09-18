@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
 import {
@@ -94,7 +94,7 @@ export default function IrRetainerPage() {
     accessReason: "Preparation for statutory regulatory inquiry filing",
   });
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
       const [rets, wos] = await Promise.all([
@@ -120,11 +120,11 @@ export default function IrRetainerPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedWorkOrder, state.incidentRetainers, state.incidentWorkOrders, state.legalAccessAuditLogs]);
 
   useEffect(() => {
     loadData();
-  }, [state.incidentRetainers, state.incidentWorkOrders]);
+  }, [loadData]);
 
   useEffect(() => {
     if (selectedWorkOrder) {
