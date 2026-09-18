@@ -22,7 +22,6 @@ import { GroundingGateGuard } from '../apps/shield-ai/src/security/grounding-gat
 import { AiUseCaseRegistryService } from '../apps/shield-ai/src/inventory/ai-use-case-registry.service';
 import { DualCustodyQuorumService, ApproverIdentity } from '../apps/shield-action/src/dual-custody/dual-custody-quorum.service';
 import { CryptographicShreddingService } from '../apps/shield-core/src/modules/privacy/cryptographic-shredding.service';
-import { TenantOffboardingOrchestratorService } from '../apps/shield-core/src/modules/tenant/tenant-offboarding-orchestrator.service';
 import { ZeroKnowledgeComplianceProofService } from '../apps/shield-anchor/src/zk/zero-knowledge-compliance-proof.service';
 import { ComplianceDriftDetectorService } from '../apps/shield-core/src/modules/controls/compliance-drift-detector.service';
 import { FrameworkAssessmentReport } from '../apps/shield-core/src/modules/controls/continuous-control-evaluator.service';
@@ -267,7 +266,6 @@ async function runE2ELifecycleSimulation() {
   // --------------------------------------------------------------------------
   console.log(`[STAGE 11/12] Tenant Offboarding & Cryptographic Key Shredding (shield-core)...`);
   const shreddingService = new CryptographicShreddingService();
-  const offboardingOrchestrator = new TenantOffboardingOrchestratorService(shreddingService);
 
   // Provision test subject keys
   const subject1 = `sub-user-finance-01`;
@@ -275,17 +273,22 @@ async function runE2ELifecycleSimulation() {
   await shreddingService.provisionSubjectKey(tenantId, subject1);
   await shreddingService.provisionSubjectKey(tenantId, subject2);
 
-  const offboardingResult = await offboardingOrchestrator.orchestrateTenantOffboarding({
-    tenantId,
-    initiatorActorId: 'privacy-dpo-officer@enterprise.corp',
-    reason: 'GDPR_ARTICLE_17_RIGHT_TO_ERASURE',
-    subjectIdsToShred: [subject1, subject2],
-    immediatePurge: true,
-  });
+  // Key shredding only. This simulation deliberately does NOT claim a tenant
+  // was purged: the authoritative purge chain is TenantOffboardingService ->
+  // DeletionRequestService -> DeletionTaskService -> verification ->
+  // DeletionAttestationService, and it is the only thing allowed to say
+  // "deleted" (ZS-ENG-OFF-DEL-001 architecture rule).
+  const certificates = [];
+  for (const subjectId of [subject1, subject2]) {
+    certificates.push(await shreddingService.shredSubjectKey(tenantId, subjectId));
+  }
+  const masterAttestationDigest = crypto
+    .createHash('sha256')
+    .update(JSON.stringify(certificates.map((c) => c.proofOfObliterationDigest)))
+    .digest('hex');
 
-  console.log(`  ✔ Tenant Status: ${offboardingResult.status}`);
-  console.log(`  ✔ Cryptographic Shredding: ${offboardingResult.shreddedCertificates.length} Subject Encryption Keys (SEK) permanently destroyed`);
-  console.log(`  ✔ Master Erasure Attestation Digest: ${offboardingResult.masterAttestationDigest.slice(0, 16)}...\n`);
+  console.log(`  ✔ Cryptographic Shredding: ${certificates.length} Subject Encryption Keys (SEK) permanently destroyed`);
+  console.log(`  ✔ Key Shred Attestation Digest: ${masterAttestationDigest.slice(0, 16)}...\n`);
 
   // --------------------------------------------------------------------------
   // STAGE 12: Merkle Tree Anchoring & Offline Verification CLI
@@ -302,7 +305,7 @@ async function runE2ELifecycleSimulation() {
     crypto.createHash('sha256').update(`08_ROLLBACK:${finalizedQuorum.singleUseRollbackToken}`).digest('hex'),
     crypto.createHash('sha256').update(`09_ZK_PROOF:${zkProof.proofId}`).digest('hex'),
     crypto.createHash('sha256').update(`10_COMPLIANCE:${driftRecord.driftId}`).digest('hex'),
-    crypto.createHash('sha256').update(`11_OFFBOARDING:${offboardingResult.masterAttestationDigest}`).digest('hex'),
+    crypto.createHash('sha256').update(`11_KEY_SHRED:${masterAttestationDigest}`).digest('hex'),
     crypto.createHash('sha256').update(`12_ANCHOR_EPOCH:1043`).digest('hex'),
   ];
 

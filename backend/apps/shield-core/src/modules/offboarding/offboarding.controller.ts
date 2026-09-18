@@ -15,7 +15,10 @@ import {
   ApproveDeletionDto,
   OffboardingReasonDto,
   OffboardingRunDto,
+  RecordRetentionPolicyDto,
 } from './dto/privacy-workflow.dto';
+import { RetentionPolicyService } from './retention/retention-policy.service';
+import { DeletionVerificationService } from './verification/deletion-verification.service';
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/tenants/:tenantId/offboarding')
@@ -24,6 +27,8 @@ export class OffboardingController {
     private readonly prisma: PrismaService,
     private readonly offboardingService: TenantOffboardingService,
     private readonly legalHoldService: LegalHoldService,
+    private readonly retentionPolicyService: RetentionPolicyService,
+    private readonly verificationService: DeletionVerificationService,
   ) {}
 
   @Post()
@@ -129,6 +134,60 @@ export class OffboardingController {
       body.runId,
       user.id,
     );
+  }
+
+  /**
+   * Resumes a purge that failed or is waiting on retention expiry. Completed
+   * stores are not repeated; only incomplete work runs again.
+   */
+  @Post('resume-deletion')
+  @RequirePermissions(PERMISSION_CODES.DELETION_APPROVE)
+  @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
+  async resumeDeletion(
+    @Param('tenantId') tenantId: string,
+    @Body() body: OffboardingRunDto,
+  ) {
+    return this.offboardingService.resumeDeletion(tenantId, body.runId);
+  }
+
+  @Get('deletion-verification')
+  async getVerification(@Param('tenantId') tenantId: string) {
+    const run = await this.prisma.tenantOffboardingRun.findFirst({
+      where: { tenant_id: tenantId },
+      orderBy: { initiated_at: 'desc' },
+    });
+    if (!run?.deletion_request_id) return null;
+    return this.verificationService.latest(run.deletion_request_id);
+  }
+
+  /**
+   * The authoritative retention schedule that decides when this tenant's data
+   * may actually be destroyed. Approval alone never makes data destroyable.
+   */
+  @Post('retention-policy')
+  @RequirePermissions(PERMISSION_CODES.DELETION_APPROVE)
+  @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
+  async recordRetentionPolicy(
+    @Param('tenantId') tenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() body: RecordRetentionPolicyDto,
+  ) {
+    return this.retentionPolicyService.record({
+      tenantId,
+      basis: body.basis,
+      authority: body.authority,
+      periodDays: body.periodDays,
+      createdBy: user.id,
+      effectiveFrom: body.effectiveFrom
+        ? new Date(body.effectiveFrom)
+        : undefined,
+      effectiveTo: body.effectiveTo ? new Date(body.effectiveTo) : undefined,
+    });
+  }
+
+  @Get('retention-policy')
+  async listRetentionPolicies(@Param('tenantId') tenantId: string) {
+    return this.retentionPolicyService.listForTenant(tenantId);
   }
 
   @Get('deletion-attestation')

@@ -23,6 +23,21 @@ describe('DeletionAttestationService (spec §71 — honest deletion disclosure)'
       deletionTask: { findMany: jest.fn() },
       backupExpiryRecord: { findMany: jest.fn() },
       legalHold: { findMany: jest.fn() },
+      // An attestation may only be issued after an independent verification
+      // has passed; a PASS is the default so the existing disclosure
+      // assertions still describe a clean run.
+      deletionVerification: {
+        findFirst: jest
+          .fn()
+          .mockResolvedValue({
+            id: 'verification-1',
+            result: 'PASS',
+            residual_count: 0,
+            retained_count: 0,
+            verified_at: new Date('2026-09-18T00:00:00.000Z'),
+            surfaces: '[]',
+          }),
+      },
       deletionAttestation: {
         create: jest.fn().mockImplementation(({ data }: any) => ({
           ...data,

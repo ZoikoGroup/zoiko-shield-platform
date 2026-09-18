@@ -3,11 +3,13 @@ import { DeletionRequestService } from './deletion-request.service';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { AuthorizationDecisionService } from '../../authorization-decision/authorization-decision.service';
 import { LegalHoldService } from '../legal-hold/legal-hold.service';
+import { RetentionPolicyService } from '../retention/retention-policy.service';
 
 describe('DeletionRequestService', () => {
   let prisma: any;
   let authorization: any;
   let legalHolds: any;
+  let retention: any;
   let service: DeletionRequestService;
 
   beforeEach(() => {
@@ -45,10 +47,25 @@ describe('DeletionRequestService', () => {
             hold.all === true || deletion.all === true,
         ),
     };
+    retention = {
+      resolve: jest.fn().mockResolvedValue({
+        policyId: 'policy-1',
+        basis: 'CONTRACTUAL',
+        authority: 'Master services agreement',
+        periodDays: 0,
+      }),
+      expiryFrom: jest
+        .fn()
+        .mockImplementation(
+          (from: Date, days: number) =>
+            new Date(from.getTime() + days * 86_400_000),
+        ),
+    };
     service = new DeletionRequestService(
       prisma as PrismaService,
       authorization as AuthorizationDecisionService,
       legalHolds as LegalHoldService,
+      retention as unknown as RetentionPolicyService,
     );
   });
 
@@ -195,6 +212,9 @@ describe('DeletionRequestService', () => {
       requested_by: 'requester-1',
       status: 'APPROVED',
       scope: '{"all":true}',
+      retention_basis: 'CONTRACTUAL',
+      retention_period_days: 30,
+      retention_expires_at: new Date(Date.now() - 60_000),
     });
     legalHolds.getActiveForTenant.mockResolvedValue([
       { id: 'hold-late', scope: '{"caseIds":["case-9"]}' },
@@ -207,6 +227,68 @@ describe('DeletionRequestService', () => {
     expect(prisma.deletionRequest.update).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ status: 'BLOCKED_BY_HOLD' }),
+      }),
+    );
+  });
+
+  it('refuses to execute an approved request whose retention period has not expired', async () => {
+    const expiresAt = new Date(Date.now() + 7 * 86_400_000);
+    prisma.deletionRequest.findFirst.mockResolvedValue({
+      id: 'request-1',
+      tenant_id: 'tenant-1',
+      requested_by: 'requester-1',
+      status: 'APPROVED',
+      scope: '{"all":true}',
+      retention_basis: 'CONTRACTUAL',
+      retention_period_days: 30,
+      retention_expires_at: expiresAt,
+    });
+
+    await expect(
+      service.assertExecutable('tenant-1', 'request-1'),
+    ).rejects.toThrow(/not yet retention-eligible/);
+    expect(prisma.deletionRequest.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ status: 'AWAITING_RETENTION_EXPIRY' }),
+      }),
+    );
+    // Approval alone must never be mistaken for eligibility.
+    expect(legalHolds.getActiveForTenant).not.toHaveBeenCalled();
+  });
+
+  it('refuses to execute a request that carries no retention determination', async () => {
+    prisma.deletionRequest.findFirst.mockResolvedValue({
+      id: 'request-1',
+      tenant_id: 'tenant-1',
+      requested_by: 'requester-1',
+      status: 'APPROVED',
+      scope: '{"all":true}',
+      retention_expires_at: null,
+    });
+
+    await expect(
+      service.assertExecutable('tenant-1', 'request-1'),
+    ).rejects.toThrow(/no retention determination/);
+  });
+
+  it('stamps the authoritative retention determination onto a new request', async () => {
+    await service.request({
+      tenantId: 'tenant-1',
+      requestedBy: 'requester-1',
+      requestAuthority: 'TENANT_OFFBOARDING',
+      reason: 'Tenant offboarding',
+      scope: { all: true },
+      identityVerificationStatus: 'NOT_APPLICABLE',
+    });
+
+    expect(retention.resolve).toHaveBeenCalledWith('tenant-1');
+    expect(prisma.deletionRequest.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          retention_policy_id: 'policy-1',
+          retention_basis: 'CONTRACTUAL',
+          retention_period_days: 0,
+        }),
       }),
     );
   });

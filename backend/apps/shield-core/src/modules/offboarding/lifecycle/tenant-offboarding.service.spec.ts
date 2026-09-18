@@ -12,6 +12,7 @@ import { DeletionRequestService } from '../deletion/deletion-request.service';
 import { DeletionTaskService } from '../deletion/deletion-task.service';
 import { BackupExpiryService } from '../backup-expiry/backup-expiry.service';
 import { DeletionAttestationService } from '../attestation/deletion-attestation.service';
+import { DeletionVerificationService } from '../verification/deletion-verification.service';
 
 /**
  * ZS-COM-BILL-001 SEC-02: commercial suspension/offboarding cannot destroy
@@ -34,6 +35,7 @@ describe('TenantOffboardingService (SEC-02)', () => {
   let deletionTaskMock: any;
   let backupExpiryMock: any;
   let attestationMock: any;
+  let verificationMock: any;
 
   beforeEach(async () => {
     prismaMock = {
@@ -47,7 +49,10 @@ describe('TenantOffboardingService (SEC-02)', () => {
       apiClient: { findMany: jest.fn().mockResolvedValue([]) },
       connectorInstance: { updateMany: jest.fn() },
       exportJob: { findUniqueOrThrow: jest.fn() },
-      deletionTask: { findMany: jest.fn().mockResolvedValue([]) },
+      deletionTask: {
+        findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+      },
       $transaction: jest.fn().mockImplementation((ops) => Promise.all(ops)),
     };
     outboxMock = { build: jest.fn().mockReturnValue({}) };
@@ -66,6 +71,16 @@ describe('TenantOffboardingService (SEC-02)', () => {
     deletionTaskMock = { executeTask: jest.fn() };
     backupExpiryMock = { recordPending: jest.fn() };
     attestationMock = { issue: jest.fn() };
+    // Verification is the barrier before attestation; PASS is the default so
+    // existing sequencing assertions still describe a clean run.
+    verificationMock = {
+      verify: jest
+        .fn()
+        .mockResolvedValue({ result: 'PASS', residualCount: 0, surfaces: [] }),
+      latest: jest
+        .fn()
+        .mockResolvedValue({ result: 'PASS', residual_count: 0 }),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -81,6 +96,7 @@ describe('TenantOffboardingService (SEC-02)', () => {
         { provide: DeletionTaskService, useValue: deletionTaskMock },
         { provide: BackupExpiryService, useValue: backupExpiryMock },
         { provide: DeletionAttestationService, useValue: attestationMock },
+        { provide: DeletionVerificationService, useValue: verificationMock },
       ],
     }).compile();
 
@@ -336,6 +352,111 @@ describe('TenantOffboardingService (SEC-02)', () => {
       service.issueAttestationAndClose('tenant-1', 'run-1', 'admin'),
     ).rejects.toThrow(ConflictException);
     expect(attestationMock.issue).not.toHaveBeenCalled();
+  });
+
+  // ── ZS-ENG-OFF-DEL-001 decisions 2 and 4 ────────────────────────────────
+
+  it('refuses to attest a run that was never independently verified', async () => {
+    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({
+      id: 'run-1',
+      tenant_id: 'tenant-1',
+      status: 'BACKUP_EXPIRY_PENDING',
+      deletion_request_id: 'del-1',
+    });
+    verificationMock.latest.mockResolvedValue(null);
+
+    await expect(
+      service.issueAttestationAndClose('tenant-1', 'run-1', 'admin'),
+    ).rejects.toThrow(ConflictException);
+    expect(attestationMock.issue).not.toHaveBeenCalled();
+  });
+
+  it('refuses to attest when verification found unauthorized residuals', async () => {
+    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({
+      id: 'run-1',
+      tenant_id: 'tenant-1',
+      status: 'BACKUP_EXPIRY_PENDING',
+      deletion_request_id: 'del-1',
+    });
+    verificationMock.latest.mockResolvedValue({
+      result: 'FAIL',
+      residual_count: 4,
+    });
+
+    await expect(
+      service.issueAttestationAndClose('tenant-1', 'run-1', 'admin'),
+    ).rejects.toThrow(/verification/i);
+    expect(attestationMock.issue).not.toHaveBeenCalled();
+  });
+
+  it('stops the run at verification rather than closing a partial purge', async () => {
+    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({
+      id: 'run-1',
+      tenant_id: 'tenant-1',
+      status: 'DELETION_PENDING',
+      deletion_request_id: 'del-1',
+    });
+    deletionRequestMock.approve.mockResolvedValue({
+      id: 'del-1',
+      status: 'APPROVED',
+    });
+    deletionRequestMock.assertTenantOwnership.mockResolvedValue({
+      id: 'del-1',
+      status: 'RUNNING',
+    });
+    prismaMock.deletionTask.findMany.mockResolvedValue([
+      { id: 'task-1', store_type: 'POSTGRES_AUTHORITY' },
+    ]);
+    verificationMock.verify.mockResolvedValue({
+      result: 'FAIL',
+      residualCount: 2,
+      surfaces: [],
+    });
+
+    await expect(
+      service.approveAndExecuteDeletion('tenant-1', 'run-1', 'approver', 'ok'),
+    ).rejects.toThrow(/verification failed/i);
+
+    const statuses = prismaMock.tenantOffboardingRun.update.mock.calls.map(
+      (call: any) => call[0].data.status,
+    );
+    expect(statuses).toContain('VERIFYING');
+    expect(statuses).not.toContain('BACKUP_EXPIRY_PENDING');
+    expect(statuses).not.toContain('COMPLETED');
+  });
+
+  it('cannot resume a run that never reached the destructive phase', async () => {
+    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({
+      id: 'run-1',
+      tenant_id: 'tenant-1',
+      status: 'EXPORT_READY',
+      deletion_request_id: null,
+    });
+
+    await expect(
+      service.resumeDeletion('tenant-1', 'run-1'),
+    ).rejects.toThrow(ConflictException);
+    expect(deletionTaskMock.executeTask).not.toHaveBeenCalled();
+  });
+
+  it('resumes a failed run without re-approving the deletion', async () => {
+    prismaMock.tenantOffboardingRun.findFirst.mockResolvedValue({
+      id: 'run-1',
+      tenant_id: 'tenant-1',
+      status: 'FAILED',
+      deletion_request_id: 'del-1',
+    });
+    prismaMock.deletionTask.findMany.mockResolvedValue([
+      { id: 'task-1', store_type: 'POSTGRES_AUTHORITY' },
+    ]);
+
+    await service.resumeDeletion('tenant-1', 'run-1');
+
+    // Re-approving would break maker-checker; resume reuses the existing
+    // authorization and only re-runs incomplete stores.
+    expect(deletionRequestMock.approve).not.toHaveBeenCalled();
+    expect(deletionTaskMock.executeTask).toHaveBeenCalledWith('task-1');
+    expect(verificationMock.verify).toHaveBeenCalled();
   });
 
   it('issues a deletion attestation and closes the run, disclosing any still-pending backup expiry rather than waiting on it', async () => {
