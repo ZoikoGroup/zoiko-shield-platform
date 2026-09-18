@@ -162,26 +162,26 @@ export class DeletionTaskService {
 
       // TypeORM owns these non-public schemas. Cross-tenant principals and
       // global permissions remain; only membership and tenant-owned rows go.
-      counts['authorization.user_roles'] = await tx.$executeRawUnsafe(
-        'DELETE FROM authorization.user_roles WHERE membership_id IN (SELECT id FROM authorization.tenant_memberships WHERE "tenantId" = $1::uuid AND "principalId" <> $2::uuid)',
+      counts['"authorization".user_roles'] = await tx.$executeRawUnsafe(
+        'DELETE FROM "authorization".user_roles WHERE membership_id IN (SELECT id FROM "authorization".tenant_memberships WHERE "tenantId" = $1::uuid AND "principalId" <> $2::uuid)',
         tenantId,
         closingOperatorId,
       );
-      counts['authorization.tenant_memberships'] = await tx.$executeRawUnsafe(
-        'DELETE FROM authorization.tenant_memberships WHERE "tenantId" = $1::uuid AND "principalId" <> $2::uuid',
+      counts['"authorization".tenant_memberships'] = await tx.$executeRawUnsafe(
+        'DELETE FROM "authorization".tenant_memberships WHERE "tenantId" = $1::uuid AND "principalId" <> $2::uuid',
         tenantId,
         closingOperatorId,
       );
-      counts['authorization.invitations'] = await tx.$executeRawUnsafe(
-        'DELETE FROM authorization.invitations WHERE "tenantId" = $1',
+      counts['"authorization".invitations'] = await tx.$executeRawUnsafe(
+        'DELETE FROM "authorization".invitations WHERE "tenantId" = $1',
         tenantId,
       );
-      counts['authorization.role_permissions'] = await tx.$executeRawUnsafe(
-        'DELETE FROM authorization.role_permissions WHERE role_id IN (SELECT role.id FROM authorization.roles role WHERE role."tenantId" = $1::uuid AND NOT EXISTS (SELECT 1 FROM authorization.user_roles user_role WHERE user_role.role_id = role.id))',
+      counts['"authorization".role_permissions'] = await tx.$executeRawUnsafe(
+        'DELETE FROM "authorization".role_permissions WHERE role_id IN (SELECT role.id FROM "authorization".roles role WHERE role."tenantId" = $1::uuid AND NOT EXISTS (SELECT 1 FROM "authorization".user_roles user_role WHERE user_role.role_id = role.id))',
         tenantId,
       );
-      counts['authorization.roles'] = await tx.$executeRawUnsafe(
-        'DELETE FROM authorization.roles role WHERE role."tenantId" = $1::uuid AND NOT EXISTS (SELECT 1 FROM authorization.user_roles user_role WHERE user_role.role_id = role.id)',
+      counts['"authorization".roles'] = await tx.$executeRawUnsafe(
+        'DELETE FROM "authorization".roles role WHERE role."tenantId" = $1::uuid AND NOT EXISTS (SELECT 1 FROM "authorization".user_roles user_role WHERE user_role.role_id = role.id)',
         tenantId,
       );
       counts['identity.identity_events'] = await tx.$executeRawUnsafe(
@@ -218,8 +218,8 @@ export class DeletionTaskService {
     >(
       `
       SELECT (
-        (SELECT COUNT(*) FROM authorization.tenant_memberships WHERE "tenantId" = $1::uuid AND "principalId" <> $2::uuid) +
-        (SELECT COUNT(*) FROM authorization.invitations WHERE "tenantId" = $1::uuid) +
+        (SELECT COUNT(*) FROM "authorization".tenant_memberships WHERE "tenantId" = $1::uuid AND "principalId" <> $2::uuid) +
+        (SELECT COUNT(*) FROM "authorization".invitations WHERE "tenantId" = $1::uuid) +
         (SELECT COUNT(*) FROM identity.identity_events WHERE "tenantId" = $1::uuid) +
         (SELECT COUNT(*) FROM tenant.customers WHERE "tenantId" = $1::uuid) +
         (SELECT COUNT(*) FROM tenant.organizations WHERE "tenantId" = $1::uuid) +

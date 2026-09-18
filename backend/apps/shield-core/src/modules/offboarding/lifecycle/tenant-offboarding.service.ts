@@ -356,19 +356,19 @@ export class TenantOffboardingService {
 
     await this.prisma.$transaction(async (tx) => {
       await tx.$executeRawUnsafe(
-        'DELETE FROM authorization.user_roles WHERE membership_id IN (SELECT id FROM authorization.tenant_memberships WHERE "tenantId" = $1::uuid)',
+        'DELETE FROM "authorization".user_roles WHERE membership_id IN (SELECT id FROM "authorization".tenant_memberships WHERE "tenantId" = $1::uuid)',
         tenantId,
       );
       await tx.$executeRawUnsafe(
-        'DELETE FROM authorization.tenant_memberships WHERE "tenantId" = $1::uuid',
+        'DELETE FROM "authorization".tenant_memberships WHERE "tenantId" = $1::uuid',
         tenantId,
       );
       await tx.$executeRawUnsafe(
-        'DELETE FROM authorization.role_permissions WHERE role_id IN (SELECT id FROM authorization.roles WHERE "tenantId" = $1::uuid)',
+        'DELETE FROM "authorization".role_permissions WHERE role_id IN (SELECT id FROM "authorization".roles WHERE "tenantId" = $1::uuid)',
         tenantId,
       );
       await tx.$executeRawUnsafe(
-        'DELETE FROM authorization.roles WHERE "tenantId" = $1::uuid',
+        'DELETE FROM "authorization".roles WHERE "tenantId" = $1::uuid',
         tenantId,
       );
     });
