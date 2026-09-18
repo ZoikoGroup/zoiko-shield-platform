@@ -58,6 +58,7 @@ describe('CaseService', () => {
         create: jest.fn().mockResolvedValue({ id: 'transition-1' }),
       },
       outboxEvent: { create: jest.fn().mockResolvedValue({}) },
+      $queryRawUnsafe: jest.fn().mockResolvedValue([{ count: BigInt(1) }]),
     };
     caseRepoMock = {
       findAlertByTenantAndId: jest.fn().mockResolvedValue(alert),
@@ -252,23 +253,26 @@ describe('CaseService', () => {
     });
   });
 
+  const OWNER_ID = '9e0f71cb-a7be-42ec-85f4-215e0784bc8d';
+
   it('assigns an owner and appends an ASSIGNMENT_CHANGED timeline entry', async () => {
     caseRepoMock.findByTenantAndId.mockResolvedValue({
       id: 'case-1',
       tenant_id: 'tenant-a',
       status: 'NEW',
     });
+    prismaMock.$queryRawUnsafe.mockResolvedValue([{ count: BigInt(1) }]);
 
     await service.assign({
       tenantId: 'tenant-a',
       caseId: 'case-1',
-      ownerId: 'analyst-2',
+      ownerId: OWNER_ID,
       actorId: 'soc-lead',
     });
 
     expect(prismaMock.case.update).toHaveBeenCalledWith({
       where: { id: 'case-1' },
-      data: { owner_id: 'analyst-2' },
+      data: { owner_id: OWNER_ID },
     });
     expect(timelineMock.append).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -276,6 +280,46 @@ describe('CaseService', () => {
         actorId: 'soc-lead',
       }),
     );
+  });
+
+  it('refuses to assign a case to someone who is not an active member of the tenant', async () => {
+    caseRepoMock.findByTenantAndId.mockResolvedValue({
+      id: 'case-1',
+      tenant_id: 'tenant-a',
+      status: 'NEW',
+    });
+    prismaMock.$queryRawUnsafe.mockResolvedValue([{ count: BigInt(0) }]);
+
+    await expect(
+      service.assign({
+        tenantId: 'tenant-a',
+        caseId: 'case-1',
+        ownerId: OWNER_ID,
+        actorId: 'soc-lead',
+      }),
+    ).rejects.toThrow(BadRequestException);
+    // Ownership is an accountability record — a bad owner must not be written.
+    expect(prismaMock.case.update).not.toHaveBeenCalled();
+  });
+
+  it('rejects an owner id that is not a user identifier at all (e.g. a pasted tenant id or typo)', async () => {
+    caseRepoMock.findByTenantAndId.mockResolvedValue({
+      id: 'case-1',
+      tenant_id: 'tenant-a',
+      status: 'NEW',
+    });
+
+    await expect(
+      service.assign({
+        tenantId: 'tenant-a',
+        caseId: 'case-1',
+        ownerId: 'bob',
+        actorId: 'soc-lead',
+      }),
+    ).rejects.toThrow(BadRequestException);
+    // Rejected before it reaches the database.
+    expect(prismaMock.$queryRawUnsafe).not.toHaveBeenCalled();
+    expect(prismaMock.case.update).not.toHaveBeenCalled();
   });
 
   it('linking evidence creates the real CaseEvidence relation, not just a timeline entry', async () => {

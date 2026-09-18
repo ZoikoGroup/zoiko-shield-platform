@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   Logger,
@@ -238,6 +239,43 @@ export class CaseService {
     });
   }
 
+  /**
+   * Case ownership is an accountability record, so the owner has to be a real
+   * active member of the tenant. Without this any string lands in owner_id and
+   * the case reads as assigned to someone who cannot act on it — including a
+   * typo, or a principal from another tenant.
+   *
+   * Memberships are TypeORM-managed in the authorization schema rather than
+   * Prisma models, so this reads them the same way the offboarding services do.
+   */
+  private async assertActiveTenantMember(tenantId: string, principalId: string) {
+    const uuidPattern =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidPattern.test(principalId)) {
+      throw new BadRequestException(
+        `Owner '${principalId}' is not a valid user identifier`,
+      );
+    }
+
+    // "authorization" must stay quoted — it is a reserved SQL keyword, and
+    // unquoted it is a syntax error rather than a schema reference.
+    const [row] = await this.prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
+      `SELECT COUNT(*) AS count
+         FROM "authorization".tenant_memberships
+        WHERE "tenantId" = $1::uuid
+          AND "principalId" = $2::uuid
+          AND status = 'ACTIVE'`,
+      tenantId,
+      principalId,
+    );
+
+    if (!row || Number(row.count) === 0) {
+      throw new BadRequestException(
+        `User '${principalId}' is not an active member of this tenant and cannot own a case`,
+      );
+    }
+  }
+
   async assign(params: {
     tenantId: string;
     caseId: string;
@@ -245,6 +283,7 @@ export class CaseService {
     actorId: string;
   }) {
     const caseRow = await this.getById(params.tenantId, params.caseId);
+    await this.assertActiveTenantMember(params.tenantId, params.ownerId);
 
     const updated = await this.prisma.case.update({
       where: { id: params.caseId },
