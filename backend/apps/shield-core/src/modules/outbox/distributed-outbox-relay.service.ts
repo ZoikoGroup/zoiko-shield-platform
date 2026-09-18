@@ -157,4 +157,18 @@ export class DistributedOutboxRelayService {
       dlqCount: this.dlqRecords.length,
     };
   }
+
+  getPublishedRecords(): OutboxRecord[] {
+    return [...this.publishedRecords];
+  }
+
+  getDlqRecords(): OutboxRecord[] {
+    return [...this.dlqRecords];
+  }
+
+  getPendingRecords(): OutboxRecord[] {
+    return Array.from(this.outboxStore.values()).filter(
+      (r) => r.status === 'PENDING',
+    );
+  }
 }

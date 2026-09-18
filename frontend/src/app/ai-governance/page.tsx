@@ -17,6 +17,8 @@ import {
   AiLifecycleState,
   EuAiActRiskTier,
   NistAiRmfFunction,
+  AiReviewEnvelope,
+  DecisionTransition,
 } from "@/lib/types";
 import {
   ShieldAlert,
@@ -139,6 +141,146 @@ const DEFAULT_USE_CASES: AiUseCaseEntry[] = [
   },
 ];
 
+const INITIAL_REVIEW_ENVELOPES: AiReviewEnvelope[] = [
+  {
+    envelopeId: "env-soc2-cc6.1-eval-01",
+    tenantId: "00000000-0000-4000-8000-000000000001",
+    environmentId: "PRODUCTION-US-EAST",
+    createdAt: "2026-09-02T08:10:00.000Z",
+    aiLabelAndUseCaseName: {
+      aiLabel: "gemini-1.5-pro-002 [derived]",
+      useCaseName: "USE_CASE_EVIDENCE_SYNTHESIS",
+      modelRoute: "vertex-ai/claude-3-5-sonnet",
+      version: "2026-08-preview",
+    },
+    sourcesAndSpans: [
+      {
+        sourceId: "EV-001",
+        sourceType: "OCSF_AUTH_LOG",
+        version: 1,
+        exactSpan: "WebAuthn hardware FIDO2 step-up verified for usr-sarah-chen-01 at 08:00:12 UTC",
+        confidence: 0.99,
+      },
+      {
+        sourceId: "EV-002",
+        sourceType: "MERKLE_PROOF_LEAF",
+        version: 1,
+        exactSpan: "Dilithium3 post-quantum signature verified under Epoch #1043",
+        confidence: 0.995,
+      },
+    ],
+    knownMissingStaleOrConflictingEvidence: {
+      missingEvidence: [],
+      staleEvidence: [],
+      conflictingEvidence: [],
+    },
+    calibratedConfidenceAndUncertainty: {
+      score: 0.985,
+      qualitativeBand: "HIGH",
+      calibrationBasis: "Domain: COMPLIANCE. Zero hallucinated tokens, dual-witness signed.",
+      uncertaintyFactors: [],
+    },
+    alternativeHypothesesOrActions: [
+      {
+        title: "Manual Control Attestation",
+        rationale: "Operator manually signs control without automated Merkle proof.",
+        tradeOffs: "Requires auditor manual sampling; higher compliance overhead.",
+      },
+    ],
+    expectedImpactAndReversibility: {
+      blastRadius: "CONTROL_SCOPE_SOC2_CC6.1",
+      isReversible: true,
+      reversibilityTier: "R1",
+      compensationPlan: "Revoke control pass verdict and trigger reassessment.",
+    },
+    requiredAuthorityAndApprovals: {
+      requiredRole: "AUDITOR",
+      responseAuthorityTier: "R1",
+      dualApproverRequired: false,
+    },
+    controls: {
+      availableTransitions: ["ACCEPT", "MODIFY", "REJECT", "ESCALATE"],
+      state: "UNREVIEWED",
+    },
+    humanDecisionAndRationale: {},
+    appealOrFeedbackRoute: {
+      appealUrl: "https://shield.zoiko.internal/appeals/env-soc2-cc6.1-eval-01",
+      feedbackChannel: "secops-ai-governance",
+      customerAffecting: false,
+    },
+    payload: {
+      controlId: "SOC2-CC6.1",
+      verdict: "PASS",
+      evidenceCount: 2,
+    },
+  },
+  {
+    envelopeId: "env-incident-contain-9021",
+    tenantId: "00000000-0000-4000-8000-000000000001",
+    environmentId: "PRODUCTION-US-EAST",
+    createdAt: "2026-09-02T08:30:00.000Z",
+    aiLabelAndUseCaseName: {
+      aiLabel: "gemini-1.5-pro-002 [derived]",
+      useCaseName: "USE_CASE_AUTONOMOUS_CONTAINMENT",
+      modelRoute: "vertex-ai/gemini-1.5-pro",
+      version: "2026-08-preview",
+    },
+    sourcesAndSpans: [
+      {
+        sourceId: "EV-003",
+        sourceType: "EDR_TELEMETRY",
+        version: 1,
+        exactSpan: "Unsigned beaconing process svchost.exe PID 4128 connecting to 198.51.100.99:443",
+        confidence: 0.94,
+      },
+    ],
+    knownMissingStaleOrConflictingEvidence: {
+      missingEvidence: ["Memory dump analysis in progress"],
+      staleEvidence: [],
+      conflictingEvidence: [],
+    },
+    calibratedConfidenceAndUncertainty: {
+      score: 0.92,
+      qualitativeBand: "HIGH",
+      calibrationBasis: "Domain: DETECTION. Precision >= 0.90 target met.",
+      uncertaintyFactors: ["Host may run secondary redundant service on same subnet."],
+    },
+    alternativeHypothesesOrActions: [
+      {
+        title: "Network Egress Rate-Limit Only",
+        rationale: "Throttle host network bandwidth instead of full endpoint isolation.",
+        tradeOffs: "Allows potential lateral movement; prevents service outage.",
+      },
+    ],
+    expectedImpactAndReversibility: {
+      blastRadius: "HOST: ec2-prod-app-04 (1 active user session)",
+      isReversible: true,
+      reversibilityTier: "R2",
+      compensationPlan: "Re-enable NIC via CrowdStrike/SentinelOne API with token rollback-9021.",
+    },
+    requiredAuthorityAndApprovals: {
+      requiredRole: "SECURITY_ANALYST",
+      responseAuthorityTier: "R2",
+      dualApproverRequired: false,
+    },
+    controls: {
+      availableTransitions: ["ACCEPT", "MODIFY", "REJECT", "ESCALATE"],
+      state: "UNREVIEWED",
+    },
+    humanDecisionAndRationale: {},
+    appealOrFeedbackRoute: {
+      appealUrl: "https://shield.zoiko.internal/appeals/env-incident-contain-9021",
+      feedbackChannel: "incident-triage-leads",
+      customerAffecting: true,
+    },
+    payload: {
+      targetHost: "ec2-prod-app-04",
+      action: "ISOLATE_EDR_HOST",
+      proposedBy: "AI Investigation Agent",
+    },
+  },
+];
+
 export default function AiGovernancePage() {
   const [state, , isHydrated] = useDemoState();
   const [activeTab, setActiveTab] = useState<string>("incidents");
@@ -152,6 +294,14 @@ export default function AiGovernancePage() {
     recommendedFixes: string[];
   } | null>(null);
 
+  // Domain Mode (§17 Domain-Differentiated AI Governance)
+  const [domainMode, setDomainMode] = useState<"COMPLIANCE" | "DETECTION" | "GENERAL">("COMPLIANCE");
+
+  // Envelopes State (§16.1 10-Field Mandatory Review Envelope)
+  const [envelopes, setEnvelopes] = useState<AiReviewEnvelope[]>(INITIAL_REVIEW_ENVELOPES);
+  const [selectedEnvelope, setSelectedEnvelope] = useState<AiReviewEnvelope | null>(INITIAL_REVIEW_ENVELOPES[0]);
+  const [envelopeActionMsg, setEnvelopeActionMsg] = useState<string | null>(null);
+
   // Grounding Gate Studio State (§18)
   const [gateHypothesis, setGateHypothesis] = useState(
     "Adversary compromised analyst credentials (usr-analyst-lead-01) from unauthorized IP 198.51.100.99 and executed lateral SMB movement to srv-db-prod-01."
@@ -159,7 +309,7 @@ export default function AiGovernancePage() {
   const [gateEvidenceSpans, setGateEvidenceSpans] = useState(
     "EV-001: Authentication event for usr-analyst-lead-01 observed from non-corporate IP 198.51.100.99 at 10:42:15 UTC.\nEV-002: Lateral SMB connection established from jump-host ec2-jump-01 to srv-db-prod-01 over port 445.\nEV-003: Merkle inclusion proof verified in Epoch #1043 with Dual PQC signature."
   );
-  const [gateThreshold, setGateThreshold] = useState<number>(0.80);
+  const [gateThreshold, setGateThreshold] = useState<number>(0.95);
   const [isEvaluatingGate, setIsEvaluatingGate] = useState<boolean>(false);
   const [gateResult, setGateResult] = useState<{
     groundingScore: number;
@@ -170,6 +320,13 @@ export default function AiGovernancePage() {
     hallucinatedSpans: string[];
     verifiedCitations: string[];
   } | null>(null);
+
+  const handleDomainChange = (mode: "COMPLIANCE" | "DETECTION" | "GENERAL") => {
+    setDomainMode(mode);
+    if (mode === "COMPLIANCE") setGateThreshold(0.95);
+    else if (mode === "DETECTION") setGateThreshold(0.85);
+    else setGateThreshold(0.75);
+  };
 
   const handleEvaluateGrounding = () => {
     setIsEvaluatingGate(true);
@@ -205,6 +362,49 @@ export default function AiGovernancePage() {
       });
       setIsEvaluatingGate(false);
     }, 400);
+  };
+
+  const handleEnvelopeTransition = (envId: string, transition: DecisionTransition, notes: string = "Verified by operator") => {
+    setEnvelopes((prev) =>
+      prev.map((e) =>
+        e.envelopeId === envId
+          ? {
+              ...e,
+              controls: {
+                ...e.controls,
+                state: transition === "ACCEPT" ? "ACCEPTED" : transition === "MODIFY" ? "MODIFIED" : transition === "REJECT" ? "REJECTED" : "ESCALATED",
+              },
+              humanDecisionAndRationale: {
+                decidedBy: state.session.fullName,
+                decision: transition,
+                rationale: notes,
+                decidedAt: new Date().toISOString(),
+              },
+            }
+          : e
+      )
+    );
+    if (selectedEnvelope && selectedEnvelope.envelopeId === envId) {
+      setSelectedEnvelope((prev) =>
+        prev
+          ? {
+              ...prev,
+              controls: {
+                ...prev.controls,
+                state: transition === "ACCEPT" ? "ACCEPTED" : transition === "MODIFY" ? "MODIFIED" : transition === "REJECT" ? "REJECTED" : "ESCALATED",
+              },
+              humanDecisionAndRationale: {
+                decidedBy: state.session.fullName,
+                decision: transition,
+                rationale: notes,
+                decidedAt: new Date().toISOString(),
+              },
+            }
+          : null
+      );
+    }
+    setEnvelopeActionMsg(`✅ Envelope ${envId} transitioned to ${transition}`);
+    setTimeout(() => setEnvelopeActionMsg(null), 3500);
   };
 
   // Declare Incident Form State
@@ -584,6 +784,12 @@ export default function AiGovernancePage() {
             badge: incidents.filter((i) => i.state !== "CLOSED").length,
           },
           {
+            id: "envelopes",
+            label: "§16.1 AI Review Envelopes",
+            icon: <FileCheck2 className="w-4 h-4" />,
+            badge: envelopes.filter((e) => e.controls.state === "UNREVIEWED").length || undefined,
+          },
+          {
             id: "inventory",
             label: "§05 AI Model Inventory (NIST/EU)",
             icon: <Boxes className="w-4 h-4" />,
@@ -737,6 +943,254 @@ export default function AiGovernancePage() {
                 </div>
               </Card>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tab: §16.1 10-Field Mandatory AI Review Envelopes */}
+      {activeTab === "envelopes" && (
+        <div className="space-y-6">
+          {envelopeActionMsg && (
+            <div className="p-3 rounded-xl bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 text-xs font-mono flex items-center justify-between">
+              <span>{envelopeActionMsg}</span>
+              <button onClick={() => setEnvelopeActionMsg(null)} className="text-slate-400 hover:text-slate-200">✕</button>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Envelope List (4 cols) */}
+            <div className="lg:col-span-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-200 flex items-center gap-2 font-mono">
+                  <FileCheck2 className="w-4 h-4 text-cyan-400" />
+                  Review Envelopes ({envelopes.length})
+                </h3>
+                <span className="text-[11px] font-mono text-slate-400">Spec §16.1</span>
+              </div>
+
+              <div className="space-y-2.5">
+                {envelopes.map((env) => {
+                  const isSelected = selectedEnvelope?.envelopeId === env.envelopeId;
+                  return (
+                    <div
+                      key={env.envelopeId}
+                      onClick={() => setSelectedEnvelope(env)}
+                      className={`p-3.5 rounded-xl border transition-all cursor-pointer font-mono text-xs space-y-2 ${
+                        isSelected
+                          ? "bg-slate-800/90 border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.15)]"
+                          : "bg-slate-900/50 border-slate-800 hover:border-slate-700"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-cyan-300 font-bold text-xs truncate max-w-[170px]">
+                          {env.envelopeId}
+                        </span>
+                        <Badge
+                          variant={
+                            env.controls.state === "ACCEPTED"
+                              ? "pass"
+                              : env.controls.state === "REJECTED"
+                              ? "critical"
+                              : env.controls.state === "ESCALATED"
+                              ? "high"
+                              : "ai"
+                          }
+                        >
+                          {env.controls.state}
+                        </Badge>
+                      </div>
+
+                      <div className="text-slate-300 text-[11px] font-sans truncate">
+                        {env.aiLabelAndUseCaseName.useCaseName}
+                      </div>
+
+                      <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-800">
+                        <span>Model: {env.aiLabelAndUseCaseName.aiLabel}</span>
+                        <span className="text-emerald-400 font-bold">
+                          {(env.calibratedConfidenceAndUncertainty.score * 100).toFixed(0)}% Conf
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 10-Field Mandatory Envelope Inspector (8 cols) */}
+            <div className="lg:col-span-8 space-y-4">
+              {selectedEnvelope ? (
+                <Card className="p-6 space-y-6 bg-slate-900/80 border-slate-800 backdrop-blur-md">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge variant="ai">10-FIELD SPEC §16.1</Badge>
+                        <span className="text-xs font-mono font-bold text-cyan-400">
+                          {selectedEnvelope.envelopeId}
+                        </span>
+                      </div>
+                      <h3 className="text-base font-bold text-white">
+                        AI Review Envelope &amp; Human Oversight Authority
+                      </h3>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Badge
+                        variant={
+                          selectedEnvelope.controls.state === "ACCEPTED"
+                            ? "pass"
+                            : selectedEnvelope.controls.state === "REJECTED"
+                            ? "critical"
+                            : selectedEnvelope.controls.state === "ESCALATED"
+                            ? "high"
+                            : "ai"
+                        }
+                      >
+                        {selectedEnvelope.controls.state}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  {/* 10 Mandatory Spec Fields Display */}
+                  <div className="space-y-4 text-xs font-mono">
+                    {/* Field 1: AI Label & Use Case */}
+                    <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/90 space-y-1.5">
+                      <div className="flex items-center justify-between text-slate-400 text-[11px]">
+                        <span className="font-bold text-cyan-400">1. AI LABEL &amp; USE CASE</span>
+                        <span>Route: {selectedEnvelope.aiLabelAndUseCaseName.modelRoute}</span>
+                      </div>
+                      <div className="flex items-center gap-2 font-sans font-semibold text-slate-200">
+                        <span>{selectedEnvelope.aiLabelAndUseCaseName.useCaseName}</span>
+                        <span className="px-1.5 py-0.5 rounded bg-slate-800 text-[10px] font-mono text-slate-400">
+                          {selectedEnvelope.aiLabelAndUseCaseName.aiLabel} ({selectedEnvelope.aiLabelAndUseCaseName.version})
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Field 2: Sources & Spans */}
+                    <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/90 space-y-2">
+                      <div className="text-[11px] font-bold text-cyan-400">
+                        2. DECISION SOURCES &amp; GROUND TRUTH SPANS ({selectedEnvelope.sourcesAndSpans.length})
+                      </div>
+                      <div className="space-y-1.5">
+                        {selectedEnvelope.sourcesAndSpans.map((src, sIdx) => (
+                          <div key={sIdx} className="p-2.5 rounded-lg bg-slate-900 border border-slate-800/80 space-y-1">
+                            <div className="flex items-center justify-between text-[10px]">
+                              <span className="text-emerald-400 font-bold">{src.sourceId} ({src.sourceType})</span>
+                              <span className="text-cyan-300">{(src.confidence * 100).toFixed(1)}% Confidence</span>
+                            </div>
+                            <p className="text-slate-300 font-sans text-xs">&quot;{src.exactSpan}&quot;</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Fields 3 & 4: Evidence Completeness & Calibrated Confidence */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/90 space-y-1.5">
+                        <span className="font-bold text-cyan-400 text-[11px]">3. EVIDENCE COMPLETENESS</span>
+                        <div className="text-[11px] text-slate-300 space-y-1">
+                          <div>Missing: <strong className="text-slate-400">{selectedEnvelope.knownMissingStaleOrConflictingEvidence.missingEvidence.join(", ") || "None (Complete)"}</strong></div>
+                          <div>Stale: <strong className="text-slate-400">{selectedEnvelope.knownMissingStaleOrConflictingEvidence.staleEvidence.join(", ") || "None"}</strong></div>
+                          <div>Conflicting: <strong className="text-slate-400">{selectedEnvelope.knownMissingStaleOrConflictingEvidence.conflictingEvidence.join(", ") || "None"}</strong></div>
+                        </div>
+                      </div>
+
+                      <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/90 space-y-1.5">
+                        <span className="font-bold text-cyan-400 text-[11px]">4. CALIBRATED CONFIDENCE</span>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xl font-bold text-emerald-400">
+                            {(selectedEnvelope.calibratedConfidenceAndUncertainty.score * 100).toFixed(1)}%
+                          </span>
+                          <Badge variant="healthy">{selectedEnvelope.calibratedConfidenceAndUncertainty.qualitativeBand}</Badge>
+                        </div>
+                        <p className="text-[10px] text-slate-400 leading-tight">
+                          {selectedEnvelope.calibratedConfidenceAndUncertainty.calibrationBasis}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Field 5 & 6: Alternatives & Impact/Reversibility */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/90 space-y-1.5">
+                        <span className="font-bold text-cyan-400 text-[11px]">5. ALTERNATIVE HYPOTHESES / ACTIONS</span>
+                        {selectedEnvelope.alternativeHypothesesOrActions.map((alt, aIdx) => (
+                          <div key={aIdx} className="text-[11px] text-slate-300">
+                            <div className="font-bold text-white">{alt.title}</div>
+                            <div className="text-slate-400">{alt.tradeOffs}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/90 space-y-1.5">
+                        <span className="font-bold text-cyan-400 text-[11px]">6. IMPACT &amp; REVERSIBILITY</span>
+                        <div className="text-[11px] text-slate-300 space-y-0.5">
+                          <div>Blast Radius: <strong className="text-slate-200">{selectedEnvelope.expectedImpactAndReversibility.blastRadius}</strong></div>
+                          <div>Reversible: <strong className="text-emerald-400">{selectedEnvelope.expectedImpactAndReversibility.isReversible ? "YES" : "NO"}</strong> ({selectedEnvelope.expectedImpactAndReversibility.reversibilityTier})</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Fields 7, 8, 9, 10: Authority, Controls & Recorded Human Decision */}
+                    <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/90 space-y-2">
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-bold text-cyan-400">7-10. HUMAN DECISION CONTROLS &amp; APPEAL ROUTE</span>
+                        <span className="text-slate-400">Required Role: {selectedEnvelope.requiredAuthorityAndApprovals.requiredRole} ({selectedEnvelope.requiredAuthorityAndApprovals.responseAuthorityTier})</span>
+                      </div>
+
+                      {selectedEnvelope.humanDecisionAndRationale.decision ? (
+                        <div className="p-3 rounded-lg bg-emerald-950/30 border border-emerald-500/40 space-y-1 text-xs">
+                          <div className="flex items-center justify-between text-emerald-300 font-bold">
+                            <span>RECORDED DECISION: {selectedEnvelope.humanDecisionAndRationale.decision}</span>
+                            <span className="text-slate-400 text-[10px]">{selectedEnvelope.humanDecisionAndRationale.decidedAt}</span>
+                          </div>
+                          <p className="text-slate-300">By: {selectedEnvelope.humanDecisionAndRationale.decidedBy} — &quot;{selectedEnvelope.humanDecisionAndRationale.rationale}&quot;</p>
+                        </div>
+                      ) : (
+                        <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 space-y-2 text-xs">
+                          <span className="text-slate-400 block font-sans">Pending operator authority signoff:</span>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => handleEnvelopeTransition(selectedEnvelope.envelopeId, "ACCEPT", "Signed off under §16.1 authority")}
+                              className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>ACCEPT PROPOSAL</span>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEnvelopeTransition(selectedEnvelope.envelopeId, "MODIFY", "Modified containment scope")}
+                            >
+                              <span>MODIFY SCOPE</span>
+                            </Button>
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              onClick={() => handleEnvelopeTransition(selectedEnvelope.envelopeId, "REJECT", "Operator rejected proposal")}
+                            >
+                              <span>REJECT</span>
+                            </Button>
+                            <Button
+                              variant="ai"
+                              size="sm"
+                              onClick={() => handleEnvelopeTransition(selectedEnvelope.envelopeId, "ESCALATE", "Escalated to Lead CISO")}
+                            >
+                              <span>ESCALATE TO CISO</span>
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              ) : (
+                <p className="text-xs text-slate-500 py-12 text-center">
+                  Select a review envelope to view §16.1 mandatory fields.
+                </p>
+              )}
+            </div>
           </div>
         </div>
       )}
@@ -1302,13 +1756,58 @@ export default function AiGovernancePage() {
               <div>
                 <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
                   <Sparkles className="w-4 h-4 text-cyan-400" />
-                  Grounding Gate & Anti-Hallucination Studio (§18)
+                  Grounding Gate &amp; Anti-Hallucination Studio (§18)
                 </h3>
                 <p className="text-xs text-slate-400">
-                  Enforces strict token overlap and verified Evidence Ledger citation support before allowing AI generated conclusions into incident case files.
+                  Enforces domain-differentiated thresholds (SOC 2 / ISO 27001 &ge;0.98 precision vs threat triage &ge;0.90) and verified Evidence Ledger citation support before allowing AI generated conclusions into incident case files.
                 </p>
               </div>
               <Badge variant="healthy">Grounding Gate: ACTIVE</Badge>
+            </div>
+
+            {/* §17 Domain-Differentiated Mode Preset Selector */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-900/80 border border-slate-800">
+              <div className="flex items-center gap-2 text-xs font-mono">
+                <span className="text-slate-400 font-bold uppercase">§17 Domain Mode:</span>
+                <span className="text-cyan-300 font-bold">
+                  {domainMode === "COMPLIANCE" ? "SOC 2 / ISO 27001 Evidence Synthesis" : domainMode === "DETECTION" ? "Threat Triage & MITRE Correlation" : "General Exploratory"}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 font-mono text-xs flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => handleDomainChange("COMPLIANCE")}
+                  className={`px-3 py-1.5 rounded-lg border font-bold transition-all ${
+                    domainMode === "COMPLIANCE"
+                      ? "bg-purple-950/80 border-purple-500/50 text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.2)]"
+                      : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  🔒 COMPLIANCE (&ge;98% / &ge;95%)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDomainChange("DETECTION")}
+                  className={`px-3 py-1.5 rounded-lg border font-bold transition-all ${
+                    domainMode === "DETECTION"
+                      ? "bg-cyan-950/80 border-cyan-500/50 text-cyan-300 shadow-[0_0_15px_rgba(6,182,212,0.2)]"
+                      : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  ⚡ DETECTION (&ge;90% / &ge;85%)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDomainChange("GENERAL")}
+                  className={`px-3 py-1.5 rounded-lg border font-bold transition-all ${
+                    domainMode === "GENERAL"
+                      ? "bg-slate-800 border-slate-600 text-slate-200"
+                      : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
+                  }`}
+                >
+                  🌐 GENERAL (&ge;80% / &ge;75%)
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

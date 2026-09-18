@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { ApprovalsModule } from '../approvals/approvals.module';
+import { CommercialModule } from '../commercial/commercial.module';
 import {
   InternalManagedDefenseController,
   ManagedDefenseController,
@@ -9,7 +10,7 @@ import {
 import { ManagedDefenseService } from './managed-defense.service';
 
 @Module({
-  imports: [PrismaModule, ApprovalsModule],
+  imports: [PrismaModule, ApprovalsModule, CommercialModule],
   controllers: [
     ManagedDefenseController,
     PlatformManagedDefenseController,

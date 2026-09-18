@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { ApprovalsModule } from '../approvals/approvals.module';
 import { EvidenceModule } from '../evidence/evidence.module';
+import { CommercialModule } from '../commercial/commercial.module';
 import { ContinuousAssuranceController } from './continuous-assurance.controller';
 import { ContinuousAssuranceService } from './continuous-assurance.service';
 import { ContinuousAssuranceCollectorService } from './continuous-assurance-collector.service';
@@ -12,7 +13,7 @@ import { CoreAssuranceEvaluatorService } from './core-assurance-evaluator.servic
 import { Adr08SectorRegistryService } from './adr08-sector-registry.service';
 
 @Module({
-  imports: [PrismaModule, ApprovalsModule, EvidenceModule],
+  imports: [PrismaModule, ApprovalsModule, EvidenceModule, CommercialModule],
   controllers: [ContinuousAssuranceController],
   providers: [
     ContinuousAssuranceService,

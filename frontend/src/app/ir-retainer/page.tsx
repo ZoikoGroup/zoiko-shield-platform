@@ -8,10 +8,12 @@ import {
   IncidentWorkOrder,
   WorkOrderConsumptionRecord,
   IncidentLegalSensitiveRecord,
+  IncidentLegalAccessEvent,
 } from "@/lib/types";
 import { Card } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
+import { Modal } from "@/ui/Modal";
 import {
   PhoneCall,
   Shield,
@@ -28,6 +30,11 @@ import {
   FileCheck,
   Scale,
   RefreshCw,
+  Eye,
+  History,
+  ShieldAlert,
+  HelpCircle,
+  ExternalLink,
 } from "lucide-react";
 import {
   LoadingState,
@@ -36,12 +43,13 @@ import {
 } from "@/components/states/mandatory-ui-states";
 
 export default function IrRetainerPage() {
-  const [state] = useDemoState();
+  const [state, setState] = useDemoState();
   const [retainers, setRetainers] = useState<IncidentResponseRetainer[]>([]);
   const [workOrders, setWorkOrders] = useState<IncidentWorkOrder[]>([]);
   const [selectedWorkOrder, setSelectedWorkOrder] = useState<IncidentWorkOrder | null>(null);
   const [consumptionList, setConsumptionList] = useState<WorkOrderConsumptionRecord[]>([]);
   const [legalRecords, setLegalRecords] = useState<IncidentLegalSensitiveRecord[]>([]);
+  const [auditLogs, setAuditLogs] = useState<IncidentLegalAccessEvent[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [isDegraded, setIsDegraded] = useState(false);
@@ -51,6 +59,8 @@ export default function IrRetainerPage() {
   const [isActivateModalOpen, setIsActivateModalOpen] = useState(false);
   const [isLogHoursModalOpen, setIsLogHoursModalOpen] = useState(false);
   const [isLegalRecordModalOpen, setIsLegalRecordModalOpen] = useState(false);
+  const [isAccessPromptModalOpen, setIsAccessPromptModalOpen] = useState(false);
+  const [viewingRecord, setViewingRecord] = useState<IncidentLegalSensitiveRecord | null>(null);
 
   // Form states
   const [activationForm, setActivationForm] = useState({
@@ -68,11 +78,18 @@ export default function IrRetainerPage() {
     evidenceReference: "evidence://vault/forensic-memory-dump-02",
   });
 
-  const [legalAccessReason, setLegalAccessReason] = useState("REGULATORY_INQUIRY");
+  const [legalAccessReason, setLegalAccessReason] = useState("REGULATOR_INQUIRY");
+  const [pendingPurposeToQuery, setPendingPurposeToQuery] = useState("REGULATOR_INQUIRY");
+  const [accessPromptForm, setAccessPromptForm] = useState({
+    operatorName: "Sarah Chen (Lead Analyst)",
+    accessReason: "Statutory regulatory inquiry filing preparation (§16.4)",
+  });
+
   const [legalForm, setLegalForm] = useState({
     purpose: "REGULATOR_INQUIRY" as const,
     privilegeStatus: "NO_PRIVILEGE_CLAIMED" as const,
     notificationStatus: "NOT_APPLICABLE" as const,
+    counselControlled: false,
     contentReference: "evidence://vault/factual-forensic-report-v1",
     accessReason: "Preparation for statutory regulatory inquiry filing",
   });
@@ -91,11 +108,13 @@ export default function IrRetainerPage() {
       if (safeWos.length > 0 && !selectedWorkOrder) {
         setSelectedWorkOrder(safeWos[0]);
       }
+      setAuditLogs(state.legalAccessAuditLogs || []);
       setIsDegraded(false);
       setIsStale(false);
     } catch {
       setRetainers(state.incidentRetainers || []);
       setWorkOrders(state.incidentWorkOrders || []);
+      setAuditLogs(state.legalAccessAuditLogs || []);
       setIsDegraded(true);
       setIsStale(true);
     } finally {
@@ -177,7 +196,7 @@ export default function IrRetainerPage() {
         purpose: legalForm.purpose,
         privilegeStatus: legalForm.privilegeStatus,
         notificationStatus: legalForm.notificationStatus,
-        counselControlled: false,
+        counselControlled: legalForm.counselControlled,
         contentReference: legalForm.contentReference,
         accessReason: legalForm.accessReason,
       });
@@ -189,6 +208,51 @@ export default function IrRetainerPage() {
       setLegalRecords(updatedLegal);
     } catch (err) {
       console.error("Create legal record failed:", err);
+    }
+  };
+
+  const handlePromptAccess = (newPurpose: string) => {
+    setPendingPurposeToQuery(newPurpose);
+    setIsAccessPromptModalOpen(true);
+  };
+
+  const handleConfirmAccessReason = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!accessPromptForm.accessReason.trim()) return;
+
+    setLegalAccessReason(pendingPurposeToQuery);
+    setIsAccessPromptModalOpen(false);
+
+    // Record access event into audit trail
+    const newAccessEvent: IncidentLegalAccessEvent = {
+      id: `audit-acc-${Date.now().toString().slice(-6)}`,
+      recordId: selectedWorkOrder ? selectedWorkOrder.id : "all",
+      workOrderId: selectedWorkOrder ? selectedWorkOrder.id : "all",
+      tenantId: state.tenant.id,
+      accessorId: state.session.userId,
+      accessorName: accessPromptForm.operatorName,
+      accessReason: accessPromptForm.accessReason,
+      purpose: pendingPurposeToQuery as any,
+      timestamp: new Date().toISOString(),
+      ipAddress: "192.168.1.50 (Corporate VPN)",
+    };
+
+    setState((prev) => ({
+      ...prev,
+      legalAccessAuditLogs: [newAccessEvent, ...(prev.legalAccessAuditLogs || [])],
+    }));
+    setAuditLogs((prev) => [newAccessEvent, ...prev]);
+
+    if (selectedWorkOrder) {
+      try {
+        const records = await ZoikoShieldApiClient.listLegalSensitiveRecords(
+          selectedWorkOrder.id,
+          accessPromptForm.accessReason
+        );
+        setLegalRecords(records);
+      } catch {
+        // Safe fallback
+      }
     }
   };
 
@@ -211,20 +275,21 @@ export default function IrRetainerPage() {
       {/* Header Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
         <div>
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3 mb-2 flex-wrap">
             <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
               <PhoneCall className="w-6 h-6 text-cyan-400" />
-              Incident Response Retainer & SLA Engine
+              Incident Response Retainer &amp; SLA Engine
             </h1>
             <Badge variant="active">ACTIVE ANNUAL TERM</Badge>
             <Badge variant="anchored">§16.4 SPECIFICATION</Badge>
+            <Badge variant="high">PURPOSE-BOUND ACCESS</Badge>
           </div>
           <p className="text-sm text-slate-400">
             Ground-truth commercial hour ledger, 24x7 SLA response commitments, and purpose-bound legal-sensitive records.
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <Button variant="outline" size="sm" onClick={loadData} className="gap-2">
             <RefreshCw className="w-4 h-4" /> Refresh
           </Button>
@@ -356,7 +421,7 @@ export default function IrRetainerPage() {
 
             <div className="flex items-center justify-between py-1.5 border-b border-slate-800/60">
               <span className="text-slate-400 flex items-center gap-1.5">
-                <FileCheck className="w-3.5 h-3.5 text-emerald-400" /> Access & Credential Escrow
+                <FileCheck className="w-3.5 h-3.5 text-emerald-400" /> Access &amp; Credential Escrow
               </span>
               <span className="font-mono text-emerald-400">VERIFIED</span>
             </div>
@@ -500,7 +565,7 @@ export default function IrRetainerPage() {
       </div>
 
       {/* Grid 3: Purpose-Bound Legal-Sensitive Records & Statutory Disclaimers (§16.4) */}
-      <div className="space-y-4 pt-4 border-t border-slate-800">
+      <div className="space-y-6 pt-6 border-t border-slate-800">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -512,23 +577,24 @@ export default function IrRetainerPage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <select
-              value={legalAccessReason}
-              onChange={(e) => setLegalAccessReason(e.target.value)}
-              className="bg-slate-900 border border-slate-700 text-xs text-slate-200 rounded-lg px-3 py-1.5 focus:outline-none focus:border-cyan-500"
-            >
-              <option value="REGULATORY_INQUIRY">Purpose: Regulatory Inquiry</option>
-              <option value="LEGAL_DEFENSE">Purpose: Legal Defense</option>
-              <option value="INSURER_PROOF">Purpose: Insurer Proof</option>
-              <option value="INCIDENT_COORDINATION">Purpose: Incident Coordination</option>
-            </select>
+          <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-xs">
+              <span className="text-slate-400">Active Purpose Filter:</span>
+              <span className="font-mono font-bold text-cyan-300">{legalAccessReason}</span>
+              <button
+                onClick={() => handlePromptAccess(legalAccessReason === "REGULATORY_INQUIRY" ? "LEGAL_DEFENSE" : "REGULATORY_INQUIRY")}
+                className="text-[10px] font-mono text-cyan-400 underline hover:text-cyan-200 ml-1"
+              >
+                Change Filter
+              </button>
+            </div>
+
             {selectedWorkOrder && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setIsLegalRecordModalOpen(true)}
-                className="gap-1.5 text-xs text-purple-300 border-purple-500/30"
+                className="gap-1.5 text-xs text-purple-300 border-purple-500/30 hover:bg-purple-950/40"
               >
                 <Plus className="w-3.5 h-3.5" /> Record Legal Artifact
               </Button>
@@ -537,22 +603,31 @@ export default function IrRetainerPage() {
         </div>
 
         {/* Statutory Legal Disclaimer Banner */}
-        <div className="p-4 rounded-xl bg-amber-950/20 border border-amber-500/30 text-xs text-amber-200/90 space-y-1">
-          <div className="flex items-center gap-2 font-bold text-amber-300">
-            <AlertTriangle className="w-4 h-4 text-amber-400" />
-            Statutory Legal Privilege Notice (Spec §16.4)
+        <div className="p-4 rounded-xl bg-amber-950/25 border border-amber-500/40 text-xs text-amber-200 space-y-1.5 shadow-lg shadow-amber-950/20">
+          <div className="flex items-center gap-2 font-bold text-amber-300 text-sm">
+            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>Statutory Non-Legal Advice Disclaimer (Specification §16.4)</span>
           </div>
-          <p>
-            Incident Response service does <strong>not</strong> establish legal privilege or provide breach-notification, regulatory, or legal conclusions unless a separately contracted service is controlled by qualified counsel. All accesses are audited and recorded to the tamper-evident ledger.
+          <p className="leading-relaxed text-slate-300">
+            ZoikoShield Incident Response and retainer telemetry services do <strong className="text-amber-200">not</strong> establish attorney-client privilege or provide a breach-notification, regulatory, or legal conclusion unless a separately contracted service is executed and directly controlled by qualified legal counsel. All record access requests are verified, purpose-bound, and cryptographically recorded.
           </p>
         </div>
 
         {/* Legal Records Table */}
         <Card className="p-4 bg-slate-900/60 border-slate-800 backdrop-blur-md overflow-x-auto">
           {legalRecords.length === 0 ? (
-            <p className="text-xs text-slate-500 py-6 text-center">
-              No legal-sensitive records recorded under purpose &apos;{legalAccessReason}&apos;.
-            </p>
+            <div className="py-8 text-center space-y-2">
+              <Scale className="w-8 h-8 text-slate-600 mx-auto" />
+              <p className="text-xs text-slate-400">
+                No legal-sensitive records matching active purpose &apos;{legalAccessReason}&apos;.
+              </p>
+              <button
+                onClick={() => handlePromptAccess("REGULATORY_INQUIRY")}
+                className="text-xs text-cyan-400 hover:text-cyan-300 underline"
+              >
+                Prompt purpose-bound query
+              </button>
+            </div>
           ) : (
             <table className="w-full text-left text-xs">
               <thead>
@@ -563,7 +638,7 @@ export default function IrRetainerPage() {
                   <th className="pb-2">COUNSEL CONTROL</th>
                   <th className="pb-2">CONTENT REFERENCE</th>
                   <th className="pb-2">ACCESS REASON</th>
-                  <th className="pb-2">TIMESTAMP</th>
+                  <th className="pb-2">ACTION</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60 font-mono text-slate-300">
@@ -580,7 +655,7 @@ export default function IrRetainerPage() {
                     </td>
                     <td className="py-2.5">
                       {r.counselControlled ? (
-                        <span className="text-purple-400">COUNSEL CONTROLLED</span>
+                        <span className="text-purple-400 font-bold">COUNSEL CONTROLLED</span>
                       ) : (
                         <span className="text-slate-500">NONE (FACTUAL ONLY)</span>
                       )}
@@ -589,8 +664,13 @@ export default function IrRetainerPage() {
                       {r.contentReference}
                     </td>
                     <td className="py-2.5 text-slate-400">{r.accessReason}</td>
-                    <td className="py-2.5 text-[11px] text-slate-500">
-                      {new Date(r.createdAt).toLocaleDateString()}
+                    <td className="py-2.5">
+                      <button
+                        onClick={() => setViewingRecord(r)}
+                        className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-sans text-xs"
+                      >
+                        <Eye className="w-3.5 h-3.5" /> Inspect
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -598,9 +678,131 @@ export default function IrRetainerPage() {
             </table>
           )}
         </Card>
+
+        {/* Live Purpose-Bound Access Audit Log */}
+        <Card className="p-5 bg-slate-900/60 border-slate-800 backdrop-blur-md space-y-4">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+            <div className="space-y-0.5">
+              <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                <History className="w-4 h-4 text-cyan-400" />
+                Live Purpose-Bound Access Audit Log (`IncidentLegalAccessEvent`)
+              </h4>
+              <p className="text-xs text-slate-400">
+                Every inspection of legal-sensitive evidence is cryptographically recorded with operator identity and statutory access justification.
+              </p>
+            </div>
+            <Badge variant="anchored">{auditLogs.length} Events Logged</Badge>
+          </div>
+
+          <div className="space-y-2">
+            {auditLogs.map((log) => (
+              <div
+                key={log.id}
+                className="p-3 rounded-lg bg-slate-950/70 border border-slate-800/80 font-mono text-xs flex flex-col md:flex-row md:items-center justify-between gap-2"
+              >
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-cyan-300">{log.accessorName}</span>
+                    <Badge variant="neutral">{log.purpose}</Badge>
+                    <span className="text-slate-500 text-[10px]">{log.id}</span>
+                  </div>
+                  <p className="text-slate-300 font-sans text-xs">{log.accessReason}</p>
+                </div>
+
+                <div className="text-right text-[11px] text-slate-400 shrink-0">
+                  <div>{new Date(log.timestamp).toLocaleString()}</div>
+                  <div className="text-slate-500 text-[10px]">{log.ipAddress || "Verified TLS Session"}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
       </div>
 
-      {/* Modal 1: Activate Emergency Work Order */}
+      {/* Modal 1: Mandatory Purpose-Bound Access Reason Prompt */}
+      <Modal
+        isOpen={isAccessPromptModalOpen}
+        onClose={() => setIsAccessPromptModalOpen(false)}
+        title="Purpose-Bound Legal Access Verification (§16.4)"
+        description="Provide a statutory access justification before loading sensitive legal artifacts."
+      >
+        <form onSubmit={handleConfirmAccessReason} className="space-y-4">
+          <div className="p-3.5 rounded-xl bg-purple-950/30 border border-purple-500/40 text-xs text-purple-200 space-y-1">
+            <span className="font-bold text-purple-300 block">Access Purpose:</span>
+            <p>Querying legal records under purpose <strong className="text-white font-mono">{pendingPurposeToQuery}</strong>.</p>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-mono text-slate-300">Operator Stated Purpose / Justification:</label>
+            <textarea
+              rows={3}
+              required
+              value={accessPromptForm.accessReason}
+              onChange={(e) => setAccessPromptForm({ ...accessPromptForm, accessReason: e.target.value })}
+              placeholder="e.g. Statutory regulatory response compilation for SEC / DORA inquiry..."
+              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-sans"
+            />
+          </div>
+
+          <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg text-[11px] text-slate-400">
+            <span className="text-amber-400 font-bold block mb-0.5">Audit Notice:</span>
+            Your operator identity, timestamp, and justification will be recorded into the immutable audit ledger.
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
+            <Button variant="outline" type="button" onClick={() => setIsAccessPromptModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" type="submit">
+              <CheckCircle2 className="w-4 h-4" />
+              <span>Verify &amp; Load Records</span>
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* Modal 2: Inspect Legal Record Detail */}
+      {viewingRecord && (
+        <Modal
+          isOpen={!!viewingRecord}
+          onClose={() => setViewingRecord(null)}
+          title={`Legal Artifact: ${viewingRecord.id}`}
+          description="Detailed metadata and counsel control verification."
+        >
+          <div className="space-y-4 text-xs font-mono">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
+                <span className="text-[10px] text-slate-400 block">PURPOSE</span>
+                <span className="text-cyan-300 font-bold">{viewingRecord.purpose}</span>
+              </div>
+              <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
+                <span className="text-[10px] text-slate-400 block">PRIVILEGE STATUS</span>
+                <span className="text-amber-400 font-bold">{viewingRecord.privilegeStatus}</span>
+              </div>
+            </div>
+
+            <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
+              <span className="text-[10px] text-slate-400 block">CONTENT REFERENCE VAULT</span>
+              <span className="text-slate-200">{viewingRecord.contentReference}</span>
+            </div>
+
+            <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
+              <span className="text-[10px] text-slate-400 block">STATUTORY NON-LEGAL ADVICE DISCLAIMER</span>
+              <p className="text-slate-300 font-sans text-xs leading-relaxed">
+                {viewingRecord.noLegalAdviceWording || "This work order does not establish legal privilege or provide a breach-notification, regulatory, or legal conclusion."}
+              </p>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <Button variant="outline" onClick={() => setViewingRecord(null)}>
+                Close
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal 3: Activate Emergency Work Order */}
       {isActivateModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <Card className="w-full max-w-lg bg-slate-900 border-slate-800 p-6 space-y-4 shadow-2xl">
@@ -691,7 +893,7 @@ export default function IrRetainerPage() {
                   Cancel
                 </Button>
                 <Button variant="danger" type="submit">
-                  Confirm & Activate
+                  Confirm &amp; Activate
                 </Button>
               </div>
             </form>
@@ -699,7 +901,7 @@ export default function IrRetainerPage() {
         </div>
       )}
 
-      {/* Modal 2: Log Hours */}
+      {/* Modal 4: Log Hours */}
       {isLogHoursModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <Card className="w-full max-w-md bg-slate-900 border-slate-800 p-6 space-y-4 shadow-2xl">
@@ -770,7 +972,7 @@ export default function IrRetainerPage() {
         </div>
       )}
 
-      {/* Modal 3: Create Legal-Sensitive Record */}
+      {/* Modal 5: Create Legal-Sensitive Record */}
       {isLegalRecordModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
           <Card className="w-full max-w-lg bg-slate-900 border-slate-800 p-6 space-y-4 shadow-2xl">
@@ -824,7 +1026,7 @@ export default function IrRetainerPage() {
               </div>
 
               <div>
-                <label className="block text-slate-400 mb-1">Access & Purpose Justification</label>
+                <label className="block text-slate-400 mb-1">Access &amp; Purpose Justification</label>
                 <textarea
                   rows={2}
                   value={legalForm.accessReason}

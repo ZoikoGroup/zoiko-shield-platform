@@ -7,10 +7,11 @@ import {
 import { IncidentWorkOrderService } from './incident-work-order.service';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { ApprovalsModule } from '../approvals/approvals.module';
+import { CommercialModule } from '../commercial/commercial.module';
 import { IncidentResponseRetainerService } from './incident-response-retainer.service';
 
 @Module({
-  imports: [PrismaModule, ApprovalsModule],
+  imports: [PrismaModule, ApprovalsModule, CommercialModule],
   controllers: [
     IncidentResponseRetainerController,
     IncidentWorkOrderController,

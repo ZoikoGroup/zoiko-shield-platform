@@ -25,6 +25,7 @@ import {
   IncidentWorkOrder,
   WorkOrderConsumptionRecord,
   IncidentLegalSensitiveRecord,
+  IncidentLegalAccessEvent,
 } from "./types";
 import { useState, useEffect } from "react";
 
@@ -53,6 +54,7 @@ export interface DemoState {
   incidentWorkOrders: IncidentWorkOrder[];
   workOrderConsumption: WorkOrderConsumptionRecord[];
   legalSensitiveRecords: IncidentLegalSensitiveRecord[];
+  legalAccessAuditLogs: IncidentLegalAccessEvent[];
 }
 
 const STATIC_TIMESTAMP = "2026-09-02T08:00:00.000Z";
@@ -63,6 +65,15 @@ const DEFAULT_TENANT: Tenant = {
   organizationName: "Acme Financial Services Inc.",
   slug: "acme-financial",
   legalEntityName: "Acme Financial Services Global Ltd",
+  planTier: "ENTERPRISE_PREMIUM",
+  activeOffers: [
+    "MANAGED_DEFENSE",
+    "CONTINUOUS_ASSURANCE",
+    "INCIDENT_RESPONSE_RETAINER",
+    "EXPOSURE_MANAGEMENT",
+    "AI_SECURITY",
+  ],
+  isEnterprisePlus: true,
   environmentName: "PRODUCTION-US-EAST",
   homeRegion: "us-east-1",
   dataResidencyRegion: "us-east-1",
@@ -111,6 +122,9 @@ const INITIAL_CONNECTORS: Connector[] = [
     sourceRegion: "us-east-1",
     status: "ACTIVE",
     healthStatus: "HEALTHY",
+    tier: "P0_CERTIFIED",
+    ocsfStatus: "MAPPED_OCSF_V1",
+    eventsPerMinute: 120,
     hmacSecret: "whsec_99a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4",
     webhookUrl: "https://ingest.zoikoshield.io/api/v1/ingestion/webhooks/conn-webhook-gateway-01",
     eventsIngestedCount: 1420,
@@ -124,6 +138,9 @@ const INITIAL_CONNECTORS: Connector[] = [
     sourceRegion: "us-east-1",
     status: "ACTIVE",
     healthStatus: "HEALTHY",
+    tier: "P0_CERTIFIED",
+    ocsfStatus: "MAPPED_OCSF_V1",
+    eventsPerMinute: 450,
     hmacSecret: "entra_audit_graph_secret_7721",
     webhookUrl: "https://ingest.zoikoshield.io/api/v1/ingestion/entra/conn-entra-id-prod",
     eventsIngestedCount: 8940,
@@ -137,9 +154,78 @@ const INITIAL_CONNECTORS: Connector[] = [
     sourceRegion: "us-east-1",
     status: "ACTIVE",
     healthStatus: "HEALTHY",
+    tier: "P0_CERTIFIED",
+    ocsfStatus: "MAPPED_OCSF_V1",
+    eventsPerMinute: 980,
     hmacSecret: "cs_fdr_streaming_secret_5519",
     webhookUrl: "https://ingest.zoikoshield.io/api/v1/ingestion/crowdstrike/conn-crowdstrike-fdr",
     eventsIngestedCount: 18230,
+    lastEventAt: STATIC_TIMESTAMP,
+  },
+  {
+    id: "conn-aws-guardduty-01",
+    tenantId: DEFAULT_TENANT.id,
+    name: "AWS GuardDuty Findings Stream",
+    provider: "aws-guardduty",
+    sourceRegion: "us-east-1",
+    status: "ACTIVE",
+    healthStatus: "HEALTHY",
+    tier: "P0_CERTIFIED",
+    ocsfStatus: "MAPPED_OCSF_V1",
+    eventsPerMinute: 60,
+    hmacSecret: "gd_eventbridge_secret_8812",
+    webhookUrl: "https://ingest.zoikoshield.io/api/v1/ingestion/guardduty/conn-aws-guardduty-01",
+    eventsIngestedCount: 3410,
+    lastEventAt: STATIC_TIMESTAMP,
+  },
+  {
+    id: "conn-sentinelone-preview",
+    tenantId: DEFAULT_TENANT.id,
+    name: "SentinelOne Singularity EDR (Preview)",
+    provider: "sentinelone-edr",
+    sourceRegion: "us-east-1",
+    status: "INACTIVE",
+    healthStatus: "HEALTHY",
+    tier: "P1_PREVIEW",
+    isP1PreviewEnabled: false,
+    ocsfStatus: "MAPPED_OCSF_V1",
+    eventsPerMinute: 0,
+    hmacSecret: "s1_deep_visibility_secret_3311",
+    webhookUrl: "https://ingest.zoikoshield.io/api/v1/ingestion/sentinelone/conn-sentinelone-preview",
+    eventsIngestedCount: 0,
+    lastEventAt: STATIC_TIMESTAMP,
+  },
+  {
+    id: "conn-gcp-scc-preview",
+    tenantId: DEFAULT_TENANT.id,
+    name: "Google Cloud SCC Finding Ingestion",
+    provider: "gcp-scc",
+    sourceRegion: "us-east-1",
+    status: "ACTIVE",
+    healthStatus: "HEALTHY",
+    tier: "P1_PREVIEW",
+    isP1PreviewEnabled: true,
+    ocsfStatus: "MAPPED_OCSF_V1",
+    eventsPerMinute: 85,
+    hmacSecret: "gcp_scc_pubsub_secret_4422",
+    webhookUrl: "https://ingest.zoikoshield.io/api/v1/ingestion/gcp-scc/conn-gcp-scc-preview",
+    eventsIngestedCount: 520,
+    lastEventAt: STATIC_TIMESTAMP,
+  },
+  {
+    id: "conn-custom-syslog-exp",
+    tenantId: DEFAULT_TENANT.id,
+    name: "On-Premises Syslog TLS Collector",
+    provider: "generic-syslog",
+    sourceRegion: "us-east-1",
+    status: "ACTIVE",
+    healthStatus: "HEALTHY",
+    tier: "EXPERIMENTAL_UNCERTIFIED",
+    ocsfStatus: "SCHEMA_CUSTOM",
+    eventsPerMinute: 320,
+    hmacSecret: "syslog_rfc5424_tls_secret_9900",
+    webhookUrl: "https://ingest.zoikoshield.io/api/v1/ingestion/syslog/conn-custom-syslog-exp",
+    eventsIngestedCount: 7180,
     lastEventAt: STATIC_TIMESTAMP,
   },
 ];
@@ -720,6 +806,20 @@ export function getDefaultStaticState(): DemoState {
         createdAt: "2026-09-02T08:00:00.000Z",
       },
     ],
+    legalAccessAuditLogs: [
+      {
+        id: "audit-acc-01",
+        recordId: "legal-rec-01",
+        workOrderId: "wo-ransomware-triage-01",
+        tenantId: DEFAULT_TENANT.id,
+        accessorId: "usr-sarah-chen-01",
+        accessorName: "Sarah Chen (Lead Analyst)",
+        accessReason: "Statutory SEC / DORA incident inquiry response package preparation",
+        purpose: "REGULATOR_INQUIRY",
+        timestamp: "2026-09-02T08:15:00.000Z",
+        ipAddress: "192.168.1.50 (Corporate VPN)",
+      },
+    ],
   };
 }
 
@@ -783,7 +883,7 @@ export function useDemoState(): [
   boolean,
 ] {
   const [state, setState] = useState<DemoState>(getDefaultStaticState);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(true);
 
   useEffect(() => {
     try {
