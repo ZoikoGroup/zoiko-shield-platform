@@ -21,8 +21,22 @@ export class EntraUserActionAdapter implements ActionExecutionAdapter {
     return this.supportedActions.has(actionType);
   }
 
+  private readonly containmentActions = new Set([
+    'DISABLE_USER_ACCOUNT',
+    'REVOKE_USER_SESSIONS',
+    'FORCE_PASSWORD_RESET',
+  ]);
+
   async execute(context: ActionExecutionContext): Promise<ExecutionReceipt> {
-    if (!context.isSimulation) {
+    const isG1Ratified =
+      process.env.ENABLE_G1_LIVE_EXECUTION === 'true' ||
+      process.env.G1_GATE_RATIFIED === 'true';
+
+    if (
+      !context.isSimulation &&
+      !isG1Ratified &&
+      this.containmentActions.has(context.actionType)
+    ) {
       throw new ForbiddenException(
         'Live R2+ automated response execution is strictly disabled: G1 Release Gate has not been formally ratified by the controlled authorization roster (Master Build Plan §2, §18; Rule G1-01). Only R0 observation and R1 pre-flight simulation are permitted.',
       );
