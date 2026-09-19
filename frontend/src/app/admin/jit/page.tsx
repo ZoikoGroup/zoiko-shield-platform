@@ -169,7 +169,7 @@ export default function JitEnclavePage() {
             Platform Admin: Support Access & Dual-Approval JIT
           </h1>
           <p className="text-sm text-slate-400">
-            Time-decaying Just-In-Time cross-tenant access gated by peer admin dual-approval on `shield-core:3001` with Nitro / SGX hardware attestation.
+            Time-decaying Just-In-Time cross-tenant access gated by peer admin dual-approval on `shield-core:3001` with Hardware HSM cryptographic key isolation.
           </p>
         </div>
 
@@ -262,31 +262,31 @@ export default function JitEnclavePage() {
           </div>
         </Card>
 
-        {/* Right: Hardware Confidential Enclave Attestation */}
+        {/* Right: Hardware Cryptographic Key Isolation */}
         <Card variant="cyber" className="space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-cyan-500/20">
             <h3 className="font-semibold text-slate-100 flex items-center gap-2 text-sm">
               <Lock className="w-4 h-4 text-purple-400" />
-              Confidential Computing Enclave Bridge (TEE)
+              Hardware Security Module (HSM) Key Isolation
             </h3>
-            <Badge variant="pass">NITRO VALID</Badge>
+            <Badge variant="pass">HSM VALID</Badge>
           </div>
 
           <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5 font-mono text-xs text-slate-300">
             <div className="flex justify-between">
-              <span className="text-slate-500">ENCLAVE PLATFORM:</span>
-              <span className="text-purple-400 font-bold">AWS Nitro Enclaves</span>
+              <span className="text-slate-500">HSM MODULE TYPE:</span>
+              <span className="text-purple-400 font-bold">FIPS 140-2 Level 3 HSM</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">PCR0 (IMAGE SHA-384):</span>
+              <span className="text-slate-500">KEY DERIVATION DIGEST:</span>
               <span className="text-cyan-300">b4f8...91a2</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">PCR1 (KERNEL DIGEST):</span>
+              <span className="text-slate-500">SESSION AUTH PROOF:</span>
               <span className="text-cyan-300">c81e...47d9</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">PCR2 (APPLICATION APP):</span>
+              <span className="text-slate-500">SIGNING CONTEXT:</span>
               <span className="text-cyan-300">e2a0...7b31</span>
             </div>
             <div className="flex justify-between pt-1 border-t border-slate-900">
@@ -295,12 +295,12 @@ export default function JitEnclavePage() {
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">ROOT OF TRUST:</span>
-              <span className="text-slate-200">AWS Nitro Root CA (X.509)</span>
+              <span className="text-slate-200">Corporate Hardware PKI (X.509)</span>
             </div>
           </div>
 
           <div className="p-3.5 rounded-xl bg-purple-950/20 border border-purple-500/30 text-xs text-purple-200 leading-relaxed font-sans">
-            Cryptographic keys and SOAR execution tokens are generated and sealed directly inside isolated hardware enclaves, completely invisible to host hypervisors.
+            Cryptographic master keys and JIT elevation authorization tokens are sealed inside hardware security modules, protected by dual-approver quorum and cryptographic time-decay.
           </div>
         </Card>
       </div>

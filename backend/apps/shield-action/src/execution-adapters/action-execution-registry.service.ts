@@ -7,6 +7,7 @@ import {
 import { EntraUserActionAdapter } from './entra-user.adapter';
 import { EdrIsolateActionAdapter } from './edr-isolate.adapter';
 import { AwsIamActionAdapter } from './aws-iam.adapter';
+import { WafIpActionAdapter } from './waf-ip.adapter';
 
 @Injectable()
 export class ActionExecutionRegistryService {
@@ -16,8 +17,14 @@ export class ActionExecutionRegistryService {
     private readonly entraAdapter: EntraUserActionAdapter,
     private readonly edrAdapter: EdrIsolateActionAdapter,
     private readonly awsIamAdapter: AwsIamActionAdapter,
+    private readonly wafIpAdapter: WafIpActionAdapter,
   ) {
-    this.adapters.push(entraAdapter, edrAdapter, awsIamAdapter);
+    this.adapters.push(
+      entraAdapter,
+      edrAdapter,
+      awsIamAdapter,
+      wafIpAdapter,
+    );
   }
 
   getAdapter(actionType: string): ActionExecutionAdapter {

@@ -33,13 +33,9 @@ export class EdrIsolateActionAdapter implements ActionExecutionAdapter {
   }
 
   async execute(context: ActionExecutionContext): Promise<ExecutionReceipt> {
-    if (
-      !context.isSimulation &&
-      (context.actionType === 'ISOLATE_ENDPOINT' ||
-        context.actionType === 'QUARANTINE_FILE')
-    ) {
+    if (!context.isSimulation) {
       throw new ForbiddenException(
-        'Live R2 automated response is strictly disabled prior to G1 release gate ratification (Master Build Plan §2, §18). Only R0 observation and R1 simulation are permitted.',
+        'Live R2+ automated response execution is strictly disabled: G1 Release Gate has not been formally ratified by the controlled authorization roster (Master Build Plan §2, §18; Rule G1-01). Only R0 observation and R1 pre-flight simulation are permitted.',
       );
     }
 

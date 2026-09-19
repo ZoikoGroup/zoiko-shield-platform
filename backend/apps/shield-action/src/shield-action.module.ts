@@ -33,6 +33,7 @@ import { ActionExecutionRegistryService } from './execution-adapters/action-exec
 import { EntraUserActionAdapter } from './execution-adapters/entra-user.adapter';
 import { EdrIsolateActionAdapter } from './execution-adapters/edr-isolate.adapter';
 import { AwsIamActionAdapter } from './execution-adapters/aws-iam.adapter';
+import { WafIpActionAdapter } from './execution-adapters/waf-ip.adapter';
 import { Fido2StepupGuardService } from './auth/fido2-stepup-guard.service';
 import { DisasterRecoveryPartitionService } from './dr-orchestrator/disaster-recovery-partition.service';
 import { CspmRemediationEngineService } from './cspm/cspm-remediation-engine.service';
@@ -92,6 +93,7 @@ import { CompensatingActionService } from './rollback/compensating-action.servic
     EntraUserActionAdapter,
     EdrIsolateActionAdapter,
     AwsIamActionAdapter,
+    WafIpActionAdapter,
     LiveActionExecutorService,
     DualCustodyApprovalsService,
     AutomatedRollbackOrchestratorService,
@@ -118,6 +120,7 @@ import { CompensatingActionService } from './rollback/compensating-action.servic
     ActionRollbackOrchestratorService,
     ResponsePlaybookService,
     ActionExecutionRegistryService,
+    WafIpActionAdapter,
     LiveActionExecutorService,
     DualCustodyApprovalsService,
     AutomatedRollbackOrchestratorService,

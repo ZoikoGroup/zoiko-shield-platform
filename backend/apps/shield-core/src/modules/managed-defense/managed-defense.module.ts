@@ -8,6 +8,8 @@ import {
   PlatformManagedDefenseController,
 } from './managed-defense.controller';
 import { ManagedDefenseService } from './managed-defense.service';
+import { MdrServiceObligationService } from './mdr-service-obligation.service';
+import { MdrServiceObligationController } from './mdr-service-obligation.controller';
 
 @Module({
   imports: [PrismaModule, ApprovalsModule, CommercialModule],
@@ -15,8 +17,9 @@ import { ManagedDefenseService } from './managed-defense.service';
     ManagedDefenseController,
     PlatformManagedDefenseController,
     InternalManagedDefenseController,
+    MdrServiceObligationController,
   ],
-  providers: [ManagedDefenseService],
-  exports: [ManagedDefenseService],
+  providers: [ManagedDefenseService, MdrServiceObligationService],
+  exports: [ManagedDefenseService, MdrServiceObligationService],
 })
 export class ManagedDefenseModule {}

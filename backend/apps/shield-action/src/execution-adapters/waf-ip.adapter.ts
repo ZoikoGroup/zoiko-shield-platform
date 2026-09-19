@@ -7,16 +7,14 @@ import {
 } from './action-execution.interface';
 
 @Injectable()
-export class AwsIamActionAdapter implements ActionExecutionAdapter {
-  private readonly logger = new Logger(AwsIamActionAdapter.name);
+export class WafIpActionAdapter implements ActionExecutionAdapter {
+  private readonly logger = new Logger(WafIpActionAdapter.name);
 
   private readonly supportedActions = new Set([
-    'REVOKE_IAM_SESSION',
-    'ATTACH_DENY_ALL_POLICY',
-    'DETACH_DENY_ALL_POLICY',
-    'RESTORE_IAM_ACCESS',
-    'DEACTIVATE_ACCESS_KEYS',
-    'RESET_IAM_USER_CREDENTIALS',
+    'APPLY_WAF_BLOCK',
+    'REMOVE_WAF_BLOCK',
+    'QUARANTINE_IP_CIDR',
+    'RESTORE_IP_ACCESS',
   ]);
 
   supportsAction(actionType: string): boolean {
@@ -31,21 +29,26 @@ export class AwsIamActionAdapter implements ActionExecutionAdapter {
     }
 
     this.logger.log(
-      `Executing AWS IAM action '${context.actionType}' on target '${context.targetRef}' (Simulation: ${context.isSimulation})`,
+      `Executing WAF Perimeter action '${context.actionType}' on target '${context.targetRef}' (Simulation: ${context.isSimulation})`,
     );
 
-    const receiptId = `rcpt-aws-iam-${crypto.randomUUID()}`;
+    const receiptId = `rcpt-waf-${crypto.randomUUID()}`;
     const executedAt = new Date().toISOString();
+    const ttlMinutes = context.parameters?.ttlMinutes ?? 60;
+    const expiresAt = new Date(
+      Date.now() + ttlMinutes * 60 * 1000,
+    ).toISOString();
 
     const observedEffect = {
-      provider: 'aws-iam',
-      targetArn: context.targetRef,
-      sessionsRevoked: context.actionType === 'REVOKE_IAM_SESSION',
-      denyPolicyAttached: context.actionType === 'ATTACH_DENY_ALL_POLICY',
-      denyPolicyDetached:
-        context.actionType === 'DETACH_DENY_ALL_POLICY' ||
-        context.actionType === 'RESTORE_IAM_ACCESS',
-      keysDeactivated: context.actionType === 'DEACTIVATE_ACCESS_KEYS',
+      provider: 'cloud-waf',
+      targetIpOrCidr: context.targetRef,
+      ipBlocked:
+        context.actionType === 'APPLY_WAF_BLOCK' ||
+        context.actionType === 'QUARANTINE_IP_CIDR',
+      blockRuleId: `waf-rule-${context.commandId.slice(0, 8)}`,
+      ttlMinutes,
+      autoExpireAt: expiresAt,
+      perimeterSyncStatus: 'DISTRIBUTED_TO_EDGE',
       executionMode: context.isSimulation ? 'SIMULATED' : 'LIVE',
     };
 
@@ -66,7 +69,7 @@ export class AwsIamActionAdapter implements ActionExecutionAdapter {
       observedEffect,
       rollbackCapability: {
         supported: true,
-        rollbackAction: 'DETACH_DENY_ALL_POLICY',
+        rollbackAction: 'REMOVE_WAF_BLOCK',
       },
       signature,
     };
@@ -76,7 +79,7 @@ export class AwsIamActionAdapter implements ActionExecutionAdapter {
     receipt: ExecutionReceipt,
   ): Promise<{ status: 'ROLLED_BACK' | 'FAILED'; error?: string }> {
     this.logger.log(
-      `Rolling back AWS IAM action for receipt '${receipt.receiptId}' on target '${receipt.targetRef}'`,
+      `Rolling back WAF IP block for receipt '${receipt.receiptId}' on IP '${receipt.targetRef}'`,
     );
 
     return {
