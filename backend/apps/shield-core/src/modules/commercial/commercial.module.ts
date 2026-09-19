@@ -25,6 +25,10 @@ import { ZoikoOneBundlingController } from './zoiko-one-bundling.controller';
 import { ZoikoOneBundlingService } from './zoiko-one-bundling.service';
 import { EntitlementEnforcementService } from './entitlement-enforcement.service';
 import { OfferEntitlementService } from './offer-entitlement.service';
+import { CapabilityStatusController } from './capability-status/capability-status.controller';
+import { CapabilityStatusService } from './capability-status/capability-status.service';
+import { PlanTierController } from './plan-tier/plan-tier.controller';
+import { PlanTierService } from './plan-tier/plan-tier.service';
 
 @Module({
   imports: [PrismaModule, SectorPacksModule, KillSwitchModule, ApprovalsModule],
@@ -38,6 +42,8 @@ import { OfferEntitlementService } from './offer-entitlement.service';
     CommercialPortalController,
     TrustCenterController,
     ZoikoOneBundlingController,
+    CapabilityStatusController,
+    PlanTierController,
   ],
   providers: [
     CommercialAccountService,
@@ -51,6 +57,8 @@ import { OfferEntitlementService } from './offer-entitlement.service';
     PilotLifecycleService,
     TrustCenterService,
     ZoikoOneBundlingService,
+    CapabilityStatusService,
+    PlanTierService,
   ],
   exports: [
     CommercialAccountService,
@@ -63,6 +71,8 @@ import { OfferEntitlementService } from './offer-entitlement.service';
     PilotLifecycleService,
     TrustCenterService,
     ZoikoOneBundlingService,
+    CapabilityStatusService,
+    PlanTierService,
   ],
 })
 export class CommercialModule {}

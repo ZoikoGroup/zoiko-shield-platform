@@ -769,3 +769,129 @@ export interface MerkleVerificationResult {
   epochNumber: number;
   verifiedAt: string;
 }
+
+// --- Commercial Catalogue & Capability Governance Types ---
+
+export type GovernanceStatus = 'CORE' | 'CONTROLLED' | 'GATED' | 'DEFERRED';
+
+export interface PublicServiceDefinition {
+  serviceId: string;
+  serviceName: string;
+  category: string;
+  publicOutcomeDescription: string;
+  status: GovernanceStatus;
+  substantiatingComponents: string[];
+  includedCapabilities: string[];
+  pricingTierMinimum: 'ESSENTIAL' | 'PROFESSIONAL' | 'ADVANCED' | 'ENTERPRISE';
+}
+
+export interface CapabilityItem {
+  id: string;
+  name: string;
+  domain: string;
+  customerService: string;
+  status: GovernanceStatus;
+  substantiatingSatellites: string[];
+  governanceRationale: string;
+  statutoryReference?: string;
+  requiresQuorum?: boolean;
+  requiresPurposeBoundAccess?: boolean;
+}
+
+export interface CapabilityDomainSummary {
+  domainId: string;
+  domainName: string;
+  description: string;
+  totalCapabilities: number;
+  coreCount: number;
+  controlledCount: number;
+  gatedCount: number;
+  deferredCount: number;
+  items: CapabilityItem[];
+}
+
+export type PlanTierKey =
+  | 'SHIELD_ESSENTIAL'
+  | 'SHIELD_PROFESSIONAL'
+  | 'SHIELD_ADVANCED'
+  | 'SHIELD_ENTERPRISE';
+
+export interface PlanTierPricing {
+  monthlyUsd: number | null;
+  annualBilledMonthlyUsd: number | null;
+  isContractOnly: boolean;
+  currency: 'USD' | 'EUR' | 'GBP';
+}
+
+export interface PlanTierAllocations {
+  maxProtectedAssets: number | null;
+  includedTelemetryGbPerDay: number | null;
+  incidentResponseSlaHours: number;
+  retentionDays: number;
+  includedRetainerHoursPerYear: number;
+}
+
+export interface PlanTier {
+  key: PlanTierKey;
+  displayName: string;
+  tagline: string;
+  description: string;
+  pricing: PlanTierPricing;
+  allocations: PlanTierAllocations;
+  includedOffers: string[];
+  highlightedFeatures: string[];
+  governanceFeatures: string[];
+  supportModel: string;
+  isPopular?: boolean;
+}
+
+export interface PlanRecommendation {
+  recommendedPlan: PlanTier;
+  rationale: string[];
+  alternativePlans: PlanTier[];
+}
+
+export interface MdrServiceObligation {
+  id: string;
+  contractId: string;
+  tenantId: string;
+  coverageTier: 'BUSINESS_HOURS_8X5' | 'EXTENDED_16X7' | 'CONTINUOUS_24X7';
+  readinessStatus: 'OPERATIONALLY_PROVEN' | 'CONTINGENT' | 'UNPROVEN';
+  staffingSchedule: {
+    coverageTier: string;
+    primaryTimezone: string;
+    minimumActiveAnalystsOnDuty: number;
+    escalationLeadAvailable: boolean;
+    tier3IncidentCommanderOnCall: boolean;
+    shiftHandoffProtocolProven: boolean;
+  };
+  slaWindows: Array<{
+    severity: string;
+    targetAcknowledgementMinutes: number;
+    targetInvestigationMinutes: number;
+    targetContainmentMinutes: number;
+    financialCreditPercentage: number;
+  }>;
+  escalationPath: Array<{
+    tierLevel: number;
+    roleTitle: string;
+    responseWindowMinutes: number;
+    notificationChannels: string[];
+    requiresQuorumApproval: boolean;
+  }>;
+  operationalProofReference?: string;
+  lastReadinessAuditDate?: string;
+  verifiedBy?: string;
+}
+
+export interface GTMChecklistItem {
+  ruleCode: string;
+  title: string;
+  domain: string;
+  ruleStatement: string;
+  status: 'VERIFIED' | 'GATED_ENFORCED' | 'DEFERRED_ENFORCED';
+  verificationSource: string;
+  verifiedAt: string;
+  auditPass: boolean;
+}
+

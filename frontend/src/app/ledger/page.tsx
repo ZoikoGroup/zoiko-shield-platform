@@ -279,8 +279,8 @@ export default function MerkleLedgerExplorerPage() {
                   {activeReceipt?.enclaveAttestation && (
                     <div className="p-2 bg-slate-900/60 border border-slate-800 rounded text-[10px] text-slate-300 space-y-0.5">
                       <div className="flex items-center justify-between text-purple-400 font-bold">
-                        <span>TEE Enclave PCR0</span>
-                        <Badge variant="neutral">AWS Nitro</Badge>
+                        <span>Hardware Root-of-Trust Digest</span>
+                        <Badge variant="neutral">Hardware HSM</Badge>
                       </div>
                       <div className="truncate text-slate-400 font-mono">{activeReceipt.enclaveAttestation.pcr0}</div>
                     </div>

@@ -731,7 +731,7 @@ export default function ConnectorsPage() {
                 </optgroup>
                 <optgroup label="🟡 P1 Preview (Gated Support)">
                   <option value="okta-identity">Okta Identity Cloud</option>
-                  <option value="azure-monitor">Azure Monitor / Sentinel</option>
+                  <option value="azure-monitor">Azure Monitor Activity Logs</option>
                   <option value="gcp-scc">GCP Security Command Center</option>
                   <option value="sentinelone-edr">SentinelOne Singularity EDR</option>
                   <option value="palo-alto-cortex-xdr">Palo Alto Cortex XDR</option>

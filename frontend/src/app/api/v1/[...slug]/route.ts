@@ -1134,6 +1134,688 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
     );
   }
 
+  // Route: /api/v1/commercial/plans
+  if (path.startsWith("commercial/plans")) {
+    if (path.includes("recommend")) {
+      const assets = parsedBody.protectedAssetCount || 250;
+      const dailyGb = parsedBody.estimatedDailyGb || 25;
+      const req247 = parsedBody.requiresContinuous24x7Mdr || false;
+      const reqSov = parsedBody.requiresDedicatedTenantIsolation || false;
+
+      let recKey = "SHIELD_ESSENTIAL";
+      const rationale: string[] = [];
+
+      if (reqSov || assets > 5000 || dailyGb > 500) {
+        recKey = "SHIELD_ENTERPRISE";
+        rationale.push("Enterprise-scale telemetry volume or sovereign isolation requires bespoke Enterprise plan.");
+      } else if (req247 || assets > 1000 || dailyGb > 100) {
+        recKey = "SHIELD_ADVANCED";
+        rationale.push("Continuous 24/7 MDR and high asset scale requires Shield Advanced with 15-minute containment SLAs.");
+      } else if (assets > 250 || dailyGb > 25) {
+        recKey = "SHIELD_PROFESSIONAL";
+        rationale.push("Asset count and telemetry exceed Essential baseline. Shield Professional provides attack graphs and AI copilot.");
+      } else {
+        rationale.push("Scale fits baseline Shield Essential tier perfectly with foundational MDR and Dilithium3 ledger.");
+      }
+
+      const allTiers = [
+        {
+          key: "SHIELD_ESSENTIAL",
+          displayName: "Shield Essential",
+          tagline: "Foundational MDR & Post-Quantum Compliance",
+          description: "For growing organizations requiring continuous threat detection and post-quantum proof ledger.",
+          pricing: { monthlyUsd: 2000, annualBilledMonthlyUsd: 1800, isContractOnly: false, currency: "USD" },
+          allocations: { maxProtectedAssets: 250, includedTelemetryGbPerDay: 25, incidentResponseSlaHours: 4, retentionDays: 90, includedRetainerHoursPerYear: 0 },
+          includedOffers: ["MANAGED_DEFENSE", "CONTINUOUS_ASSURANCE", "CRYPTO_LEDGER"],
+          highlightedFeatures: ["250 Protected Assets & 25 GB/day Telemetry", "P0 Certified Connectors", "Automated SOC 2 & ISO 27001", "Dilithium3 Post-Quantum Merkle Ledger", "4-Hour Critical Incident Response Target"],
+          governanceFeatures: ["Anti-Perverse Billing Guard", "Dual-approver R3-R4 workflows", "Automated evidence proofs"],
+          supportModel: "Standard 8x5 Business Hours Support",
+        },
+        {
+          key: "SHIELD_PROFESSIONAL",
+          displayName: "Shield Professional",
+          tagline: "Advanced SecOps, Attack Path Graphs & AI Copilot",
+          description: "For mid-market enterprises requiring deep attack graph analysis, AI security copilot, and 1-hour response SLAs.",
+          pricing: { monthlyUsd: 4000, annualBilledMonthlyUsd: 3600, isContractOnly: false, currency: "USD" },
+          allocations: { maxProtectedAssets: 1000, includedTelemetryGbPerDay: 100, incidentResponseSlaHours: 1, retentionDays: 365, includedRetainerHoursPerYear: 20 },
+          includedOffers: ["MANAGED_DEFENSE", "CONTINUOUS_ASSURANCE", "CRYPTO_LEDGER", "EXPOSURE_MANAGEMENT", "AI_SECURITY_COPILOT", "INCIDENT_RETAINER"],
+          highlightedFeatures: ["1,000 Protected Assets & 100 GB/day Telemetry", "Multi-Hop Attack Path Graph", "ZoikoShield AI Security Copilot", "20 Included Retainer Hours/yr", "1-Hour Incident Response SLA", "1-Year Evidence Retention"],
+          governanceFeatures: ["Mandatory 10-Field Decision Review Envelope", "Prompt injection circuit breaker", "Counsel-controlled legal logging"],
+          supportModel: "Extended 16x7 Coverage",
+          isPopular: true,
+        },
+        {
+          key: "SHIELD_ADVANCED",
+          displayName: "Shield Advanced",
+          tagline: "Full-Spectrum Defense, Purple-Team & 24/7 MDR",
+          description: "For highly regulated institutions requiring continuous 24/7 SOC operations, adversary simulation, and rapid containment.",
+          pricing: { monthlyUsd: 8000, annualBilledMonthlyUsd: 7200, isContractOnly: false, currency: "USD" },
+          allocations: { maxProtectedAssets: 5000, includedTelemetryGbPerDay: 500, incidentResponseSlaHours: 0.25, retentionDays: 730, includedRetainerHoursPerYear: 50 },
+          includedOffers: ["MANAGED_DEFENSE", "CONTINUOUS_ASSURANCE", "CRYPTO_LEDGER", "EXPOSURE_MANAGEMENT", "AI_SECURITY_COPILOT", "INCIDENT_RETAINER", "PURPLE_TEAM_SIMULATION"],
+          highlightedFeatures: ["5,000 Protected Assets & 500 GB/day Telemetry", "Operationally-Proven 24/7/365 Continuous MDR", "15-Minute Critical Incident SLA", "Automated Purple-Team Adversary Emulation", "50 Included Retainer Hours/yr", "2-Year Evidence Retention"],
+          governanceFeatures: ["Rule SVC-01 Verified Operational Readiness", "Cryptographic Simulation Receipts", "Multi-party Quorum Approval"],
+          supportModel: "24/7/365 Dedicated Lead Incident Commander",
+        },
+        {
+          key: "SHIELD_ENTERPRISE",
+          displayName: "Shield Enterprise",
+          tagline: "Sovereign Cells, Custom SLAs & Bespoke Governance",
+          description: "For multinational conglomerates and government entities requiring dedicated cryptographic cells and BYOK key governance.",
+          pricing: { monthlyUsd: null, annualBilledMonthlyUsd: null, isContractOnly: true, currency: "USD" },
+          allocations: { maxProtectedAssets: null, includedTelemetryGbPerDay: null, incidentResponseSlaHours: 0.1, retentionDays: 2555, includedRetainerHoursPerYear: 100 },
+          includedOffers: ["MANAGED_DEFENSE", "CONTINUOUS_ASSURANCE", "CRYPTO_LEDGER", "EXPOSURE_MANAGEMENT", "AI_SECURITY_COPILOT", "INCIDENT_RETAINER", "PURPLE_TEAM_SIMULATION", "SOVEREIGN_CELL", "BYOK_KEY_MANAGEMENT"],
+          highlightedFeatures: ["Unlimited Custom Asset & Telemetry Bands", "Dedicated Single-Tenant Sovereign Regional Partitions", "Bring-Your-Own-KMS (BYOK)", "Custom Statutory Assurance Packs", "100+ Included Retainer Hours", "7-Year Regulatory Evidence Preservation"],
+          governanceFeatures: ["Custom Cross-Tenant JIT Elevation", "Bespoke Statutory Compliance Auditing", "Full Source Code Escrow Options"],
+          supportModel: "White-Glove 24/7 Named Principal Engineer",
+        },
+      ];
+
+      const recommendedPlan = allTiers.find((t) => t.key === recKey) || allTiers[0];
+      const alternativePlans = allTiers.filter((t) => t.key !== recKey);
+
+      return NextResponse.json(
+        {
+          data: {
+            recommendedPlan,
+            rationale,
+            alternativePlans,
+          },
+        },
+        { headers: { "X-ZoikoShield-Source": "simulated" } }
+      );
+    }
+
+    return NextResponse.json(
+      {
+        data: [
+          {
+            key: "SHIELD_ESSENTIAL",
+            displayName: "Shield Essential",
+            tagline: "Foundational MDR & Post-Quantum Compliance",
+            description: "For growing organizations requiring continuous threat detection, compliance automation, and post-quantum proof ledger.",
+            pricing: { monthlyUsd: 2000, annualBilledMonthlyUsd: 1800, isContractOnly: false, currency: "USD" },
+            allocations: { maxProtectedAssets: 250, includedTelemetryGbPerDay: 25, incidentResponseSlaHours: 4, retentionDays: 90, includedRetainerHoursPerYear: 0 },
+            includedOffers: ["MANAGED_DEFENSE", "CONTINUOUS_ASSURANCE", "CRYPTO_LEDGER"],
+            highlightedFeatures: [
+              "250 Protected Assets & 25 GB/day Telemetry",
+              "P0 Certified Connectors (AWS, Entra ID, Okta, CrowdStrike)",
+              "Automated SOC 2 & ISO 27001 Controls",
+              "Dilithium3 Post-Quantum Merkle Ledger",
+              "4-Hour Critical Incident Response Target",
+            ],
+            governanceFeatures: [
+              "Anti-Perverse Billing Guard (No per-incident charges)",
+              "Dual-approver R3-R4 containment workflows",
+              "Automated evidence integrity proofs",
+            ],
+            supportModel: "Standard 8x5 Business Hours Support with Email & Slack Webhooks",
+          },
+          {
+            key: "SHIELD_PROFESSIONAL",
+            displayName: "Shield Professional",
+            tagline: "Advanced SecOps, Attack Path Graphs & AI Copilot",
+            description: "For mid-market enterprises requiring deep attack graph analysis, AI security copilot, and 1-hour response SLAs.",
+            pricing: { monthlyUsd: 4000, annualBilledMonthlyUsd: 3600, isContractOnly: false, currency: "USD" },
+            allocations: { maxProtectedAssets: 1000, includedTelemetryGbPerDay: 100, incidentResponseSlaHours: 1, retentionDays: 365, includedRetainerHoursPerYear: 20 },
+            includedOffers: [
+              "MANAGED_DEFENSE",
+              "CONTINUOUS_ASSURANCE",
+              "CRYPTO_LEDGER",
+              "EXPOSURE_MANAGEMENT",
+              "AI_SECURITY_COPILOT",
+              "INCIDENT_RETAINER",
+            ],
+            highlightedFeatures: [
+              "1,000 Protected Assets & 100 GB/day Telemetry",
+              "Multi-Hop Attack Path & Toxic Combination Graph",
+              "ZoikoShield AI Security Copilot (6 Operational Modes)",
+              "20 Included Incident Response Retainer Hours/yr",
+              "1-Hour Critical Incident Response SLA",
+              "1-Year Evidence Retention & Verifier CLI",
+            ],
+            governanceFeatures: [
+              "Mandatory 10-Field Decision Review Envelope",
+              "Model drift telemetry & Prompt injection circuit breaker",
+              "Counsel-controlled legal privilege logging",
+            ],
+            supportModel: "Extended 16x7 Coverage with Dedicated Customer Success Manager",
+            isPopular: true,
+          },
+          {
+            key: "SHIELD_ADVANCED",
+            displayName: "Shield Advanced",
+            tagline: "Full-Spectrum Defense, Purple-Team & 24/7 MDR",
+            description: "For highly regulated institutions requiring continuous 24/7 SOC operations, adversary simulation, and rapid containment.",
+            pricing: { monthlyUsd: 8000, annualBilledMonthlyUsd: 7200, isContractOnly: false, currency: "USD" },
+            allocations: { maxProtectedAssets: 5000, includedTelemetryGbPerDay: 500, incidentResponseSlaHours: 0.25, retentionDays: 730, includedRetainerHoursPerYear: 50 },
+            includedOffers: [
+              "MANAGED_DEFENSE",
+              "CONTINUOUS_ASSURANCE",
+              "CRYPTO_LEDGER",
+              "EXPOSURE_MANAGEMENT",
+              "AI_SECURITY_COPILOT",
+              "INCIDENT_RETAINER",
+              "PURPLE_TEAM_SIMULATION",
+            ],
+            highlightedFeatures: [
+              "5,000 Protected Assets & 500 GB/day Telemetry",
+              "Operationally-Proven 24/7/365 Continuous MDR",
+              "15-Minute Critical Incident Containment SLA",
+              "Automated Purple-Team Adversary Emulation",
+              "50 Included Incident Response Retainer Hours/yr",
+              "2-Year Merkle-Anchored Evidence Retention",
+            ],
+            governanceFeatures: [
+              "Rule SVC-01 Verified Operational Readiness",
+              "Cryptographic Simulation Receipts with HSM Proof",
+              "Multi-party Quorum Approval for R4 Network Freezes",
+            ],
+            supportModel: "24/7/365 Dedicated Lead Incident Commander & War Room Bridge",
+          },
+          {
+            key: "SHIELD_ENTERPRISE",
+            displayName: "Shield Enterprise",
+            tagline: "Sovereign Cells, Custom SLAs & Bespoke Governance",
+            description: "For multinational conglomerates and government entities requiring dedicated cryptographic cells and BYOK key governance.",
+            pricing: { monthlyUsd: null, annualBilledMonthlyUsd: null, isContractOnly: true, currency: "USD" },
+            allocations: { maxProtectedAssets: null, includedTelemetryGbPerDay: null, incidentResponseSlaHours: 0.1, retentionDays: 2555, includedRetainerHoursPerYear: 100 },
+            includedOffers: [
+              "MANAGED_DEFENSE",
+              "CONTINUOUS_ASSURANCE",
+              "CRYPTO_LEDGER",
+              "EXPOSURE_MANAGEMENT",
+              "AI_SECURITY_COPILOT",
+              "INCIDENT_RETAINER",
+              "PURPLE_TEAM_SIMULATION",
+              "SOVEREIGN_CELL",
+              "BYOK_KEY_MANAGEMENT",
+            ],
+            highlightedFeatures: [
+              "Unlimited Custom Asset & Telemetry Bands",
+              "Dedicated Single-Tenant Sovereign Regional Partitions",
+              "Bring-Your-Own-KMS (BYOK) Hardware Key Control",
+              "Custom Statutory Assurance Packs & Bespoke SLAs",
+              "100+ Included Retainer Hours with Tier-3 Forensics",
+              "7-Year Regulatory Evidence Preservation",
+            ],
+            governanceFeatures: [
+              "Custom Cross-Tenant JIT Elevation Policies",
+              "Bespoke Statutory Compliance Auditing",
+              "Full Source Code & Formal Proof Escrow Options",
+            ],
+            supportModel: "White-Glove 24/7 Named Principal Engineer & On-Call Forensic Team",
+          },
+        ],
+      },
+      { headers: { "X-ZoikoShield-Source": "simulated" } }
+    );
+  }
+
+  // Route: /api/v1/commercial/capabilities
+  if (path.startsWith("commercial/capabilities")) {
+    if (path.includes("domains")) {
+      return NextResponse.json(
+        {
+          data: [
+            {
+              domainId: "threat-operations",
+              domainName: "Threat Operations & MDR",
+              description: "Core detection, telemetry normalization, alert triaging, and SOAR action orchestration.",
+              totalCapabilities: 4,
+              coreCount: 4,
+              controlledCount: 0,
+              gatedCount: 0,
+              deferredCount: 0,
+              items: [
+                {
+                  id: "TELEMETRY_INGESTION",
+                  name: "OCSF v1.1.0 High-Throughput Normalization",
+                  domain: "Threat Operations",
+                  customerService: "Managed Threat Detection & Rapid Response (MDR)",
+                  status: "CORE",
+                  substantiatingSatellites: ["shield-ingest"],
+                  governanceRationale: "Fully operational across P0 Certified connectors.",
+                },
+                {
+                  id: "ALERT_TRIAGE",
+                  name: "Deterministic Event-Correlated Alert Triaging",
+                  domain: "Threat Operations",
+                  customerService: "Managed Threat Detection & Rapid Response (MDR)",
+                  status: "CORE",
+                  substantiatingSatellites: ["shield-core"],
+                  governanceRationale: "Core rule evaluation with 0 false-negative SLA on critical MITRE techniques.",
+                },
+              ],
+            },
+            {
+              domainId: "cryptographic-assurance",
+              domainName: "Continuous Assurance & Merkle Trust",
+              description: "Tamper-evident epoch ledger, post-quantum signatures, and continuous SOC 2 / ISO 27001 evaluation.",
+              totalCapabilities: 3,
+              coreCount: 3,
+              controlledCount: 0,
+              gatedCount: 0,
+              deferredCount: 0,
+              items: [
+                {
+                  id: "MERKLE_ANCHORING",
+                  name: "Post-Quantum Dilithium3 Merkle Epoch Trees",
+                  domain: "Continuous Assurance",
+                  customerService: "Post-Quantum Cryptographic Audit Ledger",
+                  status: "CORE",
+                  substantiatingSatellites: ["shield-anchor"],
+                  governanceRationale: "Hardware HSM Root-of-Trust and Dilithium3 cryptographic anchoring active.",
+                },
+              ],
+            },
+            {
+              domainId: "compliance-frameworks",
+              domainName: "Regulatory & Framework Governance",
+              description: "Statutory compliance evaluators with fail-closed enforcement of deferred standards.",
+              totalCapabilities: 5,
+              coreCount: 2,
+              controlledCount: 0,
+              gatedCount: 0,
+              deferredCount: 3,
+              items: [
+                {
+                  id: "SOC2_EVALUATOR",
+                  name: "SOC 2 Type II CC6.1 Logical Access Controls",
+                  domain: "Regulatory & Frameworks",
+                  customerService: "Continuous Compliance & Automated Control Assurance",
+                  status: "CORE",
+                  substantiatingSatellites: ["shield-core"],
+                  governanceRationale: "Production-ready automated control testing.",
+                },
+                {
+                  id: "ISO27001_EVALUATOR",
+                  name: "ISO/IEC 27001:2022 A.9.2 User Access Management",
+                  domain: "Regulatory & Frameworks",
+                  customerService: "Continuous Compliance & Automated Control Assurance",
+                  status: "CORE",
+                  substantiatingSatellites: ["shield-core"],
+                  governanceRationale: "Production-ready automated control testing.",
+                },
+                {
+                  id: "EU_DORA_EVALUATOR",
+                  name: "EU Digital Operational Resilience Act (DORA)",
+                  domain: "Regulatory & Frameworks",
+                  customerService: "EU DORA Digital Operational Resilience Evaluator",
+                  status: "DEFERRED",
+                  substantiatingSatellites: ["shield-core"],
+                  governanceRationale: "Deferred to Phase 2 midpoint per ADR-08.",
+                  statutoryReference: "EU Regulation 2022/2554",
+                },
+                {
+                  id: "EU_NIS2_EVALUATOR",
+                  name: "EU Network and Information Systems Directive (NIS2)",
+                  domain: "Regulatory & Frameworks",
+                  customerService: "EU NIS2 Directive Compliance Evaluator",
+                  status: "DEFERRED",
+                  substantiatingSatellites: ["shield-core"],
+                  governanceRationale: "Deferred to Phase 2 midpoint per ADR-08.",
+                  statutoryReference: "EU Directive 2022/2555",
+                },
+                {
+                  id: "PCI_DSS_EVALUATOR",
+                  name: "PCI DSS v4.0.1 Payment Security Standard",
+                  domain: "Regulatory & Frameworks",
+                  customerService: "PCI DSS v4.0.1 Payment Card Security Evaluator",
+                  status: "DEFERRED",
+                  substantiatingSatellites: ["shield-core"],
+                  governanceRationale: "Deferred to Phase 2 midpoint per ADR-08.",
+                  statutoryReference: "PCI SSC v4.0.1",
+                },
+              ],
+            },
+          ],
+        },
+        { headers: { "X-ZoikoShield-Source": "simulated" } }
+      );
+    }
+
+    if (path.includes("evaluators/check")) {
+      const framework = req.nextUrl.searchParams.get("framework") || "";
+      const fw = framework.toUpperCase();
+      const isDeferred =
+        fw.includes("DORA") ||
+        fw.includes("NIS2") ||
+        fw.includes("PCI") ||
+        fw.includes("EU_DORA") ||
+        fw.includes("EU_NIS2") ||
+        fw.includes("PCI_DSS");
+      return NextResponse.json(
+        { framework, active: !isDeferred },
+        { headers: { "X-ZoikoShield-Source": "simulated" } }
+      );
+    }
+
+    // Default: return 12 public services
+    return NextResponse.json(
+      {
+        data: [
+          {
+            serviceId: "managed-detection-response",
+            serviceName: "Managed Threat Detection & Rapid Response (MDR)",
+            category: "OPERATIONS",
+            publicOutcomeDescription:
+              "Continuous 24/7 or business-hours telemetry correlation, incident triaging, and human-in-the-loop autonomous response.",
+            status: "CORE",
+            substantiatingComponents: ["shield-core", "shield-ingest", "shield-action"],
+            includedCapabilities: ["TELEMETRY_INGESTION", "ALERT_TRIAGE", "INCIDENT_MANAGEMENT", "SOAR_PLAYBOOKS"],
+            pricingTierMinimum: "ESSENTIAL",
+          },
+          {
+            serviceId: "continuous-compliance-assurance",
+            serviceName: "Continuous Compliance & Automated Control Assurance",
+            category: "GOVERNANCE",
+            publicOutcomeDescription:
+              "Real-time control evaluation and cryptographically sealed evidence generation across SOC 2 CC6.1 and ISO 27001 A.9.2.",
+            status: "CORE",
+            substantiatingComponents: ["shield-core", "shield-anchor"],
+            includedCapabilities: ["CONTROL_EVALUATION", "CONTINUOUS_MONITORING", "EVIDENCE_COLLECTION"],
+            pricingTierMinimum: "ESSENTIAL",
+          },
+          {
+            serviceId: "cryptographic-evidence-ledger",
+            serviceName: "Post-Quantum Cryptographic Audit Ledger",
+            category: "TRUST",
+            publicOutcomeDescription:
+              "Tamper-evident Merkle epoch tree anchored with ML-DSA (Dilithium3) and Falcon post-quantum signatures with Hardware HSM root-of-trust.",
+            status: "CORE",
+            substantiatingComponents: ["shield-anchor", "verifier-cli"],
+            includedCapabilities: ["MERKLE_ANCHORING", "PQC_SIGNATURES", "INDEPENDENT_VERIFICATION"],
+            pricingTierMinimum: "ESSENTIAL",
+          },
+          {
+            serviceId: "ai-safety-governance",
+            serviceName: "AI Safety, Guardrails & Model Governance",
+            category: "AI_DEFENSE",
+            publicOutcomeDescription:
+              "Multi-modal prompt firewall, model drift telemetry, and EU AI Act / NIST AI RMF governance classification.",
+            status: "CONTROLLED",
+            substantiatingComponents: ["shield-ai", "shield-core"],
+            includedCapabilities: ["AI_CIRCUIT_BREAKER", "PROMPT_INJECTION_SHIELD", "AI_INVENTORY"],
+            pricingTierMinimum: "PROFESSIONAL",
+          },
+          {
+            serviceId: "cloud-exposure-management",
+            serviceName: "Cloud Exposure & Attack Path Graph Analysis",
+            category: "VULNERABILITY",
+            publicOutcomeDescription:
+              "Continuous multi-hop attack graph calculation, crown jewel blast radius modeling, and toxic privilege path elimination.",
+            status: "CONTROLLED",
+            substantiatingComponents: ["shield-core"],
+            includedCapabilities: ["ATTACK_GRAPH_ENGINE", "BLAST_RADIUS_CALC", "ASSET_DISCOVERY"],
+            pricingTierMinimum: "PROFESSIONAL",
+          },
+          {
+            serviceId: "incident-response-retainer",
+            serviceName: "Emergency Incident Response Retainer & SLA",
+            category: "OPERATIONS",
+            publicOutcomeDescription:
+              "Contracted surge capacity, guaranteed response windows, and counsel-controlled legal privilege evidence protection.",
+            status: "CONTROLLED",
+            substantiatingComponents: ["shield-core", "shield-anchor"],
+            includedCapabilities: ["IR_RETAINER_HOURS", "PRIVILEGE_PROTECTION", "EMERGENCY_PROVISION"],
+            pricingTierMinimum: "PROFESSIONAL",
+          },
+          {
+            serviceId: "purple-team-simulation",
+            serviceName: "Automated Purple-Team Adversary Simulation",
+            category: "SECURITY_TESTING",
+            publicOutcomeDescription:
+              "Reversible MITRE ATT&CK TTP adversary emulation with cryptographic simulation receipts and safety kill-switches.",
+            status: "CONTROLLED",
+            substantiatingComponents: ["shield-action", "shield-core"],
+            includedCapabilities: ["ADVERSARY_SIMULATION", "SIMULATION_RECEIPTS", "SAFETY_KILL_SWITCH"],
+            pricingTierMinimum: "ADVANCED",
+          },
+          {
+            serviceId: "ai-security-copilot",
+            serviceName: "ZoikoShield AI Security Copilot",
+            category: "AI_DEFENSE",
+            publicOutcomeDescription:
+              "Deterministic 6-mode operational copilot providing dual-layer review envelopes, source span grounding, and calibration bands.",
+            status: "CORE",
+            substantiatingComponents: ["shield-ai", "shield-core"],
+            includedCapabilities: ["COPILOT_INVESTIGATE", "COPILOT_ASSURE", "COPILOT_RESPOND", "COPILOT_REPORT", "COPILOT_DEVELOP", "COPILOT_NAVIGATE"],
+            pricingTierMinimum: "PROFESSIONAL",
+          },
+          {
+            serviceId: "eu-dora-resilience-evaluator",
+            serviceName: "EU DORA Digital Operational Resilience Evaluator",
+            category: "GOVERNANCE",
+            publicOutcomeDescription:
+              "Statutory ICT risk management and operational resilience evaluation for financial entities.",
+            status: "DEFERRED",
+            substantiatingComponents: ["shield-core"],
+            includedCapabilities: ["DORA_ICT_RISK", "DORA_REPORTING"],
+            pricingTierMinimum: "ENTERPRISE",
+          },
+          {
+            serviceId: "eu-nis2-compliance-evaluator",
+            serviceName: "EU NIS2 Directive Compliance Evaluator",
+            category: "GOVERNANCE",
+            publicOutcomeDescription:
+              "Supply chain security and incident notification evaluation for essential and important entities.",
+            status: "DEFERRED",
+            substantiatingComponents: ["shield-core"],
+            includedCapabilities: ["NIS2_SUPPLY_CHAIN", "NIS2_EARLY_WARNING"],
+            pricingTierMinimum: "ENTERPRISE",
+          },
+          {
+            serviceId: "pci-dss-v4-evaluator",
+            serviceName: "PCI DSS v4.0.1 Payment Card Security Evaluator",
+            category: "GOVERNANCE",
+            publicOutcomeDescription:
+              "Cardholder data environment control verification and automated continuous compliance.",
+            status: "DEFERRED",
+            substantiatingComponents: ["shield-core"],
+            includedCapabilities: ["PCI_CDE_SCOPING", "PCI_CONTROL_EVAL"],
+            pricingTierMinimum: "ENTERPRISE",
+          },
+          {
+            serviceId: "enterprise-sovereign-partition",
+            serviceName: "Dedicated Sovereign Partition & Customer-Managed Keys (BYOK)",
+            category: "TRUST",
+            publicOutcomeDescription:
+              "Single-tenant dedicated sovereign partition, customer-managed keys (BYOK/KMS), and regional tenant data isolation.",
+            status: "GATED",
+            substantiatingComponents: ["shield-anchor"],
+            includedCapabilities: ["BYOK_ENCRYPTION", "SOVEREIGN_CELL", "HARDWARE_HSM_ANCHOR"],
+            pricingTierMinimum: "ENTERPRISE",
+          },
+        ],
+      },
+      { headers: { "X-ZoikoShield-Source": "simulated" } }
+    );
+  }
+
+  // --- SOAR Emergency Freeze & Release Handlers ---
+  if (path === "response/freeze" || path === "actions/freeze" || path === "api/v1/actions/freeze") {
+    const freezeId = `frz-${generateUUID().slice(0, 8)}`;
+    return NextResponse.json(
+      {
+        data: {
+          freezeId,
+          scope: parsedBody?.scope || "TENANT",
+          reason: parsedBody?.reason || "Emergency SOAR lockdown engaged",
+          status: "FROZEN",
+          activeFrom: new Date().toISOString(),
+          activeUntil: null,
+          createdBy: "sec-ops@enterprise.corp",
+        },
+      },
+      { headers: { "X-ZoikoShield-Source": "simulated" } }
+    );
+  }
+
+  if (path === "response/unfreeze" || path === "actions/unfreeze" || path === "actions/freeze/release" || path.startsWith("actions/freeze/")) {
+    return NextResponse.json(
+      {
+        data: {
+          frozen: false,
+          status: "OPERATIONAL",
+          endedFreezes: 1,
+          releasedAt: new Date().toISOString(),
+        },
+      },
+      { headers: { "X-ZoikoShield-Source": "simulated" } }
+    );
+  }
+
+  if (path === "response/freeze-status" || path === "actions/freeze-status") {
+    return NextResponse.json(
+      {
+        data: {
+          frozen: false,
+          status: "OPERATIONAL",
+          freeze: null,
+        },
+      },
+      { headers: { "X-ZoikoShield-Source": "simulated" } }
+    );
+  }
+
+  // --- SOAR Pre-Execution Simulation Handler ---
+  if (path.includes("simulate") || path === "actions/simulate" || path.startsWith("response-proposals/")) {
+    const proposalId = parsedBody?.proposalId || path.split("/")[1] || `prop-${generateUUID().slice(0, 8)}`;
+    const receiptId = `rcpt-sim-${generateUUID().slice(0, 8)}`;
+    const actionType = parsedBody?.actionType || "ISOLATE_ENDPOINT";
+    const targetRef = parsedBody?.targetRef || "srv-db-prod-02";
+
+    return NextResponse.json(
+      {
+        data: {
+          state: "SIMULATED",
+          actionCommandId: `cmd-${generateUUID().slice(0, 8)}`,
+          receipt: {
+            receiptId,
+            commandId: `cmd-${generateUUID().slice(0, 8)}`,
+            proposalId,
+            tenantId: "00000000-0000-4000-8000-000000000001",
+            actionType,
+            targetRef,
+            status: "SIMULATED",
+            executedAt: new Date().toISOString(),
+            blastRadiusScore: 0.05,
+            observedEffect: {
+              provider: "edr-agent",
+              targetEndpoint: targetRef,
+              networkIsolationActive: true,
+              isolationReason: "Containment simulation via ZoikoShield SOAR",
+              executionMode: "SIMULATED",
+              affectedWorkstations: 0,
+              affectedServers: 1,
+              activeConnectionsDropped: 4,
+              serviceImpact: "LOW (Database replica failover automatic)",
+            },
+            stateDiffs: [
+              {
+                target: targetRef,
+                beforeState: "NETWORK_CONNECTED (Inbound/Outbound Open)",
+                afterState: "NETWORK_ISOLATED (Management Loopback Only)",
+                rollbackCommand: "UNISOLATE_ENDPOINT",
+              },
+            ],
+            rollbackCapability: {
+              supported: true,
+              rollbackAction: "UNISOLATE_ENDPOINT",
+            },
+            safetyAttestationHash: sha256Mock(`${receiptId}:${actionType}:${targetRef}`),
+            signature: sha256Mock(`ZS-SIMULATION-V1:${receiptId}:${actionType}`),
+          },
+        },
+      },
+      { headers: { "X-ZoikoShield-Source": "simulated" } }
+    );
+  }
+
+  // --- Dual-Custody Cryptographic Quorum Handlers ---
+  if (path === "action/dual-custody/initiate" || path === "api/v1/action/dual-custody/initiate") {
+    const quorumId = `quorum-${generateUUID().slice(0, 8)}`;
+    const singleUseRollbackToken = `ZS-ROLLBACK-TOKEN-${generateUUID().slice(0, 8).toUpperCase()}`;
+    return NextResponse.json(
+      {
+        data: {
+          quorumId,
+          tenantId: parsedBody?.tenantId || "00000000-0000-4000-8000-000000000001",
+          proposalId: parsedBody?.proposalId || "prop-isolate-r2",
+          actionType: parsedBody?.actionType || "ISOLATE_ENDPOINT",
+          targetResource: parsedBody?.targetResource || "srv-db-prod-02",
+          authorityLevel: parsedBody?.authorityLevel || "R2",
+          status: "PENDING_SECOND_SIGNATURE",
+          initiator: parsedBody?.initiator || {
+            userId: "usr-sarah-chen",
+            fullName: "Sarah Chen (Lead Analyst)",
+            role: "SECURITY_OPERATIONS_LEAD",
+            signedAt: new Date().toISOString(),
+          },
+          singleUseRollbackToken,
+          compensatingPlan: {
+            rollbackCommand: parsedBody?.compensatingCommand || "UNISOLATE_ENDPOINT",
+            targetResource: parsedBody?.targetResource || "srv-db-prod-02",
+            reversibilityTier: parsedBody?.reversibilityTier || "R1",
+          },
+          createdAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+        },
+      },
+      { headers: { "X-ZoikoShield-Source": "simulated" } }
+    );
+  }
+
+  if (path === "action/dual-custody/approve" || path === "api/v1/action/dual-custody/approve") {
+    const quorumId = parsedBody?.quorumId || `quorum-${generateUUID().slice(0, 8)}`;
+    const approver = parsedBody?.approver || {
+      userId: "usr-david-ross",
+      fullName: "David Ross (SOC Director)",
+      role: "TENANT_OWNER",
+      signedAt: new Date().toISOString(),
+    };
+    const signature = sha256Mock(`ZS-QUORUM-RECEIPT-V1:${quorumId}:${approver.userId}:${Date.now()}`);
+
+    return NextResponse.json(
+      {
+        data: {
+          quorumId,
+          status: "QUORUM_REACHED",
+          initiator: {
+            userId: "usr-sarah-chen",
+            fullName: "Sarah Chen (Lead Analyst)",
+            role: "SECURITY_OPERATIONS_LEAD",
+          },
+          secondaryApprover: approver,
+          quorumSignature: signature,
+          singleUseRollbackToken: `ZS-ROLLBACK-TOKEN-${generateUUID().slice(0, 8).toUpperCase()}`,
+          finalizedAt: new Date().toISOString(),
+        },
+      },
+      { headers: { "X-ZoikoShield-Source": "simulated" } }
+    );
+  }
+
+  // --- Automated Rollback Compensation Handler ---
+  if (path === "actions/rollback" || path === "api/v1/actions/rollback") {
+    const rollbackToken = parsedBody?.rollbackToken || `ZS-ROLLBACK-TOKEN-${generateUUID().slice(0, 8).toUpperCase()}`;
+    const receiptId = `rcpt-rollback-${generateUUID().slice(0, 8)}`;
+    return NextResponse.json(
+      {
+        data: {
+          status: "ROLLED_BACK",
+          receiptId,
+          rollbackToken,
+          compensatedAt: new Date().toISOString(),
+          actionType: "RESTORE_ACCESS / UNISOLATE_ENDPOINT",
+          reconciliationStatus: "STATE_RECONCILED",
+          evidenceHash: sha256Mock(`${receiptId}:${rollbackToken}`),
+        },
+      },
+      { headers: { "X-ZoikoShield-Source": "simulated" } }
+    );
+  }
+
   // Generic 200 OK fallback
   return NextResponse.json(
     { success: true, message: "ZoikoShield API call processed", path },

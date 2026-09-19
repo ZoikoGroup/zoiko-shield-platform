@@ -24,6 +24,11 @@ import {
   Flame,
   PhoneCall,
   Sliders,
+  Layers,
+  Scale,
+  Landmark,
+  Bot,
+  ShieldCheck,
 } from "lucide-react";
 
 export const Sidebar: React.FC = () => {
@@ -40,6 +45,13 @@ export const Sidebar: React.FC = () => {
           label: "Command Center",
           href: "/",
           icon: <LayoutDashboard className="w-4 h-4" />,
+        },
+        {
+          label: "AI Security Copilot",
+          href: "/copilot",
+          icon: <Bot className="w-4 h-4" />,
+          badge: "6 MODES",
+          badgeVariant: "ai" as const,
         },
         {
           label: "Ingestion Console",
@@ -99,6 +111,29 @@ export const Sidebar: React.FC = () => {
       ],
     },
     {
+      label: "COMMERCIAL & CATALOGUE",
+      items: [
+        {
+          label: "Services Catalogue",
+          href: "/services",
+          icon: <Layers className="w-4 h-4" />,
+          badge: "12 SERVICES",
+          badgeVariant: "anchored" as const,
+        },
+        {
+          label: "Plans & Band Pricing",
+          href: "/pricing",
+          icon: <Scale className="w-4 h-4" />,
+          badge: "4 TIERS",
+        },
+        {
+          label: "Sector Solution Packs",
+          href: "/sector-packs",
+          icon: <Landmark className="w-4 h-4" />,
+        },
+      ],
+    },
+    {
       label: "CONNECTIVITY & COMPLIANCE",
       items: [
         {
@@ -151,6 +186,13 @@ export const Sidebar: React.FC = () => {
     {
       label: "PLATFORM ADMIN (CROSS-TENANT)",
       items: [
+        {
+          label: "GTM Pre-Flight Checklist",
+          href: "/admin/gtm-checklist",
+          icon: <ShieldCheck className="w-4 h-4" />,
+          badge: "12/12 PASS",
+          badgeVariant: "anchored" as const,
+        },
         {
           label: "Operations & Entitlements",
           href: "/admin",

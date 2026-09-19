@@ -3,6 +3,7 @@ import { ActionExecutionRegistryService } from './action-execution-registry.serv
 import { EntraUserActionAdapter } from './entra-user.adapter';
 import { EdrIsolateActionAdapter } from './edr-isolate.adapter';
 import { AwsIamActionAdapter } from './aws-iam.adapter';
+import { WafIpActionAdapter } from './waf-ip.adapter';
 import { ActionExecutionContext } from './action-execution.interface';
 
 describe('ActionExecutionRegistry & Adapters', () => {
@@ -10,6 +11,7 @@ describe('ActionExecutionRegistry & Adapters', () => {
   let entraAdapter: EntraUserActionAdapter;
   let edrAdapter: EdrIsolateActionAdapter;
   let awsIamAdapter: AwsIamActionAdapter;
+  let wafIpAdapter: WafIpActionAdapter;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -18,6 +20,7 @@ describe('ActionExecutionRegistry & Adapters', () => {
         EntraUserActionAdapter,
         EdrIsolateActionAdapter,
         AwsIamActionAdapter,
+        WafIpActionAdapter,
       ],
     }).compile();
 
@@ -27,12 +30,14 @@ describe('ActionExecutionRegistry & Adapters', () => {
     entraAdapter = module.get<EntraUserActionAdapter>(EntraUserActionAdapter);
     edrAdapter = module.get<EdrIsolateActionAdapter>(EdrIsolateActionAdapter);
     awsIamAdapter = module.get<AwsIamActionAdapter>(AwsIamActionAdapter);
+    wafIpAdapter = module.get<WafIpActionAdapter>(WafIpActionAdapter);
   });
 
   it('should be defined', () => {
     expect(registry).toBeDefined();
     expect(entraAdapter).toBeDefined();
     expect(edrAdapter).toBeDefined();
+    expect(wafIpAdapter).toBeDefined();
   });
 
   it('executes Entra ID DISABLE_USER_ACCOUNT simulation and returns signed simulation receipt', async () => {
@@ -71,7 +76,7 @@ describe('ActionExecutionRegistry & Adapters', () => {
     };
 
     await expect(registry.executeAction(context)).rejects.toThrow(
-      /Live R2 automated response is strictly disabled prior to G1 release gate ratification/,
+      /Live R2\+ automated response execution is strictly disabled: G1 Release Gate has not been formally ratified/,
     );
   });
 
@@ -114,6 +119,34 @@ describe('ActionExecutionRegistry & Adapters', () => {
     );
     expect(receipt.observedEffect.sessionsRevoked).toBe(true);
     expect(receipt.signature).toBeDefined();
+
+    const rollbackResult = await registry.rollbackAction(receipt);
+    expect(rollbackResult.status).toBe('ROLLED_BACK');
+  });
+
+  it('executes WAF APPLY_WAF_BLOCK simulation with auto-TTL and returns signed simulation receipt', async () => {
+    const context: ActionExecutionContext = {
+      tenantId: 'tenant-123',
+      commandId: 'cmd-004',
+      actionType: 'APPLY_WAF_BLOCK',
+      targetRef: '198.51.100.42/32',
+      authorityLevel: 'R1',
+      approvalRef: 'appr-1002',
+      parameters: { ttlMinutes: 30 },
+      isSimulation: true,
+    };
+
+    const receipt = await registry.executeAction(context);
+
+    expect(receipt.status).toBe('SIMULATED');
+    expect(receipt.actionType).toBe('APPLY_WAF_BLOCK');
+    expect(receipt.targetRef).toBe('198.51.100.42/32');
+    expect(receipt.observedEffect.ipBlocked).toBe(true);
+    expect(receipt.observedEffect.ttlMinutes).toBe(30);
+    expect(receipt.observedEffect.autoExpireAt).toBeDefined();
+    expect(receipt.signature).toBeDefined();
+    expect(receipt.rollbackCapability.supported).toBe(true);
+    expect(receipt.rollbackCapability.rollbackAction).toBe('REMOVE_WAF_BLOCK');
 
     const rollbackResult = await registry.rollbackAction(receipt);
     expect(rollbackResult.status).toBe('ROLLED_BACK');

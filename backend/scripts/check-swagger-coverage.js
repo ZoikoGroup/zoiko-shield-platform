@@ -120,6 +120,19 @@ const documentedOperations = new Set();
 const documentedSecurity = new Map();
 const documentedTenantHeaders = new Map();
 const approvedPublicOperations = new Set([
+  'post:/api/v1/managed-defense/service-obligations/verify-readiness',
+  'post:/api/v1/managed-defense/service-obligations/register',
+  'get:/api/v1/managed-defense/service-obligations/{contractId}/verify-claim',
+  'get:/api/v1/managed-defense/service-obligations/{contractId}',
+  'post:/api/v1/commercial/plans/recommend',
+  'get:/api/v1/commercial/plans/{planKey}',
+  'get:/api/v1/commercial/plans',
+  'get:/api/v1/commercial/capabilities/evaluators/check',
+  'get:/api/v1/commercial/capabilities/check/{capabilityId}',
+  'get:/api/v1/commercial/capabilities/all',
+  'get:/api/v1/commercial/capabilities/domains',
+  'get:/api/v1/commercial/capabilities/public-services/{serviceId}',
+  'get:/api/v1/commercial/capabilities/public-services',
   'post:/auth/login',
   'post:/auth/logout',
   'post:/auth/password-recovery/request',

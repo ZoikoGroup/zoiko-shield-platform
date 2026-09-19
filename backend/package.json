@@ -79,6 +79,7 @@
     "validate:infrastructure-tofu": "npm run lint:infrastructure-hcl-contracts",
     "rehearse:gameday": "ts-node -r tsconfig-paths/register ./scripts/run-lab18-gameday-drills.ts",
     "check:fleet-health": "ts-node -r tsconfig-paths/register ./scripts/run-fleet-diagnostics.ts",
+    "check:capability-claims": "ts-node -r tsconfig-paths/register ./scripts/check-public-capability-claims.ts",
     "simulate:cspm-remediation": "ts-node -r tsconfig-paths/register ./scripts/simulate-cspm-continuous-remediation.ts",
     "simulate:threat-hunting": "ts-node -r tsconfig-paths/register ./scripts/simulate-stream-threat-hunting.ts",
     "simulate:ebpf-microsegmentation": "ts-node -r tsconfig-paths/register ./scripts/simulate-ebpf-microsegmentation.ts",
