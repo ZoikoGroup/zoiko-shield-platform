@@ -48,7 +48,7 @@ export class ActionRollbackOrchestratorService {
     const actionReceipt = await this.rollbackBroker.executeRollback(
       tenantId,
       rollbackToken,
-      async (compensatingAction) => {
+      async (compensatingAction, original) => {
         const adapter = this.executionRegistry.getAdapter(
           compensatingAction.actionType,
         );
@@ -66,7 +66,11 @@ export class ActionRollbackOrchestratorService {
           actionType: compensatingAction.actionType,
           targetRef: compensatingAction.targetIdentifier,
           parameters: compensatingAction.parameters,
-          isSimulation: false,
+          // Inherit the original action's mode. This used to be hard-coded
+          // to false, so every rollback ran as a LIVE action — including the
+          // rollback of a simulated one — and needed a carve-out in the G1
+          // gate to pass.
+          isSimulation: original.executionMode !== 'LIVE',
         });
 
         this.logger.log(

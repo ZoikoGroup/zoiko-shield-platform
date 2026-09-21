@@ -119,6 +119,28 @@ describe('ActionExecutionRegistry & Adapters', () => {
     }
   });
 
+  it('rejects LIVE compensating actions too - they are live writes to customer systems', async () => {
+    for (const actionType of [
+      'ENABLE_USER_ACCOUNT',
+      'UNISOLATE_ENDPOINT',
+      'DETACH_DENY_ALL_POLICY',
+      'REMOVE_WAF_BLOCK',
+    ]) {
+      const liveContext: ActionExecutionContext = {
+        tenantId: 'tenant-test',
+        commandId: `cmd-${actionType}`,
+        actionType,
+        targetRef: 'target',
+        authorityLevel: 'R2',
+        approvalRef: 'appr-fake',
+        isSimulation: false,
+      };
+      await expect(registry.executeAction(liveContext)).rejects.toThrow(
+        /G1 Release Gate has not been formally ratified/,
+      );
+    }
+  });
+
   it('executes EDR ISOLATE_ENDPOINT simulation and returns simulated receipt', async () => {
     const context: ActionExecutionContext = {
       tenantId: 'tenant-123',

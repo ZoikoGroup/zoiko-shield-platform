@@ -16,6 +16,7 @@ import { ActionRollbackOrchestratorService } from '../apps/shield-action/src/rol
 import { ActionExecutionRegistryService } from '../apps/shield-action/src/execution-adapters/action-execution-registry.service';
 import { EdrIsolateActionAdapter } from '../apps/shield-action/src/execution-adapters/edr-isolate.adapter';
 import { AwsIamActionAdapter } from '../apps/shield-action/src/execution-adapters/aws-iam.adapter';
+import { WafIpActionAdapter } from '../apps/shield-action/src/execution-adapters/waf-ip.adapter';
 import { EntraUserActionAdapter } from '../apps/shield-action/src/execution-adapters/entra-user.adapter';
 import { MerkleTreeService } from '../apps/shield-anchor/src/merkle/merkle-tree.service';
 
@@ -33,6 +34,7 @@ async function main() {
     new EntraUserActionAdapter(),
     new EdrIsolateActionAdapter(),
     new AwsIamActionAdapter(),
+    new WafIpActionAdapter(),
   );
   const orchestrator = new ActionRollbackOrchestratorService(broker, registry);
 

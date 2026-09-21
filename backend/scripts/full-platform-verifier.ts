@@ -15,6 +15,7 @@ import { ActionExecutionRegistryService } from '../apps/shield-action/src/execut
 import { EntraUserActionAdapter } from '../apps/shield-action/src/execution-adapters/entra-user.adapter';
 import { EdrIsolateActionAdapter } from '../apps/shield-action/src/execution-adapters/edr-isolate.adapter';
 import { AwsIamActionAdapter } from '../apps/shield-action/src/execution-adapters/aws-iam.adapter';
+import { WafIpActionAdapter } from '../apps/shield-action/src/execution-adapters/waf-ip.adapter';
 import { CedarTenantIsolationService } from '../apps/shield-action/src/policy/cedar-tenant-isolation.service';
 import { TemporalContainmentEscalationService } from '../apps/shield-action/src/orchestration/temporal-containment-escalation.service';
 
@@ -365,7 +366,7 @@ async function runFullPlatformVerifier() {
   const entraAdapter = new EntraUserActionAdapter();
   const edrAdapter = new EdrIsolateActionAdapter();
   const awsAdapter = new AwsIamActionAdapter();
-  const actionRegistry = new ActionExecutionRegistryService(entraAdapter, edrAdapter, awsAdapter);
+  const actionRegistry = new ActionExecutionRegistryService(entraAdapter, edrAdapter, awsAdapter, new WafIpActionAdapter());
 
   // -------------------------------------------------------------------------
   // Stage 13 (LAB 15): Governed SOAR Action: AWS IAM Session Invalidation
