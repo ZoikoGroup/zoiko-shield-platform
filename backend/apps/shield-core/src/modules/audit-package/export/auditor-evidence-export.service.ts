@@ -32,8 +32,15 @@ export interface AuditorExportManifest {
   overallCompliancePosture: 'AUDITOR_VERIFIED' | 'REVIEW_REQUIRED';
   controls: ContinuousAssuranceControlExport[];
   merkleRoot: string;
-  pqcSignatureDilithium3: string;
-  classicalSignatureEd25519: string;
+  /**
+   * SHA-256 of the manifest core. This package is NOT signed: it used to
+   * carry `pqcSignatureDilithium3` and `classicalSignatureEd25519` fields
+   * that were plain SHA-256 hashes anyone could recompute, presented to
+   * auditors as ML-DSA and Ed25519 signatures. A digest is reported as a
+   * digest until an export-signing key with HSM/KMS custody exists.
+   */
+  manifestDigestSha256: string;
+  signatureStatus: 'UNSIGNED';
   knownLimitations: {
     staleEvidenceCount: number;
     staleEvidenceRecords: StaleEvidenceRecord[];
@@ -43,7 +50,7 @@ export interface AuditorExportManifest {
     action: string;
     actor: string;
     timestamp: Date;
-    signatureDigest: string;
+    eventDigest: string;
   }>;
 }
 
@@ -216,6 +223,9 @@ export class AuditorEvidenceExportService {
         'All continuous telemetry streams are fresh (<72h) and independently verifiable against cryptographic Merkle roots.',
       );
     }
+    disclosures.push(
+      'This package is not cryptographically signed. Its integrity can be checked against manifestDigestSha256 and the Merkle root, but its origin cannot yet be proven.',
+    );
 
     const knownLimitations = {
       staleEvidenceCount: staleRecords.length,
@@ -227,7 +237,7 @@ export class AuditorEvidenceExportService {
     const allLeafHashes = controls.flatMap((c) => c.merkleLeafHashes);
     const merkleRoot = this.calculateDomainSeparatedMerkleRoot(allLeafHashes);
 
-    // 3. Post-Quantum & Classical Signatures
+    // 3. Manifest digest (the package is not signed - see signatureStatus)
     const manifestCoreHash = this.hashContent({
       packageId,
       tenantId: params.tenantId,
@@ -237,19 +247,12 @@ export class AuditorEvidenceExportService {
       knownLimitations,
     });
 
-    const pqcSignatureDilithium3 = this.hashContent(
-      `ML-DSA-65:DILITHIUM3:${manifestCoreHash}`,
-    );
-    const classicalSignatureEd25519 = this.hashContent(
-      `ED25519:${manifestCoreHash}`,
-    );
-
     const chainOfCustodyAuditTrail = [
       {
         action: 'AUDIT_PACKAGE_GENERATED',
         actor: params.requestedBy,
         timestamp: new Date(),
-        signatureDigest: this.hashContent(
+        eventDigest: this.hashContent(
           `${packageId}:INITIATED:${params.requestedBy}`,
         ),
       },
@@ -257,7 +260,7 @@ export class AuditorEvidenceExportService {
         action: 'CONTINUOUS_ASSURANCE_SEALED',
         actor: 'system:continuous-evaluator',
         timestamp: new Date(),
-        signatureDigest: pqcSignatureDilithium3,
+        eventDigest: manifestCoreHash,
       },
     ];
 
@@ -271,8 +274,8 @@ export class AuditorEvidenceExportService {
       overallCompliancePosture,
       controls,
       merkleRoot,
-      pqcSignatureDilithium3,
-      classicalSignatureEd25519,
+      manifestDigestSha256: manifestCoreHash,
+      signatureStatus: 'UNSIGNED',
       knownLimitations,
       chainOfCustodyAuditTrail,
     };

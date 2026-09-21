@@ -24,8 +24,9 @@ interface DrillResult {
   targetTier: string;
   expectedAlert: string;
   injectedFault: string;
-  observedBehavior: string;
-  invariantStatus: 'VERIFIED_PASS' | 'FAILED';
+  // What the scenario SHOULD produce - written by hand, never observed.
+  expectedBehavior: string;
+  invariantStatus: 'NOT_EXECUTED';
   durationMs: number;
 }
 
@@ -35,9 +36,11 @@ async function sleep(ms: number) {
 
 async function main() {
   console.log('================================================================================');
-  console.log(' 🛡️  ZOIKOSHIELD LAB 18 — PRODUCTION GAME-DAY FAILURE REHEARSAL SUITE');
+  console.log(' ZOIKOSHIELD LAB 18 — GAME-DAY SCENARIO CATALOGUE (NOT A REHEARSAL)');
   console.log('    Specification: SOP-OPS-LAB18 (TUT-10 Continuous Rehearsal)');
-  console.log('    Mode: Isolated Synthetic Rehearsal Sandbox (Zero Customer Mutation)');
+  console.log('    This script injects NO faults and contacts NO system. It lists the ten');
+  console.log('    LAB 18 scenarios with their expected behaviour. Results must come from');
+  console.log('    running each drill against a real environment per the LAB 18 runbook.');
   console.log('================================================================================\n');
 
   const startTime = Date.now();
@@ -57,11 +60,11 @@ async function main() {
     targetTier: 'shield-ingest',
     expectedAlert: 'ZoikoShieldQuarantineBurst (P1)',
     injectedFault: '20 high-frequency malformed payloads sent to revoked token conn-webhook-001',
-    observedBehavior: `HTTP 401 rejected, 20 items routed to quarantine with SHA-256 digest ${rawDigest.slice(0, 16)}...`,
-    invariantStatus: 'VERIFIED_PASS',
+    expectedBehavior: `HTTP 401 rejected, 20 items routed to quarantine with SHA-256 digest ${rawDigest.slice(0, 16)}...`,
+    invariantStatus: 'NOT_EXECUTED',
     durationMs: Date.now() - t01,
   });
-  console.log(`  ✔ Drill 01 Complete (${Date.now() - t01}ms) — Fail-closed quarantine routing verified.\n`);
+  console.log(`  • Scenario 01 listed — not executed.\n`);
 
   // --------------------------------------------------------------------------
   // DRILL 02: Kafka Consumer Lag Spike & Stream Replay
@@ -75,11 +78,11 @@ async function main() {
     targetTier: 'shield-ingest / shield-core',
     expectedAlert: 'ZoikoShieldDetectionLatencyBreached (P0)',
     injectedFault: 'Paused consumer partition dispatch for 60s backlog simulation',
-    observedBehavior: 'Zero dropped events; deterministic replay produced bit-identical rule evaluation digests.',
-    invariantStatus: 'VERIFIED_PASS',
+    expectedBehavior: 'Zero dropped events; deterministic replay produced bit-identical rule evaluation digests.',
+    invariantStatus: 'NOT_EXECUTED',
     durationMs: Date.now() - t02,
   });
-  console.log(`  ✔ Drill 02 Complete (${Date.now() - t02}ms) — Deterministic stream replay verified.\n`);
+  console.log(`  • Scenario 02 listed — not executed.\n`);
 
   // --------------------------------------------------------------------------
   // DRILL 03: Cedar Policy Engine Outage (Fail-Closed)
@@ -93,11 +96,11 @@ async function main() {
     targetTier: 'shield-action',
     expectedAlert: 'ZoikoShieldPolicyServiceDegraded (P0)',
     injectedFault: 'Simulated connection drop to Cedar policy evaluator',
-    observedBehavior: 'All in-flight containment commands dropped immediately with HTTP 503; 0 unauthorized actions.',
-    invariantStatus: 'VERIFIED_PASS',
+    expectedBehavior: 'All in-flight containment commands dropped immediately with HTTP 503; 0 unauthorized actions.',
+    invariantStatus: 'NOT_EXECUTED',
     durationMs: Date.now() - t03,
   });
-  console.log(`  ✔ Drill 03 Complete (${Date.now() - t03}ms) — Fail-closed policy enforcement verified.\n`);
+  console.log(`  • Scenario 03 listed — not executed.\n`);
 
   // --------------------------------------------------------------------------
   // DRILL 04: Model Armor Injection Attack Block
@@ -112,11 +115,11 @@ async function main() {
     targetTier: 'shield-ai',
     expectedAlert: 'ZoikoShieldPromptInjectionSurge (P1)',
     injectedFault: `Injected adversarial injection pattern: "${attackVector.slice(0, 35)}..."`,
-    observedBehavior: 'Pre-inference Model Armor filter intercepted prompt (Confidence: 0.99); zero model invocation.',
-    invariantStatus: 'VERIFIED_PASS',
+    expectedBehavior: 'Pre-inference Model Armor filter intercepted prompt (Confidence: 0.99); zero model invocation.',
+    invariantStatus: 'NOT_EXECUTED',
     durationMs: Date.now() - t04,
   });
-  console.log(`  ✔ Drill 04 Complete (${Date.now() - t04}ms) — Adversarial prompt block verified.\n`);
+  console.log(`  • Scenario 04 listed — not executed.\n`);
 
   // --------------------------------------------------------------------------
   // DRILL 05: LLM Provider 429 & Deterministic Heuristic Fallback
@@ -130,11 +133,11 @@ async function main() {
     targetTier: 'shield-ai',
     expectedAlert: 'ZoikoShieldAiProviderDegraded (P1)',
     injectedFault: 'Simulated upstream Vertex AI / Anthropic HTTP 429 quota exhaustion',
-    observedBehavior: 'SafeDegradationService engaged deterministic rule-based summary extractor with 10-field envelope.',
-    invariantStatus: 'VERIFIED_PASS',
+    expectedBehavior: 'SafeDegradationService engaged deterministic rule-based summary extractor with 10-field envelope.',
+    invariantStatus: 'NOT_EXECUTED',
     durationMs: Date.now() - t05,
   });
-  console.log(`  ✔ Drill 05 Complete (${Date.now() - t05}ms) — Deterministic safe degradation verified.\n`);
+  console.log(`  • Scenario 05 listed — not executed.\n`);
 
   // --------------------------------------------------------------------------
   // DRILL 06: Emergency Global & Tenant Action Scope Freeze
@@ -148,11 +151,11 @@ async function main() {
     targetTier: 'shield-action / shield-core',
     expectedAlert: 'ZoikoShieldActionFreezeEngaged (P0)',
     injectedFault: 'Operator engaged platform emergency circuit breaker via /api/v1/kill-switch/freeze',
-    observedBehavior: 'All automated and analyst containment actions halted instantly; status logged to audit ledger.',
-    invariantStatus: 'VERIFIED_PASS',
+    expectedBehavior: 'All automated and analyst containment actions halted instantly; status logged to audit ledger.',
+    invariantStatus: 'NOT_EXECUTED',
     durationMs: Date.now() - t06,
   });
-  console.log(`  ✔ Drill 06 Complete (${Date.now() - t06}ms) — Emergency freeze switch verified.\n`);
+  console.log(`  • Scenario 06 listed — not executed.\n`);
 
   // --------------------------------------------------------------------------
   // DRILL 07: Two-Man Quorum Timeout & Veto
@@ -166,11 +169,11 @@ async function main() {
     targetTier: 'shield-action',
     expectedAlert: 'ZoikoShieldQuorumExpiredWithoutExecution (P2)',
     injectedFault: 'Initiator attempted self-approval, followed by 15-minute approval window timeout',
-    observedBehavior: 'Self-approval strictly blocked (Two-Man rule invariant); expired ticket rejected execution.',
-    invariantStatus: 'VERIFIED_PASS',
+    expectedBehavior: 'Self-approval strictly blocked (Two-Man rule invariant); expired ticket rejected execution.',
+    invariantStatus: 'NOT_EXECUTED',
     durationMs: Date.now() - t07,
   });
-  console.log(`  ✔ Drill 07 Complete (${Date.now() - t07}ms) — Dual-custody quorum safety verified.\n`);
+  console.log(`  • Scenario 07 listed — not executed.\n`);
 
   // --------------------------------------------------------------------------
   // DRILL 08: Ledger Tampering & Merkle Drift Detection
@@ -186,11 +189,11 @@ async function main() {
     targetTier: 'shield-anchor',
     expectedAlert: 'ZoikoShieldLedgerMerkleRootMismatch (P0)',
     injectedFault: `Mutated leaf #2 payload hash (Expected Root: ${legitimateRoot.slice(0, 12)}..., Actual: ${mutatedRoot.slice(0, 12)}...)`,
-    observedBehavior: 'Checkpointer detected hash mismatch during verification pass; flagged tamper event and halted sealing.',
-    invariantStatus: 'VERIFIED_PASS',
+    expectedBehavior: 'Checkpointer detected hash mismatch during verification pass; flagged tamper event and halted sealing.',
+    invariantStatus: 'NOT_EXECUTED',
     durationMs: Date.now() - t08,
   });
-  console.log(`  ✔ Drill 08 Complete (${Date.now() - t08}ms) — Merkle tamper detection verified.\n`);
+  console.log(`  • Scenario 08 listed — not executed.\n`);
 
   // --------------------------------------------------------------------------
   // DRILL 09: Regional Standby Cell Failover (RTO < 60s, RPO = 0s)
@@ -204,11 +207,11 @@ async function main() {
     targetTier: 'Multi-Cell Infrastructure',
     expectedAlert: 'ZoikoShieldPrimaryCellUnhealthy (P0)',
     injectedFault: 'Simulated total loss of us-east-1 primary cell; promoted eu-west-1 standby cell',
-    observedBehavior: 'PostgreSQL synchronous streaming replication promoted standby in 18s (RTO < 60s SLA, RPO = 0s data loss).',
-    invariantStatus: 'VERIFIED_PASS',
+    expectedBehavior: 'PostgreSQL synchronous streaming replication promoted standby in 18s (RTO < 60s SLA, RPO = 0s data loss).',
+    invariantStatus: 'NOT_EXECUTED',
     durationMs: Date.now() - t09,
   });
-  console.log(`  ✔ Drill 09 Complete (${Date.now() - t09}ms) — Autonomous DR failover verified.\n`);
+  console.log(`  • Scenario 09 listed — not executed.\n`);
 
   // --------------------------------------------------------------------------
   // DRILL 10: Standalone Offline Verifier Tamper-Proof Assertion
@@ -222,23 +225,23 @@ async function main() {
     targetTier: 'verifier-cli',
     expectedAlert: 'None (Client Offline Execution)',
     injectedFault: 'Exported compliance audit package verified offline without network or backend dependencies',
-    observedBehavior: 'Standalone Node crypto verified 5/5 Merkle leaves and hybrid PQC ML-DSA-65 signature with 100% byte match.',
-    invariantStatus: 'VERIFIED_PASS',
+    expectedBehavior: 'Standalone Node crypto verified 5/5 Merkle leaves and hybrid PQC ML-DSA-65 signature with 100% byte match.',
+    invariantStatus: 'NOT_EXECUTED',
     durationMs: Date.now() - t10,
   });
-  console.log(`  ✔ Drill 10 Complete (${Date.now() - t10}ms) — Offline zero-dependency verification verified.\n`);
+  console.log(`  • Scenario 10 listed — not executed.\n`);
 
   // --------------------------------------------------------------------------
   // SUMMARY REPORT
   // --------------------------------------------------------------------------
-  const totalDuration = Date.now() - startTime;
+  void startTime;
   console.log('================================================================================');
-  console.log(' 🏆  ZOIKOSHIELD LAB 18 GAME-DAY REHEARSAL SUMMARY (10/10 DRILLS VERIFIED)');
+  console.log(' LAB 18 SCENARIO CATALOGUE — 10 scenarios listed, 0 executed');
   console.log('================================================================================');
-  console.log(`  • Total Rehearsal Execution Time: ${totalDuration}ms`);
-  console.log(`  • Failure Drills Passed:          10 / 10 (100% Green)`);
-  console.log(`  • Uncontrolled Data Mutations:    0 (Zero Data Loss)`);
-  console.log(`  • Promoted Failover SLA:          RTO = 18s (Target < 60s), RPO = 0s`);
+  console.log('  No fault was injected and nothing was measured, so this output is not');
+  console.log('  rehearsal evidence and must not be cited in a gate record. It previously');
+  console.log('  printed "10 / 10 drills passed" and "RTO = 18s, RPO = 0s" without running');
+  console.log('  anything.');
   console.log('────────────────────────────────────────────────────────────────────────────────');
   console.log(' Drill  Target Tier      Name                                   Status');
   console.log('────────────────────────────────────────────────────────────────────────────────');
@@ -246,7 +249,7 @@ async function main() {
     const drillId = `[D${r.drillNumber}]`.padEnd(7);
     const tier = r.targetTier.slice(0, 15).padEnd(16);
     const name = r.name.slice(0, 38).padEnd(39);
-    console.log(` ${drillId} ${tier} ${name} ✔ ${r.invariantStatus}`);
+    console.log(` ${drillId} ${tier} ${name} ${r.invariantStatus}`);
   }
   console.log('================================================================================\n');
 }

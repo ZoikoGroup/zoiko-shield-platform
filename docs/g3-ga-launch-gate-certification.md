@@ -2,8 +2,15 @@
 
 **Document ID**: `ZS-DOC-G3-GA-CERT-001`  
 **Classification**: Controlled Security & Production Release Record  
-**Version**: 1.0.0 (Ratified: September 2026)  
+**Version**: 1.0.0 — **DRAFT, NOT RATIFIED**  
 **Target Milestone**: General Availability (GA) Release Gate 3  
+
+
+> **CORRECTION (2026-09-21) — THIS IS NOT A GA CERTIFICATION.** This document was presented as a
+> ratified G3 General Availability certification. G3 cannot precede G1, and G1 has not been
+> ratified (see `g1-gate-signoff-roster.md`). No approver has signed this record. Its statements
+> below are an engineering self-assessment, not certified results — several depend on evidence
+> later found to be simulated (e.g. the LAB 18 game-day drills, which inject no faults).
 
 ---
 
@@ -77,10 +84,10 @@ The **ZoikoShield Platform** has successfully passed all mandatory security, cry
 ========================================================================================
  G3 LAUNCH GATE AUTHORIZATION RECORD
 ========================================================================================
-Platform Status:        PRODUCTION READY (GENERAL AVAILABILITY)
+Platform Status:        NOT GA — G1 not yet ratified (see g1-gate-signoff-roster.md)
 Test Pass Rate:         100% (332 / 332 Test Suites | 1,410+ Tests Passing)
-Architecture Signoff:   RATIFIED (ADR-001, ADR-002, Release Evidence Register)
+Architecture Signoff:   NOT SIGNED
 Cryptographic Audit:    VERIFIED (Classical ECDSA + NIST FIPS 204 ML-DSA Dual Signing)
-Multi-Region Readiness: VERIFIED (Active-Active US & EU Regional Cells)
+Multi-Region Readiness: NOT VERIFIED — spec ADR-16 default is a single home cell; active-active is not approved
 ========================================================================================
 ```
