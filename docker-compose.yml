@@ -127,8 +127,8 @@ services:
       S3_ACCESS_KEY: ${MINIO_ROOT_USER:-shield}
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-shield12345}
       EVIDENCE_S3_BUCKET: ${EVIDENCE_S3_BUCKET:-zoiko-shield-evidence-worm}
-      TENANT_RETENTION_DEFAULT_DAYS: ${TENANT_RETENTION_DEFAULT_DAYS:-}
-      TENANT_RETENTION_DEFAULT_AUTHORITY: ${TENANT_RETENTION_DEFAULT_AUTHORITY:-}
+      TENANT_RETENTION_DEFAULT_DAYS:
+      TENANT_RETENTION_DEFAULT_AUTHORITY:
       JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set in .env}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-15m}
       JWT_ISSUER: ${JWT_ISSUER:-zoikoshield}
@@ -157,6 +157,39 @@ services:
       SUBJECT_KEY_WRAPPING_SECRET: ${SUBJECT_KEY_WRAPPING_SECRET:-local-subject-key-wrapping-change-me}
       SHIELD_AI_BASE_URL: http://shield-ai:3003
       SHIELD_ANCHOR_BASE_URL: http://shield-anchor:3005
+      # Without this, shield-core falls back to localhost:3002 — which inside
+      # this container is shield-core itself, so every ingest call fails.
+      SHIELD_INGEST_BASE_URL: http://shield-ingest:3002
+      # Optional below: value-less keys are taken from .env when set and
+      # omitted when not, so the code's own defaults still apply. An empty
+      # "${VAR:-}" would instead override those defaults with "".
+      WORKLOAD_IDENTITY_PRIVATE_KEY_PEM:
+      WORKLOAD_IDENTITY_PUBLIC_KEY_PEM:
+      WORKLOAD_MTLS_SECRET:
+      TYPEORM_SYNCHRONIZE:
+      SUPPORTED_DATA_REGIONS:
+      RETENTION_POLICY_REFS:
+      PUBLIC_DEVELOPER_API_ENABLED:
+      TERMS_OF_SERVICE_TEXT:
+      TERMS_OF_SERVICE_VERSION:
+      ACCESS_DISCLOSURE_TEXT:
+      ACCESS_DISCLOSURE_VERSION:
+      WEBAUTHN_RP_ID:
+      WEBAUTHN_ORIGIN:
+      METERING_SECRET:
+      EXPORT_DOWNLOAD_SIGNING_SECRET:
+      STRIPE_WEBHOOK_SECRET:
+      AWS_REGION:
+      COLLECTOR_SIGNING_PRIVATE_KEY_PEM:
+      COLLECTOR_KMS_KEY_ID:
+      COLLECTOR_KMS_SIGNING_ALGORITHM:
+      SUBJECT_KEY_KMS_KEY_ID:
+      SUBJECT_KEY_WRAPPING_KEY_REF:
+      KMS_KEY_US_EAST_1:
+      KMS_KEY_US_WEST_2:
+      KMS_KEY_EU_WEST_1:
+      KMS_KEY_EU_CENTRAL_1:
+      KMS_KEY_AP_SOUTH_1:
     volumes:
       - ./docs:/app/docs:ro
     ports:
@@ -186,8 +219,8 @@ services:
       S3_ACCESS_KEY: ${MINIO_ROOT_USER:-shield}
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-shield12345}
       EVIDENCE_S3_BUCKET: ${EVIDENCE_S3_BUCKET:-zoiko-shield-evidence-worm}
-      TENANT_RETENTION_DEFAULT_DAYS: ${TENANT_RETENTION_DEFAULT_DAYS:-}
-      TENANT_RETENTION_DEFAULT_AUTHORITY: ${TENANT_RETENTION_DEFAULT_AUTHORITY:-}
+      TENANT_RETENTION_DEFAULT_DAYS:
+      TENANT_RETENTION_DEFAULT_AUTHORITY:
       SHIELD_CORE_BASE_URL: http://shield-core:3001
       WORKLOAD_IDENTITY_DEV_SECRET: ${WORKLOAD_IDENTITY_DEV_SECRET:-local-workload-identity-change-me}
       WEBHOOK_HMAC_SECRETS: ${WEBHOOK_HMAC_SECRETS:-}
@@ -195,6 +228,9 @@ services:
       ENTRA_CLIENT_ID: ${ENTRA_CLIENT_ID:-}
       ENTRA_CLIENT_SECRET: ${ENTRA_CLIENT_SECRET:-}
       ENTRA_REDIRECT_URI: ${ENTRA_REDIRECT_URI:-}
+      ENTRA_POLL_INTERVAL_CRON:
+      WORKLOAD_IDENTITY_PRIVATE_KEY_PEM:
+      WORKLOAD_IDENTITY_PUBLIC_KEY_PEM:
     ports:
       - "${SHIELD_INGEST_PORT:-3002}:3002"
 
@@ -218,6 +254,13 @@ services:
       KAFKA_BROKERS: redpanda:9092
       SHIELD_CORE_BASE_URL: http://shield-core:3001
       WORKLOAD_IDENTITY_DEV_SECRET: ${WORKLOAD_IDENTITY_DEV_SECRET:-local-workload-identity-change-me}
+      WORKLOAD_IDENTITY_PRIVATE_KEY_PEM:
+      WORKLOAD_IDENTITY_PUBLIC_KEY_PEM:
+      OPENAI_API_KEY:
+      OPENAI_MODEL:
+      GEMINI_API_KEY:
+      GEMINI_MODEL:
+      VERTEX_AI_API_KEY:
     ports:
       - "${SHIELD_AI_PORT:-3003}:3003"
 
@@ -242,6 +285,12 @@ services:
       SHIELD_CORE_BASE_URL: http://shield-core:3001
       WORKLOAD_IDENTITY_DEV_SECRET: ${WORKLOAD_IDENTITY_DEV_SECRET:-local-workload-identity-change-me}
       DEV_SIMULATION_SIGNING_KEY: ${DEV_SIMULATION_SIGNING_KEY:-local-simulation-signing-change-me}
+      WORKLOAD_IDENTITY_PRIVATE_KEY_PEM:
+      WORKLOAD_IDENTITY_PUBLIC_KEY_PEM:
+      DUAL_CUSTODY_SECRET_KEY:
+      TWO_MAN_SIGNING_KEY:
+      WEBAUTHN_RP_ID:
+      WEBAUTHN_ORIGIN:
     ports:
       - "${SHIELD_ACTION_PORT:-3004}:3004"
 
@@ -264,6 +313,14 @@ services:
       DATABASE_URL: ${DOCKER_DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
       KAFKA_BROKERS: redpanda:9092
       WORKLOAD_IDENTITY_DEV_SECRET: ${WORKLOAD_IDENTITY_DEV_SECRET:-local-workload-identity-change-me}
+      WORKLOAD_IDENTITY_PRIVATE_KEY_PEM:
+      WORKLOAD_IDENTITY_PUBLIC_KEY_PEM:
+      ANCHOR_SIGNING_PRIVATE_KEY_PEM:
+      ANCHOR_KMS_KEY_ID:
+      ANCHOR_KMS_SIGNING_ALGORITHM:
+      ANCHOR_WITNESS_URLS:
+      ANCHOR_WITNESS_PUBLIC_KEYS:
+      AWS_REGION:
     ports:
       - "${SHIELD_ANCHOR_PORT:-3005}:3005"
 
