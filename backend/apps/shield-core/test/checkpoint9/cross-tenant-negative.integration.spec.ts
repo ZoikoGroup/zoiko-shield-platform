@@ -1,6 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
 import { requireTenantId } from '../../src/tenant-context';
-import { createWorkloadToken, verifyWorkloadToken } from '../../../../libs/security/src/workload-token';
+import {
+  createWorkloadToken,
+  verifyWorkloadToken,
+} from '../../../../libs/security/src/workload-token';
 import { BatchMerkleCheckpointerService } from '../../../shield-anchor/src/merkle/batch-merkle-checkpointer.service';
 import { CedarPolicyEvaluatorService } from '../../src/modules/authorization/cedar-policy-evaluator.service';
 
@@ -11,20 +14,27 @@ describe('Checkpoint 9 - Cross-Tenant Negative Isolation Integration Suite', () 
 
   beforeAll(() => {
     process.env.SERVICE_NAME = 'shield-core';
-    process.env.WORKLOAD_IDENTITY_DEV_SECRET = 'local-workload-identity-change-me';
+    process.env.WORKLOAD_IDENTITY_DEV_SECRET =
+      'local-workload-identity-change-me';
   });
 
   describe('1. Tenant Context & Header Poisoning Resistance (§06)', () => {
     it('should reject missing tenant header when user context has no tenant', () => {
-      expect(() => requireTenantId(undefined, undefined)).toThrow(BadRequestException);
+      expect(() => requireTenantId(undefined, undefined)).toThrow(
+        BadRequestException,
+      );
     });
 
     it('should reject invalid default-tenant identifier', () => {
-      expect(() => requireTenantId(INVALID_DEFAULT_TENANT, undefined)).toThrow(BadRequestException);
+      expect(() => requireTenantId(INVALID_DEFAULT_TENANT, undefined)).toThrow(
+        BadRequestException,
+      );
     });
 
     it('should reject mismatching header and JWT tenant claims (spoofing attempt)', () => {
-      expect(() => requireTenantId(TENANT_A, TENANT_B)).toThrow(BadRequestException);
+      expect(() => requireTenantId(TENANT_A, TENANT_B)).toThrow(
+        BadRequestException,
+      );
     });
 
     it('should accept matching header and JWT tenant claims', () => {
@@ -87,14 +97,19 @@ describe('Checkpoint 9 - Cross-Tenant Negative Isolation Integration Suite', () 
       expect(checkpoint.leafCount).toBe(2);
       expect(checkpoint.merkleRoot).toBeDefined();
 
-      const proofA = checkpointer.generateInclusionProof(checkpoint.epochNumber, 0);
+      const proofA = checkpointer.generateInclusionProof(
+        checkpoint.epochNumber,
+        0,
+      );
       expect(proofA.leafIndex).toBe(0);
       expect(checkpointer.verifyInclusionProof(proofA)).toBe(true);
 
       // Attempting to verify Tenant A's leaf under an altered root or swapped leaf index fails
       const tamperedProof = {
         ...proofA,
-        leafHash: proofA.leafHash.slice(0, -1) + (proofA.leafHash.endsWith('0') ? '1' : '0'),
+        leafHash:
+          proofA.leafHash.slice(0, -1) +
+          (proofA.leafHash.endsWith('0') ? '1' : '0'),
       };
       expect(checkpointer.verifyInclusionProof(tamperedProof)).toBe(false);
     });

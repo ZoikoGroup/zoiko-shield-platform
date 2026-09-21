@@ -45,7 +45,7 @@ async function main() {
       {
         eventId: 'evt-k8s-02',
         timestamp: new Date(Date.now() - 300000).toISOString(),
-        source: 'ebpf-kernel-probe',
+        source: 'host-kernel-probe',
         eventType: 'SUSPICIOUS_EXECVE',
         actor: 'compromised-admin@enterprise.com',
         targetResource: 'pod/vault-secrets-worker',

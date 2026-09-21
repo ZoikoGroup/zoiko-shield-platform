@@ -289,7 +289,9 @@ describe('JitElevationService (Dual-Authorized Scoped & Time-Bound Tenant Access
     const verification = await jitService.verifyStepUpChallenge({
       requestId: req.id,
       principalId: 'admin-super-01',
-      clientDataJson: Buffer.from(JSON.stringify({ type: 'webauthn.get', challenge: 'test-challenge' })).toString('base64'),
+      clientDataJson: Buffer.from(
+        JSON.stringify({ type: 'webauthn.get', challenge: 'test-challenge' }),
+      ).toString('base64'),
       signature: 'mock-fido2-signature-bytes',
       authenticatorData: 'mock-auth-data',
     });
@@ -297,7 +299,9 @@ describe('JitElevationService (Dual-Authorized Scoped & Time-Bound Tenant Access
     expect(verification.verified).toBe(true);
     expect(verification.hardwareProofDigest).toBeDefined();
     expect(verification.hardwareProofDigest.length).toBe(64); // SHA-256 hex string
-    expect(events.some((e) => e.eventType === 'JIT_STEPUP_CHALLENGE_VERIFIED')).toBe(true);
+    expect(
+      events.some((e) => e.eventType === 'JIT_STEPUP_CHALLENGE_VERIFIED'),
+    ).toBe(true);
   });
 
   it('8. should reject step-up challenge when signature or clientDataJson is missing', async () => {

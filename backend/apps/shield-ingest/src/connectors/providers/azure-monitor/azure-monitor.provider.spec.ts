@@ -102,7 +102,9 @@ describe('AzureMonitorProvider & Normalizer', () => {
     it('normalizes an Azure Activity Log event into an OCSF cloud audit event', () => {
       const event: AzureActivityLogEvent = {
         eventTimestamp: '2026-09-11T08:30:00.000Z',
-        operationName: { value: 'Microsoft.Authorization/roleAssignments/write' },
+        operationName: {
+          value: 'Microsoft.Authorization/roleAssignments/write',
+        },
         category: { value: 'Administrative' },
         level: 'Critical',
         resourceId: '/subscriptions/sub-1/resourceGroups/rg-1',

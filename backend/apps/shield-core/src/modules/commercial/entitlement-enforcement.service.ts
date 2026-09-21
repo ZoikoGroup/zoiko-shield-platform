@@ -2,9 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { createHmac } from 'crypto';
 
 export type QuotaEnforcementStatus =
-  | 'NORMAL'
-  | 'SOFT_CAP_WARNING'
-  | 'HARD_CAP_THROTTLED';
+  'NORMAL' | 'SOFT_CAP_WARNING' | 'HARD_CAP_THROTTLED';
 
 export interface TenantQuotaContract {
   tenantId: string;
@@ -58,9 +56,7 @@ export class EntitlementEnforcementService {
   /**
    * Evaluates quota status against contract rules [derived].
    */
-  public evaluateQuota(
-    contract: TenantQuotaContract,
-  ): QuotaEvaluationResult {
+  public evaluateQuota(contract: TenantQuotaContract): QuotaEvaluationResult {
     const currentGb = this.tenantUsageLedger.get(contract.tenantId) || 0;
     const utilizationPercent =
       contract.dailyIngestionLimitGb > 0

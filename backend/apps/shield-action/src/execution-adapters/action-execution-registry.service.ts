@@ -19,12 +19,7 @@ export class ActionExecutionRegistryService {
     private readonly awsIamAdapter: AwsIamActionAdapter,
     private readonly wafIpAdapter: WafIpActionAdapter,
   ) {
-    this.adapters.push(
-      entraAdapter,
-      edrAdapter,
-      awsIamAdapter,
-      wafIpAdapter,
-    );
+    this.adapters.push(entraAdapter, edrAdapter, awsIamAdapter, wafIpAdapter);
   }
 
   getAdapter(actionType: string): ActionExecutionAdapter {

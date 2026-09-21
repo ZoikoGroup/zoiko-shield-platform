@@ -19,6 +19,7 @@ import CommercialServicesPage from '@/app/services/page';
 import SectorPacksPage from '@/app/sector-packs/page';
 import CopilotPage from '@/app/copilot/page';
 import GTMChecklistPage from '@/app/admin/gtm-checklist/page';
+import { ZoikoShieldApiClient } from '@/lib/api-client';
 
 describe('Commercial Catalogue & Governance Routes Suite', () => {
   beforeEach(() => {
@@ -49,6 +50,35 @@ describe('Commercial Catalogue & Governance Routes Suite', () => {
       expect(
         screen.getAllByText(/Find Your Optimal Shield Band/i)[0]
       ).toBeInTheDocument();
+    });
+
+    it('defensively handles null or non-array API response without throwing plans.map error', async () => {
+      vi.spyOn(ZoikoShieldApiClient, 'getPlanTiers').mockResolvedValueOnce(null as any);
+
+      const { container } = render(<PricingPage />);
+
+      expect(
+        screen.getAllByText(/Outcome-Driven Security Plans/i)[0]
+      ).toBeInTheDocument();
+
+      // Verify the component renders without crashing
+      await waitFor(() => {
+        expect(container).toBeDefined();
+      });
+    });
+
+    it('defensively handles rejected API calls without unhandled runtime exceptions', async () => {
+      vi.spyOn(ZoikoShieldApiClient, 'getPlanTiers').mockRejectedValueOnce(new Error('Network error'));
+
+      const { container } = render(<PricingPage />);
+
+      expect(
+        screen.getAllByText(/Outcome-Driven Security Plans/i)[0]
+      ).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(container).toBeDefined();
+      });
     });
   });
 
@@ -91,16 +121,22 @@ describe('Commercial Catalogue & Governance Routes Suite', () => {
       ).toBeInTheDocument();
 
       expect(
-        screen.getAllByText(/Telecommunications & Critical Carrier Infrastructure/i)[0]
+        screen.getAllByText(/Telecom & MVNO/i)[0]
       ).toBeInTheDocument();
       expect(
-        screen.getAllByText(/FinTech, Banking & High-Frequency Payment Networks/i)[0]
+        screen.getAllByText(/Financial Services & FinTech/i)[0]
       ).toBeInTheDocument();
       expect(
-        screen.getAllByText(/Healthcare, Life Sciences & Protected Health Data/i)[0]
+        screen.getAllByText(/Healthcare & Life Sciences/i)[0]
       ).toBeInTheDocument();
       expect(
-        screen.getAllByText(/Legal, Counsel-Controlled & Privileged Workflows/i)[0]
+        screen.getAllByText(/Legal & Professional Services/i)[0]
+      ).toBeInTheDocument();
+      expect(
+        screen.getAllByText(/SaaS & Digital Platforms/i)[0]
+      ).toBeInTheDocument();
+      expect(
+        screen.getAllByText(/Public Sector \/ Critical-Infrastructure-Aligned/i)[0]
       ).toBeInTheDocument();
 
       // Statutory caveat box

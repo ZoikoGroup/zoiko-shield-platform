@@ -28,7 +28,10 @@ describe('AiUseCaseRegistryService (§05 AI Use Case Governance & Risk Registry)
   });
 
   it('should register a new custom use case with valid metadata', () => {
-    const customUseCase: Omit<AiUseCaseDefinition, 'registeredAt' | 'updatedAt'> = {
+    const customUseCase: Omit<
+      AiUseCaseDefinition,
+      'registeredAt' | 'updatedAt'
+    > = {
       key: 'custom-phishing-classifier',
       name: 'Custom Email Phishing Classifier',
       owner: 'SecOps-Email-Team',
@@ -58,10 +61,7 @@ describe('AiUseCaseRegistryService (§05 AI Use Case Governance & Risk Registry)
   });
 
   it('should update approval status of a use case', () => {
-    const updated = service.updateApprovalStatus(
-      'case-summary',
-      'DEPRECATED',
-    );
+    const updated = service.updateApprovalStatus('case-summary', 'DEPRECATED');
     expect(updated.approvalStatus).toBe('DEPRECATED');
 
     const eligibility = service.validateExecutionEligibility(

@@ -147,15 +147,15 @@ export class CompositeCorrelationService {
     },
     {
       patternId: 'ZS-CORR-CONTAINER-ESCAPE-003',
-      name: 'eBPF Kernel Container Escape -> Root Shell -> Outbound C2',
+      name: 'Host Runtime Container Escape -> Root Shell -> Outbound C2',
       description:
-        'Detects container breakout via eBPF runtime probes followed by root process execution and outbound network beaconing.',
+        'Detects container breakout via host runtime security probes followed by root process execution and outbound network beaconing.',
       severity: 'CRITICAL',
       windowSeconds: 300,
       stages: [
         {
-          stageId: 'stage-1-ebpf-escape',
-          name: 'eBPF Container Escape Finding',
+          stageId: 'stage-1-host-escape',
+          name: 'Host Runtime Container Escape Finding',
           tactic: 'TA0004: Privilege Escalation',
           technique: 'T1611: Escape to Host',
           matcher: (event) => {

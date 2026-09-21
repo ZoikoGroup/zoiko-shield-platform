@@ -35,50 +35,82 @@ export interface AuditVerificationCertificate {
 }
 
 export function runVerifier(args: string[] = process.argv.slice(2)): number {
-  if (args[0] !== 'verify' || !args[1]) {
-    console.log(
-      '========================================================================',
-    );
-    console.log(
-      ' 🛡️  ZoikoShield Independent Compliance Audit Package Verifier CLI',
-    );
-    console.log(
-      '    Architecture: ADR-01 (Offline Independent Verification)',
-    );
-    console.log(
-      '========================================================================\n',
-    );
-    console.log('Usage: zoikoshield-verifier verify <path-to-audit-package>');
+  const isJson = args.includes('--json');
+  const nonFlagArgs = args.filter((a) => a !== '--json');
+
+  if (nonFlagArgs[0] !== 'verify' || !nonFlagArgs[1]) {
+    if (!isJson) {
+      console.log(
+        '========================================================================',
+      );
+      console.log(
+        ' 🛡️  ZoikoShield Independent Compliance Audit Package Verifier CLI',
+      );
+      console.log(
+        '    Architecture: ADR-01 (Offline Independent Verification)',
+      );
+      console.log(
+        '========================================================================\n',
+      );
+      console.log(
+        'Usage: zoikoshield-verifier verify <path-to-audit-package> [--json]',
+      );
+    } else {
+      process.stdout.write(
+        JSON.stringify({
+          error:
+            'Usage: zoikoshield-verifier verify <path-to-audit-package> [--json]',
+        }) + '\n',
+      );
+    }
     return 2;
   }
 
-  const targetPath = resolve(args[1]);
+  const targetPath = resolve(nonFlagArgs[1]);
   if (!existsSync(targetPath)) {
-    console.error(`❌ Error: Package path does not exist: ${targetPath}`);
+    if (!isJson) {
+      console.error(`❌ Error: Package path does not exist: ${targetPath}`);
+    } else {
+      process.stdout.write(
+        JSON.stringify({
+          error: `Package path does not exist: ${targetPath}`,
+        }) + '\n',
+      );
+    }
     return 1;
   }
 
-  console.log(
+  const log = (msg: string = '') => {
+    if (!isJson) console.log(msg);
+  };
+  const logError = (msg: string = '') => {
+    if (!isJson) console.error(msg);
+  };
+
+  log(
     '========================================================================',
   );
-  console.log(
-    ' 🛡️  ZoikoShield Independent Compliance Audit Package Verifier CLI',
-  );
-  console.log(
-    '    Architecture: ADR-01 (Offline Independent Verification)',
-  );
-  console.log(
+  log(' 🛡️  ZoikoShield Independent Compliance Audit Package Verifier CLI');
+  log('    Architecture: ADR-01 (Offline Independent Verification)');
+  log(
     '========================================================================\n',
   );
 
-  console.log(`[1/5] Loading Package Artifacts from: ${targetPath}...`);
+  log(`[1/5] Loading Package Artifacts from: ${targetPath}...`);
   const manifestPath = join(targetPath, 'manifest.json');
   const envelopePath = join(targetPath, 'envelope.json');
   const evidenceIndexPath = join(targetPath, 'evidence_index.jsonl');
   const evidenceDir = join(targetPath, 'evidence');
 
   if (!existsSync(manifestPath)) {
-    console.error('❌ Error: Missing manifest.json in package directory.');
+    logError('❌ Error: Missing manifest.json in package directory.');
+    if (isJson) {
+      process.stdout.write(
+        JSON.stringify({
+          error: 'Missing manifest.json in package directory',
+        }) + '\n',
+      );
+    }
     return 1;
   }
 
@@ -102,12 +134,12 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
       manifest.merkleRoot || manifest.manifestCore?.merkleRoot;
     const declaredCoreHash = manifest.manifestCoreHash;
 
-    console.log(`  ✔ Package ID: ${packageId}`);
-    console.log(`  ✔ Title: ${packageTitle}`);
-    console.log(`  ✔ Tenant: ${tenantId} (${environmentId})`);
+    log(`  ✔ Package ID: ${packageId}`);
+    log(`  ✔ Title: ${packageTitle}`);
+    log(`  ✔ Tenant: ${tenantId} (${environmentId})`);
 
     // 1. Envelope Hash Verification
-    console.log('\n[2/5] Verifying Package Envelope Integrity...');
+    log('\n[2/5] Verifying Package Envelope Integrity...');
     let envelopeIntegrity = true;
     let declaredEnvelopeHash = '';
 
@@ -121,17 +153,17 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
       envelopeIntegrity =
         declaredEnvelopeHash === recomputedEnvelopeHash ||
         declaredEnvelopeHash.length === 64;
-      console.log(`  ✔ Package Envelope Hash: ${declaredEnvelopeHash}`);
+      log(`  ✔ Package Envelope Hash: ${declaredEnvelopeHash}`);
     } else {
       declaredEnvelopeHash = crypto
         .createHash('sha256')
         .update(manifestContent)
         .digest('hex');
-      console.log(`  ✔ Recomputed Package Hash: ${declaredEnvelopeHash}`);
+      log(`  ✔ Recomputed Package Hash: ${declaredEnvelopeHash}`);
     }
 
     // 2. ManifestCore Hash Verification
-    console.log('\n[3/5] Verifying ManifestCore Cryptographic Binding...');
+    log('\n[3/5] Verifying ManifestCore Cryptographic Binding...');
     let manifestCoreHashMatch = true;
     if (manifest.manifestCore && declaredCoreHash) {
       const recomputedCore = crypto
@@ -139,13 +171,13 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
         .update(JSON.stringify(manifest.manifestCore))
         .digest('hex');
       manifestCoreHashMatch = recomputedCore === declaredCoreHash;
-      console.log(
+      log(
         `  ✔ ManifestCore Hash Match: ${manifestCoreHashMatch ? 'VERIFIED' : 'FAILED'}`,
       );
     }
 
     // 3. Evidence Files Integrity Verification
-    console.log('\n[4/5] Verifying Evidence Ledger & Hashes...');
+    log('\n[4/5] Verifying Evidence Ledger & Hashes...');
     let totalFiles = 0;
     let validFiles = 0;
     let corruptedFiles = 0;
@@ -171,7 +203,7 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
             validFiles++;
           } else {
             corruptedFiles++;
-            console.error(
+            logError(
               `  ❌ Evidence mismatch for ${entry.type}: declared ${entry.contentHash}, found ${fileHash}`,
             );
           }
@@ -179,16 +211,14 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
           validFiles++; // Raw payload verified via entryHash
         }
       }
-      console.log(
-        `  ✔ Evidence Index: ${validFiles}/${totalFiles} Records Verified`,
-      );
+      log(`  ✔ Evidence Index: ${validFiles}/${totalFiles} Records Verified`);
     } else {
       totalFiles = 1;
       validFiles = 1;
     }
 
     // 4. Merkle Tree & Proof Recomputation
-    console.log(
+    log(
       '\n[5/5] Reconstructing Domain-Separated Merkle Tree (ZS-MERKLE-V1)...',
     );
     const merkleService = new StandaloneMerkleVerifier();
@@ -199,9 +229,9 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
       const recomputedTree = merkleService.build(leafHashes);
       recomputedMerkleRoot = recomputedTree.root;
       merkleRootIntegrity = recomputedTree.root === declaredMerkleRoot;
-      console.log(`  ✔ Declared Merkle Root:   ${declaredMerkleRoot}`);
-      console.log(`  ✔ Recomputed Merkle Root: ${recomputedTree.root}`);
-      console.log(
+      log(`  ✔ Declared Merkle Root:   ${declaredMerkleRoot}`);
+      log(`  ✔ Recomputed Merkle Root: ${recomputedTree.root}`);
+      log(
         `  ✔ Merkle Integrity Check: ${merkleRootIntegrity ? 'VALID' : 'FAILED'}`,
       );
     }
@@ -258,21 +288,27 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
     const certPath = join(targetPath, 'audit_certificate.json');
     writeFileSync(certPath, JSON.stringify(certificate, null, 2), 'utf8');
 
-    console.log(
-      '\n========================================================================',
-    );
-    if (isFullyCompliant) {
-      console.log(
-        ' 🎉 AUDIT PACKAGE VERIFIED SUCCESSFULLY (100% TAMPER-FREE)!',
-      );
-      console.log(` 📜 Verification Certificate Issued: ${certPath}`);
-      console.log(` 🔒 Certificate Signature: ${certificateSignature}`);
+    if (isJson) {
+      process.stdout.write(JSON.stringify(certificate, null, 2) + '\n');
     } else {
-      console.log(' ❌ VERIFICATION FAILED: TAMPERING OR CORRUPTION DETECTED!');
+      console.log(
+        '\n========================================================================',
+      );
+      if (isFullyCompliant) {
+        console.log(
+          ' 🎉 AUDIT PACKAGE VERIFIED SUCCESSFULLY (100% TAMPER-FREE)!',
+        );
+        console.log(` 📜 Verification Certificate Issued: ${certPath}`);
+        console.log(` 🔒 Certificate Signature: ${certificateSignature}`);
+      } else {
+        console.log(
+          ' ❌ VERIFICATION FAILED: TAMPERING OR CORRUPTION DETECTED!',
+        );
+      }
+      console.log(
+        '========================================================================\n',
+      );
     }
-    console.log(
-      '========================================================================\n',
-    );
 
     return isFullyCompliant ? 0 : 1;
   } catch (err: any) {

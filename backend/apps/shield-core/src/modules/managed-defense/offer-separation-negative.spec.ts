@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ForbiddenException, ConflictException, BadRequestException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  ConflictException,
+  BadRequestException,
+} from '@nestjs/common';
 import {
   OfferEntitlementService,
   CommercialOfferType,
@@ -78,7 +82,9 @@ describe('Commercial Offer Separation & Entitlement Gating (ERB-01 & Spec §2)',
       controlImplementation: {
         findMany: jest.fn(),
       },
-      $transaction: jest.fn((cb) => (typeof cb === 'function' ? cb(prismaMock) : Promise.all(cb))),
+      $transaction: jest.fn((cb) =>
+        typeof cb === 'function' ? cb(prismaMock) : Promise.all(cb),
+      ),
     };
 
     approvalsMock = {
@@ -92,17 +98,28 @@ describe('Commercial Offer Separation & Entitlement Gating (ERB-01 & Spec §2)',
 
     // Entitlement mock router based on tenantId and offerType
     prismaMock.entitlement.findFirst.mockImplementation(
-      async ({ where }: { where: { tenant_id: string; offer_type: string; status: string } }) => {
+      async ({
+        where,
+      }: {
+        where: { tenant_id: string; offer_type: string; status: string };
+      }) => {
         const { tenant_id, offer_type } = where;
 
-        if (tenant_id === CA_ONLY_TENANT && offer_type === 'CONTINUOUS_ASSURANCE') {
+        if (
+          tenant_id === CA_ONLY_TENANT &&
+          offer_type === 'CONTINUOUS_ASSURANCE'
+        ) {
           return {
             id: 'ent-ca-1',
             tenant_id: CA_ONLY_TENANT,
             offer_type: 'CONTINUOUS_ASSURANCE',
             status: 'ACTIVE',
             commercial_account_id: 'comm-acct-ca',
-            commercialAccount: { id: 'comm-acct-ca', status: 'ACTIVE', billing_source: 'DIRECT_INVOICE' },
+            commercialAccount: {
+              id: 'comm-acct-ca',
+              status: 'ACTIVE',
+              billing_source: 'DIRECT_INVOICE',
+            },
           };
         }
 
@@ -113,18 +130,29 @@ describe('Commercial Offer Separation & Entitlement Gating (ERB-01 & Spec §2)',
             offer_type: 'MANAGED_DEFENSE',
             status: 'ACTIVE',
             commercial_account_id: 'comm-acct-md',
-            commercialAccount: { id: 'comm-acct-md', status: 'ACTIVE', billing_source: 'DIRECT_INVOICE' },
+            commercialAccount: {
+              id: 'comm-acct-md',
+              status: 'ACTIVE',
+              billing_source: 'DIRECT_INVOICE',
+            },
           };
         }
 
-        if (tenant_id === DUAL_TENANT && ['MANAGED_DEFENSE', 'CONTINUOUS_ASSURANCE'].includes(offer_type)) {
+        if (
+          tenant_id === DUAL_TENANT &&
+          ['MANAGED_DEFENSE', 'CONTINUOUS_ASSURANCE'].includes(offer_type)
+        ) {
           return {
             id: `ent-dual-${offer_type}`,
             tenant_id: DUAL_TENANT,
             offer_type,
             status: 'ACTIVE',
             commercial_account_id: 'comm-acct-dual',
-            commercialAccount: { id: 'comm-acct-dual', status: 'ACTIVE', billing_source: 'ZOIKO_ONE_BUNDLE' },
+            commercialAccount: {
+              id: 'comm-acct-dual',
+              status: 'ACTIVE',
+              billing_source: 'ZOIKO_ONE_BUNDLE',
+            },
           };
         }
 
@@ -135,7 +163,11 @@ describe('Commercial Offer Separation & Entitlement Gating (ERB-01 & Spec §2)',
             offer_type,
             status: 'ACTIVE',
             commercial_account_id: 'comm-acct-suspended',
-            commercialAccount: { id: 'comm-acct-suspended', status: 'SUSPENDED', billing_source: 'DIRECT_INVOICE' },
+            commercialAccount: {
+              id: 'comm-acct-suspended',
+              status: 'SUSPENDED',
+              billing_source: 'DIRECT_INVOICE',
+            },
           };
         }
 
@@ -156,10 +188,18 @@ describe('Commercial Offer Separation & Entitlement Gating (ERB-01 & Spec §2)',
       ],
     }).compile();
 
-    offerEntitlementService = module.get<OfferEntitlementService>(OfferEntitlementService);
-    commercialEntitlementService = module.get<CommercialEntitlementService>(CommercialEntitlementService);
-    managedDefenseService = module.get<ManagedDefenseService>(ManagedDefenseService);
-    continuousAssuranceService = module.get<ContinuousAssuranceService>(ContinuousAssuranceService);
+    offerEntitlementService = module.get<OfferEntitlementService>(
+      OfferEntitlementService,
+    );
+    commercialEntitlementService = module.get<CommercialEntitlementService>(
+      CommercialEntitlementService,
+    );
+    managedDefenseService = module.get<ManagedDefenseService>(
+      ManagedDefenseService,
+    );
+    continuousAssuranceService = module.get<ContinuousAssuranceService>(
+      ContinuousAssuranceService,
+    );
   });
 
   describe('1. Continuous-Assurance-Only Tenant Boundary Enforcement', () => {
@@ -170,7 +210,9 @@ describe('Commercial Offer Separation & Entitlement Gating (ERB-01 & Spec §2)',
       );
       expect(isCAEntitled).toBe(true);
       await expect(
-        offerEntitlementService.assertContinuousAssuranceEntitled(CA_ONLY_TENANT),
+        offerEntitlementService.assertContinuousAssuranceEntitled(
+          CA_ONLY_TENANT,
+        ),
       ).resolves.not.toThrow();
     });
 
@@ -188,7 +230,9 @@ describe('Commercial Offer Separation & Entitlement Gating (ERB-01 & Spec §2)',
       ).rejects.toThrow(ForbiddenException);
 
       try {
-        await offerEntitlementService.assertManagedDefenseEntitled(CA_ONLY_TENANT);
+        await offerEntitlementService.assertManagedDefenseEntitled(
+          CA_ONLY_TENANT,
+        );
       } catch (err: any) {
         expect(err.getResponse()).toMatchObject({
           statusCode: 403,
@@ -260,13 +304,18 @@ describe('Commercial Offer Separation & Entitlement Gating (ERB-01 & Spec §2)',
       expect(isCAEntitled).toBe(false);
 
       await expect(
-        offerEntitlementService.assertContinuousAssuranceEntitled(MD_ONLY_TENANT, {
-          action: 'EVALUATE_SOC2_CONTROLS',
-        }),
+        offerEntitlementService.assertContinuousAssuranceEntitled(
+          MD_ONLY_TENANT,
+          {
+            action: 'EVALUATE_SOC2_CONTROLS',
+          },
+        ),
       ).rejects.toThrow(ForbiddenException);
 
       try {
-        await offerEntitlementService.assertContinuousAssuranceEntitled(MD_ONLY_TENANT);
+        await offerEntitlementService.assertContinuousAssuranceEntitled(
+          MD_ONLY_TENANT,
+        );
       } catch (err: any) {
         expect(err.getResponse()).toMatchObject({
           statusCode: 403,
@@ -339,7 +388,8 @@ describe('Commercial Offer Separation & Entitlement Gating (ERB-01 & Spec §2)',
         { offer_type: 'CONTINUOUS_ASSURANCE' },
       ]);
 
-      const activeOffers = await offerEntitlementService.getTenantActiveOffers(DUAL_TENANT);
+      const activeOffers =
+        await offerEntitlementService.getTenantActiveOffers(DUAL_TENANT);
       expect(activeOffers).toEqual(
         expect.arrayContaining(['MANAGED_DEFENSE', 'CONTINUOUS_ASSURANCE']),
       );
@@ -350,26 +400,35 @@ describe('Commercial Offer Separation & Entitlement Gating (ERB-01 & Spec §2)',
     it('MUST fail closed and block BOTH Managed Defense and Continuous Assurance for a tenant with zero active entitlements', async () => {
       // 1. Assert Managed Defense is blocked
       await expect(
-        offerEntitlementService.assertManagedDefenseEntitled(UNENTITLED_TENANT, {
-          action: 'CREATE_DEFENSE_PROFILE',
-        }),
+        offerEntitlementService.assertManagedDefenseEntitled(
+          UNENTITLED_TENANT,
+          {
+            action: 'CREATE_DEFENSE_PROFILE',
+          },
+        ),
       ).rejects.toThrow(ForbiddenException);
 
       // 2. Assert Continuous Assurance is blocked
       await expect(
-        offerEntitlementService.assertContinuousAssuranceEntitled(UNENTITLED_TENANT, {
-          action: 'CREATE_ASSURANCE_PROFILE',
-        }),
+        offerEntitlementService.assertContinuousAssuranceEntitled(
+          UNENTITLED_TENANT,
+          {
+            action: 'CREATE_ASSURANCE_PROFILE',
+          },
+        ),
       ).rejects.toThrow(ForbiddenException);
 
       // 3. Assert IR Retainer is blocked
       await expect(
-        offerEntitlementService.assertIncidentResponseRetainerEntitled(UNENTITLED_TENANT),
+        offerEntitlementService.assertIncidentResponseRetainerEntitled(
+          UNENTITLED_TENANT,
+        ),
       ).rejects.toThrow(ForbiddenException);
 
       // 4. Assert active offers list is empty
       prismaMock.entitlement.findMany.mockResolvedValue([]);
-      const activeOffers = await offerEntitlementService.getTenantActiveOffers(UNENTITLED_TENANT);
+      const activeOffers =
+        await offerEntitlementService.getTenantActiveOffers(UNENTITLED_TENANT);
       expect(activeOffers).toEqual([]);
     });
   });

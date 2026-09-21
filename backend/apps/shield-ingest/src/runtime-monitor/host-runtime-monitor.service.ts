@@ -1,18 +1,18 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 
-export type EbpfSyscallType =
+export type HostSyscallType =
   | 'sys_enter_execve'
   | 'sys_enter_connect'
   | 'sys_enter_ptrace'
   | 'container_escape_attempt';
 
-export interface RawEbpfProbeEvent {
+export interface RawHostProbeEvent {
   probeId: string;
   hostName: string;
   containerId?: string;
   containerName?: string;
-  syscall: EbpfSyscallType;
+  syscall: HostSyscallType;
   pid: number;
   uid: number;
   binaryPath: string;
@@ -52,18 +52,18 @@ export interface OcsfContainerRuntimeFinding {
 }
 
 /**
- * eBPF Kernel Probe Telemetry Ingest & Container Runtime Monitor
- * Specification: ZS-T0-BE-ARCH-001 §12 (Zero-Copy Kernel Telemetry & Container Defense)
+ * Host Runtime Kernel Telemetry Ingest & Container Security Monitor
+ * Specification: ZS-T0-BE-ARCH-001 §12 (Host Runtime Telemetry & Container Defense)
  */
 @Injectable()
-export class EbpfRuntimeMonitorService {
-  private readonly logger = new Logger(EbpfRuntimeMonitorService.name);
+export class HostRuntimeMonitorService {
+  private readonly logger = new Logger(HostRuntimeMonitorService.name);
 
   /**
-   * Ingests and normalizes high-performance Linux eBPF probe telemetry to OCSF schema.
+   * Ingests and normalizes host runtime probe telemetry to OCSF schema.
    */
-  processEbpfProbe(raw: RawEbpfProbeEvent): OcsfContainerRuntimeFinding {
-    const findingId = `ebpf-finding-${crypto.randomUUID()}`;
+  processHostProbe(raw: RawHostProbeEvent): OcsfContainerRuntimeFinding {
+    const findingId = `host-finding-${crypto.randomUUID()}`;
     const ingestedAt = new Date().toISOString();
 
     let severityId: 1 | 3 | 5 | 6 = 1;
@@ -77,21 +77,21 @@ export class EbpfRuntimeMonitorService {
       severityId = 6; // Critical
       threatDetails = {
         isBreakoutAttempt: true,
-        ruleName: 'EBPF-RULE-CONTAINER-ESCAPE-DETECTED',
+        ruleName: 'HOST-RULE-CONTAINER-ESCAPE-DETECTED',
         mitreTechniqueId: 'T1611', // Escape to Host
       };
       this.logger.error(
-        `🚨 [EBPF CONTAINER ESCAPE DETECTED] Host: ${raw.hostName} Container: ${raw.containerName || raw.containerId} Process: ${raw.binaryPath}`,
+        `🚨 [CONTAINER ESCAPE DETECTED] Host: ${raw.hostName} Container: ${raw.containerName || raw.containerId} Process: ${raw.binaryPath}`,
       );
     } else if (raw.syscall === 'sys_enter_ptrace') {
       severityId = 5; // High
       threatDetails = {
         isBreakoutAttempt: false,
-        ruleName: 'EBPF-RULE-PROCESS-INJECTION-PTRACE',
+        ruleName: 'HOST-RULE-PROCESS-INJECTION-PTRACE',
         mitreTechniqueId: 'T1055', // Process Injection
       };
       this.logger.warn(
-        `🚨 [EBPF PTRACE INJECTION] Host: ${raw.hostName} Target PID: ${raw.targetPid} by PID: ${raw.pid}`,
+        `🚨 [HOST PTRACE INJECTION] Host: ${raw.hostName} Target PID: ${raw.targetPid} by PID: ${raw.pid}`,
       );
     }
 

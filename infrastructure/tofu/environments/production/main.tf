@@ -28,6 +28,7 @@ module "cell_us_east_1" {
   project_net_id      = "${var.project_root_id}-us-net"
   project_runtime_id  = "${var.project_root_id}-us-runtime"
   project_evidence_id = "${var.project_root_id}-us-evidence"
+  project_security_id = "${var.project_root_id}-us-security"
 }
 
 # -----------------------------------------------------------------------------
@@ -41,6 +42,7 @@ module "cell_eu_central_1" {
   project_net_id      = "${var.project_root_id}-eu-net"
   project_runtime_id  = "${var.project_root_id}-eu-runtime"
   project_evidence_id = "${var.project_root_id}-eu-evidence"
+  project_security_id = "${var.project_root_id}-eu-security"
 }
 
 # -----------------------------------------------------------------------------

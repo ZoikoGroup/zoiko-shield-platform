@@ -80,6 +80,45 @@ describe('ActionExecutionRegistry & Adapters', () => {
     );
   });
 
+  it('confirms environment variable overrides (ENABLE_G1_LIVE_EXECUTION / G1_GATE_RATIFIED) CANNOT bypass the G1 gate', async () => {
+    const originalEnv = { ...process.env };
+    try {
+      // Attempt unauthorized bypass via environment variables
+      (process.env as any).ENABLE_G1_LIVE_EXECUTION = 'true';
+      (process.env as any).G1_GATE_RATIFIED = 'true';
+
+      const containmentActions = [
+        { actionType: 'DISABLE_USER_ACCOUNT', targetRef: 'admin@acme.com' },
+        { actionType: 'ISOLATE_ENDPOINT', targetRef: 'host-srv-prod' },
+        {
+          actionType: 'REVOKE_IAM_SESSION',
+          targetRef: 'arn:aws:iam::123456789012:role/Admin',
+        },
+        { actionType: 'APPLY_WAF_BLOCK', targetRef: '203.0.113.55/32' },
+      ];
+
+      for (const item of containmentActions) {
+        const liveContext: ActionExecutionContext = {
+          tenantId: 'tenant-test',
+          commandId: `cmd-${item.actionType}`,
+          actionType: item.actionType,
+          targetRef: item.targetRef,
+          authorityLevel: 'R2',
+          approvalRef: 'appr-fake',
+          isSimulation: false,
+        };
+
+        // Assert that even with env vars set to true, execution is strictly rejected
+        await expect(registry.executeAction(liveContext)).rejects.toThrow(
+          /Live R2\+ automated response execution is strictly disabled: G1 Release Gate has not been formally ratified/,
+        );
+      }
+    } finally {
+      delete (process.env as any).ENABLE_G1_LIVE_EXECUTION;
+      delete (process.env as any).G1_GATE_RATIFIED;
+    }
+  });
+
   it('executes EDR ISOLATE_ENDPOINT simulation and returns simulated receipt', async () => {
     const context: ActionExecutionContext = {
       tenantId: 'tenant-123',

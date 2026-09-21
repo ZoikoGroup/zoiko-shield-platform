@@ -125,7 +125,9 @@ describe('EvidenceService in shield-ingest (Decoupled)', () => {
         title: 'Auth Failure Audit Log',
         rawContent: 'User auth failure at 2026-08-10T12:00:00Z',
       }),
-    ).rejects.toThrow("Case 'case-does-not-exist' not found for tenant 'tenant-1'");
+    ).rejects.toThrow(
+      "Case 'case-does-not-exist' not found for tenant 'tenant-1'",
+    );
 
     expect(prismaMock.evidenceRecord.create).not.toHaveBeenCalled();
   });
@@ -151,7 +153,9 @@ describe('EvidenceService in shield-ingest (Decoupled)', () => {
   });
 
   it('verifies stored cryptographic hash against the actual stored bytes and persists the outcome', async () => {
-    const storedBytes = Buffer.from('User auth failure at 2026-08-10T12:00:00Z');
+    const storedBytes = Buffer.from(
+      'User auth failure at 2026-08-10T12:00:00Z',
+    );
     const storedHash = crypto
       .createHash('sha256')
       .update(storedBytes)
@@ -188,7 +192,9 @@ describe('EvidenceService in shield-ingest (Decoupled)', () => {
       vault_reference: 's3://evidence-vault/tenant-1/ev-1.json',
     });
     objectStorageMock.getObject.mockRejectedValue(
-      new Error('XMinioInvalidObjectName: Object name contains unsupported characters.'),
+      new Error(
+        'XMinioInvalidObjectName: Object name contains unsupported characters.',
+      ),
     );
 
     await expect(
@@ -204,7 +210,9 @@ describe('EvidenceService in shield-ingest (Decoupled)', () => {
       content_hash: 'expected-hash-that-will-not-match',
       vault_reference: 'tenant-1/ev-1',
     });
-    objectStorageMock.getObject.mockResolvedValue(Buffer.from('tampered content'));
+    objectStorageMock.getObject.mockResolvedValue(
+      Buffer.from('tampered content'),
+    );
     prismaMock.evidenceRecord.update.mockResolvedValue({});
 
     const verifyResult = await service.verifyEvidenceIntegrity(

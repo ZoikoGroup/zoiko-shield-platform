@@ -1,6 +1,9 @@
 import { BadRequestException } from '@nestjs/common';
 import { DistributedOutboxRelayService } from './distributed-outbox-relay.service';
-import { OutboxEventDispatcherService, DomainEventEnvelope } from './outbox-event-dispatcher.service';
+import {
+  OutboxEventDispatcherService,
+  DomainEventEnvelope,
+} from './outbox-event-dispatcher.service';
 
 describe('OutboxEventDispatcherService (Phase 1 Event Outbox Spine)', () => {
   let relay: DistributedOutboxRelayService;
@@ -68,13 +71,34 @@ describe('OutboxEventDispatcherService (Phase 1 Event Outbox Spine)', () => {
 
     it('routes domain event types to appropriate Kafka topics', () => {
       const cases = [
-        { type: 'ALERT_CREATED' as const, expectedTopic: 'shield.core.threats.v1' },
-        { type: 'CASE_PROMOTED' as const, expectedTopic: 'shield.core.threats.v1' },
-        { type: 'AI_GROUNDING_REVIEWED' as const, expectedTopic: 'shield.ai.governance.v1' },
-        { type: 'SOAR_ACTION_SIMULATED' as const, expectedTopic: 'shield.action.remediation.v1' },
-        { type: 'CONTROL_EVALUATED' as const, expectedTopic: 'shield.core.assurance.v1' },
-        { type: 'EVIDENCE_ANCHORED' as const, expectedTopic: 'shield.anchor.ledger.v1' },
-        { type: 'LEGAL_ACCESS_AUDITED' as const, expectedTopic: 'shield.core.legal-access.v1' },
+        {
+          type: 'ALERT_CREATED' as const,
+          expectedTopic: 'shield.core.threats.v1',
+        },
+        {
+          type: 'CASE_PROMOTED' as const,
+          expectedTopic: 'shield.core.threats.v1',
+        },
+        {
+          type: 'AI_GROUNDING_REVIEWED' as const,
+          expectedTopic: 'shield.ai.governance.v1',
+        },
+        {
+          type: 'SOAR_ACTION_SIMULATED' as const,
+          expectedTopic: 'shield.action.remediation.v1',
+        },
+        {
+          type: 'CONTROL_EVALUATED' as const,
+          expectedTopic: 'shield.core.assurance.v1',
+        },
+        {
+          type: 'EVIDENCE_ANCHORED' as const,
+          expectedTopic: 'shield.anchor.ledger.v1',
+        },
+        {
+          type: 'LEGAL_ACCESS_AUDITED' as const,
+          expectedTopic: 'shield.core.legal-access.v1',
+        },
       ];
 
       for (const c of cases) {
@@ -98,8 +122,12 @@ describe('OutboxEventDispatcherService (Phase 1 Event Outbox Spine)', () => {
         payload: { controlId: 'SOC2-CC6.1', score: 100 },
       };
 
-      const first = dispatcher.dispatch(event, { idempotencyKey: 'fixed-key-123' });
-      const second = dispatcher.dispatch(event, { idempotencyKey: 'fixed-key-123' });
+      const first = dispatcher.dispatch(event, {
+        idempotencyKey: 'fixed-key-123',
+      });
+      const second = dispatcher.dispatch(event, {
+        idempotencyKey: 'fixed-key-123',
+      });
 
       expect(first.id).toBe(second.id);
     });

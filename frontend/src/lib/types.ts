@@ -374,7 +374,7 @@ export interface JitElevationSession {
 export interface EnclaveAttestationReceipt {
   receiptId: string;
   enclaveId: string;
-  platform: 'AWS_NITRO' | 'GCP_CONFIDENTIAL' | 'INTEL_SGX';
+  platform: 'AWS_ENCLAVE' | 'GCP_CONFIDENTIAL_SPACE' | 'GCP_CONFIDENTIAL' | 'GCP_CONFIDENTIAL_VM' | 'INTEL_SGX';
   pcr0: string;
   eatId: string;
   status: 'VALID' | 'TAMPERED';
@@ -517,61 +517,84 @@ export interface ExperienceStateEnvelope<T> {
 // 10-Field Mandatory Review Envelope per Spec §16.1
 // ----------------------------------------------------------------------------
 
-export type DecisionState = 'UNREVIEWED' | 'ACCEPTED' | 'MODIFIED' | 'REJECTED' | 'ESCALATED';
+export type DecisionState = 'UNREVIEWED' | 'ACCEPTED' | 'MODIFIED' | 'REJECTED' | 'ESCALATED' | 'PENDING_REVIEW';
 export type DecisionTransition = 'ACCEPT' | 'MODIFY' | 'REJECT' | 'ESCALATE';
 export type ResponseAuthorityTier = 'R0' | 'R1' | 'R2' | 'R3' | 'R4';
 export type QualitativeConfidenceBand = 'HIGH' | 'MEDIUM' | 'LOW';
 
 export interface AiLabelAndUseCase {
-  aiLabel: string;
+  aiLabel?: string;
   useCaseName: string;
-  modelRoute: string;
+  modelRoute?: string;
   version?: string;
+  modelIdentifier?: string;
+  providerProfile?: string;
+  riskTier?: string;
 }
 
 export interface DecisionSourceSpan {
   sourceId: string;
   sourceType: string;
   version?: number;
-  exactSpan: string;
-  confidence: number;
+  exactSpan?: string;
+  span?: string;
+  name?: string;
+  type?: string;
+  documentRef?: string;
+  confidence?: number;
+  confidenceScore?: number;
 }
 
 export interface EvidenceCompletenessState {
-  missingEvidence: string[];
-  staleEvidence: string[];
-  conflictingEvidence: string[];
+  missingEvidence?: string[];
+  staleEvidence?: string[];
+  conflictingEvidence?: string[];
+  missingEvidenceCount?: number;
+  staleEvidenceCount?: number;
+  conflictingEvidenceCount?: number;
+  freshnessSeconds?: number;
+  completenessRatio?: number;
 }
 
 export interface CalibratedConfidence {
   score: number;
-  qualitativeBand: QualitativeConfidenceBand;
+  qualitativeBand?: QualitativeConfidenceBand;
+  confidenceTier?: QualitativeConfidenceBand;
   calibrationBasis: string;
   uncertaintyFactors: string[];
 }
 
 export interface AlternativeHypothesisOrAction {
+  actionId?: string;
   title: string;
   rationale: string;
-  tradeOffs: string;
+  tradeOffs?: string;
+  tradeOff?: string;
 }
 
 export interface ExpectedImpactAndReversibility {
   blastRadius: string;
-  isReversible: boolean;
-  reversibilityTier: ResponseAuthorityTier;
+  isReversible?: boolean;
+  reversibilityTier?: ResponseAuthorityTier;
   compensationPlan?: string;
+  downtimeExpected?: boolean;
+  reversibility?: string;
+  compensationMechanism?: string;
 }
 
 export interface RequiredAuthorityAndApprovals {
-  requiredRole: string;
-  responseAuthorityTier: ResponseAuthorityTier;
-  dualApproverRequired: boolean;
+  requiredRole?: string;
+  responseAuthorityTier?: ResponseAuthorityTier;
+  requiredAuthorityTier?: ResponseAuthorityTier;
+  dualApproverRequired?: boolean;
+  dualCustodyRequired?: boolean;
+  approverRoles?: string[];
 }
 
 export interface DecisionControls {
   availableTransitions: DecisionTransition[];
-  state: DecisionState;
+  state?: DecisionState;
+  currentState?: DecisionState;
 }
 
 export interface RecordedHumanDecision {
@@ -582,6 +605,7 @@ export interface RecordedHumanDecision {
   decidedAt?: string;
   escalatedToRole?: string;
   evidenceRef?: string;
+  signature?: string;
 }
 
 export interface AppealOrFeedbackRoute {
@@ -605,7 +629,7 @@ export interface AiReviewEnvelope<T = any> {
   controls: DecisionControls;
   humanDecisionAndRationale: RecordedHumanDecision;
   appealOrFeedbackRoute: AppealOrFeedbackRoute;
-  payload: T;
+  payload?: T;
 }
 
 export interface IncidentResponseRetainer {

@@ -213,7 +213,10 @@ export class AiGovernanceViewsController {
   ) {
     const targetModel = modelId || 'gemini-1.5-pro';
     const sampleSize = minSampleSize ? parseInt(minSampleSize, 10) : 10;
-    const evaluation = this.modelDriftService.evaluateDrift(targetModel, sampleSize);
+    const evaluation = this.modelDriftService.evaluateDrift(
+      targetModel,
+      sampleSize,
+    );
     return {
       statusCode: HttpStatus.OK,
       data: evaluation,

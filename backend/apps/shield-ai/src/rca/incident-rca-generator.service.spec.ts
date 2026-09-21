@@ -26,7 +26,7 @@ describe('IncidentRcaGeneratorService', () => {
         {
           eventId: 'evt-02',
           timestamp: '2026-08-31T09:05:00.000Z',
-          source: 'ebpf-kernel-probe',
+          source: 'host-kernel-probe',
           eventType: 'SUSPICIOUS_EXECVE_POWERSHELL',
           actor: 'compromised.admin@enterprise.com',
           targetResource: 'host-production-worker-01',

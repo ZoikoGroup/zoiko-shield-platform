@@ -59,11 +59,7 @@ export const P0_CONNECTOR_BASELINES: Record<string, RequiredPermissionSpec> = {
   },
   github: {
     provider: 'github',
-    requiredScopes: [
-      'repo:status',
-      'security_events:read',
-      'audit_log:read',
-    ],
+    requiredScopes: ['repo:status', 'security_events:read', 'audit_log:read'],
     criticalScopes: ['security_events:read'],
   },
   jira: {

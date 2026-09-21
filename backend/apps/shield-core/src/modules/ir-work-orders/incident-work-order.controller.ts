@@ -143,10 +143,7 @@ export class IncidentWorkOrderController {
     const scope = boundary(headerTenantId, user);
     return {
       statusCode: HttpStatus.OK,
-      data: await this.workOrders.list(
-        scope.tenantId,
-        scope.environmentId,
-      ),
+      data: await this.workOrders.list(scope.tenantId, scope.environmentId),
     };
   }
 

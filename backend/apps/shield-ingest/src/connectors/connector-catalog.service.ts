@@ -159,7 +159,8 @@ export class ConnectorCatalogService {
         id: 'azure-monitor',
         name: 'Azure Monitor Activity Logs',
         category: 'Cloud Infrastructure',
-        description: 'Ingest Azure Activity Log audit events via a service principal',
+        description:
+          'Ingest Azure Activity Log audit events via a service principal',
         supportedAuthTypes: ['CLIENT_CREDENTIALS'],
       },
       {
@@ -280,12 +281,14 @@ export class ConnectorCatalogService {
     return this.withResponseAuthority(connector);
   }
 
-  private withResponseAuthority<
-    T extends { definition: { provider: string } },
-  >(connector: T): T & {
-    responseAuthority?: 'CERTIFIED_RESPONSE_PARTNER' | 'READ_ONLY_BYO_INGESTION';
+  private withResponseAuthority<T extends { definition: { provider: string } }>(
+    connector: T,
+  ): T & {
+    responseAuthority?:
+      'CERTIFIED_RESPONSE_PARTNER' | 'READ_ONLY_BYO_INGESTION';
   } {
-    const responseAuthority = EDR_RESPONSE_AUTHORITY[connector.definition.provider];
+    const responseAuthority =
+      EDR_RESPONSE_AUTHORITY[connector.definition.provider];
     return responseAuthority ? { ...connector, responseAuthority } : connector;
   }
 

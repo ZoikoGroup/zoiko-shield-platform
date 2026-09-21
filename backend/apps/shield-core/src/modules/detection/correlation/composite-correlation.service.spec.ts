@@ -160,14 +160,14 @@ describe('CompositeCorrelationService', () => {
     expect(res?.matchedEventIds).toEqual(['evt-cloud-01', 'evt-cloud-02']);
   });
 
-  it('should detect eBPF Kernel Container Escape pattern', async () => {
+  it('should detect Host Runtime Container Escape pattern', async () => {
     const tenantId = 'tenant-k8s-01';
     const targetHost = 'k8s-node-worker-09';
     const now = new Date();
 
-    // Stage 1: eBPF Container Escape
+    // Stage 1: Host Container Escape
     await service.processEvent({
-      eventId: 'evt-ebpf-esc-01',
+      eventId: 'evt-host-esc-01',
       tenantId,
       classUid: 2001,
       categoryName: 'CONTAINER_RUNTIME',
@@ -176,14 +176,14 @@ describe('CompositeCorrelationService', () => {
       timestamp: new Date(now.getTime() - 40000),
       targetHost,
       rawPayload: {
-        rule: 'EBPF-RULE-CONTAINER-ESCAPE-DETECTED',
+        rule: 'HOST-RULE-CONTAINER-ESCAPE-DETECTED',
         capability: 'SYS_ADMIN',
       },
     });
 
     // Stage 2: Root process execution
     await service.processEvent({
-      eventId: 'evt-ebpf-esc-02',
+      eventId: 'evt-host-esc-02',
       tenantId,
       classUid: 4001,
       categoryName: 'PROCESS_ACTIVITY',
@@ -196,7 +196,7 @@ describe('CompositeCorrelationService', () => {
 
     // Stage 3: Outbound C2 connect
     const res = await service.processEvent({
-      eventId: 'evt-ebpf-esc-03',
+      eventId: 'evt-host-esc-03',
       tenantId,
       classUid: 4002,
       categoryName: 'NETWORK_ACTIVITY',
@@ -211,9 +211,9 @@ describe('CompositeCorrelationService', () => {
     expect(res?.patternId).toBe('ZS-CORR-CONTAINER-ESCAPE-003');
     expect(res?.severity).toBe('CRITICAL');
     expect(res?.matchedEventIds).toEqual([
-      'evt-ebpf-esc-01',
-      'evt-ebpf-esc-02',
-      'evt-ebpf-esc-03',
+      'evt-host-esc-01',
+      'evt-host-esc-02',
+      'evt-host-esc-03',
     ]);
   });
 });

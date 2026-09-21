@@ -74,7 +74,7 @@ import { AlertGeneratorController } from './alerts/alert-generator.controller';
 import { AlertGeneratorService } from './alerts/alert-generator.service';
 import { StixThreatIntelMatcherService } from './threat-intel/stix-threat-intel-matcher.service';
 import { CanaryHoneypotProbeService } from './canary/canary-honeypot-probe.service';
-import { EbpfRuntimeMonitorService } from './ebpf/ebpf-runtime-monitor.service';
+import { HostRuntimeMonitorService } from './runtime-monitor/host-runtime-monitor.service';
 import { StreamThreatHuntingService } from './threat-hunting/stream-threat-hunting.service';
 import { MpcThreatMatcherService } from './mpc-intel/mpc-threat-matcher.service';
 import { TierAWindowedDetectorService } from './detection/tier-a/tier-a-windowed-detector.service';
@@ -215,7 +215,7 @@ import { ConnectorPermissionDriftService } from './drift/connector-permission-dr
     AzureEventHubsIngestListener,
     StixThreatIntelMatcherService,
     CanaryHoneypotProbeService,
-    EbpfRuntimeMonitorService,
+    HostRuntimeMonitorService,
     StreamThreatHuntingService,
     MpcThreatMatcherService,
     TierAWindowedDetectorService,
@@ -236,7 +236,7 @@ import { ConnectorPermissionDriftService } from './drift/connector-permission-dr
     AzureEventHubsIngestListener,
     StixThreatIntelMatcherService,
     CanaryHoneypotProbeService,
-    EbpfRuntimeMonitorService,
+    HostRuntimeMonitorService,
     StreamThreatHuntingService,
     MpcThreatMatcherService,
     TierAWindowedDetectorService,

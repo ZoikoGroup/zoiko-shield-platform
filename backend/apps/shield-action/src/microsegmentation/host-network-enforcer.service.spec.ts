@@ -1,13 +1,13 @@
-import { EbpfNetworkEnforcerService } from './ebpf-network-enforcer.service';
+import { HostNetworkEnforcerService } from './host-network-enforcer.service';
 
-describe('EbpfNetworkEnforcerService', () => {
-  let enforcerService: EbpfNetworkEnforcerService;
+describe('HostNetworkEnforcerService', () => {
+  let enforcerService: HostNetworkEnforcerService;
 
   beforeEach(() => {
-    enforcerService = new EbpfNetworkEnforcerService();
+    enforcerService = new HostNetworkEnforcerService();
   });
 
-  it('should apply zero-trust microsegmentation rule to kernel eBPF map', () => {
+  it('should apply zero-trust microsegmentation rule to host network policy table', () => {
     const tenantId = 'tenant-enterprise-01';
 
     const receipt = enforcerService.applyMicrosegmentationRule({
@@ -21,7 +21,7 @@ describe('EbpfNetworkEnforcerService', () => {
     });
 
     expect(receipt.receiptId).toBeDefined();
-    expect(receipt.status).toBe('KERNEL_MAP_UPDATED_SUCCESS');
+    expect(receipt.status).toBe('POLICY_ENFORCEMENT_SUCCESS');
     expect(receipt.enforcedAction).toBe('ALLOW');
     expect(receipt.attestationDigest).toBeDefined();
 

@@ -61,7 +61,9 @@ describe('Evidence Decay to Control Degradation Linkage & Auditor Export Disclos
 
       expect(result.state).toBe('STALE');
       expect(result.complianceScore).toBe(50);
-      expect(result.rationale).toContain('Evidence records are 96 hours old (threshold: 72h)');
+      expect(result.rationale).toContain(
+        'Evidence records are 96 hours old (threshold: 72h)',
+      );
       expect(result.disclaimer).toBeDefined();
     });
   });
@@ -75,8 +77,12 @@ describe('Evidence Decay to Control Degradation Linkage & Auditor Export Disclos
 
       expect(exportPackage.overallCompliancePosture).toBe('AUDITOR_VERIFIED');
       expect(exportPackage.knownLimitations.staleEvidenceCount).toBe(0);
-      expect(exportPackage.knownLimitations.staleEvidenceRecords).toHaveLength(0);
-      expect(exportPackage.knownLimitations.disclosures[0]).toContain('All continuous telemetry streams are fresh');
+      expect(exportPackage.knownLimitations.staleEvidenceRecords).toHaveLength(
+        0,
+      );
+      expect(exportPackage.knownLimitations.disclosures[0]).toContain(
+        'All continuous telemetry streams are fresh',
+      );
       expect(exportPackage.pqcSignatureDilithium3).toBeDefined();
       expect(exportPackage.classicalSignatureEd25519).toBeDefined();
     });
@@ -91,15 +97,22 @@ describe('Evidence Decay to Control Degradation Linkage & Auditor Export Disclos
             controlId: 'CC6.6',
             ageHours: 84,
             freshnessStatus: 'STALE',
-            decayWarning: 'EDR host telemetry has not refreshed in 84 hours (exceeds 72h SLA)',
+            decayWarning:
+              'EDR host telemetry has not refreshed in 84 hours (exceeds 72h SLA)',
           },
         ],
       });
 
       expect(exportPackage.overallCompliancePosture).toBe('REVIEW_REQUIRED');
       expect(exportPackage.knownLimitations.staleEvidenceCount).toBe(1);
-      expect(exportPackage.knownLimitations.staleEvidenceRecords[0].evidenceId).toBe('ev-edr-crowdstrike-991');
-      expect(exportPackage.knownLimitations.disclosures.some((d) => d.includes('Disclosed 1 evidence record(s)'))).toBe(true);
+      expect(
+        exportPackage.knownLimitations.staleEvidenceRecords[0].evidenceId,
+      ).toBe('ev-edr-crowdstrike-991');
+      expect(
+        exportPackage.knownLimitations.disclosures.some((d) =>
+          d.includes('Disclosed 1 evidence record(s)'),
+        ),
+      ).toBe(true);
       expect(exportPackage.merkleRoot).toHaveLength(64);
     });
 
@@ -123,7 +136,11 @@ describe('Evidence Decay to Control Degradation Linkage & Auditor Export Disclos
       });
 
       expect(exportPackage.overallCompliancePosture).toBe('REVIEW_REQUIRED');
-      expect(exportPackage.knownLimitations.disclosures.some((d) => d.includes('DEGRADED status'))).toBe(true);
+      expect(
+        exportPackage.knownLimitations.disclosures.some((d) =>
+          d.includes('DEGRADED status'),
+        ),
+      ).toBe(true);
     });
   });
 });

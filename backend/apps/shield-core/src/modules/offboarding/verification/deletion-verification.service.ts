@@ -53,9 +53,7 @@ export class DeletionVerificationService {
     // Order matters: lock-retained ciphertext is only defensible once the keys
     // that could read it are provably gone, so establish that first.
     const cryptographic = await this.verifyCryptographicMaterial(tenantId);
-    surfaces.push(
-      await this.verifyObjectStorage(tenantId, cryptographic.pass),
-    );
+    surfaces.push(await this.verifyObjectStorage(tenantId, cryptographic.pass));
     surfaces.push(cryptographic);
     surfaces.push(await this.verifyConnectorState(tenantId));
     surfaces.push(await this.verifyBackups(deletionRequestId));
@@ -81,7 +79,10 @@ export class DeletionVerificationService {
 
     if (result === 'FAIL') {
       this.logger.error(
-        `Deletion verification FAILED for tenant ${tenantId} (request ${deletionRequestId}): ${residualCount} unauthorized residual(s) across ${surfaces.filter((s) => !s.pass).map((s) => s.surface).join(', ')}`,
+        `Deletion verification FAILED for tenant ${tenantId} (request ${deletionRequestId}): ${residualCount} unauthorized residual(s) across ${surfaces
+          .filter((s) => !s.pass)
+          .map((s) => s.surface)
+          .join(', ')}`,
       );
     }
 

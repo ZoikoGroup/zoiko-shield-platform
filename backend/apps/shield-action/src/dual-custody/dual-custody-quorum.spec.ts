@@ -220,4 +220,3 @@ describe('DualCustodyQuorumService', () => {
     expect(validation.reason).toContain('does not match requested proposal');
   });
 });
-

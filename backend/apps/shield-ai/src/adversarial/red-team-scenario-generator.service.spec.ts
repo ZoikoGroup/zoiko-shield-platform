@@ -29,7 +29,7 @@ describe('RedTeamScenarioGeneratorService', () => {
     expect(scenario.stages[1].simulatedOcsfEvent.eventClass).toBe(
       'PROCESS_ACTIVITY',
     );
-    expect(scenario.purpleTeamExerciseDigest).toHaveLength(64);
+    expect(scenario.exerciseAttestationDigest).toHaveLength(64);
   });
 
   it('should generate cloud privilege escalation scenario', () => {

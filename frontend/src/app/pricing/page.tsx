@@ -197,11 +197,9 @@ export default function PricingPage() {
                   <div className="flex items-center justify-between text-slate-300">
                     <span className="text-slate-500">Response SLA:</span>
                     <span className="font-semibold text-emerald-400">
-                      {plan.allocations.incidentResponseSlaHours === 0.25
-                        ? "15 Minutes"
-                        : plan.allocations.incidentResponseSlaHours === 0.1
-                        ? "< 10 Minutes"
-                        : `${plan.allocations.incidentResponseSlaHours} Hours`}
+                      {plan.allocations.incidentResponseSlaHours
+                        ? `${plan.allocations.incidentResponseSlaHours}h Target (Order Form Bound)`
+                        : "Custom / SOW Bound"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-slate-300">
@@ -323,8 +321,8 @@ export default function PricingPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
               <label className="p-3.5 rounded-xl bg-slate-900/70 border border-slate-800 flex items-center justify-between cursor-pointer hover:border-slate-700 transition-colors">
                 <div className="space-y-0.5">
-                  <span className="text-xs font-semibold text-slate-200 block">Require 24/7/365 MDR</span>
-                  <span className="text-[11px] text-slate-400">Rule SVC-01 certified shift operations</span>
+                  <span className="text-xs font-semibold text-slate-200 block">Priority Managed Defense (MDR)</span>
+                  <span className="text-[11px] text-slate-400">Order-form bound governed response & triage</span>
                 </div>
                 <input
                   type="checkbox"

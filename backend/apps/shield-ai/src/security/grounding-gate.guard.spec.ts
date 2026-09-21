@@ -49,7 +49,9 @@ describe('GroundingGateGuard (Differential Risk Tier AR-1 / AR-2 / AR-3 Enforcem
         }),
       } as unknown as ExecutionContext;
 
-      expect(() => guard.canActivate(mockContext)).toThrow(UnprocessableEntityException);
+      expect(() => guard.canActivate(mockContext)).toThrow(
+        UnprocessableEntityException,
+      );
     });
   });
 
@@ -111,8 +113,14 @@ describe('GroundingGateGuard (Differential Risk Tier AR-1 / AR-2 / AR-3 Enforcem
       });
 
       expect(evalResult.passed).toBe(false);
-      expect(evalResult.blockingReasons.some((r) => r.includes('simulation receipt'))).toBe(true);
-      expect(evalResult.actionRequired).toBe('DIVERT_TO_DETERMINISTIC_FALLBACK');
+      expect(
+        evalResult.blockingReasons.some((r) =>
+          r.includes('simulation receipt'),
+        ),
+      ).toBe(true);
+      expect(evalResult.actionRequired).toBe(
+        'DIVERT_TO_DETERMINISTIC_FALLBACK',
+      );
     });
 
     it('should reject AR-3 agentic output if grounding is 90% (which passes AR-1 and AR-2 but fails AR-3)', () => {

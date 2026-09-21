@@ -20,12 +20,14 @@ describe('AiOutputGroundingService (Section 18 AI Output Grounding & Disclosure)
     const request: GroundingValidationRequest = {
       useCaseName: 'RESPONSE_RECOMMENDATION',
       aiModelId: 'gemini-1.5-pro',
-      outputContent: 'Recommend isolating endpoint srv-app-prod-02 due to detected privilege escalation.',
+      outputContent:
+        'Recommend isolating endpoint srv-app-prod-02 due to detected privilege escalation.',
       sources: [
         {
           sourceId: 'alert-001',
           sourceType: 'EDR_TELEMETRY',
-          exactSpan: 'Mimikatz memory injection detected on host srv-app-prod-02',
+          exactSpan:
+            'Mimikatz memory injection detected on host srv-app-prod-02',
         },
       ],
       confidenceScore: 0.92,

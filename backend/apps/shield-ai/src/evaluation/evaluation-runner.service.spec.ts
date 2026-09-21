@@ -36,11 +36,14 @@ describe('EvaluationRunnerService (ZS-ENG-AI-001 §17 & §19 Domain-Differentiat
         },
       ];
 
-      const report = await service.runEvaluationSuite('CASE_SUMMARY', testCases);
+      const report = await service.runEvaluationSuite(
+        'CASE_SUMMARY',
+        testCases,
+      );
 
       expect(report.releaseDecision).toBe('APPROVED');
       expect(report.domain).toBe('DETECTION');
-      expect(report.minCitationPrecisionThreshold).toBe(0.90);
+      expect(report.minCitationPrecisionThreshold).toBe(0.9);
       expect(report.minGroundingThreshold).toBe(0.85);
       expect(report.criticalFailureCount).toBe(0);
       expect(report.meanGroundingScore).toBeGreaterThanOrEqual(0.85);
@@ -59,7 +62,8 @@ describe('EvaluationRunnerService (ZS-ENG-AI-001 §17 & §19 Domain-Differentiat
           expectedCitationRefs: ['ev-01', 'ev-02', 'ev-03'],
           expectedFields: ['controlId', 'evidenceDigest'],
           simulatedOutput: {
-            content: 'MFA enforced on 100% of admin accounts with authentic cryptographic receipts.',
+            content:
+              'MFA enforced on 100% of admin accounts with authentic cryptographic receipts.',
             citedRefs: ['ev-01', 'ev-02', 'ev-03'],
           },
         },
@@ -82,8 +86,33 @@ describe('EvaluationRunnerService (ZS-ENG-AI-001 §17 & §19 Domain-Differentiat
     it('BLOCKS compliance release when precision is 0.92 (which passes Detection >= 0.90 but fails Compliance >= 0.98)', async () => {
       // 11 citations valid out of 12 = 11/12 = 0.9167 (~91.7%)
       // 1 retrieved ref is invalid
-      const retrieved = ['ev-1', 'ev-2', 'ev-3', 'ev-4', 'ev-5', 'ev-6', 'ev-7', 'ev-8', 'ev-9', 'ev-10', 'ev-11'];
-      const cited = ['ev-1', 'ev-2', 'ev-3', 'ev-4', 'ev-5', 'ev-6', 'ev-7', 'ev-8', 'ev-9', 'ev-10', 'ev-11', 'ev-unretrieved-12'];
+      const retrieved = [
+        'ev-1',
+        'ev-2',
+        'ev-3',
+        'ev-4',
+        'ev-5',
+        'ev-6',
+        'ev-7',
+        'ev-8',
+        'ev-9',
+        'ev-10',
+        'ev-11',
+      ];
+      const cited = [
+        'ev-1',
+        'ev-2',
+        'ev-3',
+        'ev-4',
+        'ev-5',
+        'ev-6',
+        'ev-7',
+        'ev-8',
+        'ev-9',
+        'ev-10',
+        'ev-11',
+        'ev-unretrieved-12',
+      ];
 
       const testCases: EvaluationTestCase[] = [
         {
@@ -116,7 +145,9 @@ describe('EvaluationRunnerService (ZS-ENG-AI-001 §17 & §19 Domain-Differentiat
       );
       expect(complianceReport.releaseDecision).toBe('BLOCKED');
       expect(complianceReport.domain).toBe('COMPLIANCE');
-      expect(complianceReport.blockingReasons[0]).toContain('below domain threshold');
+      expect(complianceReport.blockingReasons[0]).toContain(
+        'below domain threshold',
+      );
     });
   });
 
@@ -138,7 +169,10 @@ describe('EvaluationRunnerService (ZS-ENG-AI-001 §17 & §19 Domain-Differentiat
         },
       ];
 
-      const report = await service.runEvaluationSuite('CASE_SUMMARY', testCases);
+      const report = await service.runEvaluationSuite(
+        'CASE_SUMMARY',
+        testCases,
+      );
 
       expect(report.releaseDecision).toBe('BLOCKED');
       expect(report.criticalFailureCount).toBe(1);
@@ -164,7 +198,10 @@ describe('EvaluationRunnerService (ZS-ENG-AI-001 §17 & §19 Domain-Differentiat
         },
       ];
 
-      const report = await service.runEvaluationSuite('CASE_SUMMARY', testCases);
+      const report = await service.runEvaluationSuite(
+        'CASE_SUMMARY',
+        testCases,
+      );
 
       expect(report.releaseDecision).toBe('BLOCKED');
       expect(report.criticalFailureCount).toBe(1);
@@ -188,11 +225,16 @@ describe('EvaluationRunnerService (ZS-ENG-AI-001 §17 & §19 Domain-Differentiat
         },
       ];
 
-      const report = await service.runEvaluationSuite('SOC2_EVALUATION', testCases);
+      const report = await service.runEvaluationSuite(
+        'SOC2_EVALUATION',
+        testCases,
+      );
 
       expect(report.releaseDecision).toBe('BLOCKED');
       expect(report.criticalFailureCount).toBe(1);
-      expect(report.blockingReasons[0]).toContain('Non-COMPLETE control state represented as compliant');
+      expect(report.blockingReasons[0]).toContain(
+        'Non-COMPLETE control state represented as compliant',
+      );
     });
   });
 });

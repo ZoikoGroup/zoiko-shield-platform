@@ -59,7 +59,9 @@ export class AzureMonitorProvider implements SecurityConnector, OnModuleInit {
   }
 
   async testConnection(context: ConnectorContext): Promise<HealthResult> {
-    this.logger.log(`Testing Azure Monitor health for tenant=${context.tenantId}`);
+    this.logger.log(
+      `Testing Azure Monitor health for tenant=${context.tenantId}`,
+    );
     return {
       status: 'HEALTHY',
       lastCheckedAt: new Date().toISOString(),
@@ -102,6 +104,8 @@ export class AzureMonitorProvider implements SecurityConnector, OnModuleInit {
   }
 
   async disconnect(context: ConnectorContext): Promise<void> {
-    this.logger.log(`Disconnecting Azure Monitor for tenant ${context.tenantId}`);
+    this.logger.log(
+      `Disconnecting Azure Monitor for tenant ${context.tenantId}`,
+    );
   }
 }

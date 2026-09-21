@@ -131,17 +131,19 @@ export class ShieldAiController {
   @Get('metrics')
   @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
   getMetrics(): string {
-    return [
-      '# HELP zoiko_ai_inferences_total Total number of AI inferences evaluated by ModelArmor',
-      '# TYPE zoiko_ai_inferences_total counter',
-      `zoiko_ai_inferences_total{service="shield-ai"} 1420`,
-      '# HELP zoiko_ai_jailbreak_interceptions_total Total adversarial prompt injection attacks blocked',
-      '# TYPE zoiko_ai_jailbreak_interceptions_total counter',
-      `zoiko_ai_jailbreak_interceptions_total{service="shield-ai"} 38`,
-      '# HELP zoiko_service_up Status of shield-ai service',
-      '# TYPE zoiko_service_up gauge',
-      `zoiko_service_up{service="shield-ai"} 1`,
-    ].join('\n') + '\n';
+    return (
+      [
+        '# HELP zoiko_ai_inferences_total Total number of AI inferences evaluated by ModelArmor',
+        '# TYPE zoiko_ai_inferences_total counter',
+        `zoiko_ai_inferences_total{service="shield-ai"} 1420`,
+        '# HELP zoiko_ai_jailbreak_interceptions_total Total adversarial prompt injection attacks blocked',
+        '# TYPE zoiko_ai_jailbreak_interceptions_total counter',
+        `zoiko_ai_jailbreak_interceptions_total{service="shield-ai"} 38`,
+        '# HELP zoiko_service_up Status of shield-ai service',
+        '# TYPE zoiko_service_up gauge',
+        `zoiko_service_up{service="shield-ai"} 1`,
+      ].join('\n') + '\n'
+    );
   }
 
   @UseGuards(InternalAuthGuard)

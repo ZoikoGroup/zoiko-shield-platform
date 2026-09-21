@@ -43,19 +43,23 @@ describe('ConnectorActivationService (§2 Committed P0 vs P1 Scope Gating)', () 
       (providerId) => {
         const result = service.validateConnectorActivation(
           standardEnterpriseTenant,
-          providerId
+          providerId,
         );
 
         expect(result.allowed).toBe(true);
-        expect(result.certificationTier).toBe(ConnectorCertificationTier.P0_CERTIFIED);
+        expect(result.certificationTier).toBe(
+          ConnectorCertificationTier.P0_CERTIFIED,
+        );
         expect(result.auditRecord.action).toBe('ACTIVATION_APPROVED');
         expect(result.denialReason).toBeUndefined();
-      }
+      },
     );
 
     it('should confirm CrowdStrike as the single P0 certified response EDR partner', () => {
       const meta = service.getCertificationMetadata('crowdstrike');
-      expect(meta.certificationTier).toBe(ConnectorCertificationTier.P0_CERTIFIED);
+      expect(meta.certificationTier).toBe(
+        ConnectorCertificationTier.P0_CERTIFIED,
+      );
       expect(meta.maxAllowedAuthority).toBe('CERTIFIED_RESPONSE_PARTNER');
       expect(meta.category).toBe('EDR');
     });
@@ -76,14 +80,18 @@ describe('ConnectorActivationService (§2 Committed P0 vs P1 Scope Gating)', () 
       (providerId) => {
         const result = service.validateConnectorActivation(
           standardEnterpriseTenant,
-          providerId
+          providerId,
         );
 
         expect(result.allowed).toBe(false);
-        expect(result.certificationTier).toBe(ConnectorCertificationTier.P1_PENDING);
-        expect(result.denialCode).toBe('CONNECTOR_ACTIVATION_DENIED_P1_UNENTITLED');
+        expect(result.certificationTier).toBe(
+          ConnectorCertificationTier.P1_PENDING,
+        );
+        expect(result.denialCode).toBe(
+          'CONNECTOR_ACTIVATION_DENIED_P1_UNENTITLED',
+        );
         expect(result.auditRecord.action).toBe('ACTIVATION_BLOCKED');
-      }
+      },
     );
 
     it.each(p1Providers)(
@@ -91,13 +99,15 @@ describe('ConnectorActivationService (§2 Committed P0 vs P1 Scope Gating)', () 
       (providerId) => {
         const result = service.validateConnectorActivation(
           p1PreviewTenant,
-          providerId
+          providerId,
         );
 
         expect(result.allowed).toBe(true);
-        expect(result.certificationTier).toBe(ConnectorCertificationTier.P1_PENDING);
+        expect(result.certificationTier).toBe(
+          ConnectorCertificationTier.P1_PENDING,
+        );
         expect(result.auditRecord.action).toBe('ACTIVATION_APPROVED');
-      }
+      },
     );
 
     it('should enforce non-CrowdStrike EDRs as read-only ingestion authority', () => {
@@ -115,12 +125,12 @@ describe('ConnectorActivationService (§2 Committed P0 vs P1 Scope Gating)', () 
     it('should block unknown or uncertified custom connectors by default', () => {
       const result = service.validateConnectorActivation(
         standardEnterpriseTenant,
-        'unregistered-vendor-connector'
+        'unregistered-vendor-connector',
       );
 
       expect(result.allowed).toBe(false);
       expect(result.certificationTier).toBe(
-        ConnectorCertificationTier.EXPERIMENTAL_UNCERTIFIED
+        ConnectorCertificationTier.EXPERIMENTAL_UNCERTIFIED,
       );
       expect(result.denialCode).toBe('CONNECTOR_ACTIVATION_DENIED_UNCERTIFIED');
       expect(result.auditRecord.action).toBe('ACTIVATION_BLOCKED');
@@ -137,7 +147,7 @@ describe('ConnectorActivationService (§2 Committed P0 vs P1 Scope Gating)', () 
 
       const result = service.validateConnectorActivation(
         customEntitledTenant,
-        'internal-syslog-legacy'
+        'internal-syslog-legacy',
       );
 
       expect(result.allowed).toBe(true);
@@ -150,17 +160,14 @@ describe('ConnectorActivationService (§2 Committed P0 vs P1 Scope Gating)', () 
       expect(() => {
         service.gateIngestionTelemetry(
           standardEnterpriseTenant,
-          'microsoft-entra'
+          'microsoft-entra',
         );
       }).not.toThrow();
     });
 
     it('should throw ForbiddenException when unentitled tenant sends P1 telemetry', () => {
       expect(() => {
-        service.gateIngestionTelemetry(
-          standardEnterpriseTenant,
-          'gcp-scc'
-        );
+        service.gateIngestionTelemetry(standardEnterpriseTenant, 'gcp-scc');
       }).toThrow(ForbiddenException);
     });
 
@@ -168,7 +175,7 @@ describe('ConnectorActivationService (§2 Committed P0 vs P1 Scope Gating)', () 
       expect(() => {
         service.gateIngestionTelemetry(
           standardEnterpriseTenant,
-          'malicious-unregistered-feed'
+          'malicious-unregistered-feed',
         );
       }).toThrow(ForbiddenException);
     });

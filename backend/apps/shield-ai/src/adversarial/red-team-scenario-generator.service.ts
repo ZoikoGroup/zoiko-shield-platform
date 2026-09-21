@@ -36,12 +36,12 @@ export interface RedTeamScenarioResult {
   stagesCount: number;
   stages: AttackStage[];
   expectedDetectionRules: string[];
-  purpleTeamExerciseDigest: string;
+  exerciseAttestationDigest: string;
   generatedAt: string;
 }
 
 /**
- * Autonomous Red-Team Scenario & Purple-Team Telemetry Generator
+ * Autonomous Red-Team Scenario & Defensive Control Exercise Generator
  * Governed by ZS-ENG-AI-001 & ZS-ENG-DRS-001 §14.
  */
 @Injectable()
@@ -171,7 +171,7 @@ export class RedTeamScenarioGeneratorService {
       ];
     }
 
-    const purpleTeamExerciseDigest = crypto
+    const exerciseAttestationDigest = crypto
       .createHash('sha256')
       .update(
         JSON.stringify({
@@ -195,7 +195,7 @@ export class RedTeamScenarioGeneratorService {
       stagesCount: stages.length,
       stages,
       expectedDetectionRules,
-      purpleTeamExerciseDigest,
+      exerciseAttestationDigest,
       generatedAt,
     };
   }

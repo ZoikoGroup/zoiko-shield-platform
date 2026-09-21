@@ -8,6 +8,11 @@ function resolveServicePort(method: string, path: string): number {
     return 3002;
   }
 
+  // AI & Decision Rights operations route to shield-ai:3003
+  if (path.startsWith("ai/") || path.startsWith("copilot")) {
+    return 3003;
+  }
+
   // All other user-facing API operations route through shield-core:3001 (guarded by JwtAuthGuard + PermissionsGuard)
   return 3001;
 }
@@ -22,6 +27,9 @@ function generateUUID() {
 
 // In-memory connector state store to preserve disable/activate states across requests
 const connectorStateStore = new Map<string, { status: string; state: string; healthStatus: string }>();
+
+// In-memory review envelope store for Spec §16.1 AI Copilot decisions
+const reviewEnvelopesStore = new Map<string, any>();
 
 // In-memory event store to retain normalized logs from all tools (GitHub, AWS, EDR, Webhooks)
 const ingestedEventsStore: any[] = [];
@@ -276,6 +284,8 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
   const baseUrl =
     targetPort === 3002
       ? process.env.SHIELD_INGEST_URL || "http://127.0.0.1:3002"
+      : targetPort === 3003
+      ? process.env.SHIELD_AI_URL || "http://127.0.0.1:3003"
       : process.env.SHIELD_CORE_URL || "http://127.0.0.1:3001";
   const targetUrl = `${baseUrl}/api/v1/${path}${req.nextUrl.search}`;
 
@@ -1187,12 +1197,12 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
         {
           key: "SHIELD_ADVANCED",
           displayName: "Shield Advanced",
-          tagline: "Full-Spectrum Defense, Purple-Team & 24/7 MDR",
-          description: "For highly regulated institutions requiring continuous 24/7 SOC operations, adversary simulation, and rapid containment.",
+          tagline: "Full-Spectrum Defense, Continuous Validation & 24/7 MDR",
+          description: "For highly regulated institutions requiring continuous 24/7 SOC operations, defensive posture verification, and rapid containment.",
           pricing: { monthlyUsd: 8000, annualBilledMonthlyUsd: 7200, isContractOnly: false, currency: "USD" },
           allocations: { maxProtectedAssets: 5000, includedTelemetryGbPerDay: 500, incidentResponseSlaHours: 0.25, retentionDays: 730, includedRetainerHoursPerYear: 50 },
-          includedOffers: ["MANAGED_DEFENSE", "CONTINUOUS_ASSURANCE", "CRYPTO_LEDGER", "EXPOSURE_MANAGEMENT", "AI_SECURITY_COPILOT", "INCIDENT_RETAINER", "PURPLE_TEAM_SIMULATION"],
-          highlightedFeatures: ["5,000 Protected Assets & 500 GB/day Telemetry", "Operationally-Proven 24/7/365 Continuous MDR", "15-Minute Critical Incident SLA", "Automated Purple-Team Adversary Emulation", "50 Included Retainer Hours/yr", "2-Year Evidence Retention"],
+          includedOffers: ["MANAGED_DEFENSE", "CONTINUOUS_ASSURANCE", "CRYPTO_LEDGER", "EXPOSURE_MANAGEMENT", "AI_SECURITY_COPILOT", "INCIDENT_RETAINER", "CONTINUOUS_SECURITY_VALIDATION"],
+          highlightedFeatures: ["5,000 Protected Assets & 500 GB/day Telemetry", "Operationally-Proven 24/7/365 Continuous MDR", "15-Minute Critical Incident SLA", "Continuous Security Validation & Testing", "50 Included Retainer Hours/yr", "2-Year Evidence Retention"],
           governanceFeatures: ["Rule SVC-01 Verified Operational Readiness", "Cryptographic Simulation Receipts", "Multi-party Quorum Approval"],
           supportModel: "24/7/365 Dedicated Lead Incident Commander",
         },
@@ -1284,8 +1294,8 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
           {
             key: "SHIELD_ADVANCED",
             displayName: "Shield Advanced",
-            tagline: "Full-Spectrum Defense, Purple-Team & 24/7 MDR",
-            description: "For highly regulated institutions requiring continuous 24/7 SOC operations, adversary simulation, and rapid containment.",
+            tagline: "Full-Spectrum Defense, Continuous Validation & 24/7 MDR",
+            description: "For highly regulated institutions requiring continuous 24/7 SOC operations, defensive posture verification, and rapid containment.",
             pricing: { monthlyUsd: 8000, annualBilledMonthlyUsd: 7200, isContractOnly: false, currency: "USD" },
             allocations: { maxProtectedAssets: 5000, includedTelemetryGbPerDay: 500, incidentResponseSlaHours: 0.25, retentionDays: 730, includedRetainerHoursPerYear: 50 },
             includedOffers: [
@@ -1295,13 +1305,13 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
               "EXPOSURE_MANAGEMENT",
               "AI_SECURITY_COPILOT",
               "INCIDENT_RETAINER",
-              "PURPLE_TEAM_SIMULATION",
+              "CONTINUOUS_SECURITY_VALIDATION",
             ],
             highlightedFeatures: [
               "5,000 Protected Assets & 500 GB/day Telemetry",
               "Operationally-Proven 24/7/365 Continuous MDR",
               "15-Minute Critical Incident Containment SLA",
-              "Automated Purple-Team Adversary Emulation",
+              "Continuous Security Validation & Testing",
               "50 Included Incident Response Retainer Hours/yr",
               "2-Year Merkle-Anchored Evidence Retention",
             ],
@@ -1561,14 +1571,14 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
             pricingTierMinimum: "PROFESSIONAL",
           },
           {
-            serviceId: "purple-team-simulation",
-            serviceName: "Automated Purple-Team Adversary Simulation",
-            category: "SECURITY_TESTING",
+            serviceId: "continuous-validation",
+            serviceName: "Continuous Security Validation & Testing",
+            category: "SECURITY_OPERATIONS",
             publicOutcomeDescription:
-              "Reversible MITRE ATT&CK TTP adversary emulation with cryptographic simulation receipts and safety kill-switches.",
+              "Controlled defensive control testing with cryptographic simulation receipts and safety kill-switches.",
             status: "CONTROLLED",
             substantiatingComponents: ["shield-action", "shield-core"],
-            includedCapabilities: ["ADVERSARY_SIMULATION", "SIMULATION_RECEIPTS", "SAFETY_KILL_SWITCH"],
+            includedCapabilities: ["CONTROL_VALIDATION", "SIMULATION_RECEIPTS", "SAFETY_KILL_SWITCH"],
             pricingTierMinimum: "ADVANCED",
           },
           {
@@ -1814,6 +1824,344 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
       },
       { headers: { "X-ZoikoShield-Source": "simulated" } }
     );
+  }
+
+  // --- Spec §16.1 AI Security Copilot Query & Envelope Synthesis ---
+  if (path === "copilot/query" || path === "api/v1/copilot/query") {
+    const modeUpper = (parsedBody?.mode || "INVESTIGATE").toUpperCase();
+    const envelopeId = `env-${generateUUID().slice(0, 8)}`;
+    const query = parsedBody?.query || "Analyze suspicious cloud activity";
+
+    const envelope = {
+      envelopeId,
+      tenantId,
+      environmentId: "PRODUCTION",
+      createdAt: now,
+      aiLabelAndUseCaseName: {
+        aiLabel: "ZoikoShield Guarded ModelArmor Engine v2.4",
+        useCaseName: `COPILOT_${modeUpper}`,
+        modelRoute: "vertex-ai/gemini-1.5-pro-002",
+        version: "gemini-1.5-pro-002",
+        modelIdentifier: "gemini-1.5-pro-002",
+        providerProfile: "gcp-vertex-ai-europe-west2",
+        riskTier: modeUpper === "RESPOND" ? "HIGH" : "MEDIUM",
+      },
+      sourcesAndSpans: [
+        {
+          sourceId: "src-ocsf-auth-3002",
+          sourceType: "OCSF_AUTH_EVENT",
+          name: "aws.guardduty.iam-exfiltration",
+          type: "TELEMETRY_LOG",
+          documentRef: "ref-ocsf-v1.1.0-e98124",
+          exactSpan: "Principal: AROA45881:marcus.vance from non-corporate IP 198.51.100.99 accessed srv-db-prod-01",
+          span: "Principal: AROA45881:marcus.vance from non-corporate IP 198.51.100.99 accessed srv-db-prod-01",
+          confidence: 0.98,
+          confidenceScore: 0.98,
+        },
+        {
+          sourceId: "src-mitre-t1078",
+          sourceType: "FRAMEWORK_MAPPING",
+          name: "MITRE ATT&CK T1078.004",
+          type: "THREAT_INTEL",
+          documentRef: "ref-mitre-v14.1",
+          exactSpan: "Valid Accounts: Cloud Accounts credential exfiltration path",
+          span: "Valid Accounts: Cloud Accounts credential exfiltration path",
+          confidence: 0.96,
+          confidenceScore: 0.96,
+        },
+      ],
+      knownMissingStaleOrConflictingEvidence: {
+        missingEvidence: modeUpper === "REPORT" ? ["Final Tier-3 memory forensics image dump pending"] : [],
+        staleEvidence: [],
+        conflictingEvidence: [],
+        missingEvidenceCount: modeUpper === "REPORT" ? 1 : 0,
+        staleEvidenceCount: 0,
+        conflictingEvidenceCount: 0,
+        freshnessSeconds: 12,
+        completenessRatio: modeUpper === "REPORT" ? 0.92 : 1.0,
+      },
+      calibratedConfidenceAndUncertainty: {
+        score: modeUpper === "RESPOND" ? 0.91 : modeUpper === "REPORT" ? 0.85 : 0.95,
+        qualitativeBand: modeUpper === "REPORT" ? "MEDIUM" : "HIGH",
+        confidenceTier: modeUpper === "REPORT" ? "MEDIUM" : "HIGH",
+        calibrationBasis: "Multi-sensor alignment across normalized OCSF telemetry, Entra ID audit logs & VPC Flow logs.",
+        uncertaintyFactors: [
+          "Assumed role session expires in 38 minutes.",
+          "Lateral VPC access verification pending VPC flow log batch delivery.",
+        ],
+      },
+      alternativeHypothesesOrActions: [
+        {
+          actionId: "ALT-01",
+          title: "Passive Honeypot Monitoring",
+          rationale: "Observe attacker reconnaissance without alerting threat actor by revoking credentials.",
+          tradeOffs: "Preserves threat attribution telemetry but risks immediate data exfiltration.",
+          tradeOff: "Preserves threat attribution telemetry but risks immediate data exfiltration.",
+        },
+        {
+          actionId: "ALT-02",
+          title: "Network Perimeter Edge Quarantine",
+          rationale: "Block source IP 198.51.100.99 at edge WAF/firewall without revoking IAM credentials.",
+          tradeOffs: "Prevents direct ingress but does not invalidate stolen STS session tokens.",
+          tradeOff: "Prevents direct ingress but does not invalidate stolen STS session tokens.",
+        },
+      ],
+      expectedImpactAndReversibility: {
+        blastRadius: modeUpper === "RESPOND"
+          ? "1 Bastion Host (ec2-jump-01) isolated, 0 Customer-Facing Services impacted."
+          : "Read-only evidence verification scope; zero operational service disruption.",
+        isReversible: true,
+        reversibilityTier: modeUpper === "RESPOND" ? "R2" : "R0",
+        compensationPlan: "Automated Rollback Token ZS-RB-TOKEN-9941 restores security group and policy bindings.",
+        downtimeExpected: false,
+        reversibility: "Fully Reversible (Automated Rollback Snapshot)",
+        compensationMechanism: "Signed Rollback Token: ZS-RB-TOKEN-9941",
+      },
+      requiredAuthorityAndApprovals: {
+        requiredRole: modeUpper === "RESPOND" ? "LEAD_SECURITY_ANALYST" : "SECURITY_ANALYST",
+        responseAuthorityTier: modeUpper === "RESPOND" ? "R2" : "R1",
+        requiredAuthorityTier: modeUpper === "RESPOND" ? "R2" : "R1",
+        dualApproverRequired: modeUpper === "RESPOND",
+        dualCustodyRequired: modeUpper === "RESPOND",
+        approverRoles: ["LEAD_SECURITY_ANALYST", "SOC_MANAGER"],
+      },
+      controls: {
+        state: "UNREVIEWED",
+        currentState: "PENDING_REVIEW",
+        availableTransitions: ["ACCEPT", "MODIFY", "REJECT", "ESCALATE"],
+      },
+      humanDecisionAndRationale: {
+        decidedBy: undefined,
+        decision: undefined,
+        rationale: undefined,
+        modifiedContent: undefined,
+        decidedAt: undefined,
+        escalatedToRole: undefined,
+        signature: undefined,
+      },
+      appealOrFeedbackRoute: {
+        appealUrl: "https://shield.zoikogroup.com/appeals/v1",
+        feedbackChannel: "secops-human-review@zoikogroup.com",
+        customerAffecting: modeUpper === "RESPOND",
+      },
+      payload: {
+        query,
+        mode: modeUpper,
+      },
+    };
+
+    reviewEnvelopesStore.set(envelopeId, envelope);
+
+    const summary = `Synthesized ${modeUpper} decision hypothesis: correlated GuardDuty IAM exfiltration with MITRE T1078. Prepared Spec §16.1 10-field review envelope with reversible rollback token.`;
+
+    return NextResponse.json(
+      {
+        summary,
+        envelope,
+        data: { summary, envelope },
+      },
+      { headers: { "X-ZoikoShield-Source": "simulated" } }
+    );
+  }
+
+  // --- Spec §16.1 AI Decision Rights Review & Human Action Handlers ---
+  if (path.startsWith("ai/decisions") || path.startsWith("api/v1/ai/decisions")) {
+    const parts = path.replace(/^api\/v1\//, "").split("/");
+    const envelopeId = parts[2];
+    const action = parts[3]?.toLowerCase();
+
+    // Action execution: POST /api/v1/ai/decisions/:envelopeId/:action
+    if (method === "POST" && envelopeId && action) {
+      const decidedBy = parsedBody?.decidedBy || "usr-sarah-chen-01";
+      const rationale = parsedBody?.rationale?.trim();
+
+      // Enforce Spec §16.1 Invariant: Attribution rationale is mandatory
+      if (!rationale) {
+        return NextResponse.json(
+          { error: "Spec §16.1 Invariant: Attribution rationale is mandatory for human operator decisions" },
+          { status: 400, headers: { "X-ZoikoShield-Source": "simulated" } }
+        );
+      }
+
+      const actionUpper = action.toUpperCase();
+      if (!["ACCEPT", "MODIFY", "REJECT", "ESCALATE"].includes(actionUpper)) {
+        return NextResponse.json(
+          { error: `Invalid transition action: ${action}. Must be ACCEPT, MODIFY, REJECT, or ESCALATE` },
+          { status: 400, headers: { "X-ZoikoShield-Source": "simulated" } }
+        );
+      }
+
+      if (actionUpper === "MODIFY" && !parsedBody?.modifiedContent?.trim()) {
+        return NextResponse.json(
+          { error: "Modified content is required when transition action is MODIFY" },
+          { status: 400, headers: { "X-ZoikoShield-Source": "simulated" } }
+        );
+      }
+
+      if (actionUpper === "ESCALATE" && !parsedBody?.escalatedToRole?.trim()) {
+        return NextResponse.json(
+          { error: "Target escalation role is required when transition action is ESCALATE" },
+          { status: 400, headers: { "X-ZoikoShield-Source": "simulated" } }
+        );
+      }
+
+      let envelope = reviewEnvelopesStore.get(envelopeId);
+      if (!envelope) {
+        envelope = {
+          envelopeId,
+          tenantId,
+          environmentId: "PRODUCTION",
+          createdAt: new Date(Date.now() - 30000).toISOString(),
+          aiLabelAndUseCaseName: {
+            aiLabel: "ZoikoShield Guarded ModelArmor Engine v2.4",
+            useCaseName: "COPILOT_INTERACTIVE_DECISION",
+            modelRoute: "vertex-ai/gemini-1.5-pro-002",
+            version: "gemini-1.5-pro-002",
+            modelIdentifier: "gemini-1.5-pro-002",
+            providerProfile: "gcp-vertex-ai-europe-west2",
+            riskTier: "HIGH",
+          },
+          sourcesAndSpans: [
+            {
+              sourceId: "src-ocsf-3002",
+              sourceType: "OCSF_EVENT_CORRELATION",
+              name: "aws.guardduty.iam-exfiltration",
+              type: "TELEMETRY_LOG",
+              exactSpan: "Principal: AROAEXAMPLE:usr-analyst-lead-01 from non-corporate IP 198.51.100.99",
+              span: "Principal: AROAEXAMPLE:usr-analyst-lead-01 from non-corporate IP 198.51.100.99",
+              confidence: 0.98,
+              confidenceScore: 0.98,
+            },
+          ],
+          knownMissingStaleOrConflictingEvidence: {
+            missingEvidence: [],
+            staleEvidence: [],
+            conflictingEvidence: [],
+            missingEvidenceCount: 0,
+            staleEvidenceCount: 0,
+            conflictingEvidenceCount: 0,
+            freshnessSeconds: 10,
+            completenessRatio: 1.0,
+          },
+          calibratedConfidenceAndUncertainty: {
+            score: 0.95,
+            qualitativeBand: "HIGH",
+            confidenceTier: "HIGH",
+            calibrationBasis: "Human operator reviewed and confirmed.",
+            uncertaintyFactors: [],
+          },
+          alternativeHypothesesOrActions: [],
+          expectedImpactAndReversibility: {
+            blastRadius: "Production scope approved by operator.",
+            isReversible: true,
+            reversibilityTier: "R2",
+            downtimeExpected: false,
+            reversibility: "Fully Reversible",
+            compensationMechanism: "Rollback Token: ZS-RB-TOKEN-9941",
+          },
+          requiredAuthorityAndApprovals: {
+            requiredRole: "LEAD_SECURITY_ANALYST",
+            responseAuthorityTier: "R2",
+            requiredAuthorityTier: "R2",
+            dualApproverRequired: true,
+            dualCustodyRequired: true,
+            approverRoles: ["LEAD_SECURITY_ANALYST"],
+          },
+          controls: {
+            state: "UNREVIEWED",
+            currentState: "PENDING_REVIEW",
+            availableTransitions: ["ACCEPT", "MODIFY", "REJECT", "ESCALATE"],
+          },
+          humanDecisionAndRationale: {},
+          appealOrFeedbackRoute: {
+            appealUrl: "https://shield.zoikogroup.com/appeals/v1",
+            feedbackChannel: "secops-human-review@zoikogroup.com",
+            customerAffecting: false,
+          },
+        };
+      }
+
+      const decidedAt = new Date().toISOString();
+      const receiptSignature = sha256Mock(
+        `ZS-DECISION-RECEIPT-V1:${envelopeId}:${actionUpper}:${decidedBy}:${decidedAt}:${rationale}`
+      );
+
+      let newState = "ACCEPTED";
+      if (actionUpper === "MODIFY") newState = "MODIFIED";
+      else if (actionUpper === "REJECT") newState = "REJECTED";
+      else if (actionUpper === "ESCALATE") newState = "ESCALATED";
+
+      envelope.controls = {
+        state: newState,
+        currentState: newState,
+        availableTransitions: actionUpper === "ESCALATE" ? ["ACCEPT", "REJECT"] : [],
+      };
+
+      envelope.humanDecisionAndRationale = {
+        decision: actionUpper,
+        decidedBy,
+        decidedAt,
+        rationale,
+        signature: receiptSignature,
+        modifiedContent: parsedBody?.modifiedContent,
+        escalatedToRole: parsedBody?.escalatedToRole,
+      };
+
+      reviewEnvelopesStore.set(envelopeId, envelope);
+
+      const result = {
+        status: newState,
+        envelope,
+        receiptSignature,
+        decidedAt,
+      };
+
+      return NextResponse.json(
+        {
+          ...result,
+          data: result,
+        },
+        { headers: { "X-ZoikoShield-Source": "simulated" } }
+      );
+    }
+
+    // Get envelope by ID: GET /api/v1/ai/decisions/:envelopeId
+    if (method === "GET" && envelopeId && !action) {
+      const envelope = reviewEnvelopesStore.get(envelopeId) || {
+        envelopeId,
+        tenantId,
+        environmentId: "PRODUCTION",
+        createdAt: now,
+        aiLabelAndUseCaseName: {
+          aiLabel: "ZoikoShield Guarded ModelArmor Engine v2.4",
+          useCaseName: "COPILOT_INTERACTIVE_DECISION",
+          modelRoute: "vertex-ai/gemini-1.5-pro-002",
+          version: "gemini-1.5-pro-002",
+        },
+        sourcesAndSpans: [],
+        knownMissingStaleOrConflictingEvidence: { missingEvidence: [], staleEvidence: [], conflictingEvidence: [] },
+        calibratedConfidenceAndUncertainty: { score: 0.95, qualitativeBand: "HIGH", calibrationBasis: "Nominal telemetry baseline", uncertaintyFactors: [] },
+        alternativeHypothesesOrActions: [],
+        expectedImpactAndReversibility: { blastRadius: "Default scope", isReversible: true, reversibilityTier: "R1" },
+        requiredAuthorityAndApprovals: { requiredRole: "SECURITY_ANALYST", responseAuthorityTier: "R1", dualApproverRequired: false },
+        controls: { state: "UNREVIEWED", availableTransitions: ["ACCEPT", "MODIFY", "REJECT", "ESCALATE"] },
+        humanDecisionAndRationale: {},
+        appealOrFeedbackRoute: { appealUrl: "https://shield.zoikogroup.com/appeals/v1", feedbackChannel: "secops-human-review@zoikogroup.com", customerAffecting: false },
+      };
+
+      return NextResponse.json(
+        envelope,
+        { headers: { "X-ZoikoShield-Source": "simulated" } }
+      );
+    }
+
+    // List envelopes: GET /api/v1/ai/decisions
+    if (method === "GET" && (!envelopeId || envelopeId === "")) {
+      return NextResponse.json(
+        Array.from(reviewEnvelopesStore.values()),
+        { headers: { "X-ZoikoShield-Source": "simulated" } }
+      );
+    }
   }
 
   // Generic 200 OK fallback

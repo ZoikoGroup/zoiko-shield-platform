@@ -1,6 +1,9 @@
-export type CoverageTier = 'BUSINESS_HOURS_8X5' | 'EXTENDED_16X7' | 'CONTINUOUS_24X7';
-export type SlaSeverityLevel = 'P1_CRITICAL' | 'P2_HIGH' | 'P3_MEDIUM' | 'P4_LOW';
-export type OperationalReadinessStatus = 'OPERATIONALLY_PROVEN' | 'CONTINGENT' | 'UNPROVEN';
+export type CoverageTier =
+  'BUSINESS_HOURS_8X5' | 'EXTENDED_16X7' | 'CONTINUOUS_24X7';
+export type SlaSeverityLevel =
+  'P1_CRITICAL' | 'P2_HIGH' | 'P3_MEDIUM' | 'P4_LOW';
+export type OperationalReadinessStatus =
+  'OPERATIONALLY_PROVEN' | 'CONTINGENT' | 'UNPROVEN';
 
 export interface SlaResponseWindow {
   severity: SlaSeverityLevel;

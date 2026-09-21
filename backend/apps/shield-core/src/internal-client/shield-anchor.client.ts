@@ -112,16 +112,22 @@ export class ShieldAnchorClient {
     return this.get(`/api/v1/anchor/receipts/${epochNumber}`);
   }
 
-  async getInclusionProof(epochNumber: string | number, leafIndex: string | number): Promise<any> {
+  async getInclusionProof(
+    epochNumber: string | number,
+    leafIndex: string | number,
+  ): Promise<any> {
     return this.get(`/api/v1/anchor/proofs/${epochNumber}/${leafIndex}`);
   }
 
-  private headers(extraHeaders?: Record<string, string>): Record<string, string> {
-    const traceId = (global as any).__currentTraceId || '0123456789abcdef0123456789abcdef';
+  private headers(
+    extraHeaders?: Record<string, string>,
+  ): Record<string, string> {
+    const traceId =
+      (global as any).__currentTraceId || '0123456789abcdef0123456789abcdef';
     const spanId = '0123456789abcdef';
     return {
       'Content-Type': 'application/json',
-      'traceparent': `00-${traceId}-${spanId}-01`,
+      traceparent: `00-${traceId}-${spanId}-01`,
       'x-correlation-id': traceId,
       ...workloadAuthorizationHeaders('shield-anchor'),
       ...(extraHeaders || {}),
@@ -142,7 +148,9 @@ export class ShieldAnchorClient {
 
     if (!response.ok) {
       const text = await response.text().catch(() => '');
-      this.logger.warn(`shield-anchor GET returned ${response.status} for ${path}: ${text.slice(0, 300)}`);
+      this.logger.warn(
+        `shield-anchor GET returned ${response.status} for ${path}: ${text.slice(0, 300)}`,
+      );
       throw new ServiceUnavailableException('ANCHOR_UNAVAILABLE');
     }
 
@@ -164,7 +172,9 @@ export class ShieldAnchorClient {
 
     if (!response.ok) {
       const text = await response.text().catch(() => '');
-      this.logger.warn(`shield-anchor POST returned ${response.status} for ${path}: ${text.slice(0, 300)}`);
+      this.logger.warn(
+        `shield-anchor POST returned ${response.status} for ${path}: ${text.slice(0, 300)}`,
+      );
       throw new ServiceUnavailableException('ANCHOR_UNAVAILABLE');
     }
 

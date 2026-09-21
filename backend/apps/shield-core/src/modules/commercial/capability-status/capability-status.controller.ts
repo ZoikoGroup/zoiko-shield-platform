@@ -18,9 +18,9 @@ export class CapabilityStatusController {
   }
 
   @Get('public-services/:serviceId')
-  getPublicServiceById(
-    @Param('serviceId') serviceId: string,
-  ): { data: PublicServiceDefinition | null } {
+  getPublicServiceById(@Param('serviceId') serviceId: string): {
+    data: PublicServiceDefinition | null;
+  } {
     const service = this.capabilityService.getPublicServiceById(serviceId);
     return { data: service || null };
   }
@@ -36,9 +36,10 @@ export class CapabilityStatusController {
   }
 
   @Get('check/:capabilityId')
-  checkCapabilityAvailability(
-    @Param('capabilityId') capabilityId: string,
-  ): { capabilityId: string; available: boolean } {
+  checkCapabilityAvailability(@Param('capabilityId') capabilityId: string): {
+    capabilityId: string;
+    available: boolean;
+  } {
     return {
       capabilityId,
       available: this.capabilityService.isCapabilityAvailable(capabilityId),
@@ -46,12 +47,15 @@ export class CapabilityStatusController {
   }
 
   @Get('evaluators/check')
-  checkFrameworkEvaluator(
-    @Query('framework') framework: string,
-  ): { framework: string; active: boolean } {
+  checkFrameworkEvaluator(@Query('framework') framework: string): {
+    framework: string;
+    active: boolean;
+  } {
     return {
       framework: framework || '',
-      active: this.capabilityService.isFrameworkEvaluatorActive(framework || ''),
+      active: this.capabilityService.isFrameworkEvaluatorActive(
+        framework || '',
+      ),
     };
   }
 }

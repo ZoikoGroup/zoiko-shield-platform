@@ -1,6 +1,9 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import * as crypto from 'crypto';
-import { DistributedOutboxRelayService, OutboxRecord } from './distributed-outbox-relay.service';
+import {
+  DistributedOutboxRelayService,
+  OutboxRecord,
+} from './distributed-outbox-relay.service';
 
 export interface DomainEventEnvelope<T = Record<string, any>> {
   eventId: string;
@@ -44,10 +47,18 @@ export class OutboxEventDispatcherService {
    * Validates canonical envelope and enqueues domain event into the outbox.
    */
   dispatch<T extends Record<string, any>>(
-    event: Omit<DomainEventEnvelope<T>, 'eventId' | 'occurredAt' | 'schemaVersion'>,
+    event: Omit<
+      DomainEventEnvelope<T>,
+      'eventId' | 'occurredAt' | 'schemaVersion'
+    >,
     options?: DispatchEventOptions,
   ): OutboxRecord {
-    if (!event.tenantId || !event.environmentId || !event.correlationId || !event.eventType) {
+    if (
+      !event.tenantId ||
+      !event.environmentId ||
+      !event.correlationId ||
+      !event.eventType
+    ) {
       throw new BadRequestException(
         'Missing mandatory canonical event attributes (tenantId, environmentId, correlationId, eventType).',
       );

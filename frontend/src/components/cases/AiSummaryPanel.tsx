@@ -201,7 +201,7 @@ export const AiSummaryPanel: React.FC<AiSummaryPanelProps> = ({
                       {span.sourceId} ({span.sourceType})
                     </span>
                     <span className="text-[10px] font-mono text-emerald-400">
-                      Span Conf: {(span.confidence * 100).toFixed(0)}%
+                      Span Conf: {(((span.confidence ?? span.confidenceScore ?? 1)) * 100).toFixed(0)}%
                     </span>
                   </div>
                   <p className="text-slate-300 font-mono text-[11px] leading-snug bg-slate-950 p-2 rounded border border-slate-800/80">

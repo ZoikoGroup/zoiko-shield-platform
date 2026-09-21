@@ -1,11 +1,12 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 
 export type AiRiskTier = 'AR-1' | 'AR-2' | 'AR-3';
 export type UseCaseApprovalStatus =
-  | 'PROPOSED'
-  | 'IN_REVIEW'
-  | 'APPROVED_FOR_PRODUCTION'
-  | 'DEPRECATED';
+  'PROPOSED' | 'IN_REVIEW' | 'APPROVED_FOR_PRODUCTION' | 'DEPRECATED';
 
 export interface AiUseCaseDefinition {
   key: string;
@@ -49,7 +50,11 @@ export class AiUseCaseRegistryService {
         humanReviewRequired: false,
         minGroundingScore: 0.85,
         minCitationPrecision: 0.9,
-        allowedDataClasses: ['PUBLIC', 'INTERNAL_TELEMETRY', 'CONFIDENTIAL_LOGS'],
+        allowedDataClasses: [
+          'PUBLIC',
+          'INTERNAL_TELEMETRY',
+          'CONFIDENTIAL_LOGS',
+        ],
         registeredAt: now,
         updatedAt: now,
       },
@@ -64,7 +69,11 @@ export class AiUseCaseRegistryService {
         humanReviewRequired: true,
         minGroundingScore: 0.9,
         minCitationPrecision: 0.95,
-        allowedDataClasses: ['INTERNAL_TELEMETRY', 'CONFIDENTIAL_LOGS', 'RESTRICTED_AUTH_EVENTS'],
+        allowedDataClasses: [
+          'INTERNAL_TELEMETRY',
+          'CONFIDENTIAL_LOGS',
+          'RESTRICTED_AUTH_EVENTS',
+        ],
         registeredAt: now,
         updatedAt: now,
       },
@@ -124,7 +133,11 @@ export class AiUseCaseRegistryService {
         humanReviewRequired: true,
         minGroundingScore: 0.9,
         minCitationPrecision: 0.95,
-        allowedDataClasses: ['INTERNAL_TELEMETRY', 'CONFIDENTIAL_LOGS', 'AUDIT_LOGS'],
+        allowedDataClasses: [
+          'INTERNAL_TELEMETRY',
+          'CONFIDENTIAL_LOGS',
+          'AUDIT_LOGS',
+        ],
         registeredAt: now,
         updatedAt: now,
       },
@@ -138,7 +151,9 @@ export class AiUseCaseRegistryService {
   public getUseCase(key: string): AiUseCaseDefinition {
     const uc = this.useCases.get(key);
     if (!uc) {
-      throw new NotFoundException(`AI Use Case '${key}' is not registered in the Governance Registry`);
+      throw new NotFoundException(
+        `AI Use Case '${key}' is not registered in the Governance Registry`,
+      );
     }
     return uc;
   }
@@ -151,7 +166,9 @@ export class AiUseCaseRegistryService {
     definition: Omit<AiUseCaseDefinition, 'registeredAt' | 'updatedAt'>,
   ): AiUseCaseDefinition {
     if (this.useCases.has(definition.key)) {
-      throw new BadRequestException(`AI Use Case '${definition.key}' is already registered`);
+      throw new BadRequestException(
+        `AI Use Case '${definition.key}' is already registered`,
+      );
     }
     const now = new Date().toISOString();
     const fullDef: AiUseCaseDefinition = {

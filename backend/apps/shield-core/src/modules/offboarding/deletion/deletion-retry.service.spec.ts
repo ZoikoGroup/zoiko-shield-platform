@@ -37,9 +37,10 @@ describe('DeletionRetryService', () => {
   });
 
   const waitingRun = (expiresAt: Date | null) => {
-    prisma.tenantOffboardingRun.findMany.mockImplementation(
-      ({ where }: any) =>
-        where.status === 'RETENTION_WAIT' ? [run({ status: 'RETENTION_WAIT' })] : [],
+    prisma.tenantOffboardingRun.findMany.mockImplementation(({ where }: any) =>
+      where.status === 'RETENTION_WAIT'
+        ? [run({ status: 'RETENTION_WAIT' })]
+        : [],
     );
     prisma.deletionRequest.findUnique.mockResolvedValue({
       id: 'del-req-1',
@@ -78,15 +79,20 @@ describe('DeletionRetryService', () => {
 
   describe('runs with incomplete stores', () => {
     const failedRunWith = (tasks: Array<Record<string, unknown>>) => {
-      prisma.tenantOffboardingRun.findMany.mockImplementation(({ where }: any) =>
-        where.status?.in ? [run()] : [],
+      prisma.tenantOffboardingRun.findMany.mockImplementation(
+        ({ where }: any) => (where.status?.in ? [run()] : []),
       );
       prisma.deletionTask.findMany.mockResolvedValue(tasks);
     };
 
     it('retries an incomplete store once its backoff has elapsed', async () => {
       failedRunWith([
-        { store_type: 'OBJECT_STORAGE', status: 'FAILED', attempt: 1, last_attempt_at: new Date(Date.now() - HOUR) },
+        {
+          store_type: 'OBJECT_STORAGE',
+          status: 'FAILED',
+          attempt: 1,
+          last_attempt_at: new Date(Date.now() - HOUR),
+        },
       ]);
 
       await service.resumeDue();
@@ -99,7 +105,12 @@ describe('DeletionRetryService', () => {
 
     it('waits out the backoff instead of hammering a failing store', async () => {
       failedRunWith([
-        { store_type: 'OBJECT_STORAGE', status: 'FAILED', attempt: 2, last_attempt_at: new Date() },
+        {
+          store_type: 'OBJECT_STORAGE',
+          status: 'FAILED',
+          attempt: 2,
+          last_attempt_at: new Date(),
+        },
       ]);
 
       await service.resumeDue();
@@ -109,8 +120,18 @@ describe('DeletionRetryService', () => {
 
     it('stops entirely for a run holding a task in engineering review', async () => {
       failedRunWith([
-        { store_type: 'POSTGRES_AUTHORITY', status: 'ENGINEERING_REVIEW', attempt: 3, last_attempt_at: new Date(0) },
-        { store_type: 'OBJECT_STORAGE', status: 'FAILED', attempt: 1, last_attempt_at: new Date(0) },
+        {
+          store_type: 'POSTGRES_AUTHORITY',
+          status: 'ENGINEERING_REVIEW',
+          attempt: 3,
+          last_attempt_at: new Date(0),
+        },
+        {
+          store_type: 'OBJECT_STORAGE',
+          status: 'FAILED',
+          attempt: 1,
+          last_attempt_at: new Date(0),
+        },
       ]);
 
       await service.resumeDue();
@@ -122,7 +143,12 @@ describe('DeletionRetryService', () => {
 
     it('does not resume a run whose stores have all finished', async () => {
       failedRunWith([
-        { store_type: 'POSTGRES_AUTHORITY', status: 'COMPLETED', attempt: 1, last_attempt_at: new Date(0) },
+        {
+          store_type: 'POSTGRES_AUTHORITY',
+          status: 'COMPLETED',
+          attempt: 1,
+          last_attempt_at: new Date(0),
+        },
       ]);
 
       await service.resumeDue();
@@ -132,7 +158,12 @@ describe('DeletionRetryService', () => {
 
     it('does not resume a task that has already used up its attempts', async () => {
       failedRunWith([
-        { store_type: 'OBJECT_STORAGE', status: 'FAILED', attempt: 3, last_attempt_at: new Date(0) },
+        {
+          store_type: 'OBJECT_STORAGE',
+          status: 'FAILED',
+          attempt: 3,
+          last_attempt_at: new Date(0),
+        },
       ]);
 
       await service.resumeDue();
@@ -142,7 +173,12 @@ describe('DeletionRetryService', () => {
 
     it('treats a never-attempted task as immediately due', async () => {
       failedRunWith([
-        { store_type: 'OBJECT_STORAGE', status: 'PENDING', attempt: 0, last_attempt_at: null },
+        {
+          store_type: 'OBJECT_STORAGE',
+          status: 'PENDING',
+          attempt: 0,
+          last_attempt_at: null,
+        },
       ]);
 
       await service.resumeDue();

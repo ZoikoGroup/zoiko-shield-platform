@@ -132,7 +132,8 @@ describe('BatchMerkleCheckpointerService (High-Throughput Evidence Anchoring)', 
     expect(checkpoint.pqcSignatureHex).toBe('cafebabepqc');
     expect(checkpoint.classicalSignatureHex).toBe('deadbeefclassical');
     expect(checkpoint.hybridSignatureContainer).toBe('ZXhhbXBsZWh5YnJpZA==');
-    expect(mockPqcSigner.signHybrid).toHaveBeenCalledWith(checkpoint.merkleRoot);
+    expect(mockPqcSigner.signHybrid).toHaveBeenCalledWith(
+      checkpoint.merkleRoot,
+    );
   });
 });
-

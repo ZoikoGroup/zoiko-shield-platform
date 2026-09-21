@@ -38,8 +38,9 @@ describe('DeletionVerificationService', () => {
   };
 
   const surfaceNamed = (name: string) =>
-    JSON.parse(prisma.deletionVerification.create.mock.calls[0][0].data.surfaces)
-      .find((s: { surface: string }) => s.surface === name);
+    JSON.parse(
+      prisma.deletionVerification.create.mock.calls[0][0].data.surfaces,
+    ).find((s: { surface: string }) => s.surface === name);
 
   beforeEach(() => {
     prisma = {
@@ -125,7 +126,9 @@ describe('DeletionVerificationService', () => {
     const outcome = await service.verify(TENANT_ID, REQUEST_ID, 'verifier-1');
 
     expect(outcome.result).toBe('FAIL');
-    expect(surfaceNamed('MEMBERSHIP_AND_ACCESS_RELATIONSHIPS').pass).toBe(false);
+    expect(surfaceNamed('MEMBERSHIP_AND_ACCESS_RELATIONSHIPS').pass).toBe(
+      false,
+    );
   });
 
   it('treats WORM-locked object versions as retained once the tenant keys are shredded', async () => {

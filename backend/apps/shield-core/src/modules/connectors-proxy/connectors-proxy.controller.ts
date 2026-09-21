@@ -25,7 +25,7 @@ import { requireTenantId } from '../../tenant-context';
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1')
 export class ConnectorsProxyController {
-  constructor(private readonly shieldIngestClient: ShieldIngestClient) { }
+  constructor(private readonly shieldIngestClient: ShieldIngestClient) {}
 
   @Get('connector-types')
   async getConnectorTypes() {
@@ -112,6 +112,4 @@ export class ConnectorsProxyController {
     const tenantId = requireTenantId(headerTenantId, user?.tenantId);
     return this.shieldIngestClient.getConnectorHealth(tenantId, id);
   }
-
 }
-

@@ -33,12 +33,15 @@ export interface AiRequestContext {
 export class ShieldAiClient {
   private readonly logger = new Logger(ShieldAiClient.name);
 
-  private headers(extraHeaders?: Record<string, string>): Record<string, string> {
-    const traceId = (global as any).__currentTraceId || '0123456789abcdef0123456789abcdef';
+  private headers(
+    extraHeaders?: Record<string, string>,
+  ): Record<string, string> {
+    const traceId =
+      (global as any).__currentTraceId || '0123456789abcdef0123456789abcdef';
     const spanId = '0123456789abcdef';
     return {
       'Content-Type': 'application/json',
-      'traceparent': `00-${traceId}-${spanId}-01`,
+      traceparent: `00-${traceId}-${spanId}-01`,
       'x-correlation-id': traceId,
       ...workloadAuthorizationHeaders('shield-ai'),
       ...(extraHeaders || {}),
@@ -68,78 +71,151 @@ export class ShieldAiClient {
   }
 
   // --- AI Incident Console Methods ---
-  async declareIncident(tenantId: string, actorId: string, dto: any): Promise<any> {
-    return this.post(
-      `/api/v1/ai/incidents`,
-      dto,
-      { 'x-tenant-id': tenantId, 'x-actor-id': actorId },
-    );
+  async declareIncident(
+    tenantId: string,
+    actorId: string,
+    dto: any,
+  ): Promise<any> {
+    return this.post(`/api/v1/ai/incidents`, dto, {
+      'x-tenant-id': tenantId,
+      'x-actor-id': actorId,
+    });
   }
 
-  async listIncidents(tenantId: string, filters?: { status?: string; severity?: string; category?: string }): Promise<any> {
+  async listIncidents(
+    tenantId: string,
+    filters?: { status?: string; severity?: string; category?: string },
+  ): Promise<any> {
     const params = new URLSearchParams();
     if (filters?.status) params.set('status', filters.status);
     if (filters?.severity) params.set('severity', filters.severity);
     if (filters?.category) params.set('category', filters.category);
     const query = params.toString() ? `?${params.toString()}` : '';
-    return this.get(`/api/v1/ai/incidents${query}`, { 'x-tenant-id': tenantId });
+    return this.get(`/api/v1/ai/incidents${query}`, {
+      'x-tenant-id': tenantId,
+    });
   }
 
   async getIncident(tenantId: string, incidentId: string): Promise<any> {
-    return this.get(`/api/v1/ai/incidents/${incidentId}`, { 'x-tenant-id': tenantId });
+    return this.get(`/api/v1/ai/incidents/${incidentId}`, {
+      'x-tenant-id': tenantId,
+    });
   }
 
   async getIncidentMetrics(tenantId: string): Promise<any> {
-    return this.get(`/api/v1/ai/incidents/metrics`, { 'x-tenant-id': tenantId });
+    return this.get(`/api/v1/ai/incidents/metrics`, {
+      'x-tenant-id': tenantId,
+    });
   }
 
-  async containIncident(tenantId: string, incidentId: string, dto: any): Promise<any> {
-    return this.post(`/api/v1/ai/incidents/${incidentId}/contain`, dto, { 'x-tenant-id': tenantId });
+  async containIncident(
+    tenantId: string,
+    incidentId: string,
+    dto: any,
+  ): Promise<any> {
+    return this.post(`/api/v1/ai/incidents/${incidentId}/contain`, dto, {
+      'x-tenant-id': tenantId,
+    });
   }
 
-  async fallbackIncident(tenantId: string, incidentId: string, dto: any): Promise<any> {
-    return this.post(`/api/v1/ai/incidents/${incidentId}/fallback`, dto, { 'x-tenant-id': tenantId });
+  async fallbackIncident(
+    tenantId: string,
+    incidentId: string,
+    dto: any,
+  ): Promise<any> {
+    return this.post(`/api/v1/ai/incidents/${incidentId}/fallback`, dto, {
+      'x-tenant-id': tenantId,
+    });
   }
 
-  async rcaIncident(tenantId: string, incidentId: string, dto: any): Promise<any> {
-    return this.post(`/api/v1/ai/incidents/${incidentId}/rca`, dto, { 'x-tenant-id': tenantId });
+  async rcaIncident(
+    tenantId: string,
+    incidentId: string,
+    dto: any,
+  ): Promise<any> {
+    return this.post(`/api/v1/ai/incidents/${incidentId}/rca`, dto, {
+      'x-tenant-id': tenantId,
+    });
   }
 
-  async resolveIncident(tenantId: string, incidentId: string, dto: any): Promise<any> {
-    return this.post(`/api/v1/ai/incidents/${incidentId}/resolve`, dto, { 'x-tenant-id': tenantId });
+  async resolveIncident(
+    tenantId: string,
+    incidentId: string,
+    dto: any,
+  ): Promise<any> {
+    return this.post(`/api/v1/ai/incidents/${incidentId}/resolve`, dto, {
+      'x-tenant-id': tenantId,
+    });
   }
 
-  async closeIncident(tenantId: string, incidentId: string, dto: any): Promise<any> {
-    return this.post(`/api/v1/ai/incidents/${incidentId}/close`, dto, { 'x-tenant-id': tenantId });
+  async closeIncident(
+    tenantId: string,
+    incidentId: string,
+    dto: any,
+  ): Promise<any> {
+    return this.post(`/api/v1/ai/incidents/${incidentId}/close`, dto, {
+      'x-tenant-id': tenantId,
+    });
   }
 
   // --- AI Decision Rights Methods ---
-  async listDecisions(tenantId: string, filters?: { state?: string; useCase?: string }): Promise<any> {
+  async listDecisions(
+    tenantId: string,
+    filters?: { state?: string; useCase?: string },
+  ): Promise<any> {
     const params = new URLSearchParams();
     if (filters?.state) params.set('state', filters.state);
     if (filters?.useCase) params.set('useCase', filters.useCase);
     const query = params.toString() ? `?${params.toString()}` : '';
-    return this.get(`/api/v1/ai/decisions${query}`, { 'x-tenant-id': tenantId });
+    return this.get(`/api/v1/ai/decisions${query}`, {
+      'x-tenant-id': tenantId,
+    });
   }
 
   async getDecision(tenantId: string, envelopeId: string): Promise<any> {
-    return this.get(`/api/v1/ai/decisions/${envelopeId}`, { 'x-tenant-id': tenantId });
+    return this.get(`/api/v1/ai/decisions/${envelopeId}`, {
+      'x-tenant-id': tenantId,
+    });
   }
 
-  async acceptDecision(tenantId: string, envelopeId: string, dto: any): Promise<any> {
-    return this.post(`/api/v1/ai/decisions/${envelopeId}/accept`, dto, { 'x-tenant-id': tenantId });
+  async acceptDecision(
+    tenantId: string,
+    envelopeId: string,
+    dto: any,
+  ): Promise<any> {
+    return this.post(`/api/v1/ai/decisions/${envelopeId}/accept`, dto, {
+      'x-tenant-id': tenantId,
+    });
   }
 
-  async modifyDecision(tenantId: string, envelopeId: string, dto: any): Promise<any> {
-    return this.post(`/api/v1/ai/decisions/${envelopeId}/modify`, dto, { 'x-tenant-id': tenantId });
+  async modifyDecision(
+    tenantId: string,
+    envelopeId: string,
+    dto: any,
+  ): Promise<any> {
+    return this.post(`/api/v1/ai/decisions/${envelopeId}/modify`, dto, {
+      'x-tenant-id': tenantId,
+    });
   }
 
-  async rejectDecision(tenantId: string, envelopeId: string, dto: any): Promise<any> {
-    return this.post(`/api/v1/ai/decisions/${envelopeId}/reject`, dto, { 'x-tenant-id': tenantId });
+  async rejectDecision(
+    tenantId: string,
+    envelopeId: string,
+    dto: any,
+  ): Promise<any> {
+    return this.post(`/api/v1/ai/decisions/${envelopeId}/reject`, dto, {
+      'x-tenant-id': tenantId,
+    });
   }
 
-  async escalateDecision(tenantId: string, envelopeId: string, dto: any): Promise<any> {
-    return this.post(`/api/v1/ai/decisions/${envelopeId}/escalate`, dto, { 'x-tenant-id': tenantId });
+  async escalateDecision(
+    tenantId: string,
+    envelopeId: string,
+    dto: any,
+  ): Promise<any> {
+    return this.post(`/api/v1/ai/decisions/${envelopeId}/escalate`, dto, {
+      'x-tenant-id': tenantId,
+    });
   }
 
   // --- AI Governance & Supply Chain Views ---
@@ -156,7 +232,10 @@ export class ShieldAiClient {
   }
 
   async updateAiModel(modelId: string, updates: any): Promise<any> {
-    return this.patch(`/api/v1/ai/inventory/${encodeURIComponent(modelId)}`, updates);
+    return this.patch(
+      `/api/v1/ai/inventory/${encodeURIComponent(modelId)}`,
+      updates,
+    );
   }
 
   async deleteAiModel(modelId: string): Promise<any> {
@@ -180,7 +259,11 @@ export class ShieldAiClient {
     return this.get(`/api/v1/ai/drift${query}`);
   }
 
-  async enforceDrift(modelId: string, tenantId: string, minSampleSize?: number): Promise<any> {
+  async enforceDrift(
+    modelId: string,
+    tenantId: string,
+    minSampleSize?: number,
+  ): Promise<any> {
     return this.post(`/api/v1/ai/drift/evaluate`, {
       modelId,
       tenantId,
@@ -209,7 +292,10 @@ export class ShieldAiClient {
     return this.post('/api/v1/ai/rca/generate', dto);
   }
 
-  private async get(path: string, extraHeaders?: Record<string, string>): Promise<any> {
+  private async get(
+    path: string,
+    extraHeaders?: Record<string, string>,
+  ): Promise<any> {
     let response: Response;
     try {
       response = await fetch(`${SHIELD_AI_BASE_URL}${path}`, {
@@ -223,7 +309,9 @@ export class ShieldAiClient {
 
     if (!response.ok) {
       const text = await response.text().catch(() => '');
-      this.logger.warn(`shield-ai GET returned ${response.status} for ${path}: ${text.slice(0, 300)}`);
+      this.logger.warn(
+        `shield-ai GET returned ${response.status} for ${path}: ${text.slice(0, 300)}`,
+      );
       throw new ServiceUnavailableException(
         response.status === 403 ? 'POLICY_DENIED' : 'AI_UNAVAILABLE',
       );
@@ -232,7 +320,11 @@ export class ShieldAiClient {
     return response.json();
   }
 
-  private async post(path: string, body: unknown, extraHeaders?: Record<string, string>): Promise<any> {
+  private async post(
+    path: string,
+    body: unknown,
+    extraHeaders?: Record<string, string>,
+  ): Promise<any> {
     let response: Response;
     try {
       response = await fetch(`${SHIELD_AI_BASE_URL}${path}`, {
@@ -258,7 +350,11 @@ export class ShieldAiClient {
     return response.json();
   }
 
-  private async patch(path: string, body: unknown, extraHeaders?: Record<string, string>): Promise<any> {
+  private async patch(
+    path: string,
+    body: unknown,
+    extraHeaders?: Record<string, string>,
+  ): Promise<any> {
     let response: Response;
     try {
       response = await fetch(`${SHIELD_AI_BASE_URL}${path}`, {
@@ -284,7 +380,10 @@ export class ShieldAiClient {
     return response.json();
   }
 
-  private async delete(path: string, extraHeaders?: Record<string, string>): Promise<any> {
+  private async delete(
+    path: string,
+    extraHeaders?: Record<string, string>,
+  ): Promise<any> {
     let response: Response;
     try {
       response = await fetch(`${SHIELD_AI_BASE_URL}${path}`, {

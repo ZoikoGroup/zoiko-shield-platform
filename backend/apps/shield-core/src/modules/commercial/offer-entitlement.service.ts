@@ -1,8 +1,4 @@
-import {
-  ForbiddenException,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { ForbiddenException, Injectable, Logger } from '@nestjs/common';
 import { CommercialEntitlementService } from './commercial-entitlement.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
@@ -59,7 +55,9 @@ export class OfferEntitlementService {
   ): Promise<void> {
     const isEntitled = await this.checkEntitlement(tenantId, offerType);
     if (!isEntitled) {
-      const actionText = context?.action ? ` to perform '${context.action}'` : '';
+      const actionText = context?.action
+        ? ` to perform '${context.action}'`
+        : '';
       this.logger.warn(
         `Commercial offer entitlement check FAILED for tenant '${tenantId}' on offer '${offerType}'${actionText}`,
       );
@@ -101,7 +99,11 @@ export class OfferEntitlementService {
     tenantId: string,
     context?: OfferEntitlementContext,
   ): Promise<void> {
-    return this.assertOfferEntitled(tenantId, 'INCIDENT_RESPONSE_RETAINER', context);
+    return this.assertOfferEntitled(
+      tenantId,
+      'INCIDENT_RESPONSE_RETAINER',
+      context,
+    );
   }
 
   /**

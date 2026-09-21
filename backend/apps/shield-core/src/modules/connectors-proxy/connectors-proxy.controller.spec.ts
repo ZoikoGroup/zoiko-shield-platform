@@ -30,22 +30,39 @@ describe('ConnectorsProxyController', () => {
         { type: 'GENERIC_WEBHOOK', name: 'Generic Webhook' },
         { type: 'CROWDSTRIKE_FALCON', name: 'CrowdStrike Falcon' },
       ]),
-      listConnectors: jest.fn().mockResolvedValue([
-        { id: 'conn-1', tenantId: 'tenant-demo-456', status: 'ACTIVE' },
-      ]),
+      listConnectors: jest
+        .fn()
+        .mockResolvedValue([
+          { id: 'conn-1', tenantId: 'tenant-demo-456', status: 'ACTIVE' },
+        ]),
       createConnector: jest.fn().mockImplementation((tenantId, dto) =>
-        Promise.resolve({ id: 'conn-new', tenantId, ...dto, status: 'CREATED' }),
+        Promise.resolve({
+          id: 'conn-new',
+          tenantId,
+          ...dto,
+          status: 'CREATED',
+        }),
       ),
-      getConnector: jest.fn().mockImplementation((tenantId, id) =>
-        Promise.resolve({ id, tenantId, status: 'ACTIVE' }),
-      ),
-      updateConnector: jest.fn().mockImplementation((tenantId, id, dto) =>
-        Promise.resolve({ id, tenantId, ...dto }),
-      ),
+      getConnector: jest
+        .fn()
+        .mockImplementation((tenantId, id) =>
+          Promise.resolve({ id, tenantId, status: 'ACTIVE' }),
+        ),
+      updateConnector: jest
+        .fn()
+        .mockImplementation((tenantId, id, dto) =>
+          Promise.resolve({ id, tenantId, ...dto }),
+        ),
       deleteConnector: jest.fn().mockResolvedValue({ success: true }),
-      testConnector: jest.fn().mockResolvedValue({ success: true, latencyMs: 42 }),
-      syncConnector: jest.fn().mockResolvedValue({ status: 'SYNCED', count: 100 }),
-      getConnectorHealth: jest.fn().mockResolvedValue({ healthStatus: 'HEALTHY' }),
+      testConnector: jest
+        .fn()
+        .mockResolvedValue({ success: true, latencyMs: 42 }),
+      syncConnector: jest
+        .fn()
+        .mockResolvedValue({ status: 'SYNCED', count: 100 }),
+      getConnectorHealth: jest
+        .fn()
+        .mockResolvedValue({ healthStatus: 'HEALTHY' }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -63,7 +80,9 @@ describe('ConnectorsProxyController', () => {
       .useValue({ canActivate: () => true })
       .compile();
 
-    controller = module.get<ConnectorsProxyController>(ConnectorsProxyController);
+    controller = module.get<ConnectorsProxyController>(
+      ConnectorsProxyController,
+    );
   });
 
   it('should be defined', () => {
@@ -77,9 +96,14 @@ describe('ConnectorsProxyController', () => {
   });
 
   it('should list connectors using tenantId from header or user context', async () => {
-    const connectors = await controller.listConnectors('tenant-demo-456', mockUser);
+    const connectors = await controller.listConnectors(
+      'tenant-demo-456',
+      mockUser,
+    );
     expect(connectors).toHaveLength(1);
-    expect(mockShieldIngestClient.listConnectors).toHaveBeenCalledWith('tenant-demo-456');
+    expect(mockShieldIngestClient.listConnectors).toHaveBeenCalledWith(
+      'tenant-demo-456',
+    );
   });
 
   it('should create a connector scoped to the tenant', async () => {

@@ -1,6 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import crypto from 'crypto';
-import { AzureActivityLogEvent, OcsfCloudAuditEvent } from './azure-monitor.types';
+import {
+  AzureActivityLogEvent,
+  OcsfCloudAuditEvent,
+} from './azure-monitor.types';
 
 const LEVEL_SEVERITY: Record<string, { id: number; label: string }> = {
   Critical: { id: 4, label: 'CRITICAL' },

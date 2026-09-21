@@ -7,7 +7,8 @@ describe('Checkpoint 9 - Synthetic Offboarding Attestation Integration Suite (IC
   const SUBJECT_ID = 'sub-cust-gdpr-7788';
 
   beforeAll(() => {
-    process.env.SUBJECT_KEY_WRAPPING_SECRET = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+    process.env.SUBJECT_KEY_WRAPPING_SECRET =
+      '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
   });
 
   beforeEach(() => {
@@ -23,7 +24,11 @@ describe('Checkpoint 9 - Synthetic Offboarding Attestation Integration Suite (IC
         ssnLast4: '4491',
       });
 
-      const encrypted = await shredder.encryptSubjectPii(TENANT_ID, SUBJECT_ID, piiCleartext);
+      const encrypted = await shredder.encryptSubjectPii(
+        TENANT_ID,
+        SUBJECT_ID,
+        piiCleartext,
+      );
 
       expect(encrypted.tenantId).toBe(TENANT_ID);
       expect(encrypted.subjectId).toBe(SUBJECT_ID);
@@ -39,7 +44,11 @@ describe('Checkpoint 9 - Synthetic Offboarding Attestation Integration Suite (IC
   describe('2. Key Destruction & Irreversible Cryptographic Shredding', () => {
     it('should destroy the subject key and produce a valid Erasure Certificate', async () => {
       const piiCleartext = 'CONFIDENTIAL_HEALTHCARE_RECORD_XYZ';
-      const encrypted = await shredder.encryptSubjectPii(TENANT_ID, SUBJECT_ID, piiCleartext);
+      const encrypted = await shredder.encryptSubjectPii(
+        TENANT_ID,
+        SUBJECT_ID,
+        piiCleartext,
+      );
 
       // Perform cryptographic shredding
       const cert = await shredder.shredSubjectKey(TENANT_ID, SUBJECT_ID);
@@ -52,7 +61,9 @@ describe('Checkpoint 9 - Synthetic Offboarding Attestation Integration Suite (IC
       expect(cert.keyExisted).toBe(true);
 
       // Post-shredding decryption attempt MUST fail with ForbiddenException (key destroyed)
-      await expect(shredder.decryptSubjectPii(encrypted)).rejects.toThrow(ForbiddenException);
+      await expect(shredder.decryptSubjectPii(encrypted)).rejects.toThrow(
+        ForbiddenException,
+      );
     });
   });
 });
