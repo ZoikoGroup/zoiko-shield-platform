@@ -35,7 +35,7 @@ interface SectorPack {
 const SECTOR_PACKS: SectorPack[] = [
   {
     id: "telecom",
-    name: "Telecommunications & Critical Carrier Infrastructure",
+    name: "Telecom & MVNO",
     badge: "CARRIER GRADE",
     icon: <Server className="w-6 h-6 text-cyan-400" />,
     tagline: "Ultra-High-Throughput Signaling, Core Network & OCSF Ingestion",
@@ -55,7 +55,7 @@ const SECTOR_PACKS: SectorPack[] = [
   },
   {
     id: "fintech",
-    name: "FinTech, Banking & High-Frequency Payment Networks",
+    name: "Financial Services & FinTech",
     badge: "FINANCIAL RESILIENCE",
     icon: <Landmark className="w-6 h-6 text-emerald-400" />,
     tagline: "Immutable Audit Trails, Anti-Perverse Billing & Access Governance",
@@ -75,7 +75,7 @@ const SECTOR_PACKS: SectorPack[] = [
   },
   {
     id: "healthcare",
-    name: "Healthcare, Life Sciences & Protected Health Data (PHI)",
+    name: "Healthcare & Life Sciences",
     badge: "PATIENT PRIVACY",
     icon: <HeartPulse className="w-6 h-6 text-rose-400" />,
     tagline: "Zero-Trust Medical Data Governance & AI Prompt Isolation",
@@ -95,7 +95,7 @@ const SECTOR_PACKS: SectorPack[] = [
   },
   {
     id: "legal",
-    name: "Legal, Counsel-Controlled & Privileged Workflows",
+    name: "Legal & Professional Services",
     badge: "LEGAL DEFENSE",
     icon: <Scale className="w-6 h-6 text-purple-400" />,
     tagline: "Attorney-Client Privilege Guard & Independent Verifier Ledger",
@@ -115,7 +115,7 @@ const SECTOR_PACKS: SectorPack[] = [
   },
   {
     id: "saas",
-    name: "Enterprise B2B SaaS & Multi-Tenant Platforms",
+    name: "SaaS & Digital Platforms",
     badge: "CLOUD NATIVE",
     icon: <Cloud className="w-6 h-6 text-cyan-400" />,
     tagline: "Multi-Tenant Isolation, API Security & Automated SOC 2 Readiness",
@@ -135,7 +135,7 @@ const SECTOR_PACKS: SectorPack[] = [
   },
   {
     id: "public-sector",
-    name: "Public Sector, Defense & Sovereign Government Cells",
+    name: "Public Sector / Critical-Infrastructure-Aligned",
     badge: "SOVEREIGN PARTITION",
     icon: <Lock className="w-6 h-6 text-amber-400" />,
     tagline: "Dedicated Sovereign Partition, BYOK & Zero External Telemetry Egress",

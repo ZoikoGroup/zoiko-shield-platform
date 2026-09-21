@@ -147,9 +147,9 @@ export default function RedTeamSimulatorPage() {
               <div>
                 <div className="flex items-center gap-2">
                   <h1 className="text-xl font-bold text-white tracking-wide">
-                    Autonomous Purple-Team & Adversarial Simulator
+                    Defensive Control Simulation &amp; Replay Engine
                   </h1>
-                  <Badge variant="critical">Continuous Red-Team</Badge>
+                  <Badge variant="critical">Continuous Assurance</Badge>
                   <Badge variant="neutral">OCSF v1.1.0 Synthetic Telemetry</Badge>
                 </div>
                 <p className="text-xs text-slate-400">
@@ -245,7 +245,7 @@ export default function RedTeamSimulatorPage() {
                 ) : (
                   <>
                     <Play className="w-4 h-4" />
-                    <span>Run Purple-Team Scenario</span>
+                    <span>Run Simulation Scenario</span>
                   </>
                 )}
               </Button>

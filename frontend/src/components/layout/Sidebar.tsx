@@ -88,7 +88,7 @@ export const Sidebar: React.FC = () => {
           badgeVariant: "ai" as const,
         },
         {
-          label: "Purple-Team Simulator",
+          label: "Simulation Replay Engine",
           href: "/red-team",
           icon: <Skull className="w-4 h-4" />,
           badge: "SIM",

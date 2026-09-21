@@ -14,7 +14,7 @@ import { ActionRollbackBrokerService } from './rollback/action-rollback-broker.s
 import { FreezeControllerService } from './freeze-controller/freeze-controller.service';
 import { TwoManRuleService } from './approval/two-man-rule.service';
 import { DistributedActionLockService } from './orchestration/distributed-action-lock.service';
-import { EbpfNetworkEnforcerService } from './microsegmentation/ebpf-network-enforcer.service';
+import { HostNetworkEnforcerService } from './microsegmentation/host-network-enforcer.service';
 import { DualCustodyQuorumService } from './dual-custody/dual-custody-quorum.service';
 import { InternalAuthGuard } from './internal-client/internal-auth.guard';
 
@@ -81,7 +81,7 @@ export class ReleaseLockDto {
   lockToken!: string;
 }
 
-export class ApplyEbpfRuleDto {
+export class ApplyHostNetworkRuleDto {
   tenantId!: string;
   sourcePodSelector!: string;
   destinationCidrOrPod!: string;
@@ -105,7 +105,7 @@ export class ShieldActionController {
     private readonly twoManRuleService: TwoManRuleService,
     private readonly distributedLockService: DistributedActionLockService,
     @Optional()
-    private readonly ebpfNetworkEnforcer?: EbpfNetworkEnforcerService,
+    private readonly hostNetworkEnforcer?: HostNetworkEnforcerService,
     @Optional()
     private readonly dualCustodyQuorumService?: DualCustodyQuorumService,
   ) {}
@@ -246,42 +246,42 @@ export class ShieldActionController {
     return { success: released };
   }
 
-  // --- eBPF Kernel Microsegmentation Endpoints ---
+  // --- Host Network Microsegmentation Endpoints ---
 
   @UseGuards(InternalAuthGuard)
-  @Post('api/v1/action/ebpf/rules')
-  applyEbpfRule(@Body() body: ApplyEbpfRuleDto) {
-    if (!this.ebpfNetworkEnforcer) {
+  @Post('api/v1/action/network/rules')
+  applyHostNetworkRule(@Body() body: ApplyHostNetworkRuleDto) {
+    if (!this.hostNetworkEnforcer) {
       return {
         status: 'UNAVAILABLE',
-        message: 'eBPF Network Enforcer is not configured in this environment',
+        message: 'Host Network Enforcer is not configured in this environment',
       };
     }
-    return this.ebpfNetworkEnforcer.applyMicrosegmentationRule(body);
+    return this.hostNetworkEnforcer.applyMicrosegmentationRule(body);
   }
 
   @UseGuards(InternalAuthGuard)
-  @Post('api/v1/action/ebpf/quarantine')
+  @Post('api/v1/action/network/quarantine')
   quarantinePod(@Body() body: QuarantinePodDto) {
-    if (!this.ebpfNetworkEnforcer) {
+    if (!this.hostNetworkEnforcer) {
       return {
         status: 'UNAVAILABLE',
-        message: 'eBPF Network Enforcer is not configured in this environment',
+        message: 'Host Network Enforcer is not configured in this environment',
       };
     }
-    return this.ebpfNetworkEnforcer.quarantinePodNetwork(
+    return this.hostNetworkEnforcer.quarantinePodNetwork(
       body.tenantId,
       body.podSelector,
     );
   }
 
   @UseGuards(InternalAuthGuard)
-  @Get('api/v1/action/ebpf/rules')
-  getEbpfRules(@Query('tenantId') tenantId: string) {
-    if (!this.ebpfNetworkEnforcer) {
+  @Get('api/v1/action/network/rules')
+  getHostNetworkRules(@Query('tenantId') tenantId: string) {
+    if (!this.hostNetworkEnforcer) {
       return [];
     }
-    return this.ebpfNetworkEnforcer.getActiveRules(tenantId || 'global');
+    return this.hostNetworkEnforcer.getActiveRules(tenantId || 'global');
   }
 
   // --- Dual-Custody Cryptographic Quorum Endpoints ---

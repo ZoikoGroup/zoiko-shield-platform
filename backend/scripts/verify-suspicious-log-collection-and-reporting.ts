@@ -2,7 +2,7 @@
  * ZoikoShield Comprehensive Suspicious Log Collection & Tenant Reporting Verifier
  * 
  * Verifies End-to-End:
- * 1. Collecting suspicious security event logs across heterogeneous sources (IDP, EDR, eBPF, Network).
+ * 1. Collecting suspicious security event logs across heterogeneous sources (IDP, EDR, Host Runtime, Network).
  * 2. Ingesting and normalizing into OCSF schema within strict multi-tenant boundaries.
  * 3. Detecting anomalies via Tier-A Kafka stream rules and ClickHouse analytical scans.
  * 4. Correlating alerts and attack paths into an active Incident Case.
@@ -92,7 +92,7 @@ async function main() {
       details: { commandLine: 'powershell.exe -nop -w hidden -enc JABzAD0ATgBlAHcALQBPAGIAagBlAGMAdAA...', parentProcess: 'w3wp.exe' },
     },
     {
-      source: 'ebpf-kernel-probe',
+      source: 'host-kernel-probe',
       timestamp: '2026-08-31T07:16:00.000Z',
       eventType: 'UNAUTHORIZED_LATERAL_SOCKET_CONNECT',
       actor: compromisedHost,
@@ -109,7 +109,7 @@ async function main() {
     },
   ];
 
-  console.log(`  ✔ Collected ${rawLogs.length} events across Okta IDP, CrowdStrike Falcon, SentinelOne, and eBPF Kernel Probes.`);
+  console.log(`  ✔ Collected ${rawLogs.length} events across Okta IDP, CrowdStrike Falcon, SentinelOne, and Host Kernel Probes.`);
 
   // -------------------------------------------------------------------------
   // STAGE 2: Real-Time Stream & Parameterized Analytical Threat Detection

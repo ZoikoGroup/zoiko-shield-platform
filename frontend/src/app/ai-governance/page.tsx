@@ -1076,7 +1076,7 @@ export default function AiGovernancePage() {
                           <div key={sIdx} className="p-2.5 rounded-lg bg-slate-900 border border-slate-800/80 space-y-1">
                             <div className="flex items-center justify-between text-[10px]">
                               <span className="text-emerald-400 font-bold">{src.sourceId} ({src.sourceType})</span>
-                              <span className="text-cyan-300">{(src.confidence * 100).toFixed(1)}% Confidence</span>
+                              <span className="text-cyan-300">{((src.confidence ?? src.confidenceScore ?? 1) * 100).toFixed(1)}% Confidence</span>
                             </div>
                             <p className="text-slate-300 font-sans text-xs">&quot;{src.exactSpan}&quot;</p>
                           </div>
@@ -1089,9 +1089,9 @@ export default function AiGovernancePage() {
                       <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/90 space-y-1.5">
                         <span className="font-bold text-cyan-400 text-[11px]">3. EVIDENCE COMPLETENESS</span>
                         <div className="text-[11px] text-slate-300 space-y-1">
-                          <div>Missing: <strong className="text-slate-400">{selectedEnvelope.knownMissingStaleOrConflictingEvidence.missingEvidence.join(", ") || "None (Complete)"}</strong></div>
-                          <div>Stale: <strong className="text-slate-400">{selectedEnvelope.knownMissingStaleOrConflictingEvidence.staleEvidence.join(", ") || "None"}</strong></div>
-                          <div>Conflicting: <strong className="text-slate-400">{selectedEnvelope.knownMissingStaleOrConflictingEvidence.conflictingEvidence.join(", ") || "None"}</strong></div>
+                          <div>Missing: <strong className="text-slate-400">{selectedEnvelope.knownMissingStaleOrConflictingEvidence?.missingEvidence?.join(", ") || "None (Complete)"}</strong></div>
+                          <div>Stale: <strong className="text-slate-400">{selectedEnvelope.knownMissingStaleOrConflictingEvidence?.staleEvidence?.join(", ") || "None"}</strong></div>
+                          <div>Conflicting: <strong className="text-slate-400">{selectedEnvelope.knownMissingStaleOrConflictingEvidence?.conflictingEvidence?.join(", ") || "None"}</strong></div>
                         </div>
                       </div>
 

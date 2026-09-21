@@ -2,7 +2,7 @@
  * Autonomous AI-Powered Incident Root Cause Analysis (RCA) Simulator
  * 
  * Simulates:
- * 1. Ingesting multi-vector telemetry (IdP, eBPF kernel tracepoints, EDR findings).
+ * 1. Ingesting multi-vector telemetry (IdP, Host runtime kernel tracepoints, EDR findings).
  * 2. Correlating lateral movement graph paths.
  * 3. Synthesizing full incident timeline and MITRE ATT&CK mapping.
  * 4. Generating executive RCA report with cryptographic provenance digest.
@@ -40,9 +40,9 @@ async function main() {
         details: { geoIp: '198.51.100.89', authMethod: 'PUSH_NOTIFICATION_SPAM' },
       },
       {
-        eventId: 'evt-ebpf-902',
+        eventId: 'evt-host-902',
         timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-        source: 'ebpf-kernel-probe',
+        source: 'host-kernel-probe',
         eventType: 'SUSPICIOUS_EXECVE_POWERSHELL',
         actor: 'devops.operator@fintech-alpha.com',
         targetResource: 'host-k8s-worker-node-03',
@@ -61,7 +61,7 @@ async function main() {
     attackGraphPath: ['host-k8s-worker-node-03', 'pod-cardholder-data-vault'],
   };
 
-  console.log(`  ➔ Ingested 3 heterogeneous telemetry events across IdP, eBPF, and EDR`);
+  console.log(`  ➔ Ingested 3 heterogeneous telemetry events across IdP, Host Runtime, and EDR`);
   console.log(`  ➔ Ingested Attack Trajectory: [${incidentTelemetry.attackGraphPath.join(' ──> ')}]`);
 
   console.log('\n[2/3] Synthesizing Autonomous AI Root Cause Analysis & MITRE Mapping...');

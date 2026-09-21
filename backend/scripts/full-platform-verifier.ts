@@ -760,14 +760,14 @@ async function runFullPlatformVerifier() {
   const enclaveMeasurement = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
   const enclaveAttestation = enclaveBridge.verifyAttestationQuote(
     {
-      enclaveId: 'enclave-aws-nitro-mpe-01',
-      platform: 'AWS_NITRO',
+      enclaveId: 'enclave-aws-mpe-01',
+      platform: 'AWS_ENCLAVE',
       pcr0: enclaveMeasurement,
       pcr1: 'a1b2c3d4e5f60000000000000000000000000000000000000000000000000000',
       pcr2: 'f6e5d4c3b2a10000000000000000000000000000000000000000000000000000',
-      hardwareRootOfTrust: 'aws-nitro-pki-chain-thumbprint-99',
+      hardwareRootOfTrust: 'aws-hardware-pki-chain-thumbprint-99',
       enclavePublicKeyPem: '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A...\n-----END PUBLIC KEY-----',
-      signature: '3045022100a1b2c3d4e5f6...valid_hardware_nitro_sig',
+      signature: '3045022100a1b2c3d4e5f6...valid_hardware_enclave_sig',
       timestamp: new Date().toISOString(),
     },
     enclaveMeasurement,

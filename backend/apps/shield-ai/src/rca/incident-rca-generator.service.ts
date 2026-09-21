@@ -14,7 +14,7 @@ export interface IncidentTelemetryInput {
   events: Array<{
     eventId: string;
     timestamp: string;
-    source: string; // e.g. 'crowdstrike-edr', 'okta-idp', 'ebpf-kernel-probe'
+    source: string; // e.g. 'crowdstrike-edr', 'okta-idp', 'host-runtime-probe'
     eventType: string; // e.g. 'SUSPICIOUS_EXECVE', 'MFA_FATIGUE_ATTEMPT', 'CREDENTIAL_ACCESS'
     actor?: string;
     targetResource: string;
@@ -65,7 +65,7 @@ export class IncidentRcaGeneratorService {
   ) {}
 
   /**
-   * Synthesizes incident telemetry, eBPF traces, and attack graph paths into an executive RCA report.
+   * Synthesizes incident telemetry, host runtime traces, and attack graph paths into an executive RCA report.
    */
   generateIncidentRca(input: IncidentTelemetryInput): IncidentRcaReport {
     const rcaId = `rca-${crypto.randomUUID()}`;
@@ -157,7 +157,7 @@ export class IncidentRcaGeneratorService {
 
     const containmentRecommendations = [
       `Enforce instant OAuth/JWT token revocation for accounts: [${Array.from(compromisedAccounts).join(', ')}]`,
-      `Apply eBPF kernel network quarantine drops on Pods: [${Array.from(isolatedPods).join(', ')}]`,
+      `Apply host network policy quarantine drops on Pods: [${Array.from(isolatedPods).join(', ')}]`,
       `Rotate IAM API credentials and invalidate sessions for affected cloud workloads.`,
     ];
 
@@ -253,7 +253,7 @@ export class IncidentRcaGeneratorService {
           score: input.severity === 'CRITICAL' ? 0.95 : 0.9,
           qualitativeBand: 'HIGH',
           calibrationBasis:
-            'Synthesized from eBPF traces, attack graph paths, and MITRE ATT&CK techniques',
+            'Synthesized from host runtime telemetry traces, attack graph paths, and MITRE ATT&CK techniques',
           uncertaintyFactors: [],
         },
         alternativeHypothesesOrActions: [

@@ -37,7 +37,7 @@ import { WafIpActionAdapter } from './execution-adapters/waf-ip.adapter';
 import { Fido2StepupGuardService } from './auth/fido2-stepup-guard.service';
 import { DisasterRecoveryPartitionService } from './dr-orchestrator/disaster-recovery-partition.service';
 import { CspmRemediationEngineService } from './cspm/cspm-remediation-engine.service';
-import { EbpfNetworkEnforcerService } from './microsegmentation/ebpf-network-enforcer.service';
+import { HostNetworkEnforcerService } from './microsegmentation/host-network-enforcer.service';
 import { SoarCircuitBreakerService } from './circuit-breaker/soar-circuit-breaker.service';
 import { CedarTenantIsolationService } from './policy/cedar-tenant-isolation.service';
 import { SignedCommandBrokerService } from './broker/signed-command-broker.service';
@@ -71,7 +71,7 @@ import { CompensatingActionService } from './rollback/compensating-action.servic
     Fido2StepupGuardService,
     DisasterRecoveryPartitionService,
     CspmRemediationEngineService,
-    EbpfNetworkEnforcerService,
+    HostNetworkEnforcerService,
     SoarCircuitBreakerService,
     CedarTenantIsolationService,
     SignedCommandBrokerService,

@@ -38,13 +38,8 @@ export class EdrIsolateActionAdapter implements ActionExecutionAdapter {
   ]);
 
   async execute(context: ActionExecutionContext): Promise<ExecutionReceipt> {
-    const isG1Ratified =
-      process.env.ENABLE_G1_LIVE_EXECUTION === 'true' ||
-      process.env.G1_GATE_RATIFIED === 'true';
-
     if (
       !context.isSimulation &&
-      !isG1Ratified &&
       this.containmentActions.has(context.actionType)
     ) {
       throw new ForbiddenException(

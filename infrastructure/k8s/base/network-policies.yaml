@@ -1,0 +1,163 @@
+# Kubernetes Zero-Trust NetworkPolicies for ZoikoShield Regional Tenant Cell
+# Specification: MASTER_BUILD_PLAN.md §3 (Deployment Model) & §12 (Security Baseline)
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: zoikoshield
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+---
+# 1. shield-ingest: Accepts public webhook/syslog telemetry via Ingress Gateway
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: shield-ingest-ingress
+  namespace: zoikoshield
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: shield-ingest
+  policyTypes:
+    - Ingress
+  ingress:
+    # Telemetry Ingress from Gateway
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress-nginx
+      ports:
+        - protocol: TCP
+          port: 3001
+    # Prometheus Metrics Scrape
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9090
+---
+# 2. shield-core: Internal Modular Monolith (Ingest -> Core, Core <-> Satellites)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: shield-core-ingress
+  namespace: zoikoshield
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: shield-core
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allowed internal service callers
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: shield-ingest
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: shield-ai
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: shield-action
+      ports:
+        - protocol: TCP
+          port: 3000
+    # Prometheus Metrics Scrape
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9090
+---
+# 3. shield-ai: AI Gateway (Strict Core-mediated mediation)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: shield-ai-ingress
+  namespace: zoikoshield
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: shield-ai
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: shield-core
+      ports:
+        - protocol: TCP
+          port: 3002
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9090
+---
+# 4. shield-action: SOAR Broker (Strict Core-mediated command execution)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: shield-action-ingress
+  namespace: zoikoshield
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: shield-action
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: shield-core
+      ports:
+        - protocol: TCP
+          port: 3003
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9090
+---
+# 5. shield-anchor: Evidence Checkpoint & HSM Signer (Air-gapped signing isolation)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: shield-anchor-ingress
+  namespace: zoikoshield
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: shield-anchor
+  policyTypes:
+    - Ingress
+  ingress:
+    # Only shield-core is permitted to submit checkpoint leaves for Merkle anchoring
+    - from:
+        - podSelector:
+            matchLabels:
+              app.kubernetes.io/name: shield-core
+      ports:
+        - protocol: TCP
+          port: 3004
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9090

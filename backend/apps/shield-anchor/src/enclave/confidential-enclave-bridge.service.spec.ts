@@ -10,15 +10,15 @@ describe('ConfidentialEnclaveBridgeService', () => {
   const validPcr0 =
     'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
   const mockQuote: EnclaveAttestationQuote = {
-    enclaveId: 'enclave-nitro-secops-01',
-    platform: 'AWS_NITRO',
+    enclaveId: 'enclave-secops-01',
+    platform: 'AWS_ENCLAVE',
     pcr0: validPcr0,
     pcr1: 'a1b2c3d4e5f60000000000000000000000000000000000000000000000000000',
     pcr2: 'f6e5d4c3b2a10000000000000000000000000000000000000000000000000000',
-    hardwareRootOfTrust: 'aws-nitro-pki-chain-thumbprint-99',
+    hardwareRootOfTrust: 'aws-hardware-pki-chain-thumbprint-99',
     enclavePublicKeyPem:
       '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A...\n-----END PUBLIC KEY-----',
-    signature: '3045022100a1b2c3d4e5f6...valid_hardware_nitro_sig',
+    signature: '3045022100a1b2c3d4e5f6...valid_hardware_enclave_sig',
     timestamp: new Date().toISOString(),
   };
 
@@ -36,7 +36,7 @@ describe('ConfidentialEnclaveBridgeService', () => {
     const token = service.verifyAttestationQuote(mockQuote, validPcr0);
     expect(token.verified).toBe(true);
     expect(token.status).toBe('VALID');
-    expect(token.enclaveId).toBe('enclave-nitro-secops-01');
+    expect(token.enclaveId).toBe('enclave-secops-01');
     expect(token.receiptProof).toBeDefined();
   });
 

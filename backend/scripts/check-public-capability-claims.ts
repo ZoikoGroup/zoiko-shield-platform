@@ -90,6 +90,32 @@ function verifyPublicCapabilityClaims(): void {
     }
   }
 
+  // 6. Operationalize Rule CAT-01 & SVC-01: Audit Public MDR & Containment SLA Claims
+  console.log('[x] Auditing Public MDR Disclosures & SLA Commitments (Rule CAT-01 & SVC-01)...');
+  const frontendDir = path.join(__dirname, '..', '..', 'frontend', 'src');
+  const publicFiles = [
+    path.join(frontendDir, 'app', 'services', 'page.tsx'),
+    path.join(frontendDir, 'app', 'pricing', 'page.tsx'),
+    path.join(frontendDir, 'lib', 'api-client.ts'),
+  ];
+
+  const forbiddenMdrPatterns = [
+    { pattern: /24\/7\/365\s+certified/i, msg: 'Uncontracted "24/7/365 certified" claim found on public surface' },
+    { pattern: /15-min(ute)?\s+containment\s+SLA/i, msg: 'Ungrounded "15-minute containment SLA" claim found on public surface' },
+    { pattern: /certified\s+24\/7\s+MDR/i, msg: 'Unproven "certified 24/7 MDR" claim found on public surface' },
+  ];
+
+  for (const filePath of publicFiles) {
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, 'utf8');
+      for (const { pattern, msg } of forbiddenMdrPatterns) {
+        if (pattern.test(content)) {
+          errors.push(`Rule CAT-01/SVC-01 Violation in ${path.basename(filePath)}: ${msg}`);
+        }
+      }
+    }
+  }
+
   // Report Results
   console.log('----------------------------------------------------------------');
   if (errors.length > 0) {

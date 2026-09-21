@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-09-19T11:06:45.399Z",
+  "generatedAt": "2026-09-21T10:47:24.274Z",
   "slos": {
     "ingestP99Ms": 500,
     "detectP99Ms": 1000,
@@ -10,28 +10,28 @@
     {
       "label": "ingestion_normalization",
       "count": 1000,
-      "p50": 9.04,
-      "p99": 51.68,
-      "maxMs": 52.67
+      "p50": 9.52,
+      "p99": 18.22,
+      "maxMs": 19.31
     },
     {
       "label": "detection_evaluation",
       "count": 200,
-      "p50": 15.63,
-      "p99": 33.8,
-      "maxMs": 34.97
+      "p50": 31.73,
+      "p99": 46.92,
+      "maxMs": 48.09
     },
     {
       "label": "evidence_freshness",
       "count": 50,
-      "wallMs": 14,
+      "wallMs": 11,
       "sloSeconds": 60
     },
     {
       "label": "memory_ceiling",
-      "rssBefore": 442.52734375,
-      "rssAfter": 442.52734375,
-      "deltaMb": 0,
+      "rssBefore": 452.48828125,
+      "rssAfter": 452.52734375,
+      "deltaMb": 0.0390625,
       "sloMb": 100
     }
   ]

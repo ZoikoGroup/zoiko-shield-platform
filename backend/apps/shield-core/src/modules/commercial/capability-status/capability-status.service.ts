@@ -141,12 +141,12 @@ export class CapabilityStatusService {
     },
     {
       serviceId: 'SVC-10',
-      serviceName: 'Autonomous Red-Team & Breach Simulation',
+      serviceName: 'Continuous Security Validation & Posture Verification',
       category: 'Security Operations',
-      publicOutcomeDescription: 'Controlled adversary replay simulations, canary honeypot validation, and defensive posture attestation.',
+      publicOutcomeDescription: 'Controlled defensive control testing, detection rule verification, and defensive posture attestation.',
       status: 'CONTROLLED',
       substantiatingComponents: ['shield-core', 'shield-action'],
-      includedCapabilities: ['CAP-RED-01', 'CAP-RED-02'],
+      includedCapabilities: ['CAP-POSTURE-01', 'CAP-POSTURE-02'],
       pricingTierMinimum: 'ADVANCED',
     },
     {

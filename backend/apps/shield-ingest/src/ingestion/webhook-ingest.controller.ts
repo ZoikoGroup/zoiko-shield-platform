@@ -18,7 +18,7 @@ import {
 import { WebhookSignatureGuard } from './guards/webhook-signature.guard';
 import { PublicIngress } from '../security/public-ingress.decorator';
 import { CloudNormalizationBridgeService } from '../normalization/cloud-normalization-bridge.service';
-import { EbpfRuntimeMonitorService } from '../ebpf/ebpf-runtime-monitor.service';
+import { HostRuntimeMonitorService } from '../runtime-monitor/host-runtime-monitor.service';
 
 @UseGuards(WebhookSignatureGuard)
 @PublicIngress()
@@ -31,7 +31,7 @@ export class WebhookIngestController {
     @Optional()
     private readonly normalizationBridge?: CloudNormalizationBridgeService,
     @Optional()
-    private readonly ebpfRuntimeMonitor?: EbpfRuntimeMonitorService,
+    private readonly hostRuntimeMonitor?: HostRuntimeMonitorService,
   ) {}
 
   /**
@@ -190,38 +190,38 @@ export class WebhookIngestController {
   }
 
   /**
-   * Dedicated endpoint for receiving high-throughput Linux eBPF kernel telemetry probes.
-   * Path: POST /api/v1/ingestion/webhooks/ebpf/:connectorId
+   * Dedicated endpoint for receiving high-throughput host runtime kernel telemetry probes.
+   * Path: POST /api/v1/ingestion/webhooks/host-runtime/:connectorId
    */
-  @Post('ebpf/:connectorId')
+  @Post('host-runtime/:connectorId')
   @HttpCode(HttpStatus.ACCEPTED)
-  async handleEbpfWebhook(
+  async handleHostRuntimeWebhook(
     @Param('connectorId') connectorId: string,
     @Headers() headers: Record<string, string | string[] | undefined>,
     @Body() payload: IngestPayloadDto,
   ) {
     this.logger.log(
-      `Received eBPF kernel probe stream for connector: ${connectorId}`,
+      `Received host runtime kernel probe stream for connector: ${connectorId}`,
     );
     const result = await this.rawIngestService.processWebhookPayload(
       connectorId,
       headers,
       {
         ...payload,
-        eventType: payload.eventType || 'ebpf.kernel.probe',
+        eventType: payload.eventType || 'host.runtime.probe',
       },
     );
 
-    let ebpfFinding: any = null;
-    if (this.ebpfRuntimeMonitor && payload.syscall && payload.pid) {
-      ebpfFinding = this.ebpfRuntimeMonitor.processEbpfProbe(payload as any);
+    let probeFinding: any = null;
+    if (this.hostRuntimeMonitor && payload.syscall && payload.pid) {
+      probeFinding = this.hostRuntimeMonitor.processHostProbe(payload as any);
     }
 
     return {
       statusCode: HttpStatus.ACCEPTED,
-      message: 'eBPF kernel probe telemetry accepted and normalized to OCSF',
+      message: 'Host runtime probe telemetry accepted and normalized to OCSF',
       data: result,
-      finding: ebpfFinding,
+      finding: probeFinding,
     };
   }
 }

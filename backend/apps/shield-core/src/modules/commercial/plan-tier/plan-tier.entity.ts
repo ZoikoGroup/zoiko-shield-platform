@@ -73,7 +73,7 @@ export const APPROVED_PLAN_TIERS: PlanTier[] = [
     key: 'SHIELD_PROFESSIONAL',
     displayName: 'Shield Professional',
     tagline: 'Managed Detection & Threat Triage',
-    description: 'Comprehensive 24/7 Managed Detection & Response combined with continuous assurance, exposure scanning, and priority incident surge.',
+    description: 'Comprehensive Managed Detection & Response with human-approved containment, continuous assurance, exposure scanning, and priority incident surge.',
     pricing: {
       monthlyUsd: 4000,
       annualBilledMonthlyUsd: 3600,
@@ -106,7 +106,7 @@ export const APPROVED_PLAN_TIERS: PlanTier[] = [
       'Purpose-bound legal access reasons (§16.4) for forensic files',
       'Multi-region evidence synchronization',
     ],
-    supportModel: '24/7 SOC triage + 2h emergency IR response commitment',
+    supportModel: 'Continuous SOC triage + 2h emergency IR response commitment',
     isPopular: true,
   },
   {
@@ -187,6 +187,6 @@ export const APPROVED_PLAN_TIERS: PlanTier[] = [
       'Custom data sovereignty boundaries with geofenced storage',
       'Bespoke SLA credit guarantees with automated ledger settlement',
     ],
-    supportModel: 'Dedicated 24/7 Named Incident Commander & TAM team',
+    supportModel: 'Dedicated Named Incident Commander & TAM team',
   },
 ];

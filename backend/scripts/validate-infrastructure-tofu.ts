@@ -74,7 +74,7 @@ async function main() {
     console.log(`  ✔ Invariant Enforced: ${inv.name}`);
   }
 
-  console.log('\n[4/4] Validating Module Outputs & Resource Identifiers...');
+  console.log('\n[4/5] Validating Module Outputs & Resource Identifiers...');
   const outputsContent = readFileSync(outputsTfPath, 'utf-8');
   const requiredOutputs = [
     'regional_vpc_id',
@@ -91,9 +91,49 @@ async function main() {
     console.log(`  ✔ Validated output contract: ${outVar}`);
   }
 
+  console.log('\n[5/5] Validating Multi-Environment Declarations (Nonprod & Production) & Network Policies...');
+  const nonprodDir = resolve(__dirname, '../../infrastructure/tofu/environments/nonprod');
+  const nonprodMainPath = resolve(nonprodDir, 'main.tf');
+  const prodDir = resolve(__dirname, '../../infrastructure/tofu/environments/production');
+  const prodMainPath = resolve(prodDir, 'main.tf');
+  const k8sNetPolPath = resolve(__dirname, '../../infrastructure/k8s/base/network-policies.yaml');
+
+  if (!existsSync(nonprodMainPath)) {
+    throw new Error('Missing non-production environment main.tf');
+  }
+  const nonprodContent = readFileSync(nonprodMainPath, 'utf-8');
+  for (const projVar of requiredProjectBoundaries) {
+    if (!nonprodContent.includes(projVar)) {
+      throw new Error(`Non-production configuration missing '${projVar}' parameter.`);
+    }
+  }
+  console.log('  ✔ Non-production environment validated with complete project isolation');
+
+  if (!existsSync(prodMainPath)) {
+    throw new Error('Missing production environment main.tf');
+  }
+  const prodContent = readFileSync(prodMainPath, 'utf-8');
+  if (!prodContent.includes('project_security_id = "${var.project_root_id}-us-security"') ||
+      !prodContent.includes('project_security_id = "${var.project_root_id}-eu-security"')) {
+    throw new Error('Production environment missing dedicated project_security_id bindings for regional cells.');
+  }
+  console.log('  ✔ Production multi-region cells validated with dedicated security project wiring');
+
+  if (!existsSync(k8sNetPolPath)) {
+    throw new Error('Missing infrastructure/k8s/base/network-policies.yaml');
+  }
+  const k8sNetPolContent = readFileSync(k8sNetPolPath, 'utf-8');
+  const requiredShieldSvcs = ['shield-core', 'shield-ingest', 'shield-ai', 'shield-action', 'shield-anchor'];
+  for (const svc of requiredShieldSvcs) {
+    if (!k8sNetPolContent.includes(`app.kubernetes.io/name: ${svc}`)) {
+      throw new Error(`Missing zero-trust NetworkPolicy definition for '${svc}'.`);
+    }
+    console.log(`  ✔ Validated Kubernetes NetworkPolicy: ${svc}`);
+  }
+
   console.log('\n========================================================================');
-  console.log(' 🎉 REGIONAL-CELL HCL CONTRACT STATIC VALIDATION SUCCEEDED!');
-  console.log('    (Static file/schema verification passed; no live cloud execution)');
+  console.log(' 🎉 REGIONAL-CELL & ENVIRONMENT HCL STATIC VALIDATION SUCCEEDED!');
+  console.log('    (All 5 static contract & security invariant gates passed cleanly)');
   console.log('========================================================================\n');
 }
 

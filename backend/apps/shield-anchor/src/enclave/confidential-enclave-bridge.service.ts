@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import crypto from 'crypto';
 
-export type EnclavePlatform = 'AWS_NITRO' | 'GCP_CONFIDENTIAL_VM' | 'INTEL_SGX';
+export type EnclavePlatform = 'AWS_ENCLAVE' | 'GCP_CONFIDENTIAL_VM' | 'INTEL_SGX';
 
 export interface EnclaveAttestationQuote {
   enclaveId: string;

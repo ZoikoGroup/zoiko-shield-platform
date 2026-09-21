@@ -16,21 +16,21 @@ async function runConfidentialEnclaveSimulation() {
   const enclaveBridge = new ConfidentialEnclaveBridgeService();
   const validPcr0 = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
 
-  const mockNitroQuote: EnclaveAttestationQuote = {
-    enclaveId: 'enclave-aws-nitro-mpe-01',
-    platform: 'AWS_NITRO',
+  const mockHardwareQuote: EnclaveAttestationQuote = {
+    enclaveId: 'enclave-aws-mpe-01',
+    platform: 'AWS_ENCLAVE',
     pcr0: validPcr0,
     pcr1: 'a1b2c3d4e5f60000000000000000000000000000000000000000000000000000',
     pcr2: 'f6e5d4c3b2a10000000000000000000000000000000000000000000000000000',
-    hardwareRootOfTrust: 'aws-nitro-pki-chain-thumbprint-99',
+    hardwareRootOfTrust: 'aws-hardware-pki-chain-thumbprint-99',
     enclavePublicKeyPem: '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A...\n-----END PUBLIC KEY-----',
-    signature: '3045022100a1b2c3d4e5f6...valid_hardware_nitro_sig',
+    signature: '3045022100a1b2c3d4e5f6...valid_hardware_enclave_sig',
     timestamp: new Date().toISOString(),
   };
 
   // Step 1: Verify valid remote attestation quote
-  logger.log('[Step 1/3] Submitting hardware remote attestation quote from AWS Nitro Enclave...');
-  const token = enclaveBridge.verifyAttestationQuote(mockNitroQuote, validPcr0);
+  logger.log('[Step 1/3] Submitting hardware remote attestation quote from Confidential Enclave...');
+  const token = enclaveBridge.verifyAttestationQuote(mockHardwareQuote, validPcr0);
   logger.log(`  ✔ Attestation Result:     ${token.verified} (Status: ${token.status})`);
   logger.log(`  ✔ Enclave ID:             ${token.enclaveId} (${token.platform})`);
   logger.log(`  ✔ Enclave Token (EAT):    ${token.eatId}`);
