@@ -50,6 +50,11 @@ jobs:
       - run: npx prisma generate
       - run: npm run build
       - run: npm run swagger:check
+      # Governance gates. These were run locally and reported as CI results,
+      # but were never actually wired into CI.
+      - run: npm run check:ungrounded-terms
+      - run: npm run check:capability-claims
+      - run: npm run access:check
       - run: npm test -- --runInBand
       - name: Execute Cross-Satellite Golden Spine E2E Suite
         run: npm run test:e2e:spine

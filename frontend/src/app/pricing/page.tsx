@@ -82,7 +82,7 @@ export default function PricingPage() {
           Outcome-Driven Security Plans
         </h1>
         <p className="text-slate-400 text-base leading-relaxed">
-          Predictable flat-rate pricing based on asset and telemetry bands. We eliminate perverse security incentives:
+          Every plan is quoted per customer while the price book is approved (ADR-06). We eliminate perverse security incentives:
           your billing <span className="text-cyan-300 font-semibold">never increases</span> during alert storms, incident surges, or deep forensic investigations.
         </p>
 
@@ -104,9 +104,6 @@ export default function PricingPage() {
           </button>
           <span className={`text-xs font-medium flex items-center gap-1.5 ${isAnnual ? "text-cyan-400 font-semibold" : "text-slate-400"}`}>
             Annual Commitment
-            <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono font-bold">
-              SAVE 10%
-            </span>
           </span>
         </div>
       </div>
@@ -120,7 +117,7 @@ export default function PricingPage() {
             <span className="px-2 py-0.5 rounded bg-cyan-950 border border-cyan-500/40 text-[10px] font-mono text-cyan-300">RULE PR-02</span>
           </p>
           <p className="text-slate-400 leading-relaxed">
-            <strong className="text-slate-200">Indicative Operational Baselines:</strong> Asset counts (250 / 1k / 5k nodes), daily telemetry ingestion thresholds (10 / 50 / 250 GB/day), and incident response SLA targets (4h / 2h / 1h) shown below represent baseline engineering sizing models. Final contractual commitments, dedicated surge allowances, and custom SLA penalty terms are formally established in the tailored commercial Statement of Work (SOW).
+            <strong className="text-slate-200">No public prices or SLAs yet:</strong> The price book (ADR-06) and contractual SLAs (ADR-07) are not yet approved, so every plan is quoted per customer and any response commitment is set in the order form. The asset and telemetry bands shown are sizing guidance for a quote, not included quotas.
           </p>
           <p className="text-slate-400 leading-relaxed">
             In accordance with Rule PR-02, invoices strictly reflect contracted band capacity. SOC alert volumes, incident surge frequency, forensic triaging depth, and AI Security Copilot query complexity carry zero surcharge or metered penalty.
@@ -163,7 +160,7 @@ export default function PricingPage() {
                   {plan.pricing.isContractOnly ? (
                     <div>
                       <div className="text-2xl font-black text-slate-100">Contract Only</div>
-                      <p className="text-[11px] text-slate-500 font-mono mt-0.5">Bespoke SLA & Sovereign Cell</p>
+                      <p className="text-[11px] text-slate-500 font-mono mt-0.5">Pricing by quote (ADR-06)</p>
                     </div>
                   ) : (
                     <div>

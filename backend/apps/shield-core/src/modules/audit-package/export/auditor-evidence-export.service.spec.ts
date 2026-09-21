@@ -48,8 +48,13 @@ describe('AuditorEvidenceExportService', () => {
       ]),
     );
     expect(result.merkleRoot).toHaveLength(64);
-    expect(result.pqcSignatureDilithium3).toBeDefined();
-    expect(result.classicalSignatureEd25519).toBeDefined();
+    // Honest: a digest, and explicitly unsigned - no fake signature fields.
+    expect(result.manifestDigestSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(result.signatureStatus).toBe('UNSIGNED');
+    expect((result as any).pqcSignatureDilithium3).toBeUndefined();
+    expect(result.knownLimitations.disclosures.join(' ')).toMatch(
+      /not cryptographically signed/,
+    );
     expect(result.chainOfCustodyAuditTrail).toHaveLength(2);
   });
 });

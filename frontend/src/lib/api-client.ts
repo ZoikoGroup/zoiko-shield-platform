@@ -76,9 +76,15 @@ export class ZoikoShieldApiClient {
       const state = getState();
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
-        "x-tenant-id": state.tenant?.id || "00000000-0000-4000-8000-000000000001",
-        "x-environment-id": state.tenant?.environmentName || "PRODUCTION",
       };
+      // Only send tenant context that actually exists. This used to fall back
+      // to a made-up tenant id, which the backend correctly rejects as a
+      // tenant mismatch - and the failed call then silently fell through to
+      // demo data below.
+      if (state.tenant?.id) headers["x-tenant-id"] = state.tenant.id;
+      if (state.tenant?.environmentName) {
+        headers["x-environment-id"] = state.tenant.environmentName;
+      }
       if (state.session?.token) {
         headers["Authorization"] = `Bearer ${state.session.token}`;
       }
@@ -2112,7 +2118,7 @@ export class ZoikoShieldApiClient {
           serviceName: "Post-Quantum Cryptographic Audit Ledger",
           category: "TRUST",
           publicOutcomeDescription:
-            "Tamper-evident Merkle epoch tree anchored with ML-DSA (Dilithium3) and Falcon post-quantum signatures.",
+            "Tamper-evident Merkle epoch tree; checkpoints dual-signed with ECDSA P-256 and ML-DSA-65.",
           status: "CORE",
           substantiatingComponents: ["shield-anchor", "verifier-cli"],
           includedCapabilities: ["MERKLE_ANCHORING", "PQC_SIGNATURES", "INDEPENDENT_VERIFICATION"],
@@ -2308,7 +2314,7 @@ export class ZoikoShieldApiClient {
               customerService: "Post-Quantum Cryptographic Audit Ledger",
               status: "CORE",
               substantiatingSatellites: ["shield-anchor"],
-              governanceRationale: "Hardware root-of-trust attestation active across cryptographic anchors.",
+              governanceRationale: "Merkle checkpoints dual-signed (ECDSA P-256 + ML-DSA-65) by shield-anchor.",
             },
           ],
         },
@@ -2388,15 +2394,15 @@ export class ZoikoShieldApiClient {
           tagline: "Foundational MDR & Post-Quantum Compliance",
           description: "For growing organizations requiring continuous threat detection, compliance automation, and post-quantum proof ledger.",
           pricing: {
-            monthlyUsd: 2000,
-            annualBilledMonthlyUsd: 1800,
-            isContractOnly: false,
+            monthlyUsd: null,
+            annualBilledMonthlyUsd: null,
+            isContractOnly: true,
             currency: "USD",
           },
           allocations: {
             maxProtectedAssets: 250,
             includedTelemetryGbPerDay: 25,
-            incidentResponseSlaHours: 4,
+            incidentResponseSlaHours: null,
             retentionDays: 90,
             includedRetainerHoursPerYear: 0,
           },
@@ -2421,15 +2427,15 @@ export class ZoikoShieldApiClient {
           tagline: "Advanced SecOps, Attack Path Graphs & AI Copilot",
           description: "For mid-market enterprises requiring deep attack graph analysis, AI security copilot, and 1-hour response SLAs.",
           pricing: {
-            monthlyUsd: 4000,
-            annualBilledMonthlyUsd: 3600,
-            isContractOnly: false,
+            monthlyUsd: null,
+            annualBilledMonthlyUsd: null,
+            isContractOnly: true,
             currency: "USD",
           },
           allocations: {
             maxProtectedAssets: 1000,
             includedTelemetryGbPerDay: 100,
-            incidentResponseSlaHours: 1,
+            incidentResponseSlaHours: null,
             retentionDays: 365,
             includedRetainerHoursPerYear: 20,
           },
@@ -2463,15 +2469,15 @@ export class ZoikoShieldApiClient {
           tagline: "Full-Spectrum Defense, Continuous Validation & 24/7 MDR",
           description: "For highly regulated institutions requiring continuous 24/7 SOC operations, defensive posture verification, and rapid containment.",
           pricing: {
-            monthlyUsd: 8000,
-            annualBilledMonthlyUsd: 7200,
-            isContractOnly: false,
+            monthlyUsd: null,
+            annualBilledMonthlyUsd: null,
+            isContractOnly: true,
             currency: "USD",
           },
           allocations: {
             maxProtectedAssets: 5000,
             includedTelemetryGbPerDay: 500,
-            incidentResponseSlaHours: 0.25,
+            incidentResponseSlaHours: null,
             retentionDays: 730,
             includedRetainerHoursPerYear: 50,
           },
@@ -2494,7 +2500,7 @@ export class ZoikoShieldApiClient {
           ],
           governanceFeatures: [
             "Rule SVC-01 Verified Operational Readiness",
-            "Cryptographic Simulation Receipts with Enclave Proof",
+            "Signed Simulation Receipts",
             "Multi-party Quorum Approval for R4 Network Freezes",
           ],
           supportModel: "Dedicated Lead Incident Commander & War Room Bridge",
@@ -2513,7 +2519,7 @@ export class ZoikoShieldApiClient {
           allocations: {
             maxProtectedAssets: null,
             includedTelemetryGbPerDay: null,
-            incidentResponseSlaHours: 1,
+            incidentResponseSlaHours: null,
             retentionDays: 2555,
             includedRetainerHoursPerYear: 100,
           },
@@ -2530,7 +2536,7 @@ export class ZoikoShieldApiClient {
           ],
           highlightedFeatures: [
             "Unlimited Custom Asset & Telemetry Bands",
-            "Dedicated Single-Tenant Sovereign Regional Enclaves",
+            "Dedicated Single-Tenant Regional Cell",
             "Bring-Your-Own-KMS (BYOK) Hardware Key Control",
             "Custom Statutory Assurance Packs & Bespoke SLAs",
             "100+ Included Retainer Hours with Tier-3 Forensics",
@@ -2582,30 +2588,30 @@ export class ZoikoShieldApiClient {
           {
             key: "SHIELD_ESSENTIAL",
             displayName: "Shield Essential",
-            pricing: { monthlyUsd: 2000, annualBilledMonthlyUsd: 1800, isContractOnly: false, currency: "USD" },
-            allocations: { maxProtectedAssets: 250, includedTelemetryGbPerDay: 25, incidentResponseSlaHours: 4, retentionDays: 90, includedRetainerHoursPerYear: 0 },
+            pricing: { monthlyUsd: null, annualBilledMonthlyUsd: null, isContractOnly: true, currency: "USD" },
+            allocations: { maxProtectedAssets: 250, includedTelemetryGbPerDay: 25, incidentResponseSlaHours: null, retentionDays: 90, includedRetainerHoursPerYear: 0 },
             highlightedFeatures: ["250 Protected Assets", "25 GB/day Telemetry", "SOC 2 & ISO 27001", "Dilithium3 Ledger"],
           },
           {
             key: "SHIELD_PROFESSIONAL",
             displayName: "Shield Professional",
-            pricing: { monthlyUsd: 4000, annualBilledMonthlyUsd: 3600, isContractOnly: false, currency: "USD" },
-            allocations: { maxProtectedAssets: 1000, includedTelemetryGbPerDay: 100, incidentResponseSlaHours: 1, retentionDays: 365, includedRetainerHoursPerYear: 20 },
+            pricing: { monthlyUsd: null, annualBilledMonthlyUsd: null, isContractOnly: true, currency: "USD" },
+            allocations: { maxProtectedAssets: 1000, includedTelemetryGbPerDay: 100, incidentResponseSlaHours: null, retentionDays: 365, includedRetainerHoursPerYear: 20 },
             highlightedFeatures: ["1,000 Assets", "Attack Path Graph", "AI Copilot", "20 Retainer Hours"],
           },
           {
             key: "SHIELD_ADVANCED",
             displayName: "Shield Advanced",
-            pricing: { monthlyUsd: 8000, annualBilledMonthlyUsd: 7200, isContractOnly: false, currency: "USD" },
-            allocations: { maxProtectedAssets: 5000, includedTelemetryGbPerDay: 500, incidentResponseSlaHours: 1, retentionDays: 730, includedRetainerHoursPerYear: 50 },
+            pricing: { monthlyUsd: null, annualBilledMonthlyUsd: null, isContractOnly: true, currency: "USD" },
+            allocations: { maxProtectedAssets: 5000, includedTelemetryGbPerDay: 500, incidentResponseSlaHours: null, retentionDays: 730, includedRetainerHoursPerYear: 50 },
             highlightedFeatures: ["5,000 Assets", "Managed Defense", "Defensive Control Validation", "Governed Containment"],
           },
           {
             key: "SHIELD_ENTERPRISE",
             displayName: "Shield Enterprise",
             pricing: { monthlyUsd: null, annualBilledMonthlyUsd: null, isContractOnly: true, currency: "USD" },
-            allocations: { maxProtectedAssets: null, includedTelemetryGbPerDay: null, incidentResponseSlaHours: 1, retentionDays: 2555, includedRetainerHoursPerYear: 100 },
-            highlightedFeatures: ["Sovereign Enclaves", "BYOK Control", "Custom SLAs", "7-Year Retention"],
+            allocations: { maxProtectedAssets: null, includedTelemetryGbPerDay: null, incidentResponseSlaHours: null, retentionDays: 2555, includedRetainerHoursPerYear: 100 },
+            highlightedFeatures: ["Dedicated Regional Cell", "BYOK Control", "Custom SLAs", "7-Year Retention"],
           },
         ];
 
@@ -2771,11 +2777,11 @@ export class ZoikoShieldApiClient {
       },
       {
         ruleCode: "GO-01",
-        title: "Post-Quantum Enclave Hardware Root-of-Trust",
+        title: "Signed Merkle Evidence Checkpoints",
         domain: "Trust & Assurance",
-        ruleStatement: "Merkle epoch proofs require hardware-attested Dilithium3 cryptographic signatures.",
+        ruleStatement: "Merkle epoch checkpoints are dual-signed (ECDSA P-256 + ML-DSA-65) and verifiable offline.",
         status: "VERIFIED",
-        verificationSource: "EnclaveAttestation & MerkleTreeSealer",
+        verificationSource: "shield-anchor checkpoint signer & verifier-cli",
         verifiedAt: new Date().toISOString(),
         auditPass: true,
       },

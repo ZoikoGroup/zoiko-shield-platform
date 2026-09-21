@@ -41,34 +41,42 @@ describe('PlanTierService', () => {
     ]);
   });
 
-  it('should return correct pricing and allocations for Shield Essential ($2,000/mo)', () => {
+  // ZS-COM-BILL-001 §161 / ADR-06 / ADR-07: no public price or SLA until the
+  // price book and contractual SLAs are approved. These used to assert
+  // $2,000 / $4,000 / $8,000 and 4h / 2h / 1h - i.e. they locked the
+  // unapproved commitments in place.
+  it('publishes no price and no SLA for any tier while ADR-06/ADR-07 are open', () => {
+    for (const plan of service.getAllPlanTiers()) {
+      expect(plan.pricing.monthlyUsd).toBeNull();
+      expect(plan.pricing.annualBilledMonthlyUsd).toBeNull();
+      expect(plan.pricing.isContractOnly).toBe(true);
+      expect(plan.allocations.incidentResponseSlaHours).toBeNull();
+      const text = [
+        ...plan.highlightedFeatures,
+        ...plan.governanceFeatures,
+        plan.supportModel,
+      ].join(' ');
+      expect(text).not.toMatch(
+        /\b\d+\s*-?\s*(?:h|hour)s?\b.*\bSLA\b|\bSLA\b.*\b\d+\s*h\b/i,
+      );
+    }
+  });
+
+  it('keeps the sizing bands the recommender uses', () => {
     const essential = service.getPlanTierByKey('SHIELD_ESSENTIAL');
-    expect(essential.pricing.monthlyUsd).toBe(2000);
-    expect(essential.pricing.annualBilledMonthlyUsd).toBe(1800);
     expect(essential.allocations.maxProtectedAssets).toBe(250);
     expect(essential.allocations.includedTelemetryGbPerDay).toBe(10);
-    expect(essential.allocations.incidentResponseSlaHours).toBe(4);
     expect(essential.includedOffers).toContain('CONTINUOUS_ASSURANCE');
     expect(essential.includedOffers).toContain('INCIDENT_RESPONSE_RETAINER');
-  });
 
-  it('should return correct pricing and allocations for Shield Professional ($4,000/mo)', () => {
     const pro = service.getPlanTierByKey('SHIELD_PROFESSIONAL');
-    expect(pro.pricing.monthlyUsd).toBe(4000);
     expect(pro.allocations.maxProtectedAssets).toBe(1000);
     expect(pro.allocations.includedTelemetryGbPerDay).toBe(50);
-    expect(pro.allocations.incidentResponseSlaHours).toBe(2);
     expect(pro.includedOffers).toContain('MANAGED_DEFENSE');
-    expect(pro.includedOffers).toContain('CONTINUOUS_ASSURANCE');
-    expect(pro.includedOffers).toContain('EXPOSURE_MANAGEMENT');
-  });
 
-  it('should return correct pricing and allocations for Shield Advanced ($8,000/mo)', () => {
     const advanced = service.getPlanTierByKey('SHIELD_ADVANCED');
-    expect(advanced.pricing.monthlyUsd).toBe(8000);
     expect(advanced.allocations.maxProtectedAssets).toBe(5000);
     expect(advanced.allocations.includedTelemetryGbPerDay).toBe(250);
-    expect(advanced.allocations.incidentResponseSlaHours).toBe(1);
     expect(advanced.includedOffers).toContain('AI_SECURITY');
   });
 

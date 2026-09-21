@@ -140,14 +140,14 @@ const SECTOR_PACKS: SectorPack[] = [
     icon: <Lock className="w-6 h-6 text-amber-400" />,
     tagline: "Dedicated Sovereign Partition, BYOK & Zero External Telemetry Egress",
     description:
-      "Designed for national security agencies, public utilities, and sovereign clouds requiring single-tenant isolated cells with customer-held HSM keys and Dilithium3 signatures.",
+      "Designed for national security agencies, public utilities, and sovereign clouds requiring single-tenant isolated cells, customer-managed keys and dual-signed evidence checkpoints.",
     targetRegimes: ["FedRAMP High (Alignment)", "NIST SP 800-53 Rev 5", "FIPS 204 (ML-DSA)"],
     statutoryCaveat:
       "Requires Shield Enterprise plan with dedicated sovereign cell provisioning, customer-managed keys (BYOK), and regional isolation parameters.",
     tailoredFeatures: [
       "Single-Tenant Dedicated Partition with Bring-Your-Own-KMS (BYOK)",
       "Zero telemetry data leaves national geopolitical boundary",
-      "Post-quantum ML-DSA (Dilithium3) root-of-trust hardware signing",
+      "Evidence checkpoints dual-signed with ECDSA P-256 + ML-DSA-65",
       "Bespoke statutory compliance auditing and formal source escrow",
     ],
     recommendedPlan: "Shield Enterprise (Contract Only)",

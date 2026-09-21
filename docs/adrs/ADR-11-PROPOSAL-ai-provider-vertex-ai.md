@@ -1,10 +1,33 @@
-# ADR-009: Canonical Sovereign AI Model Provider (GCP Vertex AI & ModelArmor) and BYOM Multi-Vendor Governance
+# ADR-11 (Proposal): AI Providers, Models and Data Terms — Vertex AI / Gemini
 
 ## Status
-**Accepted** (Ratified per Sovereign AI Architecture Standard)
+**Proposed — not accepted.** Nothing in this record is ratified.
+
+This was first filed as "ADR-009 … Accepted (Ratified per Sovereign AI Architecture Standard)". That was incorrect on three counts, per the Combined Engineering Specification §30.2 Gate-0 ADR Set:
+
+| Item | Specification | As originally filed |
+| --- | --- | --- |
+| Number | ADR-09 is **Evidence canonicalization and digest profile**; AI providers are **ADR-11** | ADR-009 |
+| Owner / acceptor | **AI Risk Committee / Security / Legal** | Self-ratified by engineering |
+| Deadline | Before production AI | — |
+| Default until accepted | **Gateway only; no customer training; deterministic fallback** | Vertex AI declared canonical |
+| Acceptance proof | **DPA / region / retention, evaluation and kill-switch evidence** | None attached |
+
+"Sovereign AI Architecture Standard" does not exist in the controlled specification set. The specification also requires provider neutrality (§4324: provider selection "may not leak into domain contracts"; §4452 lists "provider product names treated as architecture" as an anti-pattern).
 
 ## Date
-2026-09-21
+Proposed 2026-09-21. Re-classified as a proposal the same day.
+
+## Current implementation state (verified against the code)
+
+- `ModelArmorSafetyGatewayService` (`shield-ai/src/gateway/`) is a **local regex prompt-injection filter**, not Google Cloud Model Armor, and **no inference path calls it**. The "mandatory ModelArmor Guardrails Proxy" below does not exist yet.
+- `gemini-1.5-pro-002` appears only as `pinnedModelVersion` metadata in `ai-use-case-registry.service.ts`; it does not select a model at runtime.
+- The Gemini and OpenAI providers return a canned "safe offline" response when no API key is configured or the call fails.
+- Claims below about zero retention, regulatory satisfaction (EU AI Act, NIST AI RMF, ISO 42001) and "zero hallucinations" are **unevidenced** and must not be repeated as facts until the acceptance proof above exists.
+
+---
+
+*The remainder is the original proposal text, kept for the ADR-11 decision owners to evaluate. Read "We formally ratify" as "We propose".*
 
 ## Context
 ZoikoShield integrates autonomous AI copilot workflows, real-time alert triage, automated Root Cause Analysis (RCA), and incident decision envelopes. Operating in regulated, sovereign, and multi-tenant environments requires strict controls around:
@@ -14,7 +37,7 @@ ZoikoShield integrates autonomous AI copilot workflows, real-time alert triage, 
 4. **Customer BYOM (Bring Your Own Model) & Multi-Vendor Governance**: Regulated enterprise tenants require options to route intelligence tasks to their own sovereign cloud tenants (AWS Bedrock, Azure OpenAI, self-hosted LLMs) and perform multi-model drift evaluation per §21 / §24 PSI (Population Stability Index) specifications.
 
 ## Decision
-We formally ratify **Google Cloud Vertex AI** with **GCP ModelArmor** as the canonical primary AI provider for ZoikoShield sovereign platform operations.
+We propose **Google Cloud Vertex AI** with **GCP ModelArmor** as the canonical primary AI provider for ZoikoShield sovereign platform operations.
 
 ### Key Architectural Tenets:
 1. **Canonical Model Tiering**:

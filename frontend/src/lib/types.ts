@@ -850,7 +850,8 @@ export interface PlanTierPricing {
 export interface PlanTierAllocations {
   maxProtectedAssets: number | null;
   includedTelemetryGbPerDay: number | null;
-  incidentResponseSlaHours: number;
+  // Null until ADR-07 approves contractual SLAs.
+  incidentResponseSlaHours: number | null;
   retentionDays: number;
   includedRetainerHoursPerYear: number;
 }

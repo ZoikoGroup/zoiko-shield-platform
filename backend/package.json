@@ -74,7 +74,6 @@
     "simulate:attack-path": "ts-node -r tsconfig-paths/register ./scripts/simulate-attack-path-discovery.ts",
     "simulate:host-kernel": "ts-node -r tsconfig-paths/register ./scripts/simulate-host-kernel-telemetry.ts",
     "simulate:break-glass": "ts-node -r tsconfig-paths/register ./scripts/simulate-break-glass-quorum.ts",
-    "simulate:tee-attestation": "ts-node -r tsconfig-paths/register ./scripts/simulate-tee-enclave-attestation.ts",
     "simulate:verifiable-credentials": "ts-node -r tsconfig-paths/register ./scripts/simulate-verifiable-credentials-auth.ts",
     "simulate:zk-proofs": "ts-node -r tsconfig-paths/register ./scripts/simulate-zero-knowledge-proofs.ts",
     "lint:infrastructure-hcl-contracts": "ts-node -r tsconfig-paths/register ./scripts/validate-infrastructure-tofu.ts",

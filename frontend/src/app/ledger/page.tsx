@@ -260,7 +260,7 @@ export default function MerkleLedgerExplorerPage() {
               </div>
 
               <div>
-                <span className="text-slate-500">Dual-Signatures &amp; Enclave Attestation:</span>
+                <span className="text-slate-500">Checkpoint Dual-Signatures:</span>
                 <div className="mt-1.5 space-y-1.5">
                   <div className="p-2 bg-slate-900/60 border border-slate-800 rounded text-[11px] text-slate-300">
                     <div className="flex items-center justify-between font-bold text-cyan-400">
@@ -279,8 +279,8 @@ export default function MerkleLedgerExplorerPage() {
                   {activeReceipt?.enclaveAttestation && (
                     <div className="p-2 bg-slate-900/60 border border-slate-800 rounded text-[10px] text-slate-300 space-y-0.5">
                       <div className="flex items-center justify-between text-purple-400 font-bold">
-                        <span>Hardware Root-of-Trust Digest</span>
-                        <Badge variant="neutral">Hardware HSM</Badge>
+                        <span>Checkpoint Signature Digest</span>
+                        <Badge variant="neutral">ECDSA P-256 + ML-DSA-65</Badge>
                       </div>
                       <div className="truncate text-slate-400 font-mono">{activeReceipt.enclaveAttestation.pcr0}</div>
                     </div>

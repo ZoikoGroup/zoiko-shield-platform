@@ -21,16 +21,13 @@ export class WafIpActionAdapter implements ActionExecutionAdapter {
     return this.supportedActions.has(actionType);
   }
 
-  private readonly containmentActions = new Set([
-    'APPLY_WAF_BLOCK',
-    'QUARANTINE_IP_CIDR',
-  ]);
-
   async execute(context: ActionExecutionContext): Promise<ExecutionReceipt> {
-    if (
-      !context.isSimulation &&
-      this.containmentActions.has(context.actionType)
-    ) {
+    // No live response path before the G1 gate decision is recorded in R02
+    // (spec G1 fail-closed rule). That includes compensating actions:
+    // re-enabling an account or lifting a block is still a live write to a
+    // customer system, and these adapters make no provider call - a LIVE
+    // receipt from them would describe an effect that never happened.
+    if (!context.isSimulation) {
       throw new ForbiddenException(
         'Live R2+ automated response execution is strictly disabled: G1 Release Gate has not been formally ratified by the controlled authorization roster (Master Build Plan §2, §18; Rule G1-01). Only R0 observation and R1 pre-flight simulation are permitted.',
       );

@@ -15,6 +15,7 @@ import { ActionExecutionRegistryService } from '../apps/shield-action/src/execut
 import { EntraUserActionAdapter } from '../apps/shield-action/src/execution-adapters/entra-user.adapter';
 import { EdrIsolateActionAdapter } from '../apps/shield-action/src/execution-adapters/edr-isolate.adapter';
 import { AwsIamActionAdapter } from '../apps/shield-action/src/execution-adapters/aws-iam.adapter';
+import { WafIpActionAdapter } from '../apps/shield-action/src/execution-adapters/waf-ip.adapter';
 import { CedarTenantIsolationService } from '../apps/shield-action/src/policy/cedar-tenant-isolation.service';
 import { TemporalContainmentEscalationService } from '../apps/shield-action/src/orchestration/temporal-containment-escalation.service';
 
@@ -43,7 +44,6 @@ import { DistributedLeaseCoordinatorService } from '../apps/shield-anchor/src/co
 import { AdaptiveTraceSamplerService } from '../apps/shield-ingest/src/sampling/adaptive-trace-sampler.service';
 import { KmsHealthRebalancerService } from '../apps/shield-core/src/modules/crypto-escrow/kms-health-rebalancer.service';
 import { AutonomousRedTeamAgentService } from '../apps/shield-ai/src/adversarial/autonomous-red-team-agent.service';
-import { ConfidentialEnclaveBridgeService } from '../apps/shield-anchor/src/enclave/confidential-enclave-bridge.service';
 import { AdaptiveCongestionManagerService } from '../apps/shield-ingest/src/flow-control/adaptive-congestion-manager.service';
 import { JitSessionEnforcerService } from '../apps/shield-core/src/modules/authorization/jit-session-enforcer.service';
 import { PlaybookOptimizerAgentService } from '../apps/shield-ai/src/optimization/playbook-optimizer-agent.service';
@@ -365,7 +365,7 @@ async function runFullPlatformVerifier() {
   const entraAdapter = new EntraUserActionAdapter();
   const edrAdapter = new EdrIsolateActionAdapter();
   const awsAdapter = new AwsIamActionAdapter();
-  const actionRegistry = new ActionExecutionRegistryService(entraAdapter, edrAdapter, awsAdapter);
+  const actionRegistry = new ActionExecutionRegistryService(entraAdapter, edrAdapter, awsAdapter, new WafIpActionAdapter());
 
   // -------------------------------------------------------------------------
   // Stage 13 (LAB 15): Governed SOAR Action: AWS IAM Session Invalidation
@@ -751,34 +751,9 @@ async function runFullPlatformVerifier() {
   stepsPassed++;
 
   // -------------------------------------------------------------------------
-  // Stage 24 (LAB 24): Confidential Enclave, Congestion Control, JIT Step-Up & Playbook Optimizer
+  // Stage 24 (LAB 24): Congestion Control, JIT Step-Up & Playbook Optimizer
   // -------------------------------------------------------------------------
-  logger.log('\n[Stage 24/24] Confidential Enclave Bridge, Adaptive Congestion Manager, JIT Hardware Step-Up & Playbook Self-Tuning...');
-
-  // 1. Confidential Enclave Multi-Party Bridge
-  const enclaveBridge = new ConfidentialEnclaveBridgeService();
-  const enclaveMeasurement = 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
-  const enclaveAttestation = enclaveBridge.verifyAttestationQuote(
-    {
-      enclaveId: 'enclave-aws-mpe-01',
-      platform: 'AWS_ENCLAVE',
-      pcr0: enclaveMeasurement,
-      pcr1: 'a1b2c3d4e5f60000000000000000000000000000000000000000000000000000',
-      pcr2: 'f6e5d4c3b2a10000000000000000000000000000000000000000000000000000',
-      hardwareRootOfTrust: 'aws-hardware-pki-chain-thumbprint-99',
-      enclavePublicKeyPem: '-----BEGIN PUBLIC KEY-----\nMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8A...\n-----END PUBLIC KEY-----',
-      signature: '3045022100a1b2c3d4e5f6...valid_hardware_enclave_sig',
-      timestamp: new Date().toISOString(),
-    },
-    enclaveMeasurement,
-  );
-  const enclaveReceipt = enclaveBridge.generateEnclaveReceipt(
-    enclaveAttestation.eatId,
-    tenantA.id,
-    'sha256-input-threat-graph',
-    'sha256-output-ioc-graph',
-  );
-  logger.log(`  ✔ Confidential Enclave Bridge: Verified=${enclaveAttestation.verified} (Status: ${enclaveAttestation.status}), EAT='${enclaveAttestation.eatId}', Sealed Receipt='${enclaveReceipt.receiptId}'`);
+  logger.log('\n[Stage 24/24] Adaptive Congestion Manager, JIT Hardware Step-Up & Playbook Self-Tuning...');
 
   // 2. Real-Time Adaptive Flow-Control & Congestion Manager
   const congestionManager = new AdaptiveCongestionManagerService();

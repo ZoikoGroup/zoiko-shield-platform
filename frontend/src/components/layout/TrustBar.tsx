@@ -59,10 +59,10 @@ export const TrustBar: React.FC = () => {
 
       {/* Trust & Identity Context */}
       <div className="flex items-center gap-3">
-        {/* Root of Trust Badge */}
+        {/* Evidence integrity badge */}
         <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-purple-950/40 border border-purple-500/30 text-purple-300 text-xs font-mono">
           <Lock className="w-3.5 h-3.5 text-purple-400" />
-          <span className="hidden md:inline">Root-of-Trust:</span> Hardware HSM Validated
+          <span className="hidden md:inline">Evidence:</span> Signed Merkle checkpoints
         </div>
 
         {/* System Health */}

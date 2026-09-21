@@ -25,8 +25,8 @@ describe('LAB 15 — Action Broker & Governed Response Hard Boundaries', () => {
       const metadata = hsmSigner.getActiveKeyMetadata();
       expect(metadata.keyId).toBeDefined();
       expect(metadata.publicKeyPem).toBeDefined();
-      expect(metadata.hsmEnclaveId).toBe('gcp-cloud-hsm-us-east1-cluster01');
-      expect(metadata.fipsLevel).toBe('FIPS_140_3_LEVEL_3');
+      expect(metadata.hsmEnclaveId).toBe('NONE_SOFTWARE_KEY');
+      expect(metadata.fipsLevel).toBe('NOT_VALIDATED');
 
       // The public metadata contract must NEVER contain privateKeyPem
       expect((metadata as any).privateKeyPem).toBeUndefined();

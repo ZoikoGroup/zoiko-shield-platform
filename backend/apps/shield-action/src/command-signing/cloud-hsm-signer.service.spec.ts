@@ -11,7 +11,8 @@ describe('CloudHsmSignerService', () => {
     const meta = signer.getActiveKeyMetadata();
     expect(meta.keyId).toBeDefined();
     expect(meta.algorithm).toBe('ECDSA_P256_SHA256');
-    expect(meta.fipsLevel).toBe('FIPS_140_3_LEVEL_3');
+    // No HSM is involved, so no FIPS validation may be claimed.
+    expect(meta.fipsLevel).toBe('NOT_VALIDATED');
     expect(meta.publicKeyPem).toContain('BEGIN PUBLIC KEY');
   });
 
@@ -25,7 +26,9 @@ describe('CloudHsmSignerService', () => {
 
     const signed = signer.sign(command, 'LIVE');
     expect(signed.signature.startsWith('hsm:')).toBe(true);
-    expect(signed.signedBy).toContain('CloudHSM');
+    // The key lives in process memory, so provenance must not claim an HSM.
+    expect(signed.signedBy).toMatch(/^SoftwareKey:/);
+    expect(signed.signedBy).not.toContain('HSM');
 
     const isValid = signer.verifySignature(command, 'LIVE', signed.signature);
     expect(isValid).toBe(true);

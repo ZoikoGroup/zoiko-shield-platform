@@ -83,8 +83,13 @@ describe('Evidence Decay to Control Degradation Linkage & Auditor Export Disclos
       expect(exportPackage.knownLimitations.disclosures[0]).toContain(
         'All continuous telemetry streams are fresh',
       );
-      expect(exportPackage.pqcSignatureDilithium3).toBeDefined();
-      expect(exportPackage.classicalSignatureEd25519).toBeDefined();
+      // Honest: a digest, and explicitly unsigned - no fake signature fields.
+      expect(exportPackage.manifestDigestSha256).toMatch(/^[0-9a-f]{64}$/);
+      expect(exportPackage.signatureStatus).toBe('UNSIGNED');
+      expect((exportPackage as any).pqcSignatureDilithium3).toBeUndefined();
+      expect(exportPackage.knownLimitations.disclosures.join(' ')).toMatch(
+        /not cryptographically signed/,
+      );
     });
 
     it('4. should downgrade overall posture to REVIEW_REQUIRED and disclose stale evidence records', async () => {

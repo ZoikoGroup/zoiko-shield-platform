@@ -23,6 +23,13 @@ export interface ActionReceipt {
   afterState: Record<string, unknown>;
   compensatingAction: CompensatingActionDefinition;
   rollbackToken: string;
+  /**
+   * Whether the original action ran against a real system. A rollback must
+   * run in the same mode: undoing a simulated action is itself a simulation,
+   * never a live write (spec G1 fail-closed rule: no live response path may
+   * be enabled before the G1 gate decision is recorded).
+   */
+  executionMode: 'SIMULATED' | 'LIVE';
   executedAt: Date;
   rolledBackAt?: Date;
 }
@@ -42,6 +49,8 @@ export class ActionRollbackBrokerService {
     beforeState: Record<string, unknown>;
     afterState: Record<string, unknown>;
     compensatingAction: CompensatingActionDefinition;
+    /** Defaults to SIMULATED: nothing may be recorded as live by omission. */
+    executionMode?: 'SIMULATED' | 'LIVE';
   }): ActionReceipt {
     const receiptId = `rcpt-${crypto.randomUUID()}`;
     const rollbackToken = `rb-tok-${crypto.randomUUID()}`;
@@ -57,6 +66,7 @@ export class ActionRollbackBrokerService {
       afterState: params.afterState,
       compensatingAction: params.compensatingAction,
       rollbackToken,
+      executionMode: params.executionMode ?? 'SIMULATED',
       executedAt: new Date(),
     };
 
@@ -83,7 +93,10 @@ export class ActionRollbackBrokerService {
   async executeRollback(
     tenantId: string,
     rollbackToken: string,
-    executor?: (comp: CompensatingActionDefinition) => Promise<boolean>,
+    executor?: (
+      comp: CompensatingActionDefinition,
+      original: ActionReceipt,
+    ) => Promise<boolean>,
   ): Promise<ActionReceipt> {
     const receiptId = this.tokenToReceiptId.get(rollbackToken);
     if (!receiptId) {
@@ -104,7 +117,7 @@ export class ActionRollbackBrokerService {
     );
 
     if (executor) {
-      await executor(receipt.compensatingAction);
+      await executor(receipt.compensatingAction, receipt);
     }
 
     receipt.status = 'ROLLED_BACK';

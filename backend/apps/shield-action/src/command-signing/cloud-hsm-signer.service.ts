@@ -37,8 +37,13 @@ export class CloudHsmSignerService implements CommandSigner {
       algorithm: 'ECDSA_P256_SHA256',
       publicKeyPem: publicKey,
       privateKeyPem: privateKey,
-      hsmEnclaveId: 'gcp-cloud-hsm-us-east1-cluster01',
-      fipsLevel: 'FIPS_140_3_LEVEL_3',
+      // Honest custody metadata. This key is generated in process memory by
+      // Node's crypto module - it is not held in, or attested by, any HSM,
+      // and no FIPS validation applies. Reporting a cloud HSM cluster and a
+      // FIPS level here fabricated key-custody provenance; the spec requires
+      // HSM/KMS custody as a control still to be built, not a label.
+      hsmEnclaveId: 'NONE_SOFTWARE_KEY',
+      fipsLevel: 'NOT_VALIDATED',
       createdAt: new Date().toISOString(),
     };
   }
@@ -76,7 +81,7 @@ export class CloudHsmSignerService implements CommandSigner {
 
     return {
       signature: `hsm:${this.activeKey.keyId}:${signatureDer}`,
-      signedBy: `CloudHSM:${this.activeKey.hsmEnclaveId}`,
+      signedBy: `SoftwareKey:${this.activeKey.keyId}`,
       signedAt: new Date().toISOString(),
     };
   }

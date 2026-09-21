@@ -4,7 +4,7 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { APPROVED_PLAN_TIERS, PlanTier, PlanTierKey } from './plan-tier.entity';
+import { DRAFT_PLAN_TIERS, PlanTier, PlanTierKey } from './plan-tier.entity';
 import { OfferEntitlementService } from '../offer-entitlement.service';
 
 export class PlanRecommendationRequest {
@@ -32,7 +32,7 @@ export class PlanTierService {
    * Return all approved commercial plan tiers.
    */
   getAllPlanTiers(): PlanTier[] {
-    return [...APPROVED_PLAN_TIERS];
+    return [...DRAFT_PLAN_TIERS];
   }
 
   /**
@@ -40,7 +40,7 @@ export class PlanTierService {
    */
   getPlanTierByKey(key: string): PlanTier {
     const normalizedKey = key.toUpperCase().trim() as PlanTierKey;
-    const plan = APPROVED_PLAN_TIERS.find((p) => p.key === normalizedKey);
+    const plan = DRAFT_PLAN_TIERS.find((p) => p.key === normalizedKey);
     if (!plan) {
       throw new NotFoundException(
         `Plan tier with key '${key}' not found in approved catalogue`,

@@ -20,14 +20,12 @@ import { HttpWitnessProvider } from './witnesses/http-witness-provider.service';
 import { Rfc3161WitnessService } from './witnesses/rfc3161/rfc3161-witness.service';
 import { EpochAggregatorService } from './merkle/epoch-aggregator.service';
 import { PqcDualSignerService } from './signing/pqc-dual-signer.service';
-import { TeeEnclaveAttestationService } from './enclave/tee-enclave-attestation.service';
 import { ZeroKnowledgeComplianceProofService } from './zk/zero-knowledge-compliance-proof.service';
 import { PqcBftConsensusService } from './consensus/pqc-bft-consensus.service';
 import { CosignBinaryAttestorService } from './supply-chain/cosign-binary-attestor.service';
 import { SbomDriftVerifierService } from './supply-chain/sbom-drift-verifier.service';
 import { BatchMerkleCheckpointerService } from './merkle/batch-merkle-checkpointer.service';
 import { DistributedLeaseCoordinatorService } from './consensus/distributed-lease-coordinator.service';
-import { ConfidentialEnclaveBridgeService } from './enclave/confidential-enclave-bridge.service';
 
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
@@ -51,14 +49,12 @@ import { ConfidentialEnclaveBridgeService } from './enclave/confidential-enclave
     Rfc3161WitnessService,
     EpochAggregatorService,
     PqcDualSignerService,
-    TeeEnclaveAttestationService,
     ZeroKnowledgeComplianceProofService,
     PqcBftConsensusService,
     CosignBinaryAttestorService,
     SbomDriftVerifierService,
     BatchMerkleCheckpointerService,
     DistributedLeaseCoordinatorService,
-    ConfidentialEnclaveBridgeService,
     CheckpointBuilderService,
   ],
   exports: [
@@ -66,14 +62,12 @@ import { ConfidentialEnclaveBridgeService } from './enclave/confidential-enclave
     EpochAggregatorService,
     MerkleTreeService,
     PqcDualSignerService,
-    TeeEnclaveAttestationService,
     ZeroKnowledgeComplianceProofService,
     PqcBftConsensusService,
     CosignBinaryAttestorService,
     SbomDriftVerifierService,
     BatchMerkleCheckpointerService,
     DistributedLeaseCoordinatorService,
-    ConfidentialEnclaveBridgeService,
   ],
 })
 export class ShieldAnchorModule {}

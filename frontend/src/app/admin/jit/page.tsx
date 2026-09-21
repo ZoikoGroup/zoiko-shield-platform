@@ -169,7 +169,7 @@ export default function JitEnclavePage() {
             Platform Admin: Support Access & Dual-Approval JIT
           </h1>
           <p className="text-sm text-slate-400">
-            Time-decaying Just-In-Time cross-tenant access gated by peer admin dual-approval on `shield-core:3001` with Hardware HSM cryptographic key isolation.
+            Time-decaying Just-In-Time cross-tenant access gated by peer admin dual-approval on `shield-core:3001` with signed, time-bound approval records.
           </p>
         </div>
 
@@ -274,8 +274,8 @@ export default function JitEnclavePage() {
 
           <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5 font-mono text-xs text-slate-300">
             <div className="flex justify-between">
-              <span className="text-slate-500">HSM MODULE TYPE:</span>
-              <span className="text-purple-400 font-bold">FIPS 140-2 Level 3 HSM</span>
+              <span className="text-slate-500">SIGNING KEY CUSTODY:</span>
+              <span className="text-purple-400 font-bold">Software-managed (HSM/KMS custody not yet in place)</span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">KEY DERIVATION DIGEST:</span>
@@ -294,8 +294,8 @@ export default function JitEnclavePage() {
               <span className="text-emerald-400">NONCE_998124_VALID</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">ROOT OF TRUST:</span>
-              <span className="text-slate-200">Corporate Hardware PKI (X.509)</span>
+              <span className="text-slate-500">TRUST ANCHOR:</span>
+              <span className="text-slate-200">Corporate PKI (X.509)</span>
             </div>
           </div>
 
