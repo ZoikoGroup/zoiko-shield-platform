@@ -77,7 +77,8 @@ export class MdrServiceObligationService {
           requiresQuorumApproval: true,
         },
       ],
-      operationalProofReference: 'evidence://soc/q3-24x7-shift-audit-attestation-v1',
+      operationalProofReference:
+        'evidence://soc/q3-24x7-shift-audit-attestation-v1',
       lastReadinessAuditDate: new Date(),
       verifiedBy: 'SecOps-Compliance-Lead',
     };
@@ -92,11 +93,18 @@ export class MdrServiceObligationService {
   assert24x7ClaimPermitted(contractId: string): void {
     const obligation = this.obligations.get(contractId);
     if (!obligation) {
-      throw new NotFoundException(`No MDR Service Obligation recorded for contract '${contractId}'`);
+      throw new NotFoundException(
+        `No MDR Service Obligation recorded for contract '${contractId}'`,
+      );
     }
 
-    if (obligation.coverageTier === 'CONTINUOUS_24X7' && obligation.readinessStatus !== 'OPERATIONALLY_PROVEN') {
-      this.logger.warn(`Rule SVC-01 Violation: Attempted 24/7 SOC claim for unproven contract '${contractId}'`);
+    if (
+      obligation.coverageTier === 'CONTINUOUS_24X7' &&
+      obligation.readinessStatus !== 'OPERATIONALLY_PROVEN'
+    ) {
+      this.logger.warn(
+        `Rule SVC-01 Violation: Attempted 24/7 SOC claim for unproven contract '${contractId}'`,
+      );
       throw new ConflictException(
         `Rule SVC-01 Enforcement: 24/7 SOC claim prohibited for contract '${contractId}' until shift staffing and escalation economics are operationally proven (current status: ${obligation.readinessStatus}).`,
       );
@@ -109,7 +117,9 @@ export class MdrServiceObligationService {
   getObligation(contractId: string): MdrServiceObligation {
     const obligation = this.obligations.get(contractId);
     if (!obligation) {
-      throw new NotFoundException(`MDR Service Obligation for contract '${contractId}' not found`);
+      throw new NotFoundException(
+        `MDR Service Obligation for contract '${contractId}' not found`,
+      );
     }
     return obligation;
   }
@@ -118,7 +128,9 @@ export class MdrServiceObligationService {
    * Register or update contractual MDR service obligations.
    */
   registerObligation(dto: RegisterObligationDto): MdrServiceObligation {
-    const isProven = dto.operationalProofRef && dto.staffingSchedule.shiftHandoffProtocolProven;
+    const isProven =
+      dto.operationalProofRef &&
+      dto.staffingSchedule.shiftHandoffProtocolProven;
     const readinessStatus: OperationalReadinessStatus = isProven
       ? 'OPERATIONALLY_PROVEN'
       : 'CONTINGENT';
@@ -154,7 +166,9 @@ export class MdrServiceObligationService {
   verifyOperationalReadiness(dto: VerifyReadinessDto): MdrServiceObligation {
     const obligation = this.obligations.get(dto.contractId);
     if (!obligation) {
-      throw new NotFoundException(`MDR Service Obligation for contract '${dto.contractId}' not found`);
+      throw new NotFoundException(
+        `MDR Service Obligation for contract '${dto.contractId}' not found`,
+      );
     }
 
     if (!dto.passed24x7ShiftAudit) {

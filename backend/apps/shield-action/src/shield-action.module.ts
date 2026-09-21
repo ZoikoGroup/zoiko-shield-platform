@@ -108,7 +108,7 @@ import { CompensatingActionService } from './rollback/compensating-action.servic
     Fido2StepupGuardService,
     DisasterRecoveryPartitionService,
     CspmRemediationEngineService,
-    EbpfNetworkEnforcerService,
+    HostNetworkEnforcerService,
     SoarCircuitBreakerService,
     CedarTenantIsolationService,
     SignedCommandBrokerService,

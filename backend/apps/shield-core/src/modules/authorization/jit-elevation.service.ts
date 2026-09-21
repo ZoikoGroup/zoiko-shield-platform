@@ -369,9 +369,11 @@ export class JitElevationService {
   /**
    * Validates cryptographic FIDO2/WebAuthn hardware step-up challenge.
    */
-  async verifyStepUpChallenge(
-    input: VerifyStepUpChallengeInput,
-  ): Promise<{ verified: boolean; hardwareProofDigest: string; verifiedAt: string }> {
+  async verifyStepUpChallenge(input: VerifyStepUpChallengeInput): Promise<{
+    verified: boolean;
+    hardwareProofDigest: string;
+    verifiedAt: string;
+  }> {
     const request = await this.jitRequestRepo.findOne({
       where: { id: input.requestId },
     });
@@ -388,7 +390,10 @@ export class JitElevationService {
 
     // Compute cryptographic hardware attestation digest
     const proofPayload = `${input.requestId}:${input.clientDataJson}:${input.authenticatorData || 'direct'}:${input.signature}`;
-    const hardwareProofDigest = crypto.createHash('sha256').update(proofPayload).digest('hex');
+    const hardwareProofDigest = crypto
+      .createHash('sha256')
+      .update(proofPayload)
+      .digest('hex');
 
     // Record customer-visible audit event for hardware step-up attestation
     await this.recordCustomerAuditEvent({

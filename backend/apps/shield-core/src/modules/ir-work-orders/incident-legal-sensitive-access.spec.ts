@@ -1,4 +1,8 @@
-import { ConflictException, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { IncidentWorkOrderService } from './incident-work-order.service';
 
 describe('IncidentLegalSensitiveAccess purpose-bound and privilege controls (§16.4)', () => {
@@ -56,7 +60,9 @@ describe('IncidentLegalSensitiveAccess purpose-bound and privilege controls (§1
         ),
       ).rejects.toThrow(BadRequestException);
 
-      expect(prisma.incidentLegalSensitiveRecord.findMany).not.toHaveBeenCalled();
+      expect(
+        prisma.incidentLegalSensitiveRecord.findMany,
+      ).not.toHaveBeenCalled();
     });
 
     it('rejects access when work order does not belong to tenant', async () => {
@@ -84,7 +90,9 @@ describe('IncidentLegalSensitiveAccess purpose-bound and privilege controls (§1
         no_legal_advice_wording:
           'This work order does not establish legal privilege or provide a breach-notification, regulatory, or legal conclusion.',
       };
-      prisma.incidentLegalSensitiveRecord.findMany.mockResolvedValue([mockRecord]);
+      prisma.incidentLegalSensitiveRecord.findMany.mockResolvedValue([
+        mockRecord,
+      ]);
 
       const results = await service.listLegalSensitiveRecords(
         'wo-legal-1',
@@ -156,15 +164,19 @@ describe('IncidentLegalSensitiveAccess purpose-bound and privilege controls (§1
           notificationStatus: 'NOT_APPLICABLE',
           counselControlled: false,
           contentReference: 'evidence://vault/forensic-timeline',
-          accessReason: 'Technical coordination between IR team and customer CISO',
+          accessReason:
+            'Technical coordination between IR team and customer CISO',
         },
       );
 
       expect(result.id).toBe('rec-created-1');
       expect(prisma.incidentLegalSensitiveRecord.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
-          no_legal_advice_wording: expect.stringContaining('does not establish legal privilege'),
-          access_reason: 'Technical coordination between IR team and customer CISO',
+          no_legal_advice_wording: expect.stringContaining(
+            'does not establish legal privilege',
+          ),
+          access_reason:
+            'Technical coordination between IR team and customer CISO',
         }),
       });
     });

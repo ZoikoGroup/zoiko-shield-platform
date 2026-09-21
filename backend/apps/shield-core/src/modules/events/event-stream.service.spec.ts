@@ -1,5 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { EventStreamService, ShieldRealtimeEvent } from './event-stream.service';
+import {
+  EventStreamService,
+  ShieldRealtimeEvent,
+} from './event-stream.service';
 import {
   EventStreamController,
   PublishRealtimeEventDto,

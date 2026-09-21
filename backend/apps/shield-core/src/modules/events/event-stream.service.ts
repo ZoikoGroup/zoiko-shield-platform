@@ -73,12 +73,15 @@ export class EventStreamService {
     // 2. Replay missed events if lastEventId is supplied
     let replayEvents: SseMessage[] = [];
     if (lastEventId) {
-      const lastIndex = this.replayBuffer.findIndex((e) => e.id === lastEventId);
+      const lastIndex = this.replayBuffer.findIndex(
+        (e) => e.id === lastEventId,
+      );
       if (lastIndex !== -1 && lastIndex < this.replayBuffer.length - 1) {
         replayEvents = this.replayBuffer
           .slice(lastIndex + 1)
           .filter(
-            (event) => event.tenantId === tenantId || event.tenantId === 'GLOBAL',
+            (event) =>
+              event.tenantId === tenantId || event.tenantId === 'GLOBAL',
           )
           .map((event) => ({
             id: event.id,

@@ -41,7 +41,8 @@ describe('Checkpoint 9 - AI Adversarial Red-Team Gate Integration Suite (§19–
     });
 
     it('should permit clean, authorized SOC threat analysis prompts', () => {
-      const safePrompt = 'Analyze Okta sign-in log with impossible travel from Tokyo to London within 10 minutes.';
+      const safePrompt =
+        'Analyze Okta sign-in log with impossible travel from Tokyo to London within 10 minutes.';
       const result = modelArmor.processAiInference({
         requestId: 'ai-test-safe-01',
         tenantId: '11111111-1111-4000-8000-000000000001',
@@ -73,7 +74,11 @@ describe('Checkpoint 9 - AI Adversarial Red-Team Gate Integration Suite (§19–
       });
 
       expect(result.verdict).toBe('FALLBACK_DETERMINISTIC_WORKFLOW');
-      expect(result.safetyFiltersTriggered.some((f) => f.includes('PROMPT_INJECTION'))).toBe(true);
+      expect(
+        result.safetyFiltersTriggered.some((f) =>
+          f.includes('PROMPT_INJECTION'),
+        ),
+      ).toBe(true);
     });
   });
 
@@ -97,13 +102,21 @@ describe('Checkpoint 9 - AI Adversarial Red-Team Gate Integration Suite (§19–
 
   describe('4. Safe Operating Modes & Deterministic Fallback Degradation (§27)', () => {
     it('should enforce deterministic fallback when prompt injection or anomaly is triggered', () => {
-      const resolution = degradationService.resolveOperatingMode('INJECTION_DETECTED', 'Malicious prompt detected');
+      const resolution = degradationService.resolveOperatingMode(
+        'INJECTION_DETECTED',
+        'Malicious prompt detected',
+      );
       expect(resolution.isDegraded).toBe(true);
-      expect(['FALLBACK_DETERMINISTIC', 'FAIL_CLOSED']).toContain(resolution.actionRequired);
+      expect(['FALLBACK_DETERMINISTIC', 'FAIL_CLOSED']).toContain(
+        resolution.actionRequired,
+      );
     });
 
     it('should fail closed when model provider is ineligible for data class', () => {
-      const resolution = degradationService.resolveOperatingMode('PROVIDER_INELIGIBLE', 'Restricted residency');
+      const resolution = degradationService.resolveOperatingMode(
+        'PROVIDER_INELIGIBLE',
+        'Restricted residency',
+      );
       expect(resolution.isDegraded).toBe(true);
       expect(resolution.blockExecution).toBe(true);
       expect(resolution.actionRequired).toBe('FAIL_CLOSED');
@@ -115,7 +128,7 @@ describe('Checkpoint 9 - AI Adversarial Red-Team Gate Integration Suite (§19–
       const chain = redTeam.generateAttackSequence(
         '11111111-1111-4000-8000-000000000001',
         'Financial-Swift-Fraud',
-        { intensityLevel: 'AGGRESSIVE' }
+        { intensityLevel: 'AGGRESSIVE' },
       );
 
       expect(chain.steps.length).toBeGreaterThanOrEqual(3);

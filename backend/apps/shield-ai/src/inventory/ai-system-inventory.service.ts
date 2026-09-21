@@ -1,8 +1,10 @@
 import { Injectable } from '@nestjs/common';
 
-export type EuAiActRiskTier = 'MINIMAL_RISK' | 'LIMITED_RISK' | 'HIGH_RISK' | 'UNACCEPTABLE_RISK';
+export type EuAiActRiskTier =
+  'MINIMAL_RISK' | 'LIMITED_RISK' | 'HIGH_RISK' | 'UNACCEPTABLE_RISK';
 export type NistAiRmfFunction = 'GOVERN' | 'MAP' | 'MEASURE' | 'MANAGE';
-export type AiLifecycleState = 'PROPOSED' | 'EVALUATING' | 'APPROVED_FOR_PRODUCTION' | 'DECOMMISSIONED';
+export type AiLifecycleState =
+  'PROPOSED' | 'EVALUATING' | 'APPROVED_FOR_PRODUCTION' | 'DECOMMISSIONED';
 
 export interface AiModelProfile {
   modelId: string;
@@ -53,9 +55,15 @@ export class AiSystemInventoryService {
         version: '1.5-pro-002',
         euAiActClassification: 'LIMITED_RISK',
         nistRmfAlignment: ['GOVERN', 'MAP', 'MEASURE', 'MANAGE'],
-        purpose: 'Complex multi-vector threat correlation, case investigation, and incident RCA generation',
-        primaryUseCaseKeys: ['RESPONSE_RECOMMENDATION', 'INVESTIGATION_HYPOTHESIS', 'INCIDENT_RCA'],
-        deterministicFallbackEngine: 'Tier-1 Deterministic RCA Engine (Rule-Based)',
+        purpose:
+          'Complex multi-vector threat correlation, case investigation, and incident RCA generation',
+        primaryUseCaseKeys: [
+          'RESPONSE_RECOMMENDATION',
+          'INVESTIGATION_HYPOTHESIS',
+          'INCIDENT_RCA',
+        ],
+        deterministicFallbackEngine:
+          'Tier-1 Deterministic RCA Engine (Rule-Based)',
         hhiWeight: 0.6,
         humanOversightRequired: true,
         lifecycleState: 'APPROVED_FOR_PRODUCTION',
@@ -69,9 +77,15 @@ export class AiSystemInventoryService {
         version: '1.5-flash-002',
         euAiActClassification: 'MINIMAL_RISK',
         nistRmfAlignment: ['GOVERN', 'MAP', 'MEASURE'],
-        purpose: 'Fast telemetry parsing, entity explanation, and query expansion',
-        primaryUseCaseKeys: ['ENTITY_EXPLANATION', 'NEXT_QUERY', 'CASE_SUMMARY'],
-        deterministicFallbackEngine: 'Rule-Based Entity Lookup & Deterministic Cache',
+        purpose:
+          'Fast telemetry parsing, entity explanation, and query expansion',
+        primaryUseCaseKeys: [
+          'ENTITY_EXPLANATION',
+          'NEXT_QUERY',
+          'CASE_SUMMARY',
+        ],
+        deterministicFallbackEngine:
+          'Rule-Based Entity Lookup & Deterministic Cache',
         hhiWeight: 0.3,
         humanOversightRequired: false,
         lifecycleState: 'APPROVED_FOR_PRODUCTION',
@@ -85,8 +99,12 @@ export class AiSystemInventoryService {
         version: '3.5-sonnet-20241022',
         euAiActClassification: 'LIMITED_RISK',
         nistRmfAlignment: ['GOVERN', 'MAP', 'MEASURE', 'MANAGE'],
-        purpose: 'Secondary multi-provider failover for threat hypothesis and adversarial verification',
-        primaryUseCaseKeys: ['INVESTIGATION_HYPOTHESIS', 'ADVERSARIAL_VERIFICATION'],
+        purpose:
+          'Secondary multi-provider failover for threat hypothesis and adversarial verification',
+        primaryUseCaseKeys: [
+          'INVESTIGATION_HYPOTHESIS',
+          'ADVERSARIAL_VERIFICATION',
+        ],
         deterministicFallbackEngine: 'Deterministic Threat Matrix Fallback',
         hhiWeight: 0.1,
         humanOversightRequired: true,
@@ -119,13 +137,17 @@ export class AiSystemInventoryService {
       hhiWeight: profile.hhiWeight ?? 0.05,
       nistRmfAlignment: profile.nistRmfAlignment || ['GOVERN', 'MEASURE'],
       primaryUseCaseKeys: profile.primaryUseCaseKeys || ['CUSTOM_INFERENCE'],
-      deterministicFallbackEngine: profile.deterministicFallbackEngine || 'Deterministic Rule Fallback',
+      deterministicFallbackEngine:
+        profile.deterministicFallbackEngine || 'Deterministic Rule Fallback',
     };
     this.registeredModels.set(model.modelId, model);
     return model;
   }
 
-  public updateModel(modelId: string, updates: Partial<AiModelProfile>): AiModelProfile {
+  public updateModel(
+    modelId: string,
+    updates: Partial<AiModelProfile>,
+  ): AiModelProfile {
     const existing = this.registeredModels.get(modelId);
     if (!existing) {
       throw new Error(`AI Model profile '${modelId}' not found in registry`);
@@ -150,12 +172,13 @@ export class AiSystemInventoryService {
 
   public computeInventorySummary(): AiSystemInventorySummary {
     const models = this.listRegisteredModels();
-    
+
     // Compute HHI provider concentration index: sum of (share * 100)^2
     const providerShares: Record<string, number> = {};
     for (const model of models) {
       if (model.lifecycleState !== 'DECOMMISSIONED') {
-        providerShares[model.provider] = (providerShares[model.provider] || 0) + model.hhiWeight;
+        providerShares[model.provider] =
+          (providerShares[model.provider] || 0) + model.hhiWeight;
       }
     }
 
@@ -166,12 +189,17 @@ export class AiSystemInventoryService {
     }
 
     const highRiskCount = models.filter(
-      (m) => (m.euAiActClassification === 'HIGH_RISK' || m.euAiActClassification === 'LIMITED_RISK') && m.lifecycleState !== 'DECOMMISSIONED',
+      (m) =>
+        (m.euAiActClassification === 'HIGH_RISK' ||
+          m.euAiActClassification === 'LIMITED_RISK') &&
+        m.lifecycleState !== 'DECOMMISSIONED',
     ).length;
 
     return {
       inventoryVersion: '1.0.0-NIST-EUAI',
-      totalRegisteredModels: models.filter((m) => m.lifecycleState !== 'DECOMMISSIONED').length,
+      totalRegisteredModels: models.filter(
+        (m) => m.lifecycleState !== 'DECOMMISSIONED',
+      ).length,
       models,
       highRiskUseCasesCount: highRiskCount,
       providerConcentrationHhi: Math.round(hhi),

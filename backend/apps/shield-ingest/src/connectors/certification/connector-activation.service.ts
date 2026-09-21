@@ -15,7 +15,14 @@ export interface ConnectorCertificationMetadata {
   providerId: string;
   name: string;
   certificationTier: ConnectorCertificationTier;
-  category: 'IDENTITY' | 'CLOUD' | 'EDR' | 'TICKETING' | 'VULNERABILITY' | 'TELEMETRY' | 'CUSTOM';
+  category:
+    | 'IDENTITY'
+    | 'CLOUD'
+    | 'EDR'
+    | 'TICKETING'
+    | 'VULNERABILITY'
+    | 'TELEMETRY'
+    | 'CUSTOM';
   maxAllowedAuthority: 'READ_ONLY_INGESTION' | 'CERTIFIED_RESPONSE_PARTNER';
   requiresExplicitEntitlement: boolean;
   specReference: string;
@@ -53,7 +60,10 @@ export interface ConnectorActivationResult {
  * Authoritative certification registry mapping all 13 providers built in shield-ingest
  * against ERB-01 §2 (Committed P0 vs. P1 Scope).
  */
-export const CONNECTOR_CERTIFICATION_REGISTRY: Record<string, ConnectorCertificationMetadata> = {
+export const CONNECTOR_CERTIFICATION_REGISTRY: Record<
+  string,
+  ConnectorCertificationMetadata
+> = {
   // P0 Certified Providers (Committed Baseline: Microsoft Identity, 1 EDR, AWS, Generic Webhook/Syslog, 1 Ticketing, 1 Vuln)
   'microsoft-entra': {
     providerId: 'microsoft-entra',
@@ -100,7 +110,7 @@ export const CONNECTOR_CERTIFICATION_REGISTRY: Record<string, ConnectorCertifica
     requiresExplicitEntitlement: false,
     specReference: 'ERB-01 §2 (Generic Webhook/Syslog Baseline)',
   },
-  'jira': {
+  jira: {
     providerId: 'jira',
     name: 'Atlassian Jira Service Management',
     certificationTier: ConnectorCertificationTier.P0_CERTIFIED,
@@ -109,7 +119,7 @@ export const CONNECTOR_CERTIFICATION_REGISTRY: Record<string, ConnectorCertifica
     requiresExplicitEntitlement: false,
     specReference: 'ERB-01 §2 (One Ticketing Source Baseline)',
   },
-  'snyk': {
+  snyk: {
     providerId: 'snyk',
     name: 'Snyk Container & Code Vulnerability Scanner',
     certificationTier: ConnectorCertificationTier.P0_CERTIFIED,
@@ -118,7 +128,7 @@ export const CONNECTOR_CERTIFICATION_REGISTRY: Record<string, ConnectorCertifica
     requiresExplicitEntitlement: false,
     specReference: 'ERB-01 §2 (One Vulnerability Source Baseline)',
   },
-  'crowdstrike': {
+  crowdstrike: {
     providerId: 'crowdstrike',
     name: 'CrowdStrike Falcon Insight EDR',
     certificationTier: ConnectorCertificationTier.P0_CERTIFIED,
@@ -147,7 +157,7 @@ export const CONNECTOR_CERTIFICATION_REGISTRY: Record<string, ConnectorCertifica
     requiresExplicitEntitlement: true,
     specReference: 'Backend Architecture Priority Table (P1 Scope)',
   },
-  'okta': {
+  okta: {
     providerId: 'okta',
     name: 'Okta Identity Cloud',
     certificationTier: ConnectorCertificationTier.P1_PENDING,
@@ -156,7 +166,7 @@ export const CONNECTOR_CERTIFICATION_REGISTRY: Record<string, ConnectorCertifica
     requiresExplicitEntitlement: true,
     specReference: 'Backend Architecture Priority Table (P1 Scope)',
   },
-  'sentinelone': {
+  sentinelone: {
     providerId: 'sentinelone',
     name: 'SentinelOne Singularity EDR',
     certificationTier: ConnectorCertificationTier.P1_PENDING,
@@ -214,7 +224,7 @@ export class ConnectorActivationService {
    */
   validateConnectorActivation(
     tenantPolicy: TenantConnectorPolicy,
-    providerId: string
+    providerId: string,
   ): ConnectorActivationResult {
     const meta = this.getCertificationMetadata(providerId);
     const eventId = `act-audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -239,7 +249,10 @@ export class ConnectorActivationService {
 
     // 2. Check P1 Pending Providers -> Requires explicit P1 preview entitlement
     if (meta.certificationTier === ConnectorCertificationTier.P1_PENDING) {
-      if (tenantPolicy.enabledP1Preview || tenantPolicy.planTier === 'DESIGN_PARTNER') {
+      if (
+        tenantPolicy.enabledP1Preview ||
+        tenantPolicy.planTier === 'DESIGN_PARTNER'
+      ) {
         return {
           allowed: true,
           providerId: meta.providerId,
@@ -256,7 +269,7 @@ export class ConnectorActivationService {
       }
 
       this.logger.warn(
-        `[CONNECTOR_GATED] Tenant '${tenantPolicy.tenantId}' denied activation for P1 provider '${meta.providerId}'. Entitlement 'enabledP1Preview' required.`
+        `[CONNECTOR_GATED] Tenant '${tenantPolicy.tenantId}' denied activation for P1 provider '${meta.providerId}'. Entitlement 'enabledP1Preview' required.`,
       );
 
       return {
@@ -297,7 +310,7 @@ export class ConnectorActivationService {
     }
 
     this.logger.warn(
-      `[CONNECTOR_GATED] Tenant '${tenantPolicy.tenantId}' denied activation for uncertified provider '${meta.providerId}'.`
+      `[CONNECTOR_GATED] Tenant '${tenantPolicy.tenantId}' denied activation for uncertified provider '${meta.providerId}'.`,
     );
 
     return {
@@ -322,7 +335,7 @@ export class ConnectorActivationService {
    */
   gateIngestionTelemetry(
     tenantPolicy: TenantConnectorPolicy,
-    providerId: string
+    providerId: string,
   ): void {
     const result = this.validateConnectorActivation(tenantPolicy, providerId);
     if (!result.allowed) {

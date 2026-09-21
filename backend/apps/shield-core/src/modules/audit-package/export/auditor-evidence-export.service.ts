@@ -74,122 +74,124 @@ export class AuditorEvidenceExportService {
     const regionalCell = params.regionalCell ?? 'eu-west-1';
 
     // 1. Standard Continuous Assurance Controls [derived] or custom input
-    const controls: ContinuousAssuranceControlExport[] = params.customControls ?? [
-      // SOC 2 Type II Controls
-      {
-        framework: 'SOC2_TYPE_II',
-        controlId: 'CC6.1', // Logical Access Security [derived]
-        title: 'Logical Access Points & Privilege Boundaries',
-        status: 'COMPLIANT',
-        evaluatedAt: new Date(),
-        evidenceRecordIds: ['ev-auth-entra-001', 'ev-jit-session-002'],
-        merkleLeafHashes: [
-          this.hashContent('ev-auth-entra-001:LOGICAL_ACCESS_VERIFIED'),
-          this.hashContent('ev-jit-session-002:PEER_APPROVAL_VERIFIED'),
-        ],
-        evaluatorVersion: 'v2.1.0',
-        chainOfCustodyHash: this.hashContent('CC6.1-CUSTODY-VERIFIED'),
-      },
-      {
-        framework: 'SOC2_TYPE_II',
-        controlId: 'CC6.6', // Perimeter & Boundary Defense [derived]
-        title: 'Boundary Protection & Host Isolation',
-        status: 'COMPLIANT',
-        evaluatedAt: new Date(),
-        evidenceRecordIds: ['ev-edr-cortex-003', 'ev-network-policy-004'],
-        merkleLeafHashes: [
-          this.hashContent('ev-edr-cortex-003:EDR_ISOLATION_PROVEN'),
-          this.hashContent(
-            'ev-network-policy-004:NETWORK_SEGMENTATION_VERIFIED',
-          ),
-        ],
-        evaluatorVersion: 'v2.1.0',
-        chainOfCustodyHash: this.hashContent('CC6.6-CUSTODY-VERIFIED'),
-      },
-      {
-        framework: 'SOC2_TYPE_II',
-        controlId: 'CC7.1', // Vulnerability Management & Patch Cadence [derived]
-        title: 'Vulnerability Identification & Patch Cadence',
-        status: 'COMPLIANT',
-        evaluatedAt: new Date(),
-        evidenceRecordIds: ['ev-vuln-scan-005', 'ev-sbom-attest-006'],
-        merkleLeafHashes: [
-          this.hashContent('ev-vuln-scan-005:VULN_SCAN_ZERO_CRITICAL'),
-          this.hashContent('ev-sbom-attest-006:SBOM_PROVENANCE_SEALED'),
-        ],
-        evaluatorVersion: 'v2.1.0',
-        chainOfCustodyHash: this.hashContent('CC7.1-CUSTODY-VERIFIED'),
-      },
-      {
-        framework: 'SOC2_TYPE_II',
-        controlId: 'CC7.2', // Incident Detection & Monitoring [derived]
-        title: 'Security Incident Detection & Telemetry Pipeline',
-        status: 'COMPLIANT',
-        evaluatedAt: new Date(),
-        evidenceRecordIds: ['ev-ocsf-pipeline-007'],
-        merkleLeafHashes: [
-          this.hashContent('ev-ocsf-pipeline-007:SUBSECOND_OCSF_MONITORING'),
-        ],
-        evaluatorVersion: 'v2.1.0',
-        chainOfCustodyHash: this.hashContent('CC7.2-CUSTODY-VERIFIED'),
-      },
-      // ISO/IEC 27001:2022 Controls
-      {
-        framework: 'ISO_27001_2022',
-        controlId: 'A.5.15', // Access Control Policy & Identity Boundaries [derived]
-        title: 'Access Control Policy & Identity Boundaries',
-        status: 'COMPLIANT',
-        evaluatedAt: new Date(),
-        evidenceRecordIds: ['ev-iam-cloudtrail-008'],
-        merkleLeafHashes: [
-          this.hashContent('ev-iam-cloudtrail-008:IAM_ROLE_POLICIES_AUDITED'),
-        ],
-        evaluatorVersion: 'v2.1.0',
-        chainOfCustodyHash: this.hashContent('A.5.15-CUSTODY-VERIFIED'),
-      },
-      {
-        framework: 'ISO_27001_2022',
-        controlId: 'A.8.7', // Protection Against Malware [derived]
-        title: 'Protection Against Malware & Endpoint Security',
-        status: 'COMPLIANT',
-        evaluatedAt: new Date(),
-        evidenceRecordIds: ['ev-antimalware-009'],
-        merkleLeafHashes: [
-          this.hashContent('ev-antimalware-009:EDR_ANTIMALWARE_UPDATED'),
-        ],
-        evaluatorVersion: 'v2.1.0',
-        chainOfCustodyHash: this.hashContent('A.8.7-CUSTODY-VERIFIED'),
-      },
-      {
-        framework: 'ISO_27001_2022',
-        controlId: 'A.8.16', // Monitoring Activities & Log Integrity [derived]
-        title: 'Monitoring Activities & Log Integrity',
-        status: 'COMPLIANT',
-        evaluatedAt: new Date(),
-        evidenceRecordIds: ['ev-merkle-anchor-010'],
-        merkleLeafHashes: [
-          this.hashContent('ev-merkle-anchor-010:IMMUTABLE_LOG_VERIFIED'),
-        ],
-        evaluatorVersion: 'v2.1.0',
-        chainOfCustodyHash: this.hashContent('A.8.16-CUSTODY-VERIFIED'),
-      },
-      {
-        framework: 'ISO_27001_2022',
-        controlId: 'A.8.24', // Use of Cryptography & PQC [derived]
-        title: 'Use of Cryptography & Post-Quantum Algorithms',
-        status: 'COMPLIANT',
-        evaluatedAt: new Date(),
-        evidenceRecordIds: ['ev-pqc-seal-011'],
-        merkleLeafHashes: [
-          this.hashContent('ev-pqc-seal-011:ML_DSA_65_DUAL_SIGNATURE_PROVEN'),
-        ],
-        evaluatorVersion: 'v2.1.0',
-        chainOfCustodyHash: this.hashContent('A.8.24-CUSTODY-VERIFIED'),
-      },
-    ];
+    const controls: ContinuousAssuranceControlExport[] =
+      params.customControls ?? [
+        // SOC 2 Type II Controls
+        {
+          framework: 'SOC2_TYPE_II',
+          controlId: 'CC6.1', // Logical Access Security [derived]
+          title: 'Logical Access Points & Privilege Boundaries',
+          status: 'COMPLIANT',
+          evaluatedAt: new Date(),
+          evidenceRecordIds: ['ev-auth-entra-001', 'ev-jit-session-002'],
+          merkleLeafHashes: [
+            this.hashContent('ev-auth-entra-001:LOGICAL_ACCESS_VERIFIED'),
+            this.hashContent('ev-jit-session-002:PEER_APPROVAL_VERIFIED'),
+          ],
+          evaluatorVersion: 'v2.1.0',
+          chainOfCustodyHash: this.hashContent('CC6.1-CUSTODY-VERIFIED'),
+        },
+        {
+          framework: 'SOC2_TYPE_II',
+          controlId: 'CC6.6', // Perimeter & Boundary Defense [derived]
+          title: 'Boundary Protection & Host Isolation',
+          status: 'COMPLIANT',
+          evaluatedAt: new Date(),
+          evidenceRecordIds: ['ev-edr-cortex-003', 'ev-network-policy-004'],
+          merkleLeafHashes: [
+            this.hashContent('ev-edr-cortex-003:EDR_ISOLATION_PROVEN'),
+            this.hashContent(
+              'ev-network-policy-004:NETWORK_SEGMENTATION_VERIFIED',
+            ),
+          ],
+          evaluatorVersion: 'v2.1.0',
+          chainOfCustodyHash: this.hashContent('CC6.6-CUSTODY-VERIFIED'),
+        },
+        {
+          framework: 'SOC2_TYPE_II',
+          controlId: 'CC7.1', // Vulnerability Management & Patch Cadence [derived]
+          title: 'Vulnerability Identification & Patch Cadence',
+          status: 'COMPLIANT',
+          evaluatedAt: new Date(),
+          evidenceRecordIds: ['ev-vuln-scan-005', 'ev-sbom-attest-006'],
+          merkleLeafHashes: [
+            this.hashContent('ev-vuln-scan-005:VULN_SCAN_ZERO_CRITICAL'),
+            this.hashContent('ev-sbom-attest-006:SBOM_PROVENANCE_SEALED'),
+          ],
+          evaluatorVersion: 'v2.1.0',
+          chainOfCustodyHash: this.hashContent('CC7.1-CUSTODY-VERIFIED'),
+        },
+        {
+          framework: 'SOC2_TYPE_II',
+          controlId: 'CC7.2', // Incident Detection & Monitoring [derived]
+          title: 'Security Incident Detection & Telemetry Pipeline',
+          status: 'COMPLIANT',
+          evaluatedAt: new Date(),
+          evidenceRecordIds: ['ev-ocsf-pipeline-007'],
+          merkleLeafHashes: [
+            this.hashContent('ev-ocsf-pipeline-007:SUBSECOND_OCSF_MONITORING'),
+          ],
+          evaluatorVersion: 'v2.1.0',
+          chainOfCustodyHash: this.hashContent('CC7.2-CUSTODY-VERIFIED'),
+        },
+        // ISO/IEC 27001:2022 Controls
+        {
+          framework: 'ISO_27001_2022',
+          controlId: 'A.5.15', // Access Control Policy & Identity Boundaries [derived]
+          title: 'Access Control Policy & Identity Boundaries',
+          status: 'COMPLIANT',
+          evaluatedAt: new Date(),
+          evidenceRecordIds: ['ev-iam-cloudtrail-008'],
+          merkleLeafHashes: [
+            this.hashContent('ev-iam-cloudtrail-008:IAM_ROLE_POLICIES_AUDITED'),
+          ],
+          evaluatorVersion: 'v2.1.0',
+          chainOfCustodyHash: this.hashContent('A.5.15-CUSTODY-VERIFIED'),
+        },
+        {
+          framework: 'ISO_27001_2022',
+          controlId: 'A.8.7', // Protection Against Malware [derived]
+          title: 'Protection Against Malware & Endpoint Security',
+          status: 'COMPLIANT',
+          evaluatedAt: new Date(),
+          evidenceRecordIds: ['ev-antimalware-009'],
+          merkleLeafHashes: [
+            this.hashContent('ev-antimalware-009:EDR_ANTIMALWARE_UPDATED'),
+          ],
+          evaluatorVersion: 'v2.1.0',
+          chainOfCustodyHash: this.hashContent('A.8.7-CUSTODY-VERIFIED'),
+        },
+        {
+          framework: 'ISO_27001_2022',
+          controlId: 'A.8.16', // Monitoring Activities & Log Integrity [derived]
+          title: 'Monitoring Activities & Log Integrity',
+          status: 'COMPLIANT',
+          evaluatedAt: new Date(),
+          evidenceRecordIds: ['ev-merkle-anchor-010'],
+          merkleLeafHashes: [
+            this.hashContent('ev-merkle-anchor-010:IMMUTABLE_LOG_VERIFIED'),
+          ],
+          evaluatorVersion: 'v2.1.0',
+          chainOfCustodyHash: this.hashContent('A.8.16-CUSTODY-VERIFIED'),
+        },
+        {
+          framework: 'ISO_27001_2022',
+          controlId: 'A.8.24', // Use of Cryptography & PQC [derived]
+          title: 'Use of Cryptography & Post-Quantum Algorithms',
+          status: 'COMPLIANT',
+          evaluatedAt: new Date(),
+          evidenceRecordIds: ['ev-pqc-seal-011'],
+          merkleLeafHashes: [
+            this.hashContent('ev-pqc-seal-011:ML_DSA_65_DUAL_SIGNATURE_PROVEN'),
+          ],
+          evaluatorVersion: 'v2.1.0',
+          chainOfCustodyHash: this.hashContent('A.8.24-CUSTODY-VERIFIED'),
+        },
+      ];
 
     // Evaluate known limitations & evidence decay
-    const staleRecords: StaleEvidenceRecord[] = params.evidenceDecayRecords ?? [];
+    const staleRecords: StaleEvidenceRecord[] =
+      params.evidenceDecayRecords ?? [];
     const hasDegradedControls = controls.some((c) => c.status === 'DEGRADED');
     const hasStaleEvidence = staleRecords.length > 0;
 

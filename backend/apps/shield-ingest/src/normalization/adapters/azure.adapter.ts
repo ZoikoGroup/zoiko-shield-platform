@@ -33,7 +33,9 @@ export class AzureOcsfAdapter {
       sourceIp: payload.claims?.ipaddr || undefined,
       destinationIp: undefined,
       resourceId: payload.resourceId || payload.subscriptionId || undefined,
-      resourceType: payload.resourceId ? 'AZURE_RESOURCE' : 'AZURE_SUBSCRIPTION',
+      resourceType: payload.resourceId
+        ? 'AZURE_RESOURCE'
+        : 'AZURE_SUBSCRIPTION',
       action: operationName,
       outcome,
       rawPayload: payload,

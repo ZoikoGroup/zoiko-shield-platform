@@ -98,7 +98,10 @@ export class HostNetworkEnforcerService {
   /**
    * Instantly quarantines and network-isolates a compromised Pod at the host network filter level.
    */
-  quarantinePodNetwork(tenantId: string, podSelector: string): HostEnforcementReceipt {
+  quarantinePodNetwork(
+    tenantId: string,
+    podSelector: string,
+  ): HostEnforcementReceipt {
     this.logger.warn(
       `🚨 [EMERGENCY QUARANTINE] Isolating all network ingress/egress for target '${podSelector}'`,
     );

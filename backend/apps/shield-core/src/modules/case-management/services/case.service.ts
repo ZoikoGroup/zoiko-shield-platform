@@ -248,7 +248,10 @@ export class CaseService {
    * Memberships are TypeORM-managed in the authorization schema rather than
    * Prisma models, so this reads them the same way the offboarding services do.
    */
-  private async assertActiveTenantMember(tenantId: string, principalId: string) {
+  private async assertActiveTenantMember(
+    tenantId: string,
+    principalId: string,
+  ) {
     const uuidPattern =
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidPattern.test(principalId)) {

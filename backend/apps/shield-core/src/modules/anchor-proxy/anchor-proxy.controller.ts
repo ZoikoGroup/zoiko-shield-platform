@@ -39,16 +39,12 @@ export class AnchorProxyController {
   }
 
   @Post('proofs/verify')
-  async verifyProof(
-    @Body() body: any,
-  ) {
+  async verifyProof(@Body() body: any) {
     return this.shieldAnchorClient.verifyProof(body);
   }
 
   @Get('receipts/:epochNumber')
-  async getReceipt(
-    @Param('epochNumber') epochNumber: string,
-  ) {
+  async getReceipt(@Param('epochNumber') epochNumber: string) {
     return this.shieldAnchorClient.getReceipt(epochNumber);
   }
 

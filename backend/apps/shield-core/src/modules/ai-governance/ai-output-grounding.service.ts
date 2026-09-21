@@ -80,7 +80,8 @@ export class AiOutputGroundingService {
       1.0,
       Math.max(
         spanCoverage,
-        (validCitations.length * 50) / Math.max(50, request.outputContent.length),
+        (validCitations.length * 50) /
+          Math.max(50, request.outputContent.length),
       ),
     );
     const groundingScore = Number(
@@ -93,9 +94,15 @@ export class AiOutputGroundingService {
       environmentId: request.environmentId,
       useCaseName: request.useCaseName,
       aiModelId: request.aiModelId,
-      outputHash: crypto.createHash('sha256').update(request.outputContent).digest('hex'),
+      outputHash: crypto
+        .createHash('sha256')
+        .update(request.outputContent)
+        .digest('hex'),
       sourcesHashes: validCitations.map((c) =>
-        crypto.createHash('sha256').update(`${c.sourceId}:${c.exactSpan}`).digest('hex'),
+        crypto
+          .createHash('sha256')
+          .update(`${c.sourceId}:${c.exactSpan}`)
+          .digest('hex'),
       ),
       groundingScore,
       timestamp: new Date().toISOString(),
@@ -130,14 +137,14 @@ export class AiOutputGroundingService {
     evidenceRecords?: any[];
     claimedCitations?: string[];
   }): GroundingValidationResult {
-    const sources: GroundingSourceCitation[] = (params.evidenceRecords || []).map(
-      (e: any) => ({
-        sourceId: e.sourceId || e.id || 'evid-auth-01',
-        sourceType: e.sourceType || e.type || 'telemetry/auth',
-        exactSpan: e.exactSpan || e.span || e.text || params.summary,
-        evidenceHash: e.evidenceHash || e.hash,
-      }),
-    );
+    const sources: GroundingSourceCitation[] = (
+      params.evidenceRecords || []
+    ).map((e: any) => ({
+      sourceId: e.sourceId || e.id || 'evid-auth-01',
+      sourceType: e.sourceType || e.type || 'telemetry/auth',
+      exactSpan: e.exactSpan || e.span || e.text || params.summary,
+      evidenceHash: e.evidenceHash || e.hash,
+    }));
 
     if (sources.length === 0 && params.claimedCitations) {
       params.claimedCitations.forEach((c) => {

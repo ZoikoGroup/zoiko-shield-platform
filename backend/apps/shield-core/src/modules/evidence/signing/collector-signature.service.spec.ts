@@ -137,9 +137,7 @@ describe('CollectorSignatureService', () => {
       ],
     }).compile();
 
-    const result = await failing
-      .get(CollectorSignatureService)
-      .sign(payload);
+    const result = await failing.get(CollectorSignatureService).sign(payload);
     expect(result).toBeNull();
   });
 });

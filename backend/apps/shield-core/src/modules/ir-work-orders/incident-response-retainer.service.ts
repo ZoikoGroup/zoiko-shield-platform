@@ -362,9 +362,12 @@ export class IncidentResponseRetainerService {
     }
 
     if (this.offerEntitlements) {
-      await this.offerEntitlements.assertIncidentResponseRetainerEntitled(tenantId, {
-        action: 'CREATE_INCIDENT_RESPONSE_RETAINER',
-      });
+      await this.offerEntitlements.assertIncidentResponseRetainerEntitled(
+        tenantId,
+        {
+          action: 'CREATE_INCIDENT_RESPONSE_RETAINER',
+        },
+      );
     }
 
     const [contract, obligation, binding, price] = await Promise.all([

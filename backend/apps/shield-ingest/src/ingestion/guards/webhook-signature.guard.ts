@@ -36,7 +36,8 @@ export class WebhookSignatureGuard implements CanActivate {
     // presenting x-hub-signature-256 without a delivery id is treated as our
     // own internal scheme below, unchanged.
     const githubDeliveryId = headers['x-github-delivery'] as string | undefined;
-    const githubSignature = headers['x-hub-signature-256'] as string | undefined;
+    const githubSignature = headers['x-hub-signature-256'] as
+      string | undefined;
     if (githubDeliveryId && githubSignature) {
       return this.verifyGithubDelivery(
         connectorId,

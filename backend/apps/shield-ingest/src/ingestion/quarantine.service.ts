@@ -84,7 +84,8 @@ export class QuarantineService {
       environmentId,
       connectorId,
       rawPayload,
-      failureReason: (failureReason as QuarantineFailureReason) || 'SCHEMA_MISMATCH',
+      failureReason:
+        (failureReason as QuarantineFailureReason) || 'SCHEMA_MISMATCH',
       errorMessage,
     });
   }

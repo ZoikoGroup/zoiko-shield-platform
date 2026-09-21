@@ -52406,13 +52406,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /api/v1/action/ebpf/rules:
+  /api/v1/action/network/rules:
     post:
       tags:
         - InternalMicroservices
-      summary: Apply eBPF Kernel Microsegmentation Rule
-      description: Applies a real-time TC/XDP microsegmentation packet filtering rule to the host kernel map.
-      operationId: applyEbpfMicrosegmentationRule
+      summary: Apply Host Network Microsegmentation Rule
+      description: Applies a real-time host network microsegmentation packet filtering rule.
+      operationId: applyHostNetworkRule
       security:
         - InternalServiceAuth: []
       requestBody:
@@ -52454,7 +52454,7 @@ paths:
                   type: integer
       responses:
         '200':
-          description: Enforcement receipt confirming kernel map update
+          description: Enforcement receipt confirming host network rule update
           content:
             application/json:
               schema:
@@ -52468,9 +52468,9 @@ paths:
     get:
       tags:
         - InternalMicroservices
-      summary: List Active eBPF Kernel Rules
-      description: Returns active microsegmentation rules loaded in kernel maps for a tenant.
-      operationId: getActiveEbpfRules
+      summary: List Active Host Network Rules
+      description: Returns active microsegmentation rules loaded for a tenant.
+      operationId: getHostNetworkRules
       security:
         - InternalServiceAuth: []
       parameters:
@@ -52481,7 +52481,7 @@ paths:
             type: string
       responses:
         '200':
-          description: List of active kernel rules
+          description: List of active host network rules
           content:
             application/json:
               schema:
@@ -52494,13 +52494,13 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /api/v1/action/ebpf/quarantine:
+  /api/v1/action/network/quarantine:
     post:
       tags:
         - InternalMicroservices
-      summary: Quarantine Pod via eBPF XDP Drop Hook
-      description: Instantly isolates a compromised pod from all ingress and egress network traffic at the kernel level.
-      operationId: quarantinePodEbpf
+      summary: Quarantine Pod via Host Network Isolation
+      description: Instantly isolates a compromised pod from all ingress and egress network traffic.
+      operationId: quarantinePodNetwork
       security:
         - InternalServiceAuth: []
       requestBody:
@@ -52530,20 +52530,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-  /api/v1/ingestion/webhooks/ebpf/{connectorId}:
+  /api/v1/ingestion/webhooks/host-runtime/{connectorId}:
     post:
       tags:
         - Ingest
-      summary: Ingest High-Throughput Linux eBPF Kernel Probe Telemetry
-      description: Ingests raw syscall and ring buffer probe events from Linux host agents and normalizes them to OCSF schemas.
-      operationId: ingestEbpfKernelProbeWebhook
+      summary: Ingest High-Throughput Linux Host Runtime Probe Telemetry
+      description: Ingests runtime probe events from Linux host agents and normalizes them to OCSF schemas.
+      operationId: ingestHostRuntimeProbeWebhook
       security:
         - WebhookHmacAuth: []
       parameters:
         - name: connectorId
           in: path
           required: true
-          description: Unique identifier of the registered eBPF connector instance
+          description: Unique identifier of the registered host runtime connector instance
           schema:
             type: string
       requestBody:
@@ -52554,7 +52554,7 @@ paths:
               type: object
       responses:
         '202':
-          description: eBPF probe telemetry batch accepted for ingestion
+          description: Host runtime probe telemetry batch accepted for ingestion
           content:
             application/json:
               schema:

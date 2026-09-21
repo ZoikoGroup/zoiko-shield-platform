@@ -10,7 +10,9 @@ describe('MdrServiceObligationService', () => {
       providers: [MdrServiceObligationService],
     }).compile();
 
-    service = module.get<MdrServiceObligationService>(MdrServiceObligationService);
+    service = module.get<MdrServiceObligationService>(
+      MdrServiceObligationService,
+    );
   });
 
   it('should be defined', () => {
@@ -19,7 +21,9 @@ describe('MdrServiceObligationService', () => {
 
   it('should permit 24/7 SOC claim when operational readiness is OPERATIONALLY_PROVEN', () => {
     // Default obligation has OPERATIONALLY_PROVEN status
-    expect(() => service.assert24x7ClaimPermitted('contract-core-001')).not.toThrow();
+    expect(() =>
+      service.assert24x7ClaimPermitted('contract-core-001'),
+    ).not.toThrow();
   });
 
   it('should block 24/7 SOC claim (throw 409 Conflict) under Rule SVC-01 when readiness is UNPROVEN or CONTINGENT', () => {
@@ -38,9 +42,9 @@ describe('MdrServiceObligationService', () => {
       },
     });
 
-    expect(() => service.assert24x7ClaimPermitted('contract-unproven-002')).toThrow(
-      ConflictException,
-    );
+    expect(() =>
+      service.assert24x7ClaimPermitted('contract-unproven-002'),
+    ).toThrow(ConflictException);
   });
 
   it('should unlock 24/7 claim once operational shift audit proof is verified', () => {
@@ -58,9 +62,9 @@ describe('MdrServiceObligationService', () => {
       },
     });
 
-    expect(() => service.assert24x7ClaimPermitted('contract-to-verify-003')).toThrow(
-      ConflictException,
-    );
+    expect(() =>
+      service.assert24x7ClaimPermitted('contract-to-verify-003'),
+    ).toThrow(ConflictException);
 
     // Verify readiness
     service.verifyOperationalReadiness({
@@ -70,7 +74,9 @@ describe('MdrServiceObligationService', () => {
       passed24x7ShiftAudit: true,
     });
 
-    expect(() => service.assert24x7ClaimPermitted('contract-to-verify-003')).not.toThrow();
+    expect(() =>
+      service.assert24x7ClaimPermitted('contract-to-verify-003'),
+    ).not.toThrow();
     const verified = service.getObligation('contract-to-verify-003');
     expect(verified.readinessStatus).toBe('OPERATIONALLY_PROVEN');
     expect(verified.verifiedBy).toBe('Lead-Auditor-42');
@@ -80,7 +86,9 @@ describe('MdrServiceObligationService', () => {
     const defaultObligation = service.getObligation('contract-core-001');
     expect(defaultObligation.slaWindows.length).toBe(4);
 
-    const p1 = defaultObligation.slaWindows.find((w) => w.severity === 'P1_CRITICAL');
+    const p1 = defaultObligation.slaWindows.find(
+      (w) => w.severity === 'P1_CRITICAL',
+    );
     expect(p1).toBeDefined();
     expect(p1?.targetAcknowledgementMinutes).toBe(15);
     expect(p1?.targetContainmentMinutes).toBe(60);

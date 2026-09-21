@@ -19,12 +19,15 @@ const SHIELD_INGEST_BASE_URL =
 export class ShieldIngestClient {
   private readonly logger = new Logger(ShieldIngestClient.name);
 
-  private headers(extraHeaders?: Record<string, string>): Record<string, string> {
-    const traceId = (global as any).__currentTraceId || '0123456789abcdef0123456789abcdef';
+  private headers(
+    extraHeaders?: Record<string, string>,
+  ): Record<string, string> {
+    const traceId =
+      (global as any).__currentTraceId || '0123456789abcdef0123456789abcdef';
     const spanId = '0123456789abcdef';
     return {
       'Content-Type': 'application/json',
-      'traceparent': `00-${traceId}-${spanId}-01`,
+      traceparent: `00-${traceId}-${spanId}-01`,
       'x-correlation-id': traceId,
       ...workloadAuthorizationHeaders('shield-ingest'),
       ...(extraHeaders || {}),
@@ -33,7 +36,9 @@ export class ShieldIngestClient {
 
   // --- Connector Catalog & Types ---
   async getConnectorTypes(): Promise<any> {
-    return this.get('/api/v1/connector-types', { 'x-tenant-id': 'system-catalog' });
+    return this.get('/api/v1/connector-types', {
+      'x-tenant-id': 'system-catalog',
+    });
   }
 
   async listConnectors(tenantId: string): Promise<any> {
@@ -49,7 +54,9 @@ export class ShieldIngestClient {
   }
 
   async updateConnector(tenantId: string, id: string, dto: any): Promise<any> {
-    return this.patch(`/api/v1/connectors/${id}`, dto, { 'x-tenant-id': tenantId });
+    return this.patch(`/api/v1/connectors/${id}`, dto, {
+      'x-tenant-id': tenantId,
+    });
   }
 
   async deleteConnector(tenantId: string, id: string): Promise<any> {
@@ -57,15 +64,25 @@ export class ShieldIngestClient {
   }
 
   async testConnector(tenantId: string, id: string): Promise<any> {
-    return this.post(`/api/v1/connectors/${id}/test`, {}, { 'x-tenant-id': tenantId });
+    return this.post(
+      `/api/v1/connectors/${id}/test`,
+      {},
+      { 'x-tenant-id': tenantId },
+    );
   }
 
   async syncConnector(tenantId: string, id: string): Promise<any> {
-    return this.post(`/api/v1/connectors/${id}/sync`, {}, { 'x-tenant-id': tenantId });
+    return this.post(
+      `/api/v1/connectors/${id}/sync`,
+      {},
+      { 'x-tenant-id': tenantId },
+    );
   }
 
   async getConnectorHealth(tenantId: string, id: string): Promise<any> {
-    return this.get(`/api/v1/connectors/${id}/health`, { 'x-tenant-id': tenantId });
+    return this.get(`/api/v1/connectors/${id}/health`, {
+      'x-tenant-id': tenantId,
+    });
   }
 
   // --- Controls & Control Evaluations ---
@@ -73,19 +90,33 @@ export class ShieldIngestClient {
     return this.get('/api/v1/control-evaluations', { 'x-tenant-id': tenantId });
   }
 
-  async evaluateControl(tenantId: string, controlId: string, dto?: any): Promise<any> {
-    return this.post(`/api/v1/control-tests/${controlId}/evaluate`, dto || {}, { 'x-tenant-id': tenantId });
+  async evaluateControl(
+    tenantId: string,
+    controlId: string,
+    dto?: any,
+  ): Promise<any> {
+    return this.post(`/api/v1/control-tests/${controlId}/evaluate`, dto || {}, {
+      'x-tenant-id': tenantId,
+    });
   }
 
   // --- Events & Telemetry ---
-  async listEvents(tenantId: string, query?: Record<string, string>): Promise<any> {
+  async listEvents(
+    tenantId: string,
+    query?: Record<string, string>,
+  ): Promise<any> {
     const params = new URLSearchParams(query || {});
     const queryString = params.toString() ? `?${params.toString()}` : '';
-    return this.get(`/api/v1/events${queryString}`, { 'x-tenant-id': tenantId });
+    return this.get(`/api/v1/events${queryString}`, {
+      'x-tenant-id': tenantId,
+    });
   }
 
   // --- HTTP Helpers ---
-  private async get(path: string, extraHeaders?: Record<string, string>): Promise<any> {
+  private async get(
+    path: string,
+    extraHeaders?: Record<string, string>,
+  ): Promise<any> {
     let response: Response;
     try {
       response = await fetch(`${SHIELD_INGEST_BASE_URL}${path}`, {
@@ -99,7 +130,9 @@ export class ShieldIngestClient {
 
     if (!response.ok) {
       const text = await response.text().catch(() => '');
-      this.logger.warn(`shield-ingest GET returned ${response.status} for ${path}: ${text.slice(0, 300)}`);
+      this.logger.warn(
+        `shield-ingest GET returned ${response.status} for ${path}: ${text.slice(0, 300)}`,
+      );
       throw new ServiceUnavailableException(
         response.status === 403 ? 'POLICY_DENIED' : 'INGEST_UNAVAILABLE',
       );
@@ -108,7 +141,11 @@ export class ShieldIngestClient {
     return response.json();
   }
 
-  private async post(path: string, body: unknown, extraHeaders?: Record<string, string>): Promise<any> {
+  private async post(
+    path: string,
+    body: unknown,
+    extraHeaders?: Record<string, string>,
+  ): Promise<any> {
     let response: Response;
     try {
       response = await fetch(`${SHIELD_INGEST_BASE_URL}${path}`, {
@@ -123,7 +160,9 @@ export class ShieldIngestClient {
 
     if (!response.ok) {
       const text = await response.text().catch(() => '');
-      this.logger.warn(`shield-ingest POST returned ${response.status} for ${path}: ${text.slice(0, 300)}`);
+      this.logger.warn(
+        `shield-ingest POST returned ${response.status} for ${path}: ${text.slice(0, 300)}`,
+      );
       throw new ServiceUnavailableException(
         response.status === 403 ? 'POLICY_DENIED' : 'INGEST_UNAVAILABLE',
       );
@@ -132,7 +171,11 @@ export class ShieldIngestClient {
     return response.json();
   }
 
-  private async patch(path: string, body: unknown, extraHeaders?: Record<string, string>): Promise<any> {
+  private async patch(
+    path: string,
+    body: unknown,
+    extraHeaders?: Record<string, string>,
+  ): Promise<any> {
     let response: Response;
     try {
       response = await fetch(`${SHIELD_INGEST_BASE_URL}${path}`, {
@@ -147,7 +190,9 @@ export class ShieldIngestClient {
 
     if (!response.ok) {
       const text = await response.text().catch(() => '');
-      this.logger.warn(`shield-ingest PATCH returned ${response.status} for ${path}: ${text.slice(0, 300)}`);
+      this.logger.warn(
+        `shield-ingest PATCH returned ${response.status} for ${path}: ${text.slice(0, 300)}`,
+      );
       throw new ServiceUnavailableException(
         response.status === 403 ? 'POLICY_DENIED' : 'INGEST_UNAVAILABLE',
       );
@@ -156,7 +201,10 @@ export class ShieldIngestClient {
     return response.json();
   }
 
-  private async delete(path: string, extraHeaders?: Record<string, string>): Promise<any> {
+  private async delete(
+    path: string,
+    extraHeaders?: Record<string, string>,
+  ): Promise<any> {
     let response: Response;
     try {
       response = await fetch(`${SHIELD_INGEST_BASE_URL}${path}`, {
@@ -170,7 +218,9 @@ export class ShieldIngestClient {
 
     if (!response.ok) {
       const text = await response.text().catch(() => '');
-      this.logger.warn(`shield-ingest DELETE returned ${response.status} for ${path}: ${text.slice(0, 300)}`);
+      this.logger.warn(
+        `shield-ingest DELETE returned ${response.status} for ${path}: ${text.slice(0, 300)}`,
+      );
       throw new ServiceUnavailableException(
         response.status === 403 ? 'POLICY_DENIED' : 'INGEST_UNAVAILABLE',
       );

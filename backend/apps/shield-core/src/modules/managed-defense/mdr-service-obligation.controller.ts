@@ -15,16 +15,17 @@ export class MdrServiceObligationController {
   ) {}
 
   @Get(':contractId')
-  getObligation(
-    @Param('contractId') contractId: string,
-  ): { data: MdrServiceObligation } {
+  getObligation(@Param('contractId') contractId: string): {
+    data: MdrServiceObligation;
+  } {
     return { data: this.obligationService.getObligation(contractId) };
   }
 
   @Get(':contractId/verify-claim')
-  verifyClaim(
-    @Param('contractId') contractId: string,
-  ): { contractId: string; claimPermitted: boolean } {
+  verifyClaim(@Param('contractId') contractId: string): {
+    contractId: string;
+    claimPermitted: boolean;
+  } {
     try {
       this.obligationService.assert24x7ClaimPermitted(contractId);
       return { contractId, claimPermitted: true };
@@ -34,16 +35,16 @@ export class MdrServiceObligationController {
   }
 
   @Post('register')
-  registerObligation(
-    @Body() body: RegisterObligationDto,
-  ): { data: MdrServiceObligation } {
+  registerObligation(@Body() body: RegisterObligationDto): {
+    data: MdrServiceObligation;
+  } {
     return { data: this.obligationService.registerObligation(body) };
   }
 
   @Post('verify-readiness')
-  verifyReadiness(
-    @Body() body: VerifyReadinessDto,
-  ): { data: MdrServiceObligation } {
+  verifyReadiness(@Body() body: VerifyReadinessDto): {
+    data: MdrServiceObligation;
+  } {
     return { data: this.obligationService.verifyOperationalReadiness(body) };
   }
 }

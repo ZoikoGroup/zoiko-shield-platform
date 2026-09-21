@@ -156,7 +156,10 @@ export class GroundingGateGuard implements CanActivate {
     }
 
     // 3. For AR-3: Check Simulation Receipt requirement
-    if (tierConfig.requiresSimulationReceipt && payload.hasSimulationReceipt === false) {
+    if (
+      tierConfig.requiresSimulationReceipt &&
+      payload.hasSimulationReceipt === false
+    ) {
       blockingReasons.push(
         `[${riskTier}] Autonomous action requires pre-execution sandboxed simulation receipt`,
       );

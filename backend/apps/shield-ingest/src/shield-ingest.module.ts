@@ -236,7 +236,7 @@ import { ConnectorPermissionDriftService } from './drift/connector-permission-dr
     AzureEventHubsIngestListener,
     StixThreatIntelMatcherService,
     CanaryHoneypotProbeService,
-    EbpfRuntimeMonitorService,
+    HostRuntimeMonitorService,
     StreamThreatHuntingService,
     MpcThreatMatcherService,
     TierAWindowedDetectorService,

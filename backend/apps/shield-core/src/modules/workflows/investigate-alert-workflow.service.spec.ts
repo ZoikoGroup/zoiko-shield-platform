@@ -35,7 +35,8 @@ describe('InvestigateAlertWorkflowService', () => {
       tenantId: 'tenant-enterprise-01',
       authorizingPrincipal: 'soc.lead@enterprise-bank.com',
       verdict: 'APPROVE_CONTAINMENT',
-      rationale: 'Confirmed lateral movement pattern via CrowdStrike and Host Runtime Telemetry',
+      rationale:
+        'Confirmed lateral movement pattern via CrowdStrike and Host Runtime Telemetry',
       timestamp: new Date().toISOString(),
     };
 

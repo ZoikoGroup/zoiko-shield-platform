@@ -34,9 +34,10 @@ describe('ConnectorCatalogService data-residency enforcement', () => {
         create: jest.fn().mockResolvedValue({ id: 'def-1' }),
       },
       connectorInstance: {
-        create: jest
-          .fn()
-          .mockResolvedValue({ id: 'conn-1', definition: { provider: 'generic-webhook' } }),
+        create: jest.fn().mockResolvedValue({
+          id: 'conn-1',
+          definition: { provider: 'generic-webhook' },
+        }),
       },
       connectorCredentialReference: { create: jest.fn() },
     };

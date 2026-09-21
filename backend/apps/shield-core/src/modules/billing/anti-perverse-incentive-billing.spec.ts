@@ -70,7 +70,10 @@ describe('Anti-Perverse-Incentive Billing Guard', () => {
         InvoiceSkeletonService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: TaxRuleService, useValue: mockTaxRuleService },
-        { provide: CommercialKillSwitchService, useValue: mockKillSwitchService },
+        {
+          provide: CommercialKillSwitchService,
+          useValue: mockKillSwitchService,
+        },
       ],
     }).compile();
 
@@ -123,25 +126,31 @@ describe('Anti-Perverse-Incentive Billing Guard', () => {
         {
           sku: aiAdvancedPlanSku,
           amount: advancedPrice,
-          description: 'Shield Advanced Subscription - Includes AI Grounding Governance',
+          description:
+            'Shield Advanced Subscription - Includes AI Grounding Governance',
         },
       ],
     });
 
     // Heavy threat hunting month: 2,500 multi-hop graph analyses & 500 dual-model consensus verifications
-    const heavyAiInvestigationInvoice = await invoiceService.createDraftInvoice({
-      commercialAccountId: 'comm-acct-001',
-      contractId: 'contract-001',
-      lineItems: [
-        {
-          sku: aiAdvancedPlanSku,
-          amount: advancedPrice,
-          description: 'Shield Advanced Subscription - Includes AI Grounding Governance',
-        },
-      ],
-    });
+    const heavyAiInvestigationInvoice = await invoiceService.createDraftInvoice(
+      {
+        commercialAccountId: 'comm-acct-001',
+        contractId: 'contract-001',
+        lineItems: [
+          {
+            sku: aiAdvancedPlanSku,
+            amount: advancedPrice,
+            description:
+              'Shield Advanced Subscription - Includes AI Grounding Governance',
+          },
+        ],
+      },
+    );
 
-    expect(heavyAiInvestigationInvoice.total_amount).toBe(normalMonthInvoice.total_amount);
+    expect(heavyAiInvestigationInvoice.total_amount).toBe(
+      normalMonthInvoice.total_amount,
+    );
     expect(heavyAiInvestigationInvoice.total_amount).toBe(8000);
   });
 
@@ -162,7 +171,8 @@ describe('Anti-Perverse-Incentive Billing Guard', () => {
         {
           sku: 'SKU-METER-TELEMETRY-OVERAGE',
           amount: contractedTelemetryOverageAmount,
-          description: 'Contracted Telemetry Meter Overage (15 GB over 10 GB/day band)',
+          description:
+            'Contracted Telemetry Meter Overage (15 GB over 10 GB/day band)',
         },
       ],
     });

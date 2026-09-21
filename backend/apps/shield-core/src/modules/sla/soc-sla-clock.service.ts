@@ -154,9 +154,7 @@ export class SocSlaClockService {
       return this.toRecord(row);
     }
 
-    const pausedMs = row.paused_at
-      ? Date.now() - row.paused_at.getTime()
-      : 0;
+    const pausedMs = row.paused_at ? Date.now() - row.paused_at.getTime() : 0;
 
     const updated = await this.prisma.caseSlaClock.update({
       where: { case_id: caseId },

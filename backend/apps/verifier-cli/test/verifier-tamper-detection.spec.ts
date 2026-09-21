@@ -10,17 +10,24 @@ describe('Verifier CLI Adversarial Tamper Detection Suite (ADR-01 & Spec §9)', 
     '../../../dist/tamper-test-audit-package',
   );
 
-  function createPackageFixture(dir: string, overrides: {
-    corruptEvidenceFile?: boolean;
-    corruptMerkleRoot?: boolean;
-    corruptManifestCore?: boolean;
-    missingManifest?: boolean;
-  } = {}) {
+  function createPackageFixture(
+    dir: string,
+    overrides: {
+      corruptEvidenceFile?: boolean;
+      corruptMerkleRoot?: boolean;
+      corruptManifestCore?: boolean;
+      missingManifest?: boolean;
+    } = {},
+  ) {
     fs.mkdirSync(path.join(dir, 'evidence'), { recursive: true });
     fs.mkdirSync(path.join(dir, 'proofs'), { recursive: true });
 
     const packageId = 'pkg-tamper-test-001';
-    const evidencePayload = { mfaEnforced: true, compliantUsers: 450, totalUsers: 450 };
+    const evidencePayload = {
+      mfaEnforced: true,
+      compliantUsers: 450,
+      totalUsers: 450,
+    };
     const contentHash = crypto
       .createHash('sha256')
       .update(JSON.stringify(evidencePayload))
@@ -52,15 +59,24 @@ describe('Verifier CLI Adversarial Tamper Detection Suite (ADR-01 & Spec §9)', 
     // If corruptManifestCore is true, manifestCoreHash will not match the hash of manifestCore
     const manifestCoreHash = overrides.corruptManifestCore
       ? 'badhash'.padEnd(64, '0')
-      : crypto.createHash('sha256').update(JSON.stringify(manifestCore)).digest('hex');
+      : crypto
+          .createHash('sha256')
+          .update(JSON.stringify(manifestCore))
+          .digest('hex');
 
     const manifest = {
       packageId,
       manifestCore,
       manifestCoreHash,
       merkleRoot: declaredMerkleRoot,
-      transparencyWitness: { witnessId: 'rekor-witness-01', timestamp: new Date().toISOString() },
-      humanApproval: { approver: 'auditor-lead@zoiko.com', role: 'CHIEF_COMPLIANCE_OFFICER' },
+      transparencyWitness: {
+        witnessId: 'rekor-witness-01',
+        timestamp: new Date().toISOString(),
+      },
+      humanApproval: {
+        approver: 'auditor-lead@zoiko.com',
+        role: 'CHIEF_COMPLIANCE_OFFICER',
+      },
     };
 
     if (!overrides.missingManifest) {
@@ -79,7 +95,12 @@ describe('Verifier CLI Adversarial Tamper Detection Suite (ADR-01 & Spec §9)', 
 
     // If corruptEvidenceFile is true, write altered payload that conflicts with contentHash
     const savedEvidencePayload = overrides.corruptEvidenceFile
-      ? { mfaEnforced: false, compliantUsers: 0, totalUsers: 450, backdoor: true }
+      ? {
+          mfaEnforced: false,
+          compliantUsers: 0,
+          totalUsers: 450,
+          backdoor: true,
+        }
       : evidencePayload;
 
     fs.writeFileSync(
@@ -122,7 +143,9 @@ describe('Verifier CLI Adversarial Tamper Detection Suite (ADR-01 & Spec §9)', 
     const certPath = path.join(baseFixtureDir, 'audit_certificate.json');
     const cert = JSON.parse(fs.readFileSync(certPath, 'utf8'));
     expect(cert.verificationStatus).toBe('TAMPER_DETECTED');
-    expect(cert.checks.evidenceFilesIntegrity.corruptedFiles).toBeGreaterThan(0);
+    expect(cert.checks.evidenceFilesIntegrity.corruptedFiles).toBeGreaterThan(
+      0,
+    );
   });
 
   it('Scenario 2: Tampered Merkle Root in manifest triggers TAMPER_DETECTED with exit code 1', () => {
@@ -160,13 +183,15 @@ describe('Verifier CLI Adversarial Tamper Detection Suite (ADR-01 & Spec §9)', 
 
   it('Scenario 6: Machine-readable --json flag successfully formats output without runtime errors', () => {
     createPackageFixture(baseFixtureDir);
-    const stdoutSpy = jest.spyOn(process.stdout, 'write').mockImplementation(() => true);
-    
+    const stdoutSpy = jest
+      .spyOn(process.stdout, 'write')
+      .mockImplementation(() => true);
+
     const exitCode = runVerifier(['verify', baseFixtureDir, '--json']);
     expect(exitCode).toBe(0);
     expect(stdoutSpy).toHaveBeenCalled();
 
-    const emittedJson = stdoutSpy.mock.calls.map(c => c[0]).join('');
+    const emittedJson = stdoutSpy.mock.calls.map((c) => c[0]).join('');
     const parsedCert = JSON.parse(emittedJson);
     expect(parsedCert.verificationStatus).toBe('VERIFIED_COMPLIANT');
 

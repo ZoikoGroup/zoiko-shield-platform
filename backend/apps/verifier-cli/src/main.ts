@@ -36,7 +36,7 @@ export interface AuditVerificationCertificate {
 
 export function runVerifier(args: string[] = process.argv.slice(2)): number {
   const isJson = args.includes('--json');
-  const nonFlagArgs = args.filter(a => a !== '--json');
+  const nonFlagArgs = args.filter((a) => a !== '--json');
 
   if (nonFlagArgs[0] !== 'verify' || !nonFlagArgs[1]) {
     if (!isJson) {
@@ -52,9 +52,16 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
       console.log(
         '========================================================================\n',
       );
-      console.log('Usage: zoikoshield-verifier verify <path-to-audit-package> [--json]');
+      console.log(
+        'Usage: zoikoshield-verifier verify <path-to-audit-package> [--json]',
+      );
     } else {
-      process.stdout.write(JSON.stringify({ error: 'Usage: zoikoshield-verifier verify <path-to-audit-package> [--json]' }) + '\n');
+      process.stdout.write(
+        JSON.stringify({
+          error:
+            'Usage: zoikoshield-verifier verify <path-to-audit-package> [--json]',
+        }) + '\n',
+      );
     }
     return 2;
   }
@@ -64,7 +71,11 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
     if (!isJson) {
       console.error(`❌ Error: Package path does not exist: ${targetPath}`);
     } else {
-      process.stdout.write(JSON.stringify({ error: `Package path does not exist: ${targetPath}` }) + '\n');
+      process.stdout.write(
+        JSON.stringify({
+          error: `Package path does not exist: ${targetPath}`,
+        }) + '\n',
+      );
     }
     return 1;
   }
@@ -79,12 +90,8 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
   log(
     '========================================================================',
   );
-  log(
-    ' 🛡️  ZoikoShield Independent Compliance Audit Package Verifier CLI',
-  );
-  log(
-    '    Architecture: ADR-01 (Offline Independent Verification)',
-  );
+  log(' 🛡️  ZoikoShield Independent Compliance Audit Package Verifier CLI');
+  log('    Architecture: ADR-01 (Offline Independent Verification)');
   log(
     '========================================================================\n',
   );
@@ -98,7 +105,11 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
   if (!existsSync(manifestPath)) {
     logError('❌ Error: Missing manifest.json in package directory.');
     if (isJson) {
-      process.stdout.write(JSON.stringify({ error: 'Missing manifest.json in package directory' }) + '\n');
+      process.stdout.write(
+        JSON.stringify({
+          error: 'Missing manifest.json in package directory',
+        }) + '\n',
+      );
     }
     return 1;
   }
@@ -200,9 +211,7 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
           validFiles++; // Raw payload verified via entryHash
         }
       }
-      log(
-        `  ✔ Evidence Index: ${validFiles}/${totalFiles} Records Verified`,
-      );
+      log(`  ✔ Evidence Index: ${validFiles}/${totalFiles} Records Verified`);
     } else {
       totalFiles = 1;
       validFiles = 1;
@@ -292,7 +301,9 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
         console.log(` 📜 Verification Certificate Issued: ${certPath}`);
         console.log(` 🔒 Certificate Signature: ${certificateSignature}`);
       } else {
-        console.log(' ❌ VERIFICATION FAILED: TAMPERING OR CORRUPTION DETECTED!');
+        console.log(
+          ' ❌ VERIFICATION FAILED: TAMPERING OR CORRUPTION DETECTED!',
+        );
       }
       console.log(
         '========================================================================\n',

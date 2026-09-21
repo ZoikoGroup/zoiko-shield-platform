@@ -200,9 +200,10 @@ describe('AwsSqsIngestListener', () => {
       defaultOptions.tenantId,
       `sqs:${defaultOptions.queueUrl}`,
       { event: 'Threat' },
-      expect.stringContaining('Error ingesting SQS message: Kafka pipeline timeout'),
+      expect.stringContaining(
+        'Error ingesting SQS message: Kafka pipeline timeout',
+      ),
       'INGEST_PROCESSING_ERROR',
     );
   });
 });
-

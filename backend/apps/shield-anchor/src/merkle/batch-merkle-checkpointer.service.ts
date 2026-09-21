@@ -43,9 +43,7 @@ export class BatchMerkleCheckpointerService {
   private epochCounter = 0;
   private readonly epochHistory = new Map<number, EpochMerkleCheckpoint>();
 
-  constructor(
-    @Optional() private readonly pqcSigner?: PqcDualSignerService,
-  ) {}
+  constructor(@Optional() private readonly pqcSigner?: PqcDualSignerService) {}
 
   /**
    * Builds an epoch Merkle tree checkpoint from an array of evidence items.
@@ -130,7 +128,8 @@ export class BatchMerkleCheckpointerService {
       checkpoint.pqcAlgorithm = 'HYBRID_ECDSA_P256_ML_DSA_65';
       checkpoint.pqcSignatureHex = hybridSig.pqcSignatureHex;
       checkpoint.classicalSignatureHex = hybridSig.classicalSignatureHex;
-      checkpoint.hybridSignatureContainer = hybridSig.hybridCombinedSignatureBase64;
+      checkpoint.hybridSignatureContainer =
+        hybridSig.hybridCombinedSignatureBase64;
     }
 
     return checkpoint;

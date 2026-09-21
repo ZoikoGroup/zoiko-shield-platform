@@ -100,7 +100,9 @@ describe('BillingController', () => {
       commercialAccountId: 'acct-123',
       contractId: 'contract-456',
       currency: 'USD',
-      lineItems: [{ sku: 'SKU-SHIELD-SOC2', amount: 5000, description: 'SOC 2 Core' }],
+      lineItems: [
+        { sku: 'SKU-SHIELD-SOC2', amount: 5000, description: 'SOC 2 Core' },
+      ],
     });
     expect(res.statusCode).toBe(HttpStatus.CREATED);
     expect(res.data.id).toBe('inv-draft-001');
@@ -118,7 +120,12 @@ describe('BillingController', () => {
       unitPrice: 15000,
       jurisdiction: 'US-NY',
       productTaxClass: 'SAAS_STANDARD',
-      basisSources: [{ basisType: 'ENTITLEMENT', sourceId: '11111111-1111-4000-8000-000000000001' }],
+      basisSources: [
+        {
+          basisType: 'ENTITLEMENT',
+          sourceId: '11111111-1111-4000-8000-000000000001',
+        },
+      ],
     });
     expect(res.statusCode).toBe(HttpStatus.CREATED);
     expect((res.data as any).sku).toBe('SKU-SHIELD-ENTERPRISE');

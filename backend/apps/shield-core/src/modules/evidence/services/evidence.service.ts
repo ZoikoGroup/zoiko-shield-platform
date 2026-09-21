@@ -74,7 +74,8 @@ export class EvidenceService {
     const evidenceId = randomUUID();
     const isRaw = Boolean(input.rawContent);
     const mediaType =
-      input.mediaType ?? (isRaw ? 'application/octet-stream' : 'application/json');
+      input.mediaType ??
+      (isRaw ? 'application/octet-stream' : 'application/json');
 
     if (!isRaw && !input.content) {
       throw new BadRequestException(

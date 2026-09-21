@@ -507,7 +507,9 @@ describe('CaseService', () => {
       tenant_id: 'tenant-a',
       status: 'NEW',
     });
-    prismaMock.evidenceRecord = { findFirst: jest.fn().mockResolvedValue(null) };
+    prismaMock.evidenceRecord = {
+      findFirst: jest.fn().mockResolvedValue(null),
+    };
 
     await expect(
       service.linkEvidence({

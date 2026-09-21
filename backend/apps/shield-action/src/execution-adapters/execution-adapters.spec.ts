@@ -90,7 +90,10 @@ describe('ActionExecutionRegistry & Adapters', () => {
       const containmentActions = [
         { actionType: 'DISABLE_USER_ACCOUNT', targetRef: 'admin@acme.com' },
         { actionType: 'ISOLATE_ENDPOINT', targetRef: 'host-srv-prod' },
-        { actionType: 'REVOKE_IAM_SESSION', targetRef: 'arn:aws:iam::123456789012:role/Admin' },
+        {
+          actionType: 'REVOKE_IAM_SESSION',
+          targetRef: 'arn:aws:iam::123456789012:role/Admin',
+        },
         { actionType: 'APPLY_WAF_BLOCK', targetRef: '203.0.113.55/32' },
       ];
 

@@ -25,7 +25,7 @@ import { requireTenantId } from '../../tenant-context';
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/ai')
 export class AiProxyController {
-  constructor(private readonly shieldAiClient: ShieldAiClient) { }
+  constructor(private readonly shieldAiClient: ShieldAiClient) {}
 
   // ==========================================
   // AI Incidents Console Endpoints
@@ -50,7 +50,11 @@ export class AiProxyController {
     @Query('category') category?: string,
   ) {
     const tenantId = requireTenantId(headerTenantId, user?.tenantId);
-    return this.shieldAiClient.listIncidents(tenantId, { status, severity, category });
+    return this.shieldAiClient.listIncidents(tenantId, {
+      status,
+      severity,
+      category,
+    });
   }
 
   @Get('incidents/metrics')
@@ -226,10 +230,7 @@ export class AiProxyController {
   }
 
   @Patch('inventory/:modelId')
-  async updateAiModel(
-    @Param('modelId') modelId: string,
-    @Body() dto: any,
-  ) {
+  async updateAiModel(@Param('modelId') modelId: string, @Body() dto: any) {
     return this.shieldAiClient.updateAiModel(modelId, dto);
   }
 
@@ -307,7 +308,11 @@ export class AiProxyController {
     @Body() dto: any,
   ) {
     const tenantId = requireTenantId(headerTenantId, user?.tenantId);
-    return this.shieldAiClient.copilotHunt({ ...dto, tenantId, analystId: user?.id });
+    return this.shieldAiClient.copilotHunt({
+      ...dto,
+      tenantId,
+      analystId: user?.id,
+    });
   }
 
   @Post('threat-hunting/hunt')
@@ -317,7 +322,11 @@ export class AiProxyController {
     @Body() dto: any,
   ) {
     const tenantId = requireTenantId(headerTenantId, user?.tenantId);
-    return this.shieldAiClient.threatHuntingHunt({ ...dto, tenantId, analystId: user?.id });
+    return this.shieldAiClient.threatHuntingHunt({
+      ...dto,
+      tenantId,
+      analystId: user?.id,
+    });
   }
 
   @Post('rca/generate')

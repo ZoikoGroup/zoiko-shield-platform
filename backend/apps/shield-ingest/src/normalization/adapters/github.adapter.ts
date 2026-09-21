@@ -18,9 +18,7 @@ export class GithubOcsfAdapter {
     const pusherLogin = payload.sender?.login || payload.pusher?.name;
     const pusherEmail =
       payload.pusher?.email ||
-      (pusherLogin
-        ? `${pusherLogin}@users.noreply.github.com`
-        : undefined);
+      (pusherLogin ? `${pusherLogin}@users.noreply.github.com` : undefined);
 
     let action = 'GIT_PUSH_COMMIT';
     let severity = 'INFORMATIONAL';

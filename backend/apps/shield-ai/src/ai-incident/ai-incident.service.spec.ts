@@ -36,16 +36,23 @@ function createInMemoryPrismaMock() {
         rows.set(row.id, row);
         return row;
       }),
-      findUnique: jest.fn(async ({ where: { id } }: any) => rows.get(id) ?? null),
+      findUnique: jest.fn(
+        async ({ where: { id } }: any) => rows.get(id) ?? null,
+      ),
       findMany: jest.fn(async ({ where, orderBy }: any) => {
         let results = [...rows.values()].filter(
           (r) => r.tenant_id === where.tenant_id,
         );
-        if (where.status) results = results.filter((r) => r.status === where.status);
-        if (where.severity) results = results.filter((r) => r.severity === where.severity);
-        if (where.category) results = results.filter((r) => r.category === where.category);
+        if (where.status)
+          results = results.filter((r) => r.status === where.status);
+        if (where.severity)
+          results = results.filter((r) => r.severity === where.severity);
+        if (where.category)
+          results = results.filter((r) => r.category === where.category);
         if (orderBy?.declared_at === 'desc') {
-          results.sort((a, b) => b.declared_at.getTime() - a.declared_at.getTime());
+          results.sort(
+            (a, b) => b.declared_at.getTime() - a.declared_at.getTime(),
+          );
         }
         return results;
       }),

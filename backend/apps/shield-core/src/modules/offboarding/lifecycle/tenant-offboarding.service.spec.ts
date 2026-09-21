@@ -433,9 +433,9 @@ describe('TenantOffboardingService (SEC-02)', () => {
       deletion_request_id: null,
     });
 
-    await expect(
-      service.resumeDeletion('tenant-1', 'run-1'),
-    ).rejects.toThrow(ConflictException);
+    await expect(service.resumeDeletion('tenant-1', 'run-1')).rejects.toThrow(
+      ConflictException,
+    );
     expect(deletionTaskMock.executeTask).not.toHaveBeenCalled();
   });
 

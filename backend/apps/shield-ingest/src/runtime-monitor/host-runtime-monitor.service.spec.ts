@@ -1,4 +1,7 @@
-import { HostRuntimeMonitorService, RawHostProbeEvent } from './host-runtime-monitor.service';
+import {
+  HostRuntimeMonitorService,
+  RawHostProbeEvent,
+} from './host-runtime-monitor.service';
 
 describe('HostRuntimeMonitorService', () => {
   let monitorService: HostRuntimeMonitorService;
@@ -49,6 +52,8 @@ describe('HostRuntimeMonitorService', () => {
     expect(finding.severityId).toBe(6);
     expect(finding.threatDetails?.isBreakoutAttempt).toBe(true);
     expect(finding.threatDetails?.mitreTechniqueId).toBe('T1611');
-    expect(finding.threatDetails?.ruleName).toBe('HOST-RULE-CONTAINER-ESCAPE-DETECTED');
+    expect(finding.threatDetails?.ruleName).toBe(
+      'HOST-RULE-CONTAINER-ESCAPE-DETECTED',
+    );
   });
 });

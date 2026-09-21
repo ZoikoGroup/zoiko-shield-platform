@@ -1,4 +1,7 @@
-import { BatchMerkleCheckpointerService, EvidenceLeaf } from '../../../shield-anchor/src/merkle/batch-merkle-checkpointer.service';
+import {
+  BatchMerkleCheckpointerService,
+  EvidenceLeaf,
+} from '../../../shield-anchor/src/merkle/batch-merkle-checkpointer.service';
 import { StreamDeduplicationService } from '../../../shield-ingest/src/deduplication/stream-deduplication.service';
 
 describe('Checkpoint 9 - Restore Reconciliation Integration Suite (IC-08)', () => {
@@ -39,21 +42,31 @@ describe('Checkpoint 9 - Restore Reconciliation Integration Suite (IC-08)', () =
       ];
 
       // Step 1: Compute primary checkpoint
-      const primaryCheckpoint = checkpointer.buildEpochCheckpoint(originalEvents);
+      const primaryCheckpoint =
+        checkpointer.buildEpochCheckpoint(originalEvents);
 
       // Step 2: Simulate complete database restore and replaying outbox manifest
       const restoredCheckpointer = new BatchMerkleCheckpointerService();
-      const restoredCheckpoint = restoredCheckpointer.buildEpochCheckpoint(originalEvents);
+      const restoredCheckpoint =
+        restoredCheckpointer.buildEpochCheckpoint(originalEvents);
 
       expect(restoredCheckpoint.merkleRoot).toBe(primaryCheckpoint.merkleRoot);
       expect(restoredCheckpoint.leafCount).toBe(primaryCheckpoint.leafCount);
 
       // Step 3: Verify inclusion proofs on restored instance match primary
-      const primaryProof = checkpointer.generateInclusionProof(primaryCheckpoint.epochNumber, 1);
-      const restoredProof = restoredCheckpointer.generateInclusionProof(restoredCheckpoint.epochNumber, 1);
+      const primaryProof = checkpointer.generateInclusionProof(
+        primaryCheckpoint.epochNumber,
+        1,
+      );
+      const restoredProof = restoredCheckpointer.generateInclusionProof(
+        restoredCheckpoint.epochNumber,
+        1,
+      );
 
       expect(restoredProof.leafHash).toBe(primaryProof.leafHash);
-      expect(restoredCheckpointer.verifyInclusionProof(primaryProof)).toBe(true);
+      expect(restoredCheckpointer.verifyInclusionProof(primaryProof)).toBe(
+        true,
+      );
     });
   });
 
@@ -66,11 +79,19 @@ describe('Checkpoint 9 - Restore Reconciliation Integration Suite (IC-08)', () =
       };
 
       // First ingestion attempt
-      const result1 = deduplicator.checkAndRegister(TENANT_ID, 'INGEST_FIREWALL', replayEvent);
+      const result1 = deduplicator.checkAndRegister(
+        TENANT_ID,
+        'INGEST_FIREWALL',
+        replayEvent,
+      );
       expect(result1.isDuplicate).toBe(false);
 
       // Duplicate re-injected replay attempt during restore
-      const result2 = deduplicator.checkAndRegister(TENANT_ID, 'INGEST_FIREWALL', replayEvent);
+      const result2 = deduplicator.checkAndRegister(
+        TENANT_ID,
+        'INGEST_FIREWALL',
+        replayEvent,
+      );
       expect(result2.isDuplicate).toBe(true);
 
       const metrics = deduplicator.getMetrics();

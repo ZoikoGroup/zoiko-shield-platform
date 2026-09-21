@@ -63,12 +63,16 @@ describe('AiSystemInventoryService (Section 05 AI Architecture & NIST/EU AI Act)
     expect(retrieved?.provider).toBe('Local');
 
     // Test updating lifecycle state
-    const updated = service.updateModel('custom-local-llama', { lifecycleState: 'APPROVED_FOR_PRODUCTION' });
+    const updated = service.updateModel('custom-local-llama', {
+      lifecycleState: 'APPROVED_FOR_PRODUCTION',
+    });
     expect(updated.lifecycleState).toBe('APPROVED_FOR_PRODUCTION');
 
     // Test decommissioning
     const deleted = service.deleteModel('custom-local-llama');
     expect(deleted).toBe(true);
-    expect(service.getModelProfile('custom-local-llama')?.lifecycleState).toBe('DECOMMISSIONED');
+    expect(service.getModelProfile('custom-local-llama')?.lifecycleState).toBe(
+      'DECOMMISSIONED',
+    );
   });
 });

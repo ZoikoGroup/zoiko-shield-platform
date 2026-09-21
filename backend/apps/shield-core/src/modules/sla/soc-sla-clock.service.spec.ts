@@ -13,7 +13,9 @@ function makePrismaMock() {
   return {
     rows,
     caseSlaClock: {
-      findUnique: jest.fn(async ({ where }: any) => rows.get(where.case_id) ?? null),
+      findUnique: jest.fn(
+        async ({ where }: any) => rows.get(where.case_id) ?? null,
+      ),
       create: jest.fn(async ({ data }: any) => {
         const row = {
           paused_at: null,

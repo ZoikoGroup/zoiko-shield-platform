@@ -145,17 +145,19 @@ export class ShieldActionController {
   @Get('metrics')
   @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
   getMetrics(): string {
-    return [
-      '# HELP zoiko_soar_actions_executed_total Total number of governed SOAR containment actions executed',
-      '# TYPE zoiko_soar_actions_executed_total counter',
-      `zoiko_soar_actions_executed_total{service="shield-action"} 89`,
-      '# HELP zoiko_soar_quorum_approvals_total Total two-man rule and dual custody approvals',
-      '# TYPE zoiko_soar_quorum_approvals_total counter',
-      `zoiko_soar_quorum_approvals_total{service="shield-action"} 24`,
-      '# HELP zoiko_service_up Status of shield-action service',
-      '# TYPE zoiko_service_up gauge',
-      `zoiko_service_up{service="shield-action"} 1`,
-    ].join('\n') + '\n';
+    return (
+      [
+        '# HELP zoiko_soar_actions_executed_total Total number of governed SOAR containment actions executed',
+        '# TYPE zoiko_soar_actions_executed_total counter',
+        `zoiko_soar_actions_executed_total{service="shield-action"} 89`,
+        '# HELP zoiko_soar_quorum_approvals_total Total two-man rule and dual custody approvals',
+        '# TYPE zoiko_soar_quorum_approvals_total counter',
+        `zoiko_soar_quorum_approvals_total{service="shield-action"} 24`,
+        '# HELP zoiko_service_up Status of shield-action service',
+        '# TYPE zoiko_service_up gauge',
+        `zoiko_service_up{service="shield-action"} 1`,
+      ].join('\n') + '\n'
+    );
   }
 
   @UseGuards(InternalAuthGuard)
@@ -290,7 +292,10 @@ export class ShieldActionController {
   @Post('api/v1/action/dual-custody/initiate')
   initiateDualCustodyQuorum(@Body() body: any) {
     if (!this.dualCustodyQuorumService) {
-      return { status: 'UNAVAILABLE', message: 'DualCustodyQuorumService not configured' };
+      return {
+        status: 'UNAVAILABLE',
+        message: 'DualCustodyQuorumService not configured',
+      };
     }
     return this.dualCustodyQuorumService.initiateQuorum(body);
   }
@@ -306,7 +311,10 @@ export class ShieldActionController {
     },
   ) {
     if (!this.dualCustodyQuorumService) {
-      return { status: 'UNAVAILABLE', message: 'DualCustodyQuorumService not configured' };
+      return {
+        status: 'UNAVAILABLE',
+        message: 'DualCustodyQuorumService not configured',
+      };
     }
     return this.dualCustodyQuorumService.signSecondApproval(
       body.tenantId,
@@ -322,7 +330,10 @@ export class ShieldActionController {
     @Query('tenantId') tenantId: string,
   ) {
     if (!this.dualCustodyQuorumService) {
-      return { status: 'UNAVAILABLE', message: 'DualCustodyQuorumService not configured' };
+      return {
+        status: 'UNAVAILABLE',
+        message: 'DualCustodyQuorumService not configured',
+      };
     }
     return this.dualCustodyQuorumService.getQuorum(tenantId, quorumId);
   }
@@ -338,7 +349,10 @@ export class ShieldActionController {
     },
   ) {
     if (!this.dualCustodyQuorumService) {
-      return { valid: false, reason: 'DualCustodyQuorumService not configured' };
+      return {
+        valid: false,
+        reason: 'DualCustodyQuorumService not configured',
+      };
     }
     return this.dualCustodyQuorumService.validateQuorumForExecution(
       body.tenantId,
