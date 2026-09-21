@@ -16,7 +16,11 @@ export interface PlanTierPricing {
 export interface PlanTierAllocations {
   maxProtectedAssets: number | null;
   includedTelemetryGbPerDay: number | null;
-  incidentResponseSlaHours: number;
+  /**
+   * Null until ADR-07 approves contractual SLAs. Internal SLOs are not
+   * customer promises (ZS-COM-BILL-001 §742).
+   */
+  incidentResponseSlaHours: number | null;
   retentionDays: number;
   includedRetainerHoursPerYear: number;
 }
@@ -35,7 +39,19 @@ export interface PlanTier {
   isPopular?: boolean;
 }
 
-export const APPROVED_PLAN_TIERS: PlanTier[] = [
+/**
+ * DRAFT plan structure only — nothing here is an approved commercial offer.
+ *
+ * ADR-06 (price book) and ADR-07 (contractual SLAs) are open. ZS-COM-BILL-001
+ * §161: "No public price, plan ladder, included quota, discount, overage or
+ * SLA is assumed until the approved price book is live. Missing price
+ * configuration blocks charge creation." So every price and SLA figure is
+ * null and every tier is contract-only until Finance/Commercial approve the
+ * price book. This was previously named APPROVED_PLAN_TIERS and published
+ * $2,000 / $4,000 / $8,000 monthly prices and 4h / 2h / 1h response SLAs on
+ * an unauthenticated endpoint.
+ */
+export const DRAFT_PLAN_TIERS: PlanTier[] = [
   {
     key: 'SHIELD_ESSENTIAL',
     displayName: 'Shield Essential',
@@ -43,15 +59,15 @@ export const APPROVED_PLAN_TIERS: PlanTier[] = [
     description:
       'Automated continuous control evaluation for SOC 2 and ISO 27001 with verifiable evidence ledger and basic incident retainer.',
     pricing: {
-      monthlyUsd: 2000,
-      annualBilledMonthlyUsd: 1800,
-      isContractOnly: false,
+      monthlyUsd: null,
+      annualBilledMonthlyUsd: null,
+      isContractOnly: true,
       currency: 'USD',
     },
     allocations: {
       maxProtectedAssets: 250,
       includedTelemetryGbPerDay: 10,
-      incidentResponseSlaHours: 4,
+      incidentResponseSlaHours: null,
       retentionDays: 90,
       includedRetainerHoursPerYear: 10,
     },
@@ -61,15 +77,14 @@ export const APPROVED_PLAN_TIERS: PlanTier[] = [
       'Tamper-evident SHA-256 Merkle evidence ledger',
       'Offline zero-network audit package generator & CLI verifier',
       'Tier 1 Certified Connectors (Microsoft Entra ID, AWS, Okta)',
-      '4-Hour SLA emergency incident response retainer',
+      'Emergency incident response retainer (response terms per order form)',
     ],
     governanceFeatures: [
       'Single-region evidence pinning',
       'Role-based access control (RBAC)',
       'Standard weekly assurance digests',
     ],
-    supportModel:
-      'Standard 8x5 business hours support + 4h emergency IR hotline',
+    supportModel: 'Standard 8x5 business hours support + emergency IR hotline',
   },
   {
     key: 'SHIELD_PROFESSIONAL',
@@ -78,15 +93,15 @@ export const APPROVED_PLAN_TIERS: PlanTier[] = [
     description:
       'Comprehensive Managed Detection & Response with human-approved containment, continuous assurance, exposure scanning, and priority incident surge.',
     pricing: {
-      monthlyUsd: 4000,
-      annualBilledMonthlyUsd: 3600,
-      isContractOnly: false,
+      monthlyUsd: null,
+      annualBilledMonthlyUsd: null,
+      isContractOnly: true,
       currency: 'USD',
     },
     allocations: {
       maxProtectedAssets: 1000,
       includedTelemetryGbPerDay: 50,
-      incidentResponseSlaHours: 2,
+      incidentResponseSlaHours: null,
       retentionDays: 180,
       includedRetainerHoursPerYear: 25,
     },
@@ -102,14 +117,15 @@ export const APPROVED_PLAN_TIERS: PlanTier[] = [
       'Multi-cloud threat correlation (AWS, Azure, GCP, CrowdStrike)',
       'Continuous attack surface & exposure management',
       'Human-in-the-loop SOAR response proposals & sandbox simulation',
-      '2-Hour SLA priority emergency incident response',
+      'Priority emergency incident response (response terms per order form)',
     ],
     governanceFeatures: [
       'Two-Man Quorum authorization for destructive playbooks',
       'Purpose-bound legal access reasons (§16.4) for forensic files',
       'Multi-region evidence synchronization',
     ],
-    supportModel: 'Continuous SOC triage + 2h emergency IR response commitment',
+    supportModel:
+      'Continuous SOC triage + emergency IR response (terms per order form)',
     isPopular: true,
   },
   {
@@ -119,15 +135,15 @@ export const APPROVED_PLAN_TIERS: PlanTier[] = [
     description:
       'Full-spectrum cyber defense including AI safety grounding, multi-hop threat hunting, canary honeypots, and expedited 1-hour emergency surge.',
     pricing: {
-      monthlyUsd: 8000,
-      annualBilledMonthlyUsd: 7200,
-      isContractOnly: false,
+      monthlyUsd: null,
+      annualBilledMonthlyUsd: null,
+      isContractOnly: true,
       currency: 'USD',
     },
     allocations: {
       maxProtectedAssets: 5000,
       includedTelemetryGbPerDay: 250,
-      incidentResponseSlaHours: 1,
+      incidentResponseSlaHours: null,
       retentionDays: 365,
       includedRetainerHoursPerYear: 50,
     },
@@ -144,14 +160,15 @@ export const APPROVED_PLAN_TIERS: PlanTier[] = [
       'Multi-hop attack path trajectory exploration & MITRE correlation',
       'Autonomous adversary replay & canary honeypot telemetry',
       'Post-Quantum Dilithium3 dual-signed evidence seals',
-      '1-Hour SLA expedited emergency incident response retainer',
+      'Expedited emergency incident response retainer (response terms per order form)',
     ],
     governanceFeatures: [
       'Immutable counsel-controlled forensic record isolation',
       'Model armor prompt-injection gateway & PII filter',
       'Regional standby failover & sovereign boundary fencing',
     ],
-    supportModel: 'Dedicated named Security Architect + 1h emergency IR SLA',
+    supportModel:
+      'Dedicated named Security Architect + emergency IR (terms per order form)',
   },
   {
     key: 'SHIELD_ENTERPRISE',
@@ -168,7 +185,7 @@ export const APPROVED_PLAN_TIERS: PlanTier[] = [
     allocations: {
       maxProtectedAssets: null,
       includedTelemetryGbPerDay: null,
-      incidentResponseSlaHours: 1,
+      incidentResponseSlaHours: null,
       retentionDays: 730,
       includedRetainerHoursPerYear: 100,
     },
@@ -190,7 +207,7 @@ export const APPROVED_PLAN_TIERS: PlanTier[] = [
     governanceFeatures: [
       'Customer-Managed Keys (BYOK KMS integration) & Sovereign Partitioning',
       'Custom data sovereignty boundaries with geofenced storage',
-      'Bespoke SLA credit guarantees with automated ledger settlement',
+      'Contractual SLA and service-credit terms once ADR-07 is approved',
     ],
     supportModel: 'Dedicated Named Incident Commander & TAM team',
   },
