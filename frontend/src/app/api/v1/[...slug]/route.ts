@@ -1414,7 +1414,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
                   customerService: "Post-Quantum Cryptographic Audit Ledger",
                   status: "CORE",
                   substantiatingSatellites: ["shield-anchor"],
-                  governanceRationale: "Hardware HSM Root-of-Trust and Dilithium3 cryptographic anchoring active.",
+                  governanceRationale: "Merkle checkpoints dual-signed (ECDSA P-256 + ML-DSA-65) by shield-anchor.",
                 },
               ],
             },
@@ -1531,7 +1531,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
             serviceName: "Post-Quantum Cryptographic Audit Ledger",
             category: "TRUST",
             publicOutcomeDescription:
-              "Tamper-evident Merkle epoch tree anchored with ML-DSA (Dilithium3) and Falcon post-quantum signatures with Hardware HSM root-of-trust.",
+              "Tamper-evident Merkle epoch tree; checkpoints dual-signed with ECDSA P-256 and ML-DSA-65.",
             status: "CORE",
             substantiatingComponents: ["shield-anchor", "verifier-cli"],
             includedCapabilities: ["MERKLE_ANCHORING", "PQC_SIGNATURES", "INDEPENDENT_VERIFICATION"],

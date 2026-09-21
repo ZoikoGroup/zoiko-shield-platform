@@ -23,11 +23,11 @@ async function main() {
   const freezeService = new EmergencyFreezeLockdownService();
   const tenantId = `tenant-${crypto.randomUUID().slice(0, 8)}`;
 
-  console.log('[1/3] Initializing FIPS 140-3 Level 3 Cloud HSM Asymmetric Enclave...');
+  console.log('[1/3] Initializing command signing key (software-managed, not HSM-backed)...');
   const keyMeta = hsmSigner.getActiveKeyMetadata();
   console.log(`  ✔ Active HSM Key ID: ${keyMeta.keyId}`);
   console.log(`  ✔ Signature Algorithm: ${keyMeta.algorithm}`);
-  console.log(`  ✔ Hardware Enclave: ${keyMeta.hsmEnclaveId} (${keyMeta.fipsLevel})`);
+  console.log(`  ✔ Key custody: ${keyMeta.hsmEnclaveId} (FIPS: ${keyMeta.fipsLevel})`);
 
   // Sign a high-consequence live SOAR command
   const liveCommand = {
