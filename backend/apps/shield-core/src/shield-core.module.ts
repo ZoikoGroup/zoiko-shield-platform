@@ -101,6 +101,7 @@ import { EventStreamModule } from './modules/events/event-stream.module';
 import { ExperienceModule } from './modules/experience/experience.module';
 import { ConnectorsProxyModule } from './modules/connectors-proxy/connectors-proxy.module';
 import { AnchorProxyModule } from './modules/anchor-proxy/anchor-proxy.module';
+import { RequirementsRegisterModule } from './modules/requirements-register/requirements-register.module';
 
 @Module({
   imports: [
@@ -214,6 +215,7 @@ import { AnchorProxyModule } from './modules/anchor-proxy/anchor-proxy.module';
     ConnectorsProxyModule,
     AnchorProxyModule,
     OutboxModule,
+    RequirementsRegisterModule,
   ],
   controllers: [ShieldCoreController],
   providers: [
