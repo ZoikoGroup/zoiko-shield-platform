@@ -276,13 +276,13 @@ export default function MerkleLedgerExplorerPage() {
                     </div>
                     <div className="text-[10px] text-slate-400 truncate mt-0.5">{ecdsaSignature}</div>
                   </div>
-                  {activeReceipt?.enclaveAttestation && (
+                  {activeReceipt?.hsmKeyCustody && (
                     <div className="p-2 bg-slate-900/60 border border-slate-800 rounded text-[10px] text-slate-300 space-y-0.5">
                       <div className="flex items-center justify-between text-purple-400 font-bold">
-                        <span>Checkpoint Signature Digest</span>
-                        <Badge variant="neutral">ECDSA P-256 + ML-DSA-65</Badge>
+                        <span>HSM Key Custody</span>
+                        <Badge variant="neutral">{activeReceipt.hsmKeyCustody.fipsLevel}</Badge>
                       </div>
-                      <div className="truncate text-slate-400 font-mono">{activeReceipt.enclaveAttestation.pcr0}</div>
+                      <div className="truncate text-slate-400 font-mono">{activeReceipt.hsmKeyCustody.keyId} ({activeReceipt.hsmKeyCustody.provider})</div>
                     </div>
                   )}
                 </div>

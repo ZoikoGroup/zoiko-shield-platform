@@ -27,7 +27,7 @@ import {
 } from "@/components/states/mandatory-ui-states";
 import { useEventStream } from "@/lib/use-event-stream";
 
-export default function JitEnclavePage() {
+export default function JitElevationPage() {
   const [state, setState] = useDemoState();
   const [isElevationModalOpen, setIsElevationModalOpen] = useState(false);
   const [justification, setJustification] = useState(

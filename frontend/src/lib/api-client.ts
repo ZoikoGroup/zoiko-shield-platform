@@ -1939,11 +1939,11 @@ export class ZoikoShieldApiClient {
           ecdsaSignature: "ecdsa_p256_3045022100a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b202202a3b4c5d",
           witnessCount: 3,
           sealedAt: new Date().toISOString(),
-          enclaveAttestation: {
-            pcr0: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-            pcr1: "88a91a27719ce3400ab819211c478810298aef2230198754b209121873645123",
-            pcr2: "4a5b6c7d8e9f0a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b",
-            mrSigner: "mrsigner_zoikoshield_enclave_prod_v1",
+          hsmKeyCustody: {
+            keyId: "kms-key-pqc-us-east1-primary",
+            provider: "GOOGLE_CLOUD_KMS",
+            fipsLevel: "FIPS_140_3_L3",
+            algorithm: "ECDSA_P256_ML_DSA_65",
             timestamp: new Date().toISOString(),
           },
         };
@@ -2213,7 +2213,7 @@ export class ZoikoShieldApiClient {
           pricingTierMinimum: "ENTERPRISE",
         },
         {
-          serviceId: "enterprise-dedicated-enclave",
+          serviceId: "enterprise-dedicated-partition",
           serviceName: "Dedicated Sovereign Partition & Bring-Your-Own-KMS",
           category: "TRUST",
           publicOutcomeDescription:

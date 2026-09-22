@@ -99,7 +99,7 @@ export default function AuditPage() {
             <span>Generate Sealed Audit Package</span>
           </Button>
           <Button variant="cyan" onClick={() => router.push("/admin/jit")}>
-            <span>JIT & Enclave Center</span>
+            <span>JIT Elevation Center</span>
             <ArrowRight className="w-4 h-4" />
           </Button>
         </div>

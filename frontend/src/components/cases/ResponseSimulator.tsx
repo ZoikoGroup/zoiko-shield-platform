@@ -57,7 +57,7 @@ export const ResponseSimulator: React.FC<ResponseSimulatorProps> = ({
   } | null>(null);
   const [initiatorFidoKey] = useState("YubiKey 5 FIPS (NFC #YK-9842)");
   const [secondaryApproverName] = useState("David Ross (Incident Commander)");
-  const [secondaryFidoKey] = useState("Apple TouchID Secure Enclave (Passkey)");
+  const [secondaryFidoKey] = useState("Apple Touch ID (Passkey / FIDO2)");
 
   const handleInitiateQuorum = async () => {
     setQuorumStep("INITIATING");

@@ -371,15 +371,16 @@ export interface JitElevationSession {
   revocationReason?: string;
 }
 
-export interface EnclaveAttestationReceipt {
+export interface HsmCustodyReceipt {
   receiptId: string;
-  enclaveId: string;
-  platform: 'AWS_ENCLAVE' | 'GCP_CONFIDENTIAL_SPACE' | 'GCP_CONFIDENTIAL' | 'GCP_CONFIDENTIAL_VM' | 'INTEL_SGX';
-  pcr0: string;
-  eatId: string;
-  status: 'VALID' | 'TAMPERED';
+  keyId: string;
+  provider: 'GOOGLE_CLOUD_KMS' | 'AWS_KMS' | 'VAULT_HSM' | 'CLOUD_HSM';
+  fipsLevel: 'FIPS_140_3_L3' | 'FIPS_140_2_L3' | 'NOT_VALIDATED';
+  algorithm: 'ECDSA_P256_ML_DSA_65' | 'PQC_DILITHIUM3' | 'ECDSA_P256';
+  status: 'VALID' | 'REVOKED';
   verifiedAt: string;
 }
+
 
 // ----------------------------------------------------------------------------
 // AI Safety Incident Lifecycle (§23), Drift Monitoring (§21), Supply Chain (§24)
@@ -764,11 +765,11 @@ export interface MerkleEpochCheckpoint {
   ecdsaSignature: string;
   witnessCount: number;
   sealedAt: string;
-  enclaveAttestation?: {
-    pcr0: string;
-    pcr1: string;
-    pcr2: string;
-    mrSigner: string;
+  hsmKeyCustody?: {
+    keyId: string;
+    provider: string;
+    fipsLevel: string;
+    algorithm: string;
     timestamp: string;
   };
   leaves?: Array<{

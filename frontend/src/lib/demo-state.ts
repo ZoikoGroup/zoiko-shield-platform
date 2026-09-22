@@ -11,7 +11,7 @@ import {
   ControlTest,
   AuditPackage,
   JitElevationSession,
-  EnclaveAttestationReceipt,
+  HsmCustodyReceipt,
   AiIncident,
   AiIncidentSeverity,
   AiIncidentState,
@@ -42,7 +42,7 @@ export interface DemoState {
   controlTests: ControlTest[];
   auditPackages: AuditPackage[];
   jitSessions: JitElevationSession[];
-  enclaveAttestation?: EnclaveAttestationReceipt;
+  hsmCustody?: HsmCustodyReceipt;
   lastSimulatedEvent?: Record<string, unknown>;
   aiIncidents: AiIncident[];
   aiModels?: AiModelProfile[];
@@ -671,12 +671,12 @@ export function getDefaultStaticState(): DemoState {
         peerApprover: "sec-director@acme.com",
       },
     ],
-    enclaveAttestation: {
-      receiptId: "enclave-receipt-tee-pqc-01",
-      enclaveId: "gcp-confidential-space-us-central1",
-      platform: "GCP_CONFIDENTIAL_SPACE",
-      pcr0: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-      eatId: "eat-tee-verified-token-88412",
+    hsmCustody: {
+      receiptId: "hsm-receipt-kms-pqc-01",
+      keyId: "kms-key-pqc-us-east1-primary",
+      provider: "GOOGLE_CLOUD_KMS",
+      fipsLevel: "FIPS_140_3_L3",
+      algorithm: "ECDSA_P256_ML_DSA_65",
       status: "VALID",
       verifiedAt: STATIC_TIMESTAMP,
     },
