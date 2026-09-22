@@ -37,6 +37,6 @@ export class LocalCredential {
   @Column({ default: false })
   mustChangePassword: boolean;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }

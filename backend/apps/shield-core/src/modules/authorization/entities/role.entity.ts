@@ -37,6 +37,6 @@ export class Role {
   })
   permissions: Permission[];
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }

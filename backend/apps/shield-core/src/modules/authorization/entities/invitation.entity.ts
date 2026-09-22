@@ -52,6 +52,6 @@ export class Invitation {
   @Column({ type: 'uuid', nullable: true })
   acceptedById: string | null;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }

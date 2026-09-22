@@ -48,6 +48,6 @@ export class TenantMembership {
   })
   roles: Role[];
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   joinedAt: Date;
 }

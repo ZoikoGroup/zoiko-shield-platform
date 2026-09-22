@@ -24,9 +24,9 @@ export class Organization {
   @Column({ type: 'varchar', default: 'ACTIVE' })
   status: OrganizationStatus;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }

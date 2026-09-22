@@ -36,9 +36,9 @@ export class ExternalIdentityTenantBinding {
   @Column({ type: 'timestamptz' })
   lastAuthenticatedAt: Date;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }

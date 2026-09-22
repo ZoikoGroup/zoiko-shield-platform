@@ -58,11 +58,28 @@ async function main() {
       TenantMembership,
       Invitation,
     ],
-    synchronize: true,
+    // Never true. This seeder ran with synchronize on for a long time, and
+    // because its entity list is only a subset of the app's, TypeORM quietly
+    // reshaped whatever database it was pointed at: it created
+    // authorization.jit_elevation_requests and the tenant_memberships
+    // elevation columns that no migration contains, and rewrote joinedAt from
+    // timestamptz to a naive timestamp. That is why development worked while
+    // a freshly migrated database did not. Schema changes belong in
+    // typeorm-migrations/, which `npm run check:schema-drift` verifies.
+    synchronize: false,
     ssl: databaseUrl.includes('sslmode=require') ? { rejectUnauthorized: false } : false,
   });
 
   await dataSource.initialize();
+
+  const [{ present }] = await dataSource.query(
+    `SELECT to_regclass('"authorization".tenant_memberships') IS NOT NULL AS present`,
+  );
+  if (!present) {
+    throw new Error(
+      'The identity/authorization tables do not exist. Run `npm run migrate:typeorm` before seeding — this script no longer creates them as a side effect.',
+    );
+  }
 
   const principalRepo = dataSource.getRepository(Principal);
   const localCredRepo = dataSource.getRepository(LocalCredential);

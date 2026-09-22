@@ -53,9 +53,9 @@ export class JitElevationRequest {
   @Column({ type: 'varchar', length: 64 })
   customerVisibleAuditLogRef: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }

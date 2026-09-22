@@ -43,6 +43,6 @@ export class IdentityEvent {
   @Column({ type: 'jsonb', default: {} })
   data: Record<string, unknown>;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   occurredAt: Date;
 }

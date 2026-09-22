@@ -54,6 +54,6 @@ export class FederationTransaction {
   @Column({ type: 'timestamptz', nullable: true })
   consumedAt: Date | null;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }

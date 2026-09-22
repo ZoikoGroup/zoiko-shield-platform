@@ -51,10 +51,10 @@ export class Principal {
   @Column({ type: 'timestamptz', nullable: true })
   lastLoginAt: Date | null;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 
   @Column({ type: 'timestamptz', nullable: true })
