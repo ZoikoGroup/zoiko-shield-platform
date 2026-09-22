@@ -6,6 +6,7 @@ const SHIELD_CORE_BASE_URL =
 
 export class ShieldCoreUnreachableError extends Error {}
 export class TenantNotFoundError extends Error {}
+export class AlertNotFoundError extends Error {}
 
 export interface TenantResidencyContext {
   tenantId: string;
@@ -23,6 +24,54 @@ export interface TenantResidencyContext {
 @Injectable()
 export class ShieldCoreClient {
   private readonly logger = new Logger(ShieldCoreClient.name);
+
+  /**
+   * Escalate an alert to a case. Cases are shield-core-owned (architecture
+   * spec §07), so shield-ingest asks for one rather than writing to the Case
+   * tables behind shield-core's back.
+   */
+  async promoteAlertToCase(input: {
+    tenantId: string;
+    alertId: string;
+    actorId?: string;
+    title?: string;
+    description?: string;
+  }): Promise<{ id: string; status: string; title: string }> {
+    let response: Response;
+    try {
+      response = await fetch(
+        `${SHIELD_CORE_BASE_URL}/internal/v1/cases/from-alert`,
+        {
+          method: 'POST',
+          headers: {
+            ...workloadAuthorizationHeaders('shield-core'),
+            'content-type': 'application/json',
+            'x-tenant-id': input.tenantId,
+          },
+          body: JSON.stringify(input),
+        },
+      );
+    } catch (err) {
+      this.logger.error(`shield-core unreachable: ${(err as Error).message}`);
+      throw new ShieldCoreUnreachableError(
+        'shield-core unreachable during alert promotion',
+      );
+    }
+
+    if (response.status === 404) {
+      throw new AlertNotFoundError(
+        `Alert '${input.alertId}' not found for tenant '${input.tenantId}'`,
+      );
+    }
+    if (!response.ok) {
+      throw new ShieldCoreUnreachableError(
+        `shield-core returned ${response.status} for alert promotion`,
+      );
+    }
+
+    const body = await response.json();
+    return body.data;
+  }
 
   async getTenantResidency(tenantId: string): Promise<TenantResidencyContext> {
     let response: Response;

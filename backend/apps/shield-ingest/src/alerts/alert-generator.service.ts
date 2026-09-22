@@ -3,6 +3,7 @@ import {
   Logger,
   NotFoundException,
   BadRequestException,
+  ServiceUnavailableException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { OutboxService } from '../outbox/outbox.service';
@@ -11,21 +12,18 @@ import {
   requireRegion,
 } from '../security/tenant-context';
 import { randomUUID } from 'crypto';
+import {
+  AlertNotFoundError,
+  ShieldCoreClient,
+  ShieldCoreUnreachableError,
+} from '../internal-client/shield-core.client';
 
 export interface PromoteAlertResult {
   alertId: string;
   status: string;
-  caseCandidatePayload: {
-    tenantId: string;
-    environmentId: string;
-    title: string;
-    description: string;
-    severity: string;
-    priority: string;
-    sourceAlertIds: string[];
-    affectedAssets: string[];
-    affectedIdentities: string[];
-  };
+  caseId: string;
+  caseTitle: string;
+  caseStatus: string;
 }
 
 @Injectable()
@@ -35,6 +33,7 @@ export class AlertGeneratorService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly outbox: OutboxService,
+    private readonly shieldCore: ShieldCoreClient,
   ) {}
 
   /**
@@ -208,48 +207,72 @@ export class AlertGeneratorService {
   }
 
   /**
-   * Promote alert into a Case candidate payload for Step 11 Case Management
+   * Promote an alert into a real case.
+   *
+   * This used to mark the alert 'PROMOTED_TO_CASE' and hand back a
+   * "caseCandidatePayload" describing a case that was never created —
+   * the caller got a 200 and an object that looked like a case, and no case
+   * existed anywhere. It also wrote a status that is not in shield-core's
+   * alert state machine at all, so the alert ended up in a state nothing
+   * else could transition out of.
+   *
+   * Cases belong to shield-core (architecture spec §07), so promotion now
+   * asks shield-core to open one. shield-core's CaseService is what moves
+   * the alert to ESCALATED_TO_CASE, inside the same transaction that creates
+   * the case — this method no longer touches the alert's status itself,
+   * because doing so before the case existed is exactly what produced the
+   * dangling state.
    */
   async promoteAlertToCase(
     tenantId: string,
     alertId: string,
+    actorId?: string,
   ): Promise<PromoteAlertResult> {
     const alert = await this.getAlertById(tenantId, alertId);
 
-    let sourceEventIds: string[] = [];
-    let affectedAssets: string[] = [];
-    let affectedIdentities: string[] = [];
-
     try {
-      sourceEventIds = JSON.parse(alert.source_event_ids || '[]');
-      affectedAssets = JSON.parse(alert.affected_assets || '[]');
-      affectedIdentities = JSON.parse(alert.affected_identities || '[]');
+      JSON.parse(alert.source_event_ids || '[]');
+      JSON.parse(alert.affected_assets || '[]');
+      JSON.parse(alert.affected_identities || '[]');
     } catch (error) {
       throw new BadRequestException(
         `Alert '${alertId}' contains malformed context data: ${(error as Error).message}`,
       );
     }
 
-    await this.prisma.alert.update({
-      where: { id: alertId },
-      data: { status: 'PROMOTED_TO_CASE' },
-    });
+    let createdCase: { id: string; status: string; title: string };
+    try {
+      createdCase = await this.shieldCore.promoteAlertToCase({
+        tenantId,
+        alertId: alert.id,
+        actorId,
+      });
+    } catch (error) {
+      if (error instanceof AlertNotFoundError) {
+        throw new NotFoundException(error.message);
+      }
+      if (error instanceof ShieldCoreUnreachableError) {
+        // Deliberately not swallowed into a success response: if no case was
+        // opened, the caller must find out now rather than from an empty
+        // case queue later.
+        throw new ServiceUnavailableException(
+          `Alert '${alertId}' was not promoted: ${error.message}`,
+        );
+      }
+      throw error;
+    }
+
+    const promoted = await this.getAlertById(tenantId, alertId);
+    this.logger.log(
+      `Alert ${alert.id} promoted to case ${createdCase.id} for tenant ${tenantId}`,
+    );
 
     return {
       alertId: alert.id,
-      status: 'PROMOTED_TO_CASE',
-      caseCandidatePayload: {
-        tenantId: alert.tenant_id,
-        environmentId: alert.environment_id,
-        title: `Case: ${alert.title}`,
-        description:
-          alert.description || `Investigating security alert ${alert.id}`,
-        severity: alert.severity,
-        priority: alert.priority,
-        sourceAlertIds: [alert.id],
-        affectedAssets,
-        affectedIdentities,
-      },
+      status: promoted.status,
+      caseId: createdCase.id,
+      caseTitle: createdCase.title,
+      caseStatus: createdCase.status,
     };
   }
 }

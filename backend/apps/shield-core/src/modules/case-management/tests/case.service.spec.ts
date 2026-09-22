@@ -14,6 +14,7 @@ import { EvidenceService } from '../../evidence/services/evidence.service';
 import { EvidenceAutoCreationService } from '../../evidence/evidence-auto-creation.service';
 import { SocSlaClockService } from '../../sla/soc-sla-clock.service';
 import { CaseQualityReviewService } from '../quality/case-quality-review.service';
+import { AlertStateMachineService } from '../../alert/state-machine/alert-state-machine.service';
 
 describe('CaseService', () => {
   let service: CaseService;
@@ -37,13 +38,22 @@ describe('CaseService', () => {
     primary_identity_id: 'identity-1',
     primary_asset_id: null,
     detection_match_id: 'match-1',
+    status: 'NEW',
   };
 
   beforeEach(async () => {
     prismaMock = {
+      // Both transaction forms: the array form used elsewhere in the service,
+      // and the callback form createFromAlert uses so it can walk the alert
+      // through its states inside the same transaction.
       $transaction: jest
         .fn()
-        .mockImplementation((ops: any[]) => Promise.all(ops)),
+        .mockImplementation((opsOrCallback: any) =>
+          typeof opsOrCallback === 'function'
+            ? opsOrCallback(prismaMock)
+            : Promise.all(opsOrCallback),
+        ),
+      alert: { update: jest.fn().mockResolvedValue({}) },
       case: {
         create: jest
           .fn()
@@ -52,7 +62,10 @@ describe('CaseService', () => {
         findMany: jest.fn(),
         update: jest.fn().mockResolvedValue({}),
       },
-      caseAlert: { create: jest.fn().mockResolvedValue({}) },
+      caseAlert: {
+        create: jest.fn().mockResolvedValue({}),
+        findFirst: jest.fn().mockResolvedValue(null),
+      },
       caseEvidence: { create: jest.fn().mockResolvedValue({}) },
       caseTransition: {
         create: jest.fn().mockResolvedValue({ id: 'transition-1' }),
@@ -104,10 +117,65 @@ describe('CaseService', () => {
         },
         { provide: SocSlaClockService, useValue: slaClockMock },
         { provide: CaseQualityReviewService, useValue: qualityReviewMock },
+        AlertStateMachineService,
       ],
     }).compile();
 
     service = module.get<CaseService>(CaseService);
+  });
+
+  it('walks the alert to ESCALATED_TO_CASE through its allowed route', async () => {
+    await service.createFromAlert({
+      tenantId: 'tenant-a',
+      alertId: 'alert-1',
+      actorId: 'analyst-1',
+    });
+
+    // NEW cannot reach ESCALATED_TO_CASE in one hop, so the alert is
+    // acknowledged and triaged on the way rather than teleported.
+    const statuses = prismaMock.alert.update.mock.calls.map(
+      ([args]: any[]) => args.data.status,
+    );
+    expect(statuses).toEqual(['ACKNOWLEDGED', 'TRIAGED', 'ESCALATED_TO_CASE']);
+  });
+
+  it('still opens the case when the alert has no route to escalation', async () => {
+    // A CLOSED alert an analyst decides to investigate after all: the alert's
+    // own lifecycle has nowhere to go, but the case must still be created.
+    caseRepoMock.findAlertByTenantAndId.mockResolvedValue({
+      ...alert,
+      status: 'CLOSED',
+    });
+
+    const createdCase = await service.createFromAlert({
+      tenantId: 'tenant-a',
+      alertId: 'alert-1',
+      actorId: 'analyst-1',
+    });
+
+    expect(createdCase).toBeDefined();
+    expect(prismaMock.case.create).toHaveBeenCalled();
+    expect(prismaMock.alert.update).not.toHaveBeenCalled();
+  });
+
+  it('returns the existing case instead of opening a second one for the same alert', async () => {
+    prismaMock.caseAlert.findFirst.mockResolvedValue({
+      case_id: 'case-existing',
+    });
+    caseRepoMock.findByTenantAndId.mockResolvedValue({
+      id: 'case-existing',
+      status: 'NEW',
+    });
+
+    const result = await service.createFromAlert({
+      tenantId: 'tenant-a',
+      alertId: 'alert-1',
+      actorId: 'analyst-1',
+    });
+
+    expect(result.id).toBe('case-existing');
+    expect(prismaMock.case.create).not.toHaveBeenCalled();
+    expect(prismaMock.alert.update).not.toHaveBeenCalled();
   });
 
   it('creates a Case from an Alert, links it, creates timeline entries, and creates source evidence (spec §9)', async () => {

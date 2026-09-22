@@ -21,6 +21,10 @@ import { OutboxService } from '../../outbox/outbox.service';
     AlertStateMachineService,
     OutboxService,
   ],
-  exports: [AlertCreationService, AlertSuppressionService],
+  exports: [
+    AlertCreationService,
+    AlertSuppressionService,
+    AlertStateMachineService,
+  ],
 })
 export class AlertModule {}

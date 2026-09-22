@@ -40,10 +40,13 @@ describe('AlertGeneratorController', () => {
     expect(response.data).toBe(mockAlerts);
   });
 
-  it('should promote alert to case', async () => {
+  it('returns the case that promotion actually created', async () => {
     const mockPromoteResult = {
       alertId: 'alert-1',
-      status: 'PROMOTED_TO_CASE',
+      status: 'ESCALATED_TO_CASE',
+      caseId: 'case-1',
+      caseTitle: 'Case: Suspicious login',
+      caseStatus: 'NEW',
     };
     serviceMock.promoteAlertToCase.mockResolvedValue(mockPromoteResult);
 
@@ -52,7 +55,10 @@ describe('AlertGeneratorController', () => {
       'alert-1',
     );
 
-    expect(response.statusCode).toBe(HttpStatus.OK);
+    expect(response.statusCode).toBe(HttpStatus.CREATED);
     expect(response.data).toBe(mockPromoteResult);
+    // The whole point of the endpoint: a caller can follow the response to a
+    // case that exists, instead of a "candidate payload" for one that doesn't.
+    expect(response.data.caseId).toBe('case-1');
   });
 });

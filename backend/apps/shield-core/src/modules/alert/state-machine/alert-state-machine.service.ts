@@ -44,4 +44,47 @@ export class AlertStateMachineService {
       );
     }
   }
+
+  /**
+   * Shortest allow-listed route from one status to another, as the list of
+   * intermediate states to walk through (excluding `from`, including `to`).
+   *
+   * Escalating an alert to a case is legitimate from NEW, but NEW cannot
+   * reach ESCALATED_TO_CASE in one hop — the alert must be acknowledged and
+   * triaged first. Rather than let case creation write the end state
+   * directly and skip those records, the caller walks this path and persists
+   * every hop, so the alert's history shows what actually happened.
+   */
+  pathTo(from: string, to: string): AlertStatus[] {
+    const start = from as AlertStatus;
+    const target = to as AlertStatus;
+    if (!ALLOWED_TRANSITIONS[start]) {
+      throw new BadRequestException(`Unknown alert status '${from}'`);
+    }
+    if (!ALLOWED_TRANSITIONS[target]) {
+      throw new BadRequestException(`Unknown target alert status '${to}'`);
+    }
+    if (start === target) {
+      return [];
+    }
+
+    const queue: AlertStatus[][] = [[start]];
+    const seen = new Set<AlertStatus>([start]);
+    while (queue.length > 0) {
+      const route = queue.shift()!;
+      for (const next of ALLOWED_TRANSITIONS[route[route.length - 1]]) {
+        if (seen.has(next)) continue;
+        const extended = [...route, next];
+        if (next === target) {
+          return extended.slice(1);
+        }
+        seen.add(next);
+        queue.push(extended);
+      }
+    }
+
+    throw new BadRequestException(
+      `No allowed alert transition route from '${from}' to '${to}'`,
+    );
+  }
 }

@@ -1,12 +1,17 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AlertGeneratorService } from './alert-generator.service';
 import { PrismaService } from '../prisma/prisma.service';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { OutboxService } from '../outbox/outbox.service';
+import {
+  ShieldCoreClient,
+  ShieldCoreUnreachableError,
+} from '../internal-client/shield-core.client';
 
 describe('AlertGeneratorService', () => {
   let service: AlertGeneratorService;
   let prismaMock: any;
+  let shieldCoreMock: any;
 
   const mockDetectionRun = {
     id: 'run-100',
@@ -46,11 +51,14 @@ describe('AlertGeneratorService', () => {
       },
     };
 
+    shieldCoreMock = { promoteAlertToCase: jest.fn() };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AlertGeneratorService,
         { provide: PrismaService, useValue: prismaMock },
         { provide: OutboxService, useValue: new OutboxService() },
+        { provide: ShieldCoreClient, useValue: shieldCoreMock },
       ],
     }).compile();
 
@@ -103,6 +111,67 @@ describe('AlertGeneratorService', () => {
     const alert = await service.createAlertFromDetectionRun('run-100');
     expect(alert).toBeNull();
     expect(prismaMock.alert.create).not.toHaveBeenCalled();
+  });
+
+  describe('promoteAlertToCase', () => {
+    const storedAlert = {
+      id: 'alert-1',
+      tenant_id: 'tenant-1',
+      environment_id: 'prod',
+      title: 'Suspicious Login',
+      description: 'desc',
+      severity: 'HIGH',
+      priority: 'P2',
+      status: 'NEW',
+      source_event_ids: '[]',
+      affected_assets: '[]',
+      affected_identities: '[]',
+    };
+
+    it('asks shield-core to open a real case and returns its id', async () => {
+      prismaMock.alert.findFirst
+        .mockResolvedValueOnce(storedAlert)
+        .mockResolvedValueOnce({ ...storedAlert, status: 'ESCALATED_TO_CASE' });
+      shieldCoreMock.promoteAlertToCase.mockResolvedValue({
+        id: 'case-9',
+        title: 'Case: Suspicious Login',
+        status: 'NEW',
+      });
+
+      const result = await service.promoteAlertToCase('tenant-1', 'alert-1');
+
+      expect(shieldCoreMock.promoteAlertToCase).toHaveBeenCalledWith({
+        tenantId: 'tenant-1',
+        alertId: 'alert-1',
+        actorId: undefined,
+      });
+      expect(result.caseId).toBe('case-9');
+      expect(result.status).toBe('ESCALATED_TO_CASE');
+    });
+
+    it('never writes the alert status itself — shield-core owns that hop', async () => {
+      prismaMock.alert.findFirst.mockResolvedValue(storedAlert);
+      shieldCoreMock.promoteAlertToCase.mockResolvedValue({
+        id: 'case-9',
+        title: 'Case',
+        status: 'NEW',
+      });
+
+      await service.promoteAlertToCase('tenant-1', 'alert-1');
+
+      expect(prismaMock.alert.update).not.toHaveBeenCalled();
+    });
+
+    it('fails loudly when shield-core is unreachable rather than reporting a case nobody opened', async () => {
+      prismaMock.alert.findFirst.mockResolvedValue(storedAlert);
+      shieldCoreMock.promoteAlertToCase.mockRejectedValue(
+        new ShieldCoreUnreachableError('shield-core unreachable'),
+      );
+
+      await expect(
+        service.promoteAlertToCase('tenant-1', 'alert-1'),
+      ).rejects.toThrow(ServiceUnavailableException);
+    });
   });
 
   it('does not return an alert outside the authenticated tenant', async () => {

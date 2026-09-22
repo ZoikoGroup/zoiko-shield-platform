@@ -21,6 +21,19 @@ import { EvidenceAutoCreationService } from '../../evidence/evidence-auto-creati
 import { SocSlaClockService } from '../../sla/soc-sla-clock.service';
 import { CaseQualityReviewService } from '../quality/case-quality-review.service';
 import { CASE_TOPICS } from '../events/case-events';
+import { ALERT_TOPICS } from '../../alert/events/alert-events';
+import { AlertStateMachineService } from '../../alert/state-machine/alert-state-machine.service';
+
+/**
+ * Topic per hop of the alert's escalation route, so consumers of the alert
+ * stream see the same events they would have seen had an operator walked
+ * the alert through the queue by hand.
+ */
+const ALERT_ESCALATION_TOPICS: Record<string, string> = {
+  ACKNOWLEDGED: ALERT_TOPICS.ALERT_ACKNOWLEDGED,
+  TRIAGED: ALERT_TOPICS.ALERT_TRIAGED,
+  ESCALATED_TO_CASE: ALERT_TOPICS.ALERT_ESCALATED,
+};
 
 @Injectable()
 export class CaseService {
@@ -36,6 +49,7 @@ export class CaseService {
     private readonly evidenceAutoCreation: EvidenceAutoCreationService,
     private readonly slaClock: SocSlaClockService,
     private readonly qualityReview: CaseQualityReviewService,
+    private readonly alertStateMachine: AlertStateMachineService,
   ) {}
 
   /**
@@ -61,11 +75,65 @@ export class CaseService {
       );
     }
 
+    // One alert escalates to exactly one case. Both the operator-initiated
+    // POST /cases and the automatic promotion consumer land here, and Kafka
+    // redelivery can replay the same alert.created event, so a second call
+    // for the same alert must return the case that already exists instead of
+    // opening a duplicate investigation.
+    const existingLink = await this.prisma.caseAlert.findFirst({
+      where: {
+        tenant_id: params.tenantId,
+        alert_id: alert.id,
+        relationship_type: 'PRIMARY',
+      },
+      select: { case_id: true },
+    });
+    if (existingLink) {
+      this.logger.debug(
+        `Alert ${alert.id} is already escalated to case ${existingLink.case_id} — returning it rather than opening a second case.`,
+      );
+      const existingCase = await this.caseRepository.findByTenantAndId(
+        params.tenantId,
+        existingLink.case_id,
+      );
+      if (!existingCase) {
+        // The link survived its case, which should not happen — say so
+        // rather than quietly returning null to the caller.
+        throw new NotFoundException(
+          `Alert '${alert.id}' is linked to case '${existingLink.case_id}', which no longer exists for this tenant`,
+        );
+      }
+      return existingCase;
+    }
+
     const caseId = randomUUID();
     const correlationId = randomUUID();
 
-    const [createdCase] = await this.prisma.$transaction([
-      this.prisma.case.create({
+    // Walk the alert to ESCALATED_TO_CASE through its own allow-listed
+    // route. Before this, creating a case left the alert sitting in NEW, so
+    // the alert queue never showed that the alert had been dealt with.
+    //
+    // Some states have no route there at all — a CLOSED or SUPPRESSED alert
+    // that an analyst decides to investigate after all. Opening the case is
+    // the point of the request, so a missing route leaves the alert's status
+    // untouched and is recorded on the case, rather than refusing to open an
+    // investigation because of where the alert sits in its own lifecycle.
+    let alertRoute: string[] = [];
+    let alertRouteBlockedReason: string | null = null;
+    try {
+      alertRoute = this.alertStateMachine.pathTo(
+        alert.status,
+        'ESCALATED_TO_CASE',
+      );
+    } catch (err) {
+      alertRouteBlockedReason = (err as Error).message;
+      this.logger.warn(
+        `Opening case for alert ${alert.id} but leaving its status at '${alert.status}': ${alertRouteBlockedReason}`,
+      );
+    }
+
+    const createdCase = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.case.create({
         data: {
           id: caseId,
           tenant_id: params.tenantId,
@@ -85,8 +153,8 @@ export class CaseService {
           correlation_id: correlationId,
           created_by: params.actorId,
         },
-      }),
-      this.prisma.caseAlert.create({
+      });
+      await tx.caseAlert.create({
         data: {
           tenant_id: params.tenantId,
           case_id: caseId,
@@ -94,8 +162,8 @@ export class CaseService {
           linked_by: params.actorId,
           relationship_type: 'PRIMARY',
         },
-      }),
-      this.prisma.outboxEvent.create({
+      });
+      await tx.outboxEvent.create({
         data: this.outbox.build({
           tenantId: params.tenantId,
           topic: CASE_TOPICS.CASE_CREATED,
@@ -103,8 +171,39 @@ export class CaseService {
           payload: { caseId, alertId: alert.id },
           correlationId,
         }),
-      }),
-    ]);
+      });
+
+      let alertStatus = alert.status;
+      for (const toStatus of alertRoute) {
+        await tx.alert.update({
+          where: { id: alert.id },
+          data: {
+            status: toStatus,
+            ...(toStatus === 'ACKNOWLEDGED'
+              ? { acknowledged_at: new Date() }
+              : {}),
+          },
+        });
+        await tx.outboxEvent.create({
+          data: this.outbox.build({
+            tenantId: params.tenantId,
+            topic:
+              ALERT_ESCALATION_TOPICS[toStatus] ?? ALERT_TOPICS.ALERT_ESCALATED,
+            eventType: `alert.${toStatus.toLowerCase()}`,
+            payload: {
+              alertId: alert.id,
+              fromStatus: alertStatus,
+              toStatus,
+              caseId,
+            },
+            correlationId,
+          }),
+        });
+        alertStatus = toStatus;
+      }
+
+      return created;
+    });
 
     await this.timeline.append({
       tenantId: params.tenantId,
@@ -121,7 +220,12 @@ export class CaseService {
       entryType: 'ALERT_LINKED',
       actorId: params.actorId,
       title: 'Alert linked',
-      summary: `Alert ${alert.id} linked as PRIMARY`,
+      summary:
+        alertRoute.length > 0
+          ? `Alert ${alert.id} linked as PRIMARY and escalated (${[alert.status, ...alertRoute].join(' -> ')})`
+          : alertRouteBlockedReason
+            ? `Alert ${alert.id} linked as PRIMARY; its status stayed '${alert.status}' (${alertRouteBlockedReason})`
+            : `Alert ${alert.id} linked as PRIMARY`,
       sourceRef: alert.id,
       correlationId,
     });
