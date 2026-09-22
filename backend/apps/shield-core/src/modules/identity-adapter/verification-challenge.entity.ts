@@ -63,6 +63,6 @@ export class VerificationChallenge {
   @Column({ type: 'text', nullable: true })
   requestUserAgent?: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }

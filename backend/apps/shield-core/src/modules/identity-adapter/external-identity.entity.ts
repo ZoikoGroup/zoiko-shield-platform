@@ -36,6 +36,6 @@ export class ExternalIdentity {
   @Column({ type: 'timestamptz' })
   lastSyncedAt: Date;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }

@@ -107,6 +107,6 @@ export class Session {
   @Column({ type: 'varchar', nullable: true })
   revokedReason: string | null;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }

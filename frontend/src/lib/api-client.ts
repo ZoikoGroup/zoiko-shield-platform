@@ -66,6 +66,34 @@ function getState(): DemoState {
   return getInitialDemoState();
 }
 
+/**
+ * Whether a failed request may be answered with fabricated demo data.
+ *
+ * Every call below passes a `fallbackFn` that returns invented records, and
+ * this used to run on ANY failure — the backend being down, but equally a 401
+ * because the user was not signed in, a 403, a 404, or a 500. The screen then
+ * filled with fictional alerts, cases and evidence that were indistinguishable
+ * from real ones, and a write the backend had rejected still looked like it
+ * had succeeded.
+ *
+ * So it is off unless someone deliberately turns it on for a disconnected
+ * demo. With it off, a failed call throws and the caller finds out.
+ */
+const DEMO_FALLBACK_ENABLED =
+  process.env.NEXT_PUBLIC_DEMO_FALLBACK === "true";
+
+/** Thrown instead of silently returning demo data. */
+export class ZoikoShieldApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number | null,
+    readonly endpoint: string
+  ) {
+    super(message);
+    this.name = "ZoikoShieldApiError";
+  }
+}
+
 export class ZoikoShieldApiClient {
   private static async safeFetch<T>(
     endpoint: string,
@@ -97,31 +125,66 @@ export class ZoikoShieldApiClient {
       });
       if (res.ok) {
         const json = await res.json();
-        // If the response is the generic unhandled proxy stub, invoke fallback
-        if (
-          json &&
-          typeof json === "object" &&
-          json.message === "ZoikoShield API call processed" &&
-          "path" in json
-        ) {
-          return fallbackFn();
-        }
         if (json && typeof json === "object" && "data" in json && json.data !== undefined) {
           return json.data as T;
         }
         return json as T;
       }
-    } catch {
-      // Backend not running -> fallback
+
+      // The backend answered and said no. That is an answer.
+      const message = await extractErrorMessage(
+        res,
+        `Request to ${endpoint} failed with ${res.status}`
+      );
+      if (DEMO_FALLBACK_ENABLED) {
+        console.warn(
+          `[demo fallback] ${endpoint} returned ${res.status} (${message}); serving fabricated data because NEXT_PUBLIC_DEMO_FALLBACK=true`
+        );
+        return fallbackFn();
+      }
+      throw new ZoikoShieldApiError(message, res.status, endpoint);
+    } catch (error) {
+      if (error instanceof ZoikoShieldApiError) throw error;
+      // The request never reached the backend.
+      const reason = error instanceof Error ? error.message : String(error);
+      if (DEMO_FALLBACK_ENABLED) {
+        console.warn(
+          `[demo fallback] ${endpoint} was unreachable (${reason}); serving fabricated data because NEXT_PUBLIC_DEMO_FALLBACK=true`
+        );
+        return fallbackFn();
+      }
+      throw new ZoikoShieldApiError(
+        `ZoikoShield backend is unreachable: ${reason}`,
+        null,
+        endpoint
+      );
     }
-    return fallbackFn();
   }
 
   // --- Step 1: Authentication ---
-  static async login(email: string, password?: string): Promise<UserSession> {
+  /**
+   * shield-core's LoginDto requires a tenantId: a principal can be a member
+   * of several tenants, so a sign-in has to say which one it is for. This
+   * used to send only the email and password, so every real login attempt was
+   * rejected with a 400 — and the rejection was answered with a fabricated
+   * session, which is why the gap went unnoticed.
+   */
+  static async login(
+    email: string,
+    password?: string,
+    tenantId?: string
+  ): Promise<UserSession> {
+    const resolvedTenantId = tenantId || getState().tenant?.id;
     const session = await this.safeFetch<UserSession>(
       "/api/v1/auth/login",
-      { method: "POST", body: JSON.stringify({ email, password }) },
+      {
+        method: "POST",
+        body: JSON.stringify({
+          email,
+          password,
+          tenantId: resolvedTenantId,
+        }),
+      },
       () => {
         const state = getState();
         const role = email.includes("owner")
@@ -144,6 +207,11 @@ export class ZoikoShieldApiClient {
 
     const state = getState();
     state.session = session;
+    // Carry the tenant the user actually signed in to, so every later request
+    // sends an x-tenant-id the backend will accept.
+    if (resolvedTenantId && state.tenant) {
+      state.tenant.id = resolvedTenantId;
+    }
     state.currentStep = 2;
     saveDemoState(state);
     return session;

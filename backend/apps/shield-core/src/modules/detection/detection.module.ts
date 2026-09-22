@@ -4,6 +4,7 @@ import { AlertModule } from '../alert/alert.module';
 import { SecurityContextModule } from '../security-context/security-context.module';
 import { DetectionController } from './detection.controller';
 import { DetectionRegistryService } from './registry/detection-registry.service';
+import { DetectionRegistrationService } from './registry/detection-registration.service';
 import { DetectionRuntimeService } from './runtime/detection-runtime.service';
 import { DetectionReplayService } from './replay/detection-replay.service';
 import { SuspiciousLoginRule } from './rules/suspicious-login/suspicious-login.rule';
@@ -20,6 +21,7 @@ import { CompositeCorrelationService } from './correlation/composite-correlation
     SuspiciousProcessRule,
     CloudPrivilegeEscalationRule,
     DetectionRegistryService,
+    DetectionRegistrationService,
     DetectionRuntimeService,
     DetectionReplayService,
     CompositeCorrelationService,

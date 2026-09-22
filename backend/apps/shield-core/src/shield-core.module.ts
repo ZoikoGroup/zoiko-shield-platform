@@ -13,31 +13,7 @@ import { LegalEntityModule } from './modules/legal-entity/legal-entity.module';
 import { EnvironmentModule } from './modules/environment/environment.module';
 import { IdentityAdapterModule } from './modules/identity-adapter/identity-adapter.module';
 import { AuthorizationModule } from './modules/authorization/authorization.module';
-import { Principal } from './modules/identity-adapter/principal.entity';
-import { LocalCredential } from './modules/identity-adapter/local-credential.entity';
-import { ExternalIdentity } from './modules/identity-adapter/external-identity.entity';
-import { Session } from './modules/identity-adapter/session.entity';
-import { VerificationChallenge } from './modules/identity-adapter/verification-challenge.entity';
-import { WebauthnCredential } from './modules/identity-adapter/webauthn-credential.entity';
-import { WebauthnChallenge } from './modules/identity-adapter/webauthn-challenge.entity';
-import { RecoveryGrant } from './modules/identity-adapter/recovery-grant.entity';
-import { PolicyDocument } from './modules/identity-adapter/policy-document.entity';
-import { PolicyAcceptance } from './modules/identity-adapter/policy-acceptance.entity';
-import { IdentityEvent } from './modules/identity-adapter/identity-event.entity';
-import { IdentityProviderConfiguration } from './modules/identity-adapter/identity-provider-configuration.entity';
-import { FederationTransaction } from './modules/identity-adapter/federation-transaction.entity';
-import { SamlRequestCacheEntry } from './modules/identity-adapter/saml-request-cache.entity';
-import { ExternalIdentityTenantBinding } from './modules/identity-adapter/external-identity-tenant-binding.entity';
-import { Permission } from './modules/authorization/entities/permission.entity';
-import { Role } from './modules/authorization/entities/role.entity';
-import { TenantMembership } from './modules/authorization/entities/tenant-membership.entity';
-import { Invitation } from './modules/authorization/entities/invitation.entity';
-import { JitElevationRequest } from './modules/authorization/entities/jit-elevation-request.entity';
-import { Tenant } from './modules/tenant/tenant.entity';
-import { LegalEntity } from './modules/legal-entity/legal-entity.entity';
-import { Environment } from './modules/environment/environment.entity';
-import { Customer } from './modules/customer/customer.entity';
-import { Organization } from './modules/organization/organization.entity';
+import { SHIELD_CORE_TYPEORM_ENTITIES } from './typeorm-entities';
 import { OnboardingModule } from './modules/onboarding/onboarding.module';
 import { CommercialModule } from './modules/commercial/commercial.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
@@ -112,33 +88,7 @@ import { RequirementsRegisterModule } from './modules/requirements-register/requ
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL,
-      entities: [
-        Principal,
-        LocalCredential,
-        ExternalIdentity,
-        Session,
-        VerificationChallenge,
-        WebauthnCredential,
-        WebauthnChallenge,
-        RecoveryGrant,
-        PolicyDocument,
-        PolicyAcceptance,
-        IdentityEvent,
-        IdentityProviderConfiguration,
-        FederationTransaction,
-        SamlRequestCacheEntry,
-        ExternalIdentityTenantBinding,
-        Permission,
-        Role,
-        TenantMembership,
-        Invitation,
-        JitElevationRequest,
-        Tenant,
-        LegalEntity,
-        Environment,
-        Customer,
-        Organization,
-      ],
+      entities: SHIELD_CORE_TYPEORM_ENTITIES,
       // Safety Rule: synchronize is strictly disabled by default to prevent silent table/data drops across restarts.
       // Schema evolution is governed by controlled SQL / Prisma migrations.
       synchronize: process.env.TYPEORM_SYNCHRONIZE === 'true',

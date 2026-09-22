@@ -28,9 +28,9 @@ export class LegalEntity {
   @Column({ type: 'text', nullable: true })
   registeredAddress?: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }

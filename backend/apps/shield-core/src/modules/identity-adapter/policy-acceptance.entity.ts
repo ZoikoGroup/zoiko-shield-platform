@@ -31,6 +31,6 @@ export class PolicyAcceptance {
   @Column({ type: 'text', nullable: true })
   userAgent?: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   acceptedAt: Date;
 }

@@ -114,7 +114,7 @@ export class AlertGeneratorController {
 
   /**
    * POST /api/v1/alerts/:alertId/create-case
-   * Promote alert to case candidate payload
+   * Escalate the alert into a real case in shield-core and return its id.
    */
   @Post(':alertId/create-case')
   async createCaseFromAlert(
@@ -126,7 +126,7 @@ export class AlertGeneratorController {
       alertId,
     );
     return {
-      statusCode: HttpStatus.OK,
+      statusCode: HttpStatus.CREATED,
       message: 'Alert promoted to case',
       data: result,
     };

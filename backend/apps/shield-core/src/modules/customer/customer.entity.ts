@@ -34,9 +34,9 @@ export class Customer {
   @Column({ type: 'varchar', nullable: true })
   segment?: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }

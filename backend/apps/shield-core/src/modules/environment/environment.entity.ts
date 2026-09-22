@@ -32,9 +32,9 @@ export class Environment {
   @Column({ type: 'varchar', default: 'ACTIVE' })
   status: EnvironmentStatus;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }

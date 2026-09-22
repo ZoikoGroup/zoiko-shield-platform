@@ -35,6 +35,47 @@ describe('ContinuousControlEvaluatorService', () => {
     );
   });
 
+  it('reports every control as NOT_EVALUATED when no telemetry was supplied', async () => {
+    const report = await evaluator.evaluateFrameworkControls({
+      tenantId: 'tenant-acme-corp',
+      environmentId: 'production',
+    });
+
+    // The previous behaviour was a 100% compliance report across every
+    // framework, assembled from a hard-coded perfect snapshot.
+    expect(report.overallComplianceScore).toBeNull();
+    expect(report.totalControlsEvaluated).toBe(0);
+    expect(report.notEvaluatedControlsCount).toBe(report.totalControls);
+    expect(report.compliantControlsCount).toBe(0);
+    expect(report.evaluations.every((e) => e.status === 'NOT_EVALUATED')).toBe(
+      true,
+    );
+    expect(report.evaluations.every((e) => e.complianceScore === null)).toBe(
+      true,
+    );
+  });
+
+  it('evaluates only the controls whose telemetry is present', async () => {
+    const report = await evaluator.evaluateFrameworkControls({
+      tenantId: 'tenant-acme-corp',
+      environmentId: 'production',
+      telemetrySnapshot: { mfaEnforcementRate: 1.0 },
+    });
+
+    const mfa = report.evaluations.find((e) => e.controlCode === 'SOC2-CC6.1');
+    expect(mfa?.status).toBe('COMPLIANT');
+
+    const edr = report.evaluations.find((e) => e.controlCode === 'SOC2-CC6.6');
+    expect(edr?.status).toBe('NOT_EVALUATED');
+    expect(edr?.details.missingMetrics).toEqual(['edrCoverageRate']);
+
+    // One measured control, all passing — the score describes what was
+    // measured and the report names what was not.
+    expect(report.overallComplianceScore).toBe(100);
+    expect(report.totalControlsEvaluated).toBe(1);
+    expect(report.notEvaluatedControlCodes).toContain('SOC2-CC6.6');
+  });
+
   it('should detect compliance gaps when telemetry violates thresholds', async () => {
     const report = await evaluator.evaluateFrameworkControls({
       tenantId: 'tenant-acme-corp',

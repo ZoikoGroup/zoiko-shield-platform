@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { EvidenceModule } from '../evidence/evidence.module';
+import { AlertModule } from '../alert/alert.module';
 import { AuthorizationDecisionModule } from '../authorization-decision/authorization-decision.module';
 import { CaseController } from './controllers/case.controller';
 import { CaseAiController } from './controllers/case-ai.controller';
@@ -18,11 +19,13 @@ import { ShieldAiClient } from '../../internal-client/shield-ai.client';
 import { AiGovernanceModule } from '../ai-governance/ai-governance.module';
 import { SocSlaClockService } from '../sla/soc-sla-clock.service';
 import { CaseQualityReviewService } from './quality/case-quality-review.service';
+import { CaseAutoPromotionService } from './promotion/case-auto-promotion.service';
 
 @Module({
   imports: [
     PrismaModule,
     EvidenceModule,
+    AlertModule,
     AuthorizationDecisionModule,
     AiGovernanceModule,
   ],
@@ -40,6 +43,7 @@ import { CaseQualityReviewService } from './quality/case-quality-review.service'
     ShieldAiClient,
     SocSlaClockService,
     CaseQualityReviewService,
+    CaseAutoPromotionService,
   ],
   exports: [CaseService, CaseTimelineService],
 })
