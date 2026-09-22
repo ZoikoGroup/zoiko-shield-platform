@@ -1,0 +1,15 @@
+{
+  "lastRun": "2026-09-22T12:14:03.893Z",
+  "backendJest": {
+    "suitesPassed": 392,
+    "suitesTotal": 392,
+    "testsPassed": 1859,
+    "testsTotal": 1859
+  },
+  "typecheck": {
+    "appsChecked": 7,
+    "errors": 0
+  },
+  "ungroundedTermsViolations": 0,
+  "capabilityClaimViolations": 0
+}

@@ -29,6 +29,29 @@ const FORBIDDEN_RULES = [
     name: 'Enclave-Attestation',
     regex: /\benclave\s+(?:attestation|proof)\b/i,
   },
+  // Bare 'enclave' as a product/feature noun — the platform uses Cloud HSM
+  // partitions, not hardware enclaves. Allow the word only in comments that
+  // are explicitly explaining *why* we removed it (i.e. the word appearing
+  // in the linter rule file itself is exempted via IGNORE_FILES).
+  {
+    name: 'Bare-Enclave',
+    regex: /\benclave\b/i,
+  },
+  // Intel SGX — no SGX SDK, no remote attestation service, not implemented.
+  {
+    name: 'Intel-SGX',
+    regex: /\b(?:Intel\s+)?SGX\b/i,
+  },
+  // AWS Nitro Enclave — distinct from general Nitro hypervisor; not deployed.
+  {
+    name: 'AWS-Nitro-Enclave',
+    regex: /\bNitro\s+Enclave\b/i,
+  },
+  // EnclaveAttestationReceipt type name — replaced by HsmCustodyReceipt.
+  {
+    name: 'EnclaveAttestationReceipt-Type',
+    regex: /EnclaveAttestationReceipt/,
+  },
 ];
 
 const SCAN_DIRECTORIES = [

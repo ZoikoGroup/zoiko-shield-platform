@@ -158,7 +158,7 @@ export default function PlatformAdminPage() {
             Multi-Tenant Administration &amp; Platform Controls
           </h1>
           <p className="text-sm text-slate-400 max-w-2xl leading-relaxed">
-            Provision commercial capability offers, execute emergency circuit breakers, monitor live ingestion quotas, and manage JIT enclave support elevations.
+            Provision commercial capability offers, execute emergency circuit breakers, monitor live ingestion quotas, and manage JIT support access elevations.
           </p>
         </div>
 
@@ -166,7 +166,7 @@ export default function PlatformAdminPage() {
           <Link href="/admin/jit">
             <Button variant="cyan" size="md">
               <KeyRound className="w-4 h-4" />
-              <span>JIT Support Enclave</span>
+              <span>JIT Elevation Center</span>
             </Button>
           </Link>
         </div>

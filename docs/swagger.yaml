@@ -140,6 +140,8 @@ tags:
     description: Commercial plan tier ladder, pricing, and recommendations
   - name: MdrServiceObligations
     description: MDR service obligations, SLA windows, and Rule SVC-01 operational proof gates
+  - name: RequirementsRegister
+    description: Requirements and Traceability Register (R04) governance and compliance audit endpoints
 components:
   securitySchemes:
     CookieAuth:
@@ -53646,3 +53648,187 @@ paths:
           description: Operational readiness updated
         '404':
           description: Contract not found
+  /api/v1/requirements:
+    post:
+      summary: Register a new controlled requirement in the R04 register
+      operationId: postRequirement
+      tags:
+        - RequirementsRegister
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - id
+                - version
+                - title
+                - statement
+                - tenantScope
+                - dataScope
+                - authority
+                - failureBehavior
+                - aiStatus
+                - evidenceObligation
+                - acceptanceCriteria
+                - verificationMethod
+                - releaseEvidenceRef
+              properties:
+                id:
+                  type: string
+                  example: REQ-CORE-AUTH-01
+                version:
+                  type: string
+                  example: 1.0.0
+                title:
+                  type: string
+                  example: Multi-Tenant Relational Isolation
+                statement:
+                  type: string
+                tenantScope:
+                  type: string
+                  enum: [SINGLE_TENANT, MULTI_TENANT, SOVEREIGN_CELL]
+                dataScope:
+                  type: string
+                  enum: [PUBLIC, CONFIDENTIAL, RESTRICTED_PHI, LEGAL_PRIVILEGED]
+                authority:
+                  type: string
+                failureBehavior:
+                  type: string
+                  enum: [FAIL_CLOSED, DEGRADE_DETERMINISTIC, ALERT_ONLY]
+                aiStatus:
+                  type: string
+                  enum: [DETERMINISTIC_ONLY, AI_ASSISTED_REVIEWED, HUMAN_IN_THE_LOOP]
+                evidenceObligation:
+                  type: string
+                acceptanceCriteria:
+                  type: array
+                  items:
+                    type: string
+                verificationMethod:
+                  type: string
+                  enum: [AUTOMATED_TEST, STATIC_ANALYSIS, MULTI_APPROVER_GATE]
+                releaseEvidenceRef:
+                  type: string
+      responses:
+        '201':
+          description: Requirement registered successfully
+        '400':
+          description: Quality linter rejected requirement
+        '401':
+          description: Unauthorized
+        '403':
+          description: Insufficient platform permissions
+    get:
+      summary: Query requirements by filter criteria
+      operationId: getRequirements
+      tags:
+        - RequirementsRegister
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: tenantScope
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: failureBehavior
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: aiStatus
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: verificationMethod
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of matched requirements
+        '401':
+          description: Unauthorized
+        '403':
+          description: Insufficient platform permissions
+  /api/v1/requirements/coverage/report:
+    get:
+      summary: Get traceability coverage metrics and unmapped requirement report
+      operationId: getRequirementsCoverageReport
+      tags:
+        - RequirementsRegister
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Traceability coverage report
+        '401':
+          description: Unauthorized
+        '403':
+          description: Insufficient platform permissions
+  /api/v1/requirements/precedence/hierarchy:
+    get:
+      summary: Retrieve the 5-layer controlled engineering specification precedence hierarchy
+      operationId: getRequirementsPrecedenceHierarchy
+      tags:
+        - RequirementsRegister
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Precedence hierarchy structure
+        '401':
+          description: Unauthorized
+        '403':
+          description: Insufficient platform permissions
+  /api/v1/requirements/reconciliation/run:
+    post:
+      summary: Trigger on-demand reconciliation audit across code, tests, and specification register
+      operationId: postRequirementsReconciliationRun
+      tags:
+        - RequirementsRegister
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Reconciliation audit execution result
+        '401':
+          description: Unauthorized
+        '403':
+          description: Insufficient platform permissions
+  /api/v1/requirements/{id}:
+    get:
+      summary: Get a specific requirement by its unique identifier
+      operationId: getRequirementById
+      tags:
+        - RequirementsRegister
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Requirement details
+        '404':
+          description: Requirement not found
+        '401':
+          description: Unauthorized
+        '403':
+          description: Insufficient platform permissions
+

@@ -83,6 +83,7 @@
     "check:fleet-health": "ts-node -r tsconfig-paths/register ./scripts/run-fleet-diagnostics.ts",
     "check:capability-claims": "ts-node -r tsconfig-paths/register ./scripts/check-public-capability-claims.ts",
     "check:ungrounded-terms": "ts-node -r tsconfig-paths/register ./scripts/check-ungrounded-terms.ts",
+    "verify:daily": "ts-node -r tsconfig-paths/register ./scripts/daily-verification-report.ts",
     "simulate:cspm-remediation": "ts-node -r tsconfig-paths/register ./scripts/simulate-cspm-continuous-remediation.ts",
     "simulate:threat-hunting": "ts-node -r tsconfig-paths/register ./scripts/simulate-stream-threat-hunting.ts",
     "simulate:host-microsegmentation": "ts-node -r tsconfig-paths/register ./scripts/simulate-host-microsegmentation.ts",
