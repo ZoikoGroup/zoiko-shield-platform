@@ -23,12 +23,21 @@ export interface ControlEvaluationInput {
   };
 }
 
+/**
+ * NOT_EVALUATED is a first-class outcome, not a failure. A control whose
+ * telemetry was never collected has not been shown to pass and has not been
+ * shown to fail, and reporting either would be a claim nobody measured.
+ */
+export type ControlStatus =
+  'COMPLIANT' | 'NON_COMPLIANT' | 'GAP_DETECTED' | 'NOT_EVALUATED';
+
 export interface ControlEvaluationResult {
   controlCode: string;
   framework: string;
   title: string;
-  status: 'COMPLIANT' | 'NON_COMPLIANT' | 'GAP_DETECTED';
-  complianceScore: number; // 0.0 to 100.0
+  status: ControlStatus;
+  /** null when the control was not evaluated — a missing measurement is not a score of zero. */
+  complianceScore: number | null;
   evidenceDigest: string;
   details: Record<string, any>;
   evaluatedAt: string;
@@ -38,10 +47,15 @@ export interface FrameworkAssessmentReport {
   assessmentId: string;
   tenantId: string;
   environmentId: string;
-  overallComplianceScore: number;
+  /** Over the controls that were actually evaluated; null when none were. */
+  overallComplianceScore: number | null;
+  totalControls: number;
   totalControlsEvaluated: number;
   compliantControlsCount: number;
   nonCompliantControlsCount: number;
+  notEvaluatedControlsCount: number;
+  /** Named so a reader can see which parts of the framework this report says nothing about. */
+  notEvaluatedControlCodes: string[];
   evaluations: ControlEvaluationResult[];
   merkleEvidenceRoot: string;
   assessedAt: string;
@@ -54,7 +68,15 @@ export class ContinuousControlEvaluatorService {
   constructor(private readonly controlsSeeder: RegulatoryControlsSeeder) {}
 
   /**
-   * Evaluates all active regulatory framework controls against current environment telemetry snapshot.
+   * Evaluates the regulatory framework controls for which telemetry was
+   * supplied, and reports the rest as NOT_EVALUATED.
+   *
+   * This used to substitute a hard-coded perfect snapshot whenever telemetry
+   * was absent — 100% MFA, 100% EDR coverage, zero SLA breaches, PQC
+   * dual-signing on — so calling it with no measurements at all produced a
+   * report stating full compliance across every framework, complete with a
+   * Merkle root over the invented findings. Nothing in the output showed
+   * which figures had been measured and which had been assumed.
    */
   async evaluateFrameworkControls(
     input: ControlEvaluationInput,
@@ -63,17 +85,12 @@ export class ContinuousControlEvaluatorService {
     const evaluations: ControlEvaluationResult[] = [];
     const evidenceHashes: string[] = [];
 
-    const snap = input.telemetrySnapshot ?? {
-      mfaEnforcementRate: 1.0,
-      edrCoverageRate: 1.0,
-      vulnerabilitySlaBreachCount: 0,
-      ocsfPipelineLatencyMs: 450,
-      keyRotationDaysAgo: 30,
-      malwareDefinitionsAgeHours: 2,
-      unresolvedHighSeverityThreats: 0,
-      pqcDualSignEnforced: true,
-      disasterRecoveryRtoMinutes: 12,
-    };
+    const snap = input.telemetrySnapshot ?? {};
+    if (!input.telemetrySnapshot) {
+      this.logger.warn(
+        `No telemetry snapshot supplied for tenant ${input.tenantId} — every control will be reported NOT_EVALUATED rather than assumed compliant.`,
+      );
+    }
 
     for (const ctrl of controls) {
       const evalResult = this.evaluateSingleControl(ctrl, snap);
@@ -93,195 +110,198 @@ export class ContinuousControlEvaluatorService {
     }
 
     const merkleRoot = computeDomainSeparatedMerkleRoot(evidenceHashes);
-    const compliantCount = evaluations.filter(
+    const assessed = evaluations.filter((e) => e.status !== 'NOT_EVALUATED');
+    const notEvaluated = evaluations.filter(
+      (e) => e.status === 'NOT_EVALUATED',
+    );
+    const compliantCount = assessed.filter(
       (e) => e.status === 'COMPLIANT',
     ).length;
-    const score = Math.round((compliantCount / evaluations.length) * 100);
 
     return {
       assessmentId: `asmt-${crypto.randomUUID()}`,
       tenantId: input.tenantId,
       environmentId: input.environmentId,
-      overallComplianceScore: score,
-      totalControlsEvaluated: evaluations.length,
+      // A score over the controls that were measured. Counting unmeasured
+      // controls as passes inflated it; counting them as failures would
+      // understate it. Neither is a measurement, so neither is in here.
+      overallComplianceScore:
+        assessed.length === 0
+          ? null
+          : Math.round((compliantCount / assessed.length) * 100),
+      totalControls: evaluations.length,
+      totalControlsEvaluated: assessed.length,
       compliantControlsCount: compliantCount,
-      nonCompliantControlsCount: evaluations.length - compliantCount,
+      nonCompliantControlsCount: assessed.length - compliantCount,
+      notEvaluatedControlsCount: notEvaluated.length,
+      notEvaluatedControlCodes: notEvaluated.map((e) => e.controlCode),
       evaluations,
       merkleEvidenceRoot: merkleRoot,
       assessedAt: new Date().toISOString(),
     };
   }
 
+  /**
+   * The telemetry each control's rule reads. A control cannot be judged
+   * without these, and saying so is the point: the previous version had a
+   * catch-all `else` per control that declared compliance whenever the metric
+   * was simply absent, plus a `default` branch that certified every control
+   * it did not recognise as "verified within tolerance limits".
+   */
+  private static readonly REQUIRED_METRICS: Record<string, string[]> = {
+    'SOC2-CC6.1': ['mfaEnforcementRate'],
+    'SOC2-CC6.6': ['edrCoverageRate'],
+    'SOC2-CC7.1': ['vulnerabilitySlaBreachCount'],
+    'SOC2-CC7.2': ['ocsfPipelineLatencyMs'],
+    'ISO27001-A.5.15': ['keyRotationDaysAgo'],
+    'ISO27001-A.8.7': ['malwareDefinitionsAgeHours', 'edrCoverageRate'],
+    'ISO27001-A.8.16': ['unresolvedHighSeverityThreats'],
+    'ISO27001-A.8.24': ['pqcDualSignEnforced'],
+    'DORA-ART9': ['disasterRecoveryRtoMinutes'],
+    'DORA-ART10': ['unresolvedHighSeverityThreats'],
+  };
+
   private evaluateSingleControl(
     ctrl: RegulatoryControlDefinition,
     snap: Record<string, any>,
   ): ControlEvaluationResult {
-    let status: 'COMPLIANT' | 'NON_COMPLIANT' | 'GAP_DETECTED' = 'COMPLIANT';
-    let complianceScore = 100.0;
-    const details: Record<string, any> = {};
+    const required =
+      ContinuousControlEvaluatorService.REQUIRED_METRICS[ctrl.code];
 
-    switch (ctrl.code) {
-      // SOC 2 Type II Controls (Trust Services Criteria)
-      case 'SOC2-CC6.1': // Access Control & MFA
-        if (
-          snap.mfaEnforcementRate !== undefined &&
-          snap.mfaEnforcementRate < 1.0
-        ) {
-          status = 'NON_COMPLIANT';
-          complianceScore = snap.mfaEnforcementRate * 100;
-          details.reason = `MFA is enforced on ${(snap.mfaEnforcementRate * 100).toFixed(1)}% of users (Required: 100%)`;
-        } else {
-          details.reason = '100% MFA WebAuthn/FIDO2 enforcement verified';
-        }
-        break;
-
-      case 'SOC2-CC6.6': // Boundary Protection & Host Isolation
-        if (snap.edrCoverageRate !== undefined && snap.edrCoverageRate < 0.99) {
-          status = 'NON_COMPLIANT';
-          complianceScore = snap.edrCoverageRate * 100;
-          details.reason = `EDR coverage is ${(snap.edrCoverageRate * 100).toFixed(1)}% (Required: >= 99%)`;
-        } else {
-          details.reason = '100% active EDR agent workload coverage verified';
-        }
-        break;
-
-      case 'SOC2-CC7.1': // Vulnerability Management & SBOM
-        if (
-          snap.vulnerabilitySlaBreachCount !== undefined &&
-          snap.vulnerabilitySlaBreachCount > 0
-        ) {
-          status = 'NON_COMPLIANT';
-          complianceScore = 60.0;
-          details.reason = `${snap.vulnerabilitySlaBreachCount} open vulnerabilities exceeding SLA remediation timeline`;
-        } else {
-          details.reason =
-            'Zero critical/high vulnerabilities exceeding SLA; verified SBOM provenance';
-        }
-        break;
-
-      case 'SOC2-CC7.2': // Security Incident Detection & Telemetry Pipeline
-        if (
-          snap.ocsfPipelineLatencyMs !== undefined &&
-          snap.ocsfPipelineLatencyMs > 1000
-        ) {
-          status = 'NON_COMPLIANT';
-          complianceScore = 75.0;
-          details.reason = `OCSF pipeline latency is ${snap.ocsfPipelineLatencyMs}ms (Threshold: <= 1000ms)`;
-        } else {
-          details.reason =
-            'Real-time sub-second OCSF telemetry ingestion verified';
-        }
-        break;
-
-      // ISO/IEC 27001:2022 Controls
-      case 'ISO27001-A.5.15': // Access Control & Identity Boundaries
-        if (
-          snap.keyRotationDaysAgo !== undefined &&
-          snap.keyRotationDaysAgo > 90
-        ) {
-          status = 'NON_COMPLIANT';
-          complianceScore = 50.0;
-          details.reason = `Master KMS keys last rotated ${snap.keyRotationDaysAgo} days ago (Maximum: 90 days)`;
-        } else {
-          details.reason = `Master KMS key rotated ${snap.keyRotationDaysAgo ?? 30} days ago (< 90-day threshold)`;
-        }
-        break;
-
-      case 'ISO27001-A.8.7': // Protection Against Malware
-        if (
-          snap.malwareDefinitionsAgeHours !== undefined &&
-          snap.malwareDefinitionsAgeHours > 24
-        ) {
-          status = 'NON_COMPLIANT';
-          complianceScore = 55.0;
-          details.reason = `Malware definitions are ${snap.malwareDefinitionsAgeHours}h old (Threshold: <= 24h)`;
-        } else if (
-          snap.edrCoverageRate !== undefined &&
-          snap.edrCoverageRate < 0.99
-        ) {
-          status = 'NON_COMPLIANT';
-          complianceScore = snap.edrCoverageRate * 100;
-          details.reason = `Antimalware/EDR coverage is ${(snap.edrCoverageRate * 100).toFixed(1)}% (< 99%)`;
-        } else {
-          details.reason =
-            'Endpoint antimalware active with up-to-date threat definitions';
-        }
-        break;
-
-      case 'ISO27001-A.8.16': // Monitoring Activities & Log Integrity
-        if (
-          snap.unresolvedHighSeverityThreats !== undefined &&
-          snap.unresolvedHighSeverityThreats > 0
-        ) {
-          status = 'NON_COMPLIANT';
-          complianceScore = 70.0;
-          details.reason = `${snap.unresolvedHighSeverityThreats} unresolved critical/high security anomalies pending review`;
-        } else {
-          details.reason =
-            'Continuous Merkle log verification and zero open critical threats';
-        }
-        break;
-
-      case 'ISO27001-A.8.24': // Use of Cryptography & Post-Quantum Algorithms
-        if (snap.pqcDualSignEnforced === false) {
-          status = 'NON_COMPLIANT';
-          complianceScore = 40.0;
-          details.reason =
-            'PQC dual-signing (Dilithium3 + Ed25519) is disabled';
-        } else {
-          details.reason =
-            'Dilithium3 (ML-DSA-65) + Ed25519 dual cryptographic signing active';
-        }
-        break;
-
-      // Regulatory Overlays (ADR-08: Phase 2 Deferred Overlays)
-      case 'DORA-ART9': // ICT Risk Management & Disaster Recovery
-        if (
-          snap.disasterRecoveryRtoMinutes !== undefined &&
-          snap.disasterRecoveryRtoMinutes > 30
-        ) {
-          status = 'GAP_DETECTED';
-          complianceScore = 65.0;
-          details.reason = `Measured failover RTO was ${snap.disasterRecoveryRtoMinutes} minutes (Threshold: <= 30 minutes)`;
-        } else {
-          details.reason = `Tabletop drill achieved ${snap.disasterRecoveryRtoMinutes ?? 12}-minute RTO with zero data loss`;
-        }
-        break;
-
-      case 'DORA-ART10': // Prompt Incident Detection SLA
-        if (
-          snap.unresolvedHighSeverityThreats !== undefined &&
-          snap.unresolvedHighSeverityThreats > 0
-        ) {
-          status = 'GAP_DETECTED';
-          complianceScore = 60.0;
-          details.reason = `${snap.unresolvedHighSeverityThreats} unmitigated security findings exceeding prompt detection SLA`;
-        } else {
-          details.reason =
-            'Sub-second OCSF detection pipeline meeting DORA Article 10 SLA';
-        }
-        break;
-
-      default:
-        details.reason =
-          'Standard operational posture verified within tolerance limits';
-        break;
-    }
-
-    const digest = crypto
-      .createHash('sha256')
-      .update(JSON.stringify({ ctrl: ctrl.code, status, details }))
-      .digest('hex');
-
-    return {
+    const finish = (
+      status: ControlStatus,
+      complianceScore: number | null,
+      details: Record<string, any>,
+    ): ControlEvaluationResult => ({
       controlCode: ctrl.code,
       framework: ctrl.framework,
       title: ctrl.title,
       status,
       complianceScore,
-      evidenceDigest: digest,
+      evidenceDigest: crypto
+        .createHash('sha256')
+        .update(JSON.stringify({ ctrl: ctrl.code, status, details }))
+        .digest('hex'),
       details,
       evaluatedAt: new Date().toISOString(),
-    };
+    });
+
+    // A control with no rule here has never been implemented. It is not
+    // passing.
+    if (!required) {
+      return finish('NOT_EVALUATED', null, {
+        reason:
+          'No automated evaluation rule is implemented for this control; its posture has not been measured.',
+      });
+    }
+
+    const missing = required.filter((metric) => snap[metric] === undefined);
+    if (missing.length > 0) {
+      return finish('NOT_EVALUATED', null, {
+        reason: `Not measured: the telemetry snapshot did not include ${missing.join(', ')}.`,
+        missingMetrics: missing,
+      });
+    }
+
+    const details: Record<string, any> = {};
+
+    switch (ctrl.code) {
+      case 'SOC2-CC6.1': // Access control and MFA
+        if (snap.mfaEnforcementRate < 1.0) {
+          return finish('NON_COMPLIANT', snap.mfaEnforcementRate * 100, {
+            reason: `MFA is enforced on ${(snap.mfaEnforcementRate * 100).toFixed(1)}% of users (required: 100%)`,
+          });
+        }
+        details.reason = 'MFA enforced on 100% of measured users';
+        break;
+
+      case 'SOC2-CC6.6': // Boundary protection and host isolation
+        if (snap.edrCoverageRate < 0.99) {
+          return finish('NON_COMPLIANT', snap.edrCoverageRate * 100, {
+            reason: `EDR coverage is ${(snap.edrCoverageRate * 100).toFixed(1)}% (required: >= 99%)`,
+          });
+        }
+        details.reason = `EDR coverage measured at ${(snap.edrCoverageRate * 100).toFixed(1)}%`;
+        break;
+
+      case 'SOC2-CC7.1': // Vulnerability management
+        if (snap.vulnerabilitySlaBreachCount > 0) {
+          return finish('NON_COMPLIANT', 60.0, {
+            reason: `${snap.vulnerabilitySlaBreachCount} open vulnerabilities exceed the SLA remediation timeline`,
+          });
+        }
+        details.reason = 'No vulnerabilities measured as exceeding SLA';
+        break;
+
+      case 'SOC2-CC7.2': // Detection telemetry pipeline
+        if (snap.ocsfPipelineLatencyMs > 1000) {
+          return finish('NON_COMPLIANT', 75.0, {
+            reason: `OCSF pipeline latency is ${snap.ocsfPipelineLatencyMs}ms (threshold: <= 1000ms)`,
+          });
+        }
+        details.reason = `OCSF pipeline latency measured at ${snap.ocsfPipelineLatencyMs}ms`;
+        break;
+
+      case 'ISO27001-A.5.15': // Key rotation
+        if (snap.keyRotationDaysAgo > 90) {
+          return finish('NON_COMPLIANT', 50.0, {
+            reason: `Master KMS keys last rotated ${snap.keyRotationDaysAgo} days ago (maximum: 90 days)`,
+          });
+        }
+        details.reason = `Master KMS key rotated ${snap.keyRotationDaysAgo} days ago`;
+        break;
+
+      case 'ISO27001-A.8.7': // Protection against malware
+        if (snap.malwareDefinitionsAgeHours > 24) {
+          return finish('NON_COMPLIANT', 55.0, {
+            reason: `Malware definitions are ${snap.malwareDefinitionsAgeHours}h old (threshold: <= 24h)`,
+          });
+        }
+        if (snap.edrCoverageRate < 0.99) {
+          return finish('NON_COMPLIANT', snap.edrCoverageRate * 100, {
+            reason: `Antimalware/EDR coverage is ${(snap.edrCoverageRate * 100).toFixed(1)}% (< 99%)`,
+          });
+        }
+        details.reason = `Definitions ${snap.malwareDefinitionsAgeHours}h old across ${(snap.edrCoverageRate * 100).toFixed(1)}% coverage`;
+        break;
+
+      case 'ISO27001-A.8.16': // Monitoring activities
+        if (snap.unresolvedHighSeverityThreats > 0) {
+          return finish('NON_COMPLIANT', 70.0, {
+            reason: `${snap.unresolvedHighSeverityThreats} unresolved critical/high anomalies pending review`,
+          });
+        }
+        details.reason = 'No unresolved critical/high anomalies measured';
+        break;
+
+      case 'ISO27001-A.8.24': // Cryptography
+        if (snap.pqcDualSignEnforced === false) {
+          return finish('NON_COMPLIANT', 40.0, {
+            reason: 'Post-quantum dual-signing is disabled',
+          });
+        }
+        details.reason = 'Post-quantum dual-signing reported as enforced';
+        break;
+
+      case 'DORA-ART9': // ICT risk management and recovery
+        if (snap.disasterRecoveryRtoMinutes > 30) {
+          return finish('GAP_DETECTED', 65.0, {
+            reason: `Measured failover RTO was ${snap.disasterRecoveryRtoMinutes} minutes (threshold: <= 30 minutes)`,
+          });
+        }
+        details.reason = `Measured failover RTO of ${snap.disasterRecoveryRtoMinutes} minutes`;
+        break;
+
+      case 'DORA-ART10': // Prompt incident detection
+        if (snap.unresolvedHighSeverityThreats > 0) {
+          return finish('GAP_DETECTED', 60.0, {
+            reason: `${snap.unresolvedHighSeverityThreats} findings exceed the prompt detection SLA`,
+          });
+        }
+        details.reason = 'No findings measured as exceeding the detection SLA';
+        break;
+    }
+
+    return finish('COMPLIANT', 100.0, details);
   }
 }
