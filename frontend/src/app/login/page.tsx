@@ -18,6 +18,10 @@ export default function LoginPage() {
   const [state] = useDemoState();
   const [email, setEmail] = useState("analyst@zoikoshield-demo.com");
   const [password, setPassword] = useState("Shield@SecOps2026!");
+  // A principal can belong to more than one tenant, so shield-core requires
+  // the sign-in to name one. `npm run seed:dev-tenant` prints the id it
+  // provisioned.
+  const [tenantId, setTenantId] = useState(state.tenant.id);
   const [isLoading, setIsLoading] = useState(false);
   const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -28,7 +32,7 @@ export default function LoginPage() {
     setError(null);
     setIsUnauthorized(false);
     try {
-      await ZoikoShieldApiClient.login(targetEmail, targetPassword);
+      await ZoikoShieldApiClient.login(targetEmail, targetPassword, tenantId);
       router.push("/onboarding");
     } catch (err: any) {
       setError(err.message || "Authentication failed");
@@ -50,7 +54,7 @@ export default function LoginPage() {
     try {
       const options = await ZoikoShieldApiClient.getPasskeyLoginOptions(email);
       const assertion = await requestPasskeyAssertion(options);
-      await ZoikoShieldApiClient.loginWithPasskey(assertion, state.tenant.id);
+      await ZoikoShieldApiClient.loginWithPasskey(assertion, tenantId);
       router.push("/onboarding");
     } catch (err: any) {
       setError(err.message || "Passkey sign-in failed");
@@ -146,6 +150,24 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
             />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-mono text-slate-300 flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Tenant ID:</span>
+            </label>
+            <input
+              type="text"
+              required
+              value={tenantId}
+              onChange={(e) => setTenantId(e.target.value.trim())}
+              className="w-full bg-slate-900/90 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
+            />
+            <p className="text-[10px] font-mono text-slate-500">
+              The tenant this sign-in is for. `npm run seed:dev-tenant` prints
+              one for a development environment.
+            </p>
           </div>
 
           {error && (
