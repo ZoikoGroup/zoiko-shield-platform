@@ -9,6 +9,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { JwtAuthGuard } from '../../identity-adapter/guards/jwt-auth.guard';
 import { RequirementsRegisterService } from '../services/requirements-register.service';
 import { TraceabilityGraphService } from '../services/traceability-graph.service';
 import { RequirementsReconciliationWorker } from '../workers/requirements-reconciliation.worker';
@@ -17,7 +18,7 @@ import { PlatformPermissionsGuard } from '../../authorization/guards/platform-pe
 import { RequirePlatformPermissions } from '../../authorization/decorators/require-platform-permissions.decorator';
 
 @Controller('api/v1/requirements')
-@UseGuards(PlatformPermissionsGuard)
+@UseGuards(JwtAuthGuard, PlatformPermissionsGuard)
 export class RequirementsRegisterController {
   constructor(
     private readonly registerService: RequirementsRegisterService,
