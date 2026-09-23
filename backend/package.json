@@ -44,6 +44,7 @@
     "check:schema-drift": "ts-node -r tsconfig-paths/register scripts/check-typeorm-schema-drift.ts",
     "loadtest:ingestion": "ts-node -r tsconfig-paths/register scripts/load-test-ingestion.ts",
     "gameday": "ts-node -r tsconfig-paths/register scripts/run-gameday-drills.ts",
+    "check:experience-contracts": "ts-node -r tsconfig-paths/register scripts/check-experience-contracts.ts",
     "order:generate": "ts-node -r tsconfig-paths/register scripts/generate-order-id.ts",
     "simulate:soc": "ts-node -r tsconfig-paths/register scripts/simulate-soc-lifecycle.ts",
     "simulate:concurrency": "ts-node -r tsconfig-paths/register ./scripts/simulate-high-concurrency-stream.ts",
