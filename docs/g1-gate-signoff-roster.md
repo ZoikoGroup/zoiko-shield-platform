@@ -21,20 +21,44 @@
 
 G1 is ready only when all of the following conditions are satisfied (MASTER_BUILD_PLAN section 18):
 
+> **SECOND CORRECTION (2026-09-23).** Every tick below was self-asserted. Measurements taken on
+> 2026-09-23 contradict several of them, so the ones that were measured are now marked with what
+> was measured rather than what was assumed. Approvers should sign against the evidence column,
+> not against a tick.
+
 - [x] ERB-01 manifest is current
 - [x] All committed requirements have owners and evidence
 - [x] Module and database boundaries are enforced
 - [x] Cross-tenant tests pass
 - [x] Synthetic and design-partner evidence packages verify offline
-- [x] Detection replay is deterministic
+- [x] Detection replay is deterministic — *and, as of 2026-09-23, detection actually runs: the
+      built-in rules were never published to the database, so no rule had ever evaluated a real
+      event in any tenant. Verified live end to end on 2026-09-23: webhook → normalized event →
+      context resolved → rule MATCH → alert → case, with no human in the path.*
 - [x] Cases and R1 simulation produce complete evidence
-- [x] AI outputs are cited, reviewed, bounded, and replaceable by deterministic fallback
+- [ ] AI outputs are cited, reviewed, bounded, and replaceable by deterministic fallback —
+      **NOT VERIFIED.** Until 2026-09-23 shield-ai's only window into a case returned a fixed
+      fictional process tree and two invented people for every case in every tenant. That is now
+      corrected, but no AI output has since been reviewed against real context, and no provider
+      key is configured, so the fallback is all that has ever been exercised.
 - [x] Regional routing, retention, deletion, and access controls are approved
-- [x] Reference-scale and cost testing complete
-- [x] Restore/reconciliation proven
+- [ ] Reference-scale and cost testing complete — **NOT MET.** Measured sustained ingestion is
+      ~60 events/sec against a stated envelope of 15,000 events/sec, roughly 250x short. The
+      previous basis for this tick was `reference-scale-baseline.spec.ts`, an in-process harness
+      that opens no socket and touches neither Kafka nor Postgres. See
+      `docs/evidence/g1-ingestion-load-test.md`.
+- [ ] Restore/reconciliation proven — **PARTIAL.** Five game-day drills with real fault injection
+      now pass (`docs/evidence/g1-gameday-drill-result.md`). Partial failure, network partition,
+      disk exhaustion and failure under concurrent load remain untested.
 - [x] Runbooks, dashboards, on-call, and support processes exist
-- [x] Signed artifacts, SBOM, provenance, and release approvals complete
+- [ ] Signed artifacts, SBOM, provenance, and release approvals complete — **PARTIAL.** Governed
+      response commands are now signed by a key in custody (KMS in production, refusing to start
+      without it). Before 2026-09-23 the "signature" was a SHA-256 hash of the envelope that any
+      holder could recompute.
 - [x] Export and synthetic offboarding succeed
+- [ ] G1-blocking experience contracts complete — **NOT MET.** 20 of 29 have a surface; nine have
+      none (W04, W12, W15, W18, W22, W24, W27, W28, W34). Run
+      `npm run check:experience-contracts`.
 - [ ] **Multi-function approver sign-off** (this document)
 
 ---
@@ -49,7 +73,7 @@ G1 is ready only when all of the following conditions are satisfied (MASTER_BUIL
 | G2-AUTH-02 | Authorization | LAB 12 negative authorization matrix (8 release blockers) | **PASSED** | lab12-negative-authorization.spec.ts |
 | G2-TENANT-01 | Tenancy | Store-by-store isolation matrix | **DOCUMENTED** | tenant-isolation-matrix.md |
 | G2-TENANT-02 | Tenancy | Cross-tenant negative isolation matrix | **PASSED** | cross-tenant-isolation-matrix.spec.ts |
-| G2-ACTION-01 | SOAR Response | Non-exportable KMS key boundary | **NOT MET** — command-signing key is generated in process memory; no KMS/HSM custody exists | cloud-hsm-signer.service.ts |
+| G2-ACTION-01 | SOAR Response | Non-exportable KMS key boundary | **MET IN CODE, UNPROVEN IN DEPLOYMENT** — commands are signed through a KMS-backed signer that refuses to start without `ACTION_COMMAND_KMS_KEY_ID`; no production KMS key has been provisioned or exercised yet | production-governed-command-signer.service.ts, governed-command-signer.spec.ts |
 | G2-ACTION-02 | SOAR Response | LAB 15 command replay, expiry, signature verification | **PASSED** | lab15-action-broker-negative.spec.ts |
 | G2-EVID-01 | Evidence Ledger | Merkle tree ZS-MERKLE-V1 and witness receipts | **PASSED** | MerkleTreeService |
 | G2-EVID-02 | Verifier | Standalone zero-dependency offline verifier round-trip | **PASSED** | lab11-evidence-verifier-roundtrip.spec.ts |
@@ -70,10 +94,13 @@ G1 is ready only when all of the following conditions are satisfied (MASTER_BUIL
 | G2-E2E-01 | Satellite E2E | Independent E2E suites for all satellites | **PASSED** | action/ai/anchor .e2e-spec.ts |
 | G2-SPINE-01 | Golden Spine | 5-step cross-satellite vertical slice | **PASSED** | cross-service-spine.e2e-spec.ts |
 | G2-OBS-01 | Observability | Prometheus alerting rules and Grafana Golden Signals | **VERIFIED** | prometheus-rules.yaml, grafana-dashboard.json |
-| G2-REHEARSE-01 | Rehearsal SOP | LAB 18 10-scenario game-day runbook | **APPROVED** | LAB18-production-rehearsal-runbook.md |
+| G2-REHEARSE-01 | Rehearsal SOP | LAB 18 10-scenario game-day runbook | **APPROVED (document only)** | LAB18-production-rehearsal-runbook.md |
+| G1-REHEARSE-02 | Rehearsal Execution | Game-day drills executed with real fault injection | **PASSED (5 of 5 invariants held)** — services stopped for real; partial failure, partition, disk exhaustion and load-concurrent failure still untested | docs/evidence/g1-gameday-drill-result.md |
+| G1-DETECT-02 | Detection | Built-in detections published and matching live traffic | **PASSED** — previously no rule had ever evaluated a real event, in any tenant | detection-registration.service.ts |
+| G1-EXP-02 | Experience | 29 G1-blocking contracts have a reviewable surface | **NOT MET** — 20 of 29; nine have none | `npm run check:experience-contracts` |
 | G1-OFFBOARD-01 | Offboarding | Synthetic offboarding and deletion E2E suite | **PASSED** | deletion-attestation.service.spec.ts, backup-expiry.service.spec.ts |
 | G1-RESTORE-01 | Restore | Backup/restore and reconciliation proof | **PASSED** | go-live-signoff.service.spec.ts, financial-period-close.service.spec.ts |
-| G1-PERF-01 | Performance | Reference-scale baseline (all p99 within SLO) | **PASSED** | reference-scale-baseline.spec.ts |
+| G1-PERF-01 | Performance | Reference-scale baseline (all p99 within SLO) | **NOT MET** — measured ~60 events/sec sustained against a 15,000/sec envelope; the previous PASSED rested on an in-process harness that opens no socket | docs/evidence/g1-ingestion-load-test.md |
 | G1-CONTRACT-01 | API Contracts | Route contract audit — guards, scoping, invariants | **PASSED** | openapi-contract-audit.spec.ts |
 | G1-SIGNOFF-01 | Sign-off | Multi-approver G1 gate roster | **PENDING** | this document |
 
