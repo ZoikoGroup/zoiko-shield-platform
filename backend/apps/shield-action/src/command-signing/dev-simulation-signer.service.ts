@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { createHmac } from 'crypto';
+import { createHmac, timingSafeEqual } from 'crypto';
 import {
   CommandSigner,
   SignableCommand,
@@ -19,6 +19,42 @@ const DEV_SIGNING_KEY =
  */
 @Injectable()
 export class DevSimulationSigner implements CommandSigner {
+  /**
+   * The exact bytes the HMAC covers. Kept in one place so verification can
+   * never drift from signing — if these two disagreed, verification would
+   * fail on untouched records and the failure would look like tampering.
+   */
+  private material(command: SignableCommand): string {
+    return JSON.stringify({
+      tenantId: command.tenantId,
+      actionCommandId: command.actionCommandId,
+      nonce: command.nonce,
+      payload: command.payload,
+    });
+  }
+
+  /**
+   * Recomputes the HMAC and compares it in constant time.
+   *
+   * Nothing used to call anything like this. SimulationService wrote
+   * `signature_verified: true` onto every receipt at the moment it created
+   * it, and ReceiptVerificationService then read that column back and
+   * reported the receipt verified. The signature this signer produced was
+   * never checked by anything, so "verified" meant a boolean somebody had
+   * written as true.
+   */
+  verify(command: SignableCommand, signature: string): boolean {
+    if (!signature?.startsWith('dev-sim:')) return false;
+    const expected = createHmac('sha256', DEV_SIGNING_KEY)
+      .update(this.material(command))
+      .digest('hex');
+    const provided = signature.slice('dev-sim:'.length);
+    const expectedBuffer = Buffer.from(expected, 'utf8');
+    const providedBuffer = Buffer.from(provided, 'utf8');
+    if (expectedBuffer.length !== providedBuffer.length) return false;
+    return timingSafeEqual(expectedBuffer, providedBuffer);
+  }
+
   sign(
     command: SignableCommand,
     executionMode: 'SIMULATION' | 'LIVE',
@@ -30,15 +66,8 @@ export class DevSimulationSigner implements CommandSigner {
       throw new Error('DevSimulationSigner is prohibited in production');
     }
 
-    const material = JSON.stringify({
-      tenantId: command.tenantId,
-      actionCommandId: command.actionCommandId,
-      nonce: command.nonce,
-      payload: command.payload,
-    });
-
     const signature = createHmac('sha256', DEV_SIGNING_KEY)
-      .update(material)
+      .update(this.material(command))
       .digest('hex');
 
     return {
