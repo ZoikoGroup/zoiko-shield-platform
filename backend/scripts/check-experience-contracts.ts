@@ -88,18 +88,8 @@ const G1_CONTRACTS: Contract[] = [
   },
   { id: 'W25', title: 'Audit package builder and freeze', route: '/audit' },
   { id: 'W26', title: 'Auditor workspace', route: '/verify-certificate' },
-  {
-    id: 'W27',
-    title: 'Risk register and acceptance',
-    route: null,
-    note: 'No risk register surface. risk.* topics are published with nothing to display them.',
-  },
-  {
-    id: 'W28',
-    title: 'Exception workflow',
-    route: null,
-    note: 'No exception request or approval surface, though exception.expired.v1 is consumed.',
-  },
+  { id: 'W27', title: 'Risk register and acceptance', route: '/risk' },
+  { id: 'W28', title: 'Exception workflow', route: '/exceptions' },
   { id: 'W33', title: 'AI assistant panel', route: '/copilot' },
   {
     id: 'W34',

@@ -57,6 +57,23 @@ export class ExceptionService {
     return exception;
   }
 
+  /**
+   * Every exception for the tenant, newest first.
+   *
+   * There was no list method at all, and the controller's GET /exceptions
+   * returned `{ tenantId }` — the tenant id it had just been handed. An
+   * exception could be requested, approved and revoked, and never read back,
+   * so nothing could show which controls were currently excepted or when
+   * those exceptions expire. An exception nobody can enumerate is an
+   * unmonitored gap in the control posture.
+   */
+  async list(tenantId: string) {
+    return this.prisma.exception.findMany({
+      where: { tenant_id: tenantId },
+      orderBy: { created_at: 'desc' },
+    });
+  }
+
   async approve(tenantId: string, exceptionId: string, approverId: string) {
     const exception = await this.prisma.exception.findFirst({
       where: { id: exceptionId, tenant_id: tenantId },
