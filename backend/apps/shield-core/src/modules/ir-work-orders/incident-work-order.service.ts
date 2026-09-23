@@ -3,7 +3,11 @@ import {
   ConflictException,
   Injectable,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
+import * as crypto from 'crypto';
+import { ServiceCreditLedgerService } from '../sla/service-credit-ledger.service';
+import { SocSlaClockService } from '../sla/soc-sla-clock.service';
 import {
   ArrayNotEmpty,
   IsArray,
@@ -238,6 +242,8 @@ export class IncidentWorkOrderService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly approvalService: CommercialApprovalService,
+    @Optional() private readonly creditLedger?: ServiceCreditLedgerService,
+    @Optional() private readonly slaClock?: SocSlaClockService,
   ) {}
 
   private required(value: string | undefined, field: string) {
@@ -1103,5 +1109,165 @@ export class IncidentWorkOrderService {
       }
       return records;
     });
+  }
+
+  /**
+   * Rule SVC-01 & SVC-02: Evaluate active SLA response window status and breach countdown.
+   */
+  async evaluateSlaStatus(
+    workOrderId: string,
+    tenantId: string,
+    environmentId: string,
+    asOf?: Date,
+  ) {
+    const workOrder = await this.requireWorkOrder(
+      workOrderId,
+      tenantId,
+      environmentId,
+    );
+    const window = JSON.parse(
+      workOrder.response_window || workOrder.retainer?.response_window || '{}',
+    ) as {
+      coverage?: string;
+      acknowledgementTargetMinutes?: number;
+      activationResponseMinutes?: number;
+    };
+
+    const acknowledgementTargetMinutes =
+      window.acknowledgementTargetMinutes ?? 15;
+    const activationResponseMinutes = window.activationResponseMinutes ?? 60;
+    const coverage = window.coverage ?? '24X7';
+
+    const startTime =
+      workOrder.started_at || workOrder.activated_at || workOrder.created_at;
+    const endTime = workOrder.closed_at || asOf || new Date();
+    const elapsedMs = Math.max(0, endTime.getTime() - startTime.getTime());
+    const elapsedMinutes = Math.round(elapsedMs / (60 * 1000));
+
+    const remainingAcknowledgementMinutes = Math.max(
+      0,
+      acknowledgementTargetMinutes - elapsedMinutes,
+    );
+    const remainingActivationMinutes = Math.max(
+      0,
+      activationResponseMinutes - elapsedMinutes,
+    );
+
+    const isAcknowledgementBreached =
+      elapsedMinutes > acknowledgementTargetMinutes;
+    const isActivationBreached = elapsedMinutes > activationResponseMinutes;
+    const isBreached = isAcknowledgementBreached || isActivationBreached;
+
+    let slaStatus: 'IN_PROGRESS' | 'MET' | 'BREACHED';
+    if (workOrder.status === 'CLOSED') {
+      slaStatus = isBreached ? 'BREACHED' : 'MET';
+    } else {
+      slaStatus = isBreached ? 'BREACHED' : 'IN_PROGRESS';
+    }
+
+    return {
+      workOrderId: workOrder.id,
+      incidentReference: workOrder.incident_reference,
+      tenantId: workOrder.tenant_id,
+      coverageTier: coverage,
+      startedAt: startTime,
+      closedAt: workOrder.closed_at ?? null,
+      asOf: endTime,
+      elapsedMinutes,
+      acknowledgementTargetMinutes,
+      activationResponseMinutes,
+      remainingAcknowledgementMinutes,
+      remainingActivationMinutes,
+      isAcknowledgementBreached,
+      isActivationBreached,
+      isBreached,
+      slaStatus,
+      ruleCode: 'SVC-01',
+    };
+  }
+
+  /**
+   * Rule SVC-01 & SVC-02: Settle automated service credit penalties on SLA response window breach.
+   */
+  async settleSlaBreachCredit(
+    workOrderId: string,
+    tenantId: string,
+    environmentId: string,
+    params?: {
+      overrideAmount?: number;
+      reason?: string;
+    },
+  ) {
+    const workOrder = await this.requireWorkOrder(
+      workOrderId,
+      tenantId,
+      environmentId,
+    );
+    const slaStatus = await this.evaluateSlaStatus(
+      workOrderId,
+      tenantId,
+      environmentId,
+    );
+
+    if (
+      !slaStatus.isBreached &&
+      (!params?.overrideAmount || params.overrideAmount <= 0)
+    ) {
+      return {
+        settled: false,
+        reason: 'SLA target was not breached; no automated service credit due.',
+        slaStatus,
+      };
+    }
+
+    const overageRate = Number(workOrder.retainer?.overage_rate ?? 250);
+    let creditAmount = params?.overrideAmount;
+    if (creditAmount === undefined || creditAmount <= 0) {
+      const isSevere =
+        slaStatus.elapsedMinutes > slaStatus.acknowledgementTargetMinutes * 2;
+      creditAmount = isSevere ? overageRate * 1.5 : overageRate;
+    }
+
+    const defaultReason = `Rule SVC-01 SLA breach for IR work order ${workOrder.incident_reference}: ${slaStatus.elapsedMinutes}m elapsed (Target: ${slaStatus.acknowledgementTargetMinutes}m)`;
+    const reason = params?.reason || defaultReason;
+
+    const evidenceData = {
+      ruleCode: 'SVC-01',
+      workOrderId: workOrder.id,
+      tenantId: workOrder.tenant_id,
+      incidentReference: workOrder.incident_reference,
+      targetMinutes: slaStatus.acknowledgementTargetMinutes,
+      elapsedMinutes: slaStatus.elapsedMinutes,
+      creditAmount,
+      currency: 'USD',
+      settledAt: new Date().toISOString(),
+    };
+
+    const evidenceRecordHash = crypto
+      .createHash('sha256')
+      .update(JSON.stringify(evidenceData))
+      .digest('hex');
+
+    let registeredCredit: any = null;
+    if (this.creditLedger) {
+      registeredCredit = this.creditLedger.registerApprovedCredit({
+        tenantId: workOrder.tenant_id!,
+        slaBreachClaimId: `claim-ir-${workOrder.id}`,
+        evidenceRecordHash,
+        creditAmount,
+        currency: 'USD',
+        reason,
+      });
+    }
+
+    return {
+      settled: true,
+      slaStatus,
+      creditAmount,
+      currency: 'USD',
+      evidenceRecordHash,
+      reason,
+      registeredCredit,
+    };
   }
 }

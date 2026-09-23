@@ -88,6 +88,8 @@ tags:
     description: Risk register, factor scoring, treatments, acceptances, and exceptions
   - name: OutboundWebhooks
     description: Outbound webhook subscriptions, delivery tracking, and replay
+  - name: Observability
+    description: Spec §31 Service Health, explicit readiness state evaluation, and OpenTelemetry SLO telemetry
   - name: Notifications
     description: Multi-channel notifications, preferences, and acknowledgements
   - name: ResponseProposals
@@ -38745,6 +38747,41 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getTenantsByTenantIdOffboardingDeletionAttestation
+  /internal/v1/cases/from-alert:
+    post:
+      tags:
+        - InternalMicroservices
+      summary: Escalate an alert to a case on behalf of a satellite service (shield-ingest promotion)
+      operationId: postInternalCaseFromAlert
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenantId
+                - alertId
+              properties:
+                tenantId:
+                  type: string
+                alertId:
+                  type: string
+                actorId:
+                  type: string
+                title:
+                  type: string
+                description:
+                  type: string
+      responses:
+        '201':
+          description: Case created from alert
+        '400':
+          description: Missing tenantId or alertId
+        '401':
+          description: Unauthorized workload
   /internal/v1/cases/{caseId}:
     get:
       tags:
@@ -53831,4 +53868,537 @@ paths:
           description: Unauthorized
         '403':
           description: Insufficient platform permissions
+  /api/v1/governance/g1-roster:
+    get:
+      summary: Get G1 Launch Gate multi-approver roster status
+      operationId: getG1RosterStatus
+      tags:
+        - AIGovernance
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          description: G1 Gate approval and ratification status
+        '401':
+          description: Unauthorized
+        '403':
+          description: Insufficient platform permissions
+  /api/v1/governance/g1-roster/sign:
+    post:
+      summary: Record cryptographic signature from designated domain approver for G1 gate
+      operationId: postG1RosterSign
+      tags:
+        - AIGovernance
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - roleId
+                - signatoryName
+                - signatureProof
+              properties:
+                roleId:
+                  type: string
+                  enum: [ciso, dpo, vp_eng, ai_risk_lead, qa_lead, sre_lead, product_lead, soc_lead]
+                signatoryName:
+                  type: string
+                signatureProof:
+                  type: string
+                evidenceNotes:
+                  type: string
+      responses:
+        '200':
+          description: Signature recorded successfully
+        '400':
+          description: Invalid signature or missing parameters
+        '404':
+          description: Approver role not found
+        '401':
+          description: Unauthorized
+        '403':
+          description: Insufficient platform permissions
+  /api/v1/governance/g1-roster/reset:
+    post:
+      summary: Reset G1 Launch Gate multi-approver roster to fail-closed state
+      operationId: postG1RosterReset
+      tags:
+        - AIGovernance
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Roster reset to unratified state
+        '401':
+          description: Unauthorized
+        '403':
+          description: Insufficient platform permissions
+  /api/v1/ir/retainers/{id}/sla-policy:
+    get:
+      summary: Get IR Retainer SLA response window policy and parameters under Rule SVC-01
+      operationId: getIrRetainerSlaPolicy
+      tags:
+        - MdrServiceObligations
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Retainer SLA window policy details
+        '404':
+          description: Retainer not found
+        '401':
+          description: Unauthorized
+        '403':
+          description: Insufficient platform permissions
+  /api/v1/ir/work-orders/{id}/sla-status:
+    get:
+      summary: Get IR Work Order active response window countdown and SLA status
+      operationId: getIrWorkOrderSlaStatus
+      tags:
+        - MdrServiceObligations
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Work order SLA countdown and status
+        '404':
+          description: Work order not found
+        '401':
+          description: Unauthorized
+        '403':
+          description: Insufficient platform permissions
+  /api/v1/ir/work-orders/{id}/settle-sla-credit:
+    post:
+      summary: Settle automated service credit penalties on IR response window breach under Rule SVC-01/SVC-02
+      operationId: postIrWorkOrderSettleSlaCredit
+      tags:
+        - MdrServiceObligations
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                overrideAmount:
+                  type: number
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: SLA credit settled and journaled to ledger
+        '404':
+          description: Work order not found
+        '401':
+          description: Unauthorized
+        '403':
+          description: Insufficient platform permissions
+  /api/v1/jit/elevate:
+    post:
+      summary: Submit a time-bounded JIT privileged access elevation request
+      operationId: postJitElevate
+      tags:
+        - RBAC
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - operatorId
+                - targetTenantId
+                - elevatedRole
+                - statedPurpose
+              properties:
+                operatorId:
+                  type: string
+                operatorName:
+                  type: string
+                targetTenantId:
+                  type: string
+                elevatedRole:
+                  type: string
+                statedPurpose:
+                  type: string
+                durationMinutes:
+                  type: integer
+                clientIp:
+                  type: string
+                initialHardwareProof:
+                  type: string
+      responses:
+        '201':
+          description: JIT elevation session created in PENDING status
+        '400':
+          description: Invalid request parameters or trivial justification
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+  /api/v1/jit/sessions:
+    get:
+      summary: List all active, pending, and expired JIT elevation sessions
+      operationId: getJitSessions
+      tags:
+        - RBAC
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: tenantId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of JIT elevation sessions
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+  /api/v1/jit/sessions/{id}:
+    get:
+      summary: Retrieve specific JIT elevation session details
+      operationId: getJitSessionById
+      tags:
+        - RBAC
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: JIT elevation session details
+        '404':
+          description: Session not found
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+  /api/v1/jit/sessions/{id}/approve:
+    post:
+      summary: Peer-approve a pending JIT elevation request (Four-Eyes Principle)
+      operationId: postJitSessionApprove
+      tags:
+        - RBAC
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - approverId
+                - approverRole
+              properties:
+                approverId:
+                  type: string
+                approverRole:
+                  type: string
+                approvalNotes:
+                  type: string
+      responses:
+        '200':
+          description: Session approved by peer
+        '400':
+          description: Session not in PENDING state
+        '403':
+          description: Separation of duties violation (operator cannot self-approve)
+        '404':
+          description: Session not found
+  /api/v1/jit/sessions/{id}/step-up:
+    post:
+      summary: Complete FIDO2/WebAuthn hardware step-up attestation for JIT elevation
+      operationId: postJitSessionStepUp
+      tags:
+        - RBAC
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - hardwareProofDigest
+              properties:
+                hardwareProofDigest:
+                  type: string
+                authenticatorAttachment:
+                  type: string
+                  enum: [PLATFORM, CROSS_PLATFORM]
+      responses:
+        '200':
+          description: Hardware step-up verified
+        '400':
+          description: Invalid hardware proof or expired session
+        '404':
+          description: Session not found
+  /api/v1/jit/sessions/{id}/revoke:
+    post:
+      summary: Instantly terminate and revoke an active JIT elevation session
+      operationId: postJitSessionRevoke
+      tags:
+        - RBAC
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - revokedBy
+                - reason
+              properties:
+                revokedBy:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Session successfully revoked
+        '404':
+          description: Session not found
+  /api/v1/observability/readiness:
+    get:
+      summary: Retrieve complete platform and core microservices explicit readiness matrix
+      description: Evaluates the 16 canonical readiness states across shield-core, shield-ingest, shield-ai, shield-action, shield-anchor, and verifier-cli under Spec §31.
+      operationId: getPlatformReadiness
+      tags:
+        - Observability
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: g1Ratified
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: dbConnected
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: kmsConnected
+          in: query
+          required: false
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Platform readiness snapshot with cryptographic attestation digest
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - Requires observability:read permission
+  /api/v1/observability/readiness/{serviceId}:
+    get:
+      summary: Retrieve single core service diagnostics and explicit readiness state
+      operationId: getServiceReadiness
+      tags:
+        - Observability
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Service readiness status and underlying diagnostic signals
+        '404':
+          description: Service not found
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - Requires observability:read permission
+  /api/v1/observability/readiness/{serviceId}/override:
+    post:
+      summary: Set administrative manual readiness state override for maintenance windows
+      operationId: postServiceReadinessOverride
+      tags:
+        - Observability
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - state
+              properties:
+                state:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Override successfully set
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - Requires observability:admin permission
+  /api/v1/observability/readiness/{serviceId}/clear-override:
+    post:
+      summary: Clear administrative manual readiness state override
+      operationId: postServiceReadinessClearOverride
+      tags:
+        - Observability
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: serviceId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Override successfully cleared and dynamic state restored
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - Requires observability:admin permission
+  /api/v1/observability/backup/status:
+    get:
+      summary: Retrieve multi-store backup freshness, RPO/RTO metrics, and DR integrity status
+      description: Returns multi-store backup inventory across PostgreSQL, Merkle Ledger, Telemetry, and Audit Vault under Spec §26.
+      operationId: getDisasterRecoveryBackupStatus
+      tags:
+        - Observability
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Comprehensive Disaster Recovery Posture Summary with SHA-256 attestation
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - Requires observability:read permission
+  /api/v1/observability/backup/drill:
+    post:
+      summary: Execute automated non-destructive restore drill and schema integrity reconciliation
+      description: Restores snapshot into isolated scratch schema, verifies zero drift and Merkle root alignment, and issues signed receipt.
+      operationId: postTriggerRestoreDrill
+      tags:
+        - Observability
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                storeId:
+                  type: string
+                  enum:
+                    - shield_core_db
+                    - merkle_ledger
+                    - timeseries_telemetry
+                    - audit_vault
+      responses:
+        '200':
+          description: Signed Restore Drill Receipt with reconciliation results
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - Requires observability:admin permission
+
+
+
+
 

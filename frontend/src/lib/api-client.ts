@@ -43,6 +43,11 @@ import {
   PlanRecommendation,
   MdrServiceObligation,
   GTMChecklistItem,
+  JitElevationSession,
+  PlatformReadinessSnapshot,
+  CoreServiceReadiness,
+  DisasterRecoveryPostureSummary,
+  RestoreDrillReceipt,
 } from "./types";
 import { getInitialDemoState, saveDemoState, DemoState } from "./demo-state";
 import { generateUUID, sha256Mock } from "./utils";
@@ -116,7 +121,13 @@ export class ZoikoShieldApiClient {
       if (state.session?.token) {
         headers["Authorization"] = `Bearer ${state.session.token}`;
       }
-      const res = await fetch(endpoint, {
+      const url =
+        endpoint.startsWith("http://") || endpoint.startsWith("https://")
+          ? endpoint
+          : typeof window !== "undefined" && window.location?.origin
+            ? new URL(endpoint, window.location.origin).toString()
+            : `http://localhost:3000${endpoint}`;
+      const res = await fetch(url, {
         ...options,
         headers: {
           ...headers,
@@ -3198,6 +3209,629 @@ export class ZoikoShieldApiClient {
       () => null
     );
   }
+
+  // --- JIT Privileged Access Elevation (Spec §13: Privileged Access, Step-Up, JIT and Break-Glass) ---
+
+  static async getJitSessions(tenantId?: string): Promise<JitElevationSession[]> {
+    const endpoint = tenantId ? `/api/v1/jit/sessions?tenantId=${tenantId}` : `/api/v1/jit/sessions`;
+    return this.safeFetch<JitElevationSession[]>(
+      endpoint,
+      { method: "GET" },
+      () => [
+        {
+          sessionId: 'jit-sess-1001',
+          operatorId: 'usr-analyst-01',
+          targetTenantId: tenantId || 'tenant-demo',
+          elevatedRole: 'INCIDENT_COMMANDER',
+          status: 'ACTIVE',
+          clientIp: '192.168.1.104',
+          statedPurpose: 'Emergency P1 Containment for Swift Transaction Anomaly (Case #2026-882)',
+          issuedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+          expiresAt: new Date(Date.now() + 90 * 60 * 1000).toISOString(),
+          hardwareStepUpVerified: true,
+          hardwareProofDigest: 'fido2-yubikey-cert-p256-verified-01',
+          peerApprover: 'usr-ciso-02',
+        },
+        {
+          sessionId: 'jit-sess-1002',
+          operatorId: 'usr-sre-03',
+          targetTenantId: tenantId || 'tenant-demo',
+          elevatedRole: 'SUPER_ADMIN',
+          status: 'PENDING',
+          clientIp: '10.200.4.12',
+          statedPurpose: 'Post-Quantum Merkle Epoch Re-synchronization & HSM Key Rotation',
+          issuedAt: new Date(Date.now() - 10 * 60 * 1000).toISOString(),
+          expiresAt: new Date(Date.now() + 50 * 60 * 1000).toISOString(),
+          hardwareStepUpVerified: false,
+        },
+      ]
+    );
+  }
+
+  static async getJitSession(id: string): Promise<JitElevationSession> {
+    return this.safeFetch<JitElevationSession>(
+      `/api/v1/jit/sessions/${id}`,
+      { method: "GET" },
+      () => ({
+        sessionId: id,
+        operatorId: 'usr-analyst-01',
+        targetTenantId: 'tenant-demo',
+        elevatedRole: 'INCIDENT_COMMANDER',
+        status: 'ACTIVE',
+        clientIp: '192.168.1.104',
+        statedPurpose: 'Emergency P1 Containment',
+        issuedAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        hardwareStepUpVerified: true,
+      })
+    );
+  }
+
+  static async createJitElevation(dto: {
+    operatorId: string;
+    operatorName?: string;
+    targetTenantId: string;
+    elevatedRole: string;
+    statedPurpose: string;
+    durationMinutes?: number;
+    initialHardwareProof?: string;
+  }): Promise<JitElevationSession> {
+    return this.safeFetch<JitElevationSession>(
+      '/api/v1/jit/elevate',
+      {
+        method: 'POST',
+        body: JSON.stringify(dto),
+      },
+      () => ({
+        sessionId: `jit-sess-${generateUUID().slice(0, 8)}`,
+        operatorId: dto.operatorId,
+        targetTenantId: dto.targetTenantId,
+        elevatedRole: dto.elevatedRole,
+        status: 'PENDING',
+        clientIp: '127.0.0.1',
+        statedPurpose: dto.statedPurpose,
+        issuedAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + (dto.durationMinutes || 60) * 60000).toISOString(),
+        hardwareStepUpVerified: !!dto.initialHardwareProof,
+      })
+    );
+  }
+
+  static async peerApproveJitSession(
+    id: string,
+    approverId: string,
+    approverRole: string,
+    approvalNotes?: string
+  ): Promise<JitElevationSession> {
+    return this.safeFetch<JitElevationSession>(
+      `/api/v1/jit/sessions/${id}/approve`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ approverId, approverRole, approvalNotes }),
+      },
+      () => ({
+        sessionId: id,
+        operatorId: 'usr-operator-demo',
+        targetTenantId: 'tenant-demo',
+        elevatedRole: 'SUPER_ADMIN',
+        status: 'ACTIVE',
+        clientIp: '127.0.0.1',
+        statedPurpose: 'Approved Demo Session',
+        issuedAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        hardwareStepUpVerified: true,
+        peerApprover: approverId,
+      })
+    );
+  }
+
+  static async stepUpHardwareJitSession(
+    id: string,
+    hardwareProofDigest: string
+  ): Promise<JitElevationSession> {
+    return this.safeFetch<JitElevationSession>(
+      `/api/v1/jit/sessions/${id}/step-up`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ hardwareProofDigest }),
+      },
+      () => ({
+        sessionId: id,
+        operatorId: 'usr-operator-demo',
+        targetTenantId: 'tenant-demo',
+        elevatedRole: 'SUPER_ADMIN',
+        status: 'ACTIVE',
+        clientIp: '127.0.0.1',
+        statedPurpose: 'Hardware Step-up Demo',
+        issuedAt: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        hardwareStepUpVerified: true,
+        hardwareProofDigest,
+      })
+    );
+  }
+
+  static async revokeJitSession(
+    id: string,
+    revokedBy: string,
+    reason: string
+  ): Promise<JitElevationSession> {
+    return this.safeFetch<JitElevationSession>(
+      `/api/v1/jit/sessions/${id}/revoke`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ revokedBy, reason }),
+      },
+      () => ({
+        sessionId: id,
+        operatorId: 'usr-operator-demo',
+        targetTenantId: 'tenant-demo',
+        elevatedRole: 'SUPER_ADMIN',
+        status: 'REVOKED',
+        clientIp: '127.0.0.1',
+        statedPurpose: 'Revoked Session Demo',
+        issuedAt: new Date().toISOString(),
+        expiresAt: new Date().toISOString(),
+        hardwareStepUpVerified: false,
+        revocationReason: reason,
+      })
+    );
+  }
+
+  // --- IR Retainer & Work Order SLA Operations (Rules SVC-01 / SVC-02) ---
+
+  static async getWorkOrderSlaPolicy(id: string): Promise<{
+    workOrderId: string;
+    retainerId: string;
+    coverage: string;
+    acknowledgementTargetMinutes: number;
+    activationResponseMinutes: number;
+  }> {
+    return this.safeFetch(
+      `/api/v1/ir/work-orders/${id}/sla-policy`,
+      { method: 'GET' },
+      () => ({
+        workOrderId: id,
+        retainerId: 'ret-demo-01',
+        coverage: '24x7 Continuous SLA',
+        acknowledgementTargetMinutes: 15,
+        activationResponseMinutes: 60,
+      })
+    );
+  }
+
+  static async getWorkOrderSlaStatus(id: string): Promise<{
+    workOrderId: string;
+    triageMinutesElapsed: number;
+    responseMinutesElapsed: number;
+    isTriageBreached: boolean;
+    isResponseBreached: boolean;
+    triageCountdownMinutes: number;
+    responseCountdownMinutes: number;
+    penaltyProjectedCredit: number;
+  }> {
+    return this.safeFetch(
+      `/api/v1/ir/work-orders/${id}/sla-status`,
+      { method: 'GET' },
+      () => ({
+        workOrderId: id,
+        triageMinutesElapsed: 8,
+        responseMinutesElapsed: 25,
+        isTriageBreached: false,
+        isResponseBreached: false,
+        triageCountdownMinutes: 7,
+        responseCountdownMinutes: 35,
+        penaltyProjectedCredit: 0,
+      })
+    );
+  }
+
+  static async settleSlaBreachCredit(
+    id: string,
+    overrideAmount?: number,
+    reason?: string
+  ): Promise<{
+    settled: boolean;
+    creditJournalEntryId: string;
+    creditedAmount: number;
+    evidenceReference: string;
+    settledAt: string;
+  }> {
+    return this.safeFetch(
+      `/api/v1/ir/work-orders/${id}/settle-sla-credit`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ overrideAmount, reason }),
+      },
+      () => ({
+        settled: true,
+        creditJournalEntryId: `cred-jrn-${generateUUID().slice(0, 8)}`,
+        creditedAmount: overrideAmount || 500,
+        evidenceReference: `ev-sla-credit-${generateUUID().slice(0, 8)}`,
+        settledAt: new Date().toISOString(),
+      })
+    );
+  }
+
+  // --- G1 Multi-Approver Launch Gate Protocol (§05 / §16) ---
+
+  static async getG1Roster(): Promise<{
+    gateStatus: string;
+    allApproved: boolean;
+    ratifiedApprovalsCount: number;
+    requiredApprovalsCount: number;
+    missingRoles: string[];
+    approvers: Array<{
+      roleId: string;
+      roleTitle: string;
+      signatoryName?: string;
+      signatureProof?: string;
+      ratified: boolean;
+      signedAt?: string;
+    }>;
+  }> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/governance/g1-roster',
+      { method: 'GET' },
+      () => ({
+        gateStatus: 'PENDING_MULTI_APPROVER_SIGNOFF',
+        allApproved: false,
+        ratifiedApprovalsCount: 0,
+        requiredApprovalsCount: 8,
+        missingRoles: ['ciso', 'dpo', 'vp_eng', 'ai_risk_lead', 'qa_lead', 'sre_lead', 'product_lead', 'soc_lead'],
+        approvers: [
+          { roleId: 'ciso', roleTitle: 'Chief Information Security Officer (CISO)', ratified: false, isSigned: false },
+          { roleId: 'dpo', roleTitle: 'Data Protection Officer (DPO)', ratified: false, isSigned: false },
+          { roleId: 'vp_eng', roleTitle: 'VP of Engineering', ratified: false, isSigned: false },
+          { roleId: 'ai_risk_lead', roleTitle: 'AI Risk & Safety Governance Lead', ratified: false, isSigned: false },
+          { roleId: 'qa_lead', roleTitle: 'Quality Assurance & Release Lead', ratified: false, isSigned: false },
+          { roleId: 'sre_lead', roleTitle: 'Site Reliability Engineering Lead', ratified: false, isSigned: false },
+          { roleId: 'product_lead', roleTitle: 'Security Product Lead', ratified: false, isSigned: false },
+          { roleId: 'soc_lead', roleTitle: 'SOC Incident Commander', ratified: false, isSigned: false },
+        ],
+      })
+    );
+
+    const signed = res.signedCount !== undefined ? res.signedCount : (res.ratifiedApprovalsCount || 0);
+    const total = res.totalApprovers !== undefined ? res.totalApprovers : (res.requiredApprovalsCount || 8);
+    const isAll = res.gateStatus === 'RATIFIED' || signed === total;
+
+    return {
+      gateStatus: res.gateStatus || (isAll ? 'RATIFIED' : 'PENDING_MULTI_APPROVER_SIGNOFF'),
+      allApproved: isAll,
+      ratifiedApprovalsCount: signed,
+      requiredApprovalsCount: total,
+      missingRoles: res.missingRoles || [],
+      approvers: (res.approvers || []).map((a: any) => ({
+        roleId: a.roleId,
+        roleTitle: a.roleTitle,
+        signatoryName: a.signatoryName,
+        signatureProof: a.signatureProofRef || a.signatureProof,
+        ratified: a.isSigned !== undefined ? a.isSigned : !!a.ratified,
+        signedAt: a.signedAt,
+      })),
+    };
+  }
+
+  static async signG1Roster(
+    roleId: string,
+    signatoryName: string,
+    signatureProof: string,
+    evidenceNotes?: string
+  ): Promise<{
+    gateStatus: string;
+    allApproved: boolean;
+    ratifiedApprovalsCount: number;
+    missingRoles: string[];
+  }> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/governance/g1-roster/sign',
+      {
+        method: 'POST',
+        body: JSON.stringify({ roleId, signatoryName, signatureProof, evidenceNotes }),
+      },
+      () => ({
+        gateStatus: 'PENDING_MULTI_APPROVER_SIGNOFF',
+        allApproved: false,
+        ratifiedApprovalsCount: 1,
+        missingRoles: ['dpo', 'vp_eng', 'ai_risk_lead', 'qa_lead', 'sre_lead', 'product_lead', 'soc_lead'],
+      })
+    );
+
+    // If backend returns updated roster or approver status, fetch fresh roster
+    return this.getG1Roster();
+  }
+
+  static async resetG1Roster(): Promise<{
+    gateStatus: string;
+    allApproved: boolean;
+    ratifiedApprovalsCount: number;
+    requiredApprovalsCount: number;
+    missingRoles: string[];
+  }> {
+    await this.safeFetch(
+      '/api/v1/governance/g1-roster/reset',
+      { method: 'POST' },
+      () => ({
+        gateStatus: 'PENDING_MULTI_APPROVER_SIGNOFF',
+        allApproved: false,
+        ratifiedApprovalsCount: 0,
+        requiredApprovalsCount: 8,
+        missingRoles: ['ciso', 'dpo', 'vp_eng', 'ai_risk_lead', 'qa_lead', 'sre_lead', 'product_lead', 'soc_lead'],
+      })
+    );
+    return this.getG1Roster();
+  }
+
+  // --- Spec §31: Explicit Service-Health and Readiness States ---
+
+  static async getPlatformReadiness(): Promise<PlatformReadinessSnapshot> {
+    return this.safeFetch<PlatformReadinessSnapshot>(
+      '/api/v1/observability/readiness',
+      { method: 'GET' },
+      () => ({
+        snapshotId: 'readiness-mock-01',
+        evaluatedAt: new Date().toISOString(),
+        overallState: 'READINESS_CONDITIONAL',
+        overallScore: 0.98,
+        totalServicesCount: 6,
+        healthyServicesCount: 5,
+        conditionalServicesCount: 1,
+        degradedServicesCount: 0,
+        g1GateRatified: false,
+        activeBlockersCount: 0,
+        services: {
+          'shield-core': {
+            serviceId: 'shield-core',
+            serviceName: 'shield-core',
+            displayName: 'ZoikoShield Core Identity & Governance Spine',
+            description: 'Central identity, Cedar authorization, Spec §13 JIT elevation, and multi-tenant session management.',
+            version: '1.0.0',
+            state: 'HEALTHY',
+            stateMeaning: 'Current evidence supports normal operation within objective and no hidden material gap.',
+            readinessScore: 1.0,
+            lastAssessedAt: new Date().toISOString(),
+            dependencies: [
+              { dependencyName: 'PostgreSQL SOR', type: 'DATABASE', healthy: true, latencyMs: 4, lastChecked: new Date().toISOString() },
+            ],
+            signals: [
+              { signalKey: 'jit_elevation_module', label: 'JIT Elevation Subsystem', value: 'ACTIVE_ENFORCED', status: 'OPTIMAL' },
+            ],
+            blockers: [],
+          },
+          'shield-ingest': {
+            serviceId: 'shield-ingest',
+            serviceName: 'shield-ingest',
+            displayName: 'High-Throughput Telemetry Ingestion Pipeline',
+            description: 'Distributed event ingestion, multi-cloud connector ecosystem, schema normalization, and stream deduplication.',
+            version: '1.0.0',
+            state: 'HEALTHY',
+            stateMeaning: 'Current evidence supports normal operation within objective and no hidden material gap.',
+            readinessScore: 1.0,
+            lastAssessedAt: new Date().toISOString(),
+            dependencies: [
+              { dependencyName: 'Redpanda / Kafka Ingestion Stream', type: 'MESSAGE_BROKER', healthy: true, latencyMs: 12, lastChecked: new Date().toISOString() },
+            ],
+            signals: [
+              { signalKey: 'ingestion_lag', label: 'Pipeline Lag (ms)', value: '142ms', threshold: '<500ms', status: 'OPTIMAL' },
+            ],
+            blockers: [],
+          },
+          'shield-ai': {
+            serviceId: 'shield-ai',
+            serviceName: 'shield-ai',
+            displayName: 'AI Security Copilot & Decision Governance Engine',
+            description: 'Model Armor safety gateways, Spec §16.1 10-field decision envelopes, and Spec §17 domain-differentiated thresholds.',
+            version: '1.0.0',
+            state: 'HEALTHY',
+            stateMeaning: 'Current evidence supports normal operation within objective and no hidden material gap.',
+            readinessScore: 1.0,
+            lastAssessedAt: new Date().toISOString(),
+            dependencies: [
+              { dependencyName: 'Vertex AI / LLM Gateway', type: 'EXTERNAL_API', healthy: true, latencyMs: 180, lastChecked: new Date().toISOString() },
+            ],
+            signals: [
+              { signalKey: 'grounding_score_avg', label: 'Mean Grounding Score', value: '0.985', threshold: '>=0.95', status: 'OPTIMAL' },
+            ],
+            blockers: [],
+          },
+          'shield-action': {
+            serviceId: 'shield-action',
+            serviceName: 'shield-action',
+            displayName: 'SOAR Action Broker & Autonomous Response Engine',
+            description: 'Automated containment, IAM policy detachment, EDR endpoint isolation, and WAF IP blocking.',
+            version: '1.0.0',
+            state: 'READINESS_CONDITIONAL',
+            stateMeaning: 'Approved only with bounded conditions and expiry.',
+            readinessScore: 0.85,
+            lastAssessedAt: new Date().toISOString(),
+            dependencies: [
+              { dependencyName: 'AWS IAM Execution Adapter', type: 'EXTERNAL_API', healthy: true, latencyMs: 65, lastChecked: new Date().toISOString() },
+            ],
+            signals: [
+              { signalKey: 'g1_launch_gate', label: 'G1 Gate Authority (§05/§16)', value: '0/8 FAIL-CLOSED (SIMULATED)', status: 'WARNING' },
+            ],
+            blockers: [],
+            operationalConditions: ['G1 Multi-Approver Launch Gate is PENDING (0/8 domain sign-offs). Live R2+ execution adapters operate in fail-closed simulation mode.'],
+          },
+          'shield-anchor': {
+            serviceId: 'shield-anchor',
+            serviceName: 'shield-anchor',
+            displayName: 'Cryptographic Anchor & Immutable Merkle Ledger',
+            description: 'Post-quantum dual-signing (Dilithium3 + ECDSA P-384), Merkle epoch aggregation, and RFC 3161 timestamps.',
+            version: '1.0.0',
+            state: 'HEALTHY',
+            stateMeaning: 'Current evidence supports normal operation within objective and no hidden material gap.',
+            readinessScore: 1.0,
+            lastAssessedAt: new Date().toISOString(),
+            dependencies: [
+              { dependencyName: 'Cloud KMS Sovereign HSM', type: 'KMS_HSM', healthy: true, latencyMs: 15, lastChecked: new Date().toISOString() },
+            ],
+            signals: [
+              { signalKey: 'pqc_dual_signing', label: 'PQC Dual-Signer (ML-DSA / Dilithium3)', value: 'ACTIVE_COMPLIANT', status: 'OPTIMAL' },
+            ],
+            blockers: [],
+          },
+          'verifier-cli': {
+            serviceId: 'verifier-cli',
+            serviceName: 'verifier-cli',
+            displayName: 'Independent Offline Evidence Verifier CLI',
+            description: 'Zero-trust external verifier binary validating cryptographic proofs independently of backend runtime.',
+            version: '1.0.0',
+            state: 'HEALTHY',
+            stateMeaning: 'Current evidence supports normal operation within objective and no hidden material gap.',
+            readinessScore: 1.0,
+            lastAssessedAt: new Date().toISOString(),
+            dependencies: [],
+            signals: [
+              { signalKey: 'offline_verification_roundtrip', label: 'Offline Round-Trip Verifier', value: 'PASSED (0 drift)', status: 'OPTIMAL' },
+            ],
+            blockers: [],
+          },
+        },
+        auditAttestationHash: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+      })
+    );
+  }
+
+  static async getServiceReadiness(serviceId: string): Promise<CoreServiceReadiness> {
+    const snapshot = await this.getPlatformReadiness();
+    return snapshot.services[serviceId] || snapshot.services['shield-core'];
+  }
+
+  static async getDisasterRecoveryBackupStatus(): Promise<DisasterRecoveryPostureSummary> {
+    return this.safeFetch<DisasterRecoveryPostureSummary>(
+      '/api/v1/observability/backup/status',
+      { method: 'GET' },
+      () => ({
+        assessedAt: new Date().toISOString(),
+        overallBackupHealth: 'HEALTHY',
+        overallRpoCompliant: true,
+        overallRestoreVerified: true,
+        activeStoresCount: 4,
+        healthyStoresCount: 4,
+        staleBackupsCount: 0,
+        unverifiedRestoresCount: 0,
+        rtoTargetHours: 4.0,
+        stores: {
+          shield_core_db: {
+            storeId: 'shield_core_db',
+            displayName: 'ZoikoShield Primary Relational State (PostgreSQL)',
+            storeType: 'RELATIONAL_POSTGRES',
+            lastBackupCompletedAt: new Date(Date.now() - 4 * 3600000).toISOString(),
+            backupAgeHours: 4.0,
+            backupSizeBytes: 52428800,
+            rpoTargetMinutes: 15,
+            rpoStatus: 'COMPLIANT',
+            encryptionAlgorithm: 'KMS_ENVELOPE_AES256',
+            encryptionVerified: true,
+            immutabilityLocked: true,
+            retentionDays: 90,
+            manifestChecksumSha256: '9a5c88b43f9a78de9b3c4a2345e67f890123456789abcdef0123456789abcdef',
+            lastRestoreDrillAt: new Date(Date.now() - 48 * 3600000).toISOString(),
+            lastRestoreDrillStatus: 'VERIFIED',
+            restoreDrillAgeDays: 2.0,
+          },
+          merkle_ledger: {
+            storeId: 'merkle_ledger',
+            displayName: 'Immutable Checkpoint & Proof Ledger (RFC3161)',
+            storeType: 'IMMUTABLE_MERKLE_TREE',
+            lastBackupCompletedAt: new Date(Date.now() - 4 * 3600000).toISOString(),
+            backupAgeHours: 4.0,
+            backupSizeBytes: 12582912,
+            rpoTargetMinutes: 5,
+            rpoStatus: 'COMPLIANT',
+            encryptionAlgorithm: 'AES_256_GCM',
+            encryptionVerified: true,
+            immutabilityLocked: true,
+            retentionDays: 365,
+            manifestChecksumSha256: '8b6d99c54f0b89ef0c4d5b3456f78a90123456789abcdef0123456789abcdef',
+            lastRestoreDrillAt: new Date(Date.now() - 48 * 3600000).toISOString(),
+            lastRestoreDrillStatus: 'VERIFIED',
+            restoreDrillAgeDays: 2.0,
+          },
+          timeseries_telemetry: {
+            storeId: 'timeseries_telemetry',
+            displayName: 'Security Event Stream & Telemetry Storage',
+            storeType: 'TIMESERIES_ANALYTICS',
+            lastBackupCompletedAt: new Date(Date.now() - 4 * 3600000).toISOString(),
+            backupAgeHours: 4.0,
+            backupSizeBytes: 104857600,
+            rpoTargetMinutes: 60,
+            rpoStatus: 'COMPLIANT',
+            encryptionAlgorithm: 'AES_256_GCM',
+            encryptionVerified: true,
+            immutabilityLocked: false,
+            retentionDays: 30,
+            manifestChecksumSha256: '7c7e00d65f1c90fa1d5e6c4567a89b0123456789abcdef0123456789abcdef',
+            lastRestoreDrillAt: new Date(Date.now() - 48 * 3600000).toISOString(),
+            lastRestoreDrillStatus: 'VERIFIED',
+            restoreDrillAgeDays: 2.0,
+          },
+          audit_vault: {
+            storeId: 'audit_vault',
+            displayName: 'G1 Evidence & Regulatory Audit Package Vault',
+            storeType: 'COMPLIANCE_VAULT',
+            lastBackupCompletedAt: new Date(Date.now() - 4 * 3600000).toISOString(),
+            backupAgeHours: 4.0,
+            backupSizeBytes: 20971520,
+            rpoTargetMinutes: 1440,
+            rpoStatus: 'COMPLIANT',
+            encryptionAlgorithm: 'KMS_ENVELOPE_AES256',
+            encryptionVerified: true,
+            immutabilityLocked: true,
+            retentionDays: 2555,
+            manifestChecksumSha256: '6d8f11e76f2d01ab2e6f7d5678b90c123456789abcdef0123456789abcdef',
+            lastRestoreDrillAt: new Date(Date.now() - 48 * 3600000).toISOString(),
+            lastRestoreDrillStatus: 'VERIFIED',
+            restoreDrillAgeDays: 2.0,
+          },
+        },
+        attestationDigest: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+      })
+    );
+  }
+
+  static async runRestoreDrill(storeId: string = 'shield_core_db'): Promise<RestoreDrillReceipt> {
+    return this.safeFetch<RestoreDrillReceipt>(
+      '/api/v1/observability/backup/drill',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ storeId }),
+      },
+      () => ({
+        drillId: `drill-mock-${generateUUID().slice(0, 8)}`,
+        storeId: storeId as any,
+        startedAt: new Date(Date.now() - 42).toISOString(),
+        completedAt: new Date().toISOString(),
+        durationMs: 42,
+        durationSeconds: 0.042,
+        rtoTargetSeconds: 14400,
+        rtoCompliant: true,
+        status: 'VERIFIED',
+        scratchSchemaName: `scratch_restore_mock_${generateUUID().slice(0, 6)}`,
+        scratchSchemaTornDown: true,
+        totalTablesReconciled: 6,
+        totalRowsReconciled: 1326,
+        sourceMerkleHead: 'a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0',
+        restoredMerkleHead: 'a1b2c3d4e5f67890123456789abcdef0123456789abcdef0123456789abcdef0',
+        merkleHeadAligned: true,
+        tableReconciliations: [
+          { tableName: 'users', sourceRowCount: 142, restoredRowCount: 142, rowDriftCount: 0, checksumMatches: true, foreignKeysValid: true },
+          { tableName: 'tenants', sourceRowCount: 18, restoredRowCount: 18, rowDriftCount: 0, checksumMatches: true, foreignKeysValid: true },
+          { tableName: 'roles_permissions', sourceRowCount: 84, restoredRowCount: 84, rowDriftCount: 0, checksumMatches: true, foreignKeysValid: true },
+          { tableName: 'g1_launch_gates', sourceRowCount: 8, restoredRowCount: 8, rowDriftCount: 0, checksumMatches: true, foreignKeysValid: true },
+          { tableName: 'jit_elevation_sessions', sourceRowCount: 26, restoredRowCount: 26, rowDriftCount: 0, checksumMatches: true, foreignKeysValid: true },
+          { tableName: 'merkle_tree_leaves', sourceRowCount: 1048, restoredRowCount: 1048, rowDriftCount: 0, checksumMatches: true, foreignKeysValid: true },
+        ],
+        discrepancies: [],
+        receiptSignatureSha256: sha256Mock(`restore-drill-${storeId}-${Date.now()}`),
+      })
+    );
+  }
 }
+
+
 
 

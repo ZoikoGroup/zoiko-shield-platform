@@ -238,7 +238,7 @@ export default function CommercialServicesPage() {
                   <span>Substantiating Architecture Components:</span>
                 </div>
                 <div className="flex flex-wrap gap-1.5">
-                  {svc.substantiatingComponents.map((comp) => (
+                  {(svc.substantiatingComponents || []).map((comp) => (
                     <span
                       key={comp}
                       className="px-1.5 py-0.5 rounded bg-slate-800/90 text-slate-300 font-mono text-[10px] border border-slate-700"
@@ -255,7 +255,7 @@ export default function CommercialServicesPage() {
                   Verified Capabilities:
                 </div>
                 <div className="flex flex-wrap gap-1">
-                  {svc.includedCapabilities.map((cap) => (
+                  {(svc.includedCapabilities || []).map((cap) => (
                     <span
                       key={cap}
                       className="px-1.5 py-0.5 rounded bg-cyan-950/30 text-cyan-300/80 font-mono text-[9px] border border-cyan-500/20"
@@ -269,7 +269,7 @@ export default function CommercialServicesPage() {
 
             <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs font-mono">
               <span className="text-slate-500">Min. Plan Tier:</span>
-              <span className="text-cyan-400 font-semibold">{svc.pricingTierMinimum}</span>
+              <span className="text-cyan-400 font-semibold">{svc.pricingTierMinimum || 'ESSENTIAL'}</span>
             </div>
           </div>
         ))}

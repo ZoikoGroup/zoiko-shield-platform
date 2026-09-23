@@ -28,6 +28,57 @@ describe('Commercial Catalogue & Governance Routes Suite', () => {
 
   describe('1. Commercial Pricing & Band Sizing Page (/pricing)', () => {
     it('renders 4-tier plan ladder and mandatory anti-perverse billing disclaimer', async () => {
+      vi.spyOn(ZoikoShieldApiClient, 'getPlanTiers').mockResolvedValueOnce([
+        {
+          key: 'SHIELD_ESSENTIAL',
+          displayName: 'Shield Essential',
+          tagline: 'Foundational MDR',
+          description: 'For growing organizations',
+          pricing: { monthlyUsd: null, annualBilledMonthlyUsd: null, isContractOnly: true, currency: 'USD' },
+          allocations: { maxProtectedAssets: 250, includedTelemetryGbPerDay: 25, incidentResponseSlaHours: null, retentionDays: 90, includedRetainerHoursPerYear: 0 },
+          includedOffers: ['MANAGED_DEFENSE'],
+          highlightedFeatures: ['250 Protected Assets'],
+          governanceFeatures: ['Anti-Perverse Billing Guard'],
+          supportModel: 'Standard 8x5',
+        },
+        {
+          key: 'SHIELD_PROFESSIONAL',
+          displayName: 'Shield Professional',
+          tagline: 'Advanced SecOps',
+          description: 'For mid-market enterprises',
+          pricing: { monthlyUsd: null, annualBilledMonthlyUsd: null, isContractOnly: true, currency: 'USD' },
+          allocations: { maxProtectedAssets: 1000, includedTelemetryGbPerDay: 100, incidentResponseSlaHours: null, retentionDays: 365, includedRetainerHoursPerYear: 20 },
+          includedOffers: ['MANAGED_DEFENSE'],
+          highlightedFeatures: ['1000 Protected Assets'],
+          governanceFeatures: ['Decision Envelope'],
+          supportModel: 'Extended 16x7',
+        },
+        {
+          key: 'SHIELD_ADVANCED',
+          displayName: 'Shield Advanced',
+          tagline: 'Full-Spectrum Defense',
+          description: 'For highly regulated institutions',
+          pricing: { monthlyUsd: null, annualBilledMonthlyUsd: null, isContractOnly: true, currency: 'USD' },
+          allocations: { maxProtectedAssets: 5000, includedTelemetryGbPerDay: 500, incidentResponseSlaHours: null, retentionDays: 730, includedRetainerHoursPerYear: 50 },
+          includedOffers: ['MANAGED_DEFENSE'],
+          highlightedFeatures: ['5000 Protected Assets'],
+          governanceFeatures: ['Signed Receipts'],
+          supportModel: 'Dedicated Lead',
+        },
+        {
+          key: 'SHIELD_ENTERPRISE',
+          displayName: 'Shield Enterprise',
+          tagline: 'Sovereign Cells',
+          description: 'For multinational conglomerates',
+          pricing: { monthlyUsd: null, annualBilledMonthlyUsd: null, isContractOnly: true, currency: 'USD' },
+          allocations: { maxProtectedAssets: null, includedTelemetryGbPerDay: null, incidentResponseSlaHours: null, retentionDays: 2555, includedRetainerHoursPerYear: 100 },
+          includedOffers: ['MANAGED_DEFENSE'],
+          highlightedFeatures: ['Custom Assets'],
+          governanceFeatures: ['Bespoke Auditing'],
+          supportModel: 'White-Glove Named',
+        },
+      ]);
+
       render(<PricingPage />);
 
       expect(
@@ -84,6 +135,62 @@ describe('Commercial Catalogue & Governance Routes Suite', () => {
 
   describe('2. Commercial Services & Capabilities Page (/services)', () => {
     it('renders 12 customer-visible services, capability domains, and evaluator probe', async () => {
+      vi.spyOn(ZoikoShieldApiClient, 'getPublicServices').mockResolvedValueOnce([
+        {
+          serviceId: 'SVC-01',
+          serviceName: 'Managed Threat Detection & Rapid Response (MDR)',
+          category: 'CORE_SECURITY',
+          publicOutcomeDescription: 'Continuous 24/7/365 managed threat detection',
+          status: 'CORE',
+          substantiatingComponents: ['shield-core', 'shield-ingest'],
+          includedCapabilities: ['CAP-01', 'CAP-02'],
+          pricingTierMinimum: 'ESSENTIAL',
+        },
+        {
+          serviceId: 'SVC-02',
+          serviceName: 'Post-Quantum Cryptographic Audit Ledger',
+          category: 'TRUST_ASSURANCE',
+          publicOutcomeDescription: 'Tamper-evident audit ledger',
+          status: 'CORE',
+          substantiatingComponents: ['shield-anchor'],
+          includedCapabilities: ['CAP-03'],
+          pricingTierMinimum: 'ESSENTIAL',
+        },
+        {
+          serviceId: 'SVC-03',
+          serviceName: 'EU DORA Digital Operational Resilience Evaluator',
+          category: 'CONTINUOUS_COMPLIANCE',
+          publicOutcomeDescription: 'Resilience evaluator',
+          status: 'DEFERRED',
+          substantiatingComponents: ['shield-core'],
+          includedCapabilities: ['CAP-04'],
+          pricingTierMinimum: 'ADVANCED',
+        },
+      ]);
+      vi.spyOn(ZoikoShieldApiClient, 'getCapabilityDomains').mockResolvedValueOnce([
+        {
+          domainId: 'DOM-01',
+          domainName: 'Core Threat Operations',
+          description: 'Threat detection and incident containment',
+          totalCapabilities: 4,
+          coreCount: 4,
+          controlledCount: 0,
+          gatedCount: 0,
+          deferredCount: 0,
+          items: [
+            {
+              id: 'CAP-01',
+              name: 'OCSF Telemetry Stream',
+              domain: 'Core Threat Operations',
+              customerService: 'SVC-01',
+              status: 'CORE',
+              substantiatingSatellites: ['shield-ingest'],
+              governanceRationale: 'Active in production',
+            },
+          ],
+        },
+      ]);
+
       render(<CommercialServicesPage />);
 
       expect(
@@ -111,6 +218,7 @@ describe('Commercial Catalogue & Governance Routes Suite', () => {
       expect(screen.getAllByText(/DEFERRED \(ADR-08\)/i).length).toBeGreaterThan(0);
     });
   });
+
 
   describe('3. Tailored Sector Defense Packs Page (/sector-packs)', () => {
     it('renders 6 sector packs with statutory caveats', async () => {

@@ -78,6 +78,7 @@ import { ExperienceModule } from './modules/experience/experience.module';
 import { ConnectorsProxyModule } from './modules/connectors-proxy/connectors-proxy.module';
 import { AnchorProxyModule } from './modules/anchor-proxy/anchor-proxy.module';
 import { RequirementsRegisterModule } from './modules/requirements-register/requirements-register.module';
+import { JitElevationModule } from './modules/jit-elevation/jit-elevation.module';
 
 @Module({
   imports: [
@@ -166,6 +167,7 @@ import { RequirementsRegisterModule } from './modules/requirements-register/requ
     AnchorProxyModule,
     OutboxModule,
     RequirementsRegisterModule,
+    JitElevationModule,
   ],
   controllers: [ShieldCoreController],
   providers: [

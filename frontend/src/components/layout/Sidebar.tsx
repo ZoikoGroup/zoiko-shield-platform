@@ -29,6 +29,7 @@ import {
   Landmark,
   Bot,
   ShieldCheck,
+  Activity,
 } from "lucide-react";
 
 export const Sidebar: React.FC = () => {
@@ -184,12 +185,33 @@ export const Sidebar: React.FC = () => {
       ],
     },
     {
-      label: "PLATFORM ADMIN (CROSS-TENANT)",
+      label: "PLATFORM ADMIN & GOVERNANCE",
       items: [
+        {
+          label: "Platform Service Health (§31)",
+          href: "/admin/platform-health",
+          icon: <Activity className="w-4 h-4" />,
+          badge: "§31/§32",
+          badgeVariant: "ai" as const,
+        },
+        {
+          label: "G1 Launch Gate Protocol",
+          href: "/admin/g1-gate",
+          icon: <ShieldCheck className="w-4 h-4" />,
+          badge: "0/8 GATE",
+          badgeVariant: "critical" as const,
+        },
+        {
+          label: "JIT Elevation Quorum (§13)",
+          href: "/admin/jit-elevation",
+          icon: <KeyRound className="w-4 h-4" />,
+          badge: "FOUR-EYES",
+          badgeVariant: "anchored" as const,
+        },
         {
           label: "GTM Pre-Flight Checklist",
           href: "/admin/gtm-checklist",
-          icon: <ShieldCheck className="w-4 h-4" />,
+          icon: <CheckSquare className="w-4 h-4" />,
           badge: "12/12 PASS",
           badgeVariant: "anchored" as const,
         },
@@ -199,13 +221,6 @@ export const Sidebar: React.FC = () => {
           icon: <Sliders className="w-4 h-4" />,
           badge: "OPERATOR",
           badgeVariant: "anchored" as const,
-        },
-        {
-          label: "Support Access & JIT",
-          href: "/admin/jit",
-          icon: <KeyRound className="w-4 h-4" />,
-          badge: "PLATFORM_ROLE_MANAGE",
-          badgeVariant: "ai" as const,
         },
       ],
     },
