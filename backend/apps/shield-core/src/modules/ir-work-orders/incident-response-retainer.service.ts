@@ -550,4 +550,29 @@ export class IncidentResponseRetainerService {
       return updated;
     });
   }
+
+  async getRetainerSlaWindowPolicy(
+    id: string,
+    tenantId: string,
+    environmentId: string,
+  ) {
+    const retainer = await this.requireRetainer(id, tenantId, environmentId);
+    const window = JSON.parse(retainer.response_window || '{}') as {
+      coverage?: string;
+      acknowledgementTargetMinutes?: number;
+      activationResponseMinutes?: number;
+    };
+    return {
+      retainerId: retainer.id,
+      retainerKey: retainer.retainer_key,
+      status: retainer.status,
+      coverage: window.coverage ?? '24X7',
+      acknowledgementTargetMinutes: window.acknowledgementTargetMinutes ?? 15,
+      activationResponseMinutes: window.activationResponseMinutes ?? 60,
+      maximumResponseAuthority: retainer.maximum_response_authority,
+      overageRate: retainer.overage_rate,
+      ruleCode: 'SVC-01',
+    };
+  }
 }
+

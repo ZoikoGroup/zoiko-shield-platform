@@ -9,9 +9,10 @@ import { PrismaModule } from '../../prisma/prisma.module';
 import { ApprovalsModule } from '../approvals/approvals.module';
 import { CommercialModule } from '../commercial/commercial.module';
 import { IncidentResponseRetainerService } from './incident-response-retainer.service';
+import { SlaModule } from '../sla/sla.module';
 
 @Module({
-  imports: [PrismaModule, ApprovalsModule, CommercialModule],
+  imports: [PrismaModule, ApprovalsModule, CommercialModule, SlaModule],
   controllers: [
     IncidentResponseRetainerController,
     IncidentWorkOrderController,
@@ -21,3 +22,4 @@ import { IncidentResponseRetainerService } from './incident-response-retainer.se
   exports: [IncidentResponseRetainerService, IncidentWorkOrderService],
 })
 export class IrWorkOrdersModule {}
+

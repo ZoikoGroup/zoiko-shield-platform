@@ -1,7 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 import crypto from 'crypto';
 
-export type AiGovernanceDomain = 'COMPLIANCE' | 'DETECTION' | 'GENERAL';
+export type AiGovernanceDomain =
+  | 'COMPLIANCE'
+  | 'DETECTION'
+  | 'GENERAL'
+  | 'TELECOM'
+  | 'FINTECH'
+  | 'HEALTHCARE'
+  | 'LEGAL'
+  | 'SAAS'
+  | 'PUBLIC_SECTOR';
 
 export interface DomainThresholdConfig {
   minGrounding: number;
@@ -27,6 +36,36 @@ export const DOMAIN_GOVERNANCE_THRESHOLDS: Record<
     minGrounding: 0.75,
     minPrecision: 0.8,
     domainName: 'General Assistive AI',
+  },
+  TELECOM: {
+    minGrounding: 0.9,
+    minPrecision: 0.92,
+    domainName: 'Telecom & MVNO (Carrier-Grade)',
+  },
+  FINTECH: {
+    minGrounding: 0.95,
+    minPrecision: 0.98,
+    domainName: 'Financial Services & FinTech (Resilience)',
+  },
+  HEALTHCARE: {
+    minGrounding: 0.98,
+    minPrecision: 0.99,
+    domainName: 'Healthcare & Life Sciences (Patient Privacy)',
+  },
+  LEGAL: {
+    minGrounding: 0.95,
+    minPrecision: 0.97,
+    domainName: 'Legal & Professional Services (Defense)',
+  },
+  SAAS: {
+    minGrounding: 0.92,
+    minPrecision: 0.95,
+    domainName: 'SaaS & Digital Platforms (Cloud Native)',
+  },
+  PUBLIC_SECTOR: {
+    minGrounding: 0.98,
+    minPrecision: 0.99,
+    domainName: 'Public Sector / Critical-Infrastructure (Sovereign)',
   },
 };
 
@@ -110,6 +149,61 @@ export class EvaluationRunnerService {
     if (explicitDomain) return explicitDomain;
 
     const normalized = useCaseKey.toUpperCase();
+    if (
+      normalized.includes('HEALTHCARE') ||
+      normalized.includes('HIPAA') ||
+      normalized.includes('PATIENT') ||
+      normalized.includes('MEDICAL') ||
+      normalized.includes('EHR')
+    ) {
+      return 'HEALTHCARE';
+    }
+
+    if (
+      normalized.includes('FINTECH') ||
+      normalized.includes('BANKING') ||
+      normalized.includes('PAYMENT') ||
+      normalized.includes('PCI') ||
+      normalized.includes('FINANCIAL')
+    ) {
+      return 'FINTECH';
+    }
+
+    if (
+      normalized.includes('LEGAL') ||
+      normalized.includes('ATTORNEY') ||
+      normalized.includes('PRIVILEGE') ||
+      normalized.includes('CONTRACT')
+    ) {
+      return 'LEGAL';
+    }
+
+    if (
+      normalized.includes('TELECOM') ||
+      normalized.includes('MVNO') ||
+      normalized.includes('CARRIER') ||
+      normalized.includes('CDR') ||
+      normalized.includes('SS7')
+    ) {
+      return 'TELECOM';
+    }
+
+    if (
+      normalized.includes('PUBLIC_SECTOR') ||
+      normalized.includes('GOVERNMENT') ||
+      normalized.includes('CRITICAL_INFRASTRUCTURE') ||
+      normalized.includes('SOVEREIGN')
+    ) {
+      return 'PUBLIC_SECTOR';
+    }
+
+    if (
+      normalized.includes('SAAS') ||
+      normalized.includes('CLOUD_NATIVE')
+    ) {
+      return 'SAAS';
+    }
+
     if (
       normalized.includes('COMPLIANCE') ||
       normalized.includes('ASSURANCE') ||

@@ -18,7 +18,14 @@ import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { CurrentUser } from '../identity-adapter/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
-import { IsDefined, ValidateNested } from 'class-validator';
+import {
+  IsDefined,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Min,
+  ValidateNested,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { HumanAuthorityAttestationDto } from '../human-authority/human-authority.dto';
 import { RequireHumanAuthority } from '../human-authority/human-authority.decorator';
@@ -46,6 +53,17 @@ export class CreateIncidentLegalRecordAuthorityDto extends CreateIncidentLegalRe
   @ValidateNested()
   @Type(() => HumanAuthorityAttestationDto)
   humanAuthority!: HumanAuthorityAttestationDto;
+}
+
+export class SettleSlaBreachCreditDto {
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  overrideAmount?: number;
+
+  @IsOptional()
+  @IsString()
+  reason?: string;
 }
 
 function boundary(headerTenantId: string, user: AuthenticatedUser) {
@@ -124,6 +142,23 @@ export class IncidentResponseRetainerController {
         scope.environmentId,
         user.id,
         dto,
+      ),
+    };
+  }
+
+  @Get(':id/sla-policy')
+  async getSlaPolicy(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    const scope = boundary(headerTenantId, user);
+    return {
+      statusCode: HttpStatus.OK,
+      data: await this.retainers.getRetainerSlaWindowPolicy(
+        id,
+        scope.tenantId,
+        scope.environmentId,
       ),
     };
   }
@@ -347,6 +382,44 @@ export class IncidentWorkOrderController {
     return {
       statusCode: HttpStatus.OK,
       data: await this.workOrders.close(
+        id,
+        scope.tenantId,
+        scope.environmentId,
+        dto,
+      ),
+    };
+  }
+
+  @Get(':id/sla-status')
+  async getSlaStatus(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+  ) {
+    const scope = boundary(headerTenantId, user);
+    return {
+      statusCode: HttpStatus.OK,
+      data: await this.workOrders.evaluateSlaStatus(
+        id,
+        scope.tenantId,
+        scope.environmentId,
+      ),
+    };
+  }
+
+  @Post(':id/settle-sla-credit')
+  @RequirePermissions(PERMISSION_CODES.TENANT_COMMERCIAL_ACCOUNT_MANAGE)
+  @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
+  async settleSlaCredit(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('id') id: string,
+    @Body() dto: SettleSlaBreachCreditDto,
+  ) {
+    const scope = boundary(headerTenantId, user);
+    return {
+      statusCode: HttpStatus.OK,
+      data: await this.workOrders.settleSlaBreachCredit(
         id,
         scope.tenantId,
         scope.environmentId,
