@@ -4,6 +4,10 @@ import {
   SignedCommandEnvelope,
 } from './broker/signed-command-broker.service';
 import { CloudHsmSignerService } from './command-signing/cloud-hsm-signer.service';
+import {
+  GOVERNED_COMMAND_SIGNER,
+} from './command-signing/command-signer.interface';
+import { DevGovernedCommandSigner } from './command-signing/dev-governed-command-signer.service';
 
 describe('LAB 15 — Action Broker & Governed Response Hard Boundaries', () => {
   let brokerService: SignedCommandBrokerService;
@@ -11,7 +15,14 @@ describe('LAB 15 — Action Broker & Governed Response Hard Boundaries', () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [SignedCommandBrokerService, CloudHsmSignerService],
+      providers: [
+        SignedCommandBrokerService,
+        CloudHsmSignerService,
+        {
+          provide: GOVERNED_COMMAND_SIGNER,
+          useClass: DevGovernedCommandSigner,
+        },
+      ],
     }).compile();
 
     brokerService = module.get<SignedCommandBrokerService>(
@@ -21,7 +32,7 @@ describe('LAB 15 — Action Broker & Governed Response Hard Boundaries', () => {
   });
 
   describe('Non-Exportable Key Posture (Section 7 Hard Boundary)', () => {
-    it('should confirm broker workloads hold no exportable private key APIs', () => {
+    it('should confirm broker workloads hold no exportable private key APIs', async () => {
       const metadata = hsmSigner.getActiveKeyMetadata();
       expect(metadata.keyId).toBeDefined();
       expect(metadata.publicKeyPem).toBeDefined();
@@ -34,8 +45,8 @@ describe('LAB 15 — Action Broker & Governed Response Hard Boundaries', () => {
   });
 
   describe('LAB 15 Mandatory Negative Command Tests', () => {
-    it('Negative 1 (Replay): should REJECT replayed command with duplicate nonce', () => {
-      const command = brokerService.createSignedCommand(
+    it('Negative 1 (Replay): should REJECT replayed command with duplicate nonce', async () => {
+      const command = await brokerService.createSignedCommand(
         'tenant-alpha',
         'ISOLATE_ENDPOINT',
         'host-srv-01',
@@ -45,18 +56,18 @@ describe('LAB 15 — Action Broker & Governed Response Hard Boundaries', () => {
       );
 
       // First dispatch succeeds
-      const receipt1 = brokerService.dispatchGovernedCommand(command);
+      const receipt1 = await brokerService.dispatchGovernedCommand(command);
       expect(receipt1.executionStatus).toBe('EXECUTED_SUCCESSFULLY');
       expect(receipt1.observedState).toBe('TARGET_CONTAINED');
 
       // Replay attempt with same envelope / nonce must be rejected
-      const receipt2 = brokerService.dispatchGovernedCommand(command);
+      const receipt2 = await brokerService.dispatchGovernedCommand(command);
       expect(receipt2.executionStatus).toBe('REJECTED_REPLAY_NONCE');
       expect(receipt2.observedState).toBe('NO_CHANGE');
       expect(receipt2.attestationDigest).toBeDefined();
     });
 
-    it('Negative 2 (Expired): should REJECT expired command envelope', () => {
+    it('Negative 2 (Expired): should REJECT expired command envelope', async () => {
       const expiredEnvelope: SignedCommandEnvelope = {
         commandId: 'cmd-expired-1',
         tenantId: 'tenant-alpha',
@@ -68,15 +79,17 @@ describe('LAB 15 — Action Broker & Governed Response Hard Boundaries', () => {
         expiresAt: new Date(Date.now() - 10000).toISOString(), // 10 seconds in the past
         nonce: 'nonce-exp-999',
         signature: 'simulated-signature',
+        signingKeyId: 'dev-command-key-unknown',
+        signingAlgorithm: 'ECDSA_SHA_256',
       };
 
-      const receipt = brokerService.dispatchGovernedCommand(expiredEnvelope);
+      const receipt = await brokerService.dispatchGovernedCommand(expiredEnvelope);
       expect(receipt.executionStatus).toBe('REJECTED_EXPIRED_COMMAND');
       expect(receipt.observedState).toBe('NO_CHANGE');
     });
 
-    it('Negative 3 (Invalid Signature): should REJECT tampered / unsigned command', () => {
-      const validCommand = brokerService.createSignedCommand(
+    it('Negative 3 (Invalid Signature): should REJECT tampered / unsigned command', async () => {
+      const validCommand = await brokerService.createSignedCommand(
         'tenant-alpha',
         'QUARANTINE_SUBNET',
         'subnet-10-0-1-0',
@@ -91,15 +104,15 @@ describe('LAB 15 — Action Broker & Governed Response Hard Boundaries', () => {
         targetRef: 'subnet-10-0-2-0-TAMPERED',
       };
 
-      const receipt = brokerService.dispatchGovernedCommand(tamperedCommand);
+      const receipt = await brokerService.dispatchGovernedCommand(tamperedCommand);
       expect(receipt.executionStatus).toBe('REJECTED_VALIDATION_FAILURE');
       expect(receipt.observedState).toBe('NO_CHANGE');
     });
   });
 
   describe('Positive Simulation & Governed Execution Path', () => {
-    it('should produce signed execution receipt with rollback reference on valid execution', () => {
-      const command = brokerService.createSignedCommand(
+    it('should produce signed execution receipt with rollback reference on valid execution', async () => {
+      const command = await brokerService.createSignedCommand(
         'tenant-alpha',
         'REVOKE_IAM_SESSION',
         'session-sess-100',
@@ -109,7 +122,7 @@ describe('LAB 15 — Action Broker & Governed Response Hard Boundaries', () => {
         600,
       );
 
-      const receipt = brokerService.dispatchGovernedCommand(command);
+      const receipt = await brokerService.dispatchGovernedCommand(command);
       expect(receipt.executionStatus).toBe('EXECUTED_SUCCESSFULLY');
       expect(receipt.observedState).toBe('TARGET_CONTAINED');
       expect(receipt.rollbackReceiptId).toBeDefined();
