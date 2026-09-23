@@ -921,3 +921,146 @@ export interface GTMChecklistItem {
   auditPass: boolean;
 }
 
+// --- Spec §31: Explicit Service-Health and Readiness States ---
+
+export type ServiceReadinessState =
+  | 'HEALTHY'
+  | 'AT_RISK'
+  | 'DEGRADED'
+  | 'PARTIAL_INCOMPLETE'
+  | 'STALE'
+  | 'UNKNOWN'
+  | 'UNAVAILABLE'
+  | 'UNAUTHORIZED'
+  | 'QUARANTINED'
+  | 'MAINTENANCE'
+  | 'RECOVERING'
+  | 'RECONCILIATION_REQUIRED'
+  | 'ERROR_BUDGET_EXHAUSTED'
+  | 'READINESS_CONDITIONAL'
+  | 'NOT_READY'
+  | 'WITHDRAWN';
+
+export interface ServiceDependencyStatus {
+  dependencyName: string;
+  type: 'DATABASE' | 'MESSAGE_BROKER' | 'KMS_HSM' | 'EXTERNAL_API' | 'INTERNAL_SERVICE';
+  healthy: boolean;
+  latencyMs: number;
+  lastChecked: string;
+  details?: string;
+}
+
+export interface ServiceHealthSignal {
+  signalKey: string;
+  label: string;
+  value: string | number | boolean;
+  threshold?: string | number;
+  status: 'OPTIMAL' | 'WARNING' | 'CRITICAL';
+}
+
+export interface CoreServiceReadiness {
+  serviceId: string;
+  serviceName: string;
+  displayName: string;
+  description: string;
+  version: string;
+  state: ServiceReadinessState;
+  stateMeaning: string;
+  readinessScore: number;
+  lastAssessedAt: string;
+  dependencies: ServiceDependencyStatus[];
+  signals: ServiceHealthSignal[];
+  blockers: string[];
+  operationalConditions?: string[];
+}
+
+export interface PlatformReadinessSnapshot {
+  snapshotId: string;
+  evaluatedAt: string;
+  overallState: ServiceReadinessState;
+  overallScore: number;
+  totalServicesCount: number;
+  healthyServicesCount: number;
+  conditionalServicesCount: number;
+  degradedServicesCount: number;
+  g1GateRatified: boolean;
+  activeBlockersCount: number;
+  services: Record<string, CoreServiceReadiness>;
+  auditAttestationHash: string;
+}
+
+export type DataStoreId =
+  | 'shield_core_db'
+  | 'merkle_ledger'
+  | 'timeseries_telemetry'
+  | 'audit_vault';
+
+export type RpoStatus = 'COMPLIANT' | 'WARNING' | 'BREACHED';
+export type RestoreVerificationStatus = 'VERIFIED' | 'FAILED' | 'UNVERIFIED' | 'STALE';
+
+export interface DataStoreBackupRecord {
+  storeId: DataStoreId;
+  displayName: string;
+  storeType: 'RELATIONAL_POSTGRES' | 'IMMUTABLE_MERKLE_TREE' | 'TIMESERIES_ANALYTICS' | 'COMPLIANCE_VAULT';
+  lastBackupCompletedAt: string;
+  backupAgeHours: number;
+  backupSizeBytes: number;
+  rpoTargetMinutes: number;
+  rpoStatus: RpoStatus;
+  encryptionAlgorithm: 'AES_256_GCM' | 'KMS_ENVELOPE_AES256' | 'NONE';
+  encryptionVerified: boolean;
+  immutabilityLocked: boolean;
+  retentionDays: number;
+  manifestChecksumSha256: string;
+  lastRestoreDrillAt: string;
+  lastRestoreDrillStatus: RestoreVerificationStatus;
+  restoreDrillAgeDays: number;
+}
+
+export interface DisasterRecoveryPostureSummary {
+  assessedAt: string;
+  overallBackupHealth: 'HEALTHY' | 'AT_RISK' | 'DEGRADED';
+  overallRpoCompliant: boolean;
+  overallRestoreVerified: boolean;
+  activeStoresCount: number;
+  healthyStoresCount: number;
+  staleBackupsCount: number;
+  unverifiedRestoresCount: number;
+  rtoTargetHours: number;
+  stores: Record<DataStoreId, DataStoreBackupRecord>;
+  attestationDigest: string;
+}
+
+export interface TableReconciliationRecord {
+  tableName: string;
+  sourceRowCount: number;
+  restoredRowCount: number;
+  rowDriftCount: number;
+  checksumMatches: boolean;
+  foreignKeysValid: boolean;
+}
+
+export interface RestoreDrillReceipt {
+  drillId: string;
+  storeId: DataStoreId;
+  startedAt: string;
+  completedAt: string;
+  durationMs: number;
+  durationSeconds: number;
+  rtoTargetSeconds: number;
+  rtoCompliant: boolean;
+  status: RestoreVerificationStatus;
+  scratchSchemaName: string;
+  scratchSchemaTornDown: boolean;
+  totalTablesReconciled: number;
+  totalRowsReconciled: number;
+  sourceMerkleHead: string;
+  restoredMerkleHead: string;
+  merkleHeadAligned: boolean;
+  tableReconciliations: TableReconciliationRecord[];
+  discrepancies: string[];
+  receiptSignatureSha256: string;
+}
+
+
+

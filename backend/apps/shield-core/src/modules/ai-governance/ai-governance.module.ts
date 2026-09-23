@@ -7,6 +7,8 @@ import {
   AiBudgetController,
 } from './ai-governance.controller';
 import { CustomerDisclosuresController } from './customer-disclosures.controller';
+import { G1GateController } from './g1-gate.controller';
+import { G1GateService } from './g1-gate.service';
 import { AiProxyController } from './ai-proxy.controller';
 import { ShieldAiClient } from '../../internal-client/shield-ai.client';
 import { AiUsageService } from './ai-usage.service';
@@ -39,6 +41,7 @@ import { AiOutputGroundingService } from './ai-output-grounding.service';
     AiGovernanceProfileController,
     AiBudgetController,
     CustomerDisclosuresController,
+    G1GateController,
     AiProxyController,
   ],
   providers: [
@@ -50,6 +53,7 @@ import { AiOutputGroundingService } from './ai-output-grounding.service';
     NoLlmContinuityService,
     AiTokenQuotaGuard,
     AiOutputGroundingService,
+    G1GateService,
   ],
   exports: [
     ShieldAiClient,
@@ -60,6 +64,7 @@ import { AiOutputGroundingService } from './ai-output-grounding.service';
     NoLlmContinuityService,
     AiTokenQuotaGuard,
     AiOutputGroundingService,
+    G1GateService,
   ],
 })
 export class AiGovernanceModule {}
