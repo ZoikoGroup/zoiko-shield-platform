@@ -57,12 +57,7 @@ const G1_CONTRACTS: Contract[] = [
     note: 'No policy approval or rollback surface. Approval services exist in shield-core with no UI.',
   },
   { id: 'W13', title: 'Alert queue', route: '/alerts' },
-  {
-    id: 'W14',
-    title: 'Alert detail',
-    route: null,
-    note: 'No per-alert route. /alerts is a queue only; an alert cannot be opened to see why it fired.',
-  },
+  { id: 'W14', title: 'Alert detail', route: '/alerts/[alertId]' },
   {
     id: 'W15',
     title: 'Detection content management',

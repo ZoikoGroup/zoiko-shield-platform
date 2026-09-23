@@ -73,6 +73,23 @@ export class AlertController {
     return { statusCode: HttpStatus.OK, data: alert };
   }
 
+  /**
+   * W14 (Alert detail): the rule and version that fired, the factors it
+   * computed, the context resolved at the time, and the evidence and case it
+   * produced. GET :alertId returns the bare row, which cannot explain itself.
+   */
+  @Get(':alertId/detail')
+  async getAlertDetail(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('alertId') alertId: string,
+  ) {
+    const detail = await this.alertService.getAlertDetail(
+      this.resolveTenantId(headerTenantId),
+      alertId,
+    );
+    return { statusCode: HttpStatus.OK, data: detail };
+  }
+
   @Patch(':alertId/status')
   async updateStatus(
     @Headers('x-tenant-id') headerTenantId: string,

@@ -212,13 +212,21 @@ export default function AlertsPage() {
                       {alert.status}
                     </Badge>
                     <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => router.push(`/alerts/${alert.id}`)}
+                    >
+                      <Search className="w-4 h-4" />
+                      <span>Open alert</span>
+                    </Button>
+                    <Button
                       variant="primary"
                       size="sm"
                       onClick={() => handlePromote(alert.id, alert.title)}
                       isLoading={isPromoting === alert.id}
                     >
                       <FolderPlus className="w-4 h-4" />
-                      <span>Promote to Case (shield-ingest :3002)</span>
+                      <span>Promote to case</span>
                     </Button>
                   </>
                 )}
