@@ -2,18 +2,20 @@ import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 
 export type DataStoreId =
-  | 'shield_core_db'
-  | 'merkle_ledger'
-  | 'timeseries_telemetry'
-  | 'audit_vault';
+  'shield_core_db' | 'merkle_ledger' | 'timeseries_telemetry' | 'audit_vault';
 
 export type RpoStatus = 'COMPLIANT' | 'WARNING' | 'BREACHED';
-export type RestoreVerificationStatus = 'VERIFIED' | 'FAILED' | 'UNVERIFIED' | 'STALE';
+export type RestoreVerificationStatus =
+  'VERIFIED' | 'FAILED' | 'UNVERIFIED' | 'STALE';
 
 export interface DataStoreBackupRecord {
   storeId: DataStoreId;
   displayName: string;
-  storeType: 'RELATIONAL_POSTGRES' | 'IMMUTABLE_MERKLE_TREE' | 'TIMESERIES_ANALYTICS' | 'COMPLIANCE_VAULT';
+  storeType:
+    | 'RELATIONAL_POSTGRES'
+    | 'IMMUTABLE_MERKLE_TREE'
+    | 'TIMESERIES_ANALYTICS'
+    | 'COMPLIANCE_VAULT';
   lastBackupCompletedAt: string;
   backupAgeHours: number;
   backupSizeBytes: number;
@@ -60,8 +62,12 @@ export class BackupIntegrityService {
 
   private initializeDefaultStoreState(): void {
     const now = new Date();
-    const fourHoursAgo = new Date(now.getTime() - 4 * 60 * 60 * 1000).toISOString();
-    const twoDaysAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString();
+    const fourHoursAgo = new Date(
+      now.getTime() - 4 * 60 * 60 * 1000,
+    ).toISOString();
+    const twoDaysAgo = new Date(
+      now.getTime() - 48 * 60 * 60 * 1000,
+    ).toISOString();
 
     const defaultRecords: DataStoreBackupRecord[] = [
       {
@@ -77,7 +83,10 @@ export class BackupIntegrityService {
         encryptionVerified: true,
         immutabilityLocked: true,
         retentionDays: 90,
-        manifestChecksumSha256: crypto.createHash('sha256').update('shield_core_db_snap_001').digest('hex'),
+        manifestChecksumSha256: crypto
+          .createHash('sha256')
+          .update('shield_core_db_snap_001')
+          .digest('hex'),
         lastRestoreDrillAt: twoDaysAgo,
         lastRestoreDrillStatus: 'VERIFIED',
         restoreDrillAgeDays: 2.0,
@@ -95,7 +104,10 @@ export class BackupIntegrityService {
         encryptionVerified: true,
         immutabilityLocked: true,
         retentionDays: 365,
-        manifestChecksumSha256: crypto.createHash('sha256').update('merkle_ledger_snap_001').digest('hex'),
+        manifestChecksumSha256: crypto
+          .createHash('sha256')
+          .update('merkle_ledger_snap_001')
+          .digest('hex'),
         lastRestoreDrillAt: twoDaysAgo,
         lastRestoreDrillStatus: 'VERIFIED',
         restoreDrillAgeDays: 2.0,
@@ -113,7 +125,10 @@ export class BackupIntegrityService {
         encryptionVerified: true,
         immutabilityLocked: false,
         retentionDays: 30,
-        manifestChecksumSha256: crypto.createHash('sha256').update('timeseries_telemetry_snap_001').digest('hex'),
+        manifestChecksumSha256: crypto
+          .createHash('sha256')
+          .update('timeseries_telemetry_snap_001')
+          .digest('hex'),
         lastRestoreDrillAt: twoDaysAgo,
         lastRestoreDrillStatus: 'VERIFIED',
         restoreDrillAgeDays: 2.0,
@@ -131,7 +146,10 @@ export class BackupIntegrityService {
         encryptionVerified: true,
         immutabilityLocked: true,
         retentionDays: 2555, // 7 years statutory
-        manifestChecksumSha256: crypto.createHash('sha256').update('audit_vault_snap_001').digest('hex'),
+        manifestChecksumSha256: crypto
+          .createHash('sha256')
+          .update('audit_vault_snap_001')
+          .digest('hex'),
         lastRestoreDrillAt: twoDaysAgo,
         lastRestoreDrillStatus: 'VERIFIED',
         restoreDrillAgeDays: 2.0,
@@ -147,7 +165,9 @@ export class BackupIntegrityService {
    * Assesses and returns the comprehensive Disaster Recovery posture per Spec §26.
    */
   public evaluateDisasterRecoveryPosture(customOverrides?: {
-    storeOverrides?: Partial<Record<DataStoreId, Partial<DataStoreBackupRecord>>>;
+    storeOverrides?: Partial<
+      Record<DataStoreId, Partial<DataStoreBackupRecord>>
+    >;
   }): DisasterRecoveryPostureSummary {
     const assessedAt = new Date().toISOString();
     const storesMap: Partial<Record<DataStoreId, DataStoreBackupRecord>> = {};
@@ -179,12 +199,20 @@ export class BackupIntegrityService {
       }
 
       // Re-evaluate restore verification status
-      if (record.restoreDrillAgeDays > 30.0 || record.lastRestoreDrillStatus === 'FAILED') {
-        record.lastRestoreDrillStatus = record.lastRestoreDrillStatus === 'FAILED' ? 'FAILED' : 'STALE';
+      if (
+        record.restoreDrillAgeDays > 30.0 ||
+        record.lastRestoreDrillStatus === 'FAILED'
+      ) {
+        record.lastRestoreDrillStatus =
+          record.lastRestoreDrillStatus === 'FAILED' ? 'FAILED' : 'STALE';
         unverifiedCount += 1;
       }
 
-      if (record.rpoStatus === 'COMPLIANT' && (record.lastRestoreDrillStatus === 'VERIFIED') && record.encryptionVerified) {
+      if (
+        record.rpoStatus === 'COMPLIANT' &&
+        record.lastRestoreDrillStatus === 'VERIFIED' &&
+        record.encryptionVerified
+      ) {
         healthyCount += 1;
       }
 
@@ -245,7 +273,9 @@ export class BackupIntegrityService {
     };
 
     this.dataStoreBackups.set(storeId, updated);
-    this.logger.log(`✔ Recorded Spec §26 Restore Drill for '${storeId}': ${status}`);
+    this.logger.log(
+      `✔ Recorded Spec §26 Restore Drill for '${storeId}': ${status}`,
+    );
     return updated;
   }
 }

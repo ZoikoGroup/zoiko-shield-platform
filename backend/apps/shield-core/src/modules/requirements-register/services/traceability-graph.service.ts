@@ -74,7 +74,10 @@ export class TraceabilityGraphService {
         untested.push(req.id);
       }
 
-      if (req.evidenceObligation.requiresMerkleProof || req.evidenceObligation.requiresWitnessSeal) {
+      if (
+        req.evidenceObligation.requiresMerkleProof ||
+        req.evidenceObligation.requiresWitnessSeal
+      ) {
         if (hasGate) {
           gateCovered++;
         } else {
@@ -90,8 +93,12 @@ export class TraceabilityGraphService {
       totalRequirements,
       coveredByTests: testCovered,
       coveredByEvidenceGates: gateCovered,
-      testCoverageRatio: parseFloat((testCovered / totalRequirements).toFixed(4)),
-      evidenceGateCoverageRatio: parseFloat((gateCovered / totalRequirements).toFixed(4)),
+      testCoverageRatio: parseFloat(
+        (testCovered / totalRequirements).toFixed(4),
+      ),
+      evidenceGateCoverageRatio: parseFloat(
+        (gateCovered / totalRequirements).toFixed(4),
+      ),
       untestedRequirements: untested,
       ungatedRequirements: ungated,
     };
@@ -115,25 +122,29 @@ export class TraceabilityGraphService {
       {
         level: 1,
         authorityType: 'LAW_REGULATION',
-        description: 'Statutory and Jurisdictional Mandates (GDPR, HIPAA, NIS2, DORA)',
+        description:
+          'Statutory and Jurisdictional Mandates (GDPR, HIPAA, NIS2, DORA)',
         requirementsCount: counts.LAW_REGULATION,
       },
       {
         level: 2,
         authorityType: 'SECURITY_STANDARD',
-        description: 'Formal Trust & Security Frameworks (SOC 2 Type II, ISO 27001:2022, NIST SP 800-207)',
+        description:
+          'Formal Trust & Security Frameworks (SOC 2 Type II, ISO 27001:2022, NIST SP 800-207)',
         requirementsCount: counts.SECURITY_STANDARD,
       },
       {
         level: 3,
         authorityType: 'COMMERCIAL_CONTRACT',
-        description: 'Customer Service Contracts, SLA Commitments & Entitlement Ladders',
+        description:
+          'Customer Service Contracts, SLA Commitments & Entitlement Ladders',
         requirementsCount: counts.COMMERCIAL_CONTRACT,
       },
       {
         level: 4,
         authorityType: 'CONTROLLED_SPEC',
-        description: '18 Controlled Engineering Specifications (ZoikoShield Master Build Standard)',
+        description:
+          '18 Controlled Engineering Specifications (ZoikoShield Master Build Standard)',
         requirementsCount: counts.CONTROLLED_SPEC,
       },
       {
@@ -145,15 +156,22 @@ export class TraceabilityGraphService {
     ];
   }
 
-  public resolvePrecedenceConflict(reqA: RequirementNode, reqB: RequirementNode): RequirementNode {
+  public resolvePrecedenceConflict(
+    reqA: RequirementNode,
+    reqB: RequirementNode,
+  ): RequirementNode {
     const rankA = this.AUTHORITY_PRECEDENCE_RANKS[reqA.authority.type] || 99;
     const rankB = this.AUTHORITY_PRECEDENCE_RANKS[reqB.authority.type] || 99;
 
     if (rankA < rankB) {
-      this.logger.log(`✔ Precedence Resolution: '${reqA.id}' (${reqA.authority.type}) overrides '${reqB.id}' (${reqB.authority.type})`);
+      this.logger.log(
+        `✔ Precedence Resolution: '${reqA.id}' (${reqA.authority.type}) overrides '${reqB.id}' (${reqB.authority.type})`,
+      );
       return reqA;
     } else {
-      this.logger.log(`✔ Precedence Resolution: '${reqB.id}' (${reqB.authority.type}) overrides '${reqA.id}' (${reqA.authority.type})`);
+      this.logger.log(
+        `✔ Precedence Resolution: '${reqB.id}' (${reqB.authority.type}) overrides '${reqA.id}' (${reqA.authority.type})`,
+      );
       return reqB;
     }
   }

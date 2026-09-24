@@ -12,8 +12,14 @@ import {
 import { SimulationService } from './simulation/simulation.service';
 import { ActionRollbackBrokerService } from './rollback/action-rollback-broker.service';
 import { FreezeControllerService } from './freeze-controller/freeze-controller.service';
-import { EmergencyFreezeLockdownService, FreezeScope } from './freeze-controller/emergency-freeze-lockdown.service';
-import { BlastRadiusEvaluatorService, BlastRadiusEvaluationInput } from './rate-control/blast-radius-evaluator.service';
+import {
+  EmergencyFreezeLockdownService,
+  FreezeScope,
+} from './freeze-controller/emergency-freeze-lockdown.service';
+import {
+  BlastRadiusEvaluatorService,
+  BlastRadiusEvaluationInput,
+} from './rate-control/blast-radius-evaluator.service';
 import { CompensatingActionService } from './rollback/compensating-action.service';
 import { TwoManRuleService } from './approval/two-man-rule.service';
 import { DistributedActionLockService } from './orchestration/distributed-action-lock.service';
@@ -419,14 +425,23 @@ export class ShieldActionController {
     const activeFreezes = this.emergencyFreezeService.getActiveFreezes();
     const isGlobalFrozen = activeFreezes.some((f) => f.scope === 'GLOBAL');
     const isRegionalFrozen = region
-      ? activeFreezes.some((f) => f.scope === 'REGIONAL' && f.region?.toLowerCase() === region.toLowerCase())
+      ? activeFreezes.some(
+          (f) =>
+            f.scope === 'REGIONAL' &&
+            f.region?.toLowerCase() === region.toLowerCase(),
+        )
       : false;
     const isTenantFrozen = tenantId
-      ? activeFreezes.some((f) => f.scope === 'TENANT' && f.tenantId === tenantId)
+      ? activeFreezes.some(
+          (f) => f.scope === 'TENANT' && f.tenantId === tenantId,
+        )
       : false;
 
     return {
-      status: isGlobalFrozen || isRegionalFrozen || isTenantFrozen ? 'DEGRADED_FROZEN' : 'ACTIVE_GOVERNED',
+      status:
+        isGlobalFrozen || isRegionalFrozen || isTenantFrozen
+          ? 'DEGRADED_FROZEN'
+          : 'ACTIVE_GOVERNED',
       timestamp: new Date().toISOString(),
       globalFreezeActive: isGlobalFrozen,
       regionalFreezeActive: isRegionalFrozen,
@@ -435,7 +450,8 @@ export class ShieldActionController {
       activeFreezes,
       criticalityTiers: {
         TIER_0_CRITICAL: {
-          description: 'Identity & Infrastructure Roots (Domain Controller, Root IdP, Master DB)',
+          description:
+            'Identity & Infrastructure Roots (Domain Controller, Root IdP, Master DB)',
           maxAutomatedBlastRadius: 0,
           requiresDualCustody: true,
         },
@@ -490,7 +506,10 @@ export class ShieldActionController {
   @UseGuards(InternalAuthGuard)
   @Post('api/v1/action/safety/unfreeze')
   approveEmergencyUnfreeze(@Body() body: ApproveUnfreezeDto) {
-    return this.emergencyFreezeService.approveUnfreeze(body.freezeId, body.approverId);
+    return this.emergencyFreezeService.approveUnfreeze(
+      body.freezeId,
+      body.approverId,
+    );
   }
 
   @UseGuards(InternalAuthGuard)
@@ -515,4 +534,3 @@ export class ShieldActionController {
     return this.compensatingActionService.listPlansForTenant(tenantId);
   }
 }
-

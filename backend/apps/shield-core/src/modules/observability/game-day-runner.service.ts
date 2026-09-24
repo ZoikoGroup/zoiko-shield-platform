@@ -72,7 +72,10 @@ export interface GameDayPostureSummary {
   }[];
 }
 
-const FAILURE_CLASS_MAP: Record<GameDayScenario, { failureClass: string; defaultName: string }> = {
+const FAILURE_CLASS_MAP: Record<
+  GameDayScenario,
+  { failureClass: string; defaultName: string }
+> = {
   GD_01_DEPENDENCY_LOSS: {
     failureClass: 'Dependency loss',
     defaultName: 'Simulated External Provider & Upstream Connector Outage',
@@ -83,7 +86,8 @@ const FAILURE_CLASS_MAP: Record<GameDayScenario, { failureClass: string; default
   },
   GD_03_REGIONAL_FAILURE: {
     failureClass: 'Regional failure',
-    defaultName: 'Simulated Cross-Region Cloud Partition & Sovereign Node Promotion',
+    defaultName:
+      'Simulated Cross-Region Cloud Partition & Sovereign Node Promotion',
   },
   GD_04_IDENTITY_OUTAGE: {
     failureClass: 'Identity outage',
@@ -91,7 +95,8 @@ const FAILURE_CLASS_MAP: Record<GameDayScenario, { failureClass: string; default
   },
   GD_05_AI_OUTAGE: {
     failureClass: 'AI outage',
-    defaultName: 'Simulated AI Model Gateway Timeout & Deterministic Copilot Fallback',
+    defaultName:
+      'Simulated AI Model Gateway Timeout & Deterministic Copilot Fallback',
   },
   GD_06_CONNECTOR_DRIFT: {
     failureClass: 'Connector drift',
@@ -99,7 +104,8 @@ const FAILURE_CLASS_MAP: Record<GameDayScenario, { failureClass: string; default
   },
   GD_07_ACTION_FREEZE: {
     failureClass: 'Action freeze',
-    defaultName: 'Simulated Spec §19 Emergency Lockdown Freeze & Containment Rejection',
+    defaultName:
+      'Simulated Spec §19 Emergency Lockdown Freeze & Containment Rejection',
   },
 };
 
@@ -139,7 +145,9 @@ export class GameDayRunnerService {
         invariantsVerified: this.getInvariantsForScenario(sc),
         deficienciesIdentified: [],
         capaTicketsGenerated: [],
-        nextScheduledExercise: new Date(date.getTime() + 90 * 24 * 60 * 60 * 1000).toISOString(),
+        nextScheduledExercise: new Date(
+          date.getTime() + 90 * 24 * 60 * 60 * 1000,
+        ).toISOString(),
         cryptographicReportDigest: crypto
           .createHash('sha256')
           .update(`gameday-seed-${sc}`)
@@ -164,7 +172,9 @@ export class GameDayRunnerService {
     const timeToMitigateSeconds = this.getMitigationTimeForScenario(scenario);
 
     const durationMs = Date.now() - startTime + 32;
-    const nextScheduled = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString();
+    const nextScheduled = new Date(
+      Date.now() + 90 * 24 * 60 * 60 * 1000,
+    ).toISOString();
 
     const payload = JSON.stringify({
       exerciseId,
@@ -176,7 +186,10 @@ export class GameDayRunnerService {
       timestamp: new Date().toISOString(),
     });
 
-    const cryptographicReportDigest = crypto.createHash('sha256').update(payload).digest('hex');
+    const cryptographicReportDigest = crypto
+      .createHash('sha256')
+      .update(payload)
+      .digest('hex');
 
     const result: GameDayExerciseResult = {
       exerciseId,
@@ -207,9 +220,13 @@ export class GameDayRunnerService {
    * Generates a formal, machine-readable Annex P Game-Day and Synthetic-Tenant Report for a given exercise
    */
   public generateAnnexPReport(exerciseId: string): AnnexPGameDayReport {
-    const exercise = this.exerciseHistory.find((e) => e.exerciseId === exerciseId);
+    const exercise = this.exerciseHistory.find(
+      (e) => e.exerciseId === exerciseId,
+    );
     if (!exercise) {
-      throw new NotFoundException(`Game day exercise '${exerciseId}' not found`);
+      throw new NotFoundException(
+        `Game day exercise '${exerciseId}' not found`,
+      );
     }
 
     return {
@@ -249,21 +266,59 @@ export class GameDayRunnerService {
    */
   public getGameDayPosture(): GameDayPostureSummary {
     const latest = this.exerciseHistory[0];
-    const lastDate = latest ? new Date(latest.exerciseTimestamp) : new Date(Date.now() - 20 * 86400000);
-    const daysSince = Math.floor((Date.now() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+    const lastDate = latest
+      ? new Date(latest.exerciseTimestamp)
+      : new Date(Date.now() - 20 * 86400000);
+    const daysSince = Math.floor(
+      (Date.now() - lastDate.getTime()) / (1000 * 60 * 60 * 24),
+    );
 
-    const scenariosMap: Record<GameDayScenario, { lastExercised: string; status: string; failureClass: string }> = {
-      GD_01_DEPENDENCY_LOSS: { lastExercised: 'N/A', status: 'NOT_RUN', failureClass: 'Dependency loss' },
-      GD_02_QUEUE_BACKLOG: { lastExercised: 'N/A', status: 'NOT_RUN', failureClass: 'Queue backlog' },
-      GD_03_REGIONAL_FAILURE: { lastExercised: 'N/A', status: 'NOT_RUN', failureClass: 'Regional failure' },
-      GD_04_IDENTITY_OUTAGE: { lastExercised: 'N/A', status: 'NOT_RUN', failureClass: 'Identity outage' },
-      GD_05_AI_OUTAGE: { lastExercised: 'N/A', status: 'NOT_RUN', failureClass: 'AI outage' },
-      GD_06_CONNECTOR_DRIFT: { lastExercised: 'N/A', status: 'NOT_RUN', failureClass: 'Connector drift' },
-      GD_07_ACTION_FREEZE: { lastExercised: 'N/A', status: 'NOT_RUN', failureClass: 'Action freeze' },
+    const scenariosMap: Record<
+      GameDayScenario,
+      { lastExercised: string; status: string; failureClass: string }
+    > = {
+      GD_01_DEPENDENCY_LOSS: {
+        lastExercised: 'N/A',
+        status: 'NOT_RUN',
+        failureClass: 'Dependency loss',
+      },
+      GD_02_QUEUE_BACKLOG: {
+        lastExercised: 'N/A',
+        status: 'NOT_RUN',
+        failureClass: 'Queue backlog',
+      },
+      GD_03_REGIONAL_FAILURE: {
+        lastExercised: 'N/A',
+        status: 'NOT_RUN',
+        failureClass: 'Regional failure',
+      },
+      GD_04_IDENTITY_OUTAGE: {
+        lastExercised: 'N/A',
+        status: 'NOT_RUN',
+        failureClass: 'Identity outage',
+      },
+      GD_05_AI_OUTAGE: {
+        lastExercised: 'N/A',
+        status: 'NOT_RUN',
+        failureClass: 'AI outage',
+      },
+      GD_06_CONNECTOR_DRIFT: {
+        lastExercised: 'N/A',
+        status: 'NOT_RUN',
+        failureClass: 'Connector drift',
+      },
+      GD_07_ACTION_FREEZE: {
+        lastExercised: 'N/A',
+        status: 'NOT_RUN',
+        failureClass: 'Action freeze',
+      },
     };
 
     for (const ex of this.exerciseHistory) {
-      if (scenariosMap[ex.scenario] && scenariosMap[ex.scenario].status === 'NOT_RUN') {
+      if (
+        scenariosMap[ex.scenario] &&
+        scenariosMap[ex.scenario].status === 'NOT_RUN'
+      ) {
         scenariosMap[ex.scenario] = {
           lastExercised: ex.exerciseTimestamp,
           status: ex.status,
@@ -272,12 +327,14 @@ export class GameDayRunnerService {
       }
     }
 
-    const scenariosExercised = Object.entries(scenariosMap).map(([scenario, data]) => ({
-      scenario: scenario as GameDayScenario,
-      failureClass: data.failureClass,
-      lastExercised: data.lastExercised,
-      status: data.status,
-    }));
+    const scenariosExercised = Object.entries(scenariosMap).map(
+      ([scenario, data]) => ({
+        scenario: scenario as GameDayScenario,
+        failureClass: data.failureClass,
+        lastExercised: data.lastExercised,
+        status: data.status,
+      }),
+    );
 
     const allExercised = scenariosExercised.every((s) => s.status === 'PASSED');
 

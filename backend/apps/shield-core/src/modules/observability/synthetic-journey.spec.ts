@@ -17,7 +17,10 @@ describe('SyntheticJourneyService (Spec §27 Synthetic Monitoring & Canaries)', 
   });
 
   it('executes all 6 journey stages on canary tenant with valid cryptographic receipt', () => {
-    const report = service.executeJourneyProbe('tenant-zoiko-canary-01', 'eu-west-1');
+    const report = service.executeJourneyProbe(
+      'tenant-zoiko-canary-01',
+      'eu-west-1',
+    );
 
     expect(report.status).toBe('HEALTHY');
     expect(report.stagesPassed).toBe(6);

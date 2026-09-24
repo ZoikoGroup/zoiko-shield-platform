@@ -22,11 +22,14 @@ describe('G1 Gate Multi-Approver Protocol (§05 & §16)', () => {
       roleId: 'ciso',
       signatoryName: 'Jane Doe, Chief Information Security Officer',
       signatureProof: 'sig_ed25519_98f4b1e7c2a4d3',
-      evidenceNotes: 'Reviewed Cloud HSM KMS integration and zero ungrounded claims.',
+      evidenceNotes:
+        'Reviewed Cloud HSM KMS integration and zero ungrounded claims.',
     });
 
     expect(approver.isSigned).toBe(true);
-    expect(approver.signatoryName).toBe('Jane Doe, Chief Information Security Officer');
+    expect(approver.signatoryName).toBe(
+      'Jane Doe, Chief Information Security Officer',
+    );
     expect(approver.signatureProofRef).toBe('sig_ed25519_98f4b1e7c2a4d3');
 
     const status = service.getRosterStatus();

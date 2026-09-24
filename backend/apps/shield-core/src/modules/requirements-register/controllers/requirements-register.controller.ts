@@ -13,7 +13,10 @@ import { JwtAuthGuard } from '../../identity-adapter/guards/jwt-auth.guard';
 import { RequirementsRegisterService } from '../services/requirements-register.service';
 import { TraceabilityGraphService } from '../services/traceability-graph.service';
 import { RequirementsReconciliationWorker } from '../workers/requirements-reconciliation.worker';
-import { CreateRequirementDto, QueryRequirementsDto } from '../dto/requirement.dto';
+import {
+  CreateRequirementDto,
+  QueryRequirementsDto,
+} from '../dto/requirement.dto';
 import { PlatformPermissionsGuard } from '../../authorization/guards/platform-permissions.guard';
 import { RequirePlatformPermissions } from '../../authorization/decorators/require-platform-permissions.decorator';
 

@@ -35,25 +35,39 @@ describe('CompensatingActionService (ZS-ENG-DRS-001 §20)', () => {
 
   describe('1. Deterministic Inverse Action Derivation (ZS-ENG-DRS-001 §20.1)', () => {
     it('derives UNISOLATE_ENDPOINT for ISOLATE_HOST', () => {
-      expect(service.deriveInverseAction('ISOLATE_HOST')).toBe('UNISOLATE_ENDPOINT');
-      expect(service.deriveInverseAction('EDR_ISOLATE')).toBe('UNISOLATE_ENDPOINT');
+      expect(service.deriveInverseAction('ISOLATE_HOST')).toBe(
+        'UNISOLATE_ENDPOINT',
+      );
+      expect(service.deriveInverseAction('EDR_ISOLATE')).toBe(
+        'UNISOLATE_ENDPOINT',
+      );
     });
 
     it('derives RESTORE_IAM_POLICY for REVOKE_IAM_SESSION / REVOKE_AWS_IAM_ACCESS_KEY', () => {
-      expect(service.deriveInverseAction('REVOKE_IAM_SESSION')).toBe('RESTORE_IAM_POLICY');
-      expect(service.deriveInverseAction('REVOKE_AWS_IAM_ACCESS_KEY')).toBe('RESTORE_IAM_POLICY');
+      expect(service.deriveInverseAction('REVOKE_IAM_SESSION')).toBe(
+        'RESTORE_IAM_POLICY',
+      );
+      expect(service.deriveInverseAction('REVOKE_AWS_IAM_ACCESS_KEY')).toBe(
+        'RESTORE_IAM_POLICY',
+      );
     });
 
     it('derives UNBLOCK_WAF_IP for BLOCK_IP / BLOCK_WAF_IP', () => {
-      expect(service.deriveInverseAction('BLOCK_WAF_IP')).toBe('UNBLOCK_WAF_IP');
+      expect(service.deriveInverseAction('BLOCK_WAF_IP')).toBe(
+        'UNBLOCK_WAF_IP',
+      );
     });
 
     it('derives UNQUARANTINE_K8S_POD for QUARANTINE_POD', () => {
-      expect(service.deriveInverseAction('QUARANTINE_POD')).toBe('UNQUARANTINE_K8S_POD');
+      expect(service.deriveInverseAction('QUARANTINE_POD')).toBe(
+        'UNQUARANTINE_K8S_POD',
+      );
     });
 
     it('derives ENABLE_ENTRA_USER for DISABLE_USER / DISABLE_ENTRA_USER', () => {
-      expect(service.deriveInverseAction('DISABLE_ENTRA_USER')).toBe('ENABLE_ENTRA_USER');
+      expect(service.deriveInverseAction('DISABLE_ENTRA_USER')).toBe(
+        'ENABLE_ENTRA_USER',
+      );
     });
   });
 
@@ -70,7 +84,10 @@ describe('CompensatingActionService (ZS-ENG-DRS-001 §20)', () => {
       expect(plan.singleUseRollbackToken).toMatch(/^rb-tok-/);
       expect(plan.compensatingAction).toBe('UNISOLATE_ENDPOINT');
 
-      const retrieved = service.getRegisteredPlan('tenant-test-01', plan.singleUseRollbackToken);
+      const retrieved = service.getRegisteredPlan(
+        'tenant-test-01',
+        plan.singleUseRollbackToken,
+      );
       expect(retrieved).toEqual(plan);
     });
 
@@ -111,7 +128,9 @@ describe('CompensatingActionService (ZS-ENG-DRS-001 §20)', () => {
         'analyst.lead@acme.com',
       );
 
-      expect(service.isTokenConsumed(samplePlan.singleUseRollbackToken)).toBe(true);
+      expect(service.isTokenConsumed(samplePlan.singleUseRollbackToken)).toBe(
+        true,
+      );
 
       // Second execution with same token MUST throw ForbiddenException
       await expect(

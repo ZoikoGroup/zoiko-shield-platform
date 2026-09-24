@@ -1,7 +1,8 @@
 import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
 import * as crypto from 'crypto';
 
-export type FreezeScope = 'GLOBAL' | 'REGIONAL' | 'TENANT' | 'CONNECTOR' | 'ACTION_TYPE';
+export type FreezeScope =
+  'GLOBAL' | 'REGIONAL' | 'TENANT' | 'CONNECTOR' | 'ACTION_TYPE';
 
 export interface ActiveFreezeRecord {
   freezeId: string;
@@ -53,11 +54,14 @@ export class EmergencyFreezeLockdownService {
     const freezeId = `frz-${crypto.randomUUID()}`;
     const now = new Date();
     const activeUntil = input.durationMinutes
-      ? new Date(now.getTime() + input.durationMinutes * 60 * 1000).toISOString()
+      ? new Date(
+          now.getTime() + input.durationMinutes * 60 * 1000,
+        ).toISOString()
       : undefined;
 
     // High impact scopes (GLOBAL, REGIONAL) require dual-custody approval to release
-    const requiresDualCustodyUnfreeze = input.scope === 'GLOBAL' || input.scope === 'REGIONAL';
+    const requiresDualCustodyUnfreeze =
+      input.scope === 'GLOBAL' || input.scope === 'REGIONAL';
 
     const refusalDigest = crypto
       .createHash('sha256')
@@ -101,13 +105,22 @@ export class EmergencyFreezeLockdownService {
   /**
    * Submits an approval to release a freeze. If dual custody is required, needs 2 distinct approvers.
    */
-  approveUnfreeze(freezeId: string, approverId: string): { released: boolean; message: string } {
+  approveUnfreeze(
+    freezeId: string,
+    approverId: string,
+  ): { released: boolean; message: string } {
     const freeze = this.activeFreezes.get(freezeId);
     if (!freeze) {
-      return { released: false, message: `Freeze '${freezeId}' not found or already released.` };
+      return {
+        released: false,
+        message: `Freeze '${freezeId}' not found or already released.`,
+      };
     }
 
-    if (freeze.initiatedBy === approverId && freeze.requiresDualCustodyUnfreeze) {
+    if (
+      freeze.initiatedBy === approverId &&
+      freeze.requiresDualCustodyUnfreeze
+    ) {
       throw new ForbiddenException(
         `Dual-custody violation: Initiator '${approverId}' cannot be the sole unfreeze approver for ${freeze.scope} freeze.`,
       );
@@ -124,7 +137,10 @@ export class EmergencyFreezeLockdownService {
       this.logger.log(
         `✔ [FREEZE RELEASED] Freeze ID ${freezeId} (${freeze.scope}) successfully released with ${freeze.unfreezeApprovals.length} approval(s).`,
       );
-      return { released: true, message: `Freeze '${freezeId}' has been fully released.` };
+      return {
+        released: true,
+        message: `Freeze '${freezeId}' has been fully released.`,
+      };
     }
 
     return {

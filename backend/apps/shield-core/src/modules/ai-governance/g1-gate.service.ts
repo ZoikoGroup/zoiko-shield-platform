@@ -29,55 +29,67 @@ export interface G1GateRosterStatus {
 
 export const CANONICAL_G1_ROLES: Omit<
   ApproverRoleStatus,
-  'isSigned' | 'signatoryName' | 'signedAt' | 'signatureProofRef' | 'evidenceNotes'
+  | 'isSigned'
+  | 'signatoryName'
+  | 'signedAt'
+  | 'signatureProofRef'
+  | 'evidenceNotes'
 >[] = [
   {
     roleId: 'ciso',
     roleTitle: 'Chief Information Security Officer',
     domain: 'Security Architecture & Threat Defense',
-    mandate: 'KMS key boundaries, cryptographic dual-signing, and zero ungrounded claims',
+    mandate:
+      'KMS key boundaries, cryptographic dual-signing, and zero ungrounded claims',
   },
   {
     roleId: 'dpo',
     roleTitle: 'Data Protection Officer',
     domain: 'Privacy & Data Governance',
-    mandate: 'Sovereign regional residency, WORM evidence retention, and GDPR/HIPAA compliance',
+    mandate:
+      'Sovereign regional residency, WORM evidence retention, and GDPR/HIPAA compliance',
   },
   {
     roleId: 'vp_eng',
     roleTitle: 'VP of Engineering',
     domain: 'System Architecture & Engineering Integrity',
-    mandate: 'Single-stack NestJS/TypeScript ratification, Prisma SOR, and module boundaries',
+    mandate:
+      'Single-stack NestJS/TypeScript ratification, Prisma SOR, and module boundaries',
   },
   {
     roleId: 'ai_risk_lead',
     roleTitle: 'AI Safety & Risk Committee Lead',
     domain: 'AI Safety & Decision Rights',
-    mandate: '§17 domain-differentiated thresholds, §16.1 review envelopes, and PSI drift monitoring',
+    mandate:
+      '§17 domain-differentiated thresholds, §16.1 review envelopes, and PSI drift monitoring',
   },
   {
     roleId: 'qa_lead',
     roleTitle: 'Head of Quality Assurance & Verification',
     domain: 'Testing & Release Verification',
-    mandate: '100% green test suites, zero regressions, and standalone offline verifier round-trip',
+    mandate:
+      '100% green test suites, zero regressions, and standalone offline verifier round-trip',
   },
   {
     roleId: 'sre_lead',
     roleTitle: 'Director of Site Reliability Engineering',
     domain: 'Infrastructure & Operational Resilience',
-    mandate: 'OpenTofu regional cell manifests, Prometheus/Grafana signals, and backup/restore',
+    mandate:
+      'OpenTofu regional cell manifests, Prometheus/Grafana signals, and backup/restore',
   },
   {
     roleId: 'product_lead',
     roleTitle: 'VP of Product Management',
     domain: 'Commercial & Feature Scope',
-    mandate: '4-tier commercial plan ladder, 6 sector defense packs, and customer disclosures',
+    mandate:
+      '4-tier commercial plan ladder, 6 sector defense packs, and customer disclosures',
   },
   {
     roleId: 'soc_lead',
     roleTitle: 'Head of Global SOC Operations',
     domain: 'Managed Defense & Operational Delivery',
-    mandate: 'Rule SVC-01 24/7 SOC staffing verification, SLA windows, and case workflows',
+    mandate:
+      'Rule SVC-01 24/7 SOC staffing verification, SLA windows, and case workflows',
   },
 ];
 
@@ -108,7 +120,8 @@ export class G1GateService {
       .filter((a) => !a.isSigned)
       .map((a) => `${a.roleTitle} (${a.roleId})`);
 
-    const isRatified = signedCount === approvers.length && approvers.length === 8;
+    const isRatified =
+      signedCount === approvers.length && approvers.length === 8;
 
     return {
       releaseBaseline: 'ERB-01 / G1 Gate',
@@ -145,12 +158,15 @@ export class G1GateService {
     approver.signatoryName = input.signatoryName;
     approver.signedAt = new Date().toISOString();
     approver.signatureProofRef = input.signatureProof;
-    approver.evidenceNotes = input.evidenceNotes || 'Reviewed and verified release evidence package.';
+    approver.evidenceNotes =
+      input.evidenceNotes || 'Reviewed and verified release evidence package.';
 
     this.approverMap.set(input.roleId, approver);
 
     // Check if all 8 are now signed
-    const allSigned = Array.from(this.approverMap.values()).every((a) => a.isSigned);
+    const allSigned = Array.from(this.approverMap.values()).every(
+      (a) => a.isSigned,
+    );
     if (allSigned && !this.ratifiedTimestamp) {
       this.ratifiedTimestamp = new Date().toISOString();
     }

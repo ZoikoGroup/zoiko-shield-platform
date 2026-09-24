@@ -8,11 +8,7 @@ import {
 import * as crypto from 'crypto';
 
 export type JitSessionStatus =
-  | 'PENDING'
-  | 'APPROVED'
-  | 'ACTIVE'
-  | 'EXPIRED'
-  | 'REVOKED';
+  'PENDING' | 'APPROVED' | 'ACTIVE' | 'EXPIRED' | 'REVOKED';
 
 export class JitElevationSession {
   sessionId!: string;
@@ -84,16 +80,23 @@ export class JitElevationService {
       elevatedRole: 'INCIDENT_COMMANDER',
       status: 'ACTIVE',
       clientIp: '192.168.1.104',
-      statedPurpose: 'Emergency P1 Containment for Swift Transaction Anomaly (Case #2026-882)',
+      statedPurpose:
+        'Emergency P1 Containment for Swift Transaction Anomaly (Case #2026-882)',
       durationMinutes: 120,
       issuedAt: new Date(now.getTime() - 30 * 60 * 1000).toISOString(),
       expiresAt: activeExpiry,
       hardwareStepUpVerified: true,
-      hardwareProofDigest: crypto.createHash('sha256').update('fido2-yubikey-cert-p256-verified-01').digest('hex'),
+      hardwareProofDigest: crypto
+        .createHash('sha256')
+        .update('fido2-yubikey-cert-p256-verified-01')
+        .digest('hex'),
       peerApprover: 'usr-ciso-02',
       peerApproverRole: 'CISO',
       approvedAt: new Date(now.getTime() - 28 * 60 * 1000).toISOString(),
-      auditAttestationHash: crypto.createHash('sha256').update('jit-sess-1001-active').digest('hex'),
+      auditAttestationHash: crypto
+        .createHash('sha256')
+        .update('jit-sess-1001-active')
+        .digest('hex'),
     };
 
     const session2: JitElevationSession = {
@@ -104,12 +107,16 @@ export class JitElevationService {
       elevatedRole: 'SUPER_ADMIN',
       status: 'PENDING',
       clientIp: '10.200.4.12',
-      statedPurpose: 'Post-Quantum Merkle Epoch Re-synchronization & HSM Key Rotation',
+      statedPurpose:
+        'Post-Quantum Merkle Epoch Re-synchronization & HSM Key Rotation',
       durationMinutes: 60,
       issuedAt: new Date(now.getTime() - 10 * 60 * 1000).toISOString(),
       expiresAt: new Date(now.getTime() + 50 * 60 * 1000).toISOString(),
       hardwareStepUpVerified: false,
-      auditAttestationHash: crypto.createHash('sha256').update('jit-sess-1002-pending').digest('hex'),
+      auditAttestationHash: crypto
+        .createHash('sha256')
+        .update('jit-sess-1002-pending')
+        .digest('hex'),
     };
 
     this.sessions.set(session1.sessionId, session1);
@@ -118,16 +125,22 @@ export class JitElevationService {
 
   createElevationRequest(dto: CreateJitElevationDto): JitElevationSession {
     if (!dto.operatorId || !dto.targetTenantId || !dto.elevatedRole) {
-      throw new BadRequestException('Operator ID, Target Tenant ID, and Elevated Role are mandatory');
+      throw new BadRequestException(
+        'Operator ID, Target Tenant ID, and Elevated Role are mandatory',
+      );
     }
 
     if (!dto.statedPurpose || dto.statedPurpose.trim().length < 10) {
-      throw new BadRequestException('Stated purpose must be a comprehensive justification (min 10 characters)');
+      throw new BadRequestException(
+        'Stated purpose must be a comprehensive justification (min 10 characters)',
+      );
     }
 
     const duration = Math.min(Math.max(dto.durationMinutes || 60, 15), 240); // 15 mins to 4 hours
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + duration * 60 * 1000).toISOString();
+    const expiresAt = new Date(
+      now.getTime() + duration * 60 * 1000,
+    ).toISOString();
     const sessionId = `jit-sess-${crypto.randomUUID().slice(0, 8)}`;
 
     const hardwareVerified = !!dto.initialHardwareProof;
@@ -147,7 +160,10 @@ export class JitElevationService {
       expiresAt,
       hardwareStepUpVerified: hardwareVerified,
       hardwareProofDigest: dto.initialHardwareProof
-        ? crypto.createHash('sha256').update(dto.initialHardwareProof).digest('hex')
+        ? crypto
+            .createHash('sha256')
+            .update(dto.initialHardwareProof)
+            .digest('hex')
         : undefined,
       auditAttestationHash: '',
     };
@@ -155,7 +171,9 @@ export class JitElevationService {
     session.auditAttestationHash = this.computeAuditHash(session);
     this.sessions.set(sessionId, session);
 
-    this.logger.log(`[JIT-ELEVATION] Created pending elevation request ${sessionId} for operator ${dto.operatorId} (${dto.elevatedRole})`);
+    this.logger.log(
+      `[JIT-ELEVATION] Created pending elevation request ${sessionId} for operator ${dto.operatorId} (${dto.elevatedRole})`,
+    );
     return session;
   }
 
@@ -164,13 +182,19 @@ export class JitElevationService {
     this.reconcileSessionExpiry(session);
 
     if (session.status !== 'PENDING') {
-      throw new BadRequestException(`Cannot approve session in '${session.status}' status (must be PENDING)`);
+      throw new BadRequestException(
+        `Cannot approve session in '${session.status}' status (must be PENDING)`,
+      );
     }
 
     // Strict Separation of Duties (Four-Eyes Principle / Dual-Custody)
     if (session.operatorId === dto.approverId) {
-      this.logger.warn(`[JIT-ELEVATION-VIOLATION] Operator ${dto.approverId} attempted to self-approve elevation ${sessionId}`);
-      throw new ForbiddenException('Separation of duties violation: Operator cannot approve their own elevation request');
+      this.logger.warn(
+        `[JIT-ELEVATION-VIOLATION] Operator ${dto.approverId} attempted to self-approve elevation ${sessionId}`,
+      );
+      throw new ForbiddenException(
+        'Separation of duties violation: Operator cannot approve their own elevation request',
+      );
     }
 
     const now = new Date().toISOString();
@@ -188,20 +212,29 @@ export class JitElevationService {
     session.auditAttestationHash = this.computeAuditHash(session);
     this.sessions.set(sessionId, session);
 
-    this.logger.log(`[JIT-ELEVATION] Session ${sessionId} approved by peer ${dto.approverId} (${dto.approverRole}) -> ${session.status}`);
+    this.logger.log(
+      `[JIT-ELEVATION] Session ${sessionId} approved by peer ${dto.approverId} (${dto.approverRole}) -> ${session.status}`,
+    );
     return session;
   }
 
-  stepUpHardware(sessionId: string, dto: HardwareStepUpDto): JitElevationSession {
+  stepUpHardware(
+    sessionId: string,
+    dto: HardwareStepUpDto,
+  ): JitElevationSession {
     const session = this.findSessionOrThrow(sessionId);
     this.reconcileSessionExpiry(session);
 
     if (session.status === 'EXPIRED' || session.status === 'REVOKED') {
-      throw new BadRequestException(`Cannot perform hardware step-up on ${session.status} session`);
+      throw new BadRequestException(
+        `Cannot perform hardware step-up on ${session.status} session`,
+      );
     }
 
     if (!dto.hardwareProofDigest) {
-      throw new BadRequestException('Hardware proof digest is required for FIDO2/WebAuthn step-up');
+      throw new BadRequestException(
+        'Hardware proof digest is required for FIDO2/WebAuthn step-up',
+      );
     }
 
     session.hardwareStepUpVerified = true;
@@ -215,11 +248,16 @@ export class JitElevationService {
     session.auditAttestationHash = this.computeAuditHash(session);
     this.sessions.set(sessionId, session);
 
-    this.logger.log(`[JIT-ELEVATION] Session ${sessionId} hardware step-up verified -> Status: ${session.status}`);
+    this.logger.log(
+      `[JIT-ELEVATION] Session ${sessionId} hardware step-up verified -> Status: ${session.status}`,
+    );
     return session;
   }
 
-  revokeSession(sessionId: string, dto: RevokeJitSessionDto): JitElevationSession {
+  revokeSession(
+    sessionId: string,
+    dto: RevokeJitSessionDto,
+  ): JitElevationSession {
     const session = this.findSessionOrThrow(sessionId);
 
     if (session.status === 'REVOKED') {
@@ -229,13 +267,16 @@ export class JitElevationService {
     const now = new Date().toISOString();
     session.status = 'REVOKED';
     session.revokedBy = dto.revokedBy;
-    session.revocationReason = dto.reason || 'Emergency administrative revocation';
+    session.revocationReason =
+      dto.reason || 'Emergency administrative revocation';
     session.revokedAt = now;
 
     session.auditAttestationHash = this.computeAuditHash(session);
     this.sessions.set(sessionId, session);
 
-    this.logger.warn(`[JIT-ELEVATION-REVOKED] Session ${sessionId} revoked by ${dto.revokedBy}: ${dto.reason}`);
+    this.logger.warn(
+      `[JIT-ELEVATION-REVOKED] Session ${sessionId} revoked by ${dto.revokedBy}: ${dto.reason}`,
+    );
     return session;
   }
 
@@ -250,7 +291,9 @@ export class JitElevationService {
       }
     }
 
-    return result.sort((a, b) => new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime());
+    return result.sort(
+      (a, b) => new Date(b.issuedAt).getTime() - new Date(a.issuedAt).getTime(),
+    );
   }
 
   getSession(sessionId: string): JitElevationSession {
@@ -262,13 +305,22 @@ export class JitElevationService {
   private findSessionOrThrow(sessionId: string): JitElevationSession {
     const session = this.sessions.get(sessionId);
     if (!session) {
-      throw new NotFoundException(`JIT Elevation Session '${sessionId}' not found`);
+      throw new NotFoundException(
+        `JIT Elevation Session '${sessionId}' not found`,
+      );
     }
     return session;
   }
 
-  private reconcileSessionExpiry(session: JitElevationSession, now = new Date()) {
-    if (session.status === 'ACTIVE' || session.status === 'APPROVED' || session.status === 'PENDING') {
+  private reconcileSessionExpiry(
+    session: JitElevationSession,
+    now = new Date(),
+  ) {
+    if (
+      session.status === 'ACTIVE' ||
+      session.status === 'APPROVED' ||
+      session.status === 'PENDING'
+    ) {
       const expiry = new Date(session.expiresAt).getTime();
       if (now.getTime() >= expiry) {
         session.status = 'EXPIRED';
@@ -290,6 +342,9 @@ export class JitElevationService {
       hardwareProofDigest: session.hardwareProofDigest,
       revokedAt: session.revokedAt,
     };
-    return crypto.createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+    return crypto
+      .createHash('sha256')
+      .update(JSON.stringify(payload))
+      .digest('hex');
   }
 }

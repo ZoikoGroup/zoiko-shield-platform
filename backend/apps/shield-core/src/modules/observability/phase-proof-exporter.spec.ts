@@ -44,7 +44,9 @@ describe('PhaseProofExporterService (Spec §28 Proof Exporter & Offline Verifier
     expect(report.signatureMatches).toBe(true);
     expect(report.discrepancies.length).toBe(0);
     expect(report.verificationCertificate.certificateId).toMatch(/^cert-/);
-    expect(report.verificationCertificate.verifierVersion).toBe('zoikoshield-verifier-v1.0');
+    expect(report.verificationCertificate.verifierVersion).toBe(
+      'zoikoshield-verifier-v1.0',
+    );
   });
 
   it('detects tampering when Merkle root or live mutations are modified', () => {
@@ -55,7 +57,8 @@ describe('PhaseProofExporterService (Spec §28 Proof Exporter & Offline Verifier
       ...bundle,
       manifest: {
         ...bundle.manifest,
-        merkleRootHead: '0000000000000000000000000000000000000000000000000000000000000000',
+        merkleRootHead:
+          '0000000000000000000000000000000000000000000000000000000000000000',
       },
       actionSandboxReceipt: {
         ...bundle.actionSandboxReceipt,
@@ -77,8 +80,8 @@ describe('PhaseProofExporterService (Spec §28 Proof Exporter & Offline Verifier
   });
 
   it('throws NotFoundException when an unknown proof ID is requested', () => {
-    expect(() => service.exportPhase0ProofBundle('proof-non-existent-999')).toThrow(
-      NotFoundException,
-    );
+    expect(() =>
+      service.exportPhase0ProofBundle('proof-non-existent-999'),
+    ).toThrow(NotFoundException);
   });
 });

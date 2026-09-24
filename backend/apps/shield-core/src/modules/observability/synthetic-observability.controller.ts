@@ -1,6 +1,17 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
 import { SyntheticJourneyService } from './synthetic-journey.service';
-import { GameDayRunnerService, GameDayScenario } from './game-day-runner.service';
+import {
+  GameDayRunnerService,
+  GameDayScenario,
+} from './game-day-runner.service';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PlatformPermissionsGuard } from '../authorization/guards/platform-permissions.guard';
 import { RequirePlatformPermissions } from '../authorization/decorators/require-platform-permissions.decorator';
@@ -19,8 +30,12 @@ export class SyntheticObservabilityController {
     const tenant = canaryTenantId || 'tenant-zoiko-canary-01';
     const canaryPosture = this.syntheticJourneyService.getCanaryPosture(tenant);
     const gameDayPosture = this.gameDayRunnerService.getGameDayPosture();
-    const recentProbes = this.syntheticJourneyService.getProbeHistory(tenant).slice(0, 10);
-    const recentExercises = this.gameDayRunnerService.getExerciseHistory().slice(0, 10);
+    const recentProbes = this.syntheticJourneyService
+      .getProbeHistory(tenant)
+      .slice(0, 10);
+    const recentExercises = this.gameDayRunnerService
+      .getExerciseHistory()
+      .slice(0, 10);
 
     return {
       canaryPosture,
@@ -47,7 +62,10 @@ export class SyntheticObservabilityController {
     @Body() body: { scenario: GameDayScenario; exercisedBy?: string },
   ) {
     const actor = body.exercisedBy || 'operator@zoiko.com';
-    return this.gameDayRunnerService.executeGameDayExercise(body.scenario, actor);
+    return this.gameDayRunnerService.executeGameDayExercise(
+      body.scenario,
+      actor,
+    );
   }
 
   @Get('gameday/annex-p/:exerciseId')

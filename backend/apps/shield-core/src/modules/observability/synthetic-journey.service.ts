@@ -104,7 +104,11 @@ export class SyntheticJourneyService {
       syntheticTenantId,
       region,
       status,
-      stages: stages.map((s) => ({ s: s.stage, d: s.evidenceDigest, l: s.latencyMs })),
+      stages: stages.map((s) => ({
+        s: s.stage,
+        d: s.evidenceDigest,
+        l: s.latencyMs,
+      })),
     });
 
     const cryptographicProbeReceipt = crypto
@@ -141,15 +145,22 @@ export class SyntheticJourneyService {
   /**
    * Retrieves summary of canary health and soak status
    */
-  public getCanaryPosture(canaryTenantId: string = 'tenant-zoiko-canary-01'): CanaryHealthSummary {
+  public getCanaryPosture(
+    canaryTenantId: string = 'tenant-zoiko-canary-01',
+  ): CanaryHealthSummary {
     const history = this.probeHistory.get(canaryTenantId) || [];
-    const latest = history[0] || this.executeJourneyProbe(canaryTenantId, 'eu-west-1');
+    const latest =
+      history[0] || this.executeJourneyProbe(canaryTenantId, 'eu-west-1');
 
     const totalProbes = Math.max(1, history.length);
-    const healthyProbes = history.filter((p) => p.status === 'HEALTHY' || p.status === 'DEGRADED').length;
+    const healthyProbes = history.filter(
+      (p) => p.status === 'HEALTHY' || p.status === 'DEGRADED',
+    ).length;
     const successRate24h = (healthyProbes / totalProbes) * 100;
 
-    const latencies = history.map((p) => p.totalDurationMs).sort((a, b) => a - b);
+    const latencies = history
+      .map((p) => p.totalDurationMs)
+      .sort((a, b) => a - b);
     const p95Index = Math.floor(latencies.length * 0.95);
     const p95LatencyMs = latencies[p95Index] || latest.totalDurationMs;
 
@@ -162,8 +173,10 @@ export class SyntheticJourneyService {
       }
     }
 
-    const isCanaryHealthy = latest.status !== 'FAILED' && successRate24h >= 99.0;
-    const promotionEligible = isCanaryHealthy && consecutiveSuccesses >= 5 && p95LatencyMs < 400;
+    const isCanaryHealthy =
+      latest.status !== 'FAILED' && successRate24h >= 99.0;
+    const promotionEligible =
+      isCanaryHealthy && consecutiveSuccesses >= 5 && p95LatencyMs < 400;
 
     return {
       canaryTenantId,
@@ -181,7 +194,9 @@ export class SyntheticJourneyService {
   /**
    * Returns list of recent probe runs
    */
-  public getProbeHistory(canaryTenantId: string = 'tenant-zoiko-canary-01'): SyntheticJourneyReport[] {
+  public getProbeHistory(
+    canaryTenantId: string = 'tenant-zoiko-canary-01',
+  ): SyntheticJourneyReport[] {
     return this.probeHistory.get(canaryTenantId) || [];
   }
 
@@ -198,7 +213,10 @@ export class SyntheticJourneyService {
   private probeIdentityAndAuth(tenantId: string): SyntheticStageResult {
     const start = Date.now();
     const token = crypto.randomBytes(32).toString('hex');
-    const digest = crypto.createHash('sha256').update(`auth:${tenantId}:${token}`).digest('hex');
+    const digest = crypto
+      .createHash('sha256')
+      .update(`auth:${tenantId}:${token}`)
+      .digest('hex');
     const latencyMs = Math.max(2, Date.now() - start);
 
     return {
@@ -235,7 +253,10 @@ export class SyntheticJourneyService {
       slaLimitMs: 75,
       slaBreached: latencyMs > 75,
       evidenceDigest: digest,
-      details: { schemaVersion: 'v1.4', routedToPartition: 'canary-partition-0' },
+      details: {
+        schemaVersion: 'v1.4',
+        routedToPartition: 'canary-partition-0',
+      },
     };
   }
 
@@ -261,7 +282,10 @@ export class SyntheticJourneyService {
       slaLimitMs: 100,
       slaBreached: latencyMs > 100,
       evidenceDigest: digest,
-      details: { alertCreated: true, alertId: `alt-synth-${crypto.randomUUID().slice(0, 8)}` },
+      details: {
+        alertCreated: true,
+        alertId: `alt-synth-${crypto.randomUUID().slice(0, 8)}`,
+      },
     };
   }
 
@@ -288,7 +312,10 @@ export class SyntheticJourneyService {
       slaLimitMs: 120,
       slaBreached: latencyMs > 120,
       evidenceDigest: digest,
-      details: { simulatedCommand: 'QUARANTINE_POD', sideEffectSuppressed: true },
+      details: {
+        simulatedCommand: 'QUARANTINE_POD',
+        sideEffectSuppressed: true,
+      },
     };
   }
 

@@ -12,7 +12,9 @@ describe('BlastRadiusEvaluatorService (ZS-ENG-DRS-001 §19)', () => {
       providers: [BlastRadiusEvaluatorService],
     }).compile();
 
-    service = module.get<BlastRadiusEvaluatorService>(BlastRadiusEvaluatorService);
+    service = module.get<BlastRadiusEvaluatorService>(
+      BlastRadiusEvaluatorService,
+    );
   });
 
   describe('1. Target Criticality Classification', () => {
@@ -122,7 +124,10 @@ describe('BlastRadiusEvaluatorService (ZS-ENG-DRS-001 §19)', () => {
         description: 'Tenant Custom Secret R&D Infrastructure',
       });
 
-      const res = service.classifyTarget('server-secret-rnd-project-01', 'tenant-custom');
+      const res = service.classifyTarget(
+        'server-secret-rnd-project-01',
+        'tenant-custom',
+      );
       expect(res.tier).toBe('TIER_0_CRITICAL');
       expect(res.matchedRule).toBe('Tenant Custom Secret R&D Infrastructure');
     });

@@ -38,16 +38,16 @@ export class ServiceReadinessController {
   ) {
     return this.readinessService.evaluatePlatformReadiness({
       g1Ratified: g1Ratified !== undefined ? g1Ratified === 'true' : undefined,
-      dbConnected: dbConnected !== undefined ? dbConnected === 'true' : undefined,
-      kmsConnected: kmsConnected !== undefined ? kmsConnected === 'true' : undefined,
+      dbConnected:
+        dbConnected !== undefined ? dbConnected === 'true' : undefined,
+      kmsConnected:
+        kmsConnected !== undefined ? kmsConnected === 'true' : undefined,
     });
   }
 
   @Get(':serviceId')
   @RequirePlatformPermissions('observability:read')
-  public getServiceReadiness(
-    @Param('serviceId') serviceId: string,
-  ) {
+  public getServiceReadiness(@Param('serviceId') serviceId: string) {
     return this.readinessService.getServiceReadiness(serviceId);
   }
 
@@ -65,9 +65,7 @@ export class ServiceReadinessController {
   @Post(':serviceId/clear-override')
   @RequirePlatformPermissions('observability:admin')
   @HttpCode(HttpStatus.OK)
-  public clearServiceOverride(
-    @Param('serviceId') serviceId: string,
-  ) {
+  public clearServiceOverride(@Param('serviceId') serviceId: string) {
     this.readinessService.clearServiceOverride(serviceId);
     return this.readinessService.getServiceReadiness(serviceId);
   }

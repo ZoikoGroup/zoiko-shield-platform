@@ -10,7 +10,10 @@ describe('SyntheticObservabilityController (Spec §27 API)', () => {
   beforeEach(() => {
     syntheticService = new SyntheticJourneyService();
     gameDayService = new GameDayRunnerService();
-    controller = new SyntheticObservabilityController(syntheticService, gameDayService);
+    controller = new SyntheticObservabilityController(
+      syntheticService,
+      gameDayService,
+    );
   });
 
   it('should be defined', () => {
@@ -26,7 +29,10 @@ describe('SyntheticObservabilityController (Spec §27 API)', () => {
   });
 
   it('POST probe triggers on-demand synthetic journey', () => {
-    const res = controller.triggerSyntheticProbe({ canaryTenantId: 'tenant-zoiko-canary-01', region: 'eu-west-1' });
+    const res = controller.triggerSyntheticProbe({
+      canaryTenantId: 'tenant-zoiko-canary-01',
+      region: 'eu-west-1',
+    });
 
     expect(res).toBeDefined();
     expect(res.status).toBe('HEALTHY');
@@ -54,6 +60,8 @@ describe('SyntheticObservabilityController (Spec §27 API)', () => {
     expect(report.annexVersion).toBe('Annex-P-v1.0');
     expect(report.scenario).toBe('GD_03_REGIONAL_FAILURE');
     expect(report.failureClass).toBe('Regional failure');
-    expect(report.orrInputRatification.eligibleForProductionReleaseGate).toBe(true);
+    expect(report.orrInputRatification.eligibleForProductionReleaseGate).toBe(
+      true,
+    );
   });
 });

@@ -103,12 +103,18 @@ describe('EmergencyFreezeLockdownService (ZS-ENG-DRS-001 §19.4)', () => {
     }).toThrow(ForbiddenException);
 
     // First independent approver signs
-    const firstApproval = freezeService.approveUnfreeze(freeze.freezeId, 'head-of-secops@zoiko.com');
+    const firstApproval = freezeService.approveUnfreeze(
+      freeze.freezeId,
+      'head-of-secops@zoiko.com',
+    );
     expect(firstApproval.released).toBe(false);
     expect(firstApproval.message).toContain('Awaiting secondary approval');
 
     // Second independent approver signs
-    const secondApproval = freezeService.approveUnfreeze(freeze.freezeId, 'cto@zoiko.com');
+    const secondApproval = freezeService.approveUnfreeze(
+      freeze.freezeId,
+      'cto@zoiko.com',
+    );
     expect(secondApproval.released).toBe(true);
     expect(secondApproval.message).toContain('fully released');
 

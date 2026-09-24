@@ -43,4 +43,3 @@ import { PhaseExitGateController } from './phase-exit-gate.controller';
   ],
 })
 export class ObservabilityExporterModule {}
-

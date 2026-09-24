@@ -1,5 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { GameDayRunnerService, GameDayScenario } from './game-day-runner.service';
+import {
+  GameDayRunnerService,
+  GameDayScenario,
+} from './game-day-runner.service';
 
 describe('GameDayRunnerService (Spec §27 Game Days & Annex P Compliance)', () => {
   let service: GameDayRunnerService;
@@ -28,7 +31,10 @@ describe('GameDayRunnerService (Spec §27 Game Days & Annex P Compliance)', () =
     ];
 
     for (const scenario of all7Scenarios) {
-      const result = service.executeGameDayExercise(scenario, 'sre-lead@zoiko.com');
+      const result = service.executeGameDayExercise(
+        scenario,
+        'sre-lead@zoiko.com',
+      );
       expect(result.status).toBe('PASSED');
       expect(result.scenario).toBe(scenario);
       expect(result.failureClass).toBeDefined();
@@ -39,19 +45,32 @@ describe('GameDayRunnerService (Spec §27 Game Days & Annex P Compliance)', () =
   });
 
   it('generates a formal, machine-readable Annex P Game-Day and Synthetic-Tenant Report', () => {
-    const result = service.executeGameDayExercise('GD_05_AI_OUTAGE', 'secops-lead@zoiko.com');
+    const result = service.executeGameDayExercise(
+      'GD_05_AI_OUTAGE',
+      'secops-lead@zoiko.com',
+    );
     const annexP = service.generateAnnexPReport(result.exerciseId);
 
     expect(annexP.annexVersion).toBe('Annex-P-v1.0');
-    expect(annexP.documentTitle).toBe('ZoikoShield Game-Day and Synthetic-Tenant Report');
+    expect(annexP.documentTitle).toBe(
+      'ZoikoShield Game-Day and Synthetic-Tenant Report',
+    );
     expect(annexP.exerciseId).toBe(result.exerciseId);
     expect(annexP.scenario).toBe('GD_05_AI_OUTAGE');
     expect(annexP.failureClass).toBe('AI outage');
     expect(annexP.slaAdherence).toBe(true);
-    expect(annexP.invariantsVerified).toContain('Zero ungrounded AI actions dispatched to live execution adapters');
-    expect(annexP.orrInputRatification.eligibleForProductionReleaseGate).toBe(true);
-    expect(annexP.syntheticCanaryContext.canaryTenantId).toBe('tenant-zoiko-canary-01');
-    expect(annexP.cryptographicReportDigest).toBe(result.cryptographicReportDigest);
+    expect(annexP.invariantsVerified).toContain(
+      'Zero ungrounded AI actions dispatched to live execution adapters',
+    );
+    expect(annexP.orrInputRatification.eligibleForProductionReleaseGate).toBe(
+      true,
+    );
+    expect(annexP.syntheticCanaryContext.canaryTenantId).toBe(
+      'tenant-zoiko-canary-01',
+    );
+    expect(annexP.cryptographicReportDigest).toBe(
+      result.cryptographicReportDigest,
+    );
   });
 
   it('returns valid game day posture compliance covering all 7 failure classes within 90-day cadence', () => {

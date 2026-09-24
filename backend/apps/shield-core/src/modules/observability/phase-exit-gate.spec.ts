@@ -56,12 +56,16 @@ describe('PhaseExitGateService (Spec §28 Phase-0 Exit Gate Engine)', () => {
     });
 
     // Step 7 must confirm 0 live mutations in simulation mode
-    const step7 = proof.steps.find((s) => s.stepId === 'STEP_7_ACTION_SIMULATION');
+    const step7 = proof.steps.find(
+      (s) => s.stepId === 'STEP_7_ACTION_SIMULATION',
+    );
     expect(step7?.outputArtifacts.mutationsApplied).toBe(0);
     expect(step7?.outputArtifacts.blastRadiusTier).toBe('CONFINED_SINGLE_USER');
 
     // Step 8 must verify freeze switch functionality
-    const step8 = proof.steps.find((s) => s.stepId === 'STEP_8_FREEZE_ASSERTION');
+    const step8 = proof.steps.find(
+      (s) => s.stepId === 'STEP_8_FREEZE_ASSERTION',
+    );
     expect(step8?.outputArtifacts.freezeSwitchFunctional).toBe(true);
     expect(step8?.outputArtifacts.failSafeModeActive).toBe(true);
   });
@@ -92,13 +96,18 @@ describe('PhaseExitGateService (Spec §28 Phase-0 Exit Gate Engine)', () => {
     expect(proof.cryptographicProofSignatureSha256).toMatch(/^[a-f0-9]{64}$/);
     expect(proof.merkleRootHead).toMatch(/^[a-f0-9]{64}$/);
     expect(proof.auditPackageChecksum).toMatch(/^[a-f0-9]{64}$/);
-    expect(proof.offlineVerificationCommand).toContain('npx zoikoshield-verifier verify-proof');
+    expect(proof.offlineVerificationCommand).toContain(
+      'npx zoikoshield-verifier verify-proof',
+    );
     expect(proof.offlineVerificationCommand).toContain(proof.merkleRootHead);
     expect(proof.releaseGateRatification.eligibleForG1Gate).toBe(true);
   });
 
   it('retrieves posture summary and past proofs by ID', () => {
-    const proof = service.executePhase0ReferenceFlow('tenant-zoiko-canary-custom', 'cell-us-east-1');
+    const proof = service.executePhase0ReferenceFlow(
+      'tenant-zoiko-canary-custom',
+      'cell-us-east-1',
+    );
     const summary = service.getPostureSummary();
 
     expect(summary.isExitGateSatisfied).toBe(true);

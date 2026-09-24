@@ -10,7 +10,10 @@ describe('BackupObservabilityController (Spec §26 Controller)', () => {
   beforeEach(() => {
     backupService = new BackupIntegrityService();
     restoreService = new RestoreDrillService(backupService);
-    controller = new BackupObservabilityController(backupService, restoreService);
+    controller = new BackupObservabilityController(
+      backupService,
+      restoreService,
+    );
   });
 
   it('should be defined', () => {
@@ -25,7 +28,9 @@ describe('BackupObservabilityController (Spec §26 Controller)', () => {
   });
 
   it('POST /api/v1/observability/backup/drill executes restore drill', async () => {
-    const receipt = await controller.triggerRestoreDrill({ storeId: 'shield_core_db' });
+    const receipt = await controller.triggerRestoreDrill({
+      storeId: 'shield_core_db',
+    });
     expect(receipt.status).toBe('VERIFIED');
     expect(receipt.storeId).toBe('shield_core_db');
     expect(receipt.scratchSchemaTornDown).toBe(true);

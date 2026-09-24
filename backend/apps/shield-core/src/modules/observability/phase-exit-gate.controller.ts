@@ -1,5 +1,9 @@
 import { Controller, Get, Post, Body, Query, UseGuards } from '@nestjs/common';
-import { PhaseExitGateService, Phase0ExitProofRecord, Phase0PostureSummary } from './phase-exit-gate.service';
+import {
+  PhaseExitGateService,
+  Phase0ExitProofRecord,
+  Phase0PostureSummary,
+} from './phase-exit-gate.service';
 import {
   PhaseProofExporterService,
   Phase0ProofBundle,
@@ -60,5 +64,3 @@ export class PhaseExitGateController {
     );
   }
 }
-
-

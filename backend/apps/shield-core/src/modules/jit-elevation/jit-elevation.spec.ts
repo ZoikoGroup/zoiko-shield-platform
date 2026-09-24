@@ -1,7 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JitElevationService } from './jit-elevation.service';
 import { JitElevationController } from './jit-elevation.controller';
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ForbiddenException,
+  NotFoundException,
+} from '@nestjs/common';
 
 describe('ZS-ENG-AUTH-001 §13: JIT Privileged Access Elevation & Hardware Step-Up Suite', () => {
   let service: JitElevationService;
@@ -19,7 +23,8 @@ describe('ZS-ENG-AUTH-001 §13: JIT Privileged Access Elevation & Hardware Step-
         operatorName: 'Sam Vance',
         targetTenantId: 'tenant-enterprise-alpha',
         elevatedRole: 'SUPER_ADMIN',
-        statedPurpose: 'Emergency P1 Remediation for compromised API credentials',
+        statedPurpose:
+          'Emergency P1 Remediation for compromised API credentials',
         durationMinutes: 90,
         clientIp: '10.0.50.2',
       });
@@ -83,7 +88,8 @@ describe('ZS-ENG-AUTH-001 §13: JIT Privileged Access Elevation & Hardware Step-
         operatorId: 'usr-analyst-42',
         targetTenantId: 'tenant-core',
         elevatedRole: 'SUPER_ADMIN',
-        statedPurpose: 'Production database schema inspection for incident #440',
+        statedPurpose:
+          'Production database schema inspection for incident #440',
       });
 
       expect(() => {
@@ -100,7 +106,8 @@ describe('ZS-ENG-AUTH-001 §13: JIT Privileged Access Elevation & Hardware Step-
         operatorId: 'usr-analyst-42',
         targetTenantId: 'tenant-core',
         elevatedRole: 'SUPER_ADMIN',
-        statedPurpose: 'Production database schema inspection for incident #440',
+        statedPurpose:
+          'Production database schema inspection for incident #440',
       });
 
       const approved = service.peerApprove(session.sessionId, {
@@ -120,7 +127,8 @@ describe('ZS-ENG-AUTH-001 §13: JIT Privileged Access Elevation & Hardware Step-
         operatorId: 'usr-analyst-42',
         targetTenantId: 'tenant-core',
         elevatedRole: 'SUPER_ADMIN',
-        statedPurpose: 'Production database schema inspection for incident #440',
+        statedPurpose:
+          'Production database schema inspection for incident #440',
       });
 
       service.peerApprove(session.sessionId, {
@@ -143,7 +151,8 @@ describe('ZS-ENG-AUTH-001 §13: JIT Privileged Access Elevation & Hardware Step-
         operatorId: 'usr-sec-10',
         targetTenantId: 'tenant-sovereign',
         elevatedRole: 'INCIDENT_COMMANDER',
-        statedPurpose: 'Hardware key activation for sovereign cell infrastructure inspection',
+        statedPurpose:
+          'Hardware key activation for sovereign cell infrastructure inspection',
       });
 
       // Step 1: Peer approval
@@ -161,7 +170,9 @@ describe('ZS-ENG-AUTH-001 §13: JIT Privileged Access Elevation & Hardware Step-
 
       expect(activated.status).toBe('ACTIVE');
       expect(activated.hardwareStepUpVerified).toBe(true);
-      expect(activated.hardwareProofDigest).toBe('fido2-attestation-p256-proof-digest-abc123456');
+      expect(activated.hardwareProofDigest).toBe(
+        'fido2-attestation-p256-proof-digest-abc123456',
+      );
     });
 
     it('transitions immediately to ACTIVE if initial hardware proof was provided during creation and peer approves', () => {
@@ -169,7 +180,8 @@ describe('ZS-ENG-AUTH-001 §13: JIT Privileged Access Elevation & Hardware Step-
         operatorId: 'usr-sec-10',
         targetTenantId: 'tenant-sovereign',
         elevatedRole: 'INCIDENT_COMMANDER',
-        statedPurpose: 'Hardware key activation for sovereign cell infrastructure inspection',
+        statedPurpose:
+          'Hardware key activation for sovereign cell infrastructure inspection',
         initialHardwareProof: 'hardware-dongle-fido2-signature-raw-token',
       });
 
@@ -221,7 +233,9 @@ describe('ZS-ENG-AUTH-001 §13: JIT Privileged Access Elevation & Hardware Step-
 
       // Manually backdate expiration date
       const sessionObj = service.getSession(session.sessionId);
-      (service as any).sessions.get(session.sessionId).expiresAt = new Date(Date.now() - 5000).toISOString();
+      (service as any).sessions.get(session.sessionId).expiresAt = new Date(
+        Date.now() - 5000,
+      ).toISOString();
 
       const retrieved = service.getSession(session.sessionId);
       expect(retrieved.status).toBe('EXPIRED');

@@ -197,10 +197,7 @@ export class EvaluationRunnerService {
       return 'PUBLIC_SECTOR';
     }
 
-    if (
-      normalized.includes('SAAS') ||
-      normalized.includes('CLOUD_NATIVE')
-    ) {
+    if (normalized.includes('SAAS') || normalized.includes('CLOUD_NATIVE')) {
       return 'SAAS';
     }
 

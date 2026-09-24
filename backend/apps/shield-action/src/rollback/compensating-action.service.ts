@@ -71,7 +71,10 @@ export class CompensatingActionService {
   private readonly logger = new Logger(CompensatingActionService.name);
 
   // In-memory registered compensation plans and consumed single-use tokens
-  private readonly registeredPlans = new Map<string, RollbackCompensationPlan>();
+  private readonly registeredPlans = new Map<
+    string,
+    RollbackCompensationPlan
+  >();
   private readonly consumedRollbackTokens = new Set<string>();
 
   /**
@@ -126,7 +129,9 @@ export class CompensatingActionService {
     const singleUseRollbackToken = `rb-tok-${crypto.randomBytes(24).toString('hex')}`;
     const compensatingAction = this.deriveInverseAction(params.originalAction);
     const now = new Date();
-    const expiresAt = new Date(now.getTime() + (params.ttlHours ?? 72) * 3600 * 1000).toISOString();
+    const expiresAt = new Date(
+      now.getTime() + (params.ttlHours ?? 72) * 3600 * 1000,
+    ).toISOString();
 
     const plan: RollbackCompensationPlan = {
       planId,
@@ -149,11 +154,18 @@ export class CompensatingActionService {
    * Registers a pre-computed compensation plan before action dispatch.
    */
   registerCompensationPlan(plan: RollbackCompensationPlan): void {
-    if (!plan.tenantId || !plan.singleUseRollbackToken || !plan.compensatingAction) {
+    if (
+      !plan.tenantId ||
+      !plan.singleUseRollbackToken ||
+      !plan.compensatingAction
+    ) {
       throw new BadRequestException('Invalid compensation plan parameters.');
     }
 
-    this.registeredPlans.set(`${plan.tenantId}:${plan.singleUseRollbackToken}`, plan);
+    this.registeredPlans.set(
+      `${plan.tenantId}:${plan.singleUseRollbackToken}`,
+      plan,
+    );
     this.logger.log(
       `✔ [COMPENSATION PLAN REGISTERED] Action: '${plan.originalAction}' ➔ Reversal: '${plan.compensatingAction}' on '${plan.targetResource}' [Token: ${plan.singleUseRollbackToken}]`,
     );
@@ -201,7 +213,8 @@ export class CompensatingActionService {
       tenantId,
       stage: 'VALIDATING_TOKEN_INTEGRITY',
       progressPercent: 25,
-      message: 'Validating cryptographic signature and single-use status of rollback token.',
+      message:
+        'Validating cryptographic signature and single-use status of rollback token.',
       isReverted: false,
       timestamp: new Date().toISOString(),
     });
@@ -223,7 +236,8 @@ export class CompensatingActionService {
       tenantId,
       stage: 'RECONCILING_OBSERVED_STATE',
       progressPercent: 75,
-      message: 'Reconciling endpoint connectivity and identity directory status.',
+      message:
+        'Reconciling endpoint connectivity and identity directory status.',
       isReverted: true,
       timestamp: new Date().toISOString(),
     });
@@ -286,7 +300,10 @@ export class CompensatingActionService {
     return this.consumedRollbackTokens.has(rollbackToken);
   }
 
-  getRegisteredPlan(tenantId: string, rollbackToken: string): RollbackCompensationPlan | undefined {
+  getRegisteredPlan(
+    tenantId: string,
+    rollbackToken: string,
+  ): RollbackCompensationPlan | undefined {
     return this.registeredPlans.get(`${tenantId}:${rollbackToken}`);
   }
 
