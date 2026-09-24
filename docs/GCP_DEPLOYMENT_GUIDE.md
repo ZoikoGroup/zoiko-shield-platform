@@ -147,14 +147,34 @@ flowing and nothing reports an error.
 |---|---|---|
 | **PostgreSQL** | `postgres:16-alpine` | **Cloud SQL for PostgreSQL 16** |
 | **Redis** | `redis:7-alpine` | **Memorystore for Redis** |
-| **Kafka** | `redpandadata/redpanda` | **Managed Service for Apache Kafka**, or Redpanda on GKE |
+| **Kafka** | `redpandadata/redpanda` | **Managed Service for Apache Kafka**, or Redpanda on GKE. Needs `KAFKA_SASL_MECHANISM=oauthbearer` — see below. |
 | **Object storage** | `minio/minio` | **Cloud Storage** — native API, see §0 |
 | **OpenSearch** | `opensearchproject/opensearch` | Not needed. Optional, behind the `search` compose profile, and nothing in the application code reads it. |
 
-Kafka is reached with plain broker addresses (`KAFKA_BROKERS`), so any
-Kafka-API-compatible service works. Object storage uses the native Cloud
-Storage client when configured, so no HMAC interoperability key is needed —
-the ambient service account is enough.
+Object storage uses the native Cloud Storage client when configured, so no
+HMAC interoperability key is needed — the ambient service account is enough.
+
+### Kafka authentication
+
+`KAFKA_BROKERS` takes a comma-separated list, and TLS and SASL are configured
+alongside it:
+
+```bash
+# Google Managed Service for Apache Kafka
+KAFKA_BROKERS=bootstrap.<cluster>.<region>.managedkafka.<project>.cloud.goog:9092
+KAFKA_SASL_MECHANISM=oauthbearer
+```
+
+OAUTHBEARER needs no username or password: it authenticates with the attached
+service account, which needs `roles/managedkafka.client`. Tokens are fetched
+per connection rather than cached, since a token cached past its expiry
+reconnects as an auth failure that looks like a broker problem.
+
+SASL implies TLS, so `KAFKA_SSL` is only needed for TLS without SASL. For a
+self-hosted broker, `plain`, `scram-sha-256` and `scram-sha-512` are supported
+with `KAFKA_SASL_USERNAME` and `KAFKA_SASL_PASSWORD`.
+
+Local development is unchanged: no TLS, no SASL, `localhost:9092`.
 
 ---
 
@@ -228,8 +248,11 @@ AWS CloudTrail, GuardDuty, Azure Monitor, GCP SCC, Snyk, Jira, syslog) are
 **inbound only** — they receive webhooks and normalize them. They make no
 outbound call, so they need no egress and no vendor credential.
 
-**Egress:** only shield-ai, shield-ingest (Entra) and shield-core (SMTP, OIDC,
-KMS) need to reach the internet. The rest can run without egress.
+**Egress:** shield-ai (model providers), shield-ingest (Entra) and shield-core
+(SMTP, ZoikoID) need to reach the public internet. Cloud KMS, Cloud Storage
+and Managed Kafka are Google APIs, so shield-anchor and shield-action need
+**Private Google Access** on their subnet rather than internet egress — and
+shield-core and shield-ingest need it too, on top of their internet egress.
 
 ---
 
@@ -240,8 +263,8 @@ extracting all `process.env.*` and `ConfigService.get(...)` reads from
 `backend/apps`, `backend/libs` and `backend/scripts` and diffing against the
 documented set. The gap is empty.
 
-- `.env.example` (repo root) — 131 variables, grouped by service, `[PRODUCTION]`
-  marking those that must be set before production.
+- `.env.example` (repo root) — every variable, grouped by service, with
+  `[PRODUCTION]` marking those that must be set before production.
 - `frontend/.env.example` — the frontend's own, read server-side only.
 
 On GCP, put every secret in **Secret Manager** and mount it as an environment
@@ -263,7 +286,8 @@ variable. Two conventions that matter:
 |---|---|
 | `DATABASE_URL` | Cloud SQL, via Auth Proxy or private IP |
 | `REDIS_URL` | Memorystore private IP |
-| `KAFKA_BROKERS` | Managed Kafka bootstrap servers |
+| `KAFKA_BROKERS` | Managed Kafka bootstrap server, comma-separated if several |
+| `KAFKA_SASL_MECHANISM` | `oauthbearer` for Managed Kafka |
 | `GOOGLE_CLOUD_PROJECT` | Your project id |
 | `EVIDENCE_GCS_BUCKET` | The evidence bucket, created with per-object retention |
 | `EVIDENCE_GCS_LOCATION` | Bucket location, default `US` |
@@ -326,18 +350,25 @@ Cloud Load Balancing  →  Cloud Run: frontend (3000)
   Serverless VPC connector ─→ Cloud SQL (private IP)
                            ─→ Memorystore Redis
                            ─→ Managed Kafka
-                      GCS ←─ evidence bucket (S3 interop)
+                      GCS ←─ evidence bucket (native API, object retention)
 ```
 
 - Images to **Artifact Registry**; one repo, six images from the one Dockerfile.
 - Secrets in **Secret Manager**, mounted as env vars.
 - `shield-core-migrate` as a **Cloud Run job**, run to completion before the
   services roll.
-- Give each service its **own service account**, least-privileged: only
-  shield-core, shield-anchor and shield-action need Cloud KMS, each on its own
-  key; only shield-core and shield-ingest need the evidence bucket.
-- No service account key files. Cloud Run and GKE supply credentials to both
-  the KMS and Storage clients from the attached service account.
+- Give each service its **own service account**, least-privileged:
+
+  | Service | Roles |
+  |---|---|
+  | shield-core | `cloudkms.signerVerifier` (collector key), `cloudkms.cryptoKeyEncrypterDecrypter` (wrapping key), `storage.objectAdmin` (evidence bucket), `managedkafka.client`, `cloudsql.client`, `secretmanager.secretAccessor` |
+  | shield-ingest | `storage.objectAdmin`, `managedkafka.client`, `cloudsql.client`, `secretmanager.secretAccessor` |
+  | shield-anchor | `cloudkms.signerVerifier` (anchor key), `managedkafka.client`, `cloudsql.client`, `secretmanager.secretAccessor` |
+  | shield-action | `cloudkms.signerVerifier` (command key), `managedkafka.client`, `cloudsql.client`, `secretmanager.secretAccessor` |
+  | shield-ai | `managedkafka.client`, `cloudsql.client`, `secretmanager.secretAccessor` |
+
+- No service account key files. Cloud Run and GKE supply credentials to the
+  KMS, Storage and Kafka clients from the attached service account.
 
 ### Bring one up
 
@@ -365,7 +396,23 @@ provider record, and owner activation. It refuses to run with
 
 ---
 
-## 7. Operational facts worth knowing before you size it
+## 7. What is still AWS-shaped
+
+Nothing blocks a GCP deployment, but two things are worth knowing.
+
+**`@aws-sdk/client-s3` is still a dependency.** It is what talks to MinIO in
+non-production, and it is bypassed entirely when `EVIDENCE_GCS_BUCKET` and
+`GOOGLE_CLOUD_PROJECT` are set. It makes no AWS call.
+
+**The multi-cloud key escrow subsystem is a simulation.**
+`split-kms-escrow.service.ts` refers to AWS KMS, Azure Key Vault and GCP KMS,
+but derives all three "root keys" from fixed strings and makes no cloud call.
+ADR-017 parks it as Experimental Tier-2. It is not part of the production key
+path and needs nothing from you.
+
+---
+
+## 8. Operational facts worth knowing before you size it
 
 - **Sustained ingestion measured at ~60 events/sec** on a single machine,
   against a stated envelope of 15,000/sec. See

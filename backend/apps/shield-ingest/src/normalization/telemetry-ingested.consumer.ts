@@ -5,6 +5,7 @@ import {
   OnModuleDestroy,
 } from '@nestjs/common';
 import { Kafka, Consumer, EachMessagePayload } from 'kafkajs';
+import { createKafka } from '../../../../libs/kafka/src/kafka-client';
 import { NormalizationService } from './normalization.service';
 
 const TELEMETRY_INGESTED_TOPIC = 'telemetry.ingested';
@@ -33,10 +34,7 @@ export class TelemetryIngestedConsumer
   private readonly consumer: Consumer;
 
   constructor(private readonly normalizationService: NormalizationService) {
-    this.kafka = new Kafka({
-      clientId: 'zoiko-shield-ingest-normalization-consumer',
-      brokers: [process.env.KAFKA_BROKERS || 'localhost:9092'],
-    });
+    this.kafka = createKafka('zoiko-shield-ingest-normalization-consumer');
     this.consumer = this.kafka.consumer({
       groupId: 'shield-ingest-normalization',
     });

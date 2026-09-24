@@ -5,6 +5,7 @@ import {
   OnModuleDestroy,
 } from '@nestjs/common';
 import { Kafka, Producer } from 'kafkajs';
+import { createKafka } from '../../../../libs/kafka/src/kafka-client';
 import { randomUUID } from 'crypto';
 import { ZoikoShieldCanonicalEvent } from '../connectors/providers/microsoft-entra/entra.types';
 import { requireTenantId } from '../security/tenant-context';
@@ -51,10 +52,7 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
   private producer: Producer;
 
   constructor() {
-    this.kafka = new Kafka({
-      clientId: 'zoiko-shield-ingest',
-      brokers: [process.env.KAFKA_BROKERS || 'localhost:9092'],
-    });
+    this.kafka = createKafka('zoiko-shield-ingest');
     this.producer = this.kafka.producer();
   }
 

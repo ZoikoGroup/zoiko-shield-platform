@@ -5,6 +5,7 @@ import {
   OnModuleDestroy,
 } from '@nestjs/common';
 import { Kafka, Consumer, EachMessagePayload } from 'kafkajs';
+import { createKafka } from '../../../../libs/kafka/src/kafka-client';
 import { EventEnvelope } from './kafka-producer.service';
 import { PrismaService } from '../prisma/prisma.service';
 
@@ -31,10 +32,7 @@ export class KafkaConsumerService
   private readonly handlers = new Map<string, KafkaMessageHandler[]>();
 
   constructor(private readonly prisma: PrismaService) {
-    this.kafka = new Kafka({
-      clientId: 'zoiko-shield-action-consumer',
-      brokers: [process.env.KAFKA_BROKERS || 'localhost:9092'],
-    });
+    this.kafka = createKafka('zoiko-shield-action-consumer');
     this.consumer = this.kafka.consumer({ groupId: 'shield-action-response' });
   }
 
