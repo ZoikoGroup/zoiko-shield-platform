@@ -32,6 +32,7 @@
     "test:e2e:anchor": "jest --config apps/shield-anchor/test/jest-e2e.json --forceExit",
     "test:e2e:spine": "jest --config apps/shield-core/test/jest-e2e.json cross-service-spine.e2e-spec.ts --forceExit",
     "test:e2e:all": "npm run test:e2e:action && npm run test:e2e:ai && npm run test:e2e:anchor && npm run test:e2e:spine",
+    "verify": "npm run swagger:check && npm run check:ungrounded-terms && npm run check:capability-claims && npm run access:check && npm test -- --runInBand && npm run test:e2e:spine && npm run test:e2e:all",
     "seed:platform-admin": "ts-node -r tsconfig-paths/register scripts/seed-platform-admin.ts",
     "seed:dev-tenant": "ts-node -r tsconfig-paths/register scripts/seed-dev-tenant.ts",
     "check:platform-admin": "ts-node -r tsconfig-paths/register scripts/check-super-admin.ts",

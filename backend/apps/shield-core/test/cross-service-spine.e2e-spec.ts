@@ -5,6 +5,7 @@ import { CedarPolicyEvaluatorService } from '../src/modules/authorization/cedar-
 import { ModelArmorSafetyGatewayService } from '../../shield-ai/src/gateway/model-armor-safety-gateway.service';
 import { SafeDegradationService } from '../../shield-ai/src/degradation/safe-degradation.service';
 import { SignedCommandBrokerService } from '../../shield-action/src/broker/signed-command-broker.service';
+import { DevGovernedCommandSigner } from '../../shield-action/src/command-signing/dev-governed-command-signer.service';
 import {
   BatchMerkleCheckpointerService,
   EvidenceLeaf,
@@ -33,7 +34,11 @@ describe('Cross-Service Golden Spine E2E (TUT-01 Reference Vertical Slice)', () 
     cedarEvaluator = new CedarPolicyEvaluatorService();
     modelArmor = new ModelArmorSafetyGatewayService();
     safeDegradation = new SafeDegradationService();
-    signedBroker = new SignedCommandBrokerService();
+    // The broker signs with a key rather than hashing the envelope, so it
+    // takes a signer. The development one refuses to run in production.
+    signedBroker = new SignedCommandBrokerService(
+      new DevGovernedCommandSigner(),
+    );
     merkleCheckpointer = new BatchMerkleCheckpointerService();
   });
 
@@ -154,7 +159,7 @@ describe('Cross-Service Golden Spine E2E (TUT-01 Reference Vertical Slice)', () 
     expect(authDecision.decision).toBe('ALLOW');
 
     // 4b: Issue signed command envelope (No exportable private keys)
-    const signedEnvelope = signedBroker.createSignedCommand(
+    const signedEnvelope = await signedBroker.createSignedCommand(
       tenantId,
       'ISOLATE_ENDPOINT',
       'FIN-WKS-012',
@@ -166,9 +171,12 @@ describe('Cross-Service Golden Spine E2E (TUT-01 Reference Vertical Slice)', () 
 
     expect(signedEnvelope.signature).toBeDefined();
     expect(signedEnvelope.nonce).toBeDefined();
+    // The envelope names the key that signed it, so a receipt can be checked
+    // against a known key rather than assumed.
+    expect(signedEnvelope.signingKeyId).toBeDefined();
 
     // 4c: Execution verification
-    const execution = signedBroker.dispatchGovernedCommand(signedEnvelope);
+    const execution = await signedBroker.dispatchGovernedCommand(signedEnvelope);
     expect(execution.executionStatus).toBe('EXECUTED_SUCCESSFULLY');
     expect(execution.observedState).toBe('TARGET_CONTAINED');
     expect(execution.receiptId).toBeDefined();
