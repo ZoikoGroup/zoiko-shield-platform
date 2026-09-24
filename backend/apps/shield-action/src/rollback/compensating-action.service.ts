@@ -7,20 +7,29 @@ import {
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 
+export type SupportedCompensatingAction =
+  | 'RESTORE_USER_SESSION_CACHE'
+  | 'UNQUARANTINE_ENDPOINT'
+  | 'UNISOLATE_ENDPOINT'
+  | 'REMOVE_WAF_RULE'
+  | 'UNBLOCK_WAF_IP'
+  | 'RESTORE_FILE_FROM_QUARANTINE'
+  | 'RESTORE_IAM_POLICY'
+  | 'REISSUE_IAM_ACCESS_KEY'
+  | 'UNQUARANTINE_K8S_POD'
+  | 'ENABLE_ENTRA_USER';
+
 export interface RollbackCompensationPlan {
   planId: string;
   tenantId: string;
   commandId: string;
   originalAction: string;
-  compensatingAction:
-    | 'RESTORE_USER_SESSION_CACHE'
-    | 'UNQUARANTINE_ENDPOINT'
-    | 'REMOVE_WAF_RULE'
-    | 'RESTORE_FILE_FROM_QUARANTINE';
+  compensatingAction: SupportedCompensatingAction;
   targetResource: string;
   singleUseRollbackToken: string;
   reversibilityTier: 'R1' | 'R2';
   createdAt: string;
+  expiresAt?: string;
 }
 
 export interface RollbackProgressTelemetry {
@@ -42,7 +51,7 @@ export interface RollbackExecutionReceipt {
   receiptId: string;
   tenantId: string;
   commandId: string;
-  compensatingAction: string;
+  compensatingAction: SupportedCompensatingAction;
   targetResource: string;
   rollbackToken: string;
   status: 'REVERTED_SUCCESSFULLY' | 'ROLLBACK_FAILED';
@@ -55,37 +64,98 @@ export interface RollbackExecutionReceipt {
 
 /**
  * Governed Compensating Action & Rollback Orchestrator Service
- * Specification: ZS-ENG-ACT-001 §11 (Automated Compensation and Rollbacks)
+ * Specification: ZS-ENG-DRS-001 §20 (Receipts, Rollback, Compensation and Reconciliation)
  */
 @Injectable()
 export class CompensatingActionService {
   private readonly logger = new Logger(CompensatingActionService.name);
 
   // In-memory registered compensation plans and consumed single-use tokens
-  private readonly registeredPlans = new Map<
-    string,
-    RollbackCompensationPlan
-  >();
+  private readonly registeredPlans = new Map<string, RollbackCompensationPlan>();
   private readonly consumedRollbackTokens = new Set<string>();
+
+  /**
+   * Deterministically derives the inverse compensating action type for a given forward action (ZS-ENG-DRS-001 §20.1).
+   */
+  deriveInverseAction(forwardAction: string): SupportedCompensatingAction {
+    const normalized = forwardAction.toUpperCase().trim();
+    switch (normalized) {
+      case 'ISOLATE_HOST':
+      case 'ISOLATE_ENDPOINT':
+      case 'EDR_ISOLATE':
+        return 'UNISOLATE_ENDPOINT';
+
+      case 'REVOKE_IAM_SESSION':
+      case 'REVOKE_AWS_IAM_ACCESS_KEY':
+      case 'REVOKE_IAM_POLICY':
+        return 'RESTORE_IAM_POLICY';
+
+      case 'BLOCK_IP':
+      case 'BLOCK_WAF_IP':
+      case 'BLOCK_IP_SECURITY_GROUP':
+        return 'UNBLOCK_WAF_IP';
+
+      case 'QUARANTINE_POD':
+      case 'QUARANTINE_K8S_POD':
+        return 'UNQUARANTINE_K8S_POD';
+
+      case 'DISABLE_USER':
+      case 'DISABLE_ENTRA_USER':
+        return 'ENABLE_ENTRA_USER';
+
+      case 'QUARANTINE_FILE':
+        return 'RESTORE_FILE_FROM_QUARANTINE';
+
+      default:
+        return 'RESTORE_USER_SESSION_CACHE';
+    }
+  }
+
+  /**
+   * Creates and registers a pre-computed compensation plan.
+   */
+  createCompensationPlan(params: {
+    tenantId: string;
+    commandId: string;
+    originalAction: string;
+    targetResource: string;
+    reversibilityTier?: 'R1' | 'R2';
+    ttlHours?: number;
+  }): RollbackCompensationPlan {
+    const planId = `plan-${crypto.randomUUID()}`;
+    const singleUseRollbackToken = `rb-tok-${crypto.randomBytes(24).toString('hex')}`;
+    const compensatingAction = this.deriveInverseAction(params.originalAction);
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + (params.ttlHours ?? 72) * 3600 * 1000).toISOString();
+
+    const plan: RollbackCompensationPlan = {
+      planId,
+      tenantId: params.tenantId,
+      commandId: params.commandId,
+      originalAction: params.originalAction,
+      compensatingAction,
+      targetResource: params.targetResource,
+      singleUseRollbackToken,
+      reversibilityTier: params.reversibilityTier ?? 'R1',
+      createdAt: now.toISOString(),
+      expiresAt,
+    };
+
+    this.registerCompensationPlan(plan);
+    return plan;
+  }
 
   /**
    * Registers a pre-computed compensation plan before action dispatch.
    */
   registerCompensationPlan(plan: RollbackCompensationPlan): void {
-    if (
-      !plan.tenantId ||
-      !plan.singleUseRollbackToken ||
-      !plan.compensatingAction
-    ) {
+    if (!plan.tenantId || !plan.singleUseRollbackToken || !plan.compensatingAction) {
       throw new BadRequestException('Invalid compensation plan parameters.');
     }
 
-    this.registeredPlans.set(
-      `${plan.tenantId}:${plan.singleUseRollbackToken}`,
-      plan,
-    );
+    this.registeredPlans.set(`${plan.tenantId}:${plan.singleUseRollbackToken}`, plan);
     this.logger.log(
-      `✔ [COMPENSATION PLAN REGISTERED] Action: '${plan.originalAction}' ➔ Reversal: '${plan.compensatingAction}' [Token: ${plan.singleUseRollbackToken}]`,
+      `✔ [COMPENSATION PLAN REGISTERED] Action: '${plan.originalAction}' ➔ Reversal: '${plan.compensatingAction}' on '${plan.targetResource}' [Token: ${plan.singleUseRollbackToken}]`,
     );
   }
 
@@ -118,14 +188,20 @@ export class CompensatingActionService {
       );
     }
 
+    // Check expiration
+    if (plan.expiresAt && new Date(plan.expiresAt) < new Date()) {
+      throw new ForbiddenException(
+        `Rollback token '${rollbackToken}' expired at ${plan.expiresAt}. Reversal window closed.`,
+      );
+    }
+
     // Stage 1: Validating Token Integrity (25%)
     this.reportProgress(onProgress, {
       rollbackToken,
       tenantId,
       stage: 'VALIDATING_TOKEN_INTEGRITY',
       progressPercent: 25,
-      message:
-        'Validating cryptographic signature and single-use status of rollback token.',
+      message: 'Validating cryptographic signature and single-use status of rollback token.',
       isReverted: false,
       timestamp: new Date().toISOString(),
     });
@@ -147,8 +223,7 @@ export class CompensatingActionService {
       tenantId,
       stage: 'RECONCILING_OBSERVED_STATE',
       progressPercent: 75,
-      message:
-        'Reconciling endpoint connectivity and identity directory status.',
+      message: 'Reconciling endpoint connectivity and identity directory status.',
       isReverted: true,
       timestamp: new Date().toISOString(),
     });
@@ -209,6 +284,20 @@ export class CompensatingActionService {
 
   isTokenConsumed(rollbackToken: string): boolean {
     return this.consumedRollbackTokens.has(rollbackToken);
+  }
+
+  getRegisteredPlan(tenantId: string, rollbackToken: string): RollbackCompensationPlan | undefined {
+    return this.registeredPlans.get(`${tenantId}:${rollbackToken}`);
+  }
+
+  listPlansForTenant(tenantId: string): RollbackCompensationPlan[] {
+    const results: RollbackCompensationPlan[] = [];
+    for (const [key, plan] of this.registeredPlans.entries()) {
+      if (key.startsWith(`${tenantId}:`)) {
+        results.push(plan);
+      }
+    }
+    return results;
   }
 
   private reportProgress(

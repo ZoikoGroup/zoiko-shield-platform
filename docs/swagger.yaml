@@ -54397,6 +54397,244 @@ paths:
           description: Unauthorized
         '403':
           description: Forbidden - Requires observability:admin permission
+  /api/v1/action/safety/posture:
+    get:
+      summary: Retrieve Action Safety Posture, Blast Radius limits, and active emergency freezes
+      description: Returns multi-scope freeze status, criticality tier thresholds, and safety limits under ZS-ENG-DRS-001 §19.
+      operationId: getActionSafetyPosture
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: tenantId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: region
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Action safety posture and active freezes summary
+        '401':
+          description: Unauthorized
+  /api/v1/action/safety/evaluate-blast-radius:
+    post:
+      summary: Evaluate action blast radius, target criticality tier, and concurrency limits
+      description: Pre-flight safety assessment enforcing ZS-ENG-DRS-001 §19 invariants.
+      operationId: postEvaluateActionBlastRadius
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenantId
+                - actionType
+                - targetResource
+                - requestorId
+              properties:
+                tenantId:
+                  type: string
+                actionType:
+                  type: string
+                targetResource:
+                  type: string
+                targetClass:
+                  type: string
+                totalFleetAssetsCount:
+                  type: number
+                activeConcurrentActionsCount:
+                  type: number
+                requestorId:
+                  type: string
+                isDualCustodyApproved:
+                  type: boolean
+      responses:
+        '200':
+          description: Blast radius safety assessment with cryptographic digest
+        '401':
+          description: Unauthorized
+  /api/v1/action/safety/freeze:
+    post:
+      summary: Engage emergency lockdown freeze across Global, Regional, Connector, Tenant, or ActionType scope
+      description: Instantly freezes automated response execution with cryptographic refusal digest (ZS-ENG-DRS-001 §19.4).
+      operationId: postEngageEmergencyFreeze
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - scope
+                - reason
+                - initiatedBy
+              properties:
+                scope:
+                  type: string
+                  enum:
+                    - GLOBAL
+                    - REGIONAL
+                    - TENANT
+                    - CONNECTOR
+                    - ACTION_TYPE
+                tenantId:
+                  type: string
+                region:
+                  type: string
+                scopeRef:
+                  type: string
+                reason:
+                  type: string
+                initiatedBy:
+                  type: string
+                durationMinutes:
+                  type: number
+      responses:
+        '201':
+          description: Freeze successfully engaged with cryptographic refusal token
+        '401':
+          description: Unauthorized
+  /api/v1/action/safety/unfreeze:
+    post:
+      summary: Approve emergency freeze release with Dual-Custody verification
+      description: Releases active freeze once required signatures (2 for Global/Regional) are gathered.
+      operationId: postApproveEmergencyUnfreeze
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - freezeId
+                - approverId
+              properties:
+                freezeId:
+                  type: string
+                approverId:
+                  type: string
+      responses:
+        '200':
+          description: Unfreeze approval recorded or freeze fully released
+        '401':
+          description: Unauthorized
+        '403':
+          description: Dual-custody rule violation
+  /api/v1/action/safety/compensate:
+    post:
+      summary: Execute single-use 1-click compensation rollback for an executed response action
+      description: Dispatches deterministic inverse adapter and issues Merkle-anchored rollback receipt (ZS-ENG-DRS-001 §20).
+      operationId: postExecuteActionCompensation
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenantId
+                - rollbackToken
+                - executedBy
+              properties:
+                tenantId:
+                  type: string
+                rollbackToken:
+                  type: string
+                executedBy:
+                  type: string
+      responses:
+        '200':
+          description: Reversal executed successfully with sealed rollback receipt
+        '401':
+          description: Unauthorized
+        '403':
+          description: Token already consumed (replay prevention) or expired
+        '404':
+          description: Rollback plan not found
+  /api/v1/action/safety/compensation-plans:
+    post:
+      summary: Register a pre-computed compensation plan before action dispatch
+      description: Derives deterministic inverse action and generates single-use rollback token.
+      operationId: postRegisterCompensationPlan
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenantId
+                - commandId
+                - originalAction
+                - targetResource
+              properties:
+                tenantId:
+                  type: string
+                commandId:
+                  type: string
+                originalAction:
+                  type: string
+                targetResource:
+                  type: string
+                reversibilityTier:
+                  type: string
+                  enum:
+                    - R1
+                    - R2
+                ttlHours:
+                  type: number
+      responses:
+        '201':
+          description: Compensation plan registered with single-use rollback token
+        '401':
+          description: Unauthorized
+    get:
+      summary: List registered compensation plans for a tenant
+      description: Returns all active compensation plans and reversibility windows.
+      operationId: getListCompensationPlans
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: tenantId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of registered compensation plans
+        '401':
+          description: Unauthorized
+
 
 
 
