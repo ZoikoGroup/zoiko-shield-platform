@@ -41,6 +41,9 @@ const VALID_STATES = new Set([
   'PASS (internal)',
   'OPEN',
   'PROPOSAL',
+  // An ADR accepted for development only. Deliberately distinct from a plain
+  // ACCEPTED, which would read as production authorisation.
+  'ACCEPTED (dev/non-prod, 2026-09-25)',
 ]);
 
 function main(): void {

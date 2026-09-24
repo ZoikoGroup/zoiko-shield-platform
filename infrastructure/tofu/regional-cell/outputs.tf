@@ -23,6 +23,30 @@ output "evidence_vault_bucket" {
 }
 
 output "evidence_cmek_key_id" {
-  description = "The Resource ID of the Cloud HSM Evidence Signing Key"
+  description = "Resource ID of the symmetric CMEK that encrypts the evidence bucket at rest. This key does not sign anything."
   value       = google_kms_crypto_key.evidence_cmek.id
+}
+
+# The signing keys the services require. Each application variable takes a key
+# VERSION resource name, so append /cryptoKeyVersions/<n> to these when wiring
+# the environment — the signers validate that shape at construction and refuse
+# to start on a crypto key name.
+output "anchor_checkpoint_key_id" {
+  description = "Crypto key for evidence checkpoint signing. ANCHOR_KMS_KEY_VERSION needs this plus a version suffix."
+  value       = google_kms_crypto_key.anchor_checkpoint.id
+}
+
+output "evidence_collector_key_id" {
+  description = "Crypto key for evidence collector signing. COLLECTOR_KMS_KEY_VERSION needs this plus a version suffix."
+  value       = google_kms_crypto_key.evidence_collector.id
+}
+
+output "action_command_key_id" {
+  description = "Crypto key for governed response command signing. ACTION_COMMAND_KMS_KEY_VERSION needs this plus a version suffix."
+  value       = google_kms_crypto_key.action_command.id
+}
+
+output "subject_key_wrapping_key_name" {
+  description = "Crypto key wrapping per-subject encryption keys. SUBJECT_KEY_KMS_KEY_NAME takes this exactly, with no version suffix."
+  value       = google_kms_crypto_key.subject_key_wrapping.id
 }

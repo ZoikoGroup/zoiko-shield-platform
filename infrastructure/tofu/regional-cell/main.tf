@@ -84,6 +84,64 @@ resource "google_kms_crypto_key" "evidence_cmek" {
   }
 }
 
+# Asymmetric signing keys, one per signing authority so a compromise is
+# contained to the thing it signs. The application refuses to start in
+# production without each of these, and takes a key *version* resource name,
+# because a signature must name the version that produced it.
+#
+#   ANCHOR_KMS_KEY_VERSION          -> anchor_checkpoint
+#   COLLECTOR_KMS_KEY_VERSION       -> evidence_collector
+#   ACTION_COMMAND_KMS_KEY_VERSION  -> action_command
+resource "google_kms_crypto_key" "anchor_checkpoint" {
+  name     = "zs-anchor-checkpoint-key"
+  key_ring = google_kms_key_ring.evidence_keyring.id
+  purpose  = "ASYMMETRIC_SIGN"
+
+  version_template {
+    algorithm        = "EC_SIGN_P256_SHA256"
+    protection_level = "HSM"
+  }
+}
+
+resource "google_kms_crypto_key" "evidence_collector" {
+  name     = "zs-evidence-collector-key"
+  key_ring = google_kms_key_ring.evidence_keyring.id
+  purpose  = "ASYMMETRIC_SIGN"
+
+  version_template {
+    algorithm        = "EC_SIGN_P256_SHA256"
+    protection_level = "HSM"
+  }
+}
+
+resource "google_kms_crypto_key" "action_command" {
+  name     = "zs-action-command-key"
+  key_ring = google_kms_key_ring.evidence_keyring.id
+  purpose  = "ASYMMETRIC_SIGN"
+
+  version_template {
+    algorithm        = "EC_SIGN_P256_SHA256"
+    protection_level = "HSM"
+  }
+}
+
+# Symmetric key wrapping per-subject encryption keys, so cryptographic
+# shredding puts a subject's data beyond our own reach. Takes a crypto *key*
+# name, not a version: symmetric encrypt/decrypt resolves the primary version
+# itself, so rotation does not strand previously wrapped keys.
+#
+#   SUBJECT_KEY_KMS_KEY_NAME -> subject_key_wrapping
+resource "google_kms_crypto_key" "subject_key_wrapping" {
+  name            = "zs-subject-key-wrapping"
+  key_ring        = google_kms_key_ring.evidence_keyring.id
+  rotation_period = "7776000s" # 90 days
+
+  version_template {
+    algorithm        = "GOOGLE_SYMMETRIC_ENCRYPTION"
+    protection_level = "HSM"
+  }
+}
+
 resource "google_storage_bucket" "evidence_vault" {
   name          = "zs-${var.environment}-evidence-vault-${var.region}"
   location      = var.region
@@ -91,6 +149,17 @@ resource "google_storage_bucket" "evidence_vault" {
   force_destroy = false
 
   uniform_bucket_level_access = true
+
+  # Per-object retention, which is what the application sets and what S3's
+  # COMPLIANCE mode maps to on Cloud Storage. It can ONLY be enabled when the
+  # bucket is created — an existing bucket must be replaced to gain it, so
+  # changing this forces replacement by design.
+  #
+  # shield-core and shield-ingest read this configuration back after bootstrap
+  # and warn when it is absent rather than assuming it, because a bucket
+  # without it accepts every write and provides no immutability.
+  enable_object_retention = true
+
   versioning {
     enabled = true
   }
@@ -99,10 +168,15 @@ resource "google_storage_bucket" "evidence_vault" {
     default_kms_key_name = google_kms_crypto_key.evidence_cmek.id
   }
 
-    retention_policy {
-    is_locked        = false # Keep unlocked during staging; permanent lock applied at GA
-    retention_period = 220752000 # 7 years in seconds (2555 days)
-  }
+  # No bucket-wide retention_policy. One previously set 7 years across every
+  # object, which conflicts with two things: the application's per-object
+  # retention profiles (STANDARD 90 days, EXTENDED 365, LEGAL_HOLD 2555), and
+  # tenant offboarding deletion under ZS-ENG-OFF-DEL-001 — a bucket-wide
+  # policy would make a tenant's 90-day evidence undeletable for seven years
+  # and turn every erasure into a permanent residual.
+  #
+  # Retention is therefore set per object, at write time, from the record's
+  # retention profile, with mode 'Locked' so it cannot be shortened by anyone.
 }
 
 # 4. Security Project: Binary Authorization Attestor & Supply Chain Signing Keys (LAB 17)

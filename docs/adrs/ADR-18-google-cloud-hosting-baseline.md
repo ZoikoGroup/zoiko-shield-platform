@@ -1,12 +1,20 @@
-# ADR-18 (PROPOSAL) — Google Cloud as the hosting baseline
+# ADR-18 — Google Cloud as the hosting baseline
 
 ## Status
 
-**PROPOSAL. Not ratified.** This record exists because the implementation and
-the ratified architecture currently disagree, and the CTO assurance review of
-24 September 2026 named that disagreement a launch blocker (P0-01). It states
-what changed and why so a named approver can ratify or reject it. It does not
-ratify itself.
+**ACCEPTED for development and non-production, 2026-09-25.**
+
+Decided by the platform owner on the basis that ZoikoShield is pre-production:
+no production tenants, no customer data, no external commitments. A formal
+multi-signature ratification would be ceremony over a decision that is already
+reflected in the code and the infrastructure, and nothing is at risk while the
+platform is in development.
+
+**This acceptance does not authorise production.** The CTO assurance review of
+24 September 2026 made the hosting baseline a precondition for accepting
+live-cloud evidence (P0-01), and that remains true: this record settles *which
+provider*, not *whether the cell is proven*. Before G1, the consequences listed
+below must be evidenced, not merely decided.
 
 ## Date
 
@@ -83,14 +91,36 @@ signer and storage seams already support it — each has an interface with
 per-environment implementations — but no second implementation exists today
 and none should be claimed.
 
-## Approval
+## What this record settles, and what it does not
 
-| Role | Name | Decision | Date |
-|---|---|---|---|
-| VP Engineering | | | |
-| Cloud Platform | | | |
-| CISO | | | |
-| DPO | | | |
+| | |
+|---|---|
+| **Settled** | Google Cloud is the hosting baseline. `europe-west3` is a legitimate development cell. The KMS, storage and Kafka migrations stand. The AWS-first sections of the prior architecture baseline are superseded. |
+| **Not settled** | Whether any regional cell is *proven*. No cell has been applied, health-checked, attacked negatively, restored or failed over. |
+| **Still required before G1** | Threat model and provider risk assessment for Google Cloud; DR and residency mapping; live cell conformance and cross-cell negative tests; DPO review of subprocessors and transfers. |
 
-Unratified. Until every row above is completed, the hosting baseline remains
-formally unresolved and `europe-west3` is not an approved production cell.
+Recorded in `docs/G1_EVIDENCE_INDEX.md`, which carries the live-cell gate as
+`NOT_RUN` and does not treat this acceptance as evidence of anything beyond
+the provider choice.
+
+## Infrastructure alignment
+
+Reviewing the infrastructure against this decision found the OpenTofu regional
+cell was already Google Cloud — GKE, Cloud Storage, Cloud KMS — which is where
+`europe-west3` came from. The drift the review identified was between the
+*documents* and the build, not within the build.
+
+Two mismatches between that infrastructure and the application were corrected
+at the same time:
+
+- The evidence bucket had no `enable_object_retention`, so the per-object
+  `mode: 'Locked'` retention the application sets would have had nothing to
+  attach to. Writes would have succeeded with no immutability.
+- A bucket-wide seven-year `retention_policy` would have made every object
+  undeletable for seven years, including a tenant's 90-day STANDARD evidence,
+  turning every offboarding erasure under ZS-ENG-OFF-DEL-001 into a permanent
+  residual. Retention is now set per object, from the record's profile.
+
+The cell also defined only a symmetric CMEK for bucket encryption and none of
+the three asymmetric signing keys the services refuse to start without. Those
+are now declared, along with the subject-key wrapping key.

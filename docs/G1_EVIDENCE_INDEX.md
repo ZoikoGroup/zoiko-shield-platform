@@ -80,14 +80,17 @@ for any row.
 | ADR-06 | First approved price book | OPEN | Any public price |
 | ADR-07 | Contractual MDR SLAs | OPEN | Any customer SLA commitment |
 | ADR-11 | AI provider | PROPOSAL | — |
-| **ADR-18** | **Google Cloud hosting baseline** | **PROPOSAL** | **Acceptance of any live-cloud evidence (review P0-01)** |
+| ADR-18 | Google Cloud hosting baseline | ACCEPTED (dev/non-prod, 2026-09-25) | Nothing. Settles the provider; the live-cell gate above is still `NOT_RUN` |
 
 ## Gate effect
 
-On this index, **G1 is not passable today**. Three rows are `FAIL` or blocking:
-ingestion scale, the experience contracts, and the unratified hosting baseline.
-Eleven are `NOT_RUN`, including every item that requires a live cloud, an
-external assessor or a production rehearsal.
+On this index, **G1 is not passable today**. Two rows are `FAIL`: ingestion
+scale and the experience contracts. Eleven are `NOT_RUN`, including every item
+that requires a live cloud, an external assessor or a production rehearsal.
+
+The hosting baseline is no longer among them — ADR-18 accepted Google Cloud for
+development on 2026-09-25 — but that settles which provider, not whether any
+cell is proven. The live regional cell row stays `NOT_RUN`.
 
 The eight domain signatures are the final attestation on a completed evidence
 pack. They are not the mechanism that turns a `NOT_RUN` into a `PASS`.
