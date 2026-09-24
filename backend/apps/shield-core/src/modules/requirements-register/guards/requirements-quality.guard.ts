@@ -17,28 +17,41 @@ export class RequirementsQualityGuard {
 
     // ID formatting: REQ-<DOMAIN>-...-<NUMBER>
     if (!dto.id || !/^REQ(-[A-Z0-9]+)+-[0-9]+$/.test(dto.id)) {
-      errors.push(`Requirement ID '${dto.id}' must match format REQ-<DOMAIN>-<NAME>-<NUMBER> (e.g. REQ-CORE-AUTH-01)`);
+      errors.push(
+        `Requirement ID '${dto.id}' must match format REQ-<DOMAIN>-<NAME>-<NUMBER> (e.g. REQ-CORE-AUTH-01)`,
+      );
     }
 
     // Mandatory Acceptance Criteria (§08)
     if (!dto.acceptanceCriteria || dto.acceptanceCriteria.length === 0) {
-      errors.push(`Requirement '${dto.id}' must define at least one testable acceptance criteria`);
+      errors.push(
+        `Requirement '${dto.id}' must define at least one testable acceptance criteria`,
+      );
     } else {
       for (let i = 0; i < dto.acceptanceCriteria.length; i++) {
-        if (!dto.acceptanceCriteria[i] || dto.acceptanceCriteria[i].trim().length < 5) {
-          errors.push(`Requirement '${dto.id}' acceptance criteria #${i + 1} is too brief or empty`);
+        if (
+          !dto.acceptanceCriteria[i] ||
+          dto.acceptanceCriteria[i].trim().length < 5
+        ) {
+          errors.push(
+            `Requirement '${dto.id}' acceptance criteria #${i + 1} is too brief or empty`,
+          );
         }
       }
     }
 
     // Mandatory Traceability Target (§05)
     if (!dto.traceability || !dto.traceability.implementingModule) {
-      errors.push(`Requirement '${dto.id}' must specify an implementing module`);
+      errors.push(
+        `Requirement '${dto.id}' must specify an implementing module`,
+      );
     }
 
     // Mandatory Authority (§05 Precedence)
     if (!dto.authority || !dto.authority.type || !dto.authority.reference) {
-      errors.push(`Requirement '${dto.id}' must declare authority type and reference`);
+      errors.push(
+        `Requirement '${dto.id}' must declare authority type and reference`,
+      );
     }
 
     // Mandatory Verification Method (§07)
@@ -48,7 +61,9 @@ export class RequirementsQualityGuard {
 
     // Mandatory Failure Behavior (§07)
     if (!dto.failureBehavior) {
-      errors.push(`Requirement '${dto.id}' must specify a failure behavior (e.g. FAIL_CLOSED)`);
+      errors.push(
+        `Requirement '${dto.id}' must specify a failure behavior (e.g. FAIL_CLOSED)`,
+      );
     }
 
     if (errors.length > 0) {

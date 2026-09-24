@@ -34,6 +34,14 @@ import LedgerPage from '@/app/ledger/page';
 import ConnectorsPage from '@/app/connectors/page';
 import IngestionPage from '@/app/ingestion/page';
 import PlatformAdminPage from '@/app/admin/page';
+import DashboardPage from '@/app/page';
+import CasesListPage from '@/app/cases/page';
+import LoginPage from '@/app/login/page';
+import RedTeamSimulatorPage from '@/app/red-team/page';
+import JitElevationPage from '@/app/admin/jit/page';
+import RetainersAndSlaOperationsPage from '@/app/operations/retainers/page';
+import G1GatePage from '@/app/admin/g1-gate/page';
+import JitElevationApprovalPage from '@/app/admin/jit-elevation/page';
 
 describe('ZoikoShield Route Pages Smoke Tests', () => {
   beforeEach(() => {
@@ -147,6 +155,67 @@ describe('ZoikoShield Route Pages Smoke Tests', () => {
       expect(screen.getByText(/SOAR PLAYBOOK AUTONOMOUS FREEZE/i)).toBeInTheDocument();
       expect(screen.getByText(/Tenant Commercial Offer Entitlement Matrix/i)).toBeInTheDocument();
       expect(screen.getByText(/Real-Time Resource Quotas & Metering Telemetry/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('13. Executive Operations Dashboard (/)', () => {
+    it('renders overview dashboard, telemetry widgets, and status monitors', () => {
+      render(<DashboardPage />);
+      expect(screen.getByText(/ZoikoShield SecOps & Cryptographic Command Center/i)).toBeInTheDocument();
+      expect(screen.getByText(/UNRESOLVED ALERTS/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('14. Cases & Incident Triage Page (/cases)', () => {
+    it('renders incident case list and active case metrics', () => {
+      render(<CasesListPage />);
+      expect(screen.getByText(/Incident Workspace Directory/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('15. Authentication & Passkey Step-Up Page (/login)', () => {
+    it('renders sign-in form with tenant selection and passkey option', () => {
+      render(<LoginPage />);
+      expect(screen.getByText(/ZoikoShield Authentication Gate/i)).toBeInTheDocument();
+      expect(screen.getAllByText(/Passkey/i)[0]).toBeInTheDocument();
+    });
+  });
+
+  describe('16. Adversary Red-Team Simulator Page (/red-team)', () => {
+    it('renders adversary replay scenarios and detection validation matrix', () => {
+      render(<RedTeamSimulatorPage />);
+      expect(screen.getByText(/Defensive Control Simulation & Replay Engine/i)).toBeInTheDocument();
+      expect(screen.getByText(/Run Simulation Scenario/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('17. JIT Break-Glass Elevation Engine Page (/admin/jit)', () => {
+    it('renders JIT elevation requests table, break-glass modal trigger, and active sessions', () => {
+      render(<JitElevationPage />);
+      expect(screen.getByText(/Platform Admin: Support Access & Dual-Approval JIT/i)).toBeInTheDocument();
+      expect(screen.getByText(/Request JIT Elevation/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('18. Retainer & SLA Operations Cockpit (/operations/retainers)', () => {
+    it('renders retainer hour burn meter and SLA breach tracking table', () => {
+      render(<RetainersAndSlaOperationsPage />);
+      expect(screen.getByText(/Retainer Hours & Response SLA Cockpit/i)).toBeInTheDocument();
+      expect(screen.getByText(/ANNUAL INCLUDED HOURS/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('19. G1 Launch Gate Sign-Off Cockpit (/admin/g1-gate)', () => {
+    it('renders 8-member stakeholder roster and G1 authorization status', () => {
+      render(<G1GatePage />);
+      expect(screen.getByText(/G1 Launch Gate & Live Response Authority/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('20. JIT Dual-Custody Approval Cockpit (/admin/jit-elevation)', () => {
+    it('renders dual-custody authorization queue and session controls', () => {
+      render(<JitElevationApprovalPage />);
+      expect(screen.getByText(/Privileged Elevation & Dual-Approver Quorum/i)).toBeInTheDocument();
     });
   });
 });

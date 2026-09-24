@@ -6,7 +6,11 @@ import { RequirementNode } from '../entities/requirement.entity';
 
 export interface ReconciliationDiscrepancy {
   requirementId: string;
-  type: 'MISSING_SOURCE_FILE' | 'MISSING_TEST_FILE' | 'DUPLICATE_STATEMENT' | 'STALE_METADATA';
+  type:
+    | 'MISSING_SOURCE_FILE'
+    | 'MISSING_TEST_FILE'
+    | 'DUPLICATE_STATEMENT'
+    | 'STALE_METADATA';
   details: string;
 }
 
@@ -28,7 +32,7 @@ export class RequirementsReconciliationWorker {
   private readonly logger = new Logger(RequirementsReconciliationWorker.name);
   private resolvePath(targetPath: string): string {
     if (path.isAbsolute(targetPath)) return targetPath;
-    
+
     // Check direct cwd first
     const fromCwd = path.resolve(process.cwd(), targetPath);
     if (fs.existsSync(fromCwd)) return fromCwd;
@@ -47,7 +51,9 @@ export class RequirementsReconciliationWorker {
   constructor(private readonly registerService: RequirementsRegisterService) {}
 
   public executeReconciliation(): ReconciliationReport {
-    this.logger.log('▶ [R04 RECONCILIATION] Starting daily requirements & code artifact audit...');
+    this.logger.log(
+      '▶ [R04 RECONCILIATION] Starting daily requirements & code artifact audit...',
+    );
 
     const requirements = this.registerService.getAllRequirements();
     const discrepancies: ReconciliationDiscrepancy[] = [];
@@ -68,7 +74,9 @@ export class RequirementsReconciliationWorker {
 
       // 2. Check implementing source file existence
       if (req.traceability.sourceFilePath) {
-        const fullSourcePath = this.resolvePath(req.traceability.sourceFilePath);
+        const fullSourcePath = this.resolvePath(
+          req.traceability.sourceFilePath,
+        );
 
         if (!fs.existsSync(fullSourcePath)) {
           discrepancies.push({
@@ -102,9 +110,13 @@ export class RequirementsReconciliationWorker {
     };
 
     if (discrepancies.length === 0) {
-      this.logger.log(`✔ [R04 RECONCILIATION] Clean audit: ${requirements.length}/${requirements.length} requirements 100% matched to code & tests`);
+      this.logger.log(
+        `✔ [R04 RECONCILIATION] Clean audit: ${requirements.length}/${requirements.length} requirements 100% matched to code & tests`,
+      );
     } else {
-      this.logger.warn(`⚠️ [R04 RECONCILIATION] Discrepancies detected: ${discrepancies.length} issue(s) found across ${requirements.length} requirements`);
+      this.logger.warn(
+        `⚠️ [R04 RECONCILIATION] Discrepancies detected: ${discrepancies.length} issue(s) found across ${requirements.length} requirements`,
+      );
     }
 
     return report;

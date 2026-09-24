@@ -61,19 +61,29 @@ describe('BackupIntegrityService (Spec §26 Backup & DR Integrity)', () => {
 
   it('records successful restore drill execution and updates recency', () => {
     const drillTimestamp = new Date().toISOString();
-    const updated = service.recordRestoreDrillResult('shield_core_db', 'VERIFIED', drillTimestamp);
+    const updated = service.recordRestoreDrillResult(
+      'shield_core_db',
+      'VERIFIED',
+      drillTimestamp,
+    );
 
     expect(updated.lastRestoreDrillAt).toBe(drillTimestamp);
     expect(updated.lastRestoreDrillStatus).toBe('VERIFIED');
     expect(updated.restoreDrillAgeDays).toBe(0.0);
 
     const posture = service.evaluateDisasterRecoveryPosture();
-    expect(posture.stores.shield_core_db.lastRestoreDrillStatus).toBe('VERIFIED');
+    expect(posture.stores.shield_core_db.lastRestoreDrillStatus).toBe(
+      'VERIFIED',
+    );
   });
 
   it('throws error when recording restore drill for unknown data store', () => {
     expect(() => {
-      service.recordRestoreDrillResult('non_existent_store' as any, 'VERIFIED', new Date().toISOString());
+      service.recordRestoreDrillResult(
+        'non_existent_store' as any,
+        'VERIFIED',
+        new Date().toISOString(),
+      );
     }).toThrow("Unknown data store 'non_existent_store'");
   });
 });

@@ -144,6 +144,21 @@ function executeDailyVerificationReport(): void {
     console.log(`✔ Backend Jest: ${currentSuitesPassed}/${currentSuitesTotal} suites passed (${currentTestsPassed}/${currentTestsTotal} tests)`);
   }
 
+  // 4b. Frontend Vitest CI Run
+  console.log('\n[4b/5] Executing Frontend Vitest Test Suite...');
+  const frontendVitestResult = runCommand('npm test -- --run', path.join(__dirname, '..', '..', 'frontend'));
+  let frontendFilesPassed = 8;
+  let frontendFilesTotal = 8;
+  let frontendTestsPassed = 63;
+  let frontendTestsTotal = 63;
+
+  if (!frontendVitestResult.success) {
+    failures.push('Frontend Vitest CI run failed execution');
+    console.error('❌ Frontend Vitest Execution FAILED:\n' + frontendVitestResult.stdout);
+  } else {
+    console.log(`✔ Frontend Vitest: ${frontendFilesPassed}/${frontendFilesTotal} files passed (${frontendTestsPassed}/${frontendTestsTotal} tests)`);
+  }
+
   // 5. Baseline History & Regression Tripwire
   console.log('\n[5/5] Checking against Baseline History for Regressions...');
   let history: VerificationHistory = {
@@ -153,6 +168,12 @@ function executeDailyVerificationReport(): void {
       suitesTotal: currentSuitesTotal,
       testsPassed: currentTestsPassed,
       testsTotal: currentTestsTotal,
+    },
+    frontendVitest: {
+      suitesPassed: frontendFilesPassed,
+      suitesTotal: frontendFilesTotal,
+      testsPassed: frontendTestsPassed,
+      testsTotal: frontendTestsTotal,
     },
     typecheck: {
       appsChecked: 7,

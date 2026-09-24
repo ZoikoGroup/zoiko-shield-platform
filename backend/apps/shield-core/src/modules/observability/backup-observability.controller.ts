@@ -11,7 +11,10 @@ import {
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PlatformPermissionsGuard } from '../authorization/guards/platform-permissions.guard';
 import { RequirePlatformPermissions } from '../authorization/decorators/require-platform-permissions.decorator';
-import { BackupIntegrityService, DataStoreId } from './backup-integrity.service';
+import {
+  BackupIntegrityService,
+  DataStoreId,
+} from './backup-integrity.service';
 import { RestoreDrillService } from './restore-drill.service';
 
 export class TriggerRestoreDrillDto {

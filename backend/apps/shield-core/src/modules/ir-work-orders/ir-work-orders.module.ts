@@ -22,4 +22,3 @@ import { SlaModule } from '../sla/sla.module';
   exports: [IncidentResponseRetainerService, IncidentWorkOrderService],
 })
 export class IrWorkOrdersModule {}
-

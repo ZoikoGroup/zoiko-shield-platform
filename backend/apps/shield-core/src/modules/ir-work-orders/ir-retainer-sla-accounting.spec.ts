@@ -60,7 +60,9 @@ describe('IR Retainer & Work Order Rule SVC-01 SLA Accounting', () => {
         findFirst: jest.fn().mockResolvedValue(mockRetainer),
       },
       incidentWorkOrder: {
-        findFirst: jest.fn().mockImplementation(() => Promise.resolve(createMockWorkOrder())),
+        findFirst: jest
+          .fn()
+          .mockImplementation(() => Promise.resolve(createMockWorkOrder())),
       },
       $transaction: jest.fn((cb: any) => cb(prismaMock)),
     };
@@ -81,9 +83,15 @@ describe('IR Retainer & Work Order Rule SVC-01 SLA Accounting', () => {
       ],
     }).compile();
 
-    workOrderService = module.get<IncidentWorkOrderService>(IncidentWorkOrderService);
-    retainerService = module.get<IncidentResponseRetainerService>(IncidentResponseRetainerService);
-    creditLedger = module.get<ServiceCreditLedgerService>(ServiceCreditLedgerService);
+    workOrderService = module.get<IncidentWorkOrderService>(
+      IncidentWorkOrderService,
+    );
+    retainerService = module.get<IncidentResponseRetainerService>(
+      IncidentResponseRetainerService,
+    );
+    creditLedger = module.get<ServiceCreditLedgerService>(
+      ServiceCreditLedgerService,
+    );
   });
 
   describe('Retainer SLA Window Policy (Rule SVC-01)', () => {
@@ -263,7 +271,9 @@ describe('IR Retainer & Work Order Rule SVC-01 SLA Accounting', () => {
 
       expect(deduction.maxAllowableCreditCap).toBe(600);
       expect(deduction.totalDeductedAmount).toBe(525);
-      expect(deduction.appliedCreditIds).toContain(res.registeredCredit.creditId);
+      expect(deduction.appliedCreditIds).toContain(
+        res.registeredCredit.creditId,
+      );
     });
   });
 });

@@ -1062,5 +1062,216 @@ export interface RestoreDrillReceipt {
   receiptSignatureSha256: string;
 }
 
+export type GameDayScenario =
+  | 'GD_01_DEPENDENCY_LOSS'
+  | 'GD_02_QUEUE_BACKLOG'
+  | 'GD_03_REGIONAL_FAILURE'
+  | 'GD_04_IDENTITY_OUTAGE'
+  | 'GD_05_AI_OUTAGE'
+  | 'GD_06_CONNECTOR_DRIFT'
+  | 'GD_07_ACTION_FREEZE';
+
+export interface GameDayExerciseResult {
+  exerciseId: string;
+  scenario: GameDayScenario;
+  failureClass: string;
+  name: string;
+  exercisedBy: string;
+  status: 'PASSED' | 'PASSED_WITH_DEFICIENCIES' | 'FAILED';
+  executionDurationMs: number;
+  timeToMitigateSeconds: number;
+  invariantsVerified: string[];
+  deficienciesIdentified: string[];
+  capaTicketsGenerated: string[];
+  nextScheduledExercise: string;
+  cryptographicReportDigest: string;
+  exerciseTimestamp: string;
+}
+
+export interface AnnexPGameDayReport {
+  annexVersion: 'Annex-P-v1.0';
+  documentTitle: 'ZoikoShield Game-Day and Synthetic-Tenant Report';
+  exerciseId: string;
+  scenario: GameDayScenario;
+  failureClass: string;
+  scenarioName: string;
+  exercisedBy: string;
+  targetTenantScope: string;
+  executionTimestamp: string;
+  status: 'PASSED' | 'PASSED_WITH_DEFICIENCIES' | 'FAILED';
+  executionDurationMs: number;
+  timeToMitigateSeconds: number;
+  slaLimitSeconds: number;
+  slaAdherence: boolean;
+  invariantsVerified: string[];
+  deficienciesIdentified: string[];
+  capaTicketsGenerated: string[];
+  orrInputRatification: {
+    eligibleForProductionReleaseGate: boolean;
+    authorizedSignoffRole: string;
+    ratifiedAt: string;
+  };
+  syntheticCanaryContext: {
+    canaryTenantId: string;
+    stagesEvaluated: number;
+    canaryHealthStatus: string;
+  };
+  cryptographicReportDigest: string;
+}
+
+export interface GameDayPostureSummary {
+  lastExerciseDate: string;
+  daysSinceLastExercise: number;
+  totalExercisesCompleted: number;
+  overallResilienceScore: number;
+  isGameDayScheduleCompliant: boolean;
+  scenariosExercised: {
+    scenario: GameDayScenario;
+    failureClass: string;
+    lastExercised: string;
+    status: string;
+  }[];
+}
+
+export type Phase0StepId =
+  | 'STEP_1_TENANT_PROVISIONING'
+  | 'STEP_2_AUTHENTICATED_INGESTION'
+  | 'STEP_3_DETERMINISTIC_DETECTION'
+  | 'STEP_4_EVIDENCE_AND_CONTROL'
+  | 'STEP_5_AUDIT_PACKAGE_MERKLE'
+  | 'STEP_6_WITNESS_ANCHOR_PROOF'
+  | 'STEP_7_ACTION_SIMULATION'
+  | 'STEP_8_FREEZE_ASSERTION';
+
+export type Phase0CriteriaId =
+  | 'CRIT_01_SYNTHETIC_TENANT_ISOLATION'
+  | 'CRIT_02_DETERMINISTIC_DETECTION_VERIFIED'
+  | 'CRIT_03_EVIDENCE_MERKLE_ANCHORED'
+  | 'CRIT_04_OFFLINE_VERIFIER_COMPLIANT'
+  | 'CRIT_05_ACTION_SIMULATION_CONSTRAINED'
+  | 'CRIT_06_EMERGENCY_FREEZE_VERIFIED';
+
+export interface Phase0StepResult {
+  stepId: Phase0StepId;
+  stepNumber: number;
+  name: string;
+  description: string;
+  passed: boolean;
+  durationMs: number;
+  evidenceDigest: string;
+  outputArtifacts: Record<string, any>;
+}
+
+export interface Phase0ExitCriteriaResult {
+  criteriaId: Phase0CriteriaId;
+  name: string;
+  description: string;
+  status: 'PASSED' | 'FAILED';
+  requiredInvariants: string[];
+  verifiedAt: string;
+}
+
+export interface Phase0ExitProofRecord {
+  proofId: string;
+  phaseVersion: 'Phase-0-ERB-01';
+  documentTitle: 'ZoikoShield Phase-0 Exit Gate & Reference Proof Dossier';
+  evaluatedAt: string;
+  overallStatus: 'PASSED' | 'FAILED';
+  cellId: string;
+  targetTenantId: string;
+  totalDurationMs: number;
+  stepsCompleted: number;
+  totalSteps: number;
+  criteriaSatisfied: number;
+  totalCriteria: number;
+  merkleRootHead: string;
+  auditPackageChecksum: string;
+  offlineVerificationCommand: string;
+  steps: Phase0StepResult[];
+  criteria: Phase0ExitCriteriaResult[];
+  releaseGateRatification: {
+    eligibleForG1Gate: boolean;
+    attestedByRole: string;
+    attestedAt: string;
+  };
+  cryptographicProofSignatureSha256: string;
+}
+
+export interface Phase0PostureSummary {
+  lastEvaluatedAt: string;
+  overallStatus: 'PASSED' | 'FAILED';
+  isExitGateSatisfied: boolean;
+  totalRunsCompleted: number;
+  latestProofId: string;
+  merkleRootHead: string;
+  offlineVerificationReady: boolean;
+}
+
+export interface Phase0ProofBundle {
+  manifest: {
+    manifestVersion: '1.0.0';
+    specReference: string;
+    packageId: string;
+    tenantId: string;
+    cellId: string;
+    exportedAt: string;
+    merkleRootHead: string;
+    auditPackageChecksum: string;
+    proofSignatureSha256: string;
+    artifactChecksums: Record<string, string>;
+  };
+  proofRecord: Phase0ExitProofRecord;
+  merkleTreeData: {
+    rootHash: string;
+    totalLeaves: number;
+    leaves: { index: number; leafHash: string; label: string }[];
+    witnessAttestation: {
+      provider: string;
+      witnessHash: string;
+      timestampIso: string;
+      signatureValid: boolean;
+    };
+  };
+  evidenceChain: {
+    evidenceId: string;
+    controlId: string;
+    controlAssessment: string;
+    completenessRatio: number;
+    detectionAlertId: string;
+    ruleId: string;
+  };
+  actionSandboxReceipt: {
+    simulationId: string;
+    actionName: string;
+    blastRadius: string;
+    liveMutationsCount: number;
+    freezeSwitchFunctional: boolean;
+  };
+  offlineVerificationInstructions: {
+    cliCommand: string;
+    offlineMode: boolean;
+    expectedExitCode: number;
+  };
+}
+
+export interface OfflineVerificationReport {
+  verified: boolean;
+  verificationTimestamp: string;
+  packageId: string;
+  merkleRootMatches: boolean;
+  evidenceChainIntact: boolean;
+  signatureMatches: boolean;
+  invariantsPassed: number;
+  totalInvariants: number;
+  discrepancies: string[];
+  verificationCertificate: {
+    certificateId: string;
+    verifierVersion: string;
+    signatureSha256: string;
+  };
+}
+
+
+
 
 

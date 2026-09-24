@@ -60,9 +60,10 @@ describe('ZS-ENG-AI-001 §17 & §19: Domain-Differentiated AI Governance & Secto
         },
       };
 
-      const report = await service.runEvaluationSuite('healthcare-ehr-analysis', [
-        passingCase,
-      ]);
+      const report = await service.runEvaluationSuite(
+        'healthcare-ehr-analysis',
+        [passingCase],
+      );
 
       expect(report.domain).toBe('HEALTHCARE');
       expect(report.releaseDecision).toBe('APPROVED');
@@ -167,13 +168,16 @@ describe('ZS-ENG-AI-001 §17 & §19: Domain-Differentiated AI Governance & Secto
         },
       };
 
-      const report = await service.runEvaluationSuite('telecom-network-config', [
-        toolCase,
-      ]);
+      const report = await service.runEvaluationSuite(
+        'telecom-network-config',
+        [toolCase],
+      );
 
       expect(report.releaseDecision).toBe('BLOCKED');
       expect(report.criticalFailureCount).toBe(1);
-      expect(report.blockingReasons[0]).toContain('Unauthorized tool execution');
+      expect(report.blockingReasons[0]).toContain(
+        'Unauthorized tool execution',
+      );
     });
 
     it('instantly BLOCKS release on fabricated evidence presentation', async () => {
