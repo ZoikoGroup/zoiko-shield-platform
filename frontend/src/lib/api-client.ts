@@ -48,6 +48,14 @@ import {
   CoreServiceReadiness,
   DisasterRecoveryPostureSummary,
   RestoreDrillReceipt,
+  GameDayPostureSummary,
+  GameDayExerciseResult,
+  GameDayScenario,
+  AnnexPGameDayReport,
+  Phase0PostureSummary,
+  Phase0ExitProofRecord,
+  Phase0ProofBundle,
+  OfflineVerificationReport,
 } from "./types";
 import { getInitialDemoState, saveDemoState, DemoState } from "./demo-state";
 import { generateUUID, sha256Mock } from "./utils";
@@ -3830,7 +3838,437 @@ export class ZoikoShieldApiClient {
       })
     );
   }
+
+  // --- Spec §27: Synthetic Observability & Game Day Drills ---
+  static async getSyntheticObservabilityStatus(canaryTenantId?: string): Promise<{
+    canaryPosture: any;
+    gameDayPosture: GameDayPostureSummary;
+    recentProbes: any[];
+    recentExercises: GameDayExerciseResult[];
+    timestamp: string;
+  }> {
+    const tenant = canaryTenantId || 'tenant-zoiko-canary-01';
+    return this.safeFetch(
+      `/api/v1/observability/synthetic/status?canaryTenantId=${tenant}`,
+      {},
+      () => ({
+        canaryPosture: {
+          canaryTenantId: tenant,
+          overallHealth: 'HEALTHY',
+          successRate: 1.0,
+          averageLatencyMs: 142,
+          lastProbeTimestamp: new Date().toISOString(),
+        },
+        gameDayPosture: {
+          lastExerciseDate: new Date(Date.now() - 20 * 86400000).toISOString(),
+          daysSinceLastExercise: 20,
+          totalExercisesCompleted: 7,
+          overallResilienceScore: 1.0,
+          isGameDayScheduleCompliant: true,
+          scenariosExercised: [
+            { scenario: 'GD_01_DEPENDENCY_LOSS', failureClass: 'Dependency loss', lastExercised: new Date(Date.now() - 20 * 86400000).toISOString(), status: 'PASSED' },
+            { scenario: 'GD_02_QUEUE_BACKLOG', failureClass: 'Queue backlog', lastExercised: new Date(Date.now() - 20 * 86400000).toISOString(), status: 'PASSED' },
+            { scenario: 'GD_03_REGIONAL_FAILURE', failureClass: 'Regional failure', lastExercised: new Date(Date.now() - 20 * 86400000).toISOString(), status: 'PASSED' },
+            { scenario: 'GD_04_IDENTITY_OUTAGE', failureClass: 'Identity outage', lastExercised: new Date(Date.now() - 20 * 86400000).toISOString(), status: 'PASSED' },
+            { scenario: 'GD_05_AI_OUTAGE', failureClass: 'AI outage', lastExercised: new Date(Date.now() - 20 * 86400000).toISOString(), status: 'PASSED' },
+            { scenario: 'GD_06_CONNECTOR_DRIFT', failureClass: 'Connector drift', lastExercised: new Date(Date.now() - 20 * 86400000).toISOString(), status: 'PASSED' },
+            { scenario: 'GD_07_ACTION_FREEZE', failureClass: 'Action freeze', lastExercised: new Date(Date.now() - 20 * 86400000).toISOString(), status: 'PASSED' },
+          ],
+        },
+        recentProbes: [],
+        recentExercises: [],
+        timestamp: new Date().toISOString(),
+      })
+    );
+  }
+
+  static async triggerGameDayExercise(
+    scenario: GameDayScenario,
+    exercisedBy?: string
+  ): Promise<GameDayExerciseResult> {
+    const actor = exercisedBy || 'sre-lead@zoiko.com';
+    return this.safeFetch<GameDayExerciseResult>(
+      '/api/v1/observability/synthetic/gameday/execute',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scenario, exercisedBy: actor }),
+      },
+      () => {
+        const id = `gameday-${generateUUID().slice(0, 8)}`;
+        return {
+          exerciseId: id,
+          scenario,
+          failureClass: scenario.replace('GD_', '').replace('_', ' ').toLowerCase(),
+          name: `Simulated Exercise for ${scenario}`,
+          exercisedBy: actor,
+          status: 'PASSED',
+          executionDurationMs: 48,
+          timeToMitigateSeconds: 12,
+          invariantsVerified: [
+            'Circuit breaker & fallback verified',
+            'Zero data leakage observed',
+            'Audit log integrity preserved',
+          ],
+          deficienciesIdentified: [],
+          capaTicketsGenerated: [],
+          nextScheduledExercise: new Date(Date.now() + 90 * 86400000).toISOString(),
+          cryptographicReportDigest: sha256Mock(`gameday-${id}`),
+          exerciseTimestamp: new Date().toISOString(),
+        };
+      }
+    );
+  }
+
+  static async getAnnexPGameDayReport(exerciseId: string): Promise<AnnexPGameDayReport> {
+    return this.safeFetch<AnnexPGameDayReport>(
+      `/api/v1/observability/synthetic/gameday/annex-p/${exerciseId}`,
+      {},
+      () => ({
+        annexVersion: 'Annex-P-v1.0',
+        documentTitle: 'ZoikoShield Game-Day and Synthetic-Tenant Report',
+        exerciseId,
+        scenario: 'GD_01_DEPENDENCY_LOSS',
+        failureClass: 'Dependency loss',
+        scenarioName: 'Simulated External Provider & Upstream Connector Outage',
+        exercisedBy: 'sre-lead@zoiko.com',
+        targetTenantScope: 'tenant-zoiko-canary-01',
+        executionTimestamp: new Date().toISOString(),
+        status: 'PASSED',
+        executionDurationMs: 48,
+        timeToMitigateSeconds: 8,
+        slaLimitSeconds: 30,
+        slaAdherence: true,
+        invariantsVerified: [
+          'Active circuit breaker tripped within SLA (<100ms)',
+          'Read-only fallback cached Cedar policy bundle enforced',
+          'Zero unauthorized elevation sessions permitted',
+        ],
+        deficienciesIdentified: [],
+        capaTicketsGenerated: [],
+        orrInputRatification: {
+          eligibleForProductionReleaseGate: true,
+          authorizedSignoffRole: 'Principal SRE & Release Authority',
+          ratifiedAt: new Date().toISOString(),
+        },
+        syntheticCanaryContext: {
+          canaryTenantId: 'tenant-zoiko-canary-01',
+          stagesEvaluated: 6,
+          canaryHealthStatus: 'HEALTHY',
+        },
+        cryptographicReportDigest: sha256Mock(`annex-p-${exerciseId}`),
+      })
+    );
+  }
+
+  static async getPhase0Status(): Promise<{
+    postureSummary: Phase0PostureSummary;
+    latestProof: Phase0ExitProofRecord;
+  }> {
+    return this.safeFetch<{
+      postureSummary: Phase0PostureSummary;
+      latestProof: Phase0ExitProofRecord;
+    }>('/api/v1/observability/phase-gates/phase-0/status', {}, () => {
+      const proofId = 'phase0-proof-canary-01';
+      const rootHead = 'f4a8c9e0123456789abcdef0123456789abcdef0123456789abcdef012345678';
+      return {
+        postureSummary: {
+          lastEvaluatedAt: new Date().toISOString(),
+          overallStatus: 'PASSED',
+          isExitGateSatisfied: true,
+          totalRunsCompleted: 14,
+          latestProofId: proofId,
+          merkleRootHead: rootHead,
+          offlineVerificationReady: true,
+        },
+        latestProof: {
+          proofId,
+          phaseVersion: 'Phase-0-ERB-01',
+          documentTitle: 'ZoikoShield Phase-0 Exit Gate & Reference Proof Dossier',
+          evaluatedAt: new Date().toISOString(),
+          overallStatus: 'PASSED',
+          cellId: 'cell-eu-west-1a',
+          targetTenantId: 'tenant-zoiko-canary-01',
+          totalDurationMs: 42,
+          stepsCompleted: 8,
+          totalSteps: 8,
+          criteriaSatisfied: 6,
+          totalCriteria: 6,
+          merkleRootHead: rootHead,
+          auditPackageChecksum: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+          offlineVerificationCommand: 'npx zoikoshield-verifier verify ./audit-pkg-phase0-canary-01',
+          steps: [
+            {
+              stepId: 'STEP_1_TENANT_PROVISIONING',
+              stepNumber: 1,
+              name: 'Tenant & Cell Isolation Provisioning',
+              description: 'Cryptographic tenant partition, KMS key ring, and IAM namespace initialized',
+              passed: true,
+              durationMs: 4,
+              evidenceDigest: sha256Mock('step1-tenant'),
+              outputArtifacts: { tenantId: 'tenant-zoiko-canary-01', cellId: 'cell-eu-west-1a' },
+            },
+            {
+              stepId: 'STEP_2_AUTHENTICATED_INGESTION',
+              stepNumber: 2,
+              name: 'Authenticated Ingestion & Schema Normalization',
+              description: 'OCSF-normalized security event ingested with valid Ed25519 signature',
+              passed: true,
+              durationMs: 5,
+              evidenceDigest: sha256Mock('step2-ingest'),
+              outputArtifacts: { eventType: 'IAM_ELEVATION_REQUEST', rawEventsIngested: 1 },
+            },
+            {
+              stepId: 'STEP_3_DETERMINISTIC_DETECTION',
+              stepNumber: 3,
+              name: 'Deterministic Rule Detection & Severity Scoring',
+              description: 'Rule RULE_CANARY_PRIV_ESC_DETERMINISTIC_01 triggered with zero heuristic drift',
+              passed: true,
+              durationMs: 6,
+              evidenceDigest: sha256Mock('step3-detect'),
+              outputArtifacts: { alertId: 'alt-canary-det-01', severity: 'HIGH' },
+            },
+            {
+              stepId: 'STEP_4_EVIDENCE_AND_CONTROL',
+              stepNumber: 4,
+              name: 'Evidence Ledger & Continuous Assurance Control Binding',
+              description: 'Evidence record bound to CTRL_ACCESS_GOVERNANCE_01 with 100% completeness',
+              passed: true,
+              durationMs: 4,
+              evidenceDigest: sha256Mock('step4-evidence'),
+              outputArtifacts: { evidenceId: 'ev-canary-01', controlStatus: 'SATISFIED' },
+            },
+            {
+              stepId: 'STEP_5_AUDIT_PACKAGE_MERKLE',
+              stepNumber: 5,
+              name: 'Audit Package Merkle Tree Assembly',
+              description: 'Deterministic 8-leaf Merkle tree compiled with cryptographically valid root',
+              passed: true,
+              durationMs: 7,
+              evidenceDigest: sha256Mock('step5-merkle'),
+              outputArtifacts: { merkleRoot: rootHead, totalLeaves: 8 },
+            },
+            {
+              stepId: 'STEP_6_WITNESS_ANCHOR_PROOF',
+              stepNumber: 6,
+              name: 'External RFC 3161 Witness Timestamp Anchoring',
+              description: 'Merkle root attested by trusted timestamp authority with valid signature',
+              passed: true,
+              durationMs: 6,
+              evidenceDigest: sha256Mock('step6-witness'),
+              outputArtifacts: { witnessProvider: 'RFC_3161_TSA', signatureVerified: true },
+            },
+            {
+              stepId: 'STEP_7_ACTION_SIMULATION',
+              stepNumber: 7,
+              name: 'Bounded Action Sandbox & Dry-Run Simulation',
+              description: 'Pre-flight dry-run validated with 0 live mutations and verified blast radius',
+              passed: true,
+              durationMs: 5,
+              evidenceDigest: sha256Mock('step7-action'),
+              outputArtifacts: { action: 'ISOLATE_CREDENTIALS', mutationsCount: 0 },
+            },
+            {
+              stepId: 'STEP_8_FREEZE_ASSERTION',
+              stepNumber: 8,
+              name: 'Emergency Action Freeze & Circuit Breaker Assertion',
+              description: 'Kill switch verified responsive in <50ms with live mutation lockdown',
+              passed: true,
+              durationMs: 5,
+              evidenceDigest: sha256Mock('step8-freeze'),
+              outputArtifacts: { freezeLatencyMs: 12, circuitBreakerTripped: false },
+            },
+          ],
+          criteria: [
+            {
+              criteriaId: 'CRIT_01_SYNTHETIC_TENANT_ISOLATION',
+              name: 'Synthetic Tenant Partitioning & KMS Isolation',
+              description: 'Tenant boundary enforced at database, cache, and KMS level',
+              status: 'PASSED',
+              requiredInvariants: ['INV_CELL_TENANT_ISOLATION', 'INV_KMS_RING_RESTRICTED'],
+              verifiedAt: new Date().toISOString(),
+            },
+            {
+              criteriaId: 'CRIT_02_DETERMINISTIC_DETECTION_VERIFIED',
+              name: 'Deterministic Detection & Zero-False-Negative Pipeline',
+              description: 'Canary attack pattern detected with zero false-negative drop',
+              status: 'PASSED',
+              requiredInvariants: ['INV_RULE_CORRELATION_EXACT', 'INV_ALERT_SEVERITY_MAPPED'],
+              verifiedAt: new Date().toISOString(),
+            },
+            {
+              criteriaId: 'CRIT_03_EVIDENCE_MERKLE_ANCHORED',
+              name: 'Evidence Continuous Assurance & Merkle Integrity',
+              description: 'All generated evidence anchored into canonical Merkle proof tree',
+              status: 'PASSED',
+              requiredInvariants: ['INV_EVIDENCE_CONTROL_MAPPED', 'INV_MERKLE_ROOT_CANONICAL'],
+              verifiedAt: new Date().toISOString(),
+            },
+            {
+              criteriaId: 'CRIT_04_OFFLINE_VERIFIER_COMPLIANT',
+              name: 'Offline Verifier CLI Compatibility',
+              description: 'Audit package passes offline verifier with 0 external dependencies',
+              status: 'PASSED',
+              requiredInvariants: ['INV_STANDALONE_MERKLE_PROOF', 'INV_WITNESS_CERT_VALID'],
+              verifiedAt: new Date().toISOString(),
+            },
+            {
+              criteriaId: 'CRIT_05_ACTION_SIMULATION_CONSTRAINED',
+              name: 'Action Sandbox Simulation & Zero Mutation Safety',
+              description: 'Autonomous SOAR adapters constrained to zero unauthorized mutations',
+              status: 'PASSED',
+              requiredInvariants: ['INV_SIMULATION_ZERO_MUTATION', 'INV_BLAST_RADIUS_BOUNDED'],
+              verifiedAt: new Date().toISOString(),
+            },
+            {
+              criteriaId: 'CRIT_06_EMERGENCY_FREEZE_VERIFIED',
+              name: 'Emergency Action Freeze Sub-Second Lockdown',
+              description: 'Global kill switch verified responsive in <50ms with instant execution halt',
+              status: 'PASSED',
+              requiredInvariants: ['INV_FREEZE_LOCKDOWN_HONORED', 'INV_CIRCUIT_BREAKER_ACTIVE'],
+              verifiedAt: new Date().toISOString(),
+            },
+          ],
+          releaseGateRatification: {
+            eligibleForG1Gate: true,
+            attestedByRole: 'Principal Security Architect & Release Authority',
+            attestedAt: new Date().toISOString(),
+          },
+          cryptographicProofSignatureSha256: sha256Mock(`phase0-dossier-${proofId}`),
+        },
+      };
+    });
+  }
+
+  static async executePhase0Flow(
+    tenantId: string = 'tenant-zoiko-canary-01',
+    cellId: string = 'cell-eu-west-1a'
+  ): Promise<Phase0ExitProofRecord> {
+    return this.safeFetch<Phase0ExitProofRecord>(
+      '/api/v1/observability/phase-gates/phase-0/execute',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId, cellId }),
+      },
+      () => {
+        const proofId = 'phase0-proof-canary-01';
+        const rootHead = 'f4a8c9e0123456789abcdef0123456789abcdef0123456789abcdef012345678';
+        return {
+          proofId,
+          phaseVersion: 'Phase-0-ERB-01',
+          documentTitle: 'ZoikoShield Phase-0 Exit Gate & Reference Proof Dossier',
+          evaluatedAt: new Date().toISOString(),
+          overallStatus: 'PASSED',
+          cellId,
+          targetTenantId: tenantId,
+          totalDurationMs: 42,
+          stepsCompleted: 8,
+          totalSteps: 8,
+          criteriaSatisfied: 6,
+          totalCriteria: 6,
+          merkleRootHead: rootHead,
+          auditPackageChecksum: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+          offlineVerificationCommand: 'npx zoikoshield-verifier verify ./audit-pkg-phase0-canary-01',
+          steps: [],
+          criteria: [],
+          releaseGateRatification: {
+            eligibleForG1Gate: true,
+            attestedByRole: 'Principal Security Architect & Release Authority',
+            attestedAt: new Date().toISOString(),
+          },
+          cryptographicProofSignatureSha256: sha256Mock(`phase0-dossier-${proofId}`),
+        };
+      }
+    );
+  }
+
+  static async getPhase0ProofBundle(proofId?: string): Promise<Phase0ProofBundle> {
+    const url = proofId
+      ? `/api/v1/observability/phase-gates/phase-0/proof?proofId=${encodeURIComponent(proofId)}`
+      : '/api/v1/observability/phase-gates/phase-0/proof';
+    return this.safeFetch<Phase0ProofBundle>(url, {}, () => {
+      const pid = proofId || 'phase0-proof-canary-01';
+      const rootHead = 'f4a8c9e0123456789abcdef0123456789abcdef0123456789abcdef012345678';
+      return {
+        manifest: {
+          manifestVersion: '1.0.0',
+          specReference: 'Spec §28 Delivery Phases, Exit Proofs & Independent Verification Gates',
+          packageId: `pkg-${pid}`,
+          tenantId: 'tenant-zoiko-canary-01',
+          cellId: 'cell-eu-west-1a',
+          exportedAt: new Date().toISOString(),
+          merkleRootHead: rootHead,
+          auditPackageChecksum: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+          proofSignatureSha256: sha256Mock(`pkg-${pid}`),
+          artifactChecksums: {},
+        },
+        proofRecord: {} as any,
+        merkleTreeData: {
+          rootHash: rootHead,
+          totalLeaves: 8,
+          leaves: [],
+          witnessAttestation: {
+            provider: 'RFC_3161_TRUSTED_TSA_WITNESS',
+            witnessHash: sha256Mock('witness'),
+            timestampIso: new Date().toISOString(),
+            signatureValid: true,
+          },
+        },
+        evidenceChain: {
+          evidenceId: 'ev-canary-01',
+          controlId: 'CTRL_ACCESS_GOVERNANCE_01',
+          controlAssessment: 'SATISFIED',
+          completenessRatio: 1.0,
+          detectionAlertId: 'alt-canary-det-01',
+          ruleId: 'RULE_CANARY_PRIV_ESC_DETERMINISTIC_01',
+        },
+        actionSandboxReceipt: {
+          simulationId: 'sim-canary-01',
+          actionName: 'ISOLATE_CREDENTIALS',
+          blastRadius: 'CONFINED_SINGLE_USER',
+          liveMutationsCount: 0,
+          freezeSwitchFunctional: true,
+        },
+        offlineVerificationInstructions: {
+          cliCommand: `npx zoikoshield-verifier verify ./pkg-${pid}`,
+          offlineMode: true,
+          expectedExitCode: 0,
+        },
+      };
+    });
+  }
+
+  static async verifyProofOffline(bundle: Phase0ProofBundle): Promise<OfflineVerificationReport> {
+    return this.safeFetch<OfflineVerificationReport>(
+      '/api/v1/observability/phase-gates/phase-0/verify',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bundle),
+      },
+      () => ({
+        verified: true,
+        verificationTimestamp: new Date().toISOString(),
+        packageId: bundle.manifest.packageId,
+        merkleRootMatches: true,
+        evidenceChainIntact: true,
+        signatureMatches: true,
+        invariantsPassed: 6,
+        totalInvariants: 6,
+        discrepancies: [],
+        verificationCertificate: {
+          certificateId: `cert-${bundle.manifest.packageId}`,
+          verifierVersion: 'zoikoshield-verifier-v1.0',
+          signatureSha256: sha256Mock(`cert-${bundle.manifest.packageId}`),
+        },
+      })
+    );
+  }
 }
+
+
+
 
 
 

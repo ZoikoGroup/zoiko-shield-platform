@@ -1,5 +1,9 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { BadRequestException, ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { RequirementsRegisterService } from '../services/requirements-register.service';
 import { TraceabilityGraphService } from '../services/traceability-graph.service';
 import { RequirementsQualityGuard } from '../guards/requirements-quality.guard';
@@ -16,7 +20,8 @@ describe('Requirements & Traceability Register (R04) Suite', () => {
     id: 'REQ-CORE-TEST-01',
     version: '1.0.0',
     title: 'Test Core Requirement',
-    statement: 'The system must deterministically evaluate test assertions without side effects.',
+    statement:
+      'The system must deterministically evaluate test assertions without side effects.',
     tenantScope: 'MULTI_TENANT',
     dataScope: 'CONFIDENTIAL_CUSTOMER_TELEMETRY',
     authority: {
@@ -53,10 +58,18 @@ describe('Requirements & Traceability Register (R04) Suite', () => {
       ],
     }).compile();
 
-    qualityGuard = module.get<RequirementsQualityGuard>(RequirementsQualityGuard);
-    registerService = module.get<RequirementsRegisterService>(RequirementsRegisterService);
-    graphService = module.get<TraceabilityGraphService>(TraceabilityGraphService);
-    reconciliationWorker = module.get<RequirementsReconciliationWorker>(RequirementsReconciliationWorker);
+    qualityGuard = module.get<RequirementsQualityGuard>(
+      RequirementsQualityGuard,
+    );
+    registerService = module.get<RequirementsRegisterService>(
+      RequirementsRegisterService,
+    );
+    graphService = module.get<TraceabilityGraphService>(
+      TraceabilityGraphService,
+    );
+    reconciliationWorker = module.get<RequirementsReconciliationWorker>(
+      RequirementsReconciliationWorker,
+    );
   });
 
   describe('1. §08 Quality Guard & Validation', () => {
@@ -73,18 +86,28 @@ describe('Requirements & Traceability Register (R04) Suite', () => {
     });
 
     it('should reject requirement with empty acceptance criteria', () => {
-      const invalid = { ...validReq, id: 'REQ-CORE-TEST-02', acceptanceCriteria: [] };
+      const invalid = {
+        ...validReq,
+        id: 'REQ-CORE-TEST-02',
+        acceptanceCriteria: [],
+      };
       expect(() => qualityGuard.validate(invalid)).toThrow(BadRequestException);
     });
 
     it('should reject requirement with missing authority reference', () => {
-      const invalid = { ...validReq, id: 'REQ-CORE-TEST-03', authority: { type: 'ADR' as any, reference: '' } };
+      const invalid = {
+        ...validReq,
+        id: 'REQ-CORE-TEST-03',
+        authority: { type: 'ADR' as any, reference: '' },
+      };
       expect(() => qualityGuard.validate(invalid)).toThrow(BadRequestException);
     });
 
     it('should reject duplicate requirement registrations', () => {
       registerService.registerRequirement(validReq);
-      expect(() => registerService.registerRequirement(validReq)).toThrow(ConflictException);
+      expect(() => registerService.registerRequirement(validReq)).toThrow(
+        ConflictException,
+      );
     });
   });
 
@@ -106,21 +129,30 @@ describe('Requirements & Traceability Register (R04) Suite', () => {
     });
 
     it('should throw NotFoundException for non-existent requirement', () => {
-      expect(() => registerService.getRequirement('REQ-NON-EXISTENT-99')).toThrow(NotFoundException);
+      expect(() =>
+        registerService.getRequirement('REQ-NON-EXISTENT-99'),
+      ).toThrow(NotFoundException);
     });
 
     it('should query requirements by tenantScope and authorityType', () => {
-      const sovResults = registerService.queryRequirements({ tenantScope: 'SOVEREIGN_CELL' });
+      const sovResults = registerService.queryRequirements({
+        tenantScope: 'SOVEREIGN_CELL',
+      });
       expect(sovResults).toHaveLength(1);
       expect(sovResults[0].id).toBe('REQ-AUTH-CEDAR-09');
 
-      const lawResults = registerService.queryRequirements({ authorityType: 'LAW_REGULATION' });
+      const lawResults = registerService.queryRequirements({
+        authorityType: 'LAW_REGULATION',
+      });
       expect(lawResults).toHaveLength(1);
       expect(lawResults[0].id).toBe('REQ-AUTH-CEDAR-09');
     });
 
     it('should update requirement lifecycle status', () => {
-      const updated = registerService.updateRequirementStatus('REQ-CORE-TEST-01', 'VERIFIED_RELEASED');
+      const updated = registerService.updateRequirementStatus(
+        'REQ-CORE-TEST-01',
+        'VERIFIED_RELEASED',
+      );
       expect(updated.status).toBe('VERIFIED_RELEASED');
     });
   });
@@ -151,10 +183,21 @@ describe('Requirements & Traceability Register (R04) Suite', () => {
     });
 
     it('should enforce §05 precedence hierarchy (Law > Standard > Spec > ADR)', () => {
-      const lawReq = { ...validReq, id: 'REQ-LAW-01', authority: { type: 'LAW_REGULATION' as any, reference: 'GDPR' } };
-      const adrReq = { ...validReq, id: 'REQ-ADR-01', authority: { type: 'ADR' as any, reference: 'ADR-001' } };
+      const lawReq = {
+        ...validReq,
+        id: 'REQ-LAW-01',
+        authority: { type: 'LAW_REGULATION' as any, reference: 'GDPR' },
+      };
+      const adrReq = {
+        ...validReq,
+        id: 'REQ-ADR-01',
+        authority: { type: 'ADR' as any, reference: 'ADR-001' },
+      };
 
-      const winner = graphService.resolvePrecedenceConflict(lawReq as any, adrReq as any);
+      const winner = graphService.resolvePrecedenceConflict(
+        lawReq as any,
+        adrReq as any,
+      );
       expect(winner.id).toBe('REQ-LAW-01');
     });
   });
@@ -181,8 +224,12 @@ describe('Requirements & Traceability Register (R04) Suite', () => {
       const report = reconciliationWorker.executeReconciliation();
       expect(report.status).toBe('DISCREPANCIES_DETECTED');
       expect(report.discrepanciesCount).toBe(2);
-      expect(report.discrepancies.some((d) => d.type === 'MISSING_SOURCE_FILE')).toBe(true);
-      expect(report.discrepancies.some((d) => d.type === 'MISSING_TEST_FILE')).toBe(true);
+      expect(
+        report.discrepancies.some((d) => d.type === 'MISSING_SOURCE_FILE'),
+      ).toBe(true);
+      expect(
+        report.discrepancies.some((d) => d.type === 'MISSING_TEST_FILE'),
+      ).toBe(true);
     });
 
     it('should detect duplicate statements across different requirements', () => {
@@ -194,7 +241,9 @@ describe('Requirements & Traceability Register (R04) Suite', () => {
       });
 
       const report = reconciliationWorker.executeReconciliation();
-      expect(report.discrepancies.some((d) => d.type === 'DUPLICATE_STATEMENT')).toBe(true);
+      expect(
+        report.discrepancies.some((d) => d.type === 'DUPLICATE_STATEMENT'),
+      ).toBe(true);
     });
   });
 });

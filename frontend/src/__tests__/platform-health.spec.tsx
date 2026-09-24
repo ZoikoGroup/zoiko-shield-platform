@@ -231,11 +231,209 @@ const mockDrSummary: DisasterRecoveryPostureSummary = {
   attestationDigest: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 };
 
+const mockSyntheticData = {
+  canaryPosture: {
+    canaryTenantId: "tenant-zoiko-canary-01",
+    overallHealth: "HEALTHY",
+    successRate: 1.0,
+    averageLatencyMs: 142,
+    lastProbeTimestamp: new Date().toISOString(),
+  },
+  gameDayPosture: {
+    lastExerciseDate: new Date().toISOString(),
+    daysSinceLastExercise: 20,
+    totalExercisesCompleted: 7,
+    overallResilienceScore: 1.0,
+    isGameDayScheduleCompliant: true,
+    scenariosExercised: [
+      { scenario: "GD_01_DEPENDENCY_LOSS" as const, failureClass: "Dependency loss", lastExercised: new Date().toISOString(), status: "PASSED" },
+      { scenario: "GD_02_QUEUE_BACKLOG" as const, failureClass: "Queue backlog", lastExercised: new Date().toISOString(), status: "PASSED" },
+      { scenario: "GD_03_REGIONAL_FAILURE" as const, failureClass: "Regional failure", lastExercised: new Date().toISOString(), status: "PASSED" },
+      { scenario: "GD_04_IDENTITY_OUTAGE" as const, failureClass: "Identity outage", lastExercised: new Date().toISOString(), status: "PASSED" },
+      { scenario: "GD_05_AI_OUTAGE" as const, failureClass: "AI outage", lastExercised: new Date().toISOString(), status: "PASSED" },
+      { scenario: "GD_06_CONNECTOR_DRIFT" as const, failureClass: "Connector drift", lastExercised: new Date().toISOString(), status: "PASSED" },
+      { scenario: "GD_07_ACTION_FREEZE" as const, failureClass: "Action freeze", lastExercised: new Date().toISOString(), status: "PASSED" },
+    ],
+  },
+  recentProbes: [],
+  recentExercises: [],
+  timestamp: new Date().toISOString(),
+};
+
+const mockPhase0Data = {
+  postureSummary: {
+    lastEvaluatedAt: new Date().toISOString(),
+    overallStatus: "PASSED" as const,
+    isExitGateSatisfied: true,
+    totalRunsCompleted: 14,
+    latestProofId: "phase0-proof-test-01",
+    merkleRootHead: "f4a8c9e0123456789abcdef0123456789abcdef0123456789abcdef012345678",
+    offlineVerificationReady: true,
+  },
+  latestProof: {
+    proofId: "phase0-proof-test-01",
+    phaseVersion: "Phase-0-ERB-01" as const,
+    documentTitle: "ZoikoShield Phase-0 Exit Gate & Reference Proof Dossier" as const,
+    evaluatedAt: new Date().toISOString(),
+    overallStatus: "PASSED" as const,
+    cellId: "cell-eu-west-1a",
+    targetTenantId: "tenant-zoiko-canary-01",
+    totalDurationMs: 42,
+    stepsCompleted: 8,
+    totalSteps: 8,
+    criteriaSatisfied: 6,
+    totalCriteria: 6,
+    merkleRootHead: "f4a8c9e0123456789abcdef0123456789abcdef0123456789abcdef012345678",
+    auditPackageChecksum: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    offlineVerificationCommand: "npx zoikoshield-verifier verify ./audit-pkg-phase0-canary-01",
+    steps: [
+      {
+        stepId: "STEP_1_TENANT_PROVISIONING" as const,
+        stepNumber: 1,
+        name: "Tenant & Cell Isolation Provisioning",
+        description: "Cryptographic tenant partition, KMS key ring, and IAM namespace initialized",
+        passed: true,
+        durationMs: 4,
+        evidenceDigest: "a1b2c3d4",
+        outputArtifacts: { tenantId: "tenant-zoiko-canary-01" },
+      },
+      {
+        stepId: "STEP_2_AUTHENTICATED_INGESTION" as const,
+        stepNumber: 2,
+        name: "Authenticated Ingestion & Schema Normalization",
+        description: "OCSF-normalized security event ingested with valid Ed25519 signature",
+        passed: true,
+        durationMs: 5,
+        evidenceDigest: "b2c3d4e5",
+        outputArtifacts: {},
+      },
+      {
+        stepId: "STEP_3_DETERMINISTIC_DETECTION" as const,
+        stepNumber: 3,
+        name: "Deterministic Rule Detection & Severity Scoring",
+        description: "Rule RULE_CANARY_PRIV_ESC_DETERMINISTIC_01 triggered with zero heuristic drift",
+        passed: true,
+        durationMs: 6,
+        evidenceDigest: "c3d4e5f6",
+        outputArtifacts: {},
+      },
+      {
+        stepId: "STEP_4_EVIDENCE_AND_CONTROL" as const,
+        stepNumber: 4,
+        name: "Evidence Ledger & Continuous Assurance Control Binding",
+        description: "Evidence record bound to CTRL_ACCESS_GOVERNANCE_01 with 100% completeness",
+        passed: true,
+        durationMs: 4,
+        evidenceDigest: "d4e5f6a7",
+        outputArtifacts: {},
+      },
+      {
+        stepId: "STEP_5_AUDIT_PACKAGE_MERKLE" as const,
+        stepNumber: 5,
+        name: "Audit Package Merkle Tree Assembly",
+        description: "Deterministic 8-leaf Merkle tree compiled with cryptographically valid root",
+        passed: true,
+        durationMs: 7,
+        evidenceDigest: "e5f6a7b8",
+        outputArtifacts: {},
+      },
+      {
+        stepId: "STEP_6_WITNESS_ANCHOR_PROOF" as const,
+        stepNumber: 6,
+        name: "External RFC 3161 Witness Timestamp Anchoring",
+        description: "Merkle root attested by trusted timestamp authority with valid signature",
+        passed: true,
+        durationMs: 6,
+        evidenceDigest: "f6a7b8c9",
+        outputArtifacts: {},
+      },
+      {
+        stepId: "STEP_7_ACTION_SIMULATION" as const,
+        stepNumber: 7,
+        name: "Bounded Action Sandbox & Dry-Run Simulation",
+        description: "Pre-flight dry-run validated with 0 live mutations and verified blast radius",
+        passed: true,
+        durationMs: 5,
+        evidenceDigest: "a7b8c9d0",
+        outputArtifacts: {},
+      },
+      {
+        stepId: "STEP_8_FREEZE_ASSERTION" as const,
+        stepNumber: 8,
+        name: "Emergency Action Freeze & Circuit Breaker Assertion",
+        description: "Kill switch verified responsive in <50ms with live mutation lockdown",
+        passed: true,
+        durationMs: 5,
+        evidenceDigest: "b8c9d0e1",
+        outputArtifacts: {},
+      },
+    ],
+    criteria: [
+      {
+        criteriaId: "CRIT_01_SYNTHETIC_TENANT_ISOLATION" as const,
+        name: "Synthetic Tenant Partitioning & KMS Isolation",
+        description: "Tenant boundary enforced at database, cache, and KMS level",
+        status: "PASSED" as const,
+        requiredInvariants: ["INV_CELL_TENANT_ISOLATION", "INV_KMS_RING_RESTRICTED"],
+        verifiedAt: new Date().toISOString(),
+      },
+      {
+        criteriaId: "CRIT_02_DETERMINISTIC_DETECTION_VERIFIED" as const,
+        name: "Deterministic Detection & Zero-False-Negative Pipeline",
+        description: "Canary attack pattern detected with zero false-negative drop",
+        status: "PASSED" as const,
+        requiredInvariants: ["INV_RULE_CORRELATION_EXACT"],
+        verifiedAt: new Date().toISOString(),
+      },
+      {
+        criteriaId: "CRIT_03_EVIDENCE_MERKLE_ANCHORED" as const,
+        name: "Evidence Continuous Assurance & Merkle Integrity",
+        description: "All generated evidence anchored into canonical Merkle proof tree",
+        status: "PASSED" as const,
+        requiredInvariants: ["INV_EVIDENCE_CONTROL_MAPPED"],
+        verifiedAt: new Date().toISOString(),
+      },
+      {
+        criteriaId: "CRIT_04_OFFLINE_VERIFIER_COMPLIANT" as const,
+        name: "Offline Verifier CLI Compatibility",
+        description: "Audit package passes offline verifier with 0 external dependencies",
+        status: "PASSED" as const,
+        requiredInvariants: ["INV_STANDALONE_MERKLE_PROOF"],
+        verifiedAt: new Date().toISOString(),
+      },
+      {
+        criteriaId: "CRIT_05_ACTION_SIMULATION_CONSTRAINED" as const,
+        name: "Action Sandbox Simulation & Zero Mutation Safety",
+        description: "Autonomous SOAR adapters constrained to zero unauthorized mutations",
+        status: "PASSED" as const,
+        requiredInvariants: ["INV_SIMULATION_ZERO_MUTATION"],
+        verifiedAt: new Date().toISOString(),
+      },
+      {
+        criteriaId: "CRIT_06_EMERGENCY_FREEZE_VERIFIED" as const,
+        name: "Emergency Action Freeze Sub-Second Lockdown",
+        description: "Global kill switch verified responsive in <50ms with instant execution halt",
+        status: "PASSED" as const,
+        requiredInvariants: ["INV_FREEZE_LOCKDOWN_HONORED"],
+        verifiedAt: new Date().toISOString(),
+      },
+    ],
+    releaseGateRatification: {
+      eligibleForG1Gate: true,
+      attestedByRole: "Principal Security Architect & Release Authority",
+      attestedAt: new Date().toISOString(),
+    },
+    cryptographicProofSignatureSha256: "proof-sha256-test",
+  },
+};
+
 describe("Spec §31 & §32 Platform Service Health & Readiness Cockpit Suite", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.spyOn(ZoikoShieldApiClient, "getPlatformReadiness").mockResolvedValue(mockReadinessSnapshot);
     vi.spyOn(ZoikoShieldApiClient, "getDisasterRecoveryBackupStatus").mockResolvedValue(mockDrSummary);
+    vi.spyOn(ZoikoShieldApiClient, "getSyntheticObservabilityStatus").mockResolvedValue(mockSyntheticData);
+    vi.spyOn(ZoikoShieldApiClient, "getPhase0Status").mockResolvedValue(mockPhase0Data);
   });
 
   it("renders Spec §31 readiness header and overall platform readiness status", async () => {
@@ -443,5 +641,108 @@ describe("Spec §31 & §32 Platform Service Health & Readiness Cockpit Suite", (
       expect(screen.getByText(/1326 records \(0 drift\)/i)).toBeInTheDocument();
     });
   });
+
+  it("renders Spec §28 Phase-0 Exit Gate Cockpit with 8 pipeline steps and 6 criteria", async () => {
+    render(<PlatformHealthPage />);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/Phase-0 Exit Gate & Independent Reference Proof Cockpit/i)
+      ).toBeInTheDocument();
+      expect(screen.getByText(/Spec §28 Compliant/i)).toBeInTheDocument();
+      expect(screen.getByText(/Tenant & Cell Isolation Provisioning/i)).toBeInTheDocument();
+      expect(screen.getByText(/Emergency Action Freeze & Circuit Breaker Assertion/i)).toBeInTheDocument();
+      expect(screen.getByText(/Synthetic Tenant Partitioning & KMS Isolation/i)).toBeInTheDocument();
+      expect(screen.getByText(/Offline Verifier CLI Compatibility/i)).toBeInTheDocument();
+    });
+  });
+
+  it("triggers Phase-0 reference flow and offline CLI verification simulation", async () => {
+    vi.spyOn(ZoikoShieldApiClient, "executePhase0Flow").mockResolvedValueOnce({
+      ...mockPhase0Data.latestProof,
+      proofId: "phase0-proof-fresh-02",
+      totalDurationMs: 45,
+    });
+
+    vi.spyOn(ZoikoShieldApiClient, "getPhase0ProofBundle").mockResolvedValueOnce({
+      manifest: {
+        manifestVersion: "1.0.0",
+        specReference: "Spec §28",
+        packageId: "pkg-phase0-fresh-02",
+        tenantId: "tenant-zoiko-canary-01",
+        cellId: "cell-eu-west-1a",
+        exportedAt: new Date().toISOString(),
+        merkleRootHead: "f4a8c9e0",
+        auditPackageChecksum: "e3b0c442",
+        proofSignatureSha256: "sig-fresh-02",
+        artifactChecksums: {},
+      },
+      proofRecord: mockPhase0Data.latestProof as any,
+      merkleTreeData: {
+        rootHash: "f4a8c9e0",
+        totalLeaves: 8,
+        leaves: [],
+        witnessAttestation: {
+          provider: "RFC_3161_TSA",
+          witnessHash: "wit-fresh-02",
+          timestampIso: new Date().toISOString(),
+          signatureValid: true,
+        },
+      },
+      evidenceChain: {
+        evidenceId: "ev-fresh-02",
+        controlId: "CTRL_ACCESS_GOVERNANCE_01",
+        controlAssessment: "SATISFIED",
+        completenessRatio: 1.0,
+        detectionAlertId: "alt-fresh-02",
+        ruleId: "RULE_CANARY_PRIV_ESC_DETERMINISTIC_01",
+      },
+      actionSandboxReceipt: {
+        simulationId: "sim-fresh-02",
+        actionName: "ISOLATE_CREDENTIALS",
+        blastRadius: "CONFINED_SINGLE_USER",
+        liveMutationsCount: 0,
+        freezeSwitchFunctional: true,
+      },
+      offlineVerificationInstructions: {
+        cliCommand: "npx zoikoshield-verifier verify ./pkg-phase0-fresh-02",
+        offlineMode: true,
+        expectedExitCode: 0,
+      },
+    });
+
+    vi.spyOn(ZoikoShieldApiClient, "verifyProofOffline").mockResolvedValueOnce({
+      verified: true,
+      verificationTimestamp: new Date().toISOString(),
+      packageId: "pkg-phase0-fresh-02",
+      merkleRootMatches: true,
+      evidenceChainIntact: true,
+      signatureMatches: true,
+      invariantsPassed: 6,
+      totalInvariants: 6,
+      discrepancies: [],
+      verificationCertificate: {
+        certificateId: "cert-pkg-phase0-fresh-02",
+        verifierVersion: "zoikoshield-verifier-v1.0",
+        signatureSha256: "cert-sig-fresh-02",
+      },
+    });
+
+    render(<PlatformHealthPage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Run Phase-0 Verification Flow/i)).toBeInTheDocument();
+      expect(screen.getByText(/Verify Offline CLI/i)).toBeInTheDocument();
+    });
+
+    const verifyCliButton = screen.getByText(/Verify Offline CLI/i);
+    verifyCliButton.click();
+
+    await waitFor(() => {
+      expect(screen.getByText(/Standalone Verifier Report: pkg-phase0-fresh-02/i)).toBeInTheDocument();
+      expect(screen.getByText(/VERIFIED \(100% INTACT\)/i)).toBeInTheDocument();
+    });
+  });
 });
+
 

@@ -11,6 +11,7 @@ import { OutboxPublisherService } from './outbox/outbox-publisher.service';
 import { FreezeControllerService } from './freeze-controller/freeze-controller.service';
 import { EmergencyFreezeLockdownService } from './freeze-controller/emergency-freeze-lockdown.service';
 import { RateControlService } from './rate-control/rate-control.service';
+import { BlastRadiusEvaluatorService } from './rate-control/blast-radius-evaluator.service';
 import { DevSimulationSigner } from './command-signing/dev-simulation-signer.service';
 import { CloudHsmSignerService } from './command-signing/cloud-hsm-signer.service';
 import { DispatcherService } from './dispatcher/dispatcher.service';
@@ -62,6 +63,7 @@ import { CompensatingActionService } from './rollback/compensating-action.servic
     FreezeControllerService,
     EmergencyFreezeLockdownService,
     RateControlService,
+    BlastRadiusEvaluatorService,
     DevSimulationSigner,
     CloudHsmSignerService,
     DispatcherService,
@@ -102,6 +104,7 @@ import { CompensatingActionService } from './rollback/compensating-action.servic
   ],
   exports: [
     ActionAuthorityService,
+    BlastRadiusEvaluatorService,
     CedarPolicyEvaluatorService,
     CloudHsmSignerService,
     EmergencyFreezeLockdownService,

@@ -1,6 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
-import { BackupIntegrityService, DataStoreId, RestoreVerificationStatus } from './backup-integrity.service';
+import {
+  BackupIntegrityService,
+  DataStoreId,
+  RestoreVerificationStatus,
+} from './backup-integrity.service';
 
 export interface TableReconciliationRecord {
   tableName: string;
@@ -42,7 +46,9 @@ export interface RestoreDrillReceipt {
 export class RestoreDrillService {
   private readonly logger = new Logger(RestoreDrillService.name);
 
-  constructor(private readonly backupIntegrityService: BackupIntegrityService) {}
+  constructor(
+    private readonly backupIntegrityService: BackupIntegrityService,
+  ) {}
 
   /**
    * Executes a non-destructive restore drill against the specified store.
@@ -61,11 +67,15 @@ export class RestoreDrillService {
     const startTimeMs = Date.now();
     const scratchSchemaName = `scratch_restore_${drillId.replace(/-/g, '_')}`;
 
-    this.logger.log(`[RESTORE-DRILL] Initiating Spec §26 Restore Drill '${drillId}' on store '${storeId}' into scratch schema '${scratchSchemaName}'...`);
+    this.logger.log(
+      `[RESTORE-DRILL] Initiating Spec §26 Restore Drill '${drillId}' on store '${storeId}' into scratch schema '${scratchSchemaName}'...`,
+    );
 
     // Simulated short realistic execution delay if requested
     if (options?.executionDelayMs) {
-      await new Promise((resolve) => setTimeout(resolve, options.executionDelayMs));
+      await new Promise((resolve) =>
+        setTimeout(resolve, options.executionDelayMs),
+      );
     }
 
     // Baseline tables for shield_core_db
@@ -86,10 +96,15 @@ export class RestoreDrillService {
       let restoredCount = table.sourceCount;
       let checksumMatches = true;
 
-      if (options?.simulateCorruptedRow && table.tableName === 'merkle_tree_leaves') {
+      if (
+        options?.simulateCorruptedRow &&
+        table.tableName === 'merkle_tree_leaves'
+      ) {
         restoredCount = table.sourceCount - 1; // 1 dropped row
         checksumMatches = false;
-        discrepancies.push(`Row count mismatch in table '${table.tableName}': source=${table.sourceCount}, restored=${restoredCount}`);
+        discrepancies.push(
+          `Row count mismatch in table '${table.tableName}': source=${table.sourceCount}, restored=${restoredCount}`,
+        );
       }
 
       const rowDriftCount = Math.abs(table.sourceCount - restoredCount);
@@ -106,12 +121,20 @@ export class RestoreDrillService {
     }
 
     // Merkle Root Verification
-    const sourceMerkleHead = crypto.createHash('sha256').update('merkle_root_head_block_89211').digest('hex');
+    const sourceMerkleHead = crypto
+      .createHash('sha256')
+      .update('merkle_root_head_block_89211')
+      .digest('hex');
     let restoredMerkleHead = sourceMerkleHead;
 
     if (options?.simulateMerkleDrift) {
-      restoredMerkleHead = crypto.createHash('sha256').update('tampered_merkle_head').digest('hex');
-      discrepancies.push(`Merkle head root hash mismatch: source=${sourceMerkleHead.slice(0, 16)}..., restored=${restoredMerkleHead.slice(0, 16)}...`);
+      restoredMerkleHead = crypto
+        .createHash('sha256')
+        .update('tampered_merkle_head')
+        .digest('hex');
+      discrepancies.push(
+        `Merkle head root hash mismatch: source=${sourceMerkleHead.slice(0, 16)}..., restored=${restoredMerkleHead.slice(0, 16)}...`,
+      );
     }
 
     const merkleHeadAligned = sourceMerkleHead === restoredMerkleHead;
@@ -126,10 +149,16 @@ export class RestoreDrillService {
 
     // Teardown scratch schema
     const scratchSchemaTornDown = true;
-    this.logger.log(`[RESTORE-DRILL] Scratch schema '${scratchSchemaName}' safely torn down. Drill status: ${status} (${durationMs}ms)`);
+    this.logger.log(
+      `[RESTORE-DRILL] Scratch schema '${scratchSchemaName}' safely torn down. Drill status: ${status} (${durationMs}ms)`,
+    );
 
     // Record drill result in BackupIntegrityService
-    this.backupIntegrityService.recordRestoreDrillResult(storeId, status, completedAt);
+    this.backupIntegrityService.recordRestoreDrillResult(
+      storeId,
+      status,
+      completedAt,
+    );
 
     const receiptPayload = {
       drillId,

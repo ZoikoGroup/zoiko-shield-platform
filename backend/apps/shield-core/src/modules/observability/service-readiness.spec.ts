@@ -1,4 +1,7 @@
-import { ServiceReadinessService, STATE_MEANINGS } from './service-readiness.service';
+import {
+  ServiceReadinessService,
+  STATE_MEANINGS,
+} from './service-readiness.service';
 import { ServiceReadinessController } from './service-readiness.controller';
 import { NotFoundException } from '@nestjs/common';
 
@@ -34,8 +37,12 @@ describe('ZS-ENG-OBS-001 §31: Explicit Service-Health & Readiness States Engine
 
       expect(Object.keys(STATE_MEANINGS).length).toBe(16);
       for (const state of canonicalStates) {
-        expect(STATE_MEANINGS[state as keyof typeof STATE_MEANINGS]).toBeDefined();
-        expect(STATE_MEANINGS[state as keyof typeof STATE_MEANINGS].length).toBeGreaterThan(10);
+        expect(
+          STATE_MEANINGS[state as keyof typeof STATE_MEANINGS],
+        ).toBeDefined();
+        expect(
+          STATE_MEANINGS[state as keyof typeof STATE_MEANINGS].length,
+        ).toBeGreaterThan(10);
       }
     });
   });
@@ -65,7 +72,9 @@ describe('ZS-ENG-OBS-001 §31: Explicit Service-Health & Readiness States Engine
       expect(core.dependencies.length).toBeGreaterThanOrEqual(2);
       expect(core.signals.length).toBeGreaterThanOrEqual(3);
 
-      expect(() => service.getServiceReadiness('unknown-service')).toThrow(NotFoundException);
+      expect(() => service.getServiceReadiness('unknown-service')).toThrow(
+        NotFoundException,
+      );
     });
   });
 
@@ -74,9 +83,15 @@ describe('ZS-ENG-OBS-001 §31: Explicit Service-Health & Readiness States Engine
       const snapshot = service.evaluatePlatformReadiness({ g1Ratified: false });
 
       expect(snapshot.g1GateRatified).toBe(false);
-      expect(snapshot.services['shield-action'].state).toBe('READINESS_CONDITIONAL');
-      expect(snapshot.services['shield-action'].operationalConditions?.length).toBeGreaterThan(0);
-      expect(snapshot.services['shield-action'].operationalConditions?.[0]).toContain('G1 Multi-Approver Launch Gate is PENDING');
+      expect(snapshot.services['shield-action'].state).toBe(
+        'READINESS_CONDITIONAL',
+      );
+      expect(
+        snapshot.services['shield-action'].operationalConditions?.length,
+      ).toBeGreaterThan(0);
+      expect(
+        snapshot.services['shield-action'].operationalConditions?.[0],
+      ).toContain('G1 Multi-Approver Launch Gate is PENDING');
       expect(snapshot.conditionalServicesCount).toBe(1);
       expect(snapshot.overallState).toBe('READINESS_CONDITIONAL');
     });
@@ -93,37 +108,55 @@ describe('ZS-ENG-OBS-001 §31: Explicit Service-Health & Readiness States Engine
 
   describe('4. Infrastructure & Telemetry Degraded States (§31)', () => {
     it('transitions shield-core and platform to UNAVAILABLE when database is disconnected', () => {
-      const snapshot = service.evaluatePlatformReadiness({ dbConnected: false });
+      const snapshot = service.evaluatePlatformReadiness({
+        dbConnected: false,
+      });
 
       expect(snapshot.services['shield-core'].state).toBe('UNAVAILABLE');
       expect(snapshot.services['shield-core'].readinessScore).toBe(0.0);
-      expect(snapshot.services['shield-core'].blockers).toContain('Primary PostgreSQL / Prisma SOR database connection failed');
+      expect(snapshot.services['shield-core'].blockers).toContain(
+        'Primary PostgreSQL / Prisma SOR database connection failed',
+      );
       expect(snapshot.overallState).toBe('UNAVAILABLE');
     });
 
     it('transitions shield-anchor to UNAVAILABLE when Cloud KMS sovereign escrow fails', () => {
-      const snapshot = service.evaluatePlatformReadiness({ kmsConnected: false });
+      const snapshot = service.evaluatePlatformReadiness({
+        kmsConnected: false,
+      });
 
       expect(snapshot.services['shield-anchor'].state).toBe('UNAVAILABLE');
-      expect(snapshot.services['shield-anchor'].blockers).toContain('Cloud KMS HSM sovereign key escrow unavailable');
+      expect(snapshot.services['shield-anchor'].blockers).toContain(
+        'Cloud KMS HSM sovereign key escrow unavailable',
+      );
     });
 
     it('transitions shield-ingest to AT_RISK when ingestion lag exceeds 1000ms', () => {
-      const snapshot = service.evaluatePlatformReadiness({ ingestionLagMs: 2400 });
+      const snapshot = service.evaluatePlatformReadiness({
+        ingestionLagMs: 2400,
+      });
 
       expect(snapshot.services['shield-ingest'].state).toBe('AT_RISK');
       expect(snapshot.services['shield-ingest'].readinessScore).toBe(0.75);
-      expect(snapshot.services['shield-ingest'].blockers[0]).toContain('Ingestion stream lag (2400ms) exceeds SLA ceiling');
+      expect(snapshot.services['shield-ingest'].blockers[0]).toContain(
+        'Ingestion stream lag (2400ms) exceeds SLA ceiling',
+      );
     });
   });
 
   describe('5. Operational Administrative State Overrides', () => {
     it('allows setting and clearing manual administrative state overrides', () => {
-      service.setServiceOverride('shield-ai', 'MAINTENANCE', 'Scheduled model prompt calibration window');
+      service.setServiceOverride(
+        'shield-ai',
+        'MAINTENANCE',
+        'Scheduled model prompt calibration window',
+      );
 
       const overridden = service.getServiceReadiness('shield-ai');
       expect(overridden.state).toBe('MAINTENANCE');
-      expect(overridden.blockers).toContain('Manual override: Scheduled model prompt calibration window');
+      expect(overridden.blockers).toContain(
+        'Manual override: Scheduled model prompt calibration window',
+      );
 
       service.clearServiceOverride('shield-ai');
       const cleared = service.getServiceReadiness('shield-ai');
@@ -133,19 +166,25 @@ describe('ZS-ENG-OBS-001 §31: Explicit Service-Health & Readiness States Engine
 
   describe('6. Spec §26 Backup & Restore Drill Integration', () => {
     it('transitions shield-core to AT_RISK when backup is stale (>24h)', () => {
-      const snapshot = service.evaluatePlatformReadiness({ backupFresh: false });
+      const snapshot = service.evaluatePlatformReadiness({
+        backupFresh: false,
+      });
 
       expect(snapshot.services['shield-core'].state).toBe('AT_RISK');
-      expect(snapshot.services['shield-core'].readinessScore).toBe(0.70);
+      expect(snapshot.services['shield-core'].readinessScore).toBe(0.7);
       expect(snapshot.services['shield-core'].blockers).toContain(
         'Spec §26: Primary database backup is stale (>24h since last completed snapshot)',
       );
     });
 
     it('transitions shield-core to RECONCILIATION_REQUIRED when restore drill is unverified', () => {
-      const snapshot = service.evaluatePlatformReadiness({ restoreDrillVerified: false });
+      const snapshot = service.evaluatePlatformReadiness({
+        restoreDrillVerified: false,
+      });
 
-      expect(snapshot.services['shield-core'].state).toBe('RECONCILIATION_REQUIRED');
+      expect(snapshot.services['shield-core'].state).toBe(
+        'RECONCILIATION_REQUIRED',
+      );
       expect(snapshot.services['shield-core'].readinessScore).toBe(0.65);
       expect(snapshot.services['shield-core'].blockers).toContain(
         'Spec §26: Last database restore verification drill failed or exceeds 30-day threshold',
@@ -162,12 +201,44 @@ describe('ZS-ENG-OBS-001 §31: Explicit Service-Health & Readiness States Engine
       const single = controller.getServiceReadiness('shield-anchor');
       expect(single.serviceId).toBe('shield-anchor');
 
-      const override = controller.setServiceOverride('shield-core', { state: 'RECOVERING', reason: 'Failover re-sync' });
+      const override = controller.setServiceOverride('shield-core', {
+        state: 'RECOVERING',
+        reason: 'Failover re-sync',
+      });
       expect(override.state).toBe('RECOVERING');
 
       const cleared = controller.clearServiceOverride('shield-core');
       expect(cleared.state).toBe('HEALTHY');
     });
   });
-});
 
+  describe('8. Spec §27 Synthetic Canary & Game Day Integration', () => {
+    it('transitions shield-ingest to DEGRADED when synthetic canary probe fails', () => {
+      const snapshot = service.evaluatePlatformReadiness({
+        syntheticHealthy: false,
+      });
+
+      expect(snapshot.services['shield-ingest'].state).toBe('DEGRADED');
+      expect(snapshot.services['shield-ingest'].readinessScore).toBe(0.7);
+      expect(snapshot.services['shield-ingest'].blockers).toContain(
+        'Spec §27: Synthetic canary journey probe degraded or SLA breached',
+      );
+    });
+
+    it('transitions shield-action to RECONCILIATION_REQUIRED when game day is overdue (>90d)', () => {
+      const snapshot = service.evaluatePlatformReadiness({
+        g1Ratified: true,
+        gameDayCompliant: false,
+      });
+
+      expect(snapshot.services['shield-action'].state).toBe(
+        'RECONCILIATION_REQUIRED',
+      );
+      expect(
+        snapshot.services['shield-action'].operationalConditions,
+      ).toContain(
+        'Spec §27: Scheduled Game Day resilience exercise is overdue (>90 days since last execution).',
+      );
+    });
+  });
+});

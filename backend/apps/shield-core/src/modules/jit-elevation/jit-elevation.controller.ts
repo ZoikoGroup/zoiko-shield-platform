@@ -37,9 +37,10 @@ export class JitElevationController {
 
   @Get('sessions')
   @RequirePlatformPermissions('rbac:read')
-  getSessions(
-    @Query('tenantId') tenantId?: string,
-  ): { sessions: JitElevationSession[]; total: number } {
+  getSessions(@Query('tenantId') tenantId?: string): {
+    sessions: JitElevationSession[];
+    total: number;
+  } {
     const sessions = this.jitService.getSessions(tenantId);
     return {
       sessions,

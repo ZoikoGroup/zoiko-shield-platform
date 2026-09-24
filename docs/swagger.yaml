@@ -54397,6 +54397,445 @@ paths:
           description: Unauthorized
         '403':
           description: Forbidden - Requires observability:admin permission
+  /api/v1/action/safety/posture:
+    get:
+      summary: Retrieve Action Safety Posture, Blast Radius limits, and active emergency freezes
+      description: Returns multi-scope freeze status, criticality tier thresholds, and safety limits under ZS-ENG-DRS-001 §19.
+      operationId: getActionSafetyPosture
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: tenantId
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: region
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Action safety posture and active freezes summary
+        '401':
+          description: Unauthorized
+  /api/v1/action/safety/evaluate-blast-radius:
+    post:
+      summary: Evaluate action blast radius, target criticality tier, and concurrency limits
+      description: Pre-flight safety assessment enforcing ZS-ENG-DRS-001 §19 invariants.
+      operationId: postEvaluateActionBlastRadius
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenantId
+                - actionType
+                - targetResource
+                - requestorId
+              properties:
+                tenantId:
+                  type: string
+                actionType:
+                  type: string
+                targetResource:
+                  type: string
+                targetClass:
+                  type: string
+                totalFleetAssetsCount:
+                  type: number
+                activeConcurrentActionsCount:
+                  type: number
+                requestorId:
+                  type: string
+                isDualCustodyApproved:
+                  type: boolean
+      responses:
+        '200':
+          description: Blast radius safety assessment with cryptographic digest
+        '401':
+          description: Unauthorized
+  /api/v1/action/safety/freeze:
+    post:
+      summary: Engage emergency lockdown freeze across Global, Regional, Connector, Tenant, or ActionType scope
+      description: Instantly freezes automated response execution with cryptographic refusal digest (ZS-ENG-DRS-001 §19.4).
+      operationId: postEngageEmergencyFreeze
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - scope
+                - reason
+                - initiatedBy
+              properties:
+                scope:
+                  type: string
+                  enum:
+                    - GLOBAL
+                    - REGIONAL
+                    - TENANT
+                    - CONNECTOR
+                    - ACTION_TYPE
+                tenantId:
+                  type: string
+                region:
+                  type: string
+                scopeRef:
+                  type: string
+                reason:
+                  type: string
+                initiatedBy:
+                  type: string
+                durationMinutes:
+                  type: number
+      responses:
+        '201':
+          description: Freeze successfully engaged with cryptographic refusal token
+        '401':
+          description: Unauthorized
+  /api/v1/action/safety/unfreeze:
+    post:
+      summary: Approve emergency freeze release with Dual-Custody verification
+      description: Releases active freeze once required signatures (2 for Global/Regional) are gathered.
+      operationId: postApproveEmergencyUnfreeze
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - freezeId
+                - approverId
+              properties:
+                freezeId:
+                  type: string
+                approverId:
+                  type: string
+      responses:
+        '200':
+          description: Unfreeze approval recorded or freeze fully released
+        '401':
+          description: Unauthorized
+        '403':
+          description: Dual-custody rule violation
+  /api/v1/action/safety/compensate:
+    post:
+      summary: Execute single-use 1-click compensation rollback for an executed response action
+      description: Dispatches deterministic inverse adapter and issues Merkle-anchored rollback receipt (ZS-ENG-DRS-001 §20).
+      operationId: postExecuteActionCompensation
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenantId
+                - rollbackToken
+                - executedBy
+              properties:
+                tenantId:
+                  type: string
+                rollbackToken:
+                  type: string
+                executedBy:
+                  type: string
+      responses:
+        '200':
+          description: Reversal executed successfully with sealed rollback receipt
+        '401':
+          description: Unauthorized
+        '403':
+          description: Token already consumed (replay prevention) or expired
+        '404':
+          description: Rollback plan not found
+  /api/v1/action/safety/compensation-plans:
+    post:
+      summary: Register a pre-computed compensation plan before action dispatch
+      description: Derives deterministic inverse action and generates single-use rollback token.
+      operationId: postRegisterCompensationPlan
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenantId
+                - commandId
+                - originalAction
+                - targetResource
+              properties:
+                tenantId:
+                  type: string
+                commandId:
+                  type: string
+                originalAction:
+                  type: string
+                targetResource:
+                  type: string
+                reversibilityTier:
+                  type: string
+                  enum:
+                    - R1
+                    - R2
+                ttlHours:
+                  type: number
+      responses:
+        '201':
+          description: Compensation plan registered with single-use rollback token
+        '401':
+          description: Unauthorized
+    get:
+      summary: List registered compensation plans for a tenant
+      description: Returns all active compensation plans and reversibility windows.
+      operationId: getListCompensationPlans
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: tenantId
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of registered compensation plans
+        '401':
+          description: Unauthorized
+
+  /api/v1/observability/synthetic/status:
+    get:
+      summary: Get synthetic monitoring and game day posture status
+      description: Returns synthetic canary probe posture, recent journey reports, and game day resilience schedule.
+      operationId: getSyntheticObservabilityStatus
+      tags:
+        - Observability
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: canaryTenantId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Synthetic monitoring posture returned successfully
+        '401':
+          description: Unauthorized
+
+  /api/v1/observability/synthetic/probe:
+    post:
+      summary: Trigger on-demand full-journey synthetic canary probe
+      description: Executes all 6 journey stages (Auth, Ingest, Detect, SOAR, Ledger, AI Fallback) on canary tenant.
+      operationId: postTriggerSyntheticProbe
+      tags:
+        - Observability
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                canaryTenantId:
+                  type: string
+                region:
+                  type: string
+      responses:
+        '201':
+          description: Synthetic probe executed with cryptographic receipt
+        '401':
+          description: Unauthorized
+
+  /api/v1/observability/synthetic/gameday/execute:
+    post:
+      summary: Trigger on-demand Game Day chaos resilience exercise
+      description: Orchestrates simulated game-day resilience exercises under Spec §27 covering all 7 canonical failure classes.
+      operationId: postTriggerGameDayExercise
+      tags:
+        - Observability
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - scenario
+              properties:
+                scenario:
+                  type: string
+                  enum:
+                    - GD_01_DEPENDENCY_LOSS
+                    - GD_02_QUEUE_BACKLOG
+                    - GD_03_REGIONAL_FAILURE
+                    - GD_04_IDENTITY_OUTAGE
+                    - GD_05_AI_OUTAGE
+                    - GD_06_CONNECTOR_DRIFT
+                    - GD_07_ACTION_FREEZE
+                exercisedBy:
+                  type: string
+      responses:
+        '201':
+          description: Game day exercise completed with signed resilience report
+        '401':
+          description: Unauthorized
+
+  /api/v1/observability/synthetic/gameday/annex-p/{exerciseId}:
+    get:
+      summary: Get formal Annex P Game-Day and Synthetic-Tenant Report
+      description: Returns the machine-readable, cryptographic Annex P report artifact for an executed game-day exercise.
+      operationId: getAnnexPGameDayReport
+      tags:
+        - Observability
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: exerciseId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Annex P report artifact returned successfully
+        '401':
+          description: Unauthorized
+        '404':
+          description: Game day exercise not found
+
+  /api/v1/observability/phase-gates/phase-0/status:
+    get:
+      summary: Get Spec §28 Phase-0 Exit Gate Posture and Latest Verified Proof
+      description: Returns the active Phase-0 Exit Gate criteria satisfaction matrix, posture summary, and latest attested reference proof.
+      operationId: getPhase0Status
+      tags:
+        - Observability
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Phase-0 posture summary and latest proof returned
+        '401':
+          description: Unauthorized
+
+  /api/v1/observability/phase-gates/phase-0/execute:
+    post:
+      summary: Execute Spec §28 Phase-0 8-Step Reference Flow
+      description: Triggers an automated end-to-end execution of the 8 mandatory Phase-0 vertical steps (Tenant -> Ingest -> Detect -> Evidence/Control -> Merkle Package -> Witness Anchor -> SOAR Simulation -> Freeze Assert).
+      operationId: executePhase0Flow
+      tags:
+        - Observability
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tenantId:
+                  type: string
+                cellId:
+                  type: string
+      responses:
+        '201':
+          description: Reference flow executed and signed proof record created
+        '401':
+          description: Unauthorized
+
+  /api/v1/observability/phase-gates/phase-0/proof:
+    get:
+      summary: Download Spec §28 Phase-0 Proof Bundle
+      description: Returns the complete, offline-verifiable Phase-0 proof bundle containing the manifest, 8 Merkle tree leaves, witness attestation, and offline verification instructions.
+      operationId: getPhase0ProofBundle
+      tags:
+        - Observability
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: proofId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Proof bundle exported successfully
+        '401':
+          description: Unauthorized
+        '404':
+          description: Proof not found
+
+  /api/v1/observability/phase-gates/phase-0/verify:
+    post:
+      summary: Verify Spec §28 Proof Bundle Offline
+      description: Executes standalone verification on a Phase-0 proof bundle, matching the invariants enforced by verifier-cli.
+      operationId: verifyProofOffline
+      tags:
+        - Observability
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Verification report generated successfully
+        '401':
+          description: Unauthorized
+
+
+
 
 
 

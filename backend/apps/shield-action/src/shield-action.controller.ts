@@ -12,11 +12,61 @@ import {
 import { SimulationService } from './simulation/simulation.service';
 import { ActionRollbackBrokerService } from './rollback/action-rollback-broker.service';
 import { FreezeControllerService } from './freeze-controller/freeze-controller.service';
+import {
+  EmergencyFreezeLockdownService,
+  FreezeScope,
+} from './freeze-controller/emergency-freeze-lockdown.service';
+import {
+  BlastRadiusEvaluatorService,
+  BlastRadiusEvaluationInput,
+} from './rate-control/blast-radius-evaluator.service';
+import { CompensatingActionService } from './rollback/compensating-action.service';
 import { TwoManRuleService } from './approval/two-man-rule.service';
 import { DistributedActionLockService } from './orchestration/distributed-action-lock.service';
 import { HostNetworkEnforcerService } from './microsegmentation/host-network-enforcer.service';
 import { DualCustodyQuorumService } from './dual-custody/dual-custody-quorum.service';
 import { InternalAuthGuard } from './internal-client/internal-auth.guard';
+
+export class EvaluateBlastRadiusDto implements BlastRadiusEvaluationInput {
+  tenantId!: string;
+  actionType!: string;
+  targetResource!: string;
+  targetClass?: string;
+  totalFleetAssetsCount?: number;
+  activeConcurrentActionsCount?: number;
+  requestorId!: string;
+  isDualCustodyApproved?: boolean;
+}
+
+export class EngageFreezeDto {
+  scope!: FreezeScope;
+  tenantId?: string;
+  region?: string;
+  scopeRef?: string;
+  reason!: string;
+  initiatedBy!: string;
+  durationMinutes?: number;
+}
+
+export class ApproveUnfreezeDto {
+  freezeId!: string;
+  approverId!: string;
+}
+
+export class ExecuteCompensationDto {
+  tenantId!: string;
+  rollbackToken!: string;
+  executedBy!: string;
+}
+
+export class RegisterCompensationPlanDto {
+  tenantId!: string;
+  commandId!: string;
+  originalAction!: string;
+  targetResource!: string;
+  reversibilityTier?: 'R1' | 'R2';
+  ttlHours?: number;
+}
 
 export class SimulateActionDto {
   tenantId!: string;
@@ -102,6 +152,9 @@ export class ShieldActionController {
     private readonly simulationService: SimulationService,
     private readonly rollbackBroker: ActionRollbackBrokerService,
     private readonly freezeController: FreezeControllerService,
+    private readonly emergencyFreezeService: EmergencyFreezeLockdownService,
+    private readonly blastRadiusEvaluator: BlastRadiusEvaluatorService,
+    private readonly compensatingActionService: CompensatingActionService,
     private readonly twoManRuleService: TwoManRuleService,
     private readonly distributedLockService: DistributedActionLockService,
     @Optional()
@@ -359,5 +412,125 @@ export class ShieldActionController {
       body.quorumId,
       body.proposalId,
     );
+  }
+
+  // --- ZS-ENG-DRS-001 §19 & §20 Action Safety, Blast Radius & Compensation Endpoints ---
+
+  @UseGuards(InternalAuthGuard)
+  @Get('api/v1/action/safety/posture')
+  getActionSafetyPosture(
+    @Query('tenantId') tenantId?: string,
+    @Query('region') region?: string,
+  ) {
+    const activeFreezes = this.emergencyFreezeService.getActiveFreezes();
+    const isGlobalFrozen = activeFreezes.some((f) => f.scope === 'GLOBAL');
+    const isRegionalFrozen = region
+      ? activeFreezes.some(
+          (f) =>
+            f.scope === 'REGIONAL' &&
+            f.region?.toLowerCase() === region.toLowerCase(),
+        )
+      : false;
+    const isTenantFrozen = tenantId
+      ? activeFreezes.some(
+          (f) => f.scope === 'TENANT' && f.tenantId === tenantId,
+        )
+      : false;
+
+    return {
+      status:
+        isGlobalFrozen || isRegionalFrozen || isTenantFrozen
+          ? 'DEGRADED_FROZEN'
+          : 'ACTIVE_GOVERNED',
+      timestamp: new Date().toISOString(),
+      globalFreezeActive: isGlobalFrozen,
+      regionalFreezeActive: isRegionalFrozen,
+      tenantFreezeActive: isTenantFrozen,
+      activeFreezesCount: activeFreezes.length,
+      activeFreezes,
+      criticalityTiers: {
+        TIER_0_CRITICAL: {
+          description:
+            'Identity & Infrastructure Roots (Domain Controller, Root IdP, Master DB)',
+          maxAutomatedBlastRadius: 0,
+          requiresDualCustody: true,
+        },
+        TIER_1_PRODUCTION: {
+          description: 'Production Workloads & Shared Infrastructure',
+          maxFleetPercentage: 10.0,
+          maxConcurrentActions: 2,
+          requiresDualCustodyOnExceeded: true,
+        },
+        TIER_2_STANDARD: {
+          description: 'Standard Workstations & Non-Production Assets',
+          maxConcurrentActions: 10,
+          requiresDualCustody: false,
+        },
+      },
+    };
+  }
+
+  @UseGuards(InternalAuthGuard)
+  @Post('api/v1/action/safety/evaluate-blast-radius')
+  evaluateBlastRadius(@Body() body: EvaluateBlastRadiusDto) {
+    // Also verify against active freezes first
+    const freezeStatus = this.emergencyFreezeService.checkFreezeStatus({
+      tenantId: body.tenantId,
+      actionType: body.actionType,
+    });
+
+    if (freezeStatus.frozen) {
+      return {
+        allowed: false,
+        tier: 'TIER_0_CRITICAL' as const,
+        blastRadiusScore: 1.0,
+        fleetPercentageImpact: 0,
+        activeConcurrentActions: 0,
+        maxConcurrentAllowed: 0,
+        requiresDualStepup: false,
+        reason: freezeStatus.reason,
+        evaluationTimestamp: new Date().toISOString(),
+        cryptographicAssessmentDigest: freezeStatus.refusalDigest || '',
+      };
+    }
+
+    return this.blastRadiusEvaluator.evaluateBlastRadius(body);
+  }
+
+  @UseGuards(InternalAuthGuard)
+  @Post('api/v1/action/safety/freeze')
+  engageEmergencyFreeze(@Body() body: EngageFreezeDto) {
+    return this.emergencyFreezeService.engageFreeze(body);
+  }
+
+  @UseGuards(InternalAuthGuard)
+  @Post('api/v1/action/safety/unfreeze')
+  approveEmergencyUnfreeze(@Body() body: ApproveUnfreezeDto) {
+    return this.emergencyFreezeService.approveUnfreeze(
+      body.freezeId,
+      body.approverId,
+    );
+  }
+
+  @UseGuards(InternalAuthGuard)
+  @Post('api/v1/action/safety/compensate')
+  executeCompensation(@Body() body: ExecuteCompensationDto) {
+    return this.compensatingActionService.executeRollback(
+      body.tenantId,
+      body.rollbackToken,
+      body.executedBy,
+    );
+  }
+
+  @UseGuards(InternalAuthGuard)
+  @Post('api/v1/action/safety/compensation-plans')
+  registerCompensationPlan(@Body() body: RegisterCompensationPlanDto) {
+    return this.compensatingActionService.createCompensationPlan(body);
+  }
+
+  @UseGuards(InternalAuthGuard)
+  @Get('api/v1/action/safety/compensation-plans')
+  listCompensationPlans(@Query('tenantId') tenantId: string) {
+    return this.compensatingActionService.listPlansForTenant(tenantId);
   }
 }

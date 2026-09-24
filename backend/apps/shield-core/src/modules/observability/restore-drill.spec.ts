@@ -32,7 +32,9 @@ describe('RestoreDrillService (Spec §26 Schema Integrity & Restore Drills)', ()
 
     // Verify that BackupIntegrityService was updated with new drill timestamp
     const posture = backupService.evaluateDisasterRecoveryPosture();
-    expect(posture.stores.shield_core_db.lastRestoreDrillStatus).toBe('VERIFIED');
+    expect(posture.stores.shield_core_db.lastRestoreDrillStatus).toBe(
+      'VERIFIED',
+    );
     expect(posture.stores.shield_core_db.restoreDrillAgeDays).toBe(0.0);
   });
 
@@ -43,9 +45,13 @@ describe('RestoreDrillService (Spec §26 Schema Integrity & Restore Drills)', ()
 
     expect(receipt.status).toBe('FAILED');
     expect(receipt.discrepancies.length).toBeGreaterThan(0);
-    expect(receipt.discrepancies[0]).toContain("Row count mismatch in table 'merkle_tree_leaves'");
+    expect(receipt.discrepancies[0]).toContain(
+      "Row count mismatch in table 'merkle_tree_leaves'",
+    );
 
-    const corruptedTable = receipt.tableReconciliations.find((t) => t.tableName === 'merkle_tree_leaves')!;
+    const corruptedTable = receipt.tableReconciliations.find(
+      (t) => t.tableName === 'merkle_tree_leaves',
+    )!;
     expect(corruptedTable.rowDriftCount).toBe(1);
     expect(corruptedTable.checksumMatches).toBe(false);
 
@@ -61,6 +67,10 @@ describe('RestoreDrillService (Spec §26 Schema Integrity & Restore Drills)', ()
 
     expect(receipt.status).toBe('FAILED');
     expect(receipt.merkleHeadAligned).toBe(false);
-    expect(receipt.discrepancies.some((d) => d.includes('Merkle head root hash mismatch'))).toBe(true);
+    expect(
+      receipt.discrepancies.some((d) =>
+        d.includes('Merkle head root hash mismatch'),
+      ),
+    ).toBe(true);
   });
 });

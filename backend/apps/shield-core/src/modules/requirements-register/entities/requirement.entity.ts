@@ -7,7 +7,8 @@
  * verification method and release evidence."
  */
 
-export type TenantScope = 'SINGLE_TENANT' | 'MULTI_TENANT' | 'SOVEREIGN_CELL' | 'GLOBAL_SYSTEM';
+export type TenantScope =
+  'SINGLE_TENANT' | 'MULTI_TENANT' | 'SOVEREIGN_CELL' | 'GLOBAL_SYSTEM';
 
 export type DataScope =
   | 'PUBLIC'
@@ -18,22 +19,22 @@ export type DataScope =
   | 'CRYPTOGRAPHIC_KEY_MATERIAL';
 
 export type AuthorityType =
-  | 'LAW_REGULATION'      // e.g. GDPR, HIPAA, NIS2, DORA
-  | 'CONTROLLED_SPEC'     // e.g. Spec §05, §07, §12, §16.1, §21, §24
-  | 'ADR'                 // e.g. ADR-001, ADR-002, ADR-008
+  | 'LAW_REGULATION' // e.g. GDPR, HIPAA, NIS2, DORA
+  | 'CONTROLLED_SPEC' // e.g. Spec §05, §07, §12, §16.1, §21, §24
+  | 'ADR' // e.g. ADR-001, ADR-002, ADR-008
   | 'COMMERCIAL_CONTRACT' // e.g. SLA Terms, Plan Entitlement Ladder
-  | 'SECURITY_STANDARD';  // e.g. SOC 2 Type II, ISO 27001, NIST SP 800-207
+  | 'SECURITY_STANDARD'; // e.g. SOC 2 Type II, ISO 27001, NIST SP 800-207
 
 export type FailureBehavior =
-  | 'FAIL_CLOSED'          // Default for Security/Auth: Deny access, freeze state
-  | 'DEGRADE_DETERMINISTIC'// Default for AI: Safe heuristic fallback with zero LLM dependence
-  | 'ALERT_AND_CONTINUE'   // Non-critical telemetry sampling
-  | 'CIRCUIT_BREAKER_OPEN';// SOAR & External Dispatch: Stop outbound executions
+  | 'FAIL_CLOSED' // Default for Security/Auth: Deny access, freeze state
+  | 'DEGRADE_DETERMINISTIC' // Default for AI: Safe heuristic fallback with zero LLM dependence
+  | 'ALERT_AND_CONTINUE' // Non-critical telemetry sampling
+  | 'CIRCUIT_BREAKER_OPEN'; // SOAR & External Dispatch: Stop outbound executions
 
 export type AiStatus =
-  | 'DETERMINISTIC_ONLY'   // No AI involved; mathematical/cryptographic/rule-based
+  | 'DETERMINISTIC_ONLY' // No AI involved; mathematical/cryptographic/rule-based
   | 'AI_ASSISTED_REVIEWED' // AI draft generation with mandatory human approval envelope
-  | 'HUMAN_IN_THE_LOOP';   // Multi-approver sign-off required
+  | 'HUMAN_IN_THE_LOOP'; // Multi-approver sign-off required
 
 export type VerificationMethod =
   | 'AUTOMATED_UNIT_TEST'
