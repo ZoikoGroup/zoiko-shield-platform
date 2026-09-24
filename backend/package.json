@@ -42,6 +42,9 @@
     "migrate:deploy": "prisma migrate deploy && node scripts/run-typeorm-migrations.js",
     "migrate:typeorm": "node scripts/run-typeorm-migrations.js",
     "check:schema-drift": "ts-node -r tsconfig-paths/register scripts/check-typeorm-schema-drift.ts",
+    "loadtest:ingestion": "ts-node -r tsconfig-paths/register scripts/load-test-ingestion.ts",
+    "gameday": "ts-node -r tsconfig-paths/register scripts/run-gameday-drills.ts",
+    "check:experience-contracts": "ts-node -r tsconfig-paths/register scripts/check-experience-contracts.ts",
     "order:generate": "ts-node -r tsconfig-paths/register scripts/generate-order-id.ts",
     "simulate:soc": "ts-node -r tsconfig-paths/register scripts/simulate-soc-lifecycle.ts",
     "simulate:concurrency": "ts-node -r tsconfig-paths/register ./scripts/simulate-high-concurrency-stream.ts",
@@ -142,9 +145,10 @@
     "package:monorepo": "ts-node -r tsconfig-paths/register ./scripts/package-monorepo-archive.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-kms": "^3.1106.0",
     "@aws-sdk/client-s3": "^3.1106.0",
     "@azure/event-hubs": "^6.0.4",
+    "@google-cloud/kms": "^6.2.0",
+    "@google-cloud/storage": "^8.2.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",
@@ -231,7 +235,8 @@
     "coverageDirectory": "./coverage",
     "testEnvironment": "node",
     "roots": [
-      "<rootDir>/apps/"
+      "<rootDir>/apps/",
+      "<rootDir>/libs/"
     ]
   }
 }

@@ -101,6 +101,7 @@ import { AlertThrottlerService } from './alerts/alert-throttler.service';
 import { EvidenceController } from './evidence/evidence.controller';
 import { EvidenceService } from './evidence/evidence.service';
 import { ObjectStorageService } from './evidence/object-storage.service';
+import { objectStorageProvider } from './evidence/object-storage.provider';
 
 import { ControlTestingController } from './controls/control-testing.controller';
 import { ControlTestingService } from './controls/control-testing.service';
@@ -202,7 +203,7 @@ import { ConnectorPermissionDriftService } from './drift/connector-permission-dr
     ReplayEngineService,
     AlertThrottlerService,
     EvidenceService,
-    ObjectStorageService,
+    objectStorageProvider,
     ControlTestingService,
     AssuranceReviewService,
     SLAClaimService,

@@ -14,6 +14,7 @@ import { RateControlService } from './rate-control/rate-control.service';
 import { BlastRadiusEvaluatorService } from './rate-control/blast-radius-evaluator.service';
 import { DevSimulationSigner } from './command-signing/dev-simulation-signer.service';
 import { CloudHsmSignerService } from './command-signing/cloud-hsm-signer.service';
+import { governedCommandSignerProvider } from './command-signing/governed-command-signer.provider';
 import { DispatcherService } from './dispatcher/dispatcher.service';
 import { PolicyReauthorizationService } from './policy/policy-reauthorization.service';
 import { ApprovalReauthorizationService } from './approval/approval-reauthorization.service';
@@ -66,6 +67,7 @@ import { CompensatingActionService } from './rollback/compensating-action.servic
     BlastRadiusEvaluatorService,
     DevSimulationSigner,
     CloudHsmSignerService,
+    governedCommandSignerProvider,
     DispatcherService,
     PolicyReauthorizationService,
     ActionAuthorityService,

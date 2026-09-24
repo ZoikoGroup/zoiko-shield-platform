@@ -130,7 +130,7 @@ export class RiskController {
 
   @Get('exceptions')
   async listExceptions(@Headers('x-tenant-id') tenantId: string) {
-    return { tenantId: requireTenantId(tenantId) };
+    return this.exceptionService.list(requireTenantId(tenantId));
   }
 
   @Post('exceptions')

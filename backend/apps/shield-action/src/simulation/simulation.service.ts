@@ -151,7 +151,12 @@ export class SimulationService {
           status: 'SIMULATED',
           accepted_at: new Date(),
           observed_state: JSON.stringify(observedState),
-          signature_verified: true,
+          // Not verified here. The code that creates a receipt is the last
+          // thing that should be attesting to its own signature; that is what
+          // made the previous verification step unfalsifiable.
+          // ReceiptVerificationService sets this once it has actually
+          // recomputed the HMAC over the stored command.
+          signature_verified: false,
           correlation_id: correlationId,
         },
       }),

@@ -5,6 +5,7 @@ import {
   OnModuleDestroy,
 } from '@nestjs/common';
 import { Kafka, Producer } from 'kafkajs';
+import { createKafka } from '../../../../libs/kafka/src/kafka-client';
 import { randomUUID } from 'crypto';
 
 /** Canonical topic names owned by shield-ai (AI domain events, spec §36). */
@@ -38,10 +39,7 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
   private producer: Producer;
 
   constructor() {
-    this.kafka = new Kafka({
-      clientId: 'zoiko-shield-ai',
-      brokers: [process.env.KAFKA_BROKERS || 'localhost:9092'],
-    });
+    this.kafka = createKafka('zoiko-shield-ai');
     this.producer = this.kafka.producer();
   }
 

@@ -187,9 +187,12 @@ export default function ControlsPage() {
                       {freshnessTag.text}
                     </span>
                   </div>
-                  <h3 className="font-semibold text-sm text-slate-100">
+                  <button
+                    className="font-semibold text-sm text-slate-100 text-left hover:text-cyan-300 underline-offset-2 hover:underline"
+                    onClick={() => router.push(`/controls/${ctrl.id || ctrl.controlId}`)}
+                  >
                     {ctrl.controlName}
-                  </h3>
+                  </button>
                 </div>
                 <Badge
                   variant={

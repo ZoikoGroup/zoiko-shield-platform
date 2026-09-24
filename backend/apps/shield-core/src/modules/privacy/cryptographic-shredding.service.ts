@@ -5,11 +5,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
-import {
-  DecryptCommand,
-  GenerateDataKeyCommand,
-  KMSClient,
-} from '@aws-sdk/client-kms';
+import { GcpKmsEnvelope } from '../../../../../libs/kms/src/gcp-kms-envelope';
 import { PrismaService } from '../../prisma/prisma.service';
 
 export interface EncryptedSubjectPayload {
@@ -54,20 +50,20 @@ export class CryptographicShreddingService {
   private readonly shreddedSubjects = new Set<string>();
   private readonly wrappingKey: Buffer;
   private readonly wrappingKeyRef: string;
-  private readonly kmsClient?: KMSClient;
-  private readonly kmsKeyId?: string;
+  private readonly kmsEnvelope?: GcpKmsEnvelope;
+  private readonly kmsKeyName?: string;
 
   constructor(@Optional() private readonly prisma?: PrismaService) {
     const configuredKey = process.env.SUBJECT_KEY_WRAPPING_SECRET;
-    this.kmsKeyId = process.env.SUBJECT_KEY_KMS_KEY_ID;
-    if (this.kmsKeyId) {
-      this.kmsClient = new KMSClient({ region: process.env.AWS_REGION });
-      this.wrappingKeyRef = `aws-kms:${this.kmsKeyId}`;
+    this.kmsKeyName = process.env.SUBJECT_KEY_KMS_KEY_NAME;
+    if (this.kmsKeyName) {
+      this.kmsEnvelope = new GcpKmsEnvelope(this.kmsKeyName);
+      this.wrappingKeyRef = this.kmsEnvelope.keyRef;
       this.wrappingKey = Buffer.alloc(0);
     } else {
       if (process.env.NODE_ENV === 'production') {
         throw new Error(
-          'SUBJECT_KEY_KMS_KEY_ID must be configured in production',
+          'SUBJECT_KEY_KMS_KEY_NAME must be configured in production — a subject key wrapped by a local secret cannot be shredded beyond our own reach.',
         );
       }
       if (!configuredKey) {
@@ -116,30 +112,15 @@ export class CryptographicShreddingService {
   }
 
   private async generateWrappedKey(): Promise<string> {
-    if (this.kmsClient && this.kmsKeyId) {
-      const result = await this.kmsClient.send(
-        new GenerateDataKeyCommand({
-          KeyId: this.kmsKeyId,
-          KeySpec: 'AES_256',
-        }),
-      );
-      if (!result.CiphertextBlob)
-        throw new Error('KMS returned no wrapped subject key');
-      return Buffer.from(result.CiphertextBlob).toString('base64');
+    if (this.kmsEnvelope) {
+      return this.kmsEnvelope.generateWrappedKey();
     }
     return this.wrapKey(crypto.randomBytes(32));
   }
 
   private async unwrapStoredKey(wrappedKey: string): Promise<Buffer> {
-    if (this.kmsClient) {
-      const result = await this.kmsClient.send(
-        new DecryptCommand({
-          CiphertextBlob: Buffer.from(wrappedKey, 'base64'),
-        }),
-      );
-      if (!result.Plaintext)
-        throw new Error('KMS returned no subject key plaintext');
-      return Buffer.from(result.Plaintext);
+    if (this.kmsEnvelope) {
+      return this.kmsEnvelope.unwrapKey(wrappedKey);
     }
     return this.unwrapKey(wrappedKey);
   }

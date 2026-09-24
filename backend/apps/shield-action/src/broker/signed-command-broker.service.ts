@@ -1,5 +1,10 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
+import {
+  GOVERNED_COMMAND_SIGNER,
+  type CommandSigningPayload,
+  type GovernedCommandSigner,
+} from '../command-signing/command-signer.interface';
 
 export interface SignedCommandEnvelope {
   commandId: string;
@@ -16,6 +21,9 @@ export interface SignedCommandEnvelope {
   expiresAt: string; // ISO 8601
   nonce: string;
   signature: string;
+  /** Which key signed it, so a receipt can be checked against a known key. */
+  signingKeyId: string;
+  signingAlgorithm: string;
 }
 
 export interface GovernedActionExecutionReceipt {
@@ -46,10 +54,41 @@ export class SignedCommandBrokerService {
   // In-memory processed nonces to prevent replay attacks
   private readonly consumedNonces = new Set<string>();
 
+  constructor(
+    @Inject(GOVERNED_COMMAND_SIGNER)
+    private readonly signer: GovernedCommandSigner,
+  ) {}
+
+  private signingPayload(
+    envelope: Omit<SignedCommandEnvelope, 'signature' | 'signingKeyId' | 'signingAlgorithm'>,
+    executionMode: 'SIMULATION' | 'LIVE',
+  ): CommandSigningPayload {
+    return {
+      commandId: envelope.commandId,
+      tenantId: envelope.tenantId,
+      actionType: envelope.actionType,
+      targetRef: envelope.targetRef,
+      authorityLevel: envelope.authorityLevel,
+      approvalRef: envelope.approvalRef,
+      policyVersion: envelope.policyVersion,
+      expiresAt: envelope.expiresAt,
+      nonce: envelope.nonce,
+      executionMode,
+    };
+  }
+
   /**
-   * Constructs and signs a governed command envelope using the tenant-scoped HSM key.
+   * Builds and signs a governed command envelope.
+   *
+   * The "signature" here used to be a plain SHA-256 hash of the envelope
+   * fields, with no key involved at all, while the comment above it claimed a
+   * tenant-scoped HSM key. Anyone who could read the envelope could compute
+   * that value, so it authenticated nothing: forging a command was a matter of
+   * hashing the fields you wanted. It is now a real asymmetric signature from
+   * the signer in custody — KMS in production, an ephemeral key that refuses
+   * to run in production otherwise.
    */
-  createSignedCommand(
+  async createSignedCommand(
     tenantId: string,
     actionType: SignedCommandEnvelope['actionType'],
     targetRef: string,
@@ -57,35 +96,39 @@ export class SignedCommandBrokerService {
     approvalRef: string,
     policyVersion: string,
     ttlSeconds = 300,
-  ): SignedCommandEnvelope {
-    const commandId = `cmd-${crypto.randomUUID()}`;
-    const nonce = crypto.randomBytes(16).toString('hex');
-    const expiresAt = new Date(Date.now() + ttlSeconds * 1000).toISOString();
-
-    // Payload to sign
-    const payload = `${commandId}|${tenantId}|${actionType}|${targetRef}|${authorityLevel}|${approvalRef}|${policyVersion}|${expiresAt}|${nonce}`;
-    const signature = crypto.createHash('sha256').update(payload).digest('hex');
-
-    return {
-      commandId,
+    executionMode: 'SIMULATION' | 'LIVE' = 'LIVE',
+  ): Promise<SignedCommandEnvelope> {
+    const unsigned = {
+      commandId: `cmd-${crypto.randomUUID()}`,
       tenantId,
       actionType,
       targetRef,
       authorityLevel,
       approvalRef,
       policyVersion,
-      expiresAt,
-      nonce,
-      signature,
+      expiresAt: new Date(Date.now() + ttlSeconds * 1000).toISOString(),
+      nonce: crypto.randomBytes(16).toString('hex'),
+    };
+
+    const signed = await this.signer.sign(
+      this.signingPayload(unsigned, executionMode),
+    );
+
+    return {
+      ...unsigned,
+      signature: signed.signature,
+      signingKeyId: signed.signingKeyId,
+      signingAlgorithm: signed.algorithm,
     };
   }
 
   /**
    * Validates and dispatches a signed command envelope to customer execution adapters.
    */
-  dispatchGovernedCommand(
+  async dispatchGovernedCommand(
     envelope: SignedCommandEnvelope,
-  ): GovernedActionExecutionReceipt {
+    executionMode: 'SIMULATION' | 'LIVE' = 'LIVE',
+  ): Promise<GovernedActionExecutionReceipt> {
     const receiptId = `rcpt-gov-${crypto.randomUUID()}`;
     const executedAt = new Date().toISOString();
 
@@ -118,14 +161,16 @@ export class SignedCommandBrokerService {
       );
     }
 
-    // 3. Signature verification
-    const expectedPayload = `${envelope.commandId}|${envelope.tenantId}|${envelope.actionType}|${envelope.targetRef}|${envelope.authorityLevel}|${envelope.approvalRef}|${envelope.policyVersion}|${envelope.expiresAt}|${envelope.nonce}`;
-    const expectedSignature = crypto
-      .createHash('sha256')
-      .update(expectedPayload)
-      .digest('hex');
+    // 3. Signature verification against the key that signed it, not a hash
+    //    anyone holding the envelope could recompute.
+    const { publicKey } = await this.signer.publicKey();
+    const signatureValid = await this.signer.verify(
+      this.signingPayload(envelope, executionMode),
+      envelope.signature,
+      publicKey,
+    );
 
-    if (envelope.signature !== expectedSignature) {
+    if (!signatureValid) {
       this.logger.error(
         `🛑 [INVALID SIGNATURE] Command '${envelope.commandId}' signature mismatch.`,
       );

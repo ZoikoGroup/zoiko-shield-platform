@@ -5,6 +5,7 @@ import {
   OnModuleDestroy,
 } from '@nestjs/common';
 import { Kafka, Producer } from 'kafkajs';
+import { createKafka } from '../../../../libs/kafka/src/kafka-client';
 import { randomUUID } from 'crypto';
 
 /** shield-anchor's own topic namespace — no consumer needed, this app is request/response only via its internal HTTP endpoint. */
@@ -36,10 +37,7 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
   private producer: Producer;
 
   constructor() {
-    this.kafka = new Kafka({
-      clientId: 'zoiko-shield-anchor',
-      brokers: [process.env.KAFKA_BROKERS || 'localhost:9092'],
-    });
+    this.kafka = createKafka('zoiko-shield-anchor');
     this.producer = this.kafka.producer();
   }
 

@@ -6,6 +6,8 @@ import { EvidenceService } from './services/evidence.service';
 import { EvidenceRepository } from './repositories/evidence.repository';
 import { ContentHashService } from './hashing/content-hash.service';
 import { ObjectStorageService } from './storage/object-storage.service';
+import { GcsObjectStorageService } from './storage/gcs-object-storage.service';
+import { objectStorageProvider } from './storage/object-storage.provider';
 import { EvidenceLineageService } from './lineage/evidence-lineage.service';
 import { EvidenceVerificationService } from './verification/evidence-verification.service';
 import { EvidenceLedgerService } from './ledger/evidence-ledger.service';
@@ -23,7 +25,7 @@ import { ProductionCollectorSigner } from './signing/production-collector-signer
     EvidenceService,
     EvidenceRepository,
     ContentHashService,
-    ObjectStorageService,
+    objectStorageProvider,
     EvidenceLineageService,
     EvidenceVerificationService,
     EvidenceLedgerService,
