@@ -7864,6 +7864,144 @@ components:
             - witnessAssuranceState
       required:
         - data
+    GetAlertDetailResponse:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+          example: 200
+        data:
+          type: object
+          properties:
+            alert:
+              type: object
+              description: The alert row itself.
+            detection:
+              type: object
+              properties:
+                definitionKey:
+                  type: string
+                  nullable: true
+                definitionName:
+                  type: string
+                  nullable: true
+                category:
+                  type: string
+                  nullable: true
+                versionNumber:
+                  type: integer
+                  nullable: true
+                versionStatus:
+                  type: string
+                  nullable: true
+                registered:
+                  type: boolean
+                  description: >-
+                    False when no registered definition or published version is
+                    on record, so the rule that produced the alert cannot be
+                    identified.
+            whyItFired:
+              type: object
+              nullable: true
+              description: >-
+                Null when no detection evaluation is recorded, meaning the
+                alert's reasoning cannot be reconstructed.
+              properties:
+                result:
+                  type: string
+                confidence:
+                  type: number
+                  nullable: true
+                factors:
+                  type: array
+                  description: >-
+                    Per-factor contributions as the rule computed them. A factor
+                    marked indeterminate was not resolved and is not a zero.
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      contribution:
+                        type: number
+                      indeterminate:
+                        type: boolean
+                reasonCode:
+                  type: string
+                  nullable: true
+                incompleteData:
+                  type: boolean
+                evaluatedAt:
+                  type: string
+                  format: date-time
+                eventPayloadSnapshot:
+                  type: object
+                  description: The frozen normalized event the rule evaluated.
+            coverage:
+              type: object
+              properties:
+                state:
+                  type: string
+                incompleteData:
+                  type: boolean
+                contextHealth:
+                  type: string
+                  description: UNRESOLVED when no context snapshot exists.
+            context:
+              type: object
+              nullable: true
+              properties:
+                identityRisk:
+                  type: string
+                  nullable: true
+                assetCriticality:
+                  type: string
+                  nullable: true
+                resolverVersion:
+                  type: string
+                  nullable: true
+                capturedAt:
+                  type: string
+                  format: date-time
+            identity:
+              type: object
+              nullable: true
+            asset:
+              type: object
+              nullable: true
+            sourceEventIds:
+              type: array
+              items:
+                type: string
+            linkedCase:
+              type: object
+              nullable: true
+              properties:
+                caseId:
+                  type: string
+                  format: uuid
+                relationship:
+                  type: string
+                linkedAt:
+                  type: string
+                  format: date-time
+            evidence:
+              type: array
+              items:
+                type: object
+                properties:
+                  id:
+                    type: string
+                    format: uuid
+                  evidence_type:
+                    type: string
+                  content_hash:
+                    type: string
+                  integrity_state:
+                    type: string
+                  created_at:
+                    type: string
+                    format: date-time
     GetAlertsByAlertIdResponse:
       type: object
       properties:
@@ -33120,6 +33258,44 @@ paths:
         - BearerAuth: []
         - InternalServiceAuth: []
       description: Get alert details. Applies the documented path, query, and tenant filters and returns the current persisted or computed result using the response model below.
+  /api/v1/alerts/{alertId}/detail:
+    get:
+      tags:
+        - Alerts
+      summary: Get the full reasoning behind an alert
+      parameters:
+        - name: alertId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique alert ID identifying the target resource.
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Alert detail successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetAlertDetailResponse'
+        '404':
+          description: Alert not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getAlertDetail
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      description: >-
+        Everything needed to explain why an alert exists: the detection
+        definition and published version that fired, the per-factor snapshot the
+        rule computed, the context resolved at the time, and the case and
+        evidence it produced. GET /api/v1/alerts/{alertId} returns the bare row,
+        which cannot explain itself. A factor the rule could not determine is
+        reported as indeterminate rather than as a contribution of zero.
   /api/v1/alerts/{alertId}/status:
     patch:
       tags:
