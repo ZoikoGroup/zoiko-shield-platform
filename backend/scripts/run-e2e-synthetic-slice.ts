@@ -260,7 +260,7 @@ async function runE2eSyntheticSlice() {
       evaluatedAt: new Date().toISOString(),
     },
     {
-      controlId: 'ISO27001-A.9.2',
+      controlId: 'ISO27001-A.5.18',
       name: 'User Access Management & Privilege Revocation',
       framework: 'ISO/IEC 27001:2022',
       verdict: 'PASS',
@@ -295,7 +295,7 @@ async function runE2eSyntheticSlice() {
   const dualSignature = await pqcSigner.signHybrid(merkleTree.root);
 
   console.log(`  ✔ Classical ECDSA P-256 Signature: ${dualSignature.classicalSignatureHex.slice(0, 32)}...`);
-  console.log(`  ✔ NIST FIPS 204 ML-DSA-65 (Dilithium3) Signature: ${dualSignature.pqcSignatureHex.slice(0, 48)}... (${dualSignature.pqcSignatureHex.length / 2} bytes)`);
+  console.log(`  ✔ NIST FIPS 204 ML-DSA-65 Signature: ${dualSignature.pqcSignatureHex.slice(0, 48)}... (${dualSignature.pqcSignatureHex.length / 2} bytes)`);
 
   const pqcVerification = pqcSigner.verifyHybrid(merkleTree.root, dualSignature);
   console.log(`  ✔ Hybrid Dual-Signature Verification: ${pqcVerification.isValid ? 'VALID ✓ (Classical & PQC Verified)' : 'INVALID ✕'}\n`);

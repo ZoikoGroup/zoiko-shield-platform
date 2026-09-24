@@ -54,7 +54,7 @@ export class CapabilityStatusService {
       serviceName: 'Continuous Compliance & Assurance Monitoring',
       category: 'Governance, Risk & Compliance',
       publicOutcomeDescription:
-        'Automated continuous evaluation of security controls against approved regulatory baselines (SOC 2 Type II CC6.1, ISO/IEC 27001:2022 A.9.2) with tamper-evident evidence linkage.',
+        'Automated continuous evaluation of security controls against approved regulatory baselines (SOC 2 Type II CC6.1, ISO/IEC 27001:2022 A.5.18) with tamper-evident evidence linkage.',
       status: 'CORE',
       substantiatingComponents: ['shield-core', 'shield-anchor'],
       includedCapabilities: ['CAP-ASSURE-01', 'CAP-ASSURE-02', 'CAP-EVID-01'],
@@ -244,14 +244,14 @@ export class CapabilityStatusService {
     },
     {
       id: 'CAP-ASSURE-02',
-      name: 'ISO/IEC 27001:2022 (A.9.2) User Access Management Evaluation',
+      name: 'ISO/IEC 27001:2022 (A.5.18) Access Rights Evaluation',
       domain: 'ASSURANCE_EVIDENCE',
       customerService: 'SVC-01',
       status: 'CORE',
       substantiatingSatellites: ['shield-core'],
       governanceRationale:
         'Active core continuous assurance baseline evaluating user provisioning and deprovisioning.',
-      statutoryReference: 'ISO/IEC 27001:2022 A.9.2',
+      statutoryReference: 'ISO/IEC 27001:2022 A.5.18',
     },
     {
       id: 'CAP-EVID-01',
@@ -281,8 +281,8 @@ export class CapabilityStatusService {
       status: 'DEFERRED',
       substantiatingSatellites: ['shield-core'],
       governanceRationale:
-        'Deferred to Phase 2 midpoint per ADR-08. Schema present in sector pack registry in DEFERRED status.',
-      statutoryReference: 'Regulation (EU) 2022/2554',
+        'DORA has applied to in-scope financial entities since 17 January 2025, so it is not something an internal product phase can defer. What is deferred is ZoikoShield\'s own evaluator content, per ADR-08. ZoikoShield may support a customer\'s DORA obligations; its own obligations as an ICT third-party provider depend on designation and contract and must be mapped legally, not marked deferred by engineering. No platform DORA-compliance claim is made.',
+      statutoryReference: 'Regulation (EU) 2022/2554 (in force since 17 January 2025)',
     },
     {
       id: 'CAP-FRAME-02',
@@ -428,13 +428,13 @@ export class CapabilityStatusService {
     },
     {
       id: 'CAP-CRYPTO-01',
-      name: 'Post-Quantum Dual-Signing (Dilithium3 / Sphincs+)',
+      name: 'Post-Quantum Dual-Signing (ML-DSA-65, FIPS 204)',
       domain: 'EXPERIMENTAL_CRYPTO',
       customerService: 'SVC-02',
       status: 'CONTROLLED',
       substantiatingSatellites: ['shield-anchor'],
       governanceRationale:
-        'Dual-signing active in parallel with standard Ed25519/ECDSA.',
+        'ML-DSA-65 signing runs in parallel with classical ECDSA P-256. No other post-quantum scheme is implemented or offered.',
     },
     {
       id: 'CAP-CRYPTO-02',
@@ -550,7 +550,9 @@ export class CapabilityStatusService {
    * Check whether a compliance framework evaluator is active vs deferred.
    */
   isFrameworkEvaluatorActive(frameworkKey: string): boolean {
-    const activeFrameworks = ['SOC2_CC6_1', 'ISO27001_A9_2'];
+    const activeFrameworks = ['SOC2_CC6_1', 'ISO27001_A5_18'];
+    // "Deferred" describes our evaluator content, not the regulation. DORA
+    // binds in-scope entities regardless of what this platform implements.
     const deferredFrameworks = ['DORA', 'NIS2', 'PCI_DSS_V4'];
 
     const normalized = frameworkKey.toUpperCase().replace(/[-.]/g, '_');

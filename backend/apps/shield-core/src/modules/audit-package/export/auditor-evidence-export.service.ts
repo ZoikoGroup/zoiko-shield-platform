@@ -4,7 +4,7 @@ import { PrismaService } from '../../../prisma/prisma.service';
 
 export interface ContinuousAssuranceControlExport {
   framework: 'SOC2_TYPE_II' | 'ISO_27001_2022';
-  controlId: string; // e.g. CC6.1, CC6.6, A.9.4, A.12.1 [derived]
+  controlId: string; // e.g. CC6.1, CC6.6, A.5.17, A.8.15 [derived]
   title: string;
   status: 'COMPLIANT' | 'DEGRADED' | 'EVALUATION_IN_PROGRESS';
   evaluatedAt: Date;
@@ -34,7 +34,7 @@ export interface AuditorExportManifest {
   merkleRoot: string;
   /**
    * SHA-256 of the manifest core. This package is NOT signed: it used to
-   * carry `pqcSignatureDilithium3` and `classicalSignatureEd25519` fields
+   * carry `pqcSignatureMlDsa65` and `classicalSignatureEcdsaP256` fields
    * that were plain SHA-256 hashes anyone could recompute, presented to
    * auditors as ML-DSA and Ed25519 signatures. A digest is reported as a
    * digest until an export-signing key with HSM/KMS custody exists.

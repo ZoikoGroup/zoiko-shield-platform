@@ -28,7 +28,7 @@ async function main() {
   const evaluator = new ContinuousControlEvaluatorService(seeder);
   const driftDetector = new ComplianceDriftDetectorService();
 
-  // Scenario 1: Baseline 100% Compliant Posture
+  // Scenario 1: baseline posture with every measured control passing
   console.log('\n[2/4] Evaluating Baseline Production Security Posture...');
   const healthyReport = await evaluator.evaluateFrameworkControls({
     tenantId,

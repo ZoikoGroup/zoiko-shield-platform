@@ -110,7 +110,7 @@ const mockReadinessSnapshot: PlatformReadinessSnapshot = {
       serviceId: "shield-anchor",
       serviceName: "shield-anchor",
       displayName: "Cryptographic Anchor & Immutable Merkle Ledger",
-      description: "Post-quantum dual-signing (Dilithium3 + ECDSA P-384), Merkle epoch aggregation, and RFC 3161 timestamps.",
+      description: "Post-quantum dual-signing (ML-DSA-65 (FIPS 204) + ECDSA P-256), Merkle epoch aggregation, and RFC 3161 timestamps.",
       version: "1.0.0",
       state: "HEALTHY",
       stateMeaning: "Current evidence supports normal operation within objective and no hidden material gap.",
@@ -120,7 +120,7 @@ const mockReadinessSnapshot: PlatformReadinessSnapshot = {
         { dependencyName: "Cloud KMS Sovereign HSM", type: "KMS_HSM", healthy: true, latencyMs: 15, lastChecked: new Date().toISOString() },
       ],
       signals: [
-        { signalKey: "pqc_dual_signing", label: "PQC Dual-Signer (ML-DSA / Dilithium3)", value: "ACTIVE_COMPLIANT", status: "OPTIMAL" },
+        { signalKey: "pqc_dual_signing", label: "PQC Dual-Signer (ML-DSA-65, FIPS 204)", value: "ACTIVE_COMPLIANT", status: "OPTIMAL" },
       ],
       blockers: [],
     },

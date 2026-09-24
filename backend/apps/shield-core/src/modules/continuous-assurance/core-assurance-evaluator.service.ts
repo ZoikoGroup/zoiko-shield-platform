@@ -193,7 +193,7 @@ export class CoreAssuranceEvaluatorService {
         } else {
           state = 'COMPLETE';
           complianceScore = 100;
-          rationale = `Modern cryptographic baseline '${tls}' verified with post-quantum Dilithium3/Merkle signing.`;
+          rationale = `Modern cryptographic baseline '${tls}' verified with post-quantum ML-DSA-65 (FIPS 204) and Merkle signing.`;
         }
         break;
       }

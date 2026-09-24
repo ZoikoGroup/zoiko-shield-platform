@@ -369,7 +369,7 @@ export const CORE_REQUIREMENTS: CreateRequirementDto[] = [
     dataScope: 'CONFIDENTIAL_CUSTOMER_TELEMETRY',
     authority: {
       type: 'SECURITY_STANDARD',
-      reference: 'SOC 2 Type II CC6.1 / ISO 27001:2022 A.9.2 / Spec §55',
+      reference: 'SOC 2 Type II CC6.1 / ISO/IEC 27001:2022 A.5.18 / Spec §55',
     },
     failureBehavior: 'ALERT_AND_CONTINUE',
     aiStatus: 'DETERMINISTIC_ONLY',

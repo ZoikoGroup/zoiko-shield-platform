@@ -264,7 +264,7 @@ async function main() {
   // --------------------------------------------------------------------------
   // [8/10] Continuous Control Evaluation (SOC 2 & ISO 27001)
   // --------------------------------------------------------------------------
-  console.log('\n[8/10] Evaluating Continuous Controls (SOC 2 CC6.1 & ISO 27001 A.9.4)...');
+  console.log('\n[8/10] Evaluating Continuous Controls (SOC 2 CC6.1 & ISO/IEC 27001:2022 A.5.17)...');
   const controlResults = [
     {
       controlId: 'SOC2-CC6.1',
@@ -276,7 +276,7 @@ async function main() {
       evaluatedAt: now,
     },
     {
-      controlId: 'ISO27001-A.9.4',
+      controlId: 'ISO27001-A.5.17',
       framework: 'ISO_IEC_27001_2022',
       status: 'COMPLIANT',
       evidenceIds: [`ev:cortex:${cortexRaw.incident_id}`],

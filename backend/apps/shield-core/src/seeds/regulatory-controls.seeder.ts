@@ -116,7 +116,7 @@ export class RegulatoryControlsSeeder {
         title: 'Use of Cryptography & Post-Quantum Algorithms',
         description:
           'Rules for the effective use of cryptography, including cryptographic key management and dual-signing, shall be defined and implemented.',
-        automatedTestKey: 'test_pqc_dilithium3_and_kms_rotation',
+        automatedTestKey: 'test_pqc_ml_dsa_65_and_kms_rotation',
         evidenceRequirements: ['KMS_ROTATION_AUDIT', 'PQC_SIGNATURE_PROOFS'],
         phaseScope: 'PHASE_0_G1',
       },

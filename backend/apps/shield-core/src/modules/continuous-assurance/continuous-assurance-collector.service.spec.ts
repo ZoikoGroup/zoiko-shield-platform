@@ -80,7 +80,7 @@ describe('ContinuousAssuranceCollector & DriftMonitor (Spec §8 & §55)', () => 
     expect(driftResult.activeAlarms.map((a) => a.controlId)).toEqual(
       expect.arrayContaining([
         'SOC2-CC6.1-LATENCY',
-        'ISO27001-A.9.2-POSTURE',
+        'ISO27001-A.5.18-POSTURE',
         'SOC2-CC6.1-IAM',
       ]),
     );

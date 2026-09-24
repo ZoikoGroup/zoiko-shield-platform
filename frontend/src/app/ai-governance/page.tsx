@@ -165,7 +165,7 @@ const INITIAL_REVIEW_ENVELOPES: AiReviewEnvelope[] = [
         sourceId: "EV-002",
         sourceType: "MERKLE_PROOF_LEAF",
         version: 1,
-        exactSpan: "Dilithium3 post-quantum signature verified under Epoch #1043",
+        exactSpan: "ML-DSA-65 post-quantum signature verified under Epoch #1043",
         confidence: 0.995,
       },
     ],

@@ -47,7 +47,7 @@ const SECTOR_PACKS: SectorPack[] = [
     tailoredFeatures: [
       "Multi-region high-throughput webhook pipelines (>500k eps)",
       "BGP route leak and DNS tunnel anomaly detection",
-      "Dilithium3 cryptographic evidence logging for carrier peering records",
+      "ML-DSA-65 cryptographic evidence logging for carrier peering records",
       "Dual-operator R4 network isolate and route withdraw playbooks",
     ],
     recommendedPlan: "Shield Advanced / Enterprise",
@@ -63,7 +63,7 @@ const SECTOR_PACKS: SectorPack[] = [
       "Purpose-built for digital banks, payment processors, and crypto custodians demanding mathematical proof of ledger integrity and zero charge variance during market spikes.",
     targetRegimes: ["SOC 2 CC6.1 (Active)", "ISO 27001 (Active)", "EU DORA (Deferred)", "PCI DSS (Deferred)"],
     statutoryCaveat:
-      "Formal EU DORA digital resilience and PCI DSS v4.0.1 evaluators are DEFERRED per ADR-08. Active compliance includes real-time SOC 2 Type II CC6.1 and ISO 27001 A.9.2 continuous assurance.",
+      "Formal EU DORA digital resilience and PCI DSS v4.0.1 evaluators are DEFERRED per ADR-08. Active compliance includes real-time SOC 2 Type II CC6.1 and ISO/IEC 27001:2022 A.5.18 continuous assurance.",
     tailoredFeatures: [
       "Anti-Perverse Billing: Zero surge costs during trading volatility or alert storms",
       "Post-quantum Merkle epoch tree proofs for transaction evidence audits",

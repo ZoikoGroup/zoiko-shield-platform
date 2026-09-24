@@ -39,7 +39,7 @@ export class CustomerDisclosuresController {
       regulatoryBoundary: {
         activeFrameworks: [
           'SOC 2 Type II (CC6.1, CC6.6)',
-          'ISO/IEC 27001:2022 (A.9.4, A.12.1)',
+          'ISO/IEC 27001:2022 (A.5.17, A.8.15)',
         ],
         deferredOverlays: [
           {

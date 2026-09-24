@@ -264,7 +264,7 @@ const PRESETS: Record<CopilotMode, CopilotPreset> = {
       },
       payload: {
         summary:
-          "Evaluated 48 JIT elevation requests against SOC 2 CC6.1 and ISO 27001 A.9.2 controls. All 48 sessions satisfied dual-approver quorum and terminated within maximum 60-minute duration. Merkle epoch roots verified against the dual-signed (ECDSA P-256 + ML-DSA-65) checkpoint.",
+          "Evaluated 48 JIT elevation requests against SOC 2 CC6.1 and ISO/IEC 27001:2022 A.5.18 controls. All 48 sessions satisfied dual-approver quorum and terminated within maximum 60-minute duration. Merkle epoch roots verified against the dual-signed (ECDSA P-256 + ML-DSA-65) checkpoint.",
       },
     },
   },

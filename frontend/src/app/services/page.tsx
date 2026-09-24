@@ -160,7 +160,7 @@ export default function CommercialServicesPage() {
             className="bg-slate-900 border border-slate-700 text-slate-200 rounded px-2 py-1 text-xs font-mono focus:outline-none focus:border-cyan-400"
           >
             <option value="SOC2_CC6_1">SOC 2 CC6.1</option>
-            <option value="ISO27001_A9_2">ISO 27001 A.9.2</option>
+            <option value="ISO27001_A5_18">ISO/IEC 27001:2022 A.5.18</option>
             <option value="EU_DORA">EU DORA</option>
             <option value="EU_NIS2">EU NIS2</option>
             <option value="PCI_DSS">PCI DSS v4.0.1</option>

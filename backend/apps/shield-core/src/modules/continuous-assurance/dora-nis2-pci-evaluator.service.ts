@@ -136,7 +136,7 @@ export class DoraNis2PciEvaluatorService {
         } else {
           result = 'PASS';
           complianceScore = 100;
-          rationale = `Audit logs permanently sealed with Dilithium3 post-quantum signatures across ${input.evidenceDigests.length} evidence records.`;
+          rationale = `Audit logs permanently sealed with ML-DSA-65 (FIPS 204) post-quantum signatures across ${input.evidenceDigests.length} evidence records.`;
         }
         break;
       }

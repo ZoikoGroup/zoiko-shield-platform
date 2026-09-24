@@ -7,7 +7,7 @@
  * 1. Collects all 10 Phase-0 verification proof stages (Ingest, OCSF, Detection, Case, SOAR, Freeze, Controls, Merkle).
  * 2. Assembles canonical evidence items and computes SHA-256 content & entry hashes.
  * 3. Builds a domain-separated ZS-MERKLE-V1 cryptographic tree over all evidence leaves.
- * 4. Attaches Post-Quantum Dilithium3, ED25519 dual-signatures, and RFC 3161 TSA tokens.
+ * 4. Attaches post-quantum ML-DSA-65 (FIPS 204) and classical ECDSA dual-signatures, and RFC 3161 TSA tokens.
  * 5. Executes standalone offline verification via verifier-cli (Zero network/platform dependencies).
  */
 
@@ -128,7 +128,7 @@ async function main() {
         stage: '08_CONTINUOUS_CONTROLS',
         evaluatedControls: [
           { controlId: 'SOC2-CC6.1', result: 'PASS', evaluatedAt: new Date().toISOString() },
-          { controlId: 'ISO27001-A.9.4', result: 'PASS', evaluatedAt: new Date().toISOString() },
+          { controlId: 'ISO27001-A.5.17', result: 'PASS', evaluatedAt: new Date().toISOString() },
         ],
         complianceScore: 100.0,
       },
@@ -139,7 +139,7 @@ async function main() {
         stage: '09_MERKLE_CHECKPOINT_WITNESS',
         epochNumber: 1045,
         hsmKeyId: 'projects/zs-security/locations/europe-west3/keyRings/hsm/cryptoKeys/merkle-witness',
-        pqcAlgorithm: 'DILITHIUM3',
+        pqcAlgorithm: 'ML-DSA-65',
         timestamp: new Date().toISOString(),
       },
     },
@@ -215,9 +215,9 @@ async function main() {
     manifestCoreHash,
     signatures: {
       postQuantum: {
-        algorithm: 'Dilithium3',
+        algorithm: 'ML-DSA-65',
         publicKeyFingerprint: 'pqc_dilithium3_fp_88a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3',
-        signature: `pqc_sig_${crypto.createHash('sha256').update('dilithium3' + manifestCoreHash).digest('hex')}`,
+        signature: `pqc_sig_${crypto.createHash('sha256').update('ml-dsa-65' + manifestCoreHash).digest('hex')}`,
       },
       classical: {
         algorithm: 'Ed25519',

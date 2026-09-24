@@ -70,7 +70,7 @@ export class ComplianceDriftMonitorService {
       alarms.push({
         alarmId: `sla-score-${crypto.randomUUID().slice(0, 8)}`,
         tenantId,
-        controlId: 'ISO27001-A.9.2-POSTURE',
+        controlId: 'ISO27001-A.5.18-POSTURE',
         severity:
           telemetryMetrics.complianceScore < 80.0 ? 'CRITICAL' : 'WARNING',
         reason: `Overall compliance posture score (${telemetryMetrics.complianceScore}%) fell below continuous assurance threshold of 95.0%.`,

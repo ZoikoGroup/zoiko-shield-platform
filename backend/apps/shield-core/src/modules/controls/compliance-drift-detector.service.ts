@@ -117,7 +117,7 @@ export class ComplianceDriftDetectorService {
     }
 
     let recommendation =
-      'Posture is compliant and aligned with established SLA thresholds.';
+      'Every measured control passed and the score is within the agreed SLA threshold.';
     if (severity === 'NOT_ASSESSABLE') {
       recommendation = `No control was evaluated (${report.notEvaluatedControlsCount} of ${report.totalControls} lack telemetry), so compliance drift cannot be determined. Supply a telemetry snapshot before reading this as a posture.`;
     } else if (severity === 'CRITICAL_SLA_BREACH') {

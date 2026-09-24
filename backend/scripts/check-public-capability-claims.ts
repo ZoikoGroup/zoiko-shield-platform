@@ -53,7 +53,7 @@ function verifyPublicCapabilityClaims(): void {
   const pciActive = capabilityService.isFrameworkEvaluatorActive('PCI_DSS_V4');
   const soc2Active = capabilityService.isFrameworkEvaluatorActive('SOC2_CC6_1');
   const isoActive =
-    capabilityService.isFrameworkEvaluatorActive('ISO27001_A9_2');
+    capabilityService.isFrameworkEvaluatorActive('ISO27001_A5_18');
 
   if (doraActive)
     errors.push(
@@ -71,7 +71,7 @@ function verifyPublicCapabilityClaims(): void {
     errors.push('Rule FRM-01 Violation: SOC 2 CC6.1 evaluator must be active');
   if (!isoActive)
     errors.push(
-      'Rule FRM-01 Violation: ISO 27001 A.9.2 evaluator must be active',
+      'Rule FRM-01 Violation: ISO/IEC 27001:2022 A.5.18 evaluator must be active',
     );
 
   // 3. Operationalize Rule CON-01: Connector Tier Gating
