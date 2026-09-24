@@ -73,7 +73,7 @@ G1 is ready only when all of the following conditions are satisfied (MASTER_BUIL
 | G2-AUTH-02 | Authorization | LAB 12 negative authorization matrix (8 release blockers) | **PASSED** | lab12-negative-authorization.spec.ts |
 | G2-TENANT-01 | Tenancy | Store-by-store isolation matrix | **DOCUMENTED** | tenant-isolation-matrix.md |
 | G2-TENANT-02 | Tenancy | Cross-tenant negative isolation matrix | **PASSED** | cross-tenant-isolation-matrix.spec.ts |
-| G2-ACTION-01 | SOAR Response | Non-exportable KMS key boundary | **MET IN CODE, UNPROVEN IN DEPLOYMENT** — commands are signed through a KMS-backed signer that refuses to start without `ACTION_COMMAND_KMS_KEY_ID`; no production KMS key has been provisioned or exercised yet | production-governed-command-signer.service.ts, governed-command-signer.spec.ts |
+| G2-ACTION-01 | SOAR Response | Non-exportable KMS key boundary | **MET IN CODE, UNPROVEN IN DEPLOYMENT** — commands are signed through a KMS-backed signer that refuses to start without `ACTION_COMMAND_KMS_KEY_VERSION`; no production KMS key has been provisioned or exercised yet | production-governed-command-signer.service.ts, governed-command-signer.spec.ts |
 | G2-ACTION-02 | SOAR Response | LAB 15 command replay, expiry, signature verification | **PASSED** | lab15-action-broker-negative.spec.ts |
 | G2-EVID-01 | Evidence Ledger | Merkle tree ZS-MERKLE-V1 and witness receipts | **PASSED** | MerkleTreeService |
 | G2-EVID-02 | Verifier | Standalone zero-dependency offline verifier round-trip | **PASSED** | lab11-evidence-verifier-roundtrip.spec.ts |

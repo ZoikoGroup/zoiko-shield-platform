@@ -9,6 +9,15 @@
 
 ---
 
+> **UPDATE (2026-09-24) — key management and evidence storage are now Google Cloud.**
+> Signing moved from AWS KMS to **Cloud KMS**, and evidence storage from the S3
+> client to the **native Cloud Storage** API. `@aws-sdk/client-kms` is no longer
+> a dependency. The S3 client remains only for MinIO in non-production.
+> For a GCP deployment, follow **`docs/GCP_DEPLOYMENT_GUIDE.md`**, which covers
+> the Cloud KMS keys, the evidence bucket and the service accounts. The
+> environment reference in §6 below is corrected for this; the rest of this
+> document still describes the generic container topology accurately.
+
 ## 1. Executive Summary & Staging Guidance
 
 ZoikoShield is an enterprise cyber defense, compliance ledger, and continuous assurance platform built on a distributed microservices architecture.
@@ -50,7 +59,7 @@ ZoikoShield is an enterprise cyber defense, compliance ledger, and continuous as
                                                                    │
                                                         ┌──────────▼──────────┐
                                                         │shield-anchor (3005) │
-                                                        │ Merkle / Cloud HSM  │
+                                                        │ Merkle / Cloud KMS  │
                                                         └──────────┬──────────┘
                                                                    │
      ══════════════════════════════════════════════════════════════╪══════════════════════════════════════════════════════════
@@ -70,7 +79,7 @@ ZoikoShield is an enterprise cyber defense, compliance ledger, and continuous as
 | **`shield-ingest`** | `backend/apps/shield-ingest` | Node 20+, NestJS | `3002` | High-throughput OCSF telemetry ingestion, Webhooks, Normalization, Quarantine Replay | `GET /health` |
 | **`shield-ai`** | `backend/apps/shield-ai` | Node 20+, NestJS | `3003` | Threat Hunting, Decision Review Envelopes, Population Stability Index (PSI) Drift Monitoring | `GET /health` |
 | **`shield-action`** | `backend/apps/shield-action` | Node 20+, NestJS | `3004` | Security response action dispatcher, Two-Man Rule Quorum approvals, JIT elevation (Simulation mode active) | `GET /health` |
-| **`shield-anchor`** | `backend/apps/shield-anchor` | Node 20+, NestJS | `3005` | Merkle Epoch Checkpoint Sealing, Cloud HSM KMS Signer, Post-Quantum Dual-Signing (FIPS 204) | `GET /health` |
+| **`shield-anchor`** | `backend/apps/shield-anchor` | Node 20+, NestJS | `3005` | Merkle Epoch Checkpoint Sealing, Cloud KMS signing, ML-DSA-65 + ECDSA dual-signing (not FIPS-validated) | `GET /health` |
 | **`verifier-cli`** | `backend/apps/verifier-cli` | Node 20+ standalone CLI | CLI | Standalone offline cryptographic audit package verification tool | N/A |
 
 ---
@@ -82,7 +91,7 @@ ZoikoShield is an enterprise cyber defense, compliance ledger, and continuous as
 | **PostgreSQL** | `postgres:16-alpine` | `5432` | Persistent Volume (~50 GB min) | Master relational store for tenants, identities, audit events, contracts, and R04 requirements. |
 | **Redis** | `redis:7-alpine` | `6379` | In-memory / Optional AOF | Distributed session tokens, caching, rate limiting, and temporary locks. |
 | **Redpanda / Kafka** | `redpandadata/redpanda:v24.2.7` | `9092` (Kafka), `8082` (Proxy) | Persistent Volume (~50 GB min) | Asynchronous event streaming for security telemetry, alerts, and audit batch jobs. |
-| **S3 / MinIO** | `minio/minio:latest` (or AWS S3) | `9000` (API), `9001` (Console) | Object Storage (WORM enabled) | Immutable evidence storage, forensic snapshots, and exported audit packages. |
+| **Object storage** | Cloud Storage in production; `minio/minio:latest` for non-production | `9000` (API), `9001` (Console) for MinIO | Object Storage (WORM via per-object retention) | Immutable evidence storage, forensic snapshots, and exported audit packages. |
 | **OpenSearch** *(Optional)* | `opensearchproject/opensearch:2.17.0` | `9200` | Persistent Volume | Fast full-text and hot analytics projection search. |
 
 ---
@@ -131,10 +140,36 @@ NODE_ENV=production
 DATABASE_URL=postgres://shield:YOUR_SECURE_PASSWORD@postgres-host:5432/shield_core
 REDIS_URL=redis://redis-host:6379
 KAFKA_BROKERS=kafka-host:9092
-S3_ENDPOINT=https://s3.eu-west-1.amazonaws.com  # Or http://minio:9000 for nonprod
-S3_ACCESS_KEY=your_s3_access_key
-S3_SECRET_KEY=your_s3_secret_key
+
+# Evidence storage. With both of these set, evidence goes to Cloud Storage
+# through the native API. The bucket MUST have been created with per-object
+# retention enabled — it cannot be retrofitted.
+GOOGLE_CLOUD_PROJECT=your-gcp-project
+EVIDENCE_GCS_BUCKET=zoiko-shield-evidence-worm
+EVIDENCE_GCS_LOCATION=US
+# Only outside GCP. On Cloud Run and GKE the attached service account supplies
+# credentials to the KMS and Storage clients, and no key file is needed.
+# GOOGLE_APPLICATION_CREDENTIALS=/path/to/key.json
+
+# Non-production only: MinIO through the S3 client, used when the two
+# Cloud Storage variables above are unset.
+S3_ENDPOINT=http://minio:9000
+S3_ACCESS_KEY=your_minio_access_key
+S3_SECRET_KEY=your_minio_secret_key
 EVIDENCE_S3_BUCKET=zoiko-shield-evidence-worm
+```
+
+### A2. Cloud KMS signing keys
+
+Asymmetric signing takes a key **version** resource name; subject-key wrapping
+takes a crypto **key** name. See `docs/GCP_DEPLOYMENT_GUIDE.md` §0 for the
+`gcloud` commands and IAM roles.
+
+```bash
+ANCHOR_KMS_KEY_VERSION=projects/P/locations/L/keyRings/R/cryptoKeys/anchor-checkpoint/cryptoKeyVersions/1
+COLLECTOR_KMS_KEY_VERSION=projects/P/locations/L/keyRings/R/cryptoKeys/evidence-collector/cryptoKeyVersions/1
+ACTION_COMMAND_KMS_KEY_VERSION=projects/P/locations/L/keyRings/R/cryptoKeys/action-command/cryptoKeyVersions/1
+SUBJECT_KEY_KMS_KEY_NAME=projects/P/locations/L/keyRings/R/cryptoKeys/subject-key-wrapping
 ```
 
 ### B. Gateway & Authentication (`shield-core`)
