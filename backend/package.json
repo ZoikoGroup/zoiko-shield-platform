@@ -145,9 +145,10 @@
     "package:monorepo": "ts-node -r tsconfig-paths/register ./scripts/package-monorepo-archive.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-kms": "^3.1106.0",
     "@aws-sdk/client-s3": "^3.1106.0",
     "@azure/event-hubs": "^6.0.4",
+    "@google-cloud/kms": "^6.2.0",
+    "@google-cloud/storage": "^8.2.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.4",
     "@nestjs/core": "^11.0.1",

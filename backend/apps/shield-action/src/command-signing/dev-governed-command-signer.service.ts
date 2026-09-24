@@ -36,7 +36,7 @@ export class DevGovernedCommandSigner implements GovernedCommandSigner {
   constructor() {
     if (process.env.NODE_ENV === 'production') {
       throw new Error(
-        'DevGovernedCommandSigner must never operate in production. Set ACTION_COMMAND_KMS_KEY_ID so the KMS-backed signer is used instead.',
+        'DevGovernedCommandSigner must never operate in production. Set ACTION_COMMAND_KMS_KEY_VERSION so the KMS-backed signer is used instead.',
       );
     }
 

@@ -1,10 +1,4 @@
-import { createPublicKey, createVerify } from 'crypto';
-import {
-  GetPublicKeyCommand,
-  KMSClient,
-  SignCommand,
-  type SigningAlgorithmSpec,
-} from '@aws-sdk/client-kms';
+import { GcpKmsSigner } from '../../../../../../libs/kms/src/gcp-kms-signer';
 import type {
   CollectorSigner,
   CollectorSignResult,
@@ -12,56 +6,38 @@ import type {
 } from './collector-signer.interface';
 import { canonicalCollectorPayload } from './collector-signer.interface';
 
-const SUPPORTED_ALGORITHMS = new Set<SigningAlgorithmSpec>(['ECDSA_SHA_256']);
-
 /**
- * Production collector signing through a non-exportable AWS KMS key, mirroring
- * the anchor checkpoint signer. Verification is done locally against the
- * exported public key rather than round-tripping to KMS: re-verifying stored
- * evidence must keep working even when KMS is unreachable.
+ * Production collector signing through a non-exportable Google Cloud KMS key,
+ * mirroring the anchor checkpoint signer and the governed command signer.
+ *
+ * Replaces the AWS KMS implementation. Verification is done locally against
+ * the exported public key rather than round-tripping to KMS: re-verifying
+ * stored evidence must keep working even when KMS is unreachable.
  */
 export class ProductionCollectorSigner implements CollectorSigner {
-  private readonly keyId: string;
-  private readonly algorithm: SigningAlgorithmSpec;
-  private readonly client: KMSClient;
-  private publicKeyPromise?: Promise<string>;
+  private readonly signer: GcpKmsSigner;
 
   constructor() {
-    this.keyId = process.env.COLLECTOR_KMS_KEY_ID ?? '';
-    this.algorithm = (process.env.COLLECTOR_KMS_SIGNING_ALGORITHM ??
-      'ECDSA_SHA_256') as SigningAlgorithmSpec;
-    if (!this.keyId) {
-      throw new Error('COLLECTOR_KMS_KEY_ID is required in production');
-    }
-    if (!SUPPORTED_ALGORITHMS.has(this.algorithm)) {
+    const keyVersion = process.env.COLLECTOR_KMS_KEY_VERSION ?? '';
+    if (!keyVersion) {
       throw new Error(
-        `Unsupported COLLECTOR_KMS_SIGNING_ALGORITHM '${this.algorithm}'`,
+        'COLLECTOR_KMS_KEY_VERSION is required in production — evidence must be bound to a collector by a key in custody.',
       );
     }
-    this.client = new KMSClient({ region: process.env.AWS_REGION });
+    this.signer = new GcpKmsSigner(keyVersion);
   }
 
   async sign(payload: CollectorSigningPayload): Promise<CollectorSignResult> {
-    const message = Buffer.from(canonicalCollectorPayload(payload), 'utf-8');
-    const [outcome, publicKey] = await Promise.all([
-      this.client.send(
-        new SignCommand({
-          KeyId: this.keyId,
-          Message: message,
-          MessageType: 'RAW',
-          SigningAlgorithm: this.algorithm,
-        }),
-      ),
-      this.publicKey(),
+    const message = canonicalCollectorPayload(payload);
+    const [signature, publicKey] = await Promise.all([
+      this.signer.sign(message),
+      this.signer.publicKey(),
     ]);
-    if (!outcome.Signature) {
-      throw new Error('AWS KMS returned no collector signature');
-    }
     return {
-      signature: Buffer.from(outcome.Signature).toString('hex'),
-      signingKeyId: outcome.KeyId ?? this.keyId,
+      signature,
+      signingKeyId: this.signer.keyId,
       publicKey,
-      algorithm: this.algorithm,
+      algorithm: this.signer.algorithm,
     };
   }
 
@@ -70,31 +46,10 @@ export class ProductionCollectorSigner implements CollectorSigner {
     signature: string,
     publicKey: string,
   ): Promise<boolean> {
-    try {
-      const verifier = createVerify('SHA256');
-      verifier.update(Buffer.from(canonicalCollectorPayload(payload), 'utf-8'));
-      verifier.end();
-      return verifier.verify(publicKey, Buffer.from(signature, 'hex'));
-    } catch {
-      return false;
-    }
-  }
-
-  private publicKey(): Promise<string> {
-    this.publicKeyPromise ??= this.client
-      .send(new GetPublicKeyCommand({ KeyId: this.keyId }))
-      .then((outcome) => {
-        if (!outcome.PublicKey) {
-          throw new Error('AWS KMS returned no collector public key');
-        }
-        return createPublicKey({
-          key: Buffer.from(outcome.PublicKey),
-          format: 'der',
-          type: 'spki',
-        })
-          .export({ type: 'spki', format: 'pem' })
-          .toString();
-      });
-    return this.publicKeyPromise;
+    return this.signer.verify(
+      canonicalCollectorPayload(payload),
+      signature,
+      publicKey,
+    );
   }
 }

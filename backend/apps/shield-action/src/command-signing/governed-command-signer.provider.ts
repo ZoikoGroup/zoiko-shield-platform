@@ -6,7 +6,7 @@ import { ProductionGovernedCommandSigner } from './production-governed-command-s
 /**
  * Chooses the signer by environment, and never silently falls back.
  *
- * In production the KMS signer is the only option: if ACTION_COMMAND_KMS_KEY_ID
+ * In production the KMS signer is the only option: if ACTION_COMMAND_KMS_KEY_VERSION
  * is unset it throws at boot. That is deliberate — a service that cannot sign
  * a governed command with a key in custody must not start and quietly sign
  * with a throwaway one instead.
@@ -21,9 +21,9 @@ export const governedCommandSignerProvider: Provider = {
     }
     // A KMS key id outside production is honoured, so staging can exercise the
     // real custody path before production depends on it.
-    if (process.env.ACTION_COMMAND_KMS_KEY_ID?.trim()) {
+    if (process.env.ACTION_COMMAND_KMS_KEY_VERSION?.trim()) {
       logger.log(
-        'ACTION_COMMAND_KMS_KEY_ID is set outside production — using the KMS signer.',
+        'ACTION_COMMAND_KMS_KEY_VERSION is set outside production — using the KMS signer.',
       );
       return new ProductionGovernedCommandSigner();
     }

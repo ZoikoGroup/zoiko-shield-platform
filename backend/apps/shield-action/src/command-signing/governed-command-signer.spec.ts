@@ -6,14 +6,14 @@ import { canonicalCommandPayload } from './command-signer.interface';
 
 describe('Governed command signing', () => {
   const originalEnv = process.env.NODE_ENV;
-  const originalKeyId = process.env.ACTION_COMMAND_KMS_KEY_ID;
+  const originalKeyId = process.env.ACTION_COMMAND_KMS_KEY_VERSION;
 
   afterEach(() => {
     process.env.NODE_ENV = originalEnv;
     if (originalKeyId === undefined) {
-      delete process.env.ACTION_COMMAND_KMS_KEY_ID;
+      delete process.env.ACTION_COMMAND_KMS_KEY_VERSION;
     } else {
-      process.env.ACTION_COMMAND_KMS_KEY_ID = originalKeyId;
+      process.env.ACTION_COMMAND_KMS_KEY_VERSION = originalKeyId;
     }
   });
 
@@ -25,9 +25,19 @@ describe('Governed command signing', () => {
   });
 
   it('refuses to start the production signer without a key in custody', () => {
-    delete process.env.ACTION_COMMAND_KMS_KEY_ID;
+    delete process.env.ACTION_COMMAND_KMS_KEY_VERSION;
     expect(() => new ProductionGovernedCommandSigner()).toThrow(
-      /ACTION_COMMAND_KMS_KEY_ID is required in production/,
+      /ACTION_COMMAND_KMS_KEY_VERSION is required in production/,
+    );
+  });
+
+  it('refuses a key name that is not a Cloud KMS key version', () => {
+    // A crypto key without a version signs nothing: Cloud KMS would answer
+    // NOT_FOUND on the first signature, at the moment a command is issued.
+    process.env.ACTION_COMMAND_KMS_KEY_VERSION =
+      'projects/p/locations/l/keyRings/r/cryptoKeys/k';
+    expect(() => new ProductionGovernedCommandSigner()).toThrow(
+      /not a Cloud KMS key version resource name/,
     );
   });
 
