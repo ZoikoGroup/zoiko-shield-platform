@@ -1,9 +1,11 @@
 # ZoikoShield — deploying on Google Cloud
 
 For the engineer deploying this to GCP. It lists every service the platform
-runs, what each maps to on Google Cloud, the database layout, the environment
-it needs, and — importantly — **the two things that do not port to GCP as the
-code stands today**.
+runs, what each maps to on Google Cloud, the database layout and the
+environment it needs.
+
+Key management and evidence storage are native GCP: Cloud KMS and Cloud
+Storage. There is no remaining AWS dependency.
 
 Compiled from the source on 2026-09-24, not from memory: the environment list
 was produced by extracting every variable the code actually reads and diffing
@@ -11,71 +13,102 @@ it against `.env.example`.
 
 ---
 
-## 0. Read this first — two GCP blockers
+## 0. Key management and storage — now native GCP
 
-The platform was written against AWS for two subsystems. Everything else is
-cloud-neutral and runs on GCP unchanged. These two are not configuration
-problems; they need code.
+Both subsystems that were AWS-specific have been migrated. `@aws-sdk/client-kms`
+is gone from the codebase. There is no remaining AWS dependency for a GCP
+deployment.
 
-### Blocker 1 — Key management is AWS KMS only
+### Cloud KMS signing
 
-Four files import `@aws-sdk/client-kms` and call AWS KMS directly:
+Four signers use Google Cloud KMS through one shared implementation
+(`backend/libs/kms/`):
 
-| File | What it signs |
+| Signer | Key variable |
 |---|---|
-| `apps/shield-anchor/src/signing/production-checkpoint-signer.service.ts` | Merkle evidence checkpoints |
-| `apps/shield-core/src/modules/evidence/signing/production-collector-signer.service.ts` | Evidence collector signatures |
-| `apps/shield-action/src/command-signing/production-governed-command-signer.service.ts` | Governed response commands |
-| `apps/shield-core/src/modules/privacy/cryptographic-shredding.service.ts` | Tenant subject-key wrapping |
+| Evidence checkpoints (shield-anchor) | `ANCHOR_KMS_KEY_VERSION` |
+| Evidence collectors (shield-core) | `COLLECTOR_KMS_KEY_VERSION` |
+| Governed response commands (shield-action) | `ACTION_COMMAND_KMS_KEY_VERSION` |
+| Subject key wrapping (shield-core) | `SUBJECT_KEY_KMS_KEY_NAME` |
 
-Google Cloud KMS is a different API and SDK (`@google-cloud/kms`). The AWS SDK
-cannot talk to it, and there is no endpoint override that makes it work.
+The first three take a key **version** resource name, because asymmetric
+signing must name the version that produced a signature:
 
-**This will stop a production deployment**, by design: each of those signers
-throws at construction when its `*_KMS_KEY_ID` is missing, and the development
-signers throw when `NODE_ENV=production`. The service will not start rather
-than sign with a throwaway key.
+```
+projects/P/locations/L/keyRings/R/cryptoKeys/K/cryptoKeyVersions/V
+```
 
-**Options, in order of preference:**
+The signer validates that shape at construction, so passing a crypto key where
+a version belongs fails at boot rather than as an opaque `NOT_FOUND` the first
+time evidence is written.
 
-1. **Write GCP KMS implementations.** Each signer already sits behind an
-   interface with a dev and a production implementation, chosen by a provider
-   factory. Adding a third implementation per seam is the intended extension
-   point — roughly four classes, no changes to callers. Cloud KMS supports the
-   same asymmetric `EC_SIGN_P256_SHA256` these use.
-2. **Use AWS KMS from GCP.** It works over the public internet with AWS
-   credentials. It also means your key custody sits with a second cloud
-   provider, which is a compliance decision, not just a technical one.
-3. **Do not deploy to production yet.** Non-production runs fine on GCP today:
-   the dev signers work, and they say plainly in their logs that their keys are
-   ephemeral.
+Subject key wrapping takes a **crypto key** name instead (no version):
 
-### Blocker 2 — S3 Object Lock has no Cloud Storage equivalent
+```
+projects/P/locations/L/keyRings/R/cryptoKeys/K
+```
 
-Evidence WORM is enforced with S3 Object Lock in COMPLIANCE mode
-(`ObjectLockMode: 'COMPLIANCE'`, per-object `ObjectLockRetainUntilDate`), set
-in `apps/shield-core/src/modules/evidence/storage/object-storage.service.ts`
-and `apps/shield-ingest/src/evidence/object-storage.service.ts`.
+Symmetric encrypt/decrypt resolves the primary version itself, so rotating the
+key does not strand previously wrapped subject keys.
 
-Cloud Storage's S3-compatible XML API does **not** implement Object Lock. GCS
-has Bucket Lock retention policies and object holds, but they are bucket-wide
-and configured through the GCS API, not through the S3 headers this code sends.
+**Create the keys:**
 
-The practical effect: on GCS, object writes will succeed and **the immutability
-guarantee will silently not be there**. The code reads the lock configuration
-back after bootstrap and reports what it finds, so this surfaces rather than
-passing quietly — but it must be resolved before evidence is treated as
-tamper-evident.
+```bash
+gcloud kms keyrings create zoikoshield --location=<region>
 
-**Options:**
+# Three asymmetric signing keys
+for KEY in anchor-checkpoint evidence-collector action-command; do
+  gcloud kms keys create $KEY \
+    --keyring=zoikoshield --location=<region> \
+    --purpose=asymmetric-signing --default-algorithm=ec-sign-p256-sha256
+done
 
-1. **GCS Bucket Lock** with a bucket-level retention policy, plus a GCS-native
-   storage implementation. Bucket-wide retention is coarser than per-object
-   retention profiles, so the retention model needs a decision.
-2. **Keep evidence on S3** even while compute runs on GCP.
-3. **Self-host MinIO on GKE**, which does implement Object Lock. This keeps the
-   code unchanged and the guarantee intact, at the cost of running storage
-   yourself.
+# One symmetric key for subject-key wrapping
+gcloud kms keys create subject-key-wrapping \
+  --keyring=zoikoshield --location=<region> --purpose=encryption
+```
+
+IAM per service account, least-privileged:
+
+- signers need `roles/cloudkms.signerVerifier` on their key
+- shield-core also needs `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the
+  wrapping key
+
+Signatures are DER-encoded ECDSA P-256, unchanged from the AWS implementation.
+
+### Cloud Storage for evidence
+
+Evidence goes to Cloud Storage when `EVIDENCE_GCS_BUCKET` and
+`GOOGLE_CLOUD_PROJECT` are both set. Otherwise the S3 client is used, which is
+what talks to MinIO locally — so local development is unaffected.
+
+**Cloud Storage is not reached through its S3-compatible XML API**, even though
+the S3 client would connect. That API does not implement Object Lock, so every
+write would succeed and the immutability guarantee would silently not be there.
+The native API's per-object retention with `mode: 'Locked'` cannot be shortened
+or cleared by anyone, including a project owner — the same guarantee S3's
+COMPLIANCE mode gives.
+
+**The bucket must be created with object retention enabled. It cannot be
+retrofitted:**
+
+```bash
+gcloud storage buckets create gs://<bucket> \
+  --location=<region> \
+  --enable-per-object-retention \
+  --uniform-bucket-level-access
+
+gcloud storage buckets update gs://<bucket> --versioning
+```
+
+The services create the bucket correctly if it is absent, and read the
+retention configuration back after bootstrap rather than assuming it. If they
+find an existing bucket without object retention, they log a warning saying
+immutability rests on application discipline alone — that warning means the
+bucket must be replaced, not that the setting can be turned on.
+
+Service accounts need `roles/storage.objectAdmin` on the bucket:
+shield-core and shield-ingest only.
 
 ---
 
@@ -115,15 +148,13 @@ flowing and nothing reports an error.
 | **PostgreSQL** | `postgres:16-alpine` | **Cloud SQL for PostgreSQL 16** |
 | **Redis** | `redis:7-alpine` | **Memorystore for Redis** |
 | **Kafka** | `redpandadata/redpanda` | **Managed Service for Apache Kafka**, or Redpanda on GKE |
-| **Object storage** | `minio/minio` | **Cloud Storage** — see Blocker 2 |
+| **Object storage** | `minio/minio` | **Cloud Storage** — native API, see §0 |
 | **OpenSearch** | `opensearchproject/opensearch` | Not needed. Optional, behind the `search` compose profile, and nothing in the application code reads it. |
 
 Kafka is reached with plain broker addresses (`KAFKA_BROKERS`), so any
-Kafka-API-compatible service works. Object storage is reached through the S3
-SDK with a configurable `endpoint` and `forcePathStyle: true` already set,
-so **Cloud Storage works through its S3 interoperability endpoint**
-(`https://storage.googleapis.com`) with an HMAC key as
-`S3_ACCESS_KEY`/`S3_SECRET_KEY` — with the Object Lock caveat above.
+Kafka-API-compatible service works. Object storage uses the native Cloud
+Storage client when configured, so no HMAC interoperability key is needed —
+the ambient service account is enough.
 
 ---
 
@@ -182,8 +213,8 @@ integration below is optional and off unless its credentials are set.
 
 | External service | Used by | Required? | On GCP |
 |---|---|---|---|
-| **KMS** | anchor, core, action | **Yes, in production** | **Blocked** — AWS KMS only. See Blocker 1. |
-| **Object storage** | core, ingest | Yes | Cloud Storage via S3 interop; Object Lock unsupported. See Blocker 2. |
+| **Cloud KMS** | anchor, core, action | **Yes, in production** | Native. See §0. |
+| **Cloud Storage** | core, ingest | Yes | Native API with per-object retention. See §0. |
 | **OpenAI** | shield-ai | No | Works. Egress to `api.openai.com`. |
 | **Google Gemini** | shield-ai | No | Works, and is the natural fit here — `generativelanguage.googleapis.com`. |
 | **Microsoft Graph / Entra** | shield-ingest | No | Works. The **only** connector that polls outward; needs egress. |
@@ -233,9 +264,10 @@ variable. Two conventions that matter:
 | `DATABASE_URL` | Cloud SQL, via Auth Proxy or private IP |
 | `REDIS_URL` | Memorystore private IP |
 | `KAFKA_BROKERS` | Managed Kafka bootstrap servers |
-| `S3_ENDPOINT` | `https://storage.googleapis.com` |
-| `S3_ACCESS_KEY` / `S3_SECRET_KEY` | A Cloud Storage **HMAC key** for a service account |
-| `EVIDENCE_S3_BUCKET` | The GCS bucket name |
+| `GOOGLE_CLOUD_PROJECT` | Your project id |
+| `EVIDENCE_GCS_BUCKET` | The evidence bucket, created with per-object retention |
+| `EVIDENCE_GCS_LOCATION` | Bucket location, default `US` |
+| `ANCHOR_KMS_KEY_VERSION` etc. | Cloud KMS resource names, see §0 |
 | `SHIELD_*_BASE_URL` | Internal service URLs (Cloud Run URLs or cluster DNS) |
 | `GEMINI_API_KEY` | If you use Gemini rather than OpenAI |
 
@@ -262,21 +294,21 @@ what will stop your rollout if one is missed.
 |---|---|---|
 | `JWT_SECRET` | shield-core | Fails immediately. |
 | `SERVICE_NAME` | every service | Refuses to issue workload tokens. |
-| `ANCHOR_KMS_KEY_ID` | shield-anchor | Production signer throws at construction. |
-| `COLLECTOR_KMS_KEY_ID` | shield-core | Production signer throws. |
-| `ACTION_COMMAND_KMS_KEY_ID` | shield-action | Production signer throws. |
-| `AWS_REGION` | all KMS clients | KMS calls fail. |
+| `ANCHOR_KMS_KEY_VERSION` | shield-anchor | Production signer throws at construction. |
+| `COLLECTOR_KMS_KEY_VERSION` | shield-core | Production signer throws. |
+| `ACTION_COMMAND_KMS_KEY_VERSION` | shield-action | Production signer throws. |
+| `SUBJECT_KEY_KMS_KEY_NAME` | shield-core | Refuses to start; a locally wrapped subject key cannot be shredded beyond our own reach. |
 | `KMS_KEY_<REGION>` | shield-core | Onboarding into that region is refused. |
-| `EVIDENCE_S3_BUCKET`, `S3_ENDPOINT` | shield-core | Onboarding is refused. |
+| `EVIDENCE_GCS_BUCKET`, `GOOGLE_CLOUD_PROJECT` | shield-core | Falls back to the S3 client; onboarding is refused without a bucket. |
 | `ZOIKOID_OIDC_*` | shield-core | Tenant-owner invitations cannot be issued. |
 | `SSO_ALLOWED_IDP_HOSTS` | shield-core | IdP hosts are rejected. |
 | `ACCESS_DISCLOSURE_TEXT`, `TERMS_OF_SERVICE_TEXT` | shield-core | Refuses to boot with development text. |
 
 The development signers (`DevCheckpointSigner`, `DevCollectorSigner`,
 `DevGovernedCommandSigner`, `DevSimulationSigner`) **throw on construction**
-when `NODE_ENV=production`, with no environment-variable escape hatch. Combined
-with Blocker 1, a production GCP deployment cannot currently start until GCP
-KMS support is written or AWS KMS is used.
+when `NODE_ENV=production`, with no environment-variable escape hatch. A
+production deployment that has not configured Cloud KMS will not start — by
+design.
 
 ---
 
@@ -302,8 +334,10 @@ Cloud Load Balancing  →  Cloud Run: frontend (3000)
 - `shield-core-migrate` as a **Cloud Run job**, run to completion before the
   services roll.
 - Give each service its **own service account**, least-privileged: only
-  shield-core, shield-anchor and shield-action need KMS; only shield-core and
-  shield-ingest need the bucket.
+  shield-core, shield-anchor and shield-action need Cloud KMS, each on its own
+  key; only shield-core and shield-ingest need the evidence bucket.
+- No service account key files. Cloud Run and GKE supply credentials to both
+  the KMS and Storage clients from the attached service account.
 
 ### Bring one up
 
