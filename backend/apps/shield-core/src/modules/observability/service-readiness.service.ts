@@ -111,6 +111,8 @@ export class ServiceReadinessService {
     testSuiteGreen?: boolean;
     backupFresh?: boolean;
     restoreDrillVerified?: boolean;
+    syntheticHealthy?: boolean;
+    gameDayCompliant?: boolean;
   }): PlatformReadinessSnapshot {
     const evaluatedAt = new Date().toISOString();
     const g1Ratified = options?.g1Ratified ?? false;
@@ -120,12 +122,14 @@ export class ServiceReadinessService {
     const testSuiteGreen = options?.testSuiteGreen ?? true;
     const backupFresh = options?.backupFresh ?? true;
     const restoreDrillVerified = options?.restoreDrillVerified ?? true;
+    const syntheticHealthy = options?.syntheticHealthy ?? true;
+    const gameDayCompliant = options?.gameDayCompliant ?? true;
 
     const services: Record<string, CoreServiceReadiness> = {
       'shield-core': this.evaluateCoreService({ dbConnected, testSuiteGreen, backupFresh, restoreDrillVerified }),
-      'shield-ingest': this.evaluateIngestService({ ingestionLagMs }),
+      'shield-ingest': this.evaluateIngestService({ ingestionLagMs, syntheticHealthy }),
       'shield-ai': this.evaluateAiService({ testSuiteGreen }),
-      'shield-action': this.evaluateActionService({ g1Ratified }),
+      'shield-action': this.evaluateActionService({ g1Ratified, gameDayCompliant }),
       'shield-anchor': this.evaluateAnchorService({ kmsConnected, backupFresh, restoreDrillVerified }),
       'verifier-cli': this.evaluateVerifierService({ testSuiteGreen }),
     };
@@ -254,11 +258,19 @@ export class ServiceReadinessService {
     };
   }
 
-  private evaluateIngestService(ctx: { ingestionLagMs: number }): CoreServiceReadiness {
+  private evaluateIngestService(ctx: { ingestionLagMs: number; syntheticHealthy?: boolean }): CoreServiceReadiness {
     const isLagHigh = ctx.ingestionLagMs > 1000;
-    const state: ServiceReadinessState = isLagHigh ? 'AT_RISK' : 'HEALTHY';
+    const isSyntheticHealthy = ctx.syntheticHealthy ?? true;
+    let state: ServiceReadinessState = 'HEALTHY';
+    if (isLagHigh) {
+      state = 'AT_RISK';
+    } else if (!isSyntheticHealthy) {
+      state = 'DEGRADED';
+    }
+
     const blockers: string[] = [];
     if (isLagHigh) blockers.push(`Ingestion stream lag (${ctx.ingestionLagMs}ms) exceeds SLA ceiling (1000ms)`);
+    if (!isSyntheticHealthy) blockers.push('Spec §27: Synthetic canary journey probe degraded or SLA breached');
 
     return {
       serviceId: 'shield-ingest',
@@ -268,7 +280,7 @@ export class ServiceReadinessService {
       version: '1.0.0',
       state,
       stateMeaning: STATE_MEANINGS[state],
-      readinessScore: isLagHigh ? 0.75 : 1.0,
+      readinessScore: isLagHigh ? 0.75 : !isSyntheticHealthy ? 0.70 : 1.0,
       lastAssessedAt: new Date().toISOString(),
       dependencies: [
         { dependencyName: 'Redpanda / Kafka Ingestion Stream', type: 'MESSAGE_BROKER', healthy: true, latencyMs: 12, lastChecked: new Date().toISOString() },
@@ -278,6 +290,7 @@ export class ServiceReadinessService {
         { signalKey: 'ingestion_lag', label: 'Pipeline Lag (ms)', value: `${ctx.ingestionLagMs}ms`, threshold: '<500ms', status: isLagHigh ? 'WARNING' : 'OPTIMAL' },
         { signalKey: 'schema_normalization_rate', label: 'Normalization Pass Rate', value: '99.98%', threshold: '>=99.5%', status: 'OPTIMAL' },
         { signalKey: 'stream_dedup_ratio', label: 'Deduplication Ratio', value: '100% Deterministic', status: 'OPTIMAL' },
+        { signalKey: 'synthetic_canary_probe', label: 'Spec §27 Synthetic Canary Journeys', value: isSyntheticHealthy ? 'HEALTHY (p95 < 250ms)' : 'DEGRADED / PROBE_FAILURE', threshold: '100% Pass Rate', status: isSyntheticHealthy ? 'OPTIMAL' : 'WARNING' },
       ],
       blockers,
     };
@@ -308,13 +321,21 @@ export class ServiceReadinessService {
     };
   }
 
-  private evaluateActionService(ctx: { g1Ratified: boolean }): CoreServiceReadiness {
-    const state: ServiceReadinessState = ctx.g1Ratified ? 'HEALTHY' : 'READINESS_CONDITIONAL';
+  private evaluateActionService(ctx: { g1Ratified: boolean; gameDayCompliant?: boolean }): CoreServiceReadiness {
+    const isGameDayCompliant = ctx.gameDayCompliant ?? true;
+    let state: ServiceReadinessState = ctx.g1Ratified ? 'HEALTHY' : 'READINESS_CONDITIONAL';
+    if (!isGameDayCompliant) {
+      state = 'RECONCILIATION_REQUIRED';
+    }
+
     const blockers: string[] = [];
     const conditions: string[] = [];
 
     if (!ctx.g1Ratified) {
       conditions.push('G1 Multi-Approver Launch Gate is PENDING (0/8 domain sign-offs). Live R2+ execution adapters operate in fail-closed simulation mode.');
+    }
+    if (!isGameDayCompliant) {
+      conditions.push('Spec §27: Scheduled Game Day resilience exercise is overdue (>90 days since last execution).');
     }
 
     return {
@@ -325,7 +346,7 @@ export class ServiceReadinessService {
       version: '1.0.0',
       state,
       stateMeaning: STATE_MEANINGS[state],
-      readinessScore: ctx.g1Ratified ? 1.0 : 0.85,
+      readinessScore: ctx.g1Ratified && isGameDayCompliant ? 1.0 : 0.85,
       lastAssessedAt: new Date().toISOString(),
       dependencies: [
         { dependencyName: 'AWS IAM Execution Adapter', type: 'EXTERNAL_API', healthy: true, latencyMs: 65, lastChecked: new Date().toISOString() },
@@ -336,6 +357,7 @@ export class ServiceReadinessService {
         { signalKey: 'g1_launch_gate', label: 'G1 Gate Authority (§05/§16)', value: ctx.g1Ratified ? '8/8 RATIFIED (LIVE)' : '0/8 FAIL-CLOSED (SIMULATED)', status: ctx.g1Ratified ? 'OPTIMAL' : 'WARNING' },
         { signalKey: 'safety_circuit_breaker', label: 'Safety Circuit Breakers', value: 'ENGAGED_NORMAL', status: 'OPTIMAL' },
         { signalKey: 'dry_run_receipt_accounting', label: 'Simulation Receipt Engine', value: 'ACTIVE_100%', status: 'OPTIMAL' },
+        { signalKey: 'gameday_resilience', label: 'Spec §27 Game Day Resilience Posture', value: isGameDayCompliant ? 'COMPLIANT (Exercised <90d)' : 'EXERCISE_OVERDUE (>90d)', threshold: 'Cadence <= 90d', status: isGameDayCompliant ? 'OPTIMAL' : 'WARNING' },
       ],
       blockers,
       operationalConditions: conditions,

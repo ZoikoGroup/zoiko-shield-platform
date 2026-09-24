@@ -1,10 +1,16 @@
 {
-  "lastRun": "2026-09-24T04:14:07.894Z",
+  "lastRun": "2026-09-24T11:25:31.635Z",
   "backendJest": {
-    "suitesPassed": 404,
-    "suitesTotal": 404,
-    "testsPassed": 1963,
-    "testsTotal": 1963
+    "suitesPassed": 410,
+    "suitesTotal": 410,
+    "testsPassed": 1991,
+    "testsTotal": 1991
+  },
+  "frontendVitest": {
+    "suitesPassed": 8,
+    "suitesTotal": 8,
+    "testsPassed": 63,
+    "testsTotal": 63
   },
   "typecheck": {
     "appsChecked": 7,

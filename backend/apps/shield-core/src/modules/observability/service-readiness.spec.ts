@@ -169,5 +169,26 @@ describe('ZS-ENG-OBS-001 §31: Explicit Service-Health & Readiness States Engine
       expect(cleared.state).toBe('HEALTHY');
     });
   });
+
+  describe('8. Spec §27 Synthetic Canary & Game Day Integration', () => {
+    it('transitions shield-ingest to DEGRADED when synthetic canary probe fails', () => {
+      const snapshot = service.evaluatePlatformReadiness({ syntheticHealthy: false });
+
+      expect(snapshot.services['shield-ingest'].state).toBe('DEGRADED');
+      expect(snapshot.services['shield-ingest'].readinessScore).toBe(0.70);
+      expect(snapshot.services['shield-ingest'].blockers).toContain(
+        'Spec §27: Synthetic canary journey probe degraded or SLA breached',
+      );
+    });
+
+    it('transitions shield-action to RECONCILIATION_REQUIRED when game day is overdue (>90d)', () => {
+      const snapshot = service.evaluatePlatformReadiness({ g1Ratified: true, gameDayCompliant: false });
+
+      expect(snapshot.services['shield-action'].state).toBe('RECONCILIATION_REQUIRED');
+      expect(snapshot.services['shield-action'].operationalConditions).toContain(
+        'Spec §27: Scheduled Game Day resilience exercise is overdue (>90 days since last execution).',
+      );
+    });
+  });
 });
 
