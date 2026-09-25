@@ -1,0 +1,107 @@
+// PostgreSQL schema "sla". sla module.
+
+/// Per-case SOC triage response clock. Kept off the Case row so pause/resume
+/// bookkeeping (which only the clock cares about) does not widen the case
+/// object every consumer reads.
+model CaseSlaClock {
+  case_id                 String    @id
+  case                    Case      @relation(fields: [case_id], references: [id])
+  tenant_id               String
+  severity                String
+  coverage_tier           String    @default("24_7")
+  target_response_minutes Int
+  status                  String    @default("RUNNING")
+  started_at              DateTime  @default(now())
+  paused_at               DateTime?
+  pause_reason            String?
+  total_paused_ms         Int       @default(0)
+  stopped_at              DateTime?
+  active_triage_minutes   Int?
+  breached_at             DateTime?
+  created_at              DateTime  @default(now())
+  updated_at              DateTime  @updatedAt
+
+  @@index([tenant_id])
+  @@index([status])
+
+  @@schema("sla")
+}
+
+// ============================================================
+// ZS-COM-BILL-001 P1 Part 13: SLA / service credit engine. SVC-04/FIN-04 —
+// credits are evidence-linked, approved through the generic maker-checker
+// engine, and posted only as an append-only credit note against an
+// already-issued invoice. Never rewrites security/incident history.
+// ============================================================
+
+model SlaDefinition {
+  id                  String    @id @default(uuid())
+  sla_key             String
+  version             Int       @default(1)
+  metric              String
+  /**
+   * MIN: measured value must be >= target (e.g. uptime). MAX: measured value must be <= target (e.g. response time).
+   */
+  comparison          String    @default("MIN")
+  target_value        Decimal   @db.Decimal(10, 4)
+  service_tier        String    @default("STANDARD")
+  region              String    @default("GLOBAL")
+  measurement_window  String    @default("MONTHLY")
+  credit_formula      String    @default("{}")
+  dispute_window_days Int       @default(30)
+  status              String    @default("DRAFT")
+  approved_by         String?
+  approved_at         DateTime?
+  effective_from      DateTime  @default(now())
+  effective_to        DateTime?
+  created_at          DateTime  @default(now())
+
+  measurements          SlaMeasurement[]
+  managedDefenseImpacts ManagedDefenseCapabilityImpact[]
+
+  @@unique([sla_key, version])
+  @@index([status])
+
+  @@schema("sla")
+}
+
+model SlaMeasurement {
+  id                 String        @id @default(uuid())
+  sla_definition_id  String
+  slaDefinition      SlaDefinition @relation(fields: [sla_definition_id], references: [id])
+  contract_id        String
+  period_start       DateTime
+  period_end         DateTime
+  measured_value     Decimal       @db.Decimal(10, 4)
+  breached           Boolean       @default(false)
+  evidence_ref       String?
+  measurement_source String        @default("SYSTEM")
+  created_at         DateTime      @default(now())
+
+  serviceCredits ServiceCredit[]
+
+  @@index([contract_id])
+  @@index([sla_definition_id])
+
+  @@schema("sla")
+}
+
+model ServiceCredit {
+  id                 String         @id @default(uuid())
+  sla_measurement_id String
+  slaMeasurement     SlaMeasurement @relation(fields: [sla_measurement_id], references: [id])
+  contract_id        String
+  amount             Decimal        @db.Decimal(14, 4)
+  currency           String         @default("USD")
+  status             String         @default("PROPOSED")
+  approval_id        String?
+  credit_note_id     String?
+  posted_at          DateTime?
+  created_at         DateTime       @default(now())
+  updated_at         DateTime       @updatedAt
+
+  @@index([contract_id])
+  @@index([status])
+
+  @@schema("sla")
+}

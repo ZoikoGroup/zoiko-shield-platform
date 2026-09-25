@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { WebhookDeliveryService } from '../delivery/webhook-delivery.service';
+import { PlatformScope } from '../../../../../../libs/database/src';
 
 const BASE_DELAY_MS = 30_000;
 
@@ -22,6 +23,7 @@ export class WebhookRetryService {
     private readonly deliveryService: WebhookDeliveryService,
   ) {}
 
+  @PlatformScope('scheduled job WebhookRetryService.retryDue')
   @Cron(CronExpression.EVERY_30_SECONDS)
   async retryDue(): Promise<void> {
     if (this.running) return;

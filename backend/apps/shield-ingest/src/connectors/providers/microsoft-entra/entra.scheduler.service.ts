@@ -6,6 +6,7 @@ import { ConnectorSyncService } from '../../services/sync.service';
 import { EntraConnectorService } from './entra.connector';
 import { ConnectorContext } from '../../core/connector-context';
 import { requireRegion } from '../../../security/tenant-context';
+import { PlatformScope } from '../../../../../../libs/database/src';
 
 /**
  * Drives automatic Entra polling on a cron schedule instead of requiring a
@@ -24,6 +25,9 @@ export class EntraSchedulerService {
     private readonly entraConnectorService: EntraConnectorService,
   ) {}
 
+  @PlatformScope(
+    'scheduled job EntraSchedulerService.pollAllConnectedInstances',
+  )
   @Cron(process.env.ENTRA_POLL_INTERVAL_CRON || CronExpression.EVERY_5_MINUTES)
   async pollAllConnectedInstances(): Promise<void> {
     if (this.running) {

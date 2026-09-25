@@ -1,0 +1,86 @@
+// Tenant plane: tenants and the organization, legal-entity, environment and
+// customer records beneath them. Owned by the tenant, organization,
+// legal-entity, environment and customer modules.
+
+model Customer {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId        String   @db.Uuid
+  partyId         String   @db.Uuid
+  customerType    String   @db.VarChar
+  lifecycleStatus String   @default("ACTIVE") @db.VarChar
+  kycStatus       String   @default("PENDING") @db.VarChar
+  segment         String?  @db.VarChar
+  createdAt       DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@index([tenantId], map: "idx_customers_tenant")
+  @@map("customers")
+  @@schema("tenant")
+}
+
+model Environment {
+  id                             String                          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId                       String                          @db.Uuid
+  name                           String                          @db.VarChar
+  environmentType                String                          @db.VarChar
+  region                         String                          @db.VarChar
+  status                         String                          @default("ACTIVE") @db.VarChar
+  createdAt                      DateTime                        @default(now()) @db.Timestamptz(6)
+  updatedAt                      DateTime                        @default(now()) @updatedAt @db.Timestamptz(6)
+  federationTransactions         FederationTransaction[]
+  identityProviderConfigurations IdentityProviderConfiguration[]
+
+  @@index([tenantId], map: "idx_environments_tenant")
+  @@map("environments")
+  @@schema("tenant")
+}
+
+model LegalEntity {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId              String   @db.Uuid
+  legalName             String   @db.VarChar
+  registrationNumber    String?  @db.VarChar
+  countryOfRegistration String?  @db.VarChar
+  registeredAddress     String?
+  createdAt             DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt             DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@index([tenantId], map: "idx_legal_entities_tenant")
+  @@map("legal_entities")
+  @@schema("tenant")
+}
+
+model Organization {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId  String   @db.Uuid
+  name      String   @db.VarChar
+  status    String   @default("ACTIVE") @db.VarChar
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@index([tenantId], map: "idx_organizations_tenant")
+  @@map("organizations")
+  @@schema("tenant")
+}
+
+model Tenant {
+  id                             String                          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                           String                          @db.VarChar
+  slug                           String                          @unique @db.VarChar
+  status                         String                          @default("PROVISIONING") @db.VarChar
+  homeRegion                     String                          @db.VarChar
+  dataResidencyRegion            String                          @db.VarChar
+  timezone                       String                          @db.VarChar
+  dataClass                      String                          @default("UNCLASSIFIED") @db.VarChar
+  retentionPolicyRef             String                          @default("default") @db.VarChar
+  onboardingCompletedAt          DateTime?                       @db.Timestamptz(6)
+  createdByPrincipalId           String                          @db.Uuid
+  createdAt                      DateTime                        @default(now()) @db.Timestamptz(6)
+  updatedAt                      DateTime                        @default(now()) @updatedAt @db.Timestamptz(6)
+  externalIdentityBindings       ExternalIdentityTenantBinding[]
+  federationTransactions         FederationTransaction[]
+  identityProviderConfigurations IdentityProviderConfiguration[]
+
+  @@map("tenants")
+  @@schema("tenant")
+}

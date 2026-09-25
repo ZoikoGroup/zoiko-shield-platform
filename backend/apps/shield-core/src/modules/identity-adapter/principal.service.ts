@@ -1,42 +1,36 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Principal, PrincipalType } from './principal.entity';
-import { LocalCredential } from './local-credential.entity';
-import {
-  ExternalIdentity,
-  ExternalIdentityProvider,
-} from './external-identity.entity';
+import type { Prisma } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
+import type { Principal, PrincipalType } from './principal.entity';
+import type { LocalCredential } from './local-credential.entity';
+import type { ExternalIdentityProvider } from './external-identity.entity';
 
 @Injectable()
 export class PrincipalService {
-  constructor(
-    @InjectRepository(Principal)
-    private readonly principalRepository: Repository<Principal>,
-    @InjectRepository(LocalCredential)
-    private readonly localCredentialRepository: Repository<LocalCredential>,
-    @InjectRepository(ExternalIdentity)
-    private readonly externalIdentityRepository: Repository<ExternalIdentity>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  findByEmail(email: string): Promise<Principal | null> {
-    return this.principalRepository.findOne({ where: { email } });
+  async findByEmail(email: string): Promise<Principal | null> {
+    return (await this.prisma.principal.findUnique({
+      where: { email },
+    })) as Principal | null;
   }
 
-  findById(id: string): Promise<Principal | null> {
-    return this.principalRepository.findOne({ where: { id } });
+  async findById(id: string): Promise<Principal | null> {
+    return (await this.prisma.principal.findUnique({
+      where: { id },
+    })) as Principal | null;
   }
 
   getLocalCredential(principalId: string): Promise<LocalCredential | null> {
-    return this.localCredentialRepository.findOne({ where: { principalId } });
+    return this.prisma.localCredential.findUnique({ where: { principalId } });
   }
 
   findByExternalIdentity(
     issuer: string,
     subject: string,
   ): Promise<Principal | null> {
-    return this.externalIdentityRepository
-      .findOne({ where: { issuer, subject } })
+    return this.prisma.externalIdentity
+      .findUnique({ where: { issuer_subject: { issuer, subject } } })
       .then((identity) =>
         identity ? this.findById(identity.principalId) : null,
       );
@@ -51,8 +45,8 @@ export class PrincipalService {
     subject: string;
     claimProfile?: Record<string, unknown>;
   }): Promise<Principal> {
-    const principal = await this.principalRepository.save(
-      this.principalRepository.create({
+    const principal = (await this.prisma.principal.create({
+      data: {
         principalType: 'HUMAN',
         source: data.provider,
         email: data.email,
@@ -60,42 +54,42 @@ export class PrincipalService {
         avatarUrl: data.avatarUrl,
         emailVerified: true,
         status: 'ACTIVE',
-      }),
-    );
-    await this.externalIdentityRepository.save(
-      this.externalIdentityRepository.create({
+      },
+    })) as Principal;
+    await this.prisma.externalIdentity.create({
+      data: {
         principalId: principal.id,
         issuer: data.issuer,
         subject: data.subject,
         provider: data.provider,
-        claimProfile: data.claimProfile ?? {},
+        claimProfile: (data.claimProfile ?? {}) as Prisma.InputJsonValue,
         verificationState: 'VERIFIED',
         lastSyncedAt: new Date(),
-      }),
-    );
+      },
+    });
     return principal;
   }
 
   async recordLogin(principalId: string): Promise<void> {
-    await this.principalRepository.update(
-      { id: principalId },
-      { lastLoginAt: new Date() },
-    );
+    await this.prisma.principal.updateMany({
+      where: { id: principalId },
+      data: { lastLoginAt: new Date() },
+    });
   }
 
   async updatePassword(
     principalId: string,
     passwordHash: string,
   ): Promise<void> {
-    await this.localCredentialRepository.update(
-      { principalId },
-      {
+    await this.prisma.localCredential.updateMany({
+      where: { principalId },
+      data: {
         passwordHash,
         passwordUpdatedAt: new Date(),
         failedAttempts: 0,
         lockedUntil: null,
       },
-    );
+    });
   }
 
   /** Increments the failed-attempt counter and locks the credential once a threshold is crossed by the caller. */
@@ -105,20 +99,20 @@ export class PrincipalService {
   ): Promise<void> {
     const credential = await this.getLocalCredential(principalId);
     if (!credential) return;
-    await this.localCredentialRepository.update(
-      { principalId },
-      {
+    await this.prisma.localCredential.updateMany({
+      where: { principalId },
+      data: {
         failedAttempts: credential.failedAttempts + 1,
         ...(lockUntil ? { lockedUntil: lockUntil } : {}),
       },
-    );
+    });
   }
 
   async resetFailedLogins(principalId: string): Promise<void> {
-    await this.localCredentialRepository.update(
-      { principalId },
-      { failedAttempts: 0 },
-    );
+    await this.prisma.localCredential.updateMany({
+      where: { principalId },
+      data: { failedAttempts: 0 },
+    });
   }
 }
 

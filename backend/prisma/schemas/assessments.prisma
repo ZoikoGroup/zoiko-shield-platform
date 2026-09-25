@@ -1,0 +1,188 @@
+// PostgreSQL schema "assessments". assessments module.
+
+// --- shield-core-owned: assessment & evidence evaluation ---
+model ExpectedEvidenceRule {
+  id                      String             @id @default(uuid())
+  tenant_id               String?
+  control_test_version_id String
+  controlTestVersion      ControlTestVersion @relation(fields: [control_test_version_id], references: [id])
+  version                 Int                @default(1)
+  evidence_type           String
+  expected_source         String
+  expected_population     String
+  expected_period         String
+  freshness_threshold     String
+  minimum_coverage        Float?
+  required_permissions    String?
+  status                  String             @default("ACTIVE")
+  created_at              DateTime           @default(now())
+
+  @@index([control_test_version_id])
+
+  @@schema("assessments")
+}
+
+model ExpectedEvidenceResult {
+  id                      String   @id @default(uuid())
+  tenant_id               String
+  rule_id                 String
+  assessment_period_start DateTime
+  assessment_period_end   DateTime
+  expected_count          Int?
+  observed_count          Int?
+  coverage_state          String // COMPLETE|PARTIAL|MISSING|STALE|COLLECTOR_UNHEALTHY|PERMISSION_CHANGED|UNKNOWN
+  freshness_state         String
+  integrity_state         String
+  gap_count               Int      @default(0)
+  evaluated_at            DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([rule_id])
+
+  @@schema("assessments")
+}
+
+model EvidenceGap {
+  id                        String    @id @default(uuid())
+  tenant_id                 String
+  expected_evidence_rule_id String
+  control_test_version_id   String?
+  reason                    String // MISSING_SOURCE|STALE_SOURCE|PERMISSION_REVOKED|CONNECTOR_UNHEALTHY|PARTIAL_POPULATION|EVALUATOR_FAILED
+  scope                     String    @default("{}")
+  period_start              DateTime
+  period_end                DateTime
+  severity                  String?
+  source_health_state       String?
+  status                    String    @default("OPEN")
+  detected_at               DateTime  @default(now())
+  resolved_at               DateTime?
+
+  @@index([tenant_id])
+  @@index([expected_evidence_rule_id])
+
+  @@schema("assessments")
+}
+
+model Evaluator {
+  id            String   @id @default(uuid())
+  key           String   @unique
+  owner         String
+  control_scope String   @default("{}")
+  status        String   @default("ACTIVE")
+  created_at    DateTime @default(now())
+
+  versions EvaluatorVersion[]
+
+  @@schema("assessments")
+}
+
+model EvaluatorVersion {
+  id                        String    @id @default(uuid())
+  evaluator_id              String
+  evaluator                 Evaluator @relation(fields: [evaluator_id], references: [id])
+  version                   Int
+  accepted_evidence_schemas String    @default("[]")
+  required_fields           String    @default("[]")
+  runtime_profile           String    @default("node")
+  configuration             String    @default("{}")
+  content_hash              String
+  status                    String    @default("DRAFT")
+  published_at              DateTime?
+
+  @@unique([evaluator_id, version])
+
+  @@schema("assessments")
+}
+
+model EvidenceBundle {
+  id                          String   @id @default(uuid())
+  tenant_id                   String
+  purpose                     String
+  control_test_version_id     String
+  expected_evidence_result_id String?
+  evidence_refs               String   @default("[]")
+  evidence_hashes             String   @default("[]")
+  mapping_versions            String   @default("[]")
+  context_versions            String   @default("[]")
+  bundle_hash                 String
+  created_at                  DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([control_test_version_id])
+
+  @@schema("assessments")
+}
+
+model EvaluationRun {
+  id                      String    @id @default(uuid())
+  tenant_id               String
+  control_test_version_id String
+  evaluator_version_id    String
+  evidence_bundle_id      String
+  input_bundle_hash       String
+  output_hash             String?
+  context_snapshot_id     String?
+  started_at              DateTime  @default(now())
+  completed_at            DateTime?
+  result                  String // PASS|FAIL|PARTIAL|UNKNOWN|ERROR|NON_DETERMINISTIC
+  rationale               String
+  limitations             String    @default("[]")
+  confidence              Float?
+  replayable              Boolean   @default(true)
+  replay_of_id            String?
+  deterministic_profile   String    @default("zs-eval-v1")
+  correlation_id          String
+
+  @@index([tenant_id])
+  @@index([control_test_version_id])
+
+  @@schema("assessments")
+}
+
+model ManualTestRun {
+  id                      String    @id @default(uuid())
+  tenant_id               String
+  control_test_version_id String
+  performer_id            String
+  reviewer_id             String?
+  procedure_version       String
+  sampled_population      String?
+  evidence_refs           String    @default("[]")
+  result                  String
+  rationale               String
+  limitations             String    @default("[]")
+  performed_at            DateTime  @default(now())
+  reviewed_at             DateTime?
+
+  @@index([tenant_id])
+  @@index([control_test_version_id])
+
+  @@schema("assessments")
+}
+
+model Assessment {
+  id                        String    @id @default(uuid())
+  tenant_id                 String
+  control_implementation_id String
+  control_test_version_id   String
+  assessment_period_start   DateTime
+  assessment_period_end     DateTime
+  evidence_bundle_id        String?
+  evaluation_run_id         String?
+  status                    String    @default("PENDING") // PENDING|EVIDENCE_INCOMPLETE|READY_FOR_EVALUATION|EVALUATED|REVIEW_REQUIRED|APPROVED|SUPERSEDED
+  effectiveness             String    @default("UNKNOWN") // EFFECTIVE|PARTIALLY_EFFECTIVE|INEFFECTIVE|UNKNOWN
+  completeness_state        String    @default("UNKNOWN")
+  freshness_state           String    @default("UNKNOWN")
+  integrity_state           String    @default("UNKNOWN")
+  performer_id              String?
+  reviewer_id               String?
+  reviewed_at               DateTime?
+  limitations               String    @default("[]")
+  version                   Int       @default(1)
+  created_at                DateTime  @default(now())
+
+  @@index([tenant_id])
+  @@index([control_implementation_id])
+
+  @@schema("assessments")
+}

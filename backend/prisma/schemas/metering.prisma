@@ -1,0 +1,305 @@
+// PostgreSQL schema "metering". metering module.
+
+model UsageRecord {
+  id                     String                    @id @default(uuid())
+  tenant_id              String
+  environment_id         String                    @default("default-env")
+  meter_definition_id    String?
+  meterDefinition        MeterDefinition?          @relation(fields: [meter_definition_id], references: [id])
+  meter_authorization_id String?
+  meterAuthorization     MeterAuthorizationPolicy? @relation(fields: [meter_authorization_id], references: [id])
+  usage_authorization_id String?
+  usageAuthorization     MeterUsageAuthorization?  @relation(fields: [usage_authorization_id], references: [id])
+  contract_id            String?
+  meter_version          String                    @default("v1.0")
+  source_type            String
+  raw_event_id           String?
+  unit                   String                    @default("EVENTS")
+  accepted_quantity      Int                       @default(1)
+  billable_quantity      Int                       @default(0)
+  overage_quantity       Int                       @default(0)
+  usage_state            String                    @default("ACCEPTED")
+  usage_classification   String                    @default("UNAUTHORIZED_NON_BILLABLE")
+  billing_classification String                    @default("COMMERCIAL_DIRECT")
+  immutable_hash         String                    @default("")
+  occurred_at            DateTime                  @default(now())
+  recorded_at            DateTime                  @default(now())
+
+  @@index([tenant_id])
+  @@index([tenant_id, environment_id, meter_authorization_id, occurred_at])
+  @@index([meter_definition_id, occurred_at])
+  @@index([usage_authorization_id])
+  @@index([usage_state])
+  @@index([recorded_at])
+
+  @@schema("metering")
+}
+
+// ============================================================
+// ZS-COM-BILL-001 P0.2: resource dedup / protected-resource coverage engine
+// and telemetry metering engine (accepted != billable).
+// ============================================================
+
+model MeterDefinition {
+  id                 String    @id @default(uuid())
+  meter_key          String
+  version            Int       @default(1)
+  unit               String    @default("EVENTS")
+  source_scope       String    @default("[]")
+  validation_rules   String    @default("{}")
+  aggregation_window String    @default("DAILY")
+  dedupe_policy      String    @default("SOURCE_EVENT_ID")
+  included_quantity  Int       @default(0)
+  billable_policy    String    @default("STANDARD")
+  correction_policy  String    @default("REVERSAL_REPLACEMENT_ADJUSTMENT")
+  status             String    @default("DRAFT")
+  effective_from     DateTime  @default(now())
+  effective_to       DateTime?
+  requested_by       String?
+  approved_by        String?
+  approved_at        DateTime?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  events                 MeterEvent[]
+  usageRecords           UsageRecord[]
+  authorizationPolicies  MeterAuthorizationPolicy[]
+  coveragePolicies       ResourceCoveragePolicy[]
+  bundleMeterProjections BundleMeterProjection[]
+
+  @@unique([meter_key, version])
+  @@index([status])
+
+  @@schema("metering")
+}
+
+model MeterEvent {
+  id                     String                    @id @default(uuid())
+  tenant_id              String
+  environment_id         String                    @default("UNBOUND")
+  meter_definition_id    String
+  meterDefinition        MeterDefinition           @relation(fields: [meter_definition_id], references: [id])
+  meter_authorization_id String?
+  meterAuthorization     MeterAuthorizationPolicy? @relation(fields: [meter_authorization_id], references: [id])
+  usage_authorization_id String?
+  usageAuthorization     MeterUsageAuthorization?  @relation(fields: [usage_authorization_id], references: [id])
+  contract_id            String?
+  source                 String
+  source_event_id        String
+  occurred_at            DateTime
+  received_at            DateTime                  @default(now())
+  quantity               Int                       @default(1)
+  unit                   String                    @default("EVENTS")
+  validation_state       String                    @default("UNVALIDATED")
+  validation_reason      String?
+  accepted_state         String                    @default("RECEIVED")
+  billable_state         String                    @default("NON_BILLABLE")
+  dedupe_state           String                    @default("UNIQUE")
+  dedupe_key             String
+  is_platform_generated  Boolean                   @default(false)
+  correction_type        String                    @default("ORIGINAL")
+  correction_of_event_id String?
+  correctionOf           MeterEvent?               @relation("MeterEventCorrections", fields: [correction_of_event_id], references: [id])
+  corrections            MeterEvent[]              @relation("MeterEventCorrections")
+  event_metadata         String                    @default("{}")
+  immutable_hash         String                    @default("")
+  created_at             DateTime                  @default(now())
+
+  @@index([tenant_id, meter_definition_id, dedupe_key])
+  @@unique([tenant_id, environment_id, meter_definition_id, dedupe_key], map: "MeterEvent_unique_accepted_original_dedupe_idx", where: raw("((accepted_state = 'ACCEPTED'::text) AND (correction_type = 'ORIGINAL'::text))"))
+  @@index([tenant_id, environment_id, occurred_at])
+  @@index([meter_authorization_id, occurred_at])
+  @@index([usage_authorization_id])
+  @@index([correction_of_event_id])
+  @@index([accepted_state])
+  @@index([tenant_id])
+
+  @@schema("metering")
+}
+
+/**
+ * Contract-bound policy that may turn accepted evidence into billable usage.
+ * An approved meter definition alone is intentionally insufficient.
+ */
+model MeterAuthorizationPolicy {
+  id                           String            @id @default(uuid())
+  tenant_id                    String
+  environment_id               String
+  commercial_account_id        String
+  commercialAccount            CommercialAccount @relation(fields: [commercial_account_id], references: [id])
+  contract_id                  String
+  contract                     Contract          @relation(fields: [contract_id], references: [id])
+  policy_key                   String
+  version                      Int               @default(1)
+  meter_definition_id          String
+  meterDefinition              MeterDefinition   @relation(fields: [meter_definition_id], references: [id])
+  price_book_id                String?
+  authorized_source_scope      String            @default("[]")
+  usage_type                   String            @default("STANDARD")
+  billing_period               String            @default("MONTHLY")
+  pricing_model                String            @default("USAGE")
+  included_quantity            Int               @default(0)
+  committed_quantity           Int?
+  warning_thresholds           String            @default("[]")
+  overage_behavior             String            @default("NO_OVERAGE")
+  cap_quantity                 Int?
+  overage_rate                 Decimal?          @db.Decimal(14, 6)
+  criticality                  String            @default("CRITICAL_SECURITY")
+  requires_usage_authorization Boolean           @default(false)
+  visible_customer_policy      String            @default("{}")
+  retention_policy             String            @default("{}")
+  effective_from               DateTime          @default(now())
+  effective_to                 DateTime?
+  status                       String            @default("PENDING_APPROVAL")
+  approval_id                  String?           @unique
+  requested_by                 String
+  approved_by                  String?
+  approved_at                  DateTime?
+  created_at                   DateTime          @default(now())
+  updated_at                   DateTime          @updatedAt
+
+  events                MeterEvent[]
+  usageRecords          UsageRecord[]
+  usageAuthorizations   MeterUsageAuthorization[]
+  thresholdEvents       MeterThresholdEvent[]
+  billingExports        MeterBillingExport[]
+  invoiceBases          CommercialInvoiceLineBasis[]
+  bundleMeterProjection BundleMeterProjection?       @relation("BundleMeterAuthorization")
+
+  @@unique([tenant_id, environment_id, policy_key, version])
+  @@index([tenant_id, environment_id, status])
+  @@index([contract_id, status])
+  @@index([meter_definition_id, status])
+  @@index([effective_from, effective_to, status])
+
+  @@schema("metering")
+}
+
+/**
+ * Customer authorization for a disclosed egress/archive/overage operation.
+ */
+model MeterUsageAuthorization {
+  id                     String                   @id @default(uuid())
+  tenant_id              String
+  environment_id         String
+  meter_authorization_id String
+  meterAuthorization     MeterAuthorizationPolicy @relation(fields: [meter_authorization_id], references: [id])
+  authorization_type     String
+  period_start           DateTime
+  period_end             DateTime
+  max_quantity           Int?
+  reason                 String
+  customer_reference     String?
+  status                 String                   @default("PENDING_APPROVAL")
+  approval_id            String?                  @unique
+  requested_by           String
+  approved_by            String?
+  approved_at            DateTime?
+  created_at             DateTime                 @default(now())
+  updated_at             DateTime                 @updatedAt
+
+  events       MeterEvent[]
+  usageRecords UsageRecord[]
+
+  @@index([tenant_id, environment_id, status])
+  @@index([meter_authorization_id, status, period_start, period_end])
+
+  @@schema("metering")
+}
+
+/**
+ * Persisted, tenant-visible warning produced from current and forecast usage.
+ */
+model MeterThresholdEvent {
+  id                     String                   @id @default(uuid())
+  tenant_id              String
+  environment_id         String
+  meter_authorization_id String
+  meterAuthorization     MeterAuthorizationPolicy @relation(fields: [meter_authorization_id], references: [id])
+  period_start           DateTime
+  period_end             DateTime
+  threshold_percent      Int
+  threshold_quantity     Int
+  current_quantity       Int
+  forecast_quantity      Float
+  status                 String                   @default("OPEN")
+  created_at             DateTime                 @default(now())
+
+  @@unique([meter_authorization_id, period_start, threshold_percent])
+  @@index([tenant_id, environment_id, status])
+
+  @@schema("metering")
+}
+
+/**
+ * Approved instruction for an append-only reversal, replacement or adjustment.
+ */
+model MeterCorrectionRequest {
+  id                   String    @id @default(uuid())
+  tenant_id            String
+  environment_id       String
+  original_event_id    String
+  correction_type      String
+  replacement_quantity Int?
+  adjustment_quantity  Int?
+  reason               String
+  evidence_refs        String    @default("[]")
+  status               String    @default("PENDING_APPROVAL")
+  approval_id          String?   @unique
+  requested_by         String
+  approved_by          String?
+  approved_at          DateTime?
+  generated_event_ids  String    @default("[]")
+  applied_at           DateTime?
+  created_at           DateTime  @default(now())
+  updated_at           DateTime  @updatedAt
+
+  @@index([tenant_id, environment_id, status])
+  @@index([original_event_id])
+
+  @@schema("metering")
+}
+
+/**
+ * Immutable billing input snapshot. Corrections create a superseding export.
+ */
+model MeterBillingExport {
+  id                          String                   @id @default(uuid())
+  tenant_id                   String
+  environment_id              String
+  meter_authorization_id      String
+  meterAuthorization          MeterAuthorizationPolicy @relation(fields: [meter_authorization_id], references: [id])
+  contract_id                 String
+  period_start                DateTime
+  period_end                  DateTime
+  meter_definition_id         String
+  meter_version               Int
+  event_ids                   String                   @default("[]")
+  usage_record_ids            String                   @default("[]")
+  accepted_quantity           Int                      @default(0)
+  billable_quantity           Int                      @default(0)
+  overage_quantity            Int                      @default(0)
+  billing_basis               String                   @default("ACCEPTED_DATA_USAGE")
+  excluded_event_ids          String                   @default("[]")
+  committed_capacity_included Boolean                  @default(false)
+  immutable_snapshot          String
+  checksum                    String
+  status                      String                   @default("PENDING_APPROVAL")
+  approval_id                 String?                  @unique
+  reason                      String
+  requested_by                String
+  approved_by                 String?
+  approved_at                 DateTime?
+  supersedes_id               String?
+  correction_request_id       String?
+  created_at                  DateTime                 @default(now())
+
+  invoiceBases CommercialInvoiceLineBasis[]
+
+  @@index([tenant_id, environment_id, status])
+  @@index([meter_authorization_id, period_start, period_end])
+  @@index([contract_id, period_start, period_end])
+  @@index([supersedes_id])
+
+  @@schema("metering")
+}

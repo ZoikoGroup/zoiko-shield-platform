@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CorporateTransferService } from './corporate-transfer.service';
+import { PlatformScope } from '../../../../../libs/database/src';
 
 @Injectable()
 export class CorporateTransferScheduler {
@@ -12,6 +13,7 @@ export class CorporateTransferScheduler {
     private readonly transferService: CorporateTransferService,
   ) {}
 
+  @PlatformScope('scheduled job CorporateTransferScheduler.executeDueTransfers')
   @Cron(CronExpression.EVERY_MINUTE)
   async executeDueTransfers(): Promise<{
     attempted: number;

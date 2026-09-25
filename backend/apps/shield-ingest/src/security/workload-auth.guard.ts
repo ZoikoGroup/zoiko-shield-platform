@@ -8,6 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import { verifyWorkloadToken } from '../../../../libs/security/src/workload-token';
 import { PUBLIC_INGRESS_KEY } from './public-ingress.decorator';
+import { bindRequestTenant } from '../../../../libs/database/src';
 
 @Injectable()
 export class WorkloadAuthGuard implements CanActivate {
@@ -51,6 +52,7 @@ export class WorkloadAuthGuard implements CanActivate {
       }
       request.headers['x-tenant-id'] = tenantIds[0];
       request.tenantId = tenantIds[0];
+      bindRequestTenant(tenantIds[0]);
       return true;
     } catch (error) {
       if (error instanceof BadRequestException) throw error;

@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { IdentityEvent } from './identity-event.entity';
+import type { Prisma } from '@prisma/client';
+import { PrismaService } from '../../prisma/prisma.service';
 
 export interface RecordEventInput {
   eventType: string;
@@ -19,21 +18,18 @@ export interface RecordEventInput {
  */
 @Injectable()
 export class IdentityEventService {
-  constructor(
-    @InjectRepository(IdentityEvent)
-    private readonly eventRepository: Repository<IdentityEvent>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async record(input: RecordEventInput): Promise<void> {
-    await this.eventRepository.save(
-      this.eventRepository.create({
+    await this.prisma.identityEvent.create({
+      data: {
         eventType: input.eventType,
         principalId: input.principalId ?? null,
         actorId: input.actorId ?? null,
         tenantId: input.tenantId ?? null,
         correlationId: input.correlationId ?? null,
-        data: input.data ?? {},
-      }),
-    );
+        data: (input.data ?? {}) as Prisma.InputJsonValue,
+      },
+    });
   }
 }

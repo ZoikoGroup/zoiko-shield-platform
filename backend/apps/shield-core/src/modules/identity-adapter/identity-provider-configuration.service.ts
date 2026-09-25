@@ -5,33 +5,72 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
-import { DataSource, IsNull, Repository } from 'typeorm';
+import {
+  Prisma,
+  type IdentityProviderConfiguration as IdentityProviderConfigurationRow,
+} from '@prisma/client';
 import { createHash } from 'crypto';
-import { Environment } from '../environment/environment.entity';
-import { Tenant } from '../tenant/tenant.entity';
+import { PrismaService } from '../../prisma/prisma.service';
 import { CreateIdentityProviderDto } from './dto/create-identity-provider.dto';
 import { UpdateIdentityProviderDto } from './dto/update-identity-provider.dto';
 import { FederationRuntimeService } from './federation-runtime.service';
-import {
+import type {
   IdentityProviderConfiguration,
   PinnedOidcMetadata,
 } from './identity-provider-configuration.entity';
-import { IdentityEvent } from './identity-event.entity';
 import { OidcFederationService } from './oidc-federation.service';
 import { SamlFederationService } from './saml-federation.service';
-import { Session } from './session.entity';
+
+type ProviderColumns = Omit<
+  IdentityProviderConfiguration,
+  'id' | 'createdAt' | 'updatedAt'
+>;
+
+/**
+ * Maps the narrowed provider shape onto Prisma's write input. Nullable JSON
+ * columns take Prisma.DbNull for SQL NULL; the updatedAt column is maintained
+ * by Prisma (@updatedAt).
+ */
+export function identityProviderWriteData(
+  provider: ProviderColumns,
+): Prisma.IdentityProviderConfigurationUncheckedCreateInput {
+  return {
+    tenantId: provider.tenantId,
+    environmentId: provider.environmentId,
+    name: provider.name,
+    protocol: provider.protocol,
+    status: provider.status,
+    issuer: provider.issuer,
+    clientId: provider.clientId,
+    clientSecretRef: provider.clientSecretRef,
+    oidcClientAuthMethod: provider.oidcClientAuthMethod,
+    oidcMetadata:
+      provider.oidcMetadata === null
+        ? Prisma.DbNull
+        : (provider.oidcMetadata as Prisma.InputJsonValue),
+    oidcSigningAlgorithm: provider.oidcSigningAlgorithm,
+    samlEntryPoint: provider.samlEntryPoint,
+    samlIdpCertificates: provider.samlIdpCertificates,
+    samlSpEntityId: provider.samlSpEntityId,
+    samlSpPrivateKeyRef: provider.samlSpPrivateKeyRef,
+    samlSpPublicCertificate: provider.samlSpPublicCertificate,
+    emailClaim: provider.emailClaim,
+    displayNameClaim: provider.displayNameClaim,
+    groupsClaim: provider.groupsClaim,
+    mfaClaimValues: provider.mfaClaimValues,
+    requireMfa: provider.requireMfa,
+    allowedClockSkewMs: provider.allowedClockSkewMs,
+    metadataHash: provider.metadataHash,
+    metadataValidatedAt: provider.metadataValidatedAt,
+    createdByPrincipalId: provider.createdByPrincipalId,
+    updatedByPrincipalId: provider.updatedByPrincipalId,
+  };
+}
 
 @Injectable()
 export class IdentityProviderConfigurationService {
   constructor(
-    @InjectDataSource() private readonly dataSource: DataSource,
-    @InjectRepository(IdentityProviderConfiguration)
-    private readonly providers: Repository<IdentityProviderConfiguration>,
-    @InjectRepository(Tenant)
-    private readonly tenants: Repository<Tenant>,
-    @InjectRepository(Environment)
-    private readonly environments: Repository<Environment>,
+    private readonly prisma: PrismaService,
     private readonly oidc: OidcFederationService,
     private readonly saml: SamlFederationService,
     private readonly runtime: FederationRuntimeService,
@@ -46,7 +85,7 @@ export class IdentityProviderConfigurationService {
     await this.assertEnvironment(tenantId, dto.environmentId);
     this.assertProtocolFields(dto);
     this.runtime.callbackUrl(dto.protocol);
-    const existing = await this.providers.findOne({
+    const existing = await this.prisma.identityProviderConfiguration.findFirst({
       where: { tenantId, name: dto.name },
     });
     if (existing) {
@@ -55,45 +94,50 @@ export class IdentityProviderConfigurationService {
       );
     }
     const provider = await this.persistConfigurationChange(
-      this.providers.create({
-        tenantId,
-        environmentId: dto.environmentId,
-        name: dto.name,
-        protocol: dto.protocol,
-        status: 'DRAFT',
-        issuer: dto.issuer,
-        clientId: dto.protocol === 'OIDC' ? (dto.clientId ?? null) : null,
-        clientSecretRef:
-          dto.protocol === 'OIDC' ? (dto.clientSecretRef ?? null) : null,
-        oidcClientAuthMethod:
-          dto.protocol === 'OIDC'
-            ? (dto.oidcClientAuthMethod ?? 'client_secret_basic')
-            : null,
-        oidcMetadata: null,
-        oidcSigningAlgorithm: null,
-        samlEntryPoint:
-          dto.protocol === 'SAML' ? (dto.samlEntryPoint ?? null) : null,
-        samlIdpCertificates:
-          dto.protocol === 'SAML' ? (dto.samlIdpCertificates ?? []) : [],
-        samlSpEntityId:
-          dto.protocol === 'SAML' ? (dto.samlSpEntityId ?? null) : null,
-        samlSpPrivateKeyRef:
-          dto.protocol === 'SAML' ? (dto.samlSpPrivateKeyRef ?? null) : null,
-        samlSpPublicCertificate:
-          dto.protocol === 'SAML'
-            ? (dto.samlSpPublicCertificate ?? null)
-            : null,
-        emailClaim: dto.emailClaim ?? 'email',
-        displayNameClaim: dto.displayNameClaim ?? 'name',
-        groupsClaim: dto.groupsClaim ?? null,
-        mfaClaimValues: dto.mfaClaimValues ?? [],
-        requireMfa: dto.requireMfa ?? false,
-        allowedClockSkewMs: dto.allowedClockSkewMs ?? 120000,
-        metadataHash: null,
-        metadataValidatedAt: null,
-        createdByPrincipalId: actorId,
-        updatedByPrincipalId: actorId,
-      }),
+      (tx) =>
+        tx.identityProviderConfiguration.create({
+          data: identityProviderWriteData({
+            tenantId,
+            environmentId: dto.environmentId,
+            name: dto.name,
+            protocol: dto.protocol,
+            status: 'DRAFT',
+            issuer: dto.issuer,
+            clientId: dto.protocol === 'OIDC' ? (dto.clientId ?? null) : null,
+            clientSecretRef:
+              dto.protocol === 'OIDC' ? (dto.clientSecretRef ?? null) : null,
+            oidcClientAuthMethod:
+              dto.protocol === 'OIDC'
+                ? (dto.oidcClientAuthMethod ?? 'client_secret_basic')
+                : null,
+            oidcMetadata: null,
+            oidcSigningAlgorithm: null,
+            samlEntryPoint:
+              dto.protocol === 'SAML' ? (dto.samlEntryPoint ?? null) : null,
+            samlIdpCertificates:
+              dto.protocol === 'SAML' ? (dto.samlIdpCertificates ?? []) : [],
+            samlSpEntityId:
+              dto.protocol === 'SAML' ? (dto.samlSpEntityId ?? null) : null,
+            samlSpPrivateKeyRef:
+              dto.protocol === 'SAML'
+                ? (dto.samlSpPrivateKeyRef ?? null)
+                : null,
+            samlSpPublicCertificate:
+              dto.protocol === 'SAML'
+                ? (dto.samlSpPublicCertificate ?? null)
+                : null,
+            emailClaim: dto.emailClaim ?? 'email',
+            displayNameClaim: dto.displayNameClaim ?? 'name',
+            groupsClaim: dto.groupsClaim ?? null,
+            mfaClaimValues: dto.mfaClaimValues ?? [],
+            requireMfa: dto.requireMfa ?? false,
+            allowedClockSkewMs: dto.allowedClockSkewMs ?? 120000,
+            metadataHash: null,
+            metadataValidatedAt: null,
+            createdByPrincipalId: actorId,
+            updatedByPrincipalId: actorId,
+          }),
+        }),
       {
         eventType: 'identity_provider_configuration_created',
         actorId,
@@ -156,8 +200,8 @@ export class IdentityProviderConfigurationService {
     }
     this.assertProtocolFields(provider);
     this.runtime.callbackUrl(provider.protocol);
-    await this.persistConfigurationChange(
-      provider,
+    const saved = await this.persistConfigurationChange(
+      this.saveExisting(provider),
       {
         eventType: 'identity_provider_configuration_changed',
         actorId,
@@ -183,7 +227,7 @@ export class IdentityProviderConfigurationService {
         reason: 'IDP_CONFIGURATION_CHANGED',
       },
     );
-    return this.publicConfiguration(provider);
+    return this.publicConfiguration(saved);
   }
 
   async activate(
@@ -223,17 +267,20 @@ export class IdentityProviderConfigurationService {
     provider.metadataValidatedAt = new Date();
     provider.status = 'ACTIVE';
     provider.updatedByPrincipalId = actorId;
-    await this.persistConfigurationChange(provider, {
-      eventType: 'identity_provider_configuration_activated',
-      actorId,
-      tenantId,
-      data: (saved) => ({
-        identityProviderConfigurationId: saved.id,
-        protocol: saved.protocol,
-        metadataHash,
-      }),
-    });
-    return this.publicConfiguration(provider);
+    const saved = await this.persistConfigurationChange(
+      this.saveExisting(provider),
+      {
+        eventType: 'identity_provider_configuration_activated',
+        actorId,
+        tenantId,
+        data: (saved) => ({
+          identityProviderConfigurationId: saved.id,
+          protocol: saved.protocol,
+          metadataHash,
+        }),
+      },
+    );
+    return this.publicConfiguration(saved);
   }
 
   async disable(
@@ -244,8 +291,8 @@ export class IdentityProviderConfigurationService {
     const provider = await this.findForTenant(tenantId, providerId);
     provider.status = 'DISABLED';
     provider.updatedByPrincipalId = actorId;
-    await this.persistConfigurationChange(
-      provider,
+    const saved = await this.persistConfigurationChange(
+      this.saveExisting(provider),
       {
         eventType: 'identity_provider_configuration_disabled',
         actorId,
@@ -257,15 +304,15 @@ export class IdentityProviderConfigurationService {
       },
       { tenantId, issuer: provider.issuer, reason: 'IDP_DISABLED' },
     );
-    return this.publicConfiguration(provider);
+    return this.publicConfiguration(saved);
   }
 
   async listForTenant(tenantId: string): Promise<Record<string, unknown>[]> {
     return (
-      await this.providers.find({
+      (await this.prisma.identityProviderConfiguration.findMany({
         where: { tenantId },
-        order: { createdAt: 'ASC' },
-      })
+        orderBy: { createdAt: 'asc' },
+      })) as IdentityProviderConfiguration[]
     ).map((provider) => this.publicConfiguration(provider));
   }
 
@@ -277,15 +324,15 @@ export class IdentityProviderConfigurationService {
       protocol: string;
     }>;
   }> {
-    const tenant = await this.tenants.findOne({
+    const tenant = await this.prisma.tenant.findUnique({
       where: { slug: tenantSlug },
     });
     if (!tenant || !['ACTIVE', 'PROVISIONING'].includes(tenant.status)) {
       throw new NotFoundException('Company SSO configuration was not found');
     }
-    const providers = await this.providers.find({
+    const providers = await this.prisma.identityProviderConfiguration.findMany({
       where: { tenantId: tenant.id, status: 'ACTIVE' },
-      order: { name: 'ASC' },
+      orderBy: { name: 'asc' },
     });
     return {
       tenant: { id: tenant.id, name: tenant.name, slug: tenant.slug },
@@ -301,15 +348,17 @@ export class IdentityProviderConfigurationService {
     tenantSlug: string,
     providerId: string,
   ): Promise<IdentityProviderConfiguration> {
-    const tenant = await this.tenants.findOne({
+    const tenant = await this.prisma.tenant.findUnique({
       where: { slug: tenantSlug },
     });
     if (!tenant || !['ACTIVE', 'PROVISIONING'].includes(tenant.status)) {
       throw new NotFoundException('Company SSO configuration was not found');
     }
-    const provider = await this.providers.findOne({
-      where: { id: providerId, tenantId: tenant.id, status: 'ACTIVE' },
-    });
+    const provider = (await this.prisma.identityProviderConfiguration.findFirst(
+      {
+        where: { id: providerId, tenantId: tenant.id, status: 'ACTIVE' },
+      },
+    )) as IdentityProviderConfiguration | null;
     if (!provider) {
       throw new NotFoundException('Company SSO configuration was not found');
     }
@@ -319,9 +368,11 @@ export class IdentityProviderConfigurationService {
   async findActiveById(
     providerId: string,
   ): Promise<IdentityProviderConfiguration> {
-    const provider = await this.providers.findOne({
-      where: { id: providerId, status: 'ACTIVE' },
-    });
+    const provider = (await this.prisma.identityProviderConfiguration.findFirst(
+      {
+        where: { id: providerId, status: 'ACTIVE' },
+      },
+    )) as IdentityProviderConfiguration | null;
     if (!provider) {
       throw new NotFoundException('Company SSO configuration was not found');
     }
@@ -351,9 +402,11 @@ export class IdentityProviderConfigurationService {
     tenantId: string,
     providerId: string,
   ): Promise<IdentityProviderConfiguration> {
-    const provider = await this.providers.findOne({
-      where: { id: providerId, tenantId },
-    });
+    const provider = (await this.prisma.identityProviderConfiguration.findFirst(
+      {
+        where: { id: providerId, tenantId },
+      },
+    )) as IdentityProviderConfiguration | null;
     if (!provider) {
       throw new NotFoundException(
         `Identity provider configuration '${providerId}' not found`,
@@ -363,7 +416,9 @@ export class IdentityProviderConfigurationService {
   }
 
   private async assertTenantAllowsConfiguration(tenantId: string) {
-    const tenant = await this.tenants.findOne({ where: { id: tenantId } });
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { id: tenantId },
+    });
     if (!tenant) throw new NotFoundException(`Tenant ${tenantId} not found`);
     if (!['PROVISIONING', 'ACTIVE'].includes(tenant.status)) {
       throw new ForbiddenException(
@@ -373,7 +428,7 @@ export class IdentityProviderConfigurationService {
   }
 
   private async assertEnvironment(tenantId: string, environmentId: string) {
-    const environment = await this.environments.findOne({
+    const environment = await this.prisma.environment.findFirst({
       where: { id: environmentId, tenantId, status: 'ACTIVE' },
     });
     if (!environment) {
@@ -417,8 +472,23 @@ export class IdentityProviderConfigurationService {
     throw new BadRequestException('Unsupported federation protocol');
   }
 
-  private async persistConfigurationChange(
+  /** Writes every column of an already-persisted, in-memory-modified provider. */
+  private saveExisting(
     provider: IdentityProviderConfiguration,
+  ): (
+    tx: Prisma.TransactionClient,
+  ) => Promise<IdentityProviderConfigurationRow> {
+    return (tx) =>
+      tx.identityProviderConfiguration.update({
+        where: { id: provider.id },
+        data: identityProviderWriteData(provider),
+      });
+  }
+
+  private async persistConfigurationChange(
+    write: (
+      tx: Prisma.TransactionClient,
+    ) => Promise<IdentityProviderConfigurationRow>,
     audit: {
       eventType: string;
       actorId: string;
@@ -427,31 +497,28 @@ export class IdentityProviderConfigurationService {
     },
     revoke?: { tenantId: string; issuer: string; reason: string },
   ): Promise<IdentityProviderConfiguration> {
-    return this.dataSource.transaction(async (manager) => {
-      const saved = await manager
-        .getRepository(IdentityProviderConfiguration)
-        .save(provider);
+    return this.prisma.$transaction(async (tx) => {
+      const saved = (await write(tx)) as IdentityProviderConfiguration;
       if (revoke) {
-        await manager.getRepository(Session).update(
-          {
+        await tx.session.updateMany({
+          where: {
             tenantId: revoke.tenantId,
             issuer: revoke.issuer,
-            revokedAt: IsNull(),
+            revokedAt: null,
           },
-          { revokedAt: new Date(), revokedReason: revoke.reason },
-        );
+          data: { revokedAt: new Date(), revokedReason: revoke.reason },
+        });
       }
-      const eventRepository = manager.getRepository(IdentityEvent);
-      await eventRepository.save(
-        eventRepository.create({
+      await tx.identityEvent.create({
+        data: {
           eventType: audit.eventType,
           actorId: audit.actorId,
           principalId: null,
           tenantId: audit.tenantId,
           correlationId: null,
-          data: audit.data(saved),
-        }),
-      );
+          data: audit.data(saved) as Prisma.InputJsonValue,
+        },
+      });
       return saved;
     });
   }

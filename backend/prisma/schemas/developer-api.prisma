@@ -1,0 +1,66 @@
+// PostgreSQL schema "developer_api". developer-api module.
+
+// --- shield-core-owned: developer API (foundation built now, public surface G2-gated) ---
+model ApiClient {
+  id                String    @id @default(uuid())
+  tenant_id         String
+  name              String
+  client_id         String    @unique
+  principal_id      String    @unique
+  status            String    @default("PENDING") // PENDING|ACTIVE|SUSPENDED|REVOKED|EXPIRED
+  environment_scope String?
+  purpose           String
+  created_by        String
+  expires_at        DateTime?
+  last_used_at      DateTime?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  credentials ApiClientCredential[]
+  scopeGrants ApiScopeGrant[]
+
+  @@index([tenant_id])
+
+  @@schema("developer_api")
+}
+
+// Raw secret is generated once, returned once, never stored — only a strong hash + fingerprint (spec §29).
+model ApiClientCredential {
+  id              String    @id @default(uuid())
+  tenant_id       String
+  api_client_id   String
+  apiClient       ApiClient @relation(fields: [api_client_id], references: [id])
+  secret_version  Int
+  secret_hash     String
+  fingerprint     String
+  status          String    @default("ACTIVE") // ACTIVE|RETIRING|REVOKED
+  issued_at       DateTime  @default(now())
+  expires_at      DateTime?
+  revoked_at      DateTime?
+  rotated_from_id String?
+
+  @@unique([api_client_id, secret_version])
+  @@index([tenant_id])
+
+  @@schema("developer_api")
+}
+
+model ApiScopeGrant {
+  id                        String    @id @default(uuid())
+  tenant_id                 String
+  api_client_id             String
+  apiClient                 ApiClient @relation(fields: [api_client_id], references: [id])
+  scope                     String
+  environment_id            String?
+  granted_by                String
+  authorization_decision_id String
+  effective_from            DateTime  @default(now())
+  expires_at                DateTime?
+  revoked_at                DateTime?
+  created_at                DateTime  @default(now())
+
+  @@index([tenant_id])
+  @@index([api_client_id])
+
+  @@schema("developer_api")
+}

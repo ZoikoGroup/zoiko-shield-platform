@@ -7,6 +7,7 @@ import {
 } from '../kafka/kafka.producer.service';
 import { ConnectorHealthService } from '../connectors/services/health.service';
 import { PermissionService } from '../connectors/services/permission.service';
+import { PlatformScope } from '../../../../libs/database/src';
 
 export interface RequiredPermissionSpec {
   provider: string;
@@ -217,6 +218,9 @@ export class ConnectorPermissionDriftService {
   /**
    * Automated Cron Sweeper checking connector permission health every 15 minutes.
    */
+  @PlatformScope(
+    'scheduled job ConnectorPermissionDriftService.sweepPermissionDrift',
+  )
   @Cron(CronExpression.EVERY_10_MINUTES)
   async sweepPermissionDrift(): Promise<void> {
     if (this.isSweeping) return;

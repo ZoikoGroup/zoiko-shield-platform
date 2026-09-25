@@ -5,18 +5,18 @@ import { FederationTransactionService } from './federation-transaction.service';
 describe('FederationTransactionService', () => {
   it('stores only hashed state, encrypts secrets and consumes a transaction once', async () => {
     let row: any;
-    const repository = {
-      create: jest.fn((value) => ({ id: 'transaction-1', ...value })),
-      save: jest.fn(async (value) => {
-        row = value;
-        return value;
+    const federationTransaction = {
+      create: jest.fn(async ({ data }) => {
+        row = { id: 'transaction-1', ...data };
+        return row;
       }),
-      findOne: jest.fn(async () => (row?.consumedAt ? null : row)),
-      update: jest.fn(async () => {
+      findFirst: jest.fn(async () => (row?.consumedAt ? null : row)),
+      updateMany: jest.fn(async () => {
         row.consumedAt = new Date();
-        return { affected: 1 };
+        return { count: 1 };
       }),
     };
+    const prisma = { federationTransaction };
     const runtime = new FederationRuntimeService(
       new ConfigService({
         NODE_ENV: 'test',
@@ -25,10 +25,7 @@ describe('FederationTransactionService', () => {
           'unit-test-distinct-sso-key-at-least-32-bytes',
       }),
     );
-    const service = new FederationTransactionService(
-      repository as any,
-      runtime,
-    );
+    const service = new FederationTransactionService(prisma as any, runtime);
 
     const state = await service.create({
       identityProviderConfigurationId: 'provider-1',

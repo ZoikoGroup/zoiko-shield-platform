@@ -1,26 +1,23 @@
 import 'dotenv/config';
-import 'reflect-metadata';
-import { DataSource } from 'typeorm';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import crypto from 'crypto';
+import { runWithPlatformScope, TenantScopedPool } from '../libs/database/src';
 
 async function main() {
-  const databaseUrl = process.env.DATABASE_URL || 'postgres://shield:shield@localhost:5433/shield_core';
+  const databaseUrl =
+    process.env.DATABASE_URL ||
+    'postgres://shield:shield@localhost:5433/shield_core';
 
   process.env.DATABASE_URL = databaseUrl;
-  const prisma = new PrismaClient();
+  const pool = new TenantScopedPool({ connectionString: databaseUrl });
+  const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
-  const dataSource = new DataSource({
-    type: 'postgres',
-    url: databaseUrl,
-    entities: [],
-    synchronize: false,
+  // 1. Check policy documents in the identity schema
+  const policyDocs = await prisma.policyDocument.findMany({
+    where: { kind: 'ACCESS_DISCLOSURE', active: true },
+    select: { id: true, kind: true, version: true, active: true },
   });
-
-  await dataSource.initialize();
-
-  // 1. Check policy documents in TypeORM identity schema
-  const policyDocs = await dataSource.query(`SELECT id, kind, version, active FROM identity.policy_documents WHERE kind = 'ACCESS_DISCLOSURE' AND active = true`);
   console.log('Active ACCESS_DISCLOSURE policy version(s):', policyDocs);
 
   // 2. Ensure CatalogVersion exists
@@ -31,12 +28,14 @@ async function main() {
         id: crypto.randomUUID(),
         version_label: 'v1.0',
         status: 'ACTIVE',
-      }
+      },
     });
   }
 
   // 3. Ensure a Product exists
-  let product = await prisma.product.findFirst({ where: { sku: 'SKU-ENTERPRISE-01' } });
+  let product = await prisma.product.findFirst({
+    where: { sku: 'SKU-ENTERPRISE-01' },
+  });
   if (!product) {
     product = await prisma.product.create({
       data: {
@@ -47,7 +46,7 @@ async function main() {
         display_name: 'ZoikoShield Enterprise Edition',
         offer_family: 'ENTERPRISE_SUITE',
         metric_family: 'USER_LICENSES',
-      }
+      },
     });
     console.log('Created test Product:', product.id);
   } else {
@@ -63,7 +62,7 @@ async function main() {
         name: 'Demo Account',
         customer_legal_name: 'Demo Account Ltd',
         status: 'ACTIVE',
-      }
+      },
     });
   }
 
@@ -78,10 +77,13 @@ async function main() {
         commercial_account_id: account.id,
         catalog_version_id: catalogVersion.id,
         quote_key: `test-quote-${Date.now()}`,
-        configuration_hash: crypto.createHash('sha256').update(`test-${Date.now()}`).digest('hex'),
+        configuration_hash: crypto
+          .createHash('sha256')
+          .update(`test-${Date.now()}`)
+          .digest('hex'),
         requested_by: 'system',
         status: 'APPROVED',
-      }
+      },
     });
   }
 
@@ -101,11 +103,12 @@ async function main() {
             id: crypto.randomUUID(),
             product_id: product.id,
             quantity: 1,
+            list_unit_price: 1000,
             unit_price: 1000,
-          }
-        ]
-      }
-    }
+          },
+        ],
+      },
+    },
   });
 
   console.log('\n========================================');
@@ -115,7 +118,10 @@ async function main() {
   console.log('========================================\n');
 
   await prisma.$disconnect();
-  await dataSource.destroy();
+  await pool.end();
 }
 
-main().catch(console.error);
+// An operator tool acting across tenants: an explicit platform operation.
+runWithPlatformScope('test commercial order (operator tool)', main).catch(
+  console.error,
+);

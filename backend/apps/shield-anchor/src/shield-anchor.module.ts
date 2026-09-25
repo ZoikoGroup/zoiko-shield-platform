@@ -1,4 +1,9 @@
-import { Module } from '@nestjs/common';
+import {
+  Module,
+  MiddlewareConsumer,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { PrismaModule } from './prisma/prisma.module';
 import { KafkaModule } from './kafka/kafka.module';
@@ -26,6 +31,7 @@ import { CosignBinaryAttestorService } from './supply-chain/cosign-binary-attest
 import { SbomDriftVerifierService } from './supply-chain/sbom-drift-verifier.service';
 import { BatchMerkleCheckpointerService } from './merkle/batch-merkle-checkpointer.service';
 import { DistributedLeaseCoordinatorService } from './consensus/distributed-lease-coordinator.service';
+import { dbScopeMiddleware } from '../../../libs/database/src';
 
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
@@ -70,4 +76,12 @@ import { DistributedLeaseCoordinatorService } from './consensus/distributed-leas
     DistributedLeaseCoordinatorService,
   ],
 })
-export class ShieldAnchorModule {}
+export class ShieldAnchorModule implements NestModule {
+  // Every request gets its own database scope, unbound until an auth guard
+  // verifies its tenant (libs/database/src/db-scope.ts).
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(dbScopeMiddleware)
+      .forRoutes({ path: '*path', method: RequestMethod.ALL });
+  }
+}

@@ -1,23 +1,21 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Environment } from './environment.entity';
+import { PrismaService } from '../../prisma/prisma.service';
+import type { Environment } from './environment.entity';
 import { CreateEnvironmentDto } from './dto/create-environment.dto';
 import { UpdateEnvironmentDto } from './dto/update-environment.dto';
 
 @Injectable()
 export class EnvironmentService {
-  constructor(
-    @InjectRepository(Environment)
-    private readonly environmentRepository: Repository<Environment>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  findAllForTenant(tenantId: string): Promise<Environment[]> {
-    return this.environmentRepository.find({ where: { tenantId } });
+  async findAllForTenant(tenantId: string): Promise<Environment[]> {
+    return (await this.prisma.environment.findMany({
+      where: { tenantId },
+    })) as Environment[];
   }
 
   async findOne(tenantId: string, id: string): Promise<Environment> {
-    const item = await this.environmentRepository.findOne({
+    const item = await this.prisma.environment.findFirst({
       where: { id, tenantId },
     });
     if (!item) {
@@ -25,22 +23,22 @@ export class EnvironmentService {
         `Environment ${id} not found for tenant ${tenantId}`,
       );
     }
-    return item;
+    return item as Environment;
   }
 
-  create(
+  async create(
     tenantId: string,
     dto: CreateEnvironmentDto,
     defaultRegion: string,
   ): Promise<Environment> {
-    return this.environmentRepository.save(
-      this.environmentRepository.create({
+    return (await this.prisma.environment.create({
+      data: {
         tenantId,
         name: dto.name,
         environmentType: dto.environmentType,
         region: dto.region ?? defaultRegion,
-      }),
-    );
+      },
+    })) as Environment;
   }
 
   async update(
@@ -49,12 +47,16 @@ export class EnvironmentService {
     dto: UpdateEnvironmentDto,
   ): Promise<Environment> {
     const item = await this.findOne(tenantId, id);
-    Object.assign(item, dto);
-    return this.environmentRepository.save(item);
+    return (await this.prisma.environment.update({
+      where: { id: item.id },
+      data: { name: dto.name, status: dto.status },
+    })) as Environment;
   }
 
   async remove(tenantId: string, id: string): Promise<void> {
     const item = await this.findOne(tenantId, id);
-    await this.environmentRepository.remove(item);
+    await this.prisma.environment.deleteMany({
+      where: { id: item.id, tenantId },
+    });
   }
 }

@@ -5,20 +5,15 @@ import { randomUUID, createHash } from 'crypto';
 import { Module, Logger } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { NestFactory } from '@nestjs/core';
-import { TypeOrmModule } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
-import { SHIELD_CORE_TYPEORM_ENTITIES } from '../apps/shield-core/src/typeorm-entities';
+import { PrismaModule } from '../apps/shield-core/src/prisma/prisma.module';
 import { PrismaService } from '../apps/shield-core/src/prisma/prisma.service';
 import { OnboardingModule } from '../apps/shield-core/src/modules/onboarding/onboarding.module';
 import { OnboardingService } from '../apps/shield-core/src/modules/onboarding/onboarding.service';
 import { IdentityAdapterModule } from '../apps/shield-core/src/modules/identity-adapter/identity-adapter.module';
 import { OwnerFederatedActivationService } from '../apps/shield-core/src/modules/identity-adapter/owner-federated-activation.service';
 import { PolicyService } from '../apps/shield-core/src/modules/identity-adapter/policy.service';
-import { Principal } from '../apps/shield-core/src/modules/identity-adapter/principal.entity';
-import { LocalCredential } from '../apps/shield-core/src/modules/identity-adapter/local-credential.entity';
-import { TenantMembership } from '../apps/shield-core/src/modules/authorization/entities/tenant-membership.entity';
-import { Tenant } from '../apps/shield-core/src/modules/tenant/tenant.entity';
 import { PLATFORM_SCOPE } from '../apps/shield-core/src/modules/authorization/constants';
+import { runWithPlatformScope } from '../libs/database/src';
 
 /**
  * Provision a working tenant in a development environment.
@@ -56,7 +51,8 @@ const DEV_ASSERTION_ISSUER = 'urn:zoikoshield:dev-seed';
  */
 const DEV_ZOIKOID_DEFAULTS: Record<string, string> = {
   ZOIKOID_OIDC_ISSUER: 'https://id.zoiko.example',
-  ZOIKOID_OIDC_AUTHORIZATION_ENDPOINT: 'https://id.zoiko.example/oauth2/authorize',
+  ZOIKOID_OIDC_AUTHORIZATION_ENDPOINT:
+    'https://id.zoiko.example/oauth2/authorize',
   ZOIKOID_OIDC_TOKEN_ENDPOINT: 'https://id.zoiko.example/oauth2/token',
   ZOIKOID_OIDC_JWKS_URI: 'https://id.zoiko.example/.well-known/jwks.json',
   ZOIKOID_OIDC_CLIENT_ID: 'zoikoshield-dev-seed',
@@ -89,7 +85,10 @@ function parseArgs(argv: string[]): Args {
     tenantName,
     tenantSlug:
       flags.get('tenant-slug') ??
-      `${tenantName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}-${suffix}`,
+      `${tenantName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '')}-${suffix}`,
     region: flags.get('region') ?? 'us-east-1',
   };
 }
@@ -97,12 +96,7 @@ function parseArgs(argv: string[]): Args {
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env', '../.env'] }),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      url: process.env.DATABASE_URL,
-      entities: SHIELD_CORE_TYPEORM_ENTITIES,
-      synchronize: false,
-    }),
+    PrismaModule,
     IdentityAdapterModule,
     OnboardingModule,
   ],
@@ -211,20 +205,14 @@ async function main(): Promise<void> {
 
   try {
     const prisma = app.get(PrismaService);
-    const dataSource = app.get(DataSource);
     const onboarding = app.get(OnboardingService);
     const activation = app.get(OwnerFederatedActivationService);
     const policies = app.get(PolicyService);
 
-    const principals = dataSource.getRepository(Principal);
-    const credentials = dataSource.getRepository(LocalCredential);
-    const memberships = dataSource.getRepository(TenantMembership);
-    const tenants = dataSource.getRepository(Tenant);
-
     // Onboarding is performed BY a platform super admin, so one has to exist.
-    const platformMembership = await memberships.findOne({
+    const platformMembership = await prisma.tenantMembership.findFirst({
       where: { tenantId: PLATFORM_SCOPE, status: 'ACTIVE' },
-      order: { joinedAt: 'ASC' },
+      orderBy: { joinedAt: 'asc' },
     });
     if (!platformMembership) {
       throw new Error(
@@ -273,9 +261,7 @@ async function main(): Promise<void> {
     }
     const invitationToken = new URL(activationUrl).searchParams.get('token');
     if (!invitationToken) {
-      throw new Error(
-        `Activation URL carried no token: ${activationUrl}`,
-      );
+      throw new Error(`Activation URL carried no token: ${activationUrl}`);
     }
     logger.log(`Tenant ${result.tenant.id} provisioned; activating owner`);
 
@@ -312,33 +298,48 @@ async function main(): Promise<void> {
     // The owner activated federated, so they have no password. Without an
     // identity provider to sign in to, they would have no way to reach the
     // tenant they now own, so give them a local credential as well.
-    const owner = await principals.findOne({ where: { email: args.owner } });
+    const owner = await prisma.principal.findUnique({
+      where: { email: args.owner },
+    });
     if (!owner) {
-      throw new Error(`Owner principal ${args.owner} vanished after activation`);
+      throw new Error(
+        `Owner principal ${args.owner} vanished after activation`,
+      );
     }
     const passwordHash = await bcrypt.hash(args.password, 10);
-    const existing = await credentials.findOne({
+    const existing = await prisma.localCredential.findUnique({
       where: { principalId: owner.id },
     });
     if (existing) {
-      existing.passwordHash = passwordHash;
-      existing.passwordUpdatedAt = new Date();
-      existing.failedAttempts = 0;
-      existing.lockedUntil = null;
-      await credentials.save(existing);
+      await prisma.localCredential.update({
+        where: { id: existing.id },
+        data: {
+          passwordHash,
+          passwordUpdatedAt: new Date(),
+          failedAttempts: 0,
+          lockedUntil: null,
+        },
+      });
     } else {
-      await credentials.save(
-        credentials.create({
+      await prisma.localCredential.create({
+        data: {
           principalId: owner.id,
           passwordHash,
           passwordUpdatedAt: new Date(),
-        }),
-      );
+        },
+      });
     }
 
-    const tenant = await tenants.findOne({ where: { id: result.tenant.id } });
-    const membership = await memberships.findOne({
-      where: { tenantId: result.tenant.id, principalId: owner.id },
+    const tenant = await prisma.tenant.findUnique({
+      where: { id: result.tenant.id },
+    });
+    const membership = await prisma.tenantMembership.findUnique({
+      where: {
+        tenantId_principalId: {
+          tenantId: result.tenant.id,
+          principalId: owner.id,
+        },
+      },
     });
 
     console.log(`
@@ -365,7 +366,8 @@ Log in, then send the tenant id as the x-tenant-id header:
   }
 }
 
-main().catch((error) => {
+// An operator tool acting across tenants: an explicit platform operation.
+runWithPlatformScope('dev tenant seed (operator tool)', main).catch((error) => {
   console.error(error);
   process.exitCode = 1;
 });

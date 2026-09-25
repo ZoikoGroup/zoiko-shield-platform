@@ -1,60 +1,32 @@
 import 'dotenv/config';
-import 'reflect-metadata';
 import * as bcrypt from 'bcrypt';
-import { DataSource } from 'typeorm';
-import { Principal } from '../apps/shield-core/src/modules/identity-adapter/principal.entity';
-import { LocalCredential } from '../apps/shield-core/src/modules/identity-adapter/local-credential.entity';
-import { ExternalIdentity } from '../apps/shield-core/src/modules/identity-adapter/external-identity.entity';
-import { Session } from '../apps/shield-core/src/modules/identity-adapter/session.entity';
-import { VerificationChallenge } from '../apps/shield-core/src/modules/identity-adapter/verification-challenge.entity';
-import { RecoveryGrant } from '../apps/shield-core/src/modules/identity-adapter/recovery-grant.entity';
-import { PolicyDocument } from '../apps/shield-core/src/modules/identity-adapter/policy-document.entity';
-import { PolicyAcceptance } from '../apps/shield-core/src/modules/identity-adapter/policy-acceptance.entity';
-import { IdentityEvent } from '../apps/shield-core/src/modules/identity-adapter/identity-event.entity';
-import { Permission } from '../apps/shield-core/src/modules/authorization/entities/permission.entity';
-import { Role } from '../apps/shield-core/src/modules/authorization/entities/role.entity';
-import { TenantMembership } from '../apps/shield-core/src/modules/authorization/entities/tenant-membership.entity';
-import { Invitation } from '../apps/shield-core/src/modules/authorization/entities/invitation.entity';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '@prisma/client';
+import { TenantScopedPool } from '../libs/database/src';
 
 async function main() {
   const email = process.argv[2] || 'user@example.com';
   const testPassword = process.argv[3] || 'MyPassword123';
 
-  const databaseUrl = process.env.DATABASE_URL || 'postgres://shield:shield@localhost:5433/shield_core';
+  const databaseUrl =
+    process.env.DATABASE_URL ||
+    'postgres://shield:shield@localhost:5433/shield_core';
 
-  const dataSource = new DataSource({
-    type: 'postgres',
-    url: databaseUrl,
-    entities: [
-      Principal,
-      LocalCredential,
-      ExternalIdentity,
-      Session,
-      VerificationChallenge,
-      RecoveryGrant,
-      PolicyDocument,
-      PolicyAcceptance,
-      IdentityEvent,
-      Permission,
-      Role,
-      TenantMembership,
-      Invitation,
-    ],
-    synchronize: false,
-    ssl: databaseUrl.includes('sslmode=require') ? { rejectUnauthorized: false } : false,
+  // Operator tool: reads one principal's memberships across every tenant.
+  const pool = new TenantScopedPool({
+    connectionString: databaseUrl,
+    ssl: databaseUrl.includes('sslmode=require')
+      ? { rejectUnauthorized: false }
+      : false,
   });
+  const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
-  await dataSource.initialize();
-
-  const principalRepo = dataSource.getRepository(Principal);
-  const localCredRepo = dataSource.getRepository(LocalCredential);
-  const membershipRepo = dataSource.getRepository(TenantMembership);
-
-  const principal = await principalRepo.findOne({ where: { email } });
+  const principal = await prisma.principal.findUnique({ where: { email } });
 
   if (!principal) {
     console.log(`❌ No principal found with email "${email}"`);
-    await dataSource.destroy();
+    await prisma.$disconnect();
+    await pool.end();
     return;
   }
 
@@ -68,37 +40,50 @@ async function main() {
   console.log(`EmailVerified: ${principal.emailVerified}`);
   console.log(`Created At:    ${principal.createdAt}`);
 
-  const cred = await localCredRepo.findOne({ where: { principalId: principal.id } });
+  const cred = await prisma.localCredential.findUnique({
+    where: { principalId: principal.id },
+  });
   if (cred) {
     console.log(`\n🔐 Local Credentials:`);
     console.log(`Failed Attempts: ${cred.failedAttempts}`);
-    console.log(`Locked Until:    ${cred.lockedUntil ? cred.lockedUntil : 'Not locked'}`);
+    console.log(
+      `Locked Until:    ${cred.lockedUntil ? cred.lockedUntil : 'Not locked'}`,
+    );
     if (testPassword) {
       const match = await bcrypt.compare(testPassword, cred.passwordHash);
-      console.log(`Password Match ("${testPassword}"): ${match ? '✅ MATCHES' : '❌ DOES NOT MATCH'}`);
+      console.log(
+        `Password Match ("${testPassword}"): ${match ? '✅ MATCHES' : '❌ DOES NOT MATCH'}`,
+      );
     }
   } else {
     console.log(`\n🔐 Local Credentials: NONE (Federated / SSO only)`);
   }
 
-  const memberships = await membershipRepo.find({
+  const memberships = await prisma.tenantMembership.findMany({
     where: { principalId: principal.id },
-    relations: { roles: { permissions: true } },
+    include: {
+      roles: {
+        include: {
+          role: { include: { permissions: { include: { permission: true } } } },
+        },
+      },
+    },
   });
 
   console.log(`\n🛡️  Tenant Memberships & Roles (${memberships.length}):`);
   for (const m of memberships) {
     console.log(` - Tenant ID: ${m.tenantId}`);
     console.log(`   Membership Status: ${m.status}`);
-    for (const r of m.roles) {
+    for (const { role: r } of m.roles) {
       console.log(`   Role: ${r.code} (${r.name})`);
-      const permCodes = r.permissions?.map((p) => p.code) ?? [];
+      const permCodes = r.permissions.map((rp) => rp.permission.code);
       console.log(`   Permissions (${permCodes.length}):`, permCodes);
     }
   }
   console.log(`========================================\n`);
 
-  await dataSource.destroy();
+  await prisma.$disconnect();
+  await pool.end();
 }
 
 main().catch((err) => {

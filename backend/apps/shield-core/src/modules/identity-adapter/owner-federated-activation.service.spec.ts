@@ -1,15 +1,15 @@
 import { ForbiddenException } from '@nestjs/common';
-import { Invitation } from '../authorization/entities/invitation.entity';
-import { TenantMembership } from '../authorization/entities/tenant-membership.entity';
-import { Environment } from '../environment/environment.entity';
-import { LegalEntity } from '../legal-entity/legal-entity.entity';
-import { Tenant } from '../tenant/tenant.entity';
-import { ExternalIdentity } from './external-identity.entity';
-import { IdentityEvent } from './identity-event.entity';
+import type {
+  Invitation,
+  LegalEntity,
+  Tenant,
+  TenantMembership,
+} from '@prisma/client';
+import type { Environment } from '../environment/environment.entity';
+import type { IdentityEvent } from './identity-event.entity';
 import { OwnerFederatedActivationService } from './owner-federated-activation.service';
-import { PolicyAcceptance } from './policy-acceptance.entity';
-import { PolicyDocument } from './policy-document.entity';
-import { Principal } from './principal.entity';
+import type { PolicyDocument } from './policy-document.entity';
+import type { Principal } from './principal.entity';
 
 describe('OwnerFederatedActivationService', () => {
   function fixture(assertedEmail = 'owner@acme.example') {
@@ -33,7 +33,7 @@ describe('OwnerFederatedActivationService', () => {
       email: 'owner@acme.example',
       emailVerified: false,
       source: 'ONBOARDING',
-      fullName: undefined,
+      fullName: null,
       riskState: 'NORMAL',
     } as Principal;
     const tenant = {
@@ -71,81 +71,61 @@ describe('OwnerFederatedActivationService', () => {
     } as LegalEntity;
     const events: IdentityEvent[] = [];
 
-    const repositories = new Map<unknown, any>([
-      [
-        Invitation,
-        {
-          findOne: jest.fn().mockResolvedValue(invitation),
-          save: jest.fn(async (value) => value),
-        },
-      ],
-      [
-        Principal,
-        {
-          findOne: jest.fn().mockResolvedValue(principal),
-          save: jest.fn(async (value) => value),
-        },
-      ],
-      [
-        Tenant,
-        {
-          findOne: jest.fn().mockResolvedValue(tenant),
-          save: jest.fn(async (value) => value),
-        },
-      ],
-      [
-        TenantMembership,
-        {
-          findOne: jest.fn().mockResolvedValue(membership),
-          save: jest.fn(async (value) => value),
-        },
-      ],
-      [PolicyDocument, { findOne: jest.fn().mockResolvedValue(policy) }],
-      [Environment, { findOne: jest.fn().mockResolvedValue(environment) }],
-      [LegalEntity, { findOne: jest.fn().mockResolvedValue(legalEntity) }],
-      [
-        ExternalIdentity,
-        {
-          findOne: jest.fn().mockResolvedValue(null),
-          create: jest.fn((value) => value),
-          save: jest.fn(async (value) => ({ id: 'external-1', ...value })),
-        },
-      ],
-      [
-        PolicyAcceptance,
-        {
-          create: jest.fn((value) => value),
-          save: jest.fn(async (value) => ({ id: 'acceptance-1', ...value })),
-        },
-      ],
-      [
-        IdentityEvent,
-        {
-          create: jest.fn((value) => value),
-          save: jest.fn(async (value) => {
-            events.push(...(Array.isArray(value) ? value : [value]));
-            return value;
-          }),
-        },
-      ],
-    ]);
-    const manager = {
-      getRepository: jest.fn((entity) => repositories.get(entity)),
-      createQueryBuilder: jest.fn(() => ({
-        relation: jest.fn().mockReturnThis(),
-        of: jest.fn().mockReturnThis(),
-        loadMany: jest.fn().mockResolvedValue([{ id: 'role-owner' }]),
-      })),
+    // Row stand-ins: `update` applies the patch to the fixture object, so the
+    // assertions below observe exactly what the transaction wrote.
+    const row = (value: object | null) => ({
+      findUnique: jest.fn().mockResolvedValue(value),
+      findFirst: jest.fn().mockResolvedValue(value),
+      update: jest.fn(async ({ data }) => Object.assign(value!, data)),
+    });
+    const recordEvents = async ({ data }: { data: any }) => {
+      events.push(...(Array.isArray(data) ? data : [data]));
+      return data;
     };
-    const dataSource = {
-      getRepository: manager.getRepository,
-      transaction: jest.fn((callback) => callback(manager)),
+    const tx = {
+      $queryRaw: jest.fn().mockResolvedValue([{ id: 'locked-row' }]),
+      $executeRaw: jest.fn().mockResolvedValue(1),
+      invitation: row(invitation),
+      principal: row(principal),
+      tenant: row(tenant),
+      tenantMembership: {
+        ...row(membership),
+        findUnique: jest.fn().mockResolvedValue({
+          ...membership,
+          roles: [
+            {
+              membership_id: 'membership-1',
+              role_id: 'role-owner',
+              role: { id: 'role-owner' },
+            },
+          ],
+        }),
+      },
+      policyDocument: row(policy),
+      environment: row(environment),
+      legalEntity: row(legalEntity),
+      externalIdentity: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn(async ({ data }) => ({ id: 'external-1', ...data })),
+        update: jest.fn(),
+      },
+      policyAcceptance: {
+        create: jest.fn(async ({ data }) => ({ id: 'acceptance-1', ...data })),
+      },
+      identityEvent: {
+        create: jest.fn(recordEvents),
+        createMany: jest.fn(recordEvents),
+      },
+    };
+    const prisma = {
+      ...tx,
+      $transaction: jest.fn((callback) => callback(tx)),
     };
     const evidence = {
       createEvidence: jest.fn().mockResolvedValue({ id: 'evidence-1' }),
     };
     const service = new OwnerFederatedActivationService(
-      dataSource as any,
+      prisma as any,
       evidence as any,
     );
     const complete = () =>
@@ -178,6 +158,7 @@ describe('OwnerFederatedActivationService', () => {
 
     return {
       complete,
+      tx,
       evidence,
       events,
       invitation,
@@ -197,7 +178,22 @@ describe('OwnerFederatedActivationService', () => {
     expect(test.membership.status).toBe('ACTIVE');
     expect(test.invitation.status).toBe('CONSUMED');
     expect(test.tenant.status).toBe('ACTIVE');
+    // Tenant-owned reads in the activation transaction run in the invited
+    // tenant's row-level-security scope.
+    const scoped = test.tx.$executeRaw.mock.calls.find(([sql]: [string[]]) =>
+      sql.join('?').includes("set_config('app.tenant_id'"),
+    );
+    expect(scoped?.slice(1)).toEqual([test.tenant.id]);
     expect(test.tenant.onboardingCompletedAt).toBeInstanceOf(Date);
+    // Every row the activation mutates is locked first, and the reserved
+    // "authorization" schema is quoted in the lock statements.
+    const lockSql = test.tx.$queryRaw.mock.calls.map((call: any[]) =>
+      (call[0] as string[]).join('?'),
+    );
+    expect(lockSql).toHaveLength(5);
+    lockSql.forEach((sql: string) => expect(sql).toMatch(/FOR UPDATE/));
+    expect(lockSql.join('\n')).toContain('"authorization".invitations');
+    expect(lockSql.join('\n')).toContain('"authorization".tenant_memberships');
     expect(test.evidence.createEvidence).toHaveBeenCalledWith(
       expect.objectContaining({
         tenantId: 'tenant-1',

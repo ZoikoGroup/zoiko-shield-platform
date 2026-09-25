@@ -1,0 +1,40 @@
+// PostgreSQL schema "payments". payments module.
+
+model Payment {
+  id                          String            @id @default(uuid())
+  commercial_account_id       String
+  invoice_id                  String
+  invoice                     CommercialInvoice @relation(fields: [invoice_id], references: [id])
+  provider                    String
+  provider_payment_id         String?
+  payment_method_reference_id String?
+  amount                      Decimal           @db.Decimal(14, 4)
+  currency                    String            @default("USD")
+  status                      String            @default("PENDING")
+  idempotency_key             String            @unique
+  created_at                  DateTime          @default(now())
+  updated_at                  DateTime          @updatedAt
+
+  refunds Refund[]
+
+  @@index([commercial_account_id])
+  @@index([invoice_id])
+  @@index([status])
+
+  @@schema("payments")
+}
+
+model Refund {
+  id         String   @id @default(uuid())
+  payment_id String
+  payment    Payment  @relation(fields: [payment_id], references: [id])
+  amount     Decimal  @db.Decimal(14, 4)
+  currency   String   @default("USD")
+  reason     String
+  status     String   @default("PENDING")
+  created_at DateTime @default(now())
+
+  @@index([payment_id])
+
+  @@schema("payments")
+}

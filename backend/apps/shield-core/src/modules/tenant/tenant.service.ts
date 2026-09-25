@@ -3,9 +3,8 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
-import { Tenant, TenantStatus } from './tenant.entity';
+import { PrismaService } from '../../prisma/prisma.service';
+import type { Tenant, TenantStatus } from './tenant.entity';
 import { IdentityEventService } from '../identity-adapter/identity-event.service';
 
 // §7.2 Tenant lifecycle transitions. Tenants are created directly into
@@ -23,26 +22,27 @@ const ALLOWED_TRANSITIONS: Record<TenantStatus, TenantStatus[]> = {
 @Injectable()
 export class TenantService {
   constructor(
-    @InjectRepository(Tenant)
-    private readonly tenantRepository: Repository<Tenant>,
+    private readonly prisma: PrismaService,
     private readonly eventService: IdentityEventService,
   ) {}
 
-  findAll(): Promise<Tenant[]> {
-    return this.tenantRepository.find();
+  async findAll(): Promise<Tenant[]> {
+    return (await this.prisma.tenant.findMany()) as Tenant[];
   }
 
-  findAccessible(ids: string[]): Promise<Tenant[]> {
-    if (ids.length === 0) return Promise.resolve([]);
-    return this.tenantRepository.find({ where: { id: In(ids) } });
+  async findAccessible(ids: string[]): Promise<Tenant[]> {
+    if (ids.length === 0) return [];
+    return (await this.prisma.tenant.findMany({
+      where: { id: { in: ids } },
+    })) as Tenant[];
   }
 
   async findOne(id: string): Promise<Tenant> {
-    const tenant = await this.tenantRepository.findOne({ where: { id } });
+    const tenant = await this.prisma.tenant.findUnique({ where: { id } });
     if (!tenant) {
       throw new NotFoundException(`Tenant ${id} not found`);
     }
-    return tenant;
+    return tenant as Tenant;
   }
 
   async transitionStatus(
@@ -59,16 +59,18 @@ export class TenantService {
     }
 
     const previousStatus = tenant.status;
-    tenant.status = targetStatus;
-    await this.tenantRepository.save(tenant);
+    const updated = (await this.prisma.tenant.update({
+      where: { id: tenant.id },
+      data: { status: targetStatus },
+    })) as Tenant;
 
     await this.eventService.record({
       eventType: 'tenant_status_changed',
-      tenantId: tenant.id,
+      tenantId: updated.id,
       actorId: actorPrincipalId,
       data: { previousStatus, newStatus: targetStatus },
     });
 
-    return tenant;
+    return updated;
   }
 }

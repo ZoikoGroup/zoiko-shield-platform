@@ -8,7 +8,13 @@ describe('SessionContextService', () => {
     tenantId: 'tenant-1',
     principalId: 'principal-1',
     status: 'ACTIVE',
-    roles: [{ id: 'role-1', permissions: [] }],
+    roles: [
+      {
+        membership_id: 'membership-1',
+        role_id: 'role-1',
+        role: { id: 'role-1', permissions: [] },
+      },
+    ],
   };
   const tenant = { id: 'tenant-1', status: 'ACTIVE' };
   const environment = {
@@ -24,32 +30,37 @@ describe('SessionContextService', () => {
     environment?: object | null;
     policyVersion?: string;
   }) {
-    return new SessionContextService(
-      {
-        findOne: jest
+    const prisma = {
+      tenantMembership: {
+        findFirst: jest
           .fn()
           .mockResolvedValue(
             overrides && 'membership' in overrides
               ? overrides.membership
               : membership,
           ),
-      } as any,
-      {
-        findOne: jest
+        update: jest.fn(),
+      },
+      tenant: {
+        findUnique: jest
           .fn()
           .mockResolvedValue(
             overrides && 'tenant' in overrides ? overrides.tenant : tenant,
           ),
-      } as any,
-      {
-        findOne: jest
+      },
+      environment: {
+        findFirst: jest
           .fn()
           .mockResolvedValue(
             overrides && 'environment' in overrides
               ? overrides.environment
               : environment,
           ),
-      } as any,
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    };
+    return new SessionContextService(
+      prisma as any,
       new ConfigService({
         IAM_POLICY_VERSION: overrides?.policyVersion ?? 'iam-policy-2.0.0',
       }),

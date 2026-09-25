@@ -1,0 +1,236 @@
+// PostgreSQL schema "ir_work_orders". ir-work-orders module.
+
+// ============================================================
+// ZS-COM-BILL-001 P1 Part 15: IR retainer work orders. Consumption is
+// tracked continuously; overage past included_hours never silently bills
+// — it is either capped, blocked, or gated on an approved OVERAGE_OVERRIDE
+// commercial approval, per overage_policy.
+// ============================================================
+
+/**
+ * Contract-specific annual Incident Response retainer. Commercial approval
+ * alone does not invent legal advice, privilege, or notification authority.
+ */
+model IncidentResponseRetainer {
+  id                          String            @id @default(uuid())
+  tenant_id                   String
+  environment_id              String
+  commercial_account_id       String
+  commercialAccount           CommercialAccount @relation(fields: [commercial_account_id], references: [id])
+  contract_id                 String
+  contract                    Contract          @relation(fields: [contract_id], references: [id])
+  service_obligation_id       String            @unique
+  serviceObligation           ServiceObligation @relation(fields: [service_obligation_id], references: [id])
+  retainer_key                String
+  version                     Int               @default(1)
+  price_book_id               String
+  term_start                  DateTime
+  term_end                    DateTime
+  included_hours              Decimal           @db.Decimal(8, 2)
+  included_services           String            @default("[]")
+  response_window             String            @default("{}")
+  readiness_obligations       String            @default("{}")
+  exclusions                  String            @default("[]")
+  maximum_response_authority  String            @default("R1")
+  overage_policy              String            @default("REQUIRE_APPROVAL")
+  overage_cap_hours           Decimal?          @db.Decimal(8, 2)
+  overage_rate                Decimal?          @db.Decimal(14, 4)
+  warning_threshold_percent   Int               @default(80)
+  rollover_policy             String            @default("NONE")
+  rollover_cap_hours          Decimal?          @db.Decimal(8, 2)
+  named_activation_path       String            @default("{}")
+  emergency_provision         String            @default("{}")
+  third_party_cost_policy     String            @default("{}")
+  legal_service_scope         String            @default("{}")
+  no_legal_conclusion_wording String
+  status                      String            @default("PENDING_APPROVAL")
+  approval_id                 String?           @unique
+  requested_by                String
+  approved_by                 String?
+  approved_at                 DateTime?
+  activated_at                DateTime?
+  created_at                  DateTime          @default(now())
+  updated_at                  DateTime          @updatedAt
+
+  workOrders IncidentWorkOrder[]
+
+  @@unique([tenant_id, environment_id, retainer_key, version])
+  @@index([tenant_id, environment_id, status])
+  @@index([commercial_account_id, status])
+  @@index([contract_id, status])
+  @@index([term_start, term_end, status])
+
+  @@schema("ir_work_orders")
+}
+
+model IncidentWorkOrder {
+  id                                         String                    @id @default(uuid())
+  tenant_id                                  String?
+  environment_id                             String?
+  retainer_id                                String?
+  retainer                                   IncidentResponseRetainer? @relation(fields: [retainer_id], references: [id])
+  contract_id                                String
+  contract                                   Contract                  @relation(fields: [contract_id], references: [id])
+  incident_reference                         String
+  activation_reason                          String
+  activation_reference                       String
+  response_authority                         String                    @default("R1")
+  authority_scope                            String                    @default("{}")
+  activated_at                               DateTime                  @default(now())
+  started_at                                 DateTime                  @default(now())
+  authorized_by                              String
+  customer_command_structure                 String                    @default("{}")
+  included_services                          String                    @default("[]")
+  response_window                            String                    @default("{}")
+  included_hours                             Decimal                   @default(0) @db.Decimal(8, 2)
+  consumed_hours                             Decimal                   @default(0) @db.Decimal(8, 2)
+  overage_hours                              Decimal                   @default(0) @db.Decimal(8, 2)
+  forecast_hours                             Decimal                   @default(0) @db.Decimal(8, 2)
+  warning_threshold_percent                  Int                       @default(80)
+  threshold_state                            String                    @default("WITHIN_ALLOWANCE")
+  overage_policy                             String                    @default("REQUIRE_APPROVAL")
+  overage_cap_hours                          Decimal?                  @db.Decimal(8, 2)
+  emergency_provision_reference              String?
+  emergency_reconciliation_status            String                    @default("NOT_REQUIRED")
+  emergency_reconciliation_approval_id       String?                   @unique
+  emergency_reconciliation_reference         String?
+  emergency_reconciled_by                    String?
+  emergency_reconciled_at                    DateTime?
+  third_party_costs                          Decimal                   @default(0) @db.Decimal(14, 4)
+  customer_contact                           String?
+  evidence_refs                              String                    @default("[]")
+  closure_summary                            String?
+  closure_evidence_refs                      String                    @default("[]")
+  customer_acknowledgement_ref               String?
+  no_privilege_or_notification_determination String
+  status                                     String                    @default("ACTIVE")
+  closed_at                                  DateTime?
+  created_at                                 DateTime                  @default(now())
+  updated_at                                 DateTime                  @updatedAt
+
+  consumptionEntries IncidentWorkOrderConsumption[]
+  passThroughCosts   ThirdPartyPassThroughCost[]
+  legalRecords       IncidentLegalSensitiveRecord[]
+
+  @@unique([tenant_id, environment_id, incident_reference])
+  @@index([tenant_id, environment_id, status])
+  @@index([retainer_id, status])
+  @@index([contract_id])
+  @@index([status])
+
+  @@schema("ir_work_orders")
+}
+
+/**
+ * Append-only operating record; corrections are compensating entries.
+ */
+model IncidentWorkOrderConsumption {
+  id                      String            @id @default(uuid())
+  tenant_id               String
+  environment_id          String
+  work_order_id           String
+  workOrder               IncidentWorkOrder @relation(fields: [work_order_id], references: [id])
+  entry_type              String            @default("STANDARD")
+  hours                   Decimal           @db.Decimal(8, 2)
+  included_total_after    Decimal           @db.Decimal(8, 2)
+  overage_total_after     Decimal           @db.Decimal(8, 2)
+  forecast_hours_after    Decimal           @db.Decimal(8, 2)
+  threshold_state         String
+  overage_approval_id     String?
+  emergency_provision_ref String?
+  work_description        String
+  evidence_reference      String
+  actor_id                String
+  occurred_at             DateTime
+  created_at              DateTime          @default(now())
+
+  @@index([tenant_id, environment_id, occurred_at])
+  @@index([work_order_id, occurred_at])
+  @@index([entry_type])
+
+  @@schema("ir_work_orders")
+}
+
+model ThirdPartyPassThroughCost {
+  id                          String            @id @default(uuid())
+  tenant_id                   String
+  environment_id              String
+  work_order_id               String
+  workOrder                   IncidentWorkOrder @relation(fields: [work_order_id], references: [id])
+  cost_type                   String
+  supplier_reference          String
+  contract_policy_reference   String
+  description                 String
+  base_amount                 Decimal           @db.Decimal(14, 4)
+  markup_percent              Decimal           @default(0) @db.Decimal(8, 4)
+  customer_amount             Decimal           @db.Decimal(14, 4)
+  currency                    String
+  named_customer_authorizer   String
+  customer_approval_reference String
+  approval_id                 String?           @unique
+  status                      String            @default("PENDING_APPROVAL")
+  requested_by                String
+  approved_by                 String?
+  approved_at                 DateTime?
+  evidence_refs               String            @default("[]")
+  incurred_at                 DateTime
+  created_at                  DateTime          @default(now())
+  updated_at                  DateTime          @updatedAt
+
+  @@index([tenant_id, environment_id, status])
+  @@index([work_order_id, status])
+  @@index([incurred_at])
+
+  @@schema("ir_work_orders")
+}
+
+/**
+ * Purpose-bound incident/legal record; access is separately permissioned.
+ */
+model IncidentLegalSensitiveRecord {
+  id                         String            @id @default(uuid())
+  tenant_id                  String
+  environment_id             String
+  work_order_id              String
+  workOrder                  IncidentWorkOrder @relation(fields: [work_order_id], references: [id])
+  purpose                    String
+  privilege_status           String            @default("NOT_ASSERTED")
+  notification_status        String            @default("NOT_DETERMINED")
+  counsel_controlled         Boolean           @default(false)
+  separate_legal_service_ref String?
+  counsel_actor_ref          String?
+  conclusion_reference       String?
+  content_reference          String
+  access_reason              String
+  no_legal_advice_wording    String
+  recorded_by                String
+  recorded_at                DateTime          @default(now())
+
+  accessEvents IncidentLegalAccessEvent[]
+
+  @@index([tenant_id, environment_id, purpose])
+  @@index([work_order_id, recorded_at])
+
+  @@schema("ir_work_orders")
+}
+
+/**
+ * Append-only purpose/access log for every legal-sensitive record access.
+ */
+model IncidentLegalAccessEvent {
+  id              String                       @id @default(uuid())
+  tenant_id       String
+  environment_id  String
+  legal_record_id String
+  legalRecord     IncidentLegalSensitiveRecord @relation(fields: [legal_record_id], references: [id])
+  action          String
+  purpose         String
+  access_reason   String
+  actor_id        String
+  accessed_at     DateTime                     @default(now())
+
+  @@index([tenant_id, environment_id, accessed_at])
+  @@index([legal_record_id, accessed_at])
+
+  @@schema("ir_work_orders")
+}

@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { verifyWorkloadToken } from '../../../../libs/security/src/workload-token';
+import { bindWorkloadRequestTenant } from '../../../../libs/database/src';
 
 /** Signed, short-lived, audience-bound workload identity guard. */
 @Injectable()
@@ -18,9 +19,12 @@ export class InternalAuthGuard implements CanActivate {
         : '';
     try {
       request.workloadIdentity = verifyWorkloadToken(token, 'shield-anchor');
-      return true;
     } catch {
       throw new UnauthorizedException('Invalid or expired workload identity');
     }
+    // Scope this request's database access to the tenant the calling
+    // service named (libs/database/src/workload-tenant.ts).
+    bindWorkloadRequestTenant(request);
+    return true;
   }
 }

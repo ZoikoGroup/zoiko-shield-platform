@@ -1,0 +1,187 @@
+// PostgreSQL schema "managed_defense". managed-defense module.
+
+/**
+ * Contract-specific Managed Defense service boundary and commercial basis.
+ */
+model ManagedDefenseProfile {
+  id                           String            @id @default(uuid())
+  tenant_id                    String
+  environment_id               String
+  commercial_account_id        String
+  commercialAccount            CommercialAccount @relation(fields: [commercial_account_id], references: [id])
+  contract_id                  String
+  contract                     Contract          @relation(fields: [contract_id], references: [id])
+  profile_key                  String
+  version                      Int               @default(1)
+  service_tier                 String
+  recurring_pricing_metric     String
+  price_book_id                String
+  protected_scope_policy_ids   String            @default("[]")
+  technology_scope             String            @default("{}")
+  meter_policy_ids             String            @default("[]")
+  coverage_window              String            @default("BUSINESS_HOURS")
+  triage_scope                 String            @default("{}")
+  investigation_scope          String            @default("{}")
+  escalation_policy            String            @default("{}")
+  response_support             String            @default("{}")
+  review_cadence               String            @default("QUARTERLY")
+  customer_dependencies        String            @default("[]")
+  exclusions                   String            @default("[]")
+  response_authority           String            @default("R1")
+  technical_certification_ref  String?
+  customer_authorization_ref   String?
+  credit_eligible_capabilities String            @default("[]")
+  sla_definition_ids           String            @default("[]")
+  effective_from               DateTime          @default(now())
+  effective_to                 DateTime?
+  status                       String            @default("PENDING_APPROVAL")
+  approval_id                  String?           @unique
+  requested_by                 String
+  approved_by                  String?
+  approved_at                  DateTime?
+  activated_at                 DateTime?
+  created_at                   DateTime          @default(now())
+  updated_at                   DateTime          @updatedAt
+
+  readiness          ManagedDefenseReadinessAssessment?
+  obligations        ServiceObligation[]
+  deliveryEvents     ManagedDefenseDeliveryEvent[]
+  capacityExceptions ManagedDefenseCapacityException[]
+  capabilityImpacts  ManagedDefenseCapabilityImpact[]
+
+  @@unique([tenant_id, environment_id, profile_key, version])
+  @@index([tenant_id, environment_id, status])
+  @@index([commercial_account_id, status])
+  @@index([contract_id, status])
+  @@index([effective_from, effective_to, status])
+
+  @@schema("managed_defense")
+}
+
+/**
+ * Independent proof that the contracted service window can actually operate.
+ */
+model ManagedDefenseReadinessAssessment {
+  id                         String                @id @default(uuid())
+  tenant_id                  String
+  environment_id             String
+  managed_defense_profile_id String                @unique
+  managedDefenseProfile      ManagedDefenseProfile @relation(fields: [managed_defense_profile_id], references: [id])
+  staffing_ready             Boolean               @default(false)
+  on_call_ready              Boolean               @default(false)
+  escalation_ready           Boolean               @default(false)
+  runbooks_ready             Boolean               @default(false)
+  measured_performance_ready Boolean               @default(false)
+  staffing_evidence_refs     String                @default("[]")
+  on_call_evidence_refs      String                @default("[]")
+  escalation_evidence_refs   String                @default("[]")
+  runbook_evidence_refs      String                @default("[]")
+  performance_evidence_refs  String                @default("[]")
+  status                     String                @default("PENDING_VERIFICATION")
+  verified_by                String?
+  verified_at                DateTime?
+  created_at                 DateTime              @default(now())
+  updated_at                 DateTime              @updatedAt
+
+  @@index([tenant_id, environment_id, status])
+
+  @@schema("managed_defense")
+}
+
+/**
+ * Append-only evidence that a contracted human/security activity occurred.
+ */
+model ManagedDefenseDeliveryEvent {
+  id                         String                @id @default(uuid())
+  tenant_id                  String
+  environment_id             String
+  managed_defense_profile_id String
+  managedDefenseProfile      ManagedDefenseProfile @relation(fields: [managed_defense_profile_id], references: [id])
+  service_obligation_id      String?
+  serviceObligation          ServiceObligation?    @relation(fields: [service_obligation_id], references: [id])
+  event_type                 String
+  source_reference           String
+  evidence_reference         String
+  actor_id                   String
+  occurred_at                DateTime
+  details                    String                @default("{}")
+  immutable_hash             String
+  created_at                 DateTime              @default(now())
+
+  @@index([tenant_id, environment_id, occurred_at])
+  @@index([managed_defense_profile_id, occurred_at])
+  @@index([service_obligation_id, occurred_at])
+  @@index([event_type])
+
+  @@schema("managed_defense")
+}
+
+/**
+ * Attack-volume spike record. Security handling is preserved independently of payment.
+ */
+model ManagedDefenseCapacityException {
+  id                          String                @id @default(uuid())
+  tenant_id                   String
+  environment_id              String
+  managed_defense_profile_id  String
+  managedDefenseProfile       ManagedDefenseProfile @relation(fields: [managed_defense_profile_id], references: [id])
+  current_volume              Int
+  forecast_volume             Int
+  capacity_basis              String
+  reason                      String
+  event_processing_preserved  Boolean               @default(true)
+  critical_response_preserved Boolean               @default(true)
+  overflow_policy             String
+  named_customer_authorizer   String?
+  customer_authorization_ref  String?
+  customer_authorized_at      DateTime?
+  estimated_third_party_cost  Decimal?              @db.Decimal(14, 4)
+  paid_work_status            String                @default("NOT_APPLICABLE")
+  approval_id                 String?               @unique
+  reconciliation_snapshot     String                @default("{}")
+  reconciled_by               String?
+  reconciled_at               DateTime?
+  status                      String                @default("OPEN")
+  opened_by                   String
+  opened_at                   DateTime              @default(now())
+  closed_at                   DateTime?
+  created_at                  DateTime              @default(now())
+  updated_at                  DateTime              @updatedAt
+
+  @@index([tenant_id, environment_id, status])
+  @@index([managed_defense_profile_id, status])
+
+  @@schema("managed_defense")
+}
+
+/**
+ * Operational degradation record; claim eligibility never directly edits an invoice.
+ */
+model ManagedDefenseCapabilityImpact {
+  id                         String                @id @default(uuid())
+  tenant_id                  String
+  environment_id             String
+  managed_defense_profile_id String
+  managedDefenseProfile      ManagedDefenseProfile @relation(fields: [managed_defense_profile_id], references: [id])
+  capability_key             String
+  affected_scope             String
+  connector_reference        String?
+  failure_type               String
+  claim_eligibility          Boolean               @default(false)
+  eligibility_reason         String
+  sla_definition_id          String?
+  slaDefinition              SlaDefinition?        @relation(fields: [sla_definition_id], references: [id])
+  evidence_refs              String                @default("[]")
+  status                     String                @default("OPEN")
+  recorded_by                String
+  occurred_at                DateTime
+  resolved_at                DateTime?
+  created_at                 DateTime              @default(now())
+
+  @@index([tenant_id, environment_id, status])
+  @@index([managed_defense_profile_id, status])
+  @@index([sla_definition_id])
+  @@index([claim_eligibility, status])
+
+  @@schema("managed_defense")
+}

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { KafkaProducerService } from '../kafka/kafka.producer.service';
+import { PlatformScope } from '../../../../libs/database/src';
 
 /**
  * Polls unpublished OutboxEvent rows and publishes them to Kafka, then
@@ -34,6 +35,7 @@ export class OutboxPublisherService {
     private readonly kafkaProducer: KafkaProducerService,
   ) {}
 
+  @PlatformScope('scheduled job OutboxPublisherService.publishPending')
   @Cron(CronExpression.EVERY_10_SECONDS)
   async publishPending(): Promise<void> {
     if (this.running) return;

@@ -1,9 +1,7 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { createHash } from 'crypto';
-import { Repository } from 'typeorm';
-import { PolicyDocument } from './policy-document.entity';
-import { PolicyAcceptance } from './policy-acceptance.entity';
+import { PrismaService } from '../../prisma/prisma.service';
+import type { PolicyDocument } from './policy-document.entity';
 
 const DEVELOPMENT_TERMS_TEXT =
   'ZoikoShield development terms: authorized evaluation use only; production publication requires configured approved policy text.';
@@ -15,12 +13,7 @@ const DEVELOPMENT_ACCESS_DISCLOSURE_TEXT =
 
 @Injectable()
 export class PolicyService implements OnModuleInit {
-  constructor(
-    @InjectRepository(PolicyDocument)
-    private readonly policyDocumentRepository: Repository<PolicyDocument>,
-    @InjectRepository(PolicyAcceptance)
-    private readonly policyAcceptanceRepository: Repository<PolicyAcceptance>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   /** Seeds v1 policy documents on boot if they don't already exist, so registration/onboarding always has an active policy to reference. */
   async onModuleInit(): Promise<void> {
@@ -54,26 +47,26 @@ export class PolicyService implements OnModuleInit {
     version: string,
     text: string,
   ): Promise<void> {
-    const existing = await this.policyDocumentRepository.findOne({
-      where: { kind, version },
+    const existing = await this.prisma.policyDocument.findUnique({
+      where: { kind_version: { kind, version } },
     });
     if (!existing) {
-      await this.policyDocumentRepository.save(
-        this.policyDocumentRepository.create({
+      await this.prisma.policyDocument.create({
+        data: {
           kind,
           version,
           publishedAt: new Date(),
           contentHash: createHash('sha256').update(text).digest('hex'),
           active: true,
-        }),
-      );
+        },
+      });
     }
   }
 
   findActive(kind: string): Promise<PolicyDocument | null> {
-    return this.policyDocumentRepository.findOne({
+    return this.prisma.policyDocument.findFirst({
       where: { kind, active: true },
-      order: { publishedAt: 'DESC' },
+      orderBy: { publishedAt: 'desc' },
     });
   }
 
@@ -81,7 +74,9 @@ export class PolicyService implements OnModuleInit {
     kind: string,
     version: string,
   ): Promise<PolicyDocument | null> {
-    return this.policyDocumentRepository.findOne({ where: { kind, version } });
+    return this.prisma.policyDocument.findUnique({
+      where: { kind_version: { kind, version } },
+    });
   }
 
   contentFor(document: PolicyDocument): string {
@@ -109,13 +104,13 @@ export class PolicyService implements OnModuleInit {
     policyDocumentId: string,
     metadata: { ipAddress?: string; userAgent?: string } = {},
   ): Promise<void> {
-    await this.policyAcceptanceRepository.save(
-      this.policyAcceptanceRepository.create({
+    await this.prisma.policyAcceptance.create({
+      data: {
         principalId,
         policyDocumentId,
         ipAddress: metadata.ipAddress,
         userAgent: metadata.userAgent,
-      }),
-    );
+      },
+    });
   }
 }

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { KafkaProducerService } from '../kafka/kafka-producer.service';
+import { PlatformScope } from '../../../../libs/database/src';
 
 /** shield-anchor owns checkpoint./witness./anchor. — zero overlap with any other app's owned prefixes. */
 const SHIELD_ANCHOR_OWNED_TOPIC_PREFIXES = [
@@ -20,6 +21,7 @@ export class OutboxPublisherService {
     private readonly kafkaProducer: KafkaProducerService,
   ) {}
 
+  @PlatformScope('scheduled job OutboxPublisherService.publishPending')
   @Cron(CronExpression.EVERY_10_SECONDS)
   async publishPending(): Promise<void> {
     if (this.running) return;

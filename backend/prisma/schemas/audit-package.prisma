@@ -1,0 +1,112 @@
+// PostgreSQL schema "audit_package". audit-package module.
+
+// --- shield-core-owned: audit package ---
+model AuditPackage {
+  id                              String                      @id @default(uuid())
+  tenant_id                       String
+  continuous_assurance_profile_id String?
+  continuousAssuranceProfile      ContinuousAssuranceProfile? @relation(fields: [continuous_assurance_profile_id], references: [id])
+  version                         Int                         @default(1)
+  purpose                         String
+  framework_scope                 String                      @default("[]")
+  legal_entity_scope              String?
+  environment_scope               String?
+  period_start                    DateTime
+  period_end                      DateTime
+  status                          String                      @default("DRAFT") // DRAFT|BUILDING|VALIDATING|INCOMPLETE|READY_FOR_REVIEW|APPROVED|REAPPROVAL_REQUIRED|FROZEN|SUPERSEDED|FAILED
+  created_by                      String
+  created_at                      DateTime                    @default(now())
+  frozen_at                       DateTime?
+  approved_by                     String?
+  approved_at                     DateTime?
+  supersedes_package_id           String?
+  completeness_state              String                      @default("UNKNOWN")
+  missing_evidence                String                      @default("[]")
+  freshness_state                 String                      @default("UNKNOWN")
+  limitations                     String                      @default("[]")
+  verifier_compatibility          String                      @default("UNKNOWN")
+  claim_eligibility               Boolean                     @default(false)
+  claim_eligibility_reason        String                      @default("PACKAGE_NOT_VALIDATED")
+  approved_claim_wording          String?
+  claim_assessed_at               DateTime?
+  frozen_manifest_hash            String?
+  retention_profile               String?
+  retention_until                 DateTime?
+  audit_cycle_reference           String?
+
+  manifest         AuditPackageManifest?
+  approvals        AuditPackageApproval[]
+  claimAssessments AuditPackageClaimAssessment[]
+
+  @@index([tenant_id])
+  @@index([continuous_assurance_profile_id, status])
+  @@index([tenant_id, claim_eligibility, status])
+
+  @@unique([tenant_id, id])
+  @@schema("audit_package")
+}
+
+/**
+ * Append-only history explaining why package wording is or is not eligible.
+ */
+model AuditPackageClaimAssessment {
+  id                     String       @id @default(uuid())
+  tenant_id              String
+  package_id             String
+  package                AuditPackage @relation(fields: [package_id], references: [id])
+  package_version        Int
+  manifest_hash          String?
+  completeness_state     String
+  missing_evidence       String       @default("[]")
+  freshness_state        String
+  integrity_state        String
+  verifier_compatibility String
+  limitations            String       @default("[]")
+  claim_eligibility      Boolean      @default(false)
+  eligibility_reason     String
+  approved_wording       String?
+  assessed_by            String
+  assessed_at            DateTime     @default(now())
+
+  @@index([tenant_id, package_id, assessed_at])
+  @@index([claim_eligibility, assessed_at])
+
+  @@schema("audit_package")
+}
+
+// The exact manifestCoreHash a human approved — immutable once written.
+model AuditPackageApproval {
+  id                        String       @id @default(uuid())
+  tenant_id                 String
+  package_id                String
+  package                   AuditPackage @relation(fields: [package_id], references: [id])
+  package_version           Int
+  approver_id               String
+  manifest_core_hash        String
+  authorization_decision_id String
+  approved_at               DateTime     @default(now())
+
+  @@index([tenant_id])
+  @@index([package_id])
+
+  @@schema("audit_package")
+}
+
+model AuditPackageManifest {
+  id                       String       @id @default(uuid())
+  tenant_id                String
+  package_id               String       @unique
+  package                  AuditPackage @relation(fields: [tenant_id, package_id], references: [tenant_id, id])
+  package_version          Int
+  manifest_core_content    String // JSON: ManifestCore (see plan) — everything except the anchor proof
+  manifest_core_hash       String?
+  proof_envelope_content   String? // JSON: checkpoint/merkle/signature/witnesses, filled only at freeze
+  manifest_content         String? // JSON: core + proof merged, the final exported envelope
+  package_envelope_hash    String?
+  canonicalization_profile String       @default("zs-manifest-v1")
+  created_at               DateTime     @default(now())
+
+  @@unique([tenant_id, package_id])
+
+  @@schema("audit_package")
+}

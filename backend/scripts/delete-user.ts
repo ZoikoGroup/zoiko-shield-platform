@@ -1,5 +1,7 @@
 import 'dotenv/config';
-import { DataSource } from 'typeorm';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '@prisma/client';
+import { TenantScopedPool } from '../libs/database/src';
 
 async function main() {
   const email = process.argv[2];
@@ -9,41 +11,47 @@ async function main() {
     process.exit(1);
   }
 
-  const databaseUrl = process.env.DATABASE_URL || 'postgres://shield:shield@localhost:5433/shield_core';
+  const databaseUrl =
+    process.env.DATABASE_URL ||
+    'postgres://shield:shield@localhost:5433/shield_core';
 
-  const dataSource = new DataSource({
-    type: 'postgres',
-    url: databaseUrl,
-    // No entities needed for raw queries
-    entities: [],
-    synchronize: false,
-    ssl: databaseUrl.includes('sslmode=require') ? { rejectUnauthorized: false } : false,
+  // Operator tool: removes the principal's memberships in every tenant.
+  const pool = new TenantScopedPool({
+    connectionString: databaseUrl,
+    ssl: databaseUrl.includes('sslmode=require')
+      ? { rejectUnauthorized: false }
+      : false,
   });
-
-  await dataSource.initialize();
+  const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
   // Find user
-  const principals = await dataSource.query(`SELECT id FROM identity.principals WHERE email = $1`, [email]);
-  
-  if (!principals.length) {
+  const principal = await prisma.principal.findUnique({
+    where: { email },
+    select: { id: true },
+  });
+
+  if (!principal) {
     console.log(`User with email ${email} not found.`);
-    await dataSource.destroy();
+    await prisma.$disconnect();
+    await pool.end();
     return;
   }
 
-  const principalId = principals[0].id;
+  const principalId = principal.id;
   console.log(`Found user: ${principalId}. Deleting dependencies...`);
 
-  // Delete credentials and memberships
-  await dataSource.query(`DELETE FROM identity.local_credentials WHERE "principalId" = $1 OR "principal_id" = $1`, [principalId]).catch(() => {});
-  await dataSource.query(`DELETE FROM authorization.tenant_memberships WHERE "principalId" = $1 OR "principal_id" = $1`, [principalId]).catch(() => {});
-  await dataSource.query(`DELETE FROM identity.sessions WHERE "principalId" = $1 OR "principal_id" = $1`, [principalId]).catch(() => {});
-
-  // Delete the user
-  await dataSource.query(`DELETE FROM identity.principals WHERE id = $1`, [principalId]);
+  // Delete credentials, memberships (their user_roles rows cascade) and
+  // sessions, then the principal, as one unit.
+  await prisma.$transaction([
+    prisma.localCredential.deleteMany({ where: { principalId } }),
+    prisma.tenantMembership.deleteMany({ where: { principalId } }),
+    prisma.session.deleteMany({ where: { principalId } }),
+    prisma.principal.delete({ where: { id: principalId } }),
+  ]);
 
   console.log(`Successfully deleted user ${email}`);
-  await dataSource.destroy();
+  await prisma.$disconnect();
+  await pool.end();
 }
 
 main().catch((err) => {

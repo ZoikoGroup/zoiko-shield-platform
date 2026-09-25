@@ -48,3 +48,45 @@ variable "evidence_retention_days" {
   type        = number
   default     = 2555 # 7-year regulatory retention
 }
+
+# --- Transactional system of record (combined spec §19: managed
+# PostgreSQL-compatible relational database) — database.tf
+
+variable "project_data_id" {
+  description = "GCP Project ID for the Data boundary (Cloud SQL system of record and its CMEK)"
+  type        = string
+  default     = "zs-nonprod-data"
+}
+
+variable "database_tier" {
+  description = "Cloud SQL machine tier for the system-of-record instance"
+  type        = string
+  default     = "db-custom-2-7680"
+}
+
+variable "database_availability_type" {
+  description = "ZONAL for non-production; REGIONAL (synchronous standby in a second zone) for production"
+  type        = string
+  default     = "ZONAL"
+  validation {
+    condition     = contains(["ZONAL", "REGIONAL"], var.database_availability_type)
+    error_message = "database_availability_type must be ZONAL or REGIONAL."
+  }
+}
+
+variable "database_backup_retention_count" {
+  description = "Automated daily backups kept; point-in-time recovery covers the log retention window"
+  type        = number
+  default     = 30
+}
+
+variable "database_service_accounts" {
+  description = <<-EOT
+    Google service account per database service role (prisma/access/access-policy.js).
+    Each becomes an IAM database login and a member of its role. Defaults to
+    <service>@<runtime project>.iam.gserviceaccount.com; "migrate" is the
+    schema-owner job that runs `npm run migrate:deploy`.
+  EOT
+  type        = map(string)
+  default     = {}
+}

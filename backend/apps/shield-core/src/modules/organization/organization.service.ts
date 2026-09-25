@@ -1,23 +1,21 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Organization } from './organization.entity';
+import { PrismaService } from '../../prisma/prisma.service';
+import type { Organization } from './organization.entity';
 import { CreateOrganizationDto } from './dto/create-organization.dto';
 import { UpdateOrganizationDto } from './dto/update-organization.dto';
 
 @Injectable()
 export class OrganizationService {
-  constructor(
-    @InjectRepository(Organization)
-    private readonly organizationRepository: Repository<Organization>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  findAllForTenant(tenantId: string): Promise<Organization[]> {
-    return this.organizationRepository.find({ where: { tenantId } });
+  async findAllForTenant(tenantId: string): Promise<Organization[]> {
+    return (await this.prisma.organization.findMany({
+      where: { tenantId },
+    })) as Organization[];
   }
 
   async findOne(tenantId: string, id: string): Promise<Organization> {
-    const item = await this.organizationRepository.findOne({
+    const item = await this.prisma.organization.findFirst({
       where: { id, tenantId },
     });
     if (!item) {
@@ -25,13 +23,16 @@ export class OrganizationService {
         `Organization ${id} not found for tenant ${tenantId}`,
       );
     }
-    return item;
+    return item as Organization;
   }
 
-  create(tenantId: string, dto: CreateOrganizationDto): Promise<Organization> {
-    return this.organizationRepository.save(
-      this.organizationRepository.create({ tenantId, ...dto }),
-    );
+  async create(
+    tenantId: string,
+    dto: CreateOrganizationDto,
+  ): Promise<Organization> {
+    return (await this.prisma.organization.create({
+      data: { tenantId, name: dto.name },
+    })) as Organization;
   }
 
   async update(
@@ -40,12 +41,16 @@ export class OrganizationService {
     dto: UpdateOrganizationDto,
   ): Promise<Organization> {
     const item = await this.findOne(tenantId, id);
-    Object.assign(item, dto);
-    return this.organizationRepository.save(item);
+    return (await this.prisma.organization.update({
+      where: { id: item.id },
+      data: { name: dto.name, status: dto.status },
+    })) as Organization;
   }
 
   async remove(tenantId: string, id: string): Promise<void> {
     const item = await this.findOne(tenantId, id);
-    await this.organizationRepository.remove(item);
+    await this.prisma.organization.deleteMany({
+      where: { id: item.id, tenantId },
+    });
   }
 }

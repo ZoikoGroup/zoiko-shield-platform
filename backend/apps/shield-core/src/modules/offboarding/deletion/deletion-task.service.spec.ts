@@ -4,6 +4,13 @@ import {
   MAX_DELETION_ATTEMPTS,
 } from './deletion-task.service';
 
+/** A tenant-keyed table as catalogue discovery returns it: in its module schema. */
+const tenantTable = (table: string) => ({
+  table_schema: 'module_schema',
+  table_name: table,
+  qualified: `module_schema."${table}"`,
+});
+
 /**
  * Tenant purge is a release-gated safety function (ZS-ENG-OFF-DEL-001 §7).
  * It carries the highest blast radius in the platform and, until this file
@@ -41,7 +48,7 @@ describe('DeletionTaskService (ZS-ENG-OFF-DEL-001 release gate)', () => {
   /** No tenant-keyed rows and no residuals: a clean, complete purge. */
   const cleanDatabase = () => {
     prisma.$queryRaw
-      .mockResolvedValueOnce([{ table_name: 'Case' }]) // tenant-keyed tables
+      .mockResolvedValueOnce([tenantTable('Case')]) // tenant-keyed tables
       .mockResolvedValueOnce([]); // foreign keys
     prisma.$queryRawUnsafe.mockResolvedValue([{ count: BigInt(0) }]);
   };
@@ -221,7 +228,7 @@ describe('DeletionTaskService (ZS-ENG-OFF-DEL-001 release gate)', () => {
     it('fails when rows survive the delete rather than reporting success', async () => {
       prisma.deletionTask.findUniqueOrThrow.mockResolvedValue(task());
       prisma.$queryRaw
-        .mockResolvedValueOnce([{ table_name: 'Case' }])
+        .mockResolvedValueOnce([tenantTable('Case')])
         .mockResolvedValueOnce([]);
       prisma.$queryRawUnsafe.mockResolvedValue([{ count: BigInt(3) }]);
 
@@ -235,10 +242,10 @@ describe('DeletionTaskService (ZS-ENG-OFF-DEL-001 release gate)', () => {
       prisma.deletionTask.findUniqueOrThrow.mockResolvedValue(task());
       prisma.$queryRaw
         .mockResolvedValueOnce([
-          { table_name: 'Case' },
-          { table_name: 'DeletionRequest' },
-          { table_name: 'LegalHold' },
-          { table_name: 'TenantRetentionPolicy' },
+          tenantTable('Case'),
+          tenantTable('DeletionRequest'),
+          tenantTable('LegalHold'),
+          tenantTable('TenantRetentionPolicy'),
         ])
         .mockResolvedValueOnce([]);
       prisma.$queryRawUnsafe.mockResolvedValue([{ count: BigInt(0) }]);
@@ -246,7 +253,9 @@ describe('DeletionTaskService (ZS-ENG-OFF-DEL-001 release gate)', () => {
       await service.executeTask('task-1');
 
       const deletedTables = executedSql
-        .map(({ sql }) => /DELETE FROM "([A-Za-z_][A-Za-z0-9_]*)"/.exec(sql))
+        .map(({ sql }) =>
+          /DELETE FROM \w+\."([A-Za-z_][A-Za-z0-9_]*)"/.exec(sql),
+        )
         .flatMap((match) => (match ? [match[1]] : []));
       expect(deletedTables).toContain('Case');
       expect(deletedTables).not.toContain('DeletionRequest');

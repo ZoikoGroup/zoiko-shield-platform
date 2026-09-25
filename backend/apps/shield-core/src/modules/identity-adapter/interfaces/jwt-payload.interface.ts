@@ -19,7 +19,7 @@ export interface AuthenticatedUser {
   id: string;
   sessionId: string;
   email: string;
-  fullName?: string;
+  fullName?: string | null;
   emailVerified: boolean;
   assurance: Assurance;
   tenantId: string;

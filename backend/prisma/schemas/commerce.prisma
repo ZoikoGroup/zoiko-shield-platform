@@ -1,0 +1,33 @@
+// PostgreSQL schema "commerce". commerce module.
+
+model Contract {
+  id                    String            @id @default(uuid())
+  commercial_account_id String
+  commercialAccount     CommercialAccount @relation(fields: [commercial_account_id], references: [id])
+  catalog_version_id    String
+  catalogVersion        CatalogVersion    @relation(fields: [catalog_version_id], references: [id])
+  term_start            DateTime          @default(now())
+  term_end              DateTime
+  status                String            @default("DRAFT")
+  snapshot_hash         String            @default("sha256-snapshot")
+  created_at            DateTime          @default(now())
+  updated_at            DateTime          @updatedAt
+
+  serviceObligations             ServiceObligation[]
+  commercialInvoices             CommercialInvoice[]
+  meterAuthorizations            MeterAuthorizationPolicy[]
+  managedDefenseProfiles         ManagedDefenseProfile[]
+  continuousAssuranceProfiles    ContinuousAssuranceProfile[]
+  incidentResponseRetainers      IncidentResponseRetainer[]
+  incidentWorkOrders             IncidentWorkOrder[]
+  professionalServiceEngagements ProfessionalServiceEngagement[]
+  aiGovernanceProfiles           AiGovernanceProfile[]
+  bundleMeterProjections         BundleMeterProjection[]
+  bundleCostAllocations          BundleCostAllocation[]
+  bundleClaimEligibilities       BundleClaimEligibility[]
+
+  @@index([commercial_account_id])
+  @@index([status])
+
+  @@schema("commerce")
+}

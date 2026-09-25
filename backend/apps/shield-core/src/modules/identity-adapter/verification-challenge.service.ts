@@ -1,11 +1,7 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomInt, randomUUID } from 'crypto';
-import { MoreThan, Repository } from 'typeorm';
-import {
-  ChallengePurpose,
-  VerificationChallenge,
-} from './verification-challenge.entity';
+import { PrismaService } from '../../prisma/prisma.service';
+import type { ChallengePurpose } from './verification-challenge.entity';
 
 const CHALLENGE_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const RESEND_COOLDOWN_MS = 60 * 1000; // 60 seconds
@@ -18,10 +14,7 @@ export interface ChallengeRequestMetadata {
 
 @Injectable()
 export class VerificationChallengeService {
-  constructor(
-    @InjectRepository(VerificationChallenge)
-    private readonly challengeRepository: Repository<VerificationChallenge>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   private hashCode(code: string): string {
     return createHash('sha256').update(code).digest('hex');
@@ -32,9 +25,9 @@ export class VerificationChallengeService {
     principalId: string,
     purpose: ChallengePurpose,
   ): Promise<boolean> {
-    const latest = await this.challengeRepository.findOne({
+    const latest = await this.prisma.verificationChallenge.findFirst({
       where: { principalId, purpose },
-      order: { createdAt: 'DESC' },
+      orderBy: { createdAt: 'desc' },
     });
     return !latest || latest.resendAfter <= new Date();
   }
@@ -45,30 +38,31 @@ export class VerificationChallengeService {
     destination: string,
     metadata: ChallengeRequestMetadata = {},
   ): Promise<{ code: string; correlationId: string }> {
-    await this.challengeRepository.update(
-      { principalId, purpose, status: 'PENDING' },
-      { status: 'EXPIRED' },
-    );
+    await this.prisma.verificationChallenge.updateMany({
+      where: { principalId, purpose, status: 'PENDING' },
+      data: { status: 'EXPIRED' },
+    });
 
     const code = randomInt(0, 1_000_000).toString().padStart(6, '0');
     const correlationId = randomUUID();
     const now = Date.now();
-    const challenge = this.challengeRepository.create({
-      principalId,
-      purpose,
-      destination,
-      secretHash: this.hashCode(code),
-      attemptCount: 0,
-      maxAttempts: MAX_ATTEMPTS,
-      resendAfter: new Date(now + RESEND_COOLDOWN_MS),
-      expiresAt: new Date(now + CHALLENGE_TTL_MS),
-      consumedAt: null,
-      status: 'PENDING',
-      correlationId,
-      requestIp: metadata.ipAddress,
-      requestUserAgent: metadata.userAgent,
+    await this.prisma.verificationChallenge.create({
+      data: {
+        principalId,
+        purpose,
+        destination,
+        secretHash: this.hashCode(code),
+        attemptCount: 0,
+        maxAttempts: MAX_ATTEMPTS,
+        resendAfter: new Date(now + RESEND_COOLDOWN_MS),
+        expiresAt: new Date(now + CHALLENGE_TTL_MS),
+        consumedAt: null,
+        status: 'PENDING',
+        correlationId,
+        requestIp: metadata.ipAddress,
+        requestUserAgent: metadata.userAgent,
+      },
     });
-    await this.challengeRepository.save(challenge);
     return { code, correlationId };
   }
 
@@ -77,14 +71,14 @@ export class VerificationChallengeService {
     purpose: ChallengePurpose,
     code: string,
   ): Promise<void> {
-    const challenge = await this.challengeRepository.findOne({
+    const challenge = await this.prisma.verificationChallenge.findFirst({
       where: {
         principalId,
         purpose,
         status: 'PENDING',
-        expiresAt: MoreThan(new Date()),
+        expiresAt: { gt: new Date() },
       },
-      order: { createdAt: 'DESC' },
+      orderBy: { createdAt: 'desc' },
     });
 
     if (!challenge) {
@@ -94,10 +88,10 @@ export class VerificationChallengeService {
     if (challenge.secretHash !== this.hashCode(code)) {
       const attemptCount = challenge.attemptCount + 1;
       const locked = attemptCount >= challenge.maxAttempts;
-      await this.challengeRepository.update(
-        { id: challenge.id },
-        { attemptCount, status: locked ? 'LOCKED' : 'PENDING' },
-      );
+      await this.prisma.verificationChallenge.updateMany({
+        where: { id: challenge.id },
+        data: { attemptCount, status: locked ? 'LOCKED' : 'PENDING' },
+      });
       throw new UnauthorizedException(
         locked
           ? 'Too many attempts, request a new code'
@@ -105,9 +99,9 @@ export class VerificationChallengeService {
       );
     }
 
-    await this.challengeRepository.update(
-      { id: challenge.id },
-      { consumedAt: new Date(), status: 'CONSUMED' },
-    );
+    await this.prisma.verificationChallenge.updateMany({
+      where: { id: challenge.id },
+      data: { consumedAt: new Date(), status: 'CONSUMED' },
+    });
   }
 }

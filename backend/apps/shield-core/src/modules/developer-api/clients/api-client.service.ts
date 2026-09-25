@@ -1,11 +1,8 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { randomBytes, randomUUID, createHash } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OutboxService } from '../../../outbox/outbox.service';
 import { CANONICAL_TOPICS } from '../../../kafka/kafka-producer.service';
-import { Principal } from '../../identity-adapter/principal.entity';
 
 export interface CreateApiClientInput {
   tenantId: string;
@@ -43,18 +40,16 @@ export class ApiClientService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly outbox: OutboxService,
-    @InjectRepository(Principal)
-    private readonly principalRepository: Repository<Principal>,
   ) {}
 
   async create(input: CreateApiClientInput): Promise<CreatedApiClient> {
-    const principal = await this.principalRepository.save(
-      this.principalRepository.create({
+    const principal = await this.prisma.principal.create({
+      data: {
         principalType: 'CLIENT',
         source: 'DEVELOPER_API',
         status: 'ACTIVE',
-      }),
-    );
+      },
+    });
 
     const clientId = `zsc_${randomUUID().replace(/-/g, '')}`;
     const rawSecret = randomBytes(SECRET_BYTE_LENGTH).toString('base64url');

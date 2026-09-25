@@ -1,16 +1,4 @@
-import { Column, CreateDateColumn, Entity, PrimaryColumn } from 'typeorm';
+import type { SamlRequestCache } from '@prisma/client';
 
-@Entity({ name: 'saml_request_cache', schema: 'identity' })
-export class SamlRequestCacheEntry {
-  @PrimaryColumn({ type: 'varchar' })
-  keyHash: string;
-
-  @Column({ type: 'text' })
-  value: string;
-
-  @Column({ type: 'timestamptz' })
-  expiresAt: Date;
-
-  @CreateDateColumn({ type: 'timestamptz' })
-  createdAt: Date;
-}
+/** Row of identity.saml_request_cache, persisted through Prisma. */
+export type SamlRequestCacheEntry = SamlRequestCache;

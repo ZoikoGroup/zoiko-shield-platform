@@ -32,6 +32,7 @@
     "test:e2e:anchor": "jest --config apps/shield-anchor/test/jest-e2e.json --forceExit",
     "test:e2e:spine": "jest --config apps/shield-core/test/jest-e2e.json cross-service-spine.e2e-spec.ts --forceExit",
     "test:e2e:all": "npm run test:e2e:action && npm run test:e2e:ai && npm run test:e2e:anchor && npm run test:e2e:spine",
+    "test:rls": "jest --config apps/shield-core/test/jest-rls.json --runInBand",
     "verify": "npm run swagger:check && npm run check:ungrounded-terms && npm run check:capability-claims && npm run access:check && npm run check:evidence-index && npm test -- --runInBand && npm run test:e2e:spine && npm run test:e2e:all",
     "seed:platform-admin": "ts-node -r tsconfig-paths/register scripts/seed-platform-admin.ts",
     "seed:dev-tenant": "ts-node -r tsconfig-paths/register scripts/seed-dev-tenant.ts",
@@ -40,9 +41,9 @@
     "demo:erb01": "ts-node -r tsconfig-paths/register ./scripts/erb01-demo-runner.ts",
     "demo:erb01:full": "ts-node -r tsconfig-paths/register ./scripts/run-erb01-mvp-demonstration.ts",
     "demo:synthetic-slice": "ts-node -r tsconfig-paths/register ./scripts/run-e2e-synthetic-slice.ts",
-    "migrate:deploy": "prisma migrate deploy && node scripts/run-typeorm-migrations.js",
-    "migrate:typeorm": "node scripts/run-typeorm-migrations.js",
-    "check:schema-drift": "ts-node -r tsconfig-paths/register scripts/check-typeorm-schema-drift.ts",
+    "migrate:deploy": "node scripts/reconcile-typeorm-baseline.js && prisma migrate deploy && node scripts/apply-database-access.js",
+    "db:access": "node scripts/apply-database-access.js",
+    "check:schema-drift": "node scripts/check-schema-drift.js",
     "loadtest:ingestion": "ts-node -r tsconfig-paths/register scripts/load-test-ingestion.ts",
     "gameday": "ts-node -r tsconfig-paths/register scripts/run-gameday-drills.ts",
     "check:experience-contracts": "ts-node -r tsconfig-paths/register scripts/check-experience-contracts.ts",
@@ -160,7 +161,6 @@
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/schedule": "^6.1.3",
     "@nestjs/throttler": "^6.5.0",
-    "@nestjs/typeorm": "^11.0.3",
     "@noble/post-quantum": "^0.7.1",
     "@node-saml/node-saml": "^5.1.0",
     "@prisma/adapter-pg": "^7.9.1",
@@ -179,8 +179,7 @@
     "pg": "^8.22.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "swagger-ui-express": "^5.0.1",
-    "typeorm": "^1.1.0"
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

@@ -377,6 +377,7 @@ export class AuditPackageBuilderService {
       where: { package_id: pkg.id },
       create: {
         id: randomUUID(),
+        tenant_id: pkg.tenant_id,
         package_id: pkg.id,
         package_version: pkg.version,
         manifest_core_content: JSON.stringify(manifestCore),

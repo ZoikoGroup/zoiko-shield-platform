@@ -1,0 +1,93 @@
+// PostgreSQL schema "webhook". webhook module.
+
+// --- shield-core-owned: webhooks ---
+model OutboundWebhookSubscription {
+  id                        String    @id @default(uuid())
+  tenant_id                 String
+  api_client_id             String?
+  endpoint_url              String
+  event_types               String    @default("[]")
+  payload_version           String    @default("1.0")
+  data_minimization_profile String    @default("default")
+  status                    String    @default("PENDING_VERIFICATION") // PENDING_VERIFICATION|ACTIVE|DEGRADED|SUSPENDED|REVOKED
+  created_by                String
+  verified_at               DateTime?
+  suspended_at              DateTime?
+  created_at                DateTime  @default(now())
+  updated_at                DateTime  @updatedAt
+
+  secretVersions WebhookSecretVersion[]
+  deliveries     WebhookDelivery[]
+
+  @@index([tenant_id])
+
+  @@schema("webhook")
+}
+
+// Actual secret lives in vault only — this row is metadata + a vault reference (spec §44).
+model WebhookSecretVersion {
+  id                      String                      @id @default(uuid())
+  tenant_id               String
+  webhook_subscription_id String
+  subscription            OutboundWebhookSubscription @relation(fields: [webhook_subscription_id], references: [id])
+  version                 Int
+  secret_ref              String
+  fingerprint             String
+  status                  String                      @default("ACTIVE") // ACTIVE|RETIRING|REVOKED
+  created_at              DateTime                    @default(now())
+  expires_at              DateTime?
+  revoked_at              DateTime?
+
+  @@unique([webhook_subscription_id, version])
+  @@index([tenant_id])
+
+  @@schema("webhook")
+}
+
+model WebhookDelivery {
+  id                      String                      @id @default(uuid())
+  tenant_id               String
+  webhook_subscription_id String
+  subscription            OutboundWebhookSubscription @relation(fields: [webhook_subscription_id], references: [id])
+  event_id                String
+  event_type              String
+  payload_version         String
+  payload_hash            String
+  // Frozen exact bytes sent on the first attempt — retries and replay must
+  // resend the identical body, never a reconstructed approximation.
+  payload                 String                      @default("{}")
+  status                  String                      @default("PENDING") // PENDING|DELIVERING|DELIVERED|FAILED|DEAD_LETTERED
+  attempt_count           Int                         @default(0)
+  first_attempt_at        DateTime?
+  last_attempt_at         DateTime?
+  delivered_at            DateTime?
+  response_status         Int?
+  replay_of_delivery_id   String?
+  correlation_id          String
+  created_at              DateTime                    @default(now())
+
+  attempts WebhookDeliveryAttempt[]
+
+  @@index([tenant_id])
+  @@index([webhook_subscription_id])
+
+  @@schema("webhook")
+}
+
+model WebhookDeliveryAttempt {
+  id              String          @id @default(uuid())
+  tenant_id       String
+  delivery_id     String
+  delivery        WebhookDelivery @relation(fields: [delivery_id], references: [id])
+  attempt_number  Int
+  started_at      DateTime        @default(now())
+  completed_at    DateTime?
+  response_status Int?
+  error_class     String?
+  retryable       Boolean         @default(true)
+  duration_ms     Int?
+
+  @@index([delivery_id])
+
+  @@schema("webhook")
+}

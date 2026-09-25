@@ -4,19 +4,19 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectDataSource } from '@nestjs/typeorm';
 import { createHash } from 'crypto';
-import { DataSource } from 'typeorm';
-import { Invitation } from '../authorization/entities/invitation.entity';
-import { Environment } from '../environment/environment.entity';
+import { PrismaService } from '../../prisma/prisma.service';
+import type { Invitation } from '../authorization/entities/invitation.entity';
+import type { Environment } from '../environment/environment.entity';
 import { FederationAuthService } from '../identity-adapter/federation-auth.service';
-import { IdentityProviderConfiguration } from '../identity-adapter/identity-provider-configuration.entity';
-import { PolicyDocument } from '../identity-adapter/policy-document.entity';
+import type { IdentityProviderConfiguration } from '../identity-adapter/identity-provider-configuration.entity';
+import type { PolicyDocument } from '../identity-adapter/policy-document.entity';
 import { PolicyService } from '../identity-adapter/policy.service';
-import { Principal } from '../identity-adapter/principal.entity';
+import type { Principal } from '../identity-adapter/principal.entity';
 import type { SessionMetadata } from '../identity-adapter/session.service';
-import { Tenant } from '../tenant/tenant.entity';
+import type { Tenant } from '../tenant/tenant.entity';
 import { StartOwnerActivationDto } from './dto/start-owner-activation.dto';
+import { runWithTenantScope } from '../../../../../libs/database/src';
 
 type OwnerInvitationContext = {
   invitation: Invitation;
@@ -30,7 +30,7 @@ type OwnerInvitationContext = {
 @Injectable()
 export class OwnerActivationService {
   constructor(
-    @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly prisma: PrismaService,
     private readonly federation: FederationAuthService,
     private readonly policies: PolicyService,
   ) {}
@@ -103,39 +103,43 @@ export class OwnerActivationService {
   }
 
   private async loadContext(token: string): Promise<OwnerInvitationContext> {
-    const invitation = await this.dataSource.getRepository(Invitation).findOne({
+    const invitation = (await this.prisma.invitation.findFirst({
       where: {
         tokenHash: this.hashToken(token),
         purpose: 'OWNER_ACTIVATION',
         status: 'PENDING',
       },
-    });
+    })) as Invitation | null;
     this.assertUsable(invitation);
 
     const [principal, tenant, environment, policy, providers] =
       await Promise.all([
-        this.dataSource
-          .getRepository(Principal)
-          .findOne({ where: { id: invitation.invitedPrincipalId! } }),
-        this.dataSource
-          .getRepository(Tenant)
-          .findOne({ where: { id: invitation.tenantId } }),
-        this.dataSource.getRepository(Environment).findOne({
-          where: { tenantId: invitation.tenantId, status: 'ACTIVE' },
-          order: { createdAt: 'ASC' },
-        }),
-        this.dataSource
-          .getRepository(PolicyDocument)
-          .findOne({ where: { id: invitation.policyDocumentId! } }),
-        this.dataSource.getRepository(IdentityProviderConfiguration).find({
+        this.prisma.principal.findUnique({
+          where: { id: invitation.invitedPrincipalId! },
+        }) as Promise<Principal | null>,
+        this.prisma.tenant.findUnique({
+          where: { id: invitation.tenantId },
+        }) as Promise<Tenant | null>,
+        // Unauthenticated activation: the tenant comes from the verified
+        // invitation token, and only that tenant's environment is read.
+        runWithTenantScope(invitation.tenantId, () =>
+          this.prisma.environment.findFirst({
+            where: { tenantId: invitation.tenantId, status: 'ACTIVE' },
+            orderBy: { createdAt: 'asc' },
+          }),
+        ) as Promise<Environment | null>,
+        this.prisma.policyDocument.findUnique({
+          where: { id: invitation.policyDocumentId! },
+        }) as Promise<PolicyDocument | null>,
+        this.prisma.identityProviderConfiguration.findMany({
           where: {
             tenantId: invitation.tenantId,
             name: 'ZoikoID',
             protocol: 'OIDC',
             status: 'ACTIVE',
           },
-          order: { createdAt: 'ASC' },
-        }),
+          orderBy: { createdAt: 'asc' },
+        }) as unknown as Promise<IdentityProviderConfiguration[]>,
       ]);
 
     if (!principal || !tenant || !environment || !policy) {

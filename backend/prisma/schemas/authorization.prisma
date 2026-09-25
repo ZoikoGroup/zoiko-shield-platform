@@ -1,0 +1,114 @@
+// Authorization plane: roles, permissions, memberships, invitations and JIT
+// elevation. Owned by the authorization module. Memberships are read to
+// establish a request's tenant, so this schema is platform-global and
+// protected by the service role grants rather than tenant row-level security.
+
+model Invitation {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tokenHash          String    @unique @db.VarChar
+  tenantId           String    @db.Uuid
+  invitedEmail       String    @db.VarChar
+  roleId             String    @db.Uuid
+  invitedById        String    @db.Uuid
+  status             String    @default("PENDING") @db.VarChar
+  expiresAt          DateTime  @db.Timestamptz(6)
+  acceptedAt         DateTime? @db.Timestamptz(6)
+  acceptedById       String?   @db.Uuid
+  createdAt          DateTime  @default(now()) @db.Timestamptz(6)
+  purpose            String    @default("TENANT_MEMBERSHIP") @db.VarChar
+  invitedPrincipalId String?   @db.Uuid
+  policyDocumentId   String?   @db.Uuid
+
+  @@index([tenantId], map: "idx_invitations_tenant")
+  @@index([tenantId, invitedPrincipalId, status], map: "invitations_owner_activation_lookup", where: raw("((purpose)::text = 'OWNER_ACTIVATION'::text)"))
+  @@map("invitations")
+  @@schema("authorization")
+}
+
+model JitElevationRequest {
+  id                         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  superAdminPrincipalId      String    @db.Uuid
+  targetTenantId             String    @db.Uuid
+  statedPurpose              String
+  requestedDurationMinutes   Int       @default(60)
+  roleCode                   String    @default("TENANT_SECURITY_ANALYST") @db.VarChar
+  status                     String    @default("PENDING") @db.VarChar
+  approvedByPrincipalId      String?   @db.Uuid
+  rejectionReason            String?
+  approvedAt                 DateTime? @db.Timestamptz(6)
+  expiresAt                  DateTime? @db.Timestamptz(6)
+  membershipId               String?   @db.Uuid
+  customerVisibleAuditLogRef String    @db.VarChar(64)
+  createdAt                  DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt                  DateTime  @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@index([superAdminPrincipalId, targetTenantId], map: "jit_elevation_requests_admin_tenant_idx")
+  @@index([targetTenantId, status], map: "jit_elevation_requests_tenant_status_idx")
+  @@map("jit_elevation_requests")
+  @@schema("authorization")
+}
+
+model Permission {
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code        String           @unique @db.VarChar(150)
+  description String?
+  roles       RolePermission[]
+
+  @@map("permissions")
+  @@schema("authorization")
+}
+
+model RolePermission {
+  role_id       String     @db.Uuid
+  permission_id String     @db.Uuid
+  permission    Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  role          Role       @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([role_id, permission_id])
+  @@map("role_permissions")
+  @@schema("authorization")
+}
+
+model Role {
+  id          String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  /// Null for platform-level roles; set for tenant-scoped custom roles.
+  tenantId    String?          @db.Uuid
+  code        String           @db.VarChar(100)
+  name        String           @db.VarChar(255)
+  roleLevel   String           @db.VarChar
+  createdAt   DateTime         @default(now()) @db.Timestamptz(6)
+  permissions RolePermission[]
+  memberships UserRole[]
+
+  @@map("roles")
+  @@schema("authorization")
+}
+
+model TenantMembership {
+  id                  String     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId            String     @db.Uuid
+  principalId         String     @db.Uuid
+  status              String     @default("ACTIVE") @db.VarChar
+  /// INVITATION | SCIM | BOOTSTRAP | JIT_ELEVATION: how the membership was established.
+  source              String     @default("INVITATION") @db.VarChar
+  joinedAt            DateTime   @default(now()) @db.Timestamptz(6)
+  expiresAt           DateTime?  @db.Timestamptz(6)
+  elevationPurpose    String?    @db.VarChar
+  elevationApprovedBy String?    @db.Uuid
+  roles               UserRole[]
+
+  @@unique([tenantId, principalId])
+  @@map("tenant_memberships")
+  @@schema("authorization")
+}
+
+model UserRole {
+  membership_id String           @db.Uuid
+  role_id       String           @db.Uuid
+  membership    TenantMembership @relation(fields: [membership_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  role          Role             @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@id([membership_id, role_id])
+  @@map("user_roles")
+  @@schema("authorization")
+}

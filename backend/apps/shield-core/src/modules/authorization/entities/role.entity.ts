@@ -1,42 +1,17 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  JoinTable,
-  ManyToMany,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
-import { Permission } from './permission.entity';
+import type { Role as RoleRow } from '@prisma/client';
+import type { Permission } from './permission.entity';
 
 export type RoleLevel = 'PLATFORM' | 'TENANT';
 
-@Entity({ name: 'roles', schema: 'authorization' })
-export class Role {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
-  // Null for platform-level roles; set for tenant-scoped custom roles.
-  @Column({ type: 'uuid', nullable: true })
-  tenantId: string | null;
-
-  @Column({ length: 100 })
-  code: string;
-
-  @Column({ length: 255 })
-  name: string;
-
-  @Column({ type: 'varchar' })
+/**
+ * Row of "authorization".roles, persisted through Prisma. `tenantId` is null
+ * for platform-level roles and set for tenant-scoped custom roles.
+ * `permissions` is present when loaded through "authorization".role_permissions.
+ */
+export type Role = Omit<RoleRow, 'roleLevel'> & {
   roleLevel: RoleLevel;
+  permissions?: Permission[];
+};
 
-  @ManyToMany(() => Permission)
-  @JoinTable({
-    name: 'role_permissions',
-    schema: 'authorization',
-    joinColumn: { name: 'role_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'permission_id', referencedColumnName: 'id' },
-  })
-  permissions: Permission[];
-
-  @CreateDateColumn({ type: 'timestamptz' })
-  createdAt: Date;
-}
+/** A role with its permissions loaded. */
+export type RoleWithPermissions = Role & { permissions: Permission[] };

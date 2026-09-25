@@ -1,0 +1,129 @@
+// PostgreSQL schema "response_proposal". response-proposal module.
+
+// --- shield-core-owned: response governance (spec §20/§22, correction #3) ---
+model ActionProposal {
+  id                        String   @id @default(uuid())
+  tenant_id                 String
+  environment_id            String
+  case_id                   String?
+  alert_id                  String?
+  target_type               String
+  target_id                 String
+  action_type               String
+  reason                    String
+  authority_level           String   @default("R1")
+  requested_by              String
+  recommendation_source     String
+  policy_version            String   @default("1.0")
+  reversible                Boolean  @default(true)
+  rollback_action_type      String?
+  residual_risk             String?
+  version                   Int      @default(1)
+  authorization_decision_id String
+  correlation_id            String
+  status                    String   @default("PROPOSED")
+  expires_at                DateTime
+  created_at                DateTime @default(now())
+
+  approvals ActionApproval[]
+
+  @@index([tenant_id])
+  @@index([case_id])
+  @@index([status])
+
+  @@schema("response_proposal")
+}
+
+model ActionApproval {
+  id                        String         @id @default(uuid())
+  tenant_id                 String
+  proposal_id               String
+  proposal                  ActionProposal @relation(fields: [proposal_id], references: [id])
+  approver_id               String
+  decision                  String
+  authority                 String         @default("R1")
+  scope                     String         @default("{}")
+  reason                    String?
+  // Binds this approval to the exact proposal material approved (correction #3) —
+  // shield-action recomputes this hash during reauthorization and fails closed on mismatch.
+  proposal_version          Int
+  action_type               String
+  target_type               String
+  target_id                 String
+  approved_material_hash    String
+  authorization_decision_id String
+  approved_at               DateTime       @default(now())
+  expires_at                DateTime
+
+  @@index([tenant_id])
+  @@index([proposal_id])
+
+  @@schema("response_proposal")
+}
+
+model Freeze {
+  id           String    @id @default(uuid())
+  tenant_id    String?
+  scope        String // GLOBAL | TENANT | CONNECTOR | ACTION_TYPE
+  scope_ref    String?
+  reason       String
+  active_from  DateTime  @default(now())
+  active_until DateTime?
+  created_by   String
+  created_at   DateTime  @default(now())
+
+  @@index([tenant_id])
+  @@index([scope])
+
+  @@schema("response_proposal")
+}
+
+model PlaybookDefinition {
+  id         String   @id @default(uuid())
+  key        String   @unique
+  owner      String
+  created_at DateTime @default(now())
+
+  versions PlaybookVersion[]
+
+  @@schema("response_proposal")
+}
+
+model PlaybookVersion {
+  id                 String             @id @default(uuid())
+  playbook_id        String
+  playbook           PlaybookDefinition @relation(fields: [playbook_id], references: [id])
+  version            Int
+  mode               String             @default("SIMULATION")
+  inputs             String             @default("{}")
+  steps              String             @default("[]")
+  required_authority String             @default("R1")
+  compensation       String?
+  status             String             @default("DRAFT")
+  published_at       DateTime?
+
+  runs PlaybookRun[]
+
+  @@unique([playbook_id, version])
+
+  @@schema("response_proposal")
+}
+
+model PlaybookRun {
+  id                  String          @id @default(uuid())
+  tenant_id           String
+  case_id             String
+  playbook_version_id String
+  playbookVersion     PlaybookVersion @relation(fields: [playbook_version_id], references: [id])
+  mode                String          @default("SIMULATION")
+  triggered_by        String
+  status              String          @default("RUNNING")
+  started_at          DateTime        @default(now())
+  completed_at        DateTime?
+  termination_reason  String?
+
+  @@index([tenant_id])
+  @@index([case_id])
+
+  @@schema("response_proposal")
+}

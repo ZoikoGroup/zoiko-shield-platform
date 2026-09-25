@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConflictException, NotFoundException } from '@nestjs/common';
-import { getDataSourceToken } from '@nestjs/typeorm';
 import { OnboardingService } from './onboarding.service';
 import { PolicyService } from '../identity-adapter/policy.service';
 import { OnboardingReadinessService } from './onboarding-readiness.service';
@@ -8,15 +7,16 @@ import { MailService } from '../identity-adapter/mail.service';
 import { ZoikoIdProviderBootstrapService } from '../identity-adapter/zoikoid-provider-bootstrap.service';
 import { PrismaService } from '../../prisma/prisma.service';
 
-function fakeRepo(overrides: Partial<Record<string, jest.Mock>> = {}) {
-  let counter = 0;
+let counter = 0;
+
+/** A Prisma model delegate whose `create` echoes its data with a generated id. */
+function fakeDelegate(overrides: Partial<Record<string, jest.Mock>> = {}) {
   return {
-    create: jest.fn((data: any) => data),
-    save: jest.fn((entity: any) =>
-      Promise.resolve({ id: entity.id ?? `generated-${counter++}`, ...entity }),
+    create: jest.fn(({ data }: any) =>
+      Promise.resolve({ id: data.id ?? `generated-${counter++}`, ...data }),
     ),
-    findOne: jest.fn().mockResolvedValue(null),
-    findOneByOrFail: jest.fn(),
+    findUnique: jest.fn().mockResolvedValue(null),
+    findFirst: jest.fn().mockResolvedValue(null),
     ...overrides,
   };
 }
@@ -44,56 +44,19 @@ const baseDto = {
 describe('OnboardingService (spec §7.2 order gate)', () => {
   let service: OnboardingService;
   let prismaMock: any;
-  let dataSourceMock: any;
   let policyMock: any;
   let readinessMock: any;
   let mailMock: any;
   let zoikoIdProvidersMock: any;
-  let ownerRoleRepo: any;
-  let tenantRepo: any;
 
   const activeDisclosure = {
     id: 'policy-1',
     version: '1',
     contentHash: 'hash-1',
   };
+  const ownerRole = { id: 'role-owner', code: 'TENANT_OWNER' };
 
   beforeEach(async () => {
-    ownerRoleRepo = fakeRepo({
-      findOne: jest.fn().mockResolvedValue({ id: 'role-owner' }),
-    });
-    tenantRepo = fakeRepo({
-      findOne: jest.fn().mockResolvedValue(null), // slug not taken
-      findOneByOrFail: jest
-        .fn()
-        .mockImplementation((where: any) =>
-          Promise.resolve({ id: where.id, status: 'PROVISIONING' }),
-        ),
-    });
-    const repos: Record<string, any> = {
-      Tenant: tenantRepo,
-      LegalEntity: fakeRepo(),
-      Environment: fakeRepo(),
-      TenantMembership: fakeRepo(),
-      Invitation: fakeRepo(),
-      Role: ownerRoleRepo,
-      PolicyAcceptance: fakeRepo(),
-      IdentityEvent: fakeRepo(),
-      Principal: fakeRepo(),
-    };
-
-    dataSourceMock = {
-      getRepository: jest.fn((entity: { name: string }) => {
-        const repo = repos[entity.name];
-        if (!repo)
-          throw new Error(`No fake repo registered for ${entity.name}`);
-        return repo;
-      }),
-      transaction: jest.fn(async (cb: (manager: any) => Promise<any>) =>
-        cb({ getRepository: dataSourceMock.getRepository }),
-      ),
-    };
-
     prismaMock = {
       commercialOrder: {
         findUnique: jest.fn(),
@@ -101,8 +64,30 @@ describe('OnboardingService (spec §7.2 order gate)', () => {
       },
       product: { findMany: jest.fn() },
       entitlement: { createMany: jest.fn().mockResolvedValue({ count: 1 }) },
-      $transaction: jest.fn((cb: (tx: any) => Promise<any>) => cb(prismaMock)),
+      // No existing principal owns the owner email.
+      $queryRaw: jest.fn().mockResolvedValue([]),
+      principal: fakeDelegate(),
+      // slug not taken
+      tenant: fakeDelegate({ findUnique: jest.fn().mockResolvedValue(null) }),
+      legalEntity: fakeDelegate(),
+      environment: fakeDelegate(),
+      role: fakeDelegate({ findFirst: jest.fn().mockResolvedValue(ownerRole) }),
+      tenantMembership: fakeDelegate({
+        create: jest.fn(({ data }: any) => {
+          const { roles: _roles, ...fields } = data;
+          return Promise.resolve({
+            id: `generated-${counter++}`,
+            ...fields,
+            roles: [{ role_id: ownerRole.id, role: ownerRole }],
+          });
+        }),
+      }),
+      invitation: fakeDelegate(),
+      identityEvent: fakeDelegate(),
     };
+    prismaMock.$transaction = jest.fn((cb: (tx: any) => Promise<any>) =>
+      cb(prismaMock),
+    );
 
     policyMock = { findActive: jest.fn().mockResolvedValue(activeDisclosure) };
     readinessMock = { assertReady: jest.fn() };
@@ -124,7 +109,6 @@ describe('OnboardingService (spec §7.2 order gate)', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OnboardingService,
-        { provide: getDataSourceToken(), useValue: dataSourceMock },
         { provide: PolicyService, useValue: policyMock },
         { provide: OnboardingReadinessService, useValue: readinessMock },
         { provide: MailService, useValue: mailMock },
@@ -139,13 +123,14 @@ describe('OnboardingService (spec §7.2 order gate)', () => {
     service = module.get<OnboardingService>(OnboardingService);
   });
 
-  it('rejects onboarding when the order does not exist, before touching any tenant repository', async () => {
+  it('rejects onboarding when the order does not exist, before touching any tenant table', async () => {
     prismaMock.commercialOrder.findUnique.mockResolvedValue(null);
 
     await expect(
       service.onboard(baseDto as any, 'principal-1', {} as any),
     ).rejects.toThrow(NotFoundException);
-    expect(dataSourceMock.transaction).not.toHaveBeenCalled();
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+    expect(prismaMock.tenant.create).not.toHaveBeenCalled();
   });
 
   it('rejects onboarding when the order is not PROVISIONED', async () => {
@@ -160,7 +145,8 @@ describe('OnboardingService (spec §7.2 order gate)', () => {
     await expect(
       service.onboard(baseDto as any, 'principal-1', {} as any),
     ).rejects.toThrow(ConflictException);
-    expect(dataSourceMock.transaction).not.toHaveBeenCalled();
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+    expect(prismaMock.tenant.create).not.toHaveBeenCalled();
   });
 
   it('rejects onboarding when the order has already provisioned a tenant', async () => {
@@ -175,7 +161,8 @@ describe('OnboardingService (spec §7.2 order gate)', () => {
     await expect(
       service.onboard(baseDto as any, 'principal-1', {} as any),
     ).rejects.toThrow(ConflictException);
-    expect(dataSourceMock.transaction).not.toHaveBeenCalled();
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+    expect(prismaMock.tenant.create).not.toHaveBeenCalled();
   });
 
   it('rejects onboarding when the order has no product lines to derive an entitlement from', async () => {
@@ -191,7 +178,8 @@ describe('OnboardingService (spec §7.2 order gate)', () => {
     await expect(
       service.onboard(baseDto as any, 'principal-1', {} as any),
     ).rejects.toThrow(ConflictException);
-    expect(dataSourceMock.transaction).not.toHaveBeenCalled();
+    expect(prismaMock.$transaction).not.toHaveBeenCalled();
+    expect(prismaMock.tenant.create).not.toHaveBeenCalled();
   });
 
   it('provisions the tenant from an approved order, claims it exactly once, and grants entitlements derived from its product lines — never a self-granted offer type', async () => {
@@ -227,10 +215,15 @@ describe('OnboardingService (spec §7.2 order gate)', () => {
         }),
       ]),
     });
+    expect(zoikoIdProvidersMock.provisionForTenant).toHaveBeenCalledWith(
+      prismaMock,
+      expect.objectContaining({ actorId: 'principal-1' }),
+    );
     expect(result.orderId).toBe('order-1');
     expect(result.commercialAccountId).toBe('acct-1');
     expect(result.tenant.status).toBe('PROVISIONING');
     expect(result.membership.status).toBe('PENDING');
+    expect(result.membership.roles).toEqual([ownerRole]);
     expect(result.identityProvider).toEqual({
       id: 'zoikoid-provider-1',
       name: 'ZoikoID',
@@ -268,5 +261,6 @@ describe('OnboardingService (spec §7.2 order gate)', () => {
     await expect(
       service.onboard(baseDto as any, 'principal-1', {} as any),
     ).rejects.toThrow(ConflictException);
+    expect(mailMock.sendOwnerInvitation).not.toHaveBeenCalled();
   });
 });

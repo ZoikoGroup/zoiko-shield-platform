@@ -1,6 +1,10 @@
-import { Module } from '@nestjs/common';
+import {
+  Module,
+  MiddlewareConsumer,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD } from '@nestjs/core';
 import { DeclaredAccessGuard } from './security/declared-access.guard';
@@ -13,7 +17,6 @@ import { LegalEntityModule } from './modules/legal-entity/legal-entity.module';
 import { EnvironmentModule } from './modules/environment/environment.module';
 import { IdentityAdapterModule } from './modules/identity-adapter/identity-adapter.module';
 import { AuthorizationModule } from './modules/authorization/authorization.module';
-import { SHIELD_CORE_TYPEORM_ENTITIES } from './typeorm-entities';
 import { OnboardingModule } from './modules/onboarding/onboarding.module';
 import { CommercialModule } from './modules/commercial/commercial.module';
 import { CatalogModule } from './modules/catalog/catalog.module';
@@ -79,23 +82,13 @@ import { ConnectorsProxyModule } from './modules/connectors-proxy/connectors-pro
 import { AnchorProxyModule } from './modules/anchor-proxy/anchor-proxy.module';
 import { RequirementsRegisterModule } from './modules/requirements-register/requirements-register.module';
 import { JitElevationModule } from './modules/jit-elevation/jit-elevation.module';
+import { dbScopeMiddleware } from '../../../libs/database/src';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, envFilePath: ['.env', '../.env'] }),
     ThrottlerModule.forRoot({
       throttlers: [{ ttl: 60_000, limit: 60 }],
-    }),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      url: process.env.DATABASE_URL,
-      entities: SHIELD_CORE_TYPEORM_ENTITIES,
-      // Safety Rule: synchronize is strictly disabled by default to prevent silent table/data drops across restarts.
-      // Schema evolution is governed by controlled SQL / Prisma migrations.
-      synchronize: process.env.TYPEORM_SYNCHRONIZE === 'true',
-      ssl: process.env.DATABASE_URL?.includes('sslmode=require')
-        ? { rejectUnauthorized: false }
-        : false,
     }),
     TenantModule,
     CustomerModule,
@@ -177,4 +170,12 @@ import { JitElevationModule } from './modules/jit-elevation/jit-elevation.module
     { provide: APP_GUARD, useClass: DeclaredAccessGuard },
   ],
 })
-export class ShieldCoreModule {}
+export class ShieldCoreModule implements NestModule {
+  // Every request gets its own database scope, unbound until an auth guard
+  // verifies its tenant (libs/database/src/db-scope.ts).
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(dbScopeMiddleware)
+      .forRoutes({ path: '*path', method: RequestMethod.ALL });
+  }
+}

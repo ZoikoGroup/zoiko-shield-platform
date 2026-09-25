@@ -7,6 +7,7 @@ import {
 } from './evaluation-runner.service';
 import { AiKillSwitchService } from '../kill-switch/ai-kill-switch.service';
 import { SafeDegradationService } from '../degradation/safe-degradation.service';
+import { PlatformScope } from '../../../../libs/database/src';
 
 /**
  * ZS-ENG-AI-001 §19, §20, Annex J & K & Acceptance Criteria AI-01, AI-03:
@@ -35,6 +36,9 @@ export class ScheduledGoldsetRunnerWorker {
   /**
    * Run gold-set regression manifest on schedule
    */
+  @PlatformScope(
+    'scheduled job ScheduledGoldsetRunnerWorker.executeScheduledEvaluation',
+  )
   @Cron(CronExpression.EVERY_HOUR)
   async executeScheduledEvaluation(): Promise<EvaluationSuiteReport> {
     this.logger.log(

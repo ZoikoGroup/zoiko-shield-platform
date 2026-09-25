@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
 import { createHash, randomBytes, randomUUID } from 'crypto';
-import { IsNull, Repository } from 'typeorm';
-import { Assurance, Session, SessionBinding } from './session.entity';
+import { PrismaService } from '../../prisma/prisma.service';
+import type { Assurance, Session, SessionBinding } from './session.entity';
 
 const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 days, rolling
 const ABSOLUTE_SESSION_TTL_MS = 90 * 24 * 60 * 60 * 1000; // 90 days, hard ceiling regardless of activity
@@ -15,10 +14,7 @@ export interface SessionMetadata {
 
 @Injectable()
 export class SessionService {
-  constructor(
-    @InjectRepository(Session)
-    private readonly sessionRepository: Repository<Session>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   private hashToken(token: string): string {
     return createHash('sha256').update(token).digest('hex');
@@ -34,42 +30,45 @@ export class SessionService {
   ): Promise<{ session: Session; refreshToken: string }> {
     const refreshToken = randomBytes(48).toString('hex');
     const now = Date.now();
-    const session = this.sessionRepository.create({
-      principalId,
-      assurance,
-      tenantId: binding.tenantId,
-      membershipId: binding.membershipId,
-      environmentId: binding.environmentId,
-      region: binding.region,
-      authenticationMethod: binding.authenticationMethod,
-      issuer: binding.issuer ?? null,
-      policyVersion: binding.policyVersion,
-      riskState: binding.riskState ?? 'NORMAL',
-      state: binding.state ?? 'ACTIVE',
-      refreshTokenHash: this.hashToken(refreshToken),
-      familyId: familyId ?? randomUUID(),
-      deviceName: metadata.deviceName,
-      ipAddress: metadata.ipAddress,
-      userAgent: metadata.userAgent,
-      expiresAt: new Date(now + REFRESH_TOKEN_TTL_MS),
-      absoluteExpiresAt:
-        absoluteExpiresAt ?? new Date(now + ABSOLUTE_SESSION_TTL_MS),
-      revokedAt: null,
-      revokedReason: null,
-    });
-    await this.sessionRepository.save(session);
+    const session = (await this.prisma.session.create({
+      data: {
+        principalId,
+        assurance,
+        tenantId: binding.tenantId,
+        membershipId: binding.membershipId,
+        environmentId: binding.environmentId,
+        region: binding.region,
+        authenticationMethod: binding.authenticationMethod,
+        issuer: binding.issuer ?? null,
+        policyVersion: binding.policyVersion,
+        riskState: binding.riskState ?? 'NORMAL',
+        state: binding.state ?? 'ACTIVE',
+        refreshTokenHash: this.hashToken(refreshToken),
+        familyId: familyId ?? randomUUID(),
+        deviceName: metadata.deviceName,
+        ipAddress: metadata.ipAddress,
+        userAgent: metadata.userAgent,
+        expiresAt: new Date(now + REFRESH_TOKEN_TTL_MS),
+        absoluteExpiresAt:
+          absoluteExpiresAt ?? new Date(now + ABSOLUTE_SESSION_TTL_MS),
+        revokedAt: null,
+        revokedReason: null,
+      },
+    })) as Session;
     return { session, refreshToken };
   }
 
-  findById(sessionId: string): Promise<Session | null> {
-    return this.sessionRepository.findOne({ where: { id: sessionId } });
+  async findById(sessionId: string): Promise<Session | null> {
+    return (await this.prisma.session.findUnique({
+      where: { id: sessionId },
+    })) as Session | null;
   }
 
   /** Any session matching this token hash, active or not — used to detect refresh-token reuse. */
-  findByTokenHash(refreshToken: string): Promise<Session | null> {
-    return this.sessionRepository.findOne({
+  async findByTokenHash(refreshToken: string): Promise<Session | null> {
+    return (await this.prisma.session.findFirst({
       where: { refreshTokenHash: this.hashToken(refreshToken) },
-    });
+    })) as Session | null;
   }
 
   async findActiveByToken(refreshToken: string): Promise<Session | null> {
@@ -94,27 +93,27 @@ export class SessionService {
   }
 
   async revoke(sessionId: string, reason = 'LOGOUT'): Promise<void> {
-    await this.sessionRepository.update(
-      { id: sessionId },
-      { revokedAt: new Date(), revokedReason: reason },
-    );
+    await this.prisma.session.updateMany({
+      where: { id: sessionId },
+      data: { revokedAt: new Date(), revokedReason: reason },
+    });
   }
 
   async revokeFamily(familyId: string, reason: string): Promise<void> {
-    await this.sessionRepository.update(
-      { familyId, revokedAt: IsNull() },
-      { revokedAt: new Date(), revokedReason: reason },
-    );
+    await this.prisma.session.updateMany({
+      where: { familyId, revokedAt: null },
+      data: { revokedAt: new Date(), revokedReason: reason },
+    });
   }
 
   async revokeAllForPrincipal(
     principalId: string,
     reason = 'LOGOUT_ALL',
   ): Promise<void> {
-    await this.sessionRepository.update(
-      { principalId, revokedAt: IsNull() },
-      { revokedAt: new Date(), revokedReason: reason },
-    );
+    await this.prisma.session.updateMany({
+      where: { principalId, revokedAt: null },
+      data: { revokedAt: new Date(), revokedReason: reason },
+    });
   }
 
   async revokeForPrincipalTenant(
@@ -122,29 +121,29 @@ export class SessionService {
     tenantId: string,
     reason = 'DELEGATED_AUTHORITY_CHANGED',
   ): Promise<void> {
-    await this.sessionRepository.update(
-      { principalId, tenantId, revokedAt: IsNull() },
-      { revokedAt: new Date(), revokedReason: reason },
-    );
+    await this.prisma.session.updateMany({
+      where: { principalId, tenantId, revokedAt: null },
+      data: { revokedAt: new Date(), revokedReason: reason },
+    });
   }
 
   async revokeForMembership(
     membershipId: string,
     reason = 'MEMBERSHIP_CHANGED',
   ): Promise<void> {
-    await this.sessionRepository.update(
-      { membershipId, revokedAt: IsNull() },
-      { revokedAt: new Date(), revokedReason: reason },
-    );
+    await this.prisma.session.updateMany({
+      where: { membershipId, revokedAt: null },
+      data: { revokedAt: new Date(), revokedReason: reason },
+    });
   }
 
   async revokeForTenant(
     tenantId: string,
     reason = 'TENANT_CONFIGURATION_CHANGED',
   ): Promise<void> {
-    await this.sessionRepository.update(
-      { tenantId, revokedAt: IsNull() },
-      { revokedAt: new Date(), revokedReason: reason },
-    );
+    await this.prisma.session.updateMany({
+      where: { tenantId, revokedAt: null },
+      data: { revokedAt: new Date(), revokedReason: reason },
+    });
   }
 }

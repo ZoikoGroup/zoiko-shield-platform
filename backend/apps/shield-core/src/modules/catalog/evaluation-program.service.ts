@@ -16,6 +16,7 @@ import {
 } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CommercialApprovalService } from '../approvals/commercial-approval.service';
+import { PlatformScope } from '../../../../../libs/database/src';
 
 const PROGRAM_TYPES = ['DESIGN_PARTNER', 'EVALUATION', 'PILOT'] as const;
 const OFFER_TYPES = [
@@ -512,6 +513,7 @@ export class EvaluationProgramService {
     });
   }
 
+  @PlatformScope('scheduled job EvaluationProgramService.processDuePrograms')
   @Cron(CronExpression.EVERY_MINUTE)
   async processDuePrograms() {
     const now = new Date();

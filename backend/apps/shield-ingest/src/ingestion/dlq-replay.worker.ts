@@ -5,6 +5,7 @@ import {
   QuarantinedEventRecord,
 } from './quarantine.service';
 import { RawIngestService } from './raw-ingest.service';
+import { PlatformScope } from '../../../../libs/database/src';
 
 export interface DLQReplayBatchResult {
   totalProcessed: number;
@@ -28,6 +29,7 @@ export class DLQReplayWorker {
    * Automated DLQ Auto-Retry Cron (OPS-INV-13 Specification)
    * Runs every 30 seconds to automatically retry quarantined messages.
    */
+  @PlatformScope('scheduled job DLQReplayWorker.autoRetryQuarantinedWorker')
   @Cron(CronExpression.EVERY_30_SECONDS)
   async autoRetryQuarantinedWorker(): Promise<void> {
     if (this.isProcessing) return;
