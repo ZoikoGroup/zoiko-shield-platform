@@ -10,6 +10,7 @@ import { KafkaProducerService } from '../kafka/kafka.producer.service';
 import { MeteringService } from '../metering/metering.service';
 import { StreamDeduplicationService } from '../deduplication/stream-deduplication.service';
 import { DlqReplayQuarantineService } from '../dlq/dlq-replay-quarantine.service';
+import { ConnectorCacheService } from './connector-cache.service';
 import * as crypto from 'crypto';
 import { IsISO8601, IsOptional, IsString, MaxLength } from 'class-validator';
 
@@ -62,6 +63,7 @@ export class RawIngestService {
     @Optional()
     private readonly deduplicationService?: StreamDeduplicationService,
     @Optional() private readonly dlqService?: DlqReplayQuarantineService,
+    @Optional() private readonly connectorCache?: ConnectorCacheService,
   ) {}
 
   /**
@@ -74,10 +76,12 @@ export class RawIngestService {
   ): Promise<IngestionResult> {
     this.logger.log(`Received webhook payload for connector: ${connectorId}`);
 
-    // Verify connector exists
-    const connector = await this.prisma.connectorInstance.findUnique({
-      where: { id: connectorId },
-    });
+    // Verify connector exists (fast in-memory cache with fallback to DB)
+    const connector = this.connectorCache
+      ? await this.connectorCache.getConnector(connectorId)
+      : await this.prisma.connectorInstance.findUnique({
+          where: { id: connectorId },
+        });
 
     if (!connector) {
       throw new NotFoundException(
