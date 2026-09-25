@@ -64,4 +64,4 @@ jobs:
           npm run test:e2e:ai
           npm run test:e2e:anchor
       - name: Ensure schema and migrations match
-        run: npx prisma migrate diff --from-migrations prisma/migrations --to-schema prisma/schema.prisma --exit-code
+        run: node scripts/check-schema-drift.js
