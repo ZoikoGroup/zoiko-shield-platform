@@ -1,37 +1,8 @@
-import { randomUUID } from 'crypto';
-import {
-  BeforeInsert,
-  Column,
-  Entity,
-  Index,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import type { PolicyDocument as PolicyDocumentRow } from '@prisma/client';
 
-@Entity({ name: 'policy_documents', schema: 'identity' })
-@Index(['kind', 'version'], { unique: true })
-export class PolicyDocument {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
-  @BeforeInsert()
-  generateId() {
-    if (!this.id) {
-      this.id = randomUUID();
-    }
-  }
-
-  @Column()
-  kind: string; // "TERMS_OF_SERVICE" | "PRIVACY_POLICY" | "ACCEPTABLE_USE"
-
-  @Column()
-  version: string;
-
-  @Column({ type: 'timestamptz' })
-  publishedAt: Date;
-
-  @Column()
-  contentHash: string;
-
-  @Column({ default: true })
-  active: boolean;
-}
+/**
+ * Row of identity.policy_documents, persisted through Prisma. `kind` is one of
+ * "TERMS_OF_SERVICE" | "PRIVACY_POLICY" | "ACCEPTABLE_USE" |
+ * "ACCESS_DISCLOSURE".
+ */
+export type PolicyDocument = PolicyDocumentRow;

@@ -50,3 +50,27 @@ output "subject_key_wrapping_key_name" {
   description = "Crypto key wrapping per-subject encryption keys. SUBJECT_KEY_KMS_KEY_NAME takes this exactly, with no version suffix."
   value       = google_kms_crypto_key.subject_key_wrapping.id
 }
+
+# --- System of record (database.tf)
+
+output "database_instance_connection_name" {
+  description = "Cloud SQL connection name (project:region:instance) for the Cloud SQL Auth Proxy / connector"
+  value       = google_sql_database_instance.system_of_record.connection_name
+}
+
+output "database_private_ip" {
+  description = "Private IP of the system-of-record instance; the only address it has"
+  value       = google_sql_database_instance.system_of_record.private_ip_address
+}
+
+output "database_iam_logins" {
+  description = "IAM database login per service role. DATABASE_URL for a service uses its login; MIGRATION_DATABASE_URL uses the migrate login."
+  value       = local.database_iam_logins
+}
+
+output "database_role_members" {
+  description = "Value for DATABASE_ROLE_MEMBERS on the migrate job: service group role -> its IAM login"
+  value = jsonencode({
+    for role, login in local.database_iam_logins : role => [login] if role != "migrate"
+  })
+}

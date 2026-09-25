@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { TenantService } from './tenant.service';
-import { Tenant } from './tenant.entity';
+import { PrismaService } from '../../prisma/prisma.service';
 import { IdentityEventService } from '../identity-adapter/identity-event.service';
 
 describe('TenantService', () => {
@@ -11,7 +10,16 @@ describe('TenantService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TenantService,
-        { provide: getRepositoryToken(Tenant), useValue: {} },
+        {
+          provide: PrismaService,
+          useValue: {
+            tenant: {
+              findMany: jest.fn(),
+              findUnique: jest.fn(),
+              update: jest.fn(),
+            },
+          },
+        },
         { provide: IdentityEventService, useValue: { record: jest.fn() } },
       ],
     }).compile();

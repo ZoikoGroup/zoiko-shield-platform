@@ -1,0 +1,296 @@
+// Identity plane: principals, credentials, sessions and federation.
+// Owned by the identity-adapter module. Principals span tenants, so the
+// principal-level tables are platform-global; the tenant-bound federation
+// tables carry tenantId and are governed by tenant row-level security.
+
+model Principal {
+  id                                    String                          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  principalType                         String                          @default("HUMAN") @db.VarChar
+  status                                String                          @default("ACTIVE") @db.VarChar
+  source                                String                          @db.VarChar
+  riskState                             String                          @default("NORMAL") @db.VarChar
+  email                                 String?                         @unique @db.VarChar
+  fullName                              String?                         @db.VarChar
+  avatarUrl                             String?
+  emailVerified                         Boolean                         @default(false)
+  lastLoginAt                           DateTime?                       @db.Timestamptz(6)
+  createdAt                             DateTime                        @default(now()) @db.Timestamptz(6)
+  updatedAt                             DateTime                        @default(now()) @updatedAt @db.Timestamptz(6)
+  terminatedAt                          DateTime?                       @db.Timestamptz(6)
+  createdIdentityProviderConfigurations IdentityProviderConfiguration[] @relation("IdentityProviderCreatedBy")
+  updatedIdentityProviderConfigurations IdentityProviderConfiguration[] @relation("IdentityProviderUpdatedBy")
+
+  @@map("principals")
+  @@schema("identity")
+}
+
+model LocalCredential {
+  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  principalId        String    @unique @db.Uuid
+  passwordHash       String
+  passwordUpdatedAt  DateTime  @db.Timestamptz(6)
+  failedAttempts     Int       @default(0)
+  lockedUntil        DateTime? @db.Timestamptz(6)
+  mustChangePassword Boolean   @default(false)
+  createdAt          DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@map("local_credentials")
+  @@schema("identity")
+}
+
+model ExternalIdentity {
+  id                String                          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  principalId       String                          @db.Uuid
+  issuer            String                          @db.VarChar
+  subject           String                          @db.VarChar
+  provider          String                          @db.VarChar
+  claimProfile      Json                            @default("{}")
+  verificationState String                          @default("VERIFIED") @db.VarChar
+  lastSyncedAt      DateTime                        @db.Timestamptz(6)
+  createdAt         DateTime                        @default(now()) @db.Timestamptz(6)
+  tenantBindings    ExternalIdentityTenantBinding[]
+
+  @@unique([issuer, subject])
+  @@index([principalId], map: "idx_external_identities_principal")
+  @@map("external_identities")
+  @@schema("identity")
+}
+
+/// Carries database check constraints managed in migration SQL.
+model ExternalIdentityTenantBinding {
+  id                              String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  externalIdentityId              String                        @db.Uuid
+  tenantId                        String                        @db.Uuid
+  identityProviderConfigurationId String                        @db.Uuid
+  status                          String                        @default("ACTIVE") @db.VarChar
+  lastAuthenticatedAt             DateTime                      @db.Timestamptz(6)
+  createdAt                       DateTime                      @default(now()) @db.Timestamptz(6)
+  updatedAt                       DateTime                      @default(now()) @updatedAt @db.Timestamptz(6)
+  identityProviderConfiguration   IdentityProviderConfiguration @relation(fields: [identityProviderConfigurationId], references: [id], onUpdate: NoAction, map: "external_identity_tenant_bind_identityProviderConfiguratio_fkey")
+  externalIdentity                ExternalIdentity              @relation(fields: [externalIdentityId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tenant                          Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([externalIdentityId, tenantId], map: "external_identity_tenant_bindin_externalIdentityId_tenantId_key")
+  @@index([tenantId], map: "idx_external_identity_tenant_binding_tenant")
+  @@map("external_identity_tenant_bindings")
+  @@schema("identity")
+}
+
+/// Carries database check constraints managed in migration SQL.
+model FederationTransaction {
+  id                              String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  stateHash                       String                        @unique @db.VarChar
+  identityProviderConfigurationId String                        @db.Uuid
+  tenantId                        String                        @db.Uuid
+  environmentId                   String                        @db.Uuid
+  protocol                        String                        @db.VarChar
+  encryptedPayload                String
+  requestIp                       String?                       @db.VarChar
+  requestUserAgent                String?
+  expiresAt                       DateTime                      @db.Timestamptz(6)
+  consumedAt                      DateTime?                     @db.Timestamptz(6)
+  createdAt                       DateTime                      @default(now()) @db.Timestamptz(6)
+  environment                     Environment                   @relation(fields: [environmentId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  identityProviderConfiguration   IdentityProviderConfiguration @relation(fields: [identityProviderConfigurationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  tenant                          Tenant                        @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([identityProviderConfigurationId], map: "idx_federation_transactions_provider")
+  @@index([tenantId], map: "idx_federation_transactions_tenant")
+  @@map("federation_transactions")
+  @@schema("identity")
+}
+
+model IdentityEvent {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  eventType     String   @db.VarChar
+  source        String   @default("identity-adapter") @db.VarChar
+  principalId   String?  @db.Uuid
+  actorId       String?  @db.Uuid
+  tenantId      String?  @db.Uuid
+  correlationId String?  @db.Uuid
+  data          Json     @default("{}")
+  occurredAt    DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([principalId], map: "idx_identity_events_principal")
+  @@index([eventType], map: "idx_identity_events_type")
+  @@map("identity_events")
+  @@schema("identity")
+}
+
+/// Carries database check constraints managed in migration SQL.
+model IdentityProviderConfiguration {
+  id                      String                          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenantId                String                          @db.Uuid
+  environmentId           String                          @db.Uuid
+  name                    String                          @db.VarChar(160)
+  protocol                String                          @db.VarChar
+  status                  String                          @default("DRAFT") @db.VarChar
+  issuer                  String
+  clientId                String?                         @db.VarChar
+  clientSecretRef         String?                         @db.VarChar
+  oidcClientAuthMethod    String?                         @db.VarChar
+  oidcMetadata            Json?
+  oidcSigningAlgorithm    String?                         @db.VarChar
+  samlEntryPoint          String?
+  samlIdpCertificates     Json                            @default("[]")
+  samlSpEntityId          String?                         @db.VarChar
+  samlSpPrivateKeyRef     String?                         @db.VarChar
+  samlSpPublicCertificate String?
+  emailClaim              String                          @default("email") @db.VarChar
+  displayNameClaim        String                          @default("name") @db.VarChar
+  groupsClaim             String?                         @db.VarChar
+  mfaClaimValues          Json                            @default("[]")
+  requireMfa              Boolean                         @default(false)
+  allowedClockSkewMs      Int                             @default(120000)
+  metadataHash            String?                         @db.VarChar
+  metadataValidatedAt     DateTime?                       @db.Timestamptz(6)
+  createdByPrincipalId    String                          @db.Uuid
+  updatedByPrincipalId    String                          @db.Uuid
+  createdAt               DateTime                        @default(now()) @db.Timestamptz(6)
+  updatedAt               DateTime                        @default(now()) @updatedAt @db.Timestamptz(6)
+  tenantBindings          ExternalIdentityTenantBinding[]
+  federationTransactions  FederationTransaction[]
+  createdBy               Principal                       @relation("IdentityProviderCreatedBy", fields: [createdByPrincipalId], references: [id], onUpdate: NoAction)
+  environment             Environment                     @relation(fields: [environmentId], references: [id], onUpdate: NoAction)
+  tenant                  Tenant                          @relation(fields: [tenantId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  updatedBy               Principal                       @relation("IdentityProviderUpdatedBy", fields: [updatedByPrincipalId], references: [id], onUpdate: NoAction)
+
+  @@unique([tenantId, name])
+  @@index([tenantId], map: "idx_identity_provider_config_tenant")
+  @@map("identity_provider_configurations")
+  @@schema("identity")
+}
+
+model PolicyAcceptance {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  principalId      String   @db.Uuid
+  policyDocumentId String   @db.Uuid
+  ipAddress        String?  @db.VarChar
+  userAgent        String?
+  acceptedAt       DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("policy_acceptances")
+  @@schema("identity")
+}
+
+model PolicyDocument {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  kind        String   @db.VarChar
+  version     String   @db.VarChar
+  publishedAt DateTime @db.Timestamptz(6)
+  contentHash String   @db.VarChar
+  active      Boolean  @default(true)
+
+  @@unique([kind, version])
+  @@map("policy_documents")
+  @@schema("identity")
+}
+
+model RecoveryGrant {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  principalId String    @db.Uuid
+  tokenHash   String
+  expiresAt   DateTime  @db.Timestamptz(6)
+  consumedAt  DateTime? @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@map("recovery_grants")
+  @@schema("identity")
+}
+
+model SamlRequestCache {
+  keyHash   String   @id @db.VarChar
+  value     String
+  expiresAt DateTime @db.Timestamptz(6)
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+
+  @@map("saml_request_cache")
+  @@schema("identity")
+}
+
+/// Carries database check constraints managed in migration SQL.
+model Session {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  principalId          String    @db.Uuid
+  assurance            String    @default("PASSWORD") @db.VarChar
+  refreshTokenHash     String
+  familyId             String    @db.Uuid
+  deviceName           String?   @db.VarChar
+  ipAddress            String?   @db.VarChar
+  userAgent            String?
+  expiresAt            DateTime  @db.Timestamptz(6)
+  absoluteExpiresAt    DateTime  @db.Timestamptz(6)
+  revokedAt            DateTime? @db.Timestamptz(6)
+  revokedReason        String?   @db.VarChar
+  createdAt            DateTime  @default(now()) @db.Timestamptz(6)
+  tenantId             String?   @db.Uuid
+  membershipId         String?   @db.Uuid
+  environmentId        String?   @db.Uuid
+  region               String?   @db.VarChar
+  authenticationMethod String?   @db.VarChar
+  issuer               String?
+  policyVersion        String    @default("iam-policy-1.0.0") @db.VarChar
+  riskState            String    @default("NORMAL") @db.VarChar
+  state                String    @default("ACTIVE") @db.VarChar
+
+  @@index([familyId], map: "idx_sessions_family")
+  @@index([membershipId], map: "idx_sessions_membership")
+  @@index([principalId], map: "idx_sessions_principal")
+  @@index([tenantId], map: "idx_sessions_tenant")
+  @@map("sessions")
+  @@schema("identity")
+}
+
+model VerificationChallenge {
+  id               String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  principalId      String    @db.Uuid
+  purpose          String    @db.VarChar
+  destination      String    @db.VarChar
+  secretHash       String
+  attemptCount     Int       @default(0)
+  maxAttempts      Int       @default(5)
+  resendAfter      DateTime  @db.Timestamptz(6)
+  expiresAt        DateTime  @db.Timestamptz(6)
+  consumedAt       DateTime? @db.Timestamptz(6)
+  status           String    @default("PENDING") @db.VarChar
+  correlationId    String    @db.Uuid
+  requestIp        String?   @db.VarChar
+  requestUserAgent String?
+  createdAt        DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([principalId], map: "idx_verification_challenges_principal")
+  @@map("verification_challenges")
+  @@schema("identity")
+}
+
+model WebauthnChallenge {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  principalId String?   @db.Uuid
+  purpose     String    @db.VarChar
+  challenge   String
+  expiresAt   DateTime  @db.Timestamptz(6)
+  consumedAt  DateTime? @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([challenge], map: "webauthn_challenges_lookup")
+  @@index([principalId], map: "webauthn_challenges_principal")
+  @@map("webauthn_challenges")
+  @@schema("identity")
+}
+
+model WebauthnCredential {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  principalId  String    @db.Uuid
+  credentialId String    @unique
+  publicKeyPem String
+  signCount    BigInt    @default(0)
+  label        String?   @db.VarChar
+  transports   String?   @db.VarChar
+  lastUsedAt   DateTime? @db.Timestamptz(6)
+  revokedAt    DateTime? @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(6)
+
+  @@index([principalId], map: "webauthn_credentials_principal")
+  @@map("webauthn_credentials")
+  @@schema("identity")
+}

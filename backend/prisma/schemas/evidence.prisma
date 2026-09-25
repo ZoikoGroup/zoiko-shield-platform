@@ -1,0 +1,96 @@
+// PostgreSQL schema "evidence". evidence module.
+
+model EvidenceRecord {
+  id                       String    @id @default(uuid())
+  tenant_id                String
+  environment_id           String    @default("default-env")
+  legal_entity_id          String?
+  region                   String    @default("unspecified")
+  evidence_type            String
+  producing_service        String
+  source_system_id         String
+  source_object_id         String
+  collector_id             String?
+  collector_version        String?
+  source_observed_at       DateTime?
+  received_at              DateTime  @default(now())
+  period_start             DateTime?
+  period_end               DateTime?
+  purpose                  String
+  data_class               String    @default("INTERNAL")
+  content_hash             String
+  hash_algorithm           String    @default("SHA-256")
+  canonicalization_profile String    @default("zs-json-v1")
+  media_type               String    @default("application/json")
+  size_bytes               Int?
+  vault_reference          String?
+  integrity_state          String    @default("PENDING")
+  freshness_state          String    @default("CURRENT")
+  completeness_state       String    @default("UNKNOWN")
+  retention_profile        String    @default("STANDARD")
+  superseded_by_id         String?
+  created_at               DateTime  @default(now())
+
+  /// Manual evidence must never be indistinguishable from automated
+  /// collection: an uploader identity, a stated reason and a review flag are
+  /// mandatory for anything a human hands in (ZS-ENG-EVID-001 §08).
+  collection_method      String    @default("AUTOMATED")
+  uploader_identity      String?
+  upload_reason          String?
+  manual_review_required Boolean   @default(false)
+  manual_reviewed_by     String?
+  manual_reviewed_at     DateTime?
+  expires_at             DateTime?
+
+  /// Binds the artifact hash to the collector that produced it (§10). The
+  /// private key never lands here — only the key id, resolvable to a public
+  /// key in SigningKey.
+  collector_signature      String?
+  collector_signing_key_id String?
+  collector_nonce          String?
+
+  caseLinks     CaseEvidence[]
+  alertLinks    AlertEvidence[]
+  ledgerEntries EvidenceLedgerEntry[]
+
+  @@index([tenant_id])
+  @@index([source_system_id])
+
+  @@schema("evidence")
+}
+
+model EvidenceLineage {
+  id                     String   @id @default(uuid())
+  tenant_id              String
+  evidence_id            String
+  parent_evidence_id     String
+  relationship           String
+  transformation_type    String?
+  transformation_version String?
+  created_at             DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([evidence_id])
+  @@index([parent_evidence_id])
+
+  @@schema("evidence")
+}
+
+model EvidenceLedgerEntry {
+  id                       String         @id @default(uuid())
+  tenant_id                String
+  sequence                 Int
+  evidence_id              String
+  evidence                 EvidenceRecord @relation(fields: [evidence_id], references: [id])
+  previous_entry_hash      String?
+  entry_hash               String
+  entry_metadata           String         @default("{}")
+  canonicalization_profile String         @default("zs-ledger-v1")
+  created_at               DateTime       @default(now())
+
+  @@unique([tenant_id, sequence])
+  @@index([tenant_id])
+  @@index([evidence_id])
+
+  @@schema("evidence")
+}

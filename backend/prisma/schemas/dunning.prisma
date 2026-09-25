@@ -1,0 +1,44 @@
+// PostgreSQL schema "dunning". dunning module.
+
+// ============================================================
+// ZS-COM-BILL-001 P0.4 Part 18: dunning engine. Policy-driven, versioned,
+// fail-closed — no hardcoded grace/restriction/suspension timings.
+// Deliberately has zero knowledge of evidence/incidents/exports: payment
+// failure must never be able to touch those domains from here.
+// ============================================================
+
+model DunningPolicy {
+  id                   String    @id @default(uuid())
+  policy_key           String
+  version              Int       @default(1)
+  grace_period_days    Int       @default(7)
+  restrict_after_days  Int       @default(14)
+  suspend_after_days   Int       @default(30)
+  terminate_after_days Int       @default(60)
+  status               String    @default("DRAFT")
+  approved_by          String?
+  approved_at          DateTime?
+  created_at           DateTime  @default(now())
+
+  @@unique([policy_key, version])
+  @@index([status])
+
+  @@schema("dunning")
+}
+
+model DunningCase {
+  id                String    @id @default(uuid())
+  contract_id       String
+  dunning_policy_id String
+  status            String    @default("ACTIVE")
+  triggered_at      DateTime  @default(now())
+  last_action_at    DateTime  @default(now())
+  resolved_at       DateTime?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  @@index([contract_id])
+  @@index([status])
+
+  @@schema("dunning")
+}

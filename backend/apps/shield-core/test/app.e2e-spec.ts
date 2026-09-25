@@ -58,6 +58,32 @@ class AllowAuthorizedGuard implements CanActivate {
   }
 }
 
+const neutralDelegate = () => ({
+  findUnique: jest.fn().mockResolvedValue(null),
+  findFirst: jest.fn().mockResolvedValue(null),
+  findMany: jest.fn().mockResolvedValue([]),
+  count: jest.fn().mockResolvedValue(0),
+  create: jest
+    .fn()
+    .mockImplementation(({ data }) =>
+      Promise.resolve({ id: 'generated-id', ...data }),
+    ),
+  createMany: jest.fn().mockResolvedValue({ count: 0 }),
+  update: jest
+    .fn()
+    .mockImplementation(({ data }) =>
+      Promise.resolve({ id: 'generated-id', ...data }),
+    ),
+  updateMany: jest.fn().mockResolvedValue({ count: 0 }),
+  upsert: jest
+    .fn()
+    .mockImplementation(({ create }) =>
+      Promise.resolve({ id: 'generated-id', ...create }),
+    ),
+  delete: jest.fn().mockResolvedValue({}),
+  deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+});
+
 describe('ShieldCore Application Endpoints (e2e)', () => {
   let app: INestApplication;
   let prismaMock: any;
@@ -251,6 +277,15 @@ describe('ShieldCore Application Endpoints (e2e)', () => {
       },
       $transaction: jest.fn().mockImplementation((cb) => cb(prismaMock)),
     };
+    // Delegates this suite does not stub (identity, tenant and authorization
+    // moved from TypeORM to Prisma, and their startup seeding now runs through
+    // this mock) answer with neutral defaults instead of being undefined.
+    prismaMock = new Proxy(prismaMock, {
+      get: (target, key: string) =>
+        key in target || key.startsWith('$') || key === 'then'
+          ? target[key]
+          : (target[key] = neutralDelegate()),
+    });
 
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [ShieldCoreModule],

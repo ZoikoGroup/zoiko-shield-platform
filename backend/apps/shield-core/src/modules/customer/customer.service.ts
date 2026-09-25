@@ -1,23 +1,21 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Customer } from './customer.entity';
+import { PrismaService } from '../../prisma/prisma.service';
+import type { Customer } from './customer.entity';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
 
 @Injectable()
 export class CustomerService {
-  constructor(
-    @InjectRepository(Customer)
-    private readonly customerRepository: Repository<Customer>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
-  findAllForTenant(tenantId: string): Promise<Customer[]> {
-    return this.customerRepository.find({ where: { tenantId } });
+  async findAllForTenant(tenantId: string): Promise<Customer[]> {
+    return (await this.prisma.customer.findMany({
+      where: { tenantId },
+    })) as Customer[];
   }
 
   async findOne(tenantId: string, id: string): Promise<Customer> {
-    const item = await this.customerRepository.findOne({
+    const item = await this.prisma.customer.findFirst({
       where: { id, tenantId },
     });
     if (!item) {
@@ -25,13 +23,18 @@ export class CustomerService {
         `Customer ${id} not found for tenant ${tenantId}`,
       );
     }
-    return item;
+    return item as Customer;
   }
 
-  create(tenantId: string, dto: CreateCustomerDto): Promise<Customer> {
-    return this.customerRepository.save(
-      this.customerRepository.create({ tenantId, ...dto }),
-    );
+  async create(tenantId: string, dto: CreateCustomerDto): Promise<Customer> {
+    return (await this.prisma.customer.create({
+      data: {
+        tenantId,
+        partyId: dto.partyId,
+        customerType: dto.customerType,
+        segment: dto.segment,
+      },
+    })) as Customer;
   }
 
   async update(
@@ -40,12 +43,22 @@ export class CustomerService {
     dto: UpdateCustomerDto,
   ): Promise<Customer> {
     const item = await this.findOne(tenantId, id);
-    Object.assign(item, dto);
-    return this.customerRepository.save(item);
+    return (await this.prisma.customer.update({
+      where: { id: item.id },
+      data: {
+        partyId: dto.partyId,
+        customerType: dto.customerType,
+        lifecycleStatus: dto.lifecycleStatus,
+        kycStatus: dto.kycStatus,
+        segment: dto.segment,
+      },
+    })) as Customer;
   }
 
   async remove(tenantId: string, id: string): Promise<void> {
     const item = await this.findOne(tenantId, id);
-    await this.customerRepository.remove(item);
+    await this.prisma.customer.deleteMany({
+      where: { id: item.id, tenantId },
+    });
   }
 }

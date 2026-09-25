@@ -1,0 +1,84 @@
+// PostgreSQL schema "action". shield-action service: signed action commands, receipts and reconciliation.
+
+// --- shield-action-owned ---
+model ActionCommand {
+  id                      String   @id @default(uuid())
+  tenant_id               String
+  environment_id          String
+  proposal_id             String
+  action_type             String
+  target                  String   @default("{}")
+  authority_level         String   @default("R1")
+  approval_refs           String   @default("[]")
+  policy_version          String   @default("1.0")
+  nonce                   String   @unique
+  expires_at              DateTime
+  rate_class              String   @default("DEFAULT")
+  expected_receipt_schema String?
+  signature               String?
+  correlation_id          String
+  created_at              DateTime @default(now())
+
+  receipts ActionReceipt[]
+
+  @@index([tenant_id])
+  @@index([proposal_id])
+
+  @@schema("action")
+}
+
+model ActionReceipt {
+  id                  String        @id @default(uuid())
+  tenant_id           String
+  action_command_id   String
+  actionCommand       ActionCommand @relation(fields: [action_command_id], references: [id])
+  provider            String        @default("SIMULATION")
+  provider_receipt_id String?
+  status              String // ACCEPTED | EXECUTED | VERIFIED | FAILED | PARTIALLY_EXECUTED | UNKNOWN | SIMULATED
+  accepted_at         DateTime?
+  executed_at         DateTime?
+  verified_at         DateTime?
+  observed_state      String        @default("{}")
+  error_code          String?
+  signature_verified  Boolean?
+  correlation_id      String
+  created_at          DateTime      @default(now())
+
+  reconciliations ActionReconciliation[]
+
+  @@index([tenant_id])
+  @@index([action_command_id])
+
+  @@schema("action")
+}
+
+model ActionReconciliation {
+  id                String         @id @default(uuid())
+  tenant_id         String
+  action_command_id String
+  action_receipt_id String?
+  actionReceipt     ActionReceipt? @relation(fields: [action_receipt_id], references: [id])
+  expected_state    String         @default("{}")
+  observed_state    String         @default("{}")
+  result            String // VERIFIED | FAILED | UNKNOWN
+  checked_at        DateTime       @default(now())
+  evidence_ref      String?
+
+  @@index([tenant_id])
+  @@index([action_command_id])
+
+  @@schema("action")
+}
+
+model ActionRateLimit {
+  id           String @id @default(uuid())
+  tenant_id    String
+  action_type  String
+  target_class String @default("DEFAULT")
+  window       String @default("1h")
+  maximum      Int    @default(10)
+
+  @@unique([tenant_id, action_type, target_class, window])
+
+  @@schema("action")
+}

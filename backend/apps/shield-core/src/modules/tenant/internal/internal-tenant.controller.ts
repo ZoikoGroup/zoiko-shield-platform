@@ -5,9 +5,7 @@ import {
   NotFoundException,
   UseGuards,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Tenant } from '../tenant.entity';
+import { PrismaService } from '../../../prisma/prisma.service';
 import { InternalAuthGuard } from '../../../internal-client/internal-auth.guard';
 
 export interface TenantResidencyContext {
@@ -19,23 +17,20 @@ export interface TenantResidencyContext {
 
 /**
  * shield-ingest's ONLY window into the tenant record. Residency is decided
- * once at onboarding and lives in shield-core's TypeORM `tenant.tenants`
- * table, which has no Prisma model — a satellite cannot read it locally and
- * must not infer it from a client-supplied request field.
+ * once at onboarding and lives in shield-core's `tenant.tenants` table, which
+ * shield-core owns — a satellite cannot read it locally and must not infer it
+ * from a client-supplied request field.
  */
 @Controller('internal/v1/tenants')
 @UseGuards(InternalAuthGuard)
 export class InternalTenantController {
-  constructor(
-    @InjectRepository(Tenant)
-    private readonly tenantRepository: Repository<Tenant>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   @Get(':tenantId/residency')
   async getResidency(
     @Param('tenantId') tenantId: string,
   ): Promise<{ data: TenantResidencyContext }> {
-    const tenant = await this.tenantRepository.findOne({
+    const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
       select: {
         id: true,

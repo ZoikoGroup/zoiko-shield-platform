@@ -1,0 +1,111 @@
+// PostgreSQL schema "notification". notification module.
+
+// --- shield-core-owned: notification ---
+model NotificationPolicy {
+  id                       String   @id @default(uuid())
+  key                      String   @unique
+  event_type               String
+  audience_type            String
+  severity                 String?
+  mandatory                Boolean  @default(false)
+  allowed_channels         String   @default("[]")
+  acknowledgement_required Boolean  @default(false)
+  escalation_policy        String?
+  version                  Int      @default(1)
+  status                   String   @default("ACTIVE")
+  created_at               DateTime @default(now())
+
+  @@schema("notification")
+}
+
+model NotificationTemplate {
+  id               String    @id @default(uuid())
+  key              String
+  channel          String
+  locale           String    @default("en-US")
+  version          Int
+  subject_template String?
+  body_template    String
+  status           String    @default("DRAFT")
+  published_at     DateTime?
+  created_at       DateTime  @default(now())
+
+  @@unique([key, channel, locale, version])
+
+  @@schema("notification")
+}
+
+model NotificationPreference {
+  id                     String   @id @default(uuid())
+  tenant_id              String
+  principal_id           String
+  notification_policy_id String
+  channel                String
+  enabled                Boolean  @default(true)
+  quiet_hours            String?
+  locale                 String?
+  created_at             DateTime @default(now())
+  updated_at             DateTime @updatedAt
+
+  @@unique([tenant_id, principal_id, notification_policy_id, channel])
+
+  @@schema("notification")
+}
+
+model NotificationChannelConfig {
+  id                String   @id @default(uuid())
+  tenant_id         String
+  channel_type      String // IN_APP|EMAIL
+  enabled           Boolean  @default(true)
+  configuration_ref String?
+  status            String   @default("ACTIVE")
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+
+  @@unique([tenant_id, channel_type])
+
+  @@schema("notification")
+}
+
+// Idempotency key = eventId + recipientPrincipalId + channel + notificationPolicyVersion (spec §18).
+model NotificationDelivery {
+  id                     String    @id @default(uuid())
+  tenant_id              String
+  event_id               String
+  policy_id              String
+  policy_version         Int
+  recipient_principal_id String
+  channel                String
+  template_version       Int
+  status                 String    @default("PENDING") // PENDING|PROCESSING|DELIVERED|FAILED|DEAD_LETTERED|CANCELLED
+  attempt_count          Int       @default(0)
+  first_attempt_at       DateTime?
+  last_attempt_at        DateTime?
+  delivered_at           DateTime?
+  error_code             String?
+  correlation_id         String
+  created_at             DateTime  @default(now())
+
+  acknowledgements NotificationAcknowledgement[]
+
+  @@unique([event_id, recipient_principal_id, channel, policy_version])
+  @@index([tenant_id])
+
+  @@schema("notification")
+}
+
+model NotificationAcknowledgement {
+  id                       String               @id @default(uuid())
+  tenant_id                String
+  notification_delivery_id String
+  delivery                 NotificationDelivery @relation(fields: [notification_delivery_id], references: [id])
+  principal_id             String
+  acknowledgement_type     String // SEEN|ACKNOWLEDGED|ACCEPTED|DECLINED
+  acknowledged_at          DateTime             @default(now())
+  correlation_id           String
+
+  @@index([tenant_id])
+  @@index([notification_delivery_id])
+
+  @@schema("notification")
+}

@@ -1,22 +1,12 @@
 import 'dotenv/config';
-import 'reflect-metadata';
 import * as bcrypt from 'bcrypt';
-import { Client } from 'pg';
-import { DataSource } from 'typeorm';
-import { Principal } from '../apps/shield-core/src/modules/identity-adapter/principal.entity';
-import { LocalCredential } from '../apps/shield-core/src/modules/identity-adapter/local-credential.entity';
-import { ExternalIdentity } from '../apps/shield-core/src/modules/identity-adapter/external-identity.entity';
-import { Session } from '../apps/shield-core/src/modules/identity-adapter/session.entity';
-import { VerificationChallenge } from '../apps/shield-core/src/modules/identity-adapter/verification-challenge.entity';
-import { RecoveryGrant } from '../apps/shield-core/src/modules/identity-adapter/recovery-grant.entity';
-import { PolicyDocument } from '../apps/shield-core/src/modules/identity-adapter/policy-document.entity';
-import { PolicyAcceptance } from '../apps/shield-core/src/modules/identity-adapter/policy-acceptance.entity';
-import { IdentityEvent } from '../apps/shield-core/src/modules/identity-adapter/identity-event.entity';
-import { Permission } from '../apps/shield-core/src/modules/authorization/entities/permission.entity';
-import { Role } from '../apps/shield-core/src/modules/authorization/entities/role.entity';
-import { TenantMembership } from '../apps/shield-core/src/modules/authorization/entities/tenant-membership.entity';
-import { Invitation } from '../apps/shield-core/src/modules/authorization/entities/invitation.entity';
-import { PLATFORM_SCOPE, PERMISSION_CODES } from '../apps/shield-core/src/modules/authorization/constants';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaClient } from '@prisma/client';
+import {
+  PLATFORM_SCOPE,
+  PERMISSION_CODES,
+} from '../apps/shield-core/src/modules/authorization/constants';
+import { TenantScopedPool } from '../libs/database/src';
 
 async function main() {
   const email = process.argv[2] || 'user@example.com';
@@ -27,110 +17,81 @@ async function main() {
     process.exit(1);
   }
 
-  const databaseUrl = process.env.DATABASE_URL || 'postgres://shield:shield@localhost:5433/shield_core';
+  const databaseUrl =
+    process.env.DATABASE_URL ||
+    'postgres://shield:shield@localhost:5433/shield_core';
 
-  // Ensure schemas exist before TypeORM initializes
-  const pgClient = new Client({
+  // Built the same way as the app's PrismaService. This is an operator tool
+  // that acts across tenants (it writes the PLATFORM_SCOPE membership). It
+  // never creates or alters schema: identity and authorization tables come
+  // only from prisma/migrations, never as a side effect of seeding.
+  const pool = new TenantScopedPool({
     connectionString: databaseUrl,
-    ssl: databaseUrl.includes('sslmode=require') ? { rejectUnauthorized: false } : false,
+    ssl: databaseUrl.includes('sslmode=require')
+      ? { rejectUnauthorized: false }
+      : false,
   });
-  await pgClient.connect();
-  await pgClient.query('CREATE SCHEMA IF NOT EXISTS "identity"');
-  await pgClient.query('CREATE SCHEMA IF NOT EXISTS "authorization"');
-  await pgClient.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
-  await pgClient.end();
+  const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
-  const dataSource = new DataSource({
-    type: 'postgres',
-    url: databaseUrl,
-    entities: [
-      Principal,
-      LocalCredential,
-      ExternalIdentity,
-      Session,
-      VerificationChallenge,
-      RecoveryGrant,
-      PolicyDocument,
-      PolicyAcceptance,
-      IdentityEvent,
-      Permission,
-      Role,
-      TenantMembership,
-      Invitation,
-    ],
-    // Never true. This seeder ran with synchronize on for a long time, and
-    // because its entity list is only a subset of the app's, TypeORM quietly
-    // reshaped whatever database it was pointed at: it created
-    // authorization.jit_elevation_requests and the tenant_memberships
-    // elevation columns that no migration contains, and rewrote joinedAt from
-    // timestamptz to a naive timestamp. That is why development worked while
-    // a freshly migrated database did not. Schema changes belong in
-    // typeorm-migrations/, which `npm run check:schema-drift` verifies.
-    synchronize: false,
-    ssl: databaseUrl.includes('sslmode=require') ? { rejectUnauthorized: false } : false,
-  });
-
-  await dataSource.initialize();
-
-  const [{ present }] = await dataSource.query(
-    `SELECT to_regclass('"authorization".tenant_memberships') IS NOT NULL AS present`,
-  );
+  const [{ present }] = await prisma.$queryRaw<{ present: boolean }[]>`
+    SELECT to_regclass('"authorization".tenant_memberships') IS NOT NULL AS present`;
   if (!present) {
     throw new Error(
-      'The identity/authorization tables do not exist. Run `npm run migrate:typeorm` before seeding — this script no longer creates them as a side effect.',
+      'The identity/authorization tables do not exist. Run `npm run migrate:deploy` before seeding — this script does not create them as a side effect.',
     );
   }
 
-  const principalRepo = dataSource.getRepository(Principal);
-  const localCredRepo = dataSource.getRepository(LocalCredential);
-  const permissionRepo = dataSource.getRepository(Permission);
-  const roleRepo = dataSource.getRepository(Role);
-  const membershipRepo = dataSource.getRepository(TenantMembership);
-
-  let principal = await principalRepo.findOne({ where: { email } });
+  let principal = await prisma.principal.findUnique({ where: { email } });
 
   if (!principal) {
     const passwordHash = await bcrypt.hash(password, 10);
-    principal = await principalRepo.save(
-      principalRepo.create({
+    principal = await prisma.principal.create({
+      data: {
         principalType: 'HUMAN',
         source: 'LOCAL',
         email,
         fullName: 'Super Admin',
         emailVerified: true,
         status: 'ACTIVE',
-      }),
-    );
-    await localCredRepo.save(
-      localCredRepo.create({
+      },
+    });
+    await prisma.localCredential.create({
+      data: {
         principalId: principal.id,
         passwordHash,
         passwordUpdatedAt: new Date(),
-      }),
-    );
+      },
+    });
     console.log(`Created new Super Admin principal for ${email}`);
   } else {
-    principal.emailVerified = true;
-    principal.status = 'ACTIVE';
-    await principalRepo.save(principal);
+    principal = await prisma.principal.update({
+      where: { id: principal.id },
+      data: { emailVerified: true, status: 'ACTIVE' },
+    });
 
     if (password) {
       const passwordHash = await bcrypt.hash(password, 10);
-      let cred = await localCredRepo.findOne({ where: { principalId: principal.id } });
+      const cred = await prisma.localCredential.findUnique({
+        where: { principalId: principal.id },
+      });
       if (!cred) {
-        await localCredRepo.save(
-          localCredRepo.create({
+        await prisma.localCredential.create({
+          data: {
             principalId: principal.id,
             passwordHash,
             passwordUpdatedAt: new Date(),
-          }),
-        );
+          },
+        });
       } else {
-        cred.passwordHash = passwordHash;
-        cred.passwordUpdatedAt = new Date();
-        cred.failedAttempts = 0;
-        cred.lockedUntil = null;
-        await localCredRepo.save(cred);
+        await prisma.localCredential.update({
+          where: { id: cred.id },
+          data: {
+            passwordHash,
+            passwordUpdatedAt: new Date(),
+            failedAttempts: 0,
+            lockedUntil: null,
+          },
+        });
       }
       console.log(`Updated credentials for existing principal ${email}`);
     }
@@ -139,51 +100,77 @@ async function main() {
   const codes = Object.values(PERMISSION_CODES);
   const permissions = [];
   for (const code of codes) {
-    let permission = await permissionRepo.findOne({ where: { code } });
+    let permission = await prisma.permission.findUnique({ where: { code } });
     if (!permission) {
-      permission = await permissionRepo.save(permissionRepo.create({ code }));
+      permission = await prisma.permission.create({ data: { code } });
       console.log(`Created permission ${code}`);
     }
     permissions.push(permission);
   }
+  const permissionIds = permissions.map((p) => p.id);
 
-  let role = await roleRepo.findOne({ where: { code: 'PLATFORM_SUPER_ADMIN' }, relations: { permissions: true } });
+  let role = await prisma.role.findFirst({
+    where: { code: 'PLATFORM_SUPER_ADMIN' },
+  });
   if (!role) {
-    role = await roleRepo.save(
-      roleRepo.create({
+    role = await prisma.role.create({
+      data: {
         tenantId: null,
         code: 'PLATFORM_SUPER_ADMIN',
         name: 'Platform Super Admin',
         roleLevel: 'PLATFORM',
-        permissions,
-      }),
-    );
+        permissions: {
+          create: permissionIds.map((permission_id) => ({ permission_id })),
+        },
+      },
+    });
     console.log('Created role PLATFORM_SUPER_ADMIN');
   } else {
-    role.permissions = permissions;
-    await roleRepo.save(role);
+    // The role's permission set becomes exactly the current PERMISSION_CODES:
+    // grants no longer in the catalogue are dropped, missing ones are added.
+    const roleId = role.id;
+    await prisma.$transaction([
+      prisma.rolePermission.deleteMany({
+        where: { role_id: roleId, permission_id: { notIn: permissionIds } },
+      }),
+      prisma.rolePermission.createMany({
+        data: permissionIds.map((permission_id) => ({
+          role_id: roleId,
+          permission_id,
+        })),
+        skipDuplicates: true,
+      }),
+    ]);
   }
 
-  let membership = await membershipRepo.findOne({
-    where: { tenantId: PLATFORM_SCOPE, principalId: principal.id },
-    relations: { roles: true },
+  let membership = await prisma.tenantMembership.findUnique({
+    where: {
+      tenantId_principalId: {
+        tenantId: PLATFORM_SCOPE,
+        principalId: principal.id,
+      },
+    },
   });
   if (!membership) {
-    membership = membershipRepo.create({
-      tenantId: PLATFORM_SCOPE,
-      principalId: principal.id,
-      status: 'ACTIVE',
-      source: 'BOOTSTRAP',
-      roles: [],
+    membership = await prisma.tenantMembership.create({
+      data: {
+        tenantId: PLATFORM_SCOPE,
+        principalId: principal.id,
+        status: 'ACTIVE',
+        source: 'BOOTSTRAP',
+      },
     });
   }
-  if (!membership.roles.some((r) => r.id === role.id)) {
-    membership.roles.push(role);
-  }
-  await membershipRepo.save(membership);
+  await prisma.userRole.createMany({
+    data: [{ membership_id: membership.id, role_id: role.id }],
+    skipDuplicates: true,
+  });
 
-  console.log(`SUCCESS: ${email} is now a PLATFORM_SUPER_ADMIN with password set.`);
-  await dataSource.destroy();
+  console.log(
+    `SUCCESS: ${email} is now a PLATFORM_SUPER_ADMIN with password set.`,
+  );
+  await prisma.$disconnect();
+  await pool.end();
 }
 
 main().catch((err) => {

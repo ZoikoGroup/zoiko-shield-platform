@@ -1,0 +1,27 @@
+// PostgreSQL schema "cost_records". cost-records module.
+
+// ============================================================
+// ZS-COM-BILL-001 P1 Part 26: internal unit economics. Never automatically
+// exposed as customer price — used for margin analysis / approval gating.
+// ============================================================
+
+model CostRecord {
+  id                String   @id @default(uuid())
+  tenant_id         String?
+  usage_class       String
+  provider          String
+  period_start      DateTime
+  period_end        DateTime
+  quantity          Decimal  @default(0) @db.Decimal(14, 4)
+  unit_cost         Decimal  @default(0) @db.Decimal(14, 6)
+  total_cost        Decimal  @default(0) @db.Decimal(14, 4)
+  allocation_method String   @default("DIRECT")
+  source            String
+  created_at        DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([usage_class])
+  @@index([period_start])
+
+  @@schema("cost_records")
+}

@@ -1,0 +1,95 @@
+// PostgreSQL schema "alert". alert module.
+
+model Alert {
+  id                      String    @id @default(uuid())
+  tenant_id               String
+  environment_id          String    @default("default-env")
+  region                  String    @default("unspecified")
+  detection_definition_id String
+  detection_version_id    String
+  detection_match_id      String
+  title                   String
+  description             String?
+  severity                String    @default("HIGH")
+  priority                String    @default("P2")
+  confidence              Float     @default(0.9)
+  status                  String    @default("NEW")
+  source_event_ids        String    @default("[]")
+  affected_assets         String    @default("[]")
+  affected_identities     String    @default("[]")
+  primary_identity_id     String?
+  primary_asset_id        String?
+  context_snapshot_id     String?
+  incomplete_data         Boolean   @default(false)
+  coverage_state          String    @default("UNKNOWN")
+  assigned_to             String?
+  assigned_queue          String?
+  correlation_id          String?
+  created_by              String    @default("system")
+  acknowledged_at         DateTime?
+  resolved_at             DateTime?
+  created_at              DateTime  @default(now())
+  updated_at              DateTime  @updatedAt
+
+  assignments AlertAssignment[]
+
+  @@unique([tenant_id, detection_match_id])
+  @@index([tenant_id])
+  @@index([status])
+  @@index([severity])
+
+  @@schema("alert")
+}
+
+model AlertAssignment {
+  id           String   @id @default(uuid())
+  tenant_id    String
+  alert_id     String
+  alert        Alert    @relation(fields: [alert_id], references: [id])
+  queue_id     String?
+  principal_id String?
+  assigned_by  String
+  assigned_at  DateTime @default(now())
+  reason       String?
+
+  @@index([tenant_id])
+  @@index([alert_id])
+
+  @@schema("alert")
+}
+
+model AlertSuppressionRule {
+  id                      String    @id @default(uuid())
+  tenant_id               String
+  detection_definition_id String?
+  identity_id             String?
+  asset_id                String?
+  condition               String    @default("{}")
+  reason                  String
+  starts_at               DateTime  @default(now())
+  expires_at              DateTime?
+  approved_by             String
+  status                  String    @default("ACTIVE")
+  created_at              DateTime  @default(now())
+
+  @@index([tenant_id])
+  @@index([detection_definition_id])
+  @@index([status])
+
+  @@schema("alert")
+}
+
+model AlertEvidence {
+  tenant_id    String
+  alert_id     String
+  evidence_id  String
+  evidence     EvidenceRecord @relation(fields: [evidence_id], references: [id])
+  relationship String         @default("SOURCE")
+  created_at   DateTime       @default(now())
+
+  @@id([alert_id, evidence_id])
+  @@index([tenant_id])
+  @@index([evidence_id])
+
+  @@schema("alert")
+}

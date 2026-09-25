@@ -6,13 +6,12 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import type { Prisma } from '@prisma/client';
 import * as crypto from 'crypto';
-import { IsNull, LessThanOrEqual, MoreThan, Repository } from 'typeorm';
-import { JitElevationRequest } from './entities/jit-elevation-request.entity';
-import { TenantMembership } from './entities/tenant-membership.entity';
-import { Role } from './entities/role.entity';
-import { IdentityEvent } from '../identity-adapter/identity-event.entity';
+import { PrismaService } from '../../prisma/prisma.service';
+import type { JitElevationRequest } from './entities/jit-elevation-request.entity';
+import type { Role } from './entities/role.entity';
+import { MEMBERSHIP_WITH_ROLES_INCLUDE, toRole } from './prisma-mappers';
 
 export interface RequestJitElevationInput {
   superAdminPrincipalId: string;
@@ -57,16 +56,7 @@ export interface VerifyStepUpChallengeInput {
 export class JitElevationService {
   private readonly logger = new Logger(JitElevationService.name);
 
-  constructor(
-    @InjectRepository(JitElevationRequest)
-    private readonly jitRequestRepo: Repository<JitElevationRequest>,
-    @InjectRepository(TenantMembership)
-    private readonly membershipRepo: Repository<TenantMembership>,
-    @InjectRepository(Role)
-    private readonly roleRepo: Repository<Role>,
-    @InjectRepository(IdentityEvent)
-    private readonly identityEventRepo: Repository<IdentityEvent>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   /**
    * 1. Super Admin requests access to Tenant X with a stated purpose.
@@ -87,12 +77,12 @@ export class JitElevationService {
     const roleCode = input.roleCode || 'TENANT_SECURITY_ANALYST';
 
     // Check if there is already an ACTIVE elevation for this principal on this tenant
-    const existingActive = await this.jitRequestRepo.findOne({
+    const existingActive = await this.prisma.jitElevationRequest.findFirst({
       where: {
         superAdminPrincipalId: input.superAdminPrincipalId,
         targetTenantId: input.targetTenantId,
         status: 'APPROVED',
-        expiresAt: MoreThan(new Date()),
+        expiresAt: { gt: new Date() },
       },
     });
 
@@ -104,17 +94,17 @@ export class JitElevationService {
 
     const auditRef = crypto.randomBytes(16).toString('hex');
 
-    const request = this.jitRequestRepo.create({
-      superAdminPrincipalId: input.superAdminPrincipalId,
-      targetTenantId: input.targetTenantId,
-      statedPurpose: input.statedPurpose.trim(),
-      requestedDurationMinutes: durationMinutes,
-      roleCode,
-      status: 'PENDING',
-      customerVisibleAuditLogRef: auditRef,
-    });
-
-    await this.jitRequestRepo.save(request);
+    const request = (await this.prisma.jitElevationRequest.create({
+      data: {
+        superAdminPrincipalId: input.superAdminPrincipalId,
+        targetTenantId: input.targetTenantId,
+        statedPurpose: input.statedPurpose.trim(),
+        requestedDurationMinutes: durationMinutes,
+        roleCode,
+        status: 'PENDING',
+        customerVisibleAuditLogRef: auditRef,
+      },
+    })) as JitElevationRequest;
 
     // If auto-approved (for internal ops / emergency break-glass)
     if (input.isInternalAutoApproved) {
@@ -152,9 +142,7 @@ export class JitElevationService {
   async approveElevation(
     input: ApproveJitElevationInput,
   ): Promise<JitElevationRequest> {
-    const request = await this.jitRequestRepo.findOne({
-      where: { id: input.requestId },
-    });
+    const request = await this.findRequest(input.requestId);
 
     if (!request) {
       throw new NotFoundException(`JIT request '${input.requestId}' not found`);
@@ -190,68 +178,75 @@ export class JitElevationService {
     );
 
     // Look up or assign role
-    let role = await this.roleRepo.findOne({
-      where: [
-        { code: request.roleCode, tenantId: request.targetTenantId },
-        { code: request.roleCode, tenantId: IsNull() },
-      ],
+    const existingRole = await this.prisma.role.findFirst({
+      where: {
+        OR: [
+          { code: request.roleCode, tenantId: request.targetTenantId },
+          { code: request.roleCode, tenantId: null },
+        ],
+      },
     });
 
-    if (!role) {
-      // Create fallback tenant role if not seeded
-      const createdRole = this.roleRepo.create({
-        tenantId: request.targetTenantId,
-        code: request.roleCode,
-        name: 'JIT Elevated Security Analyst',
-        roleLevel: 'TENANT',
-        permissions: [],
-      });
-      role = await this.roleRepo.save(createdRole);
-    }
-
-    const assignedRole: Role = role;
+    // Create fallback tenant role if not seeded
+    const assignedRole: Role = toRole(
+      existingRole ??
+        (await this.prisma.role.create({
+          data: {
+            tenantId: request.targetTenantId,
+            code: request.roleCode,
+            name: 'JIT Elevated Security Analyst',
+            roleLevel: 'TENANT',
+          },
+        })),
+    );
 
     // 3. Create or reactivate scoped time-bound TenantMembership
-    let membership = await this.membershipRepo.findOne({
+    const membership = await this.prisma.tenantMembership.findUnique({
       where: {
-        tenantId: request.targetTenantId,
-        principalId: request.superAdminPrincipalId,
+        tenantId_principalId: {
+          tenantId: request.targetTenantId,
+          principalId: request.superAdminPrincipalId,
+        },
       },
-      relations: { roles: true },
+      include: MEMBERSHIP_WITH_ROLES_INCLUDE,
     });
 
-    if (!membership) {
-      membership = this.membershipRepo.create({
-        tenantId: request.targetTenantId,
-        principalId: request.superAdminPrincipalId,
-        status: 'ACTIVE',
-        source: 'JIT_ELEVATION',
-        expiresAt,
-        elevationPurpose: request.statedPurpose,
-        elevationApprovedBy: approverId,
-        roles: [assignedRole],
-      });
-    } else {
-      membership.status = 'ACTIVE';
-      membership.source = 'JIT_ELEVATION';
-      membership.expiresAt = expiresAt;
-      membership.elevationPurpose = request.statedPurpose;
-      membership.elevationApprovedBy = approverId;
-      if (!membership.roles?.some((r) => r.id === assignedRole.id)) {
-        membership.roles = [...(membership.roles || []), assignedRole];
-      }
-    }
-
-    const savedMembership = await this.membershipRepo.save(membership);
+    const elevation = {
+      status: 'ACTIVE',
+      source: 'JIT_ELEVATION',
+      expiresAt,
+      elevationPurpose: request.statedPurpose,
+      elevationApprovedBy: approverId,
+    };
+    const savedMembership = membership
+      ? await this.prisma.tenantMembership.update({
+          where: { id: membership.id },
+          data: {
+            ...elevation,
+            ...(membership.roles.some(
+              (userRole) => userRole.role_id === assignedRole.id,
+            )
+              ? {}
+              : { roles: { create: [{ role_id: assignedRole.id }] } }),
+          },
+        })
+      : await this.prisma.tenantMembership.create({
+          data: {
+            tenantId: request.targetTenantId,
+            principalId: request.superAdminPrincipalId,
+            ...elevation,
+            roles: { create: [{ role_id: assignedRole.id }] },
+          },
+        });
 
     // Update request state
-    request.status = 'APPROVED';
-    request.approvedByPrincipalId = approverId;
-    request.approvedAt = now;
-    request.expiresAt = expiresAt;
-    request.membershipId = savedMembership.id;
-
-    await this.jitRequestRepo.save(request);
+    const approved = await this.updateRequest(request.id, {
+      status: 'APPROVED',
+      approvedByPrincipalId: approverId,
+      approvedAt: now,
+      expiresAt,
+      membershipId: savedMembership.id,
+    });
 
     // 6. Full customer-visible audit trail
     await this.recordCustomerAuditEvent({
@@ -274,7 +269,7 @@ export class JitElevationService {
       `✔ [JIT APPROVED] Access granted for '${request.superAdminPrincipalId}' on Tenant '${request.targetTenantId}' until ${expiresAt.toISOString()} (Approved by: ${approverId})`,
     );
 
-    return request;
+    return approved;
   }
 
   /**
@@ -283,20 +278,18 @@ export class JitElevationService {
   async rejectElevation(
     input: RejectJitElevationInput,
   ): Promise<JitElevationRequest> {
-    const request = await this.jitRequestRepo.findOne({
-      where: { id: input.requestId },
-    });
+    const request = await this.findRequest(input.requestId);
 
     if (!request)
       throw new NotFoundException(`JIT request '${input.requestId}' not found`);
     if (request.status !== 'PENDING')
       throw new ConflictException(`JIT request is already ${request.status}`);
 
-    request.status = 'REJECTED';
-    request.approvedByPrincipalId = input.approverPrincipalId;
-    request.rejectionReason = input.rejectionReason;
-
-    await this.jitRequestRepo.save(request);
+    const rejected = await this.updateRequest(request.id, {
+      status: 'REJECTED',
+      approvedByPrincipalId: input.approverPrincipalId,
+      rejectionReason: input.rejectionReason,
+    });
 
     await this.recordCustomerAuditEvent({
       eventType: 'JIT_ELEVATION_REJECTED',
@@ -310,7 +303,7 @@ export class JitElevationService {
       },
     });
 
-    return request;
+    return rejected;
   }
 
   /**
@@ -319,9 +312,7 @@ export class JitElevationService {
   async revokeElevation(
     input: RevokeJitElevationInput,
   ): Promise<JitElevationRequest> {
-    const request = await this.jitRequestRepo.findOne({
-      where: { id: input.requestId },
-    });
+    const request = await this.findRequest(input.requestId);
 
     if (!request)
       throw new NotFoundException(`JIT request '${input.requestId}' not found`);
@@ -333,20 +324,21 @@ export class JitElevationService {
 
     // Invalidate the membership immediately
     if (request.membershipId) {
-      const membership = await this.membershipRepo.findOne({
+      const membership = await this.prisma.tenantMembership.findUnique({
         where: { id: request.membershipId },
       });
       if (membership) {
-        membership.status = 'REMOVED';
-        membership.expiresAt = new Date();
-        await this.membershipRepo.save(membership);
+        await this.prisma.tenantMembership.update({
+          where: { id: membership.id },
+          data: { status: 'REMOVED', expiresAt: new Date() },
+        });
       }
     }
 
-    request.status = 'REVOKED';
-    request.rejectionReason = input.revocationReason;
-
-    await this.jitRequestRepo.save(request);
+    const revoked = await this.updateRequest(request.id, {
+      status: 'REVOKED',
+      rejectionReason: input.revocationReason,
+    });
 
     await this.recordCustomerAuditEvent({
       eventType: 'JIT_ELEVATION_REVOKED',
@@ -363,7 +355,7 @@ export class JitElevationService {
     this.logger.warn(
       `⚠️ [JIT REVOKED] JIT elevation '${request.id}' revoked by '${input.revokerPrincipalId}'`,
     );
-    return request;
+    return revoked;
   }
 
   /**
@@ -374,9 +366,7 @@ export class JitElevationService {
     hardwareProofDigest: string;
     verifiedAt: string;
   }> {
-    const request = await this.jitRequestRepo.findOne({
-      where: { id: input.requestId },
-    });
+    const request = await this.findRequest(input.requestId);
 
     if (!request) {
       throw new NotFoundException(`JIT request '${input.requestId}' not found`);
@@ -426,24 +416,25 @@ export class JitElevationService {
   async sweepExpiredMemberships(): Promise<{ expiredCount: number }> {
     const now = new Date();
 
-    const expiredRequests = await this.jitRequestRepo.find({
+    const expiredRequests = await this.prisma.jitElevationRequest.findMany({
       where: {
         status: 'APPROVED',
-        expiresAt: LessThanOrEqual(now),
+        expiresAt: { lte: now },
       },
     });
 
     for (const req of expiredRequests) {
-      req.status = 'EXPIRED';
-      await this.jitRequestRepo.save(req);
+      await this.updateRequest(req.id, { status: 'EXPIRED' });
 
       if (req.membershipId) {
-        const mem = await this.membershipRepo.findOne({
+        const mem = await this.prisma.tenantMembership.findUnique({
           where: { id: req.membershipId },
         });
         if (mem && mem.status === 'ACTIVE') {
-          mem.status = 'REMOVED';
-          await this.membershipRepo.save(mem);
+          await this.prisma.tenantMembership.update({
+            where: { id: mem.id },
+            data: { status: 'REMOVED' },
+          });
         }
       }
 
@@ -474,10 +465,26 @@ export class JitElevationService {
   async getCustomerAuditTrail(
     tenantId: string,
   ): Promise<JitElevationRequest[]> {
-    return this.jitRequestRepo.find({
+    return (await this.prisma.jitElevationRequest.findMany({
       where: { targetTenantId: tenantId },
-      order: { createdAt: 'DESC' },
-    });
+      orderBy: { createdAt: 'desc' },
+    })) as JitElevationRequest[];
+  }
+
+  private async findRequest(id: string): Promise<JitElevationRequest | null> {
+    return (await this.prisma.jitElevationRequest.findUnique({
+      where: { id },
+    })) as JitElevationRequest | null;
+  }
+
+  private async updateRequest(
+    id: string,
+    data: Prisma.JitElevationRequestUpdateInput,
+  ): Promise<JitElevationRequest> {
+    return (await this.prisma.jitElevationRequest.update({
+      where: { id },
+      data,
+    })) as JitElevationRequest;
   }
 
   private async recordCustomerAuditEvent(event: {
@@ -487,13 +494,14 @@ export class JitElevationService {
     data: Record<string, any>;
   }): Promise<void> {
     try {
-      const entry = this.identityEventRepo.create({
-        eventType: event.eventType,
-        tenantId: event.tenantId,
-        actorId: event.actorId,
-        data: event.data,
+      await this.prisma.identityEvent.create({
+        data: {
+          eventType: event.eventType,
+          tenantId: event.tenantId,
+          actorId: event.actorId,
+          data: event.data as Prisma.InputJsonValue,
+        },
       });
-      await this.identityEventRepo.save(entry);
     } catch (err) {
       this.logger.warn(`Could not persist customer audit event: ${err}`);
     }

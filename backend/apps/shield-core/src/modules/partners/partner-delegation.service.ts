@@ -15,6 +15,7 @@ import {
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SessionService } from '../identity-adapter/session.service';
+import { PlatformScope } from '../../../../../libs/database/src';
 
 /** Operational-only allowlist. Commercial, pricing and entitlement authority is absent by design. */
 export const ALLOWED_DELEGATION_SCOPES = [
@@ -436,6 +437,9 @@ export class PartnerDelegationService {
     }
   }
 
+  @PlatformScope(
+    'scheduled job PartnerDelegationService.expireElapsedDelegations',
+  )
   @Cron(CronExpression.EVERY_MINUTE)
   async expireElapsedDelegations(): Promise<number> {
     return this.materializeExpiredDelegations({});

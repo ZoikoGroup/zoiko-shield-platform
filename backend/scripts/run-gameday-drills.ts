@@ -3,6 +3,7 @@ import { execFileSync } from 'child_process';
 import { createHmac, randomUUID } from 'crypto';
 import { Client } from 'pg';
 import { createWorkloadToken } from '../libs/security/src/workload-token';
+import { declarePlatformSession } from '../libs/database/src';
 
 /**
  * Game-day drills that actually break things.
@@ -67,11 +68,14 @@ function signedWebhookHeaders(
   tenantId: string,
   overrides: { nonce?: string; signature?: string; timestamp?: string } = {},
 ): Record<string, string> {
-  const timestamp = overrides.timestamp ?? Math.floor(Date.now() / 1000).toString();
+  const timestamp =
+    overrides.timestamp ?? Math.floor(Date.now() / 1000).toString();
   const nonce = overrides.nonce ?? randomUUID();
   const signature =
     overrides.signature ??
-    createHmac('sha256', SECRET).update(`${timestamp}.${nonce}.${body}`).digest('hex');
+    createHmac('sha256', SECRET)
+      .update(`${timestamp}.${nonce}.${body}`)
+      .digest('hex');
   return {
     'content-type': 'application/json',
     'x-tenant-id': tenantId,
@@ -139,13 +143,16 @@ async function main(): Promise<void> {
 
   const record = (o: DrillOutcome) => {
     outcomes.push(o);
-    const mark = o.status === 'PASS' ? 'PASS' : o.status === 'FAIL' ? 'FAIL' : 'SKIP';
+    const mark =
+      o.status === 'PASS' ? 'PASS' : o.status === 'FAIL' ? 'FAIL' : 'SKIP';
     console.log(`  [${mark}] ${o.id} ${o.name}`);
     console.log(`         invariant: ${o.invariant}`);
     console.log(`         observed:  ${o.observed}\n`);
   };
 
-  console.log('\nGame-day drills — faults are injected against the local stack.\n');
+  console.log(
+    '\nGame-day drills — faults are injected against the local stack.\n',
+  );
 
   // ── Drill 1 ───────────────────────────────────────────────────────────────
   // A forged signature must be refused. No fault injection needed; this is the
@@ -198,8 +205,9 @@ async function main(): Promise<void> {
           'postgres://shield:shield@localhost:5433/shield_core',
       });
       await db.connect();
+      await declarePlatformSession(db, 'game-day drills');
       const result = await db.query(
-        'SELECT id FROM "Alert" WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 1',
+        'SELECT id FROM alert."Alert" WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 1',
         [tenantId],
       );
       await db.end();
@@ -220,7 +228,8 @@ async function main(): Promise<void> {
       record({
         id: 'GD-03',
         name: 'Alert promotion while shield-core is down',
-        invariant: 'Promotion fails loudly rather than reporting a case nobody opened.',
+        invariant:
+          'Promotion fails loudly rather than reporting a case nobody opened.',
         observed: 'No alert exists for this tenant to promote.',
         status: 'SKIPPED',
       });
@@ -302,9 +311,10 @@ async function main(): Promise<void> {
         'postgres://shield:shield@localhost:5433/shield_core',
     });
     await db.connect();
+    await declarePlatformSession(db, 'game-day drills');
     const sourceEventId = JSON.parse(body).eventId as string;
     const raw = await db.query(
-      'SELECT count(*)::int AS count FROM "RawEvent" WHERE tenant_id = $1 AND source_event_id = $2',
+      'SELECT count(*)::int AS count FROM ingest."RawEvent" WHERE tenant_id = $1 AND source_event_id = $2',
       [tenantId, sourceEventId],
     );
     await db.end();
@@ -313,7 +323,9 @@ async function main(): Promise<void> {
     // Either outcome is defensible; losing the event is not. Accepting it
     // means it must be recoverable, refusing it means the sender still has it.
     const accepted = status === 202;
-    const held = accepted ? durablyStored : status !== 0 || transportError !== '';
+    const held = accepted
+      ? durablyStored
+      : status !== 0 || transportError !== '';
     record({
       id: 'GD-04',
       name: 'Event ingestion while Kafka is unavailable',

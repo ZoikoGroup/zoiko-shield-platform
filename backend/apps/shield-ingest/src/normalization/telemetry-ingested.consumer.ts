@@ -7,11 +7,16 @@ import {
 import { Kafka, Consumer, EachMessagePayload } from 'kafkajs';
 import { createKafka } from '../../../../libs/kafka/src/kafka-client';
 import { NormalizationService } from './normalization.service';
+import {
+  runWithPlatformScope,
+  runWithTenantScope,
+} from '../../../../libs/database/src';
 
 const TELEMETRY_INGESTED_TOPIC = 'telemetry.ingested';
 
 interface TelemetryIngestedMessage {
   rawEventId?: string;
+  tenantId?: string;
   status?: 'ACCEPTED' | 'DUPLICATE_IGNORED' | 'QUARANTINED';
 }
 
@@ -78,8 +83,16 @@ export class TelemetryIngestedConsumer
       return;
     }
 
+    const rawEventId = event.rawEventId;
+    const normalize = () =>
+      this.normalizationService.normalizeRawEvent(rawEventId);
     try {
-      await this.normalizationService.normalizeRawEvent(event.rawEventId);
+      await (event.tenantId
+        ? runWithTenantScope(event.tenantId, normalize)
+        : runWithPlatformScope(
+            `${TELEMETRY_INGESTED_TOPIC} message without tenant`,
+            normalize,
+          ));
     } catch (err) {
       this.logger.error(
         `Failed to auto-normalize raw event ${event.rawEventId}: ${(err as Error).message}`,

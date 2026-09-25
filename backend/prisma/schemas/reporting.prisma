@@ -1,0 +1,93 @@
+// PostgreSQL schema "reporting". reporting module.
+
+// ============================================================
+// Part 13+14: Reporting/Notifications + Developer API/Webhooks/Export/Offboarding
+// ============================================================
+
+// --- shield-core-owned: reporting (non-authoritative projections only) ---
+model ReportDefinition {
+  id                  String   @id @default(uuid())
+  key                 String   @unique
+  name                String
+  report_type         String // OPERATIONAL|SECURITY|ASSURANCE|EXECUTIVE|BOARD|CUSTOMER_SERVICE
+  version             String   @default("1.0")
+  purpose             String
+  audience            String
+  source_requirements String   @default("[]")
+  metric_definitions  String   @default("[]")
+  status              String   @default("ACTIVE")
+  created_at          DateTime @default(now())
+
+  @@schema("reporting")
+}
+
+model ReportingProjection {
+  id                 String    @id @default(uuid())
+  tenant_id          String
+  environment_id     String?
+  projection_type    String // SECURITY_POSTURE|CASE_POSTURE|CONNECTOR_HEALTH|CONTROL_POSTURE|RISK_POSTURE|AUDIT_PACKAGE_POSTURE|SERVICE_HEALTH|EXECUTIVE_POSTURE
+  source_domain      String
+  source_object_id   String
+  source_version     String?
+  source_occurred_at DateTime?
+  source_recorded_at DateTime?
+  freshness_state    String    @default("UNKNOWN")
+  completeness_state String    @default("UNKNOWN")
+  health_state       String    @default("UNKNOWN") // HEALTHY|PARTIAL|STALE|DEGRADED|UNKNOWN|UNAVAILABLE
+  projection_version Int       @default(1)
+  payload            String    @default("{}")
+  last_reconciled_at DateTime?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  @@index([tenant_id])
+  @@index([projection_type])
+  @@index([source_domain, source_object_id])
+
+  @@schema("reporting")
+}
+
+model ReportSnapshot {
+  id                        String   @id @default(uuid())
+  tenant_id                 String
+  environment_id            String?
+  report_definition_id      String
+  report_definition_version String
+  period_start              DateTime
+  period_end                DateTime
+  generated_by              String
+  source_snapshot_refs      String   @default("[]")
+  source_versions           String   @default("[]")
+  freshness_state           String   @default("UNKNOWN")
+  completeness_state        String   @default("UNKNOWN")
+  limitations               String   @default("[]")
+  // Frozen payload the snapshot is hashed over — a snapshot must be
+  // independently renderable without re-querying live domain tables.
+  payload                   String   @default("{}")
+  snapshot_hash             String
+  status                    String   @default("BUILDING") // BUILDING|READY|PARTIAL|FAILED|SUPERSEDED
+  generated_at              DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([report_definition_id])
+
+  @@schema("reporting")
+}
+
+model ExecutiveReportSnapshot {
+  id                 String    @id @default(uuid())
+  tenant_id          String
+  report_snapshot_id String
+  reporting_period   String
+  metrics            String    @default("[]") // each entry: {key,value,factors[],weights,unknownInputs,sourceRefs,definitionRef}
+  known_limitations  String    @default("[]")
+  source_refs        String    @default("[]")
+  approved_by        String?
+  approved_at        DateTime?
+  created_at         DateTime  @default(now())
+
+  @@index([tenant_id])
+  @@index([report_snapshot_id])
+
+  @@schema("reporting")
+}

@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { ReconciliationService } from './reconciliation.service';
+import { PlatformScope } from '../../../../../libs/database/src';
 
 /**
  * ZS-COM-BILL-001 §29 & Section 26 Acceptance Criterion REC-01.
@@ -27,6 +28,9 @@ export class PeriodicReconciliationWorker {
   /**
    * Daily scheduled reconciliation at midnight UTC
    */
+  @PlatformScope(
+    'scheduled job PeriodicReconciliationWorker.handleDailyReconciliation',
+  )
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)
   async handleDailyReconciliation(): Promise<{
     runId: string;

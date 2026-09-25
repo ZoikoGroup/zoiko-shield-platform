@@ -1,10 +1,8 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { AuthorizationDecisionModule } from '../authorization-decision/authorization-decision.module';
-import { Principal } from '../identity-adapter/principal.entity';
 import { OutboxService } from '../../outbox/outbox.service';
 import {
   DeveloperApiController,
@@ -21,7 +19,6 @@ import { ApiClientAuthGuard } from './guards/api-client-auth.guard';
   imports: [
     PrismaModule,
     AuthorizationDecisionModule,
-    TypeOrmModule.forFeature([Principal]),
     JwtModule.registerAsync({
       imports: [ConfigModule],
       inject: [ConfigService],

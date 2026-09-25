@@ -1,4 +1,9 @@
-import { Module } from '@nestjs/common';
+import {
+  Module,
+  MiddlewareConsumer,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { ShieldIngestController } from './shield-ingest.controller';
 import { ShieldIngestService } from './shield-ingest.service';
@@ -120,6 +125,7 @@ import { OutboxService } from './outbox/outbox.service';
 import { OutboxPublisherService } from './outbox/outbox-publisher.service';
 import { IdempotencyService } from './idempotency/idempotency.service';
 import { ConnectorPermissionDriftService } from './drift/connector-permission-drift.service';
+import { dbScopeMiddleware } from '../../../libs/database/src';
 
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
@@ -253,4 +259,12 @@ import { ConnectorPermissionDriftService } from './drift/connector-permission-dr
     ConnectorCacheService,
   ],
 })
-export class ShieldIngestModule {}
+export class ShieldIngestModule implements NestModule {
+  // Every request gets its own database scope, unbound until an auth guard
+  // verifies its tenant (libs/database/src/db-scope.ts).
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(dbScopeMiddleware)
+      .forRoutes({ path: '*path', method: RequestMethod.ALL });
+  }
+}

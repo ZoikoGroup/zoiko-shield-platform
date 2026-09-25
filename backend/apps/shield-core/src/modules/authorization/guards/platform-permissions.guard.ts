@@ -14,6 +14,10 @@ import {
   assertPermittedAuthorization,
   AuthorizationDecisionService,
 } from '../../authorization-decision/authorization-decision.service';
+import {
+  bindRequestTenant,
+  elevateRequestToPlatform,
+} from '../../../../../../libs/database/src';
 
 @Injectable()
 export class PlatformPermissionsGuard implements CanActivate {
@@ -54,6 +58,9 @@ export class PlatformPermissionsGuard implements CanActivate {
       );
     }
 
+    // Platform decisions are recorded under the platform pseudo-tenant.
+    bindRequestTenant(PLATFORM_SCOPE);
+
     const read = ['GET', 'HEAD', 'OPTIONS'].includes(request.method);
     const resourceId = Object.values(request.params ?? {}).find(
       (value) => typeof value === 'string' && value.length > 0,
@@ -80,6 +87,10 @@ export class PlatformPermissionsGuard implements CanActivate {
     });
     request.authorizationDecision = result;
     assertPermittedAuthorization(result);
+    // An explicit, permitted platform operation may act across tenants.
+    elevateRequestToPlatform(
+      `platform-permission:${requiredPermissions.join(',')}:${context.getClass().name}.${context.getHandler().name}`,
+    );
     return true;
   }
 }

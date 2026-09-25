@@ -19,6 +19,7 @@ import { assertTransition } from '../commerce/state-machine.util';
 import { PAYMENT_PROVIDER } from './payment-provider.interface';
 import type { PaymentProvider } from './payment-provider.interface';
 import { CommercialKillSwitchService } from '../kill-switch/commercial-kill-switch.service';
+import { runWithPlatformScope } from '../../../../../libs/database/src';
 
 /** ZS-COM-BILL-001 Part 9 canonical payment lifecycle. */
 const PAYMENT_TRANSITIONS: Record<string, string[]> = {
@@ -284,27 +285,31 @@ export class PaymentService {
       });
     }
 
+    // Signature verified: the processor, not a tenant user, is the caller,
+    // and the payment is located by the processor's id across accounts.
     const key = `webhook-${dto.providerPaymentId}-${dto.eventType}`;
-    const result = await this.idempotencyService.run(
-      { key, operation: 'payments.webhook', requestPayload: dto },
-      async () => {
-        const payment = await this.prisma.payment.findFirst({
-          where: { provider_payment_id: dto.providerPaymentId },
-        });
-        if (!payment) {
-          throw new NotFoundException(
-            `No payment found for provider payment '${dto.providerPaymentId}'`,
-          );
-        }
+    const result = await runWithPlatformScope('payment provider webhook', () =>
+      this.idempotencyService.run(
+        { key, operation: 'payments.webhook', requestPayload: dto },
+        async () => {
+          const payment = await this.prisma.payment.findFirst({
+            where: { provider_payment_id: dto.providerPaymentId },
+          });
+          if (!payment) {
+            throw new NotFoundException(
+              `No payment found for provider payment '${dto.providerPaymentId}'`,
+            );
+          }
 
-        const targetStatus = WEBHOOK_EVENT_TO_STATUS[dto.eventType];
-        const updated = await this.transitionStatus(
-          payment.id,
-          targetStatus,
-          'provider-webhook',
-        );
-        return { statusCode: 200, body: updated };
-      },
+          const targetStatus = WEBHOOK_EVENT_TO_STATUS[dto.eventType];
+          const updated = await this.transitionStatus(
+            payment.id,
+            targetStatus,
+            'provider-webhook',
+          );
+          return { statusCode: 200, body: updated };
+        },
+      ),
     );
 
     return result.body;

@@ -1,0 +1,339 @@
+// PostgreSQL schema "commercial". commercial module.
+
+model GroupAccount {
+  id                  String   @id @default(uuid())
+  name                String
+  customer_legal_name String
+  status              String   @default("ACTIVE")
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  commercialAccounts CommercialAccount[]
+
+  @@index([status])
+
+  @@schema("commercial")
+}
+
+model CommercialAccount {
+  id                                  String        @id @default(uuid())
+  name                                String
+  customer_legal_name                 String
+  billing_address                     String        @default("{}")
+  tax_facts                           String        @default("{}")
+  currency                            String        @default("USD")
+  contacts                            String        @default("[]")
+  billing_source                      String        @default("DIRECT")
+  billing_source_reference            String?
+  billing_classification              String        @default("COMMERCIAL_DIRECT")
+  status                              String        @default("ACTIVE")
+  contract_owner_id                   String?
+  processor_customer_ref              String?
+  default_payment_method_reference_id String?       @unique
+  group_account_id                    String?
+  groupAccount                        GroupAccount? @relation(fields: [group_account_id], references: [id])
+  legal_entity_id                     String?
+  business_unit_id                    String?
+  environment_id                      String?
+  region                              String        @default("GLOBAL")
+  residency_policy                    String?
+  created_at                          DateTime      @default(now())
+  updated_at                          DateTime      @updatedAt
+
+  entitlements                   Entitlement[]
+  contracts                      Contract[]
+  invoices                       CommercialInvoice[]
+  quotes                         CommercialQuote[]
+  tenantBindings                 CommercialAccountTenantBinding[]
+  paymentMethods                 PaymentMethodReference[]         @relation("CommercialAccountPaymentMethods")
+  defaultPaymentMethod           PaymentMethodReference?          @relation("CommercialAccountDefaultPaymentMethod", fields: [default_payment_method_reference_id], references: [id])
+  sourceTransfers                CorporateTransfer[]              @relation("CorporateTransferSourceAccount")
+  targetTransfers                CorporateTransfer[]              @relation("CorporateTransferTargetAccount")
+  partnerSupportCases            PartnerSupportCase[]
+  evaluationPrograms             EvaluationProgram[]
+  priceBooks                     PriceBook[]
+  concessions                    CommercialConcession[]
+  meterAuthorizations            MeterAuthorizationPolicy[]
+  managedDefenseProfiles         ManagedDefenseProfile[]
+  continuousAssuranceProfiles    ContinuousAssuranceProfile[]
+  incidentResponseRetainers      IncidentResponseRetainer[]
+  professionalServiceEngagements ProfessionalServiceEngagement[]
+  aiGovernanceProfiles           AiGovernanceProfile[]
+
+  @@index([status])
+  @@index([billing_classification])
+
+  @@schema("commercial")
+}
+
+model CommercialAccountTenantBinding {
+  id                    String            @id @default(uuid())
+  commercial_account_id String
+  commercialAccount     CommercialAccount @relation(fields: [commercial_account_id], references: [id])
+  tenant_id             String
+  legal_entity_id       String?
+  business_unit_id      String?
+  environment_id        String
+  region                String            @default("GLOBAL")
+  residency_policy      String?
+  service_scope         String            @default("[]")
+  relationship_type     String            @default("CUSTOMER")
+  is_primary            Boolean           @default(false)
+  status                String            @default("ACTIVE")
+  effective_from        DateTime          @default(now())
+  effective_to          DateTime?
+  created_at            DateTime          @default(now())
+  updated_at            DateTime          @updatedAt
+
+  @@unique([commercial_account_id, tenant_id, environment_id])
+  @@index([tenant_id, status])
+  @@index([legal_entity_id])
+  @@index([environment_id, region])
+
+  @@schema("commercial")
+}
+
+/**
+ * Approved subsidiary/business-unit separation plan. Historical evidence is
+ * intentionally not related through a mutable foreign key: execution closes
+ * the old commercial boundary and creates future-dated target records while
+ * evidence and its lineage remain under their original tenant identifiers.
+ */
+model CorporateTransfer {
+  id                           String            @id @default(uuid())
+  source_commercial_account_id String
+  sourceCommercialAccount      CommercialAccount @relation("CorporateTransferSourceAccount", fields: [source_commercial_account_id], references: [id])
+  source_binding_id            String
+  source_tenant_id             String
+  source_environment_id        String
+  source_binding_updated_at    DateTime
+  target_commercial_account_id String
+  targetCommercialAccount      CommercialAccount @relation("CorporateTransferTargetAccount", fields: [target_commercial_account_id], references: [id])
+  target_tenant_id             String
+  target_environment_id        String
+  target_legal_entity_id       String
+  target_business_unit_id      String?
+  target_region                String
+  target_residency_policy      String
+  target_service_scope         String            @default("[]")
+  effective_at                 DateTime
+  data_decision                String            @default("RETAIN_HISTORICAL_AT_SOURCE")
+  export_decision              String            @default("NOT_REQUIRED")
+  export_manifest_id           String?
+  legal_hold_decision          String            @default("PRESERVE_IN_SOURCE")
+  legal_hold_references        String            @default("[]")
+  entitlement_mapping          String            @default("[]")
+  evidence_lineage_policy      String            @default("PRESERVE_SOURCE_IDENTIFIERS")
+  evidence_boundary_snapshot   String            @default("{}")
+  source_approval_id           String?           @unique
+  target_approval_id           String?           @unique
+  status                       String            @default("PENDING_APPROVAL")
+  requested_by                 String
+  requested_at                 DateTime          @default(now())
+  executed_by                  String?
+  executed_at                  DateTime?
+  reconciled_by                String?
+  reconciled_at                DateTime?
+  reconciliation_result        String            @default("{}")
+  created_at                   DateTime          @default(now())
+  updated_at                   DateTime          @updatedAt
+
+  @@index([source_tenant_id, status])
+  @@index([target_tenant_id, status])
+  @@index([source_commercial_account_id])
+  @@index([target_commercial_account_id])
+  @@index([effective_at, status])
+
+  @@schema("commercial")
+}
+
+model Entitlement {
+  id                      String                @id @default(uuid())
+  commercial_account_id   String
+  commercialAccount       CommercialAccount     @relation(fields: [commercial_account_id], references: [id])
+  tenant_id               String
+  offer_type              String
+  source_type             String                @default("ACCEPTED_ORDER")
+  source_id               String?
+  evaluation_program_id   String?
+  evaluationProgram       EvaluationProgram?    @relation(fields: [evaluation_program_id], references: [id])
+  activation_amendment_id String?
+  activationAmendment     CommercialAmendment?  @relation(fields: [activation_amendment_id], references: [id])
+  concession_id           String?
+  concession              CommercialConcession? @relation(fields: [concession_id], references: [id])
+  bundle_order_line_id    String?               @unique
+  bundleOrderLine         CommercialOrderLine?  @relation("BundleComponentEntitlement", fields: [bundle_order_line_id], references: [id], onDelete: Restrict)
+  status                  String                @default("ACTIVE")
+  effective_from          DateTime              @default(now())
+  effective_to            DateTime?
+  created_at              DateTime              @default(now())
+  updated_at              DateTime              @updatedAt
+
+  invoiceBases CommercialInvoiceLineBasis[]
+
+  @@index([tenant_id])
+  @@index([offer_type])
+  @@index([status])
+  @@index([source_type, source_id])
+  @@index([evaluation_program_id, status])
+  @@index([activation_amendment_id, status])
+  @@index([concession_id, status])
+
+  @@schema("commercial")
+}
+
+model ClaimRegister {
+  id                     String    @id @default(uuid())
+  claim_key              String
+  version                Int
+  approved_wording       String
+  channels               String    @default("[]")
+  scope                  String    @default("{}")
+  evidence_refs          String    @default("[]")
+  prohibited_variants    String    @default("[]")
+  limitations            String    @default("[]")
+  required_offer_type    String
+  sector_pack_key        String?
+  evidence_max_age_hours Int       @default(24)
+  monitoring_reference   String
+  status                 String    @default("PENDING_APPROVAL")
+  requested_by           String
+  requested_at           DateTime  @default(now())
+  verification_date      DateTime?
+  effective_from         DateTime  @default(now())
+  expires_at             DateTime
+  supersedes_id          String?
+  revoked_by             String?
+  revoked_at             DateTime?
+  revocation_reason      String?
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
+
+  approvals               ClaimApproval[]
+  eligibilities           ClaimEligibility[]
+  bundleClaimRequirements BundleClaimEligibility[]
+
+  @@unique([claim_key, version])
+  @@index([claim_key, status])
+  @@index([status, effective_from, expires_at])
+
+  @@schema("commercial")
+}
+
+model ClaimApproval {
+  id                String        @id @default(uuid())
+  claim_register_id String
+  claim             ClaimRegister @relation(fields: [claim_register_id], references: [id], onDelete: Restrict)
+  reviewer_role     String
+  reviewer_id       String
+  decision          String
+  reason            String
+  decided_at        DateTime      @default(now())
+
+  @@unique([claim_register_id, reviewer_role])
+  @@index([reviewer_id])
+
+  @@schema("commercial")
+}
+
+model ClaimEligibility {
+  id                    String         @id @default(uuid())
+  tenant_id             String
+  environment_id        String
+  region                String
+  context_key           String         @unique
+  claim_key             String
+  claim_register_id     String?
+  claim                 ClaimRegister? @relation(fields: [claim_register_id], references: [id], onDelete: Restrict)
+  claim_version         Int?
+  channel               String
+  sector_pack_key       String?
+  status                String
+  reason_code           String
+  reason                String
+  approved_wording      String?
+  runtime_evaluation_id String?
+  evidence_refs         String         @default("[]")
+  evaluated_at          DateTime       @default(now())
+  valid_until           DateTime?
+  updated_at            DateTime       @updatedAt
+
+  bundleClaimRequirements BundleClaimEligibility[]
+
+  @@index([tenant_id, claim_key])
+  @@index([status])
+
+  @@schema("commercial")
+}
+
+// ============================================================
+// ZS-COM-BILL-001 P0.3 Part 9: payment domain. No raw PAN/CVC is ever
+// stored — payment_method_reference holds only a provider-issued token.
+// ============================================================
+
+model PaymentMethodReference {
+  id                    String             @id @default(uuid())
+  commercial_account_id String
+  commercialAccount     CommercialAccount  @relation("CommercialAccountPaymentMethods", fields: [commercial_account_id], references: [id])
+  defaultForAccount     CommercialAccount? @relation("CommercialAccountDefaultPaymentMethod")
+  provider              String
+  provider_token        String
+  brand                 String?
+  last4                 String?
+  status                String             @default("ACTIVE")
+  created_at            DateTime           @default(now())
+  updated_at            DateTime           @updatedAt
+
+  @@unique([provider, provider_token])
+  @@index([commercial_account_id, status])
+
+  @@schema("commercial")
+}
+
+model CommercialEvent {
+  id              String    @id @default(uuid())
+  event_type      String
+  tenant_id       String?
+  actor           String?
+  payload         String
+  idempotency_key String    @unique
+  created_at      DateTime  @default(now())
+  published_at    DateTime?
+
+  @@index([idempotency_key])
+  @@index([event_type])
+
+  @@schema("commercial")
+}
+
+/**
+ * A bundle claim requirement is deliberately fail-closed until the existing
+ * claim policy engine records a current eligibility decision for the context.
+ */
+model BundleClaimEligibility {
+  id                       String                 @id @default(uuid())
+  order_line_id            String                 @unique
+  orderLine                CommercialOrderLine    @relation(fields: [order_line_id], references: [id], onDelete: Restrict)
+  contract_id              String
+  contract                 Contract               @relation(fields: [contract_id], references: [id], onDelete: Restrict)
+  subscription_id          String
+  subscription             CommercialSubscription @relation(fields: [subscription_id], references: [id], onDelete: Restrict)
+  tenant_id                String
+  environment_id           String
+  region                   String
+  claim_key                String
+  claim_register_id        String
+  claimRegister            ClaimRegister          @relation(fields: [claim_register_id], references: [id], onDelete: Restrict)
+  channel                  String                 @default("CONTRACT")
+  status                   String                 @default("PENDING_EVALUATION")
+  reason_code              String                 @default("BUNDLE_COMPONENT_PENDING_EVALUATION")
+  evaluated_eligibility_id String?
+  evaluatedEligibility     ClaimEligibility?      @relation(fields: [evaluated_eligibility_id], references: [id], onDelete: Restrict)
+  created_at               DateTime               @default(now())
+  updated_at               DateTime               @updatedAt
+
+  @@index([tenant_id, environment_id, claim_key])
+  @@index([contract_id, status])
+
+  @@schema("commercial")
+}

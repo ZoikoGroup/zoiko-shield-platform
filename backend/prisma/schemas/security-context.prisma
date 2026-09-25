@@ -1,0 +1,156 @@
+// PostgreSQL schema "security_context". security-context module.
+
+model Asset {
+  id             String   @id @default(uuid())
+  tenant_id      String
+  environment_id String   @default("default-env")
+  external_id    String?
+  asset_type     String
+  name           String
+  criticality    String   @default("MEDIUM")
+  status         String   @default("ACTIVE")
+  first_seen_at  DateTime @default(now())
+  last_seen_at   DateTime @default(now())
+  created_at     DateTime @default(now())
+
+  normalizedEvents NormalizedEvent[]
+  aliases          AssetAlias[]
+
+  @@unique([tenant_id, external_id, asset_type])
+  @@index([tenant_id])
+  @@index([criticality])
+
+  @@schema("security_context")
+}
+
+model AssetAlias {
+  id                String   @id @default(uuid())
+  tenant_id         String
+  asset_id          String
+  asset             Asset    @relation(fields: [asset_id], references: [id])
+  source_system     String
+  source_account_id String?
+  external_type     String
+  external_id       String
+  first_seen_at     DateTime @default(now())
+  last_seen_at      DateTime @default(now())
+  created_at        DateTime @default(now())
+
+  @@unique([tenant_id, source_system, source_account_id, external_type, external_id])
+  @@index([tenant_id])
+  @@index([asset_id])
+
+  @@schema("security_context")
+}
+
+model IdentityEntity {
+  id            String   @id @default(uuid())
+  tenant_id     String
+  external_id   String?
+  email         String?
+  display_name  String?
+  identity_type String   @default("USER")
+  status        String   @default("ACTIVE")
+  confidence    Float    @default(1.0)
+  first_seen_at DateTime @default(now())
+  last_seen_at  DateTime @default(now())
+  created_at    DateTime @default(now())
+
+  normalizedEvents NormalizedEvent[]
+  aliases          IdentityAlias[]
+
+  @@unique([tenant_id, email])
+  @@index([tenant_id])
+  @@index([email])
+
+  @@schema("security_context")
+}
+
+model IdentityAlias {
+  id                 String         @id @default(uuid())
+  tenant_id          String
+  identity_entity_id String
+  identityEntity     IdentityEntity @relation(fields: [identity_entity_id], references: [id])
+  source_system      String
+  source_account_id  String?
+  external_type      String
+  external_id        String
+  normalized_value   String?
+  first_seen_at      DateTime       @default(now())
+  last_seen_at       DateTime       @default(now())
+  created_at         DateTime       @default(now())
+
+  @@unique([tenant_id, source_system, source_account_id, external_type, external_id])
+  @@index([tenant_id])
+  @@index([identity_entity_id])
+
+  @@schema("security_context")
+}
+
+model Relationship {
+  id             String    @id @default(uuid())
+  tenant_id      String
+  environment_id String    @default("default-env")
+  subject_type   String
+  subject_id     String
+  relation       String
+  object_type    String
+  object_id      String
+  source         String
+  confidence     Float     @default(1.0)
+  first_seen_at  DateTime  @default(now())
+  last_seen_at   DateTime  @default(now())
+  valid_from     DateTime?
+  valid_until    DateTime?
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+
+  @@unique([tenant_id, subject_type, subject_id, relation, object_type, object_id])
+  @@index([tenant_id])
+  @@index([subject_type, subject_id])
+  @@index([object_type, object_id])
+
+  @@schema("security_context")
+}
+
+model ResolutionDecision {
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  entity_type        String
+  source_system      String
+  external_id        String
+  resolved_entity_id String?
+  decision           String
+  confidence         Float    @default(1.0)
+  resolver_version   String   @default("1.0")
+  reason             String
+  created_at         DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([entity_type])
+
+  @@schema("security_context")
+}
+
+model ContextSnapshot {
+  id                 String   @id @default(uuid())
+  tenant_id          String
+  environment_id     String   @default("default-env")
+  event_id           String
+  identity_entity_id String?
+  asset_id           String?
+  relationship_refs  String   @default("[]")
+  identity_risk      String?
+  asset_criticality  String?
+  source_versions    String   @default("{}")
+  resolver_version   String   @default("1.0")
+  context_health     String   @default("UNRESOLVED")
+  created_at         DateTime @default(now())
+
+  detectionEvaluations DetectionEvaluation[]
+
+  @@index([tenant_id])
+  @@index([event_id])
+
+  @@schema("security_context")
+}

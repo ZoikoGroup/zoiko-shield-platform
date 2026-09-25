@@ -98,8 +98,14 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    # Migrations and the access policy run as the schema owner. Services run
+    # as their own non-superuser logins: the superuser bypasses row-level
+    # security, so a service connected as it would never be tenant-isolated.
+    command: ["sh", "-c", "node scripts/create-local-service-logins.js && npm run migrate:deploy"]
     environment:
-      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
+      MIGRATION_DATABASE_URL: ${DOCKER_MIGRATION_DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
+      SERVICE_DB_PASSWORD: ${SERVICE_DB_PASSWORD:-shield}
+      DATABASE_ROLE_MEMBERS: '{"shield_core_app":["shield_core_svc"],"shield_ingest_app":["shield_ingest_svc"],"shield_ai_app":["shield_ai_svc"],"shield_action_app":["shield_action_svc"],"shield_anchor_app":["shield_anchor_svc"]}'
 
   shield-core:
     build:
@@ -120,7 +126,7 @@ services:
     environment:
       NODE_ENV: development
       PORT: 3001
-      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
+      DATABASE_URL: postgres://shield_core_svc:${SERVICE_DB_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}
       REDIS_URL: redis://redis:6379
       KAFKA_BROKERS: redpanda:9092
       KAFKA_SSL:
@@ -176,7 +182,6 @@ services:
       WORKLOAD_IDENTITY_PRIVATE_KEY_PEM:
       WORKLOAD_IDENTITY_PUBLIC_KEY_PEM:
       WORKLOAD_MTLS_SECRET:
-      TYPEORM_SYNCHRONIZE:
       SUPPORTED_DATA_REGIONS:
       RETENTION_POLICY_REFS:
       PUBLIC_DEVELOPER_API_ENABLED:
@@ -221,7 +226,7 @@ services:
       NODE_ENV: development
       SERVICE_NAME: shield-ingest
       SHIELD_INGEST_PORT: 3002
-      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
+      DATABASE_URL: postgres://shield_ingest_svc:${SERVICE_DB_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}
       KAFKA_BROKERS: redpanda:9092
       KAFKA_SSL:
       KAFKA_SASL_MECHANISM:
@@ -266,7 +271,7 @@ services:
       NODE_ENV: development
       SERVICE_NAME: shield-ai
       SHIELD_AI_PORT: 3003
-      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
+      DATABASE_URL: postgres://shield_ai_svc:${SERVICE_DB_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}
       KAFKA_BROKERS: redpanda:9092
       KAFKA_SSL:
       KAFKA_SASL_MECHANISM:
@@ -300,7 +305,7 @@ services:
       NODE_ENV: development
       SERVICE_NAME: shield-action
       SHIELD_ACTION_PORT: 3004
-      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
+      DATABASE_URL: postgres://shield_action_svc:${SERVICE_DB_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}
       KAFKA_BROKERS: redpanda:9092
       KAFKA_SSL:
       KAFKA_SASL_MECHANISM:
@@ -338,7 +343,7 @@ services:
       NODE_ENV: development
       SERVICE_NAME: shield-anchor
       SHIELD_ANCHOR_PORT: 3005
-      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgres://${POSTGRES_USER:-shield}:${POSTGRES_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}}
+      DATABASE_URL: postgres://shield_anchor_svc:${SERVICE_DB_PASSWORD:-shield}@postgres:5432/${POSTGRES_DB:-shield_core}
       KAFKA_BROKERS: redpanda:9092
       KAFKA_SSL:
       KAFKA_SASL_MECHANISM:

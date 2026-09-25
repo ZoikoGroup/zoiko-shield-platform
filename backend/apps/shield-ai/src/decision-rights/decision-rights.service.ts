@@ -28,6 +28,7 @@ import {
   KafkaProducerService,
   CANONICAL_TOPICS,
 } from '../kafka/kafka-producer.service';
+import { PlatformScope } from '../../../../libs/database/src';
 
 export interface CreateEnvelopeInput<T = any> {
   tenantId: string;
@@ -91,6 +92,7 @@ export class DecisionRightsService implements OnModuleInit {
    * Nest lifecycle hooks only fire for DI-managed instances - those keep
    * their existing pure in-memory behavior unchanged.
    */
+  @PlatformScope('startup rehydration of AI review envelopes for every tenant')
   async onModuleInit(): Promise<void> {
     if (!this.prisma) return;
     try {

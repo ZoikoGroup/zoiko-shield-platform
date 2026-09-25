@@ -1,41 +1,12 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  Index,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import type { ExternalIdentity as ExternalIdentityRow } from '@prisma/client';
 
 export type ExternalIdentityProvider = 'GOOGLE' | 'MICROSOFT' | 'OIDC' | 'SAML';
 
-@Entity({ name: 'external_identities', schema: 'identity' })
-@Index(['issuer', 'subject'], { unique: true })
-export class ExternalIdentity {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
-  @Column({ type: 'uuid' })
-  @Index()
-  principalId: string;
-
-  @Column()
-  issuer: string;
-
-  @Column()
-  subject: string;
-
-  @Column({ type: 'varchar' })
+/** Row of identity.external_identities, persisted through Prisma. */
+export type ExternalIdentity = Omit<
+  ExternalIdentityRow,
+  'provider' | 'claimProfile'
+> & {
   provider: ExternalIdentityProvider;
-
-  @Column({ type: 'jsonb', default: {} })
   claimProfile: Record<string, unknown>;
-
-  @Column({ type: 'varchar', default: 'VERIFIED' })
-  verificationState: string;
-
-  @Column({ type: 'timestamptz' })
-  lastSyncedAt: Date;
-
-  @CreateDateColumn({ type: 'timestamptz' })
-  createdAt: Date;
-}
+};

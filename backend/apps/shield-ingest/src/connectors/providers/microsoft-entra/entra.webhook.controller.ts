@@ -17,6 +17,10 @@ import { KafkaProducerService } from '../../../kafka/kafka.producer.service';
 import { PublicIngress } from '../../../security/public-ingress.decorator';
 import { createHash } from 'crypto';
 import { requireRegion } from '../../../security/tenant-context';
+import {
+  runWithPlatformScope,
+  runWithTenantScope,
+} from '../../../../../../libs/database/src';
 
 @PublicIngress()
 @Controller('v1/webhooks/microsoft-graph')
@@ -55,7 +59,13 @@ export class EntraWebhookController {
       // Queue (Kafka) or durably record lifecycle state before acknowledging.
       // A processing failure returns non-2xx so Microsoft Graph retries instead
       // of silently losing a validated notification.
-      await this.processNotifications(validated);
+      // A batch can span subscriptions of different tenants: each
+      // notification is processed in its own subscription tenant's scope.
+      for (const item of validated) {
+        await runWithTenantScope(item.subscription.tenant_id, () =>
+          this.processNotifications([item]),
+        );
+      }
       return res.status(HttpStatus.ACCEPTED).send();
     }
 
@@ -80,20 +90,26 @@ export class EntraWebhookController {
           HttpStatus.UNAUTHORIZED,
         );
       }
-      const subscription = await this.prisma.webhookSubscription.findFirst({
-        where: {
-          clientState: notification.clientState,
-          subscriptionId: notification.subscriptionId,
-        },
-        include: {
-          instance: {
-            select: {
-              environment_id: true,
-              source_region: true,
+      // The clientState secret identifies the subscription, and with it the
+      // tenant, so this lookup necessarily spans tenants.
+      const subscription = await runWithPlatformScope(
+        'graph change notification clientState lookup',
+        () =>
+          this.prisma.webhookSubscription.findFirst({
+            where: {
+              clientState: notification.clientState,
+              subscriptionId: notification.subscriptionId,
             },
-          },
-        },
-      });
+            include: {
+              instance: {
+                select: {
+                  environment_id: true,
+                  source_region: true,
+                },
+              },
+            },
+          }),
+      );
       if (!subscription)
         throw new HttpException(
           'Unknown Microsoft Graph subscription',

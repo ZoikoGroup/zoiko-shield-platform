@@ -5,22 +5,20 @@ import {
   NotFoundException,
   OnModuleInit,
 } from '@nestjs/common';
-import { InjectDataSource } from '@nestjs/typeorm';
+import type { Permission } from '@prisma/client';
 import { createHash, randomBytes } from 'crypto';
-import { DataSource, Raw } from 'typeorm';
-import { Tenant } from '../tenant/tenant.entity';
-import { LegalEntity } from '../legal-entity/legal-entity.entity';
-import { Environment } from '../environment/environment.entity';
-import { TenantMembership } from '../authorization/entities/tenant-membership.entity';
-import { Role } from '../authorization/entities/role.entity';
-import { Permission } from '../authorization/entities/permission.entity';
-import { Principal } from '../identity-adapter/principal.entity';
-import { IdentityEvent } from '../identity-adapter/identity-event.entity';
+import type { Tenant } from '../tenant/tenant.entity';
+import type { LegalEntity } from '../legal-entity/legal-entity.entity';
+import type { Environment } from '../environment/environment.entity';
+import type { Invitation } from '../authorization/entities/invitation.entity';
+import {
+  MEMBERSHIP_WITH_ROLES_INCLUDE,
+  toMembershipWithRoles,
+} from '../authorization/prisma-mappers';
 import { PolicyService } from '../identity-adapter/policy.service';
 import { MailService } from '../identity-adapter/mail.service';
 import { ZoikoIdProviderBootstrapService } from '../identity-adapter/zoikoid-provider-bootstrap.service';
 import { PERMISSION_CODES } from '../authorization/constants';
-import { Invitation } from '../authorization/entities/invitation.entity';
 import { OnboardTenantDto } from './dto/onboard-tenant.dto';
 import { SessionMetadata } from '../identity-adapter/session.service';
 import { OnboardingReadinessService } from './onboarding-readiness.service';
@@ -33,7 +31,6 @@ const OWNER_INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 @Injectable()
 export class OnboardingService implements OnModuleInit {
   constructor(
-    @InjectDataSource() private readonly dataSource: DataSource,
     private readonly policyService: PolicyService,
     private readonly readinessService: OnboardingReadinessService,
     private readonly mailService: MailService,
@@ -43,9 +40,6 @@ export class OnboardingService implements OnModuleInit {
 
   /** Self-seeds a shared TENANT_OWNER role (tenantId: null template, per-tenant authority via TenantMembership), same pattern as PolicyService's policy seeding. */
   async onModuleInit(): Promise<void> {
-    const permissionRepository = this.dataSource.getRepository(Permission);
-    const roleRepository = this.dataSource.getRepository(Role);
-
     const ownerCodes = [
       PERMISSION_CODES.TENANT_MEMBER_INVITE,
       PERMISSION_CODES.TENANT_MANAGE,
@@ -64,58 +58,65 @@ export class OnboardingService implements OnModuleInit {
     ];
     const permissionsByCode = new Map<string, Permission>();
     for (const code of [...new Set([...ownerCodes, ...reviewerCodes])]) {
-      let permission = await permissionRepository.findOne({ where: { code } });
+      let permission = await this.prisma.permission.findUnique({
+        where: { code },
+      });
       if (!permission) {
-        permission = await permissionRepository.save(
-          permissionRepository.create({ code }),
-        );
+        permission = await this.prisma.permission.create({ data: { code } });
       }
       permissionsByCode.set(code, permission);
     }
 
-    const existing = await roleRepository.findOne({
-      where: { code: TENANT_OWNER_ROLE_CODE, roleLevel: 'TENANT' },
-    });
-    if (!existing) {
-      await roleRepository.save(
-        roleRepository.create({
-          tenantId: null,
-          code: TENANT_OWNER_ROLE_CODE,
-          name: 'Tenant Owner',
-          roleLevel: 'TENANT',
-          permissions: ownerCodes.map((code) => permissionsByCode.get(code)!),
-        }),
-      );
-    } else {
-      existing.permissions = ownerCodes.map((code) =>
-        permissionsByCode.get(code)!,
-      );
-      await roleRepository.save(existing);
-    }
-
-    const reviewer = await roleRepository.findOne({
-      where: {
-        code: PRIVACY_LEGAL_REVIEWER_ROLE_CODE,
-        roleLevel: 'TENANT',
-      },
-    });
-    const reviewerPermissions = reviewerCodes.map((code) =>
-      permissionsByCode.get(code)!,
+    await this.seedTemplateRole(
+      TENANT_OWNER_ROLE_CODE,
+      'Tenant Owner',
+      ownerCodes.map((code) => permissionsByCode.get(code)!),
     );
-    if (!reviewer) {
-      await roleRepository.save(
-        roleRepository.create({
-          tenantId: null,
-          code: PRIVACY_LEGAL_REVIEWER_ROLE_CODE,
-          name: 'Privacy and Legal Reviewer',
-          roleLevel: 'TENANT',
-          permissions: reviewerPermissions,
-        }),
-      );
-    } else {
-      reviewer.permissions = reviewerPermissions;
-      await roleRepository.save(reviewer);
-    }
+    await this.seedTemplateRole(
+      PRIVACY_LEGAL_REVIEWER_ROLE_CODE,
+      'Privacy and Legal Reviewer',
+      reviewerCodes.map((code) => permissionsByCode.get(code)!),
+    );
+  }
+
+  /**
+   * Creates the shared TENANT-level template role, or resets an existing
+   * one's permission set to exactly `permissions` (the join rows are
+   * replaced in one transaction, as the former many-to-many save did).
+   */
+  private async seedTemplateRole(
+    code: string,
+    name: string,
+    permissions: Permission[],
+  ): Promise<void> {
+    await this.prisma.$transaction(async (tx) => {
+      const existing = await tx.role.findFirst({
+        where: { code, roleLevel: 'TENANT' },
+      });
+      if (!existing) {
+        await tx.role.create({
+          data: {
+            tenantId: null,
+            code,
+            name,
+            roleLevel: 'TENANT',
+            permissions: {
+              create: permissions.map((permission) => ({
+                permission_id: permission.id,
+              })),
+            },
+          },
+        });
+        return;
+      }
+      await tx.rolePermission.deleteMany({ where: { role_id: existing.id } });
+      await tx.rolePermission.createMany({
+        data: permissions.map((permission) => ({
+          role_id: existing.id,
+          permission_id: permission.id,
+        })),
+      });
+    });
   }
 
   async onboard(
@@ -173,36 +174,31 @@ export class OnboardingService implements OnModuleInit {
       .digest('hex');
     const invitationExpiresAt = new Date(Date.now() + OWNER_INVITATION_TTL_MS);
 
-    const provisioning = await this.dataSource.transaction(async (manager) => {
-      const tenantRepo = manager.getRepository(Tenant);
-      const legalEntityRepo = manager.getRepository(LegalEntity);
-      const environmentRepo = manager.getRepository(Environment);
-      const membershipRepo = manager.getRepository(TenantMembership);
-      const invitationRepo = manager.getRepository(Invitation);
-      const roleRepo = manager.getRepository(Role);
-      const eventRepo = manager.getRepository(IdentityEvent);
-      const principalRepo = manager.getRepository(Principal);
+    // Tenant, legal entity, environment, identity provider, owner
+    // membership and invitation, the order claim and its entitlements are
+    // provisioned in one transaction: a lost order-claim race rolls the whole
+    // tenant back rather than leaving an orphaned PROVISIONING tenant.
+    const provisioning = await this.prisma.$transaction(async (tx) => {
+      const [existingPrincipal] = await tx.$queryRaw<{ id: string }[]>`
+        SELECT id FROM identity.principals
+        WHERE LOWER(email) = ${ownerEmail}
+        LIMIT 1
+      `;
+      const customerPrincipalId =
+        existingPrincipal?.id ??
+        (
+          await tx.principal.create({
+            data: {
+              email: ownerEmail,
+              principalType: 'HUMAN',
+              status: 'ACTIVE',
+              source: 'ONBOARDING',
+              emailVerified: false,
+            },
+          })
+        ).id;
 
-      let customerPrincipal = await principalRepo.findOne({
-        where: {
-          email: Raw((column) => `LOWER(${column}) = :ownerEmail`, {
-            ownerEmail,
-          }),
-        },
-      });
-      if (!customerPrincipal) {
-        customerPrincipal = await principalRepo.save(
-          principalRepo.create({
-            email: ownerEmail,
-            principalType: 'HUMAN',
-            status: 'ACTIVE',
-            source: 'ONBOARDING',
-            emailVerified: false,
-          }),
-        );
-      }
-
-      const slugTaken = await tenantRepo.findOne({
+      const slugTaken = await tx.tenant.findUnique({
         where: { slug: dto.tenantSlug },
       });
       if (slugTaken) {
@@ -211,8 +207,8 @@ export class OnboardingService implements OnModuleInit {
         );
       }
 
-      const tenant = await tenantRepo.save(
-        tenantRepo.create({
+      const tenant = (await tx.tenant.create({
+        data: {
           name: dto.tenantName,
           slug: dto.tenantSlug,
           status: 'PROVISIONING',
@@ -223,24 +219,30 @@ export class OnboardingService implements OnModuleInit {
           retentionPolicyRef: dto.retentionPolicyRef,
           onboardingCompletedAt: null,
           createdByPrincipalId: principalId,
-        }),
-      );
+        },
+      })) as Tenant;
 
-      const legalEntity = await legalEntityRepo.save(
-        legalEntityRepo.create({ tenantId: tenant.id, ...dto.legalEntity }),
-      );
+      const legalEntity = (await tx.legalEntity.create({
+        data: {
+          tenantId: tenant.id,
+          legalName: dto.legalEntity.legalName,
+          registrationNumber: dto.legalEntity.registrationNumber,
+          countryOfRegistration: dto.legalEntity.countryOfRegistration,
+          registeredAddress: dto.legalEntity.registeredAddress,
+        },
+      })) as LegalEntity;
 
-      const environment = await environmentRepo.save(
-        environmentRepo.create({
+      const environment = (await tx.environment.create({
+        data: {
           tenantId: tenant.id,
           name: dto.environment?.name ?? 'Production',
           environmentType: dto.environment?.environmentType ?? 'PRODUCTION',
           region: tenant.homeRegion,
-        }),
-      );
+        },
+      })) as Environment;
 
       const identityProvider = await this.zoikoIdProviders.provisionForTenant(
-        manager,
+        tx,
         {
           tenantId: tenant.id,
           environmentId: environment.id,
@@ -248,7 +250,7 @@ export class OnboardingService implements OnModuleInit {
         },
       );
 
-      const ownerRole = await roleRepo.findOne({
+      const ownerRole = await tx.role.findFirst({
         where: { code: TENANT_OWNER_ROLE_CODE, roleLevel: 'TENANT' },
       });
       if (!ownerRole) {
@@ -257,35 +259,38 @@ export class OnboardingService implements OnModuleInit {
         );
       }
 
-      const membership = await membershipRepo.save(
-        membershipRepo.create({
-          tenantId: tenant.id,
-          principalId: customerPrincipal.id,
-          status: 'PENDING',
-          source: 'BOOTSTRAP',
-          roles: [ownerRole],
+      const membership = toMembershipWithRoles(
+        await tx.tenantMembership.create({
+          data: {
+            tenantId: tenant.id,
+            principalId: customerPrincipalId,
+            status: 'PENDING',
+            source: 'BOOTSTRAP',
+            roles: { create: [{ role_id: ownerRole.id }] },
+          },
+          include: MEMBERSHIP_WITH_ROLES_INCLUDE,
         }),
       );
 
-      const ownerInvitation = await invitationRepo.save(
-        invitationRepo.create({
+      const ownerInvitation = (await tx.invitation.create({
+        data: {
           tokenHash: invitationTokenHash,
           tenantId: tenant.id,
           invitedEmail: ownerEmail,
           roleId: ownerRole.id,
           invitedById: principalId,
           purpose: 'OWNER_ACTIVATION',
-          invitedPrincipalId: customerPrincipal.id,
+          invitedPrincipalId: customerPrincipalId,
           policyDocumentId: activeDisclosure.id,
           status: 'PENDING',
           expiresAt: invitationExpiresAt,
-        }),
-      );
+        },
+      })) as Invitation;
 
-      await eventRepo.save(
-        eventRepo.create({
+      await tx.identityEvent.create({
+        data: {
           eventType: 'tenant_provisioning_started',
-          principalId: customerPrincipal.id,
+          principalId: customerPrincipalId,
           actorId: principalId,
           tenantId: tenant.id,
           data: {
@@ -297,27 +302,15 @@ export class OnboardingService implements OnModuleInit {
             ownerInvitationExpiresAt: ownerInvitation.expiresAt.toISOString(),
             accessDisclosureVersion: activeDisclosure.version,
           },
-        }),
-      );
+        },
+      });
 
-      return {
-        tenant,
-        legalEntity,
-        environment,
-        identityProvider,
-        membership,
-        ownerInvitation,
-        customerPrincipalId: customerPrincipal.id,
-      };
-    });
-
-    await this.prisma.$transaction(async (tx) => {
       // Atomically claim the order for this tenant — the WHERE clause
       // re-checks tenant_id IS NULL so a concurrent onboard() racing on the
       // same order loses here rather than double-provisioning it.
       const claimed = await tx.commercialOrder.updateMany({
         where: { id: order.id, tenant_id: null },
-        data: { tenant_id: provisioning.tenant.id },
+        data: { tenant_id: tenant.id },
       });
       if (claimed.count === 0) {
         throw new ConflictException(
@@ -330,13 +323,23 @@ export class OnboardingService implements OnModuleInit {
       await tx.entitlement.createMany({
         data: offerTypes.map((offerType) => ({
           commercial_account_id: order.commercial_account_id,
-          tenant_id: provisioning.tenant.id,
+          tenant_id: tenant.id,
           offer_type: offerType,
           source_type: 'ACCEPTED_ORDER',
           source_id: order.id,
           status: 'ACTIVE',
         })),
       });
+
+      return {
+        tenant,
+        legalEntity,
+        environment,
+        identityProvider,
+        membership,
+        ownerInvitation,
+        customerPrincipalId,
+      };
     });
 
     const activationUrl = await this.mailService.sendOwnerInvitation({

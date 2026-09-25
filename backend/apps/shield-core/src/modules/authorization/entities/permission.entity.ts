@@ -1,13 +1,4 @@
-import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import type { Permission as PermissionRow } from '@prisma/client';
 
-@Entity({ name: 'permissions', schema: 'authorization' })
-export class Permission {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
-  @Column({ unique: true, length: 150 })
-  code: string;
-
-  @Column({ type: 'text', nullable: true })
-  description?: string;
-}
+/** Row of "authorization".permissions, persisted through Prisma. */
+export type Permission = PermissionRow;

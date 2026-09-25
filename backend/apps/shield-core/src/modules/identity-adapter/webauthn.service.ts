@@ -6,15 +6,10 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { IsNull, LessThan, Repository } from 'typeorm';
 import * as crypto from 'crypto';
-import { WebauthnCredential } from './webauthn-credential.entity';
-import {
-  WebauthnChallenge,
-  WebauthnChallengePurpose,
-} from './webauthn-challenge.entity';
-import { Principal } from './principal.entity';
+import { PrismaService } from '../../prisma/prisma.service';
+import type { WebauthnCredential } from './webauthn-credential.entity';
+import type { WebauthnChallengePurpose } from './webauthn-challenge.entity';
 import {
   VerifyWebauthnRegistrationDto,
   WebauthnAssertionDto,
@@ -81,14 +76,7 @@ export class WebauthnService {
   private readonly rpName: string;
   private readonly expectedOrigin: string;
 
-  constructor(
-    @InjectRepository(WebauthnCredential)
-    private readonly credentials: Repository<WebauthnCredential>,
-    @InjectRepository(WebauthnChallenge)
-    private readonly challenges: Repository<WebauthnChallenge>,
-    @InjectRepository(Principal)
-    private readonly principals: Repository<Principal>,
-  ) {
+  constructor(private readonly prisma: PrismaService) {
     this.rpId = process.env.WEBAUTHN_RP_ID || 'localhost';
     this.rpName = 'ZoikoShield';
     this.expectedOrigin =
@@ -98,7 +86,7 @@ export class WebauthnService {
   async createRegistrationOptions(
     principalId: string,
   ): Promise<WebauthnRegistrationOptions> {
-    const principal = await this.principals.findOne({
+    const principal = await this.prisma.principal.findUnique({
       where: { id: principalId },
     });
     if (!principal) {
@@ -106,8 +94,8 @@ export class WebauthnService {
     }
 
     const challenge = await this.issueChallenge(principalId, 'REGISTRATION');
-    const existing = await this.credentials.find({
-      where: { principalId, revokedAt: IsNull() },
+    const existing = await this.prisma.webauthnCredential.findMany({
+      where: { principalId, revokedAt: null },
     });
 
     return {
@@ -146,7 +134,7 @@ export class WebauthnService {
       principalId,
     );
 
-    const duplicate = await this.credentials.findOne({
+    const duplicate = await this.prisma.webauthnCredential.findUnique({
       where: { credentialId: dto.credentialId },
     });
     if (duplicate) {
@@ -155,18 +143,18 @@ export class WebauthnService {
 
     const publicKeyPem = this.spkiToPem(dto.publicKeySpkiBase64);
 
-    const credential = await this.credentials.save(
-      this.credentials.create({
+    const credential = await this.prisma.webauthnCredential.create({
+      data: {
         principalId,
         credentialId: dto.credentialId,
         publicKeyPem,
-        signCount: '0',
+        signCount: BigInt(0),
         label: dto.label ?? null,
         transports: dto.transports ?? null,
         lastUsedAt: null,
         revokedAt: null,
-      }),
-    );
+      },
+    });
 
     this.logger.log(`Passkey registered for principal ${principalId}`);
     return this.toSummary(credential);
@@ -175,10 +163,12 @@ export class WebauthnService {
   async createAuthenticationOptions(
     email: string,
   ): Promise<WebauthnAuthenticationOptions> {
-    const principal = await this.principals.findOne({ where: { email } });
+    const principal = await this.prisma.principal.findUnique({
+      where: { email },
+    });
     const credentials = principal
-      ? await this.credentials.find({
-          where: { principalId: principal.id, revokedAt: IsNull() },
+      ? await this.prisma.webauthnCredential.findMany({
+          where: { principalId: principal.id, revokedAt: null },
         })
       : [];
 
@@ -204,8 +194,8 @@ export class WebauthnService {
   async createStepUpOptions(
     principalId: string,
   ): Promise<WebauthnAuthenticationOptions> {
-    const credentials = await this.credentials.find({
-      where: { principalId, revokedAt: IsNull() },
+    const credentials = await this.prisma.webauthnCredential.findMany({
+      where: { principalId, revokedAt: null },
     });
     if (credentials.length === 0) {
       throw new BadRequestException(
@@ -238,8 +228,8 @@ export class WebauthnService {
     const clientData = this.parseClientData(dto.clientDataJsonBase64);
     this.assertClientDataBinding(clientData, 'webauthn.get');
 
-    const credential = await this.credentials.findOne({
-      where: { credentialId: dto.credentialId, revokedAt: IsNull() },
+    const credential = await this.prisma.webauthnCredential.findFirst({
+      where: { credentialId: dto.credentialId, revokedAt: null },
     });
     if (!credential) {
       throw new UnauthorizedException('Unknown passkey');
@@ -316,16 +306,19 @@ export class WebauthnService {
     ) {
       // A counter that fails to advance is the canonical cloned-authenticator
       // signal, so the credential is revoked rather than merely rejected.
-      credential.revokedAt = new Date();
-      await this.credentials.save(credential);
+      await this.prisma.webauthnCredential.update({
+        where: { id: credential.id },
+        data: { revokedAt: new Date() },
+      });
       throw new ForbiddenException(
         'Passkey signature counter did not advance; credential revoked',
       );
     }
 
-    credential.signCount = String(presentedCount);
-    credential.lastUsedAt = new Date();
-    await this.credentials.save(credential);
+    await this.prisma.webauthnCredential.update({
+      where: { id: credential.id },
+      data: { signCount: BigInt(presentedCount), lastUsedAt: new Date() },
+    });
 
     return {
       principalId: credential.principalId,
@@ -338,20 +331,24 @@ export class WebauthnService {
   async listCredentials(
     principalId: string,
   ): Promise<RegisteredPasskeySummary[]> {
-    const credentials = await this.credentials.find({
-      where: { principalId, revokedAt: IsNull() },
-      order: { createdAt: 'DESC' },
+    const credentials = await this.prisma.webauthnCredential.findMany({
+      where: { principalId, revokedAt: null },
+      orderBy: { createdAt: 'desc' },
     });
     return credentials.map((credential) => this.toSummary(credential));
   }
 
   async revokeCredential(principalId: string, id: string): Promise<void> {
-    const credential = await this.credentials.findOne({ where: { id } });
+    const credential = await this.prisma.webauthnCredential.findUnique({
+      where: { id },
+    });
     if (!credential || credential.principalId !== principalId) {
       throw new NotFoundException('Passkey not found');
     }
-    credential.revokedAt = new Date();
-    await this.credentials.save(credential);
+    await this.prisma.webauthnCredential.update({
+      where: { id: credential.id },
+      data: { revokedAt: new Date() },
+    });
   }
 
   private async issueChallenge(
@@ -359,16 +356,18 @@ export class WebauthnService {
     purpose: WebauthnChallengePurpose,
   ): Promise<string> {
     const challenge = toBase64Url(crypto.randomBytes(CHALLENGE_BYTES));
-    await this.challenges.save(
-      this.challenges.create({
+    await this.prisma.webauthnChallenge.create({
+      data: {
         principalId,
         purpose,
         challenge,
         expiresAt: new Date(Date.now() + CHALLENGE_TTL_MS),
         consumedAt: null,
-      }),
-    );
-    await this.challenges.delete({ expiresAt: LessThan(new Date()) });
+      },
+    });
+    await this.prisma.webauthnChallenge.deleteMany({
+      where: { expiresAt: { lt: new Date() } },
+    });
     return challenge;
   }
 
@@ -377,8 +376,8 @@ export class WebauthnService {
     purpose: WebauthnChallengePurpose,
     principalId: string,
   ): Promise<void> {
-    const record = await this.challenges.findOne({
-      where: { challenge, purpose, consumedAt: IsNull() },
+    const record = await this.prisma.webauthnChallenge.findFirst({
+      where: { challenge, purpose, consumedAt: null },
     });
     if (!record) {
       throw new UnauthorizedException('Challenge is unknown or already used');
@@ -392,11 +391,11 @@ export class WebauthnService {
       throw new ForbiddenException('Challenge was issued to another principal');
     }
 
-    const consumed = await this.challenges.update(
-      { id: record.id, consumedAt: IsNull() },
-      { consumedAt: new Date() },
-    );
-    if (!consumed.affected) {
+    const consumed = await this.prisma.webauthnChallenge.updateMany({
+      where: { id: record.id, consumedAt: null },
+      data: { consumedAt: new Date() },
+    });
+    if (!consumed.count) {
       throw new UnauthorizedException('Challenge was already used');
     }
   }

@@ -18,6 +18,7 @@ import {
 } from 'class-validator';
 import { PrismaService } from '../../prisma/prisma.service';
 import { CommercialApprovalService } from '../approvals/commercial-approval.service';
+import { PlatformScope } from '../../../../../libs/database/src';
 
 const OFFER_TYPES = [
   'MANAGED_DEFENSE',
@@ -387,6 +388,7 @@ export class ConcessionService {
     });
   }
 
+  @PlatformScope('scheduled job ConcessionService.processConcessionLifecycle')
   @Cron(CronExpression.EVERY_MINUTE)
   async processConcessionLifecycle() {
     const now = new Date();

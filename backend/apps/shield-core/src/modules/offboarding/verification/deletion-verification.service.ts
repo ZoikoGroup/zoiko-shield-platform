@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ObjectStorageService } from '../../evidence/storage/object-storage.service';
+import { discoverTenantKeyedTables } from '../tenant-keyed-tables';
 
 export interface SurfaceResult {
   surface: string;
@@ -106,11 +107,7 @@ export class DeletionVerificationService {
   private async verifyRelationalData(tenantId: string): Promise<SurfaceResult> {
     // Rediscovered from the catalogue rather than taken from the deleter's
     // manifest, so a table the deletion plan forgot is still checked here.
-    const tables = await this.prisma.$queryRaw<Array<{ table_name: string }>>`
-      SELECT DISTINCT table_name
-      FROM information_schema.columns
-      WHERE table_schema = 'public' AND column_name = 'tenant_id'
-    `;
+    const tables = await discoverTenantKeyedTables(this.prisma);
     const controlTables = new Set([
       'DeletionRequest',
       'DeletionTask',
@@ -125,10 +122,9 @@ export class DeletionVerificationService {
 
     let residual = 0;
     let retained = 0;
-    for (const { table_name: table } of tables) {
-      if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(table)) continue;
+    for (const { table, qualified } of tables) {
       const rows = await this.prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
-        `SELECT COUNT(*)::bigint AS count FROM "${table}" WHERE tenant_id = $1`,
+        `SELECT COUNT(*)::bigint AS count FROM ${qualified} WHERE tenant_id = $1`,
         tenantId,
       );
       const count = Number(rows[0]?.count ?? 0);
@@ -136,7 +132,9 @@ export class DeletionVerificationService {
       else residual += count;
     }
 
-    const typeOrm = await this.prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
+    const camelKeyed = await this.prisma.$queryRawUnsafe<
+      Array<{ count: bigint }>
+    >(
       `
       SELECT (
         (SELECT COUNT(*) FROM identity.identity_events WHERE "tenantId" = $1::uuid) +
@@ -149,7 +147,7 @@ export class DeletionVerificationService {
     `,
       tenantId,
     );
-    residual += Number(typeOrm[0]?.count ?? 0);
+    residual += Number(camelKeyed[0]?.count ?? 0);
 
     return {
       surface: 'AUTHORITATIVE_RELATIONAL_DATA',

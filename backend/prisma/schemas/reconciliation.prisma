@@ -1,0 +1,46 @@
+// PostgreSQL schema "reconciliation". reconciliation module.
+
+// ============================================================
+// ZS-COM-BILL-001 P1 Part 27 / REC-01: reconciliation engine. Unknown
+// state must never automatically become PAID/BILLABLE/COVERED/DELIVERED/
+// ENTITLED — it routes here as an issue instead of a silent correction.
+// ============================================================
+
+model ReconciliationRun {
+  id           String    @id @default(uuid())
+  run_type     String    @default("ON_DEMAND")
+  started_at   DateTime  @default(now())
+  completed_at DateTime?
+  status       String    @default("RUNNING")
+  issue_count  Int       @default(0)
+  created_at   DateTime  @default(now())
+
+  issues ReconciliationIssue[]
+
+  @@index([status])
+
+  @@schema("reconciliation")
+}
+
+model ReconciliationIssue {
+  id             String            @id @default(uuid())
+  run_id         String
+  run            ReconciliationRun @relation(fields: [run_id], references: [id])
+  domain         String
+  object_type    String
+  object_id      String
+  expected_value String
+  actual_value   String
+  severity       String            @default("MEDIUM")
+  reason         String
+  status         String            @default("OPEN")
+  detected_at    DateTime          @default(now())
+  resolved_at    DateTime?
+  resolution     String?
+
+  @@index([run_id])
+  @@index([status])
+  @@index([domain])
+
+  @@schema("reconciliation")
+}

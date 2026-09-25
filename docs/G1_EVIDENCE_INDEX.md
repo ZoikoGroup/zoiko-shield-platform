@@ -24,14 +24,15 @@ artifact that is not on disk.
 
 | Gate | State | Evidence artifact | Environment | Verification | Measured result | Residual risk |
 |---|---|---|---|---|---|---|
-| Unit and integration suite | PASS | `npm test -- --runInBand` | CI | Automated | 2022 tests, 413 suites | Coverage is not measured; no mutation testing. Green tests proved nothing about whether detection ran — see the detection row. |
+| Unit and integration suite | PASS | `npm test -- --runInBand` | CI | Automated | 2046 tests, 415 suites | Coverage is not measured; no mutation testing. Green tests proved nothing about whether detection ran — see the detection row. |
 | Cross-satellite golden spine e2e | PASS | `npm run test:e2e:spine` | CI | Automated | 5 tests | In-process; no live cloud dependency. |
 | Satellite e2e (action, ai, anchor) | PASS | `npm run test:e2e:all` | CI | Automated | 26 tests | As above. |
 | API contract coverage | PASS | `npm run swagger:check` | CI | Automated | Every externally reachable operation documented with a security contract | Contract presence only. Schema correctness, authZ, tenant enforcement, idempotency and negative paths are not covered by this gate. |
 | Ungrounded terminology | PASS | `npm run check:ungrounded-terms` | CI | Automated | 0 across 1509 files | Lint of language, not evidence of security or compliance. |
 | Public capability claims | PASS | `npm run check:capability-claims` | CI | Automated | No tier publishes a price or SLA | — |
-| Controller access contracts | PASS | `npm run access:check` | CI | Automated | Every shield-core operation has an explicit, non-contradictory contract | Declaration, not runtime enforcement proof. |
-| Schema/migration agreement | PASS | `npm run check:schema-drift` | Local scratch DB | Automated | Migrations provide every table and column the entities need | Index/constraint naming differences are reported, not failed. |
+| Schema/migration agreement | PASS | `npm run check:schema-drift` | Local scratch DB | Automated | Every migration replayed into a shadow database equals the Prisma schema: no difference | Prisma does not compare function bodies or row policies; those are covered by `npm run test:rls`. |
+| Tenant row-level security | PASS | `npm run test:rls` | Local scratch PostgreSQL 16 | Automated | 16 tests through the services' own `TenantScopedPool` as a non-owner login: fail-closed with no scope, no cross-tenant read or write, no bleed over a shared pool, account- and parent-scoped visibility, platform bypass refused without `shield_platform_scope`, service roles denied other schemas, RLS forced on every isolated table | Not run on Cloud SQL. Identity/authorization control plane is exempt by design (ADR-19 §6). HTTP platform elevation not exercised end to end (stopped at the step-up requirement). |
+| Database access policy | PASS | `apps/shield-core/test/database-access-policy.spec.ts` | CI | Automated | Every table has an isolation decision; satellite roles hold a grant for every table their code uses; no new cross-module write | 66 existing cross-module writes are frozen in an allowlist, not removed. Grant check is static: it reads delegate calls, not nested includes. |
 | G1 experience contracts | PASS | `npm run check:experience-contracts` | Local | Automated | 29 of 29 have a surface | All 29 G1-blocking contracts have reviewable UI surfaces. Contract presence does not imply defensibility satisfaction. |
 
 ## Runtime and operational

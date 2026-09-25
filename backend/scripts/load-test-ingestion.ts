@@ -2,6 +2,7 @@ import 'dotenv/config';
 import * as http from 'http';
 import { createHmac, randomUUID } from 'crypto';
 import { Client } from 'pg';
+import { declarePlatformSession } from '../libs/database/src';
 
 /**
  * Sustained-rate load test against the real ingestion path.
@@ -80,7 +81,7 @@ async function normalizedEventCount(
   tenantId: string,
 ): Promise<number> {
   const result = await client.query(
-    'SELECT count(*)::int AS count FROM "NormalizedEvent" WHERE tenant_id = $1',
+    'SELECT count(*)::int AS count FROM ingest."NormalizedEvent" WHERE tenant_id = $1',
     [tenantId],
   );
   return result.rows[0].count as number;
@@ -100,6 +101,7 @@ async function main(): Promise<void> {
     'postgres://shield:shield@localhost:5433/shield_core';
   const db = new Client({ connectionString: databaseUrl });
   await db.connect();
+  await declarePlatformSession(db, 'ingestion load test');
 
   const baselineNormalized = await normalizedEventCount(db, args.tenantId);
 
@@ -250,17 +252,31 @@ async function main(): Promise<void> {
   console.log(' INGESTION LOAD TEST RESULT');
   console.log(line);
   console.log(`  target rate          ${args.rate}/sec for ${args.seconds}s`);
-  console.log(`  offered              ${sent} requests over ${offerSeconds.toFixed(1)}s`);
+  console.log(
+    `  offered              ${sent} requests over ${offerSeconds.toFixed(1)}s`,
+  );
   console.log(`  accepted (2xx)       ${accepted}`);
   console.log(`  achieved offer rate  ${(sent / offerSeconds).toFixed(0)}/sec`);
-  console.log(`  achieved accept rate ${(accepted / wallSeconds).toFixed(0)}/sec (over ${wallSeconds.toFixed(1)}s to last reply)`);
-  console.log(`  peak in-flight       ${maxInFlight} (socket pool ${args.connections})`);
+  console.log(
+    `  achieved accept rate ${(accepted / wallSeconds).toFixed(0)}/sec (over ${wallSeconds.toFixed(1)}s to last reply)`,
+  );
+  console.log(
+    `  peak in-flight       ${maxInFlight} (socket pool ${args.connections})`,
+  );
   console.log('');
   console.log('  request latency measured at the client');
-  console.log(`    p50                ${percentile(latencies, 50).toFixed(1)} ms`);
-  console.log(`    p95                ${percentile(latencies, 95).toFixed(1)} ms`);
-  console.log(`    p99                ${percentile(latencies, 99).toFixed(1)} ms`);
-  console.log(`    max                ${(latencies[latencies.length - 1] ?? 0).toFixed(1)} ms`);
+  console.log(
+    `    p50                ${percentile(latencies, 50).toFixed(1)} ms`,
+  );
+  console.log(
+    `    p95                ${percentile(latencies, 95).toFixed(1)} ms`,
+  );
+  console.log(
+    `    p99                ${percentile(latencies, 99).toFixed(1)} ms`,
+  );
+  console.log(
+    `    max                ${(latencies[latencies.length - 1] ?? 0).toFixed(1)} ms`,
+  );
   console.log('');
   console.log('  responses by status');
   for (const [status, count] of [...statusCounts].sort((a, b) => a[0] - b[0])) {
@@ -275,9 +291,13 @@ async function main(): Promise<void> {
   console.log('');
   console.log('  pipeline behind the 202');
   console.log(`    normalized events  ${processed} of ${accepted} accepted`);
-  console.log(`    drain time         ${drainSeconds.toFixed(1)}s after load stopped`);
+  console.log(
+    `    drain time         ${drainSeconds.toFixed(1)}s after load stopped`,
+  );
   if (processed < accepted) {
-    console.log(`    BACKLOG            ${accepted - processed} accepted events never reached NormalizedEvent`);
+    console.log(
+      `    BACKLOG            ${accepted - processed} accepted events never reached NormalizedEvent`,
+    );
   }
   console.log(line);
   console.log(

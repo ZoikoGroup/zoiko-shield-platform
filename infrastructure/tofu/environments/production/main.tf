@@ -29,6 +29,10 @@ module "cell_us_east_1" {
   project_runtime_id  = "${var.project_root_id}-us-runtime"
   project_evidence_id = "${var.project_root_id}-us-evidence"
   project_security_id = "${var.project_root_id}-us-security"
+  project_data_id     = "${var.project_root_id}-us-data"
+
+  # Synchronous standby in a second zone for the system of record.
+  database_availability_type = "REGIONAL"
 }
 
 # -----------------------------------------------------------------------------
@@ -43,6 +47,10 @@ module "cell_eu_central_1" {
   project_runtime_id  = "${var.project_root_id}-eu-runtime"
   project_evidence_id = "${var.project_root_id}-eu-evidence"
   project_security_id = "${var.project_root_id}-eu-security"
+  project_data_id     = "${var.project_root_id}-eu-data"
+
+  # Synchronous standby in a second zone for the system of record.
+  database_availability_type = "REGIONAL"
 }
 
 # -----------------------------------------------------------------------------

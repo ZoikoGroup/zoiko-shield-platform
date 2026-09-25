@@ -1,7 +1,10 @@
 # ADR-002: ORM System of Record Consolidation (Prisma Standardization)
 
 ## Status
-**Accepted**
+**Accepted**. Consolidation **completed 2026-09-25**. The identity, authorization
+and tenant planes moved to Prisma, the 20 TypeORM SQL migrations became the
+Prisma baseline, and TypeORM is no longer a dependency. See ADR-19 for how the
+database is isolated.
 
 ## Date
 2026-09-07

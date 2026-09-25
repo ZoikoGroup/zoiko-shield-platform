@@ -1,0 +1,23 @@
+// PostgreSQL schema "tax". tax module.
+
+/**
+ * Part 10: fail-closed tax resolution — never a hardcoded global rate.
+ */
+model TaxRule {
+  id                String    @id @default(uuid())
+  jurisdiction      String
+  product_tax_class String
+  rate_percent      Decimal   @db.Decimal(6, 4)
+  reverse_charge    Boolean   @default(false)
+  status            String    @default("DRAFT")
+  effective_from    DateTime  @default(now())
+  effective_to      DateTime?
+  approved_by       String?
+  approved_at       DateTime?
+  created_at        DateTime  @default(now())
+
+  @@index([jurisdiction, product_tax_class])
+  @@index([status])
+
+  @@schema("tax")
+}

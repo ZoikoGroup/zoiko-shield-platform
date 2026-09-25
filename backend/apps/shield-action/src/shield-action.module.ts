@@ -1,4 +1,9 @@
-import { Module } from '@nestjs/common';
+import {
+  Module,
+  MiddlewareConsumer,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { ScheduleModule } from '@nestjs/schedule';
 import { PrismaModule } from './prisma/prisma.module';
 import { KafkaModule } from './kafka/kafka.module';
@@ -52,6 +57,7 @@ import { DualCustodyApprovalsService } from './approvals/dual-custody-approvals.
 import { AutomatedRollbackOrchestratorService } from './executors/automated-rollback-orchestrator.service';
 import { DualCustodyQuorumService } from './dual-custody/dual-custody-quorum.service';
 import { CompensatingActionService } from './rollback/compensating-action.service';
+import { dbScopeMiddleware } from '../../../libs/database/src';
 
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
@@ -133,4 +139,12 @@ import { CompensatingActionService } from './rollback/compensating-action.servic
     CompensatingActionService,
   ],
 })
-export class ShieldActionModule {}
+export class ShieldActionModule implements NestModule {
+  // Every request gets its own database scope, unbound until an auth guard
+  // verifies its tenant (libs/database/src/db-scope.ts).
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(dbScopeMiddleware)
+      .forRoutes({ path: '*path', method: RequestMethod.ALL });
+  }
+}

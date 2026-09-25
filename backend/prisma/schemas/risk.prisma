@@ -1,0 +1,130 @@
+// PostgreSQL schema "risk". risk module.
+
+// --- shield-core-owned: risk & exception management ---
+model ControlDeficiency {
+  id                   String    @id @default(uuid())
+  tenant_id            String
+  assessment_id        String
+  control_objective_id String
+  type                 String // DESIGN_GAP|IMPLEMENTATION_GAP|OPERATING_FAILURE|EVIDENCE_GAP|COVERAGE_GAP
+  severity             String
+  description          String
+  evidence_refs        String    @default("[]")
+  owner_id             String
+  status               String    @default("OPEN")
+  detected_at          DateTime  @default(now())
+  due_at               DateTime?
+  resolved_at          DateTime?
+
+  @@index([tenant_id])
+  @@index([assessment_id])
+
+  @@schema("risk")
+}
+
+model Risk {
+  id            String   @id @default(uuid())
+  tenant_id     String
+  title         String
+  description   String
+  source_type   String
+  source_id     String
+  likelihood    String
+  impact        String
+  inherent_risk String?
+  residual_risk String?
+  status        String   @default("OPEN")
+  owner_id      String
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  factors     RiskFactor[]
+  treatments  RiskTreatment[]
+  acceptances RiskAcceptance[]
+
+  @@index([tenant_id])
+
+  @@schema("risk")
+}
+
+model RiskFactor {
+  id                String   @id @default(uuid())
+  tenant_id         String
+  risk_id           String
+  risk              Risk     @relation(fields: [risk_id], references: [id])
+  factor            String
+  value             String
+  contribution      Float
+  source_ref        String
+  evaluator_version String?
+  created_at        DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([risk_id])
+
+  @@schema("risk")
+}
+
+model RiskTreatment {
+  id             String    @id @default(uuid())
+  tenant_id      String
+  risk_id        String
+  risk           Risk      @relation(fields: [risk_id], references: [id])
+  treatment_type String // MITIGATE|TRANSFER|AVOID|ACCEPT
+  plan           String
+  owner_id       String
+  due_at         DateTime?
+  status         String    @default("PLANNED")
+  created_at     DateTime  @default(now())
+
+  @@index([tenant_id])
+  @@index([risk_id])
+
+  @@schema("risk")
+}
+
+// Immutable version rows (bitemporal) — same shape/semantics as ControlMapping.
+model RiskAcceptance {
+  id                    String    @id @default(uuid())
+  tenant_id             String
+  risk_id               String
+  risk                  Risk      @relation(fields: [risk_id], references: [id])
+  accepted_by           String
+  authority             String
+  rationale             String
+  compensating_controls String    @default("[]")
+  valid_from            DateTime
+  valid_to              DateTime?
+  recorded_at           DateTime  @default(now())
+  supersedes_id         String?
+  expires_at            DateTime
+  review_at             DateTime
+  status                String    @default("ACTIVE")
+
+  @@index([tenant_id])
+  @@index([risk_id])
+
+  @@schema("risk")
+}
+
+model Exception {
+  id                        String   @id @default(uuid())
+  tenant_id                 String
+  control_objective_id      String?
+  control_implementation_id String?
+  requirement_id            String?
+  risk_id                   String?
+  reason                    String
+  scope                     String   @default("{}")
+  compensating_controls     String   @default("[]")
+  requested_by              String
+  approved_by               String?
+  starts_at                 DateTime
+  expires_at                DateTime
+  status                    String   @default("REQUESTED") // REQUESTED|APPROVED|REJECTED|EXPIRED|REVOKED
+  created_at                DateTime @default(now())
+
+  @@index([tenant_id])
+
+  @@schema("risk")
+}

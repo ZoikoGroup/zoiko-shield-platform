@@ -1,36 +1,4 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  Index,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from 'typeorm';
+import type { LegalEntity as LegalEntityRow } from '@prisma/client';
 
-@Entity({ name: 'legal_entities', schema: 'tenant' })
-export class LegalEntity {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
-  @Column({ type: 'uuid' })
-  @Index()
-  tenantId: string;
-
-  @Column()
-  legalName: string;
-
-  @Column({ type: 'varchar', nullable: true })
-  registrationNumber?: string;
-
-  @Column({ type: 'varchar', nullable: true })
-  countryOfRegistration?: string;
-
-  @Column({ type: 'text', nullable: true })
-  registeredAddress?: string;
-
-  @CreateDateColumn({ type: 'timestamptz' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ type: 'timestamptz' })
-  updatedAt: Date;
-}
+/** Row of tenant.legal_entities, persisted through Prisma. */
+export type LegalEntity = LegalEntityRow;

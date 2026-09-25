@@ -1,0 +1,72 @@
+// PostgreSQL schema "anchor". shield-anchor service: tenant anchor heads, checkpoints, signing keys and witness receipts.
+
+// --- shield-anchor-owned: cryptographic checkpointing ---
+// Its own strictly-increasing per-tenant sequence, independent of the
+// evidence ledger's own sequence — anchoring is not the ledger sequencer.
+model TenantAnchorHead {
+  tenant_id            String  @id
+  last_anchor_sequence Int     @default(0)
+  last_checkpoint_id   String?
+  last_checkpoint_hash String?
+  version              Int     @default(0)
+
+  @@schema("anchor")
+}
+
+model Checkpoint {
+  id                       String    @id @default(uuid())
+  tenant_id                String
+  anchor_sequence          Int
+  ledger_sequence          Int
+  ledger_head_hash         String
+  package_id               String?
+  package_version          Int?
+  manifest_core_hash       String?
+  leaf_hashes              String // JSON array
+  merkle_root              String
+  tree_profile             String    @default("ZS-MERKLE-V1")
+  hash_algorithm           String    @default("SHA-256")
+  canonicalization_profile String    @default("zs-checkpoint-v1")
+  signing_key_id           String
+  signature                String
+  witness_assurance_state  String    @default("TEST_ONLY") // TEST_ONLY|WITNESS_PARTIAL|WITNESS_FULL
+  status                   String    @default("PENDING") // PENDING|SIGNED|PUBLISHED|FAILED
+  created_at               DateTime  @default(now())
+  published_at             DateTime?
+
+  witnessReceipts WitnessReceipt[]
+
+  @@unique([tenant_id, anchor_sequence])
+  @@index([tenant_id])
+
+  @@schema("anchor")
+}
+
+model SigningKey {
+  id         String   @id @default(uuid())
+  key_id     String   @unique
+  algorithm  String   @default("Ed25519")
+  public_key String
+  status     String   @default("ACTIVE") // ACTIVE|RETIRED
+  created_at DateTime @default(now())
+
+  @@schema("anchor")
+}
+
+model WitnessReceipt {
+  id            String     @id @default(uuid())
+  checkpoint_id String
+  checkpoint    Checkpoint @relation(fields: [checkpoint_id], references: [id])
+  witness_id    String
+  witness_type  String     @default("MOCK")
+  receipt_hash  String
+  signature     String?
+  public_key    String?
+  algorithm     String?
+  received_at   DateTime   @default(now())
+  status        String     @default("RECEIVED")
+
+  @@index([checkpoint_id])
+
+  @@schema("anchor")
+}

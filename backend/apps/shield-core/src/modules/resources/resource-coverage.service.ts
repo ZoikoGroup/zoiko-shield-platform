@@ -21,6 +21,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { CommercialApprovalService } from '../approvals/commercial-approval.service';
 import { assertTransition } from '../commerce/state-machine.util';
+import { PlatformScope } from '../../../../../libs/database/src';
 
 const COVERAGE_TRANSITIONS: Record<string, string[]> = {
   DISCOVERED: ['REVIEW_REQUIRED', 'EXCLUDED'],
@@ -1006,6 +1007,9 @@ export class ResourceCoverageService {
     return results;
   }
 
+  @PlatformScope(
+    'scheduled job ResourceCoverageService.processDueAutoEnrollments',
+  )
   @Cron(CronExpression.EVERY_HOUR)
   async processDueAutoEnrollments() {
     const results = await this.processAutoEnrollments();

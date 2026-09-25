@@ -1,0 +1,126 @@
+// PostgreSQL schema "detection". detection module.
+
+model DetectionDefinition {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  name        String
+  description String?
+  owner       String?
+  category    String   @default("IDENTITY")
+  status      String   @default("ACTIVE")
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  versions DetectionVersion[]
+
+  @@index([status])
+
+  @@schema("detection")
+}
+
+model DetectionVersion {
+  id                            String              @id @default(uuid())
+  detection_definition_id       String
+  detectionDefinition           DetectionDefinition @relation(fields: [detection_definition_id], references: [id])
+  version                       Int
+  status                        String              @default("DRAFT")
+  severity                      String              @default("MEDIUM")
+  rule_type                     String              @default("POINT")
+  configuration                 String              @default("{}")
+  required_event_types          String              @default("[]")
+  required_fields               String              @default("[]")
+  required_context              String              @default("[]")
+  allowed_missing_data_behavior String              @default("INDETERMINATE")
+  effective_from                DateTime?
+  published_at                  DateTime?
+  created_at                    DateTime            @default(now())
+
+  evaluations DetectionEvaluation[]
+  matches     DetectionMatch[]
+  replays     DetectionReplay[]
+
+  @@unique([detection_definition_id, version])
+  @@index([status])
+
+  @@schema("detection")
+}
+
+model DetectionEvaluation {
+  id                     String           @id @default(uuid())
+  tenant_id              String
+  environment_id         String           @default("default-env")
+  detection_version_id   String
+  detectionVersion       DetectionVersion @relation(fields: [detection_version_id], references: [id])
+  // Plain scalar reference, deliberately not a Prisma relation — shield-core
+  // never queries the shield-ingest-owned NormalizedEvent table directly.
+  event_id               String
+  context_snapshot_id    String?
+  contextSnapshot        ContextSnapshot? @relation(fields: [context_snapshot_id], references: [id])
+  evaluated_at           DateTime         @default(now())
+  result                 String
+  factor_snapshot        String           @default("[]")
+  confidence             Float?
+  incomplete_data        Boolean          @default(false)
+  reason_code            String?
+  correlation_id         String
+  created_at             DateTime         @default(now())
+  // Frozen event.normalized.v1 payload as consumed — replay reconstructs
+  // from this, never from a live NormalizedEvent read (shield-core does
+  // not query shield-ingest-owned tables).
+  event_payload_snapshot String           @default("{}")
+
+  replays DetectionReplay[]
+
+  @@index([tenant_id])
+  @@index([detection_version_id])
+  @@index([event_id])
+  @@index([result])
+
+  @@schema("detection")
+}
+
+model DetectionMatch {
+  id                      String           @id @default(uuid())
+  tenant_id               String
+  environment_id          String           @default("default-env")
+  detection_definition_id String
+  detection_version_id    String
+  detectionVersion        DetectionVersion @relation(fields: [detection_version_id], references: [id])
+  primary_event_id        String
+  supporting_event_refs   String           @default("[]")
+  context_snapshot_id     String?
+  severity                String
+  confidence              Float?
+  factor_contributions    String           @default("[]")
+  incomplete_data         Boolean          @default(false)
+  occurred_at             DateTime
+  detected_at             DateTime         @default(now())
+  correlation_id          String
+  created_at              DateTime         @default(now())
+
+  @@unique([tenant_id, detection_version_id, primary_event_id, context_snapshot_id])
+  @@index([tenant_id])
+  @@index([detection_definition_id])
+
+  @@schema("detection")
+}
+
+model DetectionReplay {
+  id                     String              @id @default(uuid())
+  tenant_id              String
+  original_evaluation_id String
+  originalEvaluation     DetectionEvaluation @relation(fields: [original_evaluation_id], references: [id])
+  detection_version_id   String
+  detectionVersion       DetectionVersion    @relation(fields: [detection_version_id], references: [id])
+  replayed_at            DateTime            @default(now())
+  original_result        String
+  replay_result          String
+  divergence             Boolean             @default(false)
+  reason                 String?
+  created_at             DateTime            @default(now())
+
+  @@index([tenant_id])
+  @@index([original_evaluation_id])
+
+  @@schema("detection")
+}

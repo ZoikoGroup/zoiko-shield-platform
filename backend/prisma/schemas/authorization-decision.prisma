@@ -1,0 +1,36 @@
+// PostgreSQL schema "authorization_decision". authorization-decision module.
+
+// ============================================================
+// Part 9+10: Controlled AI Investigation + Governed Response
+// ============================================================
+
+// --- shield-core-owned: real authorization decisions (spec correction #2) ---
+model AuthorizationDecision {
+  id                   String   @id @default(uuid())
+  tenant_id            String
+  environment_id       String?
+  actor_id             String
+  action               String
+  effect_class         String   @default("READ")
+  resource_type        String
+  resource_id          String?
+  resource_tenant_id   String?
+  purpose              String   @default("interactive-api")
+  required_permissions String   @default("[]")
+  required_entitlement String?
+  decision             String // PERMIT | DENY | INDETERMINATE | NOT_APPLICABLE
+  policy_version       String   @default("1.0")
+  reason_code          String   @default("UNSPECIFIED")
+  reason               String
+  obligations          String   @default("[]")
+  context_hash         String?
+  correlation_id       String?
+  created_at           DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([actor_id])
+  @@index([decision])
+  @@index([correlation_id])
+
+  @@schema("authorization_decision")
+}

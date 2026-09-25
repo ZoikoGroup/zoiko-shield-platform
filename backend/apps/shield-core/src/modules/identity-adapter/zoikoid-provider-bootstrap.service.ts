@@ -5,9 +5,9 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHash } from 'crypto';
-import { EntityManager } from 'typeorm';
+import type { Prisma } from '@prisma/client';
 import { FederationRuntimeService } from './federation-runtime.service';
-import {
+import type {
   IdentityProviderConfiguration,
   PinnedOidcMetadata,
 } from './identity-provider-configuration.entity';
@@ -21,8 +21,12 @@ export class ZoikoIdProviderBootstrapService {
     private readonly runtime: FederationRuntimeService,
   ) {}
 
+  /**
+   * Persists the tenant's ZoikoID OIDC provider inside the caller's
+   * transaction, so it commits or rolls back with tenant provisioning.
+   */
   async provisionForTenant(
-    manager: EntityManager,
+    tx: Prisma.TransactionClient,
     input: {
       tenantId: string;
       environmentId: string;
@@ -72,9 +76,8 @@ export class ZoikoIdProviderBootstrapService {
     // unavailable. The secret itself is never stored in this row.
     this.runtime.resolveSecret(clientSecretRef);
 
-    const repository = manager.getRepository(IdentityProviderConfiguration);
-    return repository.save(
-      repository.create({
+    return (await tx.identityProviderConfiguration.create({
+      data: {
         tenantId: input.tenantId,
         environmentId: input.environmentId,
         name: 'ZoikoID',
@@ -84,7 +87,7 @@ export class ZoikoIdProviderBootstrapService {
         clientId,
         clientSecretRef,
         oidcClientAuthMethod: 'client_secret_basic',
-        oidcMetadata: metadata,
+        oidcMetadata: metadata as Prisma.InputJsonValue,
         oidcSigningAlgorithm: signingAlgorithm,
         samlEntryPoint: null,
         samlIdpCertificates: [],
@@ -104,8 +107,8 @@ export class ZoikoIdProviderBootstrapService {
         metadataValidatedAt: new Date(),
         createdByPrincipalId: input.actorId,
         updatedByPrincipalId: input.actorId,
-      }),
-    );
+      },
+    })) as IdentityProviderConfiguration;
   }
 
   private required(name: string): string {

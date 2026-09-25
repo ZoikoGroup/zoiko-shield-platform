@@ -1,53 +1,23 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  Index,
-  JoinTable,
-  ManyToMany,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
-import { Role } from './role.entity';
+import type { TenantMembership as TenantMembershipRow } from '@prisma/client';
+import type { Role, RoleWithPermissions } from './role.entity';
 
 export type MembershipStatus = 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REMOVED';
 
-@Entity({ name: 'tenant_memberships', schema: 'authorization' })
-@Index(['tenantId', 'principalId'], { unique: true })
-export class TenantMembership {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
-  @Column({ type: 'uuid' })
-  tenantId: string;
-
-  @Column({ type: 'uuid' })
-  principalId: string;
-
-  @Column({ type: 'varchar', default: 'ACTIVE' })
+/**
+ * Row of "authorization".tenant_memberships, persisted through Prisma.
+ * `source` is "INVITATION" | "SCIM" | "BOOTSTRAP" | "JIT_ELEVATION": how the
+ * membership was established. `roles` is present when loaded through
+ * "authorization".user_roles.
+ */
+export type TenantMembership = Omit<TenantMembershipRow, 'status'> & {
   status: MembershipStatus;
+  roles?: Role[];
+};
 
-  // "INVITATION" | "SCIM" | "BOOTSTRAP" | "JIT_ELEVATION" — how this membership was established.
-  @Column({ type: 'varchar', default: 'INVITATION' })
-  source: string;
+/** A membership with its roles loaded. */
+export type TenantMembershipWithRoles = TenantMembership & { roles: Role[] };
 
-  @Column({ type: 'timestamp with time zone', nullable: true })
-  expiresAt?: Date | null;
-
-  @Column({ type: 'varchar', nullable: true })
-  elevationPurpose?: string | null;
-
-  @Column({ type: 'uuid', nullable: true })
-  elevationApprovedBy?: string | null;
-
-  @ManyToMany(() => Role)
-  @JoinTable({
-    name: 'user_roles',
-    schema: 'authorization',
-    joinColumn: { name: 'membership_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'role_id', referencedColumnName: 'id' },
-  })
-  roles: Role[];
-
-  @CreateDateColumn({ type: 'timestamptz' })
-  joinedAt: Date;
-}
+/** A membership with its roles and their permissions loaded. */
+export type TenantMembershipWithPermissions = TenantMembership & {
+  roles: RoleWithPermissions[];
+};

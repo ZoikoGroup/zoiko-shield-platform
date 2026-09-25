@@ -1,0 +1,29 @@
+// PostgreSQL schema "kill_switch". kill-switch module.
+
+// ============================================================
+// ZS-COM-BILL-001 P1 Part 28 / OPS-01: commercial kill switch. Strictly
+// scoped to commercial actions — never disables security monitoring or
+// touches evidence. Kept structurally separate from any security-response
+// kill switch (none of this model's fields can reach detection/response
+// code paths).
+// ============================================================
+
+model CommercialKillSwitch {
+  id              String    @id @default(uuid())
+  scope_type      String
+  scope_value     String?
+  blocked_actions String    @default("[]")
+  reason          String
+  activated_by    String
+  activated_at    DateTime  @default(now())
+  review_at       DateTime?
+  status          String    @default("ACTIVE")
+  deactivated_by  String?
+  deactivated_at  DateTime?
+  created_at      DateTime  @default(now())
+
+  @@index([scope_type, scope_value])
+  @@index([status])
+
+  @@schema("kill_switch")
+}

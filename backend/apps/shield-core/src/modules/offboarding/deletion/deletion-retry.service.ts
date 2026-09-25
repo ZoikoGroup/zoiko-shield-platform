@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { TenantOffboardingService } from '../lifecycle/tenant-offboarding.service';
 import { MAX_DELETION_ATTEMPTS } from './deletion-task.service';
+import { PlatformScope } from '../../../../../../libs/database/src';
 
 const BASE_DELAY_MS = 60_000;
 const MAX_DELAY_MS = 30 * 60_000;
@@ -35,6 +36,7 @@ export class DeletionRetryService {
     private readonly offboardingService: TenantOffboardingService,
   ) {}
 
+  @PlatformScope('scheduled job DeletionRetryService.resumeDue')
   @Cron(CronExpression.EVERY_MINUTE)
   async resumeDue(): Promise<void> {
     if (this.running) return;

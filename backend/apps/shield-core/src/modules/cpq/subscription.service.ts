@@ -21,6 +21,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service';
 import { CommercialApprovalService } from '../approvals/commercial-approval.service';
 import { assertTransition } from '../commerce/state-machine.util';
+import { PlatformScope } from '../../../../../libs/database/src';
 
 const OFFER_TYPES = [
   'MANAGED_DEFENSE',
@@ -1137,6 +1138,7 @@ export class SubscriptionService {
     });
   }
 
+  @PlatformScope('scheduled job SubscriptionService.applyDueAmendments')
   @Cron(CronExpression.EVERY_MINUTE)
   async applyDueAmendments() {
     const due = await this.prisma.commercialAmendment.findMany({
