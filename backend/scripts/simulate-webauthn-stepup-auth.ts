@@ -27,6 +27,14 @@ async function main() {
     namedCurve: 'prime256v1',
   });
   const publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
+  const credentialId = 'yubikey-fips-5c-nfc-token-01';
+  const analystId = 'ciso-soc-lead@enterprise.com';
+
+  fido2Guard.registerCredential({
+    credentialId,
+    analystId,
+    publicKeyPem,
+  });
 
   console.log('[1/3] Intercepting Tier-1 Destructive SOAR Action Proposal...');
   console.log(`  ➔ Proposal ID: ${proposalId}`);
@@ -37,7 +45,7 @@ async function main() {
   console.log('\n[2/3] Generating Ephemeral WebAuthn Challenge...');
   const challengeSession = fido2Guard.issueChallenge({
     tenantId,
-    analystId: 'ciso-soc-lead@enterprise.com',
+    analystId,
     proposalId,
     actionType: 'ISOLATE_ENTIRE_VPC',
     targetResource: 'vpc-prod-enterprise-primary',
@@ -57,8 +65,12 @@ async function main() {
   const clientDataHash = crypto.createHash('sha256').update(Buffer.from(clientDataJsonBase64, 'base64')).digest();
 
   // Authenticator data with UP (0x01) + UV (0x04) = 0x05
+  const rpIdHash = crypto
+    .createHash('sha256')
+    .update('security.zoikoshield.corp')
+    .digest();
   const authDataBuf = Buffer.concat([
-    crypto.randomBytes(32), // RP ID Hash
+    rpIdHash, // RP ID Hash
     Buffer.from([0x05]), // User Presence + User Verification
     Buffer.from([0, 0, 0, 1]), // Sign counter
   ]);

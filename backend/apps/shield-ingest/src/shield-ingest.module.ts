@@ -29,6 +29,7 @@ import { ConnectorSyncService } from './connectors/services/sync.service';
 import { WebhookIngestController } from './ingestion/webhook-ingest.controller';
 import { RawIngestService } from './ingestion/raw-ingest.service';
 import { QuarantineService } from './ingestion/quarantine.service';
+import { ConnectorCacheService } from './ingestion/connector-cache.service';
 import { ConnectorCatalogController } from './connectors/connector-catalog.controller';
 import { ConnectorCatalogService } from './connectors/connector-catalog.service';
 import { ShieldCoreClient } from './internal-client/shield-core.client';
@@ -233,6 +234,7 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     AdaptiveTraceSamplerService,
     AdaptiveCongestionManagerService,
     ConnectorPermissionDriftService,
+    ConnectorCacheService,
     { provide: APP_GUARD, useClass: WorkloadAuthGuard },
   ],
   exports: [
@@ -254,6 +256,7 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     AdaptiveTraceSamplerService,
     AdaptiveCongestionManagerService,
     ConnectorPermissionDriftService,
+    ConnectorCacheService,
   ],
 })
 export class ShieldIngestModule implements NestModule {

@@ -25,7 +25,36 @@ import { TwoManRuleService } from './approval/two-man-rule.service';
 import { DistributedActionLockService } from './orchestration/distributed-action-lock.service';
 import { HostNetworkEnforcerService } from './microsegmentation/host-network-enforcer.service';
 import { DualCustodyQuorumService } from './dual-custody/dual-custody-quorum.service';
+import {
+  Fido2StepupGuardService,
+  Fido2ChallengeRequest,
+  Fido2AssertionPayload,
+} from './auth/fido2-stepup-guard.service';
 import { InternalAuthGuard } from './internal-client/internal-auth.guard';
+
+export class IssueFido2ChallengeDto implements Fido2ChallengeRequest {
+  tenantId!: string;
+  analystId!: string;
+  proposalId!: string;
+  actionType!: string;
+  targetResource!: string;
+}
+
+export class VerifyFido2AssertionDto implements Fido2AssertionPayload {
+  challengeId!: string;
+  credentialId!: string;
+  authenticatorDataBase64!: string;
+  clientDataJsonBase64!: string;
+  signatureHex!: string;
+  publicKeyPem!: string;
+}
+
+export class RegisterFido2CredentialDto {
+  credentialId!: string;
+  analystId!: string;
+  publicKeyPem!: string;
+  signCount?: number;
+}
 
 export class EvaluateBlastRadiusDto implements BlastRadiusEvaluationInput {
   tenantId!: string;
@@ -161,6 +190,8 @@ export class ShieldActionController {
     private readonly hostNetworkEnforcer?: HostNetworkEnforcerService,
     @Optional()
     private readonly dualCustodyQuorumService?: DualCustodyQuorumService,
+    @Optional()
+    private readonly fido2Guard?: Fido2StepupGuardService,
   ) {}
 
   @Get()
@@ -532,5 +563,44 @@ export class ShieldActionController {
   @Get('api/v1/action/safety/compensation-plans')
   listCompensationPlans(@Query('tenantId') tenantId: string) {
     return this.compensatingActionService.listPlansForTenant(tenantId);
+  }
+
+  // --- WebAuthn / FIDO2 Hardware Token Step-Up Endpoints (ZS-T0-BE-ARCH-001 §8) ---
+
+  @UseGuards(InternalAuthGuard)
+  @Post('api/v1/action/fido2/challenge')
+  issueFido2Challenge(@Body() body: IssueFido2ChallengeDto) {
+    if (!this.fido2Guard) {
+      return {
+        status: 'UNAVAILABLE',
+        message: 'Fido2StepupGuardService is not configured in this environment',
+      };
+    }
+    return this.fido2Guard.issueChallenge(body);
+  }
+
+  @UseGuards(InternalAuthGuard)
+  @Post('api/v1/action/fido2/verify-assertion')
+  verifyFido2Assertion(@Body() body: VerifyFido2AssertionDto) {
+    if (!this.fido2Guard) {
+      return {
+        status: 'UNAVAILABLE',
+        message: 'Fido2StepupGuardService is not configured in this environment',
+      };
+    }
+    return this.fido2Guard.verifyAssertionAndGrant(body);
+  }
+
+  @UseGuards(InternalAuthGuard)
+  @Post('api/v1/action/fido2/register')
+  registerFido2Credential(@Body() body: RegisterFido2CredentialDto) {
+    if (!this.fido2Guard) {
+      return {
+        status: 'UNAVAILABLE',
+        message: 'Fido2StepupGuardService is not configured in this environment',
+      };
+    }
+    this.fido2Guard.registerCredential(body);
+    return { success: true, credentialId: body.credentialId, analystId: body.analystId };
   }
 }

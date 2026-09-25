@@ -32,12 +32,15 @@ describe('ComplianceDriftDetectorService', () => {
     tenantId,
     environmentId,
     overallComplianceScore: overallScore,
+    totalControls: evaluations.length,
     totalControlsEvaluated: evaluations.length,
     compliantControlsCount: evaluations.filter((e) => e.status === 'COMPLIANT')
       .length,
     nonCompliantControlsCount: evaluations.filter(
       (e) => e.status !== 'COMPLIANT',
     ).length,
+    notEvaluatedControlsCount: 0,
+    notEvaluatedControlCodes: [],
     evaluations: evaluations.map((e) => ({
       controlCode: e.controlCode,
       framework: 'SOC2',

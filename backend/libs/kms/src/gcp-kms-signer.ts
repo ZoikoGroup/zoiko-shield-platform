@@ -79,11 +79,11 @@ export class GcpKmsSigner {
   async publicKey(): Promise<string> {
     this.publicKeyPromise ??= this.client
       .getPublicKey({ name: this.keyVersionName })
-      .then(([response]) => {
+      .then(([response]: [any, any, any]) => {
         if (!response.pem) {
           throw new Error('Cloud KMS returned no public key');
         }
-        return response.pem;
+        return response.pem as string;
       });
     return this.publicKeyPromise;
   }
