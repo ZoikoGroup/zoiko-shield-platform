@@ -56,7 +56,7 @@ async function main() {
       id: crypto.randomUUID(),
       type: 'ENCRYPTION_KEY_ROTATION',
       title: 'AWS CloudHSM Automatic Envelope Key Rotation Verification',
-      controlCode: 'ISO27001-A.9.4',
+      controlCode: 'ISO27001-A.5.17',
       payload: {
         keyArn: 'arn:aws:kms:us-east-1:123456789012:key/sec-master-2026',
         lastRotated: new Date().toISOString(),

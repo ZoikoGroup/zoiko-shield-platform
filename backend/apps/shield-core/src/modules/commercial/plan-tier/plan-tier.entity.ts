@@ -73,7 +73,7 @@ export const DRAFT_PLAN_TIERS: PlanTier[] = [
     },
     includedOffers: ['CONTINUOUS_ASSURANCE', 'INCIDENT_RESPONSE_RETAINER'],
     highlightedFeatures: [
-      'Continuous SOC 2 Type II (CC6.1) & ISO 27001 (A.9.2) evaluation',
+      'Continuous SOC 2 Type II (CC6.1) & ISO/IEC 27001:2022 (A.5.18) control evaluation',
       'Tamper-evident SHA-256 Merkle evidence ledger',
       'Offline zero-network audit package generator & CLI verifier',
       'Tier 1 Certified Connectors (Microsoft Entra ID, AWS, Okta)',
@@ -159,7 +159,7 @@ export const DRAFT_PLAN_TIERS: PlanTier[] = [
       'AI Safety & Grounding Governance (§17 dual-model consensus)',
       'Multi-hop attack path trajectory exploration & MITRE correlation',
       'Autonomous adversary replay & canary honeypot telemetry',
-      'Post-Quantum Dilithium3 dual-signed evidence seals',
+      'Post-quantum ML-DSA-65 (FIPS 204) dual-signed evidence seals',
       'Expedited emergency incident response retainer (response terms per order form)',
     ],
     governanceFeatures: [

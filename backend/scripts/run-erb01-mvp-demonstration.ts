@@ -173,14 +173,14 @@ async function runErb01Demonstration() {
   // STEP 10: Control Evaluation, Audit Package & Offline Verification
   console.log('[STEP 10/10] Control Evaluation, Audit Package Assembly & Independent Verification...');
   console.log(`  ✔ Control Evaluated: [SOC2-CC6.1] Identity & Access Management Enforcement (PASS)`);
-  console.log(`  ✔ Control Evaluated: [ISO27001-A.9.4] User Authentication Security (PASS)`);
+  console.log(`  ✔ Control Evaluated: [ISO27001-A.5.17] Authentication Information (PASS)`);
   console.log(`  ✔ Control Evaluated: [SOC2-CC7.1] Vulnerability & Incident Traceability (PASS)`);
 
   const leaves = [
     JSON.stringify(evidenceRecord),
     JSON.stringify(simulationReceipt),
     JSON.stringify({ control: 'SOC2-CC6.1', status: 'PASS', evaluatedAt: new Date().toISOString() }),
-    JSON.stringify({ control: 'ISO27001-A.9.4', status: 'PASS', evaluatedAt: new Date().toISOString() }),
+    JSON.stringify({ control: 'ISO27001-A.5.17', status: 'PASS', evaluatedAt: new Date().toISOString() }),
   ];
 
   const merkleVerifier = new StandaloneMerkleVerifier();

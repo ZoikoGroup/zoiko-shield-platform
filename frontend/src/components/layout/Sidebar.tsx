@@ -298,7 +298,7 @@ export const Sidebar: React.FC = () => {
           </div>
           <div className="flex items-center justify-between text-slate-400">
             <span>PQC Seal:</span>
-            <span className="text-emerald-400">Dilithium3 ✓</span>
+            <span className="text-emerald-400">ML-DSA-65 ✓</span>
           </div>
         </div>
       </div>

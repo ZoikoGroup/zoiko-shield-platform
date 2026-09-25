@@ -2,7 +2,7 @@
  * Continuous Zero-Trust Device Health & Posture Attestation Simulator
  * 
  * Simulates:
- * 1. Health evaluation of fully compliant corporate developer laptop (TPM 2.0, BitLocker, CrowdStrike active).
+ * 1. Health evaluation of corporate developer laptop meeting every posture check (TPM 2.0, BitLocker, CrowdStrike active).
  * 2. Evaluating degraded BYOD contractor device missing disk encryption (Step-Up MFA enforced).
  * 3. Detecting impossible geo-velocity travel anomaly (instant OAuth/JWT session revocation).
  */

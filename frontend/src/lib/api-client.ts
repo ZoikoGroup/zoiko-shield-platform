@@ -2194,7 +2194,7 @@ export class ZoikoShieldApiClient {
           serviceName: "Continuous Compliance & Automated Control Assurance",
           category: "GOVERNANCE",
           publicOutcomeDescription:
-            "Real-time control evaluation and cryptographically sealed evidence generation across SOC 2 CC6.1 and ISO 27001 A.9.2.",
+            "Real-time control evaluation and cryptographically sealed evidence generation across SOC 2 CC6.1 and ISO/IEC 27001:2022 A.5.18.",
           status: "CORE",
           substantiatingComponents: ["shield-core", "shield-anchor"],
           includedCapabilities: ["CONTROL_EVALUATION", "CONTINUOUS_MONITORING", "EVIDENCE_COLLECTION"],
@@ -2396,7 +2396,7 @@ export class ZoikoShieldApiClient {
           items: [
             {
               id: "MERKLE_ANCHORING",
-              name: "Post-Quantum Dilithium3 Merkle Epoch Trees",
+              name: "Post-quantum ML-DSA-65 Merkle Epoch Trees",
               domain: "Continuous Assurance",
               customerService: "Post-Quantum Cryptographic Audit Ledger",
               status: "CORE",
@@ -2426,7 +2426,7 @@ export class ZoikoShieldApiClient {
             },
             {
               id: "ISO27001_EVALUATOR",
-              name: "ISO/IEC 27001:2022 A.9.2 User Access Management",
+              name: "ISO/IEC 27001:2022 A.5.18 Access Rights",
               domain: "Regulatory & Frameworks",
               customerService: "Continuous Compliance & Automated Control Assurance",
               status: "CORE",
@@ -2498,7 +2498,7 @@ export class ZoikoShieldApiClient {
             "250 Protected Assets & 25 GB/day Telemetry",
             "P0 Certified Connectors (AWS, Entra ID, Okta, CrowdStrike)",
             "Automated SOC 2 & ISO 27001 Controls",
-            "Dilithium3 Post-Quantum Merkle Ledger",
+            "ML-DSA-65 Post-Quantum Merkle Ledger",
             "4-Hour Critical Incident Response Target",
           ],
           governanceFeatures: [
@@ -2668,7 +2668,7 @@ export class ZoikoShieldApiClient {
           recommendedKey = "SHIELD_PROFESSIONAL";
           rationale.push("Asset count and telemetry exceed Essential baseline. Shield Professional provides attack graphs and AI copilot.");
         } else {
-          rationale.push("Scale fits baseline Shield Essential tier perfectly with foundational MDR and Dilithium3 ledger.");
+          rationale.push("Scale fits baseline Shield Essential tier perfectly with foundational MDR and ML-DSA-65 ledger.");
         }
 
         const allTiers: any = [
@@ -2677,7 +2677,7 @@ export class ZoikoShieldApiClient {
             displayName: "Shield Essential",
             pricing: { monthlyUsd: null, annualBilledMonthlyUsd: null, isContractOnly: true, currency: "USD" },
             allocations: { maxProtectedAssets: 250, includedTelemetryGbPerDay: 25, incidentResponseSlaHours: null, retentionDays: 90, includedRetainerHoursPerYear: 0 },
-            highlightedFeatures: ["250 Protected Assets", "25 GB/day Telemetry", "SOC 2 & ISO 27001", "Dilithium3 Ledger"],
+            highlightedFeatures: ["250 Protected Assets", "25 GB/day Telemetry", "SOC 2 & ISO 27001", "ML-DSA-65 Ledger"],
           },
           {
             key: "SHIELD_PROFESSIONAL",
@@ -3666,7 +3666,7 @@ export class ZoikoShieldApiClient {
             serviceId: 'shield-anchor',
             serviceName: 'shield-anchor',
             displayName: 'Cryptographic Anchor & Immutable Merkle Ledger',
-            description: 'Post-quantum dual-signing (Dilithium3 + ECDSA P-384), Merkle epoch aggregation, and RFC 3161 timestamps.',
+            description: 'Post-quantum dual-signing (ML-DSA-65 (FIPS 204) + ECDSA P-256), Merkle epoch aggregation, and RFC 3161 timestamps.',
             version: '1.0.0',
             state: 'HEALTHY',
             stateMeaning: 'Current evidence supports normal operation within objective and no hidden material gap.',
@@ -3676,7 +3676,7 @@ export class ZoikoShieldApiClient {
               { dependencyName: 'Cloud KMS Sovereign HSM', type: 'KMS_HSM', healthy: true, latencyMs: 15, lastChecked: new Date().toISOString() },
             ],
             signals: [
-              { signalKey: 'pqc_dual_signing', label: 'PQC Dual-Signer (ML-DSA / Dilithium3)', value: 'ACTIVE_COMPLIANT', status: 'OPTIMAL' },
+              { signalKey: 'pqc_dual_signing', label: 'PQC Dual-Signer (ML-DSA-65, FIPS 204)', value: 'ACTIVE_COMPLIANT', status: 'OPTIMAL' },
             ],
             blockers: [],
           },

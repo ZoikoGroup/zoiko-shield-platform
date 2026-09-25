@@ -7,7 +7,7 @@ export interface ControlEvaluationSpec {
   controlId: string;
   framework:
     | 'SOC2_CC6_1'
-    | 'ISO_27001_A_9_2'
+    | 'ISO_27001_A_5_18'
     | 'HIPAA_164_312'
     | 'DORA_ICT_SEC'
     | 'NIS2_RISK_MGMT';
@@ -74,10 +74,10 @@ export class ContinuousAssuranceCollectorService {
       },
     ],
     [
-      'ISO27001-A.9.2',
+      'ISO27001-A.5.18',
       {
-        controlId: 'ISO27001-A.9.2',
-        framework: 'ISO_27001_A_9_2',
+        controlId: 'ISO27001-A.5.18',
+        framework: 'ISO_27001_A_5_18',
         title: 'User Access Provisioning & JIT Elevation Governance',
         description:
           'Ensures all high-privilege access is granted via time-bounded JIT elevation with peer approval.',

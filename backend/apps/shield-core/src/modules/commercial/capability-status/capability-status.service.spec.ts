@@ -73,7 +73,7 @@ describe('CapabilityStatusService', () => {
 
   it('should enforce framework evaluator activation baseline (SOC 2 & ISO 27001 active; DORA & NIS2 deferred)', () => {
     expect(service.isFrameworkEvaluatorActive('SOC2_CC6_1')).toBe(true);
-    expect(service.isFrameworkEvaluatorActive('ISO27001_A9_2')).toBe(true);
+    expect(service.isFrameworkEvaluatorActive('ISO27001_A5_18')).toBe(true);
     expect(service.isFrameworkEvaluatorActive('DORA')).toBe(false);
     expect(service.isFrameworkEvaluatorActive('NIS2')).toBe(false);
     expect(service.isFrameworkEvaluatorActive('PCI_DSS_V4')).toBe(false);

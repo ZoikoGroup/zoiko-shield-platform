@@ -638,7 +638,7 @@ export class ServiceReadinessService {
       serviceName: 'shield-anchor',
       displayName: 'Cryptographic Anchor & Immutable Merkle Ledger',
       description:
-        'Post-quantum dual-signing (Dilithium3 + ECDSA P-384), Merkle epoch aggregation, and RFC 3161 timestamps.',
+        'Post-quantum dual-signing (ML-DSA-65 per FIPS 204 + ECDSA P-256), Merkle epoch aggregation, and RFC 3161 timestamps.',
       version: '1.0.0',
       state,
       stateMeaning: STATE_MEANINGS[state],
@@ -670,7 +670,7 @@ export class ServiceReadinessService {
       signals: [
         {
           signalKey: 'pqc_dual_signing',
-          label: 'PQC Dual-Signer (ML-DSA / Dilithium3)',
+          label: 'PQC Dual-Signer (ML-DSA-65, FIPS 204)',
           value: 'ACTIVE_COMPLIANT',
           status: 'OPTIMAL',
         },

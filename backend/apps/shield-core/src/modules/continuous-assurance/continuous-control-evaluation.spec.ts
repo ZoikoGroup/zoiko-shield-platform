@@ -11,7 +11,7 @@ export type ControlComplianceState =
 export interface ControlEvaluationInput {
   controlId: string;
   tenantId: string;
-  framework: 'SOC2_CC6_1' | 'ISO_27001_A_9_2' | 'HIPAA_164_312';
+  framework: 'SOC2_CC6_1' | 'ISO_27001_A_5_18' | 'HIPAA_164_312';
   evidenceCollectedAt: string;
   freshnessMaxSeconds: number;
   evidenceData: Record<string, unknown>;

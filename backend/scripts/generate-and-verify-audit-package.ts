@@ -54,7 +54,7 @@ async function main() {
     timestamp: new Date().toISOString(),
     kmsKeyRotationDays: 30,
     pqcDualSignEnforced: true,
-    algorithms: ['ML-DSA-65 (Dilithium3)', 'Ed25519'],
+    algorithms: ['ML-DSA-65 (FIPS 204)', 'ECDSA P-256'],
     status: 'COMPLIANT',
   };
   const isoContentHash = crypto.createHash('sha256').update(JSON.stringify(isoEvidence)).digest('hex');

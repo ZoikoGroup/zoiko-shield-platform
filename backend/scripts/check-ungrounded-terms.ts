@@ -9,6 +9,25 @@ interface Violation {
 }
 
 const FORBIDDEN_RULES = [
+  // ── Claims the CTO assurance review (2026-09-24) required removing ──
+  //
+  // "Dilithium3" is the pre-standard CRYSTALS name. NIST standardised the
+  // algorithm as ML-DSA in FIPS 204, and the implementation uses ml_dsa65.
+  // Publishing the old name misstates which standard the signature meets.
+  { name: 'Dilithium-Prestandard', regex: /\bdilithium[\s-]?[0-9]\b/i },
+  // SLH-DSA (SPHINCS+) is not implemented anywhere in the platform.
+  { name: 'SPHINCS-Not-Implemented', regex: /\bsphincs\b/i },
+  // ISO/IEC 27001:2022 renumbered Annex A. A.9.2 is 2013 numbering; identity,
+  // authentication and access rights are A.5.16-A.5.18 in the current set.
+  { name: 'ISO-2013-Numbering', regex: /\bA\.9\.[0-9]\b/ },
+  // Compliance is attested by an external assessor, never asserted by us.
+  // Controls can be implemented and internally evidenced; that is not the
+  // same claim and must not be written as though it were.
+  {
+    name: 'Compliance-Self-Assertion',
+    regex: /\b(?:100%|fully|is)\s+compliant\b/i,
+  },
+  { name: 'Certified-Self-Assertion', regex: /\bcertified\s+(?:compliant|control|secure)\b/i },
   { name: 'eBPF', regex: /\bebpf\b/i },
   { name: 'Nitro', regex: /\bnitro\b/i },
   { name: 'Purple-Team', regex: /\bpurple[\s-_]?team\b/i },
@@ -60,7 +79,15 @@ const SCAN_DIRECTORIES = [
   path.join(__dirname),
 ];
 
-const IGNORE_FILES = ['check-ungrounded-terms.ts', 'check-ungrounded-terms.js'];
+// The claim register enumerates the prohibited phrases themselves, so it
+// necessarily contains them. Exempting the register is not a loophole: its
+// whole purpose is to name what must never be said elsewhere.
+const IGNORE_FILES = [
+  'check-ungrounded-terms.ts',
+  'check-ungrounded-terms.js',
+  'claim-register.service.ts',
+  'claim-register.service.spec.ts',
+];
 
 function getAllFiles(dirPath: string, arrayOfFiles: string[] = []): string[] {
   if (!fs.existsSync(dirPath)) return arrayOfFiles;
