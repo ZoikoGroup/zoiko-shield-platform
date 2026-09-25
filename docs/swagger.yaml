@@ -55010,6 +55010,124 @@ paths:
         '401':
           description: Unauthorized
 
+  /api/v1/action/fido2/challenge:
+    post:
+      summary: Issue FIDO2 / WebAuthn Hardware Step-Up Challenge
+      description: Generates an ephemeral cryptographic challenge requiring biometric or hardware security key attestation for sensitive Tier-1/Tier-2 SOAR actions.
+      operationId: issueFido2Challenge
+      tags:
+        - ResponseProposals
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tenantId
+                - analystId
+                - proposalId
+                - actionType
+                - targetResource
+              properties:
+                tenantId:
+                  type: string
+                analystId:
+                  type: string
+                proposalId:
+                  type: string
+                actionType:
+                  type: string
+                targetResource:
+                  type: string
+      responses:
+        '201':
+          description: Ephemeral challenge session created successfully
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+  /api/v1/action/fido2/verify-assertion:
+    post:
+      summary: Verify FIDO2 Hardware Key Assertion
+      description: Validates WebAuthn ECDSA signature and User Presence / User Verification flags, issuing an auditable StepUpAuthorizationGrant.
+      operationId: verifyFido2Assertion
+      tags:
+        - ResponseProposals
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - challengeId
+                - credentialId
+                - authenticatorDataBase64
+                - clientDataJsonBase64
+                - signatureHex
+                - publicKeyPem
+              properties:
+                challengeId:
+                  type: string
+                credentialId:
+                  type: string
+                authenticatorDataBase64:
+                  type: string
+                clientDataJsonBase64:
+                  type: string
+                signatureHex:
+                  type: string
+                publicKeyPem:
+                  type: string
+      responses:
+        '201':
+          description: Hardware token assertion verified and grant issued
+        '401':
+          description: Unauthorized
+        '403':
+          description: Challenge expired or signature invalid
+
+  /api/v1/action/fido2/register:
+    post:
+      summary: Register FIDO2 Hardware Key Credential
+      description: Associates an analyst hardware public key credential for out-of-band step-up authentication.
+      operationId: registerFido2Credential
+      tags:
+        - ResponseProposals
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - credentialId
+                - analystId
+                - publicKeyPem
+              properties:
+                credentialId:
+                  type: string
+                analystId:
+                  type: string
+                publicKeyPem:
+                  type: string
+                signCount:
+                  type: integer
+      responses:
+        '201':
+          description: FIDO2 credential registered successfully
+        '401':
+          description: Unauthorized
+
+
 
 
 

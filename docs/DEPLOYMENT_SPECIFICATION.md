@@ -1,7 +1,7 @@
 # ZoikoShield Platform — Deployment Specification & Architecture Document
 
 **Author:** ZoikoShield Core Engineering Team  
-**Audience:** DevOps / SRE / Cloud Infrastructure Leads (Akshay Uppar, Vishwajeet Singh Chauhan)  
+**Audience:** DevOps / SRE / Cloud Infrastructure Leads (Akshay Uppar)  
 **Version:** 1.0.0 (Production & Staging Target)  
 **Target Repository:** `ZoikoGroup/zoiko-shield-platform`  
 **Target Branch:** `Aditya`  
