@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { OutboxService } from '../../../outbox/outbox.service';
 import { CANONICAL_TOPICS } from '../../../kafka/kafka-producer.service';
+import { PlatformScope } from '../../../../../../libs/database/src';
 
 /**
  * An expired exception must never silently remain effective (spec §28).
@@ -19,6 +20,7 @@ export class ExceptionExpiryService {
     private readonly outbox: OutboxService,
   ) {}
 
+  @PlatformScope('scheduled job ExceptionExpiryService.expireDue')
   @Cron(CronExpression.EVERY_MINUTE)
   async expireDue(): Promise<void> {
     if (this.running) return;

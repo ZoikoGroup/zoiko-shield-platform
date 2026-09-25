@@ -5,24 +5,19 @@ import {
   ServiceUnavailableException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import type { Prisma } from '@prisma/client';
 import { createHash, randomBytes } from 'crypto';
-import { DataSource, MoreThan, Raw, Repository } from 'typeorm';
+import { PrismaService } from '../../prisma/prisma.service';
 import { AuthorizationService } from '../authorization/authorization.service';
-import { Invitation } from '../authorization/entities/invitation.entity';
-import { Role } from '../authorization/entities/role.entity';
-import { TenantMembership } from '../authorization/entities/tenant-membership.entity';
 import { StartSsoDto } from './dto/start-sso.dto';
-import { ExternalIdentityTenantBinding } from './external-identity-tenant-binding.entity';
-import { ExternalIdentity } from './external-identity.entity';
+import type { ExternalIdentity } from './external-identity.entity';
 import { FederationRuntimeService } from './federation-runtime.service';
 import { FederationTransactionService } from './federation-transaction.service';
-import { IdentityEvent } from './identity-event.entity';
 import { IdentityEventService } from './identity-event.service';
 import { IdentityProviderConfigurationService } from './identity-provider-configuration.service';
 import { FederationAssertion } from './interfaces/federation-assertion.interface';
 import { OidcFederationService } from './oidc-federation.service';
-import { Principal } from './principal.entity';
+import type { Principal } from './principal.entity';
 import { SamlFederationService } from './saml-federation.service';
 import { SessionContextService } from './session-context.service';
 import { SessionMetadata } from './session.service';
@@ -42,9 +37,7 @@ export interface FederationLoginResult {
 @Injectable()
 export class FederationAuthService {
   constructor(
-    @InjectDataSource() private readonly dataSource: DataSource,
-    @InjectRepository(ExternalIdentityTenantBinding)
-    private readonly bindings: Repository<ExternalIdentityTenantBinding>,
+    private readonly prisma: PrismaService,
     private readonly providers: IdentityProviderConfigurationService,
     private readonly transactions: FederationTransactionService,
     private readonly oidc: OidcFederationService,
@@ -277,30 +270,38 @@ export class FederationAuthService {
       });
     }
 
-    const externalRepository = this.dataSource.getRepository(ExternalIdentity);
-    let externalIdentity = await externalRepository.findOne({
-      where: { issuer: assertion.issuer, subject: assertion.subject },
+    const existingIdentity = await this.prisma.externalIdentity.findUnique({
+      where: {
+        issuer_subject: {
+          issuer: assertion.issuer,
+          subject: assertion.subject,
+        },
+      },
     });
-    if (externalIdentity) {
-      const existingTenantBinding = await this.bindings.findOne({
-        where: { externalIdentityId: externalIdentity.id, tenantId },
-      });
+    if (existingIdentity) {
+      const existingTenantBinding =
+        await this.prisma.externalIdentityTenantBinding.findUnique({
+          where: {
+            externalIdentityId_tenantId: {
+              externalIdentityId: existingIdentity.id,
+              tenantId,
+            },
+          },
+        });
       if (existingTenantBinding?.status === 'SUSPENDED') {
         throw new ForbiddenException(
           'Federated identity access is suspended for this tenant',
         );
       }
-      const principal = await this.dataSource
-        .getRepository(Principal)
-        .findOne({ where: { id: externalIdentity.principalId } });
+      const principal = (await this.prisma.principal.findUnique({
+        where: { id: existingIdentity.principalId },
+      })) as Principal | null;
       if (!principal || principal.status !== 'ACTIVE') {
         throw new UnauthorizedException('Principal is not active');
       }
-      const membership = await this.dataSource
-        .getRepository(TenantMembership)
-        .findOne({
-          where: { tenantId, principalId: principal.id, status: 'ACTIVE' },
-        });
+      const membership = await this.prisma.tenantMembership.findFirst({
+        where: { tenantId, principalId: principal.id, status: 'ACTIVE' },
+      });
       if (!membership && invitationToken) {
         await this.assertInvitationMatchesTenantAndIdentity(
           invitationToken,
@@ -313,10 +314,14 @@ export class FederationAuthService {
           assertion.email,
         );
       }
-      externalIdentity.claimProfile = assertion.claimProfile;
-      externalIdentity.lastSyncedAt = new Date();
-      externalIdentity.verificationState = 'VERIFIED';
-      externalIdentity = await externalRepository.save(externalIdentity);
+      const externalIdentity = (await this.prisma.externalIdentity.update({
+        where: { id: existingIdentity.id },
+        data: {
+          claimProfile: assertion.claimProfile as Prisma.InputJsonValue,
+          lastSyncedAt: new Date(),
+          verificationState: 'VERIFIED',
+        },
+      })) as ExternalIdentity;
       return { principal, externalIdentity };
     }
 
@@ -327,15 +332,14 @@ export class FederationAuthService {
     }
 
     try {
-      return await this.dataSource.transaction(async (manager) => {
-        const invitations = manager.getRepository(Invitation);
-        const invitation = await invitations.findOne({
+      return await this.prisma.$transaction(async (tx) => {
+        const invitation = await tx.invitation.findFirst({
           where: {
             tokenHash: this.hashToken(invitationToken),
             tenantId,
             purpose: 'TENANT_MEMBERSHIP',
             status: 'PENDING',
-            expiresAt: MoreThan(new Date()),
+            expiresAt: { gt: new Date() },
           },
         });
         if (!invitation) {
@@ -351,16 +355,21 @@ export class FederationAuthService {
             'The verified federated identity does not match the invitation destination',
           );
         }
-        const existingByEmail = await manager.getRepository(Principal).findOne({
-          where: {
-            email: Raw((column) => `LOWER(${column}) = LOWER(:email)`, {
-              email: assertion.email,
-            }),
-          },
+        // Exact case-insensitive match. Prisma's `mode: 'insensitive'` compiles
+        // to ILIKE, where `_` and `%` in an address would act as wildcards and
+        // could link the identity to a different principal.
+        const [emailMatch] = await tx.$queryRaw<{ id: string }[]>`
+          SELECT id FROM identity.principals
+          WHERE LOWER(email) = LOWER(${assertion.email})
+          LIMIT 1`;
+        const existingByEmail = emailMatch
+          ? ((await tx.principal.findUnique({
+              where: { id: emailMatch.id },
+            })) as Principal | null)
+          : null;
+        const role = await tx.role.findUnique({
+          where: { id: invitation.roleId },
         });
-        const role = await manager
-          .getRepository(Role)
-          .findOne({ where: { id: invitation.roleId } });
         if (
           !role ||
           role.roleLevel !== 'TENANT' ||
@@ -377,8 +386,8 @@ export class FederationAuthService {
         }
         const principal =
           existingByEmail ??
-          (await manager.getRepository(Principal).save(
-            manager.getRepository(Principal).create({
+          ((await tx.principal.create({
+            data: {
               principalType: 'HUMAN',
               status: 'ACTIVE',
               source: protocol,
@@ -388,82 +397,96 @@ export class FederationAuthService {
               emailVerified: true,
               lastLoginAt: null,
               terminatedAt: null,
-            }),
-          ));
-        const createdExternalIdentity = await manager
-          .getRepository(ExternalIdentity)
-          .save(
-            manager.getRepository(ExternalIdentity).create({
-              principalId: principal.id,
-              issuer: assertion.issuer,
-              subject: assertion.subject,
-              provider: protocol,
-              claimProfile: assertion.claimProfile,
-              verificationState: 'VERIFIED',
-              lastSyncedAt: new Date(),
-            }),
-          );
-        const membershipRepository = manager.getRepository(TenantMembership);
-        let membership = await membershipRepository.findOne({
-          where: { tenantId, principalId: principal.id },
-          relations: { roles: true },
+            },
+          })) as Principal);
+        const createdExternalIdentity = (await tx.externalIdentity.create({
+          data: {
+            principalId: principal.id,
+            issuer: assertion.issuer,
+            subject: assertion.subject,
+            provider: protocol,
+            claimProfile: assertion.claimProfile as Prisma.InputJsonValue,
+            verificationState: 'VERIFIED',
+            lastSyncedAt: new Date(),
+          },
+        })) as ExternalIdentity;
+        const existingMembership = await tx.tenantMembership.findUnique({
+          where: {
+            tenantId_principalId: { tenantId, principalId: principal.id },
+          },
+          include: { roles: true },
         });
-        const membershipCreated = !membership;
-        if (membership && membership.status !== 'ACTIVE') {
+        const membershipCreated = !existingMembership;
+        if (existingMembership && existingMembership.status !== 'ACTIVE') {
           throw new ForbiddenException(
             'The tenant membership must be explicitly reactivated before identity linking',
           );
         }
-        if (!membership) {
-          membership = membershipRepository.create({
-            tenantId,
-            principalId: principal.id,
-            status: 'ACTIVE',
-            source: 'INVITATION',
-            roles: [role],
-          });
-        } else if (
-          !membership.roles.some((assigned) => assigned.id === role.id)
-        ) {
-          membership.roles.push(role);
-        }
-        membership = await membershipRepository.save(membership);
-        invitation.status = 'ACCEPTED';
-        invitation.acceptedAt = new Date();
-        invitation.acceptedById = principal.id;
-        await invitations.save(invitation);
-        const eventRepository = manager.getRepository(IdentityEvent);
-        await eventRepository.save([
-          eventRepository.create({
-            eventType: existingByEmail
-              ? 'external_identity_linked'
-              : 'principal_created',
-            principalId: principal.id,
-            actorId: principal.id,
-            tenantId,
+        let membershipId: string;
+        if (!existingMembership) {
+          const created = await tx.tenantMembership.create({
             data: {
-              source: protocol,
-              issuer: assertion.issuer,
-              identityProviderConfigurationId: providerConfigurationId,
-              ...(existingByEmail
-                ? { linkingMethod: 'VERIFIED_TENANT_INVITATION' }
-                : {}),
-            },
-          }),
-          eventRepository.create({
-            eventType: membershipCreated
-              ? 'tenant_membership_created'
-              : 'tenant_membership_changed',
-            principalId: principal.id,
-            actorId: principal.id,
-            tenantId,
-            data: {
-              membershipId: membership.id,
+              tenantId,
+              principalId: principal.id,
+              status: 'ACTIVE',
               source: 'INVITATION',
-              roleId: role.id,
+              roles: { create: [{ role_id: role.id }] },
             },
-          }),
-        ]);
+          });
+          membershipId = created.id;
+        } else {
+          membershipId = existingMembership.id;
+          if (
+            !existingMembership.roles.some(
+              (assigned) => assigned.role_id === role.id,
+            )
+          ) {
+            await tx.userRole.create({
+              data: { membership_id: existingMembership.id, role_id: role.id },
+            });
+          }
+        }
+        await tx.invitation.update({
+          where: { id: invitation.id },
+          data: {
+            status: 'ACCEPTED',
+            acceptedAt: new Date(),
+            acceptedById: principal.id,
+          },
+        });
+        await tx.identityEvent.createMany({
+          data: [
+            {
+              eventType: existingByEmail
+                ? 'external_identity_linked'
+                : 'principal_created',
+              principalId: principal.id,
+              actorId: principal.id,
+              tenantId,
+              data: {
+                source: protocol,
+                issuer: assertion.issuer,
+                identityProviderConfigurationId: providerConfigurationId,
+                ...(existingByEmail
+                  ? { linkingMethod: 'VERIFIED_TENANT_INVITATION' }
+                  : {}),
+              },
+            },
+            {
+              eventType: membershipCreated
+                ? 'tenant_membership_created'
+                : 'tenant_membership_changed',
+              principalId: principal.id,
+              actorId: principal.id,
+              tenantId,
+              data: {
+                membershipId,
+                source: 'INVITATION',
+                roleId: role.id,
+              },
+            },
+          ],
+        });
         return {
           principal,
           externalIdentity: createdExternalIdentity,
@@ -487,23 +510,29 @@ export class FederationAuthService {
     tenantId: string,
     identityProviderConfigurationId: string,
   ): Promise<void> {
-    let binding = await this.bindings.findOne({
-      where: { externalIdentityId, tenantId },
+    const binding = await this.prisma.externalIdentityTenantBinding.findUnique({
+      where: { externalIdentityId_tenantId: { externalIdentityId, tenantId } },
     });
     if (!binding) {
-      binding = this.bindings.create({
-        externalIdentityId,
-        tenantId,
-        identityProviderConfigurationId,
-        status: 'ACTIVE',
-        lastAuthenticatedAt: new Date(),
+      await this.prisma.externalIdentityTenantBinding.create({
+        data: {
+          externalIdentityId,
+          tenantId,
+          identityProviderConfigurationId,
+          status: 'ACTIVE',
+          lastAuthenticatedAt: new Date(),
+        },
       });
     } else {
-      binding.identityProviderConfigurationId = identityProviderConfigurationId;
-      binding.status = 'ACTIVE';
-      binding.lastAuthenticatedAt = new Date();
+      await this.prisma.externalIdentityTenantBinding.update({
+        where: { id: binding.id },
+        data: {
+          identityProviderConfigurationId,
+          status: 'ACTIVE',
+          lastAuthenticatedAt: new Date(),
+        },
+      });
     }
-    await this.bindings.save(binding);
   }
 
   private async assertInvitationMatchesTenantAndIdentity(
@@ -511,13 +540,13 @@ export class FederationAuthService {
     tenantId: string,
     verifiedEmail: string,
   ): Promise<void> {
-    const invitation = await this.dataSource.getRepository(Invitation).findOne({
+    const invitation = await this.prisma.invitation.findFirst({
       where: {
         tokenHash: this.hashToken(invitationToken),
         tenantId,
         purpose: 'TENANT_MEMBERSHIP',
         status: 'PENDING',
-        expiresAt: MoreThan(new Date()),
+        expiresAt: { gt: new Date() },
       },
     });
     if (

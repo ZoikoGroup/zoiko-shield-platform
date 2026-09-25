@@ -1,0 +1,75 @@
+// PostgreSQL schema "export". export module.
+
+// --- shield-core-owned: export ---
+model ExportJob {
+  id                        String    @id @default(uuid())
+  tenant_id                 String
+  environment_id            String?
+  requested_by              String
+  purpose                   String
+  export_type               String
+  requested_scope           String    @default("[]")
+  formats                   String    @default("[\"JSON\"]")
+  status                    String    @default("REQUESTED") // REQUESTED|VALIDATING|QUEUED|RUNNING|VERIFYING|READY|PARTIAL|FAILED|EXPIRED|CANCELLED
+  authorization_decision_id String
+  idempotency_key           String?
+  progress                  Int       @default(0)
+  failure_code              String?
+  created_at                DateTime  @default(now())
+  started_at                DateTime?
+  completed_at              DateTime?
+  expires_at                DateTime?
+
+  artifacts ExportArtifact[]
+  manifest  ExportManifest?
+
+  @@unique([tenant_id, idempotency_key])
+  @@index([tenant_id])
+
+  @@schema("export")
+}
+
+model ExportArtifact {
+  id                 String    @id @default(uuid())
+  tenant_id          String
+  export_job_id      String
+  exportJob          ExportJob @relation(fields: [export_job_id], references: [id])
+  artifact_type      String
+  schema_id          String
+  schema_version     String
+  object_count       Int       @default(0)
+  content_hash       String
+  media_type         String    @default("application/json")
+  object_storage_ref String?
+  size_bytes         Int?
+  created_at         DateTime  @default(now())
+
+  @@index([export_job_id])
+
+  @@schema("export")
+}
+
+model ExportManifest {
+  id                  String    @id @default(uuid())
+  tenant_id           String
+  export_job_id       String    @unique
+  exportJob           ExportJob @relation(fields: [export_job_id], references: [id])
+  manifest_version    String    @default("1.0")
+  scope               String    @default("[]")
+  purpose             String
+  generated_at        DateTime  @default(now())
+  schema_versions     String    @default("[]")
+  artifacts           String    @default("[]")
+  counts              String    @default("{}")
+  hashes              String    @default("{}")
+  evidence_proof_refs String    @default("[]")
+  audit_package_refs  String    @default("[]")
+  known_limitations   String    @default("[]")
+  legal_hold_state    String    @default("NONE")
+  completeness_state  String    @default("UNKNOWN")
+  manifest_hash       String
+
+  @@index([tenant_id])
+
+  @@schema("export")
+}

@@ -1,56 +1,67 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { getRepositoryToken } from '@nestjs/typeorm';
 import { ForbiddenException, UnauthorizedException } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { WebauthnService } from './webauthn.service';
-import { WebauthnCredential } from './webauthn-credential.entity';
-import { WebauthnChallenge } from './webauthn-challenge.entity';
-import { Principal } from './principal.entity';
+import { PrismaService } from '../../prisma/prisma.service';
 
 const RP_ID = 'shield.test';
 const ORIGIN = 'https://shield.test';
 const PRINCIPAL_ID = '11111111-1111-4111-8111-111111111111';
 
-/** Minimal in-memory stand-in with the slice of the repository API used here. */
-function makeRepo() {
+/** Minimal in-memory stand-in with the slice of the Prisma delegate API used here. */
+function makeDelegate() {
   const rows: any[] = [];
   const matches = (row: any, where: any) =>
     Object.entries(where ?? {}).every(([key, value]) => {
-      if (value && typeof value === 'object' && '_type' in (value as any)) {
-        // IsNull must be honoured or consumed-challenge and revoked-credential
-        // filtering would silently pass in tests while working in production.
-        if ((value as any)._type === 'isNull') {
-          return (row[key] ?? null) === null;
+      if (value && typeof value === 'object' && !(value instanceof Date)) {
+        const operator = value as { lt?: Date; gt?: Date };
+        if (operator.lt !== undefined && !(row[key] < operator.lt)) {
+          return false;
         }
-        return true; // other FindOperators (LessThan) are not exercised here
+        if (operator.gt !== undefined && !(row[key] > operator.gt)) {
+          return false;
+        }
+        return true;
       }
+      // A null filter must be honoured or consumed-challenge and
+      // revoked-credential filtering would silently pass in tests while
+      // working in production.
       return (row[key] ?? null) === (value ?? null);
     });
 
   return {
     rows,
-    create: (data: any) => ({ ...data }),
-    save: async (row: any) => {
-      if (!row.id) row.id = `row-${rows.length + 1}`;
-      if (!row.createdAt) row.createdAt = new Date();
-      const index = rows.findIndex((r) => r.id === row.id);
-      if (index >= 0) rows[index] = row;
-      else rows.push(row);
-      return row;
+    create: async ({ data }: any) => {
+      const row = {
+        id: `row-${rows.length + 1}`,
+        createdAt: new Date(),
+        ...data,
+      };
+      rows.push(row);
+      return { ...row };
     },
-    find: async ({ where, order }: any = {}) => {
-      void order;
-      return rows.filter((r) => matches(r, where));
+    findMany: async ({ where }: any = {}) =>
+      rows.filter((r) => matches(r, where)).map((r) => ({ ...r })),
+    findFirst: async ({ where }: any) => {
+      const row = rows.find((r) => matches(r, where));
+      return row ? { ...row } : null;
     },
-    findOne: async ({ where }: any) =>
-      rows.find((r) => matches(r, where)) ?? null,
-    update: async (criteria: any, patch: any) => {
-      const row = rows.find((r) => matches(r, criteria));
-      if (!row) return { affected: 0 };
-      Object.assign(row, patch);
-      return { affected: 1 };
+    findUnique: async ({ where }: any) => {
+      const row = rows.find((r) => matches(r, where));
+      return row ? { ...row } : null;
     },
-    delete: async () => ({ affected: 0 }),
+    update: async ({ where, data }: any) => {
+      const row = rows.find((r) => matches(r, where));
+      if (!row) throw new Error('Record to update not found');
+      Object.assign(row, data);
+      return { ...row };
+    },
+    updateMany: async ({ where, data }: any) => {
+      const matched = rows.filter((r) => matches(r, where));
+      matched.forEach((row) => Object.assign(row, data));
+      return { count: matched.length };
+    },
+    deleteMany: async () => ({ count: 0 }),
   };
 }
 
@@ -71,8 +82,8 @@ const FLAG_UV = 0x04;
 
 describe('WebauthnService', () => {
   let service: WebauthnService;
-  let credentials: ReturnType<typeof makeRepo>;
-  let challenges: ReturnType<typeof makeRepo>;
+  let credentials: ReturnType<typeof makeDelegate>;
+  let challenges: ReturnType<typeof makeDelegate>;
   let keyPair: crypto.KeyPairKeyObjectResult;
 
   beforeAll(() => {
@@ -82,27 +93,28 @@ describe('WebauthnService', () => {
   });
 
   beforeEach(async () => {
-    credentials = makeRepo();
-    challenges = makeRepo();
-    const principals = makeRepo();
-    await principals.save({
-      id: PRINCIPAL_ID,
-      email: 'analyst@acme.test',
-      fullName: 'Test Analyst',
+    credentials = makeDelegate();
+    challenges = makeDelegate();
+    const principals = makeDelegate();
+    await principals.create({
+      data: {
+        id: PRINCIPAL_ID,
+        email: 'analyst@acme.test',
+        fullName: 'Test Analyst',
+      },
     });
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         WebauthnService,
         {
-          provide: getRepositoryToken(WebauthnCredential),
-          useValue: credentials,
+          provide: PrismaService,
+          useValue: {
+            webauthnCredential: credentials,
+            webauthnChallenge: challenges,
+            principal: principals,
+          },
         },
-        {
-          provide: getRepositoryToken(WebauthnChallenge),
-          useValue: challenges,
-        },
-        { provide: getRepositoryToken(Principal), useValue: principals },
       ],
     }).compile();
 
@@ -177,7 +189,24 @@ describe('WebauthnService', () => {
 
     expect(result.principalId).toBe(PRINCIPAL_ID);
     expect(result.userVerified).toBe(true);
-    expect(credentials.rows[0].signCount).toBe('1');
+    expect(credentials.rows[0].signCount).toBe(BigInt(1));
+  });
+
+  it('never exposes the bigint signature counter in a passkey summary', async () => {
+    const options = await service.createRegistrationOptions(PRINCIPAL_ID);
+    const summary = await service.verifyRegistration(PRINCIPAL_ID, {
+      credentialId: 'cred-abc',
+      publicKeySpkiBase64: keyPair.publicKey
+        .export({ format: 'der', type: 'spki' })
+        .toString('base64'),
+      clientDataJsonBase64: clientDataFor('webauthn.create', options.challenge),
+    });
+
+    expect(summary).not.toHaveProperty('signCount');
+    expect(() => JSON.stringify(summary)).not.toThrow();
+    const listed = await service.listCredentials(PRINCIPAL_ID);
+    expect(listed).toHaveLength(1);
+    expect(() => JSON.stringify(listed)).not.toThrow();
   });
 
   it('rejects an assertion replayed on an already-consumed challenge', async () => {

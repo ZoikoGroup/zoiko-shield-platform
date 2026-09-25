@@ -6,6 +6,10 @@ import {
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
+import {
+  bindRequestTenant,
+  runWithPlatformScope,
+} from '../../../../../libs/database/src';
 
 @Injectable()
 export class WebhookSignatureGuard implements CanActivate {
@@ -39,16 +43,35 @@ export class WebhookSignatureGuard implements CanActivate {
     const githubSignature = headers['x-hub-signature-256'] as
       string | undefined;
     if (githubDeliveryId && githubSignature) {
-      return this.verifyGithubDelivery(
+      await this.verifyGithubDelivery(
         connectorId,
         rawBody,
         githubSignature,
         githubDeliveryId,
         secret,
       );
+    } else {
+      await this.verifyInternalDelivery(connectorId, rawBody, headers, secret);
     }
+    await this.bindConnectorTenant(connectorId);
+    return true;
+  }
 
-    return this.verifyInternalDelivery(connectorId, rawBody, headers, secret);
+  /**
+   * The delivery is now proven to come from the holder of this connector's
+   * secret: scope the rest of the request to the connector's tenant. The
+   * connector is located across tenants because nothing else names one.
+   */
+  private async bindConnectorTenant(connectorId: string): Promise<void> {
+    const instance = await runWithPlatformScope(
+      'signed webhook connector tenant lookup',
+      () =>
+        this.prisma.connectorInstance.findFirst({
+          where: { id: connectorId },
+          select: { tenant_id: true },
+        }),
+    );
+    if (instance) bindRequestTenant(instance.tenant_id);
   }
 
   private resolveSecret(connectorId: string): string | undefined {

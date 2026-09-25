@@ -1,0 +1,213 @@
+// PostgreSQL schema "controls". controls module.
+
+// ============================================================
+// Part 11+12: Controls / Assessments / Risk + Audit Package / Independent Verification
+// ============================================================
+
+// --- shield-core-owned: control library ---
+model Framework {
+  id             String    @id @default(uuid())
+  key            String    @unique
+  name           String
+  version        String
+  edition        String?
+  publisher      String?
+  status         String    @default("ACTIVE")
+  effective_from DateTime?
+  retired_at     DateTime?
+  created_at     DateTime  @default(now())
+
+  versions FrameworkVersion[]
+
+  @@schema("controls")
+}
+
+model FrameworkVersion {
+  id                       String    @id @default(uuid())
+  framework_id             String
+  framework                Framework @relation(fields: [framework_id], references: [id])
+  version                  String
+  effective_from           DateTime
+  content_hash             String
+  source_reference         String?
+  source_version           String?
+  content_license_status   String    @default("PENDING")
+  license_reference        String?
+  display_rights           Boolean   @default(false)
+  legal_interpretation_ref String?
+  sme_review_ref           String?
+  mapping_test_status      String    @default("NOT_RUN")
+  mapping_test_report_ref  String?
+  approved_claim_wording   String?
+  release_status           String    @default("DRAFT")
+  approval_id              String?   @unique
+  requested_by             String?
+  approved_by              String?
+  approved_at              DateTime?
+  status                   String    @default("DRAFT") // DRAFT | PUBLISHED | SUPERSEDED | RETIRED
+  created_at               DateTime  @default(now())
+
+  requirements Requirement[]
+
+  @@unique([framework_id, version])
+  @@index([release_status])
+
+  @@schema("controls")
+}
+
+model Requirement {
+  id                   String           @id @default(uuid())
+  framework_version_id String
+  frameworkVersion     FrameworkVersion @relation(fields: [framework_version_id], references: [id])
+  external_reference   String
+  title                String
+  description          String?
+  applicability_rule   String?
+  status               String           @default("ACTIVE")
+  created_at           DateTime         @default(now())
+
+  @@index([framework_version_id])
+
+  @@schema("controls")
+}
+
+model Obligation {
+  id                 String    @id @default(uuid())
+  tenant_id          String?
+  source             String
+  external_reference String?
+  title              String
+  description        String
+  effective_from     DateTime
+  expires_at         DateTime?
+  status             String    @default("ACTIVE")
+
+  @@index([tenant_id])
+
+  @@schema("controls")
+}
+
+model ControlObjective {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  title       String
+  description String
+  category    String
+  owner       String
+  version     String   @default("1.0")
+  status      String   @default("ACTIVE")
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@schema("controls")
+}
+
+// Immutable version rows (bitemporal) — a correction is a new row with
+// supersedes_id set; the row it supersedes is never written to again.
+// validFrom/validTo describe business-time validity as understood by this
+// row; recorded_at (set once, immutable) is the system/transaction-time
+// axis. "What was effective as of business-time T, as known as of
+// system-time S" = recorded_at <= S AND valid_from <= T AND (valid_to IS
+// NULL OR valid_to > T), latest recorded_at among matches.
+model ControlMapping {
+  id                   String    @id @default(uuid())
+  control_objective_id String
+  framework_version_id String
+  requirement_id       String
+  mapping_type         String // FULL | PARTIAL | RELATED
+  mapping_version      String
+  rationale            String?
+  valid_from           DateTime
+  valid_to             DateTime?
+  recorded_at          DateTime  @default(now())
+  supersedes_id        String?
+  created_at           DateTime  @default(now())
+
+  @@index([control_objective_id])
+  @@index([framework_version_id])
+  @@index([requirement_id])
+
+  @@schema("controls")
+}
+
+model ControlImplementation {
+  id                        String    @id @default(uuid())
+  tenant_id                 String
+  environment_id            String?
+  control_objective_id      String
+  implementation_version    Int       @default(1)
+  title                     String
+  description               String
+  owner_id                  String
+  implementation_type       String
+  status                    String    @default("PLANNED") // PLANNED|IMPLEMENTED|PARTIAL|NOT_IMPLEMENTED|NOT_APPLICABLE|RETIRED
+  not_applicable_rationale  String?
+  authorization_decision_id String?
+  effective_from            DateTime  @default(now())
+  reviewed_at               DateTime?
+  created_at                DateTime  @default(now())
+  updated_at                DateTime  @updatedAt
+
+  scopes ControlScope[]
+
+  @@index([tenant_id])
+  @@index([control_objective_id])
+
+  @@schema("controls")
+}
+
+model ControlScope {
+  id                        String                @id @default(uuid())
+  tenant_id                 String
+  control_implementation_id String
+  controlImplementation     ControlImplementation @relation(fields: [control_implementation_id], references: [id])
+  legal_entity_id           String?
+  environment_id            String?
+  business_unit_id          String?
+  asset_scope               String?
+  identity_scope            String?
+  effective_from            DateTime              @default(now())
+  expires_at                DateTime?
+
+  @@index([tenant_id])
+  @@index([control_implementation_id])
+
+  @@schema("controls")
+}
+
+model ControlTest {
+  id                   String   @id @default(uuid())
+  control_objective_id String
+  key                  String
+  title                String
+  description          String
+  test_type            String // AUTOMATED | MANUAL | HYBRID
+  status               String   @default("DRAFT")
+  owner                String
+  created_at           DateTime @default(now())
+
+  versions ControlTestVersion[]
+
+  @@unique([control_objective_id, key])
+
+  @@schema("controls")
+}
+
+model ControlTestVersion {
+  id                   String      @id @default(uuid())
+  control_test_id      String
+  controlTest          ControlTest @relation(fields: [control_test_id], references: [id])
+  version              Int
+  input_schema         String      @default("{}")
+  evaluator_version_id String?
+  evaluation_policy    String      @default("{}")
+  effective_from       DateTime    @default(now())
+  published_at         DateTime?
+  status               String      @default("DRAFT")
+
+  expectedEvidenceRules ExpectedEvidenceRule[]
+
+  @@unique([control_test_id, version])
+
+  @@schema("controls")
+}

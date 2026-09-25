@@ -7,6 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { AuthContext } from '../oauth/oauth-token.service';
+import { bindRequestTenant } from '../../../../../../libs/database/src';
 
 /**
  * Token claims are not the only authority (spec §32/correction #9) —
@@ -37,6 +38,9 @@ export class ApiClientAuthGuard implements CanActivate {
     } catch {
       throw new UnauthorizedException('Invalid or expired token');
     }
+    // The token is verified, so its tenant is: scope the client lookup and
+    // the rest of the request to it.
+    bindRequestTenant(payload.tenant);
 
     const apiClient = await this.prisma.apiClient.findFirst({
       where: { principal_id: payload.sub, tenant_id: payload.tenant },

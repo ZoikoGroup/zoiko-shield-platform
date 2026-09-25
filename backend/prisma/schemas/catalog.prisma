@@ -1,0 +1,142 @@
+// PostgreSQL schema "catalog". catalog module.
+
+/**
+ * Time-bound, explicitly governed pre-production commercial access. There is
+ * deliberately no generic or unlimited "trial" record: every design-partner,
+ * evaluation, or pilot programme has an approval, a hard end and a fail-closed
+ * entitlement expiry action.
+ */
+model EvaluationProgram {
+  id                    String            @id @default(uuid())
+  program_key           String            @unique
+  program_type          String
+  commercial_account_id String
+  commercialAccount     CommercialAccount @relation(fields: [commercial_account_id], references: [id])
+  tenant_id             String
+  environment_id        String
+  region                String
+  starts_at             DateTime
+  ends_at               DateTime
+  data_classes          String            @default("[]")
+  connector_scope       String            @default("[]")
+  entitlement_scope     String            @default("[]")
+  service_coverage      String            @default("[]")
+  response_authority    String            @default("NONE")
+  payment_requirement   String            @default("NOT_REQUIRED")
+  payment_reference_id  String?
+  conversion_policy     String            @default("EXPIRE")
+  expiry_action         String            @default("REVOKE_ENTITLEMENTS")
+  status                String            @default("DRAFT")
+  approval_id           String?           @unique
+  requested_by          String
+  approved_by           String?
+  approved_at           DateTime?
+  activated_at          DateTime?
+  expired_at            DateTime?
+  converted_order_id    String?
+  convertedOrder        CommercialOrder?  @relation(fields: [converted_order_id], references: [id])
+  converted_at          DateTime?
+  created_at            DateTime          @default(now())
+  updated_at            DateTime          @updatedAt
+
+  entitlements Entitlement[]
+
+  @@index([commercial_account_id, status])
+  @@index([tenant_id, environment_id, status])
+  @@index([starts_at, status])
+  @@index([ends_at, status])
+
+  @@schema("catalog")
+}
+
+model CatalogVersion {
+  id             String    @id @default(uuid())
+  version_label  String    @unique
+  status         String    @default("DRAFT")
+  effective_from DateTime  @default(now())
+  effective_to   DateTime?
+  approved_by    String?
+  approved_at    DateTime?
+  created_at     DateTime  @default(now())
+
+  products           Product[]
+  priceBooks         PriceBook[]
+  contracts          Contract[]
+  quotes             CommercialQuote[]
+  cpqReadiness       CpqOfferReadiness[]
+  roadmapCommitments RoadmapCommitment[]
+
+  @@index([status])
+
+  @@schema("catalog")
+}
+
+model Product {
+  id                   String         @id @default(uuid())
+  catalog_version_id   String
+  catalogVersion       CatalogVersion @relation(fields: [catalog_version_id], references: [id])
+  sku                  String
+  internal_product_key String
+  offer_family         String
+  display_name         String
+  metric_family        String
+  launch_class         String         @default("PHASE_GATED")
+  release_status       String         @default("GATED")
+  bundle_rules         String         @default("[]")
+  released_by          String?
+  released_at          DateTime?
+  requires             String         @default("[]")
+  incompatible_with    String         @default("[]")
+  region_scope         String         @default("[]")
+  created_at           DateTime       @default(now())
+
+  priceBooks             PriceBook[]
+  cpqReadiness           CpqOfferReadiness[]
+  roadmapCommitments     RoadmapCommitment[]
+  commercialOrderLines   CommercialOrderLine[] @relation("CommercialOrderLineProduct")
+  bundleParentOrderLines CommercialOrderLine[] @relation("CommercialOrderLineBundleParentProduct")
+
+  @@unique([catalog_version_id, sku])
+  @@unique([catalog_version_id, internal_product_key])
+  @@index([sku])
+  @@index([internal_product_key])
+  @@index([release_status])
+
+  @@schema("catalog")
+}
+
+model PriceBook {
+  id                         String             @id @default(uuid())
+  catalog_version_id         String
+  catalogVersion             CatalogVersion     @relation(fields: [catalog_version_id], references: [id])
+  product_id                 String
+  product                    Product            @relation(fields: [product_id], references: [id])
+  commercial_account_id      String?
+  commercialAccount          CommercialAccount? @relation(fields: [commercial_account_id], references: [id])
+  region                     String             @default("GLOBAL")
+  currency                   String             @default("USD")
+  channel                    String             @default("DIRECT")
+  visibility                 String             @default("BESPOKE")
+  unit_price                 Float              @default(0.0)
+  minimum_commit             Float              @default(0.0)
+  overage_rate               Float              @default(0.0)
+  status                     String             @default("DRAFT")
+  effective_from             DateTime           @default(now())
+  effective_to               DateTime?
+  margin_gate_passed         Boolean            @default(false)
+  approval_id                String?            @unique
+  public_disclosure_approved Boolean            @default(false)
+  approved_by                String?
+  approved_at                DateTime?
+  created_at                 DateTime           @default(now())
+
+  professionalServiceEngagements ProfessionalServiceEngagement[]
+  aiGovernanceProfiles           AiGovernanceProfile[]
+  invoiceLines                   CommercialInvoiceLine[]
+
+  @@index([status])
+  @@index([product_id])
+  @@index([commercial_account_id, status])
+
+  @@schema("catalog")
+}

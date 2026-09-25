@@ -1,0 +1,226 @@
+// PostgreSQL schema "resources". resources module.
+
+model ResourceObservation {
+  id                     String                       @id @default(uuid())
+  tenant_id              String
+  environment_id         String                       @default("default-env")
+  resource_definition_id String?
+  resourceDefinition     ProtectedResourceDefinition? @relation(fields: [resource_definition_id], references: [id])
+  canonical_resource_id  String
+  physical_resource_id   String                       @default("")
+  identity_basis_hash    String                       @default("")
+  resource_type          String
+  resource_family        String                       @default("ENDPOINT")
+  metric_family          String                       @default("LEGACY")
+  source_connector_id    String
+  source_connectors      String                       @default("[]")
+  first_seen_at          DateTime                     @default(now())
+  last_seen_at           DateTime                     @default(now())
+  coverage_state         String                       @default("DISCOVERED")
+  billable_state         String                       @default("NON_BILLABLE")
+  coverage_policy_id     String?
+  coveragePolicy         ResourceCoveragePolicy?      @relation(fields: [coverage_policy_id], references: [id])
+  decision_by            String?
+  decision_reason        String?
+  decided_at             DateTime?
+  auto_enrollment_status String                       @default("NOT_ELIGIBLE")
+  exclusion_reason       String?
+  created_at             DateTime                     @default(now())
+  updated_at             DateTime                     @updatedAt
+
+  windows   ResourceObservationWindow[]
+  decisions ResourceCoverageDecision[]
+  notices   ResourceEnrollmentNotice[]
+
+  @@unique([tenant_id, metric_family, canonical_resource_id])
+  @@index([tenant_id])
+  @@index([tenant_id, environment_id, metric_family])
+  @@index([tenant_id, physical_resource_id])
+  @@index([coverage_policy_id, coverage_state])
+  @@index([coverage_state])
+
+  @@unique([tenant_id, id])
+  @@schema("resources")
+}
+
+/**
+ * Append-only source observation windows. These preserve the reconciled raw
+ * basis used by high-water, average and committed resource-count previews.
+ */
+model ResourceObservationWindow {
+  id                  String              @id @default(uuid())
+  tenant_id           String
+  observation_id      String
+  observation         ResourceObservation @relation(fields: [tenant_id, observation_id], references: [tenant_id, id])
+  source_connector_id String
+  observed_at         DateTime            @default(now())
+  observed_from       DateTime
+  observed_to         DateTime
+  raw_basis_hash      String
+  created_at          DateTime            @default(now())
+
+  @@index([observation_id, observed_from, observed_to])
+  @@index([observed_at])
+  @@index([tenant_id])
+
+  @@schema("resources")
+}
+
+/**
+ * Tenant-authorized, versioned acceptance policy. Discovery alone never
+ * supplies this authorization and therefore can never make a resource
+ * billable.
+ */
+model ResourceCoveragePolicy {
+  id                        String                      @id @default(uuid())
+  tenant_id                 String
+  environment_id            String
+  policy_key                String
+  version                   Int                         @default(1)
+  resource_definition_id    String
+  resourceDefinition        ProtectedResourceDefinition @relation(fields: [resource_definition_id], references: [id])
+  resource_family           String
+  metric_family             String
+  meter_definition_id       String
+  meterDefinition           MeterDefinition             @relation(fields: [meter_definition_id], references: [id])
+  coverage_outcome          String                      @default("COVERED")
+  aggregation_method        String                      @default("HIGH_WATER")
+  observation_window        String                      @default("MONTHLY")
+  minimum_duration_seconds  Int                         @default(0)
+  committed_quantity        Int?
+  auto_enroll               Boolean                     @default(false)
+  threshold_quantity        Int?
+  cap_quantity              Int?
+  notice_period_days        Int?
+  notice_template           String?
+  disclosed_metric_families String                      @default("[]")
+  disclosure_reference      String?
+  effective_from            DateTime                    @default(now())
+  effective_to              DateTime?
+  status                    String                      @default("PENDING_APPROVAL")
+  approval_id               String?                     @unique
+  requested_by              String
+  approved_by               String?
+  approved_at               DateTime?
+  created_at                DateTime                    @default(now())
+  updated_at                DateTime                    @updatedAt
+
+  resources ResourceObservation[]
+  decisions ResourceCoverageDecision[]
+  notices   ResourceEnrollmentNotice[]
+
+  @@unique([tenant_id, environment_id, policy_key, version])
+  @@index([tenant_id, environment_id, status])
+  @@index([resource_definition_id, status])
+  @@index([meter_definition_id, status])
+  @@index([effective_from, effective_to, status])
+
+  @@schema("resources")
+}
+
+/**
+ * Every scope decision is retained; resource state is only the current view.
+ */
+model ResourceCoverageDecision {
+  id                 String                  @id @default(uuid())
+  tenant_id          String
+  observation_id     String
+  observation        ResourceObservation     @relation(fields: [observation_id], references: [id])
+  coverage_policy_id String?
+  coveragePolicy     ResourceCoveragePolicy? @relation(fields: [coverage_policy_id], references: [id])
+  from_state         String
+  to_state           String
+  decision_type      String
+  reason             String
+  actor_id           String
+  decided_at         DateTime                @default(now())
+
+  @@index([tenant_id, observation_id, decided_at])
+  @@index([coverage_policy_id])
+
+  @@schema("resources")
+}
+
+/**
+ * Notice must be confirmed delivered before an authorized auto-enrollment can apply.
+ */
+model ResourceEnrollmentNotice {
+  id                  String                 @id @default(uuid())
+  tenant_id           String
+  observation_id      String
+  observation         ResourceObservation    @relation(fields: [observation_id], references: [id])
+  coverage_policy_id  String
+  coveragePolicy      ResourceCoveragePolicy @relation(fields: [coverage_policy_id], references: [id])
+  status              String                 @default("PENDING_DELIVERY")
+  notice_reference    String?
+  scheduled_at        DateTime               @default(now())
+  delivered_at        DateTime?
+  effective_at        DateTime?
+  applied_at          DateTime?
+  cancelled_at        DateTime?
+  cancellation_reason String?
+  created_at          DateTime               @default(now())
+  updated_at          DateTime               @updatedAt
+
+  @@unique([observation_id, coverage_policy_id])
+  @@index([tenant_id, status])
+  @@index([status, effective_at])
+
+  @@schema("resources")
+}
+
+/**
+ * Immutable-after-finalization bundle/count preview with its complete raw basis.
+ */
+model ResourceCountPreview {
+  id                  String    @id @default(uuid())
+  tenant_id           String
+  environment_id      String
+  policy_ids          String
+  meter_versions      String
+  window_start        DateTime
+  window_end          DateTime
+  metric_results      String
+  overlaps            String    @default("[]")
+  exclusions          String    @default("[]")
+  raw_basis           String
+  validation_status   String    @default("PASS")
+  status              String    @default("PREVIEW")
+  reconciliation_hash String
+  generated_by        String
+  previewed_at        DateTime  @default(now())
+  finalized_by        String?
+  finalized_at        DateTime?
+
+  @@index([tenant_id, environment_id, previewed_at])
+  @@index([status])
+
+  @@schema("resources")
+}
+
+model ProtectedResourceDefinition {
+  id                    String    @id @default(uuid())
+  resource_type         String
+  resource_family       String    @default("ENDPOINT")
+  metric_family         String    @default("LEGACY")
+  version               Int       @default(1)
+  controlled_definition String    @default("")
+  counting_safeguard    String    @default("")
+  identity_key_spec     String    @default("{}")
+  counting_policy       String    @default("{}")
+  overlap_policy        String    @default("{}")
+  ephemeral_policy      String    @default("{}")
+  status                String    @default("DRAFT")
+  requested_by          String?
+  approved_by           String?
+  approved_at           DateTime?
+  created_at            DateTime  @default(now())
+
+  observations     ResourceObservation[]
+  coveragePolicies ResourceCoveragePolicy[]
+
+  @@unique([resource_type, version])
+  @@index([status])
+
+  @@schema("resources")
+}

@@ -1,0 +1,196 @@
+// PostgreSQL schema "case_management". case-management module.
+
+model Case {
+  id                  String    @id @default(uuid())
+  tenant_id           String
+  environment_id      String    @default("default-env")
+  region              String    @default("unspecified")
+  title               String
+  description         String?
+  severity            String    @default("HIGH")
+  priority            String    @default("P2")
+  status              String    @default("NEW")
+  owner_id            String?
+  queue_id            String?
+  primary_identity_id String?
+  primary_asset_id    String?
+  sla_started_at      DateTime?
+  acknowledged_at     DateTime?
+  resolved_at         DateTime?
+  closed_at           DateTime?
+  disposition         String?
+  incident_id         String?
+  correlation_id      String?
+  created_by          String
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+
+  alerts          CaseAlert[]
+  transitions     CaseTransition[]
+  timelineEntries CaseTimelineEntry[]
+  notes           CaseNote[]
+  hypotheses      InvestigationHypothesis[]
+  decisions       CaseDecision[]
+  evidenceLinks   CaseEvidence[]
+  slaClock        CaseSlaClock?
+  qualityReviews  CaseQualityReview[]
+
+  @@index([tenant_id])
+  @@index([status])
+
+  @@schema("case_management")
+}
+
+model CaseAlert {
+  tenant_id         String
+  case_id           String
+  case              Case     @relation(fields: [case_id], references: [id])
+  alert_id          String
+  linked_at         DateTime @default(now())
+  linked_by         String
+  relationship_type String   @default("PRIMARY")
+
+  @@id([case_id, alert_id])
+  @@index([tenant_id])
+  @@index([alert_id])
+
+  @@schema("case_management")
+}
+
+model CaseTransition {
+  id                        String   @id @default(uuid())
+  tenant_id                 String
+  case_id                   String
+  case                      Case     @relation(fields: [case_id], references: [id])
+  from_state                String
+  to_state                  String
+  actor_id                  String
+  reason                    String
+  occurred_at               DateTime @default(now())
+  authorization_decision_id String?
+  correlation_id            String?
+
+  @@index([tenant_id])
+  @@index([case_id])
+
+  @@schema("case_management")
+}
+
+/// Risk-sampled second-person review of a material case disposition or
+/// closure. The reviewer may never be the requester (maker-checker).
+model CaseQualityReview {
+  id           String    @id @default(uuid())
+  tenant_id    String
+  case_id      String
+  case         Case      @relation(fields: [case_id], references: [id])
+  review_type  String
+  trigger      String
+  requested_by String
+  status       String    @default("PENDING")
+  reviewer_id  String?
+  comments     String?
+  decided_at   DateTime?
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+
+  @@index([tenant_id])
+  @@index([case_id])
+  @@index([status])
+
+  @@schema("case_management")
+}
+
+model CaseTimelineEntry {
+  id             String   @id @default(uuid())
+  tenant_id      String
+  case_id        String
+  case           Case     @relation(fields: [case_id], references: [id])
+  entry_type     String
+  actor_id       String
+  occurred_at    DateTime @default(now())
+  title          String
+  summary        String
+  source_ref     String?
+  evidence_ref   String?
+  correlation_id String?
+  created_at     DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([case_id])
+
+  @@schema("case_management")
+}
+
+model CaseNote {
+  id             String   @id @default(uuid())
+  tenant_id      String
+  case_id        String
+  case           Case     @relation(fields: [case_id], references: [id])
+  author_id      String
+  content        String
+  classification String   @default("INTERNAL")
+  created_at     DateTime @default(now())
+  supersedes_id  String?
+
+  @@index([tenant_id])
+  @@index([case_id])
+
+  @@schema("case_management")
+}
+
+model InvestigationHypothesis {
+  id                          String    @id @default(uuid())
+  tenant_id                   String
+  case_id                     String
+  case                        Case      @relation(fields: [case_id], references: [id])
+  statement                   String
+  status                      String    @default("OPEN")
+  created_by                  String
+  supporting_evidence_refs    String    @default("[]")
+  contradicting_evidence_refs String    @default("[]")
+  created_at                  DateTime  @default(now())
+  resolved_at                 DateTime?
+
+  @@index([tenant_id])
+  @@index([case_id])
+
+  @@schema("case_management")
+}
+
+model CaseDecision {
+  id             String   @id @default(uuid())
+  tenant_id      String
+  case_id        String
+  case           Case     @relation(fields: [case_id], references: [id])
+  decision_type  String
+  decision       String
+  rationale      String
+  actor_id       String
+  evidence_refs  String   @default("[]")
+  policy_version String?
+  created_at     DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([case_id])
+
+  @@schema("case_management")
+}
+
+model CaseEvidence {
+  id           String         @id @default(uuid())
+  tenant_id    String
+  case_id      String
+  case         Case           @relation(fields: [case_id], references: [id])
+  evidence_id  String
+  evidence     EvidenceRecord @relation(fields: [evidence_id], references: [id])
+  relationship String         @default("SOURCE")
+  added_by     String
+  added_at     DateTime       @default(now())
+  note         String?
+
+  @@index([tenant_id])
+  @@index([case_id])
+  @@index([evidence_id])
+
+  @@schema("case_management")
+}

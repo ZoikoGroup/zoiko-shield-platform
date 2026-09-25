@@ -175,6 +175,7 @@ export class ResourceObservationService {
     return this.prisma.$transaction(async (tx) => {
       await tx.resourceObservationWindow.create({
         data: {
+          tenant_id: existing.tenant_id,
           observation_id: existing.id,
           source_connector_id: sourceConnectorId,
           observed_at: new Date(),
@@ -289,6 +290,7 @@ export class ResourceObservationService {
         });
         await tx.resourceObservationWindow.create({
           data: {
+            tenant_id: observation.tenant_id,
             observation_id: observation.id,
             source_connector_id: dto.sourceConnectorId,
             observed_at: new Date(),

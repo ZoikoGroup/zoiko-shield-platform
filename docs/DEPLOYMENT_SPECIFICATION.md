@@ -75,7 +75,7 @@ ZoikoShield is an enterprise cyber defense, compliance ledger, and continuous as
 | Service Name | Source Path | Runtime / Framework | Exposed Port | Purpose & Primary Responsibilities | Health Check URL |
 |---|---|---|---|---|---|
 | **`zoikoshield-frontend`** | `frontend/` | Node 20+, Next.js 15, React 19, TailwindCSS | `3000` | Security Operations Center UI, Compliance Audit Dashboard, Admin Console, Sector Defense Packs | `GET /` |
-| **`shield-core`** | `backend/apps/shield-core` | Node 20+, NestJS, TypeORM | `3001` | Public API Gateway, Session & SSO Auth, RBAC, Customer Billing, Ledger, R04 Requirements Register | `GET /health` |
+| **`shield-core`** | `backend/apps/shield-core` | Node 20+, NestJS, Prisma | `3001` | Public API Gateway, Session & SSO Auth, RBAC, Customer Billing, Ledger, R04 Requirements Register | `GET /health` |
 | **`shield-ingest`** | `backend/apps/shield-ingest` | Node 20+, NestJS | `3002` | High-throughput OCSF telemetry ingestion, Webhooks, Normalization, Quarantine Replay | `GET /health` |
 | **`shield-ai`** | `backend/apps/shield-ai` | Node 20+, NestJS | `3003` | Threat Hunting, Decision Review Envelopes, Population Stability Index (PSI) Drift Monitoring | `GET /health` |
 | **`shield-action`** | `backend/apps/shield-action` | Node 20+, NestJS | `3004` | Security response action dispatcher, Two-Man Rule Quorum approvals, JIT elevation (Simulation mode active) | `GET /health` |
@@ -237,5 +237,5 @@ The codebase has undergone full continuous integration and static analysis valid
 - [ ] **DNS & SSL Certificates:**
   - `shield.zoiko.com` $\rightarrow$ Points to Frontend (Port 3000).
   - `api.shield.zoiko.com` $\rightarrow$ Points to Shield Core API (Port 3001).
-- [ ] **Database Migration:** Automatic on launch via `shield-core-migrate` container (`npm run typeorm:migration:run`).
+- [ ] **Database Migration:** Automatic on launch via `shield-core-migrate` container (`npm run migrate:deploy`: Prisma migrations, then the database access policy).
 - [ ] **Firewall & Security Groups:** Expose only Ports `80/443` to the public internet; keep Ports `3002-3005`, `5432`, `6379`, and `9092` internal only.

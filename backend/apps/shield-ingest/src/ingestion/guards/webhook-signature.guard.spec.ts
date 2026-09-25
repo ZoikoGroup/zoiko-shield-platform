@@ -19,6 +19,9 @@ describe('WebhookSignatureGuard', () => {
         deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
         create: jest.fn().mockResolvedValue({ id: 'nonce-1' }),
       },
+      connectorInstance: {
+        findFirst: jest.fn().mockResolvedValue({ tenant_id: 'tenant-1' }),
+      },
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -77,6 +80,11 @@ describe('WebhookSignatureGuard', () => {
     const result = await guard.canActivate(context);
     expect(result).toBe(true);
     expect(mockPrisma.webhookReplayNonce.create).toHaveBeenCalled();
+    // A verified delivery scopes the request to its connector's tenant.
+    expect(mockPrisma.connectorInstance.findFirst).toHaveBeenCalledWith({
+      where: { id: 'conn-1' },
+      select: { tenant_id: true },
+    });
   });
 
   it('rejects request with missing signature header', async () => {

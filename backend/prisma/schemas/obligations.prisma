@@ -1,0 +1,41 @@
+// PostgreSQL schema "obligations". obligations module.
+
+model ServiceObligation {
+  id                         String                 @id @default(uuid())
+  tenant_id                  String?
+  environment_id             String?
+  contract_id                String
+  contract                   Contract               @relation(fields: [contract_id], references: [id])
+  managed_defense_profile_id String?
+  managedDefenseProfile      ManagedDefenseProfile? @relation(fields: [managed_defense_profile_id], references: [id])
+  bundle_order_line_id       String?                @unique
+  bundleOrderLine            CommercialOrderLine?   @relation("BundleComponentServiceObligation", fields: [bundle_order_line_id], references: [id], onDelete: Restrict)
+  obligation_key             String?
+  obligation_type            String
+  obligation_scope           String                 @default("{}")
+  coverage_window            String?
+  response_authority         String                 @default("R0")
+  customer_dependencies      String                 @default("[]")
+  exclusions                 String                 @default("[]")
+  claim_eligibility          Boolean                @default(true)
+  claim_eligibility_reason   String?
+  claim_assessed_at          DateTime?
+  status                     String                 @default("NOT_DUE")
+  due_at                     DateTime?
+  delivered_at               DateTime?
+  evidence_ref               String?
+  created_at                 DateTime               @default(now())
+  updated_at                 DateTime               @updatedAt
+
+  deliveryEvents                ManagedDefenseDeliveryEvent[]
+  irRetainer                    IncidentResponseRetainer?
+  professionalServiceEngagement ProfessionalServiceEngagement?
+  invoiceBases                  CommercialInvoiceLineBasis[]
+
+  @@index([contract_id])
+  @@index([tenant_id, environment_id, status])
+  @@index([managed_defense_profile_id, status])
+  @@index([status])
+
+  @@schema("obligations")
+}

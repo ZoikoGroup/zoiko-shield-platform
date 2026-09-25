@@ -1,0 +1,167 @@
+// PostgreSQL schema "billing". billing module.
+
+model CommercialInvoice {
+  id                    String            @id @default(uuid())
+  commercial_account_id String
+  commercialAccount     CommercialAccount @relation(fields: [commercial_account_id], references: [id])
+  contract_id           String
+  contract              Contract          @relation(fields: [contract_id], references: [id])
+  status                String            @default("DRAFT")
+  currency              String            @default("USD")
+  total_amount          Float             @default(0.0)
+  issued_at             DateTime?
+  immutable_snapshot    String            @default("{}")
+  // Part 10/11: FX + tax result are captured at issue time and never
+  // rewritten afterward — original legal invoice values stay frozen.
+  fx_rate               Decimal?          @db.Decimal(18, 8)
+  fx_source             String?
+  fx_effective_at       DateTime?
+  tax_result            String            @default("{}")
+  created_at            DateTime          @default(now())
+  updated_at            DateTime          @updatedAt
+
+  lines       CommercialInvoiceLine[]
+  traces      CommercialInvoiceLineTrace[]
+  creditNotes CommercialCreditNote[]
+  debitNotes  CommercialDebitNote[]
+  payments    Payment[]
+
+  @@index([commercial_account_id])
+  @@index([contract_id])
+  @@index([status])
+
+  @@schema("billing")
+}
+
+model CommercialInvoiceLine {
+  id                   String               @id @default(uuid())
+  invoice_id           String
+  invoice              CommercialInvoice    @relation(fields: [invoice_id], references: [id])
+  order_line_id        String?
+  orderLine            CommercialOrderLine? @relation(fields: [order_line_id], references: [id], onDelete: Restrict)
+  price_book_id        String?
+  priceBook            PriceBook?           @relation(fields: [price_book_id], references: [id], onDelete: Restrict)
+  sku                  String
+  contract_id          String
+  subscription_id      String?
+  service_period_start DateTime
+  service_period_end   DateTime
+  quantity             Int                  @default(1)
+  unit_price           Decimal              @db.Decimal(14, 4)
+  discount_percent     Decimal              @default(0) @db.Decimal(5, 2)
+  tax_amount           Decimal              @default(0) @db.Decimal(14, 4)
+  tax_rule_id          String?
+  currency             String               @default("USD")
+  source_version       String               @default("v1")
+  presentation_mode    String               @default("SEPARATE")
+  representation_scope String               @default("COMMERCIAL_ENTITLEMENT_OR_OBLIGATION")
+  created_at           DateTime             @default(now())
+
+  traces CommercialInvoiceLineTrace[]
+  bases  CommercialInvoiceLineBasis[]
+
+  @@index([invoice_id])
+  @@index([order_line_id])
+  @@index([price_book_id])
+
+  @@schema("billing")
+}
+
+/**
+ * Frozen commercial/service evidence explaining what an invoice line bills.
+ * Outcome evidence remains in its source domain; this row records the exact
+ * entitlement, obligation or approved meter snapshot observed at billing time.
+ */
+model CommercialInvoiceLineBasis {
+  id                            String                    @id @default(uuid())
+  invoice_line_id               String
+  invoiceLine                   CommercialInvoiceLine     @relation(fields: [invoice_line_id], references: [id], onDelete: Restrict)
+  basis_type                    String
+  source_id                     String
+  entitlement_id                String?
+  entitlement                   Entitlement?              @relation(fields: [entitlement_id], references: [id], onDelete: Restrict)
+  service_obligation_id         String?
+  serviceObligation             ServiceObligation?        @relation(fields: [service_obligation_id], references: [id], onDelete: Restrict)
+  meter_billing_export_id       String?
+  meterBillingExport            MeterBillingExport?       @relation(fields: [meter_billing_export_id], references: [id], onDelete: Restrict)
+  meter_authorization_policy_id String?
+  meterAuthorizationPolicy      MeterAuthorizationPolicy? @relation(fields: [meter_authorization_policy_id], references: [id], onDelete: Restrict)
+  source_status                 String
+  source_version                String                    @default("v1")
+  quantity                      Int                       @default(1)
+  unit                          String
+  service_period_start          DateTime
+  service_period_end            DateTime
+  source_snapshot               String
+  source_snapshot_hash          String
+  created_at                    DateTime                  @default(now())
+
+  @@unique([invoice_line_id, basis_type, source_id])
+  @@index([entitlement_id])
+  @@index([service_obligation_id])
+  @@index([meter_billing_export_id])
+  @@index([meter_authorization_policy_id])
+
+  @@schema("billing")
+}
+
+/**
+ * A normalized source edge for invoice presentation. An invoice may show one
+ * bundle line, but every underlying technology/service component and its
+ * allocated pre-tax amount remains queryable and independently reconcilable.
+ */
+model CommercialInvoiceLineTrace {
+  id                   String                @id @default(uuid())
+  invoice_id           String
+  invoice              CommercialInvoice     @relation(fields: [invoice_id], references: [id], onDelete: Restrict)
+  invoice_line_id      String
+  invoiceLine          CommercialInvoiceLine @relation(fields: [invoice_line_id], references: [id], onDelete: Restrict)
+  order_line_id        String
+  orderLine            CommercialOrderLine   @relation(fields: [order_line_id], references: [id], onDelete: Restrict)
+  allocated_amount     Decimal               @db.Decimal(14, 4)
+  currency             String
+  service_period_start DateTime
+  service_period_end   DateTime
+  created_at           DateTime              @default(now())
+
+  @@unique([invoice_id, order_line_id, service_period_start, service_period_end])
+  @@index([invoice_line_id])
+  @@index([order_line_id])
+
+  @@schema("billing")
+}
+
+/**
+ * Part 12: corrections to an issued invoice are append-only, never edits.
+ */
+model CommercialCreditNote {
+  id         String            @id @default(uuid())
+  invoice_id String
+  invoice    CommercialInvoice @relation(fields: [invoice_id], references: [id])
+  amount     Decimal           @db.Decimal(14, 4)
+  currency   String            @default("USD")
+  reason     String
+  status     String            @default("DRAFT")
+  issued_at  DateTime?
+  created_at DateTime          @default(now())
+
+  @@index([invoice_id])
+
+  @@schema("billing")
+}
+
+model CommercialDebitNote {
+  id         String            @id @default(uuid())
+  invoice_id String
+  invoice    CommercialInvoice @relation(fields: [invoice_id], references: [id])
+  amount     Decimal           @db.Decimal(14, 4)
+  currency   String            @default("USD")
+  reason     String
+  status     String            @default("DRAFT")
+  issued_at  DateTime?
+  created_at DateTime          @default(now())
+
+  @@index([invoice_id])
+
+  @@schema("billing")
+}

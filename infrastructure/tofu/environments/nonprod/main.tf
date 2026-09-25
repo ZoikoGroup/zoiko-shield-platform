@@ -23,6 +23,7 @@ module "cell_nonprod" {
   project_runtime_id  = "${var.project_root_id}-runtime"
   project_evidence_id = "${var.project_root_id}-evidence"
   project_security_id = "${var.project_root_id}-security"
+  project_data_id     = "${var.project_root_id}-data"
 }
 
 output "nonprod_gke_cluster" {

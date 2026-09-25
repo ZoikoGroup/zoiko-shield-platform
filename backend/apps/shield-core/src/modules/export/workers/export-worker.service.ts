@@ -5,6 +5,7 @@ import { OutboxService } from '../../../outbox/outbox.service';
 import { CANONICAL_TOPICS } from '../../../kafka/kafka-producer.service';
 import { ExportBuilderService } from '../builders/export-builder.service';
 import { ExportManifestService } from '../manifests/export-manifest.service';
+import { PlatformScope } from '../../../../../../libs/database/src';
 
 /** Async worker (spec §55/PHASE 9) — no real job queue exists this pass, so a cron sweep plays that role, same pattern as OutboxPublisherService. */
 @Injectable()
@@ -19,6 +20,7 @@ export class ExportWorkerService {
     private readonly manifestService: ExportManifestService,
   ) {}
 
+  @PlatformScope('scheduled job ExportWorkerService.processQueued')
   @Cron(CronExpression.EVERY_10_SECONDS)
   async processQueued(): Promise<void> {
     if (this.running) return;

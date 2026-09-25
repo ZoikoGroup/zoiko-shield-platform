@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../../prisma/prisma.service';
 import { KafkaProducerService } from '../../kafka/kafka-producer.service';
+import { PlatformScope } from '../../../../../libs/database/src';
 
 /**
  * ZS-COM-BILL-001 Part 31: transactional outbox for the commercial plane.
@@ -25,6 +26,7 @@ export class CommercialEventPublisherService {
     private readonly kafkaProducer: KafkaProducerService,
   ) {}
 
+  @PlatformScope('scheduled job CommercialEventPublisherService.publishPending')
   @Cron(CronExpression.EVERY_10_SECONDS)
   async publishPending(): Promise<void> {
     if (this.running) return;

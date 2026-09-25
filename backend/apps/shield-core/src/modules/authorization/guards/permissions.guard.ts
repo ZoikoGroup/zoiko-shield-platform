@@ -21,6 +21,7 @@ import {
   AuthorizationDecisionService,
 } from '../../authorization-decision/authorization-decision.service';
 import { PARTNER_DELEGATION_SCOPE_KEY } from '../../partners/require-partner-delegation-scope.decorator';
+import { bindRequestTenant } from '../../../../../../libs/database/src';
 
 @Injectable()
 export class PermissionsGuard implements CanActivate {
@@ -126,6 +127,10 @@ export class PermissionsGuard implements CanActivate {
 
     request.headers['x-tenant-id'] = tenantId;
     request.tenantId = tenantId;
+    // The tenant is now checked against the session's binding: scope this
+    // request's database access to it, before the decision service reads
+    // tenant-scoped delegation, entitlement and relationship rows.
+    bindRequestTenant(tenantId);
 
     // A method-level PlatformPermissionsGuard is the sole PDP for an explicit
     // platform operation; do not also require customer-tenant base actions.

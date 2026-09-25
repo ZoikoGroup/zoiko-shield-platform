@@ -3,14 +3,13 @@ import { IdentityProviderConfigurationService } from './identity-provider-config
 describe('IdentityProviderConfigurationService', () => {
   it('creates federation trust as DRAFT and never returns secret references', async () => {
     const providers = {
-      findOne: jest.fn().mockResolvedValue(null),
-      create: jest.fn((value) => ({
+      findFirst: jest.fn().mockResolvedValue(null),
+      create: jest.fn(async ({ data }) => ({
         id: 'provider-1',
         createdAt: new Date('2026-01-01T00:00:00Z'),
         updatedAt: new Date('2026-01-01T00:00:00Z'),
-        ...value,
+        ...data,
       })),
-      save: jest.fn(async (value) => value),
     };
     const runtime = {
       assertApprovedExternalUrl: jest.fn(),
@@ -19,39 +18,35 @@ describe('IdentityProviderConfigurationService', () => {
         .mockReturnValue('https://shield.example.com/auth/sso/oidc/callback'),
     };
     const events = { record: jest.fn().mockResolvedValue(undefined) };
-    const eventRepository = {
-      create: jest.fn((value) => value),
-      save: jest.fn(async (value) => {
-        await events.record(value);
-        return value;
+    const identityEvent = {
+      create: jest.fn(async ({ data }) => {
+        await events.record(data);
+        return data;
       }),
     };
-    const dataSource = {
-      transaction: jest.fn(async (work) =>
-        work({
-          getRepository: jest.fn((entity) =>
-            entity.name === 'IdentityProviderConfiguration'
-              ? providers
-              : eventRepository,
-          ),
-        }),
-      ),
+    const tx = {
+      identityProviderConfiguration: providers,
+      identityEvent,
+      session: { updateMany: jest.fn() },
     };
-    const service = new IdentityProviderConfigurationService(
-      dataSource as any,
-      providers as any,
-      {
-        findOne: jest
+    const prisma = {
+      ...tx,
+      tenant: {
+        findUnique: jest
           .fn()
           .mockResolvedValue({ id: 'tenant-1', status: 'ACTIVE' }),
-      } as any,
-      {
-        findOne: jest.fn().mockResolvedValue({
+      },
+      environment: {
+        findFirst: jest.fn().mockResolvedValue({
           id: 'environment-1',
           tenantId: 'tenant-1',
           status: 'ACTIVE',
         }),
-      } as any,
+      },
+      $transaction: jest.fn(async (work) => work(tx)),
+    };
+    const service = new IdentityProviderConfigurationService(
+      prisma as any,
       {} as any,
       {} as any,
       runtime as any,

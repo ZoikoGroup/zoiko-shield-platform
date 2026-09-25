@@ -1,0 +1,30 @@
+// PostgreSQL schema "messaging". Transactional outbox and inbox. Shared messaging infrastructure: any module may append
+// outbox rows in its own transaction; only the outbox publisher and inbox consumer update them.
+
+model OutboxEvent {
+  id             String    @id @default(uuid())
+  tenant_id      String
+  topic          String
+  event_type     String
+  payload        String
+  correlation_id String?
+  created_at     DateTime  @default(now())
+  published_at   DateTime?
+
+  @@index([tenant_id])
+  @@index([published_at])
+
+  @@schema("messaging")
+}
+
+model InboxEvent {
+  id           String   @id @default(uuid())
+  event_id     String   @unique
+  topic        String
+  tenant_id    String
+  processed_at DateTime @default(now())
+
+  @@index([tenant_id])
+
+  @@schema("messaging")
+}

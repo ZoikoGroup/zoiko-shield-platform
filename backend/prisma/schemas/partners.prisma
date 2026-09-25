@@ -1,0 +1,158 @@
+// PostgreSQL schema "partners". partners module.
+
+// ============================================================
+// ZS-COM-BILL-001 P1 Part 21: Partner/Reseller/MSP domain. Operational
+// access (delegation) never implies commercial authority — pricing is
+// never mutable through a delegation regardless of scope, and
+// entitlement always derives from the accepted order, never the partner
+// relationship directly.
+// ============================================================
+
+model Partner {
+  id                       String   @id @default(uuid())
+  legal_name               String
+  partner_type             String
+  managing_organization_id String   @unique
+  status                   String   @default("ACTIVE")
+  created_at               DateTime @default(now())
+
+  delegations       PartnerDelegation[]
+  principalContexts PartnerPrincipalContext[]
+
+  @@index([status])
+
+  @@schema("partners")
+}
+
+/**
+ * Authoritative identity-to-managing-organization binding. A principal can
+ * operate for only one partner organization and cannot become delegated merely
+ * because a customer grant contains a matching free-form identifier.
+ */
+model PartnerPrincipalContext {
+  id                       String    @id @default(uuid())
+  partner_id               String
+  partner                  Partner   @relation(fields: [partner_id], references: [id])
+  principal_id             String    @unique
+  managing_organization_id String
+  status                   String    @default("ACTIVE")
+  created_by               String
+  deactivated_by           String?
+  deactivated_at           DateTime?
+  deactivation_reason      String?
+  created_at               DateTime  @default(now())
+  updated_at               DateTime  @updatedAt
+
+  delegations PartnerDelegation[]
+
+  @@index([partner_id, status])
+  @@index([managing_organization_id, status])
+
+  @@schema("partners")
+}
+
+model PartnerAgreement {
+  id                     String    @id @default(uuid())
+  partner_id             String
+  commission_percent     Decimal   @default(0) @db.Decimal(5, 2)
+  margin_percent         Decimal   @default(0) @db.Decimal(5, 2)
+  invoice_responsibility String    @default("ZOIKOSHIELD")
+  tax_responsibility     String    @default("ZOIKOSHIELD")
+  support_responsibility String    @default("ZOIKOSHIELD")
+  renewal_rights         String    @default("ZOIKOSHIELD")
+  status                 String    @default("DRAFT")
+  approved_by            String?
+  approved_at            DateTime?
+  effective_from         DateTime  @default(now())
+  effective_to           DateTime?
+  created_at             DateTime  @default(now())
+
+  @@index([partner_id])
+  @@index([status])
+
+  @@schema("partners")
+}
+
+/**
+ * Explicit, tenant-scoped, revocable, expiring, non-transitive. Never grants pricing authority.
+ */
+model PartnerDelegation {
+  id                           String                   @id @default(uuid())
+  partner_id                   String
+  partner                      Partner                  @relation(fields: [partner_id], references: [id])
+  managing_organization_id     String
+  partner_principal_id         String
+  partner_principal_context_id String?
+  partnerPrincipalContext      PartnerPrincipalContext? @relation(fields: [partner_principal_context_id], references: [id])
+  commercial_account_id        String
+  tenant_id                    String
+  environment_id               String
+  scope                        String                   @default("[]")
+  customer_visible             Boolean                  @default(true)
+  status                       String                   @default("ACTIVE")
+  granted_by                   String
+  expires_at                   DateTime
+  revoked_by                   String?
+  revocation_reason            String?
+  revoked_at                   DateTime?
+  created_at                   DateTime                 @default(now())
+  updated_at                   DateTime                 @updatedAt
+
+  supportCases PartnerSupportCase[]
+
+  @@index([partner_id])
+  @@index([commercial_account_id, tenant_id, environment_id])
+  @@index([tenant_id, status])
+  @@index([partner_principal_id, tenant_id, status])
+  @@index([partner_principal_context_id, status])
+  @@index([managing_organization_id, status])
+  @@index([status])
+
+  @@schema("partners")
+}
+
+/**
+ * Customer-bound support workflow available to delegated partner operators.
+ * It is intentionally separate from security Case/Incident records and has no
+ * commercial price, payment, entitlement-mutation or response authority.
+ */
+model PartnerSupportCase {
+  id                        String             @id @default(uuid())
+  commercial_account_id     String
+  commercialAccount         CommercialAccount  @relation(fields: [commercial_account_id], references: [id])
+  tenant_id                 String
+  environment_id            String
+  subject                   String
+  description               String
+  priority                  String             @default("NORMAL")
+  status                    String             @default("OPEN")
+  created_by                String
+  updated_by                String?
+  created_via_delegation_id String?
+  createdViaDelegation      PartnerDelegation? @relation(fields: [created_via_delegation_id], references: [id])
+  created_at                DateTime           @default(now())
+  updated_at                DateTime           @updatedAt
+
+  @@index([commercial_account_id, tenant_id, environment_id])
+  @@index([tenant_id, status])
+  @@index([created_via_delegation_id])
+
+  @@schema("partners")
+}
+
+model PartnerSettlement {
+  id                String   @id @default(uuid())
+  partner_id        String
+  period_start      DateTime
+  period_end        DateTime
+  gross_amount      Decimal  @db.Decimal(14, 4)
+  commission_amount Decimal  @db.Decimal(14, 4)
+  currency          String   @default("USD")
+  status            String   @default("DRAFT")
+  created_at        DateTime @default(now())
+
+  @@index([partner_id])
+  @@index([status])
+
+  @@schema("partners")
+}

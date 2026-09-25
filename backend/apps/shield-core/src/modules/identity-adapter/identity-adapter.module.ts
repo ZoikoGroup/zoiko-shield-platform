@@ -1,20 +1,8 @@
 import { Module } from '@nestjs/common';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 
-import { Principal } from './principal.entity';
-import { LocalCredential } from './local-credential.entity';
-import { ExternalIdentity } from './external-identity.entity';
-import { Session } from './session.entity';
-import { VerificationChallenge } from './verification-challenge.entity';
-import { WebauthnCredential } from './webauthn-credential.entity';
-import { WebauthnChallenge } from './webauthn-challenge.entity';
-import { RecoveryGrant } from './recovery-grant.entity';
-import { PolicyDocument } from './policy-document.entity';
-import { PolicyAcceptance } from './policy-acceptance.entity';
-import { IdentityEvent } from './identity-event.entity';
 import { PrincipalService } from './principal.service';
 import { SessionService } from './session.service';
 import { VerificationChallengeService } from './verification-challenge.service';
@@ -26,15 +14,6 @@ import { MailService } from './mail.service';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
-import { IdentityProviderConfiguration } from './identity-provider-configuration.entity';
-import { FederationTransaction } from './federation-transaction.entity';
-import { SamlRequestCacheEntry } from './saml-request-cache.entity';
-import { ExternalIdentityTenantBinding } from './external-identity-tenant-binding.entity';
-import { TenantMembership } from '../authorization/entities/tenant-membership.entity';
-import { Invitation } from '../authorization/entities/invitation.entity';
-import { Role } from '../authorization/entities/role.entity';
-import { Tenant } from '../tenant/tenant.entity';
-import { Environment } from '../environment/environment.entity';
 import { AuthorizationModule } from '../authorization/authorization.module';
 import { FederationRuntimeService } from './federation-runtime.service';
 import { FederationTransactionService } from './federation-transaction.service';
@@ -49,33 +28,11 @@ import { IdentityProviderConfigurationController } from './identity-provider-con
 import { ZoikoIdProviderBootstrapService } from './zoikoid-provider-bootstrap.service';
 import { OwnerFederatedActivationService } from './owner-federated-activation.service';
 import { EvidenceModule } from '../evidence/evidence.module';
-import { LegalEntity } from '../legal-entity/legal-entity.entity';
+import { PrismaModule } from '../../prisma/prisma.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([
-      Principal,
-      LocalCredential,
-      ExternalIdentity,
-      Session,
-      VerificationChallenge,
-      WebauthnCredential,
-      WebauthnChallenge,
-      RecoveryGrant,
-      PolicyDocument,
-      PolicyAcceptance,
-      IdentityEvent,
-      IdentityProviderConfiguration,
-      FederationTransaction,
-      SamlRequestCacheEntry,
-      ExternalIdentityTenantBinding,
-      TenantMembership,
-      Invitation,
-      Role,
-      Tenant,
-      Environment,
-      LegalEntity,
-    ]),
+    PrismaModule,
     AuthorizationModule,
     EvidenceModule,
     PassportModule,

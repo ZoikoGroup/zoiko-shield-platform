@@ -7,6 +7,7 @@ import {
   KafkaProducerService,
   CANONICAL_TOPICS,
 } from '../../kafka/kafka.producer.service';
+import { PlatformScope } from '../../../../../libs/database/src';
 
 export interface ConnectorHeartbeatPayload {
   lagMs?: number;
@@ -84,6 +85,9 @@ export class ConnectorHealthService {
    * Automated Connector Heartbeat Monitor Sweeper (OPS-INV-13 Specification)
    * Runs every minute to detect missed heartbeats (>60s DEGRADED, >180s UNHEALTHY/STALE).
    */
+  @PlatformScope(
+    'scheduled job ConnectorHealthService.monitorConnectorHeartbeats',
+  )
   @Cron(CronExpression.EVERY_MINUTE)
   async monitorConnectorHeartbeats(): Promise<void> {
     if (this.isSweeping) return;

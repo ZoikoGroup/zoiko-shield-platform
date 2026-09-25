@@ -1,48 +1,6 @@
-import { randomUUID } from 'crypto';
-import {
-  BeforeInsert,
-  Column,
-  CreateDateColumn,
-  Entity,
-  Index,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import type { IdentityEvent as IdentityEventRow } from '@prisma/client';
 
-@Entity({ name: 'identity_events', schema: 'identity' })
-export class IdentityEvent {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
-  @BeforeInsert()
-  generateId() {
-    if (!this.id) {
-      this.id = randomUUID();
-    }
-  }
-
-  @Column()
-  @Index()
-  eventType: string;
-
-  @Column({ default: 'identity-adapter' })
-  source: string;
-
-  @Column({ type: 'uuid', nullable: true })
-  @Index()
-  principalId: string | null;
-
-  @Column({ type: 'uuid', nullable: true })
-  actorId: string | null;
-
-  @Column({ type: 'uuid', nullable: true })
-  tenantId: string | null;
-
-  @Column({ type: 'uuid', nullable: true })
-  correlationId: string | null;
-
-  @Column({ type: 'jsonb', default: {} })
+/** Row of identity.identity_events, persisted through Prisma. */
+export type IdentityEvent = Omit<IdentityEventRow, 'data'> & {
   data: Record<string, unknown>;
-
-  @CreateDateColumn({ type: 'timestamptz' })
-  occurredAt: Date;
-}
+};

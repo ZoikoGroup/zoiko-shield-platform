@@ -1,0 +1,180 @@
+// PostgreSQL schema "professional_services". professional-services module.
+
+/**
+ * Governed Category G professional-service SOW. Commercial scope is approved
+ * once and copied into immutable delivery records; work evidence is never an
+ * invoice by itself.
+ */
+model ProfessionalServiceEngagement {
+  id                            String            @id @default(uuid())
+  tenant_id                     String
+  environment_id                String
+  commercial_account_id         String
+  commercialAccount             CommercialAccount @relation(fields: [commercial_account_id], references: [id])
+  contract_id                   String
+  contract                      Contract          @relation(fields: [contract_id], references: [id])
+  service_obligation_id         String            @unique
+  serviceObligation             ServiceObligation @relation(fields: [service_obligation_id], references: [id])
+  engagement_key                String
+  version                       Int               @default(1)
+  service_type                  String
+  sow_reference                 String
+  price_book_id                 String
+  priceBook                     PriceBook         @relation(fields: [price_book_id], references: [id])
+  term_start                    DateTime
+  term_end                      DateTime
+  scheduled_service_at          DateTime?
+  scope                         String            @default("{}")
+  required_inputs               String            @default("[]")
+  customer_responsibilities     String            @default("[]")
+  provider_responsibilities     String            @default("[]")
+  deliverable_definitions       String            @default("[]")
+  acceptance_criteria           String            @default("[]")
+  correction_retest_policy      String            @default("{}")
+  pricing_mode                  String
+  currency                      String
+  contracted_amount             Decimal           @default(0) @db.Decimal(14, 4)
+  allocation_period             String            @default("PROJECT")
+  included_hours                Decimal           @db.Decimal(8, 2)
+  hourly_rate                   Decimal?          @db.Decimal(14, 4)
+  consumed_hours                Decimal           @default(0) @db.Decimal(8, 2)
+  overage_hours                 Decimal           @default(0) @db.Decimal(8, 2)
+  forecast_hours                Decimal           @default(0) @db.Decimal(8, 2)
+  warning_threshold_percent     Int               @default(80)
+  threshold_state               String            @default("WITHIN_ALLOWANCE")
+  overage_policy                String            @default("REQUIRE_APPROVAL")
+  overage_cap_hours             Decimal?          @db.Decimal(8, 2)
+  rollover_policy               String            @default("NONE")
+  rollover_cap_hours            Decimal?          @db.Decimal(8, 2)
+  hours_expire_at               DateTime
+  meeting_cadence               String?
+  review_cadence                String?
+  pen_test_authorization        String            @default("{}")
+  rules_of_engagement           String            @default("{}")
+  tester_assurance              String            @default("{}")
+  report_treatment              String            @default("{}")
+  framework_key                 String?
+  framework_version             String?
+  source_data_responsibilities  String            @default("{}")
+  limitations                   String            @default("[]")
+  status                        String            @default("PENDING_APPROVAL")
+  approval_id                   String?           @unique
+  requested_by                  String
+  approved_by                   String?
+  approved_at                   DateTime?
+  activated_by                  String?
+  activation_reference          String?
+  readiness_evidence_refs       String            @default("[]")
+  activated_at                  DateTime?
+  accepted_by_customer          String?
+  customer_acceptance_reference String?
+  accepted_at                   DateTime?
+  completed_at                  DateTime?
+  created_at                    DateTime          @default(now())
+  updated_at                    DateTime          @updatedAt
+
+  activities       ProfessionalServiceActivity[]
+  deliverables     ProfessionalServiceDeliverable[]
+  acceptanceEvents ProfessionalServiceAcceptanceEvent[]
+
+  @@unique([tenant_id, environment_id, engagement_key, version])
+  @@index([tenant_id, environment_id, status])
+  @@index([commercial_account_id, status])
+  @@index([contract_id, status])
+  @@index([service_type, status])
+  @@index([term_start, term_end, status])
+
+  @@schema("professional_services")
+}
+
+/**
+ * Append-only work and hour evidence, including the applicable hour period.
+ */
+model ProfessionalServiceActivity {
+  id                       String                        @id @default(uuid())
+  tenant_id                String
+  environment_id           String
+  engagement_id            String
+  engagement               ProfessionalServiceEngagement @relation(fields: [engagement_id], references: [id])
+  activity_type            String
+  entry_type               String                        @default("STANDARD")
+  hours                    Decimal                       @db.Decimal(8, 2)
+  allocation_period_start  DateTime
+  allocation_period_end    DateTime
+  included_available_after Decimal                       @db.Decimal(8, 2)
+  consumed_period_after    Decimal                       @db.Decimal(8, 2)
+  overage_period_after     Decimal                       @db.Decimal(8, 2)
+  forecast_period_after    Decimal                       @db.Decimal(8, 2)
+  total_engagement_after   Decimal                       @db.Decimal(8, 2)
+  threshold_state          String
+  overage_approval_id      String?
+  summary                  String
+  evidence_reference       String
+  actor_id                 String
+  occurred_at              DateTime
+  created_at               DateTime                      @default(now())
+
+  @@index([tenant_id, environment_id, occurred_at])
+  @@index([engagement_id, allocation_period_start, occurred_at])
+  @@index([entry_type])
+
+  @@schema("professional_services")
+}
+
+/**
+ * Immutable deliverable submission; corrections create a new version.
+ */
+model ProfessionalServiceDeliverable {
+  id                  String                           @id @default(uuid())
+  tenant_id           String
+  environment_id      String
+  engagement_id       String
+  engagement          ProfessionalServiceEngagement    @relation(fields: [engagement_id], references: [id])
+  deliverable_key     String
+  version             Int
+  title               String
+  content_reference   String
+  evidence_references String                           @default("[]")
+  limitations         String                           @default("[]")
+  correction_of_id    String?
+  correctionOf        ProfessionalServiceDeliverable?  @relation("ProfessionalServiceDeliverableCorrection", fields: [correction_of_id], references: [id])
+  corrections         ProfessionalServiceDeliverable[] @relation("ProfessionalServiceDeliverableCorrection")
+  retest_reference    String?
+  submitted_by        String
+  submitted_at        DateTime                         @default(now())
+
+  @@unique([engagement_id, deliverable_key, version])
+  @@index([tenant_id, environment_id, submitted_at])
+  @@index([engagement_id, submitted_at])
+  @@index([correction_of_id])
+
+  @@schema("professional_services")
+}
+
+/**
+ * Append-only customer acceptance or correction/retest decision.
+ */
+model ProfessionalServiceAcceptanceEvent {
+  id                          String                        @id @default(uuid())
+  tenant_id                   String
+  environment_id              String
+  engagement_id               String
+  engagement                  ProfessionalServiceEngagement @relation(fields: [engagement_id], references: [id])
+  round                       Int
+  decision                    String
+  reviewed_deliverable_ids    String                        @default("[]")
+  criteria_results            String                        @default("{}")
+  named_customer_authorizer   String
+  customer_decision_reference String
+  correction_scope            String?
+  retest_required             Boolean                       @default(false)
+  decided_by                  String
+  decided_at                  DateTime                      @default(now())
+
+  @@unique([engagement_id, round])
+  @@index([tenant_id, environment_id, decided_at])
+  @@index([engagement_id, decided_at])
+  @@index([decision])
+
+  @@schema("professional_services")
+}

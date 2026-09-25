@@ -5,48 +5,47 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import type { Prisma } from '@prisma/client';
 import { createHash, randomBytes } from 'crypto';
-import { In, IsNull, MoreThan, Repository } from 'typeorm';
-import { Permission } from './entities/permission.entity';
-import { Role, RoleLevel } from './entities/role.entity';
-import { TenantMembership } from './entities/tenant-membership.entity';
-import { Invitation } from './entities/invitation.entity';
-import { Session } from '../identity-adapter/session.entity';
-import { IdentityEvent } from '../identity-adapter/identity-event.entity';
+import { PrismaService } from '../../prisma/prisma.service';
+import type { Permission } from './entities/permission.entity';
+import type {
+  Role,
+  RoleLevel,
+  RoleWithPermissions,
+} from './entities/role.entity';
+import type {
+  TenantMembershipWithPermissions,
+  TenantMembershipWithRoles,
+} from './entities/tenant-membership.entity';
+import type { Invitation } from './entities/invitation.entity';
+import {
+  MEMBERSHIP_WITH_PERMISSIONS_INCLUDE,
+  MEMBERSHIP_WITH_ROLES_INCLUDE,
+  ROLE_WITH_PERMISSIONS_INCLUDE,
+  toMembershipWithPermissions,
+  toMembershipWithRoles,
+  toRole,
+  toRoleWithPermissions,
+} from './prisma-mappers';
 
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 @Injectable()
 export class AuthorizationService {
-  constructor(
-    @InjectRepository(Permission)
-    private readonly permissionRepository: Repository<Permission>,
-    @InjectRepository(Role)
-    private readonly roleRepository: Repository<Role>,
-    @InjectRepository(TenantMembership)
-    private readonly membershipRepository: Repository<TenantMembership>,
-    @InjectRepository(Invitation)
-    private readonly invitationRepository: Repository<Invitation>,
-    @InjectRepository(Session)
-    private readonly sessionRepository: Repository<Session>,
-    @InjectRepository(IdentityEvent)
-    private readonly identityEventRepository: Repository<IdentityEvent>,
-  ) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async createPermission(
     code: string,
     description?: string,
   ): Promise<Permission> {
-    const existing = await this.permissionRepository.findOne({
+    const existing = await this.prisma.permission.findUnique({
       where: { code },
     });
     if (existing) {
       throw new ConflictException(`Permission ${code} already exists`);
     }
-    return this.permissionRepository.save(
-      this.permissionRepository.create({ code, description }),
-    );
+    return this.prisma.permission.create({ data: { code, description } });
   }
 
   async createRole(data: {
@@ -55,47 +54,62 @@ export class AuthorizationService {
     name: string;
     roleLevel: RoleLevel;
     permissionCodes?: string[];
-  }): Promise<Role> {
+  }): Promise<RoleWithPermissions> {
     const permissions = data.permissionCodes?.length
-      ? await this.permissionRepository.findBy({
-          code: In(data.permissionCodes),
+      ? await this.prisma.permission.findMany({
+          where: { code: { in: data.permissionCodes } },
         })
       : [];
-    const role = this.roleRepository.create({
-      tenantId: data.tenantId,
-      code: data.code,
-      name: data.name,
-      roleLevel: data.roleLevel,
-      permissions,
+    const role = await this.prisma.role.create({
+      data: {
+        tenantId: data.tenantId,
+        code: data.code,
+        name: data.name,
+        roleLevel: data.roleLevel,
+        permissions: {
+          create: permissions.map((permission) => ({
+            permission_id: permission.id,
+          })),
+        },
+      },
+      include: ROLE_WITH_PERMISSIONS_INCLUDE,
     });
-    return this.roleRepository.save(role);
+    return toRoleWithPermissions(role);
   }
 
-  findRoles(tenantId?: string): Promise<Role[]> {
-    if (tenantId) {
-      return this.roleRepository.find({
-        where: [{ tenantId }, { tenantId: IsNull() }],
-        relations: { permissions: true },
-      });
-    }
-    return this.roleRepository.find({ relations: { permissions: true } });
+  async findRoles(tenantId?: string): Promise<RoleWithPermissions[]> {
+    const roles = await this.prisma.role.findMany({
+      where: tenantId ? { OR: [{ tenantId }, { tenantId: null }] } : undefined,
+      include: ROLE_WITH_PERMISSIONS_INCLUDE,
+    });
+    return roles.map(toRoleWithPermissions);
   }
 
   async updateRolePermissions(
     roleId: string,
     permissionCodes: string[],
-  ): Promise<Role> {
-    const role = await this.roleRepository.findOne({
-      where: { id: roleId },
-      relations: { permissions: true },
-    });
+  ): Promise<RoleWithPermissions> {
+    const role = await this.prisma.role.findUnique({ where: { id: roleId } });
     if (!role) {
       throw new NotFoundException(`Role ${roleId} not found`);
     }
-    role.permissions = await this.permissionRepository.findBy({
-      code: In(permissionCodes),
+    const permissions = await this.prisma.permission.findMany({
+      where: { code: { in: permissionCodes } },
     });
-    return this.roleRepository.save(role);
+    // Replace the role's permission set in one transaction, as the former
+    // many-to-many save did: drop the join rows, then insert the new set.
+    await this.prisma.$transaction(async (tx) => {
+      await tx.rolePermission.deleteMany({ where: { role_id: role.id } });
+      if (permissions.length) {
+        await tx.rolePermission.createMany({
+          data: permissions.map((permission) => ({
+            role_id: role.id,
+            permission_id: permission.id,
+          })),
+        });
+      }
+    });
+    return { ...toRole(role), permissions };
   }
 
   async getPermissionCodesForPrincipal(
@@ -105,10 +119,10 @@ export class AuthorizationService {
     const codes = new Set<string>();
 
     // Check tenant-specific membership
-    const membership = await this.membershipRepository.findOne({
-      where: { tenantId, principalId, status: 'ACTIVE' },
-      relations: { roles: { permissions: true } },
-    });
+    const membership = await this.getMembershipForPrincipal(
+      tenantId,
+      principalId,
+    );
     if (membership) {
       for (const role of membership.roles) {
         for (const permission of role.permissions) {
@@ -124,7 +138,7 @@ export class AuthorizationService {
     tenantId: string,
     principalId: string,
   ): Promise<boolean> {
-    const membership = await this.membershipRepository.findOne({
+    const membership = await this.prisma.tenantMembership.findFirst({
       where: { tenantId, principalId, status: 'ACTIVE' },
       select: { id: true },
     });
@@ -132,7 +146,7 @@ export class AuthorizationService {
   }
 
   async getAccessibleTenantIds(principalId: string): Promise<string[]> {
-    const memberships = await this.membershipRepository.find({
+    const memberships = await this.prisma.tenantMembership.findMany({
       where: { principalId, status: 'ACTIVE' },
       select: { tenantId: true },
     });
@@ -146,21 +160,23 @@ export class AuthorizationService {
   /** Returns all active memberships for a principal, with roles and permissions eagerly loaded. */
   async getMembershipsForPrincipal(
     principalId: string,
-  ): Promise<TenantMembership[]> {
-    return this.membershipRepository.find({
+  ): Promise<TenantMembershipWithPermissions[]> {
+    const memberships = await this.prisma.tenantMembership.findMany({
       where: { principalId, status: 'ACTIVE' },
-      relations: { roles: { permissions: true } },
+      include: MEMBERSHIP_WITH_PERMISSIONS_INCLUDE,
     });
+    return memberships.map(toMembershipWithPermissions);
   }
 
-  getMembershipForPrincipal(
+  async getMembershipForPrincipal(
     tenantId: string,
     principalId: string,
-  ): Promise<TenantMembership | null> {
-    return this.membershipRepository.findOne({
+  ): Promise<TenantMembershipWithPermissions | null> {
+    const membership = await this.prisma.tenantMembership.findFirst({
       where: { tenantId, principalId, status: 'ACTIVE' },
-      relations: { roles: { permissions: true } },
+      include: MEMBERSHIP_WITH_PERMISSIONS_INCLUDE,
     });
+    return membership ? toMembershipWithPermissions(membership) : null;
   }
 
   // ── Invitations ──────────────────────────────────────────────
@@ -178,7 +194,7 @@ export class AuthorizationService {
     roleId: string;
     invitedById: string;
   }): Promise<{ invitation: Invitation; token: string }> {
-    const role = await this.roleRepository.findOne({
+    const role = await this.prisma.role.findUnique({
       where: { id: data.roleId },
     });
     if (!role) {
@@ -194,8 +210,8 @@ export class AuthorizationService {
     }
 
     const token = randomBytes(32).toString('hex');
-    const invitation = await this.invitationRepository.save(
-      this.invitationRepository.create({
+    const invitation = (await this.prisma.invitation.create({
+      data: {
         tokenHash: this.hashToken(token),
         tenantId: data.tenantId,
         invitedEmail: data.invitedEmail,
@@ -206,8 +222,8 @@ export class AuthorizationService {
         policyDocumentId: null,
         status: 'PENDING',
         expiresAt: new Date(Date.now() + INVITATION_TTL_MS),
-      }),
-    );
+      },
+    })) as Invitation;
     await this.recordIdentityEvent({
       eventType: 'tenant_invitation_created',
       actorId: data.invitedById,
@@ -221,13 +237,13 @@ export class AuthorizationService {
     token: string,
     acceptingPrincipalId: string,
     acceptingPrincipalEmail: string,
-  ): Promise<TenantMembership> {
-    const invitation = await this.invitationRepository.findOne({
+  ): Promise<TenantMembershipWithRoles> {
+    const invitation = await this.prisma.invitation.findFirst({
       where: {
         tokenHash: this.hashToken(token),
         purpose: 'TENANT_MEMBERSHIP',
         status: 'PENDING',
-        expiresAt: MoreThan(new Date()),
+        expiresAt: { gt: new Date() },
       },
     });
     if (!invitation) {
@@ -244,37 +260,54 @@ export class AuthorizationService {
       );
     }
 
-    let membership = await this.membershipRepository.findOne({
+    const existing = await this.prisma.tenantMembership.findUnique({
       where: {
-        tenantId: invitation.tenantId,
-        principalId: acceptingPrincipalId,
+        tenantId_principalId: {
+          tenantId: invitation.tenantId,
+          principalId: acceptingPrincipalId,
+        },
       },
-      relations: { roles: true },
+      include: MEMBERSHIP_WITH_ROLES_INCLUDE,
     });
-    if (!membership) {
-      membership = this.membershipRepository.create({
-        tenantId: invitation.tenantId,
-        principalId: acceptingPrincipalId,
-        status: 'ACTIVE',
-        source: 'INVITATION',
-        roles: [],
-      });
-    }
-    const role = await this.roleRepository.findOne({
+    const role = await this.prisma.role.findUnique({
       where: { id: invitation.roleId },
     });
     if (!role) {
       throw new BadRequestException('Invitation role no longer exists');
     }
-    if (!membership.roles.some((r) => r.id === role.id)) {
-      membership.roles.push(role);
-    }
-    await this.membershipRepository.save(membership);
 
-    invitation.status = 'ACCEPTED';
-    invitation.acceptedAt = new Date();
-    invitation.acceptedById = acceptingPrincipalId;
-    await this.invitationRepository.save(invitation);
+    let membership: TenantMembershipWithRoles;
+    if (!existing) {
+      membership = toMembershipWithRoles(
+        await this.prisma.tenantMembership.create({
+          data: {
+            tenantId: invitation.tenantId,
+            principalId: acceptingPrincipalId,
+            status: 'ACTIVE',
+            source: 'INVITATION',
+            roles: { create: [{ role_id: role.id }] },
+          },
+          include: MEMBERSHIP_WITH_ROLES_INCLUDE,
+        }),
+      );
+    } else {
+      membership = toMembershipWithRoles(existing);
+      if (!membership.roles.some((r) => r.id === role.id)) {
+        await this.prisma.userRole.create({
+          data: { membership_id: membership.id, role_id: role.id },
+        });
+        membership.roles.push(toRole(role));
+      }
+    }
+
+    await this.prisma.invitation.update({
+      where: { id: invitation.id },
+      data: {
+        status: 'ACCEPTED',
+        acceptedAt: new Date(),
+        acceptedById: acceptingPrincipalId,
+      },
+    });
 
     await this.recordIdentityEvent({
       eventType: 'tenant_membership_created',
@@ -292,21 +325,24 @@ export class AuthorizationService {
   }
 
   async listInvitations(tenantId: string) {
-    const invitations = await this.invitationRepository.find({
+    const invitations = (await this.prisma.invitation.findMany({
       where: { tenantId },
-      order: { createdAt: 'DESC' },
-    });
+      orderBy: { createdAt: 'desc' },
+    })) as Invitation[];
     return invitations.map(
       ({ tokenHash: _tokenHash, ...invitation }) => invitation,
     );
   }
 
-  async listMembers(tenantId: string) {
-    return this.membershipRepository.find({
+  async listMembers(
+    tenantId: string,
+  ): Promise<TenantMembershipWithPermissions[]> {
+    const memberships = await this.prisma.tenantMembership.findMany({
       where: { tenantId },
-      relations: { roles: { permissions: true } },
-      order: { joinedAt: 'ASC' },
+      include: MEMBERSHIP_WITH_PERMISSIONS_INCLUDE,
+      orderBy: { joinedAt: 'asc' },
     });
+    return memberships.map(toMembershipWithPermissions);
   }
 
   async updateMember(
@@ -317,22 +353,27 @@ export class AuthorizationService {
       status?: 'ACTIVE' | 'SUSPENDED';
       actorId?: string;
     },
-  ) {
-    const membership = await this.membershipRepository.findOne({
+  ): Promise<TenantMembershipWithRoles> {
+    const found = await this.prisma.tenantMembership.findFirst({
       where: { id: memberId, tenantId },
-      relations: { roles: true },
+      include: MEMBERSHIP_WITH_ROLES_INCLUDE,
     });
-    if (!membership)
+    if (!found)
       throw new NotFoundException(`Tenant member ${memberId} not found`);
+    const membership = toMembershipWithRoles(found);
     const before = {
       status: membership.status,
       roleIds: membership.roles.map((role) => role.id).sort(),
     };
 
-    if (input.status) membership.status = input.status;
+    let roles: Role[] | undefined;
     if (input.roleIds) {
-      const roles = input.roleIds.length
-        ? await this.roleRepository.findBy({ id: In(input.roleIds) })
+      roles = input.roleIds.length
+        ? (
+            await this.prisma.role.findMany({
+              where: { id: { in: input.roleIds } },
+            })
+          ).map(toRole)
         : [];
       if (roles.length !== input.roleIds.length)
         throw new BadRequestException('One or more roles do not exist');
@@ -347,18 +388,44 @@ export class AuthorizationService {
           'Every assigned role must be valid for the target tenant',
         );
       }
-      membership.roles = roles;
     }
-    const saved = await this.membershipRepository.save(membership);
-    await this.sessionRepository.update(
-      { membershipId: membership.id, revokedAt: IsNull() },
-      {
+    const assignedRoles = roles;
+    const saved = await this.prisma.$transaction(async (tx) => {
+      if (input.status) {
+        await tx.tenantMembership.update({
+          where: { id: membership.id },
+          data: { status: input.status },
+        });
+      }
+      if (assignedRoles) {
+        await tx.userRole.deleteMany({
+          where: { membership_id: membership.id },
+        });
+        if (assignedRoles.length) {
+          await tx.userRole.createMany({
+            data: assignedRoles.map((role) => ({
+              membership_id: membership.id,
+              role_id: role.id,
+            })),
+          });
+        }
+      }
+      return toMembershipWithRoles(
+        await tx.tenantMembership.findUniqueOrThrow({
+          where: { id: membership.id },
+          include: MEMBERSHIP_WITH_ROLES_INCLUDE,
+        }),
+      );
+    });
+    await this.prisma.session.updateMany({
+      where: { membershipId: membership.id, revokedAt: null },
+      data: {
         revokedAt: new Date(),
         revokedReason: input.status
           ? 'MEMBERSHIP_STATUS_CHANGED'
           : 'MEMBERSHIP_ROLES_CHANGED',
       },
-    );
+    });
     await this.recordIdentityEvent({
       eventType: 'tenant_membership_changed',
       principalId: membership.principalId,
@@ -376,19 +443,29 @@ export class AuthorizationService {
     return saved;
   }
 
-  async removeMember(tenantId: string, memberId: string, actorId?: string) {
-    const membership = await this.membershipRepository.findOne({
+  async removeMember(
+    tenantId: string,
+    memberId: string,
+    actorId?: string,
+  ): Promise<TenantMembershipWithRoles> {
+    const membership = await this.prisma.tenantMembership.findFirst({
       where: { id: memberId, tenantId },
     });
     if (!membership)
       throw new NotFoundException(`Tenant member ${memberId} not found`);
-    membership.status = 'REMOVED';
-    membership.roles = [];
-    const saved = await this.membershipRepository.save(membership);
-    await this.sessionRepository.update(
-      { membershipId: membership.id, revokedAt: IsNull() },
-      { revokedAt: new Date(), revokedReason: 'MEMBERSHIP_REMOVED' },
-    );
+    // Mark the membership removed and drop every role assignment together,
+    // as the former save of `{ status: 'REMOVED', roles: [] }` did.
+    const saved = await this.prisma.$transaction(async (tx) => {
+      await tx.userRole.deleteMany({ where: { membership_id: membership.id } });
+      return tx.tenantMembership.update({
+        where: { id: membership.id },
+        data: { status: 'REMOVED' },
+      });
+    });
+    await this.prisma.session.updateMany({
+      where: { membershipId: membership.id, revokedAt: null },
+      data: { revokedAt: new Date(), revokedReason: 'MEMBERSHIP_REMOVED' },
+    });
     await this.recordIdentityEvent({
       eventType: 'tenant_membership_removed',
       principalId: membership.principalId,
@@ -396,7 +473,7 @@ export class AuthorizationService {
       tenantId,
       data: { membershipId: membership.id },
     });
-    return saved;
+    return toMembershipWithRoles({ ...saved, roles: [] });
   }
 
   private async recordIdentityEvent(input: {
@@ -406,15 +483,15 @@ export class AuthorizationService {
     tenantId: string;
     data: Record<string, unknown>;
   }): Promise<void> {
-    await this.identityEventRepository.save(
-      this.identityEventRepository.create({
+    await this.prisma.identityEvent.create({
+      data: {
         eventType: input.eventType,
         principalId: input.principalId ?? null,
         actorId: input.actorId ?? null,
         tenantId: input.tenantId,
         correlationId: null,
-        data: input.data,
-      }),
-    );
+        data: input.data as Prisma.InputJsonValue,
+      },
+    });
   }
 }

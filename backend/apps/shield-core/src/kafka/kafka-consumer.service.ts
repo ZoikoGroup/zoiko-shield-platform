@@ -8,6 +8,10 @@ import { Kafka, Consumer, EachMessagePayload } from 'kafkajs';
 import { createKafka } from '../../../../libs/kafka/src/kafka-client';
 import { EventEnvelope } from './kafka-producer.service';
 import { PrismaService } from '../prisma/prisma.service';
+import {
+  runWithPlatformScope,
+  runWithTenantScope,
+} from '../../../../libs/database/src';
 
 export type KafkaMessageHandler = (
   envelope: EventEnvelope<any>,
@@ -77,7 +81,7 @@ export class KafkaConsumerService
 
       await this.consumer.run({
         eachMessage: async (payload: EachMessagePayload) => {
-          await this.handleMessage(payload);
+          await this.handleMessageInScope(payload);
         },
       });
 
@@ -87,6 +91,28 @@ export class KafkaConsumerService
     } catch (error: any) {
       this.logger.error(`Failed to start Kafka consumer: ${error.message}`);
     }
+  }
+
+  /**
+   * Each message runs in its envelope tenant's database scope, so handlers
+   * see only that tenant's rows. A message naming no tenant is processed as
+   * an explicit platform operation.
+   */
+  private handleMessageInScope(payload: EachMessagePayload): Promise<void> {
+    let tenantId: unknown;
+    try {
+      tenantId = payload.message.value
+        ? JSON.parse(payload.message.value.toString())?.tenantId
+        : undefined;
+    } catch {
+      tenantId = undefined; // handleMessage logs and skips malformed input
+    }
+    return typeof tenantId === 'string' && tenantId.length > 0
+      ? runWithTenantScope(tenantId, () => this.handleMessage(payload))
+      : runWithPlatformScope(
+          `kafka ${payload.topic} message without tenant`,
+          () => this.handleMessage(payload),
+        );
   }
 
   private async handleMessage(payload: EachMessagePayload): Promise<void> {

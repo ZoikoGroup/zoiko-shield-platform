@@ -1,4 +1,9 @@
-import { Module } from '@nestjs/common';
+import {
+  Module,
+  MiddlewareConsumer,
+  NestModule,
+  RequestMethod,
+} from '@nestjs/common';
 import { PrismaModule } from './prisma/prisma.module';
 import { KafkaModule } from './kafka/kafka.module';
 import { ShieldAiController } from './shield-ai.controller';
@@ -70,6 +75,7 @@ import { GroundingGateGuard } from './security/grounding-gate.guard';
 import { AiUseCaseRegistryService as InventoryAiUseCaseRegistryService } from './inventory/ai-use-case-registry.service';
 
 import { DecisionRightsModule } from './decision-rights/decision-rights.module';
+import { dbScopeMiddleware } from '../../../libs/database/src';
 
 @Module({
   imports: [PrismaModule, KafkaModule, DecisionRightsModule],
@@ -179,4 +185,12 @@ import { DecisionRightsModule } from './decision-rights/decision-rights.module';
     DecisionRightsModule,
   ],
 })
-export class ShieldAiModule {}
+export class ShieldAiModule implements NestModule {
+  // Every request gets its own database scope, unbound until an auth guard
+  // verifies its tenant (libs/database/src/db-scope.ts).
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(dbScopeMiddleware)
+      .forRoutes({ path: '*path', method: RequestMethod.ALL });
+  }
+}

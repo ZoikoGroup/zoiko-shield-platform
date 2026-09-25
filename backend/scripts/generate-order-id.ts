@@ -2,18 +2,29 @@ import 'dotenv/config';
 import 'reflect-metadata';
 import * as crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
-import { Pool, Client } from 'pg';
+import { Client } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
+import {
+  declarePlatformSession,
+  runWithPlatformScope,
+  TenantScopedPool,
+} from '../libs/database/src';
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new TenantScopedPool({
+  connectionString: process.env.DATABASE_URL,
+});
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
-  console.log('===============================================================');
+  console.log(
+    '===============================================================',
+  );
   console.log(' ZoikoShield Commercial Billing & Tenant Order Generator');
   console.log(' Standard: ZS-COM-BILL-001 (Two-Plane Commercial Doctrine)');
-  console.log('===============================================================\n');
+  console.log(
+    '===============================================================\n',
+  );
 
   const customerName = process.argv[2] || 'Acme Cyber Security Corp';
   const offerChoice = (process.argv[3] || 'MANAGED_DEFENSE').toUpperCase(); // MANAGED_DEFENSE | CONTINUOUS_ASSURANCE | BOTH
@@ -27,15 +38,24 @@ async function main() {
   // 1. Ensure Postgres schemas and Policy Documents exist for TypeORM compatibility
   const pgClient = new Client({
     connectionString: databaseUrl,
-    ssl: databaseUrl.includes('sslmode=require') ? { rejectUnauthorized: false } : false,
+    ssl: databaseUrl.includes('sslmode=require')
+      ? { rejectUnauthorized: false }
+      : false,
   });
   await pgClient.connect();
+  await declarePlatformSession(pgClient, 'generate-order-id script');
   await pgClient.query('CREATE SCHEMA IF NOT EXISTS "identity"');
   await pgClient.query('CREATE SCHEMA IF NOT EXISTS "authorization"');
   await pgClient.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
 
-  const disclosureHash = crypto.createHash('sha256').update('ZoikoShield Access Disclosure v1').digest('hex');
-  const termsHash = crypto.createHash('sha256').update('ZoikoShield Terms of Service v1').digest('hex');
+  const disclosureHash = crypto
+    .createHash('sha256')
+    .update('ZoikoShield Access Disclosure v1')
+    .digest('hex');
+  const termsHash = crypto
+    .createHash('sha256')
+    .update('ZoikoShield Terms of Service v1')
+    .digest('hex');
 
   await pgClient.query(`
     CREATE TABLE IF NOT EXISTS "identity"."policy_documents" (
@@ -49,16 +69,21 @@ async function main() {
     );
   `);
 
-  await pgClient.query(`
+  await pgClient.query(
+    `
     INSERT INTO "identity"."policy_documents" ("kind", "version", "contentHash", "active", "publishedAt")
     VALUES 
       ('ACCESS_DISCLOSURE', '1', $1, true, now()),
       ('TERMS_OF_SERVICE', '1', $2, true, now())
     ON CONFLICT ("kind", "version") DO UPDATE SET "active" = true, "publishedAt" = now();
-  `, [disclosureHash, termsHash]);
+  `,
+    [disclosureHash, termsHash],
+  );
 
   await pgClient.end();
-  console.log('✔ Policy Documents verified in identity schema (ACCESS_DISCLOSURE v1, TERMS_OF_SERVICE v1)');
+  console.log(
+    '✔ Policy Documents verified in identity schema (ACCESS_DISCLOSURE v1, TERMS_OF_SERVICE v1)',
+  );
 
   // 2. Ensure Catalog Version exists (approved per ADR-06 / ZS-COM-BILL-001)
   let catalogVersion = await prisma.catalogVersion.findFirst({
@@ -74,9 +99,13 @@ async function main() {
         approved_at: new Date(),
       },
     });
-    console.log(`✔ Created Catalog Version: ${catalogVersion.version_label} (Status: APPROVED)`);
+    console.log(
+      `✔ Created Catalog Version: ${catalogVersion.version_label} (Status: APPROVED)`,
+    );
   } else {
-    console.log(`✔ Found Catalog Version: ${catalogVersion.version_label} (ID: ${catalogVersion.id})`);
+    console.log(
+      `✔ Found Catalog Version: ${catalogVersion.version_label} (ID: ${catalogVersion.id})`,
+    );
   }
 
   // 3. Ensure Products exist
@@ -145,7 +174,9 @@ async function main() {
     });
   }
 
-  console.log('✔ Products and Approved Price Books verified (Managed Defense & Continuous Assurance)');
+  console.log(
+    '✔ Products and Approved Price Books verified (Managed Defense & Continuous Assurance)',
+  );
 
   // 5. Create Commercial Account
   const commercialAccount = await prisma.commercialAccount.create({
@@ -158,7 +189,9 @@ async function main() {
       region: 'us-east-1',
     },
   });
-  console.log(`✔ Created Commercial Account: '${commercialAccount.name}' (ID: ${commercialAccount.id})`);
+  console.log(
+    `✔ Created Commercial Account: '${commercialAccount.name}' (ID: ${commercialAccount.id})`,
+  );
 
   // 6. Create Commercial Quote
   const quoteLines: Array<{
@@ -190,7 +223,10 @@ async function main() {
       tenant_id: 'platform',
       environment_id: 'default-env',
       quote_key: `order-gen-${Date.now()}`,
-      configuration_hash: crypto.createHash('sha256').update(`order-gen-${commercialAccount.id}-${Date.now()}`).digest('hex'),
+      configuration_hash: crypto
+        .createHash('sha256')
+        .update(`order-gen-${commercialAccount.id}-${Date.now()}`)
+        .digest('hex'),
       commercial_account_id: commercialAccount.id,
       catalog_version_id: catalogVersion.id,
       status: 'DRAFT',
@@ -210,13 +246,18 @@ async function main() {
   // SQL within a session-level trigger disable (superuser only, safe for local dev/CI seeding).
   const pgSeedClient = new Client({
     connectionString: databaseUrl,
-    ssl: databaseUrl.includes('sslmode=require') ? { rejectUnauthorized: false } : false,
+    ssl: databaseUrl.includes('sslmode=require')
+      ? { rejectUnauthorized: false }
+      : false,
   });
   await pgSeedClient.connect();
+  await declarePlatformSession(pgSeedClient, 'generate-order-id script');
   await pgSeedClient.query('BEGIN');
-  await pgSeedClient.query('ALTER TABLE "CommercialQuote" DISABLE TRIGGER "CommercialQuote_lifecycle_guard"');
   await pgSeedClient.query(
-    `UPDATE "CommercialQuote"
+    'ALTER TABLE "CommercialQuote" DISABLE TRIGGER "CommercialQuote_lifecycle_guard"',
+  );
+  await pgSeedClient.query(
+    `UPDATE cpq."CommercialQuote"
      SET "status" = 'APPROVED',
          "approved_by" = 'commercial-approver-lead',
          "approved_at" = NOW(),
@@ -224,7 +265,9 @@ async function main() {
      WHERE "id" = $1`,
     [draftQuote.id],
   );
-  await pgSeedClient.query('ALTER TABLE "CommercialQuote" ENABLE TRIGGER "CommercialQuote_lifecycle_guard"');
+  await pgSeedClient.query(
+    'ALTER TABLE "CommercialQuote" ENABLE TRIGGER "CommercialQuote_lifecycle_guard"',
+  );
   await pgSeedClient.query('COMMIT');
   await pgSeedClient.end();
 
@@ -232,7 +275,9 @@ async function main() {
     where: { id: draftQuote.id },
     include: { lines: true },
   });
-  console.log(`✔ Created & Approved Commercial Quote (ID: ${quote.id}, Lines: ${quote.lines?.length || 0})`);
+  console.log(
+    `✔ Created & Approved Commercial Quote (ID: ${quote.id}, Lines: ${quote.lines?.length || 0})`,
+  );
 
   // 7. Create Contract & Commercial Order (Atomic Provisioning)
   const termStart = new Date();
@@ -254,9 +299,9 @@ async function main() {
           create: quoteLinesList.map((l: any) => ({
             product_id: l.product_id,
             quantity: l.quantity,
-            list_unit_price: l.unit_price,   // no discount — list price equals unit price
+            list_unit_price: l.unit_price, // no discount — list price equals unit price
             discount_percent: 0,
-            unit_price: l.unit_price,        // unit_price = ROUND(list_unit_price * (1 - 0/100), 4)
+            unit_price: l.unit_price, // unit_price = ROUND(list_unit_price * (1 - 0/100), 4)
           })),
         },
       },
@@ -270,7 +315,10 @@ async function main() {
         term_start: termStart,
         term_end: termEnd,
         status: 'ACTIVE',
-        snapshot_hash: crypto.createHash('sha256').update(JSON.stringify(createdOrder)).digest('hex'),
+        snapshot_hash: crypto
+          .createHash('sha256')
+          .update(JSON.stringify(createdOrder))
+          .digest('hex'),
       },
     });
 
@@ -299,17 +347,27 @@ async function main() {
 
   const finalOrder = order as any;
 
-  console.log('\n===============================================================');
+  console.log(
+    '\n===============================================================',
+  );
   console.log(' 🎉 PROVISIONED COMMERCIAL ORDER CREATED SUCCESSFULLY');
-  console.log('===============================================================');
+  console.log(
+    '===============================================================',
+  );
   console.log(`📦 Order ID:                ${finalOrder.id}`);
-  console.log(`🏢 Commercial Account ID:   ${finalOrder.commercial_account_id}`);
+  console.log(
+    `🏢 Commercial Account ID:   ${finalOrder.commercial_account_id}`,
+  );
   console.log(`📜 Contract ID:             ${finalOrder.contract_id}`);
   console.log(`📊 Status:                  ${finalOrder.status}`);
   console.log(`🛒 Offer Family Purchased:  ${offerChoice}`);
-  console.log('===============================================================\n');
+  console.log(
+    '===============================================================\n',
+  );
 
-  console.log('💡 You can now use this Order ID in the Tenant Onboarding API / UI:\n');
+  console.log(
+    '💡 You can now use this Order ID in the Tenant Onboarding API / UI:\n',
+  );
   const samplePayload = {
     orderId: order.id,
     tenantName: `${customerName} Tenant`,
@@ -335,7 +393,8 @@ async function main() {
   await prisma.$disconnect();
 }
 
-main().catch((err) => {
+// An operator tool acting across tenants: an explicit platform operation.
+runWithPlatformScope('generate-order-id script', main).catch((err) => {
   console.error('❌ Error executing order generator:', err);
   prisma.$disconnect();
   process.exit(1);

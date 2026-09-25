@@ -1,0 +1,415 @@
+// PostgreSQL schema "ingest". shield-ingest service: connectors, raw/normalized telemetry, quarantine and ingest-side runs.
+
+enum ConnectorState {
+  NOT_CONNECTED
+  AWAITING_ADMIN_CONSENT
+  CONNECTED
+  SYNCING
+  HEALTHY
+  DEGRADED
+  RATE_LIMITED
+  PERMISSION_REVOKED
+  AUTHENTICATION_FAILED
+  CHECKPOINT_INVALID
+  DISCONNECTED
+
+  @@schema("ingest")
+}
+
+model ConnectorDefinition {
+  id              String   @id @default(uuid())
+  provider        String   @unique // e.g., 'microsoft-entra'
+  name            String
+  description     String?
+  supportedEvents String[]
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  instances ConnectorInstance[]
+
+  @@schema("ingest")
+}
+
+model ConnectorInstance {
+  id                   String              @id @default(uuid())
+  tenant_id            String
+  environment_id       String              @default("default-env")
+  connectorDefId       String
+  definition           ConnectorDefinition @relation(fields: [connectorDefId], references: [id])
+  name                 String
+  state                ConnectorState      @default(NOT_CONNECTED)
+  authentication_type  String              @default("API_KEY")
+  source_region        String?
+  externalTenantId     String?
+  region               String?
+  configurationVersion Int                 @default(1)
+  createdBy            String?
+  createdAt            DateTime            @default(now())
+  updatedAt            DateTime            @updatedAt
+  deletedAt            DateTime?
+
+  credentials           ConnectorCredentialReference[]
+  checkpoints           ConnectorCheckpoint[]
+  syncRuns              ConnectorSynchronizationRun[]
+  errors                ConnectorError[]
+  webhookSubs           WebhookSubscription[]
+  eventHubChecks        EventHubConsumerCheckpoint[]
+  quarantinedEvents     QuarantinedEvent[]
+  rawEvents             RawEvent[]
+  connectorPermissions  ConnectorPermission[]
+  connectorHealthStatus ConnectorHealthStatus?
+
+  @@index([tenant_id])
+
+  @@schema("ingest")
+}
+
+model ConnectorPermission {
+  id                    String            @id @default(uuid())
+  tenant_id             String
+  instanceId            String
+  instance              ConnectorInstance @relation(fields: [instanceId], references: [id])
+  provider              String
+  permission            String
+  permissionType        String            @default("READ")
+  granted               Boolean           @default(false)
+  requiredForCapability String?
+  verifiedAt            DateTime?
+  createdAt             DateTime          @default(now())
+  updatedAt             DateTime          @updatedAt
+
+  @@unique([instanceId, permission])
+  @@index([tenant_id])
+
+  @@schema("ingest")
+}
+
+model ConnectorCredentialReference {
+  id               String            @id @default(uuid())
+  tenant_id        String
+  instanceId       String
+  instance         ConnectorInstance @relation(fields: [instanceId], references: [id])
+  credentialType   String            @default("CLIENT_SECRET")
+  vaultReferenceId String            @unique
+  status           String            @default("ACTIVE")
+  expiresAt        DateTime?
+  rotatedAt        DateTime?
+  createdAt        DateTime          @default(now())
+
+  @@index([tenant_id])
+
+  @@schema("ingest")
+}
+
+model ConnectorCheckpoint {
+  id              String            @id @default(uuid())
+  tenant_id       String
+  instanceId      String
+  instance        ConnectorInstance @relation(fields: [instanceId], references: [id])
+  resourceType    String
+  checkpointValue String
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@unique([instanceId, resourceType])
+  @@index([tenant_id])
+
+  @@schema("ingest")
+}
+
+model ConnectorSynchronizationRun {
+  id                 String            @id @default(uuid())
+  tenant_id          String
+  instanceId         String
+  instance           ConnectorInstance @relation(fields: [instanceId], references: [id])
+  syncType           String?
+  status             String
+  startedAt          DateTime          @default(now())
+  completedAt        DateTime?
+  recordsReceived    Int               @default(0)
+  recordsProcessed   Int               @default(0)
+  recordsDuplicated  Int               @default(0)
+  recordsQuarantined Int               @default(0)
+  checkpointBefore   String?
+  checkpointAfter    String?
+  errorCode          String?
+
+  @@index([tenant_id])
+
+  @@schema("ingest")
+}
+
+model ConnectorHealthStatus {
+  id                         String            @id @default(uuid())
+  tenant_id                  String
+  instanceId                 String            @unique
+  instance                   ConnectorInstance @relation(fields: [instanceId], references: [id])
+  state                      ConnectorState
+  lastMessage                String?
+  permissionStatus           String            @default("UNKNOWN")
+  credentialStatus           String            @default("UNKNOWN")
+  consecutiveFailures        Int               @default(0)
+  sourceLagSeconds           Int?
+  lastSuccessfulConnectionAt DateTime?
+  lastSuccessfulSyncAt       DateTime?
+  lastErrorCode              String?
+  updatedAt                  DateTime          @updatedAt
+
+  @@index([tenant_id])
+
+  @@schema("ingest")
+}
+
+model ConnectorError {
+  id         String            @id @default(uuid())
+  tenant_id  String
+  instanceId String
+  instance   ConnectorInstance @relation(fields: [instanceId], references: [id])
+  errorCode  String
+  message    String
+  createdAt  DateTime          @default(now())
+
+  @@index([tenant_id])
+
+  @@schema("ingest")
+}
+
+model WebhookSubscription {
+  id             String            @id @default(uuid())
+  tenant_id      String
+  instanceId     String
+  instance       ConnectorInstance @relation(fields: [instanceId], references: [id])
+  subscriptionId String
+  clientState    String            @unique
+  resource       String
+  expiresAt      DateTime
+  createdAt      DateTime          @default(now())
+
+  @@index([tenant_id])
+
+  @@schema("ingest")
+}
+
+model EventHubConsumerCheckpoint {
+  id             String            @id @default(uuid())
+  tenant_id      String
+  instanceId     String
+  instance       ConnectorInstance @relation(fields: [instanceId], references: [id])
+  partitionId    String
+  offset         String
+  sequenceNumber BigInt
+  updatedAt      DateTime          @updatedAt
+
+  @@unique([instanceId, partitionId])
+  @@index([tenant_id])
+
+  @@schema("ingest")
+}
+
+model QuarantinedEvent {
+  id         String            @id @default(uuid())
+  tenant_id  String
+  instanceId String
+  instance   ConnectorInstance @relation(fields: [instanceId], references: [id])
+  rawPayload String
+  reason     String
+  createdAt  DateTime          @default(now())
+
+  @@index([tenant_id])
+
+  @@schema("ingest")
+}
+
+model WebhookReplayNonce {
+  id           String   @id @default(uuid())
+  connector_id String
+  nonce_hash   String
+  expires_at   DateTime
+  created_at   DateTime @default(now())
+
+  @@unique([connector_id, nonce_hash])
+  @@index([expires_at])
+  @@map("webhook_replay_nonces")
+
+  @@schema("ingest")
+}
+
+model ConnectorOauthState {
+  id          String    @id @default(uuid())
+  tenant_id   String
+  instance_id String
+  state_hash  String    @unique
+  expires_at  DateTime
+  consumed_at DateTime?
+  created_at  DateTime  @default(now())
+
+  @@index([tenant_id])
+  @@index([instance_id])
+  @@map("connector_oauth_states")
+
+  @@schema("ingest")
+}
+
+model RawEvent {
+  id                    String            @id @default(uuid())
+  tenant_id             String
+  environment_id        String            @default("default-env")
+  connector_id          String
+  connector             ConnectorInstance @relation(fields: [connector_id], references: [id])
+  source_type           String
+  source_event_id       String?
+  source_region         String?
+  occurred_at           DateTime?
+  received_at           DateTime          @default(now())
+  payload_hash          String
+  raw_payload_reference String
+  schema_version        String            @default("v1.0")
+  processing_status     String            @default("ACCEPTED")
+  created_at            DateTime          @default(now())
+
+  normalizedEvents NormalizedEvent[]
+
+  @@unique([tenant_id, connector_id, source_event_id])
+  @@index([tenant_id])
+  @@index([connector_id])
+  @@index([payload_hash])
+
+  @@schema("ingest")
+}
+
+model NormalizedEvent {
+  id                   String          @id @default(uuid())
+  tenant_id            String
+  environment_id       String          @default("default-env")
+  connector_id         String
+  raw_event_id         String
+  rawEvent             RawEvent        @relation(fields: [raw_event_id], references: [id])
+  asset_id             String?
+  asset                Asset?          @relation(fields: [asset_id], references: [id])
+  identity_id          String?
+  identity             IdentityEntity? @relation(fields: [identity_id], references: [id])
+  event_class          String
+  event_category       String?
+  event_activity       String?
+  severity             String          @default("INFORMATIONAL")
+  actor_user_id        String?
+  actor_email          String?
+  source_ip            String?
+  destination_ip       String?
+  resource_id          String?
+  resource_type        String?
+  action               String?
+  outcome              String?
+  occurred_at          DateTime?
+  observed_at          DateTime?
+  recorded_at          DateTime        @default(now())
+  mapping_version      String          @default("1.0")
+  normalization_status String          @default("NORMALIZED")
+
+  @@index([tenant_id])
+  @@index([connector_id])
+  @@index([raw_event_id])
+  @@index([asset_id])
+  @@index([identity_id])
+
+  @@schema("ingest")
+}
+
+model DetectionRule {
+  id                   String   @id @default(uuid())
+  tenant_id            String?
+  name                 String
+  description          String?
+  rule_type            String   @default("MATCH")
+  severity             String   @default("HIGH")
+  condition_definition String   @default("{}")
+  required_fields      String   @default("[]")
+  status               String   @default("ACTIVE")
+  current_version      Int      @default(1)
+  created_by           String?
+  created_at           DateTime @default(now())
+
+  detectionRuns DetectionRun[]
+
+  @@map("detection_rules")
+
+  @@schema("ingest")
+}
+
+model DetectionRun {
+  id                String        @id @default(uuid())
+  tenant_id         String
+  rule_id           String
+  rule              DetectionRule @relation(fields: [rule_id], references: [id])
+  event_id          String
+  rule_version      Int           @default(1)
+  result            String
+  execution_details String?       @default("{}")
+  executed_at       DateTime      @default(now())
+
+  @@map("detection_runs")
+
+  @@schema("ingest")
+}
+
+model ControlTestRun {
+  id           String   @id @default(uuid())
+  tenant_id    String
+  objective_id String
+  result       String   @default("UNKNOWN")
+  details      String?  @default("{}")
+  executed_at  DateTime @default(now())
+
+  @@map("control_test_runs")
+
+  @@schema("ingest")
+}
+
+model AssuranceReview {
+  id         String   @id @default(uuid())
+  tenant_id  String
+  title      String   @default("Assurance Review")
+  score      Float    @default(0)
+  status     String   @default("NOT_EVALUATED")
+  created_at DateTime @default(now())
+
+  @@map("assurance_reviews")
+
+  @@schema("ingest")
+}
+
+model VCISOReflection {
+  id                  String   @id @default(uuid())
+  tenant_id           String
+  assurance_review_id String?
+  category            String
+  title               String
+  notes               String
+  action_items        String   @default("[]")
+  author_id           String
+  created_at          DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([assurance_review_id])
+  @@map("vciso_reflections")
+
+  @@schema("ingest")
+}
+
+model ClaimEvaluation {
+  id                    String   @id @default(uuid())
+  tenant_id             String
+  claim_type            String
+  case_id               String?
+  result                String   @default("UNKNOWN")
+  response_time_minutes Float?
+  justification         String?
+  evidence_ids          String   @default("[]")
+  evaluated_at          DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([case_id])
+  @@map("claim_evaluations")
+
+  @@schema("ingest")
+}

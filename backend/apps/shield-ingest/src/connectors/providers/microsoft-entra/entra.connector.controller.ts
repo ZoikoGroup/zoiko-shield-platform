@@ -20,6 +20,10 @@ import {
   requireRegion,
   requireTenantId,
 } from '../../../security/tenant-context';
+import {
+  bindRequestTenant,
+  runWithPlatformScope,
+} from '../../../../../../libs/database/src';
 
 @Controller('v1/connectors/entra')
 export class EntraConnectorController {
@@ -72,21 +76,28 @@ export class EntraConnectorController {
       );
     }
 
-    const stateRecord = await this.prisma.connectorOauthState.findFirst({
-      where: {
-        state_hash: createHash('sha256')
-          .update(state || '')
-          .digest('hex'),
-        consumed_at: null,
-        expires_at: { gt: new Date() },
-      },
-    });
+    // Unauthenticated redirect: the one-time state is the credential, and
+    // it is looked up by its hash across tenants before any tenant is known.
+    const stateRecord = await runWithPlatformScope(
+      'entra OAuth callback state lookup',
+      () =>
+        this.prisma.connectorOauthState.findFirst({
+          where: {
+            state_hash: createHash('sha256')
+              .update(state || '')
+              .digest('hex'),
+            consumed_at: null,
+            expires_at: { gt: new Date() },
+          },
+        }),
+    );
     if (!stateRecord) {
       throw new HttpException(
         'OAuth state is invalid, expired, or already used',
         HttpStatus.UNAUTHORIZED,
       );
     }
+    bindRequestTenant(stateRecord.tenant_id);
 
     const isSuccess = this.entraAuthService.verifyAdminConsent(
       entraTenantId,

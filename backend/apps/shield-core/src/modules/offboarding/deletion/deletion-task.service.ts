@@ -3,6 +3,7 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { ObjectStorageService } from '../../evidence/storage/object-storage.service';
 import { CryptographicShreddingService } from '../../privacy/cryptographic-shredding.service';
 import { DeletionRequestService } from './deletion-request.service';
+import { discoverTenantKeyedTables } from '../tenant-keyed-tables';
 
 /** Retries are bounded; an exhausted task stops and waits for a human. */
 export const MAX_DELETION_ATTEMPTS = 3;
@@ -157,27 +158,23 @@ export class DeletionTaskService {
   }
 
   private async deleteAuthoritativeRows(tenantId: string): Promise<string> {
-    type TenantTable = { table_name: string };
     type ForeignKey = { child_table: string; parent_table: string };
-    const tables = await this.prisma.$queryRaw<TenantTable[]>`
-      SELECT DISTINCT table_name
-      FROM information_schema.columns
-      WHERE table_schema = 'public' AND column_name = 'tenant_id'
-    `;
-    const candidates = tables
-      .map((row) => row.table_name)
+    const candidates = (await discoverTenantKeyedTables(this.prisma))
       .filter(
-        (name) =>
-          !DELETION_CONTROL_TABLES.has(name) && !TASK_OWNED_TABLES.has(name),
-      );
+        ({ table }) =>
+          !DELETION_CONTROL_TABLES.has(table) && !TASK_OWNED_TABLES.has(table),
+      )
+      .map(({ qualified }) => qualified);
     const candidateSet = new Set(candidates);
     const foreignKeys = await this.prisma.$queryRaw<ForeignKey[]>`
-      SELECT child.relname AS child_table, parent.relname AS parent_table
+      SELECT format('%I.%I', child_namespace.nspname, child.relname) AS child_table,
+             format('%I.%I', parent_namespace.nspname, parent.relname) AS parent_table
       FROM pg_constraint constraint_record
       JOIN pg_class child ON child.oid = constraint_record.conrelid
+      JOIN pg_namespace child_namespace ON child_namespace.oid = child.relnamespace
       JOIN pg_class parent ON parent.oid = constraint_record.confrelid
-      JOIN pg_namespace namespace_record ON namespace_record.oid = child.relnamespace
-      WHERE constraint_record.contype = 'f' AND namespace_record.nspname = 'public'
+      JOIN pg_namespace parent_namespace ON parent_namespace.oid = parent.relnamespace
+      WHERE constraint_record.contype = 'f'
     `;
 
     const ordered: string[] = [];
@@ -206,19 +203,18 @@ export class DeletionTaskService {
     const counts: Record<string, number> = {};
     await this.prisma.$transaction(async (tx) => {
       for (const table of ordered) {
-        if (
-          !candidateSet.has(table) ||
-          !/^[A-Za-z_][A-Za-z0-9_]*$/.test(table)
-        ) {
+        // Only catalogue-discovered, identifier-validated names reach SQL.
+        if (!candidateSet.has(table)) {
           throw new Error(`Unsafe tenant table identifier '${table}'`);
         }
         counts[table] = await tx.$executeRawUnsafe(
-          `DELETE FROM "${table}" WHERE tenant_id = $1`,
+          `DELETE FROM ${table} WHERE tenant_id = $1`,
           tenantId,
         );
       }
 
-      // TypeORM owns these non-public schemas. Cross-tenant principals and
+      // The identity, authorization and tenant schemas key rows by "tenantId"
+      // rather than tenant_id. Cross-tenant principals and
       // global permissions remain; every membership of THIS tenant goes,
       // including the operator closing it (ZS-ENG-OFF-DEL-001 decision 3).
       // Their attribution survives in the retained control tables
@@ -268,12 +264,12 @@ export class DeletionTaskService {
     let remainingRows = 0;
     for (const table of ordered) {
       const rows = await this.prisma.$queryRawUnsafe<Array<{ count: bigint }>>(
-        `SELECT COUNT(*)::bigint AS count FROM "${table}" WHERE tenant_id = $1`,
+        `SELECT COUNT(*)::bigint AS count FROM ${table} WHERE tenant_id = $1`,
         tenantId,
       );
       remainingRows += Number(rows[0]?.count ?? 0);
     }
-    const typeOrmRemaining = await this.prisma.$queryRawUnsafe<
+    const camelKeyedRemaining = await this.prisma.$queryRawUnsafe<
       Array<{ count: bigint }>
     >(
       `
@@ -291,7 +287,7 @@ export class DeletionTaskService {
     `,
       tenantId,
     );
-    remainingRows += Number(typeOrmRemaining[0]?.count ?? 0);
+    remainingRows += Number(camelKeyedRemaining[0]?.count ?? 0);
     if (remainingRows !== 0)
       throw new Error(
         `${remainingRows} tenant-scoped PostgreSQL row(s) remain after deletion`,

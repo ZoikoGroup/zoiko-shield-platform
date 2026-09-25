@@ -27,7 +27,7 @@ This document records the exact state of infrastructure definitions, backing ser
 
 | Dimension | Local / CI Validation Mode | Live Cloud Deployment Mode |
 | :--- | :--- | :--- |
-| **Backing Services** | `docker-compose.yml` (Postgres 16, Redpanda Kafka, MinIO S3, Redis 7) | Cloud SQL Postgres 16 Multi-AZ, Managed Redpanda / MSK, GCS WORM Vault |
+| **Backing Services** | `docker-compose.yml` (Postgres 16, Redpanda Kafka, MinIO S3, Redis 7) | Cloud SQL Postgres 16 (regional HA in production, `infrastructure/tofu/regional-cell/database.tf`), Managed Redpanda / MSK, GCS WORM Vault |
 | **Toolchain** | Node.js 20+ / ts-node runtime | OpenTofu v1.8+ / Google Cloud SDK (`gcloud`) |
 | **Credentials** | Mocked / Local environment variables | Google Cloud Application Default Credentials (ADC) / Workload Identity |
 | **Verification Scope** | 340 test suites, in-process failover, load & offline verifier CLI | Live non-prod regional cell cluster `tofu apply` |

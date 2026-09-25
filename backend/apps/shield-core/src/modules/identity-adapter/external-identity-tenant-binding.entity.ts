@@ -1,44 +1,11 @@
-import { randomUUID } from 'crypto';
-import {
-  BeforeInsert,
-  Column,
-  CreateDateColumn,
-  Entity,
-  Index,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from 'typeorm';
+import type { ExternalIdentityTenantBinding as ExternalIdentityTenantBindingRow } from '@prisma/client';
 
-@Entity({ name: 'external_identity_tenant_bindings', schema: 'identity' })
-@Index(['externalIdentityId', 'tenantId'], { unique: true })
-export class ExternalIdentityTenantBinding {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+export type ExternalIdentityTenantBindingStatus = 'ACTIVE' | 'SUSPENDED';
 
-  @BeforeInsert()
-  generateId() {
-    if (!this.id) this.id = randomUUID();
-  }
-
-  @Column({ type: 'uuid' })
-  externalIdentityId: string;
-
-  @Column({ type: 'uuid' })
-  @Index()
-  tenantId: string;
-
-  @Column({ type: 'uuid' })
-  identityProviderConfigurationId: string;
-
-  @Column({ type: 'varchar', default: 'ACTIVE' })
-  status: 'ACTIVE' | 'SUSPENDED';
-
-  @Column({ type: 'timestamptz' })
-  lastAuthenticatedAt: Date;
-
-  @CreateDateColumn({ type: 'timestamptz' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ type: 'timestamptz' })
-  updatedAt: Date;
-}
+/** Row of identity.external_identity_tenant_bindings, persisted through Prisma. */
+export type ExternalIdentityTenantBinding = Omit<
+  ExternalIdentityTenantBindingRow,
+  'status'
+> & {
+  status: ExternalIdentityTenantBindingStatus;
+};

@@ -6,23 +6,18 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
-import { InjectDataSource } from '@nestjs/typeorm';
+import type { Invitation, LegalEntity, Prisma, Tenant } from '@prisma/client';
 import { createHash } from 'crypto';
-import { DataSource } from 'typeorm';
-import { Invitation } from '../authorization/entities/invitation.entity';
-import { Role } from '../authorization/entities/role.entity';
-import { TenantMembership } from '../authorization/entities/tenant-membership.entity';
-import { Environment } from '../environment/environment.entity';
+import { PrismaService } from '../../prisma/prisma.service';
+import type { Environment } from '../environment/environment.entity';
 import { EvidenceService } from '../evidence/services/evidence.service';
-import { LegalEntity } from '../legal-entity/legal-entity.entity';
-import { Tenant } from '../tenant/tenant.entity';
-import { ExternalIdentity } from './external-identity.entity';
-import { IdentityEvent } from './identity-event.entity';
+import type { ExternalIdentity } from './external-identity.entity';
 import { FederationAssertion } from './interfaces/federation-assertion.interface';
-import { PolicyAcceptance } from './policy-acceptance.entity';
-import { PolicyDocument } from './policy-document.entity';
-import { Principal } from './principal.entity';
+import type { PolicyAcceptance } from './policy-acceptance.entity';
+import type { PolicyDocument } from './policy-document.entity';
+import type { Principal } from './principal.entity';
 import type { SessionMetadata } from './session.service';
+import { scopeTransactionToTenant } from '../../../../../libs/database/src';
 
 type ActivationResult = {
   principal: Principal;
@@ -46,13 +41,13 @@ export class OwnerFederatedActivationService {
   private readonly logger = new Logger(OwnerFederatedActivationService.name);
 
   constructor(
-    @InjectDataSource() private readonly dataSource: DataSource,
+    private readonly prisma: PrismaService,
     private readonly evidence: EvidenceService,
   ) {}
 
   async isOwnerInvitation(token: string, tenantId: string): Promise<boolean> {
     return Boolean(
-      await this.dataSource.getRepository(Invitation).findOne({
+      await this.prisma.invitation.findFirst({
         where: {
           tokenHash: this.hashToken(token),
           tenantId,
@@ -82,16 +77,22 @@ export class OwnerFederatedActivationService {
     const acceptedAt = this.acceptedAt(input.consent);
     let result: ActivationResult;
     try {
-      result = await this.dataSource.transaction(async (manager) => {
-        const invitations = manager.getRepository(Invitation);
-        const invitation = await invitations.findOne({
-          where: {
-            tokenHash: this.hashToken(input.invitationToken),
-            tenantId: input.tenantId,
-            purpose: 'OWNER_ACTIVATION',
-          },
-          lock: { mode: 'pessimistic_write' },
-        });
+      result = await this.prisma.$transaction(async (tx) => {
+        const tokenHash = this.hashToken(input.invitationToken);
+        // Row locks (SELECT ... FOR UPDATE) serialise concurrent activations
+        // of the same invitation, principal, tenant and membership.
+        const [lockedInvitation] = await tx.$queryRaw<{ id: string }[]>`
+          SELECT id FROM "authorization".invitations
+          WHERE "tokenHash" = ${tokenHash}
+            AND "tenantId" = ${input.tenantId}::uuid
+            AND purpose = 'OWNER_ACTIVATION'
+          LIMIT 1
+          FOR UPDATE`;
+        const invitation = lockedInvitation
+          ? await tx.invitation.findUnique({
+              where: { id: lockedInvitation.id },
+            })
+          : null;
         if (!invitation) {
           throw new NotFoundException('Owner invitation was not found');
         }
@@ -114,11 +115,13 @@ export class OwnerFederatedActivationService {
           );
         }
 
-        const principalRepository = manager.getRepository(Principal);
-        const principal = await principalRepository.findOne({
+        await tx.$queryRaw`
+          SELECT id FROM identity.principals
+          WHERE id = ${invitation.invitedPrincipalId}::uuid
+          FOR UPDATE`;
+        const principal = (await tx.principal.findUnique({
           where: { id: invitation.invitedPrincipalId },
-          lock: { mode: 'pessimistic_write' },
-        });
+        })) as Principal | null;
         if (
           !principal ||
           principal.status !== 'ACTIVE' ||
@@ -130,10 +133,12 @@ export class OwnerFederatedActivationService {
           );
         }
 
-        const tenants = manager.getRepository(Tenant);
-        const tenant = await tenants.findOne({
+        await tx.$queryRaw`
+          SELECT id FROM tenant.tenants
+          WHERE id = ${input.tenantId}::uuid
+          FOR UPDATE`;
+        const tenant = await tx.tenant.findUnique({
           where: { id: input.tenantId },
-          lock: { mode: 'pessimistic_write' },
         });
         if (!tenant || tenant.status !== 'PROVISIONING') {
           throw new ConflictException(
@@ -141,31 +146,33 @@ export class OwnerFederatedActivationService {
           );
         }
 
-        const memberships = manager.getRepository(TenantMembership);
-        const membership = await memberships.findOne({
+        await tx.$queryRaw`
+          SELECT id FROM "authorization".tenant_memberships
+          WHERE "tenantId" = ${tenant.id}::uuid
+            AND "principalId" = ${principal.id}::uuid
+          FOR UPDATE`;
+        const membership = await tx.tenantMembership.findUnique({
           where: {
-            tenantId: tenant.id,
-            principalId: principal.id,
+            tenantId_principalId: {
+              tenantId: tenant.id,
+              principalId: principal.id,
+            },
           },
-          lock: { mode: 'pessimistic_write' },
+          include: { roles: { include: { role: true } } },
         });
         if (!membership || membership.status !== 'PENDING') {
           throw new ConflictException(
             'Pending tenant-owner membership is missing or has changed',
           );
         }
-        const roles = await manager
-          .createQueryBuilder()
-          .relation(TenantMembership, 'roles')
-          .of(membership)
-          .loadMany<Role>();
+        const roles = membership.roles.map((assigned) => assigned.role);
         if (!roles.some((role) => role.id === invitation.roleId)) {
           throw new ConflictException(
             'The approved tenant-owner role is no longer assigned',
           );
         }
 
-        const policy = await manager.getRepository(PolicyDocument).findOne({
+        const policy = await tx.policyDocument.findUnique({
           where: { id: invitation.policyDocumentId },
         });
         if (
@@ -178,121 +185,148 @@ export class OwnerFederatedActivationService {
           );
         }
 
-        const environment = await manager.getRepository(Environment).findOne({
+        // The tenant is now locked and verified from the invitation: scope
+        // the rest of this transaction's tenant-owned reads and writes to it.
+        await scopeTransactionToTenant(tx, tenant.id);
+        const environment = (await tx.environment.findFirst({
           where: { tenantId: tenant.id, status: 'ACTIVE' },
-          order: { createdAt: 'ASC' },
-        });
+          orderBy: { createdAt: 'asc' },
+        })) as Environment | null;
         if (!environment) {
           throw new ConflictException('Tenant has no active environment');
         }
 
-        const externalIdentities = manager.getRepository(ExternalIdentity);
-        let externalIdentity = await externalIdentities.findOne({
+        await tx.$queryRaw`
+          SELECT id FROM identity.external_identities
+          WHERE issuer = ${input.assertion.issuer}
+            AND subject = ${input.assertion.subject}
+          FOR UPDATE`;
+        const existingIdentity = await tx.externalIdentity.findUnique({
           where: {
-            issuer: input.assertion.issuer,
-            subject: input.assertion.subject,
+            issuer_subject: {
+              issuer: input.assertion.issuer,
+              subject: input.assertion.subject,
+            },
           },
-          lock: { mode: 'pessimistic_write' },
         });
-        if (externalIdentity && externalIdentity.principalId !== principal.id) {
+        if (existingIdentity && existingIdentity.principalId !== principal.id) {
           throw new ForbiddenException(
             'This ZoikoID identity is already linked to another principal',
           );
         }
-        if (!externalIdentity) {
-          externalIdentity = externalIdentities.create({
-            principalId: principal.id,
-            issuer: input.assertion.issuer,
-            subject: input.assertion.subject,
-            provider: input.protocol,
-            claimProfile: input.assertion.claimProfile,
-            verificationState: 'VERIFIED',
-            lastSyncedAt: new Date(),
-          });
-        } else {
-          externalIdentity.claimProfile = input.assertion.claimProfile;
-          externalIdentity.verificationState = 'VERIFIED';
-          externalIdentity.lastSyncedAt = new Date();
-        }
-        externalIdentity = await externalIdentities.save(externalIdentity);
+        const claimProfile = input.assertion
+          .claimProfile as Prisma.InputJsonValue;
+        const externalIdentity = (
+          existingIdentity
+            ? await tx.externalIdentity.update({
+                where: { id: existingIdentity.id },
+                data: {
+                  claimProfile,
+                  verificationState: 'VERIFIED',
+                  lastSyncedAt: new Date(),
+                },
+              })
+            : await tx.externalIdentity.create({
+                data: {
+                  principalId: principal.id,
+                  issuer: input.assertion.issuer,
+                  subject: input.assertion.subject,
+                  provider: input.protocol,
+                  claimProfile,
+                  verificationState: 'VERIFIED',
+                  lastSyncedAt: new Date(),
+                },
+              })
+        ) as ExternalIdentity;
 
-        principal.emailVerified = true;
-        principal.source = input.protocol;
-        principal.fullName ??= input.assertion.fullName;
-        await principalRepository.save(principal);
+        const activatedPrincipal = (await tx.principal.update({
+          where: { id: principal.id },
+          data: {
+            emailVerified: true,
+            source: input.protocol,
+            fullName: principal.fullName ?? input.assertion.fullName,
+          },
+        })) as Principal;
 
-        const acceptances = manager.getRepository(PolicyAcceptance);
-        const acceptance = await acceptances.save(
-          acceptances.create({
+        const acceptance = await tx.policyAcceptance.create({
+          data: {
             principalId: principal.id,
             policyDocumentId: policy.id,
             ipAddress: input.consent.metadata.ipAddress,
             userAgent: input.consent.metadata.userAgent,
             acceptedAt,
-          }),
-        );
+          },
+        });
 
-        membership.status = 'ACTIVE';
-        await memberships.save(membership);
+        await tx.tenantMembership.update({
+          where: { id: membership.id },
+          data: { status: 'ACTIVE' },
+        });
 
-        invitation.status = 'CONSUMED';
-        invitation.acceptedAt = acceptedAt;
-        invitation.acceptedById = principal.id;
-        await invitations.save(invitation);
+        const consumedInvitation = await tx.invitation.update({
+          where: { id: invitation.id },
+          data: {
+            status: 'CONSUMED',
+            acceptedAt,
+            acceptedById: principal.id,
+          },
+        });
 
-        tenant.status = 'ACTIVE';
-        tenant.onboardingCompletedAt = acceptedAt;
-        await tenants.save(tenant);
+        const activatedTenant = await tx.tenant.update({
+          where: { id: tenant.id },
+          data: { status: 'ACTIVE', onboardingCompletedAt: acceptedAt },
+        });
 
-        const events = manager.getRepository(IdentityEvent);
-        await events.save([
-          events.create({
-            eventType: 'external_identity_linked',
-            principalId: principal.id,
-            actorId: principal.id,
-            tenantId: tenant.id,
-            data: {
-              issuer: input.assertion.issuer,
-              identityProviderConfigurationId: input.providerConfigurationId,
-              linkingMethod: 'OWNER_INVITATION_ZOIKOID',
+        await tx.identityEvent.createMany({
+          data: [
+            {
+              eventType: 'external_identity_linked',
+              principalId: principal.id,
+              actorId: principal.id,
+              tenantId: tenant.id,
+              data: {
+                issuer: input.assertion.issuer,
+                identityProviderConfigurationId: input.providerConfigurationId,
+                linkingMethod: 'OWNER_INVITATION_ZOIKOID',
+              },
             },
-          }),
-          events.create({
-            eventType: 'owner_invitation_consumed',
-            principalId: principal.id,
-            actorId: principal.id,
-            tenantId: tenant.id,
-            data: {
-              invitationId: invitation.id,
-              membershipId: membership.id,
-              policyAcceptanceId: acceptance.id,
-              accessDisclosureVersion: policy.version,
-              evidenceStatus: 'PENDING_RETRY',
+            {
+              eventType: 'owner_invitation_consumed',
+              principalId: principal.id,
+              actorId: principal.id,
+              tenantId: tenant.id,
+              data: {
+                invitationId: invitation.id,
+                membershipId: membership.id,
+                policyAcceptanceId: acceptance.id,
+                accessDisclosureVersion: policy.version,
+                evidenceStatus: 'PENDING_RETRY',
+              },
             },
-          }),
-          events.create({
-            eventType: 'tenant_onboarded',
-            principalId: principal.id,
-            actorId: principal.id,
-            tenantId: tenant.id,
-            data: {
-              environmentId: environment.id,
-              accessDisclosureVersion: policy.version,
-              authenticationMethod: input.protocol,
+            {
+              eventType: 'tenant_onboarded',
+              principalId: principal.id,
+              actorId: principal.id,
+              tenantId: tenant.id,
+              data: {
+                environmentId: environment.id,
+                accessDisclosureVersion: policy.version,
+                authenticationMethod: input.protocol,
+              },
             },
-          }),
-        ]);
+          ],
+        });
 
-        const legalEntity = await manager.getRepository(LegalEntity).findOne({
+        const legalEntity = await tx.legalEntity.findFirst({
           where: { tenantId: tenant.id },
-          order: { createdAt: 'ASC' },
+          orderBy: { createdAt: 'asc' },
         });
 
         return {
-          principal,
+          principal: activatedPrincipal,
           externalIdentity,
-          invitation,
-          tenant,
+          invitation: consumedInvitation,
+          tenant: activatedTenant,
           environment,
           legalEntity,
           policy,
@@ -364,8 +398,8 @@ export class OwnerFederatedActivationService {
           acceptedAt: result.acceptance.acceptedAt.toISOString(),
         },
       });
-      await this.dataSource.getRepository(IdentityEvent).save(
-        this.dataSource.getRepository(IdentityEvent).create({
+      await this.prisma.identityEvent.create({
+        data: {
           eventType: 'policy_acceptance_evidence_recorded',
           principalId: result.principal.id,
           actorId: result.principal.id,
@@ -375,8 +409,8 @@ export class OwnerFederatedActivationService {
             policyAcceptanceId: result.acceptance.id,
             evidenceId: evidence.id,
           },
-        }),
-      );
+        },
+      });
     } catch (error) {
       // Activation is already durably committed. The PENDING_RETRY identity
       // event is the recovery marker for an evidence retry worker.

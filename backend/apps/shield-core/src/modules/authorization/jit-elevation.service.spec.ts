@@ -1,8 +1,8 @@
 import { JitElevationService } from './jit-elevation.service';
-import { JitElevationRequest } from './entities/jit-elevation-request.entity';
-import { TenantMembership } from './entities/tenant-membership.entity';
-import { Role } from './entities/role.entity';
-import { IdentityEvent } from '../identity-adapter/identity-event.entity';
+import type { JitElevationRequest } from './entities/jit-elevation-request.entity';
+import type { TenantMembership } from './entities/tenant-membership.entity';
+import type { Role } from './entities/role.entity';
+import type { IdentityEvent } from '../identity-adapter/identity-event.entity';
 
 describe('JitElevationService (Dual-Authorized Scoped & Time-Bound Tenant Access)', () => {
   let jitService: JitElevationService;
@@ -11,101 +11,122 @@ describe('JitElevationService (Dual-Authorized Scoped & Time-Bound Tenant Access
   let roles: Role[] = [];
   let events: IdentityEvent[] = [];
 
-  const fakeJitRepo = {
-    create: (data: any) => ({
-      id: `jit-req-${Math.random()}`,
-      ...data,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    }),
-    save: jest.fn(async (entity: any) => {
-      const idx = jitRequests.findIndex((r) => r.id === entity.id);
-      if (idx >= 0) {
-        jitRequests[idx] = entity;
-      } else {
-        jitRequests.push(entity);
-      }
-      return entity;
-    }),
-    findOne: jest.fn(async ({ where }: any) => {
-      if (where.id) return jitRequests.find((r) => r.id === where.id) || null;
-      if (where.superAdminPrincipalId && where.targetTenantId) {
-        return (
+  // In-memory stand-in for the Prisma delegates the service uses. Rows are
+  // mutated in place on update, as a database row would be re-read.
+  const joinRoles = (membershipId: string, data: any) =>
+    (data?.create ?? []).map((userRole: any) => ({
+      membership_id: membershipId,
+      role_id: userRole.role_id,
+    }));
+
+  const fakePrisma = {
+    jitElevationRequest: {
+      create: jest.fn(async ({ data }: any) => {
+        const row = {
+          id: `jit-req-${Math.random()}`,
+          ...data,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
+        jitRequests.push(row);
+        return row;
+      }),
+      update: jest.fn(async ({ where, data }: any) => {
+        const row = jitRequests.find((r) => r.id === where.id);
+        if (!row) throw new Error(`No JIT request ${where.id}`);
+        return Object.assign(row, data, { updatedAt: new Date() });
+      }),
+      findUnique: jest.fn(
+        async ({ where }: any) =>
+          jitRequests.find((r) => r.id === where.id) || null,
+      ),
+      findFirst: jest.fn(
+        async ({ where }: any) =>
           jitRequests.find(
             (r) =>
               r.superAdminPrincipalId === where.superAdminPrincipalId &&
               r.targetTenantId === where.targetTenantId &&
-              r.status === where.status,
-          ) || null
-        );
-      }
-      return null;
-    }),
-    find: jest.fn(async ({ where }: any) => {
-      if (where.targetTenantId) {
-        return jitRequests.filter(
-          (r) => r.targetTenantId === where.targetTenantId,
-        );
-      }
-      return jitRequests;
-    }),
-  } as any;
-
-  const fakeMembershipRepo = {
-    create: (data: any) => ({
-      id: `mem-${Math.random()}`,
-      ...data,
-      joinedAt: new Date(),
-    }),
-    save: jest.fn(async (entity: any) => {
-      const idx = memberships.findIndex((m) => m.id === entity.id);
-      if (idx >= 0) {
-        memberships[idx] = entity;
-      } else {
-        memberships.push(entity);
-      }
-      return entity;
-    }),
-    findOne: jest.fn(async ({ where }: any) => {
-      if (where.id) return memberships.find((m) => m.id === where.id) || null;
-      if (where.tenantId && where.principalId) {
+              r.status === where.status &&
+              (!where.expiresAt?.gt ||
+                (r.expiresAt !== null && r.expiresAt > where.expiresAt.gt)),
+          ) || null,
+      ),
+      findMany: jest.fn(async ({ where }: any) => {
+        if (where.targetTenantId) {
+          return jitRequests.filter(
+            (r) => r.targetTenantId === where.targetTenantId,
+          );
+        }
+        if (where.status === 'APPROVED') {
+          return jitRequests.filter(
+            (r) =>
+              r.status === 'APPROVED' &&
+              r.expiresAt &&
+              r.expiresAt <= where.expiresAt.lte,
+          );
+        }
+        return jitRequests;
+      }),
+    },
+    tenantMembership: {
+      create: jest.fn(async ({ data }: any) => {
+        const id = `mem-${Math.random()}`;
+        const { roles: roleData, ...fields } = data;
+        const row: any = {
+          id,
+          ...fields,
+          roles: joinRoles(id, roleData),
+          joinedAt: new Date(),
+        };
+        memberships.push(row);
+        return row;
+      }),
+      update: jest.fn(async ({ where, data }: any) => {
+        const row: any = memberships.find((m) => m.id === where.id);
+        if (!row) throw new Error(`No membership ${where.id}`);
+        const { roles: roleData, ...fields } = data;
+        Object.assign(row, fields);
+        if (roleData)
+          row.roles = [...row.roles, ...joinRoles(row.id, roleData)];
+        return row;
+      }),
+      findUnique: jest.fn(async ({ where }: any) => {
+        if (where.id) return memberships.find((m) => m.id === where.id) || null;
+        const key = where.tenantId_principalId;
         return (
           memberships.find(
             (m) =>
-              m.tenantId === where.tenantId &&
-              m.principalId === where.principalId,
+              m.tenantId === key.tenantId && m.principalId === key.principalId,
           ) || null
         );
-      }
-      return null;
-    }),
-  } as any;
-
-  const fakeRoleRepo = {
-    create: (data: any) => ({ id: `role-${Math.random()}`, ...data }),
-    save: jest.fn(async (entity: any) => {
-      roles.push(entity);
-      return entity;
-    }),
-    findOne: jest.fn(async () => ({
-      id: 'role-analyst-1',
-      code: 'TENANT_SECURITY_ANALYST',
-      name: 'Tenant Security Analyst',
-      roleLevel: 'TENANT',
-      permissions: [],
-    })),
-  } as any;
-
-  const fakeIdentityEventRepo = {
-    create: (data: any) => ({
-      id: `evt-${Math.random()}`,
-      ...data,
-      createdAt: new Date(),
-    }),
-    save: jest.fn(async (entity: any) => {
-      events.push(entity);
-      return entity;
-    }),
+      }),
+    },
+    role: {
+      create: jest.fn(async ({ data }: any) => {
+        const row = { id: `role-${Math.random()}`, ...data };
+        roles.push(row);
+        return row;
+      }),
+      findFirst: jest.fn(async () => ({
+        id: 'role-analyst-1',
+        tenantId: null,
+        code: 'TENANT_SECURITY_ANALYST',
+        name: 'Tenant Security Analyst',
+        roleLevel: 'TENANT',
+        createdAt: new Date(),
+      })),
+    },
+    identityEvent: {
+      create: jest.fn(async ({ data }: any) => {
+        const row = {
+          id: `evt-${Math.random()}`,
+          ...data,
+          occurredAt: new Date(),
+        };
+        events.push(row);
+        return row;
+      }),
+    },
   } as any;
 
   beforeEach(() => {
@@ -115,27 +136,7 @@ describe('JitElevationService (Dual-Authorized Scoped & Time-Bound Tenant Access
     events = [];
     jest.clearAllMocks();
 
-    fakeJitRepo.find = jest.fn(async ({ where }: any) => {
-      if (where.targetTenantId) {
-        return jitRequests.filter(
-          (r) => r.targetTenantId === where.targetTenantId,
-        );
-      }
-      if (where.status === 'APPROVED') {
-        return jitRequests.filter(
-          (r) =>
-            r.status === 'APPROVED' && r.expiresAt && r.expiresAt <= new Date(),
-        );
-      }
-      return jitRequests;
-    });
-
-    jitService = new JitElevationService(
-      fakeJitRepo,
-      fakeMembershipRepo,
-      fakeRoleRepo,
-      fakeIdentityEventRepo,
-    );
+    jitService = new JitElevationService(fakePrisma);
   });
 
   it('1. should create a PENDING JIT elevation request with stated purpose', async () => {

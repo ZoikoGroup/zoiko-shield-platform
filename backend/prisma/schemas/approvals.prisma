@@ -1,0 +1,34 @@
+// PostgreSQL schema "approvals". approvals module.
+
+model CommercialApproval {
+  id                     String    @id @default(uuid())
+  change_type            String
+  object_type            String
+  object_id              String
+  tenant_id              String?
+  requested_by           String
+  requested_at           DateTime  @default(now())
+  reason                 String
+  before_snapshot        String    @default("{}")
+  proposed_snapshot      String    @default("{}")
+  financial_impact       Decimal?  @db.Decimal(14, 4)
+  margin_impact          Decimal?  @db.Decimal(6, 4)
+  required_approval_role String    @default("BILLING_ADMIN")
+  status                 String    @default("PENDING_APPROVAL")
+  approved_by            String?
+  approved_at            DateTime?
+  decision_reason        String?
+  expires_at             DateTime?
+  applied_at             DateTime?
+  idempotency_key        String?   @unique
+
+  legalRoadmapCommitment   RoadmapCommitment?   @relation("RoadmapLegalApproval")
+  productRoadmapCommitment RoadmapCommitment?   @relation("RoadmapProductApproval")
+  quoteDiscountReview      QuoteDiscountReview? @relation("QuoteDiscountApproval")
+
+  @@index([object_type, object_id])
+  @@index([tenant_id, status])
+  @@index([status])
+
+  @@schema("approvals")
+}

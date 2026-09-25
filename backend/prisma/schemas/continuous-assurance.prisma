@@ -1,0 +1,53 @@
+// PostgreSQL schema "continuous_assurance". continuous-assurance module.
+
+/**
+ * Exact Continuous Assurance commercial and operating boundary. Failure,
+ * exception and adverse-audit counts are deliberately not pricing metrics.
+ */
+model ContinuousAssuranceProfile {
+  id                        String            @id @default(uuid())
+  tenant_id                 String
+  environment_id            String
+  commercial_account_id     String
+  commercialAccount         CommercialAccount @relation(fields: [commercial_account_id], references: [id])
+  contract_id               String
+  contract                  Contract          @relation(fields: [contract_id], references: [id])
+  profile_key               String
+  version                   Int               @default(1)
+  service_tier              String
+  recurring_pricing_metric  String
+  price_book_id             String
+  legal_entity_ids          String            @default("[]")
+  business_unit_ids         String            @default("[]")
+  framework_version_ids     String            @default("[]")
+  sector_pack_ids           String            @default("[]")
+  connector_ids             String            @default("[]")
+  control_scope             String            @default("{}")
+  evidence_retention_policy String            @default("{}")
+  auditor_seats             Int               @default(0)
+  workspace_count           Int               @default(0)
+  region                    String
+  deployment_class          String
+  human_obligations         String            @default("{}")
+  no_guarantee_wording      String
+  effective_from            DateTime          @default(now())
+  effective_to              DateTime?
+  status                    String            @default("PENDING_APPROVAL")
+  approval_id               String?           @unique
+  requested_by              String
+  approved_by               String?
+  approved_at               DateTime?
+  activated_at              DateTime?
+  created_at                DateTime          @default(now())
+  updated_at                DateTime          @updatedAt
+
+  auditPackages AuditPackage[]
+
+  @@unique([tenant_id, environment_id, profile_key, version])
+  @@index([tenant_id, environment_id, status])
+  @@index([commercial_account_id, status])
+  @@index([contract_id, status])
+  @@index([effective_from, effective_to, status])
+
+  @@schema("continuous_assurance")
+}

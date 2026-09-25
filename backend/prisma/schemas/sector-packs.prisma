@@ -1,0 +1,54 @@
+// PostgreSQL schema "sector_packs". sector-packs module.
+
+// ============================================================
+// ZS-COM-BILL-001 P1 Part 23 / REG-01: sector & framework packs. A pack is
+// a support capability, never an automatic certification claim.
+// Unsupported region/pack combinations fail closed.
+// ============================================================
+
+model SectorPack {
+  id                       String    @id @default(uuid())
+  pack_key                 String
+  version                  Int       @default(1)
+  jurisdiction             String
+  source_reference         String?
+  source_version           String?
+  content_license_status   String    @default("PENDING")
+  license_reference        String?
+  display_rights           Boolean   @default(false)
+  legal_interpretation_ref String?
+  sme_review_ref           String?
+  mapping_test_status      String    @default("NOT_RUN")
+  mapping_test_report_ref  String?
+  required_connectors      String    @default("[]")
+  approved_claim_wording   String?
+  release_status           String    @default("DRAFT")
+  approval_id              String?   @unique
+  requested_by             String?
+  approved_by              String?
+  approved_at              DateTime?
+  effective_from           DateTime  @default(now())
+  effective_to             DateTime?
+  created_at               DateTime  @default(now())
+
+  marketAvailability MarketAvailability[]
+
+  @@unique([pack_key, version])
+  @@index([release_status])
+
+  @@schema("sector_packs")
+}
+
+model MarketAvailability {
+  id             String     @id @default(uuid())
+  sector_pack_id String
+  sectorPack     SectorPack @relation(fields: [sector_pack_id], references: [id])
+  region         String
+  available      Boolean    @default(false)
+  created_at     DateTime   @default(now())
+
+  @@unique([sector_pack_id, region])
+  @@index([region])
+
+  @@schema("sector_packs")
+}

@@ -131,7 +131,7 @@ modification.
 
 Plus **verifier-cli**, a standalone offline verifier that ships as a binary and
 is not deployed as a service, and **shield-core-migrate**, a one-shot job that
-runs migrations and exits before shield-core starts. On GCP that is a Cloud Run
+runs migrations and the database access policy and exits before shield-core starts. On GCP that is a Cloud Run
 job or a Kubernetes Job, and it must complete before the services roll.
 
 **Cloud Run caveat:** shield-core, shield-ingest and shield-action run Kafka
@@ -180,47 +180,92 @@ Local development is unchanged: no TLS, no SASL, `localhost:9092`.
 
 ## 2. Database
 
-**One PostgreSQL database (`shield_core`), four schemas, two ORMs.** Worth
-understanding before you touch it.
+**One PostgreSQL database (`shield_core`) on Cloud SQL for PostgreSQL 16,
+one schema per owning module, one ORM (Prisma), and tenant row-level
+security.** The design and its exceptions are in
+[ADR-19](adrs/ADR-19-database-isolation-architecture.md). Read it before you
+touch the database.
 
-| Schema | Owned by | Contents |
+- **Schema:** `backend/prisma/schema.prisma` holds the generator and
+  datasource. `backend/prisma/schemas/<module>.prisma` defines one PostgreSQL
+  schema each, 51 in all: `commercial`, `case_management`, `evidence`,
+  `identity`, `authorization`, `tenant`, `ingest`, `ai`, `action`, `anchor`
+  and so on.
+- **Access:** `backend/prisma/access/access-policy.js` defines who may touch
+  what: service roles, grants, and the tenant-isolation kind of every table.
+
+`authorization` is a **reserved PostgreSQL keyword**. Raw SQL must quote it,
+as in `"authorization".tenant_memberships`. Unquoted, it fails at runtime.
+
+### Two database identities
+
+| Variable | Role | Used by |
 |---|---|---|
-| `public` | **Prisma** | 231 models — events, detections, alerts, cases, evidence, controls, commercial, actions. |
-| `identity` | **TypeORM** | Principals, credentials, sessions, passkeys, federation, policy documents. |
-| `authorization` | **TypeORM** | Roles, permissions, tenant memberships, invitations, JIT elevation. |
-| `tenant` | **TypeORM** | Tenants, legal entities, environments, customers, organizations. |
+| `MIGRATION_DATABASE_URL` | Schema owner (the `migrate` IAM login) | The `shield-core-migrate` job only |
+| `DATABASE_URL` | The service's own IAM login, a member of `shield_<service>_app` | Each service |
 
-`authorization` is a **reserved PostgreSQL keyword**. Raw SQL must quote it:
-`"authorization".tenant_memberships`. Unquoted, it fails at runtime.
+A service must **never** connect as the owner or a superuser. The owner is
+filtered only because row-level security is `FORCE`d, and a superuser bypasses
+row-level security entirely.
 
 ### Cloud SQL specifics
 
-- Requires the `uuid-ossp` and `pgcrypto` extensions. Cloud SQL supports both;
-  enable them before the first migration.
-- Connect through the **Cloud SQL Auth Proxy** or a private IP with a VPC
-  connector. `DATABASE_URL` is a standard libpq URL, so either works.
-- If you terminate TLS with `sslmode=require`, the code already switches the
-  driver to SSL on that substring — no extra flag.
-- Migrations open a direct connection. If you front Cloud SQL with **PgBouncer
-  in transaction mode**, the TypeORM runner already splits multi-statement
-  files for that reason, but Prisma's migrate needs a direct connection.
+- **Instance:** `infrastructure/tofu/regional-cell/database.tf` creates it with
+  private IP only, TLS required, an HSM customer-managed key, point-in-time
+  recovery, 30 backups kept in-region, pgaudit (`ddl,role`), and regional HA
+  in production. It also creates an **IAM database login** for each service
+  account.
+- **Connecting:** use the **Cloud SQL Auth Proxy** as a sidecar, with
+  `--auto-iam-authn --private-ip <connection name>`. The URL is then
+  `postgres://<iam-login>@127.0.0.1:5432/shield_core`, with no password; the
+  logins are listed in the tofu output `database_iam_logins`.
+- **No transaction-mode pooling.** Tenant scope is a session setting written
+  on every connection checkout, so it needs a direct connection or a
+  session-mode pooler. PgBouncer in transaction mode can run the setting and
+  the query on different server connections, and is not supported.
+- **Extensions:** requires `uuid-ossp` and `pgcrypto`. Cloud SQL supports
+  both; enable them before the first migration.
+- **TLS flag:** if you terminate TLS with `sslmode=require`, the code switches
+  the driver to SSL on that substring, with no extra flag.
 
-### Migrations — both must run, in this order
+**One-time bootstrap of the migrator** (as the built-in `postgres` user,
+before the first migrate run):
 
-```bash
-npm run migrate:deploy      # prisma migrate deploy, then the TypeORM SQL runner
+```sql
+GRANT cloudsqlsuperuser TO "shield-migrate@<runtime-project>.iam";
+ALTER DATABASE shield_core OWNER TO "shield-migrate@<runtime-project>.iam";
 ```
 
-- Prisma: 39 migrations in `backend/prisma/migrations/`
-- TypeORM: 20 hand-written SQL files in `backend/typeorm-migrations/`, applied
-  by `scripts/run-typeorm-migrations.js` and checksummed in
-  `public.infra_schema_migrations`. **Never edit an applied file** — the runner
-  stops if a checksum changes.
-
-Verify the schema matches the code before going live:
+### Migrations
 
 ```bash
-npm run check:schema-drift  # builds a scratch DB from migrations, compares to entities
+npm run migrate:deploy
+#  1. scripts/reconcile-typeorm-baseline.js  (no-op except on a database the retired TypeORM runner migrated)
+#  2. prisma migrate deploy                   (43 migrations in backend/prisma/migrations/)
+#  3. scripts/apply-database-access.js        (roles, grants, row-level security)
+```
+
+**Step 3.** Set `DATABASE_ROLE_MEMBERS` on the migrate job to the tofu output
+`database_role_members`, so each service's IAM login joins its group role.
+The step is idempotent and runs in one transaction. It stops and changes
+nothing while any table lacks an isolation decision.
+
+**Rules for new migrations:**
+
+- **Classify every new table** in `access-policy.js`. A table with a NOT NULL
+  `tenant_id` is `tenant` automatically. CI and the deploy step both fail on
+  anything else left undecided.
+- **Data migrations must declare platform scope** with
+  `SELECT set_config('app.platform_scope', 'on', false);`. Without it, a
+  backfill silently changes zero rows, because `FORCE` filters the owner too.
+- **New PL/pgSQL functions** must set `search_path` or name their tables with
+  a schema.
+
+Verify before going live:
+
+```bash
+npm run check:schema-drift   # replays every migration into SHADOW_DATABASE_URL and compares to the schema
+RLS_TEST_DATABASE_URL=<disposable, migrated database, as owner> npm run test:rls
 ```
 
 ---
@@ -284,7 +329,9 @@ variable. Two conventions that matter:
 
 | Variable | Value on GCP |
 |---|---|
-| `DATABASE_URL` | Cloud SQL, via Auth Proxy or private IP |
+| `DATABASE_URL` | The service's IAM login via the Cloud SQL Auth Proxy (`--auto-iam-authn`); see §2 |
+| `MIGRATION_DATABASE_URL` | Migrate job only: the `migrate` IAM login |
+| `DATABASE_ROLE_MEMBERS` | Migrate job only: tofu output `database_role_members` |
 | `REDIS_URL` | Memorystore private IP |
 | `KAFKA_BROKERS` | Managed Kafka bootstrap server, comma-separated if several |
 | `KAFKA_SASL_MECHANISM` | `oauthbearer` for Managed Kafka |
@@ -376,7 +423,7 @@ Cloud Load Balancing  →  Cloud Run: frontend (3000)
 gcloud sql databases create shield_core --instance=<instance>
 # enable uuid-ossp and pgcrypto on that database
 
-gcloud run jobs execute shield-core-migrate       # both migration sets
+gcloud run jobs execute shield-core-migrate       # migrations, then roles, grants and row-level security
 gcloud run deploy shield-core --min-instances=1 --no-cpu-throttling
 # … the other services
 ```

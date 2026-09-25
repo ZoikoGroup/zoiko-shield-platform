@@ -2,6 +2,13 @@ import { DeletionVerificationService } from './deletion-verification.service';
 import type { PrismaService } from '../../../prisma/prisma.service';
 import type { ObjectStorageService } from '../../evidence/storage/object-storage.service';
 
+/** A tenant-keyed table as catalogue discovery returns it: in its module schema. */
+const tenantTable = (table: string) => ({
+  table_schema: 'module_schema',
+  table_name: table,
+  qualified: `module_schema."${table}"`,
+});
+
 /**
  * The completion barrier (ZS-ENG-OFF-DEL-001 decision 2). These tests exist
  * because the failure mode this guards against is the dangerous one: a purge
@@ -84,9 +91,9 @@ describe('DeletionVerificationService', () => {
   });
 
   it('fails when tenant rows survive in a table the deletion plan did not cover', async () => {
-    prisma.$queryRaw.mockResolvedValue([{ table_name: 'Case' }]);
+    prisma.$queryRaw.mockResolvedValue([tenantTable('Case')]);
     prisma.$queryRawUnsafe.mockImplementation((sql: string) =>
-      sql.includes('FROM "Case"')
+      sql.includes('FROM module_schema."Case"')
         ? [{ count: BigInt(4) }]
         : [{ count: BigInt(0) }],
     );
@@ -100,8 +107,8 @@ describe('DeletionVerificationService', () => {
 
   it('counts deletion-control records as retained, not as residual', async () => {
     prisma.$queryRaw.mockResolvedValue([
-      { table_name: 'DeletionRequest' },
-      { table_name: 'TenantRetentionPolicy' },
+      tenantTable('DeletionRequest'),
+      tenantTable('TenantRetentionPolicy'),
     ]);
     prisma.$queryRawUnsafe.mockImplementation((sql: string) =>
       sql.startsWith('SELECT COUNT(*)::bigint')

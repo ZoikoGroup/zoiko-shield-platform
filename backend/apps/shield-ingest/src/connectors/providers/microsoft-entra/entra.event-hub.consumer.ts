@@ -14,6 +14,7 @@ import { RawIngestService } from '../../../ingestion/raw-ingest.service';
 import { NormalizationService } from '../../../normalization/normalization.service';
 import { EntraNormalizerService } from './entra.normalizer';
 import { requireRegion } from '../../../security/tenant-context';
+import { runWithTenantScope } from '../../../../../../libs/database/src';
 
 export interface EntraEventHubConsumerOptions {
   connectionString: string;
@@ -42,7 +43,16 @@ export class EntraEventHubConsumer implements OnModuleDestroy {
     private readonly kafkaProducer: KafkaProducerService,
   ) {}
 
-  async startConsuming(options: EntraEventHubConsumerOptions): Promise<void> {
+  /** Runs in the connector tenant's database scope; see startConsumingForTenant. */
+  startConsuming(options: EntraEventHubConsumerOptions): Promise<void> {
+    return runWithTenantScope(options.tenantId, () =>
+      this.startConsumingForTenant(options),
+    );
+  }
+
+  private async startConsumingForTenant(
+    options: EntraEventHubConsumerOptions,
+  ): Promise<void> {
     if (this.consumers.has(options.instanceId)) {
       throw new Error(
         `Event Hub consumer for connector '${options.instanceId}' is already running`,
@@ -90,14 +100,19 @@ export class EntraEventHubConsumer implements OnModuleDestroy {
         return client.subscribe(
           partitionId,
           {
-            processEvents: async (events: ReceivedEventData[]) => {
-              await this.processEvents(instance, partitionId, events);
-            },
+            // SDK callbacks fire later, outside the caller's context: pin
+            // them to the connector's tenant explicitly.
+            processEvents: (events: ReceivedEventData[]) =>
+              runWithTenantScope(instance.tenant_id, () =>
+                this.processEvents(instance, partitionId, events),
+              ),
             processError: async (error: Error) => {
-              await this.recordConsumerError(
-                instance.id,
-                instance.tenant_id,
-                error,
+              await runWithTenantScope(instance.tenant_id, () =>
+                this.recordConsumerError(
+                  instance.id,
+                  instance.tenant_id,
+                  error,
+                ),
               );
             },
           },

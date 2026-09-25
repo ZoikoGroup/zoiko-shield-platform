@@ -1,0 +1,19 @@
+// PostgreSQL schema "idempotency". idempotency module.
+
+model IdempotencyRecord {
+  id                  String    @id @default(uuid())
+  idempotency_key     String
+  operation           String
+  tenant_id           String?
+  actor_id            String?
+  request_fingerprint String
+  status              String    @default("IN_PROGRESS")
+  response_code       Int?
+  response_body       String?
+  created_at          DateTime  @default(now())
+  expires_at          DateTime?
+
+  @@unique([idempotency_key, operation])
+
+  @@schema("idempotency")
+}

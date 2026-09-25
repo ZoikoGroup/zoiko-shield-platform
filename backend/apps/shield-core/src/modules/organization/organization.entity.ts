@@ -1,32 +1,8 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  Index,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from 'typeorm';
+import type { Organization as OrganizationRow } from '@prisma/client';
 
 export type OrganizationStatus = 'ACTIVE' | 'DISABLED';
 
-@Entity({ name: 'organizations', schema: 'tenant' })
-export class Organization {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
-  @Column({ type: 'uuid' })
-  @Index()
-  tenantId: string;
-
-  @Column()
-  name: string;
-
-  @Column({ type: 'varchar', default: 'ACTIVE' })
+/** Row of tenant.organizations, persisted through Prisma. */
+export type Organization = Omit<OrganizationRow, 'status'> & {
   status: OrganizationStatus;
-
-  @CreateDateColumn({ type: 'timestamptz' })
-  createdAt: Date;
-
-  @UpdateDateColumn({ type: 'timestamptz' })
-  updatedAt: Date;
-}
+};

@@ -1,0 +1,520 @@
+// PostgreSQL schema "cpq". cpq module.
+
+// ============================================================
+// ZS-COM-BILL-001 P0.1: CPQ chain (Quote -> Order -> Subscription),
+// maker-checker commercial approvals, and a reusable idempotency ledger.
+// ============================================================
+
+model CommercialQuote {
+  id                    String            @id @default(uuid())
+  tenant_id             String
+  environment_id        String
+  commercial_account_id String
+  commercialAccount     CommercialAccount @relation(fields: [commercial_account_id], references: [id])
+  catalog_version_id    String
+  catalogVersion        CatalogVersion    @relation(fields: [catalog_version_id], references: [id])
+  status                String            @default("DRAFT")
+  quote_key             String
+  version               Int               @default(1)
+  supersedes_quote_id   String?           @unique
+  supersedesQuote       CommercialQuote?  @relation("CommercialQuoteRevision", fields: [supersedes_quote_id], references: [id], onDelete: Restrict)
+  revisions             CommercialQuote[] @relation("CommercialQuoteRevision")
+  currency              String            @default("USD")
+  region                String            @default("GLOBAL")
+  term_months           Int               @default(12)
+  requires_approval     Boolean           @default(false)
+  approval_id           String?
+  snapshot              String            @default("{}")
+  configuration_hash    String
+  validation_status     String            @default("PENDING_VALIDATION")
+  requested_by          String
+  approved_by           String?
+  approved_at           DateTime?
+  rejected_reason       String?
+  expires_at            DateTime?
+  created_at            DateTime          @default(now())
+  updated_at            DateTime          @updatedAt
+
+  lines              CommercialQuoteLine[]
+  orders             CommercialOrder[]
+  validation         CommercialQuoteValidation?
+  roadmapCommitments RoadmapCommitment[]
+  discountReview     QuoteDiscountReview?
+
+  @@unique([commercial_account_id, quote_key, version])
+  @@index([commercial_account_id])
+  @@index([tenant_id, environment_id, status])
+  @@index([status])
+
+  @@unique([tenant_id, id])
+  @@schema("cpq")
+}
+
+/**
+ * Versioned, platform-approved escalation thresholds for one service class.
+ * Sales cannot create or approve these policies. Quotes consume only a policy
+ * that is APPROVED and effective for their region/currency.
+ */
+model DiscountAuthorityPolicy {
+  id                            String                    @id @default(uuid())
+  policy_key                    String
+  version                       Int                       @default(1)
+  supersedes_policy_id          String?                   @unique
+  supersedesPolicy              DiscountAuthorityPolicy?  @relation("DiscountAuthorityPolicyRevision", fields: [supersedes_policy_id], references: [id], onDelete: Restrict)
+  revisions                     DiscountAuthorityPolicy[] @relation("DiscountAuthorityPolicyRevision")
+  service_class                 String
+  region                        String
+  currency                      String
+  standard_margin_floor_percent Decimal                   @db.Decimal(6, 2)
+  finance_margin_floor_percent  Decimal                   @db.Decimal(6, 2)
+  absolute_margin_floor_percent Decimal                   @db.Decimal(6, 2)
+  status                        String                    @default("PENDING_APPROVAL")
+  effective_from                DateTime
+  effective_to                  DateTime?
+  requested_by                  String
+  requested_at                  DateTime                  @default(now())
+  decided_by                    String?
+  decided_at                    DateTime?
+  decision_reason               String?
+  created_at                    DateTime                  @default(now())
+
+  @@unique([policy_key, version])
+  @@index([service_class, region, currency, status, effective_from])
+  @@index([status, effective_from])
+
+  @@schema("cpq")
+}
+
+/**
+ * Frozen I3 economics and authority decision for a discounted quote. This is
+ * separate from the CPQ technical-readiness receipt: a commercial approver can
+ * accept/reject economics but cannot edit technical authority or scope.
+ */
+model QuoteDiscountReview {
+  id                            String              @id @default(uuid())
+  quote_id                      String              @unique
+  quote                         CommercialQuote     @relation(fields: [quote_id], references: [id], onDelete: Restrict)
+  tenant_id                     String
+  environment_id                String
+  status                        String              @default("DRAFT")
+  policy_ids                    String              @default("[]")
+  gross_margin_by_service_class String              @default("[]")
+  partner_pass_through          String              @default("{}")
+  commercial_reason             String
+  term_months                   Int
+  ramp_schedule                 String              @default("[]")
+  minimum_commit_amount         Decimal             @db.Decimal(14, 4)
+  catalog_minimum_commit_amount Decimal             @db.Decimal(14, 4)
+  discount_expires_at           DateTime
+  required_approval_role        String
+  authority_rank                Int
+  financial_impact              Decimal             @db.Decimal(14, 4)
+  margin_impact                 Decimal             @db.Decimal(8, 4)
+  technical_authority_hash      String
+  approval_id                   String?             @unique
+  approval                      CommercialApproval? @relation("QuoteDiscountApproval", fields: [approval_id], references: [id], onDelete: Restrict)
+  requested_by                  String
+  submitted_at                  DateTime?
+  approved_by                   String?
+  approved_at                   DateTime?
+  rejected_reason               String?
+  created_at                    DateTime            @default(now())
+  updated_at                    DateTime            @updatedAt
+
+  @@index([tenant_id, environment_id, status])
+  @@index([required_approval_role, status])
+  @@index([discount_expires_at, status])
+
+  @@schema("cpq")
+}
+
+/**
+ * Platform-verified, versioned offer readiness. Sales/CPQ can consume this
+ * evidence but cannot create it or reinterpret an unavailable offer as ready.
+ */
+model CpqOfferReadiness {
+  id                         String         @id @default(uuid())
+  catalog_version_id         String
+  catalogVersion             CatalogVersion @relation(fields: [catalog_version_id], references: [id], onDelete: Restrict)
+  product_id                 String
+  product                    Product        @relation(fields: [product_id], references: [id], onDelete: Restrict)
+  region                     String
+  version                    Int            @default(1)
+  retention_profiles         String         @default("[]")
+  service_tiers              String         @default("[]")
+  supported_connector_keys   String         @default("[]")
+  obligation_types           String         @default("[]")
+  service_capacity_status    String
+  market_availability_status String
+  claim_eligibility_status   String
+  evidence_refs              String         @default("[]")
+  status                     String         @default("VERIFIED")
+  verified_by                String
+  effective_from             DateTime       @default(now())
+  effective_to               DateTime?
+  created_at                 DateTime       @default(now())
+
+  @@unique([product_id, region, version])
+  @@index([catalog_version_id, region, status])
+  @@index([product_id, region, status, effective_from])
+
+  @@schema("cpq")
+}
+
+/**
+ * Immutable proof of the exact checks and controlled inputs used by CPQ.
+ */
+model CommercialQuoteValidation {
+  id                         String          @id @default(uuid())
+  tenant_id                  String
+  environment_id             String
+  quote_id                   String          @unique
+  quote                      CommercialQuote @relation(fields: [quote_id], references: [id], onDelete: Restrict)
+  configuration_hash         String
+  readiness_record_ids       String          @default("[]")
+  price_book_ids             String          @default("[]")
+  tax_rule_id                String
+  dependency_status          String
+  incompatibility_status     String
+  unit_economics_status      String
+  service_capacity_status    String
+  market_availability_status String
+  claim_eligibility_status   String
+  partner_economics_status   String
+  result                     String
+  validated_by               String
+  created_at                 DateTime        @default(now())
+
+  @@index([tenant_id, environment_id, created_at])
+  @@index([result, created_at])
+
+  @@schema("cpq")
+}
+
+/**
+ * Conditional, non-GA language attached to a quote but deliberately excluded
+ * from quote lines and entitlement derivation. Legal and Product approve it
+ * independently; even a passed release gate only makes it eligible for a
+ * separate future order.
+ */
+model RoadmapCommitment {
+  id                            String              @id @default(uuid())
+  tenant_id                     String
+  environment_id                String
+  quote_id                      String
+  quote                         CommercialQuote     @relation(fields: [quote_id], references: [id], onDelete: Restrict)
+  commitment_key                String
+  target_product_id             String
+  targetProduct                 Product             @relation(fields: [target_product_id], references: [id], onDelete: Restrict)
+  target_catalog_version_id     String
+  targetCatalogVersion          CatalogVersion      @relation(fields: [target_catalog_version_id], references: [id], onDelete: Restrict)
+  feature_key                   String
+  non_ga_language               String
+  conditions                    String              @default("[]")
+  delivery_dependency_type      String
+  delivery_dependency_reference String
+  target_delivery_date          DateTime?
+  status                        String              @default("DRAFT")
+  entitlement_effect            String              @default("NONE")
+  runtime_access_status         String              @default("DISABLED")
+  legal_approval_id             String?             @unique
+  legalApproval                 CommercialApproval? @relation("RoadmapLegalApproval", fields: [legal_approval_id], references: [id], onDelete: Restrict)
+  product_approval_id           String?             @unique
+  productApproval               CommercialApproval? @relation("RoadmapProductApproval", fields: [product_approval_id], references: [id], onDelete: Restrict)
+  submitted_by                  String?
+  submitted_at                  DateTime?
+  legal_approved_by             String?
+  legal_approved_at             DateTime?
+  product_approved_by           String?
+  product_approved_at           DateTime?
+  release_gate_evidence_refs    String              @default("[]")
+  release_gate_passed_by        String?
+  release_gate_passed_at        DateTime?
+  created_by                    String
+  created_at                    DateTime            @default(now())
+  updated_at                    DateTime            @updatedAt
+
+  @@unique([quote_id, commitment_key])
+  @@unique([quote_id, feature_key])
+  @@index([tenant_id, environment_id, status])
+  @@index([target_product_id, status])
+  @@index([quote_id, status])
+
+  @@schema("cpq")
+}
+
+model CommercialQuoteLine {
+  id                    String          @id @default(uuid())
+  tenant_id             String
+  quote_id              String
+  quote                 CommercialQuote @relation(fields: [tenant_id, quote_id], references: [tenant_id, id])
+  product_id            String
+  price_book_id         String
+  quantity              Int             @default(1)
+  unit_price            Decimal         @db.Decimal(14, 4)
+  line_discount_percent Decimal         @default(0) @db.Decimal(5, 2)
+  created_at            DateTime        @default(now())
+
+  @@index([quote_id])
+  @@index([tenant_id])
+
+  @@schema("cpq")
+}
+
+model CommercialOrder {
+  id                    String          @id @default(uuid())
+  quote_id              String
+  quote                 CommercialQuote @relation(fields: [quote_id], references: [id])
+  commercial_account_id String
+  status                String          @default("CREATED")
+  contract_id           String?         @unique
+  idempotency_key       String          @unique
+  created_by            String
+  // Set once this order backs a provisioned tenant (spec §7.2: PROVISIONING
+  // requires an approved order/entitlement). Unique so an order can never be
+  // claimed by more than one tenant.
+  tenant_id             String?         @unique
+  created_at            DateTime        @default(now())
+  updated_at            DateTime        @updatedAt
+
+  lines                       CommercialOrderLine[]
+  convertedEvaluationPrograms EvaluationProgram[]
+
+  @@index([commercial_account_id])
+  @@index([status])
+
+  @@schema("cpq")
+}
+
+model CommercialOrderLine {
+  id                       String          @id @default(uuid())
+  order_id                 String
+  order                    CommercialOrder @relation(fields: [order_id], references: [id])
+  product_id               String
+  product                  Product         @relation("CommercialOrderLineProduct", fields: [product_id], references: [id], onDelete: Restrict)
+  quantity                 Int             @default(1)
+  list_unit_price          Decimal         @default(0) @db.Decimal(14, 4)
+  discount_percent         Decimal         @default(0) @db.Decimal(5, 2)
+  unit_price               Decimal         @db.Decimal(14, 4)
+  currency                 String          @default("USD")
+  line_type                String          @default("CUSTOMER")
+  billable                 Boolean         @default(true)
+  catalog_sku              String          @default("")
+  bundle_parent_product_id String?
+  bundleParentProduct      Product?        @relation("CommercialOrderLineBundleParentProduct", fields: [bundle_parent_product_id], references: [id], onDelete: Restrict)
+  component_type           String?
+  entitlement_offer_type   String?
+  meter_definition_id      String?
+  service_obligation_type  String?
+  cost_class               String?
+  cost_allocation_percent  Decimal?        @db.Decimal(5, 2)
+  claim_key                String?
+  claim_register_id        String?
+  invoice_presentation     String          @default("SEPARATE")
+  component_snapshot       String          @default("{}")
+  component_snapshot_hash  String?
+  projection_status        String          @default("NOT_APPLICABLE")
+  created_at               DateTime        @default(now())
+
+  bundleEntitlement       Entitlement?                 @relation("BundleComponentEntitlement")
+  bundleServiceObligation ServiceObligation?           @relation("BundleComponentServiceObligation")
+  bundleMeterProjection   BundleMeterProjection?
+  bundleCostAllocation    BundleCostAllocation?
+  bundleClaimEligibility  BundleClaimEligibility?
+  invoiceTraces           CommercialInvoiceLineTrace[]
+  invoiceLines            CommercialInvoiceLine[]
+
+  @@index([order_id])
+  @@index([order_id, line_type])
+  @@index([bundle_parent_product_id])
+  @@index([projection_status])
+
+  @@schema("cpq")
+}
+
+model CommercialSubscription {
+  id                    String    @id @default(uuid())
+  order_id              String    @unique
+  commercial_account_id String
+  contract_id           String
+  status                String    @default("PENDING")
+  effective_from        DateTime?
+  effective_to          DateTime?
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+
+  amendments               CommercialAmendment[]
+  concessions              CommercialConcession[]
+  bundleMeterProjections   BundleMeterProjection[]
+  bundleCostAllocations    BundleCostAllocation[]
+  bundleClaimEligibilities BundleClaimEligibility[]
+
+  @@index([commercial_account_id])
+  @@index([status])
+
+  @@schema("cpq")
+}
+
+/**
+ * Meter requirements created from an accepted bundle stay non-billable until
+ * ordinary meter governance creates and approves a contract authorization.
+ */
+model BundleMeterProjection {
+  id                     String                    @id @default(uuid())
+  order_line_id          String                    @unique
+  orderLine              CommercialOrderLine       @relation(fields: [order_line_id], references: [id], onDelete: Restrict)
+  contract_id            String
+  contract               Contract                  @relation(fields: [contract_id], references: [id], onDelete: Restrict)
+  subscription_id        String
+  subscription           CommercialSubscription    @relation(fields: [subscription_id], references: [id], onDelete: Restrict)
+  tenant_id              String
+  environment_id         String
+  meter_definition_id    String
+  meterDefinition        MeterDefinition           @relation(fields: [meter_definition_id], references: [id], onDelete: Restrict)
+  meter_authorization_id String?                   @unique
+  meterAuthorization     MeterAuthorizationPolicy? @relation("BundleMeterAuthorization", fields: [meter_authorization_id], references: [id], onDelete: Restrict)
+  status                 String                    @default("PENDING_GOVERNANCE")
+  created_at             DateTime                  @default(now())
+  updated_at             DateTime                  @updatedAt
+
+  @@index([contract_id, status])
+  @@index([tenant_id, environment_id, status])
+
+  @@schema("cpq")
+}
+
+/**
+ * Internal revenue/cost-basis allocation; never a separately billable line.
+ */
+model BundleCostAllocation {
+  id                 String                 @id @default(uuid())
+  order_line_id      String                 @unique
+  orderLine          CommercialOrderLine    @relation(fields: [order_line_id], references: [id], onDelete: Restrict)
+  contract_id        String
+  contract           Contract               @relation(fields: [contract_id], references: [id], onDelete: Restrict)
+  subscription_id    String
+  subscription       CommercialSubscription @relation(fields: [subscription_id], references: [id], onDelete: Restrict)
+  cost_class         String
+  allocation_method  String                 @default("CATALOG_PERCENT")
+  allocation_percent Decimal                @db.Decimal(5, 2)
+  allocated_revenue  Decimal                @db.Decimal(14, 4)
+  currency           String
+  status             String                 @default("ALLOCATED")
+  created_at         DateTime               @default(now())
+
+  @@index([contract_id, cost_class])
+  @@index([subscription_id])
+
+  @@schema("cpq")
+}
+
+model CommercialAmendment {
+  id                     String                 @id @default(uuid())
+  subscription_id        String
+  subscription           CommercialSubscription @relation(fields: [subscription_id], references: [id])
+  amendment_type         String
+  status                 String                 @default("REQUESTED")
+  tenant_id              String?
+  environment_id         String?
+  approval_id            String?                @unique
+  effective_at           DateTime?
+  before_snapshot        String                 @default("{}")
+  proposed_snapshot      String                 @default("{}")
+  requested_by           String
+  approved_by            String?
+  claim_eligibility      Boolean                @default(false)
+  deployment_ready       Boolean                @default(false)
+  service_capacity_ready Boolean                @default(false)
+  readiness_snapshot     String                 @default("{}")
+  readiness_verified_by  String?
+  readiness_verified_at  DateTime?
+  assessment_snapshot    String                 @default("{}")
+  remediation_plan       String                 @default("{}")
+  remediation_status     String                 @default("NOT_REQUIRED")
+  applied_by             String?
+  applied_at             DateTime?
+  created_at             DateTime               @default(now())
+  updated_at             DateTime               @updatedAt
+
+  activatedEntitlements Entitlement[]
+  retentionTransition   EvidenceRetentionTransition?
+
+  @@index([subscription_id])
+  @@index([tenant_id, environment_id, status])
+  @@index([effective_at, status])
+  @@index([status])
+
+  @@schema("cpq")
+}
+
+/**
+ * Prospective retention change. Existing evidence retains its original
+ * profile and the hold/audit-cycle preservation basis is snapshotted here.
+ */
+model EvidenceRetentionTransition {
+  id                           String              @id @default(uuid())
+  tenant_id                    String
+  environment_id               String
+  amendment_id                 String              @unique
+  amendment                    CommercialAmendment @relation(fields: [amendment_id], references: [id])
+  target_retention_profile     String
+  effective_at                 DateTime
+  historical_cutoff            DateTime
+  historical_evidence_count    Int                 @default(0)
+  preserved_retention_profiles String              @default("[]")
+  legal_hold_ids               String              @default("[]")
+  audit_package_ids            String              @default("[]")
+  preservation_basis           String              @default("{}")
+  preserve_historical_evidence Boolean             @default(true)
+  status                       String              @default("PENDING_VERIFICATION")
+  evidence_refs                String              @default("[]")
+  verified_by                  String?
+  verified_at                  DateTime?
+  applied_at                   DateTime?
+  created_at                   DateTime            @default(now())
+  updated_at                   DateTime            @updatedAt
+
+  @@index([tenant_id, environment_id, status])
+  @@index([effective_at, status])
+
+  @@schema("cpq")
+}
+
+/**
+ * Approved, bounded commercial exception. A concession can activate free
+ * module entitlements, but can never omit its end or renewal treatment.
+ */
+model CommercialConcession {
+  id                    String                 @id @default(uuid())
+  subscription_id       String
+  subscription          CommercialSubscription @relation(fields: [subscription_id], references: [id])
+  commercial_account_id String
+  commercialAccount     CommercialAccount      @relation(fields: [commercial_account_id], references: [id])
+  tenant_id             String
+  environment_id        String
+  scope                 String                 @default("[]")
+  starts_at             DateTime
+  ends_at               DateTime
+  commercial_reason     String
+  margin_impact         Decimal                @db.Decimal(8, 4)
+  renewal_treatment     String
+  status                String                 @default("PENDING_APPROVAL")
+  approval_id           String?                @unique
+  requested_by          String
+  approved_by           String?
+  approved_at           DateTime?
+  activated_at          DateTime?
+  expired_at            DateTime?
+  created_at            DateTime               @default(now())
+  updated_at            DateTime               @updatedAt
+
+  entitlements Entitlement[]
+
+  @@index([subscription_id, status])
+  @@index([commercial_account_id, status])
+  @@index([tenant_id, environment_id, status])
+  @@index([starts_at, status])
+  @@index([ends_at, status])
+
+  @@schema("cpq")
+}
