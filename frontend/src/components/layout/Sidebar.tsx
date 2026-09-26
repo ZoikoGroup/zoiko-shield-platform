@@ -224,6 +224,56 @@ export const Sidebar: React.FC = () => {
         },
       ],
     },
+    {
+      label: "G2 EXPERIENCE CONTRACTS",
+      items: [
+        {
+          label: "Incident Command (W19)",
+          href: "/cases/incidents/command",
+          icon: <Flame className="w-4 h-4" />,
+        },
+        {
+          label: "SOC Shift Handover (W20)",
+          href: "/operations/shift-handover",
+          icon: <Users className="w-4 h-4" />,
+        },
+        {
+          label: "Asset Inventory (W29)",
+          href: "/assets",
+          icon: <Building className="w-4 h-4" />,
+        },
+        {
+          label: "Findings (W30)",
+          href: "/findings",
+          icon: <ShieldAlert className="w-4 h-4" />,
+        },
+        {
+          label: "Executive Risk (W31)",
+          href: "/risk/executive",
+          icon: <Scale className="w-4 h-4" />,
+        },
+        {
+          label: "Audit Reports (W32)",
+          href: "/audit/reports/generate",
+          icon: <FileCheck2 className="w-4 h-4" />,
+        },
+        {
+          label: "Data Export (W36)",
+          href: "/admin/export",
+          icon: <Network className="w-4 h-4" />,
+        },
+        {
+          label: "Developer Surface (W37)",
+          href: "/developer",
+          icon: <Bot className="w-4 h-4" />,
+        },
+        {
+          label: "Trust Center (W38)",
+          href: "/trust",
+          icon: <ShieldCheck className="w-4 h-4" />,
+        },
+      ],
+    },
   ];
 
   return (
