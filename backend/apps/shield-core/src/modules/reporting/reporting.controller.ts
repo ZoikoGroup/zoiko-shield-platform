@@ -10,6 +10,7 @@ import {
 import { OperationalReportService } from './operational/operational-report.service';
 import { ReportSnapshotService } from './snapshots/report-snapshot.service';
 import { ExecutiveReportService } from './executive/executive-report.service';
+import { ReportDefinitionService } from './snapshots/report-definition.service';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { CurrentUser } from '../identity-adapter/decorators/current-user.decorator';
 import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
@@ -23,6 +24,7 @@ export class ReportingController {
     private readonly operationalReportService: OperationalReportService,
     private readonly reportSnapshotService: ReportSnapshotService,
     private readonly executiveReportService: ExecutiveReportService,
+    private readonly reportDefinitionService: ReportDefinitionService,
   ) {}
 
   @Get('operational')
@@ -53,6 +55,12 @@ export class ReportingController {
     );
   }
 
+  /** Report definitions a board/audit snapshot can be generated from (W32). */
+  @Get('definitions')
+  async listDefinitions() {
+    return this.reportDefinitionService.listActive();
+  }
+
   @Post('snapshots')
   async createSnapshot(
     @Headers('x-tenant-id') tenantId: string,
@@ -73,6 +81,12 @@ export class ReportingController {
       periodEnd: new Date(body.periodEnd),
       environmentId: body.environmentId,
     });
+  }
+
+  /** Snapshot history backing the board/audit report surface (W32). */
+  @Get('snapshots')
+  async listSnapshots(@Headers('x-tenant-id') tenantId: string) {
+    return this.reportSnapshotService.list(requireTenantId(tenantId));
   }
 
   @Get('snapshots/:snapshotId')

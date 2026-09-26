@@ -52,6 +52,7 @@ import { ResponseProposalModule } from './modules/response-proposal/response-pro
 import { ControlsModule } from './modules/controls/controls.module';
 import { AssessmentsModule } from './modules/assessments/assessments.module';
 import { RiskModule } from './modules/risk/risk.module';
+import { FindingsModule } from './modules/findings/findings.module';
 import { AuditPackageModule } from './modules/audit-package/audit-package.module';
 import { ReportingModule } from './modules/reporting/reporting.module';
 import { NotificationModule } from './modules/notification/notification.module';
@@ -135,6 +136,7 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     ControlsModule,
     AssessmentsModule,
     RiskModule,
+    FindingsModule,
     AuditPackageModule,
     ReportingModule,
     NotificationModule,

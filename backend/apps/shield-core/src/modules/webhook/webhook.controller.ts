@@ -83,6 +83,14 @@ export class WebhookController {
     @Headers('x-tenant-id') tenantId: string,
     @Param('id') id: string,
   ) {
+    // Ownership is asserted before the write: updating by id alone let any
+    // authenticated tenant revoke another tenant's subscription by guessing
+    // or observing its id. Every other route on this controller already
+    // checks, so this was the one unguarded write.
+    await this.subscriptionService.assertTenantOwnership(
+      requireTenantId(tenantId),
+      id,
+    );
     return this.prisma.outboundWebhookSubscription.update({
       where: { id },
       data: { status: 'REVOKED' },

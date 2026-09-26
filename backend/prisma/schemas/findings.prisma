@@ -1,0 +1,204 @@
+// PostgreSQL schema "findings". findings module.
+
+// --- shield-core-owned: exposure findings (W30, G2) ---
+//
+// A finding is an assertion some scanner made about an asset at a point in
+// time. It is not a fact about the present, and the difference matters: the
+// scanner that reported an open port last month may have no idea whether it
+// is still open. So every finding carries when it was first detected, when it
+// was last *confirmed*, and which scanner version said so — the fields a
+// reader needs to decide whether the row still means anything.
+//
+// Priority is stored as contributing factors rather than a single score, for
+// the same reason risk ratings are: a number nobody can take apart is a claim
+// to argue with, not evidence to act on. An input the evaluator could not
+// resolve is recorded as unknown rather than defaulted to zero, so a priority
+// computed over missing data is visibly computed over missing data.
+model Finding {
+  id             String  @id @default(uuid())
+  tenant_id      String
+  environment_id String  @default("default-env")
+
+  // The asset this is asserted against. Nullable because a scanner can report
+  // a finding for an external_id that asset resolution has not matched yet;
+  // an unresolved finding is still a finding, and hiding it would understate
+  // exposure.
+  asset_id           String?
+  asset_external_ref String?
+
+  source_system    String // the scanner/feed that asserted this
+  source_finding_id String // that system's own id, for reconciliation
+  scanner_version  String?
+
+  finding_type      String // VULNERABILITY|MISCONFIGURATION|EXPOSURE|WEAKNESS
+  title             String
+  description       String?
+  vulnerability_ref String? // CVE / GHSA / vendor advisory id, when there is one
+
+  severity String @default("MEDIUM") // CRITICAL|HIGH|MEDIUM|LOW|INFO
+  status   String @default("OPEN") // OPEN|TRIAGED|REMEDIATING|RESOLVED|ACCEPTED|FALSE_POSITIVE
+
+  // The computed priority and the evaluator that produced it. Null means no
+  // evaluator has run — never "lowest priority".
+  priority_score     Float?
+  evaluator_version  String?
+  priority_evaluated_at DateTime?
+
+  // Evidence age. last_confirmed_at is the newest moment a source asserted
+  // this finding still holds; reassertion_interval_hours is how often the
+  // source claims it re-checks. Together they decide whether the assertion is
+  // stale, which is a property of the data, not a flag someone sets.
+  first_detected_at          DateTime
+  last_confirmed_at          DateTime
+  reassertion_interval_hours Int?
+
+  resolved_at          DateTime?
+  resolution_note      String?
+  detection_confidence Float     @default(1.0)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  factors       FindingPriorityFactor[]
+  attackPath    FindingAttackPathNode[]
+  remediations  FindingRemediation[]
+  evidenceLinks FindingEvidence[]
+  acceptance    FindingAcceptance?
+
+  @@unique([tenant_id, source_system, source_finding_id])
+  @@index([tenant_id])
+  @@index([tenant_id, status])
+  @@index([tenant_id, severity])
+  @@index([asset_id])
+  @@schema("findings")
+}
+
+/// One contributing input to a finding's priority, kept separable so the
+/// score can be taken apart. `unknown_input` marks a factor the evaluator
+/// could not resolve — it contributes nothing and says so, rather than
+/// silently scoring as absent.
+model FindingPriorityFactor {
+  id         String  @id @default(uuid())
+  tenant_id  String
+  finding_id String
+  finding    Finding @relation(fields: [finding_id], references: [id], onDelete: Cascade)
+
+  factor            String // e.g. exploit_maturity, asset_criticality, exposure
+  value             String
+  contribution      Float   @default(0)
+  weight            Float?
+  unknown_input     Boolean @default(false)
+  source_ref        String?
+  evaluator_version String?
+
+  created_at DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([finding_id])
+  @@schema("findings")
+}
+
+/// A step in the path an attacker would have to traverse to exploit this.
+/// Each step carries its own confidence and source, because an attack path is
+/// usually part observed and part inferred, and presenting the two the same
+/// way overstates what is known.
+model FindingAttackPathNode {
+  id         String  @id @default(uuid())
+  tenant_id  String
+  finding_id String
+  finding    Finding @relation(fields: [finding_id], references: [id], onDelete: Cascade)
+
+  step_index Int
+  node_type  String // ASSET|IDENTITY|NETWORK|SERVICE|CREDENTIAL
+  node_ref   String
+  node_label String?
+  relation   String // how this step reaches the next
+  confidence Float   @default(1.0)
+  inferred   Boolean @default(false)
+  source     String
+
+  created_at DateTime @default(now())
+
+  @@unique([finding_id, step_index])
+  @@index([tenant_id])
+  @@schema("findings")
+}
+
+/// Remediation work for a finding, with an owner and a verification
+/// reference. A remediation marked complete without a verification ref is
+/// someone's assertion that they fixed it, which is worth less than evidence.
+model FindingRemediation {
+  id         String  @id @default(uuid())
+  tenant_id  String
+  finding_id String
+  finding    Finding @relation(fields: [finding_id], references: [id], onDelete: Cascade)
+
+  action           String
+  guidance         String?
+  owner_id         String?
+  status           String    @default("PROPOSED") // PROPOSED|ACCEPTED|IN_PROGRESS|COMPLETE|BLOCKED
+  due_at           DateTime?
+  completed_at     DateTime?
+  verification_ref String?
+  blocked_reason   String?
+
+  created_by String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@index([tenant_id])
+  @@index([finding_id])
+  @@schema("findings")
+}
+
+/// An explicit decision to live with a finding. Acceptance always expires —
+/// an open-ended acceptance is indistinguishable from having forgotten about
+/// it, so expires_at is required and the review date is recorded with it.
+model FindingAcceptance {
+  id         String  @id @default(uuid())
+  tenant_id  String
+  finding_id String  @unique
+  finding    Finding @relation(fields: [finding_id], references: [id], onDelete: Cascade)
+
+  rationale                 String
+  authority                 String
+  accepted_by               String
+  authorization_decision_id String?
+  compensating_controls     String    @default("[]")
+  risk_ref                  String?
+  status                    String    @default("ACTIVE") // ACTIVE|EXPIRED|REVOKED
+  accepted_at               DateTime  @default(now())
+  expires_at                DateTime
+  review_at                 DateTime?
+  revoked_by                String?
+  revoked_at                DateTime?
+  revoke_reason             String?
+
+  @@index([tenant_id])
+  @@index([tenant_id, status])
+  @@schema("findings")
+}
+
+/// The raw evidence behind a finding: the scan output, the collector that
+/// produced it and a hash of what was collected, so a disputed finding can be
+/// traced back to what the scanner actually saw.
+model FindingEvidence {
+  id         String  @id @default(uuid())
+  tenant_id  String
+  finding_id String
+  finding    Finding @relation(fields: [finding_id], references: [id], onDelete: Cascade)
+
+  evidence_ref  String
+  collector     String
+  collector_version String?
+  collected_at  DateTime
+  content_hash  String
+  media_type    String   @default("application/json")
+  summary       String?
+
+  created_at DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([finding_id])
+  @@schema("findings")
+}

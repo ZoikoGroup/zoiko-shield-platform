@@ -51,6 +51,28 @@ export class AssetIdentityContextController {
   }
 
   /**
+   * GET /api/v1/context/assets/resolution-decisions
+   * The reconciliation review queue behind the inventory.
+   *
+   * Declared before assets/:assetId so Nest does not match
+   * 'resolution-decisions' as an asset id.
+   */
+  @Get('assets/resolution-decisions')
+  async getAssetResolutionDecisions(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Query('limit') limit?: number,
+  ) {
+    const decisions = await this.contextService.getAssetResolutionDecisions(
+      requireTenantId(headerTenantId),
+      limit ? Number(limit) : 100,
+    );
+    return {
+      statusCode: HttpStatus.OK,
+      data: decisions,
+    };
+  }
+
+  /**
    * GET /api/v1/context/assets/:assetId
    * Get single asset details
    */

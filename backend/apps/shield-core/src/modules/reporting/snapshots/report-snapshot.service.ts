@@ -83,6 +83,22 @@ export class ReportSnapshotService {
     return { snapshot, payload };
   }
 
+  /**
+   * Snapshot history for the board/audit report surface (W32).
+   *
+   * Ordered newest first and returned whole, including SUPERSEDED rows: a
+   * report that was issued and later replaced is part of the record, and
+   * hiding it would make the supersession invisible to the reader the
+   * contract is written for.
+   */
+  async list(tenantId: string, limit = 50) {
+    return this.prisma.reportSnapshot.findMany({
+      where: { tenant_id: tenantId },
+      take: limit,
+      orderBy: { generated_at: 'desc' },
+    });
+  }
+
   async getById(tenantId: string, snapshotId: string) {
     const snapshot = await this.prisma.reportSnapshot.findFirst({
       where: { id: snapshotId, tenant_id: tenantId },

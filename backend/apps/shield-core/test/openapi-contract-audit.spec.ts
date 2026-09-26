@@ -15,6 +15,7 @@ import { RequestMethod } from '@nestjs/common';
 
 // ─── Import every tenant-scoped controller for inspection ─────────────────────
 import { OffboardingController } from '../src/modules/offboarding/offboarding.controller';
+import { FindingsController } from '../src/modules/findings/findings.controller';
 import { ReconciliationController } from '../src/modules/reconciliation/reconciliation.controller';
 import { TenantController } from '../src/modules/tenant/tenant.controller';
 import { AuthorizationController } from '../src/modules/authorization/authorization.controller';
@@ -80,6 +81,7 @@ const ALL_AUDITED_CONTROLLERS = [
   { name: 'ReconciliationController', cls: ReconciliationController },
   { name: 'TenantController', cls: TenantController },
   { name: 'AuthorizationController', cls: AuthorizationController },
+  { name: 'FindingsController', cls: FindingsController },
 ];
 
 // ─── Tests ─────────────────────────────────────────────────────────────────────
