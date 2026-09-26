@@ -82,6 +82,8 @@ tags:
     description: Security alert management, triage, assignment, and escalation
   - name: CaseManagement
     description: Incident case management, timeline, evidence links, and decisions
+  - name: Findings
+    description: Exposure findings — time-bounded scanner assertions with derived staleness, factor-level priority and expiring acceptance (contract W30).
   - name: CaseAI
     description: AI-assisted case summarization, hypotheses, and next queries
   - name: RiskManagement
@@ -28095,6 +28097,757 @@ components:
             type: object
         operationalProofReference:
           type: string
+    GetFindingsResponse:
+      type: object
+      description: Findings with derived assertion state and priority integrity.
+      properties:
+        statusCode:
+          type: integer
+          example: 200
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              tenant_id:
+                type: string
+                format: uuid
+              asset_id:
+                type: string
+                nullable: true
+                format: uuid
+              asset_external_ref:
+                type: string
+                nullable: true
+              source_system:
+                type: string
+              source_finding_id:
+                type: string
+              scanner_version:
+                type: string
+                nullable: true
+              finding_type:
+                type: string
+                enum: [VULNERABILITY, MISCONFIGURATION, EXPOSURE, WEAKNESS]
+              title:
+                type: string
+              description:
+                type: string
+                nullable: true
+              vulnerability_ref:
+                type: string
+                nullable: true
+              severity:
+                type: string
+                enum: [CRITICAL, HIGH, MEDIUM, LOW, INFO]
+              status:
+                type: string
+                enum: [OPEN, TRIAGED, REMEDIATING, RESOLVED, ACCEPTED, FALSE_POSITIVE]
+              priority_score:
+                type: number
+                nullable: true
+                description: Null means no evaluator has run — never lowest priority.
+              evaluator_version:
+                type: string
+                nullable: true
+              priority_evaluated_at:
+                type: string
+                nullable: true
+                format: date-time
+              first_detected_at:
+                type: string
+                format: date-time
+              last_confirmed_at:
+                type: string
+                format: date-time
+              reassertion_interval_hours:
+                type: integer
+                nullable: true
+              resolved_at:
+                type: string
+                nullable: true
+                format: date-time
+              detection_confidence:
+                type: number
+              assertion:
+                type: object
+                description: Derived from last_confirmed_at against the source's declared reassertion interval; not a stored flag.
+                properties:
+                  state:
+                    type: string
+                    enum: [CURRENT, AGEING, STALE]
+                  ageHours:
+                    type: number
+                  expectedWithinHours:
+                    type: number
+                  reason:
+                    type: string
+              priorityIntegrity:
+                type: object
+                description: Whether the priority score was computed over complete inputs.
+                properties:
+                  scored:
+                    type: boolean
+                  unknownInputs:
+                    type: array
+                    items:
+                      type: string
+                  resolvedFactors:
+                    type: integer
+                  computedOverUnknowns:
+                    type: boolean
+    GetFindingsByFindingIdResponse:
+      type: object
+      description: A single finding with its factors, attack path, remediation, acceptance and evidence.
+      properties:
+        statusCode:
+          type: integer
+          example: 200
+        data:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            tenant_id:
+              type: string
+              format: uuid
+            asset_id:
+              type: string
+              nullable: true
+              format: uuid
+            asset_external_ref:
+              type: string
+              nullable: true
+            source_system:
+              type: string
+            source_finding_id:
+              type: string
+            scanner_version:
+              type: string
+              nullable: true
+            finding_type:
+              type: string
+              enum: [VULNERABILITY, MISCONFIGURATION, EXPOSURE, WEAKNESS]
+            title:
+              type: string
+            description:
+              type: string
+              nullable: true
+            vulnerability_ref:
+              type: string
+              nullable: true
+            severity:
+              type: string
+              enum: [CRITICAL, HIGH, MEDIUM, LOW, INFO]
+            status:
+              type: string
+              enum: [OPEN, TRIAGED, REMEDIATING, RESOLVED, ACCEPTED, FALSE_POSITIVE]
+            priority_score:
+              type: number
+              nullable: true
+              description: Null means no evaluator has run — never lowest priority.
+            evaluator_version:
+              type: string
+              nullable: true
+            priority_evaluated_at:
+              type: string
+              nullable: true
+              format: date-time
+            first_detected_at:
+              type: string
+              format: date-time
+            last_confirmed_at:
+              type: string
+              format: date-time
+            reassertion_interval_hours:
+              type: integer
+              nullable: true
+            resolved_at:
+              type: string
+              nullable: true
+              format: date-time
+            detection_confidence:
+              type: number
+            assertion:
+              type: object
+              description: Derived from last_confirmed_at against the source's declared reassertion interval; not a stored flag.
+              properties:
+                state:
+                  type: string
+                  enum: [CURRENT, AGEING, STALE]
+                ageHours:
+                  type: number
+                expectedWithinHours:
+                  type: number
+                reason:
+                  type: string
+            priorityIntegrity:
+              type: object
+              description: Whether the priority score was computed over complete inputs.
+              properties:
+                scored:
+                  type: boolean
+                unknownInputs:
+                  type: array
+                  items:
+                    type: string
+                resolvedFactors:
+                  type: integer
+                computedOverUnknowns:
+                  type: boolean
+            factors:
+              type: array
+              items:
+                type: object
+                properties:
+                  factor:
+                    type: string
+                  value:
+                    type: string
+                  contribution:
+                    type: number
+                  weight:
+                    type: number
+                    nullable: true
+                  unknown_input:
+                    type: boolean
+                    description: True when the evaluator could not resolve this input; it contributes nothing and says so.
+                  source_ref:
+                    type: string
+                    nullable: true
+                  evaluator_version:
+                    type: string
+                    nullable: true
+            attackPath:
+              type: array
+              items:
+                type: object
+                properties:
+                  step_index:
+                    type: integer
+                  node_type:
+                    type: string
+                    enum: [ASSET, IDENTITY, NETWORK, SERVICE, CREDENTIAL]
+                  node_ref:
+                    type: string
+                  node_label:
+                    type: string
+                    nullable: true
+                  relation:
+                    type: string
+                  confidence:
+                    type: number
+                  inferred:
+                    type: boolean
+                    description: Inferred steps are distinguished from observed ones so the path does not overstate what is known.
+                  source:
+                    type: string
+            remediations:
+              type: array
+              items:
+                type: object
+                properties:
+                  action:
+                    type: string
+                  guidance:
+                    type: string
+                    nullable: true
+                  owner_id:
+                    type: string
+                    nullable: true
+                  status:
+                    type: string
+                    enum: [PROPOSED, ACCEPTED, IN_PROGRESS, COMPLETE, BLOCKED]
+                  due_at:
+                    type: string
+                    nullable: true
+                    format: date-time
+                  completed_at:
+                    type: string
+                    nullable: true
+                    format: date-time
+                  verification_ref:
+                    type: string
+                    nullable: true
+                    description: A remediation marked complete without this is an assertion that it was fixed, not evidence.
+                  blocked_reason:
+                    type: string
+                    nullable: true
+            evidenceLinks:
+              type: array
+              items:
+                type: object
+                properties:
+                  evidence_ref:
+                    type: string
+                  collector:
+                    type: string
+                  collector_version:
+                    type: string
+                    nullable: true
+                  collected_at:
+                    type: string
+                    format: date-time
+                  content_hash:
+                    type: string
+                  summary:
+                    type: string
+                    nullable: true
+            acceptance:
+              nullable: true
+              $ref: '#/components/schemas/FindingAcceptanceRecord'
+    FindingAcceptanceRecord:
+      type: object
+      description: An explicit decision to live with a finding. Always carries an expiry.
+      properties:
+        id:
+          type: string
+          format: uuid
+        rationale:
+          type: string
+        authority:
+          type: string
+        accepted_by:
+          type: string
+        compensating_controls:
+          type: string
+          description: JSON-encoded array of compensating control references.
+        risk_ref:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [ACTIVE, EXPIRED, REVOKED]
+        accepted_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+          description: Required. An open-ended acceptance is indistinguishable from having forgotten.
+        review_at:
+          type: string
+          nullable: true
+          format: date-time
+        revoked_by:
+          type: string
+          nullable: true
+        revoked_at:
+          type: string
+          nullable: true
+          format: date-time
+        revoke_reason:
+          type: string
+          nullable: true
+    GetFindingsSummaryResponse:
+      type: object
+      description: Live counts over the findings population, with the facts that qualify them.
+      properties:
+        statusCode:
+          type: integer
+          example: 200
+        data:
+          type: object
+          properties:
+            generatedAt:
+              type: string
+              format: date-time
+            tenantId:
+              type: string
+              format: uuid
+            metrics:
+              type: object
+              properties:
+                total:
+                  type: integer
+                open:
+                  type: integer
+                staleAssertions:
+                  type: integer
+                  description: Open findings whose newest confirmation is past twice the source's reassertion interval.
+                ageingAssertions:
+                  type: integer
+                unscored:
+                  type: integer
+                  description: Never scored by an evaluator. Unscored is not low priority.
+                scoredOverUnknowns:
+                  type: integer
+                  description: Scored with at least one unresolved input, so not comparable with a complete score.
+                unresolvedAsset:
+                  type: integer
+            definition:
+              type: string
+            limitations:
+              type: array
+              items:
+                type: string
+    PostFindingsByFindingIdAcceptRequest:
+      type: object
+      required: [rationale, authority, expiresAt]
+      properties:
+        rationale:
+          type: string
+          description: Why this finding is being lived with.
+        authority:
+          type: string
+          description: The authority the decision is taken under.
+        expiresAt:
+          type: string
+          format: date-time
+          description: Required. The date this decision is revisited.
+        reviewAt:
+          type: string
+          format: date-time
+        compensatingControls:
+          type: array
+          items:
+            type: string
+        riskRef:
+          type: string
+        authorizationDecisionId:
+          type: string
+          format: uuid
+    PostFindingsByFindingIdAcceptResponse:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+          example: 201
+        data:
+          $ref: '#/components/schemas/FindingAcceptanceRecord'
+    PostFindingsAcceptancesExpireLapsedResponse:
+      type: object
+      properties:
+        statusCode:
+          type: integer
+          example: 200
+        data:
+          type: object
+          properties:
+            expired:
+              type: integer
+              description: Acceptances moved to EXPIRED; their findings return to TRIAGED.
+    GetCasesHandoverResponse:
+      type: object
+      description: Open cases with their response clock, pending quality reviews and latest notes.
+      properties:
+        statusCode:
+          type: integer
+          example: 200
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              title:
+                type: string
+              severity:
+                type: string
+              priority:
+                type: string
+              status:
+                type: string
+              owner_id:
+                type: string
+                nullable: true
+              created_at:
+                type: string
+                format: date-time
+              acknowledged_at:
+                type: string
+                nullable: true
+                format: date-time
+              slaClock:
+                type: object
+                nullable: true
+                properties:
+                  target_response_minutes:
+                    type: integer
+                  status:
+                    type: string
+                  started_at:
+                    type: string
+                    format: date-time
+                  paused_at:
+                    type: string
+                    nullable: true
+                    format: date-time
+                  pause_reason:
+                    type: string
+                    nullable: true
+                  total_paused_ms:
+                    type: integer
+                  breached_at:
+                    type: string
+                    nullable: true
+                    format: date-time
+                  coverage_tier:
+                    type: string
+              qualityReviews:
+                type: array
+                description: Pending reviews only — closures awaiting a second pair of eyes.
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    review_type:
+                      type: string
+                    trigger:
+                      type: string
+                    requested_by:
+                      type: string
+                    status:
+                      type: string
+                    reviewer_id:
+                      type: string
+                      nullable: true
+                    created_at:
+                      type: string
+                      format: date-time
+              notes:
+                type: array
+                description: The three most recent notes on the case.
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                      format: uuid
+                    author_id:
+                      type: string
+                    content:
+                      type: string
+                    classification:
+                      type: string
+                    created_at:
+                      type: string
+                      format: date-time
+    GetCasesByCaseIdNotesResponse:
+      type: object
+      description: Notes recorded against a case, with their internal/customer classification.
+      properties:
+        statusCode:
+          type: integer
+          example: 200
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              author_id:
+                type: string
+              content:
+                type: string
+              classification:
+                type: string
+                description: Keeps what was said to the customer distinguishable from internal notes.
+              created_at:
+                type: string
+                format: date-time
+              supersedes_id:
+                type: string
+                nullable: true
+                format: uuid
+                description: Set when this note corrects an earlier one, which is retained.
+    GetReportingDefinitionsResponse:
+      type: object
+      description: Active report definitions a snapshot can be generated from.
+      properties:
+        statusCode:
+          type: integer
+          example: 200
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              key:
+                type: string
+              name:
+                type: string
+              report_type:
+                type: string
+                enum: [OPERATIONAL, SECURITY, ASSURANCE, EXECUTIVE, BOARD, CUSTOMER_SERVICE]
+              version:
+                type: string
+              purpose:
+                type: string
+              audience:
+                type: string
+              source_requirements:
+                type: string
+                description: JSON-encoded array of the sources a snapshot of this definition must satisfy.
+              status:
+                type: string
+    GetReportingSnapshotsResponse:
+      type: object
+      description: Report snapshots for the tenant, newest first, including superseded ones.
+      properties:
+        statusCode:
+          type: integer
+          example: 200
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              report_definition_id:
+                type: string
+                format: uuid
+              report_definition_version:
+                type: string
+              period_start:
+                type: string
+                format: date-time
+              period_end:
+                type: string
+                format: date-time
+              generated_by:
+                type: string
+              freshness_state:
+                type: string
+              completeness_state:
+                type: string
+              limitations:
+                type: string
+                description: JSON-encoded array, auto-populated at generation rather than typed by an author.
+              snapshot_hash:
+                type: string
+                description: The payload is frozen at generation, so any alteration changes this hash.
+              status:
+                type: string
+                enum: [BUILDING, READY, PARTIAL, FAILED, SUPERSEDED]
+              generated_at:
+                type: string
+                format: date-time
+    GetTenantsByTenantIdOffboardingLegalHoldsResponse:
+      type: object
+      description: Legal holds recorded for the tenant.
+      properties:
+        statusCode:
+          type: integer
+          example: 200
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              scope:
+                type: string
+                description: JSON-encoded scope the hold covers.
+              authority:
+                type: string
+              reason:
+                type: string
+              status:
+                type: string
+                enum: [ACTIVE, RELEASED, EXPIRED]
+              starts_at:
+                type: string
+                format: date-time
+              ends_at:
+                type: string
+                nullable: true
+                format: date-time
+              review_at:
+                type: string
+                format: date-time
+              released_at:
+                type: string
+                nullable: true
+                format: date-time
+              release_reason:
+                type: string
+                nullable: true
+    GetTenantsByTenantIdOffboardingBackupExpiryResponse:
+      type: object
+      description: Backup classes still carrying this tenant's data, and when each ages out.
+      properties:
+        statusCode:
+          type: integer
+          example: 200
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              backup_class:
+                type: string
+              retained_until:
+                type: string
+                format: date-time
+              final_expiry_expected_at:
+                type: string
+                format: date-time
+              verified_expired_at:
+                type: string
+                nullable: true
+                format: date-time
+                description: Until this is set, the tenant is not fully purged.
+              status:
+                type: string
+                enum: [PENDING, EXPIRED_VERIFIED, EXCEPTION, FAILED_VERIFICATION]
+    GetContextAssetsResolutionDecisionsResponse:
+      type: object
+      description: Resolution decisions behind the asset inventory — the reconciliation review queue.
+      properties:
+        statusCode:
+          type: integer
+          example: 200
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+              entity_type:
+                type: string
+              source_system:
+                type: string
+              external_id:
+                type: string
+              resolved_entity_id:
+                type: string
+                nullable: true
+                format: uuid
+              decision:
+                type: string
+              confidence:
+                type: number
+                description: A low-confidence decision is a review item, not an error.
+              resolver_version:
+                type: string
+              reason:
+                type: string
+              created_at:
+                type: string
+                format: date-time
 paths:
   /api/v1/platform/assurance/frameworks:
     get:
@@ -33714,6 +34467,37 @@ paths:
         - BearerAuth: []
       description: Get case timeline. Applies the documented path, query, and tenant filters and returns the current persisted or computed result using the response model below.
   /api/v1/cases/{caseId}/notes:
+    get:
+      tags:
+        - CaseManagement
+      summary: List the case communications record
+      description: 'Returns the case''s notes in order. Each carries a classification, so what was said to the customer stays distinguishable from what was said internally after the fact, and a corrected note references the one it supersedes rather than overwriting it — the earlier wording remains part of the record.'
+      parameters:
+        - name: caseId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique case ID identifying the target resource.
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Notes recorded against this case.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCasesByCaseIdNotesResponse'
+        '404':
+          description: The referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getCasesByCaseIdNotes
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
     post:
       tags:
         - CaseManagement
@@ -34981,6 +35765,30 @@ paths:
       parameters:
         - $ref: '#/components/parameters/TenantIdHeader'
   /api/v1/reporting/snapshots:
+    get:
+      tags:
+        - Reporting
+      summary: List generated report snapshots, including superseded ones
+      description: 'Snapshot history for the tenant, newest first. SUPERSEDED rows are returned rather than hidden: a report that was issued and later replaced is part of the record, and omitting it would make the supersession invisible to exactly the reader — a board or an auditor — the snapshot was frozen for.'
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Report snapshots for this tenant, newest first.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetReportingSnapshotsResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getReportingSnapshots
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
     post:
       tags:
         - Reporting
@@ -55009,11 +55817,336 @@ paths:
           description: Verification report generated successfully
         '401':
           description: Unauthorized
-
-
-
-
-
-
-
-
+  /api/v1/cases/handover:
+    get:
+      tags:
+        - CaseManagement
+      summary: Tenant-wide SOC shift handover snapshot
+      description: 'Returns every open case with its response clock, pending quality reviews and latest notes in a single query (contract W20). Deliberately one read rather than a fan-out the caller could partially fail: a handover that silently omits a commitment is the failure mode this surface exists to prevent. Closed and resolved cases are excluded — they carry nothing into the next shift.'
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Open cases with clocks, pending quality reviews and recent notes.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetCasesHandoverResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getCasesHandover
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/findings:
+    get:
+      tags:
+        - Findings
+      summary: List exposure findings with derived assertion state
+      description: 'Lists findings for the tenant. Every row carries a derived assertion state (CURRENT, AGEING or STALE) computed from last_confirmed_at against the source''s own declared reassertion interval, and a priority integrity block stating whether the score was computed over unresolved inputs. Neither is a stored flag: a finding is a claim a scanner made at a point in time, and the API states how current that claim is rather than presenting it in the present tense.'
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            nullable: true
+          description: Optional status filter (OPEN, TRIAGED, REMEDIATING, RESOLVED, ACCEPTED, FALSE_POSITIVE).
+        - name: severity
+          in: query
+          required: false
+          schema:
+            type: string
+            nullable: true
+          description: Optional severity filter (CRITICAL, HIGH, MEDIUM, LOW, INFO).
+        - name: assetId
+          in: query
+          required: false
+          schema:
+            type: string
+            nullable: true
+            format: uuid
+          description: Optional filter to findings asserted against one asset.
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: number
+            nullable: true
+          description: Optional limit filter.
+      responses:
+        '200':
+          description: Findings for this tenant, newest confirmation first within priority.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetFindingsResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getFindings
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/findings/summary:
+    get:
+      tags:
+        - Findings
+      summary: Findings population summary with the counts that qualify it
+      description: 'Live counts over the findings population, reported alongside the facts that qualify them: how many open findings rest on a stale assertion, how many have never been scored, how many were scored over unknown inputs, and how many are asserted against an unresolved asset. An unscored finding is never counted as low priority, and the response states the limitation that no count can show what no connected scanner looks for.'
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Population counts with declared limitations.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetFindingsSummaryResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getFindingsSummary
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/findings/{findingId}:
+    get:
+      tags:
+        - Findings
+      summary: Finding detail with priority factors, attack path, remediation and acceptance
+      description: 'Everything needed to defend or dispute a single finding (contract W30): the factor-by-factor priority breakdown with unresolved inputs marked unknown, the attack path with observed and inferred steps distinguished by their own confidence, remediation with its verification reference, any acceptance with its expiry, and the raw evidence the collector produced with its content hash.'
+      parameters:
+        - name: findingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique finding ID identifying the target resource.
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: The finding with its factors, attack path, remediation, acceptance and evidence.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetFindingsByFindingIdResponse'
+        '404':
+          description: The referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getFindingsByFindingId
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/findings/{findingId}/accept:
+    post:
+      tags:
+        - Findings
+      summary: Accept a finding, with a mandatory expiry
+      description: 'Records an explicit decision to live with a finding and moves it to ACCEPTED. expiresAt is required: an open-ended acceptance is indistinguishable from having forgotten about the finding, so every acceptance carries the date the decision is revisited. The rationale, the authority it was taken under and any compensating controls are stored with it, and re-accepting an already-accepted finding supersedes the previous decision rather than silently stacking.'
+      parameters:
+        - name: findingId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique finding ID identifying the target resource.
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostFindingsByFindingIdAcceptRequest'
+      responses:
+        '201':
+          description: The recorded acceptance.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostFindingsByFindingIdAcceptResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: The referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postFindingsByFindingIdAccept
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/findings/acceptances/expire-lapsed:
+    post:
+      tags:
+        - Findings
+      summary: Sweep acceptances that have passed their expiry
+      description: 'Marks every ACTIVE acceptance whose expiry has passed as EXPIRED and returns the affected findings to TRIAGED, so a lapsed decision goes back in front of someone rather than leaving the finding reading as ACCEPTED with nothing currently authorising that. The acceptance row is retained, not deleted: the record of what was accepted, by whom and on what reasoning survives its expiry.'
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: The number of acceptances expired by this sweep.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostFindingsAcceptancesExpireLapsedResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postFindingsAcceptancesExpireLapsed
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/tenants/{tenantId}/offboarding/legal-holds:
+    get:
+      tags:
+        - Offboarding
+      summary: Legal holds standing over this tenant
+      description: 'Returns every legal hold recorded for the tenant, active and released. A hold is the lawful reason a deletion does not complete, so it has to be readable next to the deletion it blocks — otherwise an offboarding run that stops part-way looks like a failure rather than the control working as intended.'
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique tenant ID identifying the target resource.
+      responses:
+        '200':
+          description: Legal holds for this tenant, newest first.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetTenantsByTenantIdOffboardingLegalHoldsResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Actor is not authorized to view offboarding status for this tenant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getTenantsByTenantIdOffboardingLegalHolds
+  /api/v1/tenants/{tenantId}/offboarding/backup-expiry:
+    get:
+      tags:
+        - Offboarding
+      summary: Backup expiry records for this tenant's deletion
+      description: 'Deleting live data does not delete it from backups. This returns the backup classes still carrying the tenant''s data, when each is expected to age out, and whether that expiry has been independently verified. A tenant is not fully purged until these read EXPIRED_VERIFIED, and treating a completed deletion run as equivalent is the mistake this endpoint exists to prevent.'
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: tenantId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique tenant ID identifying the target resource.
+      responses:
+        '200':
+          description: Backup expiry records, earliest expected final expiry first.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetTenantsByTenantIdOffboardingBackupExpiryResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Actor is not authorized to view offboarding status for this tenant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getTenantsByTenantIdOffboardingBackupExpiry
+  /api/v1/reporting/definitions:
+    get:
+      tags:
+        - Reporting
+      summary: List active report definitions a snapshot can be generated from
+      description: 'Report definitions are platform-wide rather than tenant-scoped. Each carries the source requirements a snapshot of it must satisfy, which is what makes a generated report''s scope checkable against what it claims to cover rather than merely asserted in its title.'
+      responses:
+        '200':
+          description: Active report definitions, by name.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetReportingDefinitionsResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getReportingDefinitions
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/context/assets/resolution-decisions:
+    get:
+      tags:
+        - SecurityContext
+      summary: Asset resolution decisions — the reconciliation review queue
+      description: 'Returns the resolution decisions behind the asset inventory: which source record was matched to which entity, at what confidence, by which resolver version, and on what reasoning. A low-confidence or unresolved decision is what a reviewer needs to see before downstream severity logic relies on the match; it is a review item, not an error.'
+      operationId: getContextAssetsResolutionDecisions
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: number
+            nullable: true
+          description: Optional limit filter.
+      responses:
+        '200':
+          description: Asset resolution decisions, newest first.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetContextAssetsResolutionDecisionsResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

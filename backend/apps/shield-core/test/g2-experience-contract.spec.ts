@@ -49,11 +49,17 @@ describe('G2-EXPERIENCE-01: G2 Experience Contract Surfaces', () => {
   it('Invariant 2: every G2 surface renders through ContractSurface and declares its contract id', () => {
     for (const { id, route } of contracts) {
       const content = read(route);
-      expect({ route, usesSurface: content.includes('ContractSurface') }).toEqual({
+      expect({
+        route,
+        usesSurface: content.includes('ContractSurface'),
+      }).toEqual({
         route,
         usesSurface: true,
       });
-      expect({ route, declaresId: content.includes(`contractId="${id}"`) }).toEqual({
+      expect({
+        route,
+        declaresId: content.includes(`contractId="${id}"`),
+      }).toEqual({
         route,
         declaresId: true,
       });
@@ -85,10 +91,17 @@ describe('G2-EXPERIENCE-01: G2 Experience Contract Surfaces', () => {
     // NOMINAL must be the final else of the status ladder, guarded by there
     // being no reasons — not an independently reachable branch.
     expect(contractState).toContain('status = "NOMINAL"');
-    expect(contractState).toMatch(/reasons\.length > 0[\s\S]*?status = "PARTIAL"/);
+    expect(contractState).toMatch(
+      /reasons\.length > 0[\s\S]*?status = "PARTIAL"/,
+    );
     // Unauthorized and unavailable must short-circuit ahead of it.
     const nominalIndex = contractState.indexOf('status = "NOMINAL"');
-    for (const earlier of ['UNAUTHORIZED', 'UNAVAILABLE', 'DEGRADED', 'STALE']) {
+    for (const earlier of [
+      'UNAUTHORIZED',
+      'UNAVAILABLE',
+      'DEGRADED',
+      'STALE',
+    ]) {
       expect(contractState.indexOf(`status = "${earlier}"`)).toBeLessThan(
         nominalIndex,
       );
@@ -102,7 +115,9 @@ describe('G2-EXPERIENCE-01: G2 Experience Contract Surfaces', () => {
     );
     for (const state of ['DegradedState', 'StaleState', 'PartialState']) {
       expect(surface).toContain(state);
-      expect(surface.indexOf(state)).toBeLessThan(surface.indexOf('{children}'));
+      expect(surface.indexOf(state)).toBeLessThan(
+        surface.indexOf('{children}'),
+      );
     }
   });
 
@@ -125,6 +140,8 @@ describe('G2-EXPERIENCE-01: G2 Experience Contract Surfaces', () => {
       'utf8',
     );
     expect(surface).toContain('export function UnbackedField');
-    expect(surface).toContain('Required by the contract; no source records this');
+    expect(surface).toContain(
+      'Required by the contract; no source records this',
+    );
   });
 });

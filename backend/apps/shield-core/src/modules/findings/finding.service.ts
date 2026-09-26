@@ -60,11 +60,15 @@ export class FindingService {
    * RESOLVED and FALSE_POSITIVE findings are not aged: they are closed
    * records, and nothing is expected to keep re-asserting them.
    */
-  deriveAssertion(finding: FindingWithRelations, now = new Date()): FindingAssertion {
+  deriveAssertion(
+    finding: FindingWithRelations,
+    now = new Date(),
+  ): FindingAssertion {
     const expectedWithinHours =
       finding.reassertion_interval_hours ?? DEFAULT_REASSERTION_HOURS;
     const ageHours =
-      (now.getTime() - new Date(finding.last_confirmed_at).getTime()) / 3_600_000;
+      (now.getTime() - new Date(finding.last_confirmed_at).getTime()) /
+      3_600_000;
 
     if (['RESOLVED', 'FALSE_POSITIVE'].includes(finding.status)) {
       return {
@@ -114,7 +118,8 @@ export class FindingService {
       scored: finding.priority_score !== null,
       unknownInputs,
       resolvedFactors,
-      computedOverUnknowns: finding.priority_score !== null && unknownInputs.length > 0,
+      computedOverUnknowns:
+        finding.priority_score !== null && unknownInputs.length > 0,
     };
   }
 
@@ -195,7 +200,9 @@ export class FindingService {
           authority: params.authority,
           accepted_by: params.acceptedBy,
           authorization_decision_id: params.authorizationDecisionId,
-          compensating_controls: JSON.stringify(params.compensatingControls ?? []),
+          compensating_controls: JSON.stringify(
+            params.compensatingControls ?? [],
+          ),
           risk_ref: params.riskRef,
           expires_at: params.expiresAt,
           review_at: params.reviewAt,
@@ -205,7 +212,9 @@ export class FindingService {
           rationale: params.rationale,
           authority: params.authority,
           accepted_by: params.acceptedBy,
-          compensating_controls: JSON.stringify(params.compensatingControls ?? []),
+          compensating_controls: JSON.stringify(
+            params.compensatingControls ?? [],
+          ),
           risk_ref: params.riskRef,
           expires_at: params.expiresAt,
           review_at: params.reviewAt,
@@ -231,7 +240,11 @@ export class FindingService {
    */
   async expireLapsedAcceptances(tenantId: string, now = new Date()) {
     const lapsed = await this.prisma.findingAcceptance.findMany({
-      where: { tenant_id: tenantId, status: 'ACTIVE', expires_at: { lte: now } },
+      where: {
+        tenant_id: tenantId,
+        status: 'ACTIVE',
+        expires_at: { lte: now },
+      },
     });
     if (lapsed.length === 0) return { expired: 0 };
 
@@ -272,11 +285,14 @@ export class FindingService {
       metrics: {
         total: decorated.length,
         open: open.length,
-        staleAssertions: open.filter((f) => f.assertion.state === 'STALE').length,
-        ageingAssertions: open.filter((f) => f.assertion.state === 'AGEING').length,
-        unscored: open.filter((f) => !f.priorityIntegrity.scored).length,
-        scoredOverUnknowns: open.filter((f) => f.priorityIntegrity.computedOverUnknowns)
+        staleAssertions: open.filter((f) => f.assertion.state === 'STALE')
           .length,
+        ageingAssertions: open.filter((f) => f.assertion.state === 'AGEING')
+          .length,
+        unscored: open.filter((f) => !f.priorityIntegrity.scored).length,
+        scoredOverUnknowns: open.filter(
+          (f) => f.priorityIntegrity.computedOverUnknowns,
+        ).length,
         unresolvedAsset: open.filter((f) => !f.asset_id).length,
       },
       definition:
