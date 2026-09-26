@@ -190,6 +190,34 @@ export class OffboardingController {
     return this.retentionPolicyService.listForTenant(tenantId);
   }
 
+  /**
+   * Legal holds standing over this tenant (W36).
+   *
+   * A hold is the reason a deletion does not complete, so it has to be
+   * readable next to the deletion it blocks — otherwise an offboarding run
+   * that stops part-way looks like a failure rather than the control working.
+   */
+  @Get('legal-holds')
+  async listLegalHolds(@Param('tenantId') tenantId: string) {
+    return this.prisma.legalHold.findMany({
+      where: { tenant_id: tenantId },
+      orderBy: { starts_at: 'desc' },
+    });
+  }
+
+  /**
+   * Backup expiry for this tenant's deletion (W36). Deleting live data does
+   * not delete it from backups; the tenant's data is gone when these records
+   * say the backups carrying it have aged out, not before.
+   */
+  @Get('backup-expiry')
+  async listBackupExpiry(@Param('tenantId') tenantId: string) {
+    return this.prisma.backupExpiryRecord.findMany({
+      where: { tenant_id: tenantId },
+      orderBy: { final_expiry_expected_at: 'asc' },
+    });
+  }
+
   @Get('deletion-attestation')
   async getAttestation(@Param('tenantId') tenantId: string) {
     return this.prisma.deletionAttestation.findFirst({

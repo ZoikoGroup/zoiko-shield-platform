@@ -127,6 +127,39 @@ export class ApiClientService {
     return { apiClient, tenantId: apiClient.tenant_id };
   }
 
+  /**
+   * Tenant-scoped client list for the developer surface (W37).
+   *
+   * Credentials are joined for their lifecycle facts only — fingerprint,
+   * version, status, expiry. The secret itself is never stored (only a hash),
+   * so there is nothing here that could leak one; what a tenant needs to see
+   * is which credential is live and when it was last rotated.
+   */
+  async list(tenantId: string, limit = 100) {
+    return this.prisma.apiClient.findMany({
+      where: { tenant_id: tenantId },
+      take: limit,
+      orderBy: { created_at: 'desc' },
+      include: {
+        credentials: {
+          orderBy: { secret_version: 'desc' },
+          select: {
+            id: true,
+            secret_version: true,
+            fingerprint: true,
+            status: true,
+            issued_at: true,
+            expires_at: true,
+            revoked_at: true,
+          },
+        },
+        scopeGrants: {
+          orderBy: { created_at: 'desc' },
+        },
+      },
+    });
+  }
+
   async suspend(tenantId: string, apiClientId: string) {
     const client = await this.assertTenantOwnership(tenantId, apiClientId);
     const [updated] = await this.prisma.$transaction([

@@ -493,6 +493,37 @@ export class CaseService {
     });
   }
 
+  /**
+   * The read model behind SOC shift handover (W20).
+   *
+   * Handover is the one moment where a missing fact becomes someone else's
+   * problem, so this is deliberately one query rather than a fan-out the
+   * caller could partially fail: open cases with their response clock, their
+   * pending quality reviews and their most recent notes. The outgoing shift's
+   * commitments and watch items are exactly those rows.
+   */
+  async handoverSnapshot(tenantId: string, limit = 200) {
+    return this.prisma.case.findMany({
+      where: {
+        tenant_id: tenantId,
+        status: { notIn: ['CLOSED', 'RESOLVED'] },
+      },
+      take: limit,
+      orderBy: [{ severity: 'asc' }, { created_at: 'asc' }],
+      include: {
+        slaClock: true,
+        qualityReviews: {
+          where: { status: 'PENDING' },
+          orderBy: { created_at: 'desc' },
+        },
+        notes: {
+          take: 3,
+          orderBy: { created_at: 'desc' },
+        },
+      },
+    });
+  }
+
   async list(tenantId: string, status?: string, limit = 50) {
     return this.prisma.case.findMany({
       where: { tenant_id: tenantId, ...(status ? { status } : {}) },

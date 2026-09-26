@@ -182,13 +182,32 @@ export class AssetIdentityContextService {
   }
 
   /**
-   * Get assets for tenant
+   * Get assets for tenant.
+   *
+   * Aliases are included because W29 requires the source authority behind an
+   * asset to be visible: an inventory row that cannot say which connector
+   * asserted it, and whether two sources agree, is a claim rather than
+   * evidence. The resolution decisions carry the reconciliation reasoning.
    */
   async getAssets(tenantId: string, limit = 50) {
     return this.prisma.asset.findMany({
       where: { tenant_id: tenantId },
       take: limit,
       orderBy: { last_seen_at: 'desc' },
+      include: { aliases: true },
+    });
+  }
+
+  /**
+   * Resolution decisions for the asset population — the review queue behind
+   * the inventory. A decision with low confidence, or one taken by an older
+   * resolver version, is what a reviewer needs to see; it is not an error.
+   */
+  async getAssetResolutionDecisions(tenantId: string, limit = 100) {
+    return this.prisma.resolutionDecision.findMany({
+      where: { tenant_id: tenantId, entity_type: 'ASSET' },
+      take: limit,
+      orderBy: { created_at: 'desc' },
     });
   }
 

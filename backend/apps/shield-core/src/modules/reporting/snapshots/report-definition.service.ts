@@ -38,6 +38,19 @@ export class ReportDefinitionService {
     });
   }
 
+  /**
+   * The report definitions a snapshot can be built from (W32). Definitions
+   * are platform-wide rather than tenant-scoped, and each carries the source
+   * requirements a snapshot of it must satisfy — which is what makes a
+   * generated report's scope checkable rather than asserted.
+   */
+  async listActive() {
+    return this.prisma.reportDefinition.findMany({
+      where: { status: 'ACTIVE' },
+      orderBy: { name: 'asc' },
+    });
+  }
+
   async getById(reportDefinitionId: string) {
     const def = await this.prisma.reportDefinition.findUnique({
       where: { id: reportDefinitionId },

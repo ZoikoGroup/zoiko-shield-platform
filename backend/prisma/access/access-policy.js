@@ -41,6 +41,9 @@ const SERVICE_ROLES = {
       'evidence.EvidenceRecord': 'readwrite',
       'security_context.Asset': 'readwrite',
       'security_context.IdentityEntity': 'readwrite',
+      // Read-only: the resolver writes decisions through its own path; the
+      // asset context API only reads them back for the W29 review queue.
+      'security_context.ResolutionDecision': 'read',
       'controls.ControlObjective': 'readwrite',
       'controls.ControlImplementation': 'read',
       'assessments.EvidenceGap': 'read',

@@ -56,6 +56,12 @@ export class DeveloperApiController {
     });
   }
 
+  /** Tenant-scoped list backing the developer surface (W37). */
+  @Get()
+  async list(@Headers('x-tenant-id') tenantId: string) {
+    return this.apiClientService.list(requireTenantId(tenantId));
+  }
+
   @Post(':id/suspend')
   async suspend(
     @Headers('x-tenant-id') tenantId: string,

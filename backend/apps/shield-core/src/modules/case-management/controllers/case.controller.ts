@@ -296,6 +296,17 @@ export class CaseController {
     return { statusCode: HttpStatus.CREATED, data: createdCase };
   }
 
+  /**
+   * Tenant-wide handover snapshot (W20). Declared before the ':caseId' route
+   * so Nest does not read 'handover' as a case id.
+   */
+  @Get('handover')
+  async handover(@Headers('x-tenant-id') headerTenantId: string) {
+    const tenantId = this.resolveTenantId(headerTenantId);
+    const cases = await this.caseService.handoverSnapshot(tenantId);
+    return { statusCode: HttpStatus.OK, data: cases };
+  }
+
   @Get(':caseId')
   async getById(
     @Headers('x-tenant-id') headerTenantId: string,
@@ -389,6 +400,23 @@ export class CaseController {
     await this.caseService.assertTenantOwnership(tenantId, caseId);
     const timeline = await this.timelineService.listForCase(tenantId, caseId);
     return { statusCode: HttpStatus.OK, data: timeline };
+  }
+
+  /**
+   * The case communications record (W19). Notes carry a classification, so
+   * what was said to the customer and what was said internally stay
+   * distinguishable after the fact; a superseded note keeps its predecessor
+   * rather than overwriting it.
+   */
+  @Get(':caseId/notes')
+  async getNotes(
+    @Headers('x-tenant-id') headerTenantId: string,
+    @Param('caseId') caseId: string,
+  ) {
+    const tenantId = this.resolveTenantId(headerTenantId);
+    await this.caseService.assertTenantOwnership(tenantId, caseId);
+    const notes = await this.noteService.listForCase(tenantId, caseId);
+    return { statusCode: HttpStatus.OK, data: notes };
   }
 
   @Post(':caseId/notes')
