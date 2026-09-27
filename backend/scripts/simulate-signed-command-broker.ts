@@ -14,6 +14,7 @@ import {
   SignedCommandBrokerService,
   SignedCommandEnvelope,
 } from '../apps/shield-action/src/broker/signed-command-broker.service';
+import { DevGovernedCommandSigner } from '../apps/shield-action/src/command-signing/dev-governed-command-signer.service';
 
 async function main() {
   console.log('========================================================================');
@@ -21,11 +22,12 @@ async function main() {
   console.log('    Specification: Backend Build Guide §LAB 15 (Action Broker & Response)');
   console.log('========================================================================\n');
 
-  const brokerService = new SignedCommandBrokerService();
+  const signer = new DevGovernedCommandSigner();
+  const brokerService = new SignedCommandBrokerService(signer);
   const tenantId = `tenant-bank-${crypto.randomUUID().slice(0, 6)}`;
 
   console.log('[1/3] Generating Canonical Signed Command Envelope for Endpoint Isolation...');
-  const command: SignedCommandEnvelope = brokerService.createSignedCommand(
+  const command: SignedCommandEnvelope = await brokerService.createSignedCommand(
     tenantId,
     'ISOLATE_ENDPOINT',
     'k8s-payment-node-01',
@@ -42,7 +44,7 @@ async function main() {
   console.log(`  🔒 Nonce: ${command.nonce}`);
 
   console.log('\n[2/3] Dispatching Governed Command to Certified Action Adapter...');
-  const receipt = brokerService.dispatchGovernedCommand(command);
+  const receipt = await brokerService.dispatchGovernedCommand(command);
   console.log(`  ✔ Execution Receipt ID: ${receipt.receiptId}`);
   console.log(`  ✔ Status: ${receipt.executionStatus}`);
   console.log(`  ✔ Observed Target State: ${receipt.observedState}`);
@@ -50,7 +52,7 @@ async function main() {
   console.log(`  🔒 Attestation Digest: ${receipt.attestationDigest}`);
 
   console.log('\n[3/3] Simulating Adversarial Replay Attack with Consumed Nonce...');
-  const replayReceipt = brokerService.dispatchGovernedCommand(command); // Replay
+  const replayReceipt = await brokerService.dispatchGovernedCommand(command); // Replay
   console.log(`  🛑 Replay Intercepted -> Status: ${replayReceipt.executionStatus}`);
   console.log(`  🛑 Observed State: ${replayReceipt.observedState}`);
   console.log('  🔒 Defense Verified: Replayed command rejected before reaching customer target.');

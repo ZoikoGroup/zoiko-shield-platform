@@ -228,9 +228,12 @@ async function runE2ELifecycleSimulation() {
     tenantId,
     environmentId,
     overallComplianceScore: 96.8,
+    totalControls: 42,
     totalControlsEvaluated: 42,
     compliantControlsCount: 41,
     nonCompliantControlsCount: 1,
+    notEvaluatedControlsCount: 0,
+    notEvaluatedControlCodes: [],
     evaluations: [
       {
         controlCode: 'CC6.1',

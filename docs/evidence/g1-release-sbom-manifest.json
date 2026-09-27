@@ -1,0 +1,93 @@
+{
+  "sbomId": "SBOM-ZS-1790318291015",
+  "releaseTag": "v1.0.0-GA-G1",
+  "generatedAt": "2026-09-25T06:38:11.012Z",
+  "profile": "SPDX-2.3-JSON / CycloneDX-1.5",
+  "specVersion": "ZS-SEC-SBOM-001",
+  "publisher": {
+    "organization": "Zoiko Group Ltd",
+    "product": "ZoikoShield Enterprise Sovereign Security Platform",
+    "securityContact": "security@zoikoshield.io"
+  },
+  "components": [
+    {
+      "name": "shield-core",
+      "version": "1.0.0",
+      "type": "microservice",
+      "language": "TypeScript / Node.js 20",
+      "sourcePath": "backend/apps/shield-core",
+      "license": "Proprietary",
+      "directDependenciesCount": 34,
+      "entryPointDigest": "8d1b4686aedffd01d857b7a2bd0af6d78cde76d9176056bff50f98655ac7627b"
+    },
+    {
+      "name": "shield-ingest",
+      "version": "1.0.0",
+      "type": "microservice",
+      "language": "TypeScript / Node.js 20",
+      "sourcePath": "backend/apps/shield-ingest",
+      "license": "Proprietary",
+      "directDependenciesCount": 34,
+      "entryPointDigest": "893e3deeb129b9f8ec27b364b215953714e63250f4f562a4f40ce788a0fe05dd"
+    },
+    {
+      "name": "shield-ai",
+      "version": "1.0.0",
+      "type": "microservice",
+      "language": "TypeScript / Node.js 20",
+      "sourcePath": "backend/apps/shield-ai",
+      "license": "Proprietary",
+      "directDependenciesCount": 34,
+      "entryPointDigest": "8cdb1c6f70ca8c2a75af58f06dec6fd0adf80722bd3f0d15dbab2d330a32b0e3"
+    },
+    {
+      "name": "shield-action",
+      "version": "1.0.0",
+      "type": "microservice",
+      "language": "TypeScript / Node.js 20",
+      "sourcePath": "backend/apps/shield-action",
+      "license": "Proprietary",
+      "directDependenciesCount": 34,
+      "entryPointDigest": "2f2f6c98bd5ce6009ed2079f308217cf72f326fb6d598dc681e42833ac0e3cc4"
+    },
+    {
+      "name": "shield-anchor",
+      "version": "1.0.0",
+      "type": "microservice",
+      "language": "TypeScript / Node.js 20",
+      "sourcePath": "backend/apps/shield-anchor",
+      "license": "Proprietary",
+      "directDependenciesCount": 34,
+      "entryPointDigest": "ca52036a75f536d1d0b5d00978f351c22a24e618e7ce66c8dff41bbdfee2e242"
+    },
+    {
+      "name": "verifier-cli",
+      "version": "1.0.0",
+      "type": "utility",
+      "language": "TypeScript / Node.js Stdlib (Zero Runtime Dep)",
+      "sourcePath": "backend/apps/verifier-cli",
+      "license": "Apache-2.0 / Dual",
+      "directDependenciesCount": 0,
+      "entryPointDigest": "7474554fd76093208717a626f69f8bad6c6110098cde57386b5e75efa834701d"
+    },
+    {
+      "name": "frontend",
+      "version": "1.0.0",
+      "type": "frontend",
+      "language": "TypeScript / Next.js 15 / React 19",
+      "sourcePath": "frontend",
+      "license": "Proprietary",
+      "directDependenciesCount": 6,
+      "entryPointDigest": "5872042db2d14d6407ef2a74130de0e97a32bcbcffc2eb9d20128ceac6f42d3e"
+    }
+  ],
+  "dependenciesSummary": {
+    "total": 87,
+    "production": 40,
+    "development": 47
+  },
+  "cryptographicDigests": {
+    "backendPackageJsonSha256": "e19653ab19732eb4868e434992dd42ed745aa6292ccf6a0ec9bc95ae7acf5769",
+    "frontendPackageJsonSha256": "ded1e52e6f93871217b147a9cb1f2df65ee74b703f443bdf7712fe0aef0ba91c"
+  }
+}

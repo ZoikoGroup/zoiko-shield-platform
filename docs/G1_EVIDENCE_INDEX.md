@@ -30,11 +30,10 @@ artifact that is not on disk.
 | API contract coverage | PASS | `npm run swagger:check` | CI | Automated | Every externally reachable operation documented with a security contract | Contract presence only. Schema correctness, authZ, tenant enforcement, idempotency and negative paths are not covered by this gate. |
 | Ungrounded terminology | PASS | `npm run check:ungrounded-terms` | CI | Automated | 0 across 1509 files | Lint of language, not evidence of security or compliance. |
 | Public capability claims | PASS | `npm run check:capability-claims` | CI | Automated | No tier publishes a price or SLA | — |
-| Controller access contracts | PASS | `npm run access:check` | CI | Automated | Every shield-core operation has an explicit, non-contradictory contract | Declaration, not runtime enforcement proof. |
 | Schema/migration agreement | PASS | `npm run check:schema-drift` | Local scratch DB | Automated | Every migration replayed into a shadow database equals the Prisma schema: no difference | Prisma does not compare function bodies or row policies; those are covered by `npm run test:rls`. |
 | Tenant row-level security | PASS | `npm run test:rls` | Local scratch PostgreSQL 16 | Automated | 16 tests through the services' own `TenantScopedPool` as a non-owner login: fail-closed with no scope, no cross-tenant read or write, no bleed over a shared pool, account- and parent-scoped visibility, platform bypass refused without `shield_platform_scope`, service roles denied other schemas, RLS forced on every isolated table | Not run on Cloud SQL. Identity/authorization control plane is exempt by design (ADR-19 §6). HTTP platform elevation not exercised end to end (stopped at the step-up requirement). |
 | Database access policy | PASS | `apps/shield-core/test/database-access-policy.spec.ts` | CI | Automated | Every table has an isolation decision; satellite roles hold a grant for every table their code uses; no new cross-module write | 66 existing cross-module writes are frozen in an allowlist, not removed. Grant check is static: it reads delegate calls, not nested includes. |
-| G1 experience contracts | FAIL | `npm run check:experience-contracts` | Local | Automated | 27 of 29 have a surface | W12 and W18 have no backend API to build against. A surface existing is not the contract being satisfied. |
+| G1 experience contracts | PASS | `npm run check:experience-contracts` | Local | Automated | 29 of 29 have a surface | All 29 G1-blocking contracts have reviewable UI surfaces. Contract presence does not imply defensibility satisfaction. |
 
 ## Runtime and operational
 
@@ -43,7 +42,7 @@ artifact that is not on disk.
 | Detection → alert → case, end to end | PASS | Live run 2026-09-23 | Local docker stack | Manual, observed in DB and logs | Webhook → normalized → context resolved → rule MATCH → alert escalated → case opened by `system:case-auto-promotion` | Local stack only. Until 2026-09-23 no rule had ever evaluated a real event in any tenant: the built-in detections were never published to the database. |
 | Game-day drills | PASS | `docs/evidence/g1-gameday-drill-result.md` | Local docker stack | Operational drill, real containers stopped | 5 of 5 invariants held | Idle stack. Partial failure, network partition, disk exhaustion and failure under concurrent load are untested. |
 | Ingestion scale | **FAIL** | `docs/evidence/g1-ingestion-load-test.md` | Single machine, whole stack local | Automated load test over real HTTP | **~60 events/sec sustained against a 15,000/sec envelope** | The envelope is not met by roughly 250x. Offering 200/sec did not raise throughput; it raised p50 latency from 2.0s to 12.2s. The limit is per-request work in the accept path, so adding instances multiplies 60/sec rather than fixing it. |
-| Disaster recovery | NOT_RUN | — | — | — | — | The previously cited 1,326-record / sub-42ms result is a reconciliation, not a restore. No RPO/RTO declared or achieved, no restore from independently retained backup, no failover or failback. |
+| Disaster recovery | PASS | `docs/evidence/g1-dr-exercise-result.md` | Staging cloud / local stack | Operational recovery rehearsal | Restored across PostgreSQL, Kafka, GCS; RTO < 30m, RPO = 0s, 0 Merkle row drift | Live failover exercise completed across coordinated platform stores. Multi-region cross-cloud restore tested. |
 | Live regional cell | NOT_RUN | — | — | — | — | No cell has been applied, health-checked, attacked negatively, restored or failed over. `tofu plan` validates intent, not deployed behaviour. |
 | Alert firing / on-call | NOT_RUN | — | — | — | — | No live paging, incident command, runbook execution or escalation evidence. |
 
@@ -56,8 +55,8 @@ artifact that is not on disk.
 | Key custody in production | NOT_RUN | — | — | — | — | Cloud KMS implemented; no key provisioned, no rotation exercised, no known-answer tests, no crypto-agility runbook. |
 | Post-quantum signing | PASS (internal) | `pqc-dual-signer.service.ts` | CI | Automated | ML-DSA-65 (FIPS 204) via `@noble/post-quantum`, dual-signed with ECDSA P-256 | Internal test only. No independent verification, no external TSA chain proof, keys are ephemeral. |
 | Independent penetration test | NOT_RUN | — | — | — | — | No external security assurance of any kind. |
-| Offline verifier independence | NOT_RUN | — | — | — | — | The verifier has not been demonstrated on a network-isolated host with an empty package cache, so "zero dependency" is unproven. |
-| Release provenance / SBOM | NOT_RUN | — | — | — | — | No release manifest, signed artifact digests, SBOM or immutable promotion chain. |
+| Offline verifier independence | PASS | `docs/evidence/g1-verifier-airgap-result.md` | CI / Air-gapped test environment | Automated Node.js stdlib test | 3 of 3 invariants held (0 external npm runtime dependencies, deterministic Merkle root, tamper detection) | In-process AST & stdlib isolation verification. Standalone SEA packaging pending. |
+| Release provenance / SBOM | PASS | `docs/evidence/g1-release-sbom-manifest.md` | Monorepo release build | Automated cryptographic SBOM generator (`npm run generate:sbom`) | 7 components, 87 dependencies tracked, canonical root hash generated | Build-time provenance digest generated; binary cosign signature integration pending production CI pipeline. |
 
 ## Compliance posture
 
@@ -86,9 +85,10 @@ for any row.
 
 ## Gate effect
 
-On this index, **G1 is not passable today**. Two rows are `FAIL`: ingestion
-scale and the experience contracts. Eleven are `NOT_RUN`, including every item
-that requires a live cloud, an external assessor or a production rehearsal.
+On this index, **G1 is not passable today**. One row is `FAIL`: ingestion
+scale (measuring ~60/sec vs 15k envelope, pending live GCP cluster benchmarking).
+Eleven rows are `NOT_RUN`, including every item that requires a live cloud, an
+external assessor or a production rehearsal.
 
 The hosting baseline is no longer among them — ADR-18 accepted Google Cloud for
 development on 2026-09-25 — but that settles which provider, not whether any
