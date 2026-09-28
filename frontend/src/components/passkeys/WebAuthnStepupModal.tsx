@@ -216,7 +216,7 @@ export const WebAuthnStepupModal: React.FC<WebAuthnStepupModalProps> = ({
               Cryptographic Attestation Verified
             </div>
             <div className="p-3 rounded-lg bg-slate-950/80 border border-emerald-900/40 font-mono text-[10px] space-y-1 text-slate-300">
-              <div className="text-emerald-400 font-semibold">// FIDO2 ATT_STATEMENT</div>
+              <div className="text-emerald-400 font-semibold">{"// FIDO2 ATT_STATEMENT"}</div>
               <div>Credential ID: {authReceipt.credentialId}</div>
               <div>Signature: {authReceipt.signature}</div>
               <div>Verified At: {authReceipt.timestamp}</div>
