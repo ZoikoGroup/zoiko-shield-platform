@@ -14,6 +14,7 @@ import { CaseTimeline } from "@/components/cases/CaseTimeline";
 import { EvidenceLedger } from "@/components/cases/EvidenceLedger";
 import { AiSummaryPanel } from "@/components/cases/AiSummaryPanel";
 import { ResponseSimulator } from "@/components/cases/ResponseSimulator";
+import { AttackGraphVisualizer } from "@/components/cases/AttackGraphVisualizer";
 import {
   FolderLock,
   Clock,
@@ -22,6 +23,7 @@ import {
   Server,
   ArrowRight,
   ShieldAlert,
+  Radio,
 } from "lucide-react";
 
 export default function CaseWorkspacePage() {
@@ -58,6 +60,12 @@ export default function CaseWorkspacePage() {
       label: "Overview & Timeline",
       icon: <Clock className="w-4 h-4" />,
       badge: currentCase.timeline.length,
+    },
+    {
+      id: "graph",
+      label: "Attack Path & Graph",
+      icon: <Radio className="w-4 h-4" />,
+      badge: "MITRE TTP",
     },
     {
       id: "evidence",
@@ -147,6 +155,13 @@ export default function CaseWorkspacePage() {
       <div className="pt-2">
         {activeTab === "overview" && (
           <CaseTimeline timeline={currentCase.timeline} />
+        )}
+
+        {activeTab === "graph" && (
+          <AttackGraphVisualizer
+            currentCase={currentCase}
+            onSimulateContainment={() => setActiveTab("response")}
+          />
         )}
 
         {activeTab === "evidence" && (

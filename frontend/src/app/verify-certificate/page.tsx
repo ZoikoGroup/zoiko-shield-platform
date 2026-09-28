@@ -22,6 +22,7 @@ import {
   LoadingState,
   UnavailableState,
 } from "@/components/states/mandatory-ui-states";
+import { verifyCertificateJson } from "@/lib/forensic-verifier";
 
 interface CertificateCheck {
   envelopeIntegrity: boolean;
@@ -95,7 +96,7 @@ export default function VerifyCertificatePage() {
     setVerificationError(null);
   };
 
-  const handleVerify = (e?: React.FormEvent) => {
+  const handleVerify = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!jsonInput.trim()) {
       setVerificationError("Please paste or upload an audit certificate JSON payload.");
@@ -111,10 +112,15 @@ export default function VerifyCertificatePage() {
         throw new Error("Invalid audit certificate schema. Missing required cryptographic or check summary fields.");
       }
 
-      // Re-verify Merkle Root equality
-      if (parsed.cryptographicSummary.declaredMerkleRoot !== parsed.cryptographicSummary.recomputedMerkleRoot) {
+      // Re-verify with client-side WebCrypto
+      const webCryptoResult = await verifyCertificateJson(parsed);
+
+      if (!webCryptoResult.isValid || !webCryptoResult.merkleRootValid) {
         parsed.verificationStatus = "TAMPER_DETECTED";
         parsed.checks.merkleRootIntegrity = false;
+      } else {
+        parsed.verificationStatus = "VERIFIED_COMPLIANT";
+        parsed.checks.merkleRootIntegrity = true;
       }
 
       setCertificate(parsed);
@@ -131,11 +137,16 @@ export default function VerifyCertificatePage() {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       const content = event.target?.result as string;
       setJsonInput(content);
       try {
         const parsed = JSON.parse(content);
+        const webCryptoResult = await verifyCertificateJson(parsed);
+        if (!webCryptoResult.isValid || !webCryptoResult.merkleRootValid) {
+          parsed.verificationStatus = "TAMPER_DETECTED";
+          if (parsed.checks) parsed.checks.merkleRootIntegrity = false;
+        }
         setCertificate(parsed);
         setVerificationError(null);
       } catch (err: any) {

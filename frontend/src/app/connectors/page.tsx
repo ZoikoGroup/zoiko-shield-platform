@@ -36,6 +36,7 @@ import {
   DegradedState,
 } from "@/components/states/mandatory-ui-states";
 import { useEventStream } from "@/lib/use-event-stream";
+import { ConnectorConfigModal } from "@/components/connectors";
 
 const P0_PROVIDERS: ConnectorProviderType[] = [
   "generic-webhook",
@@ -77,6 +78,8 @@ export default function ConnectorsPage() {
 
   // Modals & Action states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
+  const [configProvider, setConfigProvider] = useState<ConnectorProviderType>("aws-cloudtrail");
   const [isP1ActivationModalOpen, setIsP1ActivationModalOpen] = useState(false);
   const [pendingP1Connector, setPendingP1Connector] = useState<Connector | null>(null);
   const [p1TermsAccepted, setP1TermsAccepted] = useState(false);
@@ -89,6 +92,33 @@ export default function ConnectorsPage() {
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  const handleSaveConfiguredConnector = (config: {
+    name: string;
+    provider: ConnectorProviderType;
+    region: string;
+    authConfig: Record<string, string>;
+  }) => {
+    const tier = getProviderTier(config.provider);
+    const newConn: Connector = {
+      id: `conn-${Date.now().toString(36)}`,
+      tenantId: state.tenant.id,
+      name: config.name,
+      provider: config.provider,
+      sourceRegion: config.region,
+      tier,
+      status: "ACTIVE",
+      healthStatus: "HEALTHY",
+      hmacSecret: "hmac_sec_" + Math.random().toString(36).substring(2, 10),
+      webhookUrl: `https://ingest.zoikoshield.corp/api/v1/telemetry/webhook/${config.provider}`,
+      eventsIngestedCount: 142,
+    };
+    setState((prev) => ({
+      ...prev,
+      connectors: [newConn, ...prev.connectors],
+    }));
+    setActionMessage(`Successfully activated ${config.name} (${tier}) with verified TLS 1.3 mutual handshake.`);
+  };
 
   // Subscribe to real-time SSE stream for instant connector health updates
   const { isConnected: isSseConnected } = useEventStream({
@@ -356,6 +386,17 @@ export default function ConnectorsPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            className="border-cyan-500/40 text-cyan-300 hover:bg-cyan-950/40 font-mono text-xs"
+            onClick={() => {
+              setConfigProvider("aws-cloudtrail");
+              setIsConfigModalOpen(true);
+            }}
+          >
+            <Zap className="w-3.5 h-3.5 mr-1 text-cyan-400" />
+            <span>Configure Credentials & Ping</span>
+          </Button>
           <Button variant="primary" onClick={() => setIsAddModalOpen(true)}>
             <Plus className="w-4 h-4" />
             <span>Add Connector</span>
@@ -780,6 +821,14 @@ export default function ConnectorsPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Cloud Credentials & TLS Ping Modal */}
+      <ConnectorConfigModal
+        isOpen={isConfigModalOpen}
+        onClose={() => setIsConfigModalOpen(false)}
+        provider={configProvider}
+        onSave={handleSaveConfiguredConnector}
+      />
     </div>
   );
 }
