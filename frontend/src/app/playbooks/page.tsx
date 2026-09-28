@@ -13,7 +13,10 @@ import {
   Clock,
   UserCheck,
   FileCheck2,
+  Fingerprint,
+  ShieldAlert,
 } from "lucide-react";
+import { WebAuthnStepupModal } from "@/components/passkeys";
 
 interface PlaybookStep {
   stepNumber: number;
@@ -143,8 +146,30 @@ export default function PlaybooksRunPage() {
   const [runs, setRuns] = useState<PlaybookRun[]>(PLAYBOOK_RUNS);
   const [selectedRun, setSelectedRun] = useState<PlaybookRun>(PLAYBOOK_RUNS[0]);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [isStepupModalOpen, setIsStepupModalOpen] = useState(false);
+  const [pendingApprovalStep, setPendingApprovalStep] = useState<{ runId: string; stepNumber: number; stepName: string; action: string } | null>(null);
 
   const handleApproveStep = (runId: string, stepNumber: number) => {
+    const run = runs.find((r) => r.id === runId) || selectedRun;
+    const step = run.steps.find((s) => s.stepNumber === stepNumber);
+    setPendingApprovalStep({
+      runId,
+      stepNumber,
+      stepName: step?.name || "Containment Action",
+      action: step?.action || "ENFORCE_CONTAINMENT",
+    });
+    setIsStepupModalOpen(true);
+  };
+
+  const handlePasskeySuccess = (assertion: {
+    credentialId: string;
+    signature: string;
+    verifiedAt: string;
+  }) => {
+    if (!pendingApprovalStep) return;
+    const { runId, stepNumber } = pendingApprovalStep;
+    setIsStepupModalOpen(false);
+
     setRuns((prev) =>
       prev.map((r) => {
         if (r.id !== runId) return r;
@@ -154,7 +179,7 @@ export default function PlaybooksRunPage() {
                 ...s,
                 status: "COMPLETED" as const,
                 durationMs: 240,
-                outputLog: "4-eyes approval granted by secondary operator. WAF block 198.51.100.42/32 applied to perimeter.",
+                outputLog: `4-eyes FIDO2 key verified (${assertion.credentialId.substring(0, 16)}...). Execution completed and cryptographically signed.`,
               }
             : s.stepNumber === stepNumber + 1
             ? {
@@ -182,7 +207,7 @@ export default function PlaybooksRunPage() {
               ...s,
               status: "COMPLETED",
               durationMs: 240,
-              outputLog: "4-eyes approval granted by secondary operator. WAF block applied.",
+              outputLog: `4-eyes FIDO2 key verified (${assertion.credentialId.substring(0, 16)}...). Execution completed and cryptographically signed.`,
             }
           : s.stepNumber === stepNumber + 1
           ? {
@@ -195,7 +220,7 @@ export default function PlaybooksRunPage() {
       ),
     }));
 
-    setActionNotice("Playbook step approved via Dual-Custody. Execution completed and cryptographically signed.");
+    setActionNotice(`Playbook step authorized with FIDO2 passkey (Signature: ${assertion.signature.substring(0, 20)}...). Live containment active.`);
     setTimeout(() => setActionNotice(null), 6000);
   };
 
@@ -460,6 +485,19 @@ export default function PlaybooksRunPage() {
           </Card>
         </div>
       </div>
+
+      {/* WebAuthn Stepup Modal */}
+      {pendingApprovalStep && (
+        <WebAuthnStepupModal
+          isOpen={isStepupModalOpen}
+          onClose={() => setIsStepupModalOpen(false)}
+          actionTitle={pendingApprovalStep.stepName}
+          actionDescription={`Privileged 4-Eyes Dual Custody Quorum step required for ${pendingApprovalStep.action}. Attest with hardware security token.`}
+          targetResource="Perimeter WAF & Host EDR"
+          blastRadius="0.08 (Low Collateral)"
+          onSuccess={handlePasskeySuccess}
+        />
+      )}
     </div>
   );
 }

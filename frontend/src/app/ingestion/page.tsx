@@ -23,6 +23,7 @@ import {
   DegradedState,
   StaleState,
 } from "@/components/states/mandatory-ui-states";
+import { RegionalShardTopology } from "@/components/ingestion/RegionalShardTopology";
 
 export default function IngestionPage() {
   const router = useRouter();
@@ -370,6 +371,9 @@ export default function IngestionPage() {
           )}
         </Card>
       </div>
+
+      {/* Global Active-Active Ingestion Shards & Failover Topology */}
+      <RegionalShardTopology />
 
       {/* Live Normalized Events Backbone Feed Table */}
       <Card className="space-y-4">

@@ -38,11 +38,44 @@ interface StepTrace {
   observation: string;
 }
 
+interface HuntingTemplate {
+  id: string;
+  name: string;
+  mitreTtp: string;
+  hypothesis: string;
+}
+
+const HUNTING_TEMPLATES: HuntingTemplate[] = [
+  {
+    id: "hunt-kerberos",
+    name: "Kerberoasting & Service Ticket Spraying",
+    mitreTtp: "T1558.003",
+    hypothesis: "Adversary requesting RC4-encrypted Kerberos TGS tickets for high-privilege service accounts to crack offline.",
+  },
+  {
+    id: "hunt-c2-beacon",
+    name: "High-Frequency C2 HTTP/DNS Beaconing",
+    mitreTtp: "T1071.001",
+    hypothesis: "Compromised database host transmitting periodic encrypted beacons to an unregistered external IP address (198.51.100.42).",
+  },
+  {
+    id: "hunt-shadow-copy",
+    name: "Volume Shadow Copy Deletion (Ransomware)",
+    mitreTtp: "T1490",
+    hypothesis: "Adversary executing vssadmin.exe or wmic to delete backup shadow copies prior to ransomware deployment.",
+  },
+  {
+    id: "hunt-oauth-elevation",
+    name: "Suspicious OAuth App Consent Grant",
+    mitreTtp: "T1098.005",
+    hypothesis: "Non-standard user approving multi-tenant OAuth application with Mail.ReadWrite and Directory.AccessAsUser.All scopes.",
+  },
+];
+
 export default function ThreatHuntingPage() {
   const [state] = useDemoState();
-  const [hypothesis, setHypothesis] = useState(
-    "Adversary using compromised Entra ID tokens to stage ransomware via lateral SMB connections across high-value database servers."
-  );
+  const [activeTemplate, setActiveTemplate] = useState<string>("hunt-kerberos");
+  const [hypothesis, setHypothesis] = useState(HUNTING_TEMPLATES[0].hypothesis);
   const [isHunting, setIsHunting] = useState(false);
   const [huntCompleted, setHuntCompleted] = useState(false);
   const [selectedTool, setSelectedTool] = useState<string>("all");
@@ -254,8 +287,34 @@ export default function ThreatHuntingPage() {
             </div>
 
             <div className="space-y-3">
-              <label className="text-xs text-slate-400 font-medium">
-                Adversary Hypothesis / Hunting Trigger Prompt:
+              <div>
+                <label className="text-xs text-slate-400 font-medium block mb-2">
+                  Pre-Built Threat Hunting Scenarios:
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  {HUNTING_TEMPLATES.map((tmpl) => (
+                    <button
+                      key={tmpl.id}
+                      type="button"
+                      onClick={() => {
+                        setActiveTemplate(tmpl.id);
+                        setHypothesis(tmpl.hypothesis);
+                      }}
+                      className={`text-left p-2 rounded-lg border text-[11px] transition-all ${
+                        activeTemplate === tmpl.id
+                          ? "bg-purple-950/50 border-purple-500/60 text-purple-200 shadow-sm"
+                          : "bg-slate-950/60 border-slate-800 text-slate-400 hover:border-slate-700 hover:text-slate-300"
+                      }`}
+                    >
+                      <div className="font-semibold text-white truncate">{tmpl.name}</div>
+                      <div className="font-mono text-[10px] text-purple-400">{tmpl.mitreTtp}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <label className="text-xs text-slate-400 font-medium block pt-1">
+                Adversary Hypothesis / Hunting Prompt:
               </label>
               <textarea
                 value={hypothesis}
