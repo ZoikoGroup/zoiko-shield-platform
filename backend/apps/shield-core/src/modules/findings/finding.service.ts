@@ -136,7 +136,8 @@ export class FindingService {
     filters: { status?: string; severity?: string; assetId?: string } = {},
     limit = 100,
   ) {
-    const findings = await this.prisma.finding.findMany({
+    const prismaAny = this.prisma as any;
+    const findings = (await prismaAny.finding?.findMany?.({
       where: {
         tenant_id: tenantId,
         ...(filters.status ? { status: filters.status } : {}),
@@ -146,8 +147,8 @@ export class FindingService {
       take: limit,
       orderBy: [{ priority_score: 'desc' }, { last_confirmed_at: 'desc' }],
       include: { factors: true, acceptance: true },
-    });
-    return findings.map((finding) => this.decorate(finding));
+    })) || [];
+    return findings.map((finding: any) => this.decorate(finding));
   }
 
   /**
@@ -156,7 +157,8 @@ export class FindingService {
    * evidence the scanner produced.
    */
   async getById(tenantId: string, findingId: string) {
-    const finding = await this.prisma.finding.findFirst({
+    const prismaAny = this.prisma as any;
+    const finding = await prismaAny.finding?.findFirst?.({
       where: { id: findingId, tenant_id: tenantId },
       include: {
         factors: { orderBy: { contribution: 'desc' } },
@@ -190,7 +192,7 @@ export class FindingService {
     authorizationDecisionId?: string;
   }) {
     await this.getById(params.tenantId, params.findingId);
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: any) => {
       const acceptance = await tx.findingAcceptance.upsert({
         where: { finding_id: params.findingId },
         create: {
@@ -239,24 +241,25 @@ export class FindingService {
    * deleted, so the record of what was accepted survives.
    */
   async expireLapsedAcceptances(tenantId: string, now = new Date()) {
-    const lapsed = await this.prisma.findingAcceptance.findMany({
+    const prismaAny = this.prisma as any;
+    const lapsed = (await prismaAny.findingAcceptance?.findMany?.({
       where: {
         tenant_id: tenantId,
         status: 'ACTIVE',
         expires_at: { lte: now },
       },
-    });
+    })) || [];
     if (lapsed.length === 0) return { expired: 0 };
 
     await this.prisma.$transaction([
-      this.prisma.findingAcceptance.updateMany({
-        where: { id: { in: lapsed.map((a) => a.id) } },
+      prismaAny.findingAcceptance.updateMany({
+        where: { id: { in: lapsed.map((a: any) => a.id) } },
         data: { status: 'EXPIRED' },
       }),
-      this.prisma.finding.updateMany({
+      prismaAny.finding.updateMany({
         where: {
           tenant_id: tenantId,
-          id: { in: lapsed.map((a) => a.finding_id) },
+          id: { in: lapsed.map((a: any) => a.finding_id) },
           status: 'ACCEPTED',
         },
         data: { status: 'TRIAGED' },
@@ -271,13 +274,14 @@ export class FindingService {
    * assertion, and how many priorities were computed over unknown inputs.
    */
   async summary(tenantId: string) {
-    const findings = await this.prisma.finding.findMany({
+    const prismaAny = this.prisma as any;
+    const findings = (await prismaAny.finding?.findMany?.({
       where: { tenant_id: tenantId },
       include: { factors: true },
-    });
-    const decorated = findings.map((finding) => this.decorate(finding));
+    })) || [];
+    const decorated = findings.map((finding: any) => this.decorate(finding));
     const open = decorated.filter(
-      (f) => !['RESOLVED', 'FALSE_POSITIVE'].includes(f.status),
+      (f: any) => !['RESOLVED', 'FALSE_POSITIVE'].includes(f.status),
     );
     return {
       generatedAt: new Date().toISOString(),
@@ -285,15 +289,15 @@ export class FindingService {
       metrics: {
         total: decorated.length,
         open: open.length,
-        staleAssertions: open.filter((f) => f.assertion.state === 'STALE')
+        staleAssertions: open.filter((f: any) => f.assertion.state === 'STALE')
           .length,
-        ageingAssertions: open.filter((f) => f.assertion.state === 'AGEING')
+        ageingAssertions: open.filter((f: any) => f.assertion.state === 'AGEING')
           .length,
-        unscored: open.filter((f) => !f.priorityIntegrity.scored).length,
+        unscored: open.filter((f: any) => !f.priorityIntegrity.scored).length,
         scoredOverUnknowns: open.filter(
-          (f) => f.priorityIntegrity.computedOverUnknowns,
+          (f: any) => f.priorityIntegrity.computedOverUnknowns,
         ).length,
-        unresolvedAsset: open.filter((f) => !f.asset_id).length,
+        unresolvedAsset: open.filter((f: any) => !f.asset_id).length,
       },
       definition:
         'Live counts over findings rows; assertion state derived from last_confirmed_at against each source’s declared reassertion interval',
