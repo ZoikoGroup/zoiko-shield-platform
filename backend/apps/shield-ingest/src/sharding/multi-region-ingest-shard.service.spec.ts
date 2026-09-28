@@ -25,30 +25,36 @@ describe('MultiRegionIngestShardService (Active-Active Multi-Cloud Telemetry Sha
     expect(route2.isFailover).toBe(false);
   });
 
-  it('2. should automatically failover to secondary shard when primary is UNAVAILABLE', () => {
+  it('2. should fail closed (never auto-reroute cross-region) when the home cell is UNAVAILABLE — ADR-16', () => {
     const tenant = 'tenant-acme-bank';
     const primary = service.getPrimaryRegionForTenant(tenant);
 
-    // Mark primary as UNAVAILABLE with high replication lag
+    // Mark home cell as UNAVAILABLE with high replication lag
     service.updateShardHealth(primary, 'UNAVAILABLE', 12000);
 
-    const failoverRoute = service.routeIngestStream(tenant);
-    expect(failoverRoute.isFailover).toBe(true);
-    expect(failoverRoute.primaryRegion).toBe(primary);
-    expect(failoverRoute.routedRegion).not.toBe(primary);
-    expect(failoverRoute.failoverReason).toContain('UNAVAILABLE');
+    const decision = service.routeIngestStream(tenant);
+    expect(decision.routingOutcome).toBe(
+      'REFUSED_AUTOMATIC_FAILOVER_NOT_APPROVED',
+    );
+    expect(decision.isFailover).toBe(false);
+    expect(decision.primaryRegion).toBe(primary);
+    expect(decision.routedRegion).toBeUndefined();
+    expect(decision.failoverReason).toContain('UNAVAILABLE');
   });
 
-  it('3. should recover to primary shard once regional health is restored', () => {
+  it('3. should recover to home cell once regional health is restored', () => {
     const tenant = 'tenant-acme-bank';
     const primary = service.getPrimaryRegionForTenant(tenant);
 
     service.updateShardHealth(primary, 'UNAVAILABLE', 5000);
-    expect(service.routeIngestStream(tenant).isFailover).toBe(true);
+    expect(service.routeIngestStream(tenant).routingOutcome).toBe(
+      'REFUSED_AUTOMATIC_FAILOVER_NOT_APPROVED',
+    );
 
     // Restore health
     service.updateShardHealth(primary, 'HEALTHY', 10);
     const restoredRoute = service.routeIngestStream(tenant);
+    expect(restoredRoute.routingOutcome).toBe('ROUTED');
     expect(restoredRoute.isFailover).toBe(false);
     expect(restoredRoute.routedRegion).toBe(primary);
   });

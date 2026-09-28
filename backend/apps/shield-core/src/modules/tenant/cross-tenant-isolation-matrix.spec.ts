@@ -1,156 +1,104 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { PrismaService } from '../../prisma/prisma.service';
-import { TenantService } from './tenant.service';
+import { GcsObjectStorageService } from '../evidence/storage/gcs-object-storage.service';
+import { OutboxEventDispatcherService } from '../outbox/outbox-event-dispatcher.service';
+import { DistributedOutboxRelayService } from '../outbox/distributed-outbox-relay.service';
 
-describe('Store-by-Store Tenant Isolation Negative Matrix', () => {
-  let mockPrisma: any;
-
-  beforeEach(async () => {
-    mockPrisma = {
-      tenant: {
-        findUnique: jest.fn().mockImplementation(({ where }) => {
-          if (where.id === 'tenant-alpha') {
-            return Promise.resolve({
-              id: 'tenant-alpha',
-              name: 'Alpha Corp',
-              status: 'ACTIVE',
-            });
-          }
-          if (where.id === 'tenant-beta') {
-            return Promise.resolve({
-              id: 'tenant-beta',
-              name: 'Beta Ltd',
-              status: 'ACTIVE',
-            });
-          }
-          return Promise.resolve(null);
-        }),
-      },
-      case: {
-        findMany: jest.fn().mockImplementation(({ where }) => {
-          // Verify tenant_id is strictly required in the query plan
-          if (!where || !where.tenant_id) {
-            throw new Error('UNBOUNDED_CROSS_TENANT_QUERY_PROHIBITED');
-          }
-          if (where.tenant_id === 'tenant-alpha') {
-            return Promise.resolve([
-              { id: 'case-alpha-1', tenant_id: 'tenant-alpha' },
-            ]);
-          }
-          return Promise.resolve([]);
-        }),
-      },
-      evidenceRecord: {
-        findMany: jest.fn().mockImplementation(({ where }) => {
-          if (!where || !where.tenant_id) {
-            throw new Error('UNBOUNDED_CROSS_TENANT_QUERY_PROHIBITED');
-          }
-          return Promise.resolve([]);
-        }),
-      },
-    };
-  });
-
-  describe('Relational Authority & Query Plan Isolation', () => {
-    it('should reject un-partitioned queries lacking explicit tenant_id constraint in query plan', async () => {
-      expect(() => {
-        mockPrisma.case.findMany({ where: {} as any });
-      }).toThrow('UNBOUNDED_CROSS_TENANT_QUERY_PROHIBITED');
-    });
-
-    it('should never return tenant-beta records when querying on tenant-alpha filter', async () => {
-      const records = await mockPrisma.case.findMany({
-        where: { tenant_id: 'tenant-alpha' },
-      });
-
-      expect(records.length).toBe(1);
-      expect(records.every((r: any) => r.tenant_id === 'tenant-alpha')).toBe(
-        true,
-      );
-      expect(records.some((r: any) => r.tenant_id === 'tenant-beta')).toBe(
-        false,
-      );
-    });
-  });
-
+/**
+ * Store-by-store tenant isolation.
+ *
+ * The database-level guarantee (Postgres RLS enforced strictly below the
+ * application query layer — the part that actually matters: rows are
+ * invisible even to an unscoped or malformed query) is exercised against a
+ * real PostgreSQL in `apps/shield-core/test/tenant-isolation.rls-spec.ts`
+ * (`npm run test:rls`). This file only covers the non-database tenant-prefix
+ * concerns below, against the real services that implement them.
+ *
+ * ClickHouse tenant-scoped, parameterized query safety is covered for real
+ * in `apps/shield-ingest/src/analytics/clickhouse-analytical-detections.spec.ts`.
+ */
+describe('Store-by-Store Tenant Isolation (Object Storage & Outbox Partitioning)', () => {
   describe('Object Storage & Evidence Vault Tenant Prefix Isolation', () => {
-    it('should validate tenant-prefixed storage URIs and prevent path traversal across tenants', () => {
-      const validateStoragePath = (
-        tenantId: string,
-        objectPath: string,
-      ): boolean => {
-        // Enforce gs://{bucket}/{tenant_id}/... format and prevent ../ directory traversal
-        if (objectPath.includes('..') || objectPath.includes('/../'))
-          return false;
-        const prefix = `gs://zs-evidence-vault/${tenantId}/`;
-        return objectPath.startsWith(prefix);
-      };
+    let storage: GcsObjectStorageService;
 
-      expect(
-        validateStoragePath(
-          'tenant-alpha',
-          'gs://zs-evidence-vault/tenant-alpha/2026/09/ev-001.json',
-        ),
-      ).toBe(true);
-      expect(
-        validateStoragePath(
-          'tenant-alpha',
-          'gs://zs-evidence-vault/tenant-beta/2026/09/ev-001.json',
-        ),
-      ).toBe(false);
-      expect(
-        validateStoragePath(
-          'tenant-alpha',
-          'gs://zs-evidence-vault/tenant-alpha/../tenant-beta/ev-001.json',
-        ),
-      ).toBe(false);
+    beforeEach(() => {
+      storage = new GcsObjectStorageService();
+    });
+
+    it('always keys evidence objects under the owning tenant prefix', () => {
+      const key = storage.buildObjectKey('tenant-alpha', 'ev-001');
+      expect(key).toBe('tenant-alpha/ev-001');
+      expect(key.startsWith('tenant-alpha/')).toBe(true);
+    });
+
+    it('keeps the tenant-alpha prefix even for an adversarial evidence ID, so prefix-scoped listing (purgeTenantObjects/countTenantObjectVersions) can never be tricked into matching another tenant', () => {
+      const key = storage.buildObjectKey(
+        'tenant-alpha',
+        '../tenant-beta/ev-001',
+      );
+      // Cloud Storage object names are flat, opaque strings — there is no
+      // filesystem-style ".." resolution, so this key is never listed under
+      // 'tenant-beta/'. It must still start with the real owning prefix.
+      expect(key.startsWith('tenant-alpha/')).toBe(true);
+      expect(key.startsWith('tenant-beta/')).toBe(false);
+    });
+
+    it('never produces the same key for two different tenants given the same evidence ID', () => {
+      const keyAlpha = storage.buildObjectKey('tenant-alpha', 'ev-shared-id');
+      const keyBeta = storage.buildObjectKey('tenant-beta', 'ev-shared-id');
+      expect(keyAlpha).not.toBe(keyBeta);
     });
   });
 
-  describe('Kafka Topic Key & Partition Isolation', () => {
-    it('should enforce tenant-prefixed partition keys for all emitted domain events', () => {
-      const formatEventPartitionKey = (
-        tenantId: string,
-        entityId: string,
-      ): string => {
-        if (!tenantId || !entityId)
-          throw new Error('MISSING_TENANT_PARTITION_KEY');
-        return `${tenantId}:${entityId}`;
-      };
+  describe('Outbox Partition Key Isolation', () => {
+    let dispatcher: OutboxEventDispatcherService;
 
-      const key = formatEventPartitionKey('tenant-alpha', 'alert-987');
-      expect(key).toBe('tenant-alpha:alert-987');
-      expect(key.startsWith('tenant-alpha:')).toBe(true);
-      expect(() => formatEventPartitionKey('', 'alert-987')).toThrow();
+    beforeEach(() => {
+      dispatcher = new OutboxEventDispatcherService(
+        new DistributedOutboxRelayService(),
+      );
     });
-  });
 
-  describe('ClickHouse Partitioning & Analytics Guard', () => {
-    it('should reject raw SQL string concatenation and enforce parameterized tenant scoping', () => {
-      const generateAnalyticsQuery = (
-        tenantId: string,
-        timeRange: { start: string; end: string },
-      ) => {
-        // Must return parameterized query with SQL parameters, never inline unsanitized strings
-        return {
-          query:
-            'SELECT count() as total_events FROM security_events WHERE tenant_id = {tenantId:String} AND event_time >= {start:DateTime64} AND event_time <= {end:DateTime64}',
-          params: {
-            tenantId,
-            start: timeRange.start,
-            end: timeRange.end,
-          },
-        };
-      };
-
-      const plan = generateAnalyticsQuery('tenant-alpha', {
-        start: '2026-09-01T00:00:00Z',
-        end: '2026-09-07T00:00:00Z',
+    it('partitions every dispatched domain event by tenant', () => {
+      const record = dispatcher.dispatch({
+        eventType: 'ALERT_CREATED',
+        tenantId: 'tenant-alpha',
+        environmentId: 'env-prod',
+        correlationId: 'corr-1',
+        payload: {},
       });
 
-      expect(plan.query).toContain('tenant_id = {tenantId:String}');
-      expect(plan.params.tenantId).toBe('tenant-alpha');
-      expect(plan.query).not.toContain('tenant-alpha'); // Not concatenated directly!
+      expect(record.partitionKey).toBe('tenant-alpha:env-prod');
+      expect(record.partitionKey.startsWith('tenant-alpha:')).toBe(true);
+    });
+
+    it('rejects a domain event with no tenant context rather than dispatching it unpartitioned', () => {
+      expect(() =>
+        dispatcher.dispatch({
+          eventType: 'ALERT_CREATED',
+          tenantId: '',
+          environmentId: 'env-prod',
+          correlationId: 'corr-1',
+          payload: {},
+        }),
+      ).toThrow();
+    });
+
+    it('gives two different tenants distinct partition keys for the same environment', () => {
+      const alpha = dispatcher.dispatch({
+        eventType: 'ALERT_CREATED',
+        tenantId: 'tenant-alpha',
+        environmentId: 'env-prod',
+        correlationId: 'corr-1',
+        payload: {},
+      });
+      const beta = dispatcher.dispatch({
+        eventType: 'ALERT_CREATED',
+        tenantId: 'tenant-beta',
+        environmentId: 'env-prod',
+        correlationId: 'corr-2',
+        payload: {},
+      });
+
+      expect(alpha.partitionKey).not.toBe(beta.partitionKey);
     });
   });
 });

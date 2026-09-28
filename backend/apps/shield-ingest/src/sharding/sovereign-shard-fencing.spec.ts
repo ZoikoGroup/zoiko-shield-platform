@@ -1,8 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import {
-  MultiRegionIngestShardService,
-  IngestRegion,
-} from './multi-region-ingest-shard.service';
+import { MultiRegionIngestShardService } from './multi-region-ingest-shard.service';
 
 describe('MultiRegionIngestShardService (LAB 16 Multi-Region & Sovereign Ingest Sharding)', () => {
   let shardService: MultiRegionIngestShardService;
@@ -32,33 +29,45 @@ describe('MultiRegionIngestShardService (LAB 16 Multi-Region & Sovereign Ingest 
     expect(shardService.getPrimaryRegionForTenant(tenant2)).toBe(region2);
   });
 
-  it('should route ingestion stream to healthy primary regional shard without failover flag', () => {
+  it('should route ingestion stream to healthy home cell shard without failover flag', () => {
     const tenantId = 'tenant-healthy-shard-01';
     const decision = shardService.routeIngestStream(tenantId);
 
     expect(decision.tenantId).toBe(tenantId);
+    expect(decision.routingOutcome).toBe('ROUTED');
     expect(decision.isFailover).toBe(false);
     expect(decision.routedRegion).toBe(decision.primaryRegion);
     expect(decision.endpoint).toBeDefined();
     expect(decision.partitionHash).toBeDefined();
   });
 
-  it('should dynamically trigger failover routing when primary regional shard becomes unavailable', () => {
+  it('ADR-16: must fail closed, never reroute across regions, when the home cell is unavailable (regression test for prior EU -> US cross-sovereignty failover bug)', () => {
     const tenantId = 'tenant-test-failover';
     const primaryRegion = shardService.getPrimaryRegionForTenant(tenantId);
 
-    // Mark primary shard as UNAVAILABLE
+    // Mark home cell as UNAVAILABLE
     shardService.updateShardHealth(primaryRegion, 'UNAVAILABLE', 4500);
 
     const decision = shardService.routeIngestStream(tenantId);
 
-    expect(decision.isFailover).toBe(true);
+    expect(decision.routingOutcome).toBe(
+      'REFUSED_AUTOMATIC_FAILOVER_NOT_APPROVED',
+    );
+    expect(decision.isFailover).toBe(false);
     expect(decision.primaryRegion).toBe(primaryRegion);
-    expect(decision.routedRegion).not.toBe(primaryRegion);
+    expect(decision.routedRegion).toBeUndefined();
+    expect(decision.endpoint).toBeUndefined();
     expect(decision.failoverReason).toContain('UNAVAILABLE');
+    expect(decision.failoverReason).toContain('ADR-16');
+
+    // The specific bug this guards against: a EU home cell must never be
+    // silently routed to a US (or any other) region on failure.
+    if (primaryRegion === 'eu-west-1') {
+      expect(decision.routedRegion).not.toBe('us-east-1');
+    }
   });
 
-  it('should restore primary routing once the regional shard recovers to HEALTHY', () => {
+  it('should restore home cell routing once the regional shard recovers to HEALTHY', () => {
     const tenantId = 'tenant-test-recovery';
     const primaryRegion = shardService.getPrimaryRegionForTenant(tenantId);
 
@@ -68,6 +77,7 @@ describe('MultiRegionIngestShardService (LAB 16 Multi-Region & Sovereign Ingest 
 
     const decision = shardService.routeIngestStream(tenantId);
 
+    expect(decision.routingOutcome).toBe('ROUTED');
     expect(decision.isFailover).toBe(false);
     expect(decision.routedRegion).toBe(primaryRegion);
   });

@@ -234,7 +234,7 @@ graph TD
 
 ### Drill 10: Multi-Cloud Primary Region Outage & Autonomous DR Failover
 
-- **Objective**: Exercise full multi-cloud disaster recovery: failover primary leader node from GCP (`us-central1`) to AWS (`us-east-1`), verify lease coordinator token invalidation, outbox reconciliation, and zero Merkle anchor drift.
+- **Objective**: Exercise full multi-cloud disaster recovery: failover primary leader node from GCP (`us-central1`) to GCP (`us-east-1`), verify lease coordinator token invalidation, outbox reconciliation, and zero Merkle anchor drift.
 - **Threat Scenario**: Complete regional hypervisor outage in primary cloud zone.
 - **Execution Procedure**:
   ```bash
@@ -244,7 +244,7 @@ graph TD
   ```
 - **Expected Observability Signal**:
   - `Leader demoted: node-gcp-us-central1`
-  - `Promoted new leader: node-aws-us-east1`
+  - `Promoted new leader: node-gcp-us-east1`
   - `Reconciled ledger outbox events: > 0`
   - `Merkle anchor drift detected: false (Zero-Drift Guarantee)`
 - **Verification Criteria**:

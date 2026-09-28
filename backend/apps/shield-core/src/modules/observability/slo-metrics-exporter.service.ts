@@ -58,15 +58,22 @@ export interface PlatformSloSnapshot {
 }
 
 /**
- * OpenTelemetry & PromQL SLO Metrics Exporter
+ * SLO Metrics Snapshot Exporter
  * Specification: Backend Build Guide §LAB 16 (Observability, SLOs & Operational Readiness)
+ *
+ * Produces an in-memory golden-signal metrics snapshot in Prometheus
+ * exposition-format-compatible text. Neither `prom-client` nor
+ * `@opentelemetry/*` are dependencies of this repo — there is no real
+ * OpenTelemetry SDK or Prometheus scrape endpoint behind this yet; the
+ * "PromQL" naming refers to the text format produced, not a live metrics
+ * backend wired to one.
  */
 @Injectable()
 export class SloMetricsExporterService {
   private readonly logger = new Logger(SloMetricsExporterService.name);
 
   /**
-   * Aggregates multi-dimensional telemetry into compliant PromQL exposition format.
+   * Aggregates multi-dimensional telemetry into Prometheus-exposition-format-compatible text.
    */
   generateSloMetricsSnapshot(
     tenantId: string,

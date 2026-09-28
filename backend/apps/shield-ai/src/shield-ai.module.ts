@@ -40,6 +40,7 @@ import { AiSafetyCircuitBreakerService } from './gateway/ai-safety-circuit-break
 import { AiKillSwitchService } from './kill-switch/ai-kill-switch.service';
 import { TimeSeriesAnomalyDetectorService } from './analytics/time-series-anomaly-detector.service';
 import { AutonomousRedTeamAgentService } from './adversarial/autonomous-red-team-agent.service';
+import { TierAWindowedDetectorService } from '../../shield-ingest/src/detection/tier-a/tier-a-windowed-detector.service';
 import { RedTeamScenarioGeneratorService } from './adversarial/red-team-scenario-generator.service';
 import { PlaybookOptimizerAgentService } from './optimization/playbook-optimizer-agent.service';
 
@@ -103,6 +104,7 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     SafeDegradationService,
     AiObservabilityMetricsService,
     TimeSeriesAnomalyDetectorService,
+    TierAWindowedDetectorService,
     AutonomousRedTeamAgentService,
     PlaybookOptimizerAgentService,
 

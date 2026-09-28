@@ -19,6 +19,7 @@ import { RateControlService } from './rate-control/rate-control.service';
 import { BlastRadiusEvaluatorService } from './rate-control/blast-radius-evaluator.service';
 import { DevSimulationSigner } from './command-signing/dev-simulation-signer.service';
 import { CloudHsmSignerService } from './command-signing/cloud-hsm-signer.service';
+import { cloudHsmSignerProvider } from './command-signing/cloud-hsm-signer.provider';
 import { governedCommandSignerProvider } from './command-signing/governed-command-signer.provider';
 import { DispatcherService } from './dispatcher/dispatcher.service';
 import { PolicyReauthorizationService } from './policy/policy-reauthorization.service';
@@ -48,7 +49,7 @@ import { HostNetworkEnforcerService } from './microsegmentation/host-network-enf
 import { SoarCircuitBreakerService } from './circuit-breaker/soar-circuit-breaker.service';
 import { CedarTenantIsolationService } from './policy/cedar-tenant-isolation.service';
 import { SignedCommandBrokerService } from './broker/signed-command-broker.service';
-import { TemporalContainmentEscalationService } from './orchestration/temporal-containment-escalation.service';
+import { DurableContainmentEscalationService } from './orchestration/durable-containment-escalation.service';
 import { DistributedActionLockService } from './orchestration/distributed-action-lock.service';
 import { PlaybookSandboxEngineService } from './simulation/playbook-sandbox-engine.service';
 
@@ -72,7 +73,7 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     RateControlService,
     BlastRadiusEvaluatorService,
     DevSimulationSigner,
-    CloudHsmSignerService,
+    cloudHsmSignerProvider,
     governedCommandSignerProvider,
     DispatcherService,
     PolicyReauthorizationService,
@@ -85,7 +86,7 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     SoarCircuitBreakerService,
     CedarTenantIsolationService,
     SignedCommandBrokerService,
-    TemporalContainmentEscalationService,
+    DurableContainmentEscalationService,
     DistributedActionLockService,
     PlaybookSandboxEngineService,
     ApprovalReauthorizationService,
@@ -123,7 +124,7 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     SoarCircuitBreakerService,
     CedarTenantIsolationService,
     SignedCommandBrokerService,
-    TemporalContainmentEscalationService,
+    DurableContainmentEscalationService,
     DistributedActionLockService,
     PlaybookSandboxEngineService,
     TwoManRuleService,

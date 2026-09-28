@@ -17,7 +17,8 @@ import { EdrIsolateActionAdapter } from '../apps/shield-action/src/execution-ada
 import { AwsIamActionAdapter } from '../apps/shield-action/src/execution-adapters/aws-iam.adapter';
 import { WafIpActionAdapter } from '../apps/shield-action/src/execution-adapters/waf-ip.adapter';
 import { CedarTenantIsolationService } from '../apps/shield-action/src/policy/cedar-tenant-isolation.service';
-import { TemporalContainmentEscalationService } from '../apps/shield-action/src/orchestration/temporal-containment-escalation.service';
+import { DurableContainmentEscalationService } from '../apps/shield-action/src/orchestration/durable-containment-escalation.service';
+import { PrismaService as ShieldActionPrismaService } from '../apps/shield-action/src/prisma/prisma.service';
 
 // AI SecOps
 import { ModelArmorSafetyGatewayService } from '../apps/shield-ai/src/gateway/model-armor-safety-gateway.service';
@@ -51,6 +52,18 @@ import { AdaptiveCongestionManagerService } from '../apps/shield-ingest/src/flow
 import { JitSessionEnforcerService } from '../apps/shield-core/src/modules/authorization/jit-session-enforcer.service';
 import { PlaybookOptimizerAgentService } from '../apps/shield-ai/src/optimization/playbook-optimizer-agent.service';
 import { createInMemoryJitPrisma } from './lib/in-memory-jit-prisma';
+
+/**
+ * Fails the verifier run immediately with a clear message. Every stage must assert
+ * its real invariant through this (or an equivalent throwing check) rather than
+ * only logging output and incrementing stepsPassed unconditionally — a step that
+ * cannot fail is not verification.
+ */
+function assertInvariant(condition: boolean, message: string): asserts condition {
+  if (!condition) {
+    throw new Error(`Platform verification failed: ${message}`);
+  }
+}
 
 /**
  * ZoikoShield Master 24-Stage Full-Platform Multi-Tenant Verification Suite
@@ -246,24 +259,54 @@ async function runFullPlatformVerifier() {
   stepsPassed++;
 
   // -------------------------------------------------------------------------
-  // Stage 7 (LAB 10): Temporal Durable Investigation Workflow & State Machine
+  // Stage 7 (LAB 10): Durable Investigation Workflow & State Machine
   // -------------------------------------------------------------------------
   logger.log(
-    '\n[Stage 7/18] Temporal Durable Investigation Workflow & State Machine...',
+    '\n[Stage 7/18] Durable (Postgres-backed) Investigation Workflow & State Machine...',
   );
-  const escalationService = new TemporalContainmentEscalationService();
-  const durableWf = escalationService.startContainmentWorkflow({
-    workflowId: `wf-${crypto.randomUUID().slice(0, 8)}`,
-    tenantId: tenantA.id,
-    incidentRef: 'INC-2026-991',
-    targetResource: 'srv-db-01',
-    actionType: 'ISOLATE_ENDPOINT',
-    initialApprovalTier: 'TIER_1_SOC_ANALYST',
-    analystApprovalTimeoutSeconds: 60,
-  });
-  logger.log(
-    `  ✔ Temporal Durable Workflow Started -> Workflow ID: ${durableWf.workflowId} (State: ${durableWf.currentState})`,
-  );
+  const actionPrisma = new ShieldActionPrismaService();
+  await actionPrisma.$connect();
+  try {
+    const escalationWriter = new DurableContainmentEscalationService(
+      actionPrisma,
+    );
+    const escalationReader = new DurableContainmentEscalationService(
+      actionPrisma,
+    );
+    const durableWfId = `wf-${crypto.randomUUID().slice(0, 8)}`;
+    const durableWf = await escalationWriter.startContainmentWorkflow({
+      workflowId: durableWfId,
+      tenantId: tenantA.id,
+      incidentRef: 'INC-2026-991',
+      targetResource: 'srv-db-01',
+      actionType: 'ISOLATE_ENDPOINT',
+      initialApprovalTier: 'TIER_1_SOC_ANALYST',
+      analystApprovalTimeoutSeconds: 60,
+    });
+    assertInvariant(
+      durableWf.currentState === 'AWAITING_ANALYST_APPROVAL',
+      'Stage 7: newly started workflow must be AWAITING_ANALYST_APPROVAL',
+    );
+
+    // Resume from a second, independent instance sharing no in-process state
+    // with the writer — the concrete proof this is durable, not an in-memory
+    // Map falsely branded "Temporal".
+    const resumed = await escalationReader.resumeWorkflow(
+      durableWfId,
+      tenantA.id,
+    );
+    assertInvariant(
+      resumed.currentState === durableWf.currentState &&
+        resumed.history.length === durableWf.history.length,
+      'Stage 7: an independent instance must read back identical state from Postgres',
+    );
+
+    logger.log(
+      `  ✔ Durable Workflow Started & Resumed From Independent Instance -> Workflow ID: ${durableWf.workflowId} (State: ${resumed.currentState})`,
+    );
+  } finally {
+    await actionPrisma.$disconnect();
+  }
   stepsPassed++;
 
   // -------------------------------------------------------------------------
@@ -813,11 +856,18 @@ async function runFullPlatformVerifier() {
     `  ✔ Outbox CDC Relay: Pod '${outboxResult.podId}' Dispatched ${outboxResult.publishedCount}/${outboxResult.claimedCount} events (Lock: ${outboxResult.lockAcquired})`,
   );
 
-  // 2. Multi-Region Ingest Sharding & Failover
+  // 2. Home-Cell Ingest Sharding & Fail-Closed Refusal (ADR-16: no automatic
+  // cross-region failover — an unhealthy home cell must refuse routing, not
+  // silently cross a data-sovereignty boundary).
   const ingestShards = new MultiRegionIngestShardService();
   const ingestRouteNormal = ingestShards.routeIngestStream(tenantA.id);
+  assertInvariant(
+    ingestRouteNormal.routingOutcome === 'ROUTED' &&
+      ingestRouteNormal.routedRegion === ingestRouteNormal.primaryRegion,
+    'Stage 21: healthy home cell must route to itself',
+  );
   logger.log(
-    `  ✔ Ingest Sharding: Tenant '${tenantA.id}' ➔ Routed to Region '${ingestRouteNormal.routedRegion}' (${ingestRouteNormal.endpoint})`,
+    `  ✔ Ingest Sharding: Tenant '${tenantA.id}' ➔ Routed to Home Cell '${ingestRouteNormal.routedRegion}' (${ingestRouteNormal.endpoint})`,
   );
 
   ingestShards.updateShardHealth(
@@ -825,9 +875,15 @@ async function runFullPlatformVerifier() {
     'UNAVAILABLE',
     12000,
   );
-  const ingestRouteFailover = ingestShards.routeIngestStream(tenantA.id);
+  const ingestRouteRefused = ingestShards.routeIngestStream(tenantA.id);
+  assertInvariant(
+    ingestRouteRefused.routingOutcome ===
+      'REFUSED_AUTOMATIC_FAILOVER_NOT_APPROVED' &&
+      ingestRouteRefused.routedRegion === undefined,
+    'Stage 21: unhealthy home cell must fail closed, never auto-reroute cross-region (ADR-16)',
+  );
   logger.log(
-    `  ✔ Ingest Failover: Primary '${ingestRouteFailover.primaryRegion}' down ➔ Re-routed to '${ingestRouteFailover.routedRegion}' (Failover: ${ingestRouteFailover.isFailover})`,
+    `  ✔ Ingest Fail-Closed: Home cell '${ingestRouteRefused.primaryRegion}' down ➔ routing refused (Outcome: ${ingestRouteRefused.routingOutcome})`,
   );
 
   // 3. Real-Time Stream Deduplication Bloom Filter
@@ -976,22 +1032,33 @@ async function runFullPlatformVerifier() {
     `  ✔ Adaptive Trace Sampler: Retained=${sampleDecision.retained}, Reason='${sampleDecision.reason}', Rate=${sampleDecision.appliedSampleRate}`,
   );
 
-  // 3. Split-KMS Health Prober & Dynamic Re-Balancer
+  // 3. KMS Provider Health Prober & Dynamic Re-Balancer (GCP Cloud KMS is
+  // the real, wired-up primary; AWS/Azure are a documented, unwired
+  // cross-cloud escape hatch — see class doc comment)
   const kmsRebalancer = new KmsHealthRebalancerService();
-  kmsRebalancer.recordProbe('AWS_KMS', true, 28);
+  kmsRebalancer.recordProbe('GCP_CLOUD_KMS', true, 28);
   const primaryKms = kmsRebalancer.getPrimaryProvider();
+  assertInvariant(
+    primaryKms === 'GCP_CLOUD_KMS',
+    'Stage: GCP Cloud KMS must be the default primary provider',
+  );
   const kmsWeights = kmsRebalancer.getRoutingWeights();
   logger.log(
-    `  ✔ KMS Health Re-Balancer: Primary='${primaryKms}' (AWS: ${kmsWeights.AWS_KMS}%, GCP: ${kmsWeights.GCP_CLOUD_KMS}%)`,
+    `  ✔ KMS Health Re-Balancer: Primary='${primaryKms}' (GCP: ${kmsWeights.GCP_CLOUD_KMS}%, AWS: ${kmsWeights.AWS_KMS}%)`,
   );
 
-  // 4. Autonomous AI Red Team Agent
+  // 4. Autonomous AI Red Team Agent — real detection wiring (Tier-A detector),
+  // not a hardcoded pass; this can and must be able to report a gap.
   const redTeam = new AutonomousRedTeamAgentService();
   const attackChain = redTeam.generateAttackSequence(
     tenantA.id,
     'Continuous-Posture-Validation',
   );
   const redTeamReport = redTeam.executeSyntheticRun(attackChain);
+  assertInvariant(
+    redTeamReport.stepsDetected === redTeamReport.stepEvaluations.filter((e) => e.detected).length,
+    'Stage 23: reported stepsDetected must match the real per-step detection outcomes',
+  );
   logger.log(
     `  ✔ Autonomous Red Team Agent: Executed ${redTeamReport.stepsExecuted} MITRE TTPs -> Coverage: ${redTeamReport.coveragePercentage}%, MTTD: ${redTeamReport.meanDetectionLatencyMs}ms, Posture: ${redTeamReport.defensePostureRating}`,
   );

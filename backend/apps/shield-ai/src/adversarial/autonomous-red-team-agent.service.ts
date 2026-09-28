@@ -1,5 +1,10 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
+import {
+  TierAWindowedDetectorService,
+  TierARuleContract,
+  NormalizedStreamEvent,
+} from '../../../shield-ingest/src/detection/tier-a/tier-a-windowed-detector.service';
 
 export type MitreTechnique =
   | 'T1190' // Exploit Public-Facing Application
@@ -70,9 +75,71 @@ export interface ExecuteAttackChainRequest {
   intensityLevel?: 'LOW' | 'MEDIUM' | 'AGGRESSIVE';
 }
 
+const REDTEAM_SCHEMA = 'redteam.synthetic.v1';
+
+/**
+ * Substring markers a real Tier-A rule would look for per MITRE technique,
+ * applied against the synthetic step's command/payload text. Narrow and
+ * literal on purpose: a predicate that matched everything would just
+ * re-hardcode "always detected" one layer down. A step whose payload
+ * doesn't contain its technique's marker genuinely goes undetected.
+ */
+const TECHNIQUE_MARKERS: Record<MitreTechnique, RegExp> = {
+  T1190: /union select|169\.254\.169\.254|'1'\s*=\s*'1'/i,
+  'T1110.001': /hydra |rockyou\.txt/i,
+  'T1059.001': /kubectl apply|powershell/i,
+  'T1059.006': /python3 -c|subprocess/i,
+  'T1003.001': /etcdctl get \/registry\/secrets|lsass/i,
+  T1068: /pkexec|--bypass-dual-control/i,
+  T1078: /sudo -u \w+_admin|valid accounts/i,
+  'T1021.002': /smbclient/i,
+  T1070: /shred |history -c|rm -rf \/var\/log/i,
+  T1048: /dig \+short|curl -x post/i,
+  T1567: /rclone sync/i,
+};
+
 @Injectable()
 export class AutonomousRedTeamAgentService {
   private readonly logger = new Logger(AutonomousRedTeamAgentService.name);
+
+  constructor(
+    private readonly tierADetector: TierAWindowedDetectorService = new TierAWindowedDetectorService(),
+  ) {}
+
+  private ruleForTechnique(technique: MitreTechnique): TierARuleContract {
+    const marker = TECHNIQUE_MARKERS[technique];
+    return {
+      ruleId: `ZS-RULE-${technique.replace('.', '-')}`,
+      version: '1.0.0',
+      requiredSchema: REDTEAM_SCHEMA,
+      partitionKeyPattern: 'tenant_id:target_host',
+      windowSeconds: 60,
+      graceSeconds: 5,
+      missingDataBehavior: 'INCOMPLETE',
+      replaySemantics: 'DETERMINISTIC_PINNED_SNAPSHOT',
+      sloClass: 'TIER_A_SUB_SECOND',
+      thresholdCount: 1,
+      matchPredicate: (event: NormalizedStreamEvent) =>
+        marker.test(String(event.payload.command ?? '')),
+    };
+  }
+
+  private eventForStep(
+    chain: SyntheticAttackChain,
+    step: AttackStep,
+  ): NormalizedStreamEvent {
+    return {
+      eventId: `${chain.chainId}-step-${step.stepNumber}`,
+      tenantId: chain.targetTenantId,
+      entityKey: chain.targetHost || chain.targetUser || 'unknown-entity',
+      schemaName: REDTEAM_SCHEMA,
+      timestamp: new Date().toISOString(),
+      payload: {
+        command: step.syntheticPayload,
+        targetResource: step.targetResource,
+      },
+    };
+  }
 
   /**
    * Generates a synthetic multi-stage MITRE ATT&CK attack chain.
@@ -246,7 +313,14 @@ export class AutonomousRedTeamAgentService {
   }
 
   /**
-   * Executes a synthetic dry-run evaluation against SIEM detection and SOAR containment pipelines.
+   * Executes a synthetic dry-run evaluation against the real Tier-A detection
+   * engine. Each step is fed to TierAWindowedDetectorService as a genuine
+   * stream event evaluated against a rule whose predicate actually inspects
+   * the synthetic payload for that technique's marker — so `detected`
+   * reflects whether the platform's real detection logic matched, not an
+   * assumption that it always would. A step whose payload doesn't contain
+   * its technique's marker (e.g. a novel/obfuscated variant with no matching
+   * rule yet) genuinely comes back undetected.
    */
   executeSyntheticRun(chain: SyntheticAttackChain): RedTeamExecutionReport {
     let totalLatency = 0;
@@ -255,11 +329,15 @@ export class AutonomousRedTeamAgentService {
     const gapAnalysis: string[] = [];
 
     const stepEvaluations: StepEvaluation[] = chain.steps.map((step) => {
-      // High-probability simulated detection for robust platform rules
-      const detected = true;
-      const contained = step.expectedAlertLevel === 'CRITICAL';
-      const baseLatency = chain.intensityLevel === 'AGGRESSIVE' ? 35 : 55;
-      const latency = baseLatency + step.stepNumber * 8;
+      const rule = this.ruleForTechnique(step.mitreTechnique);
+      const event = this.eventForStep(chain, step);
+
+      const start = Date.now();
+      const result = this.tierADetector.processStreamEvent(rule, event);
+      const latency = Math.max(1, Date.now() - start);
+
+      const detected = result.detectionState === 'MATCHED';
+      const contained = detected && step.expectedAlertLevel === 'CRITICAL';
 
       totalLatency += latency;
       if (detected) detectedCount++;
@@ -271,7 +349,7 @@ export class AutonomousRedTeamAgentService {
         detected,
         contained,
         detectionLatencyMs: latency,
-        ruleMatched: `ZS-RULE-${step.mitreTechnique.replace('.', '-')}`,
+        ruleMatched: detected ? rule.ruleId : undefined,
       };
     });
 

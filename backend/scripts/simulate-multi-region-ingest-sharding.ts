@@ -1,11 +1,14 @@
 /**
- * ZoikoShield Multi-Region Active-Active Ingest Shard Simulator
- * 
- * Demonstrates:
- * 1. Deterministic hashing of multi-tenant telemetry streams across global shard clusters.
- * 2. Real-time regional health checks & cross-region replication lag monitoring.
- * 3. Automatic failover routing during regional outage / network partition.
- * 4. Zero-loss self-healing return to primary regional node when health is restored.
+ * ZoikoShield Home-Cell Ingest Shard Simulator
+ *
+ * Demonstrates (per ADR-16 — Regional cell allocation and failover):
+ * 1. Deterministic hashing of tenants to a single home-cell region.
+ * 2. Real-time regional health checks & replication lag monitoring.
+ * 3. Fail-closed refusal (R-11) when a tenant's home cell is unhealthy — no automatic
+ *    cross-region failover, residency-breaking or otherwise. Full multi-region
+ *    active-active is DEFERRED; recovery from an unhealthy home cell requires an
+ *    approved, tested evacuation/transfer procedure, not a runtime reroute.
+ * 4. Zero-loss self-healing return to the home cell when health is restored.
  */
 
 import 'dotenv/config';
@@ -14,8 +17,8 @@ import { MultiRegionIngestShardService } from '../apps/shield-ingest/src/shardin
 
 async function main() {
   console.log('========================================================================');
-  console.log(' 🛡️  ZoikoShield Multi-Region Ingestion Sharding & Failover Simulator');
-  console.log('    Specification: Active-Active Multi-Cloud Partitioning & Shard Routing');
+  console.log(' 🛡️  ZoikoShield Home-Cell Ingestion Sharding & Fail-Closed Simulator');
+  console.log('    Specification: ADR-16 Single Home Cell, No Automatic Cross-Region Failover');
   console.log('========================================================================\n');
 
   const shardingService = new MultiRegionIngestShardService();
@@ -27,27 +30,27 @@ async function main() {
   ];
 
   // Step 1: Normal Ingestion Routing
-  console.log('[Step 1/4] Inspecting Active-Active Regional Shards...');
+  console.log('[Step 1/4] Inspecting Regional Shards...');
   const shards = shardingService.getAllShardNodes();
   shards.forEach((s) => {
     console.log(`  ✔ Shard Node [${s.region}]: ${s.endpoint} (Status: ${s.status}, Lag: ${s.replicationLagMs}ms)`);
   });
 
-  console.log('\n[Step 2/4] Deterministic Tenancy Shard Partitioning:');
+  console.log('\n[Step 2/4] Deterministic Home-Cell Tenancy Partitioning:');
   sampleTenants.forEach((tenantId) => {
     const route = shardingService.routeIngestStream(tenantId);
-    console.log(`  ✔ Tenant '${tenantId}' ➔ Routed Region: ${route.routedRegion} (Failover: ${route.isFailover})`);
+    console.log(`  ✔ Tenant '${tenantId}' ➔ Home Cell: ${route.routedRegion} (Outcome: ${route.routingOutcome})`);
   });
 
-  // Step 3: Simulate Regional Degradation and Failover
+  // Step 3: Simulate Regional Degradation — must fail closed, not fail over
   console.log('\n[Step 3/4] Simulating major regional fiber cut in `us-east-1` (Status -> UNAVAILABLE)...');
   shardingService.updateShardHealth('us-east-1', 'UNAVAILABLE', 15400);
 
   console.log('  -> Re-evaluating routing decisions during outage:');
   sampleTenants.forEach((tenantId) => {
     const route = shardingService.routeIngestStream(tenantId);
-    if (route.isFailover) {
-      console.log(`  ⚠️ FAILOVER ACTIVATED: '${tenantId}' Primary (${route.primaryRegion}) ➔ Fallback (${route.routedRegion})`);
+    if (route.routingOutcome === 'REFUSED_AUTOMATIC_FAILOVER_NOT_APPROVED') {
+      console.log(`  ⛔ ROUTING REFUSED (fail-closed): '${tenantId}' Home Cell (${route.primaryRegion}) is unavailable — no automatic reroute.`);
       console.log(`     Reason: ${route.failoverReason}`);
     } else {
       console.log(`  ✔ Tenant '${tenantId}' unaffected ➔ ${route.routedRegion}`);
@@ -61,11 +64,11 @@ async function main() {
   console.log('  -> Re-checking routing:');
   sampleTenants.forEach((tenantId) => {
     const route = shardingService.routeIngestStream(tenantId);
-    console.log(`  ✔ Tenant '${tenantId}' ➔ Restored to Primary: ${route.routedRegion} (Failover: ${route.isFailover})`);
+    console.log(`  ✔ Tenant '${tenantId}' ➔ Restored to Home Cell: ${route.routedRegion} (Outcome: ${route.routingOutcome})`);
   });
 
   console.log('\n========================================================================');
-  console.log(' 🎉 MULTI-REGION INGESTION SHARDING SIMULATION VERIFIED!');
+  console.log(' 🎉 HOME-CELL INGESTION SHARDING SIMULATION VERIFIED (fail-closed, ADR-16)!');
   console.log('========================================================================\n');
 }
 

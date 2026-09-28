@@ -1,8 +1,9 @@
 /**
- * Cloud HSM Asymmetric Signing & Emergency Out-of-Band Freeze Engine Simulator
- * 
+ * KMS-Backed Command Signing & Emergency Out-of-Band Freeze Engine Simulator
+ *
  * Simulates:
- * 1. Cloud HSM ECDSA P-256 asymmetric signature generation and verification on high-consequence SOAR commands.
+ * 1. Cloud KMS ECDSA P-256 asymmetric signature generation and verification on high-consequence SOAR commands
+ *    (falls back to a locally labeled ephemeral dev key outside production, per createCloudHsmSigner()).
  * 2. Enterprise emergency kill-switch lockdown preventing unauthorized live executions during active zero-days.
  * 3. Scope-based freeze targeting (Global, Tenant, Connector, Action Type) and safe release.
  */
@@ -10,22 +11,22 @@
 import 'dotenv/config';
 import 'reflect-metadata';
 import * as crypto from 'crypto';
-import { CloudHsmSignerService } from '../apps/shield-action/src/command-signing/cloud-hsm-signer.service';
+import { createCloudHsmSigner } from '../apps/shield-action/src/command-signing/cloud-hsm-signer.provider';
 import { EmergencyFreezeLockdownService } from '../apps/shield-action/src/freeze-controller/emergency-freeze-lockdown.service';
 
 async function main() {
   console.log('========================================================================');
-  console.log(' 🛡️  ZoikoShield Cloud HSM Signing & Emergency Freeze Controls Simulator');
-  console.log('    Architecture: ADR-04 (Cloud HSM & Emergency Freeze Controls)');
+  console.log(' 🛡️  ZoikoShield KMS Command Signing & Emergency Freeze Controls Simulator');
+  console.log('    Architecture: ADR-04 (Command Signing Custody & Emergency Freeze Controls)');
   console.log('========================================================================\n');
 
-  const hsmSigner = new CloudHsmSignerService();
+  const hsmSigner = createCloudHsmSigner();
   const freezeService = new EmergencyFreezeLockdownService();
   const tenantId = `tenant-${crypto.randomUUID().slice(0, 8)}`;
 
-  console.log('[1/3] Initializing command signing key (software-managed, not HSM-backed)...');
-  const keyMeta = hsmSigner.getActiveKeyMetadata();
-  console.log(`  ✔ Active HSM Key ID: ${keyMeta.keyId}`);
+  console.log('[1/3] Initializing command signing key...');
+  const keyMeta = await hsmSigner.getActiveKeyMetadata();
+  console.log(`  ✔ Active Key ID: ${keyMeta.keyId}`);
   console.log(`  ✔ Signature Algorithm: ${keyMeta.algorithm}`);
   console.log(`  ✔ Key custody: ${keyMeta.hsmEnclaveId} (FIPS: ${keyMeta.fipsLevel})`);
 
@@ -41,13 +42,13 @@ async function main() {
     },
   };
 
-  console.log('\n[2/3] Signing Live SOAR Remediation Command with Cloud HSM...');
-  const signed = hsmSigner.sign(liveCommand, 'LIVE');
+  console.log('\n[2/3] Signing Live SOAR Remediation Command...');
+  const signed = await hsmSigner.sign(liveCommand, 'LIVE');
   console.log(`  ✔ Signed By: ${signed.signedBy}`);
   console.log(`  ✔ Signature: ${signed.signature.slice(0, 48)}...`);
   console.log(`  ✔ Timestamp: ${signed.signedAt}`);
 
-  const isVerified = hsmSigner.verifySignature(liveCommand, 'LIVE', signed.signature);
+  const isVerified = await hsmSigner.verifySignature(liveCommand, 'LIVE', signed.signature);
   console.log(`  ✔ Signature Cryptographic Verification: ${isVerified ? 'VALID (MATCHED PUBLIC KEY)' : 'FAILED'}`);
 
   // Emergency Freeze Testing
