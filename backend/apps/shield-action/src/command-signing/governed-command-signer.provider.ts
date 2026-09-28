@@ -16,7 +16,7 @@ export const governedCommandSignerProvider: Provider = {
   useFactory: () => {
     const logger = new Logger('GovernedCommandSigner');
     if (process.env.NODE_ENV === 'production') {
-      logger.log('Signing governed commands with the AWS KMS key in custody.');
+      logger.log('Signing governed commands with the GCP KMS key in custody.');
       return new ProductionGovernedCommandSigner();
     }
     // A KMS key id outside production is honoured, so staging can exercise the

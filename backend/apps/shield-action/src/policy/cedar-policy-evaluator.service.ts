@@ -39,6 +39,14 @@ export interface CedarEvaluationDecision {
   evaluationDigest: string;
 }
 
+/**
+ * A hand-rolled, fail-closed policy engine using Cedar-inspired
+ * principal/action/resource statement syntax and evaluation semantics
+ * (explicit forbid overrides permit, deny-by-default). It does not use the
+ * real AWS Cedar library (`@cedar-policy` is not a dependency of this repo)
+ * — "Cedar" here names the policy language shape this engine follows, not
+ * an integration with Amazon's implementation.
+ */
 @Injectable()
 export class CedarPolicyEvaluatorService {
   private readonly logger = new Logger(CedarPolicyEvaluatorService.name);

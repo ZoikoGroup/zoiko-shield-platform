@@ -17972,7 +17972,7 @@ A controlled tenant is created in an approved region; identity and authorization
 |-----------------------------|-----------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------|
 | **Identity/productivity**   | Microsoft Entra ID and Microsoft 365 family.                                            | Read/collect at G1; permissions displayed and health monitored.                      |
 | **Endpoint security**       | One certified EDR partner selected through ADR; additional BYO EDR read-only ingestion. | Response actions only after connector certification; R1 in ERB-01.                   |
-| **Cloud**                   | AWS and Azure baseline.                                                                 | Cloud account/tenant audit and posture sources; least-privilege cross-account roles. |
+| **Cloud**                   | GCP and Azure baseline.                                                                 | Cloud account/tenant audit and posture sources; least-privilege cross-account roles. |
 | **Generic security events** | Authenticated webhook and TLS syslog/CEF/LEEF.                                          | Schema validation, replay protection, source identity and quarantine.                |
 | **Ticketing**               | One approved ticketing integration.                                                     | Case/task synchronization with idempotency and source authority.                     |
 | **Vulnerability**           | One approved vulnerability source.                                                      | Findings and asset linkage; no scanner engine built.                                 |
@@ -18489,7 +18489,7 @@ The final operational ZS-ENG-SCOPE-001 should render as approximately 32–42 co
 | **Tenant/deployment** | T1 pooled regional cell; exact activated regions from R02/R09.                                                                                                                              |
 | **Response**          | R0/R1 and simulation only.                                                                                                                                                                  |
 | **AI**                | Gateway-only assistive uses; citations, human review, deterministic fallback.                                                                                                               |
-| **Connectors**        | Microsoft identity/productivity, one certified EDR, AWS/Azure, generic webhook/syslog, one ticketing and one vulnerability source.                                                          |
+| **Connectors**        | Microsoft identity/productivity, one certified EDR, GCP/Azure, generic webhook/syslog, one ticketing and one vulnerability source.                                                          |
 | **Assurance**         | Core Assurance Baseline; evidence ledger/verifier; control/evidence/audit-package flows.                                                                                                    |
 | **Experience**        | All G1-blocking contracts W01–W18, W21–W28 and W33–W35.                                                                                                                                     |
 | **Scale**             | 3–10 tenants; 2K–10K resources; 0.2–2 TB/day; 15K events/sec peak.                                                                                                                          |
@@ -20995,7 +20995,7 @@ Every transition is observable, idempotent and attributable. A source-native pay
 
 | **Priority** | **Connector Families**                                                                                                                  | **Authority**                                                      |
 |--------------|-----------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------|
-| **P0**       | Microsoft Entra ID/M365/Defender; one certified EDR partner; AWS; generic syslog/webhook; Jira or ServiceNow; one vulnerability source. | Read, normalize, detect. Response only for certified action types. |
+| **P0**       | Microsoft Entra ID/M365/Defender; one certified EDR partner; GCP; generic syslog/webhook; Jira or ServiceNow; one vulnerability source. | Read, normalize, detect. Response only for certified action types. |
 | **P1**       | Second EDR; Google Workspace; Azure; GCP; email security; major identity/PAM; source control/CI; Kubernetes/container audit.            | Read initially; action authority individually certified.           |
 | **P2**       | WAF/API, SaaS audit breadth, DSPM, third-party risk, telecom/OT and regional tools.                                                     | Demand and risk gated.                                             |
 

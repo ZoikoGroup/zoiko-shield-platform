@@ -77,7 +77,10 @@ export class DynamicTokenizationProxyService {
   }
 
   /**
-   * Generates a deterministic format-preserving surrogate token using HMAC-SHA256.
+   * Generates a deterministic HMAC-SHA256 surrogate token, reversible via
+   * the AES-256-GCM vault. This is tokenize-and-vault, not FF1/FF3 format-
+   * preserving encryption — the token does not preserve the original
+   * value's format/length/character set the way real FPE would.
    */
   generateDeterministicToken(
     tenantId: string,

@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
+import { GcpKmsSigner } from '../../../../libs/kms/src/gcp-kms-signer';
 
 export interface ArtifactDigestMetadata {
   imageRepository: string;
@@ -22,49 +23,80 @@ export interface BinaryAuthorizationAdmissionReceipt {
 }
 
 /**
- * Supply Chain Cosign/KMS Attestation & Binary Authorization Service
+ * Supply Chain Artifact Attestation & Binary Authorization Service
  * Specification: Backend Build Guide §LAB 17 & §LAB 18 (Testing, Supply Chain & Launch Rehearsal)
+ *
+ * Signs artifact digests with a real, non-exportable Cloud KMS key (the same
+ * GcpKmsSigner shield-anchor/shield-action/shield-core already use for
+ * checkpoints and command signing), rather than the SHA-256 rehash this
+ * service previously called a "signature" — a hash is not a signature, and
+ * verifying it by recomputing the same hash proves nothing about who signed
+ * it. This does not use the real Cosign/Sigstore CLI or its transparency log
+ * (out of scope for now); "Cosign" in the class name reflects the
+ * `gcp-kms://` key-URI convention it follows, not an integration with the
+ * actual cosign tool.
  */
 @Injectable()
 export class CosignBinaryAttestorService {
   private readonly logger = new Logger(CosignBinaryAttestorService.name);
 
   /**
-   * Generates Cosign/Cloud KMS supply chain signature over immutable artifact digest.
+   * `cosignKmsKeyUri` follows cosign's `gcp-kms://projects/P/locations/L/keyRings/R/cryptoKeys/K[/cryptoKeyVersions/V]`
+   * convention, which (like real cosign) names a crypto key without pinning a
+   * version — the signer resolves the current primary. GcpKmsSigner requires
+   * an explicit key version resource name, so a version is resolved here: the
+   * URI's own version segment if it carries one, else primary version '1'
+   * (this platform's KMS keys are provisioned single-version; a real primary
+   * version lookup via the KMS API is follow-up work if that changes).
    */
-  signArtifactDigest(metadata: ArtifactDigestMetadata): {
+  private resolveKeyVersion(cosignKmsKeyUri: string): string {
+    const withoutScheme = cosignKmsKeyUri.replace(/^gcp-kms:\/\//, '');
+    if (/\/cryptoKeyVersions\/[^/]+$/.test(withoutScheme)) {
+      return withoutScheme;
+    }
+    return `${withoutScheme}/cryptoKeyVersions/1`;
+  }
+
+  /**
+   * Signs an immutable artifact digest with the real Cloud KMS key the URI names.
+   */
+  async signArtifactDigest(metadata: ArtifactDigestMetadata): Promise<{
     signature: string;
     attestationPayload: string;
-  } {
+  }> {
     const payload = `${metadata.imageRepository}@${metadata.imageDigest}|${metadata.sourceCommitHash}|${metadata.builtAt}|${metadata.cosignKmsKeyUri}`;
-    const signature = crypto.createHash('sha256').update(payload).digest('hex');
+    const signer = new GcpKmsSigner(
+      this.resolveKeyVersion(metadata.cosignKmsKeyUri),
+    );
+    const signature = await signer.sign(payload);
 
     this.logger.log(
-      `✔ [COSIGN SIGNATURE GENERATED] Artifact '${metadata.imageRepository}@${metadata.imageDigest.slice(0, 16)}...' signed via KMS '${metadata.cosignKmsKeyUri}'`,
+      `✔ [ARTIFACT SIGNATURE GENERATED] Artifact '${metadata.imageRepository}@${metadata.imageDigest.slice(0, 16)}...' signed via KMS '${metadata.cosignKmsKeyUri}'`,
     );
 
     return { signature, attestationPayload: payload };
   }
 
   /**
-   * Evaluates Binary Authorization admission policy against immutable image digest and signature.
+   * Evaluates Binary Authorization admission policy: a real asymmetric
+   * verification against the KMS key's public key, not a re-hash comparison.
+   * A tampered payload now fails because the signature no longer verifies
+   * against it, rather than because a hash of the (unsigned) payload differs.
    */
-  evaluateAdmissionPolicy(
+  async evaluateAdmissionPolicy(
     metadata: ArtifactDigestMetadata,
     signature: string,
     isKmsSignerTrusted = true,
-  ): BinaryAuthorizationAdmissionReceipt {
+  ): Promise<BinaryAuthorizationAdmissionReceipt> {
     const admissionId = `binauth-adm-${crypto.randomUUID()}`;
     const evaluatedAt = new Date().toISOString();
 
     const expectedPayload = `${metadata.imageRepository}@${metadata.imageDigest}|${metadata.sourceCommitHash}|${metadata.builtAt}|${metadata.cosignKmsKeyUri}`;
-    const expectedSignature = crypto
-      .createHash('sha256')
-      .update(expectedPayload)
-      .digest('hex');
-
+    const signer = new GcpKmsSigner(
+      this.resolveKeyVersion(metadata.cosignKmsKeyUri),
+    );
     const isValidSignature =
-      signature === expectedSignature && isKmsSignerTrusted;
+      isKmsSignerTrusted && (await signer.verify(expectedPayload, signature));
 
     const isAdmissionGranted =
       isValidSignature && metadata.imageDigest.startsWith('sha256:');

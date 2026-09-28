@@ -36,7 +36,7 @@ For the first release:
 - Use R0 observation and R1 recommendation only.
 - Do not perform live destructive security actions.
 - AI may assist users but cannot make final authorization, evidence, compliance, or response decisions.
-- Begin with generic webhook/syslog, Microsoft identity/productivity, AWS or Azure, one EDR, one ticketing system, and one vulnerability source.
+- Begin with generic webhook/syslog, Microsoft identity/productivity, GCP or Azure, one EDR, one ticketing system, and one vulnerability source.
 
 ---
 
@@ -882,7 +882,7 @@ Developer B.
 
 ```text
 Microsoft 365 / Entra ID
-AWS
+GCP
 Azure
 Generic Webhook
 Generic Syslog

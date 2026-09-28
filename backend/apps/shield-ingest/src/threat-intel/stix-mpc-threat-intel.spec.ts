@@ -3,7 +3,10 @@ import {
   StixThreatIntelMatcherService,
   StixBundle,
 } from './stix-threat-intel-matcher.service';
-import { MpcThreatMatcherService } from '../mpc-intel/mpc-threat-matcher.service';
+import {
+  MpcThreatMatcherService,
+  TenantPsiClient,
+} from '../mpc-intel/mpc-threat-matcher.service';
 
 describe('StixThreatIntelMatcherService & MpcThreatMatcherService (LAB 20 Threat Intel & MPC PSI)', () => {
   let stixMatcher: StixThreatIntelMatcherService;
@@ -78,30 +81,28 @@ describe('StixThreatIntelMatcherService & MpcThreatMatcherService (LAB 20 Threat
     });
   });
 
-  describe('Privacy-Preserving MPC Private Set Intersection (PSI)', () => {
-    it('should compute zero-knowledge matches against blinded tenant indicators without plaintext leakage', () => {
+  describe('Privacy-Preserving MPC Private Set Intersection (PSI) — real OPRF', () => {
+    it('should compute intersection matches without the server ever seeing a raw indicator or blinding secret', () => {
       const tenantId = 'tenant-confidential-bank';
-      const tenantSecretKey = 'tenant-hmac-secret-salt-2026';
 
-      // Tenant blinds internal IOCs locally before querying
-      const blindedIp = mpcMatcher.blindIndicator(
+      // Tenant blinds internal IOCs locally — the blind scalar never leaves
+      // this call; only the opaque blindedQuery is sent to the server.
+      const blinded = TenantPsiClient.blindIndicators([
         '198.51.100.99',
-        tenantSecretKey,
-      );
-      const blindedCleanIp = mpcMatcher.blindIndicator(
         '10.20.30.40',
-        tenantSecretKey,
+      ]);
+
+      // Server sees only opaque curve points.
+      const evaluationResults = mpcMatcher.evaluateBlindedQueries(
+        blinded.map((b) => b.blindedQuery),
       );
 
-      const queryItems = [
-        { blindedIndicatorHash: blindedIp },
-        { blindedIndicatorHash: blindedCleanIp },
-      ];
-
-      const mpcResult = mpcMatcher.evaluatePrivateSetIntersection(
+      // Only the tenant side can determine the intersection.
+      const mpcResult = TenantPsiClient.finalizeAndIntersect(
         tenantId,
-        tenantSecretKey,
-        queryItems,
+        blinded,
+        evaluationResults,
+        mpcMatcher.getSafeToRevealDataset(),
       );
 
       expect(mpcResult.receiptId).toBeDefined();
@@ -113,6 +114,15 @@ describe('StixThreatIntelMatcherService & MpcThreatMatcherService (LAB 20 Threat
       );
       expect(mpcResult.matches[0].threatConfidence).toBe(0.99);
       expect(mpcResult.attestationDigest).toHaveLength(64);
+    });
+
+    it('produces different blinded queries for two different client blinding scalars over the same IOC, so the server cannot correlate the same indicator across two queries — a real privacy property the old deterministic HMAC scheme did not have', () => {
+      const first = TenantPsiClient.blindIndicators(['198.51.100.99']);
+      const second = TenantPsiClient.blindIndicators(['198.51.100.99']);
+
+      expect(first[0].blindedQuery.blindedIndicatorHash).not.toBe(
+        second[0].blindedQuery.blindedIndicatorHash,
+      );
     });
   });
 });

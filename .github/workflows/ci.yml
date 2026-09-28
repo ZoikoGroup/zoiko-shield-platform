@@ -170,7 +170,6 @@ jobs:
     name: Build Docker Images
     runs-on: ubuntu-latest
     needs: [unit-tests, security-tests, frontend-ci]
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
 
     steps:
       - uses: actions/checkout@v4
@@ -234,8 +233,12 @@ jobs:
   release-gate:
     name: Release Gate
     runs-on: ubuntu-latest
-    needs: [unit-tests, security-tests, frontend-ci]
-    if: github.ref == 'refs/heads/main'
+    needs: build
+    # A merge gate must run on the proposed merge commit, not only after code
+    # has already reached main. Keep the same checks on direct main pushes.
+    if: >-
+      (github.event_name == 'pull_request' && github.base_ref == 'main') ||
+      github.ref == 'refs/heads/main'
     defaults:
       run:
         working-directory: backend
@@ -255,14 +258,12 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
-      - name: Run offline verifier CLI smoke test
-        run: |
-          echo "Verifier smoke test — confirming binary is runnable"
-          npx ts-node apps/verifier-cli/src/main.ts || true
+      - name: Run offline verifier smoke test
+        run: npx jest apps/verifier-cli/test/verifier-airgap-standalone.spec.ts --no-coverage --runInBand
 
       - name: Confirm no release blockers in code
         run: |
           echo "Checking for cross-tenant bypass patterns..."
           # Ensure no controller bypasses the tenant_id filter
-          ! grep -r "findMany({" apps/ --include="*.ts" | grep -v "tenant_id" | grep -v "spec" | grep -v "node_modules" || echo "WARNING: potential missing tenant filter"
+          ! grep -r "findMany({" apps/ --include="*.ts" | grep -v "tenant_id" | grep -v "spec" | grep -v "node_modules"
           echo "Release gate passed"

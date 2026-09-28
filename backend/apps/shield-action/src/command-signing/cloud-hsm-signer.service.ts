@@ -1,70 +1,56 @@
 import { Injectable, Logger } from '@nestjs/common';
-import * as crypto from 'crypto';
-import {
-  CommandSigner,
-  SignableCommand,
-  SignedCommand,
-} from './command-signer.interface';
+import { GcpKmsSigner } from '../../../../libs/kms/src/gcp-kms-signer';
+import { SignableCommand, SignedCommand } from './command-signer.interface';
 
-export interface HsmKeyPair {
-  keyId: string;
-  algorithm: 'ECDSA_P256_SHA256' | 'RSA_PSS_2048_SHA256';
-  publicKeyPem: string;
-  privateKeyPem: string;
-  hsmEnclaveId: string;
-  fipsLevel: string;
-  createdAt: string;
-}
-
+/**
+ * Signs high-consequence SOAR response commands through a non-exportable
+ * Google Cloud KMS key, mirroring ProductionGovernedCommandSigner. The
+ * private key never enters this process.
+ *
+ * Custody labels are reported honestly: this uses a software-protection-level
+ * KMS key (real non-exportable custody, real asymmetric signing), not an
+ * HSM-protection-level key. Provisioning an HSM-tier key ring is a separate,
+ * explicitly deferred piece of work — this service must never claim FIPS
+ * validation or hardware custody it doesn't have. It previously generated
+ * an ephemeral in-process software keypair and labeled it 'Cloud HSM cluster',
+ * which was fabricated key-custody provenance; that has been replaced with
+ * this real KMS-backed signer.
+ */
 @Injectable()
-export class CloudHsmSignerService implements CommandSigner {
+export class CloudHsmSignerService {
   private readonly logger = new Logger(CloudHsmSignerService.name);
-  private activeKey: HsmKeyPair;
+  private readonly signer: GcpKmsSigner;
 
   constructor() {
-    this.activeKey = this.generateEphemeralHsmEnclaveKey();
+    const keyVersion = process.env.ACTION_HSM_COMMAND_KMS_KEY_VERSION ?? '';
+    if (!keyVersion) {
+      throw new Error(
+        'ACTION_HSM_COMMAND_KMS_KEY_VERSION is required — commands must be signed by a key in KMS custody, not one generated in process memory.',
+      );
+    }
+    this.signer = new GcpKmsSigner(keyVersion);
   }
 
-  private generateEphemeralHsmEnclaveKey(): HsmKeyPair {
-    const { publicKey, privateKey } = crypto.generateKeyPairSync('ec', {
-      namedCurve: 'prime256v1',
-      publicKeyEncoding: { type: 'spki', format: 'pem' },
-      privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
-    });
-
+  async getActiveKeyMetadata() {
     return {
-      keyId: `hsm-key-${crypto.randomUUID().slice(0, 8)}`,
-      algorithm: 'ECDSA_P256_SHA256',
-      publicKeyPem: publicKey,
-      privateKeyPem: privateKey,
-      // Honest custody metadata. This key is generated in process memory by
-      // Node's crypto module - it is not held in, or attested by, any HSM,
-      // and no FIPS validation applies. Reporting a cloud HSM cluster and a
-      // FIPS level here fabricated key-custody provenance; the spec requires
-      // HSM/KMS custody as a control still to be built, not a label.
-      hsmEnclaveId: 'NONE_SOFTWARE_KEY',
-      fipsLevel: 'NOT_VALIDATED',
-      createdAt: new Date().toISOString(),
-    };
-  }
-
-  getActiveKeyMetadata() {
-    return {
-      keyId: this.activeKey.keyId,
-      algorithm: this.activeKey.algorithm,
-      publicKeyPem: this.activeKey.publicKeyPem,
-      hsmEnclaveId: this.activeKey.hsmEnclaveId,
-      fipsLevel: this.activeKey.fipsLevel,
+      keyId: this.signer.keyId,
+      algorithm: this.signer.algorithm,
+      publicKeyPem: await this.signer.publicKey(),
+      // Honest custody metadata: this key is held in Google Cloud KMS at the
+      // software protection level — a real non-exportable key, but not an
+      // HSM-backed one, and no FIPS validation applies at this tier.
+      hsmEnclaveId: 'GCP_KMS_SOFTWARE_PROTECTED',
+      fipsLevel: 'NOT_APPLICABLE_SOFTWARE_PROTECTION_LEVEL',
     };
   }
 
   /**
-   * Signs a high-consequence SOAR response command using Cloud HSM Asymmetric Private Key.
+   * Signs a high-consequence SOAR response command using the Cloud KMS key.
    */
-  sign(
+  async sign(
     command: SignableCommand,
     executionMode: 'SIMULATION' | 'LIVE' = 'LIVE',
-  ): SignedCommand {
+  ): Promise<SignedCommand> {
     const canonicalMaterial = JSON.stringify({
       tenantId: command.tenantId,
       actionCommandId: command.actionCommandId,
@@ -73,29 +59,25 @@ export class CloudHsmSignerService implements CommandSigner {
       payload: command.payload,
     });
 
-    const signer = crypto.createSign('SHA256');
-    signer.update(canonicalMaterial);
-    signer.end();
-
-    const signatureDer = signer.sign(this.activeKey.privateKeyPem, 'hex');
+    const signature = await this.signer.sign(canonicalMaterial);
 
     return {
-      signature: `hsm:${this.activeKey.keyId}:${signatureDer}`,
-      signedBy: `SoftwareKey:${this.activeKey.keyId}`,
+      signature: `gcpkms:${this.signer.keyId}:${signature}`,
+      signedBy: `GcpKms:${this.signer.keyId}`,
       signedAt: new Date().toISOString(),
     };
   }
 
   /**
-   * Verifies an HSM signature against the active public key.
+   * Verifies a Cloud KMS signature against the key's public key.
    */
-  verifySignature(
+  async verifySignature(
     command: SignableCommand,
     executionMode: 'SIMULATION' | 'LIVE',
     signatureString: string,
-  ): boolean {
+  ): Promise<boolean> {
     const parts = signatureString.split(':');
-    if (parts.length !== 3 || parts[0] !== 'hsm') return false;
+    if (parts.length !== 3 || parts[0] !== 'gcpkms') return false;
 
     const signatureHex = parts[2];
     const canonicalMaterial = JSON.stringify({
@@ -106,10 +88,6 @@ export class CloudHsmSignerService implements CommandSigner {
       payload: command.payload,
     });
 
-    const verifier = crypto.createVerify('SHA256');
-    verifier.update(canonicalMaterial);
-    verifier.end();
-
-    return verifier.verify(this.activeKey.publicKeyPem, signatureHex, 'hex');
+    return this.signer.verify(canonicalMaterial, signatureHex);
   }
 }

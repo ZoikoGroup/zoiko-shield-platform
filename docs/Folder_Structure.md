@@ -266,7 +266,7 @@ zoikoshield-backend/
 │   │   │   │       │   └── tests/
 │   │   │   │       │
 │   │   │   │       ├── github/
-│   │   │   │       ├── aws/
+│   │   │   │       ├── gcp/
 │   │   │   │       ├── google-workspace/
 │   │   │   │       ├── crowdstrike/
 │   │   │   │       ├── jira/
@@ -377,7 +377,7 @@ zoikoshield-backend/
 │   │   │   │   └── providers/
 │   │   │   │       ├── microsoft-entra/
 │   │   │   │       ├── crowdstrike/
-│   │   │   │       └── aws/
+│   │   │   │       └── gcp/
 │   │   │   │
 │   │   │   ├── receipt-verification/
 │   │   │   ├── reconciliation/

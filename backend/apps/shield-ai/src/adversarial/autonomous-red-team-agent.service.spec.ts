@@ -1,12 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AutonomousRedTeamAgentService } from './autonomous-red-team-agent.service';
+import { TierAWindowedDetectorService } from '../../../shield-ingest/src/detection/tier-a/tier-a-windowed-detector.service';
 
 describe('AutonomousRedTeamAgentService', () => {
   let service: AutonomousRedTeamAgentService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [AutonomousRedTeamAgentService],
+      providers: [AutonomousRedTeamAgentService, TierAWindowedDetectorService],
     }).compile();
 
     service = module.get<AutonomousRedTeamAgentService>(

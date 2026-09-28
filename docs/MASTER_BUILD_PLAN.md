@@ -65,7 +65,7 @@ In scope: Managed Defense and Continuous Assurance as independently usable
 offers; a pooled regional-cell deployment model; R0 observation, R1
 recommendation, and response simulation; gateway-controlled AI with
 citations and deterministic fallback; Microsoft identity/productivity,
-AWS/Azure, generic webhook/syslog, one ticketing source, one vulnerability
+GCP/Azure, generic webhook/syslog, one ticketing source, one vulnerability
 source, one certified EDR integration; reference scale of 3–10 tenants,
 2,000–10,000 resources, 0.2–2 TB/day ingestion, ~15,000 events/sec peak.
 

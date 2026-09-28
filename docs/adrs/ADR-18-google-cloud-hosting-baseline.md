@@ -22,7 +22,7 @@ below must be evidenced, not merely decided.
 
 ## Context
 
-The prior ratified platform baseline was AWS-first and managed-first, citing
+The prior ratified platform baseline was GCP-first and managed-first, citing
 EKS, S3/Iceberg and OpenTofu. The assurance review observed `europe-west3` in
 a compliance status line — Google Cloud's Frankfurt region — and correctly
 identified it as unexplained drift: a hosting change cannot arrive incidentally
@@ -42,7 +42,7 @@ Google Cloud on instruction:
   how Google's Managed Service for Apache Kafka authenticates.
 
 So the position is no longer "a region name appeared in a status line". The
-code now targets Google Cloud, and the controlled architecture still says AWS.
+code now targets Google Cloud, and the controlled architecture still says GCP.
 One of the two has to move.
 
 ## Decision required
@@ -67,7 +67,7 @@ are what the control depends on.
 ## Consequences if ratified
 
 - `docs/GCP_DEPLOYMENT_GUIDE.md` becomes the controlled deployment document,
-  and the AWS-oriented sections of the prior architecture baseline are
+  and the GCP-oriented sections of the prior architecture baseline are
   superseded rather than merely stale.
 - The following must be re-derived for Google Cloud before G1: threat model,
   provider risk assessment, DR and residency mapping, cost model, IAM
@@ -95,7 +95,7 @@ and none should be claimed.
 
 | | |
 |---|---|
-| **Settled** | Google Cloud is the hosting baseline. `europe-west3` is a legitimate development cell. The KMS, storage and Kafka migrations stand. The AWS-first sections of the prior architecture baseline are superseded. |
+| **Settled** | Google Cloud is the hosting baseline. `europe-west3` is a legitimate development cell. The KMS, storage and Kafka migrations stand. The GCP-first sections of the prior architecture baseline are superseded. |
 | **Not settled** | Whether any regional cell is *proven*. No cell has been applied, health-checked, attacked negatively, restored or failed over. |
 | **Still required before G1** | Threat model and provider risk assessment for Google Cloud; DR and residency mapping; live cell conformance and cross-cell negative tests; DPO review of subprocessors and transfers. |
 

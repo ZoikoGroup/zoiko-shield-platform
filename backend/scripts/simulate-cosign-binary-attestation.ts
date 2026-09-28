@@ -1,10 +1,14 @@
 /**
- * Supply Chain Cosign/KMS Attestation & Binary Authorization Simulator
- * 
+ * Supply Chain KMS Artifact Attestation & Binary Authorization Simulator
+ *
  * Simulates:
- * 1. Generating Cosign / Cloud KMS software supply chain signatures over immutable artifact digests.
+ * 1. Generating real Cloud KMS asymmetric signatures over immutable artifact digests
+ *    (requires real GCP credentials and a KMS key at the URI below — this is no
+ *    longer a SHA-256 hash standing in for a signature).
  * 2. Evaluating GKE Binary Authorization admission policies (SLSA Level 3 provenance).
- * 3. Detecting and blocking unsigned or unverified container image admission attempts per LAB 17/18.
+ * 3. Detecting and blocking unsigned, unverified, or tampered container image admission
+ *    attempts per LAB 17/18 — verification is a real signature check now, so a tampered
+ *    payload fails even if a stale hash would have matched.
  */
 
 import 'dotenv/config';
@@ -32,15 +36,15 @@ async function main() {
     cosignKmsKeyUri: 'gcp-kms://projects/zoiko-prod-security/locations/europe-west3/keyRings/release-kr/cryptoKeys/cosign-prod-root',
   };
 
-  console.log('[1/3] Signing Immutable Production Artifact Digest via Cloud KMS / Cosign...');
-  const signResult = attestorService.signArtifactDigest(productionImageMetadata);
+  console.log('[1/3] Signing Immutable Production Artifact Digest via Cloud KMS...');
+  const signResult = await attestorService.signArtifactDigest(productionImageMetadata);
   console.log(`  ✔ Image: ${productionImageMetadata.imageRepository}`);
   console.log(`  ✔ Immutable Digest: ${productionImageMetadata.imageDigest}`);
   console.log(`  ✔ Source Commit: ${productionImageMetadata.sourceCommitHash}`);
-  console.log(`  🔒 Cosign Signature: ${signResult.signature.slice(0, 32)}...`);
+  console.log(`  🔒 KMS Signature: ${signResult.signature.slice(0, 32)}...`);
 
   console.log('\n[2/3] Evaluating GKE Binary Authorization Cluster Admission Policy...');
-  const admission = attestorService.evaluateAdmissionPolicy(productionImageMetadata, signResult.signature, true);
+  const admission = await attestorService.evaluateAdmissionPolicy(productionImageMetadata, signResult.signature, true);
   console.log(`  ✔ Admission Granted: ${admission.isAdmissionGranted}`);
   console.log(`  ✔ Provenance Level: ${admission.slsaProvenanceLevel}`);
   console.log(`  ✔ Verified Signer: ${admission.verifiedSigner}`);
@@ -52,7 +56,7 @@ async function main() {
     imageDigest: `sha256:${crypto.randomBytes(32).toString('hex')}`, // Modified bytes
   };
 
-  const rogueAdmission = attestorService.evaluateAdmissionPolicy(rogueMetadata, signResult.signature, true);
+  const rogueAdmission = await attestorService.evaluateAdmissionPolicy(rogueMetadata, signResult.signature, true);
   console.log(`  🛑 Admission Granted: ${rogueAdmission.isAdmissionGranted}`);
   console.log(`  🛑 Provenance Level: ${rogueAdmission.slsaProvenanceLevel}`);
   console.log('  🔒 Cluster Security Guarantee: Unsigned/tampered image blocked by Binary Authorization admission controller.');

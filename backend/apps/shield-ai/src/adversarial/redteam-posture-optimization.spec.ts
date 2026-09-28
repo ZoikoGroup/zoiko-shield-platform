@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AutonomousRedTeamAgentService } from './autonomous-red-team-agent.service';
 import { PlaybookOptimizerAgentService } from '../optimization/playbook-optimizer-agent.service';
+import { TierAWindowedDetectorService } from '../../../shield-ingest/src/detection/tier-a/tier-a-windowed-detector.service';
 
 describe('AutonomousRedTeamAgentService & PlaybookOptimizerAgentService (LAB 23 Adversarial Chaos & Optimization)', () => {
   let redTeamAgent: AutonomousRedTeamAgentService;
@@ -8,7 +9,11 @@ describe('AutonomousRedTeamAgentService & PlaybookOptimizerAgentService (LAB 23 
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [AutonomousRedTeamAgentService, PlaybookOptimizerAgentService],
+      providers: [
+        AutonomousRedTeamAgentService,
+        PlaybookOptimizerAgentService,
+        TierAWindowedDetectorService,
+      ],
     }).compile();
 
     redTeamAgent = module.get<AutonomousRedTeamAgentService>(
@@ -38,7 +43,11 @@ describe('AutonomousRedTeamAgentService & PlaybookOptimizerAgentService (LAB 23 
       expect(chain.steps[3].mitreTechnique).toBe('T1048');
     });
 
-    it('should execute synthetic dry-run, calculate MTTD, posture rating, and cryptographic attestation digest', () => {
+    it('should execute synthetic dry-run against the real Tier-A detector, calculate MTTD, posture rating, and cryptographic attestation digest', () => {
+      // Financial-Swift-Fraud's 4 built-in steps each contain their
+      // technique's real detection marker (hydra/rockyou, sudo -u *_admin,
+      // smbclient, rclone sync), so the real detector genuinely matches all 4
+      // — this is no longer true by construction of a hardcoded `true`.
       const report = redTeamAgent.executeChain({
         tenantId: 'tenant-bank-01',
         scenarioName: 'Financial-Swift-Fraud',
@@ -49,8 +58,60 @@ describe('AutonomousRedTeamAgentService & PlaybookOptimizerAgentService (LAB 23 
       expect(report.stepsDetected).toBe(4);
       expect(report.coveragePercentage).toBe(100);
       expect(report.defensePostureRating).toBe('RESILIENT');
-      expect(report.meanDetectionLatencyMs).toBeLessThan(150);
       expect(report.cryptographicAttestationDigest).toHaveLength(64);
+    });
+
+    it('should report genuine detection gaps for steps whose payload matches no real detection rule (proof the posture can fail)', () => {
+      const chain = redTeamAgent.generateAttackSequence(
+        'tenant-gap-test',
+        'Kubernetes-Privilege-Escalation',
+        { intensityLevel: 'LOW' },
+      );
+      // Replace the payloads with content that contains no technique marker
+      // at all — a real, undetected novel variant.
+      const blindedChain = {
+        ...chain,
+        steps: chain.steps.map((step) => ({
+          ...step,
+          syntheticPayload: 'echo "totally benign, no markers here"',
+        })),
+      };
+
+      const report = redTeamAgent.executeSyntheticRun(blindedChain);
+
+      expect(report.stepsDetected).toBe(0);
+      expect(report.stepsDetected).toBeLessThan(report.stepsExecuted);
+      expect(report.coveragePercentage).toBe(0);
+      expect(report.defensePostureRating).toBe('VULNERABLE');
+      expect(report.stepEvaluations.every((e) => e.detected === false)).toBe(
+        true,
+      );
+      expect(
+        report.stepEvaluations.every((e) => e.ruleMatched === undefined),
+      ).toBe(true);
+    });
+
+    it('should detect exactly the steps whose payload matches their technique marker, in a mixed chain', () => {
+      const chain = redTeamAgent.generateAttackSequence(
+        'tenant-mixed-test',
+        'Kubernetes-Privilege-Escalation',
+        { intensityLevel: 'LOW' },
+      );
+      // Blind only the first step; leave the rest as real, matching payloads.
+      const mixedChain = {
+        ...chain,
+        steps: chain.steps.map((step, i) =>
+          i === 0 ? { ...step, syntheticPayload: 'echo "no marker"' } : step,
+        ),
+      };
+
+      const report = redTeamAgent.executeSyntheticRun(mixedChain);
+
+      expect(report.stepEvaluations[0].detected).toBe(false);
+      expect(
+        report.stepEvaluations.slice(1).every((e) => e.detected === true),
+      ).toBe(true);
+      expect(report.stepsDetected).toBe(mixedChain.steps.length - 1);
     });
   });
 

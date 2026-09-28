@@ -27,7 +27,11 @@ export class GcpKmsEnvelope {
    *   projects/P/locations/L/keyRings/R/cryptoKeys/K
    */
   constructor(private readonly cryptoKeyName: string) {
-    if (!/^projects\/[^/]+\/locations\/[^/]+\/keyRings\/[^/]+\/cryptoKeys\/[^/]+$/.test(cryptoKeyName)) {
+    if (
+      !/^projects\/[^/]+\/locations\/[^/]+\/keyRings\/[^/]+\/cryptoKeys\/[^/]+$/.test(
+        cryptoKeyName,
+      )
+    ) {
       throw new Error(
         `'${cryptoKeyName}' is not a Cloud KMS crypto key resource name. Expected projects/P/locations/L/keyRings/R/cryptoKeys/K`,
       );
@@ -37,30 +41,44 @@ export class GcpKmsEnvelope {
 
   /** A fresh 256-bit data key, wrapped by KMS and returned base64-encoded. */
   async generateWrappedKey(): Promise<string> {
-    const dataKey = randomBytes(32);
+    return this.wrap(randomBytes(32));
+  }
+
+  async unwrapKey(wrappedKeyBase64: string): Promise<Buffer> {
+    return this.unwrap(wrappedKeyBase64);
+  }
+
+  /**
+   * Wraps arbitrary plaintext bytes (not necessarily a freshly generated
+   * key) with this crypto key, e.g. one share of an externally-split
+   * secret. Returned base64-encoded.
+   */
+  async wrap(plaintext: Buffer): Promise<string> {
     const [response] = await this.client.encrypt({
       name: this.cryptoKeyName,
-      plaintext: dataKey,
-      plaintextCrc32c: { value: crc32c(dataKey) },
+      plaintext,
+      plaintextCrc32c: { value: crc32c(plaintext) },
     });
     if (!response.ciphertext) {
-      throw new Error('Cloud KMS returned no wrapped subject key');
+      throw new Error('Cloud KMS returned no ciphertext');
     }
     if (response.verifiedPlaintextCrc32c === false) {
-      throw new Error('Cloud KMS reported the data key was corrupted in transit');
+      throw new Error(
+        'Cloud KMS reported the plaintext was corrupted in transit',
+      );
     }
     return Buffer.from(response.ciphertext).toString('base64');
   }
 
-  async unwrapKey(wrappedKeyBase64: string): Promise<Buffer> {
-    const ciphertext = Buffer.from(wrappedKeyBase64, 'base64');
+  async unwrap(wrappedBase64: string): Promise<Buffer> {
+    const ciphertext = Buffer.from(wrappedBase64, 'base64');
     const [response] = await this.client.decrypt({
       name: this.cryptoKeyName,
       ciphertext,
       ciphertextCrc32c: { value: crc32c(ciphertext) },
     });
     if (!response.plaintext) {
-      throw new Error('Cloud KMS returned no subject key plaintext');
+      throw new Error('Cloud KMS returned no plaintext');
     }
     return Buffer.from(response.plaintext);
   }

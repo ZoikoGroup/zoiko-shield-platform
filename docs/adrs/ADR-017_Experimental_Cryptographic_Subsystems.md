@@ -9,7 +9,7 @@
 ## Context
 A direct code audit of `apps/shield-core/src/modules/` identified two advanced cryptographic subsystems:
 1. **`homomorphic`** (`paillier-homomorphic-aggregator.service.ts`): Implements additive homomorphic encryption using the Paillier cryptosystem to enable encrypted aggregation of multi-tenant security metrics without plaintext disclosure.
-2. **`crypto-escrow`** (`split-kms-escrow.service.ts`, `kms-health-rebalancer.service.ts`): Implements $(k, n)$ threshold split-key escrow and dynamic multi-cloud KMS health rebalancing across AWS KMS, Google Cloud KMS, and HashiCorp Vault.
+2. **`crypto-escrow`** (`split-kms-escrow.service.ts`, `kms-health-rebalancer.service.ts`): Implements $(k, n)$ threshold split-key escrow and dynamic multi-cloud KMS health rebalancing across GCP KMS, Google Cloud KMS, and HashiCorp Vault.
 
 Cross-verification against the 19 authoritative specification documents confirms that while these subsystems represent mathematically valid privacy-preserving and multi-cloud resilience patterns, neither concept is mandated in the baseline **ERB-01 / Gate-1** capability scope. Uncontrolled expansion of ungrounded cryptographic primitives introduces architectural complexity and review ambiguity.
 

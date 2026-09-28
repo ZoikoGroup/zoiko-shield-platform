@@ -1,5 +1,16 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+/**
+ * KMS provider health-based routing (NOT secret-splitting escrow).
+ *
+ * This is an in-memory health map that shifts a routing weight from one KMS
+ * provider to another when the primary looks unhealthy — a failover router,
+ * not the "split-KMS escrow" some documentation has called it. Real
+ * multi-party key-share escrow (Shamir's secret sharing or equivalent) is a
+ * different, unimplemented capability; see SplitKmsEscrowService in this
+ * same module for the XOR-based secret-splitting engine and its own
+ * corrected labeling.
+ */
 export type KmsProviderType = 'AWS_KMS' | 'GCP_CLOUD_KMS' | 'AZURE_KEYVAULT';
 
 export interface KmsProviderHealth {
@@ -27,9 +38,9 @@ export class KmsHealthRebalancerService {
   private readonly providers: Map<KmsProviderType, KmsProviderHealth> = new Map(
     [
       [
-        'AWS_KMS',
+        'GCP_CLOUD_KMS',
         {
-          provider: 'AWS_KMS',
+          provider: 'GCP_CLOUD_KMS',
           status: 'HEALTHY',
           lastLatencyMs: 35,
           averageLatencyMs: 40,
@@ -39,9 +50,9 @@ export class KmsHealthRebalancerService {
         },
       ],
       [
-        'GCP_CLOUD_KMS',
+        'AWS_KMS',
         {
-          provider: 'GCP_CLOUD_KMS',
+          provider: 'AWS_KMS',
           status: 'HEALTHY',
           lastLatencyMs: 42,
           averageLatencyMs: 45,
@@ -53,8 +64,12 @@ export class KmsHealthRebalancerService {
     ],
   );
 
-  private primaryProvider: KmsProviderType = 'AWS_KMS';
-  private secondaryProvider: KmsProviderType = 'GCP_CLOUD_KMS';
+  // GCP is the hosting baseline (ADR-16) — GCP Cloud KMS is the real,
+  // wired-up primary. AWS/Azure remain modeled as a documented cross-cloud
+  // escape hatch for a total GCP KMS outage, not an equally-real secondary:
+  // no AWS/Azure KMS credentials or client exist in this codebase today.
+  private primaryProvider: KmsProviderType = 'GCP_CLOUD_KMS';
+  private secondaryProvider: KmsProviderType = 'AWS_KMS';
 
   /**
    * Records a synthetic KMS probe result (e.g. heartbeat encryption/unwrapping).
@@ -119,7 +134,7 @@ export class KmsHealthRebalancerService {
   ): FailoverEvent {
     const fallback =
       this.secondaryProvider === failedProvider
-        ? 'AWS_KMS'
+        ? this.nextFallbackAfter(this.primaryProvider, failedProvider)
         : this.secondaryProvider;
     const oldPrimary = this.primaryProvider;
     this.primaryProvider = fallback;
@@ -138,6 +153,22 @@ export class KmsHealthRebalancerService {
     );
 
     return event;
+  }
+
+  /** The remaining provider once both primary and the just-failed one are excluded. */
+  private nextFallbackAfter(
+    primary: KmsProviderType,
+    failed: KmsProviderType,
+  ): KmsProviderType {
+    const remaining = (
+      ['GCP_CLOUD_KMS', 'AWS_KMS', 'AZURE_KEYVAULT'] as const
+    ).find((p) => p !== primary && p !== failed);
+    if (!remaining) {
+      throw new Error(
+        `No remaining KMS provider to fail over to (primary and failed both exhaust the provider set).`,
+      );
+    }
+    return remaining;
   }
 
   getPrimaryProvider(): KmsProviderType {

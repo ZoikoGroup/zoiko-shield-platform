@@ -82,3 +82,49 @@ model ActionRateLimit {
 
   @@schema("action")
 }
+
+// Durable containment-escalation workflow state, persisted to Postgres so it
+// survives process restarts and is resumable from a fresh instance — see
+// DurableContainmentEscalationService, which replaced an in-memory Map that
+// falsely branded itself "Temporal" while providing none of Temporal's
+// durability guarantees.
+model DurableWorkflowInstance {
+  id                     String    @id @default(uuid())
+  tenant_id              String
+  workflow_id            String    @unique
+  workflow_type          String    @default("CONTAINMENT_ESCALATION")
+  incident_ref           String
+  target_resource        String
+  action_type            String
+  current_tier           String
+  current_state          String
+  mfa_challenge_verified Boolean   @default(false)
+  action_receipt_id      String?
+  rollback_receipt_id    String?
+  attestation_digest     String
+  started_at             DateTime  @default(now())
+  completed_at           DateTime?
+  updated_at             DateTime  @updatedAt
+
+  transitions DurableWorkflowTransition[]
+
+  @@index([tenant_id])
+
+  @@schema("action")
+}
+
+model DurableWorkflowTransition {
+  id                   String                  @id @default(uuid())
+  workflow_instance_id String
+  workflowInstance     DurableWorkflowInstance @relation(fields: [workflow_instance_id], references: [id])
+  tenant_id            String
+  state                String
+  recorded_by          String?
+  metadata_reference   String
+  occurred_at          DateTime                @default(now())
+
+  @@index([workflow_instance_id])
+  @@index([tenant_id])
+
+  @@schema("action")
+}

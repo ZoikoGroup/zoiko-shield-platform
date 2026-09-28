@@ -1,12 +1,27 @@
+const HSM_KEY_VERSION =
+  'projects/p/locations/europe-west2/keyRings/zoikoshield/cryptoKeys/action-hsm-command/cryptoKeyVersions/1';
+
+// See cloud-hsm-signer.service.spec.ts for why GcpKmsSigner is mocked
+// directly rather than the underlying @google-cloud/kms transport.
+jest.mock('../../../libs/kms/src/gcp-kms-signer', () => ({
+  GcpKmsSigner: jest.fn().mockImplementation((keyVersionName: string) => ({
+    keyId: keyVersionName,
+    algorithm: 'EC_SIGN_P256_SHA256',
+    sign: jest.fn(async () => 'fake-signature'),
+    verify: jest.fn(async () => true),
+    publicKey: jest.fn(
+      async () => '-----BEGIN PUBLIC KEY-----\nfake\n-----END PUBLIC KEY-----',
+    ),
+  })),
+}));
+
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   SignedCommandBrokerService,
   SignedCommandEnvelope,
 } from './broker/signed-command-broker.service';
 import { CloudHsmSignerService } from './command-signing/cloud-hsm-signer.service';
-import {
-  GOVERNED_COMMAND_SIGNER,
-} from './command-signing/command-signer.interface';
+import { GOVERNED_COMMAND_SIGNER } from './command-signing/command-signer.interface';
 import { DevGovernedCommandSigner } from './command-signing/dev-governed-command-signer.service';
 
 describe('LAB 15 — Action Broker & Governed Response Hard Boundaries', () => {
@@ -14,6 +29,7 @@ describe('LAB 15 — Action Broker & Governed Response Hard Boundaries', () => {
   let hsmSigner: CloudHsmSignerService;
 
   beforeEach(async () => {
+    process.env.ACTION_HSM_COMMAND_KMS_KEY_VERSION = HSM_KEY_VERSION;
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         SignedCommandBrokerService,
@@ -33,11 +49,15 @@ describe('LAB 15 — Action Broker & Governed Response Hard Boundaries', () => {
 
   describe('Non-Exportable Key Posture (Section 7 Hard Boundary)', () => {
     it('should confirm broker workloads hold no exportable private key APIs', async () => {
-      const metadata = hsmSigner.getActiveKeyMetadata();
+      const metadata = await hsmSigner.getActiveKeyMetadata();
       expect(metadata.keyId).toBeDefined();
       expect(metadata.publicKeyPem).toBeDefined();
-      expect(metadata.hsmEnclaveId).toBe('NONE_SOFTWARE_KEY');
-      expect(metadata.fipsLevel).toBe('NOT_VALIDATED');
+      // Real KMS custody, honestly labeled: software-protected, not a
+      // fabricated HSM/FIPS claim.
+      expect(metadata.hsmEnclaveId).toBe('GCP_KMS_SOFTWARE_PROTECTED');
+      expect(metadata.fipsLevel).toBe(
+        'NOT_APPLICABLE_SOFTWARE_PROTECTION_LEVEL',
+      );
 
       // The public metadata contract must NEVER contain privateKeyPem
       expect((metadata as any).privateKeyPem).toBeUndefined();
@@ -83,7 +103,8 @@ describe('LAB 15 — Action Broker & Governed Response Hard Boundaries', () => {
         signingAlgorithm: 'ECDSA_SHA_256',
       };
 
-      const receipt = await brokerService.dispatchGovernedCommand(expiredEnvelope);
+      const receipt =
+        await brokerService.dispatchGovernedCommand(expiredEnvelope);
       expect(receipt.executionStatus).toBe('REJECTED_EXPIRED_COMMAND');
       expect(receipt.observedState).toBe('NO_CHANGE');
     });
@@ -104,7 +125,8 @@ describe('LAB 15 — Action Broker & Governed Response Hard Boundaries', () => {
         targetRef: 'subnet-10-0-2-0-TAMPERED',
       };
 
-      const receipt = await brokerService.dispatchGovernedCommand(tamperedCommand);
+      const receipt =
+        await brokerService.dispatchGovernedCommand(tamperedCommand);
       expect(receipt.executionStatus).toBe('REJECTED_VALIDATION_FAILURE');
       expect(receipt.observedState).toBe('NO_CHANGE');
     });
