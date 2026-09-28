@@ -11,7 +11,7 @@ import { SignableCommand, SignedCommand } from './command-signer.interface';
  * KMS key (real non-exportable custody, real asymmetric signing), not an
  * HSM-protection-level key. Provisioning an HSM-tier key ring is a separate,
  * explicitly deferred piece of work — this service must never claim FIPS
- * validation or HSM enclave custody it doesn't have. It previously generated
+ * validation or hardware custody it doesn't have. It previously generated
  * an ephemeral in-process software keypair and labeled it 'Cloud HSM cluster',
  * which was fabricated key-custody provenance; that has been replaced with
  * this real KMS-backed signer.
