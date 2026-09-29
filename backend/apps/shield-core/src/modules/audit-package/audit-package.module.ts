@@ -5,6 +5,8 @@ import { AuthorizationDecisionModule } from '../authorization-decision/authoriza
 import { ShieldAnchorClient } from '../../internal-client/shield-anchor.client';
 import { OutboxService } from '../../outbox/outbox.service';
 import { AuditPackageController } from './audit-package.controller';
+import { AirgapComplianceController } from './airgap/airgap-compliance.controller';
+import { ExternalAuditorController } from './auditor/external-auditor.controller';
 import { AuditPackageService } from './audit-package.service';
 import { AuditPackageStateMachineService } from './audit-package-state-machine.service';
 import { AuditPackageBuilderService } from './builder/audit-package-builder.service';
@@ -15,10 +17,16 @@ import { AuditPackageSupersessionService } from './supersession/audit-package-su
 import { AuditPackageExportService } from './export/audit-package-export.service';
 import { AuditorEvidenceExportService } from './export/auditor-evidence-export.service';
 import { AuditPackageClaimService } from './claim/audit-package-claim.service';
+import { AirgapCompliancePackageService } from './airgap/airgap-compliance-package.service';
+import { ExternalAuditorWorkspaceService } from './auditor/external-auditor-workspace.service';
 
 @Module({
   imports: [PrismaModule, EvidenceModule, AuthorizationDecisionModule],
-  controllers: [AuditPackageController],
+  controllers: [
+    AuditPackageController,
+    AirgapComplianceController,
+    ExternalAuditorController,
+  ],
   providers: [
     ShieldAnchorClient,
     OutboxService,
@@ -32,6 +40,8 @@ import { AuditPackageClaimService } from './claim/audit-package-claim.service';
     AuditPackageExportService,
     AuditorEvidenceExportService,
     AuditPackageClaimService,
+    AirgapCompliancePackageService,
+    ExternalAuditorWorkspaceService,
   ],
   exports: [
     AuditPackageService,
@@ -43,6 +53,8 @@ import { AuditPackageClaimService } from './claim/audit-package-claim.service';
     AuditPackageExportService,
     AuditorEvidenceExportService,
     AuditPackageClaimService,
+    AirgapCompliancePackageService,
+    ExternalAuditorWorkspaceService,
   ],
 })
 export class AuditPackageModule {}

@@ -4493,6 +4493,406 @@ export class ZoikoShieldApiClient {
     );
     return res.data;
   }
+
+  // --- Workstream 5: Deep External Auditor Workspace ---
+
+  static async getAuditorWorkspace(): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/auditor/workspace',
+      { method: 'GET' },
+      () => ({
+        statusCode: 200,
+        data: {
+          auditorRole: 'AUDITOR_EXTERNAL',
+          workspaceStatus: 'CRYPTOGRAPHICALLY_VERIFIED',
+          activeLedgerIntegrity: 'TAMPER_PROOF_SEALED',
+          totalAuditPackages: 8,
+          frozenImmutablePackages: 6,
+          activeFrameworks: [
+            'EU_DORA_2022_2554',
+            'EU_NIS2_2022_2555',
+            'SOC2_TYPE_II_CC6',
+            'ISO_IEC_27001_2022',
+            'PCI_DSS_V4_0_1',
+          ],
+          recentPackages: [
+            {
+              id: 'pkg-dora-q3',
+              purpose: 'DORA Art. 6 & 11 ICT Risk & Multi-Cloud DR Attestation',
+              status: 'FROZEN',
+              createdAt: new Date(Date.now() - 86400000).toISOString(),
+              cycleReference: 'CYCLE-2026-Q3-DORA',
+            },
+            {
+              id: 'pkg-nis2-q3',
+              purpose: 'NIS2 Art. 21 Incident Reporting & Supply Chain Freeze',
+              status: 'FROZEN',
+              createdAt: new Date(Date.now() - 172800000).toISOString(),
+              cycleReference: 'CYCLE-2026-Q3-NIS2',
+            },
+          ],
+          timestamp: new Date().toISOString(),
+        },
+      })
+    );
+    return res.data;
+  }
+
+  static async getAuditorMerklePath(nodeHash: string): Promise<any> {
+    const res = await this.safeFetch<any>(
+      `/api/v1/auditor/merkle-path/${encodeURIComponent(nodeHash)}`,
+      { method: 'GET' },
+      () => {
+        const sibling1 = sha256Mock(`${nodeHash}:sibling1`);
+        const parent1 = sha256Mock(`${nodeHash}:${sibling1}`);
+        const sibling2 = sha256Mock(`${parent1}:sibling2`);
+        const merkleRoot = sha256Mock(`${sibling2}:${parent1}`);
+        return {
+          statusCode: 200,
+          data: {
+            leafHash: nodeHash,
+            merkleRoot,
+            path: [
+              { siblingHash: sibling1, position: 'RIGHT' },
+              { siblingHash: sibling2, position: 'LEFT' },
+            ],
+            isRootVerified: true,
+            computedRoot: merkleRoot,
+            verifiedAt: new Date().toISOString(),
+          },
+        };
+      }
+    );
+    return res.data;
+  }
+
+  static async getAuditorEvidenceChain(packageId: string): Promise<any> {
+    const res = await this.safeFetch<any>(
+      `/api/v1/auditor/evidence-chain/${encodeURIComponent(packageId)}`,
+      { method: 'GET' },
+      () => ({
+        statusCode: 200,
+        data: {
+          packageId,
+          totalEvidenceItems: 4,
+          chainIntegrityVerified: true,
+          evidenceItems: [
+            {
+              evidenceId: 'ev-dora-rpo-01',
+              evidenceType: 'MULTI_CLOUD_RECOVERY_PROOF',
+              sha256Digest: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+              canonicalPath: '/evidence/dora/rpo-rto-telemetry.json',
+              sourceConnector: 'gcp-multi-cloud-resilience',
+              capturedAt: new Date(Date.now() - 7200000).toISOString(),
+              witnessSignature: 'sig-witness-rpo-2026-09',
+              notarizedLedgerCommitment: 'commit-ledger-01a2b3',
+              verified: true,
+            },
+            {
+              evidenceId: 'ev-nis2-sbom-02',
+              evidenceType: 'IN_CLUSTER_SBOM_ATTESTATION',
+              sha256Digest: 'f4c1d2e3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1',
+              canonicalPath: '/evidence/nis2/cosign-sbom-manifest.json',
+              sourceConnector: 'k8s-cluster-attestation',
+              capturedAt: new Date(Date.now() - 14400000).toISOString(),
+              witnessSignature: 'sig-witness-sbom-2026-09',
+              notarizedLedgerCommitment: 'commit-ledger-02b3c4',
+              verified: true,
+            },
+          ],
+        },
+      })
+    );
+    return res.data;
+  }
+
+  static async generateAuditorFreezeCertificate(packageId: string): Promise<any> {
+    const res = await this.safeFetch<any>(
+      `/api/v1/auditor/freeze-certificate/${encodeURIComponent(packageId)}`,
+      { method: 'POST' },
+      () => ({
+        statusCode: 200,
+        data: {
+          certificateId: `cert-freeze-${generateUUID()}`,
+          packageId,
+          packageTitle: 'Q3 Regulatory Compliance Assurance Freeze',
+          environmentId: 'production',
+          freezeStatus: 'IMMUTABLE_FROZEN_NOTARIZED',
+          merkleTreeRoot: 'd0a1b2c3d4e5f67890abcdef1234567890abcdef1234567890abcdef12345678',
+          manifestCoreHash: 'f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2',
+          packageEnvelopeHash: 'e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6',
+          totalEvidenceCount: 42,
+          dualSignedAttestation: {
+            primarySigner: 'ZOIKO-SHIELD-PRIMARY-KMS-SIGNER',
+            primarySignature: 'sig-primary-kms-rsa-pss-2026',
+            pqcSigner: 'ZOIKO-SHIELD-PQC-ML-DSA-SIGNER',
+            pqcSignature: 'sig-pqc-ml-dsa-65-post-quantum-2026',
+            algorithm: 'RSA-PSS-SHA256-PLUS-PQC-ML-DSA-65',
+          },
+          issuedAt: new Date().toISOString(),
+          issuerAuthority: 'ZoikoShield Continuous Compliance Attestation Authority',
+          verificationInstructions: 'Verify certificate offline using: `zoikoshield-verifier verify --certificate cert.json`',
+        },
+      })
+    );
+    return res.data;
+  }
+
+  // --- Workstream 4: Air-Gapped & Offline Standalone Verification ---
+
+  static async exportAirgapPackage(packageId: string, includeEmbeddedCertificates = true): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/compliance/airgap/export-package',
+      {
+        method: 'POST',
+        body: JSON.stringify({ packageId, includeEmbeddedCertificates }),
+      },
+      () => ({
+        statusCode: 200,
+        data: {
+          bundleId: `airgap-pkg-${generateUUID()}`,
+          packageId,
+          createdAt: new Date().toISOString(),
+          formatVersion: 'ZOIKO-AIRGAP-V1',
+          manifestDigest: sha256Mock(`airgap-manifest-${packageId}`),
+          merkleRoot: 'd0a1b2c3d4e5f67890abcdef1234567890abcdef1234567890abcdef12345678',
+          embeddedRootCertificates: [
+            {
+              trustAnchor: 'ZOIKO-SHIELD-OFFLINE-ROOT-CA-2026',
+              certificateChainPem: '-----BEGIN CERTIFICATE-----\nMIIDXTCCAkWgAwIBAgIU...ZOIKO...SHIELD...ROOT...CA...2026...\n-----END CERTIFICATE-----',
+              signatureAlgorithm: 'RSA-PSS-SHA256-OR-PQC-ML-DSA',
+            },
+          ],
+          packageArchiveBase64: 'UEsDBBQAAAAIAAAAIQ...STANDALONE_AIRGAP_ENCRYPTED_ZIP_BUNDLE...',
+          offlineVerifierInstructions: 'Run standalone verifier: `zoikoshield-verifier verify ./package-bundle --standalone-airgap`',
+        },
+      })
+    );
+    return res.data;
+  }
+
+  static async syncAirgapTelemetryBatch(batch: any): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/ingest/airgap/batch-sync',
+      {
+        method: 'POST',
+        body: JSON.stringify(batch),
+      },
+      () => ({
+        statusCode: 200,
+        data: {
+          receiptId: `airgap-sync-rcpt-${generateUUID()}`,
+          batchId: batch.batchId || `batch-${Date.now()}`,
+          sourceNodeId: batch.sourceNodeId || 'field-node-01',
+          syncedEventsCount: batch.events?.length || 10,
+          duplicateEventsIgnored: 0,
+          batchMerkleRoot: 'b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2',
+          computedMerkleRoot: 'b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2',
+          verificationStatus: 'BATCH_VERIFIED_AND_INGESTED',
+          syncedAt: new Date().toISOString(),
+          centralLedgerCommitmentDigest: sha256Mock(`central-ledger-commit-${Date.now()}`),
+        },
+      })
+    );
+    return res.data;
+  }
+
+  // --- Workstream 3: OT & Critical Infrastructure Safety Interlock ---
+
+  static async getOtDetectionRules(): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/detection/ot/rules',
+      { method: 'GET' },
+      () => ({
+        statusCode: 200,
+        data: {
+          totalRules: 6,
+          supportedProtocols: ['MODBUS_TCP', 'DNP3', 'OPC_UA'],
+          rules: [
+            {
+              ruleId: 'OT-MODBUS-001',
+              protocol: 'MODBUS_TCP',
+              name: 'Modbus Unauthorized Coil/Register Write',
+              severity: 'CRITICAL',
+            },
+            {
+              ruleId: 'OT-DNP3-001',
+              protocol: 'DNP3',
+              name: 'DNP3 Unauthorized Cold/Warm Restart Command',
+              severity: 'CRITICAL',
+            },
+            {
+              ruleId: 'OT-OPCUA-001',
+              protocol: 'OPC_UA',
+              name: 'OPC-UA Safety Node Unauthorized Mutation',
+              severity: 'CRITICAL',
+            },
+          ],
+        },
+      })
+    );
+    return res.data;
+  }
+
+  static async analyzeOtNetworkEvent(event: any): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/detection/ot/analyze',
+      {
+        method: 'POST',
+        body: JSON.stringify(event),
+      },
+      () => ({
+        statusCode: 200,
+        data: {
+          threatDetected: true,
+          finding: {
+            findingId: `ot-finding-${generateUUID()}`,
+            protocol: event.protocol || 'MODBUS_TCP',
+            threatType: 'MODBUS_UNAUTHORIZED_FUNCTION_WRITE',
+            severity: 'CRITICAL',
+            safetyCriticalImpact: true,
+            affectedAsset: `${event.destinationIp || '10.240.10.15'}:${event.destinationPort || 502}`,
+            detectionRuleId: 'OT-MODBUS-001',
+            confidenceScore: 0.98,
+            description: 'Unauthorized Modbus Write Function Code intercepted targeting PLC coil range.',
+            mitigationRecommendation: 'Engage Safety-Critical Actuator Block and inspect dual-key physical token authorization.',
+            detectedAt: new Date().toISOString(),
+          },
+        },
+      })
+    );
+    return res.data;
+  }
+
+  static async evaluateOtActuatorInterlock(request: any): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/action/ot-interlock/evaluate',
+      {
+        method: 'POST',
+        body: JSON.stringify(request),
+      },
+      () => ({
+        receiptId: `actuator-block-${generateUUID()}`,
+        commandId: request.commandId || `cmd-${Date.now()}`,
+        targetRef: request.targetDescriptor?.targetRef || 'plc-substation-alpha-01',
+        deviceCategory: request.targetDescriptor?.deviceCategory || 'INDUSTRIAL_PLC',
+        interlockStatus: request.dualKeyAuthorization
+          ? 'MUTATION_PERMITTED_DUAL_KEY'
+          : 'BLOCKED_SAFETY_INTERLOCK_ACTIVE',
+        reason: request.dualKeyAuthorization
+          ? 'Dual-key physical token authorization validated successfully.'
+          : 'Automated playbook mutation strictly blocked on safety-critical OT actuator (Spec §36/§38).',
+        evaluatedAt: new Date().toISOString(),
+        failsafeReversible: true,
+      })
+    );
+    return res;
+  }
+
+  // --- Phase 2: BYOK / Attestation / MPC Key Escrow ---
+
+  static async getByokKmsStatus(): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/crypto-escrow/byok/status',
+      { method: 'GET' },
+      () => ({
+        statusCode: 200,
+        data: {
+          provider: 'GCP_CLOUD_KMS',
+          keyUri: 'gcp-kms://projects/zoiko-shield/locations/global/keyRings/customer-ring/cryptoKeys/primary',
+          keyAlias: 'customer-primary-byok',
+          custodyTopology: 'T4_CUSTOMER_MANAGED_PROXY',
+          rotationIntervalDays: 90,
+          status: 'ACTIVE',
+          keyFingerprint: sha256Mock('byok-key-fingerprint'),
+          lastRotatedAt: new Date().toISOString(),
+        },
+      })
+    );
+    return res.data;
+  }
+
+  static async configureByokKmsKey(config: any): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/crypto-escrow/byok/configure',
+      {
+        method: 'POST',
+        body: JSON.stringify(config),
+      },
+      () => ({
+        statusCode: 200,
+        data: {
+          ...config,
+          custodyTopology: 'T4_CUSTOMER_MANAGED_PROXY',
+          status: 'ACTIVE',
+          keyFingerprint: sha256Mock(`byok-${config.keyAlias}`),
+          lastRotatedAt: new Date().toISOString(),
+        },
+      })
+    );
+    return res.data;
+  }
+
+  static async getHardwareAttestationPosture(): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/crypto-escrow/attestation/posture',
+      { method: 'GET' },
+      () => ({
+        statusCode: 200,
+        data: {
+          totalHostsAttested: 4,
+          genuineHosts: 4,
+          degradedHosts: 0,
+          hosts: [
+            {
+              attestationId: 'attest-01',
+              platformType: 'AMD_SEV_SNP',
+              hostIdentifier: 'shield-core-worker-01',
+              verificationStatus: 'VERIFIED_GENUINE',
+              platformTcbVersion: '2026.09-SECURE-BOOT',
+              attestedAt: new Date().toISOString(),
+            },
+            {
+              attestationId: 'attest-02',
+              platformType: 'INTEL_TDX',
+              hostIdentifier: 'shield-ingest-worker-01',
+              verificationStatus: 'VERIFIED_GENUINE',
+              platformTcbVersion: '2026.09-SECURE-BOOT',
+              attestedAt: new Date().toISOString(),
+            },
+          ],
+        },
+      })
+    );
+    return res.data;
+  }
+
+  static async splitMpcThresholdKey(dto: any): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/crypto-escrow/mpc/split',
+      {
+        method: 'POST',
+        body: JSON.stringify(dto),
+      },
+      () => ({
+        statusCode: 200,
+        data: {
+          splitId: `mpc-split-${generateUUID()}`,
+          keyAlias: dto.keyAlias,
+          threshold: dto.threshold || 3,
+          totalShares: dto.totalShares || 5,
+          masterCommitment: sha256Mock(`mpc-master-${dto.keyAlias}`),
+          createdAt: new Date().toISOString(),
+          shares: Array.from({ length: dto.totalShares || 5 }, (_, i) => ({
+            shareIndex: i + 1,
+            custodianId: `custodian-node-${i + 1}`,
+            shareCommitment: sha256Mock(`share-${i + 1}`),
+          })),
+        },
+      })
+    );
+    return res.data;
+  }
 }
 
 export interface KmsProviderHealthInfo {
@@ -4516,10 +4916,4 @@ export interface KmsHealthSummary {
   timestamp: string;
 }
 
-
-
-
-
-
-
-
+export const api = ZoikoShieldApiClient;
