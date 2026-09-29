@@ -176,7 +176,8 @@ describe('Cross-Service Golden Spine E2E (TUT-01 Reference Vertical Slice)', () 
     expect(signedEnvelope.signingKeyId).toBeDefined();
 
     // 4c: Execution verification
-    const execution = await signedBroker.dispatchGovernedCommand(signedEnvelope);
+    const execution =
+      await signedBroker.dispatchGovernedCommand(signedEnvelope);
     expect(execution.executionStatus).toBe('EXECUTED_SUCCESSFULLY');
     expect(execution.observedState).toBe('TARGET_CONTAINED');
     expect(execution.receiptId).toBeDefined();

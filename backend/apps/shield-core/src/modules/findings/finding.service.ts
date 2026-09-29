@@ -137,17 +137,18 @@ export class FindingService {
     limit = 100,
   ) {
     const prismaAny = this.prisma as any;
-    const findings = (await prismaAny.finding?.findMany?.({
-      where: {
-        tenant_id: tenantId,
-        ...(filters.status ? { status: filters.status } : {}),
-        ...(filters.severity ? { severity: filters.severity } : {}),
-        ...(filters.assetId ? { asset_id: filters.assetId } : {}),
-      },
-      take: limit,
-      orderBy: [{ priority_score: 'desc' }, { last_confirmed_at: 'desc' }],
-      include: { factors: true, acceptance: true },
-    })) || [];
+    const findings =
+      (await prismaAny.finding?.findMany?.({
+        where: {
+          tenant_id: tenantId,
+          ...(filters.status ? { status: filters.status } : {}),
+          ...(filters.severity ? { severity: filters.severity } : {}),
+          ...(filters.assetId ? { asset_id: filters.assetId } : {}),
+        },
+        take: limit,
+        orderBy: [{ priority_score: 'desc' }, { last_confirmed_at: 'desc' }],
+        include: { factors: true, acceptance: true },
+      })) || [];
     return findings.map((finding: any) => this.decorate(finding));
   }
 
@@ -242,13 +243,14 @@ export class FindingService {
    */
   async expireLapsedAcceptances(tenantId: string, now = new Date()) {
     const prismaAny = this.prisma as any;
-    const lapsed = (await prismaAny.findingAcceptance?.findMany?.({
-      where: {
-        tenant_id: tenantId,
-        status: 'ACTIVE',
-        expires_at: { lte: now },
-      },
-    })) || [];
+    const lapsed =
+      (await prismaAny.findingAcceptance?.findMany?.({
+        where: {
+          tenant_id: tenantId,
+          status: 'ACTIVE',
+          expires_at: { lte: now },
+        },
+      })) || [];
     if (lapsed.length === 0) return { expired: 0 };
 
     await this.prisma.$transaction([
@@ -275,10 +277,11 @@ export class FindingService {
    */
   async summary(tenantId: string) {
     const prismaAny = this.prisma as any;
-    const findings = (await prismaAny.finding?.findMany?.({
-      where: { tenant_id: tenantId },
-      include: { factors: true },
-    })) || [];
+    const findings =
+      (await prismaAny.finding?.findMany?.({
+        where: { tenant_id: tenantId },
+        include: { factors: true },
+      })) || [];
     const decorated = findings.map((finding: any) => this.decorate(finding));
     const open = decorated.filter(
       (f: any) => !['RESOLVED', 'FALSE_POSITIVE'].includes(f.status),
@@ -291,8 +294,9 @@ export class FindingService {
         open: open.length,
         staleAssertions: open.filter((f: any) => f.assertion.state === 'STALE')
           .length,
-        ageingAssertions: open.filter((f: any) => f.assertion.state === 'AGEING')
-          .length,
+        ageingAssertions: open.filter(
+          (f: any) => f.assertion.state === 'AGEING',
+        ).length,
         unscored: open.filter((f: any) => !f.priorityIntegrity.scored).length,
         scoredOverUnknowns: open.filter(
           (f: any) => f.priorityIntegrity.computedOverUnknowns,

@@ -58,7 +58,9 @@ describe('kafkaConfig', () => {
     process.env.KAFKA_SASL_MECHANISM = 'kerberos';
     process.env.KAFKA_SASL_USERNAME = 'user';
     process.env.KAFKA_SASL_PASSWORD = 'pass';
-    expect(() => kafkaConfig('test')).toThrow(/Unsupported KAFKA_SASL_MECHANISM/);
+    expect(() => kafkaConfig('test')).toThrow(
+      /Unsupported KAFKA_SASL_MECHANISM/,
+    );
   });
 
   it('configures OAUTHBEARER without a username or password', () => {

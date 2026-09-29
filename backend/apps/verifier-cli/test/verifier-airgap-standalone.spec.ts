@@ -1,5 +1,8 @@
 import { runVerifier } from '../src/main';
-import { StandaloneMerkleVerifier, STANDALONE_TREE_PROFILE } from '../src/merkle/standalone-merkle-verifier';
+import {
+  StandaloneMerkleVerifier,
+  STANDALONE_TREE_PROFILE,
+} from '../src/merkle/standalone-merkle-verifier';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -21,11 +24,11 @@ describe('Verifier CLI — Air-Gapped Standalone Verification (CTO Gap P0-07)', 
   it('should have zero external npm runtime dependencies (pure Node.js standard library)', () => {
     const mainFileContent = fs.readFileSync(
       path.resolve(__dirname, '../src/main.ts'),
-      'utf-8'
+      'utf-8',
     );
     const merkleFileContent = fs.readFileSync(
       path.resolve(__dirname, '../src/merkle/standalone-merkle-verifier.ts'),
-      'utf-8'
+      'utf-8',
     );
 
     // Extract all imports
@@ -39,7 +42,13 @@ describe('Verifier CLI — Air-Gapped Standalone Verification (CTO Gap P0-07)', 
       imports.push(match[1]);
     }
 
-    const allowedNodeBuiltins = new Set(['fs', 'path', 'crypto', 'os', './merkle/standalone-merkle-verifier']);
+    const allowedNodeBuiltins = new Set([
+      'fs',
+      'path',
+      'crypto',
+      'os',
+      './merkle/standalone-merkle-verifier',
+    ]);
     for (const imp of imports) {
       expect(allowedNodeBuiltins.has(imp)).toBe(true);
     }
@@ -70,7 +79,10 @@ describe('Verifier CLI — Air-Gapped Standalone Verification (CTO Gap P0-07)', 
     fs.mkdirSync(evidenceDir, { recursive: true });
 
     const fileContent = '{"evidence_id":"ev-001","action":"NETWORK_ISOLATE"}';
-    const fileHash = crypto.createHash('sha256').update(fileContent).digest('hex');
+    const fileHash = crypto
+      .createHash('sha256')
+      .update(fileContent)
+      .digest('hex');
     fs.writeFileSync(path.join(evidenceDir, 'ev-001.json'), fileContent);
 
     const verifier = new StandaloneMerkleVerifier();
@@ -91,7 +103,10 @@ describe('Verifier CLI — Air-Gapped Standalone Verification (CTO Gap P0-07)', 
       ],
     };
 
-    fs.writeFileSync(path.join(packageDir, 'manifest.json'), JSON.stringify(manifest, null, 2));
+    fs.writeFileSync(
+      path.join(packageDir, 'manifest.json'),
+      JSON.stringify(manifest, null, 2),
+    );
 
     // Run verifier
     const exitCode = runVerifier(['verify', packageDir, '--json']);
