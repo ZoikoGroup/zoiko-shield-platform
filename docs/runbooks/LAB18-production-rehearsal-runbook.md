@@ -232,9 +232,9 @@ graph TD
 
 ---
 
-### Drill 10: Multi-Cloud Primary Region Outage & Autonomous DR Failover
+### Drill 10: Multi-Region Primary Region Outage & Autonomous DR Failover
 
-- **Objective**: Exercise full multi-cloud disaster recovery: failover primary leader node from GCP (`us-central1`) to GCP (`us-east-1`), verify lease coordinator token invalidation, outbox reconciliation, and zero Merkle anchor drift.
+- **Objective**: Exercise full multi-region disaster recovery: failover primary leader node from GCP (`us-central1`) to GCP (`us-east-1`), verify lease coordinator token invalidation, outbox reconciliation, and zero Merkle anchor drift.
 - **Threat Scenario**: Complete regional hypervisor outage in primary cloud zone.
 - **Execution Procedure**:
   ```bash

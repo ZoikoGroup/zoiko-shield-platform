@@ -34,7 +34,7 @@ ZoikoShield integrates autonomous AI copilot workflows, real-time alert triage, 
 1. **Data Sovereignty & Zero Training Commitments**: Telemetry, security alerts, and customer configuration payloads must not be utilized for foundational model retraining or stored outside customer-designated sovereign regions.
 2. **Deterministic Output & Schema Conformance**: Copilot decisions, containment proposals, and RCA graphs must adhere strictly to typed schema contracts (OCSF, JSON Schema) with zero hallucinations in security-critical actions.
 3. **Guardrails & Prompt Injection Defense**: Pre-flight and post-flight sanitization must prevent prompt injection, jailbreaking, and data leakage before tokens enter or leave model execution runtimes.
-4. **Customer BYOM (Bring Your Own Model) & Multi-Vendor Governance**: Regulated enterprise tenants require options to route intelligence tasks to their own sovereign cloud tenants (GCP Bedrock, Azure OpenAI, self-hosted LLMs) and perform multi-model drift evaluation per §21 / §24 PSI (Population Stability Index) specifications.
+4. **Customer BYOM (Bring Your Own Model) & Multi-Vendor Governance**: Regulated enterprise tenants require options to route intelligence tasks to their own sovereign cloud tenants (GCP Vertex AI, Azure OpenAI, self-hosted LLMs) and perform multi-model drift evaluation per §21 / §24 PSI (Population Stability Index) specifications.
 
 ## Decision
 We propose **Google Cloud Vertex AI** with **GCP ModelArmor** as the canonical primary AI provider for ZoikoShield sovereign platform operations.

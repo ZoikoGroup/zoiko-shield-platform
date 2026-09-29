@@ -5,7 +5,7 @@ runs, what each maps to on Google Cloud, the database layout and the
 environment it needs.
 
 Key management and evidence storage are native GCP: Cloud KMS and Cloud
-Storage. There is no remaining GCP dependency.
+Storage.
 
 Compiled from the source on 2026-09-24, not from memory: the environment list
 was produced by extracting every variable the code actually reads and diffing
@@ -15,9 +15,9 @@ it against `.env.example`.
 
 ## 0. Key management and storage — now native GCP
 
-Both subsystems that were GCP-specific have been migrated. `@aws-sdk/client-kms`
-is gone from the codebase. There is no remaining GCP dependency for a GCP
-deployment.
+Both subsystems that were tied to the prior cloud provider have been migrated.
+`@aws-sdk/client-kms` is gone from the codebase. There is no remaining
+dependency on that provider for a GCP deployment.
 
 ### Cloud KMS signing
 
@@ -74,7 +74,7 @@ IAM per service account, least-privileged:
 - shield-core also needs `roles/cloudkms.cryptoKeyEncrypterDecrypter` on the
   wrapping key
 
-Signatures are DER-encoded ECDSA P-256, unchanged from the GCP implementation.
+Signatures are DER-encoded ECDSA P-256, unchanged from the prior implementation.
 
 ### Cloud Storage for evidence
 
@@ -288,8 +288,8 @@ integration below is optional and off unless its credentials are set.
 | **RFC3161 / HTTP witness** | shield-anchor | No | Off unless configured. |
 | **ZoikoID (OIDC)** | shield-core | **Yes, for real tenants** | Works. Tenant owners activate by signing in to it. |
 
-The other 12 connectors (CrowdStrike, SentinelOne, Cortex XDR, Defender, Okta,
-GCP CloudTrail, GuardDuty, Azure Monitor, GCP SCC, Snyk, Jira, syslog) are
+The other 10 connectors (CrowdStrike, SentinelOne, Cortex XDR, Defender, Okta,
+Azure Monitor, GCP SCC, Snyk, Jira, syslog) are
 **inbound only** — they receive webhooks and normalize them. They make no
 outbound call, so they need no egress and no vendor credential.
 
@@ -443,17 +443,18 @@ provider record, and owner activation. It refuses to run with
 
 ---
 
-## 7. What is still GCP-shaped
+## 7. What still carries legacy dependencies
 
 Nothing blocks a GCP deployment, but two things are worth knowing.
 
 **`@aws-sdk/client-s3` is still a dependency.** It is what talks to MinIO in
 non-production, and it is bypassed entirely when `EVIDENCE_GCS_BUCKET` and
-`GOOGLE_CLOUD_PROJECT` are set. It makes no GCP call.
+`GOOGLE_CLOUD_PROJECT` are set. It makes no call to its own cloud provider.
 
 **The multi-cloud key escrow subsystem is a simulation.**
-`split-kms-escrow.service.ts` refers to GCP KMS, Azure Key Vault and GCP KMS,
-but derives all three "root keys" from fixed strings and makes no cloud call.
+`split-kms-escrow.service.ts` refers to three separate cloud KMS providers
+(Google Cloud KMS among them), but derives all three "root keys" from fixed
+strings and makes no cloud call.
 ADR-017 parks it as Experimental Tier-2. It is not part of the production key
 path and needs nothing from you.
 

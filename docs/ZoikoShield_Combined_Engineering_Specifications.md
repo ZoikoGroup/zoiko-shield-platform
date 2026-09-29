@@ -20996,7 +20996,7 @@ Every transition is observable, idempotent and attributable. A source-native pay
 | **Priority** | **Connector Families**                                                                                                                  | **Authority**                                                      |
 |--------------|-----------------------------------------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------|
 | **P0**       | Microsoft Entra ID/M365/Defender; one certified EDR partner; GCP; generic syslog/webhook; Jira or ServiceNow; one vulnerability source. | Read, normalize, detect. Response only for certified action types. |
-| **P1**       | Second EDR; Google Workspace; Azure; GCP; email security; major identity/PAM; source control/CI; Kubernetes/container audit.            | Read initially; action authority individually certified.           |
+| **P1**       | Second EDR; Google Workspace; Azure; email security; major identity/PAM; source control/CI; Kubernetes/container audit.            | Read initially; action authority individually certified.           |
 | **P2**       | WAF/API, SaaS audit breadth, DSPM, third-party risk, telecom/OT and regional tools.                                                     | Demand and risk gated.                                             |
 
 ## **11.4 Connector Certification Contract**

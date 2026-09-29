@@ -408,7 +408,7 @@ Operating Standard**
 | User / identity         | Human user identity where specifically contracted.                                       | Do not count service identities or duplicate federated aliases unless the SKU definition says so. |
 | Privileged identity     | Identity with elevated privilege requiring higher-assurance monitoring.                  | May be a distinct metric only when commercially disclosed and operationally different.            |
 | Mailbox                 | Monitored email mailbox/account where email security integration is in scope.            | Shared/system mailboxes require explicit rule.                                                    |
-| Cloud account           | GCP account, Azure subscription/tenant, GCP project/org or equivalent defined boundary.  | The catalog must identify provider-specific mapping and hierarchical counting.                    |
+| Cloud account           | GCP account/project/org, Azure subscription/tenant, or equivalent defined boundary.  | The catalog must identify provider-specific mapping and hierarchical counting.                    |
 | Application / API       | Named production application/API boundary in scope for monitoring/assurance.             | Avoid counting every discovered microservice unless contracted.                                   |
 | Domain / external asset | Approved internet-facing domain/asset in exposure scope.                                 | Discovery results do not become billable until scope is accepted.                                 |
 | Tenant / legal entity   | Organizational boundary for dedicated controls, reporting or compliance packs.           | Only used when the offer explicitly prices organizational complexity.                             |
