@@ -89,7 +89,9 @@ describe('Governed command signing', () => {
     // The broker used to accept `sha256(envelope fields)` as its signature, so
     // anyone who could read an envelope could mint a valid-looking one for any
     // target they liked. This reconstructs exactly that forgery.
-    const broker = new SignedCommandBrokerService(new DevGovernedCommandSigner());
+    const broker = new SignedCommandBrokerService(
+      new DevGovernedCommandSigner(),
+    );
     const genuine = await broker.createSignedCommand(
       'tenant-alpha',
       'ISOLATE_ENDPOINT',

@@ -20,13 +20,15 @@ describe('GcpKmsSigner resource-name validation', () => {
   });
 
   it('rejects an empty name', () => {
-    expect(() => new GcpKmsSigner('')).toThrow(/key version resource name is required/);
+    expect(() => new GcpKmsSigner('')).toThrow(
+      /key version resource name is required/,
+    );
   });
 
   it('rejects a name that is not a Cloud KMS resource at all', () => {
-    expect(() => new GcpKmsSigner('arn:aws:kms:eu-west-1:1234:key/abc')).toThrow(
-      /not a Cloud KMS key version resource name/,
-    );
+    expect(
+      () => new GcpKmsSigner('arn:aws:kms:eu-west-1:1234:key/abc'),
+    ).toThrow(/not a Cloud KMS key version resource name/);
   });
 
   it('reports the key version as the key id recorded with a signature', () => {

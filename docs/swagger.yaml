@@ -56267,11 +56267,705 @@ paths:
         '401':
           description: Unauthorized
 
+  /api/v1/crypto-escrow/kms-health:
+    get:
+      summary: Retrieve Cloud KMS Provider Health and Routing Weights
+      description: Returns real-time health status, latency metrics, and traffic routing weights for Cloud KMS providers.
+      operationId: getKmsHealth
+      tags:
+        - CryptoGovernance
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          description: KMS provider health and routing topology returned successfully
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - Insufficient permissions
 
+  /api/v1/crypto-escrow/kms-health/probe:
+    post:
+      summary: Record Synthetic KMS Heartbeat Probe
+      description: Records an active cryptographic heartbeat probe against a target KMS provider.
+      operationId: recordKmsProbe
+      tags:
+        - CryptoGovernance
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - provider
+                - latencyMs
+              properties:
+                provider:
+                  type: string
+                  enum: [GCP_CLOUD_KMS, AWS_KMS, AZURE_KEYVAULT]
+                latencyMs:
+                  type: number
+                success:
+                  type: boolean
+      responses:
+        '200':
+          description: Probe recorded and health recomputed
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
 
+  /api/v1/crypto-escrow/kms-health/failover:
+    post:
+      summary: Trigger Controlled Cloud KMS Failover
+      description: Shifts primary cryptographic traffic to the healthy secondary KMS provider with step-up verification.
+      operationId: triggerKmsFailover
+      tags:
+        - CryptoGovernance
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - failedProvider
+                - reason
+              properties:
+                failedProvider:
+                  type: string
+                  enum: [GCP_CLOUD_KMS, AWS_KMS, AZURE_KEYVAULT]
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Failover executed and traffic rebalanced
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - Requires step-up authentication
 
+  /api/v1/compliance/dora/evaluate:
+    post:
+      summary: Evaluate DORA Operational Resilience Posture
+      description: Evaluates financial entity telemetry against EU 2022/2554 (DORA) and generates a Merkle-attested report.
+      operationId: evaluateDoraPosture
+      tags:
+        - SectorPacks
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                multiCloudRecoveryRtoMinutes:
+                  type: number
+                multiCloudRecoveryRpoMinutes:
+                  type: number
+                boundaryDefenseMfaRate:
+                  type: number
+                ocsfDetectionPipelineLatencyMs:
+                  type: number
+                automatedContainmentTested:
+                  type: boolean
+                rollbackReceiptVerificationPassRate:
+                  type: number
+                tlptLastExerciseDaysAgo:
+                  type: number
+                thirdPartyHhiIndex:
+                  type: number
+                tier1ProviderFallbackConfigured:
+                  type: boolean
+                unreportedIncidentAgeHours:
+                  type: number
+      responses:
+        '200':
+          description: DORA posture assessment report generated successfully
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
 
+  /api/v1/compliance/nis2/evaluate:
+    post:
+      summary: Evaluate NIS2 Cybersecurity Risk Posture
+      description: Evaluates essential/important entity telemetry against EU 2022/2555 (NIS2 Directive).
+      operationId: evaluateNis2Posture
+      tags:
+        - SectorPacks
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                entityType:
+                  type: string
+                  enum: [ESSENTIAL_ENTITY, IMPORTANT_ENTITY]
+                incidentHandlingProcessDocumented:
+                  type: boolean
+                businessContinuityTestedDaysAgo:
+                  type: number
+                sbomAttestationCoverageRate:
+                  type: number
+                vulnerabilityDisclosurePolicyActive:
+                  type: boolean
+                effectivenessAuditPassed:
+                  type: boolean
+                pqcAndKmsEncryptionEnforced:
+                  type: boolean
+                mfaEnforcementRate:
+                  type: number
+                unreportedIncidentAgeHours:
+                  type: number
+      responses:
+        '200':
+          description: NIS2 posture assessment report generated successfully
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
 
+  /api/v1/compliance/sector-summary:
+    get:
+      summary: Retrieve Active Tenant Sector Regulatory Summary
+      description: Returns aggregate compliance scores, gap summaries, and Merkle roots for DORA and NIS2.
+      operationId: getSectorSummary
+      tags:
+        - SectorPacks
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Sector framework summary returned successfully
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
 
+  # --- Workstream 3: OT & Critical Infrastructure Safety Interlock (Spec §36/§38) ---
+
+  /api/v1/action/ot-interlock/evaluate:
+    post:
+      summary: Evaluate OT Safety-Critical Actuator Block
+      description: Verifies physical dual-key hardware token authorization before permitting actuator mutations on PLCs/SCADA.
+      operationId: evaluateOtInterlock
+      tags:
+        - SOAR
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Actuator interlock evaluation receipt
+        '403':
+          description: Forbidden - Physical safety interlock active
+
+  /api/v1/action/ot-interlock/failsafe:
+    post:
+      summary: Engage Emergency OT Failsafe Isolation
+      description: Immediately triggers failsafe isolation on safety-critical industrial processes.
+      operationId: engageOtFailsafe
+      tags:
+        - SOAR
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenantId, targetRef, reason]
+              properties:
+                tenantId:
+                  type: string
+                targetRef:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Emergency failsafe isolation engaged
+
+  /api/v1/action/ot-interlock/audit:
+    get:
+      summary: Retrieve OT Safety Interlock Audit Log
+      description: Returns log of all actuator block evaluations and dual-key authorization receipts.
+      operationId: getOtInterlockAudit
+      tags:
+        - SOAR
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: tenantId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Safety interlock audit logs returned
+
+  /api/v1/detection/ot/rules:
+    get:
+      summary: Retrieve OT Protocol Anomaly Detection Rules Catalog
+      description: Returns rules catalog for Modbus TCP, DNP3, and OPC-UA protocol threat detection.
+      operationId: getOtDetectionRules
+      tags:
+        - Detections
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: OT rules catalog returned
+
+  /api/v1/detection/ot/analyze:
+    post:
+      summary: Analyze OT Network Event for Protocol Threats
+      description: Evaluates Modbus coil write abuse, DNP3 unauthorized restarts, and OPC-UA safety mutations.
+      operationId: analyzeOtNetworkEvent
+      tags:
+        - Detections
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [eventId, timestamp, sourceIp, destinationIp, destinationPort, protocol, payloadHex]
+              properties:
+                eventId:
+                  type: string
+                timestamp:
+                  type: string
+                sourceIp:
+                  type: string
+                destinationIp:
+                  type: string
+                destinationPort:
+                  type: number
+                protocol:
+                  type: string
+                  enum: [MODBUS_TCP, DNP3, OPC_UA]
+                unitIdOrStation:
+                  type: string
+                functionCode:
+                  type: string
+                serviceOrMethod:
+                  type: string
+                nodeId:
+                  type: string
+                payloadHex:
+                  type: string
+                deviceCategory:
+                  type: string
+      responses:
+        '200':
+          description: OT event analysis result and finding
+
+  # --- Workstream 4: Airgap & Offline Standalone Verification ---
+
+  /api/v1/compliance/airgap/export-package:
+    post:
+      summary: Export Standalone Airgap Compliance Package
+      description: Generates signed, encrypted standalone bundle with embedded root certs for offline verification.
+      operationId: exportAirgapPackage
+      tags:
+        - Compliance
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [packageId]
+              properties:
+                packageId:
+                  type: string
+                includeEmbeddedCertificates:
+                  type: boolean
+      responses:
+        '200':
+          description: Airgap compliance package bundle exported
+
+  /api/v1/compliance/airgap/packages/{bundleId}:
+    get:
+      summary: Retrieve Airgap Package Bundle
+      description: Downloads exported airgap verification bundle by ID.
+      operationId: getAirgapPackageBundle
+      tags:
+        - Compliance
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: bundleId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Airgap bundle returned
+
+  /api/v1/ingest/airgap/batch-sync:
+    post:
+      summary: Ingest Buffered Airgap Sensor Telemetry Batch
+      description: Cryptographically verifies and batch-ingests offline ring-buffered field telemetry into central ledger.
+      operationId: syncAirgapTelemetryBatch
+      tags:
+        - Ingestion
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [batchId, sourceNodeId, facilityLocation, totalEvents, firstSequenceNumber, lastSequenceNumber, events, nodeAttestationSignature]
+      responses:
+        '200':
+          description: Airgap telemetry batch synchronized and notarized
+
+  /api/v1/ingest/airgap/batch-status/{batchId}:
+    get:
+      summary: Retrieve Airgap Telemetry Batch Status
+      description: Checks status and ledger commitment for synchronized airgap field batch.
+      operationId: getAirgapBatchStatus
+      tags:
+        - Ingestion
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: batchId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Airgap batch status returned
+
+  # --- Workstream 5: Deep External Auditor Workspace ---
+
+  /api/v1/auditor/workspace:
+    get:
+      summary: Retrieve External Auditor Workspace Summary
+      description: Cryptographic integrity overview, frozen packages, and active regulatory frameworks for AUDITOR_EXTERNAL role.
+      operationId: getAuditorWorkspaceSummary
+      tags:
+        - Auditor
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Auditor workspace summary returned
+
+  /api/v1/auditor/merkle-path/{nodeHash}:
+    get:
+      summary: Real-Time Merkle Path Validation Visualizer
+      description: Computes cryptographic Merkle tree path proof from leaf hash to verified root.
+      operationId: getAuditorMerklePathProof
+      tags:
+        - Auditor
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: nodeHash
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Merkle path proof returned
+
+  /api/v1/auditor/evidence-chain/{packageId}:
+    get:
+      summary: SHA-256 Evidence Chain Inspector
+      description: File-by-file hash comparator and cryptographic ledger notarization verification.
+      operationId: getAuditorEvidenceChain
+      tags:
+        - Auditor
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: packageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Evidence chain inspection records returned
+
+  /api/v1/auditor/freeze-certificate/{packageId}:
+    post:
+      summary: Generate Immutable Freeze Certificate
+      description: Issues an immutable, Post-Quantum dual-signed freeze certificate for independent regulatory submission.
+      operationId: generateAuditorFreezeCertificate
+      tags:
+        - Auditor
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: packageId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Immutable freeze certificate generated
+
+  # --- Phase 2: Sovereign Key Custody & Attestation (BYOK / Enclaves / MPC) ---
+
+  /api/v1/crypto-escrow/byok/configure:
+    post:
+      summary: Configure Customer BYOK / HYOK KMS Key Proxy
+      description: Configures customer-managed external KMS key under Topology T4.
+      operationId: configureByokKmsKey
+      tags:
+        - CryptoEscrow
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, keyUri, keyAlias]
+              properties:
+                provider:
+                  type: string
+                  enum: [GCP_CLOUD_KMS, AWS_KMS, AZURE_KEYVAULT, HASHICORP_VAULT_KMIP]
+                keyUri:
+                  type: string
+                keyAlias:
+                  type: string
+                rotationIntervalDays:
+                  type: number
+      responses:
+        '200':
+          description: BYOK key configured successfully
+
+  /api/v1/crypto-escrow/byok/status:
+    get:
+      summary: Retrieve Active Customer BYOK Key Custody Status
+      description: Returns active BYOK / HYOK key custody details and rotation intervals.
+      operationId: getByokKmsStatus
+      tags:
+        - CryptoEscrow
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: BYOK key status returned
+
+  /api/v1/crypto-escrow/byok/probe:
+    post:
+      summary: Probe Customer BYOK KMS Proxy Latency & Health
+      description: Sends synthetic signature request to customer external KMS proxy.
+      operationId: probeByokKmsKey
+      tags:
+        - CryptoEscrow
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: BYOK probe result returned
+
+  /api/v1/crypto-escrow/attestation/verify:
+    post:
+      summary: Verify Hardware Confidential Computing Attestation
+      description: Verifies AMD SEV-SNP, Intel TDX, or vTPM platform measurements and quotes.
+      operationId: verifyHardwareAttestation
+      tags:
+        - CryptoEscrow
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [platformType, quoteOrReportHex, nonce, hostIdentifier]
+              properties:
+                platformType:
+                  type: string
+                  enum: [AMD_SEV_SNP, INTEL_TDX, ARM_CCA, VIRTUAL_TPM_2_0]
+                quoteOrReportHex:
+                  type: string
+                expectedMeasurementDigest:
+                  type: string
+                nonce:
+                  type: string
+                hostIdentifier:
+                  type: string
+      responses:
+        '200':
+          description: Hardware attestation verification report generated
+
+  /api/v1/crypto-escrow/attestation/posture:
+    get:
+      summary: Retrieve Tenant Confidential Computing Platform Posture
+      description: Returns hardware attestation status across all tenant computing nodes.
+      operationId: getHardwareAttestationPosture
+      tags:
+        - CryptoEscrow
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Attestation posture returned
+
+  /api/v1/crypto-escrow/mpc/split:
+    post:
+      summary: Split Sovereign Master Key into MPC Custodian Shares
+      description: Implements (k, n) threshold secret sharing for sovereign disaster recovery.
+      operationId: splitMpcThresholdKey
+      tags:
+        - CryptoEscrow
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [keyAlias]
+              properties:
+                keyAlias:
+                  type: string
+                secretBytesHex:
+                  type: string
+                threshold:
+                  type: number
+                totalShares:
+                  type: number
+                custodianIds:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Master key split into custodian shares
+
+  /api/v1/crypto-escrow/mpc/recover:
+    post:
+      summary: Recover Sovereign Key from Quorum of MPC Shares
+      description: Reconstructs master key when threshold k custodian shares are presented.
+      operationId: recoverMpcThresholdKey
+      tags:
+        - CryptoEscrow
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [splitId, submittedShares]
+              properties:
+                splitId:
+                  type: string
+                submittedShares:
+                  type: array
+                  items:
+                    type: object
+                    required: [shareIndex, shareDataHex, custodianId]
+                    properties:
+                      shareIndex:
+                        type: number
+                      shareDataHex:
+                        type: string
+                      custodianId:
+                        type: string
+      responses:
+        '200':
+          description: Master key reconstructed successfully
 
 

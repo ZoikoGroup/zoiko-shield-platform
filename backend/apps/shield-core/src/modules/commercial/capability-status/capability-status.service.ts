@@ -281,8 +281,9 @@ export class CapabilityStatusService {
       status: 'DEFERRED',
       substantiatingSatellites: ['shield-core'],
       governanceRationale:
-        'DORA has applied to in-scope financial entities since 17 January 2025, so it is not something an internal product phase can defer. What is deferred is ZoikoShield\'s own evaluator content, per ADR-08. ZoikoShield may support a customer\'s DORA obligations; its own obligations as an ICT third-party provider depend on designation and contract and must be mapped legally, not marked deferred by engineering. No platform DORA-compliance claim is made.',
-      statutoryReference: 'Regulation (EU) 2022/2554 (in force since 17 January 2025)',
+        "DORA has applied to in-scope financial entities since 17 January 2025, so it is not something an internal product phase can defer. What is deferred is ZoikoShield's own evaluator content, per ADR-08. ZoikoShield may support a customer's DORA obligations; its own obligations as an ICT third-party provider depend on designation and contract and must be mapped legally, not marked deferred by engineering. No platform DORA-compliance claim is made.",
+      statutoryReference:
+        'Regulation (EU) 2022/2554 (in force since 17 January 2025)',
     },
     {
       id: 'CAP-FRAME-02',

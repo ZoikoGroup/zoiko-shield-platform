@@ -12,7 +12,7 @@ export const objectStorageProvider: Provider = {
   useFactory: () => {
     const useGcs = Boolean(
       process.env.EVIDENCE_GCS_BUCKET?.trim() &&
-        process.env.GOOGLE_CLOUD_PROJECT?.trim(),
+      process.env.GOOGLE_CLOUD_PROJECT?.trim(),
     );
     new Logger('ObjectStorage').log(
       useGcs

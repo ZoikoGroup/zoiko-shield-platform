@@ -16,6 +16,9 @@ import { ComplianceDriftDetectorService } from './compliance-drift-detector.serv
 import { RegulatoryControlsSeeder } from '../../seeds/regulatory-controls.seeder';
 import { ApprovalsModule } from '../approvals/approvals.module';
 import { FrameworkGovernanceController } from './frameworks/framework-governance.controller';
+import { DoraComplianceEvaluatorService } from './frameworks/dora-compliance-evaluator.service';
+import { Nis2ComplianceEvaluatorService } from './frameworks/nis2-compliance-evaluator.service';
+import { SectorComplianceController } from './frameworks/sector-compliance.controller';
 
 @Module({
   imports: [
@@ -24,7 +27,11 @@ import { FrameworkGovernanceController } from './frameworks/framework-governance
     AuthorizationDecisionModule,
     ApprovalsModule,
   ],
-  controllers: [ControlsController, FrameworkGovernanceController],
+  controllers: [
+    ControlsController,
+    FrameworkGovernanceController,
+    SectorComplianceController,
+  ],
   providers: [
     FrameworkRegistryService,
     RequirementService,
@@ -37,6 +44,8 @@ import { FrameworkGovernanceController } from './frameworks/framework-governance
     RegulatoryControlsSeeder,
     ContinuousControlEvaluatorService,
     ComplianceDriftDetectorService,
+    DoraComplianceEvaluatorService,
+    Nis2ComplianceEvaluatorService,
   ],
   exports: [
     FrameworkRegistryService,
@@ -48,6 +57,8 @@ import { FrameworkGovernanceController } from './frameworks/framework-governance
     ControlTestService,
     ContinuousControlEvaluatorService,
     ComplianceDriftDetectorService,
+    DoraComplianceEvaluatorService,
+    Nis2ComplianceEvaluatorService,
   ],
 })
 export class ControlsModule {}
