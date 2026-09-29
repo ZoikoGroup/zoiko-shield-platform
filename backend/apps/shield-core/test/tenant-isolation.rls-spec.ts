@@ -9,7 +9,6 @@ import {
 } from '../../../libs/database/src';
 import { discoverTenantKeyedTables } from '../src/modules/offboarding/tenant-keyed-tables';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const policy = require('../../../prisma/access/access-policy') as {
   TABLES: Record<string, { kind: string }>;
 };

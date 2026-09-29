@@ -71,7 +71,8 @@ export class ReceiptVerificationService {
     } catch {
       return {
         verified: false,
-        reason: 'Command target is not valid JSON, so the signed bytes cannot be reconstructed',
+        reason:
+          'Command target is not valid JSON, so the signed bytes cannot be reconstructed',
       };
     }
 

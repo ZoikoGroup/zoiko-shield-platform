@@ -74,7 +74,10 @@ describe('ReceiptVerificationService', () => {
     // creation, so a command could be rewritten afterwards and its receipt
     // would still report VERIFIED.
     const tampered = signedCommand(signer, {
-      target: JSON.stringify({ targetType: 'HOST', targetId: 'a-different-host' }),
+      target: JSON.stringify({
+        targetType: 'HOST',
+        targetId: 'a-different-host',
+      }),
     });
     const prisma = makePrisma(receipt, tampered);
     const result = await new ReceiptVerificationService(prisma, signer).verify(
@@ -85,7 +88,9 @@ describe('ReceiptVerificationService', () => {
   });
 
   it('refuses a command whose action type was swapped', async () => {
-    const tampered = signedCommand(signer, { action_type: 'DISABLE_USER_ACCOUNT' });
+    const tampered = signedCommand(signer, {
+      action_type: 'DISABLE_USER_ACCOUNT',
+    });
     const prisma = makePrisma(receipt, tampered);
     const result = await new ReceiptVerificationService(prisma, signer).verify(
       'rcpt1',
@@ -94,7 +99,10 @@ describe('ReceiptVerificationService', () => {
   });
 
   it('refuses a command carrying no signature', async () => {
-    const prisma = makePrisma(receipt, signedCommand(signer, { signature: null }));
+    const prisma = makePrisma(
+      receipt,
+      signedCommand(signer, { signature: null }),
+    );
     const result = await new ReceiptVerificationService(prisma, signer).verify(
       'rcpt1',
     );
@@ -102,7 +110,7 @@ describe('ReceiptVerificationService', () => {
     expect(result.reason).toMatch(/no signature/);
   });
 
-  it('refuses a receipt pointing at another tenant\'s command', async () => {
+  it("refuses a receipt pointing at another tenant's command", async () => {
     const prisma = makePrisma(
       receipt,
       signedCommand(signer, { tenant_id: 'tenant-b' }),

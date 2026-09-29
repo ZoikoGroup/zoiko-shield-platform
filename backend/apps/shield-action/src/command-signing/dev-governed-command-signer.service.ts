@@ -49,7 +49,9 @@ export class DevGovernedCommandSigner implements GovernedCommandSigner {
       this.publicKeyPem = createPublicKey(privateKey)
         .export({ type: 'spki', format: 'pem' })
         .toString();
-      this.keyId = process.env.ACTION_COMMAND_DEV_KEY_ID?.trim() || 'dev-command-key-configured';
+      this.keyId =
+        process.env.ACTION_COMMAND_DEV_KEY_ID?.trim() ||
+        'dev-command-key-configured';
       this.logger.warn(
         `DevGovernedCommandSigner loaded a configured dev private key (keyId=${this.keyId}) — non-production only.`,
       );

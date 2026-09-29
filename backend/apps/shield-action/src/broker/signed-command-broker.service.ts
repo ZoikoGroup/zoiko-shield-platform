@@ -60,7 +60,10 @@ export class SignedCommandBrokerService {
   ) {}
 
   private signingPayload(
-    envelope: Omit<SignedCommandEnvelope, 'signature' | 'signingKeyId' | 'signingAlgorithm'>,
+    envelope: Omit<
+      SignedCommandEnvelope,
+      'signature' | 'signingKeyId' | 'signingAlgorithm'
+    >,
     executionMode: 'SIMULATION' | 'LIVE',
   ): CommandSigningPayload {
     return {

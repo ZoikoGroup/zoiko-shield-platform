@@ -4265,7 +4265,257 @@ export class ZoikoShieldApiClient {
       })
     );
   }
+
+  static async getKmsHealth(): Promise<KmsHealthSummary> {
+    const res = await this.safeFetch<{ data: KmsHealthSummary }>(
+      '/api/v1/crypto-escrow/kms-health',
+      {},
+      () => ({
+        data: {
+          primaryProvider: 'GCP_CLOUD_KMS',
+          routingWeights: {
+            GCP_CLOUD_KMS: 100,
+            AWS_KMS: 0,
+            AZURE_KEYVAULT: 0,
+          },
+          providers: {
+            GCP_CLOUD_KMS: {
+              provider: 'GCP_CLOUD_KMS',
+              status: 'HEALTHY',
+              lastLatencyMs: 35,
+              averageLatencyMs: 38,
+              errorRate: 0,
+              consecutiveFailures: 0,
+              lastCheckedAt: new Date().toISOString(),
+            },
+            AWS_KMS: {
+              provider: 'AWS_KMS',
+              status: 'HEALTHY',
+              lastLatencyMs: 44,
+              averageLatencyMs: 46,
+              errorRate: 0,
+              consecutiveFailures: 0,
+              lastCheckedAt: new Date().toISOString(),
+            },
+          },
+          timestamp: new Date().toISOString(),
+        },
+      })
+    );
+    return res.data;
+  }
+
+  static async triggerKmsFailover(failedProvider: string, reason: string): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/crypto-escrow/kms-health/failover',
+      {
+        method: 'POST',
+        body: JSON.stringify({ failedProvider, reason }),
+      },
+      () => ({
+        statusCode: 200,
+        data: {
+          failedProvider,
+          newPrimaryProvider: failedProvider === 'GCP_CLOUD_KMS' ? 'AWS_KMS' : 'GCP_CLOUD_KMS',
+          reason,
+          timestamp: new Date().toISOString(),
+          affectedTenants: ['*'],
+        },
+      })
+    );
+    return res.data;
+  }
+
+  static async evaluateDoraPosture(telemetry?: Record<string, any>): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/compliance/dora/evaluate',
+      {
+        method: 'POST',
+        body: JSON.stringify(telemetry || {}),
+      },
+      () => ({
+        statusCode: 200,
+        data: {
+          assessmentId: 'dora-eval-demo',
+          framework: 'DORA_EU_2022_2554',
+          overallComplianceScore: 92,
+          totalArticlesEvaluated: 7,
+          compliantCount: 6,
+          gapCount: 1,
+          notEvaluatedCount: 0,
+          majorIncidentNotificationStatus: {
+            withinInitialWindow: true,
+            initialNotificationDeadlineHours: 4,
+            intermediateReportDeadlineHours: 24,
+            finalReportDeadlineDays: 30,
+          },
+          evaluations: [
+            {
+              article: 'Article 6',
+              controlCode: 'DORA-ART6',
+              title: 'ICT Risk Management Framework & Disaster Recovery',
+              domain: 'ICT Risk Governance',
+              status: 'COMPLIANT',
+              complianceScore: 100,
+              evidenceDigest: 'RTO:30m;RPO:0m',
+              evaluatedAt: new Date().toISOString(),
+            },
+            {
+              article: 'Article 9',
+              controlCode: 'DORA-ART9',
+              title: 'Protection and Prevention Capabilities',
+              domain: 'Logical & Physical Protection',
+              status: 'COMPLIANT',
+              complianceScore: 100,
+              evidenceDigest: 'MFA_RATE:1.0',
+              evaluatedAt: new Date().toISOString(),
+            },
+            {
+              article: 'Article 10',
+              controlCode: 'DORA-ART10',
+              title: 'Detection of Anomalous Activities',
+              domain: 'Continuous Detection & Monitoring',
+              status: 'COMPLIANT',
+              complianceScore: 100,
+              evidenceDigest: 'LATENCY:210ms',
+              evaluatedAt: new Date().toISOString(),
+            },
+            {
+              article: 'Article 11',
+              controlCode: 'DORA-ART11',
+              title: 'ICT Response and Recovery Capabilities',
+              domain: 'Incident Response & Rollback',
+              status: 'COMPLIANT',
+              complianceScore: 100,
+              evidenceDigest: 'CONTAINMENT:true;ROLLBACK_PASS:1.0',
+              evaluatedAt: new Date().toISOString(),
+            },
+            {
+              article: 'Article 19',
+              controlCode: 'DORA-ART19',
+              title: 'Major ICT-Related Incident Reporting Timeline',
+              domain: 'Regulatory Incident Reporting',
+              status: 'COMPLIANT',
+              complianceScore: 100,
+              evidenceDigest: 'INCIDENT_AGE_HOURS:1',
+              evaluatedAt: new Date().toISOString(),
+            },
+            {
+              article: 'Article 26',
+              controlCode: 'DORA-ART26',
+              title: 'Threat-Led Penetration Testing (TLPT)',
+              domain: 'Advanced Resilience Testing',
+              status: 'COMPLIANT',
+              complianceScore: 100,
+              evidenceDigest: 'TLPT_DAYS_AGO:120',
+              evaluatedAt: new Date().toISOString(),
+            },
+            {
+              article: 'Article 28',
+              controlCode: 'DORA-ART28',
+              title: 'ICT Third-Party Concentration Risk Management',
+              domain: 'Third-Party Risk Governance',
+              status: 'GAP_DETECTED',
+              complianceScore: 50,
+              evidenceDigest: 'HHI:2800;FALLBACK:true',
+              evaluatedAt: new Date().toISOString(),
+            },
+          ],
+          merkleEvidenceRoot: 'd0a1b2c3d4e5f67890abcdef1234567890abcdef1234567890abcdef12345678',
+          evaluatedAt: new Date().toISOString(),
+        },
+      })
+    );
+    return res.data;
+  }
+
+  static async evaluateNis2Posture(telemetry?: Record<string, any>): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/compliance/nis2/evaluate',
+      {
+        method: 'POST',
+        body: JSON.stringify(telemetry || {}),
+      },
+      () => ({
+        statusCode: 200,
+        data: {
+          assessmentId: 'nis2-eval-demo',
+          framework: 'NIS2_DIRECTIVE_EU_2022_2555',
+          entityType: 'ESSENTIAL_ENTITY',
+          overallComplianceScore: 95,
+          totalControlsEvaluated: 8,
+          compliantCount: 7,
+          gapCount: 1,
+          notEvaluatedCount: 0,
+          incidentNotificationStatus: {
+            withinEarlyWarning24hWindow: true,
+            withinIncidentNotification72hWindow: true,
+            earlyWarningDeadlineHours: 24,
+            incidentNotificationDeadlineHours: 72,
+            finalReportDeadlineDays: 30,
+          },
+          merkleEvidenceRoot: 'a1b2c3d4e5f67890abcdef1234567890abcdef1234567890abcdef1234567890',
+          evaluatedAt: new Date().toISOString(),
+        },
+      })
+    );
+    return res.data;
+  }
+
+  static async getSectorSummary(): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/compliance/sector-summary',
+      {},
+      () => ({
+        statusCode: 200,
+        data: {
+          frameworks: {
+            DORA: {
+              score: 92,
+              status: 'COMPLIANT',
+              totalArticles: 7,
+              compliantCount: 6,
+              gapCount: 1,
+              merkleRoot: 'd0a1b2c3d4e5f67890abcdef1234567890abcdef1234567890abcdef12345678',
+            },
+            NIS2: {
+              score: 95,
+              status: 'COMPLIANT',
+              totalControls: 8,
+              compliantCount: 7,
+              gapCount: 1,
+              merkleRoot: 'a1b2c3d4e5f67890abcdef1234567890abcdef1234567890abcdef1234567890',
+            },
+          },
+          assessedAt: new Date().toISOString(),
+        },
+      })
+    );
+    return res.data;
+  }
 }
+
+export interface KmsProviderHealthInfo {
+  provider: 'GCP_CLOUD_KMS' | 'AWS_KMS' | 'AZURE_KEYVAULT';
+  status: 'HEALTHY' | 'DEGRADED' | 'OUTAGE';
+  lastLatencyMs: number;
+  averageLatencyMs: number;
+  errorRate: number;
+  consecutiveFailures: number;
+  lastCheckedAt: string;
+}
+
+export interface KmsHealthSummary {
+  primaryProvider: 'GCP_CLOUD_KMS' | 'AWS_KMS' | 'AZURE_KEYVAULT';
+  routingWeights: Record<string, number>;
+  providers: {
+    GCP_CLOUD_KMS?: KmsProviderHealthInfo;
+    AWS_KMS?: KmsProviderHealthInfo;
+    AZURE_KEYVAULT?: KmsProviderHealthInfo;
+  };
+  timestamp: string;
+}
+
 
 
 

@@ -46,7 +46,11 @@ export interface GovernedCommandSigner {
     publicKey: string,
   ): Promise<boolean>;
   /** The public key commands are verified against, for receipts and audit. */
-  publicKey(): Promise<{ signingKeyId: string; publicKey: string; algorithm: string }>;
+  publicKey(): Promise<{
+    signingKeyId: string;
+    publicKey: string;
+    algorithm: string;
+  }>;
 }
 
 export const GOVERNED_COMMAND_SIGNER = Symbol('GOVERNED_COMMAND_SIGNER');

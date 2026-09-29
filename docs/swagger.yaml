@@ -56267,11 +56267,202 @@ paths:
         '401':
           description: Unauthorized
 
+  /api/v1/crypto-escrow/kms-health:
+    get:
+      summary: Retrieve Cloud KMS Provider Health and Routing Weights
+      description: Returns real-time health status, latency metrics, and traffic routing weights for Cloud KMS providers.
+      operationId: getKmsHealth
+      tags:
+        - CryptoGovernance
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          description: KMS provider health and routing topology returned successfully
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - Insufficient permissions
 
+  /api/v1/crypto-escrow/kms-health/probe:
+    post:
+      summary: Record Synthetic KMS Heartbeat Probe
+      description: Records an active cryptographic heartbeat probe against a target KMS provider.
+      operationId: recordKmsProbe
+      tags:
+        - CryptoGovernance
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - provider
+                - latencyMs
+              properties:
+                provider:
+                  type: string
+                  enum: [GCP_CLOUD_KMS, AWS_KMS, AZURE_KEYVAULT]
+                latencyMs:
+                  type: number
+                success:
+                  type: boolean
+      responses:
+        '200':
+          description: Probe recorded and health recomputed
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
 
+  /api/v1/crypto-escrow/kms-health/failover:
+    post:
+      summary: Trigger Controlled Cloud KMS Failover
+      description: Shifts primary cryptographic traffic to the healthy secondary KMS provider with step-up verification.
+      operationId: triggerKmsFailover
+      tags:
+        - CryptoGovernance
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - failedProvider
+                - reason
+              properties:
+                failedProvider:
+                  type: string
+                  enum: [GCP_CLOUD_KMS, AWS_KMS, AZURE_KEYVAULT]
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Failover executed and traffic rebalanced
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden - Requires step-up authentication
 
+  /api/v1/compliance/dora/evaluate:
+    post:
+      summary: Evaluate DORA Operational Resilience Posture
+      description: Evaluates financial entity telemetry against EU 2022/2554 (DORA) and generates a Merkle-attested report.
+      operationId: evaluateDoraPosture
+      tags:
+        - SectorPacks
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                multiCloudRecoveryRtoMinutes:
+                  type: number
+                multiCloudRecoveryRpoMinutes:
+                  type: number
+                boundaryDefenseMfaRate:
+                  type: number
+                ocsfDetectionPipelineLatencyMs:
+                  type: number
+                automatedContainmentTested:
+                  type: boolean
+                rollbackReceiptVerificationPassRate:
+                  type: number
+                tlptLastExerciseDaysAgo:
+                  type: number
+                thirdPartyHhiIndex:
+                  type: number
+                tier1ProviderFallbackConfigured:
+                  type: boolean
+                unreportedIncidentAgeHours:
+                  type: number
+      responses:
+        '200':
+          description: DORA posture assessment report generated successfully
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
 
+  /api/v1/compliance/nis2/evaluate:
+    post:
+      summary: Evaluate NIS2 Cybersecurity Risk Posture
+      description: Evaluates essential/important entity telemetry against EU 2022/2555 (NIS2 Directive).
+      operationId: evaluateNis2Posture
+      tags:
+        - SectorPacks
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                entityType:
+                  type: string
+                  enum: [ESSENTIAL_ENTITY, IMPORTANT_ENTITY]
+                incidentHandlingProcessDocumented:
+                  type: boolean
+                businessContinuityTestedDaysAgo:
+                  type: number
+                sbomAttestationCoverageRate:
+                  type: number
+                vulnerabilityDisclosurePolicyActive:
+                  type: boolean
+                effectivenessAuditPassed:
+                  type: boolean
+                pqcAndKmsEncryptionEnforced:
+                  type: boolean
+                mfaEnforcementRate:
+                  type: number
+                unreportedIncidentAgeHours:
+                  type: number
+      responses:
+        '200':
+          description: NIS2 posture assessment report generated successfully
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
 
-
-
+  /api/v1/compliance/sector-summary:
+    get:
+      summary: Retrieve Active Tenant Sector Regulatory Summary
+      description: Returns aggregate compliance scores, gap summaries, and Merkle roots for DORA and NIS2.
+      operationId: getSectorSummary
+      tags:
+        - SectorPacks
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Sector framework summary returned successfully
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
 

@@ -573,7 +573,8 @@ export class ShieldActionController {
     if (!this.fido2Guard) {
       return {
         status: 'UNAVAILABLE',
-        message: 'Fido2StepupGuardService is not configured in this environment',
+        message:
+          'Fido2StepupGuardService is not configured in this environment',
       };
     }
     return this.fido2Guard.issueChallenge(body);
@@ -585,7 +586,8 @@ export class ShieldActionController {
     if (!this.fido2Guard) {
       return {
         status: 'UNAVAILABLE',
-        message: 'Fido2StepupGuardService is not configured in this environment',
+        message:
+          'Fido2StepupGuardService is not configured in this environment',
       };
     }
     return this.fido2Guard.verifyAssertionAndGrant(body);
@@ -597,10 +599,15 @@ export class ShieldActionController {
     if (!this.fido2Guard) {
       return {
         status: 'UNAVAILABLE',
-        message: 'Fido2StepupGuardService is not configured in this environment',
+        message:
+          'Fido2StepupGuardService is not configured in this environment',
       };
     }
     this.fido2Guard.registerCredential(body);
-    return { success: true, credentialId: body.credentialId, analystId: body.analystId };
+    return {
+      success: true,
+      credentialId: body.credentialId,
+      analystId: body.analystId,
+    };
   }
 }

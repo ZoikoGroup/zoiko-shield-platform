@@ -18,7 +18,7 @@ import { GcsObjectStorageService } from './gcs-object-storage.service';
 export function usingGoogleCloudStorage(): boolean {
   return Boolean(
     process.env.EVIDENCE_GCS_BUCKET?.trim() &&
-      process.env.GOOGLE_CLOUD_PROJECT?.trim(),
+    process.env.GOOGLE_CLOUD_PROJECT?.trim(),
   );
 }
 

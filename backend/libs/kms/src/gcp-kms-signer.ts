@@ -37,7 +37,11 @@ export class GcpKmsSigner {
     if (!keyVersionName) {
       throw new Error('A Cloud KMS key version resource name is required');
     }
-    if (!/^projects\/[^/]+\/locations\/[^/]+\/keyRings\/[^/]+\/cryptoKeys\/[^/]+\/cryptoKeyVersions\/[^/]+$/.test(keyVersionName)) {
+    if (
+      !/^projects\/[^/]+\/locations\/[^/]+\/keyRings\/[^/]+\/cryptoKeys\/[^/]+\/cryptoKeyVersions\/[^/]+$/.test(
+        keyVersionName,
+      )
+    ) {
       // Caught here rather than as an opaque NOT_FOUND on the first signature,
       // which would surface at the moment evidence is being written.
       throw new Error(
@@ -50,7 +54,9 @@ export class GcpKmsSigner {
   /** Hex-encoded DER ECDSA signature over the SHA-256 of `message`. */
   async sign(message: string | Buffer): Promise<string> {
     const digest = createHash('sha256')
-      .update(typeof message === 'string' ? Buffer.from(message, 'utf8') : message)
+      .update(
+        typeof message === 'string' ? Buffer.from(message, 'utf8') : message,
+      )
       .digest();
 
     const [response] = await this.client.asymmetricSign({

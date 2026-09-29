@@ -8,7 +8,6 @@ import {
   sourceFiles,
 } from './support/prisma-schema-catalog';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
 const policy = require('../../../prisma/access/access-policy') as {
   SERVICE_ROLES: Record<
     string,
