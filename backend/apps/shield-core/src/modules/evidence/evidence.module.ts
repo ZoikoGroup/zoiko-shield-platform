@@ -2,7 +2,9 @@ import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../prisma/prisma.module';
 import { KafkaModule } from '../../kafka/kafka.module';
 import { EvidenceController } from './controllers/evidence.controller';
+import { AirgapIngestController } from './airgap-ingest.controller';
 import { EvidenceService } from './services/evidence.service';
+import { OfflineTelemetryBufferService } from './offline-telemetry-buffer.service';
 import { EvidenceRepository } from './repositories/evidence.repository';
 import { ContentHashService } from './hashing/content-hash.service';
 import { ObjectStorageService } from './storage/object-storage.service';
@@ -20,9 +22,10 @@ import { ProductionCollectorSigner } from './signing/production-collector-signer
 
 @Module({
   imports: [PrismaModule, KafkaModule],
-  controllers: [EvidenceController],
+  controllers: [EvidenceController, AirgapIngestController],
   providers: [
     EvidenceService,
+    OfflineTelemetryBufferService,
     EvidenceRepository,
     ContentHashService,
     objectStorageProvider,
@@ -44,6 +47,7 @@ import { ProductionCollectorSigner } from './signing/production-collector-signer
   ],
   exports: [
     EvidenceService,
+    OfflineTelemetryBufferService,
     EvidenceLedgerService,
     EvidenceLineageService,
     EvidenceAutoCreationService,

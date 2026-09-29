@@ -175,6 +175,8 @@ export class QuarantinePodDto {
   podSelector!: string;
 }
 
+import { SafetyCriticalActuatorBlockService } from './safety-interlock/safety-critical-actuator-block.service';
+
 @Controller()
 export class ShieldActionController {
   constructor(
@@ -192,6 +194,8 @@ export class ShieldActionController {
     private readonly dualCustodyQuorumService?: DualCustodyQuorumService,
     @Optional()
     private readonly fido2Guard?: Fido2StepupGuardService,
+    @Optional()
+    private readonly safetyInterlockService?: SafetyCriticalActuatorBlockService,
   ) {}
 
   @Get()
@@ -609,5 +613,46 @@ export class ShieldActionController {
       credentialId: body.credentialId,
       analystId: body.analystId,
     };
+  }
+
+  // --- OT & Safety-Critical Actuator Interlock Endpoints (Spec §36 / §38) ---
+
+  @UseGuards(InternalAuthGuard)
+  @Post('api/v1/action/ot-interlock/evaluate')
+  evaluateOtInterlock(@Body() body: any) {
+    if (!this.safetyInterlockService) {
+      return {
+        status: 'UNAVAILABLE',
+        message: 'SafetyCriticalActuatorBlockService is not configured in this environment',
+      };
+    }
+    return this.safetyInterlockService.evaluateActuatorInterlock(body);
+  }
+
+  @UseGuards(InternalAuthGuard)
+  @Post('api/v1/action/ot-interlock/failsafe')
+  engageOtFailsafe(
+    @Body() body: { tenantId: string; targetRef: string; reason: string },
+  ) {
+    if (!this.safetyInterlockService) {
+      return {
+        status: 'UNAVAILABLE',
+        message: 'SafetyCriticalActuatorBlockService is not configured in this environment',
+      };
+    }
+    return this.safetyInterlockService.engageEmergencyFailsafe(
+      body.tenantId,
+      body.targetRef,
+      body.reason,
+    );
+  }
+
+  @UseGuards(InternalAuthGuard)
+  @Get('api/v1/action/ot-interlock/audit')
+  getOtInterlockAudit(@Query('tenantId') tenantId?: string) {
+    if (!this.safetyInterlockService) {
+      return [];
+    }
+    return this.safetyInterlockService.getAuditLog(tenantId);
   }
 }
