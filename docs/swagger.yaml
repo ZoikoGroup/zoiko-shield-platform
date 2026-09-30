@@ -1225,6 +1225,82 @@ components:
           enum:
             - ACTIVE
             - SUSPENDED
+    PlaybookRunSummary:
+      type: object
+      required:
+        - id
+        - caseId
+        - playbookKey
+        - playbookOwner
+        - version
+        - mode
+        - status
+        - triggeredBy
+        - startedAt
+        - completedAt
+        - terminationReason
+      properties:
+        id:
+          type: string
+          format: uuid
+        caseId:
+          type: string
+        playbookKey:
+          type: string
+        playbookOwner:
+          type: string
+        version:
+          type: integer
+        mode:
+          type: string
+          example: SIMULATION
+        status:
+          type: string
+        triggeredBy:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+          nullable: true
+        terminationReason:
+          type: string
+          nullable: true
+    PlaybookStepPlan:
+      type: object
+      required:
+        - stepNumber
+        - actionType
+        - authorityLevel
+        - targetIdentifier
+      properties:
+        stepNumber:
+          type: integer
+        actionType:
+          type: string
+        authorityLevel:
+          type: string
+        targetIdentifier:
+          type: string
+        compensatingActionType:
+          type: string
+          nullable: true
+    PlaybookRunDetail:
+      allOf:
+        - $ref: '#/components/schemas/PlaybookRunSummary'
+        - type: object
+          required:
+            - requiredAuthority
+            - plannedSteps
+          properties:
+            requiredAuthority:
+              type: string
+            plannedSteps:
+              type: array
+              items:
+                $ref: '#/components/schemas/PlaybookStepPlan'
     ResponseFreezeRecord:
       type: object
       required:
@@ -49992,6 +50068,62 @@ paths:
                       - $ref: '#/components/schemas/ResponseFreezeRecord'
                     nullable: true
       operationId: getResponseFreezeStatus
+  /api/v1/playbooks/runs:
+    get:
+      tags:
+        - ResponseProposals
+      summary: List recorded playbook runs for the tenant
+      description: >-
+        Read-only. Reports the PlaybookRun rows actually persisted for the
+        tenant; it does not evaluate or simulate live execution state.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Playbook run summaries, most recently started first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PlaybookRunSummary'
+      operationId: listPlaybookRuns
+  /api/v1/playbooks/runs/{runId}:
+    get:
+      tags:
+        - ResponseProposals
+      summary: Get one playbook run, including its recorded step plan
+      description: >-
+        The step plan is the PlaybookVersion this run was launched against,
+        not a live execution trace — the schema does not persist per-step
+        status.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: runId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Playbook run detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlaybookRunDetail'
+        '404':
+          description: No such run for this tenant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getPlaybookRunById
   /api/v1/connectors/{connectorId}/test:
     post:
       tags:

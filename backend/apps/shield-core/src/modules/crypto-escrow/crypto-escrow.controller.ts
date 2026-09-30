@@ -19,6 +19,7 @@ import {
 import { Type } from 'class-transformer';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
+import { G4GateGuard } from '../authorization/guards/g4-gate.guard';
 import { RequirePermissions } from '../authorization/decorators/require-permissions.decorator';
 import { RequireAssurance } from '../authorization/decorators/require-assurance.decorator';
 import { PERMISSION_CODES } from '../authorization/constants';
@@ -226,6 +227,7 @@ export class CryptoEscrowController {
    * Configure Customer Managed Key (BYOK/HYOK) Cloud KMS proxy.
    */
   @Post('byok/configure')
+  @UseGuards(G4GateGuard)
   @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_WRITE)
   @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
   async configureByok(
@@ -252,6 +254,7 @@ export class CryptoEscrowController {
    * Get active BYOK / HYOK key custody configuration.
    */
   @Get('byok/status')
+  @UseGuards(G4GateGuard)
   @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_READ)
   async getByokStatus(@Headers('x-tenant-id') tenantIdHeader: string) {
     const tenantId = requireTenantId(tenantIdHeader);
@@ -268,6 +271,7 @@ export class CryptoEscrowController {
    * Test latency and signature delegation with customer external KMS proxy.
    */
   @Post('byok/probe')
+  @UseGuards(G4GateGuard)
   @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_WRITE)
   async probeByok(@Headers('x-tenant-id') tenantIdHeader: string) {
     const tenantId = requireTenantId(tenantIdHeader);
@@ -288,6 +292,7 @@ export class CryptoEscrowController {
    * Verify hardware quote and measured launch digest.
    */
   @Post('attestation/verify')
+  @UseGuards(G4GateGuard)
   @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_WRITE)
   async verifyHardwareAttestation(
     @Headers('x-tenant-id') tenantIdHeader: string,
@@ -314,6 +319,7 @@ export class CryptoEscrowController {
    * Get tenant confidential computing platform posture.
    */
   @Get('attestation/posture')
+  @UseGuards(G4GateGuard)
   @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_READ)
   async getAttestationPosture(@Headers('x-tenant-id') tenantIdHeader: string) {
     const tenantId = requireTenantId(tenantIdHeader);
@@ -335,6 +341,7 @@ export class CryptoEscrowController {
    * Split sovereign tenant recovery key into (k, n) MPC custodian shares.
    */
   @Post('mpc/split')
+  @UseGuards(G4GateGuard)
   @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_WRITE)
   @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
   async splitMpcKey(
@@ -362,6 +369,7 @@ export class CryptoEscrowController {
    * Reconstruct master key from threshold quorum of custodian shares.
    */
   @Post('mpc/recover')
+  @UseGuards(G4GateGuard)
   @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_WRITE)
   @RequireAssurance('PASSWORD_MFA', 'FEDERATED_MFA', 'PASSKEY')
   async recoverMpcKey(

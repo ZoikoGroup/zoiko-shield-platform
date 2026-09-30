@@ -1,503 +1,350 @@
 "use client";
 
-import React, { useState } from "react";
-import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
+import React, { useCallback, useEffect, useState } from "react";
+import { backend, asList, BackendError } from "@/lib/backend";
+import { formatTimestamp } from "@/lib/utils";
+import { Card } from "@/ui/Card";
+import { Button } from "@/ui/Button";
+import { Badge } from "@/ui/Badge";
 import {
-  Play,
-  CheckCircle2,
   RotateCcw,
   Terminal,
   Activity,
   Clock,
-  UserCheck,
-  FileCheck2,
-  Fingerprint,
   ShieldAlert,
+  Snowflake,
 } from "lucide-react";
-import { WebAuthnStepupModal } from "@/components/passkeys";
+import { LoadingState, UnavailableState } from "@/components/states/mandatory-ui-states";
 
-interface PlaybookStep {
-  stepNumber: number;
-  name: string;
-  action: string;
-  provider: string;
-  status: "COMPLETED" | "RUNNING" | "WAITING_APPROVAL" | "PENDING" | "ROLLED_BACK";
-  durationMs: number;
-  outputLog: string;
-  blastScore: number;
-  compensatingAction?: string;
-}
+/**
+ * W18 — Playbook run view.
+ *
+ * PlaybookDefinition/PlaybookVersion/PlaybookRun have existed in the schema
+ * for some time, but nothing ever wrote or read them: the actual playbook
+ * executor (shield-action's ResponsePlaybookService) runs an in-memory shape
+ * and never persists to these tables. This page previously showed a
+ * hardcoded run with a "Provide 4-Eyes Approval" button whose "success"
+ * mutated local state to claim a step had been cryptographically signed, and
+ * an "Emergency Kill-Switch" whose "success" claimed compensating actions
+ * had executed across every affected endpoint. Neither call reached the
+ * backend at all.
+ *
+ * What this page can honestly show: the runs and their step *plan* that are
+ * actually recorded (PlaybookRunService, read-only — the schema does not
+ * carry per-step execution state, so it isn't shown as if it did), and the
+ * one real, consequential control that exists for a running response: a
+ * tenant-wide freeze (POST /api/v1/response/freeze), which
+ * FreezeControllerService checks before any action adapter executes. That
+ * replaces the fake kill-switch with the real one.
+ */
 
-interface PlaybookRun {
+type PlaybookRunSummary = {
   id: string;
-  name: string;
   caseId: string;
+  playbookKey: string;
+  playbookOwner: string;
+  version: number;
+  mode: string;
+  status: string;
   triggeredBy: string;
   startedAt: string;
-  status: "COMPLETED" | "RUNNING" | "PAUSED_4_EYES" | "ROLLED_BACK";
-  blastRadiusTotal: number;
-  steps: PlaybookStep[];
-  merkleReceiptHash: string;
+  completedAt: string | null;
+  terminationReason: string | null;
+};
+
+type PlaybookStepPlan = {
+  stepNumber: number;
+  actionType: string;
+  authorityLevel: string;
+  targetIdentifier: string;
+  compensatingActionType?: string;
+};
+
+type PlaybookRunDetail = PlaybookRunSummary & {
+  requiredAuthority: string;
+  plannedSteps: PlaybookStepPlan[];
+};
+
+type FreezeStatus = {
+  frozen: boolean;
+  status: string;
+  freeze: { reason: string; created_by: string; active_from: string } | null;
+};
+
+function statusVariant(status: string) {
+  switch ((status || "").toUpperCase()) {
+    case "COMPLETED":
+      return "pass" as const;
+    case "RUNNING":
+      return "active" as const;
+    case "FAILED":
+    case "ABORTED":
+      return "fail" as const;
+    default:
+      return "neutral" as const;
+  }
 }
 
-const PLAYBOOK_RUNS: PlaybookRun[] = [
-  {
-    id: "run-pb-2026-0924-001",
-    name: "Automated Ransomware Containment & Forensics",
-    caseId: "CASE-2026-09-8812",
-    triggeredBy: "Detection: DET-EDR-RANSOMWARE-DETECTED",
-    startedAt: "2026-09-24 19:14:02 UTC",
-    status: "PAUSED_4_EYES",
-    blastRadiusTotal: 0.08,
-    merkleReceiptHash: "0x8f19e4a3b8c27d119e5f4a6b2c8901fe7a6d89ef",
-    steps: [
-      {
-        stepNumber: 1,
-        name: "Capture Ephemeral Volatile Memory",
-        action: "MEMORY_FORENSIC_ACQUISITION",
-        provider: "CrowdStrike LiveResponse",
-        status: "COMPLETED",
-        durationMs: 420,
-        outputLog: "Memory dump 4.2GB captured to encrypted WORM GCS vault gs://zs-evidence-vault-eu-west3/forensics/dump-srv-db-02.raw.enc",
-        blastScore: 0.0,
-      },
-      {
-        stepNumber: 2,
-        name: "Isolate Compromised Server from Subnet",
-        action: "NETWORK_ISOLATE_HOST",
-        provider: "CrowdStrike Falcon EDR",
-        status: "COMPLETED",
-        durationMs: 180,
-        outputLog: "Host srv-db-prod-02.internal isolated from 10.10.0.0/20. Tunnel maintained on port 443 for agent telemetry.",
-        blastScore: 0.05,
-        compensatingAction: "NETWORK_UNISOLATE_HOST",
-      },
-      {
-        stepNumber: 3,
-        name: "Revoke Active Kerberos & IAM Service Tokens",
-        action: "REVOKE_IAM_SESSION",
-        provider: "Microsoft Entra ID Connector",
-        status: "COMPLETED",
-        durationMs: 310,
-        outputLog: "Session tokens for principal svc-backup-worker revoked across all tenant resource groups.",
-        blastScore: 0.03,
-        compensatingAction: "RESTORE_IAM_SESSION",
-      },
-      {
-        stepNumber: 4,
-        name: "Enforce Perimeter WAF Edge Block on C2 IP",
-        action: "APPLY_WAF_BLOCK",
-        provider: "Cloud Perimeter WAF",
-        status: "WAITING_APPROVAL",
-        durationMs: 0,
-        outputLog: "Action requires 4-eyes approval quorum (R3 tier). Waiting for secondary operator passkey validation.",
-        blastScore: 0.02,
-        compensatingAction: "REMOVE_WAF_BLOCK",
-      },
-      {
-        stepNumber: 5,
-        name: "Generate Cryptographic Merkle Attestation",
-        action: "ANCHOR_EVIDENCE_RECEIPT",
-        provider: "shield-anchor (Cloud KMS P-256)",
-        status: "PENDING",
-        durationMs: 0,
-        outputLog: "Pending prior action step resolution.",
-        blastScore: 0.0,
-      },
-    ],
-  },
-  {
-    id: "run-pb-2026-0923-002",
-    name: "Credential Compromise Blast Mitigation",
-    caseId: "CASE-2026-09-8809",
-    triggeredBy: "Detection: DET-IAM-IMPOSSIBLE-TRAVEL",
-    startedAt: "2026-09-23 11:22:15 UTC",
-    status: "COMPLETED",
-    blastRadiusTotal: 0.03,
-    merkleReceiptHash: "0x3b91a742c0f1882d9a10bcfe81992ad301824ef1",
-    steps: [
-      {
-        stepNumber: 1,
-        name: "Invalidate OAuth Refresh Tokens",
-        action: "REVOKE_OAUTH_GRANTS",
-        provider: "ZoikoID OIDC Provider",
-        status: "COMPLETED",
-        durationMs: 140,
-        outputLog: "All refresh tokens for dev-user@zoiko.example invalidated.",
-        blastScore: 0.01,
-      },
-      {
-        stepNumber: 2,
-        name: "Trigger Forced Step-Up WebAuthn Challenge",
-        action: "FORCE_WEBAUTHN_CHALLENGE",
-        provider: "ZoikoShield Identity Adapter",
-        status: "COMPLETED",
-        durationMs: 95,
-        outputLog: "Step-up challenge delivered via passkey prompt.",
-        blastScore: 0.02,
-      },
-    ],
-  },
-];
-
 export default function PlaybooksRunPage() {
-  const [runs, setRuns] = useState<PlaybookRun[]>(PLAYBOOK_RUNS);
-  const [selectedRun, setSelectedRun] = useState<PlaybookRun>(PLAYBOOK_RUNS[0]);
-  const [actionNotice, setActionNotice] = useState<string | null>(null);
-  const [isStepupModalOpen, setIsStepupModalOpen] = useState(false);
-  const [pendingApprovalStep, setPendingApprovalStep] = useState<{ runId: string; stepNumber: number; stepName: string; action: string } | null>(null);
+  const [runs, setRuns] = useState<PlaybookRunSummary[]>([]);
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [detail, setDetail] = useState<PlaybookRunDetail | null>(null);
+  const [freezeStatus, setFreezeStatus] = useState<FreezeStatus | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [freezeReason, setFreezeReason] = useState("");
+  const [isFreezing, setIsFreezing] = useState(false);
+  const [showFreezeForm, setShowFreezeForm] = useState(false);
 
-  const handleApproveStep = (runId: string, stepNumber: number) => {
-    const run = runs.find((r) => r.id === runId) || selectedRun;
-    const step = run.steps.find((s) => s.stepNumber === stepNumber);
-    setPendingApprovalStep({
-      runId,
-      stepNumber,
-      stepName: step?.name || "Containment Action",
-      action: step?.action || "ENFORCE_CONTAINMENT",
-    });
-    setIsStepupModalOpen(true);
+  const loadList = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const [runList, status] = await Promise.all([
+        asList<PlaybookRunSummary>(await backend.get("/api/v1/playbooks/runs")),
+        backend.get<FreezeStatus>("/api/v1/response/freeze-status"),
+      ]);
+      setRuns(runList);
+      setFreezeStatus(status);
+      if (runList.length > 0) setSelectedRunId((prev) => prev ?? runList[0].id);
+    } catch (err) {
+      setError(err instanceof BackendError ? err.message : String(err));
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadList();
+  }, [loadList]);
+
+  useEffect(() => {
+    if (!selectedRunId) {
+      setDetail(null);
+      return;
+    }
+    backend
+      .get<PlaybookRunDetail>(`/api/v1/playbooks/runs/${selectedRunId}`)
+      .then(setDetail)
+      .catch((err) =>
+        setError(err instanceof BackendError ? err.message : String(err)),
+      );
+  }, [selectedRunId]);
+
+  const triggerFreeze = async () => {
+    if (!freezeReason.trim()) {
+      setError("A reason is required to freeze response actions.");
+      return;
+    }
+    setIsFreezing(true);
+    setError(null);
+    try {
+      await backend.post("/api/v1/response/freeze", { reason: freezeReason.trim() });
+      const status = await backend.get<FreezeStatus>("/api/v1/response/freeze-status");
+      setFreezeStatus(status);
+      setShowFreezeForm(false);
+      setFreezeReason("");
+      setNotice(
+        "Response freeze is active. Action adapters will refuse every live and compensating command for this tenant until it is lifted.",
+      );
+      setTimeout(() => setNotice(null), 8000);
+    } catch (err) {
+      setError(err instanceof BackendError ? err.message : String(err));
+    } finally {
+      setIsFreezing(false);
+    }
   };
 
-  const handlePasskeySuccess = (assertion: {
-    credentialId: string;
-    signature: string;
-    verifiedAt: string;
-  }) => {
-    if (!pendingApprovalStep) return;
-    const { runId, stepNumber } = pendingApprovalStep;
-    setIsStepupModalOpen(false);
-
-    setRuns((prev) =>
-      prev.map((r) => {
-        if (r.id !== runId) return r;
-        const updatedSteps = r.steps.map((s) =>
-          s.stepNumber === stepNumber
-            ? {
-                ...s,
-                status: "COMPLETED" as const,
-                durationMs: 240,
-                outputLog: `4-eyes FIDO2 key verified (${assertion.credentialId.substring(0, 16)}...). Execution completed and cryptographically signed.`,
-              }
-            : s.stepNumber === stepNumber + 1
-            ? {
-                ...s,
-                status: "COMPLETED" as const,
-                durationMs: 120,
-                outputLog: "Merkle root anchored to Cloud KMS & GCS WORM store.",
-              }
-            : s
-        );
-        return {
-          ...r,
-          status: "COMPLETED" as const,
-          steps: updatedSteps,
-        };
-      })
-    );
-
-    setSelectedRun((prev) => ({
-      ...prev,
-      status: "COMPLETED",
-      steps: prev.steps.map((s) =>
-        s.stepNumber === stepNumber
-          ? {
-              ...s,
-              status: "COMPLETED",
-              durationMs: 240,
-              outputLog: `4-eyes FIDO2 key verified (${assertion.credentialId.substring(0, 16)}...). Execution completed and cryptographically signed.`,
-            }
-          : s.stepNumber === stepNumber + 1
-          ? {
-              ...s,
-              status: "COMPLETED",
-              durationMs: 120,
-              outputLog: "Merkle root anchored to Cloud KMS.",
-            }
-          : s
-      ),
-    }));
-
-    setActionNotice(`Playbook step authorized with FIDO2 passkey (Signature: ${assertion.signature.substring(0, 20)}...). Live containment active.`);
-    setTimeout(() => setActionNotice(null), 6000);
+  const liftFreeze = async () => {
+    setIsFreezing(true);
+    setError(null);
+    try {
+      await backend.post("/api/v1/response/unfreeze");
+      const status = await backend.get<FreezeStatus>("/api/v1/response/freeze-status");
+      setFreezeStatus(status);
+      setNotice("Response freeze lifted.");
+      setTimeout(() => setNotice(null), 6000);
+    } catch (err) {
+      setError(err instanceof BackendError ? err.message : String(err));
+    } finally {
+      setIsFreezing(false);
+    }
   };
 
-  const handleEmergencyHalt = (runId: string) => {
-    setRuns((prev) =>
-      prev.map((r) =>
-        r.id === runId
-          ? {
-              ...r,
-              status: "ROLLED_BACK",
-              steps: r.steps.map((s) =>
-                s.status === "COMPLETED" && s.compensatingAction
-                  ? { ...s, status: "ROLLED_BACK", outputLog: `Compensating command executed: ${s.compensatingAction}` }
-                  : s
-              ),
-            }
-          : r
-      )
-    );
-    setSelectedRun((prev) => ({
-      ...prev,
-      status: "ROLLED_BACK",
-      steps: prev.steps.map((s) =>
-        s.status === "COMPLETED" && s.compensatingAction
-          ? { ...s, status: "ROLLED_BACK", outputLog: `Compensating command executed: ${s.compensatingAction}` }
-          : s
-      ),
-    }));
-    setActionNotice("Emergency Kill-Switch triggered. Compensating actions executed across all affected endpoints.");
-    setTimeout(() => setActionNotice(null), 6000);
-  };
+  if (isLoading) return <LoadingState message="Loading playbook runs…" />;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between pb-6 border-b border-slate-800">
+    <div className="space-y-5 p-6">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 pb-6 border-b border-slate-800">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Badge variant="neutral" className="bg-indigo-950/60 text-indigo-400 border-indigo-800 text-xs">
-              Contract W18 • SOAR Playbook Engine
-            </Badge>
-            <Badge variant="active" className="bg-emerald-950/60 text-emerald-400 border-emerald-800 text-xs">
-              Bounded Sandboxing
-            </Badge>
-          </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Activity className="h-6 w-6 text-indigo-400" />
-            Active SOAR Playbook Execution Cockpit
+          <h1 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
+            <Activity className="w-5 h-5 text-indigo-400" />
+            Playbook runs
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Real-time DAG execution tracking, step-by-step forensic logging, 4-eyes approval pauses, and compensating rollback execution.
+          <p className="text-xs font-mono text-slate-500">
+            Recorded runs and the step plan each was launched against.
           </p>
         </div>
-
-        <div className="mt-4 md:mt-0 flex gap-3">
-          <Button
-            variant="secondary"
-            className="border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800"
-            onClick={() => setActionNotice("Refreshed playbook runtime telemetry from shield-action.")}
-          >
-            <Clock className="h-4 w-4 mr-2" />
-            Execution History
-          </Button>
-          <Button
-            className="bg-indigo-600 hover:bg-indigo-500 text-white"
-            onClick={() => setActionNotice("Select a case from the Case Workspace to launch a new Playbook Run.")}
-          >
-            <Play className="h-4 w-4 mr-2" />
-            Launch Playbook
-          </Button>
-        </div>
+        <Button variant="ghost" onClick={() => void loadList()}>
+          <Clock className="w-4 h-4" />
+          <span>Refresh</span>
+        </Button>
       </div>
 
-      {actionNotice && (
-        <div className="mt-4 p-4 rounded-lg bg-indigo-950/80 border border-indigo-700 text-indigo-200 text-sm flex items-center gap-3">
-          <CheckCircle2 className="h-5 w-5 text-indigo-400 shrink-0" />
-          <span>{actionNotice}</span>
-        </div>
+      {error && <UnavailableState message={error} />}
+      {notice && (
+        <Card variant="cyber" className="p-3 border-indigo-500/40">
+          <p className="text-sm text-indigo-300">{notice}</p>
+        </Card>
       )}
 
-      {/* Main Layout */}
-      <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Active Runs */}
-        <div className="lg:col-span-4 space-y-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-            <Activity className="h-4 w-4 text-indigo-400" />
-            Recent Playbook Executions
-          </h2>
-
-          <div className="space-y-3">
-            {runs.map((run) => {
-              const isSelected = selectedRun.id === run.id;
-              return (
-                <Card
-                  key={run.id}
-                  onClick={() => setSelectedRun(run)}
-                  className={`p-4 cursor-pointer transition-all border ${
-                    isSelected
-                      ? "bg-slate-900/90 border-indigo-500 shadow-lg shadow-indigo-500/10"
-                      : "bg-slate-900/40 border-slate-800 hover:border-slate-700 hover:bg-slate-900/60"
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <span className="text-xs font-mono text-indigo-400">{run.caseId}</span>
-                      <h3 className="font-semibold text-slate-100 text-sm mt-0.5">{run.name}</h3>
-                    </div>
-                    <Badge
-                      variant={
-                        run.status === "COMPLETED"
-                          ? "pass"
-                          : run.status === "PAUSED_4_EYES"
-                          ? "pending"
-                          : run.status === "RUNNING"
-                          ? "active"
-                          : "fail"
-                      }
-                    >
-                      {run.status}
-                    </Badge>
-                  </div>
-
-                  <p className="text-xs text-slate-400 mt-2">{run.triggeredBy}</p>
-
-                  <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-                    <span className="font-mono text-[11px] text-slate-500">{run.startedAt}</span>
-                    <span className="text-slate-300 font-medium">Blast Score: {run.blastRadiusTotal}</span>
-                  </div>
-                </Card>
-              );
-            })}
+      <Card variant="cyber" className={`p-4 ${freezeStatus?.frozen ? "border-rose-500/50" : "border-slate-800"}`}>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <Snowflake className={`w-5 h-5 ${freezeStatus?.frozen ? "text-rose-400" : "text-slate-500"}`} />
+            <div>
+              <p className="text-sm text-slate-200">
+                {freezeStatus?.frozen ? "Response actions are frozen" : "Response actions are operational"}
+              </p>
+              {freezeStatus?.freeze && (
+                <p className="text-xs font-mono text-slate-500">
+                  {freezeStatus.freeze.reason} — by {freezeStatus.freeze.created_by} at{" "}
+                  {formatTimestamp(freezeStatus.freeze.active_from)}
+                </p>
+              )}
+            </div>
           </div>
+          {freezeStatus?.frozen ? (
+            <Button variant="secondary" isLoading={isFreezing} onClick={() => void liftFreeze()}>
+              <span>Lift freeze</span>
+            </Button>
+          ) : showFreezeForm ? (
+            <div className="flex items-center gap-2">
+              <input
+                className="bg-slate-950 border border-slate-700 rounded px-2 py-1 text-xs text-slate-200 w-64"
+                placeholder="Reason (required)"
+                value={freezeReason}
+                onChange={(e) => setFreezeReason(e.target.value)}
+              />
+              <Button variant="danger" isLoading={isFreezing} onClick={() => void triggerFreeze()}>
+                <span>Confirm freeze</span>
+              </Button>
+              <Button variant="ghost" onClick={() => setShowFreezeForm(false)}>
+                <span>Cancel</span>
+              </Button>
+            </div>
+          ) : (
+            <Button variant="danger" onClick={() => setShowFreezeForm(true)}>
+              <RotateCcw className="w-4 h-4" />
+              <span>Emergency freeze</span>
+            </Button>
+          )}
+        </div>
+      </Card>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="lg:col-span-4 space-y-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+            Runs
+          </h2>
+          {runs.length === 0 ? (
+            <Card variant="cyber" className="p-6">
+              <p className="text-sm text-slate-300">No playbook runs are recorded for this tenant.</p>
+            </Card>
+          ) : (
+            runs.map((run) => (
+              <Card
+                key={run.id}
+                onClick={() => setSelectedRunId(run.id)}
+                className={`p-4 cursor-pointer border ${
+                  selectedRunId === run.id
+                    ? "bg-slate-900/90 border-indigo-500"
+                    : "bg-slate-900/40 border-slate-800 hover:border-slate-700"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <span className="text-xs font-mono text-indigo-400">{run.caseId}</span>
+                    <h3 className="font-semibold text-slate-100 text-sm mt-0.5">{run.playbookKey}</h3>
+                  </div>
+                  <Badge variant={statusVariant(run.status)}>{run.status}</Badge>
+                </div>
+                <div className="mt-2 flex items-center justify-between text-xs font-mono text-slate-500">
+                  <span>{run.mode}</span>
+                  <span>{formatTimestamp(run.startedAt)}</span>
+                </div>
+              </Card>
+            ))
+          )}
         </div>
 
-        {/* Right Column: Execution Step Timeline & Logs */}
-        <div className="lg:col-span-8 space-y-6">
-          <Card className="p-6 bg-slate-900/60 border-slate-800">
-            {/* Header of Run */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-4 gap-4">
-              <div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="neutral" className="text-xs border-slate-700 text-slate-300">
-                    {selectedRun.id}
-                  </Badge>
-                  <span className="text-xs text-slate-400 font-mono">Case: {selectedRun.caseId}</span>
+        <div className="lg:col-span-8">
+          {detail ? (
+            <Card variant="cyber" className="p-6">
+              <div className="flex items-start justify-between border-b border-slate-800 pb-4">
+                <div>
+                  <Badge variant="neutral">{detail.id}</Badge>
+                  <h2 className="text-xl font-bold text-white mt-1">{detail.playbookKey}</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    v{detail.version} · owner {detail.playbookOwner} · requires {detail.requiredAuthority}
+                  </p>
                 </div>
-                <h2 className="text-xl font-bold text-white mt-1">{selectedRun.name}</h2>
-                <p className="text-xs text-slate-400 mt-0.5">Started {selectedRun.startedAt}</p>
+                <Badge variant={statusVariant(detail.status)}>{detail.status}</Badge>
               </div>
 
-              <div className="flex gap-2">
-                {selectedRun.status !== "ROLLED_BACK" && (
-                  <Button
-                    size="sm"
-                    variant="danger"
-                    className="border-red-800 bg-red-950/30 text-red-400 hover:bg-red-900/50"
-                    onClick={() => handleEmergencyHalt(selectedRun.id)}
-                  >
-                    <RotateCcw className="h-4 w-4 mr-1.5" />
-                    Emergency Kill-Switch
-                  </Button>
-                )}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4 text-xs font-mono text-slate-400">
+                <span>case: {detail.caseId}</span>
+                <span>triggered by: {detail.triggeredBy}</span>
+                <span>started: {formatTimestamp(detail.startedAt)}</span>
+                <span>
+                  completed: {detail.completedAt ? formatTimestamp(detail.completedAt) : "—"}
+                </span>
               </div>
-            </div>
+              {detail.terminationReason && (
+                <p className="mt-2 text-xs text-rose-300">
+                  <ShieldAlert className="w-3.5 h-3.5 inline mr-1" />
+                  {detail.terminationReason}
+                </p>
+              )}
 
-            {/* Steps Visualizer */}
-            <div className="mt-6 space-y-4">
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-                <Terminal className="h-4 w-4 text-slate-400" />
-                Playbook Execution Flow & Action DAG
-              </h3>
-
-              <div className="space-y-3">
-                {selectedRun.steps.map((step) => (
-                  <div
-                    key={step.stepNumber}
-                    className={`p-4 rounded-lg border transition-all ${
-                      step.status === "WAITING_APPROVAL"
-                        ? "bg-amber-950/20 border-amber-800/80 shadow-md shadow-amber-900/20"
-                        : step.status === "COMPLETED"
-                        ? "bg-slate-950/60 border-slate-800"
-                        : step.status === "ROLLED_BACK"
-                        ? "bg-red-950/20 border-red-900/40"
-                        : "bg-slate-950/30 border-slate-800/50"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className={`w-7 h-7 rounded-full flex items-center justify-center font-mono text-xs font-bold ${
-                            step.status === "COMPLETED"
-                              ? "bg-emerald-900/60 text-emerald-400 border border-emerald-700"
-                              : step.status === "WAITING_APPROVAL"
-                              ? "bg-amber-900/60 text-amber-400 border border-amber-700 animate-pulse"
-                              : step.status === "ROLLED_BACK"
-                              ? "bg-red-900/60 text-red-400 border border-red-700"
-                              : "bg-slate-800 text-slate-400"
-                          }`}
-                        >
-                          {step.stepNumber}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-sm text-slate-100">{step.name}</span>
-                            <span className="text-xs font-mono text-slate-400 font-medium">({step.provider})</span>
-                          </div>
-                          <span className="text-xs font-mono text-indigo-400">{step.action}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        {step.status === "WAITING_APPROVAL" && (
-                          <Button
-                            size="sm"
-                            className="bg-amber-600 hover:bg-amber-500 text-slate-950 font-semibold text-xs"
-                            onClick={() => handleApproveStep(selectedRun.id, step.stepNumber)}
-                          >
-                            <UserCheck className="h-3.5 w-3.5 mr-1" />
-                            Provide 4-Eyes Approval
-                          </Button>
+              <div className="mt-6">
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                  <Terminal className="w-4 h-4" />
+                  Step plan
+                </h3>
+                <p className="text-xs text-slate-500 mt-1 mb-3">
+                  What this run was launched to do. Per-step execution status is not recorded, so
+                  it is not shown here as if it were.
+                </p>
+                <div className="space-y-2">
+                  {detail.plannedSteps.length === 0 ? (
+                    <p className="text-xs text-slate-500">No step plan recorded on this version.</p>
+                  ) : (
+                    detail.plannedSteps.map((step) => (
+                      <div
+                        key={step.stepNumber}
+                        className="p-3 rounded-lg bg-slate-950/60 border border-slate-800 text-xs font-mono text-slate-300"
+                      >
+                        <span className="text-indigo-400">#{step.stepNumber}</span>{" "}
+                        {step.actionType} → {step.targetIdentifier}{" "}
+                        <span className="text-slate-500">({step.authorityLevel})</span>
+                        {step.compensatingActionType && (
+                          <span className="text-slate-500"> · rollback: {step.compensatingActionType}</span>
                         )}
-                        <Badge
-                          variant={
-                            step.status === "COMPLETED"
-                              ? "pass"
-                              : step.status === "WAITING_APPROVAL"
-                              ? "pending"
-                              : step.status === "ROLLED_BACK"
-                              ? "fail"
-                              : "neutral"
-                          }
-                        >
-                          {step.status}
-                        </Badge>
                       </div>
-                    </div>
-
-                    {/* Output Log Console Box */}
-                    <div className="mt-3 p-2.5 rounded bg-black/70 border border-slate-800 font-mono text-xs text-slate-300">
-                      <div className="flex items-center justify-between text-[11px] text-slate-500 pb-1 mb-1 border-b border-slate-900">
-                        <span>Output / Telemetry Stream</span>
-                        <span>{step.durationMs > 0 ? `${step.durationMs}ms` : "Pending"}</span>
-                      </div>
-                      <p className="text-slate-300 leading-relaxed break-all">{step.outputLog}</p>
-                    </div>
-                  </div>
-                ))}
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
-
-            {/* Cryptographic Receipt Root */}
-            <div className="mt-6 pt-4 border-t border-slate-800 flex flex-col md:flex-row md:items-center justify-between text-xs text-slate-400 gap-2">
-              <div className="flex items-center gap-2">
-                <FileCheck2 className="h-4 w-4 text-emerald-400" />
-                <span>Merkle Checkpoint Receipt:</span>
-                <span className="font-mono text-slate-200">{selectedRun.merkleReceiptHash}</span>
-              </div>
-              <div className="font-mono text-[11px] text-slate-500">
-                Signer: <span className="text-indigo-400">shield-action / Cloud KMS</span>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          ) : (
+            <Card variant="cyber" className="p-6">
+              <p className="text-sm text-slate-300">Select a run to see its detail.</p>
+            </Card>
+          )}
         </div>
       </div>
-
-      {/* WebAuthn Stepup Modal */}
-      {pendingApprovalStep && (
-        <WebAuthnStepupModal
-          isOpen={isStepupModalOpen}
-          onClose={() => setIsStepupModalOpen(false)}
-          actionTitle={pendingApprovalStep.stepName}
-          actionDescription={`Privileged 4-Eyes Dual Custody Quorum step required for ${pendingApprovalStep.action}. Attest with hardware security token.`}
-          targetResource="Perimeter WAF & Host EDR"
-          blastRadius="0.08 (Low Collateral)"
-          onSuccess={handlePasskeySuccess}
-        />
-      )}
     </div>
   );
 }

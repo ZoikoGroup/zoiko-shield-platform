@@ -11,6 +11,7 @@ import {
 import { IsBoolean, IsOptional, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../authorization/guards/permissions.guard';
+import { G4GateGuard } from '../../authorization/guards/g4-gate.guard';
 import { RequirePermissions } from '../../authorization/decorators/require-permissions.decorator';
 import { RequireAssurance } from '../../authorization/decorators/require-assurance.decorator';
 import { PERMISSION_CODES } from '../../authorization/constants';
@@ -26,7 +27,9 @@ export class ExportAirgapPackageDto {
   includeEmbeddedCertificates?: boolean;
 }
 
-@UseGuards(JwtAuthGuard, PermissionsGuard)
+// Every route on this controller is part of the unratified G4 proposal
+// (ADR-20): airgap compliance packaging. G4GateGuard fails closed.
+@UseGuards(JwtAuthGuard, PermissionsGuard, G4GateGuard)
 @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_READ)
 @Controller('api/v1/compliance/airgap')
 export class AirgapComplianceController {

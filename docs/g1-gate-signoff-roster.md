@@ -56,9 +56,21 @@ G1 is ready only when all of the following conditions are satisfied (MASTER_BUIL
       without it). Before 2026-09-23 the "signature" was a SHA-256 hash of the envelope that any
       holder could recompute.
 - [x] Export and synthetic offboarding succeed
-- [ ] G1-blocking experience contracts complete — **NOT MET.** 20 of 29 have a surface; nine have
-      none (W04, W12, W15, W18, W22, W24, W27, W28, W34). Run
-      `npm run check:experience-contracts`.
+- [ ] G1-blocking experience contracts complete — **NOT MET, but the count above is stale
+      (verified 2026-09-30).** All 29 of 29 now have a route (`npm run check:experience-contracts`
+      reports 29/29) — that check only answers whether a surface exists, not whether it is real.
+      Reading each of the nine this checklist previously listed as missing: seven are genuinely
+      wired to backend data (W04, W15, W22, W24, W27, W28, W34 — verified `fetch()`/`backend.*`
+      calls against real endpoints). **Two are not**: W12 (`/policies`) and W18 (`/playbooks`) are
+      built entirely on hardcoded local arrays with no network call at all. Their action buttons —
+      "Dual-Sign & Promote", "Atomic Rollback", and an "Emergency Kill-Switch" that claims
+      *"Compensating actions executed across all affected endpoints"* — mutate local React state
+      and show a success toast; nothing is signed, rolled back, anchored, or executed. For a
+      security platform this is worse than an absent surface: it would show an operator a
+      kill-switch that does nothing. W18 has an underlying data model
+      (`PlaybookDefinition`/`PlaybookVersion`/`PlaybookRun`/`Freeze` in `prisma/schemas/response-proposal.prisma`)
+      but zero backend routes expose it. W12's policy-version/YAML-diff/canary/dual-custody
+      concept has no backend model at all — it is not just unwired, it does not exist yet.
 - [ ] **Multi-function approver sign-off** (this document)
 
 ---
@@ -97,7 +109,7 @@ G1 is ready only when all of the following conditions are satisfied (MASTER_BUIL
 | G2-REHEARSE-01 | Rehearsal SOP | LAB 18 10-scenario game-day runbook | **APPROVED (document only)** | LAB18-production-rehearsal-runbook.md |
 | G1-REHEARSE-02 | Rehearsal Execution | Game-day drills executed with real fault injection | **PASSED (5 of 5 invariants held)** — services stopped for real; partial failure, partition, disk exhaustion and load-concurrent failure still untested | docs/evidence/g1-gameday-drill-result.md |
 | G1-DETECT-02 | Detection | Built-in detections published and matching live traffic | **PASSED** — previously no rule had ever evaluated a real event, in any tenant | detection-registration.service.ts |
-| G1-EXP-02 | Experience | 29 G1-blocking contracts have a reviewable surface | **NOT MET** — 20 of 29; nine have none | `npm run check:experience-contracts` |
+| G1-EXP-02 | Experience | 29 G1-blocking contracts have a reviewable surface, and that surface is real | **NOT MET** — 29 of 29 have a route, but W12 and W18 are non-functional demos with no backend call (see §1 above) | `npm run check:experience-contracts`, then read the page — the check does not evaluate content |
 | G1-OFFBOARD-01 | Offboarding | Synthetic offboarding and deletion E2E suite | **PASSED** | deletion-attestation.service.spec.ts, backup-expiry.service.spec.ts |
 | G1-RESTORE-01 | Restore | Backup/restore and reconciliation proof | **PASSED** | go-live-signoff.service.spec.ts, financial-period-close.service.spec.ts |
 | G1-PERF-01 | Performance | Reference-scale baseline (all p99 within SLO) | **NOT MET** — measured ~60 events/sec sustained against a 15,000/sec envelope; the previous PASSED rested on an in-process harness that opens no socket | docs/evidence/g1-ingestion-load-test.md |

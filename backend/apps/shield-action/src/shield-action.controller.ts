@@ -31,6 +31,7 @@ import {
   Fido2AssertionPayload,
 } from './auth/fido2-stepup-guard.service';
 import { InternalAuthGuard } from './internal-client/internal-auth.guard';
+import { G4GateGuard } from './internal-client/g4-gate.guard';
 
 export class IssueFido2ChallengeDto implements Fido2ChallengeRequest {
   tenantId!: string;
@@ -650,8 +651,10 @@ export class ShieldActionController {
   }
 
   // --- OT & Safety-Critical Actuator Interlock Endpoints (Spec §36 / §38) ---
+  // Part of the unratified G4 proposal (ADR-20). G4GateGuard fails closed
+  // even for internal callers holding a valid workload token.
 
-  @UseGuards(InternalAuthGuard)
+  @UseGuards(InternalAuthGuard, G4GateGuard)
   @Post('api/v1/action/ot-interlock/evaluate')
   evaluateOtInterlock(@Body() body: any) {
     if (!this.safetyInterlockService) {
@@ -664,7 +667,7 @@ export class ShieldActionController {
     return this.safetyInterlockService.evaluateActuatorInterlock(body);
   }
 
-  @UseGuards(InternalAuthGuard)
+  @UseGuards(InternalAuthGuard, G4GateGuard)
   @Post('api/v1/action/ot-interlock/failsafe')
   engageOtFailsafe(
     @Body() body: { tenantId: string; targetRef: string; reason: string },
@@ -683,7 +686,7 @@ export class ShieldActionController {
     );
   }
 
-  @UseGuards(InternalAuthGuard)
+  @UseGuards(InternalAuthGuard, G4GateGuard)
   @Get('api/v1/action/ot-interlock/audit')
   getOtInterlockAudit(@Query('tenantId') tenantId?: string) {
     if (!this.safetyInterlockService) {
