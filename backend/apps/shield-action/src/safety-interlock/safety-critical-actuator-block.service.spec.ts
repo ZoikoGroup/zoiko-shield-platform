@@ -28,7 +28,9 @@ describe('SafetyCriticalActuatorBlockService', () => {
 
     expect(receipt.interlockStatus).toBe('BLOCKED_SAFETY_INTERLOCK_ACTIVE');
     expect(receipt.failsafeReversible).toBe(false);
-    expect(receipt.reason).toContain('Automated playbook mutation strictly blocked');
+    expect(receipt.reason).toContain(
+      'Automated playbook mutation strictly blocked',
+    );
   });
 
   it('should permit mutation when valid dual-key physical token authorization is provided', async () => {

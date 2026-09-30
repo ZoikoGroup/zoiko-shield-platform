@@ -63,7 +63,8 @@ export class TriggerKmsFailoverDto {
 export class ConfigureByokKeyDto {
   @IsString()
   @IsIn(['GCP_CLOUD_KMS', 'AWS_KMS', 'AZURE_KEYVAULT', 'HASHICORP_VAULT_KMIP'])
-  provider!: 'GCP_CLOUD_KMS' | 'AWS_KMS' | 'AZURE_KEYVAULT' | 'HASHICORP_VAULT_KMIP';
+  provider!:
+    'GCP_CLOUD_KMS' | 'AWS_KMS' | 'AZURE_KEYVAULT' | 'HASHICORP_VAULT_KMIP';
 
   @IsString()
   keyUri!: string;

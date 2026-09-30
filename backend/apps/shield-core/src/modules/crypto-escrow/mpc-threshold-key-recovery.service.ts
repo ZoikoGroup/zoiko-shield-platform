@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import * as crypto from 'crypto';
 
 export interface MpcKeyShare {
@@ -28,7 +24,8 @@ export interface MpcRecoveryResult {
   recoveryId: string;
   tenantId: string;
   keyAlias: string;
-  status: 'RECOVERED_SUCCESSFULLY' | 'INSUFFICIENT_SHARES' | 'INVALID_SHARE_CHECKSUM';
+  status:
+    'RECOVERED_SUCCESSFULLY' | 'INSUFFICIENT_SHARES' | 'INVALID_SHARE_CHECKSUM';
   recoveredKeyDigest: string;
   participatingCustodians: string[];
   recoveredAt: string;
@@ -80,7 +77,10 @@ export class MpcThresholdKeyRecoveryService {
     const custodians =
       custodianIds && custodianIds.length === totalShares
         ? custodianIds
-        : Array.from({ length: totalShares }, (_, i) => `custodian-node-${i + 1}`);
+        : Array.from(
+            { length: totalShares },
+            (_, i) => `custodian-node-${i + 1}`,
+          );
 
     const shares: MpcKeyShare[] = [];
     const issuedAt = new Date().toISOString();
@@ -131,13 +131,25 @@ export class MpcThresholdKeyRecoveryService {
   async recoverKey(
     tenantId: string,
     splitId: string,
-    submittedShares: { shareIndex: number; shareDataHex: string; custodianId: string }[],
+    submittedShares: {
+      shareIndex: number;
+      shareDataHex: string;
+      custodianId: string;
+    }[],
   ): Promise<MpcRecoveryResult> {
     const split = this.splits.get(splitId);
     if (!split) {
       // Fallback synthetic session if requested on the fly
-      const fallbackSplit = await this.splitKey(tenantId, 'master-escrow-key', '');
-      return this.recoverKey(tenantId, fallbackSplit.splitId, fallbackSplit.shares.slice(0, 3));
+      const fallbackSplit = await this.splitKey(
+        tenantId,
+        'master-escrow-key',
+        '',
+      );
+      return this.recoverKey(
+        tenantId,
+        fallbackSplit.splitId,
+        fallbackSplit.shares.slice(0, 3),
+      );
     }
 
     if (submittedShares.length < split.threshold) {
@@ -148,16 +160,22 @@ export class MpcThresholdKeyRecoveryService {
 
     // Validate share integrity against stored commitments
     for (const sub of submittedShares) {
-      const original = split.shares.find((s) => s.shareIndex === sub.shareIndex);
+      const original = split.shares.find(
+        (s) => s.shareIndex === sub.shareIndex,
+      );
       if (!original) {
-        throw new BadRequestException(`Unrecognized share index ${sub.shareIndex}.`);
+        throw new BadRequestException(
+          `Unrecognized share index ${sub.shareIndex}.`,
+        );
       }
       const computedCommitment = crypto
         .createHash('sha256')
         .update(sub.shareDataHex)
         .digest('hex');
       if (computedCommitment !== original.shareCommitment) {
-        throw new BadRequestException(`Tampered share detected for index ${sub.shareIndex}.`);
+        throw new BadRequestException(
+          `Tampered share detected for index ${sub.shareIndex}.`,
+        );
       }
     }
 

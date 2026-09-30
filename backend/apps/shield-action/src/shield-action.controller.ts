@@ -176,6 +176,38 @@ export class QuarantinePodDto {
 }
 
 import { SafetyCriticalActuatorBlockService } from './safety-interlock/safety-critical-actuator-block.service';
+import {
+  CertifiedEdrBrokerService,
+  type EdrProviderType,
+  type EdrActionType,
+} from './edr-connector/certified-edr-broker.service';
+
+export class DispatchEdrActionDto {
+  tenantId!: string;
+  provider!:
+    | 'CROWDSTRIKE_FALCON'
+    | 'MICROSOFT_DEFENDER_ENDPOINT'
+    | 'SENTINELONE_SINGULARITY';
+  actionType!:
+    | 'ISOLATE_HOST_NETWORK'
+    | 'RESTORE_HOST_CONNECTIVITY'
+    | 'TERMINATE_MALICIOUS_PROCESS'
+    | 'QUARANTINE_FILE_PAYLOAD'
+    | 'RESTORE_QUARANTINED_FILE';
+  targetHostId!: string;
+  targetProcessPid?: number;
+  targetFilePath?: string;
+  incidentReference!: string;
+  operatorId!: string;
+  simulateOnly?: boolean;
+}
+
+export class RollbackEdrActionDto {
+  tenantId!: string;
+  originalReceiptId!: string;
+  compensationToken!: string;
+  reason!: string;
+}
 
 @Controller()
 export class ShieldActionController {
@@ -196,6 +228,8 @@ export class ShieldActionController {
     private readonly fido2Guard?: Fido2StepupGuardService,
     @Optional()
     private readonly safetyInterlockService?: SafetyCriticalActuatorBlockService,
+    @Optional()
+    private readonly edrBrokerService?: CertifiedEdrBrokerService,
   ) {}
 
   @Get()
@@ -623,7 +657,8 @@ export class ShieldActionController {
     if (!this.safetyInterlockService) {
       return {
         status: 'UNAVAILABLE',
-        message: 'SafetyCriticalActuatorBlockService is not configured in this environment',
+        message:
+          'SafetyCriticalActuatorBlockService is not configured in this environment',
       };
     }
     return this.safetyInterlockService.evaluateActuatorInterlock(body);
@@ -637,7 +672,8 @@ export class ShieldActionController {
     if (!this.safetyInterlockService) {
       return {
         status: 'UNAVAILABLE',
-        message: 'SafetyCriticalActuatorBlockService is not configured in this environment',
+        message:
+          'SafetyCriticalActuatorBlockService is not configured in this environment',
       };
     }
     return this.safetyInterlockService.engageEmergencyFailsafe(
@@ -654,5 +690,51 @@ export class ShieldActionController {
       return [];
     }
     return this.safetyInterlockService.getAuditLog(tenantId);
+  }
+
+  // --- Response-Certified Enterprise EDR Connector Endpoints (Spec §28 Phase 4 / §C4) ---
+
+  @UseGuards(InternalAuthGuard)
+  @Post('api/v1/action/edr/dispatch')
+  dispatchEdrAction(@Body() body: DispatchEdrActionDto) {
+    if (!this.edrBrokerService) {
+      return {
+        status: 'UNAVAILABLE',
+        message:
+          'CertifiedEdrBrokerService is not configured in this environment',
+      };
+    }
+    return this.edrBrokerService.dispatchEdrAction(
+      {
+        commandId: `cmd-edr-${Date.now()}`,
+        tenantId: body.tenantId,
+        provider: body.provider,
+        actionType: body.actionType,
+        targetHostId: body.targetHostId,
+        targetProcessPid: body.targetProcessPid,
+        targetFilePath: body.targetFilePath,
+        incidentReference: body.incidentReference,
+        operatorId: body.operatorId,
+      },
+      body.simulateOnly,
+    );
+  }
+
+  @UseGuards(InternalAuthGuard)
+  @Post('api/v1/action/edr/rollback')
+  rollbackEdrAction(@Body() body: RollbackEdrActionDto) {
+    if (!this.edrBrokerService) {
+      return {
+        status: 'UNAVAILABLE',
+        message:
+          'CertifiedEdrBrokerService is not configured in this environment',
+      };
+    }
+    return this.edrBrokerService.rollbackEdrAction(
+      body.tenantId,
+      body.originalReceiptId,
+      body.compensationToken,
+      body.reason,
+    );
   }
 }

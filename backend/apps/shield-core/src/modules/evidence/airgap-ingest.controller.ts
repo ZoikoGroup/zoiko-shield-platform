@@ -88,9 +88,7 @@ export class AirgapSyncBatchDto {
 @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_READ)
 @Controller('api/v1/ingest/airgap')
 export class AirgapIngestController {
-  constructor(
-    private readonly bufferService: OfflineTelemetryBufferService,
-  ) {}
+  constructor(private readonly bufferService: OfflineTelemetryBufferService) {}
 
   /**
    * POST /api/v1/ingest/airgap/batch-sync

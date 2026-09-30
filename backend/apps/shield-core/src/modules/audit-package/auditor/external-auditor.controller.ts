@@ -31,7 +31,8 @@ export class ExternalAuditorController {
   @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_READ)
   async getWorkspaceSummary(@Headers('x-tenant-id') tenantIdHeader: string) {
     const tenantId = requireTenantId(tenantIdHeader);
-    const summary = await this.auditorService.getAuditorWorkspaceSummary(tenantId);
+    const summary =
+      await this.auditorService.getAuditorWorkspaceSummary(tenantId);
 
     return {
       statusCode: HttpStatus.OK,
@@ -50,7 +51,10 @@ export class ExternalAuditorController {
     @Param('nodeHash') nodeHash: string,
   ) {
     const tenantId = requireTenantId(tenantIdHeader);
-    const proof = await this.auditorService.getMerklePathProof(tenantId, nodeHash);
+    const proof = await this.auditorService.getMerklePathProof(
+      tenantId,
+      nodeHash,
+    );
 
     return {
       statusCode: HttpStatus.OK,
@@ -69,7 +73,10 @@ export class ExternalAuditorController {
     @Param('packageId') packageId: string,
   ) {
     const tenantId = requireTenantId(tenantIdHeader);
-    const chain = await this.auditorService.getEvidenceChain(tenantId, packageId);
+    const chain = await this.auditorService.getEvidenceChain(
+      tenantId,
+      packageId,
+    );
 
     return {
       statusCode: HttpStatus.OK,

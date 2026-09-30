@@ -4893,6 +4893,403 @@ export class ZoikoShieldApiClient {
     );
     return res.data;
   }
+
+  // --- G4: MSSP Fleet Posture, Cross-Tenant Isolation & 2-Party JIT ---
+
+  static async getMsspFleetSummary(): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/partners/fleet/summary',
+      { method: 'GET' },
+      () => ({
+        statusCode: 200,
+        data: {
+          partnerId: 'partner-mssp-global',
+          totalTenantsManaged: 5,
+          aggregateSecurityScore: 94.2,
+          criticalOpenIncidents: 0,
+          averageSlaCompliancePercent: 99.8,
+          activeJitSessionsCount: 1,
+          tenants: [
+            {
+              tenantId: 'tenant-acme-corp',
+              tenantName: 'Acme Global Corp',
+              planTier: 'ENTERPRISE_PREMIUM',
+              securityScore: 96.5,
+              complianceStatus: 'HEALTHY',
+              activeAlertsCount: 2,
+              crossTenantIsolationVerified: true,
+              lastSyncTimestamp: new Date().toISOString(),
+            },
+            {
+              tenantId: 'tenant-fintech-eu',
+              tenantName: 'Fintech Europe NV',
+              planTier: 'ENTERPRISE',
+              securityScore: 92.0,
+              complianceStatus: 'HEALTHY',
+              activeAlertsCount: 1,
+              crossTenantIsolationVerified: true,
+              lastSyncTimestamp: new Date().toISOString(),
+            },
+            {
+              tenantId: 'tenant-health-plus',
+              tenantName: 'HealthPlus Logistics',
+              planTier: 'ENTERPRISE_PREMIUM',
+              securityScore: 94.1,
+              complianceStatus: 'HEALTHY',
+              activeAlertsCount: 0,
+              crossTenantIsolationVerified: true,
+              lastSyncTimestamp: new Date().toISOString(),
+            },
+          ],
+        },
+      })
+    );
+    return res.data;
+  }
+
+  static async auditMsspFleetIsolation(): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/partners/fleet/isolation-audit',
+      { method: 'GET' },
+      () => ({
+        statusCode: 200,
+        data: {
+          partnerId: 'partner-mssp-global',
+          auditTimestamp: new Date().toISOString(),
+          zeroLeakageVerified: true,
+          totalTenantsAudited: 5,
+          databaseRlsIsolationVerified: true,
+          cacheNamespaceKeyIsolationVerified: true,
+          cryptographicKmsKeyIsolationVerified: true,
+          auditSignoffDigest: sha256Mock('mssp-isolation-audit-seal'),
+        },
+      })
+    );
+    return res.data;
+  }
+
+  static async requestTwoPartyJitSupport(dto: {
+    targetTenantId: string;
+    incidentReference: string;
+    justification: string;
+    allowedScope?: string;
+    durationMinutes?: number;
+  }): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/partners/fleet/jit/request',
+      {
+        method: 'POST',
+        body: JSON.stringify(dto),
+      },
+      () => ({
+        statusCode: 201,
+        data: {
+          sessionId: `jit-session-${generateUUID()}`,
+          targetTenantId: dto.targetTenantId,
+          requestingEngineerId: 'eng-partner-oncall',
+          incidentReference: dto.incidentReference,
+          justification: dto.justification,
+          allowedScope: dto.allowedScope || 'READ_ONLY_SECURITY_TELEMETRY',
+          durationMinutes: dto.durationMinutes || 60,
+          status: 'PENDING_CUSTOMER_APPROVAL',
+          requestedAt: new Date().toISOString(),
+        },
+      })
+    );
+    return res.data;
+  }
+
+  static async approveCustomerJitSupport(dto: {
+    sessionId: string;
+    signatureProof: string;
+  }): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/partners/fleet/jit/approve-customer',
+      {
+        method: 'POST',
+        body: JSON.stringify(dto),
+      },
+      () => ({
+        statusCode: 200,
+        data: {
+          sessionId: dto.sessionId,
+          status: 'PENDING_PLATFORM_AUTHORIZATION',
+          customerAdminApprovedAt: new Date().toISOString(),
+        },
+      })
+    );
+    return res.data;
+  }
+
+  static async authorizePlatformLeadJitSupport(dto: {
+    sessionId: string;
+    signatureProof: string;
+  }): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/partners/fleet/jit/authorize-lead',
+      {
+        method: 'POST',
+        body: JSON.stringify(dto),
+      },
+      () => ({
+        statusCode: 200,
+        data: {
+          sessionId: dto.sessionId,
+          status: 'ACTIVE_AUTHORIZED',
+          ephemeralAccessToken: `ephemeral-token-${generateUUID()}`,
+          expiresAt: new Date(Date.now() + 3600000).toISOString(),
+          authorizedAt: new Date().toISOString(),
+        },
+      })
+    );
+    return res.data;
+  }
+
+  static async revokeJitSupportSession(dto: {
+    sessionId: string;
+    reason: string;
+  }): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/partners/fleet/jit/revoke',
+      {
+        method: 'POST',
+        body: JSON.stringify(dto),
+      },
+      () => ({
+        statusCode: 200,
+        data: {
+          sessionId: dto.sessionId,
+          status: 'REVOKED',
+          revokedAt: new Date().toISOString(),
+        },
+      })
+    );
+    return res.data;
+  }
+
+  // --- G4: Cloud CIEM Least-Privilege Role Remediation ---
+
+  static async analyzeCiemRole(dto: {
+    provider: 'AWS_IAM' | 'GCP_IAM' | 'AZURE_RBAC';
+    roleArnOrId: string;
+    assignedPermissions: string[];
+    last90DaysUsedPermissions: string[];
+  }): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/identity-context/ciem/analyze',
+      {
+        method: 'POST',
+        body: JSON.stringify(dto),
+      },
+      () => ({
+        statusCode: 200,
+        data: {
+          analysisId: `ciem-${generateUUID()}`,
+          tenantId: 'tenant-default',
+          provider: dto.provider,
+          roleArnOrId: dto.roleArnOrId,
+          assignedPermissionsCount: dto.assignedPermissions.length,
+          usedPermissionsCount: dto.last90DaysUsedPermissions.length,
+          dormantPermissions: dto.assignedPermissions.filter(
+            (p) => !dto.last90DaysUsedPermissions.includes(p)
+          ),
+          wildcardPermissions: dto.assignedPermissions.filter((p) => p.includes('*')),
+          riskSeverity: 'HIGH',
+          suggestedLeastPrivilegePolicy: JSON.stringify(
+            {
+              Version: '2012-10-17',
+              Statement: [
+                {
+                  Effect: 'Allow',
+                  Action: dto.last90DaysUsedPermissions,
+                  Resource: '*',
+                },
+              ],
+            },
+            null,
+            2
+          ),
+          terraformHclDiff: `# Least-Privilege Remediation Plan for ${dto.roleArnOrId}
+resource "aws_iam_policy" "least_privilege" {
+  name        = "tightened-policy"
+  description = "Auto-generated by ZoikoShield CIEM Least-Privilege Engine"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ${JSON.stringify(dto.last90DaysUsedPermissions)}
+      Resource = "*"
+    }]
+  })
+}`,
+          analyzedAt: new Date().toISOString(),
+        },
+      })
+    );
+    return res.data;
+  }
+
+  // --- G4: Cross-Region DR Ledger Replication & Failover Drill ---
+
+  static async getCrossRegionReplicationStatus(streamId?: string): Promise<any> {
+    const res = await this.safeFetch<any>(
+      `/api/v1/evidence/cross-region/status${streamId ? `?streamId=${encodeURIComponent(streamId)}` : ''}`,
+      { method: 'GET' },
+      () => ({
+        statusCode: 200,
+        data: {
+          streamId: streamId || 'stream-eu-west1-eu-west4',
+          primaryRegion: 'europe-west1',
+          standbyRegion: 'europe-west4',
+          replicationMode: 'CONTINUOUS_ASYNC_LEDGER_STREAM',
+          rpoSeconds: 0.42,
+          lastReplicatedEpoch: 2048,
+          replicationLagEventsCount: 0,
+          streamHealth: 'HEALTHY_SYNCED',
+          lastHealthCheckIso: new Date().toISOString(),
+        },
+      })
+    );
+    return res.data;
+  }
+
+  static async executeCrossRegionFailoverDrill(dto?: {
+    primaryRegion?: string;
+    standbyRegion?: string;
+  }): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/evidence/cross-region/failover-drill',
+      {
+        method: 'POST',
+        body: JSON.stringify(dto || {}),
+      },
+      () => ({
+        statusCode: 200,
+        data: {
+          drillId: `dr-drill-${generateUUID()}`,
+          primaryRegion: dto?.primaryRegion || 'europe-west1',
+          standbyRegion: dto?.standbyRegion || 'europe-west4',
+          drillStatus: 'SUCCESS_SIMULATED',
+          simulatedDowntimeMs: 180,
+          ledgerIntegrityVerified: true,
+          unreplicatedEpochCount: 0,
+          rpoAttainedSeconds: 0,
+          executedAt: new Date().toISOString(),
+          auditSignoffProof: sha256Mock('dr-failover-rehearsal-proof'),
+        },
+      })
+    );
+    return res.data;
+  }
+
+  // --- High-Throughput Batch Stream Ingestion ---
+  static async ingestBatchStream(events: any[]): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/ingest/stream/batch',
+      {
+        method: 'POST',
+        body: JSON.stringify({ events }),
+      },
+      () => ({
+        statusCode: 202,
+        data: {
+          acceptedCount: events.length,
+          droppedCount: 0,
+          bufferOccupancyRatio: 0.02,
+          backpressureTriggered: false,
+        },
+      })
+    );
+    return res.data;
+  }
+
+  static async getStreamBufferMetrics(): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/ingest/stream/metrics',
+      { method: 'GET' },
+      () => ({
+        statusCode: 200,
+        data: {
+          currentQueueLength: 0,
+          maxBufferSize: 50000,
+          occupancyRatio: 0,
+          totalFlushed: 1250,
+          totalDropped: 0,
+          backpressureState: false,
+        },
+      })
+    );
+    return res.data;
+  }
+
+  // --- Autonomous ReAct AI Investigation ---
+  static async executeReActInvestigation(dto: {
+    incidentId: string;
+    findingSummary: string;
+    initialEntities?: { user?: string; host?: string; ip?: string; resourceId?: string };
+    maxHops?: number;
+  }): Promise<any> {
+    const res = await this.safeFetch<any>(
+      '/api/v1/ai/investigate/react-loop',
+      {
+        method: 'POST',
+        body: JSON.stringify(dto),
+      },
+      () => ({
+        statusCode: 200,
+        data: {
+          investigationId: `inv-${generateUUID()}`,
+          incidentId: dto.incidentId,
+          status: 'COMPLETED',
+          verdict: 'TRUE_POSITIVE_MALICIOUS',
+          confidenceScore: 0.94,
+          totalHops: 5,
+          hops: [
+            {
+              hopNumber: 1,
+              thought: 'Triage and extract entities',
+              action: 'extract_entities',
+              observation: 'Extracted principal, IP, host',
+            },
+          ],
+          provenanceGraph: {
+            incidentId: dto.incidentId,
+            rootCauseEntity: dto.initialEntities?.user || 'svc-admin',
+            attackStage: 'CREDENTIAL_COMPROMISE_LATERAL_MOVEMENT',
+            confidenceScore: 0.94,
+            nodes: [],
+            edges: [],
+          },
+          recommendedActions: [
+            'Revoke active session tokens',
+            'Quarantine host via microsegmentation',
+            'Block ingress IP on firewall',
+          ],
+          citations: [`finding:${dto.incidentId}`],
+        },
+      })
+    );
+    return res.data;
+  }
+
+  static async getInvestigationProvenanceGraph(incidentId: string): Promise<any> {
+    const res = await this.safeFetch<any>(
+      `/api/v1/ai/investigate/${incidentId}/graph`,
+      { method: 'GET' },
+      () => ({
+        statusCode: 200,
+        data: {
+          incidentId,
+          rootCauseEntity: 'svc-admin',
+          attackStage: 'CREDENTIAL_COMPROMISE_LATERAL_MOVEMENT',
+          confidenceScore: 0.94,
+          nodes: [],
+          edges: [],
+        },
+      })
+    );
+    return res.data;
+  }
 }
 
 export interface KmsProviderHealthInfo {

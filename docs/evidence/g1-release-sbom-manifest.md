@@ -1,10 +1,10 @@
 # G1 release provenance — Software Bill of Materials (SBOM) and signed manifest
 
 **Release Candidate:** `v1.0.0-GA-G1`  
-**SBOM Identifier:** `SBOM-ZS-1790318291015`  
+**SBOM Identifier:** `SBOM-ZS-1790759135966`  
 **Specification:** `ZS-SEC-SBOM-001` / `SPDX-2.3` / `CycloneDX-1.5`  
-**Generated At:** `2026-09-25T06:38:11.012Z`  
-**Canonical Manifest Digest (SHA-256):** `ea80007ca02ed9076bb68380637cb030386bc41dd8503197e884f12c50962cfa`  
+**Generated At:** `2026-09-30T09:05:35.964Z`  
+**Canonical Manifest Digest (SHA-256):** `9de1cca2ed6a789763c9eb22c3009d6c4a2b1836b974e9f56e650e1d8e338ea0`  
 
 ---
 
@@ -12,13 +12,13 @@
 
 | Component | Type | Runtime / Language | Source Directory | Direct Dependencies | Tree Digest (SHA-256) |
 |---|---|---|---|---|---|
-| **shield-core** | `microservice` | TypeScript / Node.js 20 | `backend/apps/shield-core` | 34 | `8d1b4686aedffd01...` |
-| **shield-ingest** | `microservice` | TypeScript / Node.js 20 | `backend/apps/shield-ingest` | 34 | `893e3deeb129b9f8...` |
-| **shield-ai** | `microservice` | TypeScript / Node.js 20 | `backend/apps/shield-ai` | 34 | `8cdb1c6f70ca8c2a...` |
-| **shield-action** | `microservice` | TypeScript / Node.js 20 | `backend/apps/shield-action` | 34 | `2f2f6c98bd5ce600...` |
-| **shield-anchor** | `microservice` | TypeScript / Node.js 20 | `backend/apps/shield-anchor` | 34 | `ca52036a75f536d1...` |
-| **verifier-cli** | `utility` | TypeScript / Node.js Stdlib (Zero Runtime Dep) | `backend/apps/verifier-cli` | 0 | `7474554fd7609320...` |
-| **frontend** | `frontend` | TypeScript / Next.js 15 / React 19 | `frontend` | 6 | `5872042db2d14d64...` |
+| **shield-core** | `microservice` | TypeScript / Node.js 20 | `backend/apps/shield-core` | 32 | `1d5b416124fc3a04...` |
+| **shield-ingest** | `microservice` | TypeScript / Node.js 20 | `backend/apps/shield-ingest` | 32 | `b2f899aeee7ed948...` |
+| **shield-ai** | `microservice` | TypeScript / Node.js 20 | `backend/apps/shield-ai` | 32 | `22499ed20e41a716...` |
+| **shield-action** | `microservice` | TypeScript / Node.js 20 | `backend/apps/shield-action` | 32 | `6e73729b1a2f1817...` |
+| **shield-anchor** | `microservice` | TypeScript / Node.js 20 | `backend/apps/shield-anchor` | 32 | `f533e51f2d3f835e...` |
+| **verifier-cli** | `utility` | TypeScript / Node.js Stdlib (Zero Runtime Dep) | `backend/apps/verifier-cli` | 0 | `71f9aab7e2614e79...` |
+| **frontend** | `frontend` | TypeScript / Next.js 15 / React 19 | `frontend` | 6 | `7e94db39bdeeaa43...` |
 
 ---
 
@@ -40,7 +40,7 @@
 ## 3. Supply Chain Integrity Attestation
 
 1. **Zero-Dependency Air-Gap Guarantee:** The `verifier-cli` binary requires **0** external npm runtime dependencies and runs purely on Node.js standard libraries (`crypto`, `fs`, `path`, `os`).
-2. **Single Immutable Root:** All monorepo service definitions, infrastructure OpenTofu modules, and dependencies resolve to the canonical release manifest digest `ea80007ca02ed9076bb68380637cb030386bc41dd8503197e884f12c50962cfa`.
+2. **Single Immutable Root:** All monorepo service definitions, infrastructure OpenTofu modules, and dependencies resolve to the canonical release manifest digest `9de1cca2ed6a789763c9eb22c3009d6c4a2b1836b974e9f56e650e1d8e338ea0`.
 3. **Tamper Evident:** Modifying any file or dependency version alters the computed SBOM root digest, invalidating downstream G1 gate certification.
 
 ---

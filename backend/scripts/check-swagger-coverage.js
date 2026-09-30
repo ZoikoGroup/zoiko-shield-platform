@@ -213,7 +213,10 @@ for (const route of publicRoutes) {
   if (route.requiresTenantHeader) expectedTenantHeaders.add(key);
   const expected = expectedPrimarySecurity.get(key) ?? new Set();
   if (route.file.includes('apps/shield-ingest/')) {
-    if (route.file.endsWith('ingestion/webhook-ingest.controller.ts')) {
+    if (
+      route.file.endsWith('ingestion/webhook-ingest.controller.ts') ||
+      route.file.endsWith('ingestion/high-throughput-ingest.controller.ts')
+    ) {
       expected.add('WebhookHmacAuth');
     } else if (!route.publicIngress) {
       expected.add('InternalServiceAuth');

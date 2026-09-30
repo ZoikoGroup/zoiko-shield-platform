@@ -52,9 +52,9 @@ describe('Nis2ComplianceEvaluatorService', () => {
     expect(report.compliantCount).toBe(8);
     expect(report.gapCount).toBe(0);
     expect(report.notEvaluatedCount).toBe(0);
-    expect(
-      report.incidentNotificationStatus.withinEarlyWarning24hWindow,
-    ).toBe(true);
+    expect(report.incidentNotificationStatus.withinEarlyWarning24hWindow).toBe(
+      true,
+    );
     expect(
       report.incidentNotificationStatus.withinIncidentNotification72hWindow,
     ).toBe(true);
@@ -69,14 +69,14 @@ describe('Nis2ComplianceEvaluatorService', () => {
       },
     );
 
-    expect(
-      report.incidentNotificationStatus.withinEarlyWarning24hWindow,
-    ).toBe(false);
+    expect(report.incidentNotificationStatus.withinEarlyWarning24hWindow).toBe(
+      false,
+    );
     expect(
       report.incidentNotificationStatus.withinIncidentNotification72hWindow,
     ).toBe(true);
-    expect(report.evaluations.find((e) => e.controlCode === 'NIS2-ART23')?.status).toBe(
-      'NON_COMPLIANT',
-    );
+    expect(
+      report.evaluations.find((e) => e.controlCode === 'NIS2-ART23')?.status,
+    ).toBe('NON_COMPLIANT');
   });
 });

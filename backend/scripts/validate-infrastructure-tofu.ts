@@ -37,8 +37,8 @@ async function main() {
   console.log('  ✔ outputs.tf exists');
 
   console.log('\n[2/4] Validating Multi-Project Boundary Isolation...');
-  const mainContent = readFileSync(mainTfPath, 'utf-8');
-  const variablesContent = readFileSync(variablesTfPath, 'utf-8');
+  const mainContent = readFileSync(mainTfPath, 'utf-8').replace(/\r\n/g, '\n');
+  const variablesContent = readFileSync(variablesTfPath, 'utf-8').replace(/\r\n/g, '\n');
 
   const requiredProjectBoundaries = [
     'project_net_id',

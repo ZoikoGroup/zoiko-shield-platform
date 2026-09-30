@@ -31,6 +31,7 @@ import { CosignBinaryAttestorService } from './supply-chain/cosign-binary-attest
 import { SbomDriftVerifierService } from './supply-chain/sbom-drift-verifier.service';
 import { BatchMerkleCheckpointerService } from './merkle/batch-merkle-checkpointer.service';
 import { DistributedLeaseCoordinatorService } from './consensus/distributed-lease-coordinator.service';
+import { BftMultiWitnessQuorumService } from './bft-witness/bft-multi-witness-quorum.service';
 import { dbScopeMiddleware } from '../../../libs/database/src';
 
 @Module({
@@ -61,6 +62,7 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     SbomDriftVerifierService,
     BatchMerkleCheckpointerService,
     DistributedLeaseCoordinatorService,
+    BftMultiWitnessQuorumService,
     CheckpointBuilderService,
   ],
   exports: [
@@ -74,6 +76,7 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     SbomDriftVerifierService,
     BatchMerkleCheckpointerService,
     DistributedLeaseCoordinatorService,
+    BftMultiWitnessQuorumService,
   ],
 })
 export class ShieldAnchorModule implements NestModule {

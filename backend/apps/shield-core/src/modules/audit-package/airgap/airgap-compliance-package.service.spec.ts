@@ -19,7 +19,8 @@ describe('AirgapCompliancePackageService', () => {
       exportManifest: jest.fn().mockResolvedValue({
         packageId: 'pkg-1',
         title: 'Q3 Independent Compliance Freeze',
-        merkleRoot: 'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789',
+        merkleRoot:
+          'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789',
         evidenceIndex: [{ evidenceId: 'ev-1', sha256: 'hash-1' }],
       }),
     };
@@ -27,7 +28,10 @@ describe('AirgapCompliancePackageService', () => {
   });
 
   it('should export standalone airgap compliance package bundle', async () => {
-    const bundle = await service.exportAirgapPackage('tenant-airgap-1', 'pkg-1');
+    const bundle = await service.exportAirgapPackage(
+      'tenant-airgap-1',
+      'pkg-1',
+    );
 
     expect(bundle.bundleId).toContain('airgap-pkg-');
     expect(bundle.formatVersion).toBe('ZOIKO-AIRGAP-V1');

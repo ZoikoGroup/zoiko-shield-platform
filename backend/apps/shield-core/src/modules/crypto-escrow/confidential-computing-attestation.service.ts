@@ -2,10 +2,7 @@ import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import * as crypto from 'crypto';
 
 export type AttestationPlatformType =
-  | 'AMD_SEV_SNP'
-  | 'INTEL_TDX'
-  | 'ARM_CCA'
-  | 'VIRTUAL_TPM_2_0';
+  'AMD_SEV_SNP' | 'INTEL_TDX' | 'ARM_CCA' | 'VIRTUAL_TPM_2_0';
 
 export interface ConfidentialComputingAttestationRequest {
   tenantId: string;
@@ -21,7 +18,8 @@ export interface ConfidentialComputingAttestationReport {
   tenantId: string;
   platformType: AttestationPlatformType;
   hostIdentifier: string;
-  verificationStatus: 'VERIFIED_GENUINE' | 'MEASUREMENT_MISMATCH' | 'INVALID_QUOTE';
+  verificationStatus:
+    'VERIFIED_GENUINE' | 'MEASUREMENT_MISMATCH' | 'INVALID_QUOTE';
   measuredLaunchDigest: string;
   expectedLaunchDigest: string;
   platformTcbVersion: string;
@@ -39,10 +37,15 @@ export interface ConfidentialComputingAttestationReport {
  */
 @Injectable()
 export class ConfidentialComputingAttestationService {
-  private readonly logger = new Logger(ConfidentialComputingAttestationService.name);
+  private readonly logger = new Logger(
+    ConfidentialComputingAttestationService.name,
+  );
 
   // In-memory verified host records
-  private readonly verifiedHosts = new Map<string, ConfidentialComputingAttestationReport>();
+  private readonly verifiedHosts = new Map<
+    string,
+    ConfidentialComputingAttestationReport
+  >();
 
   /**
    * Verifies hardware attestation quotes and firmware measurement digests.
@@ -50,7 +53,11 @@ export class ConfidentialComputingAttestationService {
   async verifyAttestation(
     request: ConfidentialComputingAttestationRequest,
   ): Promise<ConfidentialComputingAttestationReport> {
-    if (!request.tenantId || !request.quoteOrReportHex || !request.hostIdentifier) {
+    if (
+      !request.tenantId ||
+      !request.quoteOrReportHex ||
+      !request.hostIdentifier
+    ) {
       throw new BadRequestException(
         'Missing required parameters: tenantId, quoteOrReportHex, and hostIdentifier are mandatory.',
       );
@@ -94,7 +101,8 @@ export class ConfidentialComputingAttestationService {
       hostIdentifier: request.hostIdentifier,
       verificationStatus,
       measuredLaunchDigest,
-      expectedLaunchDigest: request.expectedMeasurementDigest || measuredLaunchDigest,
+      expectedLaunchDigest:
+        request.expectedMeasurementDigest || measuredLaunchDigest,
       platformTcbVersion: '2026.09-SECURE-BOOT-LATEST',
       attestedAt,
       hardwareVerificationReceipt: {
@@ -104,7 +112,10 @@ export class ConfidentialComputingAttestationService {
       },
     };
 
-    this.verifiedHosts.set(`${request.tenantId}:${request.hostIdentifier}`, report);
+    this.verifiedHosts.set(
+      `${request.tenantId}:${request.hostIdentifier}`,
+      report,
+    );
 
     this.logger.log(
       `[ATTESTATION_VERIFIED] Host '${request.hostIdentifier}' (${request.platformType}) Status: ${verificationStatus}`,
@@ -143,7 +154,9 @@ export class ConfidentialComputingAttestationService {
       tenantHosts.push(defaultReport);
     }
 
-    const genuine = tenantHosts.filter((h) => h.verificationStatus === 'VERIFIED_GENUINE').length;
+    const genuine = tenantHosts.filter(
+      (h) => h.verificationStatus === 'VERIFIED_GENUINE',
+    ).length;
 
     return {
       tenantId,
@@ -154,7 +167,10 @@ export class ConfidentialComputingAttestationService {
     };
   }
 
-  private tenantConfigsOrEntries(): [string, ConfidentialComputingAttestationReport][] {
+  private tenantConfigsOrEntries(): [
+    string,
+    ConfidentialComputingAttestationReport,
+  ][] {
     return Array.from(this.verifiedHosts.entries());
   }
 }

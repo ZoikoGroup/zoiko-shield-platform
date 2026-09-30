@@ -3,8 +3,10 @@ import { PrismaModule } from '../../prisma/prisma.module';
 import { KafkaModule } from '../../kafka/kafka.module';
 import { EvidenceController } from './controllers/evidence.controller';
 import { AirgapIngestController } from './airgap-ingest.controller';
+import { CrossRegionReplicationController } from './cross-region-replication.controller';
 import { EvidenceService } from './services/evidence.service';
 import { OfflineTelemetryBufferService } from './offline-telemetry-buffer.service';
+import { CrossRegionLedgerReplicatorService } from './cross-region-ledger-replicator.service';
 import { EvidenceRepository } from './repositories/evidence.repository';
 import { ContentHashService } from './hashing/content-hash.service';
 import { ObjectStorageService } from './storage/object-storage.service';
@@ -22,10 +24,15 @@ import { ProductionCollectorSigner } from './signing/production-collector-signer
 
 @Module({
   imports: [PrismaModule, KafkaModule],
-  controllers: [EvidenceController, AirgapIngestController],
+  controllers: [
+    EvidenceController,
+    AirgapIngestController,
+    CrossRegionReplicationController,
+  ],
   providers: [
     EvidenceService,
     OfflineTelemetryBufferService,
+    CrossRegionLedgerReplicatorService,
     EvidenceRepository,
     ContentHashService,
     objectStorageProvider,
@@ -48,6 +55,7 @@ import { ProductionCollectorSigner } from './signing/production-collector-signer
   exports: [
     EvidenceService,
     OfflineTelemetryBufferService,
+    CrossRegionLedgerReplicatorService,
     EvidenceLedgerService,
     EvidenceLineageService,
     EvidenceAutoCreationService,

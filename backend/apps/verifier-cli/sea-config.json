@@ -1,0 +1,6 @@
+{
+  "main": "dist/apps/verifier-cli/main.js",
+  "output": "dist/apps/verifier-cli/sea-prep.blob",
+  "disableExperimentalSEAWarning": true,
+  "useCodeCache": true
+}

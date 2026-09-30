@@ -34,7 +34,10 @@ export interface AirgapSyncBatchReceipt {
   duplicateEventsIgnored: number;
   batchMerkleRoot: string;
   computedMerkleRoot: string;
-  verificationStatus: 'BATCH_VERIFIED_AND_INGESTED' | 'MERKLE_ROOT_MISMATCH' | 'SIGNATURE_INVALID';
+  verificationStatus:
+    | 'BATCH_VERIFIED_AND_INGESTED'
+    | 'MERKLE_ROOT_MISMATCH'
+    | 'SIGNATURE_INVALID';
   syncedAt: string;
   centralLedgerCommitmentDigest: string;
 }
@@ -54,10 +57,19 @@ export class OfflineTelemetryBufferService {
   /**
    * Ingests and verifies a batch of buffered telemetry events from an air-gapped field site.
    */
-  async syncTelemetryBatch(request: AirgapSyncBatchRequest): Promise<AirgapSyncBatchReceipt> {
-    const { tenantId, batchId, sourceNodeId, events, batchMerkleRoot } = request;
+  async syncTelemetryBatch(
+    request: AirgapSyncBatchRequest,
+  ): Promise<AirgapSyncBatchReceipt> {
+    const { tenantId, batchId, sourceNodeId, events, batchMerkleRoot } =
+      request;
 
-    if (!tenantId || !batchId || !sourceNodeId || !events || events.length === 0) {
+    if (
+      !tenantId ||
+      !batchId ||
+      !sourceNodeId ||
+      !events ||
+      events.length === 0
+    ) {
       throw new BadRequestException(
         'Invalid airgap sync request: tenantId, batchId, sourceNodeId, and non-empty events array are required.',
       );
@@ -104,9 +116,8 @@ export class OfflineTelemetryBufferService {
       batchMerkleRoot === computedMerkleRoot ||
       batchMerkleRoot.length === 64;
 
-    const verificationStatus: AirgapSyncBatchReceipt['verificationStatus'] = merkleValid
-      ? 'BATCH_VERIFIED_AND_INGESTED'
-      : 'MERKLE_ROOT_MISMATCH';
+    const verificationStatus: AirgapSyncBatchReceipt['verificationStatus'] =
+      merkleValid ? 'BATCH_VERIFIED_AND_INGESTED' : 'MERKLE_ROOT_MISMATCH';
 
     // 2. Track deduplication by node sequence numbers
     const nodeKey = `${tenantId}:${sourceNodeId}`;
