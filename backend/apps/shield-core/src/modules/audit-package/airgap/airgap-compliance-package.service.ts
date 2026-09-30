@@ -59,7 +59,10 @@ export class AirgapCompliancePackageService {
       );
     }
 
-    const manifest = await this.exportService.exportManifest(tenantId, packageId);
+    const manifest = await this.exportService.exportManifest(
+      tenantId,
+      packageId,
+    );
     const manifestJson = JSON.stringify(manifest);
     const manifestDigest = crypto
       .createHash('sha256')
@@ -69,7 +72,10 @@ export class AirgapCompliancePackageService {
     const merkleRoot =
       (manifest.merkleRoot as string) ||
       (manifest.merkle_tree_root as string) ||
-      crypto.createHash('sha256').update(`${manifestDigest}:root`).digest('hex');
+      crypto
+        .createHash('sha256')
+        .update(`${manifestDigest}:root`)
+        .digest('hex');
 
     const bundleId = `airgap-pkg-${crypto.randomUUID()}`;
     const createdAt = new Date().toISOString();
@@ -121,7 +127,10 @@ export class AirgapCompliancePackageService {
   /**
    * Retrieves an exported airgap package bundle by ID.
    */
-  async getAirgapBundle(tenantId: string, bundleId: string): Promise<AirgapPackageBundle> {
+  async getAirgapBundle(
+    tenantId: string,
+    bundleId: string,
+  ): Promise<AirgapPackageBundle> {
     const bundle = this.bundles.get(bundleId);
     if (!bundle || bundle.tenantId !== tenantId) {
       throw new NotFoundException(`Airgap bundle '${bundleId}' not found.`);

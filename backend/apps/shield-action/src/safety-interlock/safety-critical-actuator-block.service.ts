@@ -91,8 +91,13 @@ export class SafetyCriticalActuatorBlockService {
   async evaluateActuatorInterlock(
     request: SafetyInterlockEvaluationRequest,
   ): Promise<SafetyInterlockExecutionReceipt> {
-    const { tenantId, commandId, targetDescriptor, dualKeyAuthorization, automatedPlaybookRef } =
-      request;
+    const {
+      tenantId,
+      commandId,
+      targetDescriptor,
+      dualKeyAuthorization,
+      automatedPlaybookRef,
+    } = request;
 
     const receiptId = `actuator-block-${crypto.randomUUID()}`;
     const evaluatedAt = new Date().toISOString();
@@ -106,7 +111,8 @@ export class SafetyCriticalActuatorBlockService {
         targetRef: targetDescriptor.targetRef,
         deviceCategory: targetDescriptor.deviceCategory,
         interlockStatus: 'MUTATION_PERMITTED_DUAL_KEY',
-        reason: 'Standard non-safety-critical OT target passed baseline validation.',
+        reason:
+          'Standard non-safety-critical OT target passed baseline validation.',
         evaluatedAt,
         failsafeReversible: true,
       });
@@ -165,7 +171,8 @@ export class SafetyCriticalActuatorBlockService {
         'Dual-key physical token authorization validated successfully. Mutation authorized under strict supervision.',
       evaluatedAt,
       failsafeReversible: true,
-      physicalInterlockKeySerial: dualKeyAuthorization.physicalInterlockKeySerial,
+      physicalInterlockKeySerial:
+        dualKeyAuthorization.physicalInterlockKeySerial,
     });
   }
 

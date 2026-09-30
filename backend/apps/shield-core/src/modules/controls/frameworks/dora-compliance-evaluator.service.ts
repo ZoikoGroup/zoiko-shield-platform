@@ -124,8 +124,7 @@ export class DoraComplianceEvaluatorService {
           )
         : null;
 
-    const merkleEvidenceRoot =
-      computeDomainSeparatedMerkleRoot(evidenceHashes);
+    const merkleEvidenceRoot = computeDomainSeparatedMerkleRoot(evidenceHashes);
 
     const withinInitialWindow =
       snap.unreportedIncidentAgeHours !== undefined
@@ -262,9 +261,7 @@ export class DoraComplianceEvaluatorService {
         ? 100
         : Math.max(
             0,
-            Math.round(
-              100 - (snap.ocsfDetectionPipelineLatencyMs - 500) / 10,
-            ),
+            Math.round(100 - (snap.ocsfDetectionPipelineLatencyMs - 500) / 10),
           ),
       evidenceDigest: `LATENCY:${snap.ocsfDetectionPipelineLatencyMs}ms`,
       details: {

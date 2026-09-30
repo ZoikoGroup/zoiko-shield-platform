@@ -178,6 +178,13 @@ export const Sidebar: React.FC = () => {
           icon: <Building className="w-4 h-4" />,
         },
         {
+          label: "MSSP Fleet & 2-Party JIT",
+          href: "/partner/fleet",
+          icon: <Building className="w-4 h-4" />,
+          badge: "2-PARTY",
+          badgeVariant: "anchored" as const,
+        },
+        {
           label: "Switch Account / Login",
           href: "/login",
           icon: <LogIn className="w-4 h-4" />,

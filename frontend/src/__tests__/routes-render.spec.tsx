@@ -42,6 +42,7 @@ import JitElevationPage from '@/app/admin/jit/page';
 import RetainersAndSlaOperationsPage from '@/app/operations/retainers/page';
 import G1GatePage from '@/app/admin/g1-gate/page';
 import JitElevationApprovalPage from '@/app/admin/jit-elevation/page';
+import MsspFleetCockpitPage from '@/app/partner/fleet/page';
 
 describe('ZoikoShield Route Pages Smoke Tests', () => {
   beforeEach(() => {
@@ -216,6 +217,14 @@ describe('ZoikoShield Route Pages Smoke Tests', () => {
     it('renders dual-custody authorization queue and session controls', () => {
       render(<JitElevationApprovalPage />);
       expect(screen.getByText(/Privileged Elevation & Dual-Approver Quorum/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('21. MSSP Partner Fleet & Delegated Cockpit (/partner/fleet)', () => {
+    it('renders fleet posture summary, 2-party JIT support, and cloud CIEM controls', () => {
+      render(<MsspFleetCockpitPage />);
+      expect(screen.getByText(/MSSP Partner Console & Delegated Fleet Cockpit/i)).toBeInTheDocument();
+      expect(screen.getByText(/Multi-Tenant Fleet Posture/i)).toBeInTheDocument();
     });
   });
 });

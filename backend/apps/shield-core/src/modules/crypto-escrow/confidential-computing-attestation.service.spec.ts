@@ -11,7 +11,8 @@ describe('ConfidentialComputingAttestationService', () => {
     const report = await service.verifyAttestation({
       tenantId: 'tenant-cc-1',
       platformType: 'AMD_SEV_SNP',
-      quoteOrReportHex: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+      quoteOrReportHex:
+        '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
       expectedMeasurementDigest: '',
       nonce: 'nonce-12345',
       hostIdentifier: 'k8s-worker-secure-01',

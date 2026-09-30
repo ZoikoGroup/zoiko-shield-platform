@@ -56968,4 +56968,545 @@ paths:
         '200':
           description: Master key reconstructed successfully
 
+  /api/v1/action/edr/dispatch:
+    post:
+      summary: Dispatch Certified EDR Response Action
+      description: Dispatches certified action across enterprise EDR providers (CrowdStrike, Defender, SentinelOne) with zero-drift compensation token.
+      operationId: dispatchEdrAction
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenantId, provider, actionType, targetHostId]
+              properties:
+                tenantId:
+                  type: string
+                provider:
+                  type: string
+                  enum: [CROWDSTRIKE_FALCON, MICROSOFT_DEFENDER, SENTINELONE]
+                actionType:
+                  type: string
+                  enum: [HOST_ISOLATE, PROCESS_TERMINATE, FILE_QUARANTINE, HOST_UNISOLATE]
+                targetHostId:
+                  type: string
+                targetProcessPid:
+                  type: number
+                targetFilePath:
+                  type: string
+                incidentReference:
+                  type: string
+                operatorId:
+                  type: string
+                simulateOnly:
+                  type: boolean
+      responses:
+        '200':
+          description: Certified EDR action dispatch receipt
+
+  /api/v1/action/edr/rollback:
+    post:
+      summary: Rollback Certified EDR Response Action
+      description: Executes zero-drift compensating rollback using cryptographic compensation token.
+      operationId: rollbackEdrAction
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [tenantId, originalReceiptId, compensationToken, reason]
+              properties:
+                tenantId:
+                  type: string
+                originalReceiptId:
+                  type: string
+                compensationToken:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Certified EDR action rollback receipt
+
+  /api/v1/ai/safety/watermark:
+    post:
+      summary: Apply Training Exclusion Watermark
+      description: Injects cryptographic anti-training canary tokens and non-retention receipts into prompt payloads.
+      operationId: applyTrainingExclusionWatermark
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [promptPayload]
+              properties:
+                promptPayload:
+                  type: string
+                modelProvider:
+                  type: string
+      responses:
+        '200':
+          description: Watermarked prompt payload and non-retention receipt
+
+  /api/v1/ai/safety/verify-watermark:
+    post:
+      summary: Verify Training Exclusion Watermark
+      description: Validates HMAC-SHA256 signature and cryptographic integrity of training-exclusion tokens in payloads.
+      operationId: verifyTrainingExclusionWatermark
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [watermarkedPayload]
+              properties:
+                watermarkedPayload:
+                  type: string
+      responses:
+        '200':
+          description: Watermark verification report
+
+  /api/v1/ai/safety/adversarial-eval:
+    post:
+      summary: Evaluate Prompt with Model Armor Gateway
+      description: Evaluates prompts against OWASP LLM Top 10 adversarial attack patterns, prompt injection, and jailbreak vectors.
+      operationId: evaluateAdversarialPrompt
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [prompt]
+              properties:
+                prompt:
+                  type: string
+                attackVector:
+                  type: string
+                  enum:
+                    - PROMPT_INJECTION_DIRECT
+                    - PROMPT_INJECTION_INDIRECT
+                    - SYSTEM_PROMPT_EXFILTRATION
+                    - UNAUTHORIZED_TOOL_INVOCATION
+                    - TRAINING_DATA_EXTRACTION
+                    - DATA_POISONING_SIMULATION
+                    - TOKEN_OVERFLOW_DOS
+      responses:
+        '200':
+          description: Model Armor evaluation outcome
+
+  /api/v1/ai/safety/harness-suite:
+    get:
+      summary: Run OWASP LLM Automated Test Harness Suite
+      description: Executes automated adversarial test suite covering OWASP LLM Top 10 vulnerabilities.
+      operationId: runAdversarialHarnessSuite
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Comprehensive adversarial evaluation report
+
+  /api/v1/anchor/bft-quorum/evaluate:
+    post:
+      summary: Evaluate Multi-Witness BFT Consensus Quorum
+      description: Evaluates BFT (m of n) threshold signature quorum consensus with anti-equivocation verification.
+      operationId: evaluateBftQuorum
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [epochNumber, epochRootHex, totalWitnesses, thresholdQuorum, witnessSignatures]
+              properties:
+                epochNumber:
+                  type: number
+                epochRootHex:
+                  type: string
+                totalWitnesses:
+                  type: number
+                thresholdQuorum:
+                  type: number
+                witnessSignatures:
+                  type: array
+                  items:
+                    type: object
+                    required: [witnessId, witnessPubKeyHex, signatureHex, sequenceNumber, timestampIso]
+                    properties:
+                      witnessId:
+                        type: string
+                      witnessPubKeyHex:
+                        type: string
+                      signatureHex:
+                        type: string
+                      sequenceNumber:
+                        type: number
+                      timestampIso:
+                        type: string
+      responses:
+        '200':
+          description: BFT consensus quorum evaluation result
+
+  /api/v1/evidence/cross-region/status:
+    get:
+      summary: Get Cross-Region Replication Status
+      description: Retrieves active cross-region ledger replication stream and RPO sync state.
+      operationId: getCrossRegionReplicationStatus
+      tags:
+        - Evidence
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - in: query
+          name: streamId
+          schema:
+            type: string
+          description: Optional stream identifier
+      responses:
+        '200':
+          description: Cross-region ledger stream status
+
+  /api/v1/evidence/cross-region/failover-drill:
+    post:
+      summary: Execute Cross-Region Failover Rehearsal Drill
+      description: Initiates automated zero-RPO cross-region failover rehearsal drill with dual-region health validation.
+      operationId: executeCrossRegionFailoverDrill
+      tags:
+        - Evidence
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                primaryRegion:
+                  type: string
+                standbyRegion:
+                  type: string
+      responses:
+        '200':
+          description: DR failover drill execution receipt
+
+  /api/v1/identity-context/ciem/analyze:
+    post:
+      summary: Analyze Cloud IAM Role for Least-Privilege Remediation
+      description: Identifies dormant and wildcard permissions across AWS, GCP, and Azure, generating least-privilege Terraform HCL diffs.
+      operationId: analyzeCiemRoleEntitlements
+      tags:
+        - SecurityContext
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, roleArnOrId, assignedPermissions, last90DaysUsedPermissions]
+              properties:
+                provider:
+                  type: string
+                  enum: [AWS_IAM, GCP_IAM, AZURE_RBAC]
+                roleArnOrId:
+                  type: string
+                assignedPermissions:
+                  type: array
+                  items:
+                    type: string
+                last90DaysUsedPermissions:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: CIEM analysis report and Terraform HCL remediation diff
+
+  /api/v1/partners/fleet/summary:
+    get:
+      summary: Get MSSP Fleet Posture Summary
+      description: Aggregates multi-tenant fleet security score, compliance levels, open critical incidents, and SLA compliance.
+      operationId: getMsspFleetSummary
+      tags:
+        - Partners
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: MSSP fleet posture summary
+
+  /api/v1/partners/fleet/isolation-audit:
+    get:
+      summary: Audit Cross-Tenant Isolation Boundaries
+      description: Performs zero-leakage cross-tenant isolation audit across delegated fleet tenants.
+      operationId: auditMsspFleetIsolation
+      tags:
+        - Partners
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Cross-tenant isolation verification report
+
+  /api/v1/partners/fleet/jit/request:
+    post:
+      summary: Request Two-Party JIT Support Access
+      description: Initiates a time-bounded dual-signed JIT support session request for a customer tenant.
+      operationId: requestTwoPartyJitSupport
+      tags:
+        - Partners
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [targetTenantId, incidentReference, justification]
+              properties:
+                targetTenantId:
+                  type: string
+                incidentReference:
+                  type: string
+                justification:
+                  type: string
+                allowedScope:
+                  type: string
+                  enum: [READ_ONLY_SECURITY_TELEMETRY, READ_ONLY_AUDIT_LOGS, READ_ONLY_INCIDENT_CONTEXT]
+                durationMinutes:
+                  type: number
+      responses:
+        '201':
+          description: Initiated JIT support session state
+
+  /api/v1/partners/fleet/jit/approve-customer:
+    post:
+      summary: Customer Admin Approval for JIT Support
+      description: Customer tenant administrator dual-signs the JIT emergency support access request.
+      operationId: approveCustomerJitSupport
+      tags:
+        - Partners
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sessionId, signatureProof]
+              properties:
+                sessionId:
+                  type: string
+                signatureProof:
+                  type: string
+      responses:
+        '200':
+          description: Customer-approved JIT support session state
+
+  /api/v1/partners/fleet/jit/authorize-lead:
+    post:
+      summary: Platform Lead Authorization for JIT Support
+      description: Platform Lead authorizes customer-approved JIT session, issuing an ephemeral access token.
+      operationId: authorizePlatformLeadJitSupport
+      tags:
+        - Partners
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sessionId, signatureProof]
+              properties:
+                sessionId:
+                  type: string
+                signatureProof:
+                  type: string
+      responses:
+        '200':
+          description: Authorized JIT support session with ephemeral access token
+
+  /api/v1/partners/fleet/jit/revoke:
+    post:
+      summary: Revoke JIT Support Session
+      description: Immediately revokes an active or pending JIT support session.
+      operationId: revokeJitSupportSession
+      tags:
+        - Partners
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sessionId, reason]
+              properties:
+                sessionId:
+                  type: string
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Revoked JIT support session state
+
+  /api/v1/ingest/stream/batch:
+    post:
+      summary: High-Throughput Batch Stream Ingestion
+      description: Ingests a batch of telemetry events with lock-free micro-buffering and dynamic backpressure.
+      operationId: ingestBatchStream
+      tags:
+        - WebhookIngestion
+      security:
+        - WebhookHmacAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [events]
+              properties:
+                events:
+                  type: array
+                  items:
+                    type: object
+      responses:
+        '202':
+          description: Batch stream accepted into high-throughput micro-buffer
+
+  /api/v1/ingest/stream/metrics:
+    get:
+      summary: Get High-Throughput Stream Buffer Metrics
+      description: Retrieves real-time queue length, buffer occupancy, and backpressure state.
+      operationId: getStreamBufferMetrics
+      tags:
+        - WebhookIngestion
+      security:
+        - WebhookHmacAuth: []
+      responses:
+        '200':
+          description: Real-time high-throughput buffer metrics
+
+  /api/v1/ai/investigate/react-loop:
+    post:
+      summary: Execute Autonomous ReAct Threat Investigation Loop
+      description: Runs multi-hop ReAct investigation on security finding or incident to build causal provenance.
+      operationId: executeReActInvestigation
+      tags:
+        - CaseAI
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [incidentId, findingSummary]
+              properties:
+                incidentId:
+                  type: string
+                findingSummary:
+                  type: string
+                initialEntities:
+                  type: object
+                maxHops:
+                  type: number
+      responses:
+        '200':
+          description: Autonomous investigation report with causal provenance graph
+
+  /api/v1/ai/investigate/{incidentId}/graph:
+    get:
+      summary: Get Incident Causal Provenance Graph
+      description: Fetches the multi-hop causal provenance graph for an investigated security incident.
+      operationId: getInvestigationProvenanceGraph
+      tags:
+        - CaseAI
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - name: incidentId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Incident causal provenance graph
+
+
 

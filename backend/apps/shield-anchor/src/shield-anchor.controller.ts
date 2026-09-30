@@ -14,6 +14,29 @@ import {
   type EvidenceLeaf,
   type MerkleInclusionProof,
 } from './merkle/batch-merkle-checkpointer.service';
+import {
+  BftMultiWitnessQuorumService,
+  type BftEpochQuorumRequest,
+} from './bft-witness/bft-multi-witness-quorum.service';
+
+export class EvaluateBftQuorumDto implements BftEpochQuorumRequest {
+  epochNumber!: number;
+  merkleRoot!: string;
+  totalWitnessNodes!: number;
+  requiredThreshold!: number;
+  witnessSignatures!: Array<{
+    witnessNodeId: string;
+    witnessType:
+      | 'PRIMARY_CLOUD_KMS'
+      | 'EXTERNAL_HARDWARE_ATTESTED'
+      | 'AIRGAP_OFFLINE_ORACLE'
+      | 'POST_QUANTUM_NOTARY';
+    signatureAlgorithm: 'RSA_PSS_SHA256' | 'ECDSA_P256' | 'FIPS_204_ML_DSA_65';
+    signatureHex: string;
+    publicKeyFingerprint: string;
+    notarizedAt: string;
+  }>;
+}
 
 export class EvidenceLeafDto implements EvidenceLeaf {
   evidenceId!: string;
@@ -39,6 +62,7 @@ export class VerifyProofDto implements MerkleInclusionProof {
 export class ShieldAnchorController {
   constructor(
     private readonly checkpointerService: BatchMerkleCheckpointerService,
+    private readonly bftQuorumService: BftMultiWitnessQuorumService,
   ) {}
 
   @Get()
@@ -130,5 +154,11 @@ export class ShieldAnchorController {
     const epochNum = parseInt(epochNumber, 10);
     const index = parseInt(leafIndex, 10);
     return this.checkpointerService.generateInclusionProof(epochNum, index);
+  }
+
+  @UseGuards(InternalAuthGuard)
+  @Post('api/v1/anchor/bft-quorum/evaluate')
+  evaluateBftQuorum(@Body() body: EvaluateBftQuorumDto) {
+    return this.bftQuorumService.evaluateEpochQuorum(body);
   }
 }

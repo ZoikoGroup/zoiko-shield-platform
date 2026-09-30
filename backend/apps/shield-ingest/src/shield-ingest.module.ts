@@ -27,6 +27,10 @@ import { ConnectorHealthService } from './connectors/services/health.service';
 import { ConnectorSyncService } from './connectors/services/sync.service';
 
 import { WebhookIngestController } from './ingestion/webhook-ingest.controller';
+import { HighThroughputIngestController } from './ingestion/high-throughput-ingest.controller';
+import { HighThroughputBatchBufferService } from './ingestion/high-throughput-batch-buffer.service';
+import { AwsCloudTrailPollerService } from './connectors/workers/aws-cloudtrail-poller.service';
+import { AzureMonitorPollerService } from './connectors/workers/azure-monitor-poller.service';
 import { RawIngestService } from './ingestion/raw-ingest.service';
 import { QuarantineService } from './ingestion/quarantine.service';
 import { ConnectorCacheService } from './ingestion/connector-cache.service';
@@ -134,6 +138,7 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     EntraConnectorController,
     EntraWebhookController,
     WebhookIngestController,
+    HighThroughputIngestController,
     ConnectorCatalogController,
     NormalizationController,
     AssetIdentityContextController,
@@ -235,6 +240,9 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     AdaptiveCongestionManagerService,
     ConnectorPermissionDriftService,
     ConnectorCacheService,
+    HighThroughputBatchBufferService,
+    AwsCloudTrailPollerService,
+    AzureMonitorPollerService,
     { provide: APP_GUARD, useClass: WorkloadAuthGuard },
   ],
   exports: [
@@ -257,6 +265,9 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     AdaptiveCongestionManagerService,
     ConnectorPermissionDriftService,
     ConnectorCacheService,
+    HighThroughputBatchBufferService,
+    AwsCloudTrailPollerService,
+    AzureMonitorPollerService,
   ],
 })
 export class ShieldIngestModule implements NestModule {

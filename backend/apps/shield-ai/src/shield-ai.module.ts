@@ -78,6 +78,12 @@ import { AiUseCaseRegistryService as InventoryAiUseCaseRegistryService } from '.
 import { DecisionRightsModule } from './decision-rights/decision-rights.module';
 import { dbScopeMiddleware } from '../../../libs/database/src';
 
+import { AiSafetyDefenseController } from './safety/ai-safety-defense.controller';
+import { TrainingExclusionWatermarkerService } from './safety/training-exclusion-watermarker.service';
+import { AdversarialEvaluationHarnessService } from './safety/adversarial-evaluation-harness.service';
+import { InvestigationAgentController } from './investigation/investigation-agent.controller';
+import { AutonomousInvestigationAgentService } from './investigation/autonomous-investigation-agent.service';
+
 @Module({
   imports: [PrismaModule, KafkaModule, DecisionRightsModule],
   controllers: [
@@ -86,6 +92,8 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     AiOutputController,
     AiGovernanceViewsController,
     AiIncidentController,
+    AiSafetyDefenseController,
+    InvestigationAgentController,
   ],
 
   providers: [
@@ -107,6 +115,9 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     TierAWindowedDetectorService,
     AutonomousRedTeamAgentService,
     PlaybookOptimizerAgentService,
+    TrainingExclusionWatermarkerService,
+    AdversarialEvaluationHarnessService,
+    AutonomousInvestigationAgentService,
 
     RedactionService,
     UsageControlService,
@@ -185,6 +196,7 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     InventoryAiUseCaseRegistryService,
     GroundingGateGuard,
     DecisionRightsModule,
+    AutonomousInvestigationAgentService,
   ],
 })
 export class ShieldAiModule implements NestModule {

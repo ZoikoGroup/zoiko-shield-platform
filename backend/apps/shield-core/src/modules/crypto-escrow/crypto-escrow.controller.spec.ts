@@ -33,10 +33,18 @@ describe('CryptoEscrowController', () => {
       .compile();
 
     controller = module.get<CryptoEscrowController>(CryptoEscrowController);
-    kmsHealthService = module.get<KmsHealthRebalancerService>(KmsHealthRebalancerService);
-    byokProxyService = module.get<CustomerByokKmsProxyService>(CustomerByokKmsProxyService);
-    attestationService = module.get<ConfidentialComputingAttestationService>(ConfidentialComputingAttestationService);
-    mpcRecoveryService = module.get<MpcThresholdKeyRecoveryService>(MpcThresholdKeyRecoveryService);
+    kmsHealthService = module.get<KmsHealthRebalancerService>(
+      KmsHealthRebalancerService,
+    );
+    byokProxyService = module.get<CustomerByokKmsProxyService>(
+      CustomerByokKmsProxyService,
+    );
+    attestationService = module.get<ConfidentialComputingAttestationService>(
+      ConfidentialComputingAttestationService,
+    );
+    mpcRecoveryService = module.get<MpcThresholdKeyRecoveryService>(
+      MpcThresholdKeyRecoveryService,
+    );
   });
 
   it('should be defined', () => {
@@ -68,7 +76,8 @@ describe('CryptoEscrowController', () => {
     const tenantId = '11111111-1111-1111-1111-111111111111';
     const res = await controller.verifyHardwareAttestation(tenantId, {
       platformType: 'AMD_SEV_SNP',
-      quoteOrReportHex: '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
+      quoteOrReportHex:
+        '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
       nonce: 'n-123',
       hostIdentifier: 'host-01',
     });

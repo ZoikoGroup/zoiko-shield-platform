@@ -32,7 +32,8 @@ describe('ExternalAuditorWorkspaceService', () => {
           {
             evidenceId: 'ev-1',
             evidenceType: 'BACKUP_RECOVERY_PROOF',
-            sha256: 'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789',
+            sha256:
+              'abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789',
           },
         ],
       }),
@@ -44,7 +45,8 @@ describe('ExternalAuditorWorkspaceService', () => {
   });
 
   it('should return auditor workspace summary', async () => {
-    const summary = await service.getAuditorWorkspaceSummary('tenant-auditor-1');
+    const summary =
+      await service.getAuditorWorkspaceSummary('tenant-auditor-1');
     expect(summary.auditorRole).toBe('AUDITOR_EXTERNAL');
     expect(summary.totalAuditPackages).toBe(1);
     expect(summary.frozenImmutablePackages).toBe(1);
