@@ -7,6 +7,11 @@ on:
 
 permissions:
   contents: read
+  packages: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   verify:
@@ -43,7 +48,7 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: backend/package-lock.json
-      - run: npm ci
+      - run: npm ci --no-audit --no-fund
       - name: Create migration shadow database
         run: PGPASSWORD=shield createdb -h localhost -U shield shield_shadow
       - run: npm run migrate:deploy

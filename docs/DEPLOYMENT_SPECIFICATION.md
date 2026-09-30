@@ -10,7 +10,7 @@
 ---
 
 > **UPDATE (2026-09-24) — key management and evidence storage are now Google Cloud.**
-> Signing moved from GCP KMS to **Cloud KMS**, and evidence storage from the S3
+> Signing moved to **Cloud KMS**, and evidence storage moved from the S3
 > client to the **native Cloud Storage** API. `@aws-sdk/client-kms` is no longer
 > a dependency. The S3 client remains only for MinIO in non-production.
 > For a GCP deployment, follow **`docs/GCP_DEPLOYMENT_GUIDE.md`**, which covers
@@ -23,7 +23,7 @@
 ZoikoShield is an enterprise cyber defense, compliance ledger, and continuous assurance platform built on a distributed microservices architecture.
 
 ### ⚠️ Critical SRE Notice: R2+ Live Response Actions Fail-Closed
-* **Intentional Safety Gate:** Live R2+ automated response actions (e.g. actual GCP IAM credential revocation, Microsoft Entra account suspension, EDR host isolation, Cloudflare/GCP WAF IP blocking) are **strictly disabled in code**.
+* **Intentional Safety Gate:** Live R2+ automated response actions (e.g. actual GCP IAM credential revocation, Microsoft Entra account suspension, EDR host isolation, Cloudflare/Cloud Armor IP blocking) are **strictly disabled in code**.
 * **Simulation Only:** If an operator triggers an action from the UI, the platform executes an **R1 pre-flight dry-run simulation** and generates an execution preview receipt, but will deliberately refuse live mutation with a `403 Forbidden (G1 Release Gate has not been formally ratified)` error.
 * **Not a Bug:** This is the intentional safety design mandated by Master Build Plan §2, §18, and Rule G1-01. Live mutation will only be enabled after all 8 designated domain leads physically sign the G1 launch gate.
 
@@ -38,7 +38,7 @@ ZoikoShield is an enterprise cyber defense, compliance ledger, and continuous as
 ```
                             ┌──────────────────────────────────┐
                             │    Ingress / Reverse Proxy       │
-                            │   (Nginx / Traefik / GCP ALB)    │
+                            │   (Nginx / Traefik / Cloud LB)   │
                             └────────────────┬─────────────────┘
                                              │
                        ┌─────────────────────┴─────────────────────┐
@@ -127,7 +127,7 @@ Base Kubernetes definitions are located in `infrastructure/k8s/base/`:
 * `network-policies.yaml`: Sovereign Cell network fencing and inter-service isolation.
 
 ### Option 3: Separate Frontend & Backend Cluster
-* **Frontend:** Can be deployed to GCP Amplify, Vercel, Cloudflare Pages, or Docker container with `PORT=3000` and `NEXT_PUBLIC_API_URL=https://api.shield.zoiko.com`.
+* **Frontend:** Can be deployed to Firebase Hosting, Vercel, Cloudflare Pages, or Docker container with `PORT=3000` and `NEXT_PUBLIC_API_URL=https://api.shield.zoiko.com`.
 * **Backend Microservices:** Can be deployed to an ECS / EKS / VM cluster behind an Application Load Balancer.
 
 ---
