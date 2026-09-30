@@ -6,6 +6,25 @@
 ## Date
 2026-09-18
 
+## Addendum — 2026-09-30
+
+`customer-byok-kms-proxy.service.ts`, `mpc-threshold-key-recovery.service.ts` and
+`confidential-computing-attestation.service.ts` were added to `crypto-escrow`
+on 2026-09-29 (commit `6246a7f4`), with their HTTP routes reachable by any
+tenant holding `TENANT_RESOURCE_WRITE` — no feature flag, no contract
+entitlement. That breached both the Frozen Code Surface and Zero Default
+Activation rules above.
+
+Remedied the same way Zero Default Activation already required: those three
+routes' groups (`byok/*`, `attestation/*`, `mpc/*`) on `CryptoEscrowController`
+now carry `G4GateGuard`, which fails closed with a `ForbiddenException` on
+every call (`apps/shield-core/src/modules/authorization/guards/g4-gate.guard.ts`).
+See **ADR-20** for the full G4 capability set this is part of and the
+authorization this ADR's freeze rules and G4's Board-authorization requirement
+both still await. `kms-health/*` on the same controller is unaffected — that
+is general multi-cloud KMS failover, not part of `crypto-escrow`'s frozen
+surface.
+
 ## Context
 A direct code audit of `apps/shield-core/src/modules/` identified two advanced cryptographic subsystems:
 1. **`homomorphic`** (`paillier-homomorphic-aggregator.service.ts`): Implements additive homomorphic encryption using the Paillier cryptosystem to enable encrypted aggregation of multi-tenant security metrics without plaintext disclosure.
