@@ -130,8 +130,7 @@ export class Nis2ComplianceEvaluatorService {
           )
         : null;
 
-    const merkleEvidenceRoot =
-      computeDomainSeparatedMerkleRoot(evidenceHashes);
+    const merkleEvidenceRoot = computeDomainSeparatedMerkleRoot(evidenceHashes);
 
     const withinEarlyWarning =
       snap.unreportedIncidentAgeHours !== undefined
@@ -351,9 +350,7 @@ export class Nis2ComplianceEvaluatorService {
       controlCode: 'NIS2-ART21-2F',
       title: 'Use of Cryptography, Dual-Signing & Cloud KMS',
       domain: 'Cryptographic Protection',
-      status: snap.pqcAndKmsEncryptionEnforced
-        ? 'COMPLIANT'
-        : 'NON_COMPLIANT',
+      status: snap.pqcAndKmsEncryptionEnforced ? 'COMPLIANT' : 'NON_COMPLIANT',
       complianceScore: snap.pqcAndKmsEncryptionEnforced ? 100 : 30,
       evidenceDigest: `PQC_KMS_ENFORCED:${snap.pqcAndKmsEncryptionEnforced}`,
       details: { enforced: snap.pqcAndKmsEncryptionEnforced },

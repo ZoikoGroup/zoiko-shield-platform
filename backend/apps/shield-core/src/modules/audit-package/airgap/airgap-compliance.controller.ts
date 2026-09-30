@@ -30,9 +30,7 @@ export class ExportAirgapPackageDto {
 @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_READ)
 @Controller('api/v1/compliance/airgap')
 export class AirgapComplianceController {
-  constructor(
-    private readonly airgapService: AirgapCompliancePackageService,
-  ) {}
+  constructor(private readonly airgapService: AirgapCompliancePackageService) {}
 
   /**
    * POST /api/v1/compliance/airgap/export-package

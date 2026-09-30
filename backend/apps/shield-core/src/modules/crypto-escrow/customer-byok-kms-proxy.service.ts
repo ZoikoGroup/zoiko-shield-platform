@@ -7,10 +7,7 @@ import {
 import * as crypto from 'crypto';
 
 export type ByokProviderType =
-  | 'GCP_CLOUD_KMS'
-  | 'AWS_KMS'
-  | 'AZURE_KEYVAULT'
-  | 'HASHICORP_VAULT_KMIP';
+  'GCP_CLOUD_KMS' | 'AWS_KMS' | 'AZURE_KEYVAULT' | 'HASHICORP_VAULT_KMIP';
 
 export interface ByokKeyConfiguration {
   tenantId: string;
@@ -103,7 +100,8 @@ export class CustomerByokKmsProxyService {
       return {
         tenantId,
         provider: 'GCP_CLOUD_KMS',
-        keyUri: 'gcp-kms://projects/zoiko-shield/locations/global/keyRings/default/cryptoKeys/primary',
+        keyUri:
+          'gcp-kms://projects/zoiko-shield/locations/global/keyRings/default/cryptoKeys/primary',
         keyAlias: 'default-platform-custody',
         custodyTopology: 'T4_CUSTOMER_MANAGED_PROXY',
         rotationIntervalDays: 90,

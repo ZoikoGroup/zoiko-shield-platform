@@ -56,15 +56,17 @@ import { PlaybookSandboxEngineService } from './simulation/playbook-sandbox-engi
 import { LiveActionExecutorService } from './executors/live-action-executor.service';
 import { DualCustodyApprovalsService } from './approvals/dual-custody-approvals.service';
 import { AutomatedRollbackOrchestratorService } from './executors/automated-rollback-orchestrator.service';
-import { DualCustodyQuorumService } from './dual-custody/dual-custody-quorum.service';
 import { CompensatingActionService } from './rollback/compensating-action.service';
 import { SafetyCriticalActuatorBlockService } from './safety-interlock/safety-critical-actuator-block.service';
+import { DualCustodyQuorumService } from './dual-custody/dual-custody-quorum.service';
+import { CertifiedEdrBrokerService } from './edr-connector/certified-edr-broker.service';
 import { dbScopeMiddleware } from '../../../libs/database/src';
 
 @Module({
   imports: [PrismaModule, KafkaModule, ScheduleModule.forRoot()],
   controllers: [ShieldActionController],
   providers: [
+    CertifiedEdrBrokerService,
     ContentHashService,
     ShieldCoreClient,
     OutboxService,

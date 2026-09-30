@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { AuditPackageExportService } from '../export/audit-package-export.service';
@@ -207,7 +203,8 @@ export class ExternalAuditorWorkspaceService {
                 .createHash('sha256')
                 .update(`evidence-${ev.evidenceId || idx}`)
                 .digest('hex'),
-            canonicalPath: ev.path || `/evidence/raw/${ev.evidenceId || idx}.json`,
+            canonicalPath:
+              ev.path || `/evidence/raw/${ev.evidenceId || idx}.json`,
             sourceConnector: ev.source || 'shield-ingest-agent',
             capturedAt: ev.timestamp || new Date().toISOString(),
             witnessSignature:
@@ -318,7 +315,8 @@ export class ExternalAuditorWorkspaceService {
         algorithm: 'RSA-PSS-SHA256-PLUS-PQC-ML-DSA-65',
       },
       issuedAt,
-      issuerAuthority: 'ZoikoShield Continuous Compliance Attestation Authority',
+      issuerAuthority:
+        'ZoikoShield Continuous Compliance Attestation Authority',
       verificationInstructions:
         'Verify certificate offline using: `zoikoshield-verifier verify --certificate cert.json`',
     };

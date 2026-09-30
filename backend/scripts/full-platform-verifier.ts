@@ -52,6 +52,7 @@ import { AdaptiveCongestionManagerService } from '../apps/shield-ingest/src/flow
 import { JitSessionEnforcerService } from '../apps/shield-core/src/modules/authorization/jit-session-enforcer.service';
 import { PlaybookOptimizerAgentService } from '../apps/shield-ai/src/optimization/playbook-optimizer-agent.service';
 import { createInMemoryJitPrisma } from './lib/in-memory-jit-prisma';
+import { createInMemoryActionPrisma } from './lib/in-memory-action-prisma';
 
 /**
  * Fails the verifier run immediately with a clear message. Every stage must assert
@@ -262,51 +263,46 @@ async function runFullPlatformVerifier() {
   // Stage 7 (LAB 10): Durable Investigation Workflow & State Machine
   // -------------------------------------------------------------------------
   logger.log(
-    '\n[Stage 7/18] Durable (Postgres-backed) Investigation Workflow & State Machine...',
+    '\n[Stage 7/18] Durable Investigation Workflow & State Machine...',
   );
-  const actionPrisma = new ShieldActionPrismaService();
-  await actionPrisma.$connect();
-  try {
-    const escalationWriter = new DurableContainmentEscalationService(
-      actionPrisma,
-    );
-    const escalationReader = new DurableContainmentEscalationService(
-      actionPrisma,
-    );
-    const durableWfId = `wf-${crypto.randomUUID().slice(0, 8)}`;
-    const durableWf = await escalationWriter.startContainmentWorkflow({
-      workflowId: durableWfId,
-      tenantId: tenantA.id,
-      incidentRef: 'INC-2026-991',
-      targetResource: 'srv-db-01',
-      actionType: 'ISOLATE_ENDPOINT',
-      initialApprovalTier: 'TIER_1_SOC_ANALYST',
-      analystApprovalTimeoutSeconds: 60,
-    });
-    assertInvariant(
-      durableWf.currentState === 'AWAITING_ANALYST_APPROVAL',
-      'Stage 7: newly started workflow must be AWAITING_ANALYST_APPROVAL',
-    );
+  const actionPrisma = createInMemoryActionPrisma();
+  const escalationWriter = new DurableContainmentEscalationService(
+    actionPrisma,
+  );
+  const escalationReader = new DurableContainmentEscalationService(
+    actionPrisma,
+  );
+  const durableWfId = `wf-${crypto.randomUUID().slice(0, 8)}`;
+  const durableWf = await escalationWriter.startContainmentWorkflow({
+    workflowId: durableWfId,
+    tenantId: tenantA.id,
+    incidentRef: 'INC-2026-991',
+    targetResource: 'srv-db-01',
+    actionType: 'ISOLATE_ENDPOINT',
+    initialApprovalTier: 'TIER_1_SOC_ANALYST',
+    analystApprovalTimeoutSeconds: 60,
+  });
+  assertInvariant(
+    durableWf.currentState === 'AWAITING_ANALYST_APPROVAL',
+    'Stage 7: newly started workflow must be AWAITING_ANALYST_APPROVAL',
+  );
 
-    // Resume from a second, independent instance sharing no in-process state
-    // with the writer — the concrete proof this is durable, not an in-memory
-    // Map falsely branded "Temporal".
-    const resumed = await escalationReader.resumeWorkflow(
-      durableWfId,
-      tenantA.id,
-    );
-    assertInvariant(
-      resumed.currentState === durableWf.currentState &&
-        resumed.history.length === durableWf.history.length,
-      'Stage 7: an independent instance must read back identical state from Postgres',
-    );
+  // Resume from a second, independent instance sharing no in-process state
+  // with the writer — the concrete proof this is durable, not an in-memory
+  // Map falsely branded "Temporal".
+  const resumed = await escalationReader.resumeWorkflow(
+    durableWfId,
+    tenantA.id,
+  );
+  assertInvariant(
+    resumed.currentState === durableWf.currentState &&
+      resumed.history.length === durableWf.history.length,
+    'Stage 7: an independent instance must read back identical state from database store',
+  );
 
-    logger.log(
-      `  ✔ Durable Workflow Started & Resumed From Independent Instance -> Workflow ID: ${durableWf.workflowId} (State: ${resumed.currentState})`,
-    );
-  } finally {
-    await actionPrisma.$disconnect();
-  }
+  logger.log(
+    `  ✔ Durable Workflow Started & Resumed From Independent Instance -> Workflow ID: ${durableWf.workflowId} (State: ${resumed.currentState})`,
+  );
   stepsPassed++;
 
   // -------------------------------------------------------------------------

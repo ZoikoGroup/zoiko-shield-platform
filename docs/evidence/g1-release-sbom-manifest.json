@@ -1,7 +1,7 @@
 {
-  "sbomId": "SBOM-ZS-1790318291015",
+  "sbomId": "SBOM-ZS-1790759135966",
   "releaseTag": "v1.0.0-GA-G1",
-  "generatedAt": "2026-09-25T06:38:11.012Z",
+  "generatedAt": "2026-09-30T09:05:35.964Z",
   "profile": "SPDX-2.3-JSON / CycloneDX-1.5",
   "specVersion": "ZS-SEC-SBOM-001",
   "publisher": {
@@ -17,8 +17,8 @@
       "language": "TypeScript / Node.js 20",
       "sourcePath": "backend/apps/shield-core",
       "license": "Proprietary",
-      "directDependenciesCount": 34,
-      "entryPointDigest": "8d1b4686aedffd01d857b7a2bd0af6d78cde76d9176056bff50f98655ac7627b"
+      "directDependenciesCount": 32,
+      "entryPointDigest": "1d5b416124fc3a040c7905f46c3314141355b85005034833d0bd5ca528165d94"
     },
     {
       "name": "shield-ingest",
@@ -27,8 +27,8 @@
       "language": "TypeScript / Node.js 20",
       "sourcePath": "backend/apps/shield-ingest",
       "license": "Proprietary",
-      "directDependenciesCount": 34,
-      "entryPointDigest": "893e3deeb129b9f8ec27b364b215953714e63250f4f562a4f40ce788a0fe05dd"
+      "directDependenciesCount": 32,
+      "entryPointDigest": "b2f899aeee7ed948f650438e05661c60b9dbd6edb7a0e10529d7f534a72916fb"
     },
     {
       "name": "shield-ai",
@@ -37,8 +37,8 @@
       "language": "TypeScript / Node.js 20",
       "sourcePath": "backend/apps/shield-ai",
       "license": "Proprietary",
-      "directDependenciesCount": 34,
-      "entryPointDigest": "8cdb1c6f70ca8c2a75af58f06dec6fd0adf80722bd3f0d15dbab2d330a32b0e3"
+      "directDependenciesCount": 32,
+      "entryPointDigest": "22499ed20e41a7169425f8a4c90f3ad7a8c366b6da7068166702c23c3fd97d26"
     },
     {
       "name": "shield-action",
@@ -47,8 +47,8 @@
       "language": "TypeScript / Node.js 20",
       "sourcePath": "backend/apps/shield-action",
       "license": "Proprietary",
-      "directDependenciesCount": 34,
-      "entryPointDigest": "2f2f6c98bd5ce6009ed2079f308217cf72f326fb6d598dc681e42833ac0e3cc4"
+      "directDependenciesCount": 32,
+      "entryPointDigest": "6e73729b1a2f1817380329365f58899f0d7dc8d7310731a7583390171aa5113f"
     },
     {
       "name": "shield-anchor",
@@ -57,8 +57,8 @@
       "language": "TypeScript / Node.js 20",
       "sourcePath": "backend/apps/shield-anchor",
       "license": "Proprietary",
-      "directDependenciesCount": 34,
-      "entryPointDigest": "ca52036a75f536d1d0b5d00978f351c22a24e618e7ce66c8dff41bbdfee2e242"
+      "directDependenciesCount": 32,
+      "entryPointDigest": "f533e51f2d3f835ea4e9189e36ee2eec149bb11bfe8d1fe368e876ed64735cc0"
     },
     {
       "name": "verifier-cli",
@@ -68,7 +68,7 @@
       "sourcePath": "backend/apps/verifier-cli",
       "license": "Apache-2.0 / Dual",
       "directDependenciesCount": 0,
-      "entryPointDigest": "7474554fd76093208717a626f69f8bad6c6110098cde57386b5e75efa834701d"
+      "entryPointDigest": "71f9aab7e2614e7929818df8d1b4a54029c00afde8f42d2dcc8a3b5f405e35af"
     },
     {
       "name": "frontend",
@@ -78,16 +78,16 @@
       "sourcePath": "frontend",
       "license": "Proprietary",
       "directDependenciesCount": 6,
-      "entryPointDigest": "5872042db2d14d6407ef2a74130de0e97a32bcbcffc2eb9d20128ceac6f42d3e"
+      "entryPointDigest": "7e94db39bdeeaa4394cc5870a29b9af133dcbcf0872307cf0bdd25bbe39ddaf8"
     }
   ],
   "dependenciesSummary": {
-    "total": 87,
-    "production": 40,
+    "total": 85,
+    "production": 38,
     "development": 47
   },
   "cryptographicDigests": {
-    "backendPackageJsonSha256": "e19653ab19732eb4868e434992dd42ed745aa6292ccf6a0ec9bc95ae7acf5769",
+    "backendPackageJsonSha256": "6f1ce269ebbc770d097ef8ae57e369158b2f497fa846dd1614573763774b8140",
     "frontendPackageJsonSha256": "ded1e52e6f93871217b147a9cb1f2df65ee74b703f443bdf7712fe0aef0ba91c"
   }
 }

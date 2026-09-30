@@ -9,6 +9,7 @@ import { DetectionRegistrationService } from './registry/detection-registration.
 import { DetectionRuntimeService } from './runtime/detection-runtime.service';
 import { DetectionReplayService } from './replay/detection-replay.service';
 import { OtThreatDetectorService } from './ot-threat-detector.service';
+import { KernelRuntimeDetectorService } from './kernel-runtime-detector.service';
 import { SuspiciousLoginRule } from './rules/suspicious-login/suspicious-login.rule';
 import { SuspiciousProcessRule } from './rules/suspicious-process/suspicious-process.rule';
 import { CloudPrivilegeEscalationRule } from './rules/cloud-privilege-escalation/cloud-privilege-escalation.rule';
@@ -27,6 +28,7 @@ import { CompositeCorrelationService } from './correlation/composite-correlation
     DetectionRuntimeService,
     DetectionReplayService,
     OtThreatDetectorService,
+    KernelRuntimeDetectorService,
     CompositeCorrelationService,
     NormalizedEventConsumer,
   ],
@@ -35,6 +37,7 @@ import { CompositeCorrelationService } from './correlation/composite-correlation
     DetectionRegistryService,
     DetectionReplayService,
     OtThreatDetectorService,
+    KernelRuntimeDetectorService,
     CompositeCorrelationService,
   ],
 })

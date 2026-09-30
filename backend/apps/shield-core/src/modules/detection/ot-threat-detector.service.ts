@@ -67,7 +67,8 @@ export class OtThreatDetectorService {
       ruleId: 'OT-MODBUS-002',
       protocol: 'MODBUS_TCP',
       name: 'Modbus Coil Force Burst Attack',
-      description: 'Detects rapid-fire coil writes indicative of actuator cycling/wear attack.',
+      description:
+        'Detects rapid-fire coil writes indicative of actuator cycling/wear attack.',
       severity: 'HIGH',
     },
     {
@@ -109,7 +110,9 @@ export class OtThreatDetectorService {
    */
   async analyzeOtEvent(event: OtNetworkEvent): Promise<OtThreatFinding | null> {
     if (!event.tenantId || !event.protocol || !event.payloadHex) {
-      throw new BadRequestException('Invalid OT event: tenantId, protocol, and payloadHex are required.');
+      throw new BadRequestException(
+        'Invalid OT event: tenantId, protocol, and payloadHex are required.',
+      );
     }
 
     const detectedAt = new Date().toISOString();
@@ -209,7 +212,9 @@ export class OtThreatDetectorService {
     };
   }
 
-  private generateFinding(params: Omit<OtThreatFinding, 'evidenceSignature'>): OtThreatFinding {
+  private generateFinding(
+    params: Omit<OtThreatFinding, 'evidenceSignature'>,
+  ): OtThreatFinding {
     const evidenceSignature = crypto
       .createHash('sha256')
       .update(

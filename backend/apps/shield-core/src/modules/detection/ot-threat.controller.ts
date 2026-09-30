@@ -7,12 +7,7 @@ import {
   HttpStatus,
   Headers,
 } from '@nestjs/common';
-import {
-  IsIn,
-  IsNumber,
-  IsOptional,
-  IsString,
-} from 'class-validator';
+import { IsIn, IsNumber, IsOptional, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { RequirePermissions } from '../authorization/decorators/require-permissions.decorator';
