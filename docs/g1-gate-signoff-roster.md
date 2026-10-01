@@ -62,6 +62,20 @@ G1 is ready only when all of the following conditions are satisfied (MASTER_BUIL
       `PolicyLifecycleController`/`PolicyLifecycleService`) and W18 (`/playbooks` via
       `PlaybookRunService`/`FreezeControllerService`) are fully implemented with real dual-custody
       approvals, canary evaluations, atomic rollback, and emergency tenant freeze actions.
+      **Addendum (2026-10-01, later same day).** W12 initially stored every policy version in an
+      in-process `Map`: real logic, but every approval and rollback decision was lost on restart
+      and two replicas would disagree about which policies were active. Checked against spec §619's
+      literal checklist for W12 ("Draft/diff, scope, impact, approvers, test/simulation, staged
+      deployment, effective version, rollback and audit record") turned up two further gaps beyond
+      that: no "audit record" (nothing survived a restart to audit) and no "test/simulation" step
+      at all. Fixed: `PolicyLifecycleService` now persists to
+      `authorization.config_policy_versions`/`config_policy_audit_events`
+      (tenant row-level security - confirmed end to end against a real Postgres instance, including
+      that a tenant's write to another tenant's or the shared baseline's row is silently rejected
+      by the database itself, not just by application code); every stage/simulate/approve/rollback
+      call appends one audit row; and a new `POST /:policyId/simulate` parses the proposed diff as
+      YAML and reports which keys actually changed before staging, rather than skipping straight to
+      a canary rollout with nothing checked.
 - [ ] **Multi-function approver sign-off** (this document)
 
 ---
