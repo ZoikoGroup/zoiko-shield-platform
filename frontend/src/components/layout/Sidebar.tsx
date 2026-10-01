@@ -30,6 +30,8 @@ import {
   Bot,
   ShieldCheck,
   Activity,
+  Terminal,
+  Bell,
 } from "lucide-react";
 
 export const Sidebar: React.FC = () => {
@@ -89,6 +91,20 @@ export const Sidebar: React.FC = () => {
           badgeVariant: "ai" as const,
         },
         {
+          label: "Playbook Runs (W18)",
+          href: "/playbooks",
+          icon: <Terminal className="w-4 h-4" />,
+          badge: "W18",
+          badgeVariant: "anchored" as const,
+        },
+        {
+          label: "Response Proposals (W34)",
+          href: "/response-proposals",
+          icon: <AlertOctagon className="w-4 h-4" />,
+          badge: "§16.1",
+          badgeVariant: "ai" as const,
+        },
+        {
           label: "Simulation Replay Engine",
           href: "/red-team",
           icon: <Skull className="w-4 h-4" />,
@@ -144,6 +160,13 @@ export const Sidebar: React.FC = () => {
           badge: state.connectors.length,
         },
         {
+          label: "Policy Lifecycle (W12)",
+          href: "/policies",
+          icon: <Sliders className="w-4 h-4" />,
+          badge: "4-EYES",
+          badgeVariant: "anchored" as const,
+        },
+        {
           label: "Merkle Evidence Ledger",
           href: "/ledger",
           icon: <GitCommit className="w-4 h-4" />,
@@ -154,6 +177,23 @@ export const Sidebar: React.FC = () => {
           label: "Controls & Compliance",
           href: "/controls",
           icon: <CheckSquare className="w-4 h-4" />,
+        },
+        {
+          label: "Evidence Operations (W24)",
+          href: "/evidence-operations",
+          icon: <Activity className="w-4 h-4" />,
+          badge: "W24",
+          badgeVariant: "anchored" as const,
+        },
+        {
+          label: "Risk & Exceptions (W27/28)",
+          href: "/risk",
+          icon: <Scale className="w-4 h-4" />,
+        },
+        {
+          label: "Notification Center (W04)",
+          href: "/notifications",
+          icon: <Bell className="w-4 h-4" />,
         },
         {
           label: "Audit & Verifier",

@@ -54,6 +54,10 @@ export const PERMISSION_CODES = {
   DELETION_APPROVE: 'deletion:approve',
   LEGAL_HOLD_CREATE: 'legal_hold:create',
   DETECTION_MANAGE: 'platform:detection:manage',
+  POLICY_CONFIG_READ: 'policy:config:read',
+  POLICY_CONFIG_WRITE: 'policy:config:write',
+  POLICY_CONFIG_APPROVE: 'policy:config:approve',
+  POLICY_CONFIG_ROLLBACK: 'policy:config:rollback',
 } as const;
 
 /**
