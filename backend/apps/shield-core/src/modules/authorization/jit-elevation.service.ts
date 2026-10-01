@@ -1,7 +1,9 @@
 import {
   BadRequestException,
   ConflictException,
+  forwardRef,
   ForbiddenException,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
@@ -9,6 +11,7 @@ import {
 import type { Prisma } from '@prisma/client';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { WebauthnService } from '../identity-adapter/webauthn.service';
 import type { JitElevationRequest } from './entities/jit-elevation-request.entity';
 import type { Role } from './entities/role.entity';
 import { MEMBERSHIP_WITH_ROLES_INCLUDE, toRole } from './prisma-mappers';
@@ -43,9 +46,10 @@ export interface RevokeJitElevationInput {
 export interface VerifyStepUpChallengeInput {
   requestId: string;
   principalId: string;
-  clientDataJson: string;
-  authenticatorData?: string;
-  signature: string;
+  credentialId: string;
+  clientDataJsonBase64: string;
+  authenticatorDataBase64: string;
+  signatureBase64: string;
 }
 
 /**
@@ -56,7 +60,11 @@ export interface VerifyStepUpChallengeInput {
 export class JitElevationService {
   private readonly logger = new Logger(JitElevationService.name);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Inject(forwardRef(() => WebauthnService))
+    private readonly webauthnService: WebauthnService,
+  ) {}
 
   /**
    * 1. Super Admin requests access to Tenant X with a stated purpose.
@@ -359,7 +367,14 @@ export class JitElevationService {
   }
 
   /**
-   * Validates cryptographic FIDO2/WebAuthn hardware step-up challenge.
+   * Validates a FIDO2/WebAuthn hardware step-up challenge for real:
+   * delegates to WebauthnService.verifyAssertion, the same ECDSA
+   * signature-over-stored-public-key verification (with replay/clone
+   * detection via the signature counter) that /auth/passkeys/step-up
+   * already uses to raise a session's assurance level. Previously this
+   * method hashed whatever client-supplied strings it was given and
+   * returned verified: true unconditionally - nothing was ever actually
+   * checked against a registered credential.
    */
   async verifyStepUpChallenge(input: VerifyStepUpChallengeInput): Promise<{
     verified: boolean;
@@ -372,17 +387,37 @@ export class JitElevationService {
       throw new NotFoundException(`JIT request '${input.requestId}' not found`);
     }
 
-    if (!input.clientDataJson || !input.signature) {
+    if (
+      !input.credentialId ||
+      !input.clientDataJsonBase64 ||
+      !input.authenticatorDataBase64 ||
+      !input.signatureBase64
+    ) {
       throw new BadRequestException(
-        'FIDO2_ATTESTATION_REQUIRED: Missing WebAuthn challenge payload or signature',
+        'FIDO2_ATTESTATION_REQUIRED: Missing WebAuthn credential ID, challenge payload or signature',
       );
     }
 
-    // Compute cryptographic hardware attestation digest
-    const proofPayload = `${input.requestId}:${input.clientDataJson}:${input.authenticatorData || 'direct'}:${input.signature}`;
+    // Throws (ForbiddenException/UnauthorizedException) on any verification
+    // failure - wrong signature, unregistered credential, expired/mismatched
+    // challenge, missing user verification, or a cloned-authenticator
+    // signature counter. Nothing here downgrades that into verified: false.
+    const verification = await this.webauthnService.verifyAssertion(
+      {
+        credentialId: input.credentialId,
+        clientDataJsonBase64: input.clientDataJsonBase64,
+        authenticatorDataBase64: input.authenticatorDataBase64,
+        signatureBase64: input.signatureBase64,
+      },
+      'STEP_UP',
+      input.principalId,
+    );
+
     const hardwareProofDigest = crypto
       .createHash('sha256')
-      .update(proofPayload)
+      .update(
+        `${input.requestId}:${verification.credentialId}:${verification.verifiedAt}`,
+      )
       .digest('hex');
 
     // Record customer-visible audit event for hardware step-up attestation
@@ -393,6 +428,7 @@ export class JitElevationService {
       data: {
         requestId: request.id,
         hardwareProofDigest,
+        credentialId: verification.credentialId,
         authenticatorType: 'FIDO2_PASSKEY_HARDWARE_ATTESTED',
         verifiedAt: new Date().toISOString(),
         auditRef: request.customerVisibleAuditLogRef,

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useDemoState, saveDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
+import { isWebauthnSupported, requestPasskeyAssertion } from "@/lib/webauthn";
 import { JitElevationSession } from "@/lib/types";
 import { formatTimestamp } from "@/lib/utils";
 import { Card } from "@/ui/Card";
@@ -35,6 +36,7 @@ export default function JitElevationPage() {
   );
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [elevationError, setElevationError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   // Per-second tick for live JIT countdown timers
@@ -72,26 +74,30 @@ export default function JitElevationPage() {
   const handleRequestElevation = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setElevationError(null);
     try {
+      if (!isWebauthnSupported()) {
+        throw new Error(
+          "This browser does not support passkeys (WebAuthn). A registered hardware key or platform authenticator is required for JIT step-up."
+        );
+      }
+
       // 1. Request dual-authorized JIT elevation
       const result = await ZoikoShieldApiClient.requestJitElevation(state.tenant.id, justification, durationMinutes);
 
-      // 2. Perform FIDO2 / WebAuthn hardware step-up challenge verification
-      const stepUpPayload = {
-        type: "webauthn.get",
-        challenge: btoa(`jit-stepup-${result.requestId}-${Date.now()}`),
-        origin: typeof window !== "undefined" ? window.location.origin : "https://shield.zoiko.internal",
-      };
-      const clientDataJson = btoa(JSON.stringify(stepUpPayload));
-      const mockSignature = btoa(`fido2-sig-${result.requestId}-${state.session.userId}`);
-      
+      // 2. Real FIDO2/WebAuthn hardware step-up: fetch a server challenge
+      // bound to this principal's registered credentials, run the actual
+      // browser ceremony, and submit the real assertion for signature
+      // verification against the stored public key.
+      const options = await ZoikoShieldApiClient.getPasskeyStepUpOptions();
+      const assertion = await requestPasskeyAssertion(options);
       const stepUpResult = await ZoikoShieldApiClient.verifyJitStepUp(
         result.requestId,
-        state.session.userId,
-        clientDataJson,
-        mockSignature,
-        "direct-hardware-token"
+        assertion
       );
+      if (!stepUpResult.verified) {
+        throw new Error("Hardware step-up verification failed.");
+      }
 
       // 3. Build a JitElevationSession from the API response and persist to state
       const newSession: JitElevationSession = {
@@ -113,6 +119,9 @@ export default function JitElevationPage() {
       setIsElevationModalOpen(false);
     } catch (err) {
       console.error("JIT elevation error:", err);
+      setElevationError(
+        err instanceof Error ? err.message : "JIT elevation request failed."
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -313,6 +322,11 @@ export default function JitElevationPage() {
         description="FIDO2 / WebAuthn authenticated emergency access elevation."
       >
         <form onSubmit={handleRequestElevation} className="space-y-4">
+          {elevationError && (
+            <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-500/50 text-rose-300 text-xs font-mono">
+              {elevationError}
+            </div>
+          )}
           <div className="space-y-1.5">
             <label className="text-xs font-mono text-slate-300">
               Elevation Justification (Audited):

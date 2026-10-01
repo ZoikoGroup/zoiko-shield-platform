@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { ZoikoShieldApiClient } from '@/lib/api-client';
+import * as webauthn from '@/lib/webauthn';
 
 // Mock Next.js navigation
 vi.mock('next/navigation', () => ({
@@ -29,6 +30,7 @@ import G1GatePage from '@/app/admin/g1-gate/page';
 import JitElevationPage from '@/app/admin/jit/page';
 import PlatformAdminPage from '@/app/admin/page';
 import PlatformHealthPage from '@/app/admin/platform-health/page';
+import LedgerPage from '@/app/ledger/page';
 
 describe('Critical-Path User Interaction & API Wire Validation Suite', () => {
   beforeEach(() => {
@@ -73,6 +75,20 @@ describe('Critical-Path User Interaction & API Wire Validation Suite', () => {
         approverPeerAdmin: 'admin.peer@zoiko.internal',
       } as any);
 
+      vi.spyOn(webauthn, 'isWebauthnSupported').mockReturnValue(true);
+      vi.spyOn(ZoikoShieldApiClient, 'getPasskeyStepUpOptions').mockResolvedValue({
+        challenge: 'challenge-b64url',
+        rpId: 'localhost',
+        allowCredentials: [{ type: 'public-key', id: 'cred-hw-key-1' }],
+        userVerification: 'required',
+        timeout: 120_000,
+      });
+      vi.spyOn(webauthn, 'requestPasskeyAssertion').mockResolvedValue({
+        credentialId: 'cred-hw-key-1',
+        clientDataJsonBase64: 'client-data-b64',
+        authenticatorDataBase64: 'auth-data-b64',
+        signatureBase64: 'signature-b64',
+      });
       vi.spyOn(ZoikoShieldApiClient, 'verifyJitStepUp').mockResolvedValue({
         verified: true,
         hardwareProofDigest: 'sha256-hw-proof-digest-12345',
@@ -104,6 +120,47 @@ describe('Critical-Path User Interaction & API Wire Validation Suite', () => {
         // Modal closes
         expect(screen.queryByText(/Elevation Justification \(Audited\):/i)).toBeNull();
       });
+    });
+
+    it('surfaces a real step-up failure instead of silently granting elevation', async () => {
+      vi.spyOn(ZoikoShieldApiClient, 'requestJitElevation').mockResolvedValue({
+        requestId: 'jit-req-002',
+        requestedRole: 'PLATFORM_SUPER_ADMIN',
+        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+        approverPeerAdmin: 'admin.peer@zoiko.internal',
+      } as any);
+      vi.spyOn(webauthn, 'isWebauthnSupported').mockReturnValue(true);
+      vi.spyOn(ZoikoShieldApiClient, 'getPasskeyStepUpOptions').mockResolvedValue({
+        challenge: 'challenge-b64url',
+        rpId: 'localhost',
+        allowCredentials: [{ type: 'public-key', id: 'cred-hw-key-1' }],
+        userVerification: 'required',
+        timeout: 120_000,
+      });
+      vi.spyOn(webauthn, 'requestPasskeyAssertion').mockResolvedValue({
+        credentialId: 'cred-hw-key-1',
+        clientDataJsonBase64: 'client-data-b64',
+        authenticatorDataBase64: 'auth-data-b64',
+        signatureBase64: 'forged-signature-b64',
+      });
+      vi.spyOn(ZoikoShieldApiClient, 'verifyJitStepUp').mockRejectedValue(
+        new Error('Passkey signature verification failed')
+      );
+
+      render(<JitElevationPage />);
+
+      fireEvent.click(screen.getAllByRole('button', { name: /Request JIT Elevation/i })[0]);
+      await waitFor(() => {
+        expect(screen.getByText(/Elevation Justification/i)).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByRole('button', { name: /Grant JIT Elevation/i }));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Passkey signature verification failed/i)).toBeInTheDocument();
+      });
+      // Modal stays open on failure - elevation was not granted.
+      expect(screen.getByText(/Elevation Justification/i)).toBeInTheDocument();
     });
   });
 
@@ -288,6 +345,52 @@ describe('Critical-Path User Interaction & API Wire Validation Suite', () => {
         expect(screen.getByText(/RESTORE DRILL VERIFIED/i)).toBeInTheDocument();
         expect(screen.getByText(/drill-interaction-verified-01/i)).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('6. Merkle Ledger Proof Verification (/ledger)', () => {
+    it('reports an invalid proof as invalid, not valid', async () => {
+      vi.spyOn(ZoikoShieldApiClient, 'getMerkleInclusionProof').mockResolvedValue({
+        leafIndex: 0,
+        leafHash: 'leaf-hash-1',
+        siblingHashes: [],
+        epochNumber: 1,
+      } as any);
+      vi.spyOn(ZoikoShieldApiClient, 'verifyMerkleProof').mockResolvedValue({
+        valid: false,
+        verifiedAt: new Date().toISOString(),
+      } as any);
+
+      render(<LedgerPage />);
+
+      fireEvent.click(screen.getByText(/Verify Merkle Proof via shield-anchor/i));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Proof Invalid/i)).toBeInTheDocument();
+      });
+      expect(screen.queryByText(/Proof Cryptographically Valid/i)).toBeNull();
+    });
+
+    it('does not report a failed verification call as a valid proof', async () => {
+      vi.spyOn(ZoikoShieldApiClient, 'getMerkleInclusionProof').mockResolvedValue({
+        leafIndex: 0,
+        leafHash: 'leaf-hash-1',
+        siblingHashes: [],
+        epochNumber: 1,
+      } as any);
+      vi.spyOn(ZoikoShieldApiClient, 'verifyMerkleProof').mockRejectedValue(
+        new Error('shield-anchor unreachable')
+      );
+
+      render(<LedgerPage />);
+
+      fireEvent.click(screen.getByText(/Verify Merkle Proof via shield-anchor/i));
+
+      await waitFor(() => {
+        expect(screen.getByText(/Verification could not be completed/i)).toBeInTheDocument();
+      });
+      expect(screen.queryByText(/Proof Cryptographically Valid/i)).toBeNull();
+      expect(screen.queryByText(/Proof Invalid/i)).toBeNull();
     });
   });
 });

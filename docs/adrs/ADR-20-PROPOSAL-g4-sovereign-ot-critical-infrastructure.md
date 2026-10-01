@@ -17,9 +17,27 @@ Three of the eight services also sit on top of `crypto-escrow`, which **ADR-017 
 ## Date
 Proposed 2026-09-30.
 
+## Addendum — 2026-10-01: external auditor workspace was not G4
+
+`ExternalAuditorWorkspaceService`'s own docstring names its specification as
+*"W26, W31-W32 & G4 Phase 4"* — W26 is the G1 "Auditor workspace" experience
+contract (read-only purpose-scoped access, evidence chain inspection, Merkle
+path verification), not a sovereign/OT-specific capability. It was swept
+into this proposal only because it shares the same "G4 Phase…" comment style
+as the genuinely G4 services below, and gating it blocked W26 entirely.
+Corrected: `ExternalAuditorController` no longer carries `G4GateGuard`. The
+remaining seven services are unaffected — checked each one's
+specification docstring directly: none names a W-numbered experience
+contract, only §36/§38 (the gate-approval workstream), §C7 (evidence
+architecture) or a bare G4 Phase reference.
+
 ## Current implementation state (verified against the code)
 
-All eight services are functionally implemented and unit-tested (6 spec files touched directly, 16/16 tests passing as of this ADR):
+All eight services below were originally proposed together; the external
+auditor workspace is no longer gated as of the 2026-10-01 addendum above, so
+seven remain part of this G4 proposal. All eight are functionally
+implemented and unit-tested (6 spec files touched directly, 16/16 tests
+passing as of this ADR):
 
 | Service | Location | Exposure |
 | --- | --- | --- |
@@ -30,7 +48,7 @@ All eight services are functionally implemented and unit-tested (6 spec files to
 | Customer BYOK/HYOK key custody (Topology T4) | `shield-core/modules/crypto-escrow/customer-byok-kms-proxy.service.ts` | `CryptoEscrowController` — public tenant HTTP (`api/v1/crypto-escrow/byok/*`) — **also an ADR-017 breach** |
 | MPC threshold key recovery | `shield-core/modules/crypto-escrow/mpc-threshold-key-recovery.service.ts` | `CryptoEscrowController` — public tenant HTTP (`api/v1/crypto-escrow/mpc/*`) — **also an ADR-017 breach** |
 | Confidential-computing hardware attestation | `shield-core/modules/crypto-escrow/confidential-computing-attestation.service.ts` | `CryptoEscrowController` — public tenant HTTP (`api/v1/crypto-escrow/attestation/*`) — **also an ADR-017 breach** |
-| External auditor workspace (independent assurance) | `shield-core/modules/audit-package/auditor/external-auditor-workspace.service.ts` | `ExternalAuditorController` — public tenant HTTP (`api/v1/auditor/*`) |
+| External auditor workspace (independent assurance) | `shield-core/modules/audit-package/auditor/external-auditor-workspace.service.ts` | `ExternalAuditorController` — public tenant HTTP (`api/v1/auditor/*`) — **not gated; see 2026-10-01 addendum, this is W26** |
 
 `CryptoEscrowController`'s `kms-health/*` routes (multi-cloud KMS failover) are **not** part of this proposal — that is general infrastructure resilience, not a sovereign/OT/G4 capability, and stays live.
 

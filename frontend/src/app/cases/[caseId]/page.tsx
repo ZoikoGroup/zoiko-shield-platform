@@ -1,8 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { useDemoState, getInitialDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
 import { Case, AiInvestigationSummary } from "@/lib/types";
 import { formatTimestamp } from "@/lib/utils";
@@ -15,6 +14,10 @@ import { EvidenceLedger } from "@/components/cases/EvidenceLedger";
 import { AiSummaryPanel } from "@/components/cases/AiSummaryPanel";
 import { ResponseSimulator } from "@/components/cases/ResponseSimulator";
 import { AttackGraphVisualizer } from "@/components/cases/AttackGraphVisualizer";
+import {
+  LoadingState,
+  UnavailableState,
+} from "@/components/states/mandatory-ui-states";
 import {
   FolderLock,
   Clock,
@@ -31,16 +34,56 @@ export default function CaseWorkspacePage() {
   const router = useRouter();
   const caseId = params?.caseId as string;
 
-  const [state, setState] = useDemoState();
   const [activeTab, setActiveTab] = useState<string>("overview");
 
-  useEffect(() => {
-    ZoikoShieldApiClient.getCases().catch(() => {/* backend offline — demo state used */});
+  // The case record is real data fetched from the backend — this used to
+  // fire a getCases() call whose result was discarded, with the workspace
+  // reading a hardcoded demo-state fixture instead.
+  const [cases, setCases] = useState<Case[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [fetchFailed, setFetchFailed] = useState(false);
+
+  const loadCases = useCallback(() => {
+    setIsLoading(true);
+    ZoikoShieldApiClient.getCases()
+      .then((data) => {
+        setCases(data);
+        setFetchFailed(false);
+      })
+      .catch(() => {
+        setFetchFailed(true);
+      })
+      .finally(() => setIsLoading(false));
   }, []);
 
-  const currentCase: Case | undefined = state.cases.find(
-    (c) => c.id === caseId
-  );
+  useEffect(() => {
+    loadCases();
+  }, [loadCases]);
+
+  const currentCase: Case | undefined = cases?.find((c) => c.id === caseId);
+
+  if (isLoading && !cases) {
+    return (
+      <div className="py-10">
+        <LoadingState
+          title="Loading Case Workspace..."
+          message="Fetching the case record from shield-core."
+        />
+      </div>
+    );
+  }
+
+  if (fetchFailed && !currentCase) {
+    return (
+      <div className="py-10">
+        <UnavailableState
+          title="Case Workspace Unavailable"
+          message="Unable to load case records from the backend. The case shown may be missing or out of date."
+          retryAction={loadCases}
+        />
+      </div>
+    );
+  }
 
   if (!currentCase) {
     return (
@@ -173,15 +216,15 @@ export default function CaseWorkspacePage() {
             caseId={currentCase.id}
             aiSummary={currentCase.aiSummary}
             aiReviewEnvelope={currentCase.aiReviewEnvelope}
-            onGenerateSuccess={() => setState(getInitialDemoState())}
-            onDecisionSuccess={() => setState(getInitialDemoState())}
+            onGenerateSuccess={() => loadCases()}
+            onDecisionSuccess={() => loadCases()}
           />
         )}
 
         {activeTab === "response" && (
           <ResponseSimulator
             currentCase={currentCase}
-            onUpdateCase={() => setState(getInitialDemoState())}
+            onUpdateCase={() => loadCases()}
           />
         )}
       </div>

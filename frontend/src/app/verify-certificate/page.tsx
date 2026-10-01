@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Card } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
@@ -17,12 +17,15 @@ import {
   Sparkles,
   ArrowRight,
   Fingerprint,
+  Search,
+  GitBranch,
 } from "lucide-react";
 import {
   LoadingState,
   UnavailableState,
 } from "@/components/states/mandatory-ui-states";
 import { verifyCertificateJson } from "@/lib/forensic-verifier";
+import { ZoikoShieldApiClient } from "@/lib/api-client";
 
 interface CertificateCheck {
   envelopeIntegrity: boolean;
@@ -60,6 +63,78 @@ export default function VerifyCertificatePage() {
   const [isVerifying, setIsVerifying] = useState(false);
   const [certificate, setCertificate] = useState<VerificationCertificate | null>(null);
   const [verificationError, setVerificationError] = useState<string | null>(null);
+
+  // --- W26 Auditor Workspace: live, authenticated, read-only access to this
+  // tenant's actual evidence chain and Merkle integrity state via
+  // ExternalAuditorController (/api/v1/auditor/*). Distinct from the offline
+  // verifier above, which checks a pasted certificate with no backend call
+  // at all. Note: the spec's "evidence requests/comments and activity audit"
+  // requirements have no backing endpoint yet - this covers the read-only
+  // access and verification part only.
+  const [workspaceSummary, setWorkspaceSummary] = useState<any>(null);
+  const [isLoadingWorkspace, setIsLoadingWorkspace] = useState(true);
+  const [workspaceError, setWorkspaceError] = useState<string | null>(null);
+
+  const [evidencePackageId, setEvidencePackageId] = useState("");
+  const [evidenceChain, setEvidenceChain] = useState<any>(null);
+  const [isLoadingEvidenceChain, setIsLoadingEvidenceChain] = useState(false);
+  const [evidenceChainError, setEvidenceChainError] = useState<string | null>(null);
+
+  const [merkleNodeHash, setMerkleNodeHash] = useState("");
+  const [merklePathResult, setMerklePathResult] = useState<any>(null);
+  const [isLoadingMerklePath, setIsLoadingMerklePath] = useState(false);
+  const [merklePathError, setMerklePathError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    setIsLoadingWorkspace(true);
+    setWorkspaceError(null);
+    ZoikoShieldApiClient.getAuditorWorkspace()
+      .then((data) => {
+        if (!cancelled) setWorkspaceSummary(data);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setWorkspaceError(err instanceof Error ? err.message : String(err));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsLoadingWorkspace(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const handleLookupEvidenceChain = async () => {
+    if (!evidencePackageId.trim()) return;
+    setIsLoadingEvidenceChain(true);
+    setEvidenceChainError(null);
+    setEvidenceChain(null);
+    try {
+      const data = await ZoikoShieldApiClient.getAuditorEvidenceChain(evidencePackageId.trim());
+      setEvidenceChain(data);
+    } catch (err) {
+      setEvidenceChainError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsLoadingEvidenceChain(false);
+    }
+  };
+
+  const handleLookupMerklePath = async () => {
+    if (!merkleNodeHash.trim()) return;
+    setIsLoadingMerklePath(true);
+    setMerklePathError(null);
+    setMerklePathResult(null);
+    try {
+      const data = await ZoikoShieldApiClient.getAuditorMerklePath(merkleNodeHash.trim());
+      setMerklePathResult(data);
+    } catch (err) {
+      setMerklePathError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsLoadingMerklePath(false);
+    }
+  };
 
   const handleLoadSample = () => {
     const sampleCert: VerificationCertificate = {
@@ -324,6 +399,104 @@ export default function VerifyCertificatePage() {
             </div>
           )}
         </Card>
+      </div>
+
+      {/* W26 — Live Auditor Workspace: real, authenticated, read-only access */}
+      <div className="space-y-4 pt-4 border-t border-slate-800">
+        <div className="flex items-center gap-2">
+          <Badge variant="active">LIVE</Badge>
+          <span className="text-xs font-mono text-cyan-400 font-bold">AUDITOR WORKSPACE</span>
+        </div>
+        <p className="text-xs text-slate-500">
+          Authenticated, read-only access to this tenant&apos;s actual evidence and Merkle
+          integrity state — distinct from the offline verifier above, which never calls the
+          backend.
+        </p>
+
+        {isLoadingWorkspace && <LoadingState message="Loading auditor workspace…" />}
+        {workspaceError && !isLoadingWorkspace && (
+          <UnavailableState message={workspaceError} />
+        )}
+        {workspaceSummary && !isLoadingWorkspace && (
+          <Card className="p-4 space-y-2 text-xs font-mono">
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Workspace status</span>
+              <Badge variant="pass">{workspaceSummary.workspaceStatus ?? "UNKNOWN"}</Badge>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Ledger integrity</span>
+              <span className="text-slate-200">{workspaceSummary.activeLedgerIntegrity ?? "—"}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400">Audit packages (frozen / total)</span>
+              <span className="text-slate-200">
+                {workspaceSummary.frozenImmutablePackages ?? "—"} / {workspaceSummary.totalAuditPackages ?? "—"}
+              </span>
+            </div>
+          </Card>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <Card className="p-4 space-y-2">
+            <label className="text-xs font-mono text-slate-300 flex items-center gap-1.5">
+              <FileCheck2 className="w-3.5 h-3.5 text-cyan-400" />
+              Evidence chain inspector
+            </label>
+            <div className="flex gap-2">
+              <input
+                className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 font-mono"
+                placeholder="Package ID"
+                value={evidencePackageId}
+                onChange={(e) => setEvidencePackageId(e.target.value)}
+              />
+              <Button
+                variant="outline"
+                onClick={() => void handleLookupEvidenceChain()}
+                disabled={isLoadingEvidenceChain}
+              >
+                <Search className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+            {evidenceChainError && (
+              <p className="text-rose-300 text-[11px] font-mono">{evidenceChainError}</p>
+            )}
+            {evidenceChain && (
+              <pre className="text-[10px] text-slate-300 bg-slate-950 p-2 rounded border border-slate-800 overflow-auto max-h-48">
+                {JSON.stringify(evidenceChain, null, 2)}
+              </pre>
+            )}
+          </Card>
+
+          <Card className="p-4 space-y-2">
+            <label className="text-xs font-mono text-slate-300 flex items-center gap-1.5">
+              <GitBranch className="w-3.5 h-3.5 text-cyan-400" />
+              Merkle path verification
+            </label>
+            <div className="flex gap-2">
+              <input
+                className="flex-1 bg-slate-900 border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-100 font-mono"
+                placeholder="Leaf node hash"
+                value={merkleNodeHash}
+                onChange={(e) => setMerkleNodeHash(e.target.value)}
+              />
+              <Button
+                variant="outline"
+                onClick={() => void handleLookupMerklePath()}
+                disabled={isLoadingMerklePath}
+              >
+                <Search className="w-3.5 h-3.5" />
+              </Button>
+            </div>
+            {merklePathError && (
+              <p className="text-rose-300 text-[11px] font-mono">{merklePathError}</p>
+            )}
+            {merklePathResult && (
+              <pre className="text-[10px] text-slate-300 bg-slate-950 p-2 rounded border border-slate-800 overflow-auto max-h-48">
+                {JSON.stringify(merklePathResult, null, 2)}
+              </pre>
+            )}
+          </Card>
+        </div>
       </div>
     </div>
   );

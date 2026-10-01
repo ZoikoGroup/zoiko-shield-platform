@@ -2,8 +2,8 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
+import type { AuditPackage } from "@/lib/types";
 import { formatTimestamp, truncateHash } from "@/lib/utils";
 import { Card } from "@/ui/Card";
 import { Button } from "@/ui/Button";
@@ -29,15 +29,22 @@ import {
 
 export default function AuditPage() {
   const router = useRouter();
-  const [state] = useDemoState();
+  const [auditPackages, setAuditPackages] = useState<AuditPackage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isStale, setIsStale] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     setIsLoading(true);
     ZoikoShieldApiClient.getAuditPackages()
-      .catch(() => {
+      .then((pkgs) => {
+        setAuditPackages(pkgs);
+        setIsStale(false);
+        setLoadError(null);
+      })
+      .catch((err) => {
         setIsStale(true);
+        setLoadError(err instanceof Error ? err.message : String(err));
       })
       .finally(() => {
         setIsLoading(false);
@@ -47,25 +54,32 @@ export default function AuditPage() {
   const refreshAuditPackages = async () => {
     setIsLoading(true);
     try {
-      await ZoikoShieldApiClient.getAuditPackages();
+      const pkgs = await ZoikoShieldApiClient.getAuditPackages();
+      setAuditPackages(pkgs);
       setIsStale(false);
-    } catch {
+      setLoadError(null);
+    } catch (err) {
       setIsStale(true);
+      setLoadError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsLoading(false);
     }
   };
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generateError, setGenerateError] = useState<string | null>(null);
 
-  const latestPackage = state.auditPackages[0];
+  const latestPackage = auditPackages[0];
 
   const handleGenerate = async () => {
     setIsGenerating(true);
+    setGenerateError(null);
     try {
-      await ZoikoShieldApiClient.generateAuditPackage();
+      const pkg = await ZoikoShieldApiClient.generateAuditPackage();
+      setAuditPackages((prev) => [pkg, ...prev.filter((p) => p.id !== pkg.id)]);
     } catch (err) {
       console.error("Generate Audit Package Error:", err);
+      setGenerateError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsGenerating(false);
     }
@@ -114,12 +128,26 @@ export default function AuditPage() {
         />
       )}
 
-      {isStale && !isLoading && (
+      {isStale && !isLoading && auditPackages.length > 0 && (
         <StaleState
           title="Cached Audit Export View"
-          message="Showing last verified package manifest from local cache."
+          message="Showing last verified package manifest. Could not reach the backend for a fresh copy."
           retryAction={refreshAuditPackages}
         />
+      )}
+
+      {isStale && !isLoading && auditPackages.length === 0 && (
+        <UnavailableState
+          title="Audit Packages Unavailable"
+          message={loadError || "Could not load audit packages from the backend."}
+          retryAction={refreshAuditPackages}
+        />
+      )}
+
+      {generateError && !isGenerating && (
+        <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-500/50 text-rose-300 text-xs font-mono">
+          Failed to generate audit package: {generateError}
+        </div>
       )}
 
       {/* Package Details Card */}
@@ -229,12 +257,19 @@ export default function AuditPage() {
               <span className="text-emerald-400">72 Hours Maximum SLA</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">ACTIVE TELEMETRY STREAMS:</span>
-              <span className="text-slate-200">100% Verified &lt; 24h Fresh</span>
+              <span className="text-slate-500">LATEST PACKAGE AGE:</span>
+              <span className="text-slate-200">
+                {latestPackage
+                  ? `${(
+                      (Date.now() - new Date(latestPackage.generatedAt).getTime()) /
+                      3600000
+                    ).toFixed(1)}h since generation`
+                  : "No package generated"}
+              </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">DECAYED EVIDENCE DETECTED:</span>
-              <span className="text-emerald-400 font-bold">0 Records Stale</span>
+              <span className="text-slate-500">PER-RECORD EVIDENCE FRESHNESS:</span>
+              <span className="text-amber-300">Not computed on this view</span>
             </div>
             <div className="flex justify-between pt-1 border-t border-slate-900">
               <span className="text-slate-500">MERKLE LEAF ANCHORS:</span>

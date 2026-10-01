@@ -84,6 +84,30 @@ export interface TeamMember {
   joinedAt: string;
 }
 
+/**
+ * A tenant membership as returned by shield-core's
+ * GET /api/v1/tenants/:tenantId/members. Distinct from `TeamMember` (the
+ * onboarding-flow fixture shape): the real membership record identifies the
+ * principal only by id and carries a list of assigned roles, not a single
+ * display name/email/role string — shield-core does not join to a user
+ * directory for this endpoint.
+ */
+export interface TenantMemberRole {
+  id: string;
+  name: string;
+}
+
+export interface TenantMember {
+  id: string;
+  tenantId: string;
+  principalId: string;
+  status: 'PENDING' | 'ACTIVE' | 'SUSPENDED' | 'REMOVED';
+  source: string;
+  joinedAt: string;
+  expiresAt?: string | null;
+  roles: TenantMemberRole[];
+}
+
 export interface Invitation {
   id: string;
   tenantId: string;

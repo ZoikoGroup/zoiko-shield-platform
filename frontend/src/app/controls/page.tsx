@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
+import type { ControlTest } from "@/lib/types";
 import { formatTimestamp, truncateHash } from "@/lib/utils";
 import { Card } from "@/ui/Card";
 import { Button } from "@/ui/Button";
@@ -27,48 +27,50 @@ import {
 
 export default function ControlsPage() {
   const router = useRouter();
-  const [state] = useDemoState();
-  const [isLoading, setIsLoading] = useState(false);
+  const [controlTests, setControlTests] = useState<ControlTest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [isStale, setIsStale] = useState(false);
 
-  useEffect(() => {
-    setIsLoading(true);
-    ZoikoShieldApiClient.getControlTests()
-      .catch(() => {
-        setIsStale(true);
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, []);
-
-  const refreshControls = async () => {
+  const load = useCallback(async () => {
     setIsLoading(true);
     try {
-      await ZoikoShieldApiClient.getControlTests();
+      const data = await ZoikoShieldApiClient.getControlTests();
+      setControlTests(data);
       setIsStale(false);
     } catch {
       setIsStale(true);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const refreshControls = () => load();
 
   const [evaluatingId, setEvaluatingId] = useState<string | null>(null);
 
   const handleEvaluate = async (controlId: string) => {
     setEvaluatingId(controlId);
     try {
-      await ZoikoShieldApiClient.evaluateControl(controlId);
+      const updated = await ZoikoShieldApiClient.evaluateControl(controlId);
+      setControlTests((prev) =>
+        prev.map((c) =>
+          c.id === controlId || c.controlId === controlId ? updated : c,
+        ),
+      );
     } catch (err) {
       console.error("Evaluate Control Error:", err);
+      setIsStale(true);
     } finally {
       setEvaluatingId(null);
     }
   };
 
   const handleEvaluateAll = async () => {
-    for (const ctrl of state.controlTests) {
+    for (const ctrl of controlTests) {
       await handleEvaluate(ctrl.id);
     }
   };
@@ -125,7 +127,7 @@ export default function ControlsPage() {
         let freshCount = 0;
         let agingCount = 0;
         let staleCount = 0;
-        state.controlTests.forEach((ctrl) => {
+        controlTests.forEach((ctrl) => {
           const evalTimestamp = ctrl.lastEvaluatedAt ? new Date(ctrl.lastEvaluatedAt).getTime() : Date.now();
           const ageHours = Math.max(0, Math.floor((Date.now() - evalTimestamp) / (1000 * 60 * 60)));
           if (ageHours < 24) freshCount++;
@@ -161,8 +163,15 @@ export default function ControlsPage() {
       })()}
 
       {/* Controls Grid */}
+      {!isLoading && controlTests.length === 0 ? (
+        <Card variant="cyber" className="p-6">
+          <p className="text-sm text-slate-300">
+            No controls have been evaluated for this tenant yet.
+          </p>
+        </Card>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {state.controlTests.map((ctrl, idx) => {
+        {controlTests.map((ctrl, idx) => {
           const evalTimestamp = ctrl.lastEvaluatedAt ? new Date(ctrl.lastEvaluatedAt).getTime() : Date.now();
           const ageHours = Math.max(0, Math.floor((Date.now() - evalTimestamp) / (1000 * 60 * 60)));
           const freshnessTag =
@@ -244,6 +253,7 @@ export default function ControlsPage() {
           );
         })}
       </div>
+      )}
     </div>
   );
 }

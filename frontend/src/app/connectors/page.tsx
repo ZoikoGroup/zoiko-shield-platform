@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
@@ -66,8 +66,13 @@ function getProviderTier(provider: ConnectorProviderType): ConnectorCertificatio
 
 export default function ConnectorsPage() {
   const router = useRouter();
-  const [state, setState] = useDemoState();
-  const [isFetchingConnectors, setIsFetchingConnectors] = useState(false);
+  const [state] = useDemoState();
+  // The connector list is the real record, fetched below and mutated
+  // optimistically on top by the action handlers — it is intentionally not
+  // part of useDemoState, which here is used only for genuinely local UI
+  // context (tenant id/slug for headers and the activation-confirmation copy).
+  const [connectors, setConnectors] = useState<Connector[]>([]);
+  const [isFetchingConnectors, setIsFetchingConnectors] = useState(true);
   const [isStale, setIsStale] = useState(false);
   const [driftAlerts, setDriftAlerts] = useState<Array<{ connectorId: string; provider: string; reason: string }>>([]);
 
@@ -113,10 +118,7 @@ export default function ConnectorsPage() {
       webhookUrl: `https://ingest.zoikoshield.corp/api/v1/telemetry/webhook/${config.provider}`,
       eventsIngestedCount: 142,
     };
-    setState((prev) => ({
-      ...prev,
-      connectors: [newConn, ...prev.connectors],
-    }));
+    setConnectors((prev) => [newConn, ...prev]);
     setActionMessage(`Successfully activated ${config.name} (${tier}) with verified TLS 1.3 mutual handshake.`);
   };
 
@@ -130,17 +132,16 @@ export default function ConnectorsPage() {
         const payload = event.data;
         if (payload?.instanceId) {
           const instId = String(payload.instanceId);
-          setState((prev) => ({
-            ...prev,
-            connectors: prev.connectors.map((c) =>
+          setConnectors((prev) =>
+            prev.map((c) =>
               c.id === instId
                 ? {
                     ...c,
                     healthStatus: payload.driftStatus === "REVOKED" ? ("UNHEALTHY" as const) : payload.driftStatus === "DEGRADED" ? ("DEGRADED" as const) : ("HEALTHY" as const),
                   }
                 : c
-            ),
-          }));
+            )
+          );
           if (payload.driftStatus === "DEGRADED" || payload.driftStatus === "REVOKED") {
             const missing = Array.isArray(payload.missingPermissions) ? payload.missingPermissions.join(", ") : "Scope revoked";
             setDriftAlerts((prev) => [
@@ -157,68 +158,58 @@ export default function ConnectorsPage() {
         const payload = event.data;
         if (payload?.connectorId) {
           const connId = String(payload.connectorId);
-          setState((prev) => ({
-            ...prev,
-            connectors: prev.connectors.map((c) =>
+          setConnectors((prev) =>
+            prev.map((c) =>
               c.id === connId
                 ? { ...c, eventsIngestedCount: (c.eventsIngestedCount || 0) + 1 }
                 : c
-            ),
-          }));
+            )
+          );
         }
       }
     },
   });
 
-  useEffect(() => {
-    setIsFetchingConnectors(true);
-    ZoikoShieldApiClient.getConnectors()
-      .catch(() => {
-        setIsStale(true);
-      })
-      .finally(() => {
-        setIsFetchingConnectors(false);
-      });
-  }, []);
-
-  const refreshConnectors = async () => {
+  const refreshConnectors = useCallback(async () => {
     setIsFetchingConnectors(true);
     try {
-      await ZoikoShieldApiClient.getConnectors();
+      const data = await ZoikoShieldApiClient.getConnectors();
+      setConnectors(data);
       setIsStale(false);
     } catch {
       setIsStale(true);
     } finally {
       setIsFetchingConnectors(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    refreshConnectors();
+  }, [refreshConnectors]);
 
   const handleCreateConnector = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
       const calculatedTier = getProviderTier(provider);
-      await ZoikoShieldApiClient.createConnector({
+      const created = await ZoikoShieldApiClient.createConnector({
         tenantId: state.tenant.id,
         name,
         provider,
         sourceRegion: region,
       });
 
-      // Update local state with certification metadata
-      setState((prev) => ({
-        ...prev,
-        connectors: prev.connectors.map((c) =>
-          c.name === name
-            ? {
-                ...c,
-                tier: calculatedTier,
-                ocsfStatus: calculatedTier === "EXPERIMENTAL_UNCERTIFIED" ? "SCHEMA_CUSTOM" : "MAPPED_OCSF_V1",
-                eventsPerMinute: calculatedTier === "P0_CERTIFIED" ? 120 : calculatedTier === "P1_PREVIEW" ? 45 : 10,
-              }
-            : c
-        ),
-      }));
+      // Add the newly created connector (with certification metadata) to the
+      // real list on top — previously this relied on the connector already
+      // being present in the array to match by name, which only worked by
+      // accident via the demo-state fixture sync.
+      const withTier: Connector = {
+        ...created,
+        tier: calculatedTier,
+        ocsfStatus: calculatedTier === "EXPERIMENTAL_UNCERTIFIED" ? "SCHEMA_CUSTOM" : "MAPPED_OCSF_V1",
+        eventsPerMinute: calculatedTier === "P0_CERTIFIED" ? 120 : calculatedTier === "P1_PREVIEW" ? 45 : 10,
+      };
+      setConnectors((prev) => [withTier, ...prev.filter((c) => c.id !== withTier.id)]);
 
       setIsAddModalOpen(false);
       setActionMessage(`✅ Connector created successfully with tier ${calculatedTier}`);
@@ -249,6 +240,17 @@ export default function ConnectorsPage() {
     setActionMessage(null);
     try {
       const res = await ZoikoShieldApiClient.syncConnector(connectorId);
+      setConnectors((prev) =>
+        prev.map((c) =>
+          c.id === connectorId
+            ? {
+                ...c,
+                eventsIngestedCount: (c.eventsIngestedCount || 0) + (res.syncedCount || 0),
+                lastEventAt: res.lastSyncAt || new Date().toISOString(),
+              }
+            : c
+        )
+      );
       setActionMessage(`🔄 Synced ${res.syncedCount || 12} new OCSF-normalized events!`);
     } catch (err: any) {
       setActionMessage(`❌ Sync failed: ${err.message}`);
@@ -279,21 +281,19 @@ export default function ConnectorsPage() {
     try {
       if (currentStatus === "ACTIVE") {
         await ZoikoShieldApiClient.disableConnector(connectorId);
-        setState((prev) => ({
-          ...prev,
-          connectors: prev.connectors.map((c) =>
+        setConnectors((prev) =>
+          prev.map((c) =>
             c.id === connectorId ? { ...c, status: "DISABLED" as const } : c
-          ),
-        }));
+          )
+        );
         setActionMessage(`⏸️ Connector disabled`);
       } else {
         await ZoikoShieldApiClient.activateConnector(connectorId);
-        setState((prev) => ({
-          ...prev,
-          connectors: prev.connectors.map((c) =>
+        setConnectors((prev) =>
+          prev.map((c) =>
             c.id === connectorId ? { ...c, status: "ACTIVE" as const, isP1PreviewEnabled: true } : c
-          ),
-        }));
+          )
+        );
         setActionMessage(`▶️ Connector stream activated`);
       }
     } catch (err: any) {
@@ -319,7 +319,7 @@ export default function ConnectorsPage() {
 
   // Filter connectors
   const filteredConnectors = useMemo(() => {
-    return state.connectors.filter((conn) => {
+    return connectors.filter((conn) => {
       const tier = conn.tier || getProviderTier(conn.provider);
       
       // Tier filter
@@ -348,13 +348,13 @@ export default function ConnectorsPage() {
 
       return true;
     });
-  }, [state.connectors, tierFilter, healthFilter, searchQuery]);
+  }, [connectors, tierFilter, healthFilter, searchQuery]);
 
   // Statistics
-  const p0Count = state.connectors.filter((c) => (c.tier || getProviderTier(c.provider)) === "P0_CERTIFIED").length;
-  const p1Count = state.connectors.filter((c) => (c.tier || getProviderTier(c.provider)) === "P1_PREVIEW").length;
-  const expCount = state.connectors.filter((c) => (c.tier || getProviderTier(c.provider)) === "EXPERIMENTAL_UNCERTIFIED").length;
-  const totalEventsIngested = state.connectors.reduce((acc, c) => acc + (c.eventsIngestedCount || 0), 0);
+  const p0Count = connectors.filter((c) => (c.tier || getProviderTier(c.provider)) === "P0_CERTIFIED").length;
+  const p1Count = connectors.filter((c) => (c.tier || getProviderTier(c.provider)) === "P1_PREVIEW").length;
+  const expCount = connectors.filter((c) => (c.tier || getProviderTier(c.provider)) === "EXPERIMENTAL_UNCERTIFIED").length;
+  const totalEventsIngested = connectors.reduce((acc, c) => acc + (c.eventsIngestedCount || 0), 0);
 
   return (
     <div className="space-y-6">
@@ -415,9 +415,9 @@ export default function ConnectorsPage() {
             <span>TOTAL CONNECTORS</span>
             <Network className="w-3.5 h-3.5 text-cyan-400" />
           </div>
-          <div className="text-xl font-bold font-mono text-white">{state.connectors.length}</div>
+          <div className="text-xl font-bold font-mono text-white">{connectors.length}</div>
           <div className="text-[10px] font-mono text-emerald-400">
-            {state.connectors.filter((c) => c.status === "ACTIVE").length} Active Feeds
+            {connectors.filter((c) => c.status === "ACTIVE").length} Active Feeds
           </div>
         </Card>
 
@@ -487,12 +487,12 @@ export default function ConnectorsPage() {
         />
       )}
 
-      {state.connectors.some((c) => c.status === "DISABLED") && (
+      {connectors.some((c) => c.status === "DISABLED") && (
         <PartialState
           title="Degraded Telemetry Ingestion"
           message="One or more connectors are disabled. Telemetry ingestion across these providers is halted."
-          connectorsActive={state.connectors.filter((c) => c.status === "ACTIVE").length}
-          connectorsTotal={state.connectors.length}
+          connectorsActive={connectors.filter((c) => c.status === "ACTIVE").length}
+          connectorsTotal={connectors.length}
           retryAction={refreshConnectors}
         />
       )}
@@ -522,7 +522,7 @@ export default function ConnectorsPage() {
                 : "bg-slate-950 text-slate-400 border border-slate-800 hover:text-slate-200"
             }`}
           >
-            ALL ({state.connectors.length})
+            ALL ({connectors.length})
           </button>
           <button
             onClick={() => setTierFilter("P0_CERTIFIED")}

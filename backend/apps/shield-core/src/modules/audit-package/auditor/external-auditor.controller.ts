@@ -9,17 +9,20 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../../authorization/guards/permissions.guard';
-import { G4GateGuard } from '../../authorization/guards/g4-gate.guard';
 import { RequirePermissions } from '../../authorization/decorators/require-permissions.decorator';
 import { RequireAssurance } from '../../authorization/decorators/require-assurance.decorator';
 import { PERMISSION_CODES } from '../../authorization/constants';
 import { requireTenantId } from '../../../tenant-context';
 import { ExternalAuditorWorkspaceService } from './external-auditor-workspace.service';
 
-// Every route on this controller is part of the unratified G4 proposal
-// (ADR-20): external auditor workspace / independent assurance. G4GateGuard
-// fails closed.
-@UseGuards(JwtAuthGuard, PermissionsGuard, G4GateGuard)
+// NOT G4-gated: ExternalAuditorWorkspaceService's own docstring names its
+// specification as "W26, W31-W32 & G4 Phase 4" - this is W26 (G1,
+// auditor workspace), not a sovereign/OT-specific capability. It was
+// mistakenly swept into the ADR-20 G4 proposal alongside genuinely G4
+// services (same "G4 Phase..." comment style) and gated off; corrected
+// 2026-10-01 once the W26 experience contract needed it. See ADR-20's
+// addendum for the correction record.
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @RequirePermissions(PERMISSION_CODES.TENANT_RESOURCE_READ)
 @Controller('api/v1/auditor')
 export class ExternalAuditorController {

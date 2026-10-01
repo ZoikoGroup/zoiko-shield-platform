@@ -6,6 +6,7 @@ import type { IdentityEvent } from '../identity-adapter/identity-event.entity';
 
 describe('JitElevationService (Dual-Authorized Scoped & Time-Bound Tenant Access)', () => {
   let jitService: JitElevationService;
+  let fakeWebauthnService: { verifyAssertion: jest.Mock };
   let jitRequests: JitElevationRequest[] = [];
   let memberships: TenantMembership[] = [];
   let roles: Role[] = [];
@@ -136,7 +137,18 @@ describe('JitElevationService (Dual-Authorized Scoped & Time-Bound Tenant Access
     events = [];
     jest.clearAllMocks();
 
-    jitService = new JitElevationService(fakePrisma);
+    fakeWebauthnService = {
+      verifyAssertion: jest.fn().mockResolvedValue({
+        principalId: 'admin-super-01',
+        credentialId: 'cred-hw-key-1',
+        userVerified: true,
+        verifiedAt: Date.now(),
+      }),
+    };
+    jitService = new JitElevationService(
+      fakePrisma,
+      fakeWebauthnService as never,
+    );
   });
 
   it('1. should create a PENDING JIT elevation request with stated purpose', async () => {
@@ -280,7 +292,7 @@ describe('JitElevationService (Dual-Authorized Scoped & Time-Bound Tenant Access
     expect(trail[0].customerVisibleAuditLogRef).toBeDefined();
   });
 
-  it('7. should verify FIDO2/WebAuthn step-up challenge with hardware attestation digest', async () => {
+  it('7. should verify FIDO2/WebAuthn step-up challenge via WebauthnService and record the attestation digest', async () => {
     const req = await jitService.requestElevation({
       superAdminPrincipalId: 'admin-super-01',
       targetTenantId: 'tenant-acme-bank',
@@ -290,13 +302,19 @@ describe('JitElevationService (Dual-Authorized Scoped & Time-Bound Tenant Access
     const verification = await jitService.verifyStepUpChallenge({
       requestId: req.id,
       principalId: 'admin-super-01',
-      clientDataJson: Buffer.from(
+      credentialId: 'cred-hw-key-1',
+      clientDataJsonBase64: Buffer.from(
         JSON.stringify({ type: 'webauthn.get', challenge: 'test-challenge' }),
       ).toString('base64'),
-      signature: 'mock-fido2-signature-bytes',
-      authenticatorData: 'mock-auth-data',
+      signatureBase64: 'mock-fido2-signature-bytes',
+      authenticatorDataBase64: 'mock-auth-data',
     });
 
+    expect(fakeWebauthnService.verifyAssertion).toHaveBeenCalledWith(
+      expect.objectContaining({ credentialId: 'cred-hw-key-1' }),
+      'STEP_UP',
+      'admin-super-01',
+    );
     expect(verification.verified).toBe(true);
     expect(verification.hardwareProofDigest).toBeDefined();
     expect(verification.hardwareProofDigest.length).toBe(64); // SHA-256 hex string
@@ -305,7 +323,7 @@ describe('JitElevationService (Dual-Authorized Scoped & Time-Bound Tenant Access
     ).toBe(true);
   });
 
-  it('8. should reject step-up challenge when signature or clientDataJson is missing', async () => {
+  it('8. should reject step-up challenge when any WebAuthn field is missing', async () => {
     const req = await jitService.requestElevation({
       superAdminPrincipalId: 'admin-super-01',
       targetTenantId: 'tenant-acme-bank',
@@ -316,10 +334,13 @@ describe('JitElevationService (Dual-Authorized Scoped & Time-Bound Tenant Access
       jitService.verifyStepUpChallenge({
         requestId: req.id,
         principalId: 'admin-super-01',
-        clientDataJson: '',
-        signature: '',
+        credentialId: '',
+        clientDataJsonBase64: '',
+        authenticatorDataBase64: '',
+        signatureBase64: '',
       }),
     ).rejects.toThrow('FIDO2_ATTESTATION_REQUIRED');
+    expect(fakeWebauthnService.verifyAssertion).not.toHaveBeenCalled();
   });
 
   it('9. should reject step-up challenge when JIT request is not found', async () => {
@@ -327,9 +348,37 @@ describe('JitElevationService (Dual-Authorized Scoped & Time-Bound Tenant Access
       jitService.verifyStepUpChallenge({
         requestId: 'non-existent-jit-req',
         principalId: 'admin-super-01',
-        clientDataJson: 'dummy-client-data',
-        signature: 'dummy-sig',
+        credentialId: 'cred-hw-key-1',
+        clientDataJsonBase64: 'dummy-client-data',
+        authenticatorDataBase64: 'dummy-auth-data',
+        signatureBase64: 'dummy-sig',
       }),
     ).rejects.toThrow("JIT request 'non-existent-jit-req' not found");
+  });
+
+  it('10. should propagate a failed signature verification rather than reporting verified: true', async () => {
+    const req = await jitService.requestElevation({
+      superAdminPrincipalId: 'admin-super-01',
+      targetTenantId: 'tenant-acme-bank',
+      statedPurpose: 'Hardware MFA step-up rejection test',
+    });
+    fakeWebauthnService.verifyAssertion.mockRejectedValueOnce(
+      new Error('Passkey signature verification failed'),
+    );
+
+    await expect(
+      jitService.verifyStepUpChallenge({
+        requestId: req.id,
+        principalId: 'admin-super-01',
+        credentialId: 'cred-hw-key-1',
+        clientDataJsonBase64: 'dummy-client-data',
+        authenticatorDataBase64: 'dummy-auth-data',
+        signatureBase64: 'forged-signature',
+      }),
+    ).rejects.toThrow('Passkey signature verification failed');
+    // No audit event is recorded for a verification that never happened.
+    expect(
+      events.some((e) => e.eventType === 'JIT_STEPUP_CHALLENGE_VERIFIED'),
+    ).toBe(false);
   });
 });

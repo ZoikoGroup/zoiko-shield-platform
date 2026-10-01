@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
+import { Alert } from "@/lib/types";
 import { useEventStream } from "@/lib/use-event-stream";
 import { formatTimestamp } from "@/lib/utils";
 import { Card } from "@/ui/Card";
@@ -31,7 +32,11 @@ import {
 
 export default function AlertsPage() {
   const router = useRouter();
+  // useDemoState is kept only for local UI context (session tenant id for the
+  // SSE subscription, and the cases[0] shortcut link) — the alert queue
+  // itself is real data, fetched below.
   const [state] = useDemoState();
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [isPromoting, setIsPromoting] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isStale, setIsStale] = useState(false);
@@ -39,7 +44,8 @@ export default function AlertsPage() {
   const refreshAlerts = useCallback(async () => {
     setIsLoading(true);
     try {
-      await ZoikoShieldApiClient.getAlerts();
+      const data = await ZoikoShieldApiClient.getAlerts();
+      setAlerts(data);
       setIsStale(false);
     } catch {
       setIsStale(true);
@@ -151,14 +157,14 @@ export default function AlertsPage() {
 
       {/* Alerts List */}
       <div className="space-y-3">
-        {state.alerts.length === 0 && !isLoading ? (
+        {alerts.length === 0 && !isLoading ? (
           <UnavailableState
             title="No Active Alerts in Queue"
             message="No active threat detections in queue. Ingest security feeds to trigger detections."
             retryAction={() => router.push("/ingestion")}
           />
         ) : (
-          state.alerts.map((alert, idx) => (
+          alerts.map((alert, idx) => (
             <Card
               key={alert.id || idx}
               variant="cyber"
