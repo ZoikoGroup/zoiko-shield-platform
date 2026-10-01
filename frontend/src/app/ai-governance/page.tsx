@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
 import { Card } from "@/components/ui/Card";
@@ -19,6 +19,8 @@ import {
   NistAiRmfFunction,
   AiReviewEnvelope,
   DecisionTransition,
+  ModelDriftReport,
+  AiSupplyChainReport,
 } from "@/lib/types";
 import {
   ShieldAlert,
@@ -413,6 +415,7 @@ export default function AiGovernancePage() {
   const [newTrigger, setNewTrigger] = useState<AiIncidentTrigger>("PROMPT_INJECTION");
   const [newModel, setNewModel] = useState("gemini-1.5-pro");
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // Model Inventory State & Filters
   const [isRegisteringModel, setIsRegisteringModel] = useState<boolean>(false);
@@ -438,18 +441,66 @@ export default function AiGovernancePage() {
   const [formHumanOversight, setFormHumanOversight] = useState<boolean>(true);
   const [formLifecycleState, setFormLifecycleState] = useState<AiLifecycleState>("PROPOSED");
 
+  // Real governance data (§23 incidents, §05 inventory, §21 drift, §24 supply
+  // chain). This used to render permanently from useDemoState() fixture data
+  // and never call the real, Prisma-backed endpoints that already exist for
+  // these — so the page always looked populated regardless of what the
+  // backend actually held. It is now fetched on mount and re-fetched (or
+  // optimistically updated from the mutation response) after every action
+  // that changes it, so the screen reflects what the backend actually did.
+  //
+  // Compliance drift (§55) is intentionally left sourced from demo state:
+  // ZoikoShieldApiClient.getComplianceDriftAssessment()/remediateComplianceDrift()
+  // exist as client methods but call /api/v1/compliance/drift-assessment*,
+  // which has no corresponding NestJS controller in shield-core — wiring it
+  // up would just always error. Left as-is rather than fabricating a backend
+  // route for it.
+  const [incidents, setIncidents] = useState<AiIncident[]>([]);
+  const [models, setModels] = useState<AiModelProfile[]>([]);
+  const [modelDrifts, setModelDrifts] = useState<ModelDriftReport[]>([]);
+  const [supplyChain, setSupplyChain] = useState<AiSupplyChainReport>({
+    hhiIndex: 0,
+    concentrationLevel: "LOW",
+    primaryProvider: "",
+    providerShares: {},
+    allTier1FallbackReady: false,
+  });
+  const [isLoadingGovernance, setIsLoadingGovernance] = useState<boolean>(true);
+  const [governanceLoadError, setGovernanceLoadError] = useState<string | null>(null);
+
+  const fetchGovernanceData = useCallback(async () => {
+    setIsLoadingGovernance(true);
+    const [incidentsRes, inventoryRes, driftRes, supplyRes] = await Promise.allSettled([
+      ZoikoShieldApiClient.getAiIncidents(state.tenant.id),
+      ZoikoShieldApiClient.getAiInventory(),
+      ZoikoShieldApiClient.getModelDriftMetrics(),
+      ZoikoShieldApiClient.getAiSupplyChainRisk(),
+    ]);
+
+    const errors: string[] = [];
+    if (incidentsRes.status === "fulfilled") setIncidents(incidentsRes.value);
+    else errors.push(`AI incidents: ${incidentsRes.reason?.message || incidentsRes.reason}`);
+
+    if (inventoryRes.status === "fulfilled") setModels(inventoryRes.value.models || []);
+    else errors.push(`model inventory: ${inventoryRes.reason?.message || inventoryRes.reason}`);
+
+    if (driftRes.status === "fulfilled") setModelDrifts(driftRes.value);
+    else errors.push(`model drift: ${driftRes.reason?.message || driftRes.reason}`);
+
+    if (supplyRes.status === "fulfilled") setSupplyChain(supplyRes.value);
+    else errors.push(`supply chain risk: ${supplyRes.reason?.message || supplyRes.reason}`);
+
+    setGovernanceLoadError(errors.length > 0 ? errors.join("; ") : null);
+    setIsLoadingGovernance(false);
+  }, [state.tenant.id]);
+
+  useEffect(() => {
+    void fetchGovernanceData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (!isHydrated) return null;
 
-  const incidents = state.aiIncidents || [];
-  const models = state.aiModels || [];
-  const modelDrifts = state.modelDriftReports || [];
-  const supplyChain = state.aiSupplyChain || {
-    hhiIndex: 4200,
-    concentrationLevel: "MODERATE",
-    primaryProvider: "Google Cloud Vertex AI",
-    providerShares: { "Google Cloud Vertex AI (Gemini)": 60, "Anthropic (Claude)": 30, "Self-Hosted": 10 },
-    allTier1FallbackReady: true,
-  };
   const complianceDrift = state.complianceDrift || {
     tenantId: state.tenant.id,
     status: "COMPLIANT",
@@ -463,8 +514,9 @@ export default function AiGovernancePage() {
     if (!newTitle.trim()) return;
 
     setActionLoadingId("declare");
+    setActionError(null);
     try {
-      await ZoikoShieldApiClient.declareAiIncident({
+      const created = await ZoikoShieldApiClient.declareAiIncident({
         tenantId: state.tenant.id,
         title: newTitle,
         severity: newSeverity,
@@ -472,8 +524,11 @@ export default function AiGovernancePage() {
         affectedModel: newModel,
         declaredBy: state.session.fullName,
       });
+      setIncidents((prev) => [created, ...prev.filter((i) => i.id !== created.id)]);
       setIsDeclaring(false);
       setNewTitle("");
+    } catch (err: any) {
+      setActionError(err?.message || "Failed to declare AI incident.");
     } finally {
       setActionLoadingId(null);
     }
@@ -481,8 +536,12 @@ export default function AiGovernancePage() {
 
   const handleContain = async (incidentId: string) => {
     setActionLoadingId(incidentId);
+    setActionError(null);
     try {
-      await ZoikoShieldApiClient.containAiIncident(incidentId);
+      const updated = await ZoikoShieldApiClient.containAiIncident(incidentId);
+      setIncidents((prev) => prev.map((i) => (i.id === incidentId ? updated : i)));
+    } catch (err: any) {
+      setActionError(err?.message || "Failed to engage kill-switch containment.");
     } finally {
       setActionLoadingId(null);
     }
@@ -490,8 +549,12 @@ export default function AiGovernancePage() {
 
   const handleFallback = async (incidentId: string) => {
     setActionLoadingId(incidentId);
+    setActionError(null);
     try {
-      await ZoikoShieldApiClient.activateAiFallback(incidentId);
+      const updated = await ZoikoShieldApiClient.activateAiFallback(incidentId);
+      setIncidents((prev) => prev.map((i) => (i.id === incidentId ? updated : i)));
+    } catch (err: any) {
+      setActionError(err?.message || "Failed to activate Tier-1 fallback.");
     } finally {
       setActionLoadingId(null);
     }
@@ -499,10 +562,14 @@ export default function AiGovernancePage() {
 
   const handleRca = async (incidentId: string) => {
     setActionLoadingId(incidentId);
+    setActionError(null);
     try {
       const rcaResult = await ZoikoShieldApiClient.analyzeAiIncidentRca(incidentId);
       setActiveRca(rcaResult);
       setIsRcaModalOpen(true);
+      setIncidents((prev) => prev.map((i) => (i.id === incidentId ? rcaResult.incident : i)));
+    } catch (err: any) {
+      setActionError(err?.message || "Failed to run root cause analysis.");
     } finally {
       setActionLoadingId(null);
     }
@@ -510,11 +577,15 @@ export default function AiGovernancePage() {
 
   const handleResolve = async (incidentId: string) => {
     setActionLoadingId(incidentId);
+    setActionError(null);
     try {
-      await ZoikoShieldApiClient.resolveAiIncident(
+      const updated = await ZoikoShieldApiClient.resolveAiIncident(
         incidentId,
         "Model Armor pre-filter rule deployed and inference test suite confirmed zero hallucination drift."
       );
+      setIncidents((prev) => prev.map((i) => (i.id === incidentId ? updated : i)));
+    } catch (err: any) {
+      setActionError(err?.message || "Failed to resolve AI incident.");
     } finally {
       setActionLoadingId(null);
     }
@@ -522,8 +593,12 @@ export default function AiGovernancePage() {
 
   const handleClose = async (incidentId: string) => {
     setActionLoadingId(incidentId);
+    setActionError(null);
     try {
-      await ZoikoShieldApiClient.closeAiIncident(incidentId);
+      const updated = await ZoikoShieldApiClient.closeAiIncident(incidentId);
+      setIncidents((prev) => prev.map((i) => (i.id === incidentId ? updated : i)));
+    } catch (err: any) {
+      setActionError(err?.message || "Failed to close AI incident.");
     } finally {
       setActionLoadingId(null);
     }
@@ -543,8 +618,9 @@ export default function AiGovernancePage() {
     if (!formModelId.trim()) return;
 
     setActionLoadingId("register-model");
+    setActionError(null);
     try {
-      await ZoikoShieldApiClient.registerAiModel({
+      const created = await ZoikoShieldApiClient.registerAiModel({
         modelId: formModelId.trim().toLowerCase().replace(/\s+/g, "-"),
         provider: formProvider,
         modelFamily: formModelFamily,
@@ -561,9 +637,12 @@ export default function AiGovernancePage() {
         humanOversightRequired: formHumanOversight,
         lifecycleState: formLifecycleState,
       });
+      setModels((prev) => [created, ...prev.filter((m) => m.modelId !== created.modelId)]);
       setIsRegisteringModel(false);
       setFormModelId("");
       setFormPurpose("");
+    } catch (err: any) {
+      setActionError(err?.message || "Failed to register AI model.");
     } finally {
       setActionLoadingId(null);
     }
@@ -574,8 +653,12 @@ export default function AiGovernancePage() {
     lifecycleState: AiLifecycleState
   ) => {
     setActionLoadingId(`lifecycle-${modelId}`);
+    setActionError(null);
     try {
-      await ZoikoShieldApiClient.updateAiModel(modelId, { lifecycleState });
+      const updated = await ZoikoShieldApiClient.updateAiModel(modelId, { lifecycleState });
+      setModels((prev) => prev.map((m) => (m.modelId === modelId ? updated : m)));
+    } catch (err: any) {
+      setActionError(err?.message || "Failed to update model lifecycle state.");
     } finally {
       setActionLoadingId(null);
     }
@@ -583,8 +666,20 @@ export default function AiGovernancePage() {
 
   const handleDecommissionModel = async (modelId: string) => {
     setActionLoadingId(`delete-${modelId}`);
+    setActionError(null);
     try {
-      await ZoikoShieldApiClient.deleteAiModel(modelId);
+      const success = await ZoikoShieldApiClient.deleteAiModel(modelId);
+      if (success) {
+        setModels((prev) =>
+          prev.map((m) =>
+            m.modelId === modelId
+              ? { ...m, lifecycleState: "DECOMMISSIONED" as AiLifecycleState, updatedAt: new Date().toISOString() }
+              : m
+          )
+        );
+      }
+    } catch (err: any) {
+      setActionError(err?.message || "Failed to decommission AI model.");
     } finally {
       setActionLoadingId(null);
     }
@@ -685,6 +780,33 @@ export default function AiGovernancePage() {
           <span className="font-bold text-cyan-300">ERB-01 Non-Destructive Guardrail:</span> All emergency kill-switch containment and Tier-1 fallback routing actions execute in verifiable <span className="text-violet-300 font-semibold">Simulation Sandbox Mode</span>.
         </div>
       </div>
+
+      {isLoadingGovernance && (
+        <LoadingState
+          title="Loading AI Governance Data..."
+          message="Fetching AI incidents, model inventory, drift reports and supply chain risk from shield-core."
+        />
+      )}
+
+      {governanceLoadError && !isLoadingGovernance && (
+        <UnavailableState
+          title="AI Governance Data Partially Unavailable"
+          message={governanceLoadError}
+          retryAction={() => void fetchGovernanceData()}
+        />
+      )}
+
+      {actionError && (
+        <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-500/50 text-rose-300 text-xs font-mono flex items-center justify-between gap-3">
+          <span>{actionError}</span>
+          <button
+            className="text-rose-300 hover:text-rose-100 underline shrink-0"
+            onClick={() => setActionError(null)}
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Top Metrics Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">

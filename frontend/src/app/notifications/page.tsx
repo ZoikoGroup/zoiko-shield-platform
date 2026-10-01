@@ -48,39 +48,6 @@ function statusVariant(status: string) {
   }
 }
 
-const DEMO_FALLBACK_NOTIFICATIONS: NotificationDelivery[] = [
-  {
-    id: "notif-delivery-01",
-    event_id: "evt-alert-auth-anomaly-01",
-    channel: "EMAIL_SECURITY_OPS",
-    status: "DELIVERED",
-    attempt_count: 1,
-    delivered_at: new Date(Date.now() - 1800000).toISOString(),
-    error_code: null,
-    created_at: new Date(Date.now() - 1860000).toISOString(),
-  },
-  {
-    id: "notif-delivery-02",
-    event_id: "evt-g1-gate-ratification-02",
-    channel: "SLACK_SEC_INCIDENTS",
-    status: "DELIVERED",
-    attempt_count: 1,
-    delivered_at: new Date(Date.now() - 3600000).toISOString(),
-    error_code: null,
-    created_at: new Date(Date.now() - 3660000).toISOString(),
-  },
-  {
-    id: "notif-delivery-03",
-    event_id: "evt-jit-elevation-request-03",
-    channel: "WEBHOOK_PAGERDUTY_ONCALL",
-    status: "DELIVERED",
-    attempt_count: 1,
-    delivered_at: new Date(Date.now() - 7200000).toISOString(),
-    error_code: null,
-    created_at: new Date(Date.now() - 7260000).toISOString(),
-  },
-];
-
 export default function NotificationsPage() {
   const [items, setItems] = useState<NotificationDelivery[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -92,9 +59,10 @@ export default function NotificationsPage() {
     setError(null);
     try {
       const data = asList<NotificationDelivery>(await backend.get("/api/v1/notifications"));
-      setItems(data.length > 0 ? data : DEMO_FALLBACK_NOTIFICATIONS);
-    } catch {
-      setItems(DEMO_FALLBACK_NOTIFICATIONS);
+      setItems(data);
+    } catch (err) {
+      setError(err instanceof BackendError ? err.message : String(err));
+      setItems([]);
     } finally {
       setIsLoading(false);
     }

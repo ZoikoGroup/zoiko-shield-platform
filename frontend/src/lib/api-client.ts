@@ -44,6 +44,7 @@ import {
   MdrServiceObligation,
   GTMChecklistItem,
   JitElevationSession,
+  TenantMember,
   PlatformReadinessSnapshot,
   CoreServiceReadiness,
   DisasterRecoveryPostureSummary,
@@ -386,6 +387,22 @@ export class ZoikoShieldApiClient {
   }
 
   // --- Step 3: Team Invitations ---
+  /**
+   * Real tenant roster from shield-core's membership store (not the
+   * onboarding-flow `state.team` fixture). The endpoint only identifies
+   * members by principalId and assigned roles — it does not join to a user
+   * directory for an email/display name, so callers render those fields
+   * rather than fabricating them.
+   */
+  static async listTenantMembers(tenantId: string): Promise<TenantMember[]> {
+    const res = await this.safeFetch<unknown>(
+      `/api/v1/tenants/${tenantId}/members`,
+      { method: "GET" },
+      () => []
+    );
+    return Array.isArray(res) ? (res as TenantMember[]) : [];
+  }
+
   static async inviteAnalyst(
     tenantId: string,
     invitedEmail: string,
@@ -1341,28 +1358,47 @@ export class ZoikoShieldApiClient {
     );
   }
 
-  // --- Verify JIT Step-Up Challenge (FIDO2 / WebAuthn) ---
+  // --- JIT Step-Up Challenge (FIDO2 / WebAuthn) ---
+  // Reuses the real passkey step-up ceremony (/auth/passkeys/step-up/options
+  // -> navigator.credentials.get() -> this endpoint), the same one that
+  // raises a session's assurance to PASSKEY. There is no JIT-specific
+  // challenge system; a registered passkey is a registered passkey.
+  static async getPasskeyStepUpOptions(): Promise<PasskeyAuthenticationOptions> {
+    return this.safeFetch<PasskeyAuthenticationOptions>(
+      "/api/v1/auth/passkeys/step-up/options",
+      { method: "POST" },
+      () => ({
+        challenge: generateUUID().replace(/-/g, ""),
+        rpId: typeof window !== "undefined" ? window.location.hostname : "localhost",
+        allowCredentials: [],
+        userVerification: "required",
+        timeout: 120_000,
+      })
+    );
+  }
+
   static async verifyJitStepUp(
     requestId: string,
-    principalId: string,
-    clientDataJson: string,
-    signature: string,
-    authenticatorData?: string
+    assertion: PasskeyAssertionPayload
   ): Promise<{ verified: boolean; hardwareProofDigest: string; verifiedAt: string }> {
     return this.safeFetch(
       `/api/v1/authz/jit/${requestId}/stepup`,
       {
         method: "POST",
         body: JSON.stringify({
-          principalId,
-          clientDataJson,
-          signature,
-          authenticatorData: authenticatorData || "direct",
+          credentialId: assertion.credentialId,
+          clientDataJsonBase64: assertion.clientDataJsonBase64,
+          authenticatorDataBase64: assertion.authenticatorDataBase64,
+          signatureBase64: assertion.signatureBase64,
         }),
       },
+      // Demo-fallback mode is opt-in (NEXT_PUBLIC_DEMO_FALLBACK) and off by
+      // default, but a security verification faking "verified" is worse
+      // than other demo data even then - so this fallback reports failure,
+      // not success, unlike the rest of this file's fallbacks.
       () => ({
-        verified: true,
-        hardwareProofDigest: sha256Mock(`fido2-${requestId}-${Date.now()}`),
+        verified: false,
+        hardwareProofDigest: "",
         verifiedAt: new Date().toISOString(),
       })
     );

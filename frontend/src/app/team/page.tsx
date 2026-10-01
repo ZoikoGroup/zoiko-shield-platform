@@ -1,11 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
 import { isWebauthnSupported, createPasskeyCredential } from "@/lib/webauthn";
-import { RegisteredPasskey } from "@/lib/types";
+import { RegisteredPasskey, TenantMember } from "@/lib/types";
 import { Card } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
@@ -44,6 +44,28 @@ export default function TeamPage() {
   const [isPasskeyEnrolling, setIsPasskeyEnrolling] = useState(false);
   const [revokingPasskeyId, setRevokingPasskeyId] = useState<string | null>(null);
   const [passkeyError, setPasskeyError] = useState<string | null>(null);
+
+  const [members, setMembers] = useState<TenantMember[]>([]);
+  const [isMembersLoading, setIsMembersLoading] = useState(true);
+  const [membersError, setMembersError] = useState<string | null>(null);
+
+  const loadMembers = useCallback(async () => {
+    setIsMembersLoading(true);
+    setMembersError(null);
+    try {
+      const data = await ZoikoShieldApiClient.listTenantMembers(state.tenant.id);
+      setMembers(data);
+    } catch (err: any) {
+      setMembersError(err?.message || "Unable to load the tenant roster");
+      setMembers([]);
+    } finally {
+      setIsMembersLoading(false);
+    }
+  }, [state.tenant.id]);
+
+  useEffect(() => {
+    void loadMembers();
+  }, [loadMembers]);
 
   useEffect(() => {
     ZoikoShieldApiClient.listPasskeys()
@@ -111,6 +133,9 @@ export default function TeamPage() {
       await ZoikoShieldApiClient.login(inv.invitedEmail, "demo-password");
       // 2. Accept the invitation
       await ZoikoShieldApiClient.acceptInvitation(inv.token);
+      // 3. The roster changed; re-fetch the real membership list rather than
+      // trusting whatever it was before this accept.
+      await loadMembers();
     } catch (err) {
       console.error("Accept Invitation Error:", err);
     } finally {
@@ -153,46 +178,72 @@ export default function TeamPage() {
         <div className="flex items-center justify-between pb-3 border-b border-slate-800">
           <h3 className="font-semibold text-slate-100 flex items-center gap-2">
             <Users className="w-4 h-4 text-cyan-400" />
-            Active Team Members ({state.team.length})
+            Active Team Members ({members.length})
           </h3>
           <span className="text-xs font-mono text-slate-400">
             Tenant: {state.tenant.id}
           </span>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-mono">
-            <thead className="bg-slate-900/80 text-slate-400 uppercase border-b border-slate-800">
-              <tr>
-                <th className="p-3">Analyst / Name</th>
-                <th className="p-3">Email</th>
-                <th className="p-3">RBAC Role</th>
-                <th className="p-3">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800">
-              {state.team.map((member, idx) => (
-                <tr key={member.id || member.email || idx} className="hover:bg-slate-900/40">
-                  <td className="p-3 font-sans font-semibold text-slate-200 flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-300 flex items-center justify-center text-[10px] font-mono">
-                      {member.fullName.charAt(0)}
-                    </div>
-                    {member.fullName}
-                  </td>
-                  <td className="p-3 text-slate-300">{member.email}</td>
-                  <td className="p-3">
-                    <span className="px-2 py-0.5 rounded bg-slate-800 text-cyan-300 border border-slate-700">
-                      {member.role}
-                    </span>
-                  </td>
-                  <td className="p-3">
-                    <Badge variant="healthy">ACTIVE</Badge>
-                  </td>
+        {membersError && (
+          <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-500/50 text-rose-300 text-xs font-mono">
+            {membersError}
+          </div>
+        )}
+
+        {isMembersLoading ? (
+          <p className="text-xs font-mono text-slate-500 py-2">Loading tenant roster…</p>
+        ) : members.length === 0 ? (
+          <p className="text-xs font-mono text-slate-500 py-2">
+            No members are recorded for this tenant yet.
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs font-mono">
+              <thead className="bg-slate-900/80 text-slate-400 uppercase border-b border-slate-800">
+                <tr>
+                  <th className="p-3">Principal</th>
+                  <th className="p-3">Roles</th>
+                  <th className="p-3">Joined</th>
+                  <th className="p-3">Status</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-slate-800">
+                {members.map((member) => (
+                  <tr key={member.id} className="hover:bg-slate-900/40">
+                    <td className="p-3 font-sans font-semibold text-slate-200 flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-300 flex items-center justify-center text-[10px] font-mono">
+                        {member.principalId.charAt(0).toUpperCase()}
+                      </div>
+                      <span className="break-all">{member.principalId}</span>
+                    </td>
+                    <td className="p-3 text-slate-300">
+                      {member.roles.length > 0
+                        ? member.roles.map((r) => r.name).join(", ")
+                        : "no roles assigned"}
+                    </td>
+                    <td className="p-3 text-slate-400">
+                      {member.joinedAt ? new Date(member.joinedAt).toLocaleString() : "unknown"}
+                    </td>
+                    <td className="p-3">
+                      <Badge
+                        variant={
+                          member.status === "ACTIVE"
+                            ? "healthy"
+                            : member.status === "PENDING"
+                              ? "pending"
+                              : "fail"
+                        }
+                      >
+                        {member.status}
+                      </Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </Card>
 
       {/* Passkeys (WebAuthn) */}

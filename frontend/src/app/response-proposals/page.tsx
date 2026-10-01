@@ -62,47 +62,10 @@ function requiresApproval(authorityLevel: string): boolean {
   return !["R0", "R1"].includes((authorityLevel || "").toUpperCase());
 }
 
-const DEMO_FALLBACK_PROPOSALS: Proposal[] = [
-  {
-    id: "prop-isolate-host-01",
-    case_id: "case-2026-auth-attack-01",
-    action_type: "ISOLATE_HOST",
-    target_type: "ENDPOINT",
-    target_id: "workstation-admin-corp-99",
-    reason: "Cryptographic credential theft and lateral movement detected on host.",
-    authority_level: "R3",
-    recommendation_source: "AI_COPILOT_REASONING_ENGINE",
-    reversible: true,
-    rollback_action_type: "UNISOLATE_HOST",
-    residual_risk: "LOW: User network disconnect until forensic dump completes.",
-    status: "PROPOSED",
-    expires_at: new Date(Date.now() + 86400000).toISOString(),
-    created_at: new Date(Date.now() - 1800000).toISOString(),
-  },
-  {
-    id: "prop-revoke-tokens-02",
-    case_id: "case-2026-auth-attack-01",
-    action_type: "REVOKE_ACTIVE_TOKENS",
-    target_type: "IDENTITY_ACCOUNT",
-    target_id: "admin.doe@zoikoshield.corp",
-    reason: "Adversary captured temporary session token via evilginx proxy.",
-    authority_level: "R2",
-    recommendation_source: "SOAR_PLAYBOOK_CORRELATION",
-    reversible: false,
-    rollback_action_type: null,
-    residual_risk: "LOW: User will be forced to re-authenticate with hardware security key.",
-    status: "APPROVED",
-    expires_at: new Date(Date.now() + 86400000).toISOString(),
-    created_at: new Date(Date.now() - 3600000).toISOString(),
-  },
-];
-
 export default function ResponseProposalsPage() {
   const router = useRouter();
   const [proposals, setProposals] = useState<Proposal[]>([]);
-  const [cases, setCases] = useState<Record<string, string>>({
-    "case-2026-auth-attack-01": "Active Credential Stuffing & Session Hijack Incident",
-  });
+  const [cases, setCases] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [acting, setActing] = useState<string | null>(null);
@@ -112,23 +75,21 @@ export default function ResponseProposalsPage() {
     setError(null);
     try {
       const caseList = asList<CaseSummary>(await backend.get("/api/v1/cases"));
+      setCases(Object.fromEntries(caseList.map((c) => [c.id, c.title])));
       if (caseList.length > 0) {
-        setCases(Object.fromEntries(caseList.map((c) => [c.id, c.title])));
         const perCase = await Promise.all(
           caseList.map((c) =>
             backend
               .get(`/api/v1/cases/${c.id}/response-proposals`)
-              .then((r) => asList<Proposal>(r))
-              .catch(() => [] as Proposal[]),
+              .then((r) => asList<Proposal>(r)),
           ),
         );
-        const gathered = perCase.flat();
-        setProposals(gathered.length > 0 ? gathered : DEMO_FALLBACK_PROPOSALS);
+        setProposals(perCase.flat());
       } else {
-        setProposals(DEMO_FALLBACK_PROPOSALS);
+        setProposals([]);
       }
-    } catch {
-      setProposals(DEMO_FALLBACK_PROPOSALS);
+    } catch (err) {
+      setError(err instanceof BackendError ? err.message : String(err));
     } finally {
       setIsLoading(false);
     }

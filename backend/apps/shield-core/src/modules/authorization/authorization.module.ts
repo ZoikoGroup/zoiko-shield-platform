@@ -1,4 +1,5 @@
-import { Global, Module } from '@nestjs/common';
+import { forwardRef, Global, Module } from '@nestjs/common';
+import { IdentityAdapterModule } from '../identity-adapter/identity-adapter.module';
 import { AuthorizationService } from './authorization.service';
 import { JitElevationService } from './jit-elevation.service';
 import { JitSessionEnforcerService } from './jit-session-enforcer.service';
@@ -14,7 +15,10 @@ import { CedarPolicyEvaluatorService } from './cedar-policy-evaluator.service';
 
 @Global()
 @Module({
-  imports: [PrismaModule],
+  // IdentityAdapterModule imports this module (for PermissionsGuard etc.),
+  // so this import must be lazy: JitElevationService needs WebauthnService
+  // for real step-up verification (see jit-elevation.service.ts).
+  imports: [PrismaModule, forwardRef(() => IdentityAdapterModule)],
   controllers: [AuthorizationController, PolicyLifecycleController],
   providers: [
     AuthorizationService,

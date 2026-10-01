@@ -160,10 +160,13 @@ export default function MerkleLedgerExplorerPage() {
       setStatusMessage("Proof verified via shield-anchor cryptographic engine.");
     } catch (err) {
       console.error("Proof verification error:", err);
-      setVerificationResult({
-        valid: true,
-        timestamp: new Date().toISOString(),
-      });
+      // A verification that could not run is not a verification that
+      // passed: this used to report valid: true here, which would show a
+      // tamper-evidence failure as a pass.
+      setVerificationResult(null);
+      setStatusMessage(
+        `Verification could not be completed: ${err instanceof Error ? err.message : String(err)}`
+      );
     } finally {
       setIsVerifying(false);
     }
@@ -354,10 +357,20 @@ export default function MerkleLedgerExplorerPage() {
                   ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300"
                   : "bg-rose-950/40 border-rose-500/40 text-rose-300"
               }`}>
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                <CheckCircle2 className={`w-4 h-4 shrink-0 ${verificationResult.valid ? "text-emerald-400" : "text-rose-400"}`} />
                 <span>
-                  <strong>Proof Cryptographically Valid!</strong> Leaf hash correctly resolves to
-                  Merkle root with zero discrepancies.
+                  {verificationResult.valid ? (
+                    <>
+                      <strong>Proof Cryptographically Valid!</strong> Leaf hash correctly resolves
+                      to Merkle root with zero discrepancies.
+                    </>
+                  ) : (
+                    <>
+                      <strong>Proof Invalid.</strong> Leaf hash does not resolve to the expected
+                      Merkle root - this evidence object may have been tampered with or the
+                      inclusion proof is stale.
+                    </>
+                  )}
                 </span>
               </div>
             )}

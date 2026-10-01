@@ -262,18 +262,20 @@ export class AuthorizationController {
     @Param('requestId') requestId: string,
     @Body()
     dto: {
-      clientDataJson: string;
-      authenticatorData?: string;
-      signature: string;
+      credentialId: string;
+      clientDataJsonBase64: string;
+      authenticatorDataBase64: string;
+      signatureBase64: string;
     },
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.jitElevationService.verifyStepUpChallenge({
       requestId,
       principalId: user.id,
-      clientDataJson: dto.clientDataJson,
-      authenticatorData: dto.authenticatorData,
-      signature: dto.signature,
+      credentialId: dto.credentialId,
+      clientDataJsonBase64: dto.clientDataJsonBase64,
+      authenticatorDataBase64: dto.authenticatorDataBase64,
+      signatureBase64: dto.signatureBase64,
     });
   }
 

@@ -51,39 +51,6 @@ function severityVariant(impact: string) {
   return "low" as const;
 }
 
-const DEMO_FALLBACK_RISKS: Risk[] = [
-  {
-    id: "risk-2026-auth-bruteforce",
-    title: "Brute-force credential stuffing against Entra ID gateway",
-    description: "Multi-regional credential stuffing attempts targeting privileged admin identities.",
-    likelihood: "HIGH",
-    impact: "HIGH",
-    status: "TREATED",
-    owner_id: "secops-lead@zoikoshield.corp",
-    created_at: new Date(Date.now() - 3600000).toISOString(),
-    factors: [
-      { factor: "Anomalous IP Velocity", value: "> 450 req/min from non-standard ASN", contribution: 0.45, sourceRef: "conn-crowdstrike-fdr", evaluatorVersion: "v2.1" },
-      { factor: "Failed MFA Attempts", value: "14 repeated MFA challenge rejections", contribution: 0.35, sourceRef: "conn-entra-id-prod", evaluatorVersion: "v2.1" },
-      { factor: "Privilege Tier Target", value: "Global Administrator Role Scope", contribution: 0.20, sourceRef: "identity-evaluator-engine", evaluatorVersion: "v2.1" },
-    ],
-  },
-  {
-    id: "risk-2026-llm-injection",
-    title: "Indirect Prompt Injection in AI Security Copilot Input Channel",
-    description: "Adversarial payload embedded in ingested third-party webhook headers.",
-    likelihood: "MEDIUM",
-    impact: "CRITICAL",
-    status: "ACTIVE",
-    owner_id: "ciso-approver@zoikoshield.corp",
-    created_at: new Date(Date.now() - 7200000).toISOString(),
-    factors: [
-      { factor: "Adversarial Token Distance", value: "Cosine delta < 0.12 to jailbreak vector", contribution: 0.50, sourceRef: "shield-ai-governance", evaluatorVersion: "v1.4" },
-      { factor: "Tool Execution Scope", value: "R3 SOAR adapter access requested", contribution: 0.30, sourceRef: "shield-action-broker", evaluatorVersion: "v1.4" },
-      { factor: "Origin Reliability", value: "Untrusted external syslog feed", contribution: 0.20, sourceRef: "shield-ingest-pipeline", evaluatorVersion: "v1.4" },
-    ],
-  },
-];
-
 export default function RiskRegisterPage() {
   const router = useRouter();
   const [state] = useDemoState();
@@ -99,14 +66,21 @@ export default function RiskRegisterPage() {
         headers: state.tenant?.id ? { "x-tenant-id": state.tenant.id } : {},
       });
       if (!response.ok) {
-        setRisks(DEMO_FALLBACK_RISKS);
+        let message = `Request to /api/v1/risks failed with ${response.status}`;
+        try {
+          const errBody = await response.json();
+          if (errBody?.message) message = errBody.message;
+        } catch {
+          // body wasn't JSON; keep the status-based message
+        }
+        setError(message);
         return;
       }
       const body = await response.json();
       const list = Array.isArray(body) ? body : (body.data ?? []);
-      setRisks(list.length > 0 ? list : DEMO_FALLBACK_RISKS);
-    } catch {
-      setRisks(DEMO_FALLBACK_RISKS);
+      setRisks(list);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setIsLoading(false);
     }

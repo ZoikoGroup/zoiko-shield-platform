@@ -69,45 +69,6 @@ function completenessVariant(state: string) {
   }
 }
 
-const DEMO_FALLBACK_RECORDS: EvidenceRecord[] = [
-  {
-    id: "ev-telemetry-payload-01",
-    evidence_type: "SECURITY_TELEMETRY",
-    source_system_id: "conn-webhook-gateway-01",
-    content_hash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    integrity_state: "VERIFIED",
-    completeness_state: "COMPLETE",
-    created_at: "2026-09-02T07:00:00.000Z",
-  },
-  {
-    id: "evid-8f7a9c2b-01",
-    evidence_type: "AUTHENTICATION_LOG",
-    source_system_id: "conn-entra-id-prod",
-    content_hash: "42e40754484f33ba20d0eb3f18a228f4a3e7b3c2918237482910384729102837",
-    integrity_state: "VERIFIED",
-    completeness_state: "COMPLETE",
-    created_at: "2026-09-02T07:15:00.000Z",
-  },
-  {
-    id: "evid-9c1a4b5d-02",
-    evidence_type: "PROCESS_INSPECTION",
-    source_system_id: "conn-crowdstrike-fdr",
-    content_hash: "8f3b198c2274ad9910c2e391b8a472c199831123984719284719283746192837",
-    integrity_state: "PENDING",
-    completeness_state: "PARTIAL",
-    created_at: "2026-09-02T07:25:00.000Z",
-  },
-  {
-    id: "evid-0a2b8e7c-03",
-    evidence_type: "NETWORK_FLOW_PCAP",
-    source_system_id: "conn-aws-guardduty-01",
-    content_hash: "c1852cc7cd42fc54d89a2b7190e3419088192209182736451928374619283746",
-    integrity_state: "UNSIGNED",
-    completeness_state: "COMPLETE",
-    created_at: "2026-09-02T07:35:00.000Z",
-  },
-];
-
 export default function EvidenceOperationsPage() {
   const [records, setRecords] = useState<EvidenceRecord[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -119,10 +80,10 @@ export default function EvidenceOperationsPage() {
     setError(null);
     try {
       const data = asList<EvidenceRecord>(await backend.get("/api/v1/evidence"));
-      setRecords(data.length > 0 ? data : DEMO_FALLBACK_RECORDS);
-    } catch {
-      // Fallback gracefully for offline demo mode
-      setRecords(DEMO_FALLBACK_RECORDS);
+      setRecords(data);
+    } catch (err) {
+      setError(err instanceof BackendError ? err.message : String(err));
+      setRecords([]);
     } finally {
       setIsLoading(false);
     }
@@ -138,15 +99,10 @@ export default function EvidenceOperationsPage() {
     try {
       await backend.post(`/api/v1/evidence/${id}/verify`);
       await load();
-    } catch {
-      // Offline fallback: simulate instantaneous cryptographic verification
-      setRecords((prev) =>
-        prev.map((rec) =>
-          rec.id === id
-            ? { ...rec, integrity_state: "VERIFIED", completeness_state: "COMPLETE" }
-            : rec
-        )
-      );
+    } catch (err) {
+      // A verification call that failed must never be shown as VERIFIED —
+      // that would claim a cryptographic check happened when it didn't.
+      setError(err instanceof BackendError ? err.message : String(err));
     } finally {
       setVerifying(null);
     }

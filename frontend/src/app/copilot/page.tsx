@@ -666,7 +666,7 @@ export default function CopilotPage() {
   // Chat conversation
   const [chatHistory, setChatHistory] = useState<
     Array<{
-      sender: "user" | "copilot" | "system";
+      sender: "user" | "copilot" | "system" | "error";
       text: string;
       envelope?: AiReviewEnvelope;
     }>
@@ -721,15 +721,17 @@ export default function CopilotPage() {
         },
       ]);
     } catch (err: any) {
-      // Fallback to preset envelope on unexpected error
-      const env = activePreset.defaultEnvelope;
-      setCurrentEnvelope(env);
+      // A real failure. Never substitute a fabricated envelope for a real
+      // AI response here — that is indistinguishable from a genuine,
+      // grounded answer and would mislead an operator relying on it during
+      // an incident. Surface the real error instead, clearly labeled.
       setChatHistory((prev) => [
         ...prev,
         {
-          sender: "copilot",
-          text: env.payload?.summary || "Synthesized security analysis.",
-          envelope: env,
+          sender: "error",
+          text:
+            "AI Copilot request failed — no response was generated. " +
+            (err?.message || "The backend did not return a result."),
         },
       ]);
     } finally {
@@ -914,12 +916,19 @@ export default function CopilotPage() {
                       <FileCheck className="w-4 h-4" />
                     </div>
                   )}
+                  {msg.sender === "error" && (
+                    <div className="w-7 h-7 rounded-lg bg-rose-500/20 border border-rose-500/40 text-rose-400 flex items-center justify-center shrink-0 mt-0.5">
+                      <AlertTriangle className="w-4 h-4" />
+                    </div>
+                  )}
                   <div
                     className={`p-3.5 rounded-2xl text-xs leading-relaxed max-w-[88%] ${
                       msg.sender === "user"
                         ? "bg-cyan-600 text-slate-950 font-medium"
                         : msg.sender === "system"
                         ? "bg-slate-950/90 border border-emerald-500/30 text-emerald-300 font-mono text-[11px]"
+                        : msg.sender === "error"
+                        ? "bg-rose-950/40 border border-rose-500/40 text-rose-300 font-mono text-[11px]"
                         : "bg-slate-950/80 border border-slate-800 text-slate-200"
                     }`}
                   >

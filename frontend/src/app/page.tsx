@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useEffect } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
+import { Connector } from "@/lib/types";
 import { Card } from "@/ui/Card";
 import { Badge } from "@/ui/Badge";
 import { Button } from "@/ui/Button";
@@ -44,22 +45,45 @@ export default function DashboardPage() {
       ? [...new Set(state.controlTests.map((c) => c.framework.split("_")[0]))].join(", ")
       : "SOC 2 Type II, ISO 27001:2022";
 
-  // Compute connector health from actual connector data
-  const activeConnectors = state.connectors.filter((c) => c.status === "ACTIVE");
-  const healthyConnectors = state.connectors.filter((c) => c.healthStatus === "HEALTHY");
-  const ingestHealthLabel =
-    state.connectors.length === 0
-      ? "No Connectors"
-      : healthyConnectors.length === state.connectors.length
-      ? "100% Ingest Health"
-      : `${healthyConnectors.length}/${state.connectors.length} Healthy`;
+  // Real connector data, fetched from the backend below. This used to be
+  // sourced from the demo-state fixture array even though a live fetch fired
+  // on mount — the fetch's result was discarded. `connectorsStale` is set when
+  // the live fetch fails, in which case the fixture is shown as a labeled
+  // fallback rather than silently passed off as current.
+  const [connectors, setConnectors] = useState<Connector[]>([]);
+  const [isLoadingConnectors, setIsLoadingConnectors] = useState(true);
+  const [connectorsStale, setConnectorsStale] = useState(false);
+
+  const loadConnectors = useCallback(() => {
+    setIsLoadingConnectors(true);
+    ZoikoShieldApiClient.getConnectors()
+      .then((data) => {
+        setConnectors(data);
+        setConnectorsStale(false);
+      })
+      .catch(() => {
+        setConnectorsStale(true);
+      })
+      .finally(() => setIsLoadingConnectors(false));
+  }, []);
 
   // Fetch live connector data on mount to hydrate the dashboard metrics
   useEffect(() => {
-    ZoikoShieldApiClient.getConnectors().catch(() => {
-      /* backend offline — demo state used */
-    });
-  }, []);
+    loadConnectors();
+  }, [loadConnectors]);
+
+  // While loading (or if the live fetch has never succeeded) there is no real
+  // connector data yet; fall back to the fixture only once stale, so the
+  // StaleState banner below is an honest description of what's on screen.
+  const displayConnectors = connectorsStale ? state.connectors : connectors;
+  const activeConnectors = displayConnectors.filter((c) => c.status === "ACTIVE");
+  const healthyConnectors = displayConnectors.filter((c) => c.healthStatus === "HEALTHY");
+  const ingestHealthLabel =
+    displayConnectors.length === 0
+      ? "No Connectors"
+      : healthyConnectors.length === displayConnectors.length
+      ? "100% Ingest Health"
+      : `${healthyConnectors.length}/${displayConnectors.length} Healthy`;
 
   return (
     <div className="space-y-8">
@@ -115,12 +139,28 @@ export default function DashboardPage() {
       </div>
 
       {/* Mandatory UI States Integration */}
-      {state.connectors.some((c) => c.status === "DISABLED") && (
+      {isLoadingConnectors && connectors.length === 0 && (
+        <LoadingState
+          title="Loading Connector Fleet..."
+          message="Fetching live connector health from shield-ingest to hydrate dashboard metrics."
+          regionalCell={state.tenant.homeRegion}
+        />
+      )}
+
+      {connectorsStale && !isLoadingConnectors && (
+        <StaleState
+          title="Connector Metrics Unavailable — Showing Cached Snapshot"
+          message="Could not reach shield-ingest for live connector health; dashboard connector metrics below are a cached snapshot."
+          retryAction={loadConnectors}
+        />
+      )}
+
+      {displayConnectors.some((c) => c.status === "DISABLED") && (
         <PartialState
           title="Partial Telemetry Ingestion Active"
           message="Some security telemetry feeds are disabled or pending synchronization."
           connectorsActive={activeConnectors.length}
-          connectorsTotal={state.connectors.length}
+          connectorsTotal={displayConnectors.length}
         />
       )}
 
@@ -166,7 +206,7 @@ export default function DashboardPage() {
           </div>
           <div
             className={`text-[11px] flex items-center gap-1 font-mono ${
-              healthyConnectors.length === state.connectors.length
+              healthyConnectors.length === displayConnectors.length
                 ? "text-emerald-400"
                 : "text-amber-400"
             }`}
