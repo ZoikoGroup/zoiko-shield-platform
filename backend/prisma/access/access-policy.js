@@ -136,6 +136,12 @@ const TABLES = {
   'authorization.user_roles': { kind: 'control_plane' },
   'tenant.tenants': { kind: 'control_plane' },
 
+  // ---- W12 policy lifecycle: tenant-owned configuration data, not identity/
+  // authz plumbing, so it gets real tenant row-level security rather than
+  // the control_plane exemption the rest of "authorization" uses above.
+  'authorization.config_policy_versions': { kind: 'tenant_or_shared' },
+  'authorization.config_policy_audit_events': { kind: 'tenant' },
+
   // ---- global reference data and platform operations
   'catalog.CatalogVersion': { kind: 'global' },
   'catalog.Product': { kind: 'global' },

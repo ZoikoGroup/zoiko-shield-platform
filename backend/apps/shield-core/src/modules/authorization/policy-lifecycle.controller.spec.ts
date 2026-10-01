@@ -52,13 +52,29 @@ describe('PolicyLifecycleController', () => {
             approvePolicy: jest.fn().mockReturnValue({
               id: 'pol-2026-09-001',
               status: 'ACTIVE',
-              approvers: ['soc-lead@zoikoshield.corp', 'secops@zoikoshield.corp'],
+              approvers: [
+                'soc-lead@zoikoshield.corp',
+                'secops@zoikoshield.corp',
+              ],
             }),
             rollbackPolicy: jest.fn().mockReturnValue({
               id: 'pol-2026-09-001',
               status: 'ROLLED_BACK',
               canaryPercentage: 0,
             }),
+            simulatePolicy: jest.fn().mockReturnValue({
+              policyId: 'pol-2026-09-001',
+              syntaxValid: true,
+              changedKeys: ['jit_elevation'],
+              unchangedKeys: [],
+            }),
+            listAuditEvents: jest.fn().mockReturnValue([
+              {
+                id: 'evt-1',
+                action: 'STAGED',
+                actorId: 'secops@zoikoshield.corp',
+              },
+            ]),
           },
         },
         {
@@ -76,7 +92,9 @@ describe('PolicyLifecycleController', () => {
       ],
     }).compile();
 
-    controller = module.get<PolicyLifecycleController>(PolicyLifecycleController);
+    controller = module.get<PolicyLifecycleController>(
+      PolicyLifecycleController,
+    );
     service = module.get<PolicyLifecycleService>(PolicyLifecycleService);
   });
 
@@ -94,9 +112,47 @@ describe('PolicyLifecycleController', () => {
 
   describe('getPolicyById', () => {
     it('delegates to service getPolicyById', () => {
-      const result = controller.getPolicyById(mockUser, 'pol-2026-09-001', 'tenant-acme');
-      expect(service.getPolicyById).toHaveBeenCalledWith('tenant-acme', 'pol-2026-09-001');
+      const result = controller.getPolicyById(
+        mockUser,
+        'pol-2026-09-001',
+        'tenant-acme',
+      );
+      expect(service.getPolicyById).toHaveBeenCalledWith(
+        'tenant-acme',
+        'pol-2026-09-001',
+      );
       expect(result.id).toBe('pol-2026-09-001');
+    });
+  });
+
+  describe('simulatePolicy', () => {
+    it('delegates to service simulatePolicy with caller identity', () => {
+      const result = controller.simulatePolicy(
+        mockUser,
+        'pol-2026-09-001',
+        'tenant-acme',
+      );
+      expect(service.simulatePolicy).toHaveBeenCalledWith(
+        'tenant-acme',
+        'pol-2026-09-001',
+        'secops@zoikoshield.corp',
+      );
+      expect(result.syntaxValid).toBe(true);
+    });
+  });
+
+  describe('listAuditEvents', () => {
+    it('delegates to service listAuditEvents', () => {
+      const result = controller.listAuditEvents(
+        mockUser,
+        'pol-2026-09-001',
+        'tenant-acme',
+      );
+      expect(service.listAuditEvents).toHaveBeenCalledWith(
+        'tenant-acme',
+        'pol-2026-09-001',
+      );
+      expect(result).toHaveLength(1);
     });
   });
 
@@ -106,7 +162,12 @@ describe('PolicyLifecycleController', () => {
         stagedEnvironment: 'staging-us-east1',
         canaryPercentage: 25,
       };
-      const result = controller.stagePolicy(mockUser, 'pol-2026-09-001', dto, 'tenant-acme');
+      const result = controller.stagePolicy(
+        mockUser,
+        'pol-2026-09-001',
+        dto,
+        'tenant-acme',
+      );
       expect(service.stagePolicy).toHaveBeenCalledWith(
         'tenant-acme',
         'pol-2026-09-001',
@@ -122,7 +183,12 @@ describe('PolicyLifecycleController', () => {
       const dto = {
         notes: 'Verified against zero-trust standards.',
       };
-      const result = controller.approvePolicy(mockUser, 'pol-2026-09-001', dto, 'tenant-acme');
+      const result = controller.approvePolicy(
+        mockUser,
+        'pol-2026-09-001',
+        dto,
+        'tenant-acme',
+      );
       expect(service.approvePolicy).toHaveBeenCalledWith(
         'tenant-acme',
         'pol-2026-09-001',
@@ -137,7 +203,12 @@ describe('PolicyLifecycleController', () => {
       const dto = {
         reason: 'Anomaly detected in canary deployment.',
       };
-      const result = controller.rollbackPolicy(mockUser, 'pol-2026-09-001', dto, 'tenant-acme');
+      const result = controller.rollbackPolicy(
+        mockUser,
+        'pol-2026-09-001',
+        dto,
+        'tenant-acme',
+      );
       expect(service.rollbackPolicy).toHaveBeenCalledWith(
         'tenant-acme',
         'pol-2026-09-001',

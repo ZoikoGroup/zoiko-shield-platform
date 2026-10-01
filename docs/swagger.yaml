@@ -287,7 +287,7 @@ components:
           type: string
         domain:
           type: string
-          enum: [IAM, DETECTION, RESPONSE, RESIDENCY, ACCESS, ZERO_TRUST]
+          enum: [IAM, DETECTION, RESPONSE, RESIDENCY, RATE_LIMIT]
         version:
           type: string
         status:
@@ -319,6 +319,51 @@ components:
             proposed:
               type: string
         reversalReason:
+          type: string
+    PolicySimulationReport:
+      type: object
+      required:
+        - policyId
+        - simulatedAt
+        - syntaxValid
+        - changedKeys
+        - unchangedKeys
+      properties:
+        policyId:
+          type: string
+        simulatedAt:
+          type: string
+        syntaxValid:
+          type: boolean
+        parseError:
+          type: string
+        changedKeys:
+          type: array
+          items:
+            type: string
+        unchangedKeys:
+          type: array
+          items:
+            type: string
+    PolicyAuditEventRecord:
+      type: object
+      required:
+        - id
+        - action
+        - actorId
+        - detail
+        - occurredAt
+      properties:
+        id:
+          type: string
+        action:
+          type: string
+          enum: [SIMULATED, STAGED, APPROVED, ROLLED_BACK]
+        actorId:
+          type: string
+        detail:
+          type: string
+        occurredAt:
           type: string
     ManagedDefenseObjectResponse:
       type: object
@@ -57717,7 +57762,7 @@ paths:
           required: false
           schema:
             type: string
-            enum: [IAM, DETECTION, RESPONSE, RESIDENCY, ACCESS, ZERO_TRUST]
+            enum: [IAM, DETECTION, RESPONSE, RESIDENCY, RATE_LIMIT]
       responses:
         '200':
           description: List of policy version records
@@ -57752,6 +57797,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PolicyVersionRecord'
+        '404':
+          description: Policy not found
+
+  /api/v1/policies/{policyId}/simulate:
+    post:
+      summary: Validate a policy's proposed diff (test/simulation step)
+      description: >-
+        Parses the proposed diff as YAML and reports which top-level keys
+        changed, recording the result as an audit event. This is syntactic
+        and structural validation, not a dry run against a live policy
+        engine for the policy's domain.
+      operationId: simulatePolicy
+      tags:
+        - RBAC
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: policyId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Simulation report
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicySimulationReport'
         '404':
           description: Policy not found
 
@@ -57868,5 +57944,37 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PolicyVersionRecord'
+        '404':
+          description: Policy not found
+
+  /api/v1/policies/{policyId}/audit:
+    get:
+      summary: Get a policy's audit record
+      description: >-
+        The append-only audit trail §619 requires: one row per
+        stage/simulate/approve/rollback call, newest first. Nothing updates
+        or deletes an entry once written.
+      operationId: listPolicyAuditEvents
+      tags:
+        - RBAC
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: policyId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Audit events, most recent first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PolicyAuditEventRecord'
         '404':
           description: Policy not found

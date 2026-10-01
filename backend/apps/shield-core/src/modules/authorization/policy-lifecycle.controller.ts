@@ -54,6 +54,33 @@ export class PolicyLifecycleController {
     return this.policyLifecycleService.getPolicyById(tenantId, policyId);
   }
 
+  @Post(':policyId/simulate')
+  @RequirePermissions(PERMISSION_CODES.POLICY_CONFIG_WRITE)
+  simulatePolicy(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('policyId') policyId: string,
+    @Headers('x-tenant-id') headerTenantId?: string,
+  ) {
+    const tenantId = headerTenantId || user.tenantId || 'global';
+    const actor = user.email || user.id || 'secops-operator';
+    return this.policyLifecycleService.simulatePolicy(
+      tenantId,
+      policyId,
+      actor,
+    );
+  }
+
+  @Get(':policyId/audit')
+  @RequirePermissions(PERMISSION_CODES.POLICY_CONFIG_READ)
+  listAuditEvents(
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('policyId') policyId: string,
+    @Headers('x-tenant-id') headerTenantId?: string,
+  ) {
+    const tenantId = headerTenantId || user.tenantId || 'global';
+    return this.policyLifecycleService.listAuditEvents(tenantId, policyId);
+  }
+
   @Post(':policyId/stage')
   @RequirePermissions(PERMISSION_CODES.POLICY_CONFIG_WRITE)
   stagePolicy(
