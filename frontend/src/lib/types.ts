@@ -1270,8 +1270,25 @@ export interface OfflineVerificationReport {
     signatureSha256: string;
   };
 }
-
-
-
-
+export interface PolicyVersionRecord {
+  id: string;
+  tenantId: string;
+  policyName: string;
+  domain: 'IAM' | 'DETECTION' | 'RESPONSE' | 'RESIDENCY' | 'ACCESS' | 'ZERO_TRUST';
+  version: string;
+  status: 'DRAFT' | 'PENDING_APPROVAL' | 'STAGED' | 'ACTIVE' | 'ROLLED_BACK';
+  stagedEnvironment: string;
+  canaryPercentage: number;
+  author: string;
+  approvers: string[];
+  createdAt: string;
+  updatedAt: string;
+  commitHash: string;
+  diffSummary: string;
+  diffContent: {
+    previous: string;
+    proposed: string;
+  };
+  reversalReason?: string;
+}
 

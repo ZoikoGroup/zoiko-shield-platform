@@ -15,11 +15,13 @@ vi.mock('next/navigation', () => ({
 }));
 
 // Mock EventSource for useEventStream
-global.EventSource = vi.fn().mockImplementation(() => ({
-  addEventListener: vi.fn(),
-  removeEventListener: vi.fn(),
-  close: vi.fn(),
-})) as any;
+global.EventSource = vi.fn(function () {
+  return {
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    close: vi.fn(),
+  };
+}) as any;
 
 // Import route page components
 import VerifyCertificatePage from '@/app/verify-certificate/page';

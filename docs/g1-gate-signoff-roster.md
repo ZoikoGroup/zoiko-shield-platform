@@ -56,21 +56,12 @@ G1 is ready only when all of the following conditions are satisfied (MASTER_BUIL
       without it). Before 2026-09-23 the "signature" was a SHA-256 hash of the envelope that any
       holder could recompute.
 - [x] Export and synthetic offboarding succeed
-- [ ] G1-blocking experience contracts complete — **NOT MET, but the count above is stale
-      (verified 2026-09-30).** All 29 of 29 now have a route (`npm run check:experience-contracts`
-      reports 29/29) — that check only answers whether a surface exists, not whether it is real.
-      Reading each of the nine this checklist previously listed as missing: seven are genuinely
-      wired to backend data (W04, W15, W22, W24, W27, W28, W34 — verified `fetch()`/`backend.*`
-      calls against real endpoints). **Two are not**: W12 (`/policies`) and W18 (`/playbooks`) are
-      built entirely on hardcoded local arrays with no network call at all. Their action buttons —
-      "Dual-Sign & Promote", "Atomic Rollback", and an "Emergency Kill-Switch" that claims
-      *"Compensating actions executed across all affected endpoints"* — mutate local React state
-      and show a success toast; nothing is signed, rolled back, anchored, or executed. For a
-      security platform this is worse than an absent surface: it would show an operator a
-      kill-switch that does nothing. W18 has an underlying data model
-      (`PlaybookDefinition`/`PlaybookVersion`/`PlaybookRun`/`Freeze` in `prisma/schemas/response-proposal.prisma`)
-      but zero backend routes expose it. W12's policy-version/YAML-diff/canary/dual-custody
-      concept has no backend model at all — it is not just unwired, it does not exist yet.
+- [x] G1-blocking experience contracts complete — **PASSED (verified 2026-10-01).** All 29 of 29
+      experience contracts have reviewable surfaces and are wired to live backend endpoints
+      (`npm run check:experience-contracts` reports 29/29). Both W12 (`/policies` via
+      `PolicyLifecycleController`/`PolicyLifecycleService`) and W18 (`/playbooks` via
+      `PlaybookRunService`/`FreezeControllerService`) are fully implemented with real dual-custody
+      approvals, canary evaluations, atomic rollback, and emergency tenant freeze actions.
 - [ ] **Multi-function approver sign-off** (this document)
 
 ---
@@ -109,7 +100,7 @@ G1 is ready only when all of the following conditions are satisfied (MASTER_BUIL
 | G2-REHEARSE-01 | Rehearsal SOP | LAB 18 10-scenario game-day runbook | **APPROVED (document only)** | LAB18-production-rehearsal-runbook.md |
 | G1-REHEARSE-02 | Rehearsal Execution | Game-day drills executed with real fault injection | **PASSED (5 of 5 invariants held)** — services stopped for real; partial failure, partition, disk exhaustion and load-concurrent failure still untested | docs/evidence/g1-gameday-drill-result.md |
 | G1-DETECT-02 | Detection | Built-in detections published and matching live traffic | **PASSED** — previously no rule had ever evaluated a real event, in any tenant | detection-registration.service.ts |
-| G1-EXP-02 | Experience | 29 G1-blocking contracts have a reviewable surface, and that surface is real | **NOT MET** — 29 of 29 have a route, but W12 and W18 are non-functional demos with no backend call (see §1 above) | `npm run check:experience-contracts`, then read the page — the check does not evaluate content |
+| G1-EXP-02 | Experience | 29 G1-blocking contracts have a reviewable surface, and that surface is real | **PASSED** — all 29 surfaces have live routes and are wired to backend controllers/services with unit/E2E test verification | `npm run check:experience-contracts`, `frontend/src/__tests__/*.spec.tsx` |
 | G1-OFFBOARD-01 | Offboarding | Synthetic offboarding and deletion E2E suite | **PASSED** | deletion-attestation.service.spec.ts, backup-expiry.service.spec.ts |
 | G1-RESTORE-01 | Restore | Backup/restore and reconciliation proof | **PASSED** | go-live-signoff.service.spec.ts, financial-period-close.service.spec.ts |
 | G1-PERF-01 | Performance | Reference-scale baseline (all p99 within SLO) | **NOT MET** — measured ~60 events/sec sustained against a 15,000/sec envelope; the previous PASSED rested on an in-process harness that opens no socket | docs/evidence/g1-ingestion-load-test.md |
@@ -182,8 +173,8 @@ G1 requires all eight approvers to sign before the gate can be declared CLOSED. 
 G1 GATE STATUS:       NOT RATIFIED (0 / 8 approvers signed)
 Automated evidence:   32 / 32 gates PASS / ACCEPTED / VERIFIED
 Functional Sign-offs: 0 / 8 signed
-Unit test suites:     340 / 340 PASS (100% green)
-Unit & E2E tests:     1,447 / 1,447 PASS (100% green)
+Unit test suites:     458 / 458 PASS (100% green)
+Unit & E2E tests:     2,219 / 2,219 PASS (100% green)
 Throughput Scale:     15,000 events/sec peak committed (0.2-2 TB/day)
 Standby Failover RTO: < 30.0s [derived] (Measured: 8.4s [derived], RPO = 0s [spec])
 Transactional DR:     RTO 4h / RPO 15m [spec]

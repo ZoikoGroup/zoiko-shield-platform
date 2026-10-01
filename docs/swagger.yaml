@@ -260,6 +260,66 @@ components:
       properties:
         humanAuthority:
           $ref: '#/components/schemas/HumanAuthorityAttestation'
+    PolicyVersionRecord:
+      type: object
+      required:
+        - id
+        - tenantId
+        - policyName
+        - domain
+        - version
+        - status
+        - stagedEnvironment
+        - canaryPercentage
+        - author
+        - approvers
+        - createdAt
+        - updatedAt
+        - commitHash
+        - diffSummary
+        - diffContent
+      properties:
+        id:
+          type: string
+        tenantId:
+          type: string
+        policyName:
+          type: string
+        domain:
+          type: string
+          enum: [IAM, DETECTION, RESPONSE, RESIDENCY, ACCESS, ZERO_TRUST]
+        version:
+          type: string
+        status:
+          type: string
+          enum: [DRAFT, PENDING_APPROVAL, STAGED, ACTIVE, ROLLED_BACK]
+        stagedEnvironment:
+          type: string
+        canaryPercentage:
+          type: number
+        author:
+          type: string
+        approvers:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+        updatedAt:
+          type: string
+        commitHash:
+          type: string
+        diffSummary:
+          type: string
+        diffContent:
+          type: object
+          properties:
+            previous:
+              type: string
+            proposed:
+              type: string
+        reversalReason:
+          type: string
     ManagedDefenseObjectResponse:
       type: object
       required:
@@ -57640,5 +57700,173 @@ paths:
         '200':
           description: Incident causal provenance graph
 
+  /api/v1/policies:
+    get:
+      summary: List governed policy versions
+      description: Lists versioned policies with deployment environments, canary percentages, and dual-custody approval status.
+      operationId: listPolicies
+      tags:
+        - RBAC
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: domain
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [IAM, DETECTION, RESPONSE, RESIDENCY, ACCESS, ZERO_TRUST]
+      responses:
+        '200':
+          description: List of policy version records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PolicyVersionRecord'
 
+  /api/v1/policies/{policyId}:
+    get:
+      summary: Get policy version details
+      description: Retrieves policy version record by ID including commit hash and diff content.
+      operationId: getPolicyById
+      tags:
+        - RBAC
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: policyId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Policy version record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyVersionRecord'
+        '404':
+          description: Policy not found
 
+  /api/v1/policies/{policyId}/stage:
+    post:
+      summary: Stage policy to environment with canary deployment
+      description: Stages policy version to an environment (staging or production) with a designated canary traffic percentage.
+      operationId: stagePolicy
+      tags:
+        - RBAC
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: policyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [stagedEnvironment, canaryPercentage]
+              properties:
+                stagedEnvironment:
+                  type: string
+                canaryPercentage:
+                  type: number
+                  minimum: 0
+                  maximum: 100
+      responses:
+        '200':
+          description: Updated policy version record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyVersionRecord'
+        '404':
+          description: Policy not found
+
+  /api/v1/policies/{policyId}/approve:
+    post:
+      summary: Approve policy (4-Eyes dual-custody)
+      description: Submits peer authorization signature for policy activation. Requires 2 distinct approvers for active deployment.
+      operationId: approvePolicy
+      tags:
+        - RBAC
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: policyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: Updated policy version record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyVersionRecord'
+        '400':
+          description: Approver already signed off
+        '404':
+          description: Policy not found
+
+  /api/v1/policies/{policyId}/rollback:
+    post:
+      summary: Instant policy rollback
+      description: Rolls back policy version instantly, dropping canary percentage to 0% and logging the reversal reason into the audit register.
+      operationId: rollbackPolicy
+      tags:
+        - RBAC
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: policyId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason:
+                  type: string
+      responses:
+        '200':
+          description: Updated policy version record with rollback status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PolicyVersionRecord'
+        '404':
+          description: Policy not found

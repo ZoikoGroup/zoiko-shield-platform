@@ -1,5 +1,4 @@
-import React from "react";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import PlatformHealthPage from "@/app/admin/platform-health/page";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
@@ -633,7 +632,7 @@ describe("Spec §31 & §32 Platform Service Health & Readiness Cockpit Suite", (
     });
 
     const drillButton = screen.getByText(/Execute Restore Drill/i);
-    drillButton.click();
+    fireEvent.click(drillButton);
 
     await waitFor(() => {
       expect(screen.getByText(/RESTORE DRILL VERIFIED/i)).toBeInTheDocument();
@@ -736,7 +735,7 @@ describe("Spec §31 & §32 Platform Service Health & Readiness Cockpit Suite", (
     });
 
     const verifyCliButton = screen.getByText(/Verify Offline CLI/i);
-    verifyCliButton.click();
+    fireEvent.click(verifyCliButton);
 
     await waitFor(() => {
       expect(screen.getByText(/Standalone Verifier Report: pkg-phase0-fresh-02/i)).toBeInTheDocument();

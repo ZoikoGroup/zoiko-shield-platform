@@ -24,15 +24,23 @@ import crypto from "crypto";
  * an answer.
  */
 
-/** Which service owns a path. All authenticated user traffic enters via shield-core. */
+/** Which service owns a path. All authenticated user traffic enters via shield-core by default. */
 function resolveServiceBaseUrl(path: string): string {
-  // Public raw webhook ingestion (protected by WebhookSignatureGuard).
-  if (path.startsWith("ingestion/webhooks")) {
+  // Public raw webhook ingestion & events stream
+  if (path.startsWith("ingestion/") || path.startsWith("events")) {
     return process.env.SHIELD_INGEST_URL || "http://127.0.0.1:3002";
   }
-  // AI and decision-rights operations.
+  // AI and decision-rights operations
   if (path.startsWith("ai/") || path.startsWith("copilot")) {
     return process.env.SHIELD_AI_URL || "http://127.0.0.1:3003";
+  }
+  // SOAR response actions and playbooks
+  if (path.startsWith("actions/") || path.startsWith("response/")) {
+    return process.env.SHIELD_ACTION_URL || process.env.SHIELD_CORE_URL || "http://127.0.0.1:3001";
+  }
+  // Cryptographic anchoring & Merkle witness receipts
+  if (path.startsWith("anchor/") || path.startsWith("ledger/")) {
+    return process.env.SHIELD_ANCHOR_URL || process.env.SHIELD_CORE_URL || "http://127.0.0.1:3001";
   }
   return process.env.SHIELD_CORE_URL || "http://127.0.0.1:3001";
 }
