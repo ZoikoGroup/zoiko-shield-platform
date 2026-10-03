@@ -25,7 +25,10 @@ describe('StandaloneVerifierRunner', () => {
     fs.mkdirSync(evidenceDir, { recursive: true });
 
     const file1Content = 'Log entry 1: Admin logged in';
-    const file1Hash = crypto.createHash('sha256').update(file1Content).digest('hex');
+    const file1Hash = crypto
+      .createHash('sha256')
+      .update(file1Content)
+      .digest('hex');
     fs.writeFileSync(path.join(evidenceDir, 'auth-log.txt'), file1Content);
 
     const merkleVerifier = new StandaloneMerkleVerifier();
@@ -39,7 +42,10 @@ describe('StandaloneVerifierRunner', () => {
       merkleRoot,
       evidenceFiles: [{ filename: 'auth-log.txt', sha256: file1Hash }],
     };
-    fs.writeFileSync(path.join(tempDir, 'manifest.json'), JSON.stringify(manifest));
+    fs.writeFileSync(
+      path.join(tempDir, 'manifest.json'),
+      JSON.stringify(manifest),
+    );
 
     const envelope = {
       packageId: 'pkg-100',
@@ -49,7 +55,10 @@ describe('StandaloneVerifierRunner', () => {
       witnessAttestation: { signature: 'sig-witness-valid' },
       humanSignatures: [{ signer: 'ciso@acme.com', signature: 'sig-human-1' }],
     };
-    fs.writeFileSync(path.join(tempDir, 'package-envelope.json'), JSON.stringify(envelope));
+    fs.writeFileSync(
+      path.join(tempDir, 'package-envelope.json'),
+      JSON.stringify(envelope),
+    );
 
     const cert = runner.verifyOfflinePackage({ packagePath: tempDir });
 
@@ -64,9 +73,15 @@ describe('StandaloneVerifierRunner', () => {
     fs.mkdirSync(evidenceDir, { recursive: true });
 
     const file1Content = 'Original content';
-    const file1Hash = crypto.createHash('sha256').update(file1Content).digest('hex');
+    const file1Hash = crypto
+      .createHash('sha256')
+      .update(file1Content)
+      .digest('hex');
     // Write tampered content
-    fs.writeFileSync(path.join(evidenceDir, 'auth-log.txt'), 'Tampered content altered by attacker');
+    fs.writeFileSync(
+      path.join(evidenceDir, 'auth-log.txt'),
+      'Tampered content altered by attacker',
+    );
 
     const merkleVerifier = new StandaloneMerkleVerifier();
     const merkleRoot = merkleVerifier.build([file1Hash]).root;
@@ -78,7 +93,10 @@ describe('StandaloneVerifierRunner', () => {
       merkleRoot,
       evidenceFiles: [{ filename: 'auth-log.txt', sha256: file1Hash }],
     };
-    fs.writeFileSync(path.join(tempDir, 'manifest.json'), JSON.stringify(manifest));
+    fs.writeFileSync(
+      path.join(tempDir, 'manifest.json'),
+      JSON.stringify(manifest),
+    );
 
     const envelope = {
       packageId: 'pkg-100',
@@ -86,7 +104,10 @@ describe('StandaloneVerifierRunner', () => {
       merkleRoot,
       signedAt: new Date().toISOString(),
     };
-    fs.writeFileSync(path.join(tempDir, 'package-envelope.json'), JSON.stringify(envelope));
+    fs.writeFileSync(
+      path.join(tempDir, 'package-envelope.json'),
+      JSON.stringify(envelope),
+    );
 
     const cert = runner.verifyOfflinePackage({ packagePath: tempDir });
 

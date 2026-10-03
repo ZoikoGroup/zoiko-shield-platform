@@ -42,7 +42,11 @@ export class StandaloneVerifierRunner {
           envelopeIntegrity: false,
           manifestCoreHashMatch: false,
           merkleRootIntegrity: false,
-          evidenceFilesIntegrity: { totalFiles: 0, validFiles: 0, corruptedFiles: 0 },
+          evidenceFilesIntegrity: {
+            totalFiles: 0,
+            validFiles: 0,
+            corruptedFiles: 0,
+          },
           witnessAttestationValid: false,
           humanApprovalBindingValid: false,
         },

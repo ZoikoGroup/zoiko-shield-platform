@@ -14,7 +14,8 @@ export interface InvestigationHop {
 
 export interface ProvenanceNode {
   id: string;
-  type: 'IDENTITY' | 'HOST' | 'IP' | 'CLOUD_RESOURCE' | 'FINDING' | 'ATTACK_STAGE';
+  type:
+    'IDENTITY' | 'HOST' | 'IP' | 'CLOUD_RESOURCE' | 'FINDING' | 'ATTACK_STAGE';
   label: string;
   properties: Record<string, unknown>;
 }
@@ -22,7 +23,13 @@ export interface ProvenanceNode {
 export interface ProvenanceEdge {
   source: string;
   target: string;
-  relationship: 'PERFORMED' | 'AUTHENTICATED_TO' | 'ACCESSED' | 'ASSUMED_ROLE' | 'TRIGGERED' | 'PROPAGATED_TO';
+  relationship:
+    | 'PERFORMED'
+    | 'AUTHENTICATED_TO'
+    | 'ACCESSED'
+    | 'ASSUMED_ROLE'
+    | 'TRIGGERED'
+    | 'PROPAGATED_TO';
   weight: number;
 }
 
@@ -41,8 +48,13 @@ export interface AutonomousInvestigationReport {
   investigationId: string;
   incidentId: string;
   tenantId: string;
-  status: 'COMPLETED' | 'STOPPED_BUDGET_EXHAUSTED' | 'STOPPED_INJECTION_DETECTED';
-  verdict: 'TRUE_POSITIVE_MALICIOUS' | 'SUSPICIOUS_UNAUTHORIZED' | 'FALSE_POSITIVE' | 'BENIGN_AUTHORIZED';
+  status:
+    'COMPLETED' | 'STOPPED_BUDGET_EXHAUSTED' | 'STOPPED_INJECTION_DETECTED';
+  verdict:
+    | 'TRUE_POSITIVE_MALICIOUS'
+    | 'SUSPICIOUS_UNAUTHORIZED'
+    | 'FALSE_POSITIVE'
+    | 'BENIGN_AUTHORIZED';
   confidenceScore: number;
   totalHops: number;
   hops: InvestigationHop[];
@@ -54,8 +66,13 @@ export interface AutonomousInvestigationReport {
 
 @Injectable()
 export class AutonomousInvestigationAgentService {
-  private readonly logger = new Logger(AutonomousInvestigationAgentService.name);
-  private readonly investigationStore = new Map<string, AutonomousInvestigationReport>();
+  private readonly logger = new Logger(
+    AutonomousInvestigationAgentService.name,
+  );
+  private readonly investigationStore = new Map<
+    string,
+    AutonomousInvestigationReport
+  >();
 
   constructor(private readonly toolCapability: ToolCapabilityService) {}
 
@@ -66,7 +83,12 @@ export class AutonomousInvestigationAgentService {
     tenantId: string;
     incidentId: string;
     findingSummary: string;
-    initialEntities?: { user?: string; host?: string; ip?: string; resourceId?: string };
+    initialEntities?: {
+      user?: string;
+      host?: string;
+      ip?: string;
+      resourceId?: string;
+    };
     maxHops?: number;
   }): Promise<AutonomousInvestigationReport> {
     const investigationId = `inv-${crypto.randomUUID()}`;
@@ -76,7 +98,8 @@ export class AutonomousInvestigationAgentService {
     const user = params.initialEntities?.user || 'svc-cloud-admin';
     const ip = params.initialEntities?.ip || '198.51.100.42';
     const host = params.initialEntities?.host || 'ip-10-0-14-22.ec2.internal';
-    const resource = params.initialEntities?.resourceId || 'arn:aws:s3:::customer-vault';
+    const resource =
+      params.initialEntities?.resourceId || 'arn:aws:s3:::customer-vault';
 
     this.logger.log(
       `Starting autonomous ReAct threat investigation for incident ${params.incidentId} (tenant: ${params.tenantId})`,
@@ -88,7 +111,10 @@ export class AutonomousInvestigationAgentService {
       hopNumber: 1,
       thought: `Analyzing initial security alert: "${params.findingSummary}". Need to extract key identities, endpoints, and external connections to establish base hypothesis.`,
       action: 'extract_entities',
-      actionInput: { incidentId: params.incidentId, summary: params.findingSummary },
+      actionInput: {
+        incidentId: params.incidentId,
+        summary: params.findingSummary,
+      },
       observation: hop1Obs,
       evidenceHash: this.calculateHash(hop1Obs),
       timestamp: new Date(Date.now() - 4000).toISOString(),
@@ -154,17 +180,62 @@ export class AutonomousInvestigationAgentService {
       attackStage: 'CREDENTIAL_COMPROMISE_LATERAL_MOVEMENT',
       confidenceScore: 0.94,
       nodes: [
-        { id: `node-ip`, type: 'IP', label: ip, properties: { reputation: 'MALICIOUS_TOR', score: 92 } },
-        { id: `node-user`, type: 'IDENTITY', label: user, properties: { role: 'SecurityAdmin', compromised: true } },
-        { id: `node-host`, type: 'HOST', label: host, properties: { os: 'Linux', compromisedProcess: 'bash' } },
-        { id: `node-res`, type: 'CLOUD_RESOURCE', label: resource, properties: { sensitivity: 'HIGH' } },
-        { id: `node-finding`, type: 'FINDING', label: params.findingSummary, properties: { severity: 'CRITICAL' } },
+        {
+          id: `node-ip`,
+          type: 'IP',
+          label: ip,
+          properties: { reputation: 'MALICIOUS_TOR', score: 92 },
+        },
+        {
+          id: `node-user`,
+          type: 'IDENTITY',
+          label: user,
+          properties: { role: 'SecurityAdmin', compromised: true },
+        },
+        {
+          id: `node-host`,
+          type: 'HOST',
+          label: host,
+          properties: { os: 'Linux', compromisedProcess: 'bash' },
+        },
+        {
+          id: `node-res`,
+          type: 'CLOUD_RESOURCE',
+          label: resource,
+          properties: { sensitivity: 'HIGH' },
+        },
+        {
+          id: `node-finding`,
+          type: 'FINDING',
+          label: params.findingSummary,
+          properties: { severity: 'CRITICAL' },
+        },
       ],
       edges: [
-        { source: `node-ip`, target: `node-user`, relationship: 'AUTHENTICATED_TO', weight: 0.95 },
-        { source: `node-user`, target: `node-host`, relationship: 'ACCESSED', weight: 0.9 },
-        { source: `node-host`, target: `node-res`, relationship: 'PERFORMED', weight: 0.88 },
-        { source: `node-user`, target: `node-finding`, relationship: 'TRIGGERED', weight: 0.94 },
+        {
+          source: `node-ip`,
+          target: `node-user`,
+          relationship: 'AUTHENTICATED_TO',
+          weight: 0.95,
+        },
+        {
+          source: `node-user`,
+          target: `node-host`,
+          relationship: 'ACCESSED',
+          weight: 0.9,
+        },
+        {
+          source: `node-host`,
+          target: `node-res`,
+          relationship: 'PERFORMED',
+          weight: 0.88,
+        },
+        {
+          source: `node-user`,
+          target: `node-finding`,
+          relationship: 'TRIGGERED',
+          weight: 0.94,
+        },
       ],
       generatedAt: new Date().toISOString(),
     };

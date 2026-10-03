@@ -24,7 +24,9 @@ describe('HighThroughputBatchBufferService', () => {
       ],
     }).compile();
 
-    service = module.get<HighThroughputBatchBufferService>(HighThroughputBatchBufferService);
+    service = module.get<HighThroughputBatchBufferService>(
+      HighThroughputBatchBufferService,
+    );
   });
 
   afterEach(() => {

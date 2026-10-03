@@ -33,7 +33,9 @@ export class AzureMonitorPollerService {
   @Cron(CronExpression.EVERY_MINUTE)
   async handleScheduledPoll(): Promise<void> {
     if (this.isPolling) {
-      this.logger.debug('Previous Azure Monitor poll cycle in progress, skipping...');
+      this.logger.debug(
+        'Previous Azure Monitor poll cycle in progress, skipping...',
+      );
       return;
     }
 
@@ -59,7 +61,9 @@ export class AzureMonitorPollerService {
         }
       }
     } catch (err) {
-      this.logger.error(`Error during Azure Monitor poll: ${(err as Error).message}`);
+      this.logger.error(
+        `Error during Azure Monitor poll: ${(err as Error).message}`,
+      );
     } finally {
       this.isPolling = false;
     }
@@ -72,7 +76,9 @@ export class AzureMonitorPollerService {
     instanceId: string,
     limit = 50,
   ): Promise<AzureMonitorPollResult> {
-    this.logger.log(`Polling Azure Monitor events for connector instance: ${instanceId}`);
+    this.logger.log(
+      `Polling Azure Monitor events for connector instance: ${instanceId}`,
+    );
 
     let tenantId = 'tenant-default';
     if (this.prisma) {
@@ -86,7 +92,10 @@ export class AzureMonitorPollerService {
 
     let lastCheckpoint = '0';
     if (this.checkpointService) {
-      const cursor = await this.checkpointService.get(instanceId, 'azure-monitor');
+      const cursor = await this.checkpointService.get(
+        instanceId,
+        'azure-monitor',
+      );
       lastCheckpoint = cursor || '0';
     }
 

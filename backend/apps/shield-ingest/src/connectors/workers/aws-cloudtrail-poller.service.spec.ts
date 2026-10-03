@@ -15,9 +15,9 @@ describe('AwsCloudTrailPollerService', () => {
   beforeEach(async () => {
     mockPrisma = {
       connectorInstance: {
-        findMany: jest.fn().mockResolvedValue([
-          { id: 'inst-1', tenant_id: 'tenant-1' },
-        ]),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ id: 'inst-1', tenant_id: 'tenant-1' }]),
         findUnique: jest.fn().mockResolvedValue({
           id: 'inst-1',
           tenant_id: 'tenant-1',
@@ -49,11 +49,16 @@ describe('AwsCloudTrailPollerService', () => {
         { provide: PrismaService, useValue: mockPrisma },
         { provide: ConnectorCheckpointService, useValue: mockCheckpoint },
         { provide: ConnectorHealthService, useValue: mockHealth },
-        { provide: HighThroughputBatchBufferService, useValue: mockBatchBuffer },
+        {
+          provide: HighThroughputBatchBufferService,
+          useValue: mockBatchBuffer,
+        },
       ],
     }).compile();
 
-    service = module.get<AwsCloudTrailPollerService>(AwsCloudTrailPollerService);
+    service = module.get<AwsCloudTrailPollerService>(
+      AwsCloudTrailPollerService,
+    );
   });
 
   it('should be defined', () => {

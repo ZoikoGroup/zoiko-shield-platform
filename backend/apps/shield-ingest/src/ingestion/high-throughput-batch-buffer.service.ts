@@ -138,7 +138,9 @@ export class HighThroughputBatchBufferService implements OnModuleDestroy {
     eventType?: string,
   ): { batchEventId: string; queued: boolean; currentBufferDepth: number } {
     const canonicalPayload = JSON.stringify(payload || {});
-    const payloadHash = createHash('sha256').update(canonicalPayload).digest('hex');
+    const payloadHash = createHash('sha256')
+      .update(canonicalPayload)
+      .digest('hex');
     const batchEventId = `bev-${randomUUID()}`;
 
     const record: BufferedRawEvent = {
@@ -193,18 +195,17 @@ export class HighThroughputBatchBufferService implements OnModuleDestroy {
     if (this.kafkaProducer) {
       try {
         for (const evt of batchEvents) {
-          this.kafkaProducer.emit(
-            'shield.raw.events',
-            {
-              tenantId: evt.tenantId,
-              batchId,
-              event: evt,
-              batchRootHash,
-            },
-          );
+          this.kafkaProducer.emit('shield.raw.events', {
+            tenantId: evt.tenantId,
+            batchId,
+            event: evt,
+            batchRootHash,
+          });
         }
       } catch (err: any) {
-        this.logger.error(`[HIGH_THROUGHPUT_BUFFER] Failed to publish batch ${batchId}: ${err.message}`);
+        this.logger.error(
+          `[HIGH_THROUGHPUT_BUFFER] Failed to publish batch ${batchId}: ${err.message}`,
+        );
       }
     }
 
@@ -219,7 +220,9 @@ export class HighThroughputBatchBufferService implements OnModuleDestroy {
           usageState: 'ACCEPTED',
         });
       } catch (err: any) {
-        this.logger.warn(`[HIGH_THROUGHPUT_BUFFER] Metering batch recording warning: ${err.message}`);
+        this.logger.warn(
+          `[HIGH_THROUGHPUT_BUFFER] Metering batch recording warning: ${err.message}`,
+        );
       }
     }
 

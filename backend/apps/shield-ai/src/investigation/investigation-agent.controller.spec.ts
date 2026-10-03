@@ -83,7 +83,10 @@ describe('InvestigationAgentController', () => {
         initialEntities: { user: 'svc-admin' },
       };
 
-      const result = await controller.executeReActInvestigation('tenant-test', dto);
+      const result = await controller.executeReActInvestigation(
+        'tenant-test',
+        dto,
+      );
 
       expect(result.statusCode).toBe(200);
       expect(result.data.incidentId).toBe('inc-123');
