@@ -32,7 +32,8 @@ describe('AutonomousInvestigationAgentService', () => {
       const result = await service.runReActInvestigation({
         tenantId: 'tenant-test',
         incidentId: 'inc-999',
-        findingSummary: 'Abnormal IAM AssumeRole followed by S3 bucket policy change',
+        findingSummary:
+          'Abnormal IAM AssumeRole followed by S3 bucket policy change',
         initialEntities: {
           user: 'attacker-svc',
           ip: '198.51.100.99',

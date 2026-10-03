@@ -33,7 +33,9 @@ export class AwsCloudTrailPollerService {
   @Cron(CronExpression.EVERY_MINUTE)
   async handleScheduledPoll(): Promise<void> {
     if (this.isPolling) {
-      this.logger.debug('Previous CloudTrail poll cycle still in progress, skipping...');
+      this.logger.debug(
+        'Previous CloudTrail poll cycle still in progress, skipping...',
+      );
       return;
     }
 
@@ -59,7 +61,9 @@ export class AwsCloudTrailPollerService {
         }
       }
     } catch (err) {
-      this.logger.error(`Error during CloudTrail scheduled poll: ${(err as Error).message}`);
+      this.logger.error(
+        `Error during CloudTrail scheduled poll: ${(err as Error).message}`,
+      );
     } finally {
       this.isPolling = false;
     }
@@ -72,7 +76,9 @@ export class AwsCloudTrailPollerService {
     instanceId: string,
     limit = 50,
   ): Promise<CloudTrailPollResult> {
-    this.logger.log(`Polling CloudTrail records for connector instance: ${instanceId}`);
+    this.logger.log(
+      `Polling CloudTrail records for connector instance: ${instanceId}`,
+    );
 
     let tenantId = 'tenant-default';
     if (this.prisma) {
@@ -87,7 +93,10 @@ export class AwsCloudTrailPollerService {
     // Retrieve last checkpoint
     let lastCheckpoint = '0';
     if (this.checkpointService) {
-      const cursor = await this.checkpointService.get(instanceId, 'aws-cloudtrail');
+      const cursor = await this.checkpointService.get(
+        instanceId,
+        'aws-cloudtrail',
+      );
       lastCheckpoint = cursor || '0';
     }
 
@@ -111,7 +120,9 @@ export class AwsCloudTrailPollerService {
     // Convert to batch buffer events
     if (this.batchBuffer) {
       const bufferEvents = records.map((rec) => ({
-        eventId: rec.eventID || `ct-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        eventId:
+          rec.eventID ||
+          `ct-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         source: 'aws.cloudtrail',
         eventType: rec.eventName || 'AwsApiCall',
         timestamp: rec.eventTime || new Date().toISOString(),
@@ -163,7 +174,10 @@ export class AwsCloudTrailPollerService {
   ): CloudTrailRawRecord[] {
     const eventTypes = [
       { eventName: 'ConsoleLogin', eventSource: 'signin.amazonaws.com' },
-      { eventName: 'AuthorizeSecurityGroupIngress', eventSource: 'ec2.amazonaws.com' },
+      {
+        eventName: 'AuthorizeSecurityGroupIngress',
+        eventSource: 'ec2.amazonaws.com',
+      },
       { eventName: 'PutBucketPolicy', eventSource: 's3.amazonaws.com' },
       { eventName: 'CreateAccessKey', eventSource: 'iam.amazonaws.com' },
       { eventName: 'AssumeRole', eventSource: 'sts.amazonaws.com' },

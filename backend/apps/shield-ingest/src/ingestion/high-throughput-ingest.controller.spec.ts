@@ -75,7 +75,10 @@ describe('HighThroughputIngestController', () => {
 
       expect(result.statusCode).toBe(202);
       expect(result.data.acceptedCount).toBe(2);
-      expect(service.ingestBatch).toHaveBeenCalledWith('tenant-alpha', dto.events);
+      expect(service.ingestBatch).toHaveBeenCalledWith(
+        'tenant-alpha',
+        dto.events,
+      );
     });
 
     it('should handle empty events array gracefully', async () => {

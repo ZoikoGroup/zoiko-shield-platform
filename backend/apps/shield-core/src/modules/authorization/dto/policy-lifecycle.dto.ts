@@ -9,17 +9,10 @@ import {
 } from 'class-validator';
 
 export type PolicyDomain =
-  | 'IAM'
-  | 'DETECTION'
-  | 'RESPONSE'
-  | 'RESIDENCY'
-  | 'RATE_LIMIT';
+  'IAM' | 'DETECTION' | 'RESPONSE' | 'RESIDENCY' | 'RATE_LIMIT';
 
 export type PolicyLifecycleStatus =
-  | 'ACTIVE'
-  | 'PENDING_APPROVAL'
-  | 'STAGED'
-  | 'ROLLED_BACK';
+  'ACTIVE' | 'PENDING_APPROVAL' | 'STAGED' | 'ROLLED_BACK';
 
 export class StagePolicyDto {
   @IsString()

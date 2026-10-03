@@ -15,9 +15,9 @@ describe('AzureMonitorPollerService', () => {
   beforeEach(async () => {
     mockPrisma = {
       connectorInstance: {
-        findMany: jest.fn().mockResolvedValue([
-          { id: 'az-inst-1', tenant_id: 'tenant-az' },
-        ]),
+        findMany: jest
+          .fn()
+          .mockResolvedValue([{ id: 'az-inst-1', tenant_id: 'tenant-az' }]),
         findUnique: jest.fn().mockResolvedValue({
           id: 'az-inst-1',
           tenant_id: 'tenant-az',
@@ -49,7 +49,10 @@ describe('AzureMonitorPollerService', () => {
         { provide: PrismaService, useValue: mockPrisma },
         { provide: ConnectorCheckpointService, useValue: mockCheckpoint },
         { provide: ConnectorHealthService, useValue: mockHealth },
-        { provide: HighThroughputBatchBufferService, useValue: mockBatchBuffer },
+        {
+          provide: HighThroughputBatchBufferService,
+          useValue: mockBatchBuffer,
+        },
       ],
     }).compile();
 
