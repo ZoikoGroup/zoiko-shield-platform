@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PostureDriftDetectorService } from './posture-drift-detector.service';
 import { PostureDriftController } from './posture-drift.controller';
 import { LiveTelemetryStreamService } from '../streaming/live-telemetry-stream.service';
+import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 
 describe('PostureDriftModule Suite', () => {
   let service: PostureDriftDetectorService;
@@ -12,7 +14,12 @@ describe('PostureDriftModule Suite', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PostureDriftController],
       providers: [PostureDriftDetectorService, LiveTelemetryStreamService],
-    }).compile();
+    })
+      .overrideGuard(JwtAuthGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(PermissionsGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     service = module.get<PostureDriftDetectorService>(
       PostureDriftDetectorService,

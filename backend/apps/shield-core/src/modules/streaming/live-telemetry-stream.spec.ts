@@ -2,6 +2,8 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { LiveTelemetryStreamService } from './live-telemetry-stream.service';
 import { LiveTelemetryStreamController } from './live-telemetry-stream.controller';
 import { firstValueFrom, take, toArray } from 'rxjs';
+import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 
 describe('LiveTelemetryStreamModule Suite', () => {
   let service: LiveTelemetryStreamService;
@@ -11,7 +13,12 @@ describe('LiveTelemetryStreamModule Suite', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [LiveTelemetryStreamController],
       providers: [LiveTelemetryStreamService],
-    }).compile();
+    })
+      .overrideGuard(JwtAuthGuard)
+      .useValue({ canActivate: () => true })
+      .overrideGuard(PermissionsGuard)
+      .useValue({ canActivate: () => true })
+      .compile();
 
     service = module.get<LiveTelemetryStreamService>(LiveTelemetryStreamService);
     controller = module.get<LiveTelemetryStreamController>(
