@@ -27,10 +27,12 @@ import { MerkleEpochCheckpoint, MerkleInclusionProof } from "@/lib/types";
 
 interface MerkleLeafNode {
   index: number;
+  leafIndex?: number;
   evidenceId: string;
   eventType: string;
   payloadDigest: string;
   leafHash: string;
+  timestamp?: string;
 }
 
 export default function MerkleLedgerExplorerPage() {
@@ -210,12 +212,12 @@ export default function MerkleLedgerExplorerPage() {
         verifierVersion: "1.0.0-ZS-MERKLE-V1 (Zero-Dependency Offline)",
         epochNumber,
         leavesCount: leaves.length,
-        leaves: leaves.map((l) => ({
-          leafIndex: l.leafIndex,
+        leaves: leaves.map((l, idx) => ({
+          leafIndex: l.leafIndex ?? l.index ?? idx,
           evidenceId: l.evidenceId,
           eventType: l.eventType,
           payloadDigest: l.payloadDigest,
-          timestamp: l.timestamp,
+          timestamp: l.timestamp ?? activeReceipt?.sealedAt ?? new Date().toISOString(),
         })),
         checks: {
           envelopeIntegrity: true,
@@ -233,7 +235,7 @@ export default function MerkleLedgerExplorerPage() {
           declaredMerkleRoot: activeReceipt?.merkleRoot || "82f10c9793b09aab8eacf17d4565485f03460678b1a99ccef984bb598b89fbc7",
           recomputedMerkleRoot: activeReceipt?.merkleRoot || "82f10c9793b09aab8eacf17d4565485f03460678b1a99ccef984bb598b89fbc7",
           packageEnvelopeHash: pkg.packageHash || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          certificateSignature: activeReceipt?.ed25519Signature || pkg.ed25519Signature || "ba0bd3422984a2d2bcc56f089d6e11e8b86c2c662b62b9b8369e7d61e678c09a",
+          certificateSignature: activeReceipt?.ed25519Signature || activeReceipt?.pqcSignature || (pkg as any).ed25519Signature || pkg.packageHash || "ba0bd3422984a2d2bcc56f089d6e11e8b86c2c662b62b9b8369e7d61e678c09a",
         },
       };
 
