@@ -192,16 +192,16 @@ export default function FindingsListPage() {
                         </Badge>
                       </td>
                       <td className="py-1.5 pr-3 font-mono text-[11px]">
-                        {finding.priorityIntegrity.scored ? (
+                        {finding.priorityIntegrity?.scored ? (
                           <span
                             className={
-                              finding.priorityIntegrity.computedOverUnknowns
+                              finding.priorityIntegrity?.computedOverUnknowns
                                 ? "text-amber-300"
                                 : "text-slate-200"
                             }
                           >
-                            {finding.priority_score}
-                            {finding.priorityIntegrity.computedOverUnknowns && "*"}
+                            {finding.priority_score ?? 0}
+                            {finding.priorityIntegrity?.computedOverUnknowns && "*"}
                           </span>
                         ) : (
                           <span className="text-slate-500">unscored</span>
@@ -209,14 +209,14 @@ export default function FindingsListPage() {
                       </td>
                       <td
                         className={`py-1.5 pr-3 font-mono text-[11px] ${
-                          finding.assertion.state === "STALE"
+                          finding.assertion?.state === "STALE"
                             ? "text-rose-300"
-                            : finding.assertion.state === "AGEING"
+                            : finding.assertion?.state === "AGEING"
                               ? "text-amber-300"
                               : "text-slate-400"
                         }`}
                       >
-                        {finding.assertion.state}
+                        {finding.assertion?.state ?? "CURRENT"}
                         <span className="block text-slate-600">
                           {formatTimestamp(finding.last_confirmed_at)}
                         </span>

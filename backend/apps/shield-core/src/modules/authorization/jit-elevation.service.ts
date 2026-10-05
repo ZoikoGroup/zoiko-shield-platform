@@ -7,6 +7,7 @@ import {
   Injectable,
   Logger,
   NotFoundException,
+  Optional,
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import * as crypto from 'crypto';
@@ -62,8 +63,9 @@ export class JitElevationService {
 
   constructor(
     private readonly prisma: PrismaService,
+    @Optional()
     @Inject(forwardRef(() => WebauthnService))
-    private readonly webauthnService: WebauthnService,
+    private readonly webauthnService?: WebauthnService,
   ) {}
 
   /**
@@ -398,10 +400,12 @@ export class JitElevationService {
       );
     }
 
-    // Throws (ForbiddenException/UnauthorizedException) on any verification
-    // failure - wrong signature, unregistered credential, expired/mismatched
-    // challenge, missing user verification, or a cloned-authenticator
-    // signature counter. Nothing here downgrades that into verified: false.
+    if (!this.webauthnService) {
+      throw new BadRequestException(
+        'WEBAUTHN_SERVICE_UNAVAILABLE: WebAuthn verification service is not configured',
+      );
+    }
+
     const verification = await this.webauthnService.verifyAssertion(
       {
         credentialId: input.credentialId,

@@ -29,6 +29,16 @@ import {
 } from "./types";
 import { useState, useEffect } from "react";
 
+export interface DemoG1Approver {
+  roleId: string;
+  roleTitle: string;
+  signatoryName?: string;
+  signatureProof?: string;
+  ratified: boolean;
+  signedAt?: string;
+  evidenceNotes?: string;
+}
+
 export interface DemoState {
   currentStep: number;
   session: UserSession;
@@ -55,6 +65,7 @@ export interface DemoState {
   workOrderConsumption: WorkOrderConsumptionRecord[];
   legalSensitiveRecords: IncidentLegalSensitiveRecord[];
   legalAccessAuditLogs: IncidentLegalAccessEvent[];
+  g1Roster?: DemoG1Approver[];
 }
 
 const STATIC_TIMESTAMP = "2026-09-02T08:00:00.000Z";
@@ -819,6 +830,16 @@ export function getDefaultStaticState(): DemoState {
         timestamp: "2026-09-02T08:15:00.000Z",
         ipAddress: "192.168.1.50 (Corporate VPN)",
       },
+    ],
+    g1Roster: [
+      { roleId: "ciso", roleTitle: "Chief Information Security Officer (CISO)", ratified: false },
+      { roleId: "dpo", roleTitle: "Data Protection Officer (DPO)", ratified: false },
+      { roleId: "vp_eng", roleTitle: "VP of Engineering", ratified: false },
+      { roleId: "ai_risk_lead", roleTitle: "AI Risk & Safety Governance Lead", ratified: false },
+      { roleId: "qa_lead", roleTitle: "Quality Assurance & Release Lead", ratified: false },
+      { roleId: "sre_lead", roleTitle: "Site Reliability Engineering Lead", ratified: false },
+      { roleId: "product_lead", roleTitle: "Security Product Lead", ratified: false },
+      { roleId: "soc_lead", roleTitle: "SOC Incident Commander", ratified: false },
     ],
   };
 }
