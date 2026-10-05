@@ -57978,3 +57978,445 @@ paths:
                   $ref: '#/components/schemas/PolicyAuditEventRecord'
         '404':
           description: Policy not found
+
+  /api/v1/action/playbooks/wasm/simulate:
+    post:
+      summary: Simulate WASM SOAR Playbook Execution
+      description: Executes isolated WebAssembly bytecode in sandboxed V8 / Wasm runtime with dry-run telemetry and constraint validation.
+      operationId: simulateWasmPlaybook
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - wasmBytecodeBase64
+                - playbookId
+                - targetTenantId
+              properties:
+                wasmBytecodeBase64:
+                  type: string
+                  description: Base64-encoded WebAssembly compiled binary bytecode
+                playbookId:
+                  type: string
+                targetTenantId:
+                  type: string
+                simulatedEnvironment:
+                  type: string
+                fuelLimit:
+                  type: number
+      responses:
+        '200':
+          description: WASM playbook simulation outcome and dry-run telemetry
+        '400':
+          description: Invalid base64 encoding or malformed WASM bytecode
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal execution error
+
+  /api/v1/action/playbooks/wasm/synthesize-rollback:
+    post:
+      summary: Synthesize WASM Playbook Rollback Plan
+      description: Synthesizes inverse compensating operations for a previously executed or simulated WebAssembly SOAR playbook.
+      operationId: synthesizeWasmRollback
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - playbookId
+                - executionReceiptId
+                - targetTenantId
+              properties:
+                playbookId:
+                  type: string
+                executionReceiptId:
+                  type: string
+                targetTenantId:
+                  type: string
+                originalStateHash:
+                  type: string
+      responses:
+        '200':
+          description: Synthesized compensating rollback plan
+        '400':
+          description: Invalid request payload
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal execution error
+
+  /api/v1/assurance/posture-drift/scan:
+    post:
+      summary: Execute Continuous Posture Drift Scan
+      description: Executes continuous cloud security posture scan on tenant asset fleet, detecting configuration drift and compliance deviations.
+      operationId: scanPostureDrift
+      tags:
+        - Assurance
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                tenantId:
+                  type: string
+                assets:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - assetId
+                      - assetType
+                      - cloudProvider
+                      - configuration
+                    properties:
+                      assetId:
+                        type: string
+                      assetType:
+                        type: string
+                      cloudProvider:
+                        type: string
+                      configuration:
+                        type: object
+      responses:
+        '200':
+          description: Posture drift scan completed with detected findings
+        '400':
+          description: Invalid request payload
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+  /api/v1/assurance/posture-drift/findings:
+    get:
+      summary: List Posture Drift Findings
+      description: Lists active posture drift findings and compliance violations for a tenant.
+      operationId: listPostureDriftFindings
+      tags:
+        - Assurance
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: tenantId
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Active posture drift findings list
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+  /api/v1/assurance/posture-drift/remediate:
+    post:
+      summary: Remediate Posture Drift Finding
+      description: Executes 1-click automated or dual-custody remediation on a posture drift violation.
+      operationId: remediatePostureDrift
+      tags:
+        - Assurance
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: tenantId
+          in: query
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - findingId
+                - operatorRationale
+              properties:
+                findingId:
+                  type: string
+                operatorRationale:
+                  type: string
+                dualCustodyApproverId:
+                  type: string
+      responses:
+        '200':
+          description: Remediation executed successfully with attestation receipt
+        '400':
+          description: Invalid request or missing dual-custody approval
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+  /api/v1/streaming/broadcast:
+    post:
+      summary: Broadcast Live Telemetry Stream Event
+      description: Internal gateway for broadcasting real-time security events, alerts, and JIT state changes.
+      operationId: broadcastStreamingEvent
+      tags:
+        - Observability
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - eventType
+                - tenantId
+                - payload
+              properties:
+                eventType:
+                  type: string
+                tenantId:
+                  type: string
+                payload:
+                  type: object
+      responses:
+        '200':
+          description: Event published successfully
+        '400':
+          description: Invalid broadcast payload
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+  /api/v1/streaming/simulate:
+    post:
+      summary: Simulate Live Telemetry Event
+      description: Triggers synthetic real-time event simulation (ALERT, JIT, MERKLE, FREEZE) for live testing and demonstration.
+      operationId: simulateStreamingEvent
+      tags:
+        - Observability
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - eventType
+              properties:
+                eventType:
+                  type: string
+                  enum:
+                    - ALERT
+                    - JIT
+                    - MERKLE
+                    - FREEZE
+                tenantId:
+                  type: string
+                customPayload:
+                  type: object
+      responses:
+        '200':
+          description: Event simulated successfully
+        '400':
+          description: Invalid simulation payload
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+  /api/v1/streaming/health:
+    get:
+      summary: Get Streaming Health Status
+      description: Returns Server-Sent Events (SSE) streaming engine liveness and operational health.
+      operationId: getStreamingHealth
+      tags:
+        - Observability
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Streaming service health status
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+  /api/v1/threat-intel/stix/bundles:
+    post:
+      summary: Ingest STIX 2.1 Threat Intel Bundle
+      description: Ingests and indexes a STIX 2.1 Threat Intel bundle with pattern extraction for IP, domain, and hash indicators.
+      operationId: ingestStixBundle
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - type
+                - id
+                - objects
+              properties:
+                type:
+                  type: string
+                  example: bundle
+                id:
+                  type: string
+                objects:
+                  type: array
+                  items:
+                    type: object
+      responses:
+        '200':
+          description: STIX bundle ingested and indexed successfully
+        '400':
+          description: Invalid STIX bundle
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+  /api/v1/threat-intel/match:
+    post:
+      summary: Match Telemetry Observables Against Threat Intel
+      description: Matches IP addresses, domain names, and file hashes against indexed threat intelligence indicators.
+      operationId: matchThreatIntelObservables
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                ipAddresses:
+                  type: array
+                  items:
+                    type: string
+                domains:
+                  type: array
+                  items:
+                    type: string
+                fileHashes:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Matching observables and associated IOC metadata
+        '400':
+          description: Invalid matching payload
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+  /api/v1/threat-intel/mpc/blind-evaluate:
+    post:
+      summary: Evaluate Blinded Queries with RFC 9497 OPRF
+      description: Evaluates client blinded curve points using server's RFC 9497 OPRF private key for privacy-preserving threat intelligence matching.
+      operationId: evaluateMpcBlindedQueries
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - items
+              properties:
+                items:
+                  type: array
+                  items:
+                    type: object
+                    required:
+                      - queryId
+                      - blindedPointHex
+                    properties:
+                      queryId:
+                        type: string
+                      blindedPointHex:
+                        type: string
+      responses:
+        '200':
+          description: Evaluated blinded points for Private Set Intersection
+        '400':
+          description: Invalid blinded points or elliptic curve format
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+  /api/v1/threat-intel/mpc/server-dataset:
+    get:
+      summary: Get Evaluated OPRF Server Dataset
+      description: Exposes the server's pre-computed OPRF hashes for client-side Private Set Intersection (PSI) finalization.
+      operationId: getMpcServerDataset
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      responses:
+        '200':
+          description: Pre-computed server OPRF dataset entries
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+
+  /api/v1/threat-intel/stats:
+    get:
+      summary: Get Threat Intelligence Index Statistics
+      description: Returns metrics on active STIX IOC indexes, indicator counts, and MPC privacy-preserving feed entries.
+      operationId: getThreatIntelStats
+      tags:
+        - InternalMicroservices
+      security:
+        - InternalServiceAuth: []
+      responses:
+        '200':
+          description: Threat intelligence summary metrics
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error

@@ -9,6 +9,7 @@ import {
   HttpCode,
   HttpStatus,
   MessageEvent,
+  UseGuards,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { LiveTelemetryStreamService } from './live-telemetry-stream.service';
@@ -16,7 +17,10 @@ import {
   BroadcastStreamEventDto,
   TriggerSimulatedEventDto,
 } from './dto/streaming.dto';
+import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/streaming')
 export class LiveTelemetryStreamController {
   constructor(

@@ -8,13 +8,17 @@ import {
   Param,
   HttpCode,
   HttpStatus,
+  UseGuards,
 } from '@nestjs/common';
 import { PostureDriftDetectorService } from './posture-drift-detector.service';
 import {
   ScanTenantPostureDto,
   RemediatePostureDriftDto,
 } from './dto/posture-drift.dto';
+import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
+import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/assurance/posture-drift')
 export class PostureDriftController {
   constructor(
