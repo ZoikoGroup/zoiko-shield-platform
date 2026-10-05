@@ -465,12 +465,17 @@ export interface ComplianceDriftState {
   status: 'COMPLIANT' | 'WARNING_DRIFT' | 'CRITICAL_DRIFT';
   score: number;
   lastAssessedAt: string;
+  driftStatus?: string;
+  lastEvaluatedAt?: string;
   slaAlarms: Array<{
     alarmId: string;
     controlId: string;
-    severity: 'WARNING' | 'CRITICAL';
-    reason: string;
-    triggeredAt: string;
+    severity: 'WARNING' | 'CRITICAL' | string;
+    reason?: string;
+    message?: string;
+    triggeredAt?: string;
+    detectedAt?: string;
+    slaBreachRisk?: boolean;
   }>;
 }
 
@@ -787,6 +792,7 @@ export interface MerkleEpochCheckpoint {
   leafCount: number;
   pqcSignature: string;
   ecdsaSignature: string;
+  ed25519Signature?: string;
   witnessCount: number;
   sealedAt: string;
   hsmKeyCustody?: {
@@ -798,10 +804,12 @@ export interface MerkleEpochCheckpoint {
   };
   leaves?: Array<{
     index: number;
+    leafIndex?: number;
     evidenceId: string;
     eventType: string;
     payloadDigest: string;
     leafHash: string;
+    timestamp?: string;
   }>;
 }
 

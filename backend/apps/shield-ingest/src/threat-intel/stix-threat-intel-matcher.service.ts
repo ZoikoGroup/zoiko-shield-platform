@@ -212,4 +212,37 @@ export class StixThreatIntelMatcherService {
       enrichmentDigest,
     };
   }
+
+  /**
+   * Retrieves summary statistics of all indexed threat indicators.
+   */
+  getStats(): {
+    totalIndexedIndicators: number;
+    ipCount: number;
+    domainCount: number;
+    hashCount: number;
+    trackedThreatActors: string[];
+    trackedMalwareFamilies: string[];
+  } {
+    const allIocs = [
+      ...Array.from(this.ipIocMap.values()),
+      ...Array.from(this.domainIocMap.values()),
+      ...Array.from(this.hashIocMap.values()),
+    ];
+    const threatActors = Array.from(
+      new Set(allIocs.map((i) => i.threatActor).filter(Boolean) as string[]),
+    );
+    const malwareFamilies = Array.from(
+      new Set(allIocs.map((i) => i.malwareFamily).filter(Boolean) as string[]),
+    );
+
+    return {
+      totalIndexedIndicators: allIocs.length,
+      ipCount: this.ipIocMap.size,
+      domainCount: this.domainIocMap.size,
+      hashCount: this.hashIocMap.size,
+      trackedThreatActors: threatActors,
+      trackedMalwareFamilies: malwareFamilies,
+    };
+  }
 }
