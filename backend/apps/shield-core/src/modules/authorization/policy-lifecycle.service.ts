@@ -12,6 +12,7 @@ import {
   StagePolicyDto,
   RollbackPolicyDto,
 } from './dto/policy-lifecycle.dto';
+import { PlatformScope } from '../../../../../libs/database/src';
 
 export interface PolicyVersionRecord {
   id: string;
@@ -169,6 +170,7 @@ export class PolicyLifecycleService implements OnModuleInit {
   }
 
   /** Platform-wide baseline, not per-tenant: runs once at boot, idempotent. */
+  @PlatformScope('startup seeding of canonical policy baselines')
   async onModuleInit(): Promise<void> {
     try {
       for (const seed of this.canonicalSeeds) {
