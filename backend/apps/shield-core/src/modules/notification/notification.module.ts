@@ -13,6 +13,7 @@ import { NotificationDispatchService } from './dispatch/notification-dispatch.se
 import { TransactionalEmailService } from './transactional-email.service';
 import { NotificationAcknowledgementService } from './acknowledgement/notification-acknowledgement.service';
 import { DomainEventNotificationConsumer } from './consumers/domain-event-notification.consumer';
+import { ProductionEmailTemplateEngine } from './templates/production-email-template.engine';
 
 @Module({
   imports: [PrismaModule, KafkaModule],
@@ -21,6 +22,7 @@ import { DomainEventNotificationConsumer } from './consumers/domain-event-notifi
     NotificationPolicyService,
     NotificationTemplateService,
     TransactionalEmailService,
+    ProductionEmailTemplateEngine,
     NotificationPreferenceService,
     InAppChannelService,
     EmailChannelService,
@@ -34,9 +36,11 @@ import { DomainEventNotificationConsumer } from './consumers/domain-event-notifi
     NotificationPolicyService,
     NotificationTemplateService,
     TransactionalEmailService,
+    ProductionEmailTemplateEngine,
     NotificationDispatchService,
     SlackChannelService,
     TeamsChannelService,
   ],
 })
 export class NotificationModule {}
+

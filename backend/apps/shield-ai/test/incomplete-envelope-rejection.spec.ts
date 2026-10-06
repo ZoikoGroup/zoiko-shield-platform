@@ -5,6 +5,11 @@ import { DecisionRightsService } from '../src/decision-rights/decision-rights.se
 import { KafkaProducerService } from '../src/kafka/kafka-producer.service';
 import { LiveActionExecutorService } from '../../shield-action/src/executors/live-action-executor.service';
 import { DualCustodyApprovalsService } from '../../shield-action/src/approvals/dual-custody-approvals.service';
+import { LiveGcpCloudArmorExecutor } from '../../shield-action/src/executors/live/live-gcp-cloud-armor.executor';
+import { LiveGcpIamExecutor } from '../../shield-action/src/executors/live/live-gcp-iam.executor';
+import { LiveGoogleWorkspaceExecutor } from '../../shield-action/src/executors/live/live-google-workspace.executor';
+import { LiveCrowdstrikeExecutor } from '../../shield-action/src/executors/live/live-crowdstrike.executor';
+import { LiveOktaExecutor } from '../../shield-action/src/executors/live/live-okta.executor';
 
 describe('Incomplete AI Review Envelope Policy Rejection (Spec §16 & LAB 16)', () => {
   let decisionRightsService: DecisionRightsService;
@@ -20,7 +25,14 @@ describe('Incomplete AI Review Envelope Policy Rejection (Spec §16 & LAB 16)', 
 
   beforeAll(async () => {
     dualCustodyService = new DualCustodyApprovalsService();
-    liveActionExecutor = new LiveActionExecutorService(dualCustodyService);
+    liveActionExecutor = new LiveActionExecutorService(
+      dualCustodyService,
+      new LiveGcpCloudArmorExecutor(),
+      new LiveGcpIamExecutor(),
+      new LiveGoogleWorkspaceExecutor(),
+      new LiveCrowdstrikeExecutor(),
+      new LiveOktaExecutor(),
+    );
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [

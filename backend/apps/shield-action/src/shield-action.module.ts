@@ -61,6 +61,11 @@ import { SafetyCriticalActuatorBlockService } from './safety-interlock/safety-cr
 import { DualCustodyQuorumService } from './dual-custody/dual-custody-quorum.service';
 import { CertifiedEdrBrokerService } from './edr-connector/certified-edr-broker.service';
 import { WasmPlaybookSandboxService } from './simulation/wasm-playbook-sandbox.service';
+import { LiveGcpIamExecutor } from './executors/live/live-gcp-iam.executor';
+import { LiveGcpCloudArmorExecutor } from './executors/live/live-gcp-cloud-armor.executor';
+import { LiveGoogleWorkspaceExecutor } from './executors/live/live-google-workspace.executor';
+import { LiveCrowdstrikeExecutor } from './executors/live/live-crowdstrike.executor';
+import { LiveOktaExecutor } from './executors/live/live-okta.executor';
 import { dbScopeMiddleware } from '../../../libs/database/src';
 
 @Module({
@@ -116,6 +121,11 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     DualCustodyQuorumService,
     CompensatingActionService,
     SafetyCriticalActuatorBlockService,
+    LiveGcpIamExecutor,
+    LiveGcpCloudArmorExecutor,
+    LiveGoogleWorkspaceExecutor,
+    LiveCrowdstrikeExecutor,
+    LiveOktaExecutor,
   ],
   exports: [
     ActionAuthorityService,
@@ -146,6 +156,11 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     DualCustodyQuorumService,
     CompensatingActionService,
     SafetyCriticalActuatorBlockService,
+    LiveGcpIamExecutor,
+    LiveGcpCloudArmorExecutor,
+    LiveGoogleWorkspaceExecutor,
+    LiveCrowdstrikeExecutor,
+    LiveOktaExecutor,
   ],
 })
 export class ShieldActionModule implements NestModule {
