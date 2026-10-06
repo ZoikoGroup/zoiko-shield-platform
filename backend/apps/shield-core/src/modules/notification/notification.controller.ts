@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -17,6 +18,13 @@ import { CurrentUser } from '../identity-adapter/decorators/current-user.decorat
 import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import { requireTenantId } from '../../tenant-context';
+import * as crypto from 'crypto';
+import {
+  ProductionEmailTemplateEngine,
+  EMAIL_TEMPLATE_DOMAINS,
+  EmailRenderInput,
+} from './templates/production-email-template.engine';
+import { EmailChannelService } from './channels/email-channel.service';
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1')
@@ -25,6 +33,8 @@ export class NotificationController {
     private readonly prisma: PrismaService,
     private readonly acknowledgementService: NotificationAcknowledgementService,
     private readonly preferenceService: NotificationPreferenceService,
+    private readonly templateEngine: ProductionEmailTemplateEngine,
+    private readonly emailChannel: EmailChannelService,
   ) {}
 
   @Get('notifications')
@@ -39,6 +49,112 @@ export class NotificationController {
       },
       orderBy: { created_at: 'desc' },
     });
+  }
+
+  @Get('notifications/templates')
+  async listTemplates(@Query('domain') domain?: string) {
+    return {
+      domains: EMAIL_TEMPLATE_DOMAINS,
+      totalCount: 226,
+      templates: this.templateEngine.listTemplates(domain),
+    };
+  }
+
+  @Post('notifications/templates/:templateId/preview')
+  async previewTemplate(
+    @Param('templateId') templateId: string,
+    @Body() customVariables?: Partial<EmailRenderInput>,
+  ) {
+    const defaultInput: EmailRenderInput = {
+      templateId,
+      recipientFirstName: customVariables?.recipientFirstName || 'Alex',
+      organizationName: customVariables?.organizationName || 'Acme Cybersecurity Corp',
+      referenceId: customVariables?.referenceId || `ref-${Date.now().toString(36)}`,
+      statusLabel: customVariables?.statusLabel || 'ACTIVE',
+      occurredAtLocal: customVariables?.occurredAtLocal || new Date().toLocaleString(),
+      timezone: customVariables?.timezone || 'UTC+0',
+      actionUrl: customVariables?.actionUrl || 'https://app.zoikoshield.com/actions',
+      accountSecurityUrl: customVariables?.accountSecurityUrl || 'https://app.zoikoshield.com/admin',
+      auditUrl: customVariables?.auditUrl || 'https://app.zoikoshield.com/ledger',
+      billingUrl: customVariables?.billingUrl || 'https://app.zoikoshield.com/pricing',
+      supportUrl: customVariables?.supportUrl || 'https://app.zoikoshield.com/services',
+      onboardingUrl: customVariables?.onboardingUrl || 'https://app.zoikoshield.com/onboarding',
+      developerUrl: customVariables?.developerUrl || 'https://app.zoikoshield.com/developer',
+      governanceUrl: customVariables?.governanceUrl || 'https://app.zoikoshield.com/ai-governance',
+      verificationUrl: customVariables?.verificationUrl || 'https://app.zoikoshield.com/verify-certificate',
+      passwordResetUrl: customVariables?.passwordResetUrl || 'https://app.zoikoshield.com/login',
+      tokenExpiresAtLocal: customVariables?.tokenExpiresAtLocal || '24 hours',
+      ...customVariables,
+    };
+
+    return this.templateEngine.render(defaultInput);
+  }
+
+  @Post('notifications/templates/:templateId/send-test')
+  async sendTestNotification(
+    @Headers('x-tenant-id') tenantId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Param('templateId') templateId: string,
+    @Body() body: { recipientEmail?: string; variables?: Partial<EmailRenderInput> },
+  ) {
+    const validTenantId = requireTenantId(tenantId);
+    const recipientEmail = body.recipientEmail || user.email || 'operator@zoikoshield.corp';
+    const recipientName = body.variables?.recipientFirstName || (user.email ? user.email.split('@')[0] : 'Security Operator');
+
+    const renderInput: EmailRenderInput = {
+      templateId,
+      recipientFirstName: recipientName,
+      organizationName: body.variables?.organizationName || 'Zoiko Shield Sovereign Tenant',
+      referenceId: body.variables?.referenceId || `test-${Date.now().toString(36)}`,
+      statusLabel: body.variables?.statusLabel || 'TEST_VERIFIED',
+      occurredAtLocal: body.variables?.occurredAtLocal || new Date().toLocaleString(),
+      timezone: body.variables?.timezone || 'UTC',
+      ...body.variables,
+    };
+
+    const rendered = this.templateEngine.render(renderInput);
+
+    // Dispatch via email channel
+    const sendResult = await this.emailChannel.send({
+      recipientPrincipalId: recipientEmail,
+      subject: rendered.subject,
+      body: rendered.htmlBody,
+    });
+
+    // Resolve or find default policy for audit tracking
+    const activePolicy = await this.prisma.notificationPolicy.findFirst({
+      where: { status: 'ACTIVE' },
+    });
+    const policyId = activePolicy?.id ?? '00000000-0000-0000-0000-000000000001';
+    const policyVersion = activePolicy?.version ?? 1;
+
+    // Record delivery audit
+    const delivery = await this.prisma.notificationDelivery.create({
+      data: {
+        id: crypto.randomUUID(),
+        tenant_id: validTenantId,
+        recipient_principal_id: user.id,
+        event_id: `evt-${Date.now()}`,
+        policy_id: policyId,
+        policy_version: policyVersion,
+        template_version: 2,
+        correlation_id: crypto.randomUUID(),
+        channel: 'EMAIL',
+        status: sendResult.delivered ? 'DELIVERED' : 'FAILED',
+        first_attempt_at: new Date(),
+        last_attempt_at: new Date(),
+        attempt_count: 1,
+        delivered_at: sendResult.delivered ? new Date() : null,
+      },
+    });
+
+    return {
+      deliveryId: delivery.id,
+      recipient: recipientEmail,
+      renderHash: rendered.renderHash,
+      templateId: rendered.templateId,
+      status: delivery.status,
+    };
   }
 
   @Get('notifications/:notificationId')

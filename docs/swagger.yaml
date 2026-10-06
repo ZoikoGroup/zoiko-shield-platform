@@ -39144,6 +39144,76 @@ paths:
         - CookieAuth: []
         - BearerAuth: []
       description: List open evidence gaps for the tenant. Applies the documented path, query, and tenant filters and returns the current persisted or computed result using the response model below.
+  /api/v1/notifications/templates:
+    get:
+      tags:
+        - Notifications
+      summary: List production email templates and domain catalog
+      parameters:
+        - name: domain
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Optional domain category filter
+      responses:
+        '200':
+          description: List production email templates successful
+          content:
+            application/json:
+              schema:
+                type: object
+      operationId: getNotificationTemplates
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/notifications/templates/{templateId}/preview:
+    post:
+      tags:
+        - Notifications
+      summary: Preview rendered email template
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Template identifier
+      responses:
+        '200':
+          description: Preview rendered template successful
+          content:
+            application/json:
+              schema:
+                type: object
+      operationId: previewNotificationTemplate
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+  /api/v1/notifications/templates/{templateId}/send-test:
+    post:
+      tags:
+        - Notifications
+      summary: Send test email notification
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Template identifier
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '201':
+          description: Test email dispatched successfully
+          content:
+            application/json:
+              schema:
+                type: object
+      operationId: sendTestNotification
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
   /api/v1/notifications:
     get:
       tags:
@@ -58420,3 +58490,229 @@ paths:
           description: Unauthorized
         '500':
           description: Internal server error
+
+  /api/v1/scim/v2/ServiceProviderConfig:
+    get:
+      summary: Get SCIM 2.0 Service Provider Configuration
+      description: Returns RFC 7644 compliant specification capabilities for user and group provisioning.
+      operationId: getScimServiceProviderConfig
+      tags:
+        - IdentityAdapter
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          description: SCIM service provider configuration object
+        '500':
+          description: Internal server error
+
+  /api/v1/scim/v2/ResourceTypes:
+    get:
+      summary: Get SCIM 2.0 Resource Types
+      description: Returns supported SCIM resource schemas (User, Group).
+      operationId: getScimResourceTypes
+      tags:
+        - IdentityAdapter
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Supported SCIM resource types
+        '500':
+          description: Internal server error
+
+  /api/v1/scim/v2/Users:
+    get:
+      summary: List SCIM Users
+      description: Returns paginated list of SCIM provisioned users for the tenant.
+      operationId: listScimUsers
+      tags:
+        - IdentityAdapter
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: startIndex
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: count
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Paginated SCIM user list response
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+    post:
+      summary: Create SCIM User
+      description: Provisions a new enterprise user into the tenant directory via SCIM 2.0 protocol.
+      operationId: createScimUser
+      tags:
+        - IdentityAdapter
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: User successfully provisioned
+        '400':
+          description: Invalid request payload
+        '401':
+          description: Unauthorized
+        '409':
+          description: Conflict - user already exists
+
+  /api/v1/scim/v2/Users/{id}:
+    get:
+      summary: Get SCIM User by ID
+      description: Retrieves a provisioned SCIM user record.
+      operationId: getScimUserById
+      tags:
+        - IdentityAdapter
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: SCIM user resource
+        '401':
+          description: Unauthorized
+        '404':
+          description: User not found
+
+    patch:
+      summary: Patch SCIM User
+      description: Updates user attributes (e.g. activation state) via SCIM PatchOp.
+      operationId: patchScimUserById
+      tags:
+        - IdentityAdapter
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: User updated successfully
+        '401':
+          description: Unauthorized
+        '404':
+          description: User not found
+
+    delete:
+      summary: Delete SCIM User
+      description: De-provisions a SCIM user from the tenant directory.
+      operationId: deleteScimUserById
+      tags:
+        - IdentityAdapter
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: User de-provisioned successfully
+        '401':
+          description: Unauthorized
+        '404':
+          description: User not found
+
+  /api/v1/scim/v2/Groups:
+    get:
+      summary: List SCIM Groups
+      description: Returns paginated list of SCIM security groups for the tenant.
+      operationId: listScimGroups
+      tags:
+        - IdentityAdapter
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: startIndex
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: count
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+      responses:
+        '200':
+          description: Paginated SCIM group list response
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+
+    post:
+      summary: Create SCIM Group
+      description: Creates a new security group via SCIM 2.0 protocol.
+      operationId: createScimGroup
+      tags:
+        - IdentityAdapter
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: Group created successfully
+        '401':
+          description: Unauthorized
+

@@ -4,6 +4,12 @@ import { DualCustodyApprovalsService } from '../approvals/dual-custody-approvals
 import { AutomatedRollbackOrchestratorService } from './automated-rollback-orchestrator.service';
 import { ForbiddenException } from '@nestjs/common';
 
+import { LiveGcpCloudArmorExecutor } from './live/live-gcp-cloud-armor.executor';
+import { LiveGcpIamExecutor } from './live/live-gcp-iam.executor';
+import { LiveGoogleWorkspaceExecutor } from './live/live-google-workspace.executor';
+import { LiveCrowdstrikeExecutor } from './live/live-crowdstrike.executor';
+import { LiveOktaExecutor } from './live/live-okta.executor';
+
 describe('LiveActionExecutor & DualCustody & Rollback (Spec §15 & LAB 15)', () => {
   let actionExecutor: LiveActionExecutorService;
   let dualCustodyService: DualCustodyApprovalsService;
@@ -15,6 +21,11 @@ describe('LiveActionExecutor & DualCustody & Rollback (Spec §15 & LAB 15)', () 
         LiveActionExecutorService,
         DualCustodyApprovalsService,
         AutomatedRollbackOrchestratorService,
+        LiveGcpCloudArmorExecutor,
+        LiveGcpIamExecutor,
+        LiveGoogleWorkspaceExecutor,
+        LiveCrowdstrikeExecutor,
+        LiveOktaExecutor,
       ],
     }).compile();
 
@@ -43,7 +54,7 @@ describe('LiveActionExecutor & DualCustody & Rollback (Spec §15 & LAB 15)', () 
     expect(receipt.observedEffect.ipBlocked).toBe('198.51.100.42');
     expect(receipt.rollbackCapability.supported).toBe(true);
     expect(receipt.rollbackCapability.rollbackAction).toBe(
-      'REMOVE_WAF_IP_RULE',
+      'REMOVE_CLOUD_ARMOR_IP_RULE',
     );
   });
 
@@ -115,7 +126,7 @@ describe('LiveActionExecutor & DualCustody & Rollback (Spec §15 & LAB 15)', () 
 
     const rollbackResult = await rollbackService.executeRollback(receipt);
     expect(rollbackResult.status).toBe('REVERTED');
-    expect(rollbackResult.compensatingAction).toBe('REMOVE_WAF_IP_RULE');
+    expect(rollbackResult.compensatingAction).toBe('REMOVE_CLOUD_ARMOR_IP_RULE');
     expect(rollbackResult.targetRef).toBe('198.51.100.99');
     expect(rollbackResult.stateRestorationProof.length).toBe(64);
   });

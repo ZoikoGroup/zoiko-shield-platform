@@ -6,7 +6,7 @@ import { formatTimestamp } from "@/lib/utils";
 import { Card } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
-import { Bell, CheckCircle2, RefreshCw } from "lucide-react";
+import { Bell, CheckCircle2, RefreshCw, Mail } from "lucide-react";
 import { LoadingState, UnavailableState } from "@/components/states/mandatory-ui-states";
 
 /**
@@ -105,10 +105,18 @@ export default function NotificationsPage() {
             Delivered to you, with delivery outcome and acknowledgment.
           </p>
         </div>
-        <Button variant="ghost" onClick={() => void load()}>
-          <RefreshCw className="w-4 h-4" />
-          <span>Refresh</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          <a href="/admin/email-templates">
+            <Button variant="outline" className="text-xs flex items-center gap-1.5 border-sky-500/40 text-sky-400 hover:bg-sky-500/10">
+              <Mail className="w-4 h-4" />
+              <span>Template Studio (226)</span>
+            </Button>
+          </a>
+          <Button variant="ghost" onClick={() => void load()}>
+            <RefreshCw className="w-4 h-4" />
+            <span>Refresh</span>
+          </Button>
+        </div>
       </div>
 
       {error && (
