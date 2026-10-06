@@ -32,6 +32,11 @@ import {
 } from './auth/fido2-stepup-guard.service';
 import { InternalAuthGuard } from './internal-client/internal-auth.guard';
 import { G4GateGuard } from './internal-client/g4-gate.guard';
+import { WasmPlaybookSandboxService } from './simulation/wasm-playbook-sandbox.service';
+import {
+  SimulateWasmPlaybookDto,
+  SynthesizeRollbackDto,
+} from './simulation/dto/wasm-playbook.dto';
 
 export class IssueFido2ChallengeDto implements Fido2ChallengeRequest {
   tenantId!: string;
@@ -231,6 +236,8 @@ export class ShieldActionController {
     private readonly safetyInterlockService?: SafetyCriticalActuatorBlockService,
     @Optional()
     private readonly edrBrokerService?: CertifiedEdrBrokerService,
+    @Optional()
+    private readonly wasmSandboxService?: WasmPlaybookSandboxService,
   ) {}
 
   @Get()
@@ -739,5 +746,31 @@ export class ShieldActionController {
       body.compensationToken,
       body.reason,
     );
+  }
+
+  // --- WebAssembly (WASM) SOAR Isolated Playbook Sandbox (Spec §18 / G2 Hardening) ---
+
+  @UseGuards(InternalAuthGuard)
+  @Post('api/v1/action/playbooks/wasm/simulate')
+  simulateWasmPlaybook(@Body() body: SimulateWasmPlaybookDto) {
+    if (!this.wasmSandboxService) {
+      return {
+        status: 'UNAVAILABLE',
+        message: 'WasmPlaybookSandboxService is not configured in this environment',
+      };
+    }
+    return this.wasmSandboxService.simulateWasmPlaybook(body);
+  }
+
+  @UseGuards(InternalAuthGuard)
+  @Post('api/v1/action/playbooks/wasm/synthesize-rollback')
+  synthesizeWasmRollback(@Body() body: SynthesizeRollbackDto) {
+    if (!this.wasmSandboxService) {
+      return {
+        status: 'UNAVAILABLE',
+        message: 'WasmPlaybookSandboxService is not configured in this environment',
+      };
+    }
+    return this.wasmSandboxService.synthesizeRollbackPlan(body);
   }
 }

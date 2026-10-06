@@ -83,6 +83,7 @@ import { ConnectorsProxyModule } from './modules/connectors-proxy/connectors-pro
 import { AnchorProxyModule } from './modules/anchor-proxy/anchor-proxy.module';
 import { RequirementsRegisterModule } from './modules/requirements-register/requirements-register.module';
 import { JitElevationModule } from './modules/jit-elevation/jit-elevation.module';
+import { StreamingModule } from './modules/streaming/streaming.module';
 import { dbScopeMiddleware } from '../../../libs/database/src';
 
 @Module({
@@ -163,6 +164,7 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     OutboxModule,
     RequirementsRegisterModule,
     JitElevationModule,
+    StreamingModule,
   ],
   controllers: [ShieldCoreController],
   providers: [

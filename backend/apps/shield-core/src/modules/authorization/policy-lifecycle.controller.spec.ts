@@ -111,8 +111,8 @@ describe('PolicyLifecycleController', () => {
   });
 
   describe('getPolicyById', () => {
-    it('delegates to service getPolicyById', () => {
-      const result = controller.getPolicyById(
+    it('delegates to service getPolicyById', async () => {
+      const result = await controller.getPolicyById(
         mockUser,
         'pol-2026-09-001',
         'tenant-acme',
@@ -126,8 +126,8 @@ describe('PolicyLifecycleController', () => {
   });
 
   describe('simulatePolicy', () => {
-    it('delegates to service simulatePolicy with caller identity', () => {
-      const result = controller.simulatePolicy(
+    it('delegates to service simulatePolicy with caller identity', async () => {
+      const result = await controller.simulatePolicy(
         mockUser,
         'pol-2026-09-001',
         'tenant-acme',
@@ -142,8 +142,8 @@ describe('PolicyLifecycleController', () => {
   });
 
   describe('listAuditEvents', () => {
-    it('delegates to service listAuditEvents', () => {
-      const result = controller.listAuditEvents(
+    it('delegates to service listAuditEvents', async () => {
+      const result = await controller.listAuditEvents(
         mockUser,
         'pol-2026-09-001',
         'tenant-acme',
@@ -157,12 +157,12 @@ describe('PolicyLifecycleController', () => {
   });
 
   describe('stagePolicy', () => {
-    it('delegates to service stagePolicy with caller identity', () => {
+    it('delegates to service stagePolicy with caller identity', async () => {
       const dto = {
         stagedEnvironment: 'staging-us-east1',
         canaryPercentage: 25,
       };
-      const result = controller.stagePolicy(
+      const result = await controller.stagePolicy(
         mockUser,
         'pol-2026-09-001',
         dto,
@@ -179,11 +179,11 @@ describe('PolicyLifecycleController', () => {
   });
 
   describe('approvePolicy', () => {
-    it('delegates to service approvePolicy with caller identity', () => {
+    it('delegates to service approvePolicy with caller identity', async () => {
       const dto = {
         notes: 'Verified against zero-trust standards.',
       };
-      const result = controller.approvePolicy(
+      const result = await controller.approvePolicy(
         mockUser,
         'pol-2026-09-001',
         dto,
@@ -199,11 +199,11 @@ describe('PolicyLifecycleController', () => {
   });
 
   describe('rollbackPolicy', () => {
-    it('delegates to service rollbackPolicy with reason', () => {
+    it('delegates to service rollbackPolicy with reason', async () => {
       const dto = {
         reason: 'Anomaly detected in canary deployment.',
       };
-      const result = controller.rollbackPolicy(
+      const result = await controller.rollbackPolicy(
         mockUser,
         'pol-2026-09-001',
         dto,

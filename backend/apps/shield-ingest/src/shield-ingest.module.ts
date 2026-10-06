@@ -82,6 +82,7 @@ import { ThreatCorrelationService } from './detection/correlation/threat-correla
 
 import { AlertGeneratorController } from './alerts/alert-generator.controller';
 import { AlertGeneratorService } from './alerts/alert-generator.service';
+import { ThreatIntelController } from './threat-intel/threat-intel.controller';
 import { StixThreatIntelMatcherService } from './threat-intel/stix-threat-intel-matcher.service';
 import { CanaryHoneypotProbeService } from './canary/canary-honeypot-probe.service';
 import { HostRuntimeMonitorService } from './runtime-monitor/host-runtime-monitor.service';
@@ -144,6 +145,7 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     AssetIdentityContextController,
     DetectionEngineController,
     AlertGeneratorController,
+    ThreatIntelController,
     MeteringController,
     HumanDecisionController,
     DashboardController,

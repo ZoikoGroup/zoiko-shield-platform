@@ -3543,23 +3543,34 @@ export class ZoikoShieldApiClient {
     const res = await this.safeFetch<any>(
       '/api/v1/governance/g1-roster',
       { method: 'GET' },
-      () => ({
-        gateStatus: 'PENDING_MULTI_APPROVER_SIGNOFF',
-        allApproved: false,
-        ratifiedApprovalsCount: 0,
-        requiredApprovalsCount: 8,
-        missingRoles: ['ciso', 'dpo', 'vp_eng', 'ai_risk_lead', 'qa_lead', 'sre_lead', 'product_lead', 'soc_lead'],
-        approvers: [
-          { roleId: 'ciso', roleTitle: 'Chief Information Security Officer (CISO)', ratified: false, isSigned: false },
-          { roleId: 'dpo', roleTitle: 'Data Protection Officer (DPO)', ratified: false, isSigned: false },
-          { roleId: 'vp_eng', roleTitle: 'VP of Engineering', ratified: false, isSigned: false },
-          { roleId: 'ai_risk_lead', roleTitle: 'AI Risk & Safety Governance Lead', ratified: false, isSigned: false },
-          { roleId: 'qa_lead', roleTitle: 'Quality Assurance & Release Lead', ratified: false, isSigned: false },
-          { roleId: 'sre_lead', roleTitle: 'Site Reliability Engineering Lead', ratified: false, isSigned: false },
-          { roleId: 'product_lead', roleTitle: 'Security Product Lead', ratified: false, isSigned: false },
-          { roleId: 'soc_lead', roleTitle: 'SOC Incident Commander', ratified: false, isSigned: false },
-        ],
-      })
+      () => {
+        const state = getState();
+        if (!state.g1Roster || state.g1Roster.length === 0) {
+          state.g1Roster = [
+            { roleId: 'ciso', roleTitle: 'Chief Information Security Officer (CISO)', ratified: false },
+            { roleId: 'dpo', roleTitle: 'Data Protection Officer (DPO)', ratified: false },
+            { roleId: 'vp_eng', roleTitle: 'VP of Engineering', ratified: false },
+            { roleId: 'ai_risk_lead', roleTitle: 'AI Risk & Safety Governance Lead', ratified: false },
+            { roleId: 'qa_lead', roleTitle: 'Quality Assurance & Release Lead', ratified: false },
+            { roleId: 'sre_lead', roleTitle: 'Site Reliability Engineering Lead', ratified: false },
+            { roleId: 'product_lead', roleTitle: 'Security Product Lead', ratified: false },
+            { roleId: 'soc_lead', roleTitle: 'SOC Incident Commander', ratified: false },
+          ];
+          saveDemoState(state);
+        }
+
+        const signed = state.g1Roster.filter((a) => a.ratified).length;
+        const total = state.g1Roster.length;
+        const isAll = signed === total && total > 0;
+        return {
+          gateStatus: isAll ? 'RATIFIED' : 'PENDING_MULTI_APPROVER_SIGNOFF',
+          allApproved: isAll,
+          ratifiedApprovalsCount: signed,
+          requiredApprovalsCount: total,
+          missingRoles: state.g1Roster.filter((a) => !a.ratified).map((a) => a.roleId),
+          approvers: state.g1Roster,
+        };
+      }
     );
 
     const signed = res.signedCount !== undefined ? res.signedCount : (res.ratifiedApprovalsCount || 0);
@@ -3592,7 +3603,16 @@ export class ZoikoShieldApiClient {
     gateStatus: string;
     allApproved: boolean;
     ratifiedApprovalsCount: number;
+    requiredApprovalsCount: number;
     missingRoles: string[];
+    approvers: Array<{
+      roleId: string;
+      roleTitle: string;
+      signatoryName?: string;
+      signatureProof?: string;
+      ratified: boolean;
+      signedAt?: string;
+    }>;
   }> {
     const res = await this.safeFetch<any>(
       '/api/v1/governance/g1-roster/sign',
@@ -3600,15 +3620,43 @@ export class ZoikoShieldApiClient {
         method: 'POST',
         body: JSON.stringify({ roleId, signatoryName, signatureProof, evidenceNotes }),
       },
-      () => ({
-        gateStatus: 'PENDING_MULTI_APPROVER_SIGNOFF',
-        allApproved: false,
-        ratifiedApprovalsCount: 1,
-        missingRoles: ['dpo', 'vp_eng', 'ai_risk_lead', 'qa_lead', 'sre_lead', 'product_lead', 'soc_lead'],
-      })
+      () => {
+        const state = getState();
+        if (!state.g1Roster || state.g1Roster.length === 0) {
+          state.g1Roster = [
+            { roleId: 'ciso', roleTitle: 'Chief Information Security Officer (CISO)', ratified: false },
+            { roleId: 'dpo', roleTitle: 'Data Protection Officer (DPO)', ratified: false },
+            { roleId: 'vp_eng', roleTitle: 'VP of Engineering', ratified: false },
+            { roleId: 'ai_risk_lead', roleTitle: 'AI Risk & Safety Governance Lead', ratified: false },
+            { roleId: 'qa_lead', roleTitle: 'Quality Assurance & Release Lead', ratified: false },
+            { roleId: 'sre_lead', roleTitle: 'Site Reliability Engineering Lead', ratified: false },
+            { roleId: 'product_lead', roleTitle: 'Security Product Lead', ratified: false },
+            { roleId: 'soc_lead', roleTitle: 'SOC Incident Commander', ratified: false },
+          ];
+        }
+        const app = state.g1Roster.find((a) => a.roleId === roleId);
+        if (app) {
+          app.ratified = true;
+          app.signatoryName = signatoryName || 'Authorized Security Signatory';
+          app.signatureProof = signatureProof;
+          app.signedAt = new Date().toISOString();
+          app.evidenceNotes = evidenceNotes;
+        }
+        saveDemoState(state);
+        const signed = state.g1Roster.filter((a) => a.ratified).length;
+        const total = state.g1Roster.length;
+        const isAll = signed === total && total > 0;
+        return {
+          gateStatus: isAll ? 'RATIFIED' : 'PENDING_MULTI_APPROVER_SIGNOFF',
+          allApproved: isAll,
+          ratifiedApprovalsCount: signed,
+          requiredApprovalsCount: total,
+          missingRoles: state.g1Roster.filter((a) => !a.ratified).map((a) => a.roleId),
+          approvers: state.g1Roster,
+        };
+      }
     );
 
-    // If backend returns updated roster or approver status, fetch fresh roster
     return this.getG1Roster();
   }
 
@@ -3618,17 +3666,40 @@ export class ZoikoShieldApiClient {
     ratifiedApprovalsCount: number;
     requiredApprovalsCount: number;
     missingRoles: string[];
+    approvers: Array<{
+      roleId: string;
+      roleTitle: string;
+      signatoryName?: string;
+      signatureProof?: string;
+      ratified: boolean;
+      signedAt?: string;
+    }>;
   }> {
     await this.safeFetch(
       '/api/v1/governance/g1-roster/reset',
       { method: 'POST' },
-      () => ({
-        gateStatus: 'PENDING_MULTI_APPROVER_SIGNOFF',
-        allApproved: false,
-        ratifiedApprovalsCount: 0,
-        requiredApprovalsCount: 8,
-        missingRoles: ['ciso', 'dpo', 'vp_eng', 'ai_risk_lead', 'qa_lead', 'sre_lead', 'product_lead', 'soc_lead'],
-      })
+      () => {
+        const state = getState();
+        state.g1Roster = [
+          { roleId: 'ciso', roleTitle: 'Chief Information Security Officer (CISO)', ratified: false },
+          { roleId: 'dpo', roleTitle: 'Data Protection Officer (DPO)', ratified: false },
+          { roleId: 'vp_eng', roleTitle: 'VP of Engineering', ratified: false },
+          { roleId: 'ai_risk_lead', roleTitle: 'AI Risk & Safety Governance Lead', ratified: false },
+          { roleId: 'qa_lead', roleTitle: 'Quality Assurance & Release Lead', ratified: false },
+          { roleId: 'sre_lead', roleTitle: 'Site Reliability Engineering Lead', ratified: false },
+          { roleId: 'product_lead', roleTitle: 'Security Product Lead', ratified: false },
+          { roleId: 'soc_lead', roleTitle: 'SOC Incident Commander', ratified: false },
+        ];
+        saveDemoState(state);
+        return {
+          gateStatus: 'PENDING_MULTI_APPROVER_SIGNOFF',
+          allApproved: false,
+          ratifiedApprovalsCount: 0,
+          requiredApprovalsCount: 8,
+          missingRoles: ['ciso', 'dpo', 'vp_eng', 'ai_risk_lead', 'qa_lead', 'sre_lead', 'product_lead', 'soc_lead'],
+          approvers: state.g1Roster,
+        };
+      }
     );
     return this.getG1Roster();
   }

@@ -51,6 +51,14 @@ import { AutonomousRedTeamAgentService } from '../apps/shield-ai/src/adversarial
 import { AdaptiveCongestionManagerService } from '../apps/shield-ingest/src/flow-control/adaptive-congestion-manager.service';
 import { JitSessionEnforcerService } from '../apps/shield-core/src/modules/authorization/jit-session-enforcer.service';
 import { PlaybookOptimizerAgentService } from '../apps/shield-ai/src/optimization/playbook-optimizer-agent.service';
+import { WasmPlaybookSandboxService } from '../apps/shield-action/src/simulation/wasm-playbook-sandbox.service';
+import {
+  PlaybookExecutionTier,
+  WasmSandboxMutationType,
+} from '../apps/shield-action/src/simulation/dto/wasm-playbook.dto';
+import { LiveTelemetryStreamService } from '../apps/shield-core/src/modules/streaming/live-telemetry-stream.service';
+import { PostureDriftDetectorService } from '../apps/shield-core/src/modules/continuous-assurance/posture-drift-detector.service';
+import { StixThreatIntelMatcherService } from '../apps/shield-ingest/src/threat-intel/stix-threat-intel-matcher.service';
 import { createInMemoryJitPrisma } from './lib/in-memory-jit-prisma';
 import { createInMemoryActionPrisma } from './lib/in-memory-action-prisma';
 
@@ -83,7 +91,7 @@ async function runFullPlatformVerifier() {
   );
 
   let stepsPassed = 0;
-  const totalSteps = 24;
+  const totalSteps = 25;
 
   // -------------------------------------------------------------------------
   // Stage 1 (LAB 01 & 02): Multi-Tenant Commercial Account & Tenancy Binding
@@ -1052,7 +1060,7 @@ async function runFullPlatformVerifier() {
   );
   const redTeamReport = redTeam.executeSyntheticRun(attackChain);
   assertInvariant(
-    redTeamReport.stepsDetected === redTeamReport.stepEvaluations.filter((e) => e.detected).length,
+    redTeamReport.stepsDetected === redTeamReport.stepEvaluations.filter((e: any) => e.detected).length,
     'Stage 23: reported stepsDetected must match the real per-step detection outcomes',
   );
   logger.log(
@@ -1159,6 +1167,128 @@ async function runFullPlatformVerifier() {
   logger.log(
     `  ✔ AI Playbook Optimizer: MTTR Reduced from ${optimizationReport.originalAverageDurationMs}ms ➔ ${optimizationReport.optimizedEstimatedDurationMs}ms (${optimizationReport.predictedMttrReductionPercentage}% Speedup across ${optimizationReport.optimizedDagStructure.length} Execution Phases)`,
   );
+  stepsPassed++;
+
+  // -------------------------------------------------------------------------
+  // Stage 25 (LAB 25): WASM SOAR Sandboxing, SSE Live Stream & CSPM Posture Drift Auto-Remediation
+  // -------------------------------------------------------------------------
+  logger.log(
+    '\n[Stage 25/25] WASM Playbook Sandbox, SSE Telemetry Stream, CSPM Drift & STIX 2.1...',
+  );
+
+  // 1. WASM Sandbox Simulation
+  const wasmSandbox = new WasmPlaybookSandboxService();
+  const wasmSimulation = await wasmSandbox.simulateWasmPlaybook({
+    tenantId: tenantA.id,
+    playbookId: 'PB-STAGE25-WASM-CONTAIN',
+    playbookVersion: '1.0.0',
+    incidentId: 'INC-STAGE25-WASM-01',
+    wasmBytecodeBase64: 'AGFzbQEAAAABBwFgAn9/AX8DAgEABQMBAAEHCAEEbWFpbgAA',
+    steps: [
+      {
+        stepId: 'step-1',
+        actionType: WasmSandboxMutationType.AWS_IAM_ATTACH_POLICY,
+        targetResourceArn: 'arn:aws:iam::123456789012:policy/quarantine',
+        timeoutMs: 100,
+      },
+    ],
+    targetAssets: [
+      {
+        assetId: 'srv-prod-worker-99',
+        criticalityTier: PlaybookExecutionTier.TIER_1_STANDARD,
+        cloudProvider: 'AWS',
+        preExecutionState: { network: 'active' },
+      },
+    ],
+  });
+  assertInvariant(
+    wasmSimulation.status === 'SANDBOX_PASSED',
+    'WASM Playbook sandbox simulation must pass with safe blast radius',
+  );
+  logger.log(
+    `  ✔ WASM Playbook Sandbox: Status='${wasmSimulation.status}' (Memory: ${wasmSimulation.memoryConsumedMb}MB, Blast Radius: ${wasmSimulation.simulatedBlastRadiusScore})`,
+  );
+
+  // 2. Real-Time Telemetry & Incident Stream (SSE)
+  const streamService = new LiveTelemetryStreamService();
+  const publishedLiveEvent = streamService.simulateAlertStream(tenantA.id, {
+    alertId: 'INC-STAGE25-LIVE',
+    title: 'Real-Time Lateral Movement Pulse',
+    severity: 'HIGH',
+  });
+  assertInvariant(
+    publishedLiveEvent.eventType === 'ALERT_DISPATCHED',
+    'Live telemetry stream must broadcast high-fidelity alert',
+  );
+  logger.log(
+    `  ✔ Live Telemetry Stream (SSE): Broadcast='${publishedLiveEvent.eventType}' (EventId: ${publishedLiveEvent.eventId}, Tenant: ${tenantA.id})`,
+  );
+
+  // 3. Continuous Cloud Posture Drift (CSPM) & 1-Click Remediation
+  const postureDetector = new PostureDriftDetectorService(streamService);
+  const postureScan = await postureDetector.scanTenantPosture(tenantA.id, [
+    {
+      assetId: 's3-customer-archive-prod',
+      assetType: 'S3_BUCKET',
+      cloudProvider: 'AWS',
+      configuration: {
+        isPublicRead: true,
+        blockPublicAccess: false,
+        serverSideEncryption: false,
+      },
+    },
+  ]);
+  assertInvariant(
+    postureScan.driftFindingsCount === 2,
+    'Posture scan must detect 2 drift violations on public unencrypted bucket',
+  );
+  const remediationRes = await postureDetector.remediateDriftFinding(
+    tenantA.id,
+    postureScan.findings[0].findingId,
+    'Applied 1-click automated S3 block public access remediation',
+  );
+  assertInvariant(
+    remediationRes.status === 'REMEDIATION_EXECUTED',
+    'Posture drift 1-click remediation must execute and return attestation digest',
+  );
+  logger.log(
+    `  ✔ CSPM Posture Drift: Detected=${postureScan.driftFindingsCount} ➔ Remediated='${remediationRes.forwardActionExecuted}' (Attestation: ${remediationRes.remediationReceipt.attestationDigest.slice(0, 12)}...)`,
+  );
+
+  // 4. STIX 2.1 Threat Intel Radix Matcher
+  const stixMatcher = new StixThreatIntelMatcherService();
+  const stixIngest = stixMatcher.ingestStixBundle({
+    type: 'bundle',
+    id: 'bundle--stage25-threat-feed',
+    objects: [
+      {
+        type: 'threat-actor',
+        id: 'threat-actor--apt29',
+        name: 'Cozy Bear (APT29)',
+      },
+      {
+        type: 'indicator',
+        id: 'indicator--c2-ip',
+        pattern: "[ipv4-addr:value = '198.51.100.77']",
+        confidence: 96,
+        external_references: [
+          { source_name: 'mitre-attack', external_id: 'T1071.001' },
+        ],
+      },
+    ],
+  });
+  const stixMatchResult = stixMatcher.matchTelemetryObservables({
+    ipAddresses: ['198.51.100.77'],
+  });
+  assertInvariant(
+    stixMatchResult.isMatched === true &&
+      stixMatchResult.threatActors.includes('Cozy Bear (APT29)'),
+    'STIX 2.1 Radix matcher must identify malicious threat actor',
+  );
+  logger.log(
+    `  ✔ STIX 2.1 Threat Intel: Indexed=${stixIngest.indexedCount} ➔ Real-Time Match=true (Threat Actor: '${stixMatchResult.threatActors[0]}', MITRE: ${stixMatchResult.mitreTechniques.join(', ')})`,
+  );
+
   stepsPassed++;
 
   logger.log(

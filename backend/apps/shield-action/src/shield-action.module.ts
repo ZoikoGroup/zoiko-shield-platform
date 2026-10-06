@@ -60,6 +60,7 @@ import { CompensatingActionService } from './rollback/compensating-action.servic
 import { SafetyCriticalActuatorBlockService } from './safety-interlock/safety-critical-actuator-block.service';
 import { DualCustodyQuorumService } from './dual-custody/dual-custody-quorum.service';
 import { CertifiedEdrBrokerService } from './edr-connector/certified-edr-broker.service';
+import { WasmPlaybookSandboxService } from './simulation/wasm-playbook-sandbox.service';
 import { dbScopeMiddleware } from '../../../libs/database/src';
 
 @Module({
@@ -92,6 +93,7 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     DurableContainmentEscalationService,
     DistributedActionLockService,
     PlaybookSandboxEngineService,
+    WasmPlaybookSandboxService,
     ApprovalReauthorizationService,
     TwoManRuleService,
     ReceiptVerificationService,
@@ -131,6 +133,7 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     DurableContainmentEscalationService,
     DistributedActionLockService,
     PlaybookSandboxEngineService,
+    WasmPlaybookSandboxService,
     TwoManRuleService,
     ActionRollbackBrokerService,
     ActionRollbackOrchestratorService,
