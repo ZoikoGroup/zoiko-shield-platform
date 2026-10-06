@@ -30,6 +30,9 @@ import { OwnerFederatedActivationService } from './owner-federated-activation.se
 import { EvidenceModule } from '../evidence/evidence.module';
 import { PrismaModule } from '../../prisma/prisma.module';
 
+import { ScimService } from './scim/scim.service';
+import { ScimController } from './scim/scim.controller';
+
 @Module({
   imports: [
     PrismaModule,
@@ -56,6 +59,7 @@ import { PrismaModule } from '../../prisma/prisma.module';
     AuthController,
     FederationController,
     IdentityProviderConfigurationController,
+    ScimController,
   ],
   providers: [
     PrincipalService,
@@ -78,6 +82,7 @@ import { PrismaModule } from '../../prisma/prisma.module';
     FederationAuthService,
     ZoikoIdProviderBootstrapService,
     OwnerFederatedActivationService,
+    ScimService,
   ],
   exports: [
     PrincipalService,
