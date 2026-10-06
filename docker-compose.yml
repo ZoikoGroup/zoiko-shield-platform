@@ -319,7 +319,11 @@ services:
       ACTION_HSM_COMMAND_KMS_KEY_VERSION:
       GOOGLE_CLOUD_PROJECT:
       GOOGLE_APPLICATION_CREDENTIALS:
-      ACTION_COMMAND_DEV_PRIVATE_KEY: ${DEV_SIMULATION_SIGNING_KEY:-local-simulation-signing-change-me}
+      # Left blank by default: DevGovernedCommandSigner auto-generates an
+      # ephemeral P-256 keypair when this is empty. A non-PEM placeholder
+      # here (or in DEV_SIMULATION_SIGNING_KEY) makes Node's createPrivateKey()
+      # fail with ERR_OSSL_UNSUPPORTED, so only set this to a real PEM EC key.
+      ACTION_COMMAND_DEV_PRIVATE_KEY: ${DEV_SIMULATION_SIGNING_KEY:-}
       WORKLOAD_IDENTITY_PRIVATE_KEY_PEM:
       WORKLOAD_IDENTITY_PUBLIC_KEY_PEM:
       DUAL_CUSTODY_SECRET_KEY:
