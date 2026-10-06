@@ -1,4 +1,4 @@
-import { IsEnum, IsNotEmpty, IsObject, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsIn, IsNotEmpty, IsObject, IsOptional, IsString } from 'class-validator';
 import type { StreamingEventType } from '../live-telemetry-stream.service';
 
 export class BroadcastStreamEventDto {
@@ -15,8 +15,7 @@ export class BroadcastStreamEventDto {
 }
 
 export class TriggerSimulatedEventDto {
-  @IsString()
-  @IsNotEmpty()
+  @IsIn(['ALERT', 'JIT', 'MERKLE', 'FREEZE'])
   eventType!: 'ALERT' | 'JIT' | 'MERKLE' | 'FREEZE';
 
   @IsOptional()

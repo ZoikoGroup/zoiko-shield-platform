@@ -7,7 +7,6 @@ import {
   Injectable,
   Logger,
   NotFoundException,
-  Optional,
 } from '@nestjs/common';
 import type { Prisma } from '@prisma/client';
 import * as crypto from 'crypto';
@@ -63,9 +62,8 @@ export class JitElevationService {
 
   constructor(
     private readonly prisma: PrismaService,
-    @Optional()
     @Inject(forwardRef(() => WebauthnService))
-    private readonly webauthnService?: WebauthnService,
+    private readonly webauthnService: WebauthnService,
   ) {}
 
   /**
@@ -397,12 +395,6 @@ export class JitElevationService {
     ) {
       throw new BadRequestException(
         'FIDO2_ATTESTATION_REQUIRED: Missing WebAuthn credential ID, challenge payload or signature',
-      );
-    }
-
-    if (!this.webauthnService) {
-      throw new BadRequestException(
-        'WEBAUTHN_SERVICE_UNAVAILABLE: WebAuthn verification service is not configured',
       );
     }
 

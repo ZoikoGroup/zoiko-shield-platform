@@ -109,23 +109,36 @@ export class WasmPlaybookSandboxService {
       } else {
         blastRadiusAccumulator += 0.05;
       }
+    }
 
-      for (const step of dto.steps) {
-        // Enforce safety guards: TIER_0 assets cannot be drained or isolated without human quorum
-        if (
-          asset.criticalityTier === PlaybookExecutionTier.TIER_0_CRITICAL &&
-          (step.actionType === WasmSandboxMutationType.K8S_DRAIN_NODE ||
-            step.actionType === WasmSandboxMutationType.CROWDSTRIKE_CONTAIN_HOST)
-        ) {
-          safetyViolations.push(
-            `Policy Violation: Step '${step.stepId}' targets TIER_0_CRITICAL asset '${asset.assetId}'. Automated drain/isolation prohibited without Dual-Custody quorum.`,
-          );
-        }
+    const assetsById = new Map(dto.targetAssets.map((a) => [a.assetId, a]));
 
-        // Simulate state transition
-        const diff = this.computeStateDiff(step, asset.preExecutionState, asset.assetId);
-        stateDiffs.push(diff);
+    for (const step of dto.steps) {
+      const asset = assetsById.get(step.targetResourceArn);
+      if (!asset) {
+        // A step whose target isn't in the declared asset snapshot can't be
+        // safety-checked or diffed against a known pre-state: treat it as a
+        // violation rather than silently skipping it or guessing an asset.
+        safetyViolations.push(
+          `Policy Violation: Step '${step.stepId}' targets '${step.targetResourceArn}', which is not present in the supplied targetAssets snapshot.`,
+        );
+        continue;
       }
+
+      // Enforce safety guards: TIER_0 assets cannot be drained or isolated without human quorum
+      if (
+        asset.criticalityTier === PlaybookExecutionTier.TIER_0_CRITICAL &&
+        (step.actionType === WasmSandboxMutationType.K8S_DRAIN_NODE ||
+          step.actionType === WasmSandboxMutationType.CROWDSTRIKE_CONTAIN_HOST)
+      ) {
+        safetyViolations.push(
+          `Policy Violation: Step '${step.stepId}' targets TIER_0_CRITICAL asset '${asset.assetId}'. Automated drain/isolation prohibited without Dual-Custody quorum.`,
+        );
+      }
+
+      // Simulate state transition
+      const diff = this.computeStateDiff(step, asset.preExecutionState, asset.assetId);
+      stateDiffs.push(diff);
     }
 
     const simulatedBlastRadiusScore = Math.min(
@@ -183,9 +196,12 @@ export class WasmPlaybookSandboxService {
 
     // Reverse the execution order for rollbacks
     const reversedSteps = [...dto.executedSteps].reverse();
+    const assetsById = new Map(
+      dto.originalAssetStates.map((a) => [a.assetId, a]),
+    );
 
     reversedSteps.forEach((step, index) => {
-      const inverse = this.getInverseAction(step, dto.originalAssetStates);
+      const inverse = this.getInverseAction(step, assetsById);
       rollbackSteps.push({
         stepOrder: index + 1,
         stepId: `rb-step-${step.stepId}`,
@@ -273,8 +289,9 @@ export class WasmPlaybookSandboxService {
     steps: WasmPlaybookStepDto[],
     targetAssets: any[],
   ) {
+    const assetsById = new Map(targetAssets.map((a) => [a.assetId, a]));
     return steps.map((s) => {
-      const inverse = this.getInverseAction(s, targetAssets);
+      const inverse = this.getInverseAction(s, assetsById);
       return {
         rollbackStepId: `rb-${s.stepId}`,
         inverseActionType: inverse.inverseActionType,
@@ -284,10 +301,11 @@ export class WasmPlaybookSandboxService {
     });
   }
 
-  private getInverseAction(step: WasmPlaybookStepDto, originalAssets: any[]) {
-    const matchingAsset = originalAssets.find(
-      (a) => a.assetId === step.targetResourceArn || step.targetResourceArn.includes(a.assetId),
-    );
+  private getInverseAction(
+    step: WasmPlaybookStepDto,
+    assetsById: Map<string, any>,
+  ) {
+    const matchingAsset = assetsById.get(step.targetResourceArn);
 
     switch (step.actionType) {
       case WasmSandboxMutationType.AWS_IAM_ATTACH_POLICY:

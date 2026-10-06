@@ -30,6 +30,7 @@ import { DetectionRulesSeeder } from '../apps/shield-core/src/seeds/detection-ru
 import { SloMetricsExporterService } from '../apps/shield-core/src/modules/observability/slo-metrics-exporter.service';
 import { SbomDriftVerifierService } from '../apps/shield-anchor/src/supply-chain/sbom-drift-verifier.service';
 import { JitElevationService } from '../apps/shield-core/src/modules/authorization/jit-elevation.service';
+import type { WebauthnService } from '../apps/shield-core/src/modules/identity-adapter/webauthn.service';
 import { DistributedRateLimiterService } from '../apps/shield-core/src/modules/rate-limiting/distributed-rate-limiter.service';
 import { WorkloadTokenBrokerService } from '../apps/shield-core/src/modules/workload-identity/workload-token-broker.service';
 import {
@@ -715,12 +716,16 @@ async function runFullPlatformVerifier() {
   const membershipsMem: any[] = [];
   const eventsMem: any[] = [];
 
+  // This stage never exercises verifyStepUpChallenge, so the WebauthnService
+  // dependency is never actually called - only its presence satisfies the
+  // constructor's (intentionally mandatory) type.
   const jitVerifierService = new JitElevationService(
     createInMemoryJitPrisma({
       jitRequests: jitRequestsMem,
       memberships: membershipsMem,
       events: eventsMem,
     }),
+    {} as WebauthnService,
   );
 
   const jitReq = await jitVerifierService.requestElevation({

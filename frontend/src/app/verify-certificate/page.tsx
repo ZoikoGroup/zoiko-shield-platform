@@ -182,7 +182,7 @@ function normalizeCertificate(input: any): VerificationCertificate {
       validFiles: input.checks?.evidenceFilesIntegrity?.validFiles ?? (input.manifest?.evidenceCount || input.leavesCount || input.leaves?.length || 8),
       corruptedFiles: input.checks?.evidenceFilesIntegrity?.corruptedFiles ?? 0,
     },
-    witnessAttestationValid: input.checks?.witnessAttestationValid ?? Boolean(input.dilithiumSignature || input.ed25519Signature || input.witnessSignatures?.length || true),
+    witnessAttestationValid: input.checks?.witnessAttestationValid ?? Boolean(input.dilithiumSignature || input.ed25519Signature || input.witnessSignatures?.length),
     humanApprovalBindingValid: input.checks?.humanApprovalBindingValid ?? true,
   };
 

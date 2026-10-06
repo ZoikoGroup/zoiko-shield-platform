@@ -79,6 +79,17 @@ export function useLiveTelemetryStream({
     [onAlert, onJitStateChange, onMerkleCommit, onFreezeToggle],
   );
 
+  // handleIncomingMessage's identity changes whenever a caller passes an
+  // inline onAlert/onJitStateChange/etc. (an ordinary, common React pattern).
+  // Routing through a ref lets the connecting effect below always call the
+  // latest handler without needing handleIncomingMessage in its own deps -
+  // so a parent re-render updates the ref instead of tearing down and
+  // reopening the EventSource.
+  const handleIncomingMessageRef = useRef(handleIncomingMessage);
+  useEffect(() => {
+    handleIncomingMessageRef.current = handleIncomingMessage;
+  });
+
   useEffect(() => {
     if (!enabled || typeof window === 'undefined') return;
 
@@ -95,7 +106,7 @@ export function useLiveTelemetryStream({
       es.onmessage = (event) => {
         try {
           const parsed = JSON.parse(event.data);
-          handleIncomingMessage(parsed);
+          handleIncomingMessageRef.current(parsed);
         } catch {
           // Ignore invalid JSON chunks
         }
@@ -113,7 +124,10 @@ export function useLiveTelemetryStream({
     } catch {
       setIsConnected(false);
     }
-  }, [enabled, tenantId, handleIncomingMessage]);
+    // handleIncomingMessage is intentionally excluded: see
+    // handleIncomingMessageRef above.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled, tenantId]);
 
   return {
     isConnected,

@@ -68,10 +68,19 @@ export interface PolicyAuditEventRecord {
  * row's database id: a tenant's first lifecycle action on a shared baseline
  * forks a tenant-owned row with its own database id, and callers must keep
  * addressing the same policy across that fork.
+ *
+ * Every method below lets Prisma errors propagate. Do not add a
+ * catch-and-fall-back-to-memory branch here: that is the exact bug this
+ * class was written to eliminate (lost state on restart, replicas
+ * disagreeing about which policy is active), and a DB-unavailable audit
+ * trail silently serving another tenant's events is worse than a loud 500.
  */
 @Injectable()
 export class PolicyLifecycleService implements OnModuleInit {
   private readonly logger = new Logger(PolicyLifecycleService.name);
+
+  constructor(private readonly prisma: PrismaService) {}
+
   private readonly canonicalSeeds: Array<{
     policyKey: string;
     policyName: string;
@@ -153,51 +162,29 @@ export class PolicyLifecycleService implements OnModuleInit {
     },
   ];
 
-  private inMemoryPolicies = new Map<string, any>();
-  private inMemoryAudits: PolicyAuditEventRecord[] = [];
-
-  constructor(private readonly prisma: PrismaService) {
-    for (const seed of this.canonicalSeeds) {
-      this.inMemoryPolicies.set(`null:${seed.policyKey}`, {
-        id: seed.policyKey,
-        tenantId: null,
-        ...seed,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        reversalReason: null,
-      });
-    }
-  }
-
   /** Platform-wide baseline, not per-tenant: runs once at boot, idempotent. */
   @PlatformScope('startup seeding of canonical policy baselines')
   async onModuleInit(): Promise<void> {
-    try {
-      for (const seed of this.canonicalSeeds) {
-        const existing = await this.prisma.configPolicyVersion.findFirst({
-          where: { tenantId: null, policyKey: seed.policyKey },
-        });
-        if (existing) continue;
-        await this.prisma.configPolicyVersion.create({
-          data: { tenantId: null, ...seed },
-        });
-        this.logger.log(`Seeded canonical policy '${seed.policyKey}'`);
-      }
-    } catch (err) {
-      this.logger.warn(
-        `Database policy seeding skipped (using resilient in-memory policies): ${err instanceof Error ? err.message : String(err)}`,
-      );
+    for (const seed of this.canonicalSeeds) {
+      const existing = await this.prisma.configPolicyVersion.findFirst({
+        where: { tenantId: null, policyKey: seed.policyKey },
+      });
+      if (existing) continue;
+      await this.prisma.configPolicyVersion.create({
+        data: { tenantId: null, ...seed },
+      });
+      this.logger.log(`Seeded canonical policy '${seed.policyKey}'`);
     }
   }
 
   private toRecord(
-    row: any,
+    row: Awaited<
+      ReturnType<typeof this.prisma.configPolicyVersion.findFirstOrThrow>
+    >,
     tenantId: string,
   ): PolicyVersionRecord {
-    const createdAt = row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt || new Date().toISOString());
-    const updatedAt = row.updatedAt instanceof Date ? row.updatedAt.toISOString() : String(row.updatedAt || new Date().toISOString());
     return {
-      id: row.policyKey || row.id,
+      id: row.policyKey,
       tenantId,
       policyName: row.policyName,
       domain: row.domain as PolicyDomain,
@@ -207,8 +194,8 @@ export class PolicyLifecycleService implements OnModuleInit {
       canaryPercentage: row.canaryPercentage,
       author: row.author,
       approvers: row.approvers,
-      createdAt,
-      updatedAt,
+      createdAt: row.createdAt.toISOString(),
+      updatedAt: row.updatedAt.toISOString(),
       commitHash: row.commitHash,
       diffSummary: row.diffSummary,
       diffContent: { previous: row.diffPrevious, proposed: row.diffProposed },
@@ -220,47 +207,32 @@ export class PolicyLifecycleService implements OnModuleInit {
     tenantId: string,
     domain?: PolicyDomain,
   ): Promise<PolicyVersionRecord[]> {
-    try {
-      const rows = await this.prisma.configPolicyVersion.findMany({
-        where: {
-          OR: [{ tenantId }, { tenantId: null }],
-          ...(domain ? { domain } : {}),
-        },
-        orderBy: { updatedAt: 'desc' },
-      });
-      const byKey = new Map<string, (typeof rows)[number]>();
-      for (const row of rows) {
-        const current = byKey.get(row.policyKey);
-        if (!current || row.tenantId === tenantId) byKey.set(row.policyKey, row);
-      }
-      return [...byKey.values()]
-        .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
-        .map((row) => this.toRecord(row, tenantId));
-    } catch {
-      const list = [...this.inMemoryPolicies.values()]
-        .filter((p) => (domain ? p.domain === domain : true))
-        .map((p) => this.toRecord(p, tenantId));
-      return list;
+    const rows = await this.prisma.configPolicyVersion.findMany({
+      where: {
+        OR: [{ tenantId }, { tenantId: null }],
+        ...(domain ? { domain } : {}),
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+    // A tenant fork shadows the global baseline it was forked from.
+    const byKey = new Map<string, (typeof rows)[number]>();
+    for (const row of rows) {
+      const current = byKey.get(row.policyKey);
+      if (!current || row.tenantId === tenantId) byKey.set(row.policyKey, row);
     }
+    return [...byKey.values()]
+      .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())
+      .map((row) => this.toRecord(row, tenantId));
   }
 
   private async findRow(tenantId: string, policyKey: string) {
-    try {
-      const tenantRow = await this.prisma.configPolicyVersion.findUnique({
-        where: { tenantId_policyKey: { tenantId, policyKey } },
-      });
-      if (tenantRow) return tenantRow;
-      const globalRow = await this.prisma.configPolicyVersion.findFirst({
-        where: { tenantId: null, policyKey },
-      });
-      if (globalRow) return globalRow;
-    } catch {
-      // Fall through to in-memory fallback
-    }
-    return (
-      this.inMemoryPolicies.get(`${tenantId}:${policyKey}`) ||
-      this.inMemoryPolicies.get(`null:${policyKey}`)
-    );
+    const tenantRow = await this.prisma.configPolicyVersion.findUnique({
+      where: { tenantId_policyKey: { tenantId, policyKey } },
+    });
+    if (tenantRow) return tenantRow;
+    return this.prisma.configPolicyVersion.findFirst({
+      where: { tenantId: null, policyKey },
+    });
   }
 
   async getPolicyById(
@@ -277,58 +249,36 @@ export class PolicyLifecycleService implements OnModuleInit {
     const row = await this.findRow(tenantId, policyKey);
     if (!row) throw new NotFoundException(`Policy '${policyKey}' not found`);
     if (row.tenantId === tenantId) return row;
-    try {
-      return await this.prisma.configPolicyVersion.create({
-        data: {
-          tenantId,
-          policyKey: row.policyKey,
-          policyName: row.policyName,
-          domain: row.domain,
-          version: row.version,
-          status: row.status,
-          stagedEnvironment: row.stagedEnvironment,
-          canaryPercentage: row.canaryPercentage,
-          author: row.author,
-          approvers: row.approvers,
-          commitHash: row.commitHash,
-          diffSummary: row.diffSummary,
-          diffPrevious: row.diffPrevious,
-          diffProposed: row.diffProposed,
-        },
-      });
-    } catch {
-      const forked = {
-        ...row,
-        id: `${tenantId}:${row.policyKey}`,
+    return this.prisma.configPolicyVersion.create({
+      data: {
         tenantId,
-        updatedAt: new Date(),
-      };
-      this.inMemoryPolicies.set(`${tenantId}:${row.policyKey}`, forked);
-      return forked;
-    }
+        policyKey: row.policyKey,
+        policyName: row.policyName,
+        domain: row.domain,
+        version: row.version,
+        status: row.status,
+        stagedEnvironment: row.stagedEnvironment,
+        canaryPercentage: row.canaryPercentage,
+        author: row.author,
+        approvers: row.approvers,
+        commitHash: row.commitHash,
+        diffSummary: row.diffSummary,
+        diffPrevious: row.diffPrevious,
+        diffProposed: row.diffProposed,
+      },
+    });
   }
-  private async recordAudit(
+
+  private recordAudit(
     tenantId: string,
     policyVersionId: string,
     action: string,
     actorId: string,
     detail: string,
   ) {
-    try {
-      return await this.prisma.configPolicyAuditEvent.create({
-        data: { tenantId, policyVersionId, action, actorId, detail },
-      });
-    } catch {
-      const event: PolicyAuditEventRecord = {
-        id: `audit-${Date.now().toString(16)}`,
-        action,
-        actorId,
-        detail,
-        occurredAt: new Date().toISOString(),
-      };
-      this.inMemoryAudits.unshift(event);
-      return event;
-    }
+    return this.prisma.configPolicyAuditEvent.create({
+      data: { tenantId, policyVersionId, action, actorId, detail },
+    });
   }
 
   async listAuditEvents(
@@ -337,21 +287,17 @@ export class PolicyLifecycleService implements OnModuleInit {
   ): Promise<PolicyAuditEventRecord[]> {
     const row = await this.findRow(tenantId, policyKey);
     if (!row) throw new NotFoundException(`Policy '${policyKey}' not found`);
-    try {
-      const events = await this.prisma.configPolicyAuditEvent.findMany({
-        where: { policyVersionId: row.id },
-        orderBy: { occurredAt: 'desc' },
-      });
-      return events.map((e) => ({
-        id: e.id,
-        action: e.action,
-        actorId: e.actorId,
-        detail: e.detail,
-        occurredAt: e.occurredAt.toISOString(),
-      }));
-    } catch {
-      return this.inMemoryAudits;
-    }
+    const events = await this.prisma.configPolicyAuditEvent.findMany({
+      where: { policyVersionId: row.id },
+      orderBy: { occurredAt: 'desc' },
+    });
+    return events.map((e) => ({
+      id: e.id,
+      action: e.action,
+      actorId: e.actorId,
+      detail: e.detail,
+      occurredAt: e.occurredAt.toISOString(),
+    }));
   }
 
   /**
@@ -424,23 +370,14 @@ export class PolicyLifecycleService implements OnModuleInit {
   ): Promise<PolicyVersionRecord> {
     const row = await this.resolveForWrite(tenantId, policyKey);
     const status = dto.canaryPercentage === 100 ? 'ACTIVE' : 'STAGED';
-    let updated = row;
-    try {
-      updated = await this.prisma.configPolicyVersion.update({
-        where: { id: row.id },
-        data: {
-          stagedEnvironment: dto.stagedEnvironment,
-          canaryPercentage: dto.canaryPercentage,
-          status,
-        },
-      });
-    } catch {
-      row.stagedEnvironment = dto.stagedEnvironment;
-      row.canaryPercentage = dto.canaryPercentage;
-      row.status = status;
-      row.updatedAt = new Date();
-      updated = row;
-    }
+    const updated = await this.prisma.configPolicyVersion.update({
+      where: { id: row.id },
+      data: {
+        stagedEnvironment: dto.stagedEnvironment,
+        canaryPercentage: dto.canaryPercentage,
+        status,
+      },
+    });
     await this.recordAudit(
       tenantId,
       row.id,
@@ -457,26 +394,17 @@ export class PolicyLifecycleService implements OnModuleInit {
     approverId: string,
   ): Promise<PolicyVersionRecord> {
     const row = await this.resolveForWrite(tenantId, policyKey);
-    const existingApprovers = Array.isArray(row.approvers) ? row.approvers : [];
-    if (existingApprovers.includes(approverId)) {
+    if (row.approvers.includes(approverId)) {
       throw new BadRequestException(
         `Approver '${approverId}' has already signed off on policy '${policyKey}'`,
       );
     }
-    const approvers = [...existingApprovers, approverId];
+    const approvers = [...row.approvers, approverId];
     const status = approvers.length >= 2 ? 'ACTIVE' : 'PENDING_APPROVAL';
-    let updated = row;
-    try {
-      updated = await this.prisma.configPolicyVersion.update({
-        where: { id: row.id },
-        data: { approvers, status },
-      });
-    } catch {
-      row.approvers = approvers;
-      row.status = status;
-      row.updatedAt = new Date();
-      updated = row;
-    }
+    const updated = await this.prisma.configPolicyVersion.update({
+      where: { id: row.id },
+      data: { approvers, status },
+    });
     await this.recordAudit(
       tenantId,
       row.id,
@@ -494,23 +422,14 @@ export class PolicyLifecycleService implements OnModuleInit {
     actorId: string,
   ): Promise<PolicyVersionRecord> {
     const row = await this.resolveForWrite(tenantId, policyKey);
-    let updated = row;
-    try {
-      updated = await this.prisma.configPolicyVersion.update({
-        where: { id: row.id },
-        data: {
-          status: 'ROLLED_BACK',
-          canaryPercentage: 0,
-          reversalReason: dto.reason,
-        },
-      });
-    } catch {
-      row.status = 'ROLLED_BACK';
-      row.canaryPercentage = 0;
-      row.reversalReason = dto.reason;
-      row.updatedAt = new Date();
-      updated = row;
-    }
+    const updated = await this.prisma.configPolicyVersion.update({
+      where: { id: row.id },
+      data: {
+        status: 'ROLLED_BACK',
+        canaryPercentage: 0,
+        reversalReason: dto.reason,
+      },
+    });
     await this.recordAudit(
       tenantId,
       row.id,

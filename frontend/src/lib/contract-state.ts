@@ -19,6 +19,15 @@ import { useDemoState } from "@/lib/demo-state";
  * the specific observations that produced it.
  */
 
+/**
+ * Demo-fallback mode is opt-in, same as ZoikoShieldApiClient's: with it off,
+ * a source that fails or is unreachable surfaces as DEGRADED/UNAVAILABLE
+ * (per UX-INV-03 above) rather than silently rendering fabricated data that
+ * looks indistinguishable from a real, healthy answer.
+ */
+const DEMO_FALLBACK_ENABLED =
+  process.env.NEXT_PUBLIC_DEMO_FALLBACK === "true";
+
 export type ContractStatus =
   | "LOADING"
   | "PARTIAL"
@@ -1064,6 +1073,7 @@ export function useContractSources(
   const staleAfterSeconds = options.staleAfterSeconds ?? DEFAULT_STALE_AFTER_SECONDS;
   const [state] = useDemoState();
   const tenantId = state.tenant?.id ?? "";
+  const sessionToken = state.session?.token ?? "";
 
   const [results, setResults] = useState<SourceResult[] | null>(null);
   const [correlationId, setCorrelationId] = useState("");
@@ -1095,21 +1105,27 @@ export function useContractSources(
           const response = await fetch(spec.path, {
             headers: {
               ...(tenantId ? { "x-tenant-id": tenantId } : {}),
+              ...(sessionToken ? { Authorization: `Bearer ${sessionToken}` } : {}),
               "x-correlation-id": correlation,
             },
           });
           if (!response.ok) {
-            // When backend is restarting or offline in demo mode, resolve structured fallback
-            const fallbackData = getFallbackDataForPath(spec.path, spec.key);
-            if (fallbackData !== undefined) {
-              return {
-                ...base,
-                ok: true,
-                httpStatus: 200,
-                error: null,
-                reportedAt: new Date().toISOString(),
-                data: fallbackData,
-              };
+            // Demo-fallback mode is opt-in: see DEMO_FALLBACK_ENABLED above.
+            if (DEMO_FALLBACK_ENABLED) {
+              const fallbackData = getFallbackDataForPath(spec.path, spec.key);
+              if (fallbackData !== undefined) {
+                console.warn(
+                  `[demo fallback] ${spec.path} returned ${response.status}; serving fabricated data because NEXT_PUBLIC_DEMO_FALLBACK=true`,
+                );
+                return {
+                  ...base,
+                  ok: true,
+                  httpStatus: 200,
+                  error: null,
+                  reportedAt: new Date().toISOString(),
+                  data: fallbackData,
+                };
+              }
             }
             const body = await response.json().catch(() => ({}));
             return {
@@ -1133,16 +1149,21 @@ export function useContractSources(
             data: payload,
           };
         } catch (err) {
-          const fallbackData = getFallbackDataForPath(spec.path, spec.key);
-          if (fallbackData !== undefined) {
-            return {
-              ...base,
-              ok: true,
-              httpStatus: 200,
-              error: null,
-              reportedAt: new Date().toISOString(),
-              data: fallbackData,
-            };
+          if (DEMO_FALLBACK_ENABLED) {
+            const fallbackData = getFallbackDataForPath(spec.path, spec.key);
+            if (fallbackData !== undefined) {
+              console.warn(
+                `[demo fallback] ${spec.path} was unreachable; serving fabricated data because NEXT_PUBLIC_DEMO_FALLBACK=true`,
+              );
+              return {
+                ...base,
+                ok: true,
+                httpStatus: 200,
+                error: null,
+                reportedAt: new Date().toISOString(),
+                data: fallbackData,
+              };
+            }
           }
           return {
             ...base,
@@ -1158,7 +1179,7 @@ export function useContractSources(
     setResults(settled);
     // specKey stands in for specs; tenantId re-reads on tenant switch.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [specKey, tenantId]);
+  }, [specKey, tenantId, sessionToken]);
 
   useEffect(() => {
     void load();

@@ -14,6 +14,7 @@ import 'dotenv/config';
 import 'reflect-metadata';
 import * as crypto from 'crypto';
 import { JitElevationService } from '../apps/shield-core/src/modules/authorization/jit-elevation.service';
+import type { WebauthnService } from '../apps/shield-core/src/modules/identity-adapter/webauthn.service';
 import { JitElevationRequest } from '../apps/shield-core/src/modules/authorization/entities/jit-elevation-request.entity';
 import { TenantMembership } from '../apps/shield-core/src/modules/authorization/entities/tenant-membership.entity';
 import { Role } from '../apps/shield-core/src/modules/authorization/entities/role.entity';
@@ -49,6 +50,9 @@ async function main() {
   ];
   const identityEvents: IdentityEvent[] = [];
 
+  // This simulator never exercises verifyStepUpChallenge, so the
+  // WebauthnService dependency is never actually called - only its
+  // presence satisfies the constructor's (intentionally mandatory) type.
   const jitService = new JitElevationService(
     createInMemoryJitPrisma({
       jitRequests,
@@ -56,6 +60,7 @@ async function main() {
       roles,
       events: identityEvents,
     }),
+    {} as WebauthnService,
   );
 
   const tenantId = `tenant-commercial-bank-${crypto.randomUUID().slice(0, 6)}`;

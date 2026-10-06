@@ -1,4 +1,10 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import * as crypto from 'crypto';
 import { LiveTelemetryStreamService } from '../streaming/live-telemetry-stream.service';
 import type { ScanCloudAssetDto } from './dto/posture-drift.dto';
@@ -233,11 +239,11 @@ export class PostureDriftDetectorService {
     const finding = findings.find((f) => f.findingId === findingId);
 
     if (!finding) {
-      throw new Error(`Posture drift finding '${findingId}' not found for tenant '${tenantId}'`);
+      throw new NotFoundException(`Posture drift finding '${findingId}' not found for tenant '${tenantId}'`);
     }
 
     if (finding.remediationPlan.requiresDualCustody && !approverId) {
-      throw new Error(`DUAL_CUSTODY_REQUIRED: Finding '${findingId}' impacts Tier-0 IAM assets and requires secondary approval.`);
+      throw new BadRequestException(`DUAL_CUSTODY_REQUIRED: Finding '${findingId}' impacts Tier-0 IAM assets and requires secondary approval.`);
     }
 
     const remediatedAt = new Date().toISOString();
