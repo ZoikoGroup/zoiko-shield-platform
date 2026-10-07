@@ -1,5 +1,9 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException, Optional } from '@nestjs/common';
 import * as crypto from 'crypto';
+import {
+  ProductionEmailTemplateEngine,
+  EmailRenderInput,
+} from './templates/production-email-template.engine';
 
 export type NotificationTemplateCategory =
   | 'USG/UsageThreshold75Percent'
@@ -8,7 +12,8 @@ export type NotificationTemplateCategory =
   | 'ORD/ServiceActivationFailed'
   | 'ORD/OrderConfirmation'
   | 'TEN/JurisdictionPackChanged'
-  | 'SUP/IncidentUpdate';
+  | 'SUP/IncidentUpdate'
+  | (string & {});
 
 export interface EmailRecipient {
   email: string;
@@ -35,11 +40,19 @@ export interface DispatchedEmailReceipt {
   deliveryStatus: 'QUEUED' | 'SENT' | 'DELIVERED';
   contentDigest: string;
   dispatchedAt: string;
+  renderHash?: string;
 }
 
 @Injectable()
 export class TransactionalEmailService {
   private readonly logger = new Logger(TransactionalEmailService.name);
+  private readonly templateEngine: ProductionEmailTemplateEngine;
+
+  constructor(
+    @Optional() templateEngine?: ProductionEmailTemplateEngine,
+  ) {
+    this.templateEngine = templateEngine || new ProductionEmailTemplateEngine();
+  }
 
   /**
    * Renders and dispatches a transactional email based on pre-compiled enterprise email templates.
@@ -51,10 +64,52 @@ export class TransactionalEmailService {
       throw new BadRequestException('At least one email recipient is required');
     }
 
-    const { subject, htmlBody, textBody } = this.renderTemplate(
-      input.templateKey,
-      input.variables,
-    );
+    const firstRecipient = input.recipients[0];
+    let subject: string;
+    let htmlBody: string;
+    let textBody: string;
+    let renderHash: string | undefined;
+
+    // Check if the template key is one of the 226 ZS-EML-* production templates
+    if (input.templateKey.startsWith('ZS-EML-') && this.templateEngine.hasTemplate(input.templateKey)) {
+      const renderInput: EmailRenderInput = {
+        templateId: input.templateKey,
+        recipientFirstName: firstRecipient.name || 'Security Operator',
+        organizationName: input.variables.organizationName || input.variables.tenantName || 'Enterprise Tenant',
+        referenceId: input.variables.referenceId || `ref-${Date.now().toString(36)}`,
+        statusLabel: input.variables.statusLabel || 'ACTIVE',
+        occurredAtLocal: input.variables.occurredAtLocal || new Date().toLocaleString(),
+        timezone: input.variables.timezone || 'UTC',
+        dueAtLocal: input.variables.dueAtLocal,
+        actorDisplayName: input.variables.actorDisplayName,
+        objectDisplayReference: input.variables.objectDisplayReference,
+        actionUrl: input.variables.actionUrl,
+        accountSecurityUrl: input.variables.accountSecurityUrl,
+        auditUrl: input.variables.auditUrl,
+        billingUrl: input.variables.billingUrl,
+        supportUrl: input.variables.supportUrl,
+        onboardingUrl: input.variables.onboardingUrl,
+        developerUrl: input.variables.developerUrl,
+        governanceUrl: input.variables.governanceUrl,
+        verificationUrl: input.variables.verificationUrl,
+        passwordResetUrl: input.variables.passwordResetUrl,
+        downloadUrl: input.variables.downloadUrl,
+        tokenExpiresAtLocal: input.variables.tokenExpiresAtLocal,
+        extraVariables: input.variables,
+      };
+
+      const rendered = this.templateEngine.render(renderInput);
+      subject = rendered.subject;
+      htmlBody = rendered.htmlBody;
+      textBody = rendered.plainTextBody;
+      renderHash = rendered.renderHash;
+    } else {
+      // Legacy fallback template renderer
+      const renderedLegacy = this.renderLegacyTemplate(input.templateKey, input.variables);
+      subject = renderedLegacy.subject;
+      htmlBody = renderedLegacy.htmlBody;
+      textBody = renderedLegacy.textBody;
+    }
 
     const receiptId = `ntf-rcpt-${crypto.randomUUID()}`;
     const contentDigest = crypto
@@ -65,6 +120,7 @@ export class TransactionalEmailService {
           templateKey: input.templateKey,
           htmlBody,
           recipients: input.recipients,
+          renderHash,
         }),
       )
       .digest('hex');
@@ -84,11 +140,12 @@ export class TransactionalEmailService {
       deliveryStatus: 'DELIVERED',
       contentDigest,
       dispatchedAt: new Date().toISOString(),
+      renderHash,
     };
   }
 
-  private renderTemplate(
-    templateKey: NotificationTemplateCategory,
+  private renderLegacyTemplate(
+    templateKey: string,
     vars: Record<string, any>,
   ): { subject: string; htmlBody: string; textBody: string } {
     switch (templateKey) {
@@ -136,7 +193,7 @@ export class TransactionalEmailService {
 
       default:
         return {
-          subject: `ZoikoShield Notification for Tenant ${vars.tenantId}`,
+          subject: `ZoikoShield Notification for Tenant ${vars.tenantId || vars.tenantName || 'Enterprise'}`,
           htmlBody: `<p>ZoikoShield platform notification update.</p>`,
           textBody: `ZoikoShield platform notification update.`,
         };

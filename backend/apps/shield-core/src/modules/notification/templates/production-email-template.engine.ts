@@ -1,5 +1,10 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import * as crypto from 'crypto';
+import {
+  resolveAllowlistedStatus,
+  resolveAllowlistedRole,
+  resolveAllowlistedActionType,
+} from './template-enums.registry';
 
 export interface EmailRenderInput {
   templateId: string;
@@ -110,6 +115,13 @@ export class ProductionEmailTemplateEngine {
   }
 
   /**
+   * Check if template exists by ID.
+   */
+  hasTemplate(templateId: string): boolean {
+    return this.templateRegistry.has(templateId);
+  }
+
+  /**
    * Get template definition by ID.
    */
   getTemplate(templateId: string): TemplateDefinition | undefined {
@@ -131,6 +143,15 @@ export class ProductionEmailTemplateEngine {
       throw new BadRequestException(
         `Unknown template ID '${input.templateId}' - failed closed before send.`,
       );
+    }
+
+    // Apply template-side allowlisted enum resolutions (ZS-EML-TPL-001 v2.0 §1 & §3)
+    input.statusLabel = resolveAllowlistedStatus(input.statusLabel);
+    if (input.extraVariables?.action_type_label && typeof input.extraVariables.action_type_label === 'string') {
+      input.extraVariables.action_type_label = resolveAllowlistedActionType(input.extraVariables.action_type_label);
+    }
+    if (input.extraVariables?.invited_role_label && typeof input.extraVariables.invited_role_label === 'string') {
+      input.extraVariables.invited_role_label = resolveAllowlistedRole(input.extraVariables.invited_role_label);
     }
 
     // Security Gate: Check for accidental leak of secrets/credentials in any variable

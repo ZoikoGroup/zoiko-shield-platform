@@ -8,6 +8,8 @@ export type StreamingEventType =
   | 'JIT_ELEVATION_STATE_CHANGE'
   | 'MERKLE_ROOT_COMMITTED'
   | 'EMERGENCY_FREEZE_TOGGLED'
+  | 'NOTIFICATION_DISPATCHED'
+  | 'DELIVERY_STATUS_UPDATED'
   | 'HEARTBEAT';
 
 export interface LiveStreamEvent<T = any> {
@@ -138,4 +140,16 @@ export class LiveTelemetryStreamService implements OnModuleDestroy {
       payload: blockData,
     });
   }
+
+  /**
+   * Publishes real-time notification dispatch event to connected tenant SSE streams.
+   */
+  publishNotificationStream(tenantId: string, notificationData: { deliveryId: string; templateId: string; subject: string; senderClass: string; status: string }): LiveStreamEvent {
+    return this.publishEvent({
+      eventType: 'NOTIFICATION_DISPATCHED',
+      tenantId,
+      payload: notificationData,
+    });
+  }
 }
+
