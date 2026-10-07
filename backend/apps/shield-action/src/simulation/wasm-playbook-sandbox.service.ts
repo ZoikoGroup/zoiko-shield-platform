@@ -7,6 +7,10 @@ import {
   WasmSandboxMutationType,
   PlaybookExecutionTier,
 } from './dto/wasm-playbook.dto';
+import {
+  BLAST_RADIUS_TIER_WEIGHT,
+  BLAST_RADIUS_DEFAULT_TIER_WEIGHT,
+} from './blast-radius-tier-weights';
 
 export interface WasmSandboxExecutionReport {
   dryRunId: string;
@@ -103,11 +107,11 @@ export class WasmPlaybookSandboxService {
 
     for (const asset of dto.targetAssets) {
       if (asset.criticalityTier === PlaybookExecutionTier.TIER_0_CRITICAL) {
-        blastRadiusAccumulator += 0.35;
+        blastRadiusAccumulator += BLAST_RADIUS_TIER_WEIGHT.TIER_0_CRITICAL;
       } else if (asset.criticalityTier === PlaybookExecutionTier.TIER_1_STANDARD) {
-        blastRadiusAccumulator += 0.15;
+        blastRadiusAccumulator += BLAST_RADIUS_TIER_WEIGHT.TIER_1_STANDARD;
       } else {
-        blastRadiusAccumulator += 0.05;
+        blastRadiusAccumulator += BLAST_RADIUS_DEFAULT_TIER_WEIGHT;
       }
     }
 

@@ -61,6 +61,7 @@ import { LiveTelemetryStreamService } from '../apps/shield-core/src/modules/stre
 import { PostureDriftDetectorService } from '../apps/shield-core/src/modules/continuous-assurance/posture-drift-detector.service';
 import { StixThreatIntelMatcherService } from '../apps/shield-ingest/src/threat-intel/stix-threat-intel-matcher.service';
 import { createInMemoryJitPrisma } from './lib/in-memory-jit-prisma';
+import { createInMemoryPostureDriftPrisma } from './lib/in-memory-posture-drift-prisma';
 import { createInMemoryActionPrisma } from './lib/in-memory-action-prisma';
 
 /**
@@ -1230,7 +1231,10 @@ async function runFullPlatformVerifier() {
   );
 
   // 3. Continuous Cloud Posture Drift (CSPM) & 1-Click Remediation
-  const postureDetector = new PostureDriftDetectorService(streamService);
+  const postureDetector = new PostureDriftDetectorService(
+    createInMemoryPostureDriftPrisma({ findings: [] }),
+    streamService,
+  );
   const postureScan = await postureDetector.scanTenantPosture(tenantA.id, [
     {
       assetId: 's3-customer-archive-prod',

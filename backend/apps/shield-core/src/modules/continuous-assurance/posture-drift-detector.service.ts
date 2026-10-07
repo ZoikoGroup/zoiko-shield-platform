@@ -6,6 +6,7 @@ import {
   Optional,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
+import { PrismaService } from '../../prisma/prisma.service';
 import { LiveTelemetryStreamService } from '../streaming/live-telemetry-stream.service';
 import type { ScanCloudAssetDto } from './dto/posture-drift.dto';
 
@@ -45,13 +46,50 @@ export interface PostureDriftFinding {
 @Injectable()
 export class PostureDriftDetectorService {
   private readonly logger = new Logger(PostureDriftDetectorService.name);
-  private readonly findingsMap = new Map<string, PostureDriftFinding[]>();
 
   constructor(
+    private readonly prisma: PrismaService,
     @Optional()
     private readonly streamService?: LiveTelemetryStreamService,
   ) {
     this.logger.log('✔ PostureDriftDetectorService initialized');
+  }
+
+  private toFinding(row: {
+    id: string;
+    tenantId: string;
+    assetId: string;
+    assetType: string;
+    cloudProvider: string;
+    ruleCode: string;
+    ruleTitle: string;
+    severity: string;
+    description: string;
+    complianceImpact: string[];
+    detectedAt: Date;
+    status: string;
+    remediationPlan: unknown;
+    remediationReceipt: unknown;
+  }): PostureDriftFinding {
+    return {
+      findingId: row.id,
+      tenantId: row.tenantId,
+      assetId: row.assetId,
+      assetType: row.assetType,
+      cloudProvider: row.cloudProvider,
+      ruleCode: row.ruleCode,
+      ruleTitle: row.ruleTitle,
+      severity: row.severity as DriftSeverity,
+      description: row.description,
+      complianceImpact: row.complianceImpact,
+      detectedAt: row.detectedAt.toISOString(),
+      status: row.status as PostureDriftFinding['status'],
+      remediationPlan:
+        row.remediationPlan as PostureDriftFinding['remediationPlan'],
+      remediationReceipt: row.remediationReceipt as
+        | PostureDriftFinding['remediationReceipt']
+        | undefined,
+    };
   }
 
   /**
@@ -185,8 +223,29 @@ export class PostureDriftDetectorService {
       }
     }
 
-    // Cache active findings for tenant
-    this.findingsMap.set(tenantId, findings);
+    // Persist: a rescan replaces the tenant's prior findings, same as the
+    // in-memory Map this used to be - computed fresh from current asset
+    // state each time, not merged with history.
+    await this.prisma.$transaction([
+      this.prisma.postureDriftFinding.deleteMany({ where: { tenantId } }),
+      this.prisma.postureDriftFinding.createMany({
+        data: findings.map((f) => ({
+          id: f.findingId,
+          tenantId: f.tenantId,
+          assetId: f.assetId,
+          assetType: f.assetType,
+          cloudProvider: f.cloudProvider,
+          ruleCode: f.ruleCode,
+          ruleTitle: f.ruleTitle,
+          severity: f.severity,
+          description: f.description,
+          complianceImpact: f.complianceImpact,
+          detectedAt: new Date(f.detectedAt),
+          status: f.status,
+          remediationPlan: f.remediationPlan,
+        })),
+      }),
+    ]);
 
     const criticalCount = findings.filter((f) => f.severity === 'CRITICAL').length;
 
@@ -217,8 +276,12 @@ export class PostureDriftDetectorService {
   /**
    * Retrieves active drift findings for a tenant.
    */
-  getTenantFindings(tenantId: string): PostureDriftFinding[] {
-    return this.findingsMap.get(tenantId) || [];
+  async getTenantFindings(tenantId: string): Promise<PostureDriftFinding[]> {
+    const rows = await this.prisma.postureDriftFinding.findMany({
+      where: { tenantId },
+      orderBy: { detectedAt: 'desc' },
+    });
+    return rows.map((row) => this.toFinding(row));
   }
 
   /**
@@ -235,12 +298,15 @@ export class PostureDriftDetectorService {
     forwardActionExecuted: string;
     remediationReceipt: NonNullable<PostureDriftFinding['remediationReceipt']>;
   }> {
-    const findings = this.findingsMap.get(tenantId) || [];
-    const finding = findings.find((f) => f.findingId === findingId);
+    const row = await this.prisma.postureDriftFinding.findUnique({
+      where: { id: findingId },
+    });
 
-    if (!finding) {
+    if (!row || row.tenantId !== tenantId) {
       throw new NotFoundException(`Posture drift finding '${findingId}' not found for tenant '${tenantId}'`);
     }
+
+    const finding = this.toFinding(row);
 
     if (finding.remediationPlan.requiresDualCustody && !approverId) {
       throw new BadRequestException(`DUAL_CUSTODY_REQUIRED: Finding '${findingId}' impacts Tier-0 IAM assets and requires secondary approval.`);
@@ -252,12 +318,16 @@ export class PostureDriftDetectorService {
       .update(JSON.stringify({ tenantId, findingId, rationale: operatorRationale, remediatedAt, approverId }))
       .digest('hex');
 
-    finding.status = 'REMEDIATED';
-    finding.remediationReceipt = {
+    const remediationReceipt = {
       remediatedAt,
       operatorRationale,
       attestationDigest,
     };
+
+    await this.prisma.postureDriftFinding.update({
+      where: { id: findingId },
+      data: { status: 'REMEDIATED', remediationReceipt },
+    });
 
     this.logger.log(
       `✔ [CSPM REMEDIATION] Remediated '${finding.ruleCode}' on ${finding.assetId} (Tenant: ${tenantId}, Digest: ${attestationDigest.slice(0, 12)}...)`,
@@ -267,7 +337,7 @@ export class PostureDriftDetectorService {
       status: 'REMEDIATION_EXECUTED',
       findingId,
       forwardActionExecuted: finding.remediationPlan.forwardAction,
-      remediationReceipt: finding.remediationReceipt,
+      remediationReceipt,
     };
   }
 

@@ -1,4 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
+import {
+  BLAST_RADIUS_TIER_WEIGHT,
+  BLAST_RADIUS_DEFAULT_TIER_WEIGHT,
+} from './blast-radius-tier-weights';
 
 export interface TargetAsset {
   assetId: string;
@@ -74,11 +78,11 @@ export class PlaybookSandboxEngineService {
 
     for (const asset of request.targetAssets) {
       if (asset.criticalityTier === 'TIER_0_CRITICAL') {
-        blastRadiusAccumulator += 0.4;
+        blastRadiusAccumulator += BLAST_RADIUS_TIER_WEIGHT.TIER_0_CRITICAL;
       } else if (asset.criticalityTier === 'TIER_1_STANDARD') {
-        blastRadiusAccumulator += 0.15;
+        blastRadiusAccumulator += BLAST_RADIUS_TIER_WEIGHT.TIER_1_STANDARD;
       } else {
-        blastRadiusAccumulator += 0.05;
+        blastRadiusAccumulator += BLAST_RADIUS_DEFAULT_TIER_WEIGHT;
       }
 
       for (const action of request.actions) {

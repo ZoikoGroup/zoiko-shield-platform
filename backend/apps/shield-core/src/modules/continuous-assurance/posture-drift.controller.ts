@@ -53,12 +53,12 @@ export class PostureDriftController {
    * Lists active posture drift findings for a tenant.
    */
   @Get('findings')
-  getFindings(
+  async getFindings(
     @Headers('x-tenant-id') headerTenantId?: string,
     @Query('tenantId') queryTenantId?: string,
   ) {
     const tenantId = headerTenantId || queryTenantId || 'tenant-commercial-bank';
-    const findings = this.postureDriftService.getTenantFindings(tenantId);
+    const findings = await this.postureDriftService.getTenantFindings(tenantId);
 
     return {
       tenantId,
