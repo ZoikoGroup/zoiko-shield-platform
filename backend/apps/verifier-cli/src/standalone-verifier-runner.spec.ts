@@ -162,11 +162,11 @@ describe('StandaloneVerifierRunner', () => {
     // Tampered test
     const tamperedReceipt = {
       ...validReceipt,
-      auditHash: 'fake-tampered-hash-0000000000000000000000000000000000000000000000',
+      auditHash:
+        'fake-tampered-hash-0000000000000000000000000000000000000000000000',
     };
     const tamperedResult = runner.verifyNotificationReceipt(tamperedReceipt);
     expect(tamperedResult.verified).toBe(false);
     expect(tamperedResult.status).toBe('TAMPER_DETECTED');
   });
 });
-

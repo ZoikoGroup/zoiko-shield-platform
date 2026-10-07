@@ -40,7 +40,9 @@ export class LiveTelemetryStreamService implements OnModuleDestroy {
   private readonly eventBus$ = new Subject<LiveStreamEvent>();
 
   constructor() {
-    this.logger.log('✔ LiveTelemetryStreamService initialized (Reactive SSE Bus Ready)');
+    this.logger.log(
+      '✔ LiveTelemetryStreamService initialized (Reactive SSE Bus Ready)',
+    );
   }
 
   onModuleDestroy() {
@@ -50,9 +52,16 @@ export class LiveTelemetryStreamService implements OnModuleDestroy {
   /**
    * Publishes an event to the reactive event bus.
    */
-  publishEvent<T>(event: Omit<LiveStreamEvent<T>, 'eventId' | 'timestamp'> & { eventId?: string; timestamp?: string }): LiveStreamEvent<T> {
+  publishEvent<T>(
+    event: Omit<LiveStreamEvent<T>, 'eventId' | 'timestamp'> & {
+      eventId?: string;
+      timestamp?: string;
+    },
+  ): LiveStreamEvent<T> {
     const fullEvent: LiveStreamEvent<T> = {
-      eventId: event.eventId || `evt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+      eventId:
+        event.eventId ||
+        `evt-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       eventType: event.eventType,
       tenantId: event.tenantId,
       timestamp: event.timestamp || new Date().toISOString(),
@@ -69,7 +78,10 @@ export class LiveTelemetryStreamService implements OnModuleDestroy {
    * @param tenantId The tenant identifier requesting the stream.
    * @param isSuperAdmin If true, receives global multi-tenant stream events.
    */
-  subscribeTenantStream(tenantId: string, isSuperAdmin = false): Observable<SseMessageFormat> {
+  subscribeTenantStream(
+    tenantId: string,
+    isSuperAdmin = false,
+  ): Observable<SseMessageFormat> {
     // Filtered real-time events
     const tenantEvents$ = this.eventBus$.asObservable().pipe(
       filter((event) => {
@@ -107,7 +119,10 @@ export class LiveTelemetryStreamService implements OnModuleDestroy {
   /**
    * Synthesizes and publishes a simulated alert for demonstration and testing.
    */
-  simulateAlertStream(tenantId: string, alertData: { alertId: string; title: string; severity: string }): LiveStreamEvent {
+  simulateAlertStream(
+    tenantId: string,
+    alertData: { alertId: string; title: string; severity: string },
+  ): LiveStreamEvent {
     return this.publishEvent({
       eventType: 'ALERT_DISPATCHED',
       tenantId,
@@ -122,7 +137,15 @@ export class LiveTelemetryStreamService implements OnModuleDestroy {
   /**
    * Synthesizes and publishes a JIT elevation state change.
    */
-  simulateJitStream(tenantId: string, jitData: { requestId: string; requester: string; status: string; durationMinutes: number }): LiveStreamEvent {
+  simulateJitStream(
+    tenantId: string,
+    jitData: {
+      requestId: string;
+      requester: string;
+      status: string;
+      durationMinutes: number;
+    },
+  ): LiveStreamEvent {
     return this.publishEvent({
       eventType: 'JIT_ELEVATION_STATE_CHANGE',
       tenantId,
@@ -133,7 +156,14 @@ export class LiveTelemetryStreamService implements OnModuleDestroy {
   /**
    * Synthesizes and publishes a Merkle Root block commit event.
    */
-  simulateMerkleCommitStream(tenantId: string, blockData: { epochBlockNumber: number; merkleRootHex: string; leafCount: number }): LiveStreamEvent {
+  simulateMerkleCommitStream(
+    tenantId: string,
+    blockData: {
+      epochBlockNumber: number;
+      merkleRootHex: string;
+      leafCount: number;
+    },
+  ): LiveStreamEvent {
     return this.publishEvent({
       eventType: 'MERKLE_ROOT_COMMITTED',
       tenantId,
@@ -144,7 +174,16 @@ export class LiveTelemetryStreamService implements OnModuleDestroy {
   /**
    * Publishes real-time notification dispatch event to connected tenant SSE streams.
    */
-  publishNotificationStream(tenantId: string, notificationData: { deliveryId: string; templateId: string; subject: string; senderClass: string; status: string }): LiveStreamEvent {
+  publishNotificationStream(
+    tenantId: string,
+    notificationData: {
+      deliveryId: string;
+      templateId: string;
+      subject: string;
+      senderClass: string;
+      status: string;
+    },
+  ): LiveStreamEvent {
     return this.publishEvent({
       eventType: 'NOTIFICATION_DISPATCHED',
       tenantId,
@@ -152,4 +191,3 @@ export class LiveTelemetryStreamService implements OnModuleDestroy {
     });
   }
 }
-

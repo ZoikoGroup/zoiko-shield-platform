@@ -22,12 +22,20 @@ export class TenantIsolationValidator {
    * Validates that all parameters strictly belong to the authoritative tenant context.
    */
   validateTenantBoundary(input: TenantIsolationCheckInput): boolean {
-    if (!input.tenantId || typeof input.tenantId !== 'string' || input.tenantId.trim() === '') {
-      throw new BadRequestException('Tenant isolation violation: Tenant identifier is missing');
+    if (
+      !input.tenantId ||
+      typeof input.tenantId !== 'string' ||
+      input.tenantId.trim() === ''
+    ) {
+      throw new BadRequestException(
+        'Tenant isolation violation: Tenant identifier is missing',
+      );
     }
 
     if (!input.recipientEmail || !input.recipientEmail.includes('@')) {
-      throw new BadRequestException('Tenant isolation violation: Invalid recipient email address');
+      throw new BadRequestException(
+        'Tenant isolation violation: Invalid recipient email address',
+      );
     }
 
     // Resource tenant ID cross-check
@@ -57,7 +65,9 @@ export class TenantIsolationValidator {
         );
       }
     } catch (err: any) {
-      throw new BadRequestException(`Malformed CTA URL in email render context: ${err.message}`);
+      throw new BadRequestException(
+        `Malformed CTA URL in email render context: ${err.message}`,
+      );
     }
   }
 }

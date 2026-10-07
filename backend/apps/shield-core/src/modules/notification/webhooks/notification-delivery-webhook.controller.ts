@@ -9,6 +9,7 @@ import {
   Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { PublicEndpoint } from '../../../security/endpoint-access.decorator';
 
 export interface ProviderDeliveryWebhookPayload {
   deliveryId: string;
@@ -24,8 +25,11 @@ export interface ProviderDeliveryWebhookPayload {
  * Ingests external delivery receipts, updates notification records, and auto-suppresses bounces.
  */
 @Controller('api/v1/notifications/webhooks')
+@PublicEndpoint()
 export class NotificationDeliveryWebhookController {
-  private readonly logger = new Logger(NotificationDeliveryWebhookController.name);
+  private readonly logger = new Logger(
+    NotificationDeliveryWebhookController.name,
+  );
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -48,7 +52,9 @@ export class NotificationDeliveryWebhookController {
     });
 
     if (!delivery) {
-      this.logger.warn(`Delivery receipt [${payload.deliveryId}] not found in database.`);
+      this.logger.warn(
+        `Delivery receipt [${payload.deliveryId}] not found in database.`,
+      );
       return { acknowledged: true, updated: false, reason: 'NOT_FOUND' };
     }
 
@@ -61,8 +67,13 @@ export class NotificationDeliveryWebhookController {
       where: { id: payload.deliveryId },
       data: {
         status: mappedStatus,
-        delivered_at: payload.status === 'DELIVERED' ? new Date(payload.timestamp || Date.now()) : undefined,
-        error_code: payload.bounceReason ? `BOUNCE: ${payload.bounceReason.slice(0, 100)}` : undefined,
+        delivered_at:
+          payload.status === 'DELIVERED'
+            ? new Date(payload.timestamp || Date.now())
+            : undefined,
+        error_code: payload.bounceReason
+          ? `BOUNCE: ${payload.bounceReason.slice(0, 100)}`
+          : undefined,
       },
     });
 

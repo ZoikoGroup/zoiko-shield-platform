@@ -59,7 +59,9 @@ describe('TransactionalEmailService', () => {
     const receipt = await emailService.dispatchTransactionalEmail({
       tenantId: 'tenant-acme',
       templateKey: 'ZS-EML-SEC-001',
-      recipients: [{ email: 'soc-responder@acme.com', name: 'Commander Shepard' }],
+      recipients: [
+        { email: 'soc-responder@acme.com', name: 'Commander Shepard' },
+      ],
       variables: {
         organizationName: 'Acme Aerospace',
         referenceId: 'REF-SEC-9988',
@@ -71,7 +73,9 @@ describe('TransactionalEmailService', () => {
       },
     });
 
-    expect(receipt.subject).toContain('Critical security alert requires review');
+    expect(receipt.subject).toContain(
+      'Critical security alert requires review',
+    );
     expect(receipt.htmlBody).toContain('Commander Shepard');
     expect(receipt.htmlBody).toContain('Acme Aerospace');
     expect(receipt.htmlBody).toContain('REF-SEC-9988');
@@ -80,4 +84,3 @@ describe('TransactionalEmailService', () => {
     expect(receipt.contentDigest).toBeDefined();
   });
 });
-

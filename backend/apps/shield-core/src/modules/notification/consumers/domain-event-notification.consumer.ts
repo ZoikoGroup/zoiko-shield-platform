@@ -334,4 +334,3 @@ export class DomainEventNotificationConsumer implements OnModuleInit {
     });
   }
 }
-

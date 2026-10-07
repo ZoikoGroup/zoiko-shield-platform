@@ -12,7 +12,10 @@ describe('DomainEventNotificationConsumer (Spec §12 & ZS-EML-TPL-001)', () => {
     dispatch: jest.Mock;
   };
 
-  const registeredHandlers = new Map<string, (envelope: any) => Promise<void>>();
+  const registeredHandlers = new Map<
+    string,
+    (envelope: any) => Promise<void>
+  >();
 
   beforeEach(async () => {
     registeredHandlers.clear();
@@ -22,7 +25,9 @@ describe('DomainEventNotificationConsumer (Spec §12 & ZS-EML-TPL-001)', () => {
       }),
     };
     dispatchServiceMock = {
-      dispatch: jest.fn().mockResolvedValue({ status: 'DELIVERED', notificationId: 'ntf-123' }),
+      dispatch: jest
+        .fn()
+        .mockResolvedValue({ status: 'DELIVERED', notificationId: 'ntf-123' }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -116,7 +121,9 @@ describe('DomainEventNotificationConsumer (Spec §12 & ZS-EML-TPL-001)', () => {
   });
 
   it('should dispatch notification when soar.dual_custody_approval.requested.v1 event fires', async () => {
-    const handler = registeredHandlers.get('soar.dual_custody_approval.requested.v1');
+    const handler = registeredHandlers.get(
+      'soar.dual_custody_approval.requested.v1',
+    );
     expect(handler).toBeDefined();
 
     await handler!({
@@ -231,4 +238,3 @@ describe('DomainEventNotificationConsumer (Spec §12 & ZS-EML-TPL-001)', () => {
     });
   });
 });
-

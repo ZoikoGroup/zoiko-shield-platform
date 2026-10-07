@@ -756,7 +756,8 @@ export class ShieldActionController {
     if (!this.wasmSandboxService) {
       return {
         status: 'UNAVAILABLE',
-        message: 'WasmPlaybookSandboxService is not configured in this environment',
+        message:
+          'WasmPlaybookSandboxService is not configured in this environment',
       };
     }
     return this.wasmSandboxService.simulateWasmPlaybook(body);
@@ -768,7 +769,8 @@ export class ShieldActionController {
     if (!this.wasmSandboxService) {
       return {
         status: 'UNAVAILABLE',
-        message: 'WasmPlaybookSandboxService is not configured in this environment',
+        message:
+          'WasmPlaybookSandboxService is not configured in this environment',
       };
     }
     return this.wasmSandboxService.synthesizeRollbackPlan(body);

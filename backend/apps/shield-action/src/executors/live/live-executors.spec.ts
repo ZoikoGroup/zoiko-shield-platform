@@ -35,10 +35,12 @@ describe('Live GCP Native SOAR Action Executors', () => {
   it('should dispatch live GCP Service Account key revocation', async () => {
     const res = await gcpIam.revokeServiceAccountKey({
       tenantId: 'tenant-gcp-corp',
-      serviceAccountEmail: 'compromised-runner@zoiko-shield.iam.gserviceaccount.com',
+      serviceAccountEmail:
+        'compromised-runner@zoiko-shield.iam.gserviceaccount.com',
       keyId: 'key-gcp-9901-abcd',
       projectNumberOrId: 'zoiko-shield',
-      reason: 'Automated containment following credential exposure in telemetry',
+      reason:
+        'Automated containment following credential exposure in telemetry',
     });
 
     expect(res.status).toBe('EXECUTED');
@@ -141,7 +143,9 @@ describe('Live GCP Native SOAR Action Executors', () => {
     expect(receipt.actionType).toBe('BLOCK_PERIMETER_IP');
     expect(receipt.targetRef).toBe('203.0.113.88');
     expect(receipt.rollbackCapability.supported).toBe(true);
-    expect(receipt.rollbackCapability.rollbackAction).toBe('REMOVE_CLOUD_ARMOR_IP_RULE');
+    expect(receipt.rollbackCapability.rollbackAction).toBe(
+      'REMOVE_CLOUD_ARMOR_IP_RULE',
+    );
     expect(receipt.signature).toBeDefined();
   });
 

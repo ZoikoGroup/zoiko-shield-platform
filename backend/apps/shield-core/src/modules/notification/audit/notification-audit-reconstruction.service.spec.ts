@@ -11,7 +11,9 @@ describe('NotificationAuditReconstructionService (ZS-EML-TPL-001 v2.0 Gate 11)',
         findUnique: jest.fn(),
       },
     };
-    service = new NotificationAuditReconstructionService(prismaMock as PrismaService);
+    service = new NotificationAuditReconstructionService(
+      prismaMock as PrismaService,
+    );
   });
 
   it('should generate a deterministic audit manifest and SHA-256 audit hash', () => {
@@ -51,7 +53,10 @@ describe('NotificationAuditReconstructionService (ZS-EML-TPL-001 v2.0 Gate 11)',
       created_at: mockDate,
     });
 
-    const result = await service.verifyDeliveryIntegrity('del-101', 'operator@acme.com');
+    const result = await service.verifyDeliveryIntegrity(
+      'del-101',
+      'operator@acme.com',
+    );
     expect(result.verified).toBe(true);
     expect(result.tamperDetected).toBe(false);
     expect(result.reconstructedAuditHash).toBeDefined();

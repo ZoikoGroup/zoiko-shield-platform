@@ -1,4 +1,9 @@
-import { Injectable, Logger, BadRequestException, Optional } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  Optional,
+} from '@nestjs/common';
 import * as crypto from 'crypto';
 import {
   ProductionEmailTemplateEngine,
@@ -48,9 +53,7 @@ export class TransactionalEmailService {
   private readonly logger = new Logger(TransactionalEmailService.name);
   private readonly templateEngine: ProductionEmailTemplateEngine;
 
-  constructor(
-    @Optional() templateEngine?: ProductionEmailTemplateEngine,
-  ) {
+  constructor(@Optional() templateEngine?: ProductionEmailTemplateEngine) {
     this.templateEngine = templateEngine || new ProductionEmailTemplateEngine();
   }
 
@@ -71,14 +74,22 @@ export class TransactionalEmailService {
     let renderHash: string | undefined;
 
     // Check if the template key is one of the 226 ZS-EML-* production templates
-    if (input.templateKey.startsWith('ZS-EML-') && this.templateEngine.hasTemplate(input.templateKey)) {
+    if (
+      input.templateKey.startsWith('ZS-EML-') &&
+      this.templateEngine.hasTemplate(input.templateKey)
+    ) {
       const renderInput: EmailRenderInput = {
         templateId: input.templateKey,
         recipientFirstName: firstRecipient.name || 'Security Operator',
-        organizationName: input.variables.organizationName || input.variables.tenantName || 'Enterprise Tenant',
-        referenceId: input.variables.referenceId || `ref-${Date.now().toString(36)}`,
+        organizationName:
+          input.variables.organizationName ||
+          input.variables.tenantName ||
+          'Enterprise Tenant',
+        referenceId:
+          input.variables.referenceId || `ref-${Date.now().toString(36)}`,
         statusLabel: input.variables.statusLabel || 'ACTIVE',
-        occurredAtLocal: input.variables.occurredAtLocal || new Date().toLocaleString(),
+        occurredAtLocal:
+          input.variables.occurredAtLocal || new Date().toLocaleString(),
         timezone: input.variables.timezone || 'UTC',
         dueAtLocal: input.variables.dueAtLocal,
         actorDisplayName: input.variables.actorDisplayName,
@@ -105,7 +116,10 @@ export class TransactionalEmailService {
       renderHash = rendered.renderHash;
     } else {
       // Legacy fallback template renderer
-      const renderedLegacy = this.renderLegacyTemplate(input.templateKey, input.variables);
+      const renderedLegacy = this.renderLegacyTemplate(
+        input.templateKey,
+        input.variables,
+      );
       subject = renderedLegacy.subject;
       htmlBody = renderedLegacy.htmlBody;
       textBody = renderedLegacy.textBody;

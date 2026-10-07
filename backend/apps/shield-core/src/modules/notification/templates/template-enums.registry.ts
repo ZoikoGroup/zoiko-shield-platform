@@ -293,7 +293,9 @@ export function resolveAllowlistedRole(rawRole: string): string {
 export function resolveAllowlistedActionType(rawAction: string): string {
   if (!rawAction) return 'Governed Response Action';
   const normalized = rawAction.toUpperCase().replace(/[\s-]/g, '_');
-  return ALLOWLISTED_ACTION_TYPE_LABELS[normalized] || formatSafeFallback(rawAction);
+  return (
+    ALLOWLISTED_ACTION_TYPE_LABELS[normalized] || formatSafeFallback(rawAction)
+  );
 }
 
 function formatSafeFallback(str: string): string {

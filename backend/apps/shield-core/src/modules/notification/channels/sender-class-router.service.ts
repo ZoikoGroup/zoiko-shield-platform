@@ -15,7 +15,8 @@ export interface SenderClassProfile {
   fromAddress: string;
   fromDisplayName: string;
   replyTo: string;
-  reputationPool: 'TRANSACTIONAL_HIGH' | 'SECURITY_CRITICAL' | 'BILLING' | 'OPS_PAGER';
+  reputationPool:
+    'TRANSACTIONAL_HIGH' | 'SECURITY_CRITICAL' | 'BILLING' | 'OPS_PAGER';
   mandatoryDkimAlignment: boolean;
   supportUnsubscribe: boolean;
 }

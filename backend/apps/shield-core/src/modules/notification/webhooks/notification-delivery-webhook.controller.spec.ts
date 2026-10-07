@@ -13,13 +13,15 @@ describe('NotificationDeliveryWebhookController (ZS-EML-TPL-001 v2.0 Gates 9 & 1
         update: jest.fn(),
       },
     };
-    controller = new NotificationDeliveryWebhookController(prismaMock as PrismaService);
+    controller = new NotificationDeliveryWebhookController(
+      prismaMock as PrismaService,
+    );
   });
 
   it('should throw BadRequestException if mandatory payload fields are missing', async () => {
-    await expect(
-      controller.handleDeliveryStatus({} as any),
-    ).rejects.toThrow(BadRequestException);
+    await expect(controller.handleDeliveryStatus({} as any)).rejects.toThrow(
+      BadRequestException,
+    );
   });
 
   it('should process DELIVERED webhook and update notification status', async () => {

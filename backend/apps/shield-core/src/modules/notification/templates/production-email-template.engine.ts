@@ -71,22 +71,92 @@ const INTERNAL_OPERATIONS_FOOTER = `Internal — Zoiko confidential. Do not forw
  * Domain Catalog for ZS-EML-TPL-001 v2.0
  */
 export const EMAIL_TEMPLATE_DOMAINS = [
-  { id: '4.1', code: 'IAM', name: 'Identity, Authentication & Access', count: 23 },
-  { id: '4.2', code: 'ORG', name: 'Organization, Tenant & Onboarding', count: 13 },
-  { id: '4.3', code: 'CONN', name: 'Connectors, Ingestion & Telemetry Health', count: 15 },
-  { id: '4.4', code: 'SEC', name: 'Detection, Alerts, Hunting & Casework', count: 19 },
-  { id: '4.5', code: 'ACT', name: 'Governed Response Actions & Approvals', count: 13 },
-  { id: '4.6', code: 'ASSURE', name: 'Assurance, Controls, Obligations & Risk', count: 21 },
-  { id: '4.7', code: 'EVID', name: 'Evidence Ledger, Audit Packages & Verification', count: 14 },
+  {
+    id: '4.1',
+    code: 'IAM',
+    name: 'Identity, Authentication & Access',
+    count: 23,
+  },
+  {
+    id: '4.2',
+    code: 'ORG',
+    name: 'Organization, Tenant & Onboarding',
+    count: 13,
+  },
+  {
+    id: '4.3',
+    code: 'CONN',
+    name: 'Connectors, Ingestion & Telemetry Health',
+    count: 15,
+  },
+  {
+    id: '4.4',
+    code: 'SEC',
+    name: 'Detection, Alerts, Hunting & Casework',
+    count: 19,
+  },
+  {
+    id: '4.5',
+    code: 'ACT',
+    name: 'Governed Response Actions & Approvals',
+    count: 13,
+  },
+  {
+    id: '4.6',
+    code: 'ASSURE',
+    name: 'Assurance, Controls, Obligations & Risk',
+    count: 21,
+  },
+  {
+    id: '4.7',
+    code: 'EVID',
+    name: 'Evidence Ledger, Audit Packages & Verification',
+    count: 14,
+  },
   { id: '4.8', code: 'AI', name: 'AI Governance & Controlled AI', count: 12 },
-  { id: '4.9', code: 'DEV', name: 'API, Webhooks & Developer Operations', count: 11 },
-  { id: '4.10', code: 'BILL', name: 'Commercial, Billing, Entitlements & SLA', count: 18 },
+  {
+    id: '4.9',
+    code: 'DEV',
+    name: 'API, Webhooks & Developer Operations',
+    count: 11,
+  },
+  {
+    id: '4.10',
+    code: 'BILL',
+    name: 'Commercial, Billing, Entitlements & SLA',
+    count: 18,
+  },
   { id: '4.11', code: 'SUP', name: 'Support & Customer Success', count: 10 },
-  { id: '4.12', code: 'PRIV', name: 'Privacy, Data Governance & Legal Hold', count: 11 },
-  { id: '4.13', code: 'OFF', name: 'Tenant Offboarding & Data Destruction', count: 8 },
-  { id: '4.14', code: 'STAT', name: 'Service Status, Maintenance & Customer Reliability', count: 10 },
-  { id: '4.15', code: 'OPS', name: 'Internal Security, SRE & Production Operations', count: 20 },
-  { id: '4.16', code: 'GOV', name: 'Notification Preferences, Governance & Admin Notices', count: 8 },
+  {
+    id: '4.12',
+    code: 'PRIV',
+    name: 'Privacy, Data Governance & Legal Hold',
+    count: 11,
+  },
+  {
+    id: '4.13',
+    code: 'OFF',
+    name: 'Tenant Offboarding & Data Destruction',
+    count: 8,
+  },
+  {
+    id: '4.14',
+    code: 'STAT',
+    name: 'Service Status, Maintenance & Customer Reliability',
+    count: 10,
+  },
+  {
+    id: '4.15',
+    code: 'OPS',
+    name: 'Internal Security, SRE & Production Operations',
+    count: 20,
+  },
+  {
+    id: '4.16',
+    code: 'GOV',
+    name: 'Notification Preferences, Governance & Admin Notices',
+    count: 8,
+  },
 ] as const;
 
 /**
@@ -105,10 +175,14 @@ export class ProductionEmailTemplateEngine {
   /**
    * List all registered 226 template definitions with metadata.
    */
-  listTemplates(domainCode?: string): Array<Omit<TemplateDefinition, 'bodyIntro' | 'bodyAction'>> {
+  listTemplates(
+    domainCode?: string,
+  ): Array<Omit<TemplateDefinition, 'bodyIntro' | 'bodyAction'>> {
     const list = Array.from(this.templateRegistry.values());
     const filtered = domainCode
-      ? list.filter((t) => t.category.toUpperCase() === domainCode.toUpperCase())
+      ? list.filter(
+          (t) => t.category.toUpperCase() === domainCode.toUpperCase(),
+        )
       : list;
 
     return filtered.map(({ bodyIntro, bodyAction, ...rest }) => rest);
@@ -147,11 +221,21 @@ export class ProductionEmailTemplateEngine {
 
     // Apply template-side allowlisted enum resolutions (ZS-EML-TPL-001 v2.0 §1 & §3)
     input.statusLabel = resolveAllowlistedStatus(input.statusLabel);
-    if (input.extraVariables?.action_type_label && typeof input.extraVariables.action_type_label === 'string') {
-      input.extraVariables.action_type_label = resolveAllowlistedActionType(input.extraVariables.action_type_label);
+    if (
+      input.extraVariables?.action_type_label &&
+      typeof input.extraVariables.action_type_label === 'string'
+    ) {
+      input.extraVariables.action_type_label = resolveAllowlistedActionType(
+        input.extraVariables.action_type_label,
+      );
     }
-    if (input.extraVariables?.invited_role_label && typeof input.extraVariables.invited_role_label === 'string') {
-      input.extraVariables.invited_role_label = resolveAllowlistedRole(input.extraVariables.invited_role_label);
+    if (
+      input.extraVariables?.invited_role_label &&
+      typeof input.extraVariables.invited_role_label === 'string'
+    ) {
+      input.extraVariables.invited_role_label = resolveAllowlistedRole(
+        input.extraVariables.invited_role_label,
+      );
     }
 
     // Security Gate: Check for accidental leak of secrets/credentials in any variable
@@ -184,7 +268,9 @@ export class ProductionEmailTemplateEngine {
     }
 
     const isInternal = input.templateId.startsWith('ZS-EML-OPS-');
-    const footerSecurity = isInternal ? INTERNAL_OPERATIONS_FOOTER : EXTERNAL_SECURITY_FOOTER;
+    const footerSecurity = isInternal
+      ? INTERNAL_OPERATIONS_FOOTER
+      : EXTERNAL_SECURITY_FOOTER;
     const footerOperational = isInternal ? '' : EXTERNAL_OPERATIONAL_FOOTER;
 
     const ctaButtonUrl =
@@ -384,9 +470,11 @@ export class ProductionEmailTemplateEngine {
             gate: 'P0',
             senderClass: 'account_sender',
             subject: 'Zoiko Shield — Reminder: verify your email address',
-            preheader: 'Review the deadline, threshold, or expiry in Zoiko Shield and complete any required action.',
+            preheader:
+              'Review the deadline, threshold, or expiry in Zoiko Shield and complete any required action.',
             buttonText: 'Verify email',
-            bodyIntro: () => 'Your email address is still waiting for verification.',
+            bodyIntro: () =>
+              'Your email address is still waiting for verification.',
             bodyAction: (input) =>
               `Complete verification before ${input.tokenExpiresAtLocal || 'the deadline'}. If the link has expired, request a new verification email from the Zoiko Shield sign-in page.`,
           },
@@ -399,7 +487,8 @@ export class ProductionEmailTemplateEngine {
             subject: 'Zoiko Shield — Email address change requested',
             preheader: 'Account or security activity was recorded.',
             buttonText: 'Open account security',
-            bodyIntro: () => 'A request was made to change the email address on your Zoiko Shield account.',
+            bodyIntro: () =>
+              'A request was made to change the email address on your Zoiko Shield account.',
             bodyAction: () =>
               'If you made this request, no action is required at this address. If you did not, open Zoiko Shield using your saved address, secure your account, and contact your organization security administrator.',
           },
@@ -412,7 +501,8 @@ export class ProductionEmailTemplateEngine {
             subject: 'Zoiko Shield — Your email address was changed',
             preheader: 'Account or security activity was recorded.',
             buttonText: 'Open account security',
-            bodyIntro: () => 'The email address on your Zoiko Shield account has been changed successfully.',
+            bodyIntro: () =>
+              'The email address on your Zoiko Shield account has been changed successfully.',
             bodyAction: () =>
               'Use this new address for future sign-in and account notices. If you did not authorize the change, secure your account immediately and contact your organization security administrator.',
           },
@@ -425,7 +515,8 @@ export class ProductionEmailTemplateEngine {
             subject: 'Zoiko Shield — Reset your password',
             preheader: 'Account or security activity was recorded.',
             buttonText: 'Reset password',
-            bodyIntro: () => 'We received a request to reset the password for your Zoiko Shield account.',
+            bodyIntro: () =>
+              'We received a request to reset the password for your Zoiko Shield account.',
             bodyAction: (input) =>
               `Select the button below to create a new password. The reset link expires at ${input.tokenExpiresAtLocal || '15 minutes'} and can be used only once. If you did not request a reset, you can ignore this message.`,
           },
@@ -438,7 +529,8 @@ export class ProductionEmailTemplateEngine {
             subject: 'Zoiko Shield — Your password was changed',
             preheader: 'Account or security activity was recorded.',
             buttonText: 'Open account security',
-            bodyIntro: () => 'The password for your Zoiko Shield account was changed.',
+            bodyIntro: () =>
+              'The password for your Zoiko Shield account was changed.',
             bodyAction: () =>
               'If you made this change, no action is required. If you did not, secure your account immediately from the Zoiko Shield sign-in page and notify your organization security administrator.',
           },
@@ -451,7 +543,8 @@ export class ProductionEmailTemplateEngine {
             subject: 'Zoiko Shield — Password reset completed',
             preheader: 'Account or security activity was recorded.',
             buttonText: 'Open account security',
-            bodyIntro: () => 'Zoiko Shield recorded the following event: Password reset completed.',
+            bodyIntro: () =>
+              'Zoiko Shield recorded the following event: Password reset completed.',
             bodyAction: () =>
               'If you initiated this activity, follow the secure in-product step shown below. If you did not, secure your account from the Zoiko Shield sign-in page and contact your administrator.',
           },
@@ -464,7 +557,8 @@ export class ProductionEmailTemplateEngine {
             subject: 'Zoiko Shield — Multi-factor authentication enabled',
             preheader: 'Account or security activity was recorded.',
             buttonText: 'Open account security',
-            bodyIntro: () => 'Zoiko Shield recorded the following event: MFA enrollment completed.',
+            bodyIntro: () =>
+              'Zoiko Shield recorded the following event: MFA enrollment completed.',
             bodyAction: () =>
               'If you initiated this activity, follow the secure in-product step shown below. If you did not, secure your account from the Zoiko Shield sign-in page.',
           },
@@ -477,8 +571,10 @@ export class ProductionEmailTemplateEngine {
             subject: 'Zoiko Shield — Your MFA settings changed',
             preheader: 'Account or security activity was recorded.',
             buttonText: 'Open account security',
-            bodyIntro: () => 'Zoiko Shield recorded the following event: MFA factor added, replaced or removed.',
-            bodyAction: () => 'If you initiated this activity, review your current security settings in Zoiko Shield.',
+            bodyIntro: () =>
+              'Zoiko Shield recorded the following event: MFA factor added, replaced or removed.',
+            bodyAction: () =>
+              'If you initiated this activity, review your current security settings in Zoiko Shield.',
           },
           {
             num: 10,
@@ -489,8 +585,10 @@ export class ProductionEmailTemplateEngine {
             subject: 'Zoiko Shield — Your recovery settings changed',
             preheader: 'Account or security activity was recorded.',
             buttonText: 'Open account security',
-            bodyIntro: () => 'Zoiko Shield recorded the following event: Recovery method or recovery codes changed.',
-            bodyAction: () => 'Review your recovery method in Zoiko Shield if this was unexpected.',
+            bodyIntro: () =>
+              'Zoiko Shield recorded the following event: Recovery method or recovery codes changed.',
+            bodyAction: () =>
+              'Review your recovery method in Zoiko Shield if this was unexpected.',
           },
           {
             num: 11,
@@ -501,8 +599,10 @@ export class ProductionEmailTemplateEngine {
             subject: 'Zoiko Shield — Your passkey or security key changed',
             preheader: 'Account or security activity was recorded.',
             buttonText: 'Open account security',
-            bodyIntro: () => 'Zoiko Shield recorded the following event: Passkey or security key added/removed.',
-            bodyAction: () => 'Review your security keys and WebAuthn authenticators in Zoiko Shield.',
+            bodyIntro: () =>
+              'Zoiko Shield recorded the following event: Passkey or security key added/removed.',
+            bodyAction: () =>
+              'Review your security keys and WebAuthn authenticators in Zoiko Shield.',
           },
           {
             num: 12,
@@ -511,9 +611,11 @@ export class ProductionEmailTemplateEngine {
             gate: 'P0',
             senderClass: 'account_sender',
             subject: 'Zoiko Shield — New sign-in detected',
-            preheader: 'Immediate review may be required. Open Zoiko Shield for the authoritative details and next action.',
+            preheader:
+              'Immediate review may be required. Open Zoiko Shield for the authoritative details and next action.',
             buttonText: 'Review sign-in',
-            bodyIntro: () => 'Zoiko Shield detected a sign-in from a new or materially different device or session context.',
+            bodyIntro: () =>
+              'Zoiko Shield detected a sign-in from a new or materially different device or session context.',
             bodyAction: () =>
               'Review the sign-in details in Zoiko Shield. If you recognize the activity, no action is required. If you do not, revoke active sessions and secure your account.',
           },
@@ -524,10 +626,13 @@ export class ProductionEmailTemplateEngine {
             gate: 'P0',
             senderClass: 'account_sender',
             subject: 'Zoiko Shield — Suspicious sign-in blocked or challenged',
-            preheader: 'Immediate review may be required. Open Zoiko Shield for the authoritative details and next action.',
+            preheader:
+              'Immediate review may be required. Open Zoiko Shield for the authoritative details and next action.',
             buttonText: 'Secure account',
-            bodyIntro: () => 'Zoiko Shield blocked or challenged a sign-in because it met your organization’s suspicious-access policy.',
-            bodyAction: () => 'Review the event in Zoiko Shield. If the attempt was not yours, secure your account immediately.',
+            bodyIntro: () =>
+              'Zoiko Shield blocked or challenged a sign-in because it met your organization’s suspicious-access policy.',
+            bodyAction: () =>
+              'Review the event in Zoiko Shield. If the attempt was not yours, secure your account immediately.',
           },
           {
             num: 14,
@@ -536,10 +641,13 @@ export class ProductionEmailTemplateEngine {
             gate: 'P0',
             senderClass: 'account_sender',
             subject: 'Zoiko Shield — Your account is temporarily locked',
-            preheader: 'Immediate review may be required. Open Zoiko Shield for the authoritative details and next action.',
+            preheader:
+              'Immediate review may be required. Open Zoiko Shield for the authoritative details and next action.',
             buttonText: 'Review now',
-            bodyIntro: () => 'Zoiko Shield recorded the following event: Account temporarily locked.',
-            bodyAction: () => 'Review this event now in Zoiko Shield and follow the approved unlock process.',
+            bodyIntro: () =>
+              'Zoiko Shield recorded the following event: Account temporarily locked.',
+            bodyAction: () =>
+              'Review this event now in Zoiko Shield and follow the approved unlock process.',
           },
           {
             num: 15,
@@ -548,10 +656,13 @@ export class ProductionEmailTemplateEngine {
             gate: 'P0',
             senderClass: 'account_sender',
             subject: 'Zoiko Shield — Your account access was restored',
-            preheader: 'The affected state or service has recovered or resolved.',
+            preheader:
+              'The affected state or service has recovered or resolved.',
             buttonText: 'View current status',
-            bodyIntro: () => 'Zoiko Shield recorded the following event: Account unlocked/recovered.',
-            bodyAction: () => 'The affected state has recovered or resolved. Review the current status in Zoiko Shield.',
+            bodyIntro: () =>
+              'Zoiko Shield recorded the following event: Account unlocked/recovered.',
+            bodyAction: () =>
+              'The affected state has recovered or resolved. Review the current status in Zoiko Shield.',
           },
           {
             num: 16,
@@ -562,8 +673,10 @@ export class ProductionEmailTemplateEngine {
             subject: 'Zoiko Shield — SSO configuration changed',
             preheader: 'A governed state change was recorded in Zoiko Shield.',
             buttonText: 'View details',
-            bodyIntro: () => 'Zoiko Shield recorded the following event: SSO enabled, disabled or configuration materially changed.',
-            bodyAction: () => 'Review the current state and audit history in Zoiko Shield.',
+            bodyIntro: () =>
+              'Zoiko Shield recorded the following event: SSO enabled, disabled or configuration materially changed.',
+            bodyAction: () =>
+              'Review the current state and audit history in Zoiko Shield.',
           },
           {
             num: 17,
@@ -574,8 +687,10 @@ export class ProductionEmailTemplateEngine {
             subject: 'Zoiko Shield — Provisioning configuration changed',
             preheader: 'A governed state change was recorded in Zoiko Shield.',
             buttonText: 'View details',
-            bodyIntro: () => 'Zoiko Shield recorded the following event: SCIM/provisioning connection changed or disabled.',
-            bodyAction: () => 'Review the current state and audit history in Zoiko Shield.',
+            bodyIntro: () =>
+              'Zoiko Shield recorded the following event: SCIM/provisioning connection changed or disabled.',
+            bodyAction: () =>
+              'Review the current state and audit history in Zoiko Shield.',
           },
           {
             num: 18,
@@ -586,8 +701,10 @@ export class ProductionEmailTemplateEngine {
             subject: 'Zoiko Shield — Your Zoiko Shield permissions changed',
             preheader: 'A governed state change was recorded in Zoiko Shield.',
             buttonText: 'View details',
-            bodyIntro: () => 'Zoiko Shield recorded the following event: Role or permission changed.',
-            bodyAction: () => 'Review the current role entitlements in Zoiko Shield.',
+            bodyIntro: () =>
+              'Zoiko Shield recorded the following event: Role or permission changed.',
+            bodyAction: () =>
+              'Review the current role entitlements in Zoiko Shield.',
           },
           {
             num: 19,
@@ -596,10 +713,13 @@ export class ProductionEmailTemplateEngine {
             gate: 'P0',
             senderClass: 'account_sender',
             subject: 'Zoiko Shield — Privileged access changed',
-            preheader: 'Immediate review may be required. Open Zoiko Shield for the authoritative details and next action.',
+            preheader:
+              'Immediate review may be required. Open Zoiko Shield for the authoritative details and next action.',
             buttonText: 'Review now',
-            bodyIntro: () => 'Zoiko Shield recorded the following event: Privileged role granted or revoked.',
-            bodyAction: () => 'Review this privileged access transition in Zoiko Shield.',
+            bodyIntro: () =>
+              'Zoiko Shield recorded the following event: Privileged role granted or revoked.',
+            bodyAction: () =>
+              'Review this privileged access transition in Zoiko Shield.',
           },
           {
             num: 20,
@@ -610,8 +730,10 @@ export class ProductionEmailTemplateEngine {
             subject: 'Zoiko Shield — User access status changed',
             preheader: 'A governed state change was recorded in Zoiko Shield.',
             buttonText: 'View details',
-            bodyIntro: () => 'Zoiko Shield recorded the following event: User access suspended or restored.',
-            bodyAction: () => 'Review the user lifecycle status in Zoiko Shield.',
+            bodyIntro: () =>
+              'Zoiko Shield recorded the following event: User access suspended or restored.',
+            bodyAction: () =>
+              'Review the user lifecycle status in Zoiko Shield.',
           },
           {
             num: 21,
@@ -620,10 +742,13 @@ export class ProductionEmailTemplateEngine {
             gate: 'P0',
             senderClass: 'account_sender',
             subject: 'Zoiko Shield — Your active sessions were revoked',
-            preheader: 'Immediate review may be required. Open Zoiko Shield for the authoritative details and next action.',
+            preheader:
+              'Immediate review may be required. Open Zoiko Shield for the authoritative details and next action.',
             buttonText: 'Review now',
-            bodyIntro: () => 'Zoiko Shield recorded the following event: Session revocation / sign-out-all triggered.',
-            bodyAction: () => 'All active sessions were invalidated. Re-authenticate to access your workspace.',
+            bodyIntro: () =>
+              'Zoiko Shield recorded the following event: Session revocation / sign-out-all triggered.',
+            bodyAction: () =>
+              'All active sessions were invalidated. Re-authenticate to access your workspace.',
           },
           {
             num: 22,
@@ -632,10 +757,13 @@ export class ProductionEmailTemplateEngine {
             gate: 'P1',
             senderClass: 'account_sender',
             subject: 'Zoiko Shield — Service account status changed',
-            preheader: 'A developer or integration event was recorded. Secrets are not included in email.',
+            preheader:
+              'A developer or integration event was recorded. Secrets are not included in email.',
             buttonText: 'Open developer settings',
-            bodyIntro: () => 'Zoiko Shield recorded the following event: Service account created, disabled or deleted.',
-            bodyAction: () => 'Open the developer surface to review or complete the change.',
+            bodyIntro: () =>
+              'Zoiko Shield recorded the following event: Service account created, disabled or deleted.',
+            bodyAction: () =>
+              'Open the developer surface to review or complete the change.',
           },
           {
             num: 23,
@@ -643,11 +771,15 @@ export class ProductionEmailTemplateEngine {
             name: 'Identity provider certificate/metadata approaching expiry',
             gate: 'P1',
             senderClass: 'account_sender',
-            subject: 'Zoiko Shield — Identity provider configuration expires soon',
-            preheader: 'Review the deadline, threshold, or expiry in Zoiko Shield and complete any required action.',
+            subject:
+              'Zoiko Shield — Identity provider configuration expires soon',
+            preheader:
+              'Review the deadline, threshold, or expiry in Zoiko Shield and complete any required action.',
             buttonText: 'Review required action',
-            bodyIntro: () => 'Zoiko Shield recorded the following event: Identity provider certificate/metadata approaching expiry.',
-            bodyAction: () => 'Open Zoiko Shield before the stated deadline to rotate IdP metadata.',
+            bodyIntro: () =>
+              'Zoiko Shield recorded the following event: Identity provider certificate/metadata approaching expiry.',
+            bodyAction: () =>
+              'Open Zoiko Shield before the stated deadline to rotate IdP metadata.',
           },
         ],
       },
@@ -664,10 +796,13 @@ export class ProductionEmailTemplateEngine {
             gate: 'P0',
             senderClass: 'security_sender',
             subject: 'Zoiko Shield — Critical security alert requires review',
-            preheader: 'Immediate review may be required. Open Zoiko Shield for the authoritative details and next action.',
+            preheader:
+              'Immediate review may be required. Open Zoiko Shield for the authoritative details and next action.',
             buttonText: 'Review critical alert',
-            bodyIntro: () => 'Zoiko Shield created a critical security alert that requires immediate review.',
-            bodyAction: () => 'Open the alert to review the authoritative evidence, affected scope, detection rationale, and recommended next steps. Raw telemetry and sensitive indicators are intentionally not included in email.',
+            bodyIntro: () =>
+              'Zoiko Shield created a critical security alert that requires immediate review.',
+            bodyAction: () =>
+              'Open the alert to review the authoritative evidence, affected scope, detection rationale, and recommended next steps. Raw telemetry and sensitive indicators are intentionally not included in email.',
           },
           {
             num: 2,
@@ -675,11 +810,15 @@ export class ProductionEmailTemplateEngine {
             name: 'High-severity security alert created',
             gate: 'P0',
             senderClass: 'security_sender',
-            subject: 'Zoiko Shield — High-severity security alert requires review',
-            preheader: 'Immediate review may be required. Open Zoiko Shield for the authoritative details and next action.',
+            subject:
+              'Zoiko Shield — High-severity security alert requires review',
+            preheader:
+              'Immediate review may be required. Open Zoiko Shield for the authoritative details and next action.',
             buttonText: 'Review alert',
-            bodyIntro: (input) => `Zoiko Shield created a high-severity security alert for ${input.organizationName || 'your organization'}.`,
-            bodyAction: () => 'Review the alert promptly in Zoiko Shield and follow your approved triage process.',
+            bodyIntro: (input) =>
+              `Zoiko Shield created a high-severity security alert for ${input.organizationName || 'your organization'}.`,
+            bodyAction: () =>
+              'Review the alert promptly in Zoiko Shield and follow your approved triage process.',
           },
           {
             num: 16,
@@ -688,10 +827,13 @@ export class ProductionEmailTemplateEngine {
             gate: 'P0',
             senderClass: 'security_sender',
             subject: 'Zoiko Shield — Security incident declared',
-            preheader: 'Immediate review may be required. Open Zoiko Shield for the authoritative details and next action.',
+            preheader:
+              'Immediate review may be required. Open Zoiko Shield for the authoritative details and next action.',
             buttonText: 'Open incident',
-            bodyIntro: () => 'A security incident has been formally declared in Zoiko Shield.',
-            bodyAction: () => 'Open the incident workspace for severity, affected scope, ownership, timeline, communications state, and approved response actions.',
+            bodyIntro: () =>
+              'A security incident has been formally declared in Zoiko Shield.',
+            bodyAction: () =>
+              'Open the incident workspace for severity, affected scope, ownership, timeline, communications state, and approved response actions.',
           },
         ],
       },
@@ -708,10 +850,13 @@ export class ProductionEmailTemplateEngine {
             gate: 'P0',
             senderClass: 'security_sender',
             subject: 'Zoiko Shield — Response action recommendation ready',
-            preheader: 'A governed decision is waiting in Zoiko Shield; email cannot approve, reject, or execute it.',
+            preheader:
+              'A governed decision is waiting in Zoiko Shield; email cannot approve, reject, or execute it.',
             buttonText: 'Review decision',
-            bodyIntro: () => 'Zoiko Shield recorded the following event: Response action recommendation ready.',
-            bodyAction: () => 'Review the request inside Zoiko Shield. Approval, rejection, escalation, or execution must occur in the authenticated application; the email itself cannot change state.',
+            bodyIntro: () =>
+              'Zoiko Shield recorded the following event: Response action recommendation ready.',
+            bodyAction: () =>
+              'Review the request inside Zoiko Shield. Approval, rejection, escalation, or execution must occur in the authenticated application; the email itself cannot change state.',
           },
           {
             num: 2,
@@ -720,10 +865,13 @@ export class ProductionEmailTemplateEngine {
             gate: 'P0',
             senderClass: 'security_sender',
             subject: 'Zoiko Shield — Response action approval required',
-            preheader: 'A governed decision is waiting in Zoiko Shield; email cannot approve, reject, or execute it.',
+            preheader:
+              'A governed decision is waiting in Zoiko Shield; email cannot approve, reject, or execute it.',
             buttonText: 'Review approval request',
-            bodyIntro: (input) => `A governed response action is waiting for your approval: ${input.objectDisplayReference || 'Cloud Armor IP Block'}.`,
-            bodyAction: () => 'Review the target scope, evidence, requested authority, expiry, and rollback plan in Zoiko Shield. Approval or rejection must occur inside the authenticated product; the email link cannot execute the action.',
+            bodyIntro: (input) =>
+              `A governed response action is waiting for your approval: ${input.objectDisplayReference || 'Cloud Armor IP Block'}.`,
+            bodyAction: () =>
+              'Review the target scope, evidence, requested authority, expiry, and rollback plan in Zoiko Shield. Approval or rejection must occur inside the authenticated product; the email link cannot execute the action.',
           },
           {
             num: 10,
@@ -731,11 +879,15 @@ export class ProductionEmailTemplateEngine {
             name: 'Tenant action freeze activated',
             gate: 'P0',
             senderClass: 'security_sender',
-            subject: 'Zoiko Shield — Response actions are frozen for your organization',
-            preheader: 'Immediate review may be required. Open Zoiko Shield for the authoritative details and next action.',
+            subject:
+              'Zoiko Shield — Response actions are frozen for your organization',
+            preheader:
+              'Immediate review may be required. Open Zoiko Shield for the authoritative details and next action.',
             buttonText: 'Review now',
-            bodyIntro: (input) => `Governed response actions have been frozen for ${input.organizationName || 'your organization'}.`,
-            bodyAction: () => 'While the freeze is active, live customer-environment actions are blocked according to policy. Open Zoiko Shield to review who activated the freeze, its scope, reason, and release conditions.',
+            bodyIntro: (input) =>
+              `Governed response actions have been frozen for ${input.organizationName || 'your organization'}.`,
+            bodyAction: () =>
+              'While the freeze is active, live customer-environment actions are blocked according to policy. Open Zoiko Shield to review who activated the freeze, its scope, reason, and release conditions.',
           },
         ],
       },
@@ -752,10 +904,13 @@ export class ProductionEmailTemplateEngine {
             gate: 'P0',
             senderClass: 'assurance_sender',
             subject: 'Zoiko Shield — Audit package ready for secure download',
-            preheader: 'A secure artifact is available in Zoiko Shield after authentication; it is not attached to this email.',
+            preheader:
+              'A secure artifact is available in Zoiko Shield after authentication; it is not attached to this email.',
             buttonText: 'Open secure download',
-            bodyIntro: () => 'Your Zoiko Shield audit package is ready for secure download.',
-            bodyAction: (input) => `Open the authenticated download route below. Re-authentication may be required. The package is not attached to email, and the download entitlement expires at ${input.dueAtLocal || '7 days'}.`,
+            bodyIntro: () =>
+              'Your Zoiko Shield audit package is ready for secure download.',
+            bodyAction: (input) =>
+              `Open the authenticated download route below. Re-authentication may be required. The package is not attached to email, and the download entitlement expires at ${input.dueAtLocal || '7 days'}.`,
           },
         ],
       },
@@ -774,8 +929,10 @@ export class ProductionEmailTemplateEngine {
             subject: 'Zoiko Shield — AI recommendation ready for human review',
             preheader: 'A governed AI event is ready for review.',
             buttonText: 'Open AI Governance',
-            bodyIntro: () => 'A Zoiko Shield AI recommendation is ready for the required human review.',
-            bodyAction: () => 'Open AI Governance to review the recommendation, cited sources, confidence, alternatives, required authority, and limitations. The AI output cannot authorize its own action or increase its privileges.',
+            bodyIntro: () =>
+              'A Zoiko Shield AI recommendation is ready for the required human review.',
+            bodyAction: () =>
+              'Open AI Governance to review the recommendation, cited sources, confidence, alternatives, required authority, and limitations. The AI output cannot authorize its own action or increase its privileges.',
           },
         ],
       },
@@ -792,10 +949,13 @@ export class ProductionEmailTemplateEngine {
             gate: 'P0',
             senderClass: 'internal_ops_sender',
             subject: 'Zoiko Shield Internal — P0/P1 platform incident declared',
-            preheader: 'Internal production event requiring response through the incident system and approved runbook.',
+            preheader:
+              'Internal production event requiring response through the incident system and approved runbook.',
             buttonText: 'Open incident',
-            bodyIntro: () => 'Zoiko Shield recorded the following internal production event: P0/P1 platform incident declared.',
-            bodyAction: () => 'Acknowledge and manage this event in the incident system, follow the approved runbook, and preserve evidence. Paging/incident tooling—not email—is the primary operational channel.',
+            bodyIntro: () =>
+              'Zoiko Shield recorded the following internal production event: P0/P1 platform incident declared.',
+            bodyAction: () =>
+              'Acknowledge and manage this event in the incident system, follow the approved runbook, and preserve evidence. Paging/incident tooling—not email—is the primary operational channel.',
           },
         ],
       },
@@ -803,7 +963,9 @@ export class ProductionEmailTemplateEngine {
 
     // Populate all 16 domains with full 226 template coverage
     for (const domain of EMAIL_TEMPLATE_DOMAINS) {
-      const explicitDomain = rawCatalogue.find((c) => c.category === domain.code);
+      const explicitDomain = rawCatalogue.find(
+        (c) => c.category === domain.code,
+      );
       if (explicitDomain) {
         for (const item of explicitDomain.items) {
           this.templateRegistry.set(item.code, {
@@ -817,7 +979,13 @@ export class ProductionEmailTemplateEngine {
             subject: item.subject,
             preheader: item.preheader,
             buttonText: item.buttonText,
-            requiredVariables: ['recipientFirstName', 'referenceId', 'statusLabel', 'occurredAtLocal', 'timezone'],
+            requiredVariables: [
+              'recipientFirstName',
+              'referenceId',
+              'statusLabel',
+              'occurredAtLocal',
+              'timezone',
+            ],
             bodyIntro: item.bodyIntro,
             bodyAction: item.bodyAction,
           });
@@ -834,7 +1002,11 @@ export class ProductionEmailTemplateEngine {
         const code = `ZS-EML-${domain.code}-${paddedIndex}`;
         const name = this.getDefaultTemplateName(domain.code, i);
         const isOps = domain.code === 'OPS';
-        const isP0 = i <= 2 || domain.code === 'SEC' || domain.code === 'ACT' || domain.code === 'OFF';
+        const isP0 =
+          i <= 2 ||
+          domain.code === 'SEC' ||
+          domain.code === 'ACT' ||
+          domain.code === 'OFF';
 
         this.templateRegistry.set(code, {
           id: code,
@@ -843,14 +1015,23 @@ export class ProductionEmailTemplateEngine {
           category: domain.code,
           name,
           gate: isP0 ? 'P0' : 'P1',
-          senderClass: isOps ? 'internal_ops_sender' : `${domain.code.toLowerCase()}_sender`,
+          senderClass: isOps
+            ? 'internal_ops_sender'
+            : `${domain.code.toLowerCase()}_sender`,
           subject: `Zoiko Shield — ${name}`,
           preheader: isOps
             ? 'Internal production event requiring response through the incident system and approved runbook.'
             : 'A governed state change was recorded in Zoiko Shield.',
           buttonText: isOps ? 'Open incident' : 'View details',
-          requiredVariables: ['recipientFirstName', 'referenceId', 'statusLabel', 'occurredAtLocal', 'timezone'],
-          bodyIntro: () => `Zoiko Shield recorded the following event: ${name}.`,
+          requiredVariables: [
+            'recipientFirstName',
+            'referenceId',
+            'statusLabel',
+            'occurredAtLocal',
+            'timezone',
+          ],
+          bodyIntro: () =>
+            `Zoiko Shield recorded the following event: ${name}.`,
           bodyAction: () =>
             'Review the current state and audit history in Zoiko Shield. If the change was unexpected, contact your organization security administrator.',
         });

@@ -21,7 +21,8 @@ export class MailService implements OnModuleInit {
 
   constructor(
     private readonly configService: ConfigService,
-    @Optional() private readonly transactionalEmailService?: TransactionalEmailService,
+    @Optional()
+    private readonly transactionalEmailService?: TransactionalEmailService,
   ) {}
 
   onModuleInit(): void {
@@ -62,7 +63,9 @@ export class MailService implements OnModuleInit {
         });
         return;
       } catch (err: any) {
-        this.logger.debug(`Transactional email engine fallback: ${err.message}`);
+        this.logger.debug(
+          `Transactional email engine fallback: ${err.message}`,
+        );
       }
     }
 
@@ -110,7 +113,9 @@ export class MailService implements OnModuleInit {
         });
         return activationUrl;
       } catch (err: any) {
-        this.logger.debug(`Transactional invitation engine fallback: ${err.message}`);
+        this.logger.debug(
+          `Transactional invitation engine fallback: ${err.message}`,
+        );
       }
     }
 
@@ -136,4 +141,3 @@ export class MailService implements OnModuleInit {
     return activationUrl;
   }
 }
-

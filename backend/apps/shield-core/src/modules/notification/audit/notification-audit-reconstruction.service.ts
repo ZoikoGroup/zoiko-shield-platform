@@ -35,7 +35,9 @@ export interface VerificationResult {
  */
 @Injectable()
 export class NotificationAuditReconstructionService {
-  private readonly logger = new Logger(NotificationAuditReconstructionService.name);
+  private readonly logger = new Logger(
+    NotificationAuditReconstructionService.name,
+  );
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -118,7 +120,9 @@ export class NotificationAuditReconstructionService {
     });
 
     if (!delivery) {
-      throw new BadRequestException(`Delivery record '${deliveryId}' not found`);
+      throw new BadRequestException(
+        `Delivery record '${deliveryId}' not found`,
+      );
     }
 
     const recipientHash = crypto

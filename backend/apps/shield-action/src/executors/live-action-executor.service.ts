@@ -85,14 +85,18 @@ export class LiveActionExecutorService {
         if (!isSim) {
           const res = await this.gcpCloudArmor.blockIp({
             tenantId: input.tenantId,
-            securityPolicyName: input.parameters?.securityPolicy || 'shield-edge-armor-policy',
+            securityPolicyName:
+              input.parameters?.securityPolicy || 'shield-edge-armor-policy',
             ipToBlock: input.targetRef,
             projectId: input.parameters?.projectId || 'zoiko-shield',
-            reason: input.parameters?.reason || 'Automated SOAR perimeter threat containment',
+            reason:
+              input.parameters?.reason ||
+              'Automated SOAR perimeter threat containment',
           });
           observedEffect = {
             ipBlocked: input.targetRef,
-            cloudArmorPolicy: input.parameters?.securityPolicy || 'shield-edge-armor-policy',
+            cloudArmorPolicy:
+              input.parameters?.securityPolicy || 'shield-edge-armor-policy',
             ...(res.providerResponse || {}),
           };
         } else {
@@ -113,7 +117,9 @@ export class LiveActionExecutorService {
           const res = await this.googleWorkspace.revokeUserSessions({
             tenantId: input.tenantId,
             userEmail: input.targetRef,
-            reason: input.parameters?.reason || 'Compromised identity session invalidation',
+            reason:
+              input.parameters?.reason ||
+              'Compromised identity session invalidation',
           });
           observedEffect = {
             userPrincipal: input.targetRef,
@@ -139,7 +145,9 @@ export class LiveActionExecutorService {
             serviceAccountEmail: input.targetRef,
             keyId: input.parameters?.keyId || 'current-active-key',
             projectNumberOrId: input.parameters?.projectId || 'zoiko-shield',
-            reason: input.parameters?.reason || 'Compromised service account key rotation',
+            reason:
+              input.parameters?.reason ||
+              'Compromised service account key rotation',
           });
           observedEffect = {
             serviceAccountEmail: input.targetRef,
@@ -163,7 +171,8 @@ export class LiveActionExecutorService {
             member: input.targetRef,
             roleToRevoke: input.parameters?.role || 'roles/owner',
             projectNumberOrId: input.parameters?.projectId || 'zoiko-shield',
-            reason: input.parameters?.reason || 'Privilege escalation containment',
+            reason:
+              input.parameters?.reason || 'Privilege escalation containment',
           });
           observedEffect = res.providerResponse || {};
         } else {
