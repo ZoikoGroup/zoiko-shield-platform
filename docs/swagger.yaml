@@ -15067,6 +15067,45 @@ components:
         - principal_id
         - acknowledgement_type
         - notification_delivery_id
+    PostNotificationsWebhooksDeliveryStatusRequest:
+      type: object
+      properties:
+        deliveryId:
+          type: string
+        recipientEmail:
+          type: string
+          format: email
+        status:
+          type: string
+          enum: [DELIVERED, BOUNCED, COMPLAINT, OPENED, CLICKED]
+        timestamp:
+          type: string
+        bounceReason:
+          type: string
+        signature:
+          type: string
+      required:
+        - deliveryId
+        - status
+    PostNotificationsWebhooksDeliveryStatusResponse:
+      type: object
+      properties:
+        acknowledged:
+          type: boolean
+        updated:
+          type: boolean
+        status:
+          type: string
+        deliveryId:
+          type: string
+        recipientEmail:
+          type: string
+        suppressed:
+          type: boolean
+        reason:
+          type: string
+      required:
+        - acknowledged
     GetNotificationPreferencesResponse:
       type: array
       items:
@@ -39315,6 +39354,40 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/PostNotificationsByNotificationIdAcknowledgeRequest'
+  /api/v1/notifications/webhooks/delivery-status:
+    post:
+      tags:
+        - Notifications
+      summary: Ingest external email delivery receipts and update delivery statuses
+      description: Ingests delivery receipts from upstream mail relays (SMTP/SES/SendGrid), updates notification records, and auto-suppresses bounces and complaints.
+      parameters:
+        - name: x-webhook-signature
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Webhook HMAC signature for verification
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostNotificationsWebhooksDeliveryStatusRequest'
+      responses:
+        '200':
+          description: Delivery status update processed successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostNotificationsWebhooksDeliveryStatusResponse'
+        '400':
+          description: Bad Request - Missing mandatory fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postNotificationsWebhooksDeliveryStatus
+      security: []
   /api/v1/notification-preferences:
     get:
       tags:

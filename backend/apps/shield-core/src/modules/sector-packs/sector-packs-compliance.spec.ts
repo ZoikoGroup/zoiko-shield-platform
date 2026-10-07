@@ -32,6 +32,8 @@ describe('Sector Packs Regulatory Compliance Services', () => {
     const result = await pciService.evaluateTenant('tenant-payments-corp');
     expect(result.standard).toBe('PCI_DSS_V4_0_1');
     expect(result.overallScore).toBe(98.0);
-    expect(result.requirements.protectCardholderData.encryptionEnforced).toBe(true);
+    expect(result.requirements.protectCardholderData.encryptionEnforced).toBe(
+      true,
+    );
   });
 });

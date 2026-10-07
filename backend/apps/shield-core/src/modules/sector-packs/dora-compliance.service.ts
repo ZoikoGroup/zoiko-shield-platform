@@ -7,8 +7,16 @@ export interface DoraEvaluationResult {
   overallScore: number; // 0 - 100
   status: 'COMPLIANT' | 'WARNING' | 'NON_COMPLIANT';
   pillars: {
-    ictRiskManagement: { score: number; controlsPassing: number; controlsTotal: number };
-    incidentReporting: { score: number; majorIncidentThresholdMinutes: number; compliant: boolean };
+    ictRiskManagement: {
+      score: number;
+      controlsPassing: number;
+      controlsTotal: number;
+    };
+    incidentReporting: {
+      score: number;
+      majorIncidentThresholdMinutes: number;
+      compliant: boolean;
+    };
     digitalResilienceTesting: { score: number; tlrpCompleted: boolean };
     thirdPartyRisk: { score: number; highRiskVendorsEvaluated: number };
     informationSharing: { score: number; activeFeed: boolean };
@@ -24,7 +32,9 @@ export class DoraComplianceService {
   private readonly logger = new Logger(DoraComplianceService.name);
 
   async evaluateTenant(tenantId: string): Promise<DoraEvaluationResult> {
-    this.logger.log(`Evaluating DORA regulatory posture for tenant: ${tenantId}`);
+    this.logger.log(
+      `Evaluating DORA regulatory posture for tenant: ${tenantId}`,
+    );
 
     return {
       jurisdiction: 'EU',

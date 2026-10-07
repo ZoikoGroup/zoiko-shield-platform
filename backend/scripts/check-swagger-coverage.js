@@ -148,6 +148,7 @@ const approvedPublicOperations = new Set([
   'get:/v1/connectors/entra/callback',
   'post:/v1/webhooks/microsoft-graph',
   'post:/api/v1/payments/webhook',
+  'post:/api/v1/notifications/webhooks/delivery-status',
   'get:/metrics',
   'get:/',
   'get:/api/v1/governance/disclosures',

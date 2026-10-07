@@ -65,12 +65,16 @@ export class PostureDriftDetectorService {
     const scanTime = new Date().toISOString();
 
     // Default reference asset baseline if none provided in scan request
-    const targetAssets = assets && assets.length > 0 ? assets : this.getDefaultReferenceAssets();
+    const targetAssets =
+      assets && assets.length > 0 ? assets : this.getDefaultReferenceAssets();
 
     for (const asset of targetAssets) {
       // 1. S3 / GCS Storage Bucket Rules
       if (asset.assetType === 'S3_BUCKET' || asset.assetType === 'GCS_BUCKET') {
-        if (asset.configuration.isPublicRead === true || asset.configuration.blockPublicAccess === false) {
+        if (
+          asset.configuration.isPublicRead === true ||
+          asset.configuration.blockPublicAccess === false
+        ) {
           findings.push({
             findingId: `drift-${crypto.randomUUID().slice(0, 8)}`,
             tenantId,
@@ -105,7 +109,11 @@ export class PostureDriftDetectorService {
             ruleTitle: 'Server-Side Encryption Disabled on Storage Bucket',
             severity: 'HIGH',
             description: `Bucket '${asset.assetId}' does not enforce KMS customer-managed or cloud-provider encryption at rest.`,
-            complianceImpact: ['SOC2-CC6.6', 'HIPAA-164.312', 'NIST-800-53-SC-28'],
+            complianceImpact: [
+              'SOC2-CC6.6',
+              'HIPAA-164.312',
+              'NIST-800-53-SC-28',
+            ],
             detectedAt: scanTime,
             status: 'OPEN',
             remediationPlan: {
@@ -121,10 +129,12 @@ export class PostureDriftDetectorService {
 
       // 2. IAM Policy Rules
       if (asset.assetType === 'IAM_POLICY') {
-        const hasWildcardAdmin =
-          asset.configuration.statement?.some(
-            (st: any) => st.effect === 'Allow' && (st.action === '*' || (Array.isArray(st.action) && st.action.includes('*'))),
-          );
+        const hasWildcardAdmin = asset.configuration.statement?.some(
+          (st: any) =>
+            st.effect === 'Allow' &&
+            (st.action === '*' ||
+              (Array.isArray(st.action) && st.action.includes('*'))),
+        );
 
         if (hasWildcardAdmin && !asset.configuration.mfaEnforced) {
           findings.push({
@@ -134,7 +144,8 @@ export class PostureDriftDetectorService {
             assetType: asset.assetType,
             cloudProvider: asset.cloudProvider,
             ruleCode: 'DRIFT_IAM_UNCONSTRAINED_WILDCARD_ADMIN',
-            ruleTitle: 'Wildcard Administrator Privileges Granted Without MFA Condition',
+            ruleTitle:
+              'Wildcard Administrator Privileges Granted Without MFA Condition',
             severity: 'CRITICAL',
             description: `IAM Policy '${asset.assetId}' contains unconstrained '*' action privileges without requiring hardware MFA.`,
             complianceImpact: ['SOC2-CC6.1', 'ISO27001-A.5.18', 'CIS-AWS-1.16'],
@@ -153,7 +164,10 @@ export class PostureDriftDetectorService {
 
       // 3. Kubernetes Pod Security Rules
       if (asset.assetType === 'K8S_POD') {
-        if (asset.configuration.privileged === true || asset.configuration.hostPID === true) {
+        if (
+          asset.configuration.privileged === true ||
+          asset.configuration.hostPID === true
+        ) {
           findings.push({
             findingId: `drift-${crypto.randomUUID().slice(0, 8)}`,
             tenantId,
@@ -161,7 +175,8 @@ export class PostureDriftDetectorService {
             assetType: asset.assetType,
             cloudProvider: asset.cloudProvider,
             ruleCode: 'DRIFT_K8S_CONTAINER_PRIVILEGED_ESCAPE_RISK',
-            ruleTitle: 'Kubernetes Pod Running With Root Privileges and Host Namespace Sharing',
+            ruleTitle:
+              'Kubernetes Pod Running With Root Privileges and Host Namespace Sharing',
             severity: 'CRITICAL',
             description: `Pod '${asset.assetId}' is running in privileged container mode, creating severe node escape vulnerabilities.`,
             complianceImpact: ['SOC2-CC6.8', 'NIST-CSF-PR.IP-1'],
@@ -182,7 +197,9 @@ export class PostureDriftDetectorService {
     // Cache active findings for tenant
     this.findingsMap.set(tenantId, findings);
 
-    const criticalCount = findings.filter((f) => f.severity === 'CRITICAL').length;
+    const criticalCount = findings.filter(
+      (f) => f.severity === 'CRITICAL',
+    ).length;
 
     // Broadcast stream alert if critical drift is detected
     if (criticalCount > 0 && this.streamService) {
@@ -233,17 +250,29 @@ export class PostureDriftDetectorService {
     const finding = findings.find((f) => f.findingId === findingId);
 
     if (!finding) {
-      throw new Error(`Posture drift finding '${findingId}' not found for tenant '${tenantId}'`);
+      throw new Error(
+        `Posture drift finding '${findingId}' not found for tenant '${tenantId}'`,
+      );
     }
 
     if (finding.remediationPlan.requiresDualCustody && !approverId) {
-      throw new Error(`DUAL_CUSTODY_REQUIRED: Finding '${findingId}' impacts Tier-0 IAM assets and requires secondary approval.`);
+      throw new Error(
+        `DUAL_CUSTODY_REQUIRED: Finding '${findingId}' impacts Tier-0 IAM assets and requires secondary approval.`,
+      );
     }
 
     const remediatedAt = new Date().toISOString();
     const attestationDigest = crypto
       .createHash('sha256')
-      .update(JSON.stringify({ tenantId, findingId, rationale: operatorRationale, remediatedAt, approverId }))
+      .update(
+        JSON.stringify({
+          tenantId,
+          findingId,
+          rationale: operatorRationale,
+          remediatedAt,
+          approverId,
+        }),
+      )
       .digest('hex');
 
     finding.status = 'REMEDIATED';

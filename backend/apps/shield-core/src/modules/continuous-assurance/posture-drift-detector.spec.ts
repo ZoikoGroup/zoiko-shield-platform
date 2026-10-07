@@ -62,7 +62,9 @@ describe('PostureDriftModule Suite', () => {
       expect(publicExposure?.remediationPlan.forwardAction).toBe(
         'ENABLE_CLOUD_STORAGE_BLOCK_PUBLIC_ACCESS',
       );
-      expect(publicExposure?.remediationPlan.blastRadiusScore).toBeLessThan(0.1);
+      expect(publicExposure?.remediationPlan.blastRadiusScore).toBeLessThan(
+        0.1,
+      );
     });
 
     it('should detect privileged Kubernetes container drift', async () => {
@@ -93,15 +95,21 @@ describe('PostureDriftModule Suite', () => {
         'tenant-remediate-test',
         firstFinding.findingId,
         'Applied automated least privilege policy under JIT #JIT-2026',
-        firstFinding.remediationPlan.requiresDualCustody ? 'approver-lead-sec' : undefined,
+        firstFinding.remediationPlan.requiresDualCustody
+          ? 'approver-lead-sec'
+          : undefined,
       );
 
       expect(remediationRes.status).toBe('REMEDIATION_EXECUTED');
       expect(remediationRes.findingId).toBe(firstFinding.findingId);
       expect(remediationRes.remediationReceipt.attestationDigest).toBeDefined();
 
-      const updatedFindings = service.getTenantFindings('tenant-remediate-test');
-      const updated = updatedFindings.find((f) => f.findingId === firstFinding.findingId);
+      const updatedFindings = service.getTenantFindings(
+        'tenant-remediate-test',
+      );
+      const updated = updatedFindings.find(
+        (f) => f.findingId === firstFinding.findingId,
+      );
       expect(updated?.status).toBe('REMEDIATED');
     });
 

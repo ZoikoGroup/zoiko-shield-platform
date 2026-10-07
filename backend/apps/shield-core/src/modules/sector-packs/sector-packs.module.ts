@@ -28,4 +28,3 @@ import { PciDssComplianceService } from './pci-dss-compliance.service';
   ],
 })
 export class SectorPacksModule {}
-

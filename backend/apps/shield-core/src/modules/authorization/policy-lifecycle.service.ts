@@ -190,12 +190,15 @@ export class PolicyLifecycleService implements OnModuleInit {
     }
   }
 
-  private toRecord(
-    row: any,
-    tenantId: string,
-  ): PolicyVersionRecord {
-    const createdAt = row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt || new Date().toISOString());
-    const updatedAt = row.updatedAt instanceof Date ? row.updatedAt.toISOString() : String(row.updatedAt || new Date().toISOString());
+  private toRecord(row: any, tenantId: string): PolicyVersionRecord {
+    const createdAt =
+      row.createdAt instanceof Date
+        ? row.createdAt.toISOString()
+        : String(row.createdAt || new Date().toISOString());
+    const updatedAt =
+      row.updatedAt instanceof Date
+        ? row.updatedAt.toISOString()
+        : String(row.updatedAt || new Date().toISOString());
     return {
       id: row.policyKey || row.id,
       tenantId,
@@ -231,7 +234,8 @@ export class PolicyLifecycleService implements OnModuleInit {
       const byKey = new Map<string, (typeof rows)[number]>();
       for (const row of rows) {
         const current = byKey.get(row.policyKey);
-        if (!current || row.tenantId === tenantId) byKey.set(row.policyKey, row);
+        if (!current || row.tenantId === tenantId)
+          byKey.set(row.policyKey, row);
       }
       return [...byKey.values()]
         .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime())

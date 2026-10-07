@@ -1,4 +1,9 @@
-import { Injectable, Logger, NotFoundException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  NotFoundException,
+  ConflictException,
+} from '@nestjs/common';
 import { SCIM_SCHEMAS, SCIM_SERVICE_PROVIDER_CONFIG } from './scim.constants';
 import { CreateScimUserDto } from './dto/scim-user.dto';
 import { CreateScimGroupDto } from './dto/scim-group.dto';
@@ -94,7 +99,11 @@ export class ScimService {
     ];
   }
 
-  async listUsers(tenantId: string, startIndex = 1, count = 100): Promise<ScimListResponse<ScimUserResource>> {
+  async listUsers(
+    tenantId: string,
+    startIndex = 1,
+    count = 100,
+  ): Promise<ScimListResponse<ScimUserResource>> {
     const userMap = this.getTenantUsers(tenantId);
     const allUsers = Array.from(userMap.values());
     const paginated = allUsers.slice(startIndex - 1, startIndex - 1 + count);
@@ -116,14 +125,21 @@ export class ScimService {
     return user;
   }
 
-  async createUser(tenantId: string, dto: CreateScimUserDto): Promise<ScimUserResource> {
+  async createUser(
+    tenantId: string,
+    dto: CreateScimUserDto,
+  ): Promise<ScimUserResource> {
     const userMap = this.getTenantUsers(tenantId);
-    const id = dto.externalId || `scim-usr-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const id =
+      dto.externalId ||
+      `scim-usr-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
     // Check duplicate userName
     for (const u of userMap.values()) {
       if (u.userName.toLowerCase() === dto.userName.toLowerCase()) {
-        throw new ConflictException(`User with userName '${dto.userName}' already exists`);
+        throw new ConflictException(
+          `User with userName '${dto.userName}' already exists`,
+        );
       }
     }
 
@@ -146,16 +162,26 @@ export class ScimService {
     };
 
     userMap.set(id, resource);
-    this.logger.log(`Provisioned SCIM user '${dto.userName}' (ID: ${id}) for tenant '${tenantId}'`);
+    this.logger.log(
+      `Provisioned SCIM user '${dto.userName}' (ID: ${id}) for tenant '${tenantId}'`,
+    );
     return resource;
   }
 
-  async patchUser(tenantId: string, id: string, patch: ScimPatchDto): Promise<ScimUserResource> {
+  async patchUser(
+    tenantId: string,
+    id: string,
+    patch: ScimPatchDto,
+  ): Promise<ScimUserResource> {
     const user = await this.getUser(tenantId, id);
     const now = new Date().toISOString();
 
     for (const op of patch.Operations || []) {
-      if (op.op.toLowerCase() === 'replace' && typeof op.value === 'object' && op.value !== null) {
+      if (
+        op.op.toLowerCase() === 'replace' &&
+        typeof op.value === 'object' &&
+        op.value !== null
+      ) {
         if ('active' in op.value) {
           user.active = Boolean(op.value.active);
         }
@@ -172,10 +198,16 @@ export class ScimService {
       throw new NotFoundException(`SCIM User '${id}' not found`);
     }
     userMap.delete(id);
-    this.logger.log(`De-provisioned SCIM user '${id}' for tenant '${tenantId}'`);
+    this.logger.log(
+      `De-provisioned SCIM user '${id}' for tenant '${tenantId}'`,
+    );
   }
 
-  async listGroups(tenantId: string, startIndex = 1, count = 100): Promise<ScimListResponse<ScimGroupResource>> {
+  async listGroups(
+    tenantId: string,
+    startIndex = 1,
+    count = 100,
+  ): Promise<ScimListResponse<ScimGroupResource>> {
     const groupMap = this.getTenantGroups(tenantId);
     const allGroups = Array.from(groupMap.values());
     const paginated = allGroups.slice(startIndex - 1, startIndex - 1 + count);
@@ -189,7 +221,10 @@ export class ScimService {
     };
   }
 
-  async createGroup(tenantId: string, dto: CreateScimGroupDto): Promise<ScimGroupResource> {
+  async createGroup(
+    tenantId: string,
+    dto: CreateScimGroupDto,
+  ): Promise<ScimGroupResource> {
     const groupMap = this.getTenantGroups(tenantId);
     const id = `scim-grp-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
     const now = new Date().toISOString();

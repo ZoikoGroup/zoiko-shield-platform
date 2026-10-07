@@ -24,8 +24,12 @@ describe('ProductionEmailTemplateEngine (ZS-EML-TPL-001 v2.0)', () => {
     expect(rendered.senderClass).toBe('account_sender');
     expect(rendered.plainTextBody).toContain('Hello Alice,');
     expect(rendered.plainTextBody).toContain('Reference: ref-ver-001');
-    expect(rendered.plainTextBody).toContain('Security note: Zoiko Shield will never ask you to send a password');
-    expect(rendered.htmlBody).toContain('https://app.zoikoshield.com/verify?token=abc');
+    expect(rendered.plainTextBody).toContain(
+      'Security note: Zoiko Shield will never ask you to send a password',
+    );
+    expect(rendered.htmlBody).toContain(
+      'https://app.zoikoshield.com/verify?token=abc',
+    );
   });
 
   it('should render ZS-EML-SEC-001 critical security alert template with allowlisted enum status', () => {
@@ -40,10 +44,14 @@ describe('ProductionEmailTemplateEngine (ZS-EML-TPL-001 v2.0)', () => {
       actionUrl: 'https://app.zoikoshield.com/cases/alert-crit-9982',
     });
 
-    expect(rendered.subject).toContain('Critical security alert requires review');
+    expect(rendered.subject).toContain(
+      'Critical security alert requires review',
+    );
     expect(rendered.senderClass).toBe('security_sender');
     expect(rendered.plainTextBody).toContain('Organization: Acme Corporation');
-    expect(rendered.htmlBody).toContain('https://app.zoikoshield.com/cases/alert-crit-9982');
+    expect(rendered.htmlBody).toContain(
+      'https://app.zoikoshield.com/cases/alert-crit-9982',
+    );
   });
 
   it('should fail closed when rendering unknown template or missing mandatory parameters', () => {

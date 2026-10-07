@@ -115,4 +115,58 @@ describe('StandaloneVerifierRunner', () => {
     expect(cert.checks.merkleRootIntegrity).toBe(false);
     expect(cert.checks.evidenceFilesIntegrity.corruptedFiles).toBe(1);
   });
+
+  it('should verify offline notification receipts and detect tampered hashes', () => {
+    const canonicalString = [
+      'del-101',
+      'tenant-acme',
+      'evt-sec-01',
+      1,
+      'ZS-EML-SEC-001',
+      2,
+      'pol-critical',
+      1,
+      crypto.createHash('sha256').update('admin@acme.com').digest('hex'),
+      'render-hash-1',
+      'digest-1',
+      'security_sender',
+      '2026-10-07T12:00:00.000Z',
+    ].join('|');
+
+    const validAuditHash = crypto
+      .createHash('sha256')
+      .update(canonicalString)
+      .digest('hex');
+
+    const validReceipt = {
+      deliveryId: 'del-101',
+      tenantId: 'tenant-acme',
+      eventId: 'evt-sec-01',
+      eventVersion: 1,
+      templateId: 'ZS-EML-SEC-001',
+      templateVersion: 2,
+      policyId: 'pol-critical',
+      policyVersion: 1,
+      recipientEmail: 'admin@acme.com',
+      renderHash: 'render-hash-1',
+      contentDigest: 'digest-1',
+      senderClass: 'security_sender',
+      dispatchedAt: '2026-10-07T12:00:00.000Z',
+      auditHash: validAuditHash,
+    };
+
+    const validResult = runner.verifyNotificationReceipt(validReceipt);
+    expect(validResult.verified).toBe(true);
+    expect(validResult.status).toBe('AUDIT_VERIFIED');
+
+    // Tampered test
+    const tamperedReceipt = {
+      ...validReceipt,
+      auditHash:
+        'fake-tampered-hash-0000000000000000000000000000000000000000000000',
+    };
+    const tamperedResult = runner.verifyNotificationReceipt(tamperedReceipt);
+    expect(tamperedResult.verified).toBe(false);
+    expect(tamperedResult.status).toBe('TAMPER_DETECTED');
+  });
 });
