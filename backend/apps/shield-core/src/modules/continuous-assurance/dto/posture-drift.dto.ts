@@ -15,7 +15,8 @@ export class ScanCloudAssetDto {
   assetId!: string;
 
   @IsString()
-  assetType!: 'S3_BUCKET' | 'GCS_BUCKET' | 'IAM_POLICY' | 'K8S_POD' | 'COMPUTE_INSTANCE';
+  assetType!:
+    'S3_BUCKET' | 'GCS_BUCKET' | 'IAM_POLICY' | 'K8S_POD' | 'COMPUTE_INSTANCE';
 
   @IsString()
   cloudProvider!: 'AWS' | 'AZURE' | 'GCP' | 'KUBERNETES';

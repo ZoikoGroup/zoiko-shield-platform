@@ -68,21 +68,40 @@ export class NotificationController {
     const defaultInput: EmailRenderInput = {
       templateId,
       recipientFirstName: customVariables?.recipientFirstName || 'Alex',
-      organizationName: customVariables?.organizationName || 'Acme Cybersecurity Corp',
-      referenceId: customVariables?.referenceId || `ref-${Date.now().toString(36)}`,
+      organizationName:
+        customVariables?.organizationName || 'Acme Cybersecurity Corp',
+      referenceId:
+        customVariables?.referenceId || `ref-${Date.now().toString(36)}`,
       statusLabel: customVariables?.statusLabel || 'ACTIVE',
-      occurredAtLocal: customVariables?.occurredAtLocal || new Date().toLocaleString(),
+      occurredAtLocal:
+        customVariables?.occurredAtLocal || new Date().toLocaleString(),
       timezone: customVariables?.timezone || 'UTC+0',
-      actionUrl: customVariables?.actionUrl || 'https://app.zoikoshield.com/actions',
-      accountSecurityUrl: customVariables?.accountSecurityUrl || 'https://app.zoikoshield.com/admin',
-      auditUrl: customVariables?.auditUrl || 'https://app.zoikoshield.com/ledger',
-      billingUrl: customVariables?.billingUrl || 'https://app.zoikoshield.com/pricing',
-      supportUrl: customVariables?.supportUrl || 'https://app.zoikoshield.com/services',
-      onboardingUrl: customVariables?.onboardingUrl || 'https://app.zoikoshield.com/onboarding',
-      developerUrl: customVariables?.developerUrl || 'https://app.zoikoshield.com/developer',
-      governanceUrl: customVariables?.governanceUrl || 'https://app.zoikoshield.com/ai-governance',
-      verificationUrl: customVariables?.verificationUrl || 'https://app.zoikoshield.com/verify-certificate',
-      passwordResetUrl: customVariables?.passwordResetUrl || 'https://app.zoikoshield.com/login',
+      actionUrl:
+        customVariables?.actionUrl || 'https://app.zoikoshield.com/actions',
+      accountSecurityUrl:
+        customVariables?.accountSecurityUrl ||
+        'https://app.zoikoshield.com/admin',
+      auditUrl:
+        customVariables?.auditUrl || 'https://app.zoikoshield.com/ledger',
+      billingUrl:
+        customVariables?.billingUrl || 'https://app.zoikoshield.com/pricing',
+      supportUrl:
+        customVariables?.supportUrl || 'https://app.zoikoshield.com/services',
+      onboardingUrl:
+        customVariables?.onboardingUrl ||
+        'https://app.zoikoshield.com/onboarding',
+      developerUrl:
+        customVariables?.developerUrl ||
+        'https://app.zoikoshield.com/developer',
+      governanceUrl:
+        customVariables?.governanceUrl ||
+        'https://app.zoikoshield.com/ai-governance',
+      verificationUrl:
+        customVariables?.verificationUrl ||
+        'https://app.zoikoshield.com/verify-certificate',
+      passwordResetUrl:
+        customVariables?.passwordResetUrl ||
+        'https://app.zoikoshield.com/login',
       tokenExpiresAtLocal: customVariables?.tokenExpiresAtLocal || '24 hours',
       ...customVariables,
     };
@@ -95,19 +114,26 @@ export class NotificationController {
     @Headers('x-tenant-id') tenantId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Param('templateId') templateId: string,
-    @Body() body: { recipientEmail?: string; variables?: Partial<EmailRenderInput> },
+    @Body()
+    body: { recipientEmail?: string; variables?: Partial<EmailRenderInput> },
   ) {
     const validTenantId = requireTenantId(tenantId);
-    const recipientEmail = body.recipientEmail || user.email || 'operator@zoikoshield.corp';
-    const recipientName = body.variables?.recipientFirstName || (user.email ? user.email.split('@')[0] : 'Security Operator');
+    const recipientEmail =
+      body.recipientEmail || user.email || 'operator@zoikoshield.corp';
+    const recipientName =
+      body.variables?.recipientFirstName ||
+      (user.email ? user.email.split('@')[0] : 'Security Operator');
 
     const renderInput: EmailRenderInput = {
       templateId,
       recipientFirstName: recipientName,
-      organizationName: body.variables?.organizationName || 'Zoiko Shield Sovereign Tenant',
-      referenceId: body.variables?.referenceId || `test-${Date.now().toString(36)}`,
+      organizationName:
+        body.variables?.organizationName || 'Zoiko Shield Sovereign Tenant',
+      referenceId:
+        body.variables?.referenceId || `test-${Date.now().toString(36)}`,
       statusLabel: body.variables?.statusLabel || 'TEST_VERIFIED',
-      occurredAtLocal: body.variables?.occurredAtLocal || new Date().toLocaleString(),
+      occurredAtLocal:
+        body.variables?.occurredAtLocal || new Date().toLocaleString(),
       timezone: body.variables?.timezone || 'UTC',
       ...body.variables,
     };

@@ -37,7 +37,9 @@ describe('ShieldActionController - WASM Playbook Sandbox Endpoints', () => {
     }).compile();
 
     controller = module.get<ShieldActionController>(ShieldActionController);
-    wasmSandboxService = module.get<WasmPlaybookSandboxService>(WasmPlaybookSandboxService);
+    wasmSandboxService = module.get<WasmPlaybookSandboxService>(
+      WasmPlaybookSandboxService,
+    );
   });
 
   it('should call simulateWasmPlaybook and return execution report', async () => {
@@ -46,7 +48,9 @@ describe('ShieldActionController - WASM Playbook Sandbox Endpoints', () => {
       playbookId: 'PB-WASM-01',
       playbookVersion: '1.0.0',
       incidentId: 'INC-100',
-      wasmBytecodeBase64: Buffer.from('\x00asm\x01\x00\x00\x00test').toString('base64'),
+      wasmBytecodeBase64: Buffer.from('\x00asm\x01\x00\x00\x00test').toString(
+        'base64',
+      ),
       steps: [
         {
           stepId: 's1',

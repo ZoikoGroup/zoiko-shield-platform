@@ -12,7 +12,10 @@ describe('DomainEventNotificationConsumer (Spec §12 & ZS-EML-TPL-001)', () => {
     dispatch: jest.Mock;
   };
 
-  const registeredHandlers = new Map<string, (envelope: any) => Promise<void>>();
+  const registeredHandlers = new Map<
+    string,
+    (envelope: any) => Promise<void>
+  >();
 
   beforeEach(async () => {
     registeredHandlers.clear();
@@ -22,7 +25,9 @@ describe('DomainEventNotificationConsumer (Spec §12 & ZS-EML-TPL-001)', () => {
       }),
     };
     dispatchServiceMock = {
-      dispatch: jest.fn().mockResolvedValue({ status: 'DELIVERED', notificationId: 'ntf-123' }),
+      dispatch: jest
+        .fn()
+        .mockResolvedValue({ status: 'DELIVERED', notificationId: 'ntf-123' }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -64,6 +69,26 @@ describe('DomainEventNotificationConsumer (Spec §12 & ZS-EML-TPL-001)', () => {
       'incident.declared.v1',
       expect.any(Function),
     );
+    expect(kafkaConsumerMock.registerHandler).toHaveBeenCalledWith(
+      'connector.authorization_failed.v1',
+      expect.any(Function),
+    );
+    expect(kafkaConsumerMock.registerHandler).toHaveBeenCalledWith(
+      'ai.output_blocked.v1',
+      expect.any(Function),
+    );
+    expect(kafkaConsumerMock.registerHandler).toHaveBeenCalledWith(
+      'maintenance.scheduled.v1',
+      expect.any(Function),
+    );
+    expect(kafkaConsumerMock.registerHandler).toHaveBeenCalledWith(
+      'billing.invoice_issued.v1',
+      expect.any(Function),
+    );
+    expect(kafkaConsumerMock.registerHandler).toHaveBeenCalledWith(
+      'privacy.request_received.v1',
+      expect.any(Function),
+    );
   });
 
   it('should dispatch notification when alert.critical.v1 event fires', async () => {
@@ -96,7 +121,9 @@ describe('DomainEventNotificationConsumer (Spec §12 & ZS-EML-TPL-001)', () => {
   });
 
   it('should dispatch notification when soar.dual_custody_approval.requested.v1 event fires', async () => {
-    const handler = registeredHandlers.get('soar.dual_custody_approval.requested.v1');
+    const handler = registeredHandlers.get(
+      'soar.dual_custody_approval.requested.v1',
+    );
     expect(handler).toBeDefined();
 
     await handler!({
@@ -150,6 +177,64 @@ describe('DomainEventNotificationConsumer (Spec §12 & ZS-EML-TPL-001)', () => {
         percentage: '92%',
       },
       correlationId: 'corr-003',
+    });
+  });
+
+  it('should dispatch notification when connector.authorization_failed.v1 event fires', async () => {
+    const handler = registeredHandlers.get('connector.authorization_failed.v1');
+    expect(handler).toBeDefined();
+
+    await handler!({
+      eventId: 'evt-conn-001',
+      correlationId: 'corr-004',
+      payload: {
+        connectorId: 'conn-aws-01',
+        tenantId: 'tenant-acme',
+        connectorName: 'AWS CloudTrail Primary Ingest',
+        environmentName: 'Production AWS',
+      },
+    });
+
+    expect(dispatchServiceMock.dispatch).toHaveBeenCalledWith({
+      tenantId: 'tenant-acme',
+      eventId: 'evt-conn-001',
+      eventType: 'CONNECTOR_AUTHORIZATION_FAILED',
+      recipientPrincipalId: 'connector-owner',
+      templateContext: {
+        connectorId: 'conn-aws-01',
+        connector_name: 'AWS CloudTrail Primary Ingest',
+        environment_name: 'Production AWS',
+      },
+      correlationId: 'corr-004',
+    });
+  });
+
+  it('should dispatch notification when billing.invoice_issued.v1 event fires', async () => {
+    const handler = registeredHandlers.get('billing.invoice_issued.v1');
+    expect(handler).toBeDefined();
+
+    await handler!({
+      eventId: 'evt-inv-001',
+      correlationId: 'corr-005',
+      payload: {
+        invoiceId: 'inv-9901',
+        tenantId: 'tenant-acme',
+        invoiceNumber: 'INV-2026-10-001',
+        amountDue: '$4,250.00 USD',
+      },
+    });
+
+    expect(dispatchServiceMock.dispatch).toHaveBeenCalledWith({
+      tenantId: 'tenant-acme',
+      eventId: 'evt-inv-001',
+      eventType: 'INVOICE_ISSUED',
+      recipientPrincipalId: 'billing-contact',
+      templateContext: {
+        invoiceId: 'inv-9901',
+        invoice_number: 'INV-2026-10-001',
+        amount_due_display: '$4,250.00 USD',
+      },
+      correlationId: 'corr-005',
     });
   });
 });

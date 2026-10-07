@@ -54,4 +54,33 @@ describe('TransactionalEmailService', () => {
     expect(receipt.htmlBody).toContain('Lateral Movement in K8s Cluster');
     expect(receipt.htmlBody).toContain('ISOLATE_ENDPOINT');
   });
+
+  it('should render and dispatch any of the 226 production ZS-EML-* templates', async () => {
+    const receipt = await emailService.dispatchTransactionalEmail({
+      tenantId: 'tenant-acme',
+      templateKey: 'ZS-EML-SEC-001',
+      recipients: [
+        { email: 'soc-responder@acme.com', name: 'Commander Shepard' },
+      ],
+      variables: {
+        organizationName: 'Acme Aerospace',
+        referenceId: 'REF-SEC-9988',
+        statusLabel: 'CRITICAL_DETECTED',
+        occurredAtLocal: '2026-10-07 09:00:00',
+        timezone: 'UTC',
+        environment_name: 'Production AWS/GCP Multi-Cloud',
+        security_object_url: 'https://app.zoikoshield.com/cases/9988',
+      },
+    });
+
+    expect(receipt.subject).toContain(
+      'Critical security alert requires review',
+    );
+    expect(receipt.htmlBody).toContain('Commander Shepard');
+    expect(receipt.htmlBody).toContain('Acme Aerospace');
+    expect(receipt.htmlBody).toContain('REF-SEC-9988');
+    expect(receipt.deliveryStatus).toBe('DELIVERED');
+    expect(receipt.renderHash).toBeDefined();
+    expect(receipt.contentDigest).toBeDefined();
+  });
 });

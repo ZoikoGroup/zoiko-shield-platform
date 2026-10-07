@@ -126,7 +126,9 @@ describe('LiveActionExecutor & DualCustody & Rollback (Spec §15 & LAB 15)', () 
 
     const rollbackResult = await rollbackService.executeRollback(receipt);
     expect(rollbackResult.status).toBe('REVERTED');
-    expect(rollbackResult.compensatingAction).toBe('REMOVE_CLOUD_ARMOR_IP_RULE');
+    expect(rollbackResult.compensatingAction).toBe(
+      'REMOVE_CLOUD_ARMOR_IP_RULE',
+    );
     expect(rollbackResult.targetRef).toBe('198.51.100.99');
     expect(rollbackResult.stateRestorationProof.length).toBe(64);
   });

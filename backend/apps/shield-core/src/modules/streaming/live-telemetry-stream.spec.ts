@@ -20,7 +20,9 @@ describe('LiveTelemetryStreamModule Suite', () => {
       .useValue({ canActivate: () => true })
       .compile();
 
-    service = module.get<LiveTelemetryStreamService>(LiveTelemetryStreamService);
+    service = module.get<LiveTelemetryStreamService>(
+      LiveTelemetryStreamService,
+    );
     controller = module.get<LiveTelemetryStreamController>(
       LiveTelemetryStreamController,
     );

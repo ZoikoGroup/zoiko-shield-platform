@@ -18,7 +18,9 @@ describe('WasmPlaybookSandboxService (LAB 18 & Spec §18 WASM Sandbox & Rollback
       providers: [WasmPlaybookSandboxService],
     }).compile();
 
-    service = module.get<WasmPlaybookSandboxService>(WasmPlaybookSandboxService);
+    service = module.get<WasmPlaybookSandboxService>(
+      WasmPlaybookSandboxService,
+    );
   });
 
   it('should successfully simulate a valid custom WASM playbook with acceptable blast radius', async () => {
@@ -27,12 +29,15 @@ describe('WasmPlaybookSandboxService (LAB 18 & Spec §18 WASM Sandbox & Rollback
       playbookId: 'PB-WASM-CONTAIN-CRED-01',
       playbookVersion: '1.0.0',
       incidentId: 'INC-2026-9921',
-      wasmBytecodeBase64: Buffer.from('\x00asm\x01\x00\x00\x00custom-soar-bytes').toString('base64'),
+      wasmBytecodeBase64: Buffer.from(
+        '\x00asm\x01\x00\x00\x00custom-soar-bytes',
+      ).toString('base64'),
       steps: [
         {
           stepId: 'step-1',
           actionType: WasmSandboxMutationType.AWS_IAM_ATTACH_POLICY,
-          targetResourceArn: 'arn:aws:iam::123456789012:role/CompromisedDevRole',
+          targetResourceArn:
+            'arn:aws:iam::123456789012:role/CompromisedDevRole',
           parameters: { policyArn: 'AWSQuarantinePolicy-ReadOnly' },
         },
         {
@@ -57,7 +62,8 @@ describe('WasmPlaybookSandboxService (LAB 18 & Spec §18 WASM Sandbox & Rollback
       ],
     };
 
-    const report: WasmSandboxExecutionReport = await service.simulateWasmPlaybook(validDto);
+    const report: WasmSandboxExecutionReport =
+      await service.simulateWasmPlaybook(validDto);
 
     expect(report.status).toBe('SANDBOX_PASSED');
     expect(report.bytecodeHashSha256).toBeDefined();
@@ -77,7 +83,9 @@ describe('WasmPlaybookSandboxService (LAB 18 & Spec §18 WASM Sandbox & Rollback
       playbookId: 'PB-WASM-DRAIN-PROD-UNSAFE',
       playbookVersion: '2.1.0',
       incidentId: 'INC-2026-CRITICAL',
-      wasmBytecodeBase64: Buffer.from('\x00asm\x01\x00\x00\x00drain-cluster').toString('base64'),
+      wasmBytecodeBase64: Buffer.from(
+        '\x00asm\x01\x00\x00\x00drain-cluster',
+      ).toString('base64'),
       steps: [
         {
           stepId: 'step-drain-1',
@@ -95,7 +103,8 @@ describe('WasmPlaybookSandboxService (LAB 18 & Spec §18 WASM Sandbox & Rollback
       ],
     };
 
-    const report: WasmSandboxExecutionReport = await service.simulateWasmPlaybook(unsafeDto);
+    const report: WasmSandboxExecutionReport =
+      await service.simulateWasmPlaybook(unsafeDto);
 
     expect(report.status).toBe('SANDBOX_REJECTED_POLICY');
     expect(report.safetyViolations.length).toBeGreaterThan(0);
@@ -108,7 +117,9 @@ describe('WasmPlaybookSandboxService (LAB 18 & Spec §18 WASM Sandbox & Rollback
       playbookId: 'PB-WASM-HIGH-BLAST',
       playbookVersion: '1.0.0',
       incidentId: 'INC-2026-MASS-ISOLATE',
-      wasmBytecodeBase64: Buffer.from('\x00asm\x01\x00\x00\x00mass-isolation').toString('base64'),
+      wasmBytecodeBase64: Buffer.from(
+        '\x00asm\x01\x00\x00\x00mass-isolation',
+      ).toString('base64'),
       steps: [
         {
           stepId: 'step-1',
@@ -144,7 +155,8 @@ describe('WasmPlaybookSandboxService (LAB 18 & Spec §18 WASM Sandbox & Rollback
       ],
     };
 
-    const report: WasmSandboxExecutionReport = await service.simulateWasmPlaybook(highBlastRadiusDto);
+    const report: WasmSandboxExecutionReport =
+      await service.simulateWasmPlaybook(highBlastRadiusDto);
 
     expect(report.simulatedBlastRadiusScore).toBeGreaterThan(0.5);
     expect(report.status).toBe('SANDBOX_REJECTED_BLAST_RADIUS');
@@ -188,10 +200,14 @@ describe('WasmPlaybookSandboxService (LAB 18 & Spec §18 WASM Sandbox & Rollback
     expect(result.totalRollbackSteps).toBe(2);
     // Step 2 (last executed) must be reversed first
     expect(result.rollbackSteps[0].stepId).toBe('rb-step-step-2');
-    expect(result.rollbackSteps[0].inverseActionType).toBe('CROWDSTRIKE_LIFT_HOST_CONTAINMENT');
+    expect(result.rollbackSteps[0].inverseActionType).toBe(
+      'CROWDSTRIKE_LIFT_HOST_CONTAINMENT',
+    );
     // Step 1 reversed second
     expect(result.rollbackSteps[1].stepId).toBe('rb-step-step-1');
-    expect(result.rollbackSteps[1].inverseActionType).toBe(WasmSandboxMutationType.AWS_IAM_DETACH_POLICY);
+    expect(result.rollbackSteps[1].inverseActionType).toBe(
+      WasmSandboxMutationType.AWS_IAM_DETACH_POLICY,
+    );
     expect(result.deterministicIntegrityDigest).toBeDefined();
   });
 });

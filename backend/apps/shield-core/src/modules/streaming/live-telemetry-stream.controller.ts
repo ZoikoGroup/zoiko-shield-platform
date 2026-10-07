@@ -24,9 +24,7 @@ import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1/streaming')
 export class LiveTelemetryStreamController {
-  constructor(
-    private readonly streamService: LiveTelemetryStreamService,
-  ) {}
+  constructor(private readonly streamService: LiveTelemetryStreamService) {}
 
   /**
    * SSE Stream Endpoint: GET /api/v1/streaming/events
@@ -100,7 +98,8 @@ export class LiveTelemetryStreamController {
       case 'MERKLE':
         event = this.streamService.simulateMerkleCommitStream(tenantId, {
           epochBlockNumber: 1044,
-          merkleRootHex: '9f8e7d6c5b4a3210fedcba9876543210abcdef0123456789abcdef0123456789',
+          merkleRootHex:
+            '9f8e7d6c5b4a3210fedcba9876543210abcdef0123456789abcdef0123456789',
           leafCount: 48,
           ...(dto.customPayload || {}),
         });

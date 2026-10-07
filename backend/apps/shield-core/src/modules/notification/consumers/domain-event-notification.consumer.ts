@@ -51,6 +51,26 @@ export class DomainEventNotificationConsumer implements OnModuleInit {
       'incident.declared.v1',
       this.handleIncidentDeclared.bind(this),
     );
+    this.kafkaConsumer.registerHandler(
+      'connector.authorization_failed.v1',
+      this.handleConnectorAuthorizationFailed.bind(this),
+    );
+    this.kafkaConsumer.registerHandler(
+      'ai.output_blocked.v1',
+      this.handleAiOutputBlocked.bind(this),
+    );
+    this.kafkaConsumer.registerHandler(
+      'maintenance.scheduled.v1',
+      this.handleMaintenanceScheduled.bind(this),
+    );
+    this.kafkaConsumer.registerHandler(
+      'billing.invoice_issued.v1',
+      this.handleInvoiceIssued.bind(this),
+    );
+    this.kafkaConsumer.registerHandler(
+      'privacy.request_received.v1',
+      this.handlePrivacyRequestReceived.bind(this),
+    );
   }
 
   private async handleAuditPackageFrozen(
@@ -203,6 +223,112 @@ export class DomainEventNotificationConsumer implements OnModuleInit {
         incidentId: envelope.payload.incidentId,
         title: envelope.payload.title,
         severity: envelope.payload.severity,
+      },
+      correlationId: envelope.correlationId,
+    });
+  }
+
+  private async handleConnectorAuthorizationFailed(
+    envelope: EventEnvelope<{
+      connectorId: string;
+      tenantId: string;
+      connectorName: string;
+      environmentName?: string;
+    }>,
+  ): Promise<void> {
+    await this.dispatchService.dispatch({
+      tenantId: envelope.payload.tenantId,
+      eventId: envelope.eventId,
+      eventType: 'CONNECTOR_AUTHORIZATION_FAILED',
+      recipientPrincipalId: 'connector-owner',
+      templateContext: {
+        connectorId: envelope.payload.connectorId,
+        connector_name: envelope.payload.connectorName,
+        environment_name: envelope.payload.environmentName || 'Production',
+      },
+      correlationId: envelope.correlationId,
+    });
+  }
+
+  private async handleAiOutputBlocked(
+    envelope: EventEnvelope<{
+      useCaseId: string;
+      tenantId: string;
+      reason: string;
+    }>,
+  ): Promise<void> {
+    await this.dispatchService.dispatch({
+      tenantId: envelope.payload.tenantId,
+      eventId: envelope.eventId,
+      eventType: 'AI_OUTPUT_BLOCKED',
+      recipientPrincipalId: 'ai-governance-officer',
+      templateContext: {
+        useCaseId: envelope.payload.useCaseId,
+        reason: envelope.payload.reason,
+      },
+      correlationId: envelope.correlationId,
+    });
+  }
+
+  private async handleMaintenanceScheduled(
+    envelope: EventEnvelope<{
+      maintenanceId: string;
+      tenantId: string;
+      windowStart: string;
+      windowEnd: string;
+    }>,
+  ): Promise<void> {
+    await this.dispatchService.dispatch({
+      tenantId: envelope.payload.tenantId,
+      eventId: envelope.eventId,
+      eventType: 'MAINTENANCE_SCHEDULED',
+      recipientPrincipalId: 'tenant-admin',
+      templateContext: {
+        maintenanceId: envelope.payload.maintenanceId,
+        windowStart: envelope.payload.windowStart,
+        windowEnd: envelope.payload.windowEnd,
+      },
+      correlationId: envelope.correlationId,
+    });
+  }
+
+  private async handleInvoiceIssued(
+    envelope: EventEnvelope<{
+      invoiceId: string;
+      tenantId: string;
+      invoiceNumber: string;
+      amountDue: string;
+    }>,
+  ): Promise<void> {
+    await this.dispatchService.dispatch({
+      tenantId: envelope.payload.tenantId,
+      eventId: envelope.eventId,
+      eventType: 'INVOICE_ISSUED',
+      recipientPrincipalId: 'billing-contact',
+      templateContext: {
+        invoiceId: envelope.payload.invoiceId,
+        invoice_number: envelope.payload.invoiceNumber,
+        amount_due_display: envelope.payload.amountDue,
+      },
+      correlationId: envelope.correlationId,
+    });
+  }
+
+  private async handlePrivacyRequestReceived(
+    envelope: EventEnvelope<{
+      requestId: string;
+      tenantId: string;
+      requestType: string;
+    }>,
+  ): Promise<void> {
+    await this.dispatchService.dispatch({
+      tenantId: envelope.payload.tenantId,
+      eventId: envelope.eventId,
+      eventType: 'PRIVACY_REQUEST_RECEIVED',
+      recipientPrincipalId: 'privacy-officer',
+      templateContext: {
+        requestId: envelope.payload.requestId,
+        privacy_request_reference: envelope.payload.requestId,
       },
       correlationId: envelope.correlationId,
     });

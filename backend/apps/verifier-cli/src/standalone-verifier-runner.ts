@@ -166,4 +166,73 @@ export class StandaloneVerifierRunner {
       },
     };
   }
+
+  /**
+   * Offline cryptographic verification of a ZoikoShield Dispatched Notification Receipt (ZS-EML-TPL-001 v2.0 Gate 11).
+   * Validates canonical audit hash, recipient hash matching, and cryptographic tamper detection.
+   */
+  verifyNotificationReceipt(receipt: {
+    deliveryId: string;
+    tenantId: string;
+    eventId: string;
+    eventVersion?: number;
+    templateId: string;
+    templateVersion?: number;
+    policyId: string;
+    policyVersion?: number;
+    recipientEmail: string;
+    renderHash: string;
+    contentDigest: string;
+    senderClass: string;
+    dispatchedAt: string;
+    auditHash: string;
+  }): {
+    verified: boolean;
+    deliveryId: string;
+    recomputedAuditHash: string;
+    declaredAuditHash: string;
+    status: 'AUDIT_VERIFIED' | 'TAMPER_DETECTED';
+    verifiedAt: string;
+  } {
+    const eventVersion = receipt.eventVersion ?? 1;
+    const templateVersion = receipt.templateVersion ?? 2;
+    const policyVersion = receipt.policyVersion ?? 1;
+
+    const recipientHash = crypto
+      .createHash('sha256')
+      .update(receipt.recipientEmail.toLowerCase().trim())
+      .digest('hex');
+
+    const canonicalString = [
+      receipt.deliveryId,
+      receipt.tenantId,
+      receipt.eventId,
+      eventVersion,
+      receipt.templateId,
+      templateVersion,
+      receipt.policyId,
+      policyVersion,
+      recipientHash,
+      receipt.renderHash,
+      receipt.contentDigest,
+      receipt.senderClass,
+      receipt.dispatchedAt,
+    ].join('|');
+
+    const recomputedAuditHash = crypto
+      .createHash('sha256')
+      .update(canonicalString)
+      .digest('hex');
+
+    const verified = recomputedAuditHash === receipt.auditHash;
+
+    return {
+      verified,
+      deliveryId: receipt.deliveryId,
+      recomputedAuditHash,
+      declaredAuditHash: receipt.auditHash,
+      status: verified ? 'AUDIT_VERIFIED' : 'TAMPER_DETECTED',
+      verifiedAt: new Date().toISOString(),
+    };
+  }
 }

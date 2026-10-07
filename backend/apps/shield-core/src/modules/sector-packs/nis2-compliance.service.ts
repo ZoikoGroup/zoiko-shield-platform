@@ -25,7 +25,9 @@ export class Nis2ComplianceService {
   private readonly logger = new Logger(Nis2ComplianceService.name);
 
   async evaluateTenant(tenantId: string): Promise<Nis2EvaluationResult> {
-    this.logger.log(`Evaluating NIS2 regulatory posture for tenant: ${tenantId}`);
+    this.logger.log(
+      `Evaluating NIS2 regulatory posture for tenant: ${tenantId}`,
+    );
 
     return {
       jurisdiction: 'EU',
