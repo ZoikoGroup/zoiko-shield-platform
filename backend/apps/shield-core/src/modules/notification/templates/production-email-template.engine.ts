@@ -275,16 +275,28 @@ export class ProductionEmailTemplateEngine {
 
     const ctaButtonUrl =
       input.actionUrl ||
+      (input.extraVariables?.action_url as string) ||
       input.accountSecurityUrl ||
+      (input.extraVariables?.account_security_url as string) ||
+      (input.extraVariables?.invitation_url as string) ||
       input.auditUrl ||
+      (input.extraVariables?.audit_url as string) ||
       input.billingUrl ||
+      (input.extraVariables?.billing_url as string) ||
       input.supportUrl ||
+      (input.extraVariables?.support_url as string) ||
       input.onboardingUrl ||
+      (input.extraVariables?.onboarding_url as string) ||
       input.developerUrl ||
+      (input.extraVariables?.developer_url as string) ||
       input.governanceUrl ||
+      (input.extraVariables?.governance_url as string) ||
       input.verificationUrl ||
+      (input.extraVariables?.verification_url as string) ||
       input.passwordResetUrl ||
+      (input.extraVariables?.password_reset_url as string) ||
       input.downloadUrl ||
+      (input.extraVariables?.download_url as string) ||
       'https://app.zoikoshield.com';
 
     const plainTextBody = [
@@ -992,21 +1004,26 @@ export class ProductionEmailTemplateEngine {
         }
       }
 
-      // Automatically synthesize complete contracts for any remaining template numbers up to domain.count
-      const existingCount = Array.from(this.templateRegistry.values()).filter(
-        (t) => t.category === domain.code,
-      ).length;
-
-      for (let i = existingCount + 1; i <= domain.count; i++) {
+      // Automatically synthesize complete domain-specialized contracts for all template numbers up to domain.count
+      for (let i = 1; i <= domain.count; i++) {
         const paddedIndex = String(i).padStart(3, '0');
         const code = `ZS-EML-${domain.code}-${paddedIndex}`;
+        if (this.templateRegistry.has(code)) {
+          continue;
+        }
         const name = this.getDefaultTemplateName(domain.code, i);
         const isOps = domain.code === 'OPS';
         const isP0 =
           i <= 2 ||
           domain.code === 'SEC' ||
           domain.code === 'ACT' ||
-          domain.code === 'OFF';
+          domain.code === 'OFF' ||
+          name.toLowerCase().includes('critical') ||
+          name.toLowerCase().includes('breach') ||
+          name.toLowerCase().includes('freeze') ||
+          name.toLowerCase().includes('incident');
+
+        const domainMeta = this.getDomainMetadata(domain.code, name, isOps);
 
         this.templateRegistry.set(code, {
           id: code,
@@ -1015,14 +1032,10 @@ export class ProductionEmailTemplateEngine {
           category: domain.code,
           name,
           gate: isP0 ? 'P0' : 'P1',
-          senderClass: isOps
-            ? 'internal_ops_sender'
-            : `${domain.code.toLowerCase()}_sender`,
+          senderClass: domainMeta.senderClass,
           subject: `Zoiko Shield — ${name}`,
-          preheader: isOps
-            ? 'Internal production event requiring response through the incident system and approved runbook.'
-            : 'A governed state change was recorded in Zoiko Shield.',
-          buttonText: isOps ? 'Open incident' : 'View details',
+          preheader: domainMeta.preheader,
+          buttonText: domainMeta.buttonText,
           requiredVariables: [
             'recipientFirstName',
             'referenceId',
@@ -1030,12 +1043,178 @@ export class ProductionEmailTemplateEngine {
             'occurredAtLocal',
             'timezone',
           ],
-          bodyIntro: () =>
-            `Zoiko Shield recorded the following event: ${name}.`,
-          bodyAction: () =>
-            'Review the current state and audit history in Zoiko Shield. If the change was unexpected, contact your organization security administrator.',
+          bodyIntro: (input) =>
+            domainMeta.bodyIntro(input, name),
+          bodyAction: (input) =>
+            domainMeta.bodyAction(input),
         });
       }
+    }
+  }
+
+  private getDomainMetadata(
+    category: string,
+    name: string,
+    isOps: boolean,
+  ): {
+    senderClass: string;
+    preheader: string;
+    buttonText: string;
+    bodyIntro: (input: EmailRenderInput, templateName: string) => string;
+    bodyAction: (input: EmailRenderInput) => string;
+  } {
+    switch (category) {
+      case 'ORG':
+        return {
+          senderClass: 'onboarding@zoikoshield.com',
+          preheader: 'An organization lifecycle or onboarding state change occurred.',
+          buttonText: 'Open workspace',
+          bodyIntro: (input, tplName) =>
+            `An organization event was recorded for ${input.organizationName || 'your organization'}: ${tplName}.`,
+          bodyAction: () =>
+            'Open your organization workspace in Zoiko Shield to review membership, domain verification, or onboarding status.',
+        };
+      case 'CONN':
+        return {
+          senderClass: 'telemetry-health@zoikoshield.com',
+          preheader: 'Connector ingestion health or telemetry pipeline threshold notice.',
+          buttonText: 'View connector health',
+          bodyIntro: (input, tplName) =>
+            `Zoiko Shield detected a connector ingestion health event: ${tplName}.`,
+          bodyAction: () =>
+            'Review ingestion latency, schema status, and pipeline metrics in the Ingestion Cockpit. Raw credentials and streaming tokens are never sent in email.',
+        };
+      case 'SEC':
+        return {
+          senderClass: 'security-alerts@zoikoshield.com',
+          preheader: 'Immediate security review may be required in Zoiko Shield.',
+          buttonText: 'Review security alert',
+          bodyIntro: (input, tplName) =>
+            `A security alert was recorded for ${input.organizationName || 'your organization'}: ${tplName}.`,
+          bodyAction: () =>
+            'Open the security casework workspace to review evidence, detection rationale, and containment status.',
+        };
+      case 'ACT':
+        return {
+          senderClass: 'action-approvals@zoikoshield.com',
+          preheader: 'A governed response decision or approval is waiting in Zoiko Shield.',
+          buttonText: 'Review response action',
+          bodyIntro: (input, tplName) =>
+            `A governed response action state change occurred: ${tplName}.`,
+          bodyAction: () =>
+            'Review the action scope, target systems, and dual-custody status in Zoiko Shield. Actions can only be authorized inside the authenticated console.',
+        };
+      case 'ASSURE':
+        return {
+          senderClass: 'assurance-notices@zoikoshield.com',
+          preheader: 'Compliance control, obligation review, or assurance posture update.',
+          buttonText: 'Review assurance posture',
+          bodyIntro: (input, tplName) =>
+            `A continuous assurance control event was recorded: ${tplName}.`,
+          bodyAction: () =>
+            'Open the Assurance Cockpit to review control status, evidence freshness, and obligation applicability.',
+        };
+      case 'EVID':
+        return {
+          senderClass: 'audit-ledger@zoikoshield.com',
+          preheader: 'Evidence ledger artifact or cryptographic audit package update.',
+          buttonText: 'Open evidence ledger',
+          bodyIntro: (input, tplName) =>
+            `An evidence ledger milestone occurred: ${tplName}.`,
+          bodyAction: (input) =>
+            `Inspect the Merkle tree attestation or download verified audit packages in Zoiko Shield before ${input.dueAtLocal || 'the expiration window'}.`,
+        };
+      case 'AI':
+        return {
+          senderClass: 'ai-governance@zoikoshield.com',
+          preheader: 'Governed AI decision envelope or model evaluation notice.',
+          buttonText: 'Open AI governance',
+          bodyIntro: (input, tplName) =>
+            `An AI governance event was recorded: ${tplName}.`,
+          bodyAction: () =>
+            'Review model telemetry, citations, grounding gates, and drift metrics in the AI Governance console.',
+        };
+      case 'DEV':
+        return {
+          senderClass: 'developer-ops@zoikoshield.com',
+          preheader: 'Developer API credential, webhook status, or rate limit notice.',
+          buttonText: 'Open developer portal',
+          bodyIntro: (input, tplName) =>
+            `A developer operations event was recorded: ${tplName}.`,
+          bodyAction: () =>
+            'Inspect API credentials, rotate webhook signing secrets, or review rate limits in the Developer Portal. Secrets are never transmitted in email.',
+        };
+      case 'BILL':
+        return {
+          senderClass: 'billing-ops@zoikoshield.com',
+          preheader: 'Commercial subscription, entitlement quota, or billing notice.',
+          buttonText: 'View billing details',
+          bodyIntro: (input, tplName) =>
+            `A commercial billing event was generated for ${input.organizationName || 'your account'}: ${tplName}.`,
+          bodyAction: () =>
+            'Review your subscription plan, usage meters, invoices, and payment methods in Billing & Commercial.',
+        };
+      case 'SUP':
+        return {
+          senderClass: 'support@zoikoshield.com',
+          preheader: 'Enterprise support case status update or customer communication.',
+          buttonText: 'Open support case',
+          bodyIntro: (input, tplName) =>
+            `A support ticket event occurred: ${tplName}.`,
+          bodyAction: () =>
+            'View case history, communicate with assigned engineers, or manage privileged support grants in the Support Center.',
+        };
+      case 'PRIV':
+        return {
+          senderClass: 'privacy-compliance@zoikoshield.com',
+          preheader: 'Privacy rights, data residency, or legal hold notification.',
+          buttonText: 'Open privacy center',
+          bodyIntro: (input, tplName) =>
+            `A privacy and data governance event was recorded: ${tplName}.`,
+          bodyAction: () =>
+            'Open the Privacy & Data Governance console to manage verified subject requests, legal holds, or data residency migration.',
+        };
+      case 'OFF':
+        return {
+          senderClass: 'offboarding-records@zoikoshield.com',
+          preheader: 'Tenant offboarding, cryptographic key destruction, or deletion milestone.',
+          buttonText: 'Review offboarding status',
+          bodyIntro: (input, tplName) =>
+            `A tenant offboarding milestone was reached: ${tplName}.`,
+          bodyAction: () =>
+            'Review the offboarding checklist, cryptographic key destruction logs, and final deletion attestations in the Offboarding Portal.',
+        };
+      case 'STAT':
+        return {
+          senderClass: 'service-status@zoikoshield.com',
+          preheader: 'Platform service availability, maintenance, or incident update.',
+          buttonText: 'View service status',
+          bodyIntro: (input, tplName) =>
+            `A platform service status update was published: ${tplName}.`,
+          bodyAction: () =>
+            'Check live service availability, maintenance windows, and incident recovery timelines on the Zoiko Shield Status page.',
+        };
+      case 'OPS':
+        return {
+          senderClass: 'internal_ops_sender',
+          preheader: 'Internal production event requiring response through the incident system and approved runbook.',
+          buttonText: 'Open incident',
+          bodyIntro: (input, tplName) =>
+            `Zoiko Shield recorded an internal production event: ${tplName}.`,
+          bodyAction: () =>
+            'Acknowledge and manage this event in the incident system, follow the approved runbook, and preserve evidence.',
+        };
+      case 'GOV':
+      default:
+        return {
+          senderClass: 'governance-admin@zoikoshield.com',
+          preheader: 'Administrative governance, terms of service, or notification routing notice.',
+          buttonText: isOps ? 'Open incident' : 'Open governance center',
+          bodyIntro: (input, tplName) =>
+            `An administrative governance event was recorded: ${tplName}.`,
+          bodyAction: () =>
+            'Review notification routing, contractual terms updates, or subprocessor notices in Governance & Policy.',
+        };
     }
   }
 

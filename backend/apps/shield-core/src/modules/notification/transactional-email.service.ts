@@ -9,6 +9,7 @@ import {
   ProductionEmailTemplateEngine,
   EmailRenderInput,
 } from './templates/production-email-template.engine';
+import { TenantIsolationValidator } from './policies/tenant-isolation-validator.service';
 
 export type NotificationTemplateCategory =
   | 'USG/UsageThreshold75Percent'
@@ -52,9 +53,15 @@ export interface DispatchedEmailReceipt {
 export class TransactionalEmailService {
   private readonly logger = new Logger(TransactionalEmailService.name);
   private readonly templateEngine: ProductionEmailTemplateEngine;
+  private readonly tenantIsolationValidator: TenantIsolationValidator;
 
-  constructor(@Optional() templateEngine?: ProductionEmailTemplateEngine) {
+  constructor(
+    @Optional() templateEngine?: ProductionEmailTemplateEngine,
+    @Optional() tenantIsolationValidator?: TenantIsolationValidator,
+  ) {
     this.templateEngine = templateEngine || new ProductionEmailTemplateEngine();
+    this.tenantIsolationValidator =
+      tenantIsolationValidator || new TenantIsolationValidator();
   }
 
   /**
@@ -65,6 +72,23 @@ export class TransactionalEmailService {
   ): Promise<DispatchedEmailReceipt> {
     if (!input.recipients || input.recipients.length === 0) {
       throw new BadRequestException('At least one email recipient is required');
+    }
+
+    // Enforce Gate 3 Tenant Boundary & URL Isolation across all recipients
+    for (const recipient of input.recipients) {
+      this.tenantIsolationValidator.validateTenantBoundary({
+        tenantId: input.tenantId,
+        recipientEmail: recipient.email,
+        resourceTenantId:
+          input.variables.resourceTenantId ||
+          input.variables.resource_tenant_id,
+        ctaUrl:
+          input.variables.actionUrl ||
+          input.variables.action_url ||
+          input.variables.security_object_url ||
+          input.variables.onboardingUrl ||
+          input.variables.onboarding_url,
+      });
     }
 
     const firstRecipient = input.recipients[0];
@@ -80,32 +104,65 @@ export class TransactionalEmailService {
     ) {
       const renderInput: EmailRenderInput = {
         templateId: input.templateKey,
-        recipientFirstName: firstRecipient.name || 'Security Operator',
+        recipientFirstName:
+          firstRecipient.name ||
+          input.variables.recipientFirstName ||
+          input.variables.recipient_first_name ||
+          (firstRecipient.email ? firstRecipient.email.split('@')[0] : 'Security Operator'),
         organizationName:
           input.variables.organizationName ||
+          input.variables.organization_name ||
           input.variables.tenantName ||
+          input.variables.tenant_name ||
           'Enterprise Tenant',
         referenceId:
-          input.variables.referenceId || `ref-${Date.now().toString(36)}`,
-        statusLabel: input.variables.statusLabel || 'ACTIVE',
+          input.variables.referenceId ||
+          input.variables.reference_id ||
+          `ref-${Date.now().toString(36)}`,
+        statusLabel:
+          input.variables.statusLabel ||
+          input.variables.status_label ||
+          'ACTIVE',
         occurredAtLocal:
-          input.variables.occurredAtLocal || new Date().toLocaleString(),
+          input.variables.occurredAtLocal ||
+          input.variables.occurred_at_local ||
+          new Date().toLocaleString(),
         timezone: input.variables.timezone || 'UTC',
-        dueAtLocal: input.variables.dueAtLocal,
-        actorDisplayName: input.variables.actorDisplayName,
-        objectDisplayReference: input.variables.objectDisplayReference,
-        actionUrl: input.variables.actionUrl,
-        accountSecurityUrl: input.variables.accountSecurityUrl,
-        auditUrl: input.variables.auditUrl,
-        billingUrl: input.variables.billingUrl,
-        supportUrl: input.variables.supportUrl,
-        onboardingUrl: input.variables.onboardingUrl,
-        developerUrl: input.variables.developerUrl,
-        governanceUrl: input.variables.governanceUrl,
-        verificationUrl: input.variables.verificationUrl,
-        passwordResetUrl: input.variables.passwordResetUrl,
-        downloadUrl: input.variables.downloadUrl,
-        tokenExpiresAtLocal: input.variables.tokenExpiresAtLocal,
+        dueAtLocal:
+          input.variables.dueAtLocal || input.variables.due_at_local,
+        actorDisplayName:
+          input.variables.actorDisplayName ||
+          input.variables.actor_display_name,
+        objectDisplayReference:
+          input.variables.objectDisplayReference ||
+          input.variables.object_display_reference,
+        actionUrl:
+          input.variables.actionUrl || input.variables.action_url,
+        accountSecurityUrl:
+          input.variables.accountSecurityUrl ||
+          input.variables.account_security_url,
+        auditUrl: input.variables.auditUrl || input.variables.audit_url,
+        billingUrl:
+          input.variables.billingUrl || input.variables.billing_url,
+        supportUrl:
+          input.variables.supportUrl || input.variables.support_url,
+        onboardingUrl:
+          input.variables.onboardingUrl || input.variables.onboarding_url,
+        developerUrl:
+          input.variables.developerUrl || input.variables.developer_url,
+        governanceUrl:
+          input.variables.governanceUrl || input.variables.governance_url,
+        verificationUrl:
+          input.variables.verificationUrl || input.variables.verification_url,
+        passwordResetUrl:
+          input.variables.passwordResetUrl ||
+          input.variables.password_reset_url,
+        downloadUrl:
+          input.variables.downloadUrl || input.variables.download_url,
+        tokenExpiresAtLocal:
+          input.variables.tokenExpiresAtLocal ||
+          input.variables.token_expires_at_local ||
+          input.variables.invitation_expires_at_local,
         extraVariables: input.variables,
       };
 
