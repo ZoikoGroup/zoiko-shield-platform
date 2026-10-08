@@ -93,6 +93,19 @@ export class MailService implements OnModuleInit {
     const appBaseUrl = this.configService
       .get<string>('APP_BASE_URL', 'http://localhost:3000')
       .replace(/\/$/, '');
+
+    // Gate 3 rejects non-HTTPS action links outside local development, so an
+    // unset APP_BASE_URL in production would otherwise surface as a generic
+    // "CTA URL must use HTTPS" render failure far from its cause.
+    if (
+      process.env.NODE_ENV === 'production' &&
+      !appBaseUrl.startsWith('https://')
+    ) {
+      throw new Error(
+        `APP_BASE_URL must be an https:// origin in production to build owner invitation links. Received: '${appBaseUrl}'`,
+      );
+    }
+
     const activationUrl = `${appBaseUrl}/accept-invite?token=${encodeURIComponent(input.token)}`;
 
     if (this.transactionalEmailService) {

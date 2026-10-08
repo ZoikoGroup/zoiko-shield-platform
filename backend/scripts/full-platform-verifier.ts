@@ -1380,6 +1380,73 @@ async function runFullPlatformVerifier() {
     'Security sender must route to security-alerts@zoikoshield.com',
   );
 
+  // 4b. Whole-matrix routing. Sampling a single template hid a defect where 175
+  // of 226 contracts declared a mailbox address instead of a router profile key
+  // and silently degraded to the generic fallback sender, losing reputation
+  // pool separation and RFC 8058 unsubscribe policy.
+  const unroutableTemplates = allTemplates.filter(
+    (t) => !senderRouter.isRegisteredSenderClass(t.senderClass),
+  );
+  assertInvariant(
+    unroutableTemplates.length === 0,
+    `Every template must declare a registered sender class. ${unroutableTemplates.length} do not: ` +
+      unroutableTemplates
+        .slice(0, 5)
+        .map((t) => `${t.id}->${t.senderClass}`)
+        .join(', '),
+  );
+
+  const securityPoolViolations = allTemplates.filter(
+    (t) =>
+      (t.category === 'SEC' || t.category === 'ACT') &&
+      senderRouter.resolveSenderProfile(t.senderClass).reputationPool !==
+        'SECURITY_CRITICAL',
+  );
+  assertInvariant(
+    securityPoolViolations.length === 0,
+    `All SEC and ACT templates must route to the SECURITY_CRITICAL reputation pool. Violations: ${securityPoolViolations.length}`,
+  );
+
+  const billingUnsubscribeViolations = allTemplates.filter(
+    (t) =>
+      t.category === 'BILL' &&
+      !senderRouter.resolveSenderProfile(t.senderClass).supportUnsubscribe,
+  );
+  assertInvariant(
+    billingUnsubscribeViolations.length === 0,
+    `All BILL templates must support RFC 8058 unsubscribe headers. Violations: ${billingUnsubscribeViolations.length}`,
+  );
+
+  // 4c. Gate 3 must cover every CTA resolution key, not just the handful the
+  // pre-send validator enumerates. Probe the engine's resolved-CTA choke point.
+  for (const hostileKey of [
+    'invitation_url',
+    'verification_url',
+    'password_reset_url',
+    'download_url',
+    'audit_url',
+  ]) {
+    let blocked = false;
+    try {
+      templateEngine.render({
+        templateId: 'ZS-EML-SEC-001',
+        recipientFirstName: 'Sarah',
+        organizationName: 'Acme Financial Services Inc.',
+        referenceId: 'INC-2026-9042',
+        statusLabel: 'ACTIVE',
+        occurredAtLocal: '2026-10-08 09:15:00',
+        timezone: 'UTC+0',
+        extraVariables: { [hostileKey]: 'http://phishing.example.com/steal' },
+      });
+    } catch {
+      blocked = true;
+    }
+    assertInvariant(
+      blocked,
+      `Gate 3 must reject a non-HTTPS CTA supplied through '${hostileKey}'`,
+    );
+  }
+
   // 5. Audit Reconstruction & Offline Verifier CLI (ADR-01)
   const auditReconstructor = new NotificationAuditReconstructionService(null as any);
   const manifest = auditReconstructor.createAuditManifest({
@@ -1416,10 +1483,10 @@ async function runFullPlatformVerifier() {
   );
 
   logger.log(
-    `  ✔ Email Template Matrix: Verified ${allTemplates.length}/226 contracts across 16 domains.`,
+    `  ✔ Email Template Matrix: Verified ${allTemplates.length}/226 contracts across 16 domains, all routing to registered sender classes.`,
   );
   logger.log(
-    `  ✔ Gate 3 Isolation: Verified strict tenant boundary & HTTPS URL enforcer.`,
+    `  ✔ Gate 3 Isolation: Verified strict tenant boundary & HTTPS URL enforcer across all CTA resolution keys.`,
   );
   logger.log(
     `  ✔ ADR-01 Offline Verifier: Verified canonical audit hash (${manifest.auditHash.slice(0, 16)}...) -> STATUS: ${receiptVerification.status}.`,

@@ -5,6 +5,7 @@ import {
   resolveAllowlistedRole,
   resolveAllowlistedActionType,
 } from './template-enums.registry';
+import { assertSafeCtaUrl } from '../policies/url-safety';
 
 export interface EmailRenderInput {
   templateId: string;
@@ -298,6 +299,12 @@ export class ProductionEmailTemplateEngine {
       input.downloadUrl ||
       (input.extraVariables?.download_url as string) ||
       'https://app.zoikoshield.com';
+
+    // Gate 3 (Action Safety) choke point. The resolution chain above accepts a
+    // CTA from ~22 typed and extraVariables keys; validating the *resolved*
+    // value is the only way to guarantee every one of them is covered. A
+    // per-key check at the call site silently misses any key it does not list.
+    assertSafeCtaUrl(ctaButtonUrl, `CTA URL for template ${input.templateId}`);
 
     const plainTextBody = [
       `Hello ${input.recipientFirstName},`,
@@ -1052,6 +1059,15 @@ export class ProductionEmailTemplateEngine {
     }
   }
 
+  /**
+   * Per-domain copy and routing metadata for synthesized template contracts.
+   *
+   * `senderClass` MUST be a profile key registered in SenderClassRouterService
+   * ('security_sender', 'billing_sender', ...), never a mailbox address — the
+   * router owns the address, display name, reputation pool and RFC 8058
+   * unsubscribe policy for each class, and an unrecognized value silently
+   * degrades the template to the generic fallback sender.
+   */
   private getDomainMetadata(
     category: string,
     name: string,
@@ -1064,9 +1080,19 @@ export class ProductionEmailTemplateEngine {
     bodyAction: (input: EmailRenderInput) => string;
   } {
     switch (category) {
+      case 'IAM':
+        return {
+          senderClass: 'account_sender',
+          preheader: 'An identity, authentication, or access state change occurred.',
+          buttonText: 'Review account security',
+          bodyIntro: (input, tplName) =>
+            `An identity and access event was recorded for ${input.organizationName || 'your organization'}: ${tplName}.`,
+          bodyAction: () =>
+            'Review active sessions, credentials, and access grants in your account security settings. Zoiko Shield never asks for passwords, MFA codes, or recovery keys by email.',
+        };
       case 'ORG':
         return {
-          senderClass: 'onboarding@zoikoshield.com',
+          senderClass: 'account_sender',
           preheader: 'An organization lifecycle or onboarding state change occurred.',
           buttonText: 'Open workspace',
           bodyIntro: (input, tplName) =>
@@ -1076,7 +1102,7 @@ export class ProductionEmailTemplateEngine {
         };
       case 'CONN':
         return {
-          senderClass: 'telemetry-health@zoikoshield.com',
+          senderClass: 'developer_sender',
           preheader: 'Connector ingestion health or telemetry pipeline threshold notice.',
           buttonText: 'View connector health',
           bodyIntro: (input, tplName) =>
@@ -1086,7 +1112,7 @@ export class ProductionEmailTemplateEngine {
         };
       case 'SEC':
         return {
-          senderClass: 'security-alerts@zoikoshield.com',
+          senderClass: 'security_sender',
           preheader: 'Immediate security review may be required in Zoiko Shield.',
           buttonText: 'Review security alert',
           bodyIntro: (input, tplName) =>
@@ -1096,7 +1122,7 @@ export class ProductionEmailTemplateEngine {
         };
       case 'ACT':
         return {
-          senderClass: 'action-approvals@zoikoshield.com',
+          senderClass: 'security_sender',
           preheader: 'A governed response decision or approval is waiting in Zoiko Shield.',
           buttonText: 'Review response action',
           bodyIntro: (input, tplName) =>
@@ -1106,7 +1132,7 @@ export class ProductionEmailTemplateEngine {
         };
       case 'ASSURE':
         return {
-          senderClass: 'assurance-notices@zoikoshield.com',
+          senderClass: 'assurance_sender',
           preheader: 'Compliance control, obligation review, or assurance posture update.',
           buttonText: 'Review assurance posture',
           bodyIntro: (input, tplName) =>
@@ -1116,7 +1142,7 @@ export class ProductionEmailTemplateEngine {
         };
       case 'EVID':
         return {
-          senderClass: 'audit-ledger@zoikoshield.com',
+          senderClass: 'assurance_sender',
           preheader: 'Evidence ledger artifact or cryptographic audit package update.',
           buttonText: 'Open evidence ledger',
           bodyIntro: (input, tplName) =>
@@ -1126,7 +1152,7 @@ export class ProductionEmailTemplateEngine {
         };
       case 'AI':
         return {
-          senderClass: 'ai-governance@zoikoshield.com',
+          senderClass: 'assurance_sender',
           preheader: 'Governed AI decision envelope or model evaluation notice.',
           buttonText: 'Open AI governance',
           bodyIntro: (input, tplName) =>
@@ -1136,7 +1162,7 @@ export class ProductionEmailTemplateEngine {
         };
       case 'DEV':
         return {
-          senderClass: 'developer-ops@zoikoshield.com',
+          senderClass: 'developer_sender',
           preheader: 'Developer API credential, webhook status, or rate limit notice.',
           buttonText: 'Open developer portal',
           bodyIntro: (input, tplName) =>
@@ -1146,7 +1172,7 @@ export class ProductionEmailTemplateEngine {
         };
       case 'BILL':
         return {
-          senderClass: 'billing-ops@zoikoshield.com',
+          senderClass: 'billing_sender',
           preheader: 'Commercial subscription, entitlement quota, or billing notice.',
           buttonText: 'View billing details',
           bodyIntro: (input, tplName) =>
@@ -1156,7 +1182,7 @@ export class ProductionEmailTemplateEngine {
         };
       case 'SUP':
         return {
-          senderClass: 'support@zoikoshield.com',
+          senderClass: 'account_sender',
           preheader: 'Enterprise support case status update or customer communication.',
           buttonText: 'Open support case',
           bodyIntro: (input, tplName) =>
@@ -1166,7 +1192,7 @@ export class ProductionEmailTemplateEngine {
         };
       case 'PRIV':
         return {
-          senderClass: 'privacy-compliance@zoikoshield.com',
+          senderClass: 'privacy_sender',
           preheader: 'Privacy rights, data residency, or legal hold notification.',
           buttonText: 'Open privacy center',
           bodyIntro: (input, tplName) =>
@@ -1176,7 +1202,7 @@ export class ProductionEmailTemplateEngine {
         };
       case 'OFF':
         return {
-          senderClass: 'offboarding-records@zoikoshield.com',
+          senderClass: 'privacy_sender',
           preheader: 'Tenant offboarding, cryptographic key destruction, or deletion milestone.',
           buttonText: 'Review offboarding status',
           bodyIntro: (input, tplName) =>
@@ -1186,7 +1212,7 @@ export class ProductionEmailTemplateEngine {
         };
       case 'STAT':
         return {
-          senderClass: 'service-status@zoikoshield.com',
+          senderClass: 'status_sender',
           preheader: 'Platform service availability, maintenance, or incident update.',
           buttonText: 'View service status',
           bodyIntro: (input, tplName) =>
@@ -1207,7 +1233,7 @@ export class ProductionEmailTemplateEngine {
       case 'GOV':
       default:
         return {
-          senderClass: 'governance-admin@zoikoshield.com',
+          senderClass: 'account_sender',
           preheader: 'Administrative governance, terms of service, or notification routing notice.',
           buttonText: isOps ? 'Open incident' : 'Open governance center',
           bodyIntro: (input, tplName) =>

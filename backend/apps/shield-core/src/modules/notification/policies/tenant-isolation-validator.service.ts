@@ -1,4 +1,5 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { assertSafeCtaUrl } from './url-safety';
 
 export interface TenantIsolationCheckInput {
   tenantId: string;
@@ -32,11 +33,7 @@ export class TenantIsolationValidator {
       );
     }
 
-    if (!input.recipientEmail || !input.recipientEmail.includes('@')) {
-      throw new BadRequestException(
-        'Tenant isolation violation: Invalid recipient email address',
-      );
-    }
+    this.validateRecipientEmail(input.recipientEmail);
 
     // Resource tenant ID cross-check
     if (input.resourceTenantId && input.resourceTenantId !== input.tenantId) {
@@ -56,28 +53,40 @@ export class TenantIsolationValidator {
     return true;
   }
 
-  private validateSafeUrl(url: string): void {
-    try {
-      const parsed = new URL(url);
-      const isLocalhost =
-        parsed.hostname === 'localhost' ||
-        parsed.hostname === '127.0.0.1' ||
-        parsed.hostname.endsWith('.localhost');
-      if (
-        parsed.protocol !== 'https:' &&
-        !(isLocalhost && parsed.protocol === 'http:')
-      ) {
-        throw new BadRequestException(
-          `Action safety violation: CTA URL must use HTTPS protocol. Received: ${parsed.protocol}`,
-        );
-      }
-    } catch (err: any) {
-      if (err instanceof BadRequestException) {
-        throw err;
-      }
+  private validateRecipientEmail(recipientEmail: string): void {
+    if (typeof recipientEmail !== 'string' || recipientEmail.trim() === '') {
       throw new BadRequestException(
-        `Malformed CTA URL in email render context: ${err.message}`,
+        'Tenant isolation violation: Invalid recipient email address',
       );
     }
+
+    // Reject CR/LF and control characters outright: a recipient value reaches
+    // SMTP headers, where an embedded newline becomes header injection
+    // (e.g. a smuggled Bcc: to an out-of-tenant address).
+    if (/[\u0000-\u001f\u007f]/.test(recipientEmail)) {
+      throw new BadRequestException(
+        'Tenant isolation violation: Recipient email contains control characters',
+      );
+    }
+
+    if (recipientEmail.length > 254) {
+      throw new BadRequestException(
+        'Tenant isolation violation: Recipient email exceeds maximum length',
+      );
+    }
+
+    // Deliberately conservative single-address shape: exactly one @, a
+    // non-empty local part, and a dotted domain. 'a@', '@b' and '@' now fail.
+    if (!/^[^\s@,;<>"]+@[^\s@,;<>"]+\.[^\s@,;<>".]{2,}$/.test(recipientEmail)) {
+      throw new BadRequestException(
+        'Tenant isolation violation: Invalid recipient email address',
+      );
+    }
+  }
+
+  private validateSafeUrl(url: string): void {
+    // Delegated to the shared Gate 3 implementation so the engine's
+    // post-resolution check and this pre-send check can never diverge.
+    assertSafeCtaUrl(url);
   }
 }

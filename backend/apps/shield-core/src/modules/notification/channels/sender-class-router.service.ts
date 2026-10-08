@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 
 export type SenderClassType =
   | 'account_sender'
@@ -27,6 +27,8 @@ export interface SenderClassProfile {
  */
 @Injectable()
 export class SenderClassRouterService {
+  private readonly logger = new Logger(SenderClassRouterService.name);
+
   private readonly profiles: Record<string, SenderClassProfile> = {
     account_sender: {
       fromAddress: 'accounts@zoikoshield.com',
@@ -98,8 +100,23 @@ export class SenderClassRouterService {
    * Resolves the authoritative sender profile for any given template sender class.
    */
   resolveSenderProfile(senderClass: SenderClassType): SenderClassProfile {
-    const profile = this.profiles[senderClass];
-    if (profile) return profile;
+    // Own-property lookup only: a bare index would resolve inherited keys such
+    // as 'constructor' or 'toString' to Object.prototype members, which are
+    // truthy and would be returned as a profile with an undefined fromAddress.
+    if (
+      typeof senderClass === 'string' &&
+      Object.prototype.hasOwnProperty.call(this.profiles, senderClass)
+    ) {
+      return this.profiles[senderClass];
+    }
+
+    // Reaching the fallback means a template declares a sender class that is
+    // not registered here, which silently collapses its reputation pool and
+    // unsubscribe policy onto the generic profile. Surface it loudly.
+    this.logger.warn(
+      `Unregistered sender class '${String(senderClass)}' — falling back to the generic platform sender. ` +
+        'Reputation pool separation and RFC 8058 unsubscribe policy for this template are NOT applied.',
+    );
 
     // Default safe fallback
     return {
@@ -110,5 +127,24 @@ export class SenderClassRouterService {
       mandatoryDkimAlignment: true,
       supportUnsubscribe: false,
     };
+  }
+
+  /**
+   * Sender class keys registered in this router. Verification suites use this
+   * to assert that every template contract routes to a real profile rather
+   * than degrading to the generic fallback.
+   */
+  listRegisteredSenderClasses(): string[] {
+    return Object.keys(this.profiles);
+  }
+
+  /**
+   * True when the given sender class has an explicitly registered profile.
+   */
+  isRegisteredSenderClass(senderClass: string): boolean {
+    return (
+      typeof senderClass === 'string' &&
+      Object.prototype.hasOwnProperty.call(this.profiles, senderClass)
+    );
   }
 }

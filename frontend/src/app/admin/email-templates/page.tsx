@@ -81,195 +81,8 @@ const DOMAINS: TemplateDomain[] = [
   { id: "4.16", code: "GOV", name: "Governance & Admin Notices", count: 8 },
 ];
 
-export default function EmailTemplateStudioPage() {
-  const [selectedDomain, setSelectedDomain] = useState<string>("IAM");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [templates, setTemplates] = useState<TemplateItem[]>([]);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("ZS-EML-IAM-001");
-  const [previewOutput, setPreviewOutput] = useState<RenderedEmailOutput | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [rendering, setRendering] = useState(false);
-  const [sendingTest, setSendingTest] = useState(false);
-  const [testRecipient, setTestRecipient] = useState("operator@zoikoshield.corp");
-  const [testSentMessage, setTestSentMessage] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"desktop" | "mobile">("desktop");
-  const [colorScheme, setColorScheme] = useState<"dark" | "light">("dark");
-  const [formatTab, setFormatTab] = useState<"html" | "plaintext" | "variables">("html");
-
-  // Custom variable state
-  const [vars, setVars] = useState({
-    recipientFirstName: "Sarah",
-    organizationName: "Sovereign Financial Holdings",
-    referenceId: "REF-2026-8941",
-    statusLabel: "VERIFIED_ACTIVE",
-    occurredAtLocal: "2026-10-06 11:30:00",
-    timezone: "UTC+0",
-    actionUrl: "https://app.zoikoshield.com/actions",
-  });
-
-  // Client-side deterministic preview generator for standalone frontend execution
-  const generateClientPreview = useCallback(
-    (templateId: string, customVars: typeof vars): RenderedEmailOutput => {
-      const tpl =
-        templates.find((t) => t.id === templateId) || {
-          id: templateId,
-          name: "Zoiko Shield Governed Notification",
-          subject: "Zoiko Shield — Governed State Change Notice",
-          preheader: "A governed security state change was recorded.",
-          senderClass: "security_alerts_sender",
-          gate: "P0" as const,
-          buttonText: "Review action",
-        };
-
-      // Gate 6: Fail-Closed Secret Redaction Check
-      const rawPayload = JSON.stringify(customVars);
-      const secretDetected =
-        /bearer\s+eyJ/i.test(rawPayload) ||
-        /AKIA[0-9A-Z]{16}/.test(rawPayload) ||
-        /-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(rawPayload) ||
-        /sk-[a-zA-Z0-9]{20,}/.test(rawPayload);
-
-      if (secretDetected) {
-        return {
-          templateId,
-          subject: "🔒 [SECURITY ALERT] Template Render Blocked",
-          preheader: "Gate 6 Security Defect: Secret detected in template payload.",
-          senderClass: tpl.senderClass,
-          gate: "P0",
-          htmlBody: `<!DOCTYPE html><html><body style="margin:0;padding:24px;background:#020617;font-family:system-ui,sans-serif;color:#f87171;"><div style="max-width:560px;margin:auto;padding:20px;border-radius:12px;background:#450a0a;border:1px solid #ef4444;"><h2 style="margin:0 0 12px 0;color:#fca5a5;">⛔ GATE 6 BLOCKED: Secret / Credential Detected</h2><p style="font-size:13px;color:#fecaca;line-height:1.5;">Fail-closed security release gate prevented email synthesis because a bearer token or secret credential was detected in the variables payload.</p><div style="margin-top:14px;padding:8px 12px;background:#18181b;border-radius:6px;font-family:monospace;font-size:11px;color:#cbd5e1;">Rule: ZS-EML-SEC-REDACT-001 (Zero Token Leakage Invariant)</div></div></body></html>`,
-          plainTextBody: `⛔ GATE 6 BLOCKED: Secret / Credential Detected\n\nFail-closed security release gate prevented email synthesis because a bearer token or secret credential was detected in the variables payload.\n\nRule: ZS-EML-SEC-REDACT-001`,
-          renderHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          buttonText: "Blocked",
-          ctaUrl: "#",
-          securityFooter: "Security Policy Enforcement: Active",
-          operationalFooter: "Zoiko Shield Automated Gatekeeper",
-        };
-      }
-
-      const htmlBody = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${tpl.subject}</title>
-</head>
-<body style="margin:0;padding:0;background-color:#020617;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#f8fafc;">
-  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#020617;padding:32px 12px;">
-    <tr>
-      <td align="center">
-        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:580px;background-color:#0f172a;border-radius:16px;border:1px solid #1e293b;overflow:hidden;">
-          <!-- Header Banner -->
-          <tr>
-            <td style="padding:28px 32px 20px 32px;background:linear-gradient(180deg,#1e293b 0%,#0f172a 100%);border-bottom:1px solid #334155;">
-              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
-                <tr>
-                  <td>
-                    <div style="font-size:11px;font-weight:700;color:#38bdf8;text-transform:uppercase;letter-spacing:1px;font-family:monospace;">ZOIKO SHIELD PLATFORM</div>
-                    <h1 style="margin:6px 0 0 0;font-size:18px;font-weight:700;color:#ffffff;line-height:1.3;">${tpl.name}</h1>
-                  </td>
-                  <td align="right" valign="top">
-                    <span style="display:inline-block;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;font-family:monospace;background:#0369a1;color:#f0f9ff;border:1px solid #38bdf8;">${tpl.gate} NOTICE</span>
-                  </td>
-                </tr>
-              </table>
-            </td>
-          </tr>
-          <!-- Body Content -->
-          <tr>
-            <td style="padding:28px 32px;font-size:14px;line-height:1.6;color:#cbd5e1;">
-              <p style="margin:0 0 16px 0;font-size:15px;color:#f1f5f9;">Hello <strong>${customVars.recipientFirstName || "Security Operator"}</strong>,</p>
-              <p style="margin:0 0 20px 0;">A governed security state event has been recorded for organization <strong style="color:#ffffff;">${customVars.organizationName || "Sovereign Financial Holdings"}</strong>.</p>
-              
-              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background:#020617;border-radius:10px;border:1px solid #1e293b;margin-bottom:24px;">
-                <tr>
-                  <td style="padding:16px 20px;font-family:monospace;font-size:12px;">
-                    <div style="margin-bottom:8px;"><span style="color:#64748b;">TEMPLATE ID:</span> <span style="color:#38bdf8;font-weight:bold;">${templateId}</span></div>
-                    <div style="margin-bottom:8px;"><span style="color:#64748b;">REFERENCE:</span> <span style="color:#f8fafc;">${customVars.referenceId || "REF-2026-8941"}</span></div>
-                    <div style="margin-bottom:8px;"><span style="color:#64748b;">STATUS:</span> <span style="color:#4ade80;font-weight:bold;">${customVars.statusLabel || "VERIFIED_ACTIVE"}</span></div>
-                    <div><span style="color:#64748b;">TIMESTAMP:</span> <span style="color:#94a3b8;">${customVars.occurredAtLocal || new Date().toISOString()} (${customVars.timezone || "UTC"})</span></div>
-                  </td>
-                </tr>
-              </table>
-
-              <!-- CTA Button -->
-              <table role="presentation" border="0" cellspacing="0" cellpadding="0" style="margin:24px 0;">
-                <tr>
-                  <td align="center" style="border-radius:8px;background:#0284c7;">
-                    <a href="${customVars.actionUrl || "https://app.zoikoshield.com/actions"}" target="_blank" style="display:inline-block;padding:12px 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;background:#0284c7;border:1px solid #38bdf8;">
-                      ${tpl.buttonText || "Review Governed Action"} &rarr;
-                    </a>
-                  </td>
-                </tr>
-              </table>
-
-              <p style="margin:0;font-size:12px;color:#94a3b8;">If you did not initiate or authorize this request, notify your security operations center immediately.</p>
-            </td>
-          </tr>
-          <!-- Footer -->
-          <tr>
-            <td style="padding:20px 32px;background-color:#020617;border-top:1px solid #1e293b;font-size:11px;color:#64748b;line-height:1.5;font-family:monospace;">
-              <div>Zoiko Shield Cryptographic State Attestation &bull; RFC 3161 Certified</div>
-              <div style="margin-top:4px;">Dispatched via <span style="color:#94a3b8;">${tpl.senderClass}</span> &bull; SHA-256 Verified</div>
-            </td>
-          </tr>
-        </table>
-      </td>
-    </tr>
-  </table>
-</body>
-</html>`;
-
-      const plainTextBody = `=======================================================
-ZOIKO SHIELD PLATFORM — ${tpl.name.toUpperCase()} [${tpl.gate}]
-=======================================================
-
-Hello ${customVars.recipientFirstName || "Security Operator"},
-
-A governed security state event has been recorded for organization:
-${customVars.organizationName || "Sovereign Financial Holdings"}.
-
-DETAILS:
-- Template ID: ${templateId}
-- Reference ID: ${customVars.referenceId || "REF-2026-8941"}
-- Status: ${customVars.statusLabel || "VERIFIED_ACTIVE"}
-- Timestamp: ${customVars.occurredAtLocal || new Date().toISOString()} (${customVars.timezone || "UTC"})
-
-ACTION LINK:
-${customVars.actionUrl || "https://app.zoikoshield.com/actions"}
-
--------------------------------------------------------
-Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
-
-      // Compute pseudo SHA-256 for deterministic client display
-      let hash = 0;
-      for (let i = 0; i < htmlBody.length; i++) {
-        hash = (hash << 5) - hash + htmlBody.charCodeAt(i);
-        hash |= 0;
-      }
-      const hexHash = Math.abs(hash).toString(16).padStart(8, "0");
-      const renderHash = `${hexHash}8f91a24bc39d4810fecda9102847ba92b817fa91823746a518293746bc9281a0`.slice(
-        0,
-        64,
-      );
-
-      return {
-        templateId,
-        subject: tpl.subject,
-        preheader: tpl.preheader,
-        senderClass: tpl.senderClass,
-        gate: tpl.gate,
-        htmlBody,
-        plainTextBody,
-        renderHash,
-        buttonText: tpl.buttonText,
-        ctaUrl: customVars.actionUrl || "https://app.zoikoshield.com/actions",
-        securityFooter: "Zoiko Shield Cryptographic State Attestation",
-        operationalFooter: "Dispatched via verified sender",
-      };
-    },
-    [templates],
-  );
-
+// Static reference data: module scope so it is not re-allocated on every
+// render and does not need to be a hook dependency.
 const EMAIL_TITLES: Record<string, string[]> = {
   IAM: [
     "Email verification required",
@@ -530,6 +343,196 @@ const EMAIL_TITLES: Record<string, string[]> = {
     "End-of-life or migration deadline notice",
   ],
 };
+
+export default function EmailTemplateStudioPage() {
+  const [selectedDomain, setSelectedDomain] = useState<string>("IAM");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [templates, setTemplates] = useState<TemplateItem[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("ZS-EML-IAM-001");
+  const [previewOutput, setPreviewOutput] = useState<RenderedEmailOutput | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [rendering, setRendering] = useState(false);
+  const [sendingTest, setSendingTest] = useState(false);
+  const [testRecipient, setTestRecipient] = useState("operator@zoikoshield.corp");
+  const [testSentMessage, setTestSentMessage] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"desktop" | "mobile">("desktop");
+  const [colorScheme, setColorScheme] = useState<"dark" | "light">("dark");
+  const [formatTab, setFormatTab] = useState<"html" | "plaintext" | "variables">("html");
+
+  // Custom variable state
+  const [vars, setVars] = useState({
+    recipientFirstName: "Sarah",
+    organizationName: "Sovereign Financial Holdings",
+    referenceId: "REF-2026-8941",
+    statusLabel: "VERIFIED_ACTIVE",
+    occurredAtLocal: "2026-10-06 11:30:00",
+    timezone: "UTC+0",
+    actionUrl: "https://app.zoikoshield.com/actions",
+  });
+
+  // Client-side deterministic preview generator for standalone frontend execution
+  const generateClientPreview = useCallback(
+    (templateId: string, customVars: typeof vars): RenderedEmailOutput => {
+      const tpl =
+        templates.find((t) => t.id === templateId) || {
+          id: templateId,
+          name: "Zoiko Shield Governed Notification",
+          subject: "Zoiko Shield — Governed State Change Notice",
+          preheader: "A governed security state change was recorded.",
+          senderClass: "security_alerts_sender",
+          gate: "P0" as const,
+          buttonText: "Review action",
+        };
+
+      // Gate 6: Fail-Closed Secret Redaction Check
+      const rawPayload = JSON.stringify(customVars);
+      const secretDetected =
+        /bearer\s+eyJ/i.test(rawPayload) ||
+        /AKIA[0-9A-Z]{16}/.test(rawPayload) ||
+        /-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(rawPayload) ||
+        /sk-[a-zA-Z0-9]{20,}/.test(rawPayload);
+
+      if (secretDetected) {
+        return {
+          templateId,
+          subject: "🔒 [SECURITY ALERT] Template Render Blocked",
+          preheader: "Gate 6 Security Defect: Secret detected in template payload.",
+          senderClass: tpl.senderClass,
+          gate: "P0",
+          htmlBody: `<!DOCTYPE html><html><body style="margin:0;padding:24px;background:#020617;font-family:system-ui,sans-serif;color:#f87171;"><div style="max-width:560px;margin:auto;padding:20px;border-radius:12px;background:#450a0a;border:1px solid #ef4444;"><h2 style="margin:0 0 12px 0;color:#fca5a5;">⛔ GATE 6 BLOCKED: Secret / Credential Detected</h2><p style="font-size:13px;color:#fecaca;line-height:1.5;">Fail-closed security release gate prevented email synthesis because a bearer token or secret credential was detected in the variables payload.</p><div style="margin-top:14px;padding:8px 12px;background:#18181b;border-radius:6px;font-family:monospace;font-size:11px;color:#cbd5e1;">Rule: ZS-EML-SEC-REDACT-001 (Zero Token Leakage Invariant)</div></div></body></html>`,
+          plainTextBody: `⛔ GATE 6 BLOCKED: Secret / Credential Detected\n\nFail-closed security release gate prevented email synthesis because a bearer token or secret credential was detected in the variables payload.\n\nRule: ZS-EML-SEC-REDACT-001`,
+          renderHash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          buttonText: "Blocked",
+          ctaUrl: "#",
+          securityFooter: "Security Policy Enforcement: Active",
+          operationalFooter: "Zoiko Shield Automated Gatekeeper",
+        };
+      }
+
+      const htmlBody = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${tpl.subject}</title>
+</head>
+<body style="margin:0;padding:0;background-color:#020617;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;color:#f8fafc;">
+  <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background-color:#020617;padding:32px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="max-width:580px;background-color:#0f172a;border-radius:16px;border:1px solid #1e293b;overflow:hidden;">
+          <!-- Header Banner -->
+          <tr>
+            <td style="padding:28px 32px 20px 32px;background:linear-gradient(180deg,#1e293b 0%,#0f172a 100%);border-bottom:1px solid #334155;">
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td>
+                    <div style="font-size:11px;font-weight:700;color:#38bdf8;text-transform:uppercase;letter-spacing:1px;font-family:monospace;">ZOIKO SHIELD PLATFORM</div>
+                    <h1 style="margin:6px 0 0 0;font-size:18px;font-weight:700;color:#ffffff;line-height:1.3;">${tpl.name}</h1>
+                  </td>
+                  <td align="right" valign="top">
+                    <span style="display:inline-block;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;font-family:monospace;background:#0369a1;color:#f0f9ff;border:1px solid #38bdf8;">${tpl.gate} NOTICE</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <!-- Body Content -->
+          <tr>
+            <td style="padding:28px 32px;font-size:14px;line-height:1.6;color:#cbd5e1;">
+              <p style="margin:0 0 16px 0;font-size:15px;color:#f1f5f9;">Hello <strong>${customVars.recipientFirstName || "Security Operator"}</strong>,</p>
+              <p style="margin:0 0 20px 0;">A governed security state event has been recorded for organization <strong style="color:#ffffff;">${customVars.organizationName || "Sovereign Financial Holdings"}</strong>.</p>
+              
+              <table role="presentation" width="100%" border="0" cellspacing="0" cellpadding="0" style="background:#020617;border-radius:10px;border:1px solid #1e293b;margin-bottom:24px;">
+                <tr>
+                  <td style="padding:16px 20px;font-family:monospace;font-size:12px;">
+                    <div style="margin-bottom:8px;"><span style="color:#64748b;">TEMPLATE ID:</span> <span style="color:#38bdf8;font-weight:bold;">${templateId}</span></div>
+                    <div style="margin-bottom:8px;"><span style="color:#64748b;">REFERENCE:</span> <span style="color:#f8fafc;">${customVars.referenceId || "REF-2026-8941"}</span></div>
+                    <div style="margin-bottom:8px;"><span style="color:#64748b;">STATUS:</span> <span style="color:#4ade80;font-weight:bold;">${customVars.statusLabel || "VERIFIED_ACTIVE"}</span></div>
+                    <div><span style="color:#64748b;">TIMESTAMP:</span> <span style="color:#94a3b8;">${customVars.occurredAtLocal || new Date().toISOString()} (${customVars.timezone || "UTC"})</span></div>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- CTA Button -->
+              <table role="presentation" border="0" cellspacing="0" cellpadding="0" style="margin:24px 0;">
+                <tr>
+                  <td align="center" style="border-radius:8px;background:#0284c7;">
+                    <a href="${customVars.actionUrl || "https://app.zoikoshield.com/actions"}" target="_blank" style="display:inline-block;padding:12px 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:13px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:8px;background:#0284c7;border:1px solid #38bdf8;">
+                      ${tpl.buttonText || "Review Governed Action"} &rarr;
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0;font-size:12px;color:#94a3b8;">If you did not initiate or authorize this request, notify your security operations center immediately.</p>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:20px 32px;background-color:#020617;border-top:1px solid #1e293b;font-size:11px;color:#64748b;line-height:1.5;font-family:monospace;">
+              <div>Zoiko Shield Cryptographic State Attestation &bull; RFC 3161 Certified</div>
+              <div style="margin-top:4px;">Dispatched via <span style="color:#94a3b8;">${tpl.senderClass}</span> &bull; SHA-256 Verified</div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+
+      const plainTextBody = `=======================================================
+ZOIKO SHIELD PLATFORM — ${tpl.name.toUpperCase()} [${tpl.gate}]
+=======================================================
+
+Hello ${customVars.recipientFirstName || "Security Operator"},
+
+A governed security state event has been recorded for organization:
+${customVars.organizationName || "Sovereign Financial Holdings"}.
+
+DETAILS:
+- Template ID: ${templateId}
+- Reference ID: ${customVars.referenceId || "REF-2026-8941"}
+- Status: ${customVars.statusLabel || "VERIFIED_ACTIVE"}
+- Timestamp: ${customVars.occurredAtLocal || new Date().toISOString()} (${customVars.timezone || "UTC"})
+
+ACTION LINK:
+${customVars.actionUrl || "https://app.zoikoshield.com/actions"}
+
+-------------------------------------------------------
+Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
+
+      // Compute pseudo SHA-256 for deterministic client display
+      let hash = 0;
+      for (let i = 0; i < htmlBody.length; i++) {
+        hash = (hash << 5) - hash + htmlBody.charCodeAt(i);
+        hash |= 0;
+      }
+      const hexHash = Math.abs(hash).toString(16).padStart(8, "0");
+      const renderHash = `${hexHash}8f91a24bc39d4810fecda9102847ba92b817fa91823746a518293746bc9281a0`.slice(
+        0,
+        64,
+      );
+
+      return {
+        templateId,
+        subject: tpl.subject,
+        preheader: tpl.preheader,
+        senderClass: tpl.senderClass,
+        gate: tpl.gate,
+        htmlBody,
+        plainTextBody,
+        renderHash,
+        buttonText: tpl.buttonText,
+        ctaUrl: customVars.actionUrl || "https://app.zoikoshield.com/actions",
+        securityFooter: "Zoiko Shield Cryptographic State Attestation",
+        operationalFooter: "Dispatched via verified sender",
+      };
+    },
+    [templates],
+  );
+
 
   const fetchTemplates = useCallback(async () => {
     setLoading(true);
@@ -909,6 +912,14 @@ const EMAIL_TITLES: Record<string, string[]> = {
                   <iframe
                     title="Email Preview"
                     srcDoc={previewOutput.htmlBody}
+                    // Rendered email HTML carries tenant-supplied variable
+                    // content and a CTA href. An unsandboxed srcDoc iframe
+                    // inherits this console's origin, so anything executable in
+                    // the preview would run with admin session access. An empty
+                    // sandbox gives it an opaque origin with no scripts, forms,
+                    // or top-level navigation — all a preview needs.
+                    sandbox=""
+                    referrerPolicy="no-referrer"
                     className="w-full min-h-[620px] bg-transparent border-0"
                   />
                 ) : (

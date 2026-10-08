@@ -119,5 +119,125 @@ describe('TransactionalEmailService', () => {
       }),
     ).rejects.toThrow(BadRequestException);
   });
+
+  // Regression: Gate 3 previously validated only actionUrl / action_url /
+  // security_object_url / onboardingUrl / onboarding_url, while the template
+  // engine resolved the CTA from ~22 keys. Every other key was an unchecked
+  // path to the action button in a Zoiko-Shield-branded security email.
+  describe('Gate 3 CTA URL coverage across every resolution key', () => {
+    const CTA_KEYS = [
+      'actionUrl',
+      'action_url',
+      'accountSecurityUrl',
+      'account_security_url',
+      'invitation_url',
+      'auditUrl',
+      'audit_url',
+      'billingUrl',
+      'billing_url',
+      'supportUrl',
+      'support_url',
+      'onboardingUrl',
+      'onboarding_url',
+      'developerUrl',
+      'developer_url',
+      'governanceUrl',
+      'governance_url',
+      'verificationUrl',
+      'verification_url',
+      'passwordResetUrl',
+      'password_reset_url',
+      'downloadUrl',
+      'download_url',
+    ];
+
+    const baseVariables = {
+      organizationName: 'Acme Corp',
+      referenceId: 'REF-CTA-01',
+      statusLabel: 'ACTIVE',
+      occurredAtLocal: '2026-10-08 12:00:00',
+      timezone: 'UTC',
+    };
+
+    it.each(CTA_KEYS)(
+      'rejects a hostile HTTP CTA supplied via "%s"',
+      async (key) => {
+        await expect(
+          emailService.dispatchTransactionalEmail({
+            tenantId: 'tenant-acme-prod',
+            templateKey: 'ZS-EML-SEC-001',
+            recipients: [{ email: 'analyst@acme.com', name: 'Analyst' }],
+            variables: {
+              ...baseVariables,
+              [key]: 'http://phishing.example.com/steal',
+            },
+          }),
+        ).rejects.toThrow(BadRequestException);
+      },
+    );
+
+    it.each(CTA_KEYS)(
+      'rejects a javascript: CTA supplied via "%s"',
+      async (key) => {
+        await expect(
+          emailService.dispatchTransactionalEmail({
+            tenantId: 'tenant-acme-prod',
+            templateKey: 'ZS-EML-SEC-001',
+            recipients: [{ email: 'analyst@acme.com', name: 'Analyst' }],
+            variables: {
+              ...baseVariables,
+              [key]: "javascript:fetch('//evil.example')",
+            },
+          }),
+        ).rejects.toThrow(BadRequestException);
+      },
+    );
+
+    it('rejects a credential-disguised CTA host', async () => {
+      await expect(
+        emailService.dispatchTransactionalEmail({
+          tenantId: 'tenant-acme-prod',
+          templateKey: 'ZS-EML-SEC-001',
+          recipients: [{ email: 'analyst@acme.com', name: 'Analyst' }],
+          variables: {
+            ...baseVariables,
+            invitation_url: 'https://app.zoikoshield.com@evil.example/login',
+          },
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('still accepts a legitimate HTTPS CTA and renders it', async () => {
+      const receipt = await emailService.dispatchTransactionalEmail({
+        tenantId: 'tenant-acme-prod',
+        templateKey: 'ZS-EML-SEC-001',
+        recipients: [{ email: 'analyst@acme.com', name: 'Analyst' }],
+        variables: {
+          ...baseVariables,
+          invitation_url: 'https://app.zoikoshield.com/invite/abc',
+        },
+      });
+      expect(receipt.htmlBody).toContain('https://app.zoikoshield.com/invite/abc');
+    });
+  });
+
+  it('rejects a recipient address carrying SMTP header injection', async () => {
+    await expect(
+      emailService.dispatchTransactionalEmail({
+        tenantId: 'tenant-acme-prod',
+        templateKey: 'ZS-EML-SEC-001',
+        recipients: [
+          { email: 'analyst@acme.com\nBcc: attacker@evil.example', name: 'A' },
+        ],
+        variables: {
+          organizationName: 'Acme Corp',
+          referenceId: 'REF-HDR-01',
+          statusLabel: 'ACTIVE',
+          occurredAtLocal: '2026-10-08 12:00:00',
+          timezone: 'UTC',
+        },
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
 });
 

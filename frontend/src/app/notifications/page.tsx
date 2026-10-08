@@ -48,54 +48,63 @@ function statusVariant(status: string) {
   }
 }
 
+/**
+ * Offline demonstration fixtures.
+ *
+ * Only rendered when shield-core is unreachable or returns nothing, and always
+ * behind an explicit "sample data" banner. Delivery records are an audit
+ * surface: showing fabricated DELIVERED rows as if they were real would let an
+ * operator believe a P0 alert reached its recipient when the backend is down.
+ */
+const SAMPLE_NOTIFICATIONS: NotificationDelivery[] = [
+  {
+    id: "del-p0-alert-1043",
+    event_id: "evt-sec-p0-lateral-movement",
+    channel: "EMAIL (security-alerts@zoikoshield.com)",
+    status: "DELIVERED",
+    attempt_count: 1,
+    delivered_at: new Date(Date.now() - 300000).toISOString(),
+    error_code: null,
+    created_at: new Date(Date.now() - 360000).toISOString(),
+  },
+  {
+    id: "del-jit-elev-1042",
+    event_id: "evt-jit-elevation-approved",
+    channel: "EMAIL (auth-notices@zoikoshield.com)",
+    status: "DELIVERED",
+    attempt_count: 1,
+    delivered_at: new Date(Date.now() - 1200000).toISOString(),
+    error_code: null,
+    created_at: new Date(Date.now() - 1260000).toISOString(),
+  },
+  {
+    id: "del-merkle-epoch-1041",
+    event_id: "evt-merkle-epoch-sealed",
+    channel: "EMAIL (compliance-officer@zoikoshield.com)",
+    status: "DELIVERED",
+    attempt_count: 1,
+    delivered_at: new Date(Date.now() - 3600000).toISOString(),
+    error_code: null,
+    created_at: new Date(Date.now() - 3660000).toISOString(),
+  },
+  {
+    id: "del-webhook-dlq-1039",
+    event_id: "evt-staging-webhook-sync",
+    channel: "WEBHOOK (https://staging.internal/hook)",
+    status: "DEAD_LETTERED",
+    attempt_count: 3,
+    delivered_at: null,
+    error_code: "HTTP_504_GATEWAY_TIMEOUT",
+    created_at: new Date(Date.now() - 7200000).toISOString(),
+  },
+];
+
 export default function NotificationsPage() {
   const [items, setItems] = useState<NotificationDelivery[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [acking, setAcking] = useState<string | null>(null);
-
-  const SAMPLE_NOTIFICATIONS: NotificationDelivery[] = [
-    {
-      id: "del-p0-alert-1043",
-      event_id: "evt-sec-p0-lateral-movement",
-      channel: "EMAIL (security-alerts@zoikoshield.com)",
-      status: "DELIVERED",
-      attempt_count: 1,
-      delivered_at: new Date(Date.now() - 300000).toISOString(),
-      error_code: null,
-      created_at: new Date(Date.now() - 360000).toISOString(),
-    },
-    {
-      id: "del-jit-elev-1042",
-      event_id: "evt-jit-elevation-approved",
-      channel: "EMAIL (auth-notices@zoikoshield.com)",
-      status: "DELIVERED",
-      attempt_count: 1,
-      delivered_at: new Date(Date.now() - 1200000).toISOString(),
-      error_code: null,
-      created_at: new Date(Date.now() - 1260000).toISOString(),
-    },
-    {
-      id: "del-merkle-epoch-1041",
-      event_id: "evt-merkle-epoch-sealed",
-      channel: "EMAIL (compliance-officer@zoikoshield.com)",
-      status: "DELIVERED",
-      attempt_count: 1,
-      delivered_at: new Date(Date.now() - 3600000).toISOString(),
-      error_code: null,
-      created_at: new Date(Date.now() - 3660000).toISOString(),
-    },
-    {
-      id: "del-webhook-dlq-1039",
-      event_id: "evt-staging-webhook-sync",
-      channel: "WEBHOOK (https://staging.internal/hook)",
-      status: "DEAD_LETTERED",
-      attempt_count: 3,
-      delivered_at: null,
-      error_code: "HTTP_504_GATEWAY_TIMEOUT",
-      created_at: new Date(Date.now() - 7200000).toISOString(),
-    },
-  ];
+  const [isSampleData, setIsSampleData] = useState(false);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -104,13 +113,28 @@ export default function NotificationsPage() {
       const data = asList<NotificationDelivery>(await backend.get("/api/v1/notifications"));
       if (data && data.length > 0) {
         setItems(data);
+        setIsSampleData(false);
         return;
       }
-    } catch {
-      // Backend is offline - use sample notifications
+      // Reached shield-core, but it holds no deliveries for this tenant. That
+      // is a legitimate empty state, not an outage, and must not be papered
+      // over with fixtures.
+      setItems([]);
+      setIsSampleData(false);
+    } catch (err) {
+      // The backend is unreachable. Fall back to fixtures so the surface stays
+      // explorable, but keep the failure visible — a silently swallowed error
+      // here reads as "all notifications delivered".
+      setError(
+        `${err instanceof BackendError ? err.message : String(err)} — showing sample data, not live delivery records.`,
+      );
+      setItems(SAMPLE_NOTIFICATIONS);
+      setIsSampleData(true);
+    } finally {
+      // Must run on every path. Returning early from the success branch
+      // without clearing this leaves the page on its loading state forever.
+      setIsLoading(false);
     }
-    setItems(SAMPLE_NOTIFICATIONS);
-    setIsLoading(false);
   }, []);
 
   useEffect(() => {
@@ -124,15 +148,31 @@ export default function NotificationsPage() {
       await backend.post(`/api/v1/notifications/${id}/acknowledge`, {
         acknowledgementType: "ACKNOWLEDGED",
       });
-    } catch {
-      // Local state update when offline
+      setItems((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, status: "ACKNOWLEDGED" } : item,
+        ),
+      );
+    } catch (err) {
+      if (isSampleData) {
+        // Nothing to persist against: reflect the click locally so the sample
+        // surface stays interactive.
+        setItems((prev) =>
+          prev.map((item) =>
+            item.id === id ? { ...item, status: "ACKNOWLEDGED" } : item,
+          ),
+        );
+      } else {
+        // Acknowledgement is an audited act. Marking the row ACKNOWLEDGED when
+        // shield-core rejected the request would tell an operator that a P0
+        // alert was signed off when no record of it exists.
+        setError(
+          `Acknowledgement of ${id} was not recorded: ${err instanceof BackendError ? err.message : String(err)}`,
+        );
+      }
+    } finally {
+      setAcking(null);
     }
-    setItems((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, status: "ACKNOWLEDGED" } : item,
-      ),
-    );
-    setAcking(null);
   };
 
   if (isLoading) return <LoadingState message="Loading notifications…" />;
@@ -170,6 +210,13 @@ export default function NotificationsPage() {
       {error && (
         <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-500/50 text-rose-300 text-xs font-mono">
           {error}
+        </div>
+      )}
+
+      {isSampleData && (
+        <div className="p-3 rounded-lg bg-amber-950/40 border border-amber-500/50 text-amber-200 text-xs">
+          Sample data — shield-core is unreachable. The rows below are
+          demonstration fixtures and are not real delivery records.
         </div>
       )}
 
