@@ -51,3 +51,37 @@ model ContinuousAssuranceProfile {
 
   @@schema("continuous_assurance")
 }
+
+/**
+ * CSPM drift findings (ZS-CSPM-001). Previously held entirely in an
+ * in-process Map: a scanTenantPosture result on one replica was invisible to
+ * a remediateDriftFinding call routed to another, and every finding and its
+ * remediation receipt was lost on restart. Ordinary tenant row-level
+ * security - no shared/global baseline concept applies to a tenant's own
+ * cloud assets, unlike the authorization-schema policy baselines.
+ */
+model PostureDriftFinding {
+  /// App-generated (`drift-${uuid.slice(0,8)}`), not a DB-generated uuid -
+  /// callers already address findings by this id and it must not change
+  /// shape when a finding moves from in-memory to persisted.
+  id                 String   @id
+  tenantId           String   @db.Uuid
+  assetId            String   @db.VarChar(255)
+  assetType          String   @db.VarChar(100)
+  cloudProvider      String   @db.VarChar(50)
+  ruleCode           String   @db.VarChar(100)
+  ruleTitle          String   @db.VarChar(255)
+  severity           String   @db.VarChar(20)
+  description        String
+  complianceImpact   String[] @default([])
+  detectedAt         DateTime @db.Timestamptz(6)
+  status             String   @default("OPEN") @db.VarChar(40)
+  remediationPlan    Json
+  remediationReceipt Json?
+  updatedAt          DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("posture_drift_findings")
+  @@schema("continuous_assurance")
+}

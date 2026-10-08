@@ -1,5 +1,5 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
-import { Subject, Observable, filter, map, interval, merge } from 'rxjs';
+import { Subject, Observable, filter, map, interval, merge, share } from 'rxjs';
 
 export type StreamingEventType =
   | 'TELEMETRY_INGESTION_PULSE'
@@ -38,6 +38,9 @@ export interface SseMessageFormat {
 export class LiveTelemetryStreamService implements OnModuleDestroy {
   private readonly logger = new Logger(LiveTelemetryStreamService.name);
   private readonly eventBus$ = new Subject<LiveStreamEvent>();
+  // One shared timer behind every subscriber's heartbeat, instead of each
+  // subscribeTenantStream() call starting its own independent interval(15000).
+  private readonly heartbeatTick$ = interval(15000).pipe(share());
 
   constructor() {
     this.logger.log(
@@ -101,7 +104,7 @@ export class LiveTelemetryStreamService implements OnModuleDestroy {
     );
 
     // Periodic 15-second heartbeat to keep HTTP connections alive through proxies
-    const heartbeat$ = interval(15000).pipe(
+    const heartbeat$ = this.heartbeatTick$.pipe(
       map(() => ({
         data: {
           id: `hb-${Date.now()}`,

@@ -7,6 +7,10 @@ import {
   WasmSandboxMutationType,
   PlaybookExecutionTier,
 } from './dto/wasm-playbook.dto';
+import {
+  BLAST_RADIUS_TIER_WEIGHT,
+  BLAST_RADIUS_DEFAULT_TIER_WEIGHT,
+} from './blast-radius-tier-weights';
 
 export interface WasmSandboxExecutionReport {
   dryRunId: string;
@@ -15,10 +19,7 @@ export interface WasmSandboxExecutionReport {
   tenantId: string;
   incidentId: string;
   bytecodeHashSha256: string;
-  status:
-    | 'SANDBOX_PASSED'
-    | 'SANDBOX_REJECTED_BLAST_RADIUS'
-    | 'SANDBOX_REJECTED_POLICY';
+  status: 'SANDBOX_PASSED' | 'SANDBOX_REJECTED_BLAST_RADIUS' | 'SANDBOX_REJECTED_POLICY';
   simulatedBlastRadiusScore: number;
   maxBlastRadiusAllowed: number;
   memoryConsumedMb: number;
@@ -79,9 +80,7 @@ export class WasmPlaybookSandboxService {
         throw new Error('Empty bytecode buffer');
       }
     } catch {
-      throw new BadRequestException(
-        'Invalid base64 encoding for wasmBytecodeBase64',
-      );
+      throw new BadRequestException('Invalid base64 encoding for wasmBytecodeBase64');
     }
 
     const bytecodeHashSha256 = crypto
@@ -108,36 +107,42 @@ export class WasmPlaybookSandboxService {
 
     for (const asset of dto.targetAssets) {
       if (asset.criticalityTier === PlaybookExecutionTier.TIER_0_CRITICAL) {
-        blastRadiusAccumulator += 0.35;
-      } else if (
-        asset.criticalityTier === PlaybookExecutionTier.TIER_1_STANDARD
-      ) {
-        blastRadiusAccumulator += 0.15;
+        blastRadiusAccumulator += BLAST_RADIUS_TIER_WEIGHT.TIER_0_CRITICAL;
+      } else if (asset.criticalityTier === PlaybookExecutionTier.TIER_1_STANDARD) {
+        blastRadiusAccumulator += BLAST_RADIUS_TIER_WEIGHT.TIER_1_STANDARD;
       } else {
-        blastRadiusAccumulator += 0.05;
+        blastRadiusAccumulator += BLAST_RADIUS_DEFAULT_TIER_WEIGHT;
       }
+    }
 
-      for (const step of dto.steps) {
-        // Enforce safety guards: TIER_0 assets cannot be drained or isolated without human quorum
-        if (
-          asset.criticalityTier === PlaybookExecutionTier.TIER_0_CRITICAL &&
-          (step.actionType === WasmSandboxMutationType.K8S_DRAIN_NODE ||
-            step.actionType ===
-              WasmSandboxMutationType.CROWDSTRIKE_CONTAIN_HOST)
-        ) {
-          safetyViolations.push(
-            `Policy Violation: Step '${step.stepId}' targets TIER_0_CRITICAL asset '${asset.assetId}'. Automated drain/isolation prohibited without Dual-Custody quorum.`,
-          );
-        }
+    const assetsById = new Map(dto.targetAssets.map((a) => [a.assetId, a]));
 
-        // Simulate state transition
-        const diff = this.computeStateDiff(
-          step,
-          asset.preExecutionState,
-          asset.assetId,
+    for (const step of dto.steps) {
+      const asset = assetsById.get(step.targetResourceArn);
+      if (!asset) {
+        // A step whose target isn't in the declared asset snapshot can't be
+        // safety-checked or diffed against a known pre-state: treat it as a
+        // violation rather than silently skipping it or guessing an asset.
+        safetyViolations.push(
+          `Policy Violation: Step '${step.stepId}' targets '${step.targetResourceArn}', which is not present in the supplied targetAssets snapshot.`,
         );
-        stateDiffs.push(diff);
+        continue;
       }
+
+      // Enforce safety guards: TIER_0 assets cannot be drained or isolated without human quorum
+      if (
+        asset.criticalityTier === PlaybookExecutionTier.TIER_0_CRITICAL &&
+        (step.actionType === WasmSandboxMutationType.K8S_DRAIN_NODE ||
+          step.actionType === WasmSandboxMutationType.CROWDSTRIKE_CONTAIN_HOST)
+      ) {
+        safetyViolations.push(
+          `Policy Violation: Step '${step.stepId}' targets TIER_0_CRITICAL asset '${asset.assetId}'. Automated drain/isolation prohibited without Dual-Custody quorum.`,
+        );
+      }
+
+      // Simulate state transition
+      const diff = this.computeStateDiff(step, asset.preExecutionState, asset.assetId);
+      stateDiffs.push(diff);
     }
 
     const simulatedBlastRadiusScore = Math.min(
@@ -145,10 +150,7 @@ export class WasmPlaybookSandboxService {
       Number(blastRadiusAccumulator.toFixed(2)),
     );
 
-    let status:
-      | 'SANDBOX_PASSED'
-      | 'SANDBOX_REJECTED_BLAST_RADIUS'
-      | 'SANDBOX_REJECTED_POLICY';
+    let status: 'SANDBOX_PASSED' | 'SANDBOX_REJECTED_BLAST_RADIUS' | 'SANDBOX_REJECTED_POLICY';
     if (safetyViolations.length > 0) {
       status = 'SANDBOX_REJECTED_POLICY';
     } else if (simulatedBlastRadiusScore > maxBlastRadiusAllowed) {
@@ -158,10 +160,7 @@ export class WasmPlaybookSandboxService {
     }
 
     // Synthesize paired inverse rollback plan
-    const synthesizedRollback = this.synthesizeRollbackSteps(
-      dto.steps,
-      dto.targetAssets,
-    );
+    const synthesizedRollback = this.synthesizeRollbackSteps(dto.steps, dto.targetAssets);
 
     const executionDurationMs = Math.max(1, Date.now() - startTime);
     const memoryConsumedMb = Number((12.4 + Math.random() * 4.2).toFixed(1));
@@ -189,9 +188,7 @@ export class WasmPlaybookSandboxService {
   /**
    * Generates deterministic inverse rollback mutations for executed SOAR playbook steps.
    */
-  synthesizeRollbackPlan(
-    dto: SynthesizeRollbackDto,
-  ): SynthesizedRollbackPlanResult {
+  synthesizeRollbackPlan(dto: SynthesizeRollbackDto): SynthesizedRollbackPlanResult {
     const planId = `rollback-plan-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
     const rollbackSteps: Array<{
       stepOrder: number;
@@ -203,9 +200,12 @@ export class WasmPlaybookSandboxService {
 
     // Reverse the execution order for rollbacks
     const reversedSteps = [...dto.executedSteps].reverse();
+    const assetsById = new Map(
+      dto.originalAssetStates.map((a) => [a.assetId, a]),
+    );
 
     reversedSteps.forEach((step, index) => {
-      const inverse = this.getInverseAction(step, dto.originalAssetStates);
+      const inverse = this.getInverseAction(step, assetsById);
       rollbackSteps.push({
         stepOrder: index + 1,
         stepId: `rb-step-${step.stepId}`,
@@ -293,8 +293,9 @@ export class WasmPlaybookSandboxService {
     steps: WasmPlaybookStepDto[],
     targetAssets: any[],
   ) {
+    const assetsById = new Map(targetAssets.map((a) => [a.assetId, a]));
     return steps.map((s) => {
-      const inverse = this.getInverseAction(s, targetAssets);
+      const inverse = this.getInverseAction(s, assetsById);
       return {
         rollbackStepId: `rb-${s.stepId}`,
         inverseActionType: inverse.inverseActionType,
@@ -304,12 +305,11 @@ export class WasmPlaybookSandboxService {
     });
   }
 
-  private getInverseAction(step: WasmPlaybookStepDto, originalAssets: any[]) {
-    const matchingAsset = originalAssets.find(
-      (a) =>
-        a.assetId === step.targetResourceArn ||
-        step.targetResourceArn.includes(a.assetId),
-    );
+  private getInverseAction(
+    step: WasmPlaybookStepDto,
+    assetsById: Map<string, any>,
+  ) {
+    const matchingAsset = assetsById.get(step.targetResourceArn);
 
     switch (step.actionType) {
       case WasmSandboxMutationType.AWS_IAM_ATTACH_POLICY:
@@ -317,17 +317,16 @@ export class WasmPlaybookSandboxService {
           inverseActionType: WasmSandboxMutationType.AWS_IAM_DETACH_POLICY,
           reversionPayload: {
             policyArnToDetach: 'AWSQuarantinePolicy-ReadOnly',
-            restoreOriginalPolicies: matchingAsset?.preExecutionState
-              ?.attachedPolicies || ['OriginalRolePolicy'],
+            restoreOriginalPolicies: matchingAsset?.preExecutionState?.attachedPolicies || [
+              'OriginalRolePolicy',
+            ],
           },
         };
       case WasmSandboxMutationType.AWS_EC2_ISOLATE_SECURITY_GROUP:
         return {
           inverseActionType: 'AWS_EC2_RESTORE_SECURITY_GROUP',
           reversionPayload: {
-            restoreRules:
-              matchingAsset?.preExecutionState?.securityGroupRules ||
-              'ALLOW_ALL',
+            restoreRules: matchingAsset?.preExecutionState?.securityGroupRules || 'ALLOW_ALL',
           },
         };
       case WasmSandboxMutationType.OKTA_REVOKE_USER_SESSIONS:

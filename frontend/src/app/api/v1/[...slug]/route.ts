@@ -90,6 +90,14 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
   const cookieHeader = req.headers.get("cookie");
   if (cookieHeader) outboundHeaders["Cookie"] = cookieHeader;
 
+  // An SSE client (EventSource) always sends this and holds the connection
+  // open indefinitely. Buffering the body with arrayBuffer() never resolves
+  // for a stream like that, and the fixed request timeout below would kill
+  // a perfectly healthy long-lived connection - so this request gets neither.
+  const acceptHeader = req.headers.get("accept") ?? "";
+  const isEventStream = acceptHeader.includes("text/event-stream");
+  if (isEventStream) outboundHeaders["Accept"] = "text/event-stream";
+
   // Webhook ingestion is signed here because the shared secret is a
   // server-side secret the browser must never hold.
   if (path.startsWith("ingestion/webhooks/")) {
@@ -130,7 +138,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
       headers: outboundHeaders,
       body: hasBody ? rawBodyText : undefined,
       redirect: "manual",
-      signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
+      signal: isEventStream ? undefined : AbortSignal.timeout(BACKEND_TIMEOUT_MS),
     });
   } catch (error) {
     // The backend is unreachable. That is a real outage and is reported as
@@ -168,6 +176,18 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
   const bodylessStatus = new Set([204, 205, 304]);
   if (bodylessStatus.has(backendRes.status)) {
     return new NextResponse(null, {
+      status: backendRes.status,
+      statusText: backendRes.statusText,
+      headers: responseHeaders,
+    });
+  }
+
+  if (isEventStream && backendRes.body) {
+    // Pass the stream straight through. backendRes.body never ends on its
+    // own (shield-core holds it open with a heartbeat), so buffering it with
+    // arrayBuffer() - as every other response below does - would simply
+    // never resolve.
+    return new NextResponse(backendRes.body, {
       status: backendRes.status,
       statusText: backendRes.statusText,
       headers: responseHeaders,

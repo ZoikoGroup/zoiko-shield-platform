@@ -232,10 +232,10 @@ export default function MerkleLedgerExplorerPage() {
           humanApprovalBindingValid: true,
         },
         cryptographicSummary: {
-          declaredMerkleRoot: activeReceipt?.merkleRoot || "82f10c9793b09aab8eacf17d4565485f03460678b1a99ccef984bb598b89fbc7",
-          recomputedMerkleRoot: activeReceipt?.merkleRoot || "82f10c9793b09aab8eacf17d4565485f03460678b1a99ccef984bb598b89fbc7",
-          packageEnvelopeHash: pkg.packageHash || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          certificateSignature: activeReceipt?.ed25519Signature || activeReceipt?.pqcSignature || (pkg as any).ed25519Signature || pkg.packageHash || "ba0bd3422984a2d2bcc56f089d6e11e8b86c2c662b62b9b8369e7d61e678c09a",
+          declaredMerkleRoot: activeReceipt?.merkleRoot || pkg.manifest.epochMerkleRoot,
+          recomputedMerkleRoot: activeReceipt?.merkleRoot || pkg.manifest.epochMerkleRoot,
+          packageEnvelopeHash: pkg.packageHash,
+          certificateSignature: activeReceipt?.ed25519Signature || activeReceipt?.pqcSignature || pkg.ed25519Signature || pkg.dilithiumSignature,
         },
       };
 

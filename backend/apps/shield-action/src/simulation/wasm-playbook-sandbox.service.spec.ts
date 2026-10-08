@@ -70,7 +70,9 @@ describe('WasmPlaybookSandboxService (LAB 18 & Spec §18 WASM Sandbox & Rollback
     expect(report.simulatedBlastRadiusScore).toBeLessThanOrEqual(0.5);
     expect(report.safetyViolations.length).toBe(0);
     expect(report.rollbackGuaranteeAvailable).toBe(true);
-    expect(report.stateDiffs.length).toBe(4);
+    // One diff per step, matched to the asset it actually targets - not the
+    // full steps x assets cross product.
+    expect(report.stateDiffs.length).toBe(2);
     expect(report.synthesizedRollbackPlan).toBeDefined();
     expect(report.synthesizedRollbackPlan?.length).toBe(2);
   });

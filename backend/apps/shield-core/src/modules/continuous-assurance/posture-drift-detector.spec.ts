@@ -2,8 +2,49 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { PostureDriftDetectorService } from './posture-drift-detector.service';
 import { PostureDriftController } from './posture-drift.controller';
 import { LiveTelemetryStreamService } from '../streaming/live-telemetry-stream.service';
+import { PrismaService } from '../../prisma/prisma.service';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
+
+/**
+ * In-memory stand-in for the postureDriftFinding Prisma delegate, same
+ * shape as a real row set: deleteMany/createMany replace a tenant's
+ * findings wholesale (what a rescan does), findUnique/update operate on a
+ * single row by id.
+ */
+function createFakePostureDriftPrisma() {
+  let rows: any[] = [];
+  return {
+    postureDriftFinding: {
+      deleteMany: async ({ where }: any) => {
+        const before = rows.length;
+        rows = rows.filter((r) => r.tenantId !== where.tenantId);
+        return { count: before - rows.length };
+      },
+      createMany: async ({ data }: any) => {
+        const created = (data as any[]).map((d) => ({
+          ...d,
+          remediationReceipt: null,
+          updatedAt: new Date(),
+        }));
+        rows.push(...created);
+        return { count: created.length };
+      },
+      findMany: async ({ where }: any) =>
+        rows
+          .filter((r) => r.tenantId === where.tenantId)
+          .sort((a, b) => b.detectedAt.getTime() - a.detectedAt.getTime()),
+      findUnique: async ({ where }: any) =>
+        rows.find((r) => r.id === where.id) ?? null,
+      update: async ({ where, data }: any) => {
+        const row = rows.find((r) => r.id === where.id);
+        if (!row) throw new Error(`No posture drift finding ${where.id}`);
+        return Object.assign(row, data, { updatedAt: new Date() });
+      },
+    },
+    $transaction: async (ops: Promise<unknown>[]) => Promise.all(ops),
+  };
+}
 
 describe('PostureDriftModule Suite', () => {
   let service: PostureDriftDetectorService;
@@ -13,7 +54,11 @@ describe('PostureDriftModule Suite', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [PostureDriftController],
-      providers: [PostureDriftDetectorService, LiveTelemetryStreamService],
+      providers: [
+        PostureDriftDetectorService,
+        LiveTelemetryStreamService,
+        { provide: PrismaService, useValue: createFakePostureDriftPrisma() },
+      ],
     })
       .overrideGuard(JwtAuthGuard)
       .useValue({ canActivate: () => true })
@@ -62,9 +107,7 @@ describe('PostureDriftModule Suite', () => {
       expect(publicExposure?.remediationPlan.forwardAction).toBe(
         'ENABLE_CLOUD_STORAGE_BLOCK_PUBLIC_ACCESS',
       );
-      expect(publicExposure?.remediationPlan.blastRadiusScore).toBeLessThan(
-        0.1,
-      );
+      expect(publicExposure?.remediationPlan.blastRadiusScore).toBeLessThan(0.1);
     });
 
     it('should detect privileged Kubernetes container drift', async () => {
@@ -95,21 +138,15 @@ describe('PostureDriftModule Suite', () => {
         'tenant-remediate-test',
         firstFinding.findingId,
         'Applied automated least privilege policy under JIT #JIT-2026',
-        firstFinding.remediationPlan.requiresDualCustody
-          ? 'approver-lead-sec'
-          : undefined,
+        firstFinding.remediationPlan.requiresDualCustody ? 'approver-lead-sec' : undefined,
       );
 
       expect(remediationRes.status).toBe('REMEDIATION_EXECUTED');
       expect(remediationRes.findingId).toBe(firstFinding.findingId);
       expect(remediationRes.remediationReceipt.attestationDigest).toBeDefined();
 
-      const updatedFindings = service.getTenantFindings(
-        'tenant-remediate-test',
-      );
-      const updated = updatedFindings.find(
-        (f) => f.findingId === firstFinding.findingId,
-      );
+      const updatedFindings = await service.getTenantFindings('tenant-remediate-test');
+      const updated = updatedFindings.find((f) => f.findingId === firstFinding.findingId);
       expect(updated?.status).toBe('REMEDIATED');
     });
 
@@ -153,7 +190,7 @@ describe('PostureDriftModule Suite', () => {
     it('should retrieve findings via GET /api/v1/assurance/posture-drift/findings', async () => {
       await controller.scanPosture({ tenantId: 'tenant-findings-test' });
 
-      const res = controller.getFindings('tenant-findings-test');
+      const res = await controller.getFindings('tenant-findings-test');
       expect(res.tenantId).toBe('tenant-findings-test');
       expect(res.totalFindings).toBeGreaterThan(0);
     });

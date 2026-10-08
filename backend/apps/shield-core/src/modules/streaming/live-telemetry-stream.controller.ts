@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Post,
@@ -116,6 +117,11 @@ export class LiveTelemetryStreamController {
           },
         });
         break;
+
+      default:
+        throw new BadRequestException(
+          `Unsupported eventType '${dto.eventType}'`,
+        );
     }
 
     return {

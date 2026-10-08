@@ -1,5 +1,12 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+  Optional,
+} from '@nestjs/common';
 import * as crypto from 'crypto';
+import { PrismaService } from '../../prisma/prisma.service';
 import { LiveTelemetryStreamService } from '../streaming/live-telemetry-stream.service';
 import type { ScanCloudAssetDto } from './dto/posture-drift.dto';
 
@@ -39,13 +46,50 @@ export interface PostureDriftFinding {
 @Injectable()
 export class PostureDriftDetectorService {
   private readonly logger = new Logger(PostureDriftDetectorService.name);
-  private readonly findingsMap = new Map<string, PostureDriftFinding[]>();
 
   constructor(
+    private readonly prisma: PrismaService,
     @Optional()
     private readonly streamService?: LiveTelemetryStreamService,
   ) {
     this.logger.log('✔ PostureDriftDetectorService initialized');
+  }
+
+  private toFinding(row: {
+    id: string;
+    tenantId: string;
+    assetId: string;
+    assetType: string;
+    cloudProvider: string;
+    ruleCode: string;
+    ruleTitle: string;
+    severity: string;
+    description: string;
+    complianceImpact: string[];
+    detectedAt: Date;
+    status: string;
+    remediationPlan: unknown;
+    remediationReceipt: unknown;
+  }): PostureDriftFinding {
+    return {
+      findingId: row.id,
+      tenantId: row.tenantId,
+      assetId: row.assetId,
+      assetType: row.assetType,
+      cloudProvider: row.cloudProvider,
+      ruleCode: row.ruleCode,
+      ruleTitle: row.ruleTitle,
+      severity: row.severity as DriftSeverity,
+      description: row.description,
+      complianceImpact: row.complianceImpact,
+      detectedAt: row.detectedAt.toISOString(),
+      status: row.status as PostureDriftFinding['status'],
+      remediationPlan:
+        row.remediationPlan as PostureDriftFinding['remediationPlan'],
+      remediationReceipt: row.remediationReceipt as
+        | PostureDriftFinding['remediationReceipt']
+        | undefined,
+    };
   }
 
   /**
@@ -65,16 +109,12 @@ export class PostureDriftDetectorService {
     const scanTime = new Date().toISOString();
 
     // Default reference asset baseline if none provided in scan request
-    const targetAssets =
-      assets && assets.length > 0 ? assets : this.getDefaultReferenceAssets();
+    const targetAssets = assets && assets.length > 0 ? assets : this.getDefaultReferenceAssets();
 
     for (const asset of targetAssets) {
       // 1. S3 / GCS Storage Bucket Rules
       if (asset.assetType === 'S3_BUCKET' || asset.assetType === 'GCS_BUCKET') {
-        if (
-          asset.configuration.isPublicRead === true ||
-          asset.configuration.blockPublicAccess === false
-        ) {
+        if (asset.configuration.isPublicRead === true || asset.configuration.blockPublicAccess === false) {
           findings.push({
             findingId: `drift-${crypto.randomUUID().slice(0, 8)}`,
             tenantId,
@@ -109,11 +149,7 @@ export class PostureDriftDetectorService {
             ruleTitle: 'Server-Side Encryption Disabled on Storage Bucket',
             severity: 'HIGH',
             description: `Bucket '${asset.assetId}' does not enforce KMS customer-managed or cloud-provider encryption at rest.`,
-            complianceImpact: [
-              'SOC2-CC6.6',
-              'HIPAA-164.312',
-              'NIST-800-53-SC-28',
-            ],
+            complianceImpact: ['SOC2-CC6.6', 'HIPAA-164.312', 'NIST-800-53-SC-28'],
             detectedAt: scanTime,
             status: 'OPEN',
             remediationPlan: {
@@ -129,12 +165,10 @@ export class PostureDriftDetectorService {
 
       // 2. IAM Policy Rules
       if (asset.assetType === 'IAM_POLICY') {
-        const hasWildcardAdmin = asset.configuration.statement?.some(
-          (st: any) =>
-            st.effect === 'Allow' &&
-            (st.action === '*' ||
-              (Array.isArray(st.action) && st.action.includes('*'))),
-        );
+        const hasWildcardAdmin =
+          asset.configuration.statement?.some(
+            (st: any) => st.effect === 'Allow' && (st.action === '*' || (Array.isArray(st.action) && st.action.includes('*'))),
+          );
 
         if (hasWildcardAdmin && !asset.configuration.mfaEnforced) {
           findings.push({
@@ -144,8 +178,7 @@ export class PostureDriftDetectorService {
             assetType: asset.assetType,
             cloudProvider: asset.cloudProvider,
             ruleCode: 'DRIFT_IAM_UNCONSTRAINED_WILDCARD_ADMIN',
-            ruleTitle:
-              'Wildcard Administrator Privileges Granted Without MFA Condition',
+            ruleTitle: 'Wildcard Administrator Privileges Granted Without MFA Condition',
             severity: 'CRITICAL',
             description: `IAM Policy '${asset.assetId}' contains unconstrained '*' action privileges without requiring hardware MFA.`,
             complianceImpact: ['SOC2-CC6.1', 'ISO27001-A.5.18', 'CIS-AWS-1.16'],
@@ -164,10 +197,7 @@ export class PostureDriftDetectorService {
 
       // 3. Kubernetes Pod Security Rules
       if (asset.assetType === 'K8S_POD') {
-        if (
-          asset.configuration.privileged === true ||
-          asset.configuration.hostPID === true
-        ) {
+        if (asset.configuration.privileged === true || asset.configuration.hostPID === true) {
           findings.push({
             findingId: `drift-${crypto.randomUUID().slice(0, 8)}`,
             tenantId,
@@ -175,8 +205,7 @@ export class PostureDriftDetectorService {
             assetType: asset.assetType,
             cloudProvider: asset.cloudProvider,
             ruleCode: 'DRIFT_K8S_CONTAINER_PRIVILEGED_ESCAPE_RISK',
-            ruleTitle:
-              'Kubernetes Pod Running With Root Privileges and Host Namespace Sharing',
+            ruleTitle: 'Kubernetes Pod Running With Root Privileges and Host Namespace Sharing',
             severity: 'CRITICAL',
             description: `Pod '${asset.assetId}' is running in privileged container mode, creating severe node escape vulnerabilities.`,
             complianceImpact: ['SOC2-CC6.8', 'NIST-CSF-PR.IP-1'],
@@ -194,12 +223,31 @@ export class PostureDriftDetectorService {
       }
     }
 
-    // Cache active findings for tenant
-    this.findingsMap.set(tenantId, findings);
+    // Persist: a rescan replaces the tenant's prior findings, same as the
+    // in-memory Map this used to be - computed fresh from current asset
+    // state each time, not merged with history.
+    await this.prisma.$transaction([
+      this.prisma.postureDriftFinding.deleteMany({ where: { tenantId } }),
+      this.prisma.postureDriftFinding.createMany({
+        data: findings.map((f) => ({
+          id: f.findingId,
+          tenantId: f.tenantId,
+          assetId: f.assetId,
+          assetType: f.assetType,
+          cloudProvider: f.cloudProvider,
+          ruleCode: f.ruleCode,
+          ruleTitle: f.ruleTitle,
+          severity: f.severity,
+          description: f.description,
+          complianceImpact: f.complianceImpact,
+          detectedAt: new Date(f.detectedAt),
+          status: f.status,
+          remediationPlan: f.remediationPlan,
+        })),
+      }),
+    ]);
 
-    const criticalCount = findings.filter(
-      (f) => f.severity === 'CRITICAL',
-    ).length;
+    const criticalCount = findings.filter((f) => f.severity === 'CRITICAL').length;
 
     // Broadcast stream alert if critical drift is detected
     if (criticalCount > 0 && this.streamService) {
@@ -228,8 +276,12 @@ export class PostureDriftDetectorService {
   /**
    * Retrieves active drift findings for a tenant.
    */
-  getTenantFindings(tenantId: string): PostureDriftFinding[] {
-    return this.findingsMap.get(tenantId) || [];
+  async getTenantFindings(tenantId: string): Promise<PostureDriftFinding[]> {
+    const rows = await this.prisma.postureDriftFinding.findMany({
+      where: { tenantId },
+      orderBy: { detectedAt: 'desc' },
+    });
+    return rows.map((row) => this.toFinding(row));
   }
 
   /**
@@ -246,41 +298,36 @@ export class PostureDriftDetectorService {
     forwardActionExecuted: string;
     remediationReceipt: NonNullable<PostureDriftFinding['remediationReceipt']>;
   }> {
-    const findings = this.findingsMap.get(tenantId) || [];
-    const finding = findings.find((f) => f.findingId === findingId);
+    const row = await this.prisma.postureDriftFinding.findUnique({
+      where: { id: findingId },
+    });
 
-    if (!finding) {
-      throw new Error(
-        `Posture drift finding '${findingId}' not found for tenant '${tenantId}'`,
-      );
+    if (!row || row.tenantId !== tenantId) {
+      throw new NotFoundException(`Posture drift finding '${findingId}' not found for tenant '${tenantId}'`);
     }
 
+    const finding = this.toFinding(row);
+
     if (finding.remediationPlan.requiresDualCustody && !approverId) {
-      throw new Error(
-        `DUAL_CUSTODY_REQUIRED: Finding '${findingId}' impacts Tier-0 IAM assets and requires secondary approval.`,
-      );
+      throw new BadRequestException(`DUAL_CUSTODY_REQUIRED: Finding '${findingId}' impacts Tier-0 IAM assets and requires secondary approval.`);
     }
 
     const remediatedAt = new Date().toISOString();
     const attestationDigest = crypto
       .createHash('sha256')
-      .update(
-        JSON.stringify({
-          tenantId,
-          findingId,
-          rationale: operatorRationale,
-          remediatedAt,
-          approverId,
-        }),
-      )
+      .update(JSON.stringify({ tenantId, findingId, rationale: operatorRationale, remediatedAt, approverId }))
       .digest('hex');
 
-    finding.status = 'REMEDIATED';
-    finding.remediationReceipt = {
+    const remediationReceipt = {
       remediatedAt,
       operatorRationale,
       attestationDigest,
     };
+
+    await this.prisma.postureDriftFinding.update({
+      where: { id: findingId },
+      data: { status: 'REMEDIATED', remediationReceipt },
+    });
 
     this.logger.log(
       `✔ [CSPM REMEDIATION] Remediated '${finding.ruleCode}' on ${finding.assetId} (Tenant: ${tenantId}, Digest: ${attestationDigest.slice(0, 12)}...)`,
@@ -290,7 +337,7 @@ export class PostureDriftDetectorService {
       status: 'REMEDIATION_EXECUTED',
       findingId,
       forwardActionExecuted: finding.remediationPlan.forwardAction,
-      remediationReceipt: finding.remediationReceipt,
+      remediationReceipt,
     };
   }
 

@@ -142,6 +142,10 @@ const TABLES = {
   'authorization.config_policy_versions': { kind: 'tenant_or_shared' },
   'authorization.config_policy_audit_events': { kind: 'tenant' },
 
+  // ---- CSPM posture drift: every finding always belongs to exactly one
+  // tenant's own cloud assets, no shared/global baseline concept.
+  'continuous_assurance.posture_drift_findings': { kind: 'tenant' },
+
   // ---- global reference data and platform operations
   'catalog.CatalogVersion': { kind: 'global' },
   'catalog.Product': { kind: 'global' },

@@ -30,6 +30,7 @@ import { DetectionRulesSeeder } from '../apps/shield-core/src/seeds/detection-ru
 import { SloMetricsExporterService } from '../apps/shield-core/src/modules/observability/slo-metrics-exporter.service';
 import { SbomDriftVerifierService } from '../apps/shield-anchor/src/supply-chain/sbom-drift-verifier.service';
 import { JitElevationService } from '../apps/shield-core/src/modules/authorization/jit-elevation.service';
+import type { WebauthnService } from '../apps/shield-core/src/modules/identity-adapter/webauthn.service';
 import { DistributedRateLimiterService } from '../apps/shield-core/src/modules/rate-limiting/distributed-rate-limiter.service';
 import { WorkloadTokenBrokerService } from '../apps/shield-core/src/modules/workload-identity/workload-token-broker.service';
 import {
@@ -60,6 +61,7 @@ import { LiveTelemetryStreamService } from '../apps/shield-core/src/modules/stre
 import { PostureDriftDetectorService } from '../apps/shield-core/src/modules/continuous-assurance/posture-drift-detector.service';
 import { StixThreatIntelMatcherService } from '../apps/shield-ingest/src/threat-intel/stix-threat-intel-matcher.service';
 import { createInMemoryJitPrisma } from './lib/in-memory-jit-prisma';
+import { createInMemoryPostureDriftPrisma } from './lib/in-memory-posture-drift-prisma';
 import { createInMemoryActionPrisma } from './lib/in-memory-action-prisma';
 
 /**
@@ -715,12 +717,16 @@ async function runFullPlatformVerifier() {
   const membershipsMem: any[] = [];
   const eventsMem: any[] = [];
 
+  // This stage never exercises verifyStepUpChallenge, so the WebauthnService
+  // dependency is never actually called - only its presence satisfies the
+  // constructor's (intentionally mandatory) type.
   const jitVerifierService = new JitElevationService(
     createInMemoryJitPrisma({
       jitRequests: jitRequestsMem,
       memberships: membershipsMem,
       events: eventsMem,
     }),
+    {} as WebauthnService,
   );
 
   const jitReq = await jitVerifierService.requestElevation({
@@ -1225,7 +1231,10 @@ async function runFullPlatformVerifier() {
   );
 
   // 3. Continuous Cloud Posture Drift (CSPM) & 1-Click Remediation
-  const postureDetector = new PostureDriftDetectorService(streamService);
+  const postureDetector = new PostureDriftDetectorService(
+    createInMemoryPostureDriftPrisma({ findings: [] }),
+    streamService,
+  );
   const postureScan = await postureDetector.scanTenantPosture(tenantA.id, [
     {
       assetId: 's3-customer-archive-prod',
