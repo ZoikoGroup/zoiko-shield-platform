@@ -59,12 +59,22 @@ export class TenantIsolationValidator {
   private validateSafeUrl(url: string): void {
     try {
       const parsed = new URL(url);
-      if (parsed.protocol !== 'https:') {
+      const isLocalhost =
+        parsed.hostname === 'localhost' ||
+        parsed.hostname === '127.0.0.1' ||
+        parsed.hostname.endsWith('.localhost');
+      if (
+        parsed.protocol !== 'https:' &&
+        !(isLocalhost && parsed.protocol === 'http:')
+      ) {
         throw new BadRequestException(
           `Action safety violation: CTA URL must use HTTPS protocol. Received: ${parsed.protocol}`,
         );
       }
     } catch (err: any) {
+      if (err instanceof BadRequestException) {
+        throw err;
+      }
       throw new BadRequestException(
         `Malformed CTA URL in email render context: ${err.message}`,
       );

@@ -83,4 +83,41 @@ describe('TransactionalEmailService', () => {
     expect(receipt.renderHash).toBeDefined();
     expect(receipt.contentDigest).toBeDefined();
   });
+
+  it('should fail-closed and reject dispatch when resource belongs to foreign tenant (Gate 3)', async () => {
+    await expect(
+      emailService.dispatchTransactionalEmail({
+        tenantId: 'tenant-acme-prod',
+        templateKey: 'ZS-EML-SEC-001',
+        recipients: [{ email: 'analyst@acme.com', name: 'Analyst' }],
+        variables: {
+          organizationName: 'Acme Corp',
+          resourceTenantId: 'tenant-foreign-evil-corp', // Cross-tenant boundary violation!
+          referenceId: 'REF-CROSS-01',
+          statusLabel: 'CRITICAL',
+          occurredAtLocal: '2026-10-08 12:00:00',
+          timezone: 'UTC',
+        },
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
+
+  it('should reject non-HTTPS external CTA links in transactional email input', async () => {
+    await expect(
+      emailService.dispatchTransactionalEmail({
+        tenantId: 'tenant-acme-prod',
+        templateKey: 'ZS-EML-IAM-001',
+        recipients: [{ email: 'admin@acme.com', name: 'Admin' }],
+        variables: {
+          organizationName: 'Acme Corp',
+          referenceId: 'REF-URL-01',
+          statusLabel: 'ACTIVE',
+          occurredAtLocal: '2026-10-08 12:00:00',
+          timezone: 'UTC',
+          actionUrl: 'http://insecure-phishing-site.com/login', // Insecure HTTP URL!
+        },
+      }),
+    ).rejects.toThrow(BadRequestException);
+  });
 });
+

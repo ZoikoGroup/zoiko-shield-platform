@@ -103,6 +103,9 @@ export const ALLOWLISTED_STATUS_LABELS: Record<string, string> = {
   ACTION_QUEUED: 'Action Queued for Execution',
   ACTION_SUCCEEDED: 'Action Execution Succeeded',
   ACTION_FAILED: 'Action Execution Failed',
+  EXECUTED_AUTOMATICALLY: 'Executed Automatically',
+  EXECUTED_MANUALLY: 'Executed Manually',
+  CRITICAL_INCIDENT_OPENED: 'Critical Incident Opened',
   ROLLBACK_INITIATED: 'Compensating Rollback Initiated',
   ROLLBACK_COMPLETED: 'Compensating Rollback Completed',
   ROLLBACK_FAILED: 'Compensating Rollback Failed',
@@ -300,6 +303,7 @@ export function resolveAllowlistedActionType(rawAction: string): string {
 
 function formatSafeFallback(str: string): string {
   return str
+    .toLowerCase()
     .replace(/[_-]/g, ' ')
     .replace(/\b\w/g, (char) => char.toUpperCase())
     .trim();

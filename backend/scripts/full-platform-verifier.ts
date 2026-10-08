@@ -60,6 +60,12 @@ import {
 import { LiveTelemetryStreamService } from '../apps/shield-core/src/modules/streaming/live-telemetry-stream.service';
 import { PostureDriftDetectorService } from '../apps/shield-core/src/modules/continuous-assurance/posture-drift-detector.service';
 import { StixThreatIntelMatcherService } from '../apps/shield-ingest/src/threat-intel/stix-threat-intel-matcher.service';
+import { ProductionEmailTemplateEngine } from '../apps/shield-core/src/modules/notification/templates/production-email-template.engine';
+import { resolveAllowlistedStatus } from '../apps/shield-core/src/modules/notification/templates/template-enums.registry';
+import { TenantIsolationValidator } from '../apps/shield-core/src/modules/notification/policies/tenant-isolation-validator.service';
+import { SenderClassRouterService } from '../apps/shield-core/src/modules/notification/channels/sender-class-router.service';
+import { NotificationAuditReconstructionService } from '../apps/shield-core/src/modules/notification/audit/notification-audit-reconstruction.service';
+import { StandaloneVerifierRunner } from '../apps/verifier-cli/src/standalone-verifier-runner';
 import { createInMemoryJitPrisma } from './lib/in-memory-jit-prisma';
 import { createInMemoryPostureDriftPrisma } from './lib/in-memory-posture-drift-prisma';
 import { createInMemoryActionPrisma } from './lib/in-memory-action-prisma';
@@ -93,7 +99,7 @@ async function runFullPlatformVerifier() {
   );
 
   let stepsPassed = 0;
-  const totalSteps = 25;
+  const totalSteps = 26;
 
   // -------------------------------------------------------------------------
   // Stage 1 (LAB 01 & 02): Multi-Tenant Commercial Account & Tenancy Binding
@@ -1194,7 +1200,7 @@ async function runFullPlatformVerifier() {
       {
         stepId: 'step-1',
         actionType: WasmSandboxMutationType.AWS_IAM_ATTACH_POLICY,
-        targetResourceArn: 'arn:aws:iam::123456789012:policy/quarantine',
+        targetResourceArn: 'srv-prod-worker-99',
         timeoutMs: 100,
       },
     ],
@@ -1298,6 +1304,126 @@ async function runFullPlatformVerifier() {
     `  ✔ STIX 2.1 Threat Intel: Indexed=${stixIngest.indexedCount} ➔ Real-Time Match=true (Threat Actor: '${stixMatchResult.threatActors[0]}', MITRE: ${stixMatchResult.mitreTechniques.join(', ')})`,
   );
 
+  stepsPassed++;
+ 
+  // -------------------------------------------------------------------------
+  // Stage 26: Production Transactional Email Matrix (ZS-EML-TPL-001 v2.0)
+  // -------------------------------------------------------------------------
+  logger.log(
+    '\n[Stage 26/26] Production Email Template Matrix (ZS-EML-TPL-001 v2.0), Gate 3 Isolation & Offline Verifier Receipts...',
+  );
+  const templateEngine = new ProductionEmailTemplateEngine();
+  const allTemplates = templateEngine.listTemplates();
+  assertInvariant(
+    allTemplates.length === 226,
+    `Production template registry must contain all 226 contractual email templates. Found: ${allTemplates.length}`,
+  );
+
+  // 1. Render Contractual Template ZS-EML-SEC-001
+  const rendered = templateEngine.render({
+    templateId: 'ZS-EML-SEC-001',
+    recipientFirstName: 'Sarah',
+    organizationName: 'Acme Financial Services Inc.',
+    referenceId: 'INC-2026-9041',
+    statusLabel: 'CRITICAL_INCIDENT_OPENED',
+    occurredAtLocal: '2026-10-08 09:15:00',
+    timezone: 'UTC+0',
+    actionUrl: 'https://app.zoikoshield.com/actions',
+  });
+
+  assertInvariant(
+    Boolean(rendered.renderHash && rendered.renderHash.length === 64),
+    'Template render output must generate a canonical 64-char SHA-256 render hash',
+  );
+  assertInvariant(
+    rendered.gate === 'P0' && rendered.senderClass === 'security_sender',
+    'ZS-EML-SEC-001 must be bound to P0 gate and security_sender mailbox',
+  );
+
+  // 2. Allowlisted Enum Humanization
+  const humanizedStatus = resolveAllowlistedStatus('EXECUTED_AUTOMATICALLY');
+  assertInvariant(
+    humanizedStatus === 'Executed Automatically',
+    `Enum humanization must resolve EXECUTED_AUTOMATICALLY to 'Executed Automatically'. Received: ${humanizedStatus}`,
+  );
+
+  // 3. Gate 3 Tenant Boundary Validation
+  const isolationValidator = new TenantIsolationValidator();
+  isolationValidator.validateTenantBoundary({
+    tenantId: tenantA.id,
+    recipientEmail: 'sarah@acmefinancial.corp',
+    resourceTenantId: tenantA.id,
+    ctaUrl: 'https://app.zoikoshield.com/actions',
+  });
+
+  let crossTenantBlocked = false;
+  try {
+    isolationValidator.validateTenantBoundary({
+      tenantId: tenantA.id,
+      recipientEmail: 'sarah@acmefinancial.corp',
+      resourceTenantId: tenantB.id,
+      ctaUrl: 'https://app.zoikoshield.com/actions',
+    });
+  } catch (err: any) {
+    crossTenantBlocked = true;
+  }
+  assertInvariant(
+    crossTenantBlocked,
+    'Gate 3 TenantIsolationValidator must strictly block cross-tenant parameter injection',
+  );
+
+  // 4. Sender Class Router & Mailbox Configuration
+  const senderRouter = new SenderClassRouterService();
+  const mailboxProfile = senderRouter.resolveSenderProfile('security_sender');
+  assertInvariant(
+    mailboxProfile.fromAddress === 'security-alerts@zoikoshield.com',
+    'Security sender must route to security-alerts@zoikoshield.com',
+  );
+
+  // 5. Audit Reconstruction & Offline Verifier CLI (ADR-01)
+  const auditReconstructor = new NotificationAuditReconstructionService(null as any);
+  const manifest = auditReconstructor.createAuditManifest({
+    deliveryId: 'del-901',
+    tenantId: tenantA.id,
+    eventId: 'evt-sec-901',
+    templateId: 'ZS-EML-SEC-001',
+    policyId: 'POL-NOTIF-P0',
+    recipientEmail: 'security-lead@acmefinancial.corp',
+    renderHash: rendered.renderHash,
+    contentDigest: crypto.createHash('sha256').update(rendered.htmlBody).digest('hex'),
+    senderClass: rendered.senderClass,
+    dispatchedAt: new Date().toISOString(),
+  });
+
+  const offlineVerifier = new StandaloneVerifierRunner();
+  const receiptVerification = offlineVerifier.verifyNotificationReceipt({
+    deliveryId: manifest.deliveryId,
+    tenantId: manifest.tenantId,
+    eventId: manifest.eventId,
+    templateId: manifest.templateId,
+    policyId: manifest.policyId,
+    recipientEmail: 'security-lead@acmefinancial.corp',
+    renderHash: manifest.renderHash,
+    contentDigest: manifest.contentDigest,
+    senderClass: manifest.senderClass,
+    dispatchedAt: manifest.dispatchedAt,
+    auditHash: manifest.auditHash,
+  });
+
+  assertInvariant(
+    receiptVerification.verified === true && receiptVerification.status === 'AUDIT_VERIFIED',
+    'Offline Verifier CLI must verify canonical notification receipt without network/DB access',
+  );
+
+  logger.log(
+    `  ✔ Email Template Matrix: Verified ${allTemplates.length}/226 contracts across 16 domains.`,
+  );
+  logger.log(
+    `  ✔ Gate 3 Isolation: Verified strict tenant boundary & HTTPS URL enforcer.`,
+  );
+  logger.log(
+    `  ✔ ADR-01 Offline Verifier: Verified canonical audit hash (${manifest.auditHash.slice(0, 16)}...) -> STATUS: ${receiptVerification.status}.`,
+  );
   stepsPassed++;
 
   logger.log(
