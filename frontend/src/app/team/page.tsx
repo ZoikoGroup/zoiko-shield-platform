@@ -38,6 +38,7 @@ export default function TeamPage() {
   const [email, setEmail] = useState("analyst.ops@acme.com");
   const [role, setRole] = useState<"SECURITY_ANALYST" | "AUDITOR" | "TENANT_ADMIN">("SECURITY_ANALYST");
   const [isLoading, setIsLoading] = useState(false);
+  const [inviteError, setInviteError] = useState<string | null>(null);
   const [acceptingToken, setAcceptingToken] = useState<string | null>(null);
 
   const [passkeys, setPasskeys] = useState<RegisteredPasskey[]>([]);
@@ -111,6 +112,7 @@ export default function TeamPage() {
   const handleSendInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setInviteError(null);
     try {
       await ZoikoShieldApiClient.inviteAnalyst(
         state.tenant.id,
@@ -119,8 +121,9 @@ export default function TeamPage() {
       );
       setIsInviteModalOpen(false);
       setEmail("analyst.ops@acme.com");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Invite Error:", err);
+      setInviteError(err?.message || "Failed to issue membership invitation.");
     } finally {
       setIsLoading(false);
     }
@@ -398,6 +401,12 @@ export default function TeamPage() {
               <option value="TENANT_ADMIN">TENANT_ADMIN (Full Admin)</option>
             </select>
           </div>
+
+          {inviteError && (
+            <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-500/50 text-rose-300 text-xs font-mono">
+              {inviteError}
+            </div>
+          )}
 
           <div className="pt-2 flex justify-end gap-2">
             <Button

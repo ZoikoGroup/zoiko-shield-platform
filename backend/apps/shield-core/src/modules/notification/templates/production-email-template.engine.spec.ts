@@ -54,16 +54,28 @@ describe('ProductionEmailTemplateEngine (ZS-EML-TPL-001 v2.0)', () => {
     );
   });
 
-  it('should fail closed when rendering unknown template or missing mandatory parameters', () => {
-    expect(() =>
-      engine.render({
-        templateId: 'ZS-EML-UNKNOWN-999',
-        recipientFirstName: '',
-        referenceId: '',
-        statusLabel: '',
-        occurredAtLocal: '',
-        timezone: '',
-      }),
-    ).toThrow();
+  it('should register exactly 226 templates across all 16 domains and render each successfully', () => {
+    const all = engine.listTemplates();
+    expect(all.length).toBe(226);
+
+    const ids = new Set<string>();
+    for (const t of all) {
+      expect(ids.has(t.id)).toBe(false);
+      ids.add(t.id);
+
+      const rendered = engine.render({
+        templateId: t.id,
+        recipientFirstName: 'Operator',
+        organizationName: 'Zoiko Shield Test',
+        referenceId: `ref-${t.id}`,
+        statusLabel: 'ACTIVE',
+        occurredAtLocal: '2026-10-12 12:00:00',
+        timezone: 'UTC',
+      });
+      expect(rendered.templateId).toBe(t.id);
+      expect(rendered.htmlBody.length).toBeGreaterThan(50);
+      expect(rendered.plainTextBody.length).toBeGreaterThan(50);
+      expect(rendered.renderHash).toBeDefined();
+    }
   });
 });

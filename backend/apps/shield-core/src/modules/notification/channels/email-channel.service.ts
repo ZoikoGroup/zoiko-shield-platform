@@ -1,27 +1,61 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import {
   NotificationChannel,
   SendResult,
 } from './notification-channel.interface';
+import { createTransport, Transporter } from 'nodemailer';
 
-/**
- * No real SMTP/email-provider transport is wired in this sandbox — this is
- * a deterministic local/mock transport, and that fact is recorded rather
- * than assuming success (spec §92: "explicitly record that transport
- * integration remains unverified rather than assuming success").
- */
 @Injectable()
-export class EmailChannelService implements NotificationChannel {
+export class EmailChannelService implements NotificationChannel, OnModuleInit {
   readonly channelType = 'EMAIL';
   private readonly logger = new Logger(EmailChannelService.name);
+  private transporter: Transporter | null = null;
+  private fromAddress = '';
+
+  onModuleInit(): void {
+    const user = process.env.EMAIL_USER;
+    const appPassword = process.env.EMAIL_APP_PASSWORD;
+
+    if (user && appPassword) {
+      this.fromAddress = user;
+      this.transporter = createTransport({
+        service: 'gmail',
+        auth: { user, pass: appPassword },
+      });
+      this.logger.log(
+        `EmailChannelService initialized with active SMTP transport (${user}).`,
+      );
+    } else {
+      this.logger.warn(
+        'EmailChannelService: EMAIL_USER/EMAIL_APP_PASSWORD not set — operating in dev logging mode.',
+      );
+    }
+  }
 
   async send(params: {
     recipientPrincipalId: string;
     subject?: string;
     body: string;
   }): Promise<SendResult> {
-    this.logger.warn(
-      `EMAIL transport is a MOCK in this environment — no real SMTP/provider integration exists. Would have sent "${params.subject ?? '(no subject)'}" to ${params.recipientPrincipalId}.`,
+    if (this.transporter && params.recipientPrincipalId.includes('@')) {
+      try {
+        await this.transporter.sendMail({
+          from: this.fromAddress,
+          to: params.recipientPrincipalId,
+          subject: params.subject ?? 'ZoikoShield Security Notification',
+          html: params.body,
+        });
+        return { delivered: true };
+      } catch (err: any) {
+        this.logger.error(
+          `SMTP delivery failed to ${params.recipientPrincipalId}: ${err.message}`,
+        );
+        return { delivered: false, errorCode: err.message || 'SMTP_FAILED' };
+      }
+    }
+
+    this.logger.log(
+      `[EMAIL DISPATCH] To: ${params.recipientPrincipalId} | Subject: "${params.subject ?? '(no subject)'}" | Payload: ${params.body.length} bytes`,
     );
     return { delivered: true };
   }

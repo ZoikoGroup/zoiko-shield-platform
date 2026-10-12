@@ -360,10 +360,41 @@ export class ZoikoShieldApiClient {
     legalEntityName: string;
     environmentName: string;
     homeRegion: string;
+    orderId?: string;
+    ownerEmail?: string;
+    dataClass?: string;
+    timezone?: string;
+    accessDisclosureVersion?: string;
   }): Promise<Tenant> {
+    const payload = {
+      orderId: data.orderId || "00000000-0000-4000-8000-000000000001",
+      tenantName: data.organizationName,
+      tenantSlug: data.slug,
+      homeRegion: data.homeRegion,
+      dataResidencyRegion: data.homeRegion,
+      timezone: data.timezone || "Etc/UTC",
+      dataClass: data.dataClass || "RESTRICTED",
+      retentionPolicyRef: "retention-standard-7y",
+      legalEntity: {
+        legalName: data.legalEntityName,
+        country: "GB",
+      },
+      ownerEmail: data.ownerEmail || "owner@acme.com",
+      environment: {
+        name: data.environmentName,
+        environmentType: "PRODUCTION",
+      },
+      accessDisclosureVersion: data.accessDisclosureVersion || "1",
+      // Backwards-compatible aliases
+      organizationName: data.organizationName,
+      slug: data.slug,
+      legalEntityName: data.legalEntityName,
+      environmentName: data.environmentName,
+    };
+
     const newTenant = await this.safeFetch<Tenant>(
       "/api/v1/onboarding",
-      { method: "POST", body: JSON.stringify(data) },
+      { method: "POST", body: JSON.stringify(payload) },
       () => {
         return {
           id: `tenant-${generateUUID().slice(0, 8)}`,
@@ -408,7 +439,7 @@ export class ZoikoShieldApiClient {
     invitedEmail: string,
     assignedRole: "SECURITY_ANALYST" | "AUDITOR" | "TENANT_ADMIN"
   ): Promise<Invitation> {
-    const invitation = await this.safeFetch<Invitation>(
+    const rawResult = await this.safeFetch<any>(
       `/api/v1/tenants/${tenantId}/invitations`,
       {
         method: "POST",
@@ -427,6 +458,16 @@ export class ZoikoShieldApiClient {
       }
     );
 
+    const invitation: Invitation = {
+      id: rawResult.id || rawResult.invitationId || `inv-${generateUUID().slice(0, 8)}`,
+      tenantId: rawResult.tenantId || tenantId,
+      invitedEmail: rawResult.invitedEmail || invitedEmail,
+      assignedRole: rawResult.assignedRole || assignedRole,
+      token: rawResult.token || "",
+      status: (rawResult.status as any) || "PENDING",
+      createdAt: rawResult.createdAt || new Date().toISOString(),
+    };
+
     const state = getState();
     state.invitations = [invitation, ...state.invitations.filter((i) => i.id !== invitation.id)];
     saveDemoState(state);
@@ -434,7 +475,7 @@ export class ZoikoShieldApiClient {
   }
 
   static async acceptInvitation(token: string): Promise<Invitation> {
-    const inv = await this.safeFetch<Invitation>(
+    const rawInv = await this.safeFetch<any>(
       `/api/v1/invitations/${token}/accept`,
       { method: "POST" },
       () => {
@@ -461,17 +502,19 @@ export class ZoikoShieldApiClient {
     if (existing) {
       existing.status = "ACCEPTED";
     }
+    const emailToUse = rawInv?.invitedEmail || (existing ? existing.invitedEmail : "analyst.ops@acme.com");
+    const roleToUse = rawInv?.assignedRole || (existing ? existing.assignedRole : "SECURITY_ANALYST");
     state.team.push({
       id: `usr-${generateUUID().slice(0, 8)}`,
-      email: inv.invitedEmail,
-      fullName: inv.invitedEmail.split("@")[0].replace(".", " ").toUpperCase(),
-      role: inv.assignedRole as any,
+      email: emailToUse,
+      fullName: emailToUse.split("@")[0].replace(".", " ").toUpperCase(),
+      role: roleToUse as any,
       status: "ACTIVE",
       joinedAt: new Date().toISOString(),
     });
     state.currentStep = 4;
     saveDemoState(state);
-    return inv;
+    return (existing || rawInv) as Invitation;
   }
 
   // --- Step 4: Connectors Setup ---
@@ -5573,6 +5616,55 @@ resource "aws_iam_policy" "least_privilege" {
       })
     );
     return res;
+  }
+
+  // --- Spec ADR-05: W3C Verifiable Credentials ---
+  static async getVerifiableCredentialIssuer(): Promise<{
+    issuerDid: string;
+    keyType: string;
+    supportedProofTypes: string[];
+    standard: string;
+    status: string;
+    timestamp: string;
+  }> {
+    return this.safeFetch(
+      '/api/v1/identity/verifiable-credentials/issuer',
+      { method: 'GET' },
+      () => ({
+        issuerDid: 'did:key:zIssuer998240ad',
+        keyType: 'prime256v1',
+        supportedProofTypes: ['JsonWebSignature2020'],
+        standard: 'W3C Verifiable Credentials Data Model v1.1',
+        status: 'ACTIVE',
+        timestamp: new Date().toISOString(),
+      }),
+    );
+  }
+
+  static async verifyVerifiableCredential(credential: any): Promise<{
+    isValid: boolean;
+    subjectDid: string;
+    issuerDid: string;
+    claims: any;
+    attestationDigest: string;
+    verifiedAt: string;
+  }> {
+    return this.safeFetch(
+      '/api/v1/identity/verifiable-credentials/verify',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential }),
+      },
+      () => ({
+        isValid: true,
+        subjectDid: credential?.credentialSubject?.id || 'did:key:zSubjectDemo',
+        issuerDid: credential?.issuer?.id || 'did:key:zIssuerDemo',
+        claims: credential?.credentialSubject?.claims || {},
+        attestationDigest: 'mock-attestation-digest-p256',
+        verifiedAt: new Date().toISOString(),
+      }),
+    );
   }
 }
 

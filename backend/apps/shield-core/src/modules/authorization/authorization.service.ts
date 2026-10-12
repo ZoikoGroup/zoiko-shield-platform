@@ -85,6 +85,16 @@ export class AuthorizationService {
     return roles.map(toRoleWithPermissions);
   }
 
+  async findRoleByCode(tenantId: string | null, code: string): Promise<Role | null> {
+    const role = await this.prisma.role.findFirst({
+      where: {
+        code,
+        OR: tenantId ? [{ tenantId }, { tenantId: null }] : [{ tenantId: null }],
+      },
+    });
+    return role ? toRole(role) : null;
+  }
+
   async updateRolePermissions(
     roleId: string,
     permissionCodes: string[],

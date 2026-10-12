@@ -154,6 +154,8 @@ const approvedPublicOperations = new Set([
   'get:/api/v1/governance/disclosures',
   'post:/api/v1/auth/passkeys/authentication/options',
   'post:/api/v1/auth/passkeys/authentication',
+  'get:/api/v1/identity/verifiable-credentials/issuer',
+  'post:/api/v1/identity/verifiable-credentials/verify',
 ]);
 const undocumentedSecurity = [];
 for (const [route, definition] of Object.entries(specification.paths ?? {})) {

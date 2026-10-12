@@ -90,78 +90,103 @@ export class AwsCloudTrailPollerService {
       }
     }
 
-    // Retrieve last checkpoint
     let lastCheckpoint = '0';
-    if (this.checkpointService) {
-      const cursor = await this.checkpointService.get(
-        instanceId,
-        'aws-cloudtrail',
+    try {
+      if (this.checkpointService) {
+        const cursor = await this.checkpointService.get(
+          instanceId,
+          'aws-cloudtrail',
+        );
+        lastCheckpoint = cursor || '0';
+      }
+
+      const startOffset = parseInt(lastCheckpoint, 10) || 0;
+      const records = this.generateIncrementalCloudTrailRecords(
+        tenantId,
+        startOffset,
+        limit,
       );
-      lastCheckpoint = cursor || '0';
-    }
 
-    const startOffset = parseInt(lastCheckpoint, 10) || 0;
-    const records = this.generateIncrementalCloudTrailRecords(
-      tenantId,
-      startOffset,
-      limit,
-    );
+      if (records.length === 0) {
+        return {
+          instanceId,
+          tenantId,
+          polledCount: 0,
+          newCheckpoint: lastCheckpoint,
+          status: 'NO_NEW_DATA',
+        };
+      }
 
-    if (records.length === 0) {
+      // Convert to batch buffer events
+      if (this.batchBuffer) {
+        const bufferEvents = records.map((rec) => ({
+          eventId:
+            rec.eventID ||
+            `ct-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+          source: 'aws.cloudtrail',
+          eventType: rec.eventName || 'AwsApiCall',
+          timestamp: rec.eventTime || new Date().toISOString(),
+          payload: rec,
+        }));
+
+        await this.batchBuffer.ingestBatch(tenantId, bufferEvents);
+      }
+
+      const nextOffset = startOffset + records.length;
+      const newCheckpointStr = nextOffset.toString();
+
+      // Update checkpoint
+      if (this.checkpointService) {
+        await this.checkpointService.set(
+          tenantId,
+          instanceId,
+          'aws-cloudtrail',
+          newCheckpointStr,
+        );
+      }
+
+      // Update health
+      if (this.healthService) {
+        await this.healthService.updateHealth(
+          instanceId,
+          tenantId,
+          'HEALTHY',
+          `Polled ${records.length} CloudTrail events successfully`,
+        );
+      }
+
+      return {
+        instanceId,
+        tenantId,
+        polledCount: records.length,
+        newCheckpoint: newCheckpointStr,
+        status: 'SUCCESS',
+      };
+    } catch (err: any) {
+      this.logger.error(
+        `Failed to poll AWS CloudTrail events for connector instance ${instanceId}: ${err?.message}`,
+      );
+
+      if (this.healthService) {
+        await this.healthService
+          .updateHealth(
+            instanceId,
+            tenantId,
+            'DEGRADED',
+            `CloudTrail polling error: ${err?.message}`,
+          )
+          .catch(() => {});
+      }
+
       return {
         instanceId,
         tenantId,
         polledCount: 0,
         newCheckpoint: lastCheckpoint,
-        status: 'NO_NEW_DATA',
+        status: 'ERROR',
+        errorMessage: err?.message,
       };
     }
-
-    // Convert to batch buffer events
-    if (this.batchBuffer) {
-      const bufferEvents = records.map((rec) => ({
-        eventId:
-          rec.eventID ||
-          `ct-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        source: 'aws.cloudtrail',
-        eventType: rec.eventName || 'AwsApiCall',
-        timestamp: rec.eventTime || new Date().toISOString(),
-        payload: rec,
-      }));
-
-      await this.batchBuffer.ingestBatch(tenantId, bufferEvents);
-    }
-
-    const nextOffset = startOffset + records.length;
-    const newCheckpointStr = nextOffset.toString();
-
-    // Update checkpoint
-    if (this.checkpointService) {
-      await this.checkpointService.set(
-        tenantId,
-        instanceId,
-        'aws-cloudtrail',
-        newCheckpointStr,
-      );
-    }
-
-    // Update health
-    if (this.healthService) {
-      await this.healthService.updateHealth(
-        instanceId,
-        tenantId,
-        'HEALTHY',
-        `Polled ${records.length} CloudTrail events successfully`,
-      );
-    }
-
-    return {
-      instanceId,
-      tenantId,
-      polledCount: records.length,
-      newCheckpoint: newCheckpointStr,
-      status: 'SUCCESS',
-    };
   }
 
   /**
