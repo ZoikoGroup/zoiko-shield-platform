@@ -82,7 +82,7 @@ export class StandaloneVerifierRunner {
 
     if (fs.existsSync(evidenceDir) && Array.isArray(manifest.evidenceFiles)) {
       for (const fileMeta of manifest.evidenceFiles) {
-        const filePath = path.join(evidenceDir, fileMeta.filename);
+        const filePath = path.join(evidenceDir, String(fileMeta.filename));
         if (fs.existsSync(filePath)) {
           const content = fs.readFileSync(filePath);
           const computedHash = crypto

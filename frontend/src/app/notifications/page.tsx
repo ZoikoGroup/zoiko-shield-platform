@@ -48,54 +48,54 @@ function statusVariant(status: string) {
   }
 }
 
+const SAMPLE_NOTIFICATIONS: NotificationDelivery[] = [
+  {
+    id: "del-p0-alert-1043",
+    event_id: "evt-sec-p0-lateral-movement",
+    channel: "EMAIL (security-alerts@zoikoshield.com)",
+    status: "DELIVERED",
+    attempt_count: 1,
+    delivered_at: new Date(Date.now() - 300000).toISOString(),
+    error_code: null,
+    created_at: new Date(Date.now() - 360000).toISOString(),
+  },
+  {
+    id: "del-jit-elev-1042",
+    event_id: "evt-jit-elevation-approved",
+    channel: "EMAIL (auth-notices@zoikoshield.com)",
+    status: "DELIVERED",
+    attempt_count: 1,
+    delivered_at: new Date(Date.now() - 1200000).toISOString(),
+    error_code: null,
+    created_at: new Date(Date.now() - 1260000).toISOString(),
+  },
+  {
+    id: "del-merkle-epoch-1041",
+    event_id: "evt-merkle-epoch-sealed",
+    channel: "EMAIL (compliance-officer@zoikoshield.com)",
+    status: "DELIVERED",
+    attempt_count: 1,
+    delivered_at: new Date(Date.now() - 3600000).toISOString(),
+    error_code: null,
+    created_at: new Date(Date.now() - 3660000).toISOString(),
+  },
+  {
+    id: "del-webhook-dlq-1039",
+    event_id: "evt-staging-webhook-sync",
+    channel: "WEBHOOK (https://staging.internal/hook)",
+    status: "DEAD_LETTERED",
+    attempt_count: 3,
+    delivered_at: null,
+    error_code: "HTTP_504_GATEWAY_TIMEOUT",
+    created_at: new Date(Date.now() - 7200000).toISOString(),
+  },
+];
+
 export default function NotificationsPage() {
   const [items, setItems] = useState<NotificationDelivery[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [acking, setAcking] = useState<string | null>(null);
-
-  const SAMPLE_NOTIFICATIONS: NotificationDelivery[] = [
-    {
-      id: "del-p0-alert-1043",
-      event_id: "evt-sec-p0-lateral-movement",
-      channel: "EMAIL (security-alerts@zoikoshield.com)",
-      status: "DELIVERED",
-      attempt_count: 1,
-      delivered_at: new Date(Date.now() - 300000).toISOString(),
-      error_code: null,
-      created_at: new Date(Date.now() - 360000).toISOString(),
-    },
-    {
-      id: "del-jit-elev-1042",
-      event_id: "evt-jit-elevation-approved",
-      channel: "EMAIL (auth-notices@zoikoshield.com)",
-      status: "DELIVERED",
-      attempt_count: 1,
-      delivered_at: new Date(Date.now() - 1200000).toISOString(),
-      error_code: null,
-      created_at: new Date(Date.now() - 1260000).toISOString(),
-    },
-    {
-      id: "del-merkle-epoch-1041",
-      event_id: "evt-merkle-epoch-sealed",
-      channel: "EMAIL (compliance-officer@zoikoshield.com)",
-      status: "DELIVERED",
-      attempt_count: 1,
-      delivered_at: new Date(Date.now() - 3600000).toISOString(),
-      error_code: null,
-      created_at: new Date(Date.now() - 3660000).toISOString(),
-    },
-    {
-      id: "del-webhook-dlq-1039",
-      event_id: "evt-staging-webhook-sync",
-      channel: "WEBHOOK (https://staging.internal/hook)",
-      status: "DEAD_LETTERED",
-      attempt_count: 3,
-      delivered_at: null,
-      error_code: "HTTP_504_GATEWAY_TIMEOUT",
-      created_at: new Date(Date.now() - 7200000).toISOString(),
-    },
-  ];
 
   const load = useCallback(async () => {
     setIsLoading(true);
