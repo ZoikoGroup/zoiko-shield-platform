@@ -12,9 +12,43 @@ import {
   Lock,
 } from "lucide-react";
 import Link from "next/link";
+import { ZoikoShieldApiClient } from "@/lib/api-client";
 
 export const TrustBar: React.FC = () => {
   const [state] = useDemoState();
+  const [healthStatus, setHealthStatus] = React.useState<{
+    healthyCount: number;
+    totalCount: number;
+    state: string;
+  }>({ healthyCount: 5, totalCount: 5, state: "OK" });
+
+  React.useEffect(() => {
+    let mounted = true;
+    const fetchHealth = async () => {
+      try {
+        const snap = await ZoikoShieldApiClient.getPlatformReadiness();
+        if (mounted && snap) {
+          const healthy = snap.healthyServicesCount ?? 5;
+          const total = snap.totalServicesCount ?? 5;
+          const isDegraded = (snap.degradedServicesCount ?? 0) > 0;
+          setHealthStatus({
+            healthyCount: healthy,
+            totalCount: total,
+            state: isDegraded ? "DEGRADED" : "OK",
+          });
+        }
+      } catch {
+        // Fallback gracefully if unauthenticated or during offline development
+      }
+    };
+
+    fetchHealth();
+    const interval = setInterval(fetchHealth, 30000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
 
   return (
     <header className="sticky top-0 z-40 w-full bg-[#0d1017]/95 backdrop-blur-md border-b border-slate-800/80 px-4 py-2.5 flex items-center justify-between shadow-lg">
@@ -66,10 +100,25 @@ export const TrustBar: React.FC = () => {
         </div>
 
         {/* System Health */}
-        <div className="hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-cyan-950/30 border border-cyan-500/20 text-cyan-300 text-xs font-mono">
-          <Activity className="w-3.5 h-3.5 text-cyan-400" />
-          <span>Microservices: 5/5 OK</span>
-        </div>
+        <Link
+          href="/admin/platform-health"
+          title="Inspect Platform Microservices Health"
+          className={`hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-md border text-xs font-mono transition-colors hover:brightness-125 ${
+            healthStatus.state === "OK"
+              ? "bg-cyan-950/30 border-cyan-500/20 text-cyan-300"
+              : "bg-amber-950/40 border-amber-500/30 text-amber-300"
+          }`}
+        >
+          <Activity
+            className={`w-3.5 h-3.5 ${
+              healthStatus.state === "OK" ? "text-cyan-400" : "text-amber-400"
+            }`}
+          />
+          <span>
+            Microservices: {healthStatus.healthyCount}/{healthStatus.totalCount}{" "}
+            {healthStatus.state}
+          </span>
+        </Link>
 
         {/* Active User / Role */}
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-900/90 border border-slate-700/80 text-xs text-slate-200">

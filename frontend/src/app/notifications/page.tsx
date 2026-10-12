@@ -102,14 +102,21 @@ export default function NotificationsPage() {
     setError(null);
     try {
       const data = asList<NotificationDelivery>(await backend.get("/api/v1/notifications"));
-      if (data && data.length > 0) {
+      if (Array.isArray(data)) {
         setItems(data);
+        setIsLoading(false);
         return;
       }
     } catch {
-      // Backend is offline - use sample notifications
+      // Backend is offline or errored
+      if (process.env.NEXT_PUBLIC_DEMO_FALLBACK === "true") {
+        setItems(SAMPLE_NOTIFICATIONS);
+        setIsLoading(false);
+        return;
+      }
+      setError("Unable to load notifications from regional cell.");
     }
-    setItems(SAMPLE_NOTIFICATIONS);
+    setItems([]);
     setIsLoading(false);
   }, []);
 

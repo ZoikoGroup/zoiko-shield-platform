@@ -45,6 +45,8 @@ import RetainersAndSlaOperationsPage from '@/app/operations/retainers/page';
 import G1GatePage from '@/app/admin/g1-gate/page';
 import JitElevationApprovalPage from '@/app/admin/jit-elevation/page';
 import MsspFleetCockpitPage from '@/app/partner/fleet/page';
+import EmailTemplatesPage from '@/app/admin/email-templates/page';
+import AcceptInvitePage from '@/app/accept-invite/page';
 
 describe('ZoikoShield Route Pages Smoke Tests', () => {
   beforeEach(() => {
@@ -58,7 +60,7 @@ describe('ZoikoShield Route Pages Smoke Tests', () => {
         screen.getAllByText(/Compliance Audit Certificate Verifier/i)[0]
       ).toBeInTheDocument();
       expect(
-        screen.getAllByText(/Load Certified Sample/i)[0]
+        screen.getAllByText(/Load Merkle Sample/i)[0]
       ).toBeInTheDocument();
     });
   });
@@ -227,6 +229,24 @@ describe('ZoikoShield Route Pages Smoke Tests', () => {
       render(<MsspFleetCockpitPage />);
       expect(screen.getByText(/MSSP Partner Console & Delegated Fleet Cockpit/i)).toBeInTheDocument();
       expect(screen.getByText(/Multi-Tenant Fleet Posture/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('22. Production Email Templates Studio (/admin/email-templates)', () => {
+    it('renders 226 production email template catalogue with preview engine', async () => {
+      render(<EmailTemplatesPage />);
+      await waitFor(() => {
+        expect(screen.getByText(/Production Email Template Studio/i)).toBeInTheDocument();
+      });
+      expect(screen.getByText(/ZS-EML-TPL-001 v2.0/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('23. Accept Owner Invite Page (/accept-invite)', () => {
+    it('renders token validation gate and activation guidance', () => {
+      render(<AcceptInvitePage />);
+      expect(screen.getByText(/Invalid or Expired Activation Token|Activate Your ZoikoShield Workspace/i)).toBeInTheDocument();
+      expect(screen.getByText(/ZoikoShield Tenancy Activation Gateway/i)).toBeInTheDocument();
     });
   });
 });

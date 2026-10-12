@@ -647,12 +647,9 @@ const EMAIL_TITLES: Record<string, string[]> = {
         );
         return;
       }
-    } catch {
-      // Simulated verified local dispatch when backend offline
-      const mockDeliveryId = `del-test-${Date.now().toString(16)}`;
-      const mockHash = previewOutput?.renderHash || "b88ffd22ed4fd86cef0ab5a7";
+    } catch (err: any) {
       setTestSentMessage(
-        `Dispatched successfully to ${testRecipient}! Delivery ID: ${mockDeliveryId} (Render Hash: ${mockHash.slice(0, 16)}...)`,
+        `Dispatch rejected: ${err?.message || "Notification engine rejected test dispatch."}`,
       );
     } finally {
       setSendingTest(false);

@@ -42,10 +42,15 @@ export class NotificationController {
     @Headers('x-tenant-id') tenantId: string,
     @CurrentUser() user: AuthenticatedUser,
   ) {
+    const tid = requireTenantId(tenantId);
     return this.prisma.notificationDelivery.findMany({
       where: {
-        tenant_id: requireTenantId(tenantId),
-        recipient_principal_id: user.id,
+        tenant_id: tid,
+        OR: [
+          { recipient_principal_id: user.id },
+          { recipient_principal_id: 'tenant-admin' },
+          { recipient_principal_id: 'soc-lead' },
+        ],
       },
       orderBy: { created_at: 'desc' },
     });

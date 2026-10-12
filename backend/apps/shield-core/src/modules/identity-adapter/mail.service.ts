@@ -61,7 +61,6 @@ export class MailService implements OnModuleInit {
             password_reset_url: `https://app.zoikoshield.com/login?otp=${encodeURIComponent(code)}`,
           },
         });
-        return;
       } catch (err: any) {
         this.logger.debug(
           `Transactional email engine fallback: ${err.message}`,
@@ -69,19 +68,25 @@ export class MailService implements OnModuleInit {
       }
     }
 
-    if (!this.transporter) {
-      this.logger.log(
-        `OTP for ${email} [${purpose}]: ${code} (valid 10 minutes)`,
-      );
-      return;
+    if (this.transporter) {
+      try {
+        await this.transporter.sendMail({
+          from: this.fromAddress,
+          to: email,
+          subject: OTP_SUBJECT[purpose],
+          text: `Your verification code is ${code}. It expires in 10 minutes.`,
+        });
+        return;
+      } catch (transportErr: any) {
+        this.logger.warn(
+          `Failed to deliver OTP via SMTP: ${transportErr.message}`,
+        );
+      }
     }
 
-    await this.transporter.sendMail({
-      from: this.fromAddress,
-      to: email,
-      subject: OTP_SUBJECT[purpose],
-      text: `Your verification code is ${code}. It expires in 10 minutes.`,
-    });
+    this.logger.log(
+      `OTP for ${email} [${purpose}]: ${code} (valid 10 minutes)`,
+    );
   }
 
   async sendOwnerInvitation(input: {
@@ -111,7 +116,6 @@ export class MailService implements OnModuleInit {
             invitation_url: activationUrl,
           },
         });
-        return activationUrl;
       } catch (err: any) {
         this.logger.debug(
           `Transactional invitation engine fallback: ${err.message}`,
@@ -119,25 +123,30 @@ export class MailService implements OnModuleInit {
       }
     }
 
-    if (!this.transporter) {
-      this.logger.log(
-        `Owner activation for ${input.email} (${input.tenantName}): ${activationUrl} (expires ${input.expiresAt.toISOString()})`,
-      );
-      return activationUrl;
+    if (this.transporter) {
+      try {
+        await this.transporter.sendMail({
+          from: this.fromAddress,
+          to: input.email,
+          subject: `Activate your ${input.tenantName} ZoikoShield account`,
+          text: [
+            `You have been invited to activate the ZoikoShield tenant ${input.tenantName}.`,
+            `Open this single-use link, accept the access disclosure, and authenticate with ZoikoID: ${activationUrl}`,
+            `The link expires at ${input.expiresAt.toISOString()}.`,
+            'If you were not expecting this invitation, do not use the link.',
+          ].join('\n\n'),
+        });
+        return activationUrl;
+      } catch (transportErr: any) {
+        this.logger.warn(
+          `Failed to deliver owner invitation via SMTP: ${transportErr.message}`,
+        );
+      }
     }
 
-    await this.transporter.sendMail({
-      from: this.fromAddress,
-      to: input.email,
-      subject: `Activate your ${input.tenantName} ZoikoShield account`,
-      text: [
-        `You have been invited to activate the ZoikoShield tenant ${input.tenantName}.`,
-        `Open this single-use link, accept the access disclosure, and authenticate with ZoikoID: ${activationUrl}`,
-        `The link expires at ${input.expiresAt.toISOString()}.`,
-        'If you were not expecting this invitation, do not use the link.',
-      ].join('\n\n'),
-    });
-
+    this.logger.log(
+      `Owner activation for ${input.email} (${input.tenantName}): ${activationUrl} (expires ${input.expiresAt.toISOString()})`,
+    );
     return activationUrl;
   }
 }

@@ -146,6 +146,8 @@ tags:
     description: MDR service obligations, SLA windows, and Rule SVC-01 operational proof gates
   - name: RequirementsRegister
     description: Requirements and Traceability Register (R04) governance and compliance audit endpoints
+  - name: VerifiableCredentials
+    description: W3C Decentralized Identifiers (DID) and Verifiable Credentials issuance, cryptographic verification, and issuer discovery
 components:
   securitySchemes:
     CookieAuth:
@@ -223,6 +225,166 @@ components:
         type: string
         minLength: 1
   schemas:
+    VerifiableCredentialIssuerMetadata:
+      type: object
+      required:
+        - issuerDid
+        - keyType
+        - supportedProofTypes
+        - standard
+        - status
+        - timestamp
+      properties:
+        issuerDid:
+          type: string
+          example: did:key:z6MkqBfG7Yp8942Hq
+        keyType:
+          type: string
+          example: prime256v1
+        supportedProofTypes:
+          type: array
+          items:
+            type: string
+          example:
+            - JsonWebSignature2020
+        standard:
+          type: string
+          example: W3C Verifiable Credentials Data Model v1.1
+        status:
+          type: string
+          example: ACTIVE
+        timestamp:
+          type: string
+          format: date-time
+    VerifiableCredentialClaims:
+      type: object
+      properties:
+        tenantId:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+        clearanceLevel:
+          type: string
+          enum:
+            - PUBLIC
+            - INTERNAL
+            - RESTRICTED
+            - TOP_SECRET
+        authorizedDomains:
+          type: array
+          items:
+            type: string
+        assuranceLevel:
+          type: string
+          enum:
+            - LOW
+            - SUBSTANTIAL
+            - HIGH
+        complianceCertifications:
+          type: array
+          items:
+            type: string
+    IssueVerifiableCredentialRequest:
+      type: object
+      required:
+        - subjectDid
+        - claims
+      properties:
+        subjectDid:
+          type: string
+          description: Subject decentralized identifier (DID)
+          example: did:key:z6MkpTHR8VNsBxYAAWHuEc2j4vZn2FaZZ
+        claims:
+          $ref: '#/components/schemas/VerifiableCredentialClaims'
+        validityDurationHours:
+          type: integer
+          default: 24
+          description: Credential validity window in hours
+          example: 24
+    W3CVerifiableCredential:
+      type: object
+      required:
+        - '@context'
+        - id
+        - type
+        - issuer
+        - issuanceDate
+        - credentialSubject
+        - proof
+      properties:
+        '@context':
+          type: array
+          items:
+            type: string
+        id:
+          type: string
+        type:
+          type: array
+          items:
+            type: string
+        issuer:
+          type: string
+        issuanceDate:
+          type: string
+          format: date-time
+        expirationDate:
+          type: string
+          format: date-time
+        credentialSubject:
+          type: object
+          required:
+            - id
+          properties:
+            id:
+              type: string
+        proof:
+          type: object
+          required:
+            - type
+            - created
+            - proofPurpose
+            - verificationMethod
+            - jws
+          properties:
+            type:
+              type: string
+            created:
+              type: string
+              format: date-time
+            proofPurpose:
+              type: string
+            verificationMethod:
+              type: string
+            jws:
+              type: string
+    VerifyVerifiableCredentialRequest:
+      type: object
+      required:
+        - credential
+      properties:
+        credential:
+          $ref: '#/components/schemas/W3CVerifiableCredential'
+    VerifyVerifiableCredentialResponse:
+      type: object
+      required:
+        - valid
+      properties:
+        valid:
+          type: boolean
+        issuer:
+          type: string
+        subject:
+          type: string
+        issuanceDate:
+          type: string
+        expirationDate:
+          type: string
+        claims:
+          $ref: '#/components/schemas/VerifiableCredentialClaims'
+        error:
+          type: string
     HumanAuthorityAttestation:
       type: object
       additionalProperties: false
@@ -30437,6 +30599,89 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postAuthPasskeysStepUp
       description: Re-asserts a passkey on the current session, raising it to PASSKEY assurance so @RequireAssurance-gated endpoints unlock.
+  /api/v1/identity/verifiable-credentials/issuer:
+    get:
+      tags:
+        - VerifiableCredentials
+      summary: Retrieve W3C Verifiable Credential issuer metadata and public DID
+      description: Returns the active issuer DID, elliptic curve key specifications, supported W3C proof algorithms, and compliance standards for cryptographic verification.
+      operationId: getVerifiableCredentialIssuerMetadata
+      security: []
+      responses:
+        '200':
+          description: Issuer metadata and cryptographic parameters retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifiableCredentialIssuerMetadata'
+  /api/v1/identity/verifiable-credentials/issue:
+    post:
+      tags:
+        - VerifiableCredentials
+      summary: Issue an ECDSA P-256 signed W3C Verifiable Credential
+      description: Issues a cryptographically signed W3C Verifiable Credential with ECDSA P-256 JWS proof for the specified subject DID, scoped claims, and validity window. Requires identity:manage permission.
+      operationId: postIssueVerifiableCredential
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/IssueVerifiableCredentialRequest'
+      responses:
+        '201':
+          description: W3C Verifiable Credential issued successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/W3CVerifiableCredential'
+        '400':
+          description: Invalid request payload or subject DID format.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized. Valid authentication credentials are required.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden. Requires identity:manage permission.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/identity/verifiable-credentials/verify:
+    post:
+      tags:
+        - VerifiableCredentials
+      summary: Verify a W3C Verifiable Credential cryptographic proof
+      description: Publicly verifies the ECDSA P-256 JWS signature, tamper-evidence hash, issuer DID trust anchor, and temporal validity window of a W3C Verifiable Credential.
+      operationId: postVerifyVerifiableCredential
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyVerifiableCredentialRequest'
+      responses:
+        '200':
+          description: Credential cryptographic verification evaluation completed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VerifyVerifiableCredentialResponse'
+        '400':
+          description: Malformed credential payload or missing required proof structure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/v1/commercial/group-accounts:
     post:
       tags:

@@ -35,8 +35,14 @@ export default function LoginPage() {
       await ZoikoShieldApiClient.login(targetEmail, targetPassword, tenantId);
       router.push("/onboarding");
     } catch (err: any) {
-      setError(err.message || "Authentication failed");
-      if (err?.status === 401 || err?.status === 403 || err?.message?.includes("Cedar") || err?.message?.includes("FIDO2")) {
+      const msg = err.message || "Authentication failed";
+      setError(msg);
+      if (
+        msg.includes("Cedar") ||
+        msg.includes("FIDO2") ||
+        msg.includes("step-up") ||
+        err?.status === 403
+      ) {
         setIsUnauthorized(true);
       }
     } finally {
@@ -171,8 +177,15 @@ export default function LoginPage() {
           </div>
 
           {error && (
-            <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-500/50 text-rose-300 text-xs font-mono">
-              {error}
+            <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-500/50 text-rose-300 text-xs font-mono space-y-1">
+              <div className="font-bold flex items-center gap-1.5">
+                <span>{error}</span>
+              </div>
+              {error.toLowerCase().includes("invalid credentials") && (
+                <div className="text-[11px] text-rose-400/90 font-sans">
+                  The provided email, password, or tenant ID does not match any active identity. In local development, run <code className="font-mono bg-rose-900/50 px-1 py-0.5 rounded text-rose-200">npm run seed:dev-tenant</code> inside <code className="font-mono bg-rose-900/50 px-1 py-0.5 rounded text-rose-200">backend/</code> to print a valid dev tenant ID and owner credentials.
+                </div>
+              )}
             </div>
           )}
 

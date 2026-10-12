@@ -74,6 +74,17 @@ export class DualCustodyQuorumService {
 
   private readonly quorums = new Map<string, DualCustodyQuorumReceipt>();
 
+  constructor() {
+    if (
+      process.env.NODE_ENV === 'production' &&
+      !process.env.DUAL_CUSTODY_SECRET_KEY
+    ) {
+      throw new Error(
+        'FATAL: DUAL_CUSTODY_SECRET_KEY environment variable is required in production mode for cryptographic quorum attestations.',
+      );
+    }
+  }
+
   /**
    * Initiates a new Dual-Custody Approval Quorum for live R2/R3/R4 containment actions.
    */
