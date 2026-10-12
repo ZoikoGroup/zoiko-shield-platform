@@ -29,9 +29,7 @@ export class VerifyVerifiableCredentialDto {
 
 @Controller('api/v1/identity/verifiable-credentials')
 export class VerifiableCredentialController {
-  constructor(
-    private readonly vcService: VerifiableCredentialService,
-  ) {}
+  constructor(private readonly vcService: VerifiableCredentialService) {}
 
   @PublicEndpoint()
   @Get('issuer')

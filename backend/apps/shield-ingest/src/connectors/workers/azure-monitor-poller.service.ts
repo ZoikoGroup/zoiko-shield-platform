@@ -25,7 +25,7 @@ export class AzureMonitorPollerService {
     @Optional() private readonly checkpointService?: ConnectorCheckpointService,
     @Optional() private readonly healthService?: ConnectorHealthService,
     @Optional() private readonly batchBuffer?: HighThroughputBatchBufferService,
-  ) { }
+  ) {}
 
   /**
    * Periodic cron trigger to poll active Azure Monitor connector instances.
@@ -215,7 +215,7 @@ export class AzureMonitorPollerService {
         properties: {
           statusCode: 'OK',
           serviceRequestId: `req-${startOffset + i}`,
-        }
+        },
       });
     }
 

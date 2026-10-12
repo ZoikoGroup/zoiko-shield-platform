@@ -120,4 +120,3 @@ describe('TransactionalEmailService', () => {
     ).rejects.toThrow(BadRequestException);
   });
 });
-

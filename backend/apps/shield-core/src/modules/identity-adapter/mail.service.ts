@@ -78,7 +78,9 @@ export class MailService implements OnModuleInit {
         });
         return;
       } catch (transportErr: any) {
-        this.logger.warn(`Failed to deliver OTP via SMTP: ${transportErr.message}`);
+        this.logger.warn(
+          `Failed to deliver OTP via SMTP: ${transportErr.message}`,
+        );
       }
     }
 
@@ -136,7 +138,9 @@ export class MailService implements OnModuleInit {
         });
         return activationUrl;
       } catch (transportErr: any) {
-        this.logger.warn(`Failed to deliver owner invitation via SMTP: ${transportErr.message}`);
+        this.logger.warn(
+          `Failed to deliver owner invitation via SMTP: ${transportErr.message}`,
+        );
       }
     }
 

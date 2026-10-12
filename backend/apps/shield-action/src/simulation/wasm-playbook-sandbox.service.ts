@@ -19,7 +19,10 @@ export interface WasmSandboxExecutionReport {
   tenantId: string;
   incidentId: string;
   bytecodeHashSha256: string;
-  status: 'SANDBOX_PASSED' | 'SANDBOX_REJECTED_BLAST_RADIUS' | 'SANDBOX_REJECTED_POLICY';
+  status:
+    | 'SANDBOX_PASSED'
+    | 'SANDBOX_REJECTED_BLAST_RADIUS'
+    | 'SANDBOX_REJECTED_POLICY';
   simulatedBlastRadiusScore: number;
   maxBlastRadiusAllowed: number;
   memoryConsumedMb: number;
@@ -80,7 +83,9 @@ export class WasmPlaybookSandboxService {
         throw new Error('Empty bytecode buffer');
       }
     } catch {
-      throw new BadRequestException('Invalid base64 encoding for wasmBytecodeBase64');
+      throw new BadRequestException(
+        'Invalid base64 encoding for wasmBytecodeBase64',
+      );
     }
 
     const bytecodeHashSha256 = crypto
@@ -108,7 +113,9 @@ export class WasmPlaybookSandboxService {
     for (const asset of dto.targetAssets) {
       if (asset.criticalityTier === PlaybookExecutionTier.TIER_0_CRITICAL) {
         blastRadiusAccumulator += BLAST_RADIUS_TIER_WEIGHT.TIER_0_CRITICAL;
-      } else if (asset.criticalityTier === PlaybookExecutionTier.TIER_1_STANDARD) {
+      } else if (
+        asset.criticalityTier === PlaybookExecutionTier.TIER_1_STANDARD
+      ) {
         blastRadiusAccumulator += BLAST_RADIUS_TIER_WEIGHT.TIER_1_STANDARD;
       } else {
         blastRadiusAccumulator += BLAST_RADIUS_DEFAULT_TIER_WEIGHT;
@@ -141,7 +148,11 @@ export class WasmPlaybookSandboxService {
       }
 
       // Simulate state transition
-      const diff = this.computeStateDiff(step, asset.preExecutionState, asset.assetId);
+      const diff = this.computeStateDiff(
+        step,
+        asset.preExecutionState,
+        asset.assetId,
+      );
       stateDiffs.push(diff);
     }
 
@@ -150,7 +161,10 @@ export class WasmPlaybookSandboxService {
       Number(blastRadiusAccumulator.toFixed(2)),
     );
 
-    let status: 'SANDBOX_PASSED' | 'SANDBOX_REJECTED_BLAST_RADIUS' | 'SANDBOX_REJECTED_POLICY';
+    let status:
+      | 'SANDBOX_PASSED'
+      | 'SANDBOX_REJECTED_BLAST_RADIUS'
+      | 'SANDBOX_REJECTED_POLICY';
     if (safetyViolations.length > 0) {
       status = 'SANDBOX_REJECTED_POLICY';
     } else if (simulatedBlastRadiusScore > maxBlastRadiusAllowed) {
@@ -160,7 +174,10 @@ export class WasmPlaybookSandboxService {
     }
 
     // Synthesize paired inverse rollback plan
-    const synthesizedRollback = this.synthesizeRollbackSteps(dto.steps, dto.targetAssets);
+    const synthesizedRollback = this.synthesizeRollbackSteps(
+      dto.steps,
+      dto.targetAssets,
+    );
 
     const executionDurationMs = Math.max(1, Date.now() - startTime);
     const memoryConsumedMb = Number((12.4 + Math.random() * 4.2).toFixed(1));
@@ -188,7 +205,9 @@ export class WasmPlaybookSandboxService {
   /**
    * Generates deterministic inverse rollback mutations for executed SOAR playbook steps.
    */
-  synthesizeRollbackPlan(dto: SynthesizeRollbackDto): SynthesizedRollbackPlanResult {
+  synthesizeRollbackPlan(
+    dto: SynthesizeRollbackDto,
+  ): SynthesizedRollbackPlanResult {
     const planId = `rollback-plan-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
     const rollbackSteps: Array<{
       stepOrder: number;
@@ -317,16 +336,17 @@ export class WasmPlaybookSandboxService {
           inverseActionType: WasmSandboxMutationType.AWS_IAM_DETACH_POLICY,
           reversionPayload: {
             policyArnToDetach: 'AWSQuarantinePolicy-ReadOnly',
-            restoreOriginalPolicies: matchingAsset?.preExecutionState?.attachedPolicies || [
-              'OriginalRolePolicy',
-            ],
+            restoreOriginalPolicies: matchingAsset?.preExecutionState
+              ?.attachedPolicies || ['OriginalRolePolicy'],
           },
         };
       case WasmSandboxMutationType.AWS_EC2_ISOLATE_SECURITY_GROUP:
         return {
           inverseActionType: 'AWS_EC2_RESTORE_SECURITY_GROUP',
           reversionPayload: {
-            restoreRules: matchingAsset?.preExecutionState?.securityGroupRules || 'ALLOW_ALL',
+            restoreRules:
+              matchingAsset?.preExecutionState?.securityGroupRules ||
+              'ALLOW_ALL',
           },
         };
       case WasmSandboxMutationType.OKTA_REVOKE_USER_SESSIONS:

@@ -1,4 +1,11 @@
-import { IsEnum, IsIn, IsNotEmpty, IsObject, IsOptional, IsString } from 'class-validator';
+import {
+  IsEnum,
+  IsIn,
+  IsNotEmpty,
+  IsObject,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 import type { StreamingEventType } from '../live-telemetry-stream.service';
 
 export class BroadcastStreamEventDto {
