@@ -141,17 +141,10 @@ export class OnboardingService implements OnModuleInit {
     // order/entitlement — fail fast, before any tenant row is created, if
     // no such order exists, isn't provisioned yet, or has already been
     // claimed by another tenant.
-    let order = await this.prisma.commercialOrder.findUnique({
+    const order = await this.prisma.commercialOrder.findUnique({
       where: { id: dto.orderId },
       include: { lines: true },
     });
-    if (!order && process.env.NODE_ENV !== 'production') {
-      try {
-        order = await this.ensureDevOrder(dto.orderId);
-      } catch (err: any) {
-        // Fall back to standard NotFoundException below
-      }
-    }
     if (!order) {
       throw new NotFoundException(`Order '${dto.orderId}' not found`);
     }
@@ -375,92 +368,5 @@ export class OnboardingService implements OnModuleInit {
         ...(process.env.NODE_ENV !== 'production' ? { activationUrl } : {}),
       },
     };
-  }
-
-  private async ensureDevOrder(orderId: string) {
-    let catalogVersion = await this.prisma.catalogVersion.findFirst();
-    if (!catalogVersion) {
-      catalogVersion = await this.prisma.catalogVersion.create({
-        data: {
-          id: randomBytes(16).toString('hex'),
-          version_label: 'v1.0',
-          status: 'ACTIVE',
-        },
-      });
-    }
-
-    let product = await this.prisma.product.findFirst({
-      where: { sku: 'SKU-ENTERPRISE-01' },
-    });
-    if (!product) {
-      product = await this.prisma.product.create({
-        data: {
-          id: randomBytes(16).toString('hex'),
-          catalog_version_id: catalogVersion.id,
-          sku: 'SKU-ENTERPRISE-01',
-          internal_product_key: 'enterprise-01',
-          display_name: 'ZoikoShield Enterprise Edition',
-          offer_family: 'ENTERPRISE_SUITE',
-          metric_family: 'USER_LICENSES',
-        },
-      });
-    }
-
-    let account = await this.prisma.commercialAccount.findFirst();
-    if (!account) {
-      account = await this.prisma.commercialAccount.create({
-        data: {
-          id: randomBytes(16).toString('hex'),
-          name: 'Development Account',
-          customer_legal_name: 'Development Account Ltd',
-          currency: 'USD',
-          status: 'ACTIVE',
-        },
-      });
-    }
-
-    let quote = await this.prisma.commercialQuote.findFirst({
-      where: { commercial_account_id: account.id },
-    });
-    if (!quote) {
-      quote = await this.prisma.commercialQuote.create({
-        data: {
-          id: randomBytes(16).toString('hex'),
-          tenant_id: 'dev-tenant',
-          environment_id: 'dev-env',
-          commercial_account_id: account.id,
-          catalog_version_id: catalogVersion.id,
-          quote_key: `Q-${Date.now().toString(36)}`,
-          configuration_hash: createHash('sha256')
-            .update(`dev-quote-${Date.now()}`)
-            .digest('hex'),
-          status: 'APPROVED',
-          requested_by: 'system',
-        },
-      });
-    }
-
-    return this.prisma.commercialOrder.create({
-      data: {
-        id: orderId,
-        quote_id: quote.id,
-        commercial_account_id: account.id,
-        idempotency_key: randomBytes(16).toString('hex'),
-        created_by: 'system',
-        status: 'PROVISIONED',
-        lines: {
-          create: [
-            {
-              id: randomBytes(16).toString('hex'),
-              product_id: product.id,
-              quantity: 1,
-              list_unit_price: 1000,
-              unit_price: 1000,
-            },
-          ],
-        },
-      },
-      include: { lines: true },
-    });
   }
 }
