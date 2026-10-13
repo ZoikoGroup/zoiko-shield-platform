@@ -1038,7 +1038,7 @@ export default function CopilotPage() {
 
           <div className="flex justify-between items-center text-[10px] font-mono text-slate-500 pb-1">
             <span>ENVELOPE ID: <span className="text-cyan-400">{currentEnvelope.envelopeId}</span></span>
-            <span>CREATED: {new Date(currentEnvelope.createdAt).toLocaleTimeString()}</span>
+            <span suppressHydrationWarning>CREATED: {new Date(currentEnvelope.createdAt).toLocaleTimeString()}</span>
           </div>
 
           <div className="space-y-3.5 text-xs text-slate-300">
@@ -1310,7 +1310,7 @@ export default function CopilotPage() {
                     <span className="text-emerald-400 font-bold">
                       Decision: {currentEnvelope.humanDecisionAndRationale.decision}
                     </span>
-                    <span className="text-slate-500">
+                    <span className="text-slate-500" suppressHydrationWarning>
                       {new Date(
                         currentEnvelope.humanDecisionAndRationale.decidedAt || ""
                       ).toLocaleTimeString()}

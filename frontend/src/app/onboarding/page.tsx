@@ -15,10 +15,11 @@ import {
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const [orderId, setOrderId] = useState("ord-enterprise-00000001-uuid");
+  const [orderId, setOrderId] = useState("00000000-0000-4000-8000-000000000001");
   const [orgName, setOrgName] = useState("Acme Financial Services Inc.");
   const [slug, setSlug] = useState("acme-financial");
   const [legalEntity, setLegalEntity] = useState("Acme Financial Services Global Ltd");
+  const [ownerEmail, setOwnerEmail] = useState("owner@acme.com");
   const [environment, setEnvironment] = useState("PRODUCTION-US-EAST");
   const [region, setRegion] = useState("us-east-1");
   const [dataClass, setDataClass] = useState<"PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED">("RESTRICTED");
@@ -28,7 +29,8 @@ export default function OnboardingPage() {
   const [errorReason, setErrorReason] = useState<string>("");
 
   const handleSeedOrder = () => {
-    setOrderId(`ord-enterprise-${Math.random().toString(36).substring(2, 9)}-uuid`);
+    const hex = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+    setOrderId(`${hex()}${hex()}-${hex()}-4${hex().substring(1)}-8${hex().substring(1)}-${hex()}${hex()}${hex()}`);
   };
 
   const handleOnboard = async (e: React.FormEvent) => {
@@ -37,11 +39,16 @@ export default function OnboardingPage() {
     setErrorState(null);
     try {
       const tenant = await ZoikoShieldApiClient.createOrganization({
+        orderId,
         organizationName: orgName,
         slug,
         legalEntityName: legalEntity,
         environmentName: environment,
         homeRegion: region,
+        ownerEmail,
+        dataClass,
+        timezone: "Etc/UTC",
+        accessDisclosureVersion: "1",
       });
       setProvisionedTenant(tenant);
     } catch (err: any) {
@@ -169,17 +176,32 @@ export default function OnboardingPage() {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="text-xs font-mono text-slate-300">
-                Registered Legal Entity Name:
-              </label>
-              <input
-                type="text"
-                required
-                value={legalEntity}
-                onChange={(e) => setLegalEntity(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono text-slate-300">
+                  Registered Legal Entity Name:
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={legalEntity}
+                  onChange={(e) => setLegalEntity(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono text-slate-300">
+                  Organization Owner Email:
+                </label>
+                <input
+                  type="email"
+                  required
+                  value={ownerEmail}
+                  onChange={(e) => setOwnerEmail(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -289,6 +311,18 @@ export default function OnboardingPage() {
                 <Badge variant="pass">ACTIVE</Badge>
               </div>
             </div>
+
+            {provisionedTenant.ownerInvitation?.activationUrl && (
+              <div className="p-3 bg-cyan-950/40 border border-cyan-500/30 rounded-xl text-left font-mono text-xs space-y-1">
+                <span className="text-cyan-400 font-bold block">Owner Activation Link (Development):</span>
+                <a
+                  href={provisionedTenant.ownerInvitation.activationUrl}
+                  className="text-slate-300 underline break-all text-[11px] hover:text-cyan-300"
+                >
+                  {provisionedTenant.ownerInvitation.activationUrl}
+                </a>
+              </div>
+            )}
 
             <Button
               variant="cyan"

@@ -91,71 +91,97 @@ export class AzureMonitorPollerService {
     }
 
     let lastCheckpoint = '0';
-    if (this.checkpointService) {
-      const cursor = await this.checkpointService.get(
-        instanceId,
-        'azure-monitor',
+    try {
+      if (this.checkpointService) {
+        const cursor = await this.checkpointService.get(
+          instanceId,
+          'azure-monitor',
+        );
+        lastCheckpoint = cursor || '0';
+      }
+
+      const startOffset = parseInt(lastCheckpoint, 10) || 0;
+      const records = this.generateIncrementalAzureEvents(
+        tenantId,
+        startOffset,
+        limit,
       );
-      lastCheckpoint = cursor || '0';
-    }
 
-    const startOffset = parseInt(lastCheckpoint, 10) || 0;
-    const records = this.generateIncrementalAzureEvents(
-      tenantId,
-      startOffset,
-      limit,
-    );
+      if (records.length === 0) {
+        return {
+          instanceId,
+          tenantId,
+          polledCount: 0,
+          newCheckpoint: lastCheckpoint,
+          status: 'NO_NEW_DATA',
+        };
+      }
 
-    if (records.length === 0) {
+      if (this.batchBuffer) {
+        const bufferEvents = records.map((rec, idx) => ({
+          eventId: `az-${Date.now()}-${startOffset + idx}`,
+          source: 'azure.monitor',
+          eventType: rec.operationName?.value || 'AzureActivityLog',
+          timestamp: rec.eventTimestamp || new Date().toISOString(),
+          payload: rec,
+        }));
+
+        await this.batchBuffer.ingestBatch(tenantId, bufferEvents);
+      }
+
+      const nextOffset = startOffset + records.length;
+      const newCheckpointStr = nextOffset.toString();
+
+      if (this.checkpointService) {
+        await this.checkpointService.set(
+          tenantId,
+          instanceId,
+          'azure-monitor',
+          newCheckpointStr,
+        );
+      }
+
+      if (this.healthService) {
+        await this.healthService.updateHealth(
+          instanceId,
+          tenantId,
+          'HEALTHY',
+          `Polled ${records.length} Azure Monitor events successfully`,
+        );
+      }
+
+      return {
+        instanceId,
+        tenantId,
+        polledCount: records.length,
+        newCheckpoint: newCheckpointStr,
+        status: 'SUCCESS',
+      };
+    } catch (err: any) {
+      this.logger.error(
+        `Failed to poll Azure Monitor events for connector instance ${instanceId}: ${err?.message}`,
+      );
+
+      if (this.healthService) {
+        await this.healthService
+          .updateHealth(
+            instanceId,
+            tenantId,
+            'DEGRADED',
+            `Azure Monitor polling error: ${err?.message}`,
+          )
+          .catch(() => {});
+      }
+
       return {
         instanceId,
         tenantId,
         polledCount: 0,
         newCheckpoint: lastCheckpoint,
-        status: 'NO_NEW_DATA',
+        status: 'ERROR',
+        errorMessage: err?.message,
       };
     }
-
-    if (this.batchBuffer) {
-      const bufferEvents = records.map((rec, idx) => ({
-        eventId: `az-${Date.now()}-${startOffset + idx}`,
-        source: 'azure.monitor',
-        eventType: rec.operationName?.value || 'AzureActivityLog',
-        timestamp: rec.eventTimestamp || new Date().toISOString(),
-        payload: rec,
-      }));
-
-      await this.batchBuffer.ingestBatch(tenantId, bufferEvents);
-    }
-
-    const nextOffset = startOffset + records.length;
-    const newCheckpointStr = nextOffset.toString();
-
-    if (this.checkpointService) {
-      await this.checkpointService.set(
-        tenantId,
-        instanceId,
-        'azure-monitor',
-        newCheckpointStr,
-      );
-    }
-
-    if (this.healthService) {
-      await this.healthService.updateHealth(
-        instanceId,
-        tenantId,
-        'HEALTHY',
-        `Polled ${records.length} Azure Monitor events successfully`,
-      );
-    }
-
-    return {
-      instanceId,
-      tenantId,
-      polledCount: records.length,
-      newCheckpoint: newCheckpointStr,
-      status: 'SUCCESS',
-    };
   }
 
   private generateIncrementalAzureEvents(

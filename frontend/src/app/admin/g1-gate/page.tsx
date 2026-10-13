@@ -215,7 +215,7 @@ export default function G1LaunchGatePage() {
                   </p>
                 )}
                 {approver.signedAt && (
-                  <p className="text-[10px] text-slate-500 font-mono mt-0.5">
+                  <p className="text-[10px] text-slate-500 font-mono mt-0.5" suppressHydrationWarning>
                     {new Date(approver.signedAt).toLocaleDateString()} at{" "}
                     {new Date(approver.signedAt).toLocaleTimeString()}
                   </p>

@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   ForbiddenException,
@@ -115,11 +116,26 @@ export class AuthorizationController {
         'Missing tenant:member:invite permission for this tenant',
       );
     }
+    let targetRoleId = dto.roleId;
+    if (!targetRoleId && dto.assignedRole) {
+      const role = await this.authorizationService.findRoleByCode(
+        tenantId,
+        dto.assignedRole,
+      );
+      if (role) {
+        targetRoleId = role.id;
+      }
+    }
+    if (!targetRoleId) {
+      throw new BadRequestException(
+        'A valid roleId or recognized assignedRole must be provided',
+      );
+    }
     const { invitation, token } =
       await this.authorizationService.createInvitation({
         tenantId,
         invitedEmail: dto.invitedEmail,
-        roleId: dto.roleId,
+        roleId: targetRoleId,
         invitedById: user.id,
       });
     return {

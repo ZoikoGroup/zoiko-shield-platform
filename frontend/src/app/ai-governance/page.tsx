@@ -478,21 +478,63 @@ export default function AiGovernancePage() {
     ]);
 
     const errors: string[] = [];
-    if (incidentsRes.status === "fulfilled") setIncidents(incidentsRes.value);
-    else errors.push(`AI incidents: ${incidentsRes.reason?.message || incidentsRes.reason}`);
+    if (incidentsRes.status === "fulfilled") {
+      const val = incidentsRes.value;
+      if (Array.isArray(val)) {
+        setIncidents(val);
+      } else if (val && Array.isArray((val as any).data)) {
+        setIncidents((val as any).data);
+      } else {
+        setIncidents(state.aiIncidents || []);
+      }
+    } else {
+      errors.push(`AI incidents: ${incidentsRes.reason?.message || incidentsRes.reason}`);
+      setIncidents(state.aiIncidents || []);
+    }
 
-    if (inventoryRes.status === "fulfilled") setModels(inventoryRes.value.models || []);
-    else errors.push(`model inventory: ${inventoryRes.reason?.message || inventoryRes.reason}`);
+    if (inventoryRes.status === "fulfilled") {
+      const val = inventoryRes.value;
+      if (Array.isArray(val?.models)) {
+        setModels(val.models);
+      } else if (Array.isArray(val)) {
+        setModels(val as any);
+      } else {
+        setModels(state.aiModels || []);
+      }
+    } else {
+      errors.push(`model inventory: ${inventoryRes.reason?.message || inventoryRes.reason}`);
+      setModels(state.aiModels || []);
+    }
 
-    if (driftRes.status === "fulfilled") setModelDrifts(driftRes.value);
-    else errors.push(`model drift: ${driftRes.reason?.message || driftRes.reason}`);
+    if (driftRes.status === "fulfilled") {
+      const val = driftRes.value;
+      if (Array.isArray(val)) {
+        setModelDrifts(val);
+      } else if (val && Array.isArray((val as any).data)) {
+        setModelDrifts((val as any).data);
+      } else {
+        setModelDrifts(state.modelDriftReports || []);
+      }
+    } else {
+      errors.push(`model drift: ${driftRes.reason?.message || driftRes.reason}`);
+      setModelDrifts(state.modelDriftReports || []);
+    }
 
-    if (supplyRes.status === "fulfilled") setSupplyChain(supplyRes.value);
-    else errors.push(`supply chain risk: ${supplyRes.reason?.message || supplyRes.reason}`);
+    if (supplyRes.status === "fulfilled") {
+      const val = supplyRes.value;
+      if (val && typeof val === "object" && "hhiIndex" in val) {
+        setSupplyChain(val);
+      } else {
+        setSupplyChain(state.aiSupplyChain || supplyChain);
+      }
+    } else {
+      errors.push(`supply chain risk: ${supplyRes.reason?.message || supplyRes.reason}`);
+      setSupplyChain(state.aiSupplyChain || supplyChain);
+    }
 
     setGovernanceLoadError(errors.length > 0 ? errors.join("; ") : null);
     setIsLoadingGovernance(false);
-  }, [state.tenant.id]);
+  }, [state.tenant.id, state.aiIncidents, state.aiModels, state.modelDriftReports, state.aiSupplyChain]);
 
   useEffect(() => {
     void fetchGovernanceData();
@@ -809,90 +851,100 @@ export default function AiGovernancePage() {
       )}
 
       {/* Top Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-        <Card className="space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
-            <span>ACTIVE INCIDENTS</span>
-            <AlertOctagon className="w-4 h-4 text-rose-400" />
-          </div>
-          <div className="text-2xl font-bold text-slate-100 font-mono">
-            {incidents.filter((i) => i.state !== "CLOSED").length}
-          </div>
-          <div className="text-[11px] text-rose-400 font-mono">
-            {incidents.filter((i) => i.killSwitchEngaged).length} Kill-Switch active
-          </div>
-        </Card>
+      {(() => {
+        const safeIncidents = Array.isArray(incidents) ? incidents : [];
+        const safeModels = Array.isArray(models) ? models : [];
+        const safeModelDrifts = Array.isArray(modelDrifts) ? modelDrifts : [];
 
-        <Card className="space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
-            <span>AI SYSTEM INVENTORY</span>
-            <Boxes className="w-4 h-4 text-cyan-400" />
-          </div>
-          <div className="text-2xl font-bold text-slate-100 font-mono">
-            {models.filter((m) => m.lifecycleState !== "DECOMMISSIONED").length}
-          </div>
-          <div className="text-[11px] text-emerald-400 font-mono">
-            {models.filter((m) => m.lifecycleState === "APPROVED_FOR_PRODUCTION").length} Approved for Prod
-          </div>
-        </Card>
+        return (
+          <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              <Card className="space-y-1">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
+                  <span>ACTIVE INCIDENTS</span>
+                  <AlertOctagon className="w-4 h-4 text-rose-400" />
+                </div>
+                <div className="text-2xl font-bold text-slate-100 font-mono">
+                  {safeIncidents.filter((i) => i.state !== "CLOSED").length}
+                </div>
+                <div className="text-[11px] text-rose-400 font-mono">
+                  {safeIncidents.filter((i) => i.killSwitchEngaged).length} Kill-Switch active
+                </div>
+              </Card>
 
-        <Card className="space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
-            <span>MODEL DRIFT (PSI)</span>
-            <Activity className="w-4 h-4 text-amber-400" />
-          </div>
-          <div className="text-2xl font-bold text-slate-100 font-mono">
-            {modelDrifts.filter((d) => d.status !== "STABLE").length > 0 ? "DRIFT DETECTED" : "ALL STABLE"}
-          </div>
-          <div className="text-[11px] text-amber-400 font-mono">
-            Max PSI: {Math.max(...modelDrifts.map((d) => d.populationStabilityIndex), 0.042)}
-          </div>
-        </Card>
+              <Card className="space-y-1">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
+                  <span>AI SYSTEM INVENTORY</span>
+                  <Boxes className="w-4 h-4 text-cyan-400" />
+                </div>
+                <div className="text-2xl font-bold text-slate-100 font-mono">
+                  {safeModels.filter((m) => m.lifecycleState !== "DECOMMISSIONED").length}
+                </div>
+                <div className="text-[11px] text-emerald-400 font-mono">
+                  {safeModels.filter((m) => m.lifecycleState === "APPROVED_FOR_PRODUCTION").length} Approved for Prod
+                </div>
+              </Card>
 
-        <Card className="space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
-            <span>SUPPLY CHAIN HHI</span>
-            <Layers className="w-4 h-4 text-purple-400" />
-          </div>
-          <div className="text-2xl font-bold text-slate-100 font-mono">
-            {supplyChain.hhiIndex}
-          </div>
-          <div className="text-[11px] text-purple-400 font-mono">
-            {supplyChain.concentrationLevel} Concentration
-          </div>
-        </Card>
+              <Card className="space-y-1">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
+                  <span>MODEL DRIFT (PSI)</span>
+                  <Activity className="w-4 h-4 text-amber-400" />
+                </div>
+                <div className="text-2xl font-bold text-slate-100 font-mono">
+                  {safeModelDrifts.filter((d) => d.status !== "STABLE").length > 0 ? "DRIFT DETECTED" : "ALL STABLE"}
+                </div>
+                <div className="text-[11px] text-amber-400 font-mono">
+                  Max PSI: {Math.max(...safeModelDrifts.map((d) => d.populationStabilityIndex), 0.042)}
+                </div>
+              </Card>
 
-        <Card className="space-y-1">
-          <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
-            <span>COMPLIANCE POSTURE</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-          </div>
-          <div className="text-2xl font-bold text-slate-100 font-mono">
-            {complianceDrift.score.toFixed(1)}%
-          </div>
-          <div className="text-[11px] text-emerald-400 font-mono">
-            {complianceDrift.slaAlarms.length} SLA Alarms
-          </div>
-        </Card>
-      </div>
+              <Card className="space-y-1">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
+                  <span>SUPPLY CHAIN HHI</span>
+                  <Layers className="w-4 h-4 text-purple-400" />
+                </div>
+                <div className="text-2xl font-bold text-slate-100 font-mono">
+                  {supplyChain.hhiIndex}
+                </div>
+                <div className="text-[11px] text-purple-400 font-mono">
+                  {supplyChain.concentrationLevel} Concentration
+                </div>
+              </Card>
 
-      {/* Mandatory UI States Integration */}
-      {incidents.some((i) => i.killSwitchEngaged) && (
-        <DegradedState
-          title="AI Safety Kill-Switch Engaged (Deterministic Fallback Active)"
-          message="One or more LLM models are contained under emergency circuit breaker. Deterministic rules active."
-          fallbackReason="EMERGENCY_AI_KILL_SWITCH_TRIGGERED"
-        />
-      )}
+              <Card className="space-y-1">
+                <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
+                  <span>COMPLIANCE POSTURE</span>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                </div>
+                <div className="text-2xl font-bold text-slate-100 font-mono">
+                  {complianceDrift.score.toFixed(1)}%
+                </div>
+                <div className="text-[11px] text-emerald-400 font-mono">
+                  {complianceDrift.slaAlarms.length} SLA Alarms
+                </div>
+              </Card>
+            </div>
 
-      {incidents.some((i) => i.fallbackModeActive && !i.killSwitchEngaged) && (
-        <RecoveryState
-          title="AI Multi-Vendor Tier-1 Failover in Progress"
-          message="Routing inference queries to certified Tier-1 secondary model fallback provider."
-          rollbackStage="Active Anthropic Claude / Deterministic Rule Switchover"
-          progressPercent={85}
-        />
-      )}
+            {/* Mandatory UI States Integration */}
+            {safeIncidents.some((i) => i.killSwitchEngaged) && (
+              <DegradedState
+                title="AI Safety Kill-Switch Engaged (Deterministic Fallback Active)"
+                message="One or more LLM models are contained under emergency circuit breaker. Deterministic rules active."
+                fallbackReason="EMERGENCY_AI_KILL_SWITCH_TRIGGERED"
+              />
+            )}
+
+            {safeIncidents.some((i) => i.fallbackModeActive && !i.killSwitchEngaged) && (
+              <RecoveryState
+                title="AI Multi-Vendor Tier-1 Failover in Progress"
+                message="Routing inference queries to certified Tier-1 secondary model fallback provider."
+                rollbackStage="Active Anthropic Claude / Deterministic Rule Switchover"
+                progressPercent={85}
+              />
+            )}
+          </>
+        );
+      })()}
 
       {/* Tabs */}
       <Tabs
@@ -903,7 +955,7 @@ export default function AiGovernancePage() {
             id: "incidents",
             label: "§23 Incident Lifecycle & Kill-Switch",
             icon: <Flame className="w-4 h-4" />,
-            badge: incidents.filter((i) => i.state !== "CLOSED").length,
+            badge: (Array.isArray(incidents) ? incidents : []).filter((i) => i.state !== "CLOSED").length,
           },
           {
             id: "envelopes",
@@ -915,7 +967,7 @@ export default function AiGovernancePage() {
             id: "inventory",
             label: "§05 AI Model Inventory (NIST/EU)",
             icon: <Boxes className="w-4 h-4" />,
-            badge: models.filter((m) => m.lifecycleState !== "DECOMMISSIONED").length,
+            badge: (Array.isArray(models) ? models : []).filter((m) => m.lifecycleState !== "DECOMMISSIONED").length,
           },
           {
             id: "use-cases",
@@ -952,7 +1004,7 @@ export default function AiGovernancePage() {
       {activeTab === "incidents" && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 gap-4">
-            {incidents.map((incident, idx) => (
+            {(Array.isArray(incidents) ? incidents : []).map((incident, idx) => (
               <Card key={`${incident.id || "inc"}-${idx}`} className="space-y-4 border-l-4 border-l-rose-500">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-slate-800">
                   <div className="space-y-1">
@@ -1391,7 +1443,7 @@ export default function AiGovernancePage() {
 
             {/* Model Registry Cards */}
             <div className="grid grid-cols-1 gap-4">
-              {models
+              {(Array.isArray(models) ? models : [])
                 .filter((m) => {
                   if (filterLifecycle !== "ALL" && m.lifecycleState !== filterLifecycle) return false;
                   if (filterRisk !== "ALL" && m.euAiActClassification !== filterRisk) return false;
@@ -1613,7 +1665,7 @@ export default function AiGovernancePage() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {modelDrifts.map((report, idx) => (
+              {(Array.isArray(modelDrifts) ? modelDrifts : []).map((report, idx) => (
                 <div
                   key={`${report.modelId || "model"}-${idx}`}
                   className={`p-4 rounded-xl border ${

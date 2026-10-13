@@ -1,9 +1,14 @@
-import { IsEmail, IsUUID } from 'class-validator';
+import { IsEmail, IsOptional, IsString, IsUUID } from 'class-validator';
 
 export class CreateInvitationDto {
   @IsEmail()
   invitedEmail: string;
 
+  @IsOptional()
   @IsUUID()
-  roleId: string;
+  roleId?: string;
+
+  @IsOptional()
+  @IsString()
+  assignedRole?: string;
 }

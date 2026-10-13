@@ -1050,10 +1050,8 @@ export class ProductionEmailTemplateEngine {
             'occurredAtLocal',
             'timezone',
           ],
-          bodyIntro: (input) =>
-            domainMeta.bodyIntro(input, name),
-          bodyAction: (input) =>
-            domainMeta.bodyAction(input),
+          bodyIntro: (input) => domainMeta.bodyIntro(input, name),
+          bodyAction: (input) => domainMeta.bodyAction(input),
         });
       }
     }
@@ -1083,7 +1081,8 @@ export class ProductionEmailTemplateEngine {
       case 'IAM':
         return {
           senderClass: 'account_sender',
-          preheader: 'An identity, authentication, or access state change occurred.',
+          preheader:
+            'An identity, authentication, or access state change occurred.',
           buttonText: 'Review account security',
           bodyIntro: (input, tplName) =>
             `An identity and access event was recorded for ${input.organizationName || 'your organization'}: ${tplName}.`,
@@ -1093,7 +1092,8 @@ export class ProductionEmailTemplateEngine {
       case 'ORG':
         return {
           senderClass: 'account_sender',
-          preheader: 'An organization lifecycle or onboarding state change occurred.',
+          preheader:
+            'An organization lifecycle or onboarding state change occurred.',
           buttonText: 'Open workspace',
           bodyIntro: (input, tplName) =>
             `An organization event was recorded for ${input.organizationName || 'your organization'}: ${tplName}.`,
@@ -1103,7 +1103,8 @@ export class ProductionEmailTemplateEngine {
       case 'CONN':
         return {
           senderClass: 'developer_sender',
-          preheader: 'Connector ingestion health or telemetry pipeline threshold notice.',
+          preheader:
+            'Connector ingestion health or telemetry pipeline threshold notice.',
           buttonText: 'View connector health',
           bodyIntro: (input, tplName) =>
             `Zoiko Shield detected a connector ingestion health event: ${tplName}.`,
@@ -1113,7 +1114,8 @@ export class ProductionEmailTemplateEngine {
       case 'SEC':
         return {
           senderClass: 'security_sender',
-          preheader: 'Immediate security review may be required in Zoiko Shield.',
+          preheader:
+            'Immediate security review may be required in Zoiko Shield.',
           buttonText: 'Review security alert',
           bodyIntro: (input, tplName) =>
             `A security alert was recorded for ${input.organizationName || 'your organization'}: ${tplName}.`,
@@ -1123,7 +1125,8 @@ export class ProductionEmailTemplateEngine {
       case 'ACT':
         return {
           senderClass: 'security_sender',
-          preheader: 'A governed response decision or approval is waiting in Zoiko Shield.',
+          preheader:
+            'A governed response decision or approval is waiting in Zoiko Shield.',
           buttonText: 'Review response action',
           bodyIntro: (input, tplName) =>
             `A governed response action state change occurred: ${tplName}.`,
@@ -1133,7 +1136,8 @@ export class ProductionEmailTemplateEngine {
       case 'ASSURE':
         return {
           senderClass: 'assurance_sender',
-          preheader: 'Compliance control, obligation review, or assurance posture update.',
+          preheader:
+            'Compliance control, obligation review, or assurance posture update.',
           buttonText: 'Review assurance posture',
           bodyIntro: (input, tplName) =>
             `A continuous assurance control event was recorded: ${tplName}.`,
@@ -1143,7 +1147,8 @@ export class ProductionEmailTemplateEngine {
       case 'EVID':
         return {
           senderClass: 'assurance_sender',
-          preheader: 'Evidence ledger artifact or cryptographic audit package update.',
+          preheader:
+            'Evidence ledger artifact or cryptographic audit package update.',
           buttonText: 'Open evidence ledger',
           bodyIntro: (input, tplName) =>
             `An evidence ledger milestone occurred: ${tplName}.`,
@@ -1153,7 +1158,8 @@ export class ProductionEmailTemplateEngine {
       case 'AI':
         return {
           senderClass: 'assurance_sender',
-          preheader: 'Governed AI decision envelope or model evaluation notice.',
+          preheader:
+            'Governed AI decision envelope or model evaluation notice.',
           buttonText: 'Open AI governance',
           bodyIntro: (input, tplName) =>
             `An AI governance event was recorded: ${tplName}.`,
@@ -1163,7 +1169,8 @@ export class ProductionEmailTemplateEngine {
       case 'DEV':
         return {
           senderClass: 'developer_sender',
-          preheader: 'Developer API credential, webhook status, or rate limit notice.',
+          preheader:
+            'Developer API credential, webhook status, or rate limit notice.',
           buttonText: 'Open developer portal',
           bodyIntro: (input, tplName) =>
             `A developer operations event was recorded: ${tplName}.`,
@@ -1173,7 +1180,8 @@ export class ProductionEmailTemplateEngine {
       case 'BILL':
         return {
           senderClass: 'billing_sender',
-          preheader: 'Commercial subscription, entitlement quota, or billing notice.',
+          preheader:
+            'Commercial subscription, entitlement quota, or billing notice.',
           buttonText: 'View billing details',
           bodyIntro: (input, tplName) =>
             `A commercial billing event was generated for ${input.organizationName || 'your account'}: ${tplName}.`,
@@ -1183,7 +1191,8 @@ export class ProductionEmailTemplateEngine {
       case 'SUP':
         return {
           senderClass: 'account_sender',
-          preheader: 'Enterprise support case status update or customer communication.',
+          preheader:
+            'Enterprise support case status update or customer communication.',
           buttonText: 'Open support case',
           bodyIntro: (input, tplName) =>
             `A support ticket event occurred: ${tplName}.`,
@@ -1193,7 +1202,8 @@ export class ProductionEmailTemplateEngine {
       case 'PRIV':
         return {
           senderClass: 'privacy_sender',
-          preheader: 'Privacy rights, data residency, or legal hold notification.',
+          preheader:
+            'Privacy rights, data residency, or legal hold notification.',
           buttonText: 'Open privacy center',
           bodyIntro: (input, tplName) =>
             `A privacy and data governance event was recorded: ${tplName}.`,
@@ -1203,7 +1213,8 @@ export class ProductionEmailTemplateEngine {
       case 'OFF':
         return {
           senderClass: 'privacy_sender',
-          preheader: 'Tenant offboarding, cryptographic key destruction, or deletion milestone.',
+          preheader:
+            'Tenant offboarding, cryptographic key destruction, or deletion milestone.',
           buttonText: 'Review offboarding status',
           bodyIntro: (input, tplName) =>
             `A tenant offboarding milestone was reached: ${tplName}.`,
@@ -1213,7 +1224,8 @@ export class ProductionEmailTemplateEngine {
       case 'STAT':
         return {
           senderClass: 'status_sender',
-          preheader: 'Platform service availability, maintenance, or incident update.',
+          preheader:
+            'Platform service availability, maintenance, or incident update.',
           buttonText: 'View service status',
           bodyIntro: (input, tplName) =>
             `A platform service status update was published: ${tplName}.`,
@@ -1223,7 +1235,8 @@ export class ProductionEmailTemplateEngine {
       case 'OPS':
         return {
           senderClass: 'internal_ops_sender',
-          preheader: 'Internal production event requiring response through the incident system and approved runbook.',
+          preheader:
+            'Internal production event requiring response through the incident system and approved runbook.',
           buttonText: 'Open incident',
           bodyIntro: (input, tplName) =>
             `Zoiko Shield recorded an internal production event: ${tplName}.`,
@@ -1234,7 +1247,8 @@ export class ProductionEmailTemplateEngine {
       default:
         return {
           senderClass: 'account_sender',
-          preheader: 'Administrative governance, terms of service, or notification routing notice.',
+          preheader:
+            'Administrative governance, terms of service, or notification routing notice.',
           buttonText: isOps ? 'Open incident' : 'Open governance center',
           bodyIntro: (input, tplName) =>
             `An administrative governance event was recorded: ${tplName}.`,

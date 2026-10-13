@@ -108,7 +108,9 @@ export class TransactionalEmailService {
           firstRecipient.name ||
           input.variables.recipientFirstName ||
           input.variables.recipient_first_name ||
-          (firstRecipient.email ? firstRecipient.email.split('@')[0] : 'Security Operator'),
+          (firstRecipient.email
+            ? firstRecipient.email.split('@')[0]
+            : 'Security Operator'),
         organizationName:
           input.variables.organizationName ||
           input.variables.organization_name ||
@@ -128,24 +130,20 @@ export class TransactionalEmailService {
           input.variables.occurred_at_local ||
           new Date().toLocaleString(),
         timezone: input.variables.timezone || 'UTC',
-        dueAtLocal:
-          input.variables.dueAtLocal || input.variables.due_at_local,
+        dueAtLocal: input.variables.dueAtLocal || input.variables.due_at_local,
         actorDisplayName:
           input.variables.actorDisplayName ||
           input.variables.actor_display_name,
         objectDisplayReference:
           input.variables.objectDisplayReference ||
           input.variables.object_display_reference,
-        actionUrl:
-          input.variables.actionUrl || input.variables.action_url,
+        actionUrl: input.variables.actionUrl || input.variables.action_url,
         accountSecurityUrl:
           input.variables.accountSecurityUrl ||
           input.variables.account_security_url,
         auditUrl: input.variables.auditUrl || input.variables.audit_url,
-        billingUrl:
-          input.variables.billingUrl || input.variables.billing_url,
-        supportUrl:
-          input.variables.supportUrl || input.variables.support_url,
+        billingUrl: input.variables.billingUrl || input.variables.billing_url,
+        supportUrl: input.variables.supportUrl || input.variables.support_url,
         onboardingUrl:
           input.variables.onboardingUrl || input.variables.onboarding_url,
         developerUrl:
