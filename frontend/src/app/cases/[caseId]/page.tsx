@@ -102,7 +102,7 @@ export default function CaseWorkspacePage() {
       id: "overview",
       label: "Overview & Timeline",
       icon: <Clock className="w-4 h-4" />,
-      badge: currentCase.timeline.length,
+      badge: Array.isArray(currentCase.timeline) ? currentCase.timeline.length : 0,
     },
     {
       id: "graph",
@@ -114,7 +114,7 @@ export default function CaseWorkspacePage() {
       id: "evidence",
       label: "Evidence Ledger",
       icon: <Lock className="w-4 h-4" />,
-      badge: currentCase.evidenceList.length,
+      badge: Array.isArray(currentCase.evidenceList) ? currentCase.evidenceList.length : 0,
     },
     {
       id: "ai",
@@ -178,12 +178,12 @@ export default function CaseWorkspacePage() {
           </div>
           <div>
             <span className="text-slate-500 block text-[10px]">EVIDENCE COUNT:</span>
-            <span className="text-cyan-300 font-bold">{currentCase.evidenceList.length} Leaves</span>
+            <span className="text-cyan-300 font-bold">{Array.isArray(currentCase.evidenceList) ? currentCase.evidenceList.length : 0} Leaves</span>
           </div>
           <div>
             <span className="text-slate-500 block text-[10px]">MERKLE EPOCH:</span>
             <span className="text-emerald-400 font-bold">
-              {currentCase.evidenceList[0]?.merkleEpoch 
+              {currentCase.evidenceList?.[0]?.merkleEpoch 
                 ? `#${currentCase.evidenceList[0].merkleEpoch} (Sealed)` 
                 : "#1043 (Sealed)"}
             </span>
@@ -197,7 +197,7 @@ export default function CaseWorkspacePage() {
       {/* Tab Panels */}
       <div className="pt-2">
         {activeTab === "overview" && (
-          <CaseTimeline timeline={currentCase.timeline} />
+          <CaseTimeline timeline={currentCase.timeline || []} />
         )}
 
         {activeTab === "graph" && (
@@ -208,7 +208,7 @@ export default function CaseWorkspacePage() {
         )}
 
         {activeTab === "evidence" && (
-          <EvidenceLedger evidenceList={currentCase.evidenceList} />
+          <EvidenceLedger evidenceList={currentCase.evidenceList || []} />
         )}
 
         {activeTab === "ai" && (

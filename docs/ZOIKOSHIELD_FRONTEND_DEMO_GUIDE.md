@@ -27,6 +27,8 @@
    - [Step 12: Immutable Evidence Vault, Merkle Tree & Witness Anchoring (`/evidence`)](#step-12-immutable-evidence-vault-merkle-tree--witness-anchoring-evidence)
    - [Step 13: Continuous Compliance, Controls & Non-Destructive DR Drill (`/controls` & `/compliance`)](#step-13-continuous-compliance-controls--non-destructive-dr-drill-controls--compliance)
    - [Step 14: Commercial Catalogue, Band Sizing & Pre-Flight GTM Checklist (`/pricing` & `/admin/gtm-checklist`)](#step-14-commercial-catalogue-band-sizing--pre-flight-gtm-checklist-pricing--admingtm-checklist)
+   - [Step 15: Notification Center & Delivery Lifecycle Tracking (`/notifications`)](#step-15-notification-center--delivery-lifecycle-tracking-notifications)
+   - [Step 16: The Grand Finale: Production Email Template Studio — 226 Enterprise Templates (`/admin/email-templates`)](#step-16-the-grand-finale-production-email-template-studio--226-enterprise-templates-adminemail-templates)
 4. [Master Frontend API Routing & Port Matrix](#4-master-frontend-api-routing--port-matrix)
 5. [Presenter Q&A Cheat Sheet & Objections Handling](#5-presenter-qa-cheat-sheet--objections-handling)
 
@@ -572,6 +574,102 @@ Conclude the demonstration with **Commercial Transparency & GTM Readiness**. Sho
 
 #### 🎙️ Speaker Talking Points
 > *"Finally, we come to our commercial and deployment readiness. Unlike traditional SIEM vendors who charge unpredictable ingestion penalties when you suffer a DDoS attack, ZoikoShield enforces fair, predictable band sizing. Our pre-flight checklist is 100% verified and ready for enterprise scale."*
+
+---
+
+### Step 15: Notification Center & Delivery Lifecycle Tracking (`/notifications`)
+
+```
+🔗 Direct URL: http://localhost:3000/notifications
+📍 Navigation: Sidebar -> Connectivity & Compliance -> Notification Center (W04)
+```
+
+#### 🎯 Screen Objective & Narrative
+Demonstrate **Experience Contract W04: Notification Center**. In enterprise cybersecurity, silent delivery failures are catastrophic. ZoikoShield provides per-delivery outcome visibility, surfaces Dead-Letter Queue (DLQ) failures prominently, and enables cryptographic recipient acknowledgments.
+
+#### 🛠️ Technologies & Components Used
+- **Per-Delivery Status Tracking:** Distinct badges for `DELIVERED`, `DEAD_LETTERED`, `FAILED`, and `ACKNOWLEDGED`.
+- **Dead-Letter Queue (DLQ) Alert Banner:** High-priority card rendering undelivered notifications with exact failure reason (`HTTP_504_GATEWAY_TIMEOUT`).
+- **Interactive Acknowledgment Button:** Direct action recording who acknowledged the alert and timestamping it for compliance evidence.
+- **Direct Navigation to Template Studio:** Button linking to the 226-template catalog.
+
+#### 🔍 Backend APIs Called
+| Endpoint | Method | Backend Service & Port | Payload / Response |
+| :--- | :---: | :--- | :--- |
+| `/api/v1/notifications` | `GET` | **Core Platform** (Port `3001`) | Returns notification deliveries for current tenant and principal. |
+| `/api/v1/notifications/:id/acknowledge` | `POST` | **Core Platform** (Port `3001`) | Submits `{ acknowledgementType: "ACKNOWLEDGED" }`. |
+
+#### 🖱️ Click-by-Click Demo Instructions
+1. Navigate to [http://localhost:3000/notifications](http://localhost:3000/notifications).
+2. Point out the **Notification Delivery Stream** with channels `EMAIL` and `WEBHOOK`.
+3. Highlight the red **Dead-Lettered Notification Banner** for `evt-staging-webhook-sync` showing 3 failed attempts.
+4. Click **"Acknowledge"** on the top lateral movement alert (`del-p0-alert-1043`).
+5. Notice the status badge update dynamically to **`ACKNOWLEDGED`**.
+6. Click the button **"Template Studio (226)"** to transition directly into the Email Template Engine.
+
+#### 🎙️ Speaker Talking Points
+> *"Notice the attention to operational reality in Contract W04. Other systems show a generic inbox count like '5 notifications'. In ZoikoShield, we differentiate DELIVERED from DEAD_LETTERED. If a security notification fails delivery to an analyst's inbox or SIEM webhook, it is immediately elevated as an operational risk."*
+
+---
+
+### Step 16: The Grand Finale: Production Email Template Studio — 226 Enterprise Templates (`/admin/email-templates`)
+
+```
+🔗 Direct URL: http://localhost:3000/admin/email-templates
+📍 Navigation: Sidebar -> Direct Link or Notification Center -> "Template Studio (226)"
+```
+
+#### 🎯 Screen Objective & Narrative
+The ultimate demonstration of platform polish and enterprise readiness: **Spec §18 & ZS-EML-TPL-001 v2.0 Production Email Engine**. Show all **226 rigorously specified templates across 16 operational domains**, multi-device responsive preview, cryptographic render hashing (`sha256:...`), tenant boundary isolation, and Nodemailer SMTP delivery.
+
+#### 🛠️ Technologies & Components Used
+- **16 Enterprise Domain Filter Matrix:**
+  1. `IAM (23)` — Identity, Auth, MFA, Passkeys, JIT Elevation, Break-Glass
+  2. `ORG (13)` — Onboarding, Ownership, Legal Entity, Verified Domains
+  3. `CONN (15)` — Connectors, Drift, Ingestion Stoppage, DLQ Warnings
+  4. `SEC (19)` — Critical Alerts, Casework Escalation, Incident Declarations
+  5. `ACT (13)` — SOAR Proposals, Dual-Custody 4-Eyes, Emergency Freezes
+  6. `ASSURE (21)` — Controls, Assessments, Exceptions, Risk Treatments
+  7. `EVID (14)` — Evidence Vault, Stale Data Warnings, Sealed Audit Packages
+  8. `AI (12)` — AI Model Governance, Grounding Blocks, Drift Detection
+  9. `DEV (11)` — API Credentials, Webhooks, Signing Secret Rotations
+  10. `BILL (18)` — Commercial Plans, Soft Limits, Invoices, Receipts
+  11. `SUP (10)` — Support Tickets, Escalations, Post-Mortems
+  12. `PRIV (11)` — GDPR / DSAR Requests, Legal Holds, Retention Changes
+  13. `OFF (8)` — Tenant Offboarding, Cryptographic Shredding Verification
+  14. `STAT (10)` — Service Degraded Notices, Uptime, SRE Maintenance
+  15. `OPS (20)` — SRE Incidents, Cluster Node Drains, Hardware Key Rotations
+  16. `GOV (8)` — Administrative Directives, Terms of Service, Legal Baselines
+- **Multi-Device & Dark/Light Preview Controls:** Instant toggling between Smartphone (375px) vs Desktop (640px) views, and Dark vs Light color schemes.
+- **Cryptographic Render Hash:** Dynamic SHA-256 fingerprint displayed on every rendered email ensuring tamper-evidence.
+- **Tenant Boundary Validator:** Strict enforcement preventing cross-tenant URL leaks or recipient data contamination.
+- **Live Dispatch Simulator:** Direct test dispatch via Nodemailer SMTP with graceful dev fallback.
+
+#### 🔍 Backend APIs Called
+| Endpoint | Method | Backend Service & Port | Payload / Response |
+| :--- | :---: | :--- | :--- |
+| `/api/v1/notifications/templates` | `GET` | **Core Platform** (Port `3001`) | Fetches catalog of 226 production templates and 16 domain definitions. |
+| `/api/v1/notifications/templates/:id/preview` | `POST` | **Core Platform** (Port `3001`) | Renders template HTML/plain text, returns cryptographic render hash. |
+| `/api/v1/notifications/templates/:id/send-test`| `POST` | **Core Platform** (Port `3001`) | Dispatches email via Nodemailer transport with tenant boundary validation. |
+
+#### 🖱️ Click-by-Click Demo Instructions
+1. Navigate to [http://localhost:3000/admin/email-templates](http://localhost:3000/admin/email-templates).
+2. Point out the **226 Production Templates** metric card across **16 Domains**.
+3. Click through the domain pills:
+   - Select **`IAM`** -> Choose *"JIT elevation requested - second-approver required"*.
+   - Select **`SEC`** -> Choose *"Critical security alert created"*.
+   - Select **`EVID`** -> Choose *"Audit package ready for secure download"*.
+4. On the rendered preview, demonstrate:
+   - Click the **Smartphone** icon to show pixel-perfect mobile layout.
+   - Click the **Monitor** icon to return to full desktop layout.
+   - Click the **Sun/Moon** toggle to show both dark and light modes.
+5. Point out the **Security Footer** (*"Zoiko Shield will never ask for credentials via email"*).
+6. Point out the **Render Hash** (`sha256:render-9a4f...`).
+7. Enter a test recipient (`security-officer@acmefinancial.com`) and click **"Send Test Dispatch"**.
+8. Show the instant confirmation receipt with delivery timestamp.
+
+#### 🎙️ Speaker Talking Points
+> *"To finish our walkthrough, look at our Production Email Template Studio. Transactional email is usually an unmonitored attack vector. ZoikoShield treats email as an auditable cryptographic subsystem. Every one of our 226 production templates is strictly typed, priority-gated from P0 critical down to operational notifications, and hashed with a deterministic SHA-256 fingerprint. We enforce strict tenant isolation so customer data can never leak across tenant boundaries, and we provide live multi-device simulation. This shows the depth of engineering across every layer of the platform."*
 
 ---
 

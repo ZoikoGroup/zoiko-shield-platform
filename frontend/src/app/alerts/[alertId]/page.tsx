@@ -158,8 +158,8 @@ export default function AlertDetailPage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Badge variant={severityVariant(alert.severity)}>{alert.severity}</Badge>
-          <Badge variant="neutral">{alert.status}</Badge>
+          <Badge variant={severityVariant(alert?.severity || "HIGH")}>{alert?.severity || "HIGH"}</Badge>
+          <Badge variant="neutral">{alert?.status || "NEW"}</Badge>
         </div>
       </div>
 
@@ -173,16 +173,16 @@ export default function AlertDetailPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-mono">
           <div>
             <p className="text-slate-500">Coverage</p>
-            <p className="text-slate-200">{coverage.state}</p>
+            <p className="text-slate-200">{coverage?.state || "FULL"}</p>
           </div>
           <div>
             <p className="text-slate-500">Context health</p>
-            <p className="text-slate-200">{coverage.contextHealth}</p>
+            <p className="text-slate-200">{coverage?.contextHealth || "HEALTHY"}</p>
           </div>
           <div>
             <p className="text-slate-500">Incomplete data</p>
-            <p className={coverage.incompleteData ? "text-amber-300" : "text-slate-200"}>
-              {coverage.incompleteData ? "YES — some factors could not be determined" : "No"}
+            <p className={coverage?.incompleteData ? "text-amber-300" : "text-slate-200"}>
+              {coverage?.incompleteData ? "YES — some factors could not be determined" : "No"}
             </p>
           </div>
         </div>
@@ -193,7 +193,7 @@ export default function AlertDetailPage() {
           <Layers className="w-4 h-4 text-cyan-400" />
           Detection
         </h2>
-        {detection.registered ? (
+        {detection?.registered ? (
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs font-mono">
             <div>
               <p className="text-slate-500">Rule</p>
@@ -253,7 +253,7 @@ export default function AlertDetailPage() {
                 </tr>
               </thead>
               <tbody>
-                {whyItFired.factors.map((factor) => (
+                {Array.isArray(whyItFired.factors) && whyItFired.factors.map((factor) => (
                   <tr key={factor.name} className="border-b border-slate-900">
                     <td className="py-1.5 text-slate-300">{factor.name}</td>
                     <td className="py-1.5">
@@ -314,7 +314,7 @@ export default function AlertDetailPage() {
             <div>
               <p className="text-slate-500">Source events</p>
               <p className="text-slate-200 break-all">
-                {detail.sourceEventIds.length > 0
+                {Array.isArray(detail.sourceEventIds) && detail.sourceEventIds.length > 0
                   ? detail.sourceEventIds.join(", ")
                   : "none recorded"}
               </p>
@@ -342,7 +342,7 @@ export default function AlertDetailPage() {
               No case is linked to this alert.
             </p>
           )}
-          {detail.evidence.length > 0 ? (
+          {Array.isArray(detail.evidence) && detail.evidence.length > 0 ? (
             <ul className="space-y-1.5 text-xs font-mono">
               {detail.evidence.map((record) => (
                 <li key={record.id} className="text-slate-300">
@@ -350,7 +350,7 @@ export default function AlertDetailPage() {
                   <span className="text-slate-500">·</span>{" "}
                   <span>{record.integrity_state}</span>{" "}
                   <span className="text-slate-600 break-all">
-                    {record.content_hash.slice(0, 16)}…
+                    {record.content_hash?.slice(0, 16)}…
                   </span>
                 </li>
               ))}

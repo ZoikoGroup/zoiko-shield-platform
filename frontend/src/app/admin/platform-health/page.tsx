@@ -331,7 +331,7 @@ export default function PlatformHealthPage() {
               <span className="text-slate-500 font-mono">Attestation Digest:</span>
               <span className="font-mono text-slate-300 truncate">{snapshot.auditAttestationHash}</span>
             </div>
-            <div className="text-[11px] text-slate-500 shrink-0 font-mono">
+            <div className="text-[11px] text-slate-500 shrink-0 font-mono" suppressHydrationWarning>
               Evaluated: {new Date(snapshot.evaluatedAt).toLocaleTimeString()}
             </div>
           </div>
@@ -610,7 +610,7 @@ export default function PlatformHealthPage() {
                         </span>
                       </div>
                       <div className="font-mono text-[10px] text-cyan-400">{sc.scenario}</div>
-                      <div className="text-[11px] text-slate-400">
+                      <div className="text-[11px] text-slate-400" suppressHydrationWarning>
                         Last Run: {new Date(sc.lastExercised).toLocaleDateString()}
                       </div>
                     </div>
@@ -692,7 +692,7 @@ export default function PlatformHealthPage() {
                     <span>Report SHA-256:</span>
                     <span className="text-slate-400 truncate">{selectedAnnexP.cryptographicReportDigest}</span>
                   </div>
-                  <span className="shrink-0 text-slate-500">{new Date(selectedAnnexP.executionTimestamp).toLocaleTimeString()}</span>
+                  <span className="shrink-0 text-slate-500" suppressHydrationWarning>{new Date(selectedAnnexP.executionTimestamp).toLocaleTimeString()}</span>
                 </div>
               </div>
             )}

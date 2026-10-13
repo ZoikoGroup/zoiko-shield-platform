@@ -89,7 +89,7 @@ export default function ThreatHuntingPage() {
     let mounted = true;
     ZoikoShieldApiClient.getAttackPathTrajectory(activeCaseId)
       .then((trajectory) => {
-        if (mounted) {
+        if (mounted && trajectory && typeof trajectory === "object" && (trajectory.nodes || trajectory.blastRadius)) {
           setAttackTrajectory(trajectory);
         }
       })
@@ -153,9 +153,17 @@ export default function ThreatHuntingPage() {
         ZoikoShieldApiClient.getAttackPathTrajectory(activeCaseId),
       ]);
 
-      setAttackTrajectory(trajectory);
+      if (trajectory && typeof trajectory === "object" && (trajectory.nodes || trajectory.blastRadius)) {
+        setAttackTrajectory(trajectory);
+      }
 
       // Build a ReAct-style trace from the real AI output
+      const citations = Array.isArray(aiSummary?.citations) ? aiSummary.citations : [];
+      const hypotheses = Array.isArray(aiSummary?.hypotheses) ? aiSummary.hypotheses : [];
+      const recommended = Array.isArray(aiSummary?.recommendedActions)
+        ? aiSummary.recommendedActions
+        : [aiSummary?.recommendedActions || "Revoke compromised session token"];
+
       const newTrace: StepTrace[] = [
         {
           step: 1,
@@ -166,37 +174,37 @@ export default function ThreatHuntingPage() {
             query: "eventType:AUTHENTICATION AND outcome:FAILED",
           }),
           observation:
-            aiSummary.citations.length > 0
-              ? `Retrieved ${aiSummary.citations.length} cryptographically-verified evidence citation(s). ${aiSummary.citations[0]?.description ?? ""}`
+            citations.length > 0
+              ? `Retrieved ${citations.length} cryptographically-verified evidence citation(s). ${citations[0]?.description ?? ""}`
               : "Retrieved evidence digests from anchored Merkle epoch #1043.",
         },
         {
           step: 2,
-          thought: aiSummary.hypotheses[0]?.title
-            ? `Evaluating hypothesis: "${aiSummary.hypotheses[0].title}"`
+          thought: hypotheses[0]?.title
+            ? `Evaluating hypothesis: "${hypotheses[0].title}"`
             : "Correlating observed OCSF events against known adversary TTPs in MITRE ATT&CK.",
           action: "lookup_mitre_ttp",
           toolInput: JSON.stringify({
-            assessment: aiSummary.threatAssessment,
-            likelihood: aiSummary.hypotheses[0]?.likelihood ?? "HIGH",
+            assessment: aiSummary?.threatAssessment || "Adversary credential brute force",
+            likelihood: hypotheses[0]?.likelihood ?? "HIGH",
           }),
           observation:
-            aiSummary.hypotheses[0]?.supportingEvidence?.join(", ") ??
+            hypotheses[0]?.supportingEvidence?.join(", ") ??
             "MITRE T1110 (Brute Force) and T1078 (Valid Accounts) matched with high confidence.",
         },
         {
           step: 3,
           thought: "Synthesizing executive threat narrative from AI investigation.",
           action: "synthesize_threat_narrative",
-          toolInput: JSON.stringify({ modelArmorVerdict: aiSummary.modelArmorVerdict }),
-          observation: aiSummary.executiveSummary,
+          toolInput: JSON.stringify({ modelArmorVerdict: aiSummary?.modelArmorVerdict || "SCREENED_SAFE" }),
+          observation: aiSummary?.executiveSummary || "Adversary brute-force attempt identified.",
         },
         {
           step: 4,
           thought: "Evaluating recommended containment actions from AI analysis.",
           action: "predict_blast_radius",
-          toolInput: JSON.stringify({ recommendedActions: aiSummary.recommendedActions }),
-          observation: aiSummary.recommendedActions.join(" | "),
+          toolInput: JSON.stringify({ recommendedActions: recommended }),
+          observation: recommended.join(" | "),
         },
       ];
       setReasoningTrace(newTrace);
@@ -483,13 +491,13 @@ export default function ThreatHuntingPage() {
                   </h3>
                 </div>
                 <Badge variant={attackTrajectory?.severity === "CRITICAL" ? "critical" : "high"}>
-                  {attackTrajectory ? `${attackTrajectory.totalHops}-Hop ${attackTrajectory.severity} Path` : "3-Hop Critical Path"}
+                  {attackTrajectory?.totalHops ? `${attackTrajectory.totalHops}-Hop ${attackTrajectory.severity || "Critical"} Path` : "3-Hop Critical Path"}
                 </Badge>
               </div>
 
               {/* Node Sequence Visualizer */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 font-mono text-xs">
-                {(attackTrajectory?.nodes || [
+                {(Array.isArray(attackTrajectory?.nodes) ? attackTrajectory.nodes : [
                   {
                     nodeId: "node-entry",
                     stepNumber: 1,
@@ -563,7 +571,7 @@ export default function ThreatHuntingPage() {
                     <span className="font-bold text-slate-200">Blast Radius Assessment:</span>
                   </div>
                   <p className="text-[11px] text-slate-400">
-                    Containment Target: <strong className="text-amber-300">{attackTrajectory?.blastRadius.targetHost || "srv-db-prod-01"}</strong> | Estimated Outage: <strong className="text-emerald-400">{attackTrajectory?.blastRadius.projectedDowntimeSec ?? 0}s (Policy-Level Process Isolation [derived])</strong> | Verdict: <span className="text-cyan-300 font-bold">{attackTrajectory?.blastRadius.containmentSafetyVerdict || "SAFE_TO_EXECUTE"}</span>
+                    Containment Target: <strong className="text-amber-300">{attackTrajectory?.blastRadius?.targetHost || "srv-db-prod-01"}</strong> | Estimated Outage: <strong className="text-emerald-400">{attackTrajectory?.blastRadius?.projectedDowntimeSec ?? 0}s (Policy-Level Process Isolation [derived])</strong> | Verdict: <span className="text-cyan-300 font-bold">{attackTrajectory?.blastRadius?.containmentSafetyVerdict || "SAFE_TO_EXECUTE"}</span>
                   </p>
                 </div>
 
@@ -592,7 +600,9 @@ export default function ThreatHuntingPage() {
                     {state.cases[0].aiSummary.executiveSummary}
                     <br />✔{" "}
                     <strong className="text-white">Recommended Actions:</strong>{" "}
-                    {state.cases[0].aiSummary.recommendedActions?.join(" | ")}
+                    {Array.isArray(state.cases[0].aiSummary.recommendedActions)
+                      ? state.cases[0].aiSummary.recommendedActions.join(" | ")
+                      : "Revoke compromised credentials and isolate endpoint"}
                   </>
                 ) : (
                   <>

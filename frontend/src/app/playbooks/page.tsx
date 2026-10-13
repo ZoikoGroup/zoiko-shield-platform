@@ -378,7 +378,7 @@ export default function PlaybooksRunPage() {
                   it is not shown here as if it were.
                 </p>
                 <div className="space-y-2">
-                  {detail.plannedSteps.length === 0 ? (
+                  {!Array.isArray(detail.plannedSteps) || detail.plannedSteps.length === 0 ? (
                     <p className="text-xs text-slate-500">No step plan recorded on this version.</p>
                   ) : (
                     detail.plannedSteps.map((step) => (
