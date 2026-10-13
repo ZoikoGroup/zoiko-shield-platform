@@ -133,7 +133,7 @@
 
 #### 16. Continuous Compliance Controls Cockpit
 - **Live URL:** [http://localhost:3000/controls](http://localhost:3000/controls)
-- **Key Action:** Review live control evaluations (`SOC2 CC6.1`, `SOC2 CC6.6`, `ISO 27001 A.9.2`). Click **"Run Automated Test"** to re-verify compliance in real time.
+- **Key Action:** Review live control evaluations (`SOC2 CC6.1`, `SOC2 CC6.6`, `ISO 27001 A.5.18`). Click **"Run Automated Test"** to re-verify compliance in real time.
 - **Presenter Talking Point:** *"Continuous compliance automation replaces stressful annual audits with sub-second cryptographic proof evaluation."*
 
 ---

@@ -1351,8 +1351,8 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
         },
         {
           id: "ctrl-03",
-          controlId: "ISO27001-A.9.2",
-          framework: "ISO_27001",
+          controlId: "ISO27001-A.5.18",
+          framework: "ISO27001_2022",
           controlName: "User Access Provisioning & Just-in-Time Revocation",
           description: "Ensures administrative permissions expire automatically and dual-custody authorization is enforced.",
           status: "PASS",
