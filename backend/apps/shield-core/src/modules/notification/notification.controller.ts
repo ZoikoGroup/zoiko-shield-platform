@@ -25,8 +25,8 @@ import {
   EmailRenderInput,
 } from './templates/production-email-template.engine';
 import { EmailChannelService } from './channels/email-channel.service';
-import { PublicEndpoint } from '../../security/endpoint-access.decorator';
 
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1')
 export class NotificationController {
   constructor(
@@ -37,7 +37,6 @@ export class NotificationController {
     private readonly emailChannel: EmailChannelService,
   ) {}
 
-  @PublicEndpoint()
   @Get('notifications')
   async list(
     @Headers('x-tenant-id') tenantId: string,
@@ -61,7 +60,6 @@ export class NotificationController {
     }
   }
 
-  @PublicEndpoint()
   @Get('notifications/templates')
   async listTemplates(@Query('domain') domain?: string) {
     return {
@@ -71,7 +69,6 @@ export class NotificationController {
     };
   }
 
-  @PublicEndpoint()
   @Post('notifications/templates/:templateId/preview')
   async previewTemplate(
     @Param('templateId') templateId: string,
@@ -121,7 +118,6 @@ export class NotificationController {
     return this.templateEngine.render(defaultInput);
   }
 
-  @PublicEndpoint()
   @Post('notifications/templates/:templateId/send-test')
   async sendTestNotification(
     @Headers('x-tenant-id') tenantId: string,
@@ -203,7 +199,6 @@ export class NotificationController {
     };
   }
 
-  @PublicEndpoint()
   @Get('notifications/:notificationId')
   async getById(
     @Headers('x-tenant-id') tenantId: string,
@@ -219,7 +214,6 @@ export class NotificationController {
     }
   }
 
-  @PublicEndpoint()
   @Post('notifications/:notificationId/acknowledge')
   async acknowledge(
     @Headers('x-tenant-id') tenantId: string,
@@ -248,7 +242,6 @@ export class NotificationController {
     }
   }
 
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Get('notification-preferences')
   async listPreferences(
     @Headers('x-tenant-id') tenantId: string,
@@ -259,7 +252,6 @@ export class NotificationController {
     });
   }
 
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Patch('notification-preferences/:id')
   async updatePreference(
     @Headers('x-tenant-id') tenantId: string,
@@ -290,7 +282,6 @@ export class NotificationController {
     });
   }
 
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Get('notification-policies')
   async listPolicies() {
     return this.prisma.notificationPolicy.findMany({
@@ -298,7 +289,6 @@ export class NotificationController {
     });
   }
 
-  @UseGuards(JwtAuthGuard, PermissionsGuard)
   @Get('notification-deliveries/:id')
   async getDelivery(
     @Headers('x-tenant-id') tenantId: string,
