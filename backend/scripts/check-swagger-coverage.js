@@ -45,6 +45,7 @@ function discoverRoutes() {
       );
       if (!controller || !ts.isCallExpression(controller.expression)) return;
       const prefixes = literalValues(controller.expression.arguments[0]);
+      const controllerName = node.name?.getText(source) ?? 'AnonymousController';
       const classDecorators = decorators(node);
       const classIsPublicIngress = classDecorators.some((decorator) =>
         decorator.expression.getText(source).startsWith('PublicIngress'),
@@ -90,7 +91,15 @@ function discoverRoutes() {
                 guardContract: [...classDecorators, ...methodDecorators]
                   .map((item) => item.expression.getText(source))
                   .join(' '),
-                operation: `${path.relative(path.join(__dirname, '..'), file).replace(/\\/g, '/')}:${member.name?.getText(source) ?? 'anonymous'}:${method}`,
+                // Identity of one DECLARED route, not of a handler name. The
+                // suffix is part of the key because a controller may mount
+                // several distinct routes on the same handler name (two `list`
+                // methods, say); keying on the name alone let a documented
+                // sibling mask an undocumented route. Mount prefixes are
+                // deliberately excluded, so the aliases a multi-prefix
+                // @Controller() produces still share one key and need
+                // documenting only once.
+                operation: `${path.relative(path.join(__dirname, '..'), file).replace(/\\/g, '/')}:${controllerName}:${member.name?.getText(source) ?? 'anonymous'}:${method}:${suffix}`,
               });
             }
           }
@@ -137,6 +146,9 @@ const approvedPublicOperations = new Set([
   'post:/auth/logout',
   'post:/auth/password-recovery/request',
   'post:/auth/password-recovery/verify',
+  // Legacy suffix aliases the same handlers declare; unauthenticated by design.
+  'post:/auth/forgot-password',
+  'post:/auth/reset-password',
   'get:/api/v1/auth/sso/discovery/{tenantSlug}',
   'post:/api/v1/auth/sso/start',
   'get:/api/v1/auth/owner-invitations/{token}',
