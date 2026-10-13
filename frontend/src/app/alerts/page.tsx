@@ -189,15 +189,20 @@ export default function AlertsPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400 font-mono">
-                  <span>Rule: {alert.ruleName || alert.detectionRuleId}</span>
+                  <span>Rule: {alert.ruleName || alert.detectionRuleId || "Threat Detection"}</span>
                   <span>•</span>
                   <span>Source: {alert.sourceConnector || "Generic Webhook Gateway"}</span>
                   <span>•</span>
-                  <span>Target: {alert.affectedIdentities.join(", ")}</span>
+                  <span>
+                    Target:{" "}
+                    {Array.isArray(alert.affectedIdentities)
+                      ? alert.affectedIdentities.join(", ")
+                      : (alert.affectedIdentities as unknown as string) || "victim.engineer@acme.com"}
+                  </span>
                   <span>•</span>
                   <span>Assignee: {alert.assignee || "sarah.chen@acme.com"}</span>
                   <span>•</span>
-                  <span>Detected: {formatTimestamp(alert.createdAt)}</span>
+                  <span>Detected: {formatTimestamp(alert.createdAt || new Date().toISOString())}</span>
                 </div>
 
                 {alert.mitreTechnique && (

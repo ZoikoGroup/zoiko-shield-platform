@@ -131,7 +131,7 @@ export default function CasesListPage() {
 
                   <div className="flex items-center gap-2 pt-1">
                     <span className="text-xs font-mono px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800">
-                      {c.evidenceList.length} Evidence Items
+                      {Array.isArray(c.evidenceList) ? c.evidenceList.length : 0} Evidence Items
                     </span>
                     {c.aiSummary && <Badge variant="ai">AI Analysis Attached</Badge>}
                     {c.simulationReceipt && (
