@@ -83,7 +83,7 @@ export default function ThreatHuntingPage() {
   const [attackTrajectory, setAttackTrajectory] = useState<AttackPathTrajectory | null>(null);
 
   // Use the first available case ID, or a fallback
-  const activeCaseId = state.cases[0]?.id ?? "case-demo-01";
+  const activeCaseId = state?.cases?.[0]?.id ?? "case-demo-01";
 
   useEffect(() => {
     let mounted = true;
@@ -332,7 +332,7 @@ export default function ThreatHuntingPage() {
                 placeholder="Enter threat hunting hypothesis..."
               />
 
-              {!state.cases[0] && (
+              {!state?.cases?.[0] && (
                 <div className="p-2.5 rounded-lg bg-amber-950/30 border border-amber-500/30 text-amber-300 text-[11px] font-mono">
                   ⚠️ No active case found. Run telemetry ingestion first to generate a case for AI
                   analysis.
@@ -555,8 +555,8 @@ export default function ThreatHuntingPage() {
                       </div>
                       <div className="font-bold text-slate-200 truncate">{node.label}</div>
                       <p className="text-[11px] text-slate-400 line-clamp-2">{node.description}</p>
-                      <div className="text-[10px] text-slate-500 font-mono pt-1 border-t border-slate-800/60 truncate">
-                        Digest: {node.evidenceDigest ? `${node.evidenceDigest.slice(0, 16)}...` : "Anchored"}
+                      <div className="text-[10px] text-slate-500 font-mono pt-1 border-slate-800/60 truncate">
+                        Digest: {typeof node.evidenceDigest === "string" ? `${node.evidenceDigest.slice(0, 16)}...` : "Anchored"}
                       </div>
                     </div>
                   );

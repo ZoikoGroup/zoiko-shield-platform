@@ -381,7 +381,7 @@ export default function PlaybooksRunPage() {
                   {!Array.isArray(detail.plannedSteps) || detail.plannedSteps.length === 0 ? (
                     <p className="text-xs text-slate-500">No step plan recorded on this version.</p>
                   ) : (
-                    detail.plannedSteps.map((step) => (
+                    (detail.plannedSteps || []).map((step) => (
                       <div
                         key={step.stepNumber}
                         className="p-3 rounded-lg bg-slate-950/60 border border-slate-800 text-xs font-mono text-slate-300"

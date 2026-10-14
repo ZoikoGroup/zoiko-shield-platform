@@ -162,7 +162,8 @@ export class NotificationController {
       const activePolicy = await this.prisma.notificationPolicy.findFirst({
         where: { status: 'ACTIVE' },
       });
-      const policyId = activePolicy?.id ?? '00000000-0000-0000-0000-000000000001';
+      const policyId =
+        activePolicy?.id ?? '00000000-0000-0000-0000-000000000001';
       const policyVersion = activePolicy?.version ?? 1;
 
       // Record delivery audit

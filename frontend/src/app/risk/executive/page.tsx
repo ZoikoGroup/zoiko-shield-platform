@@ -176,7 +176,8 @@ export default function ExecutiveRiskPage() {
   // Residual risk is what is left after treatment — so the register minus
   // anything closed, weighted by what the factor breakdown actually supports.
   const residual = useMemo(() => {
-    const open = risks.filter((r) => (r.status ?? "OPEN").toUpperCase() !== "CLOSED");
+    const safeRisks = Array.isArray(risks) ? risks : [];
+    const open = safeRisks.filter((r) => (r.status ?? "OPEN").toUpperCase() !== "CLOSED");
     const withoutFactors = open.filter((r) => !r.factors || r.factors.length === 0);
     const byImpact = new Map<string, number>();
     for (const risk of open) {
@@ -344,9 +345,9 @@ export default function ExecutiveRiskPage() {
             />
           </div>
 
-          {residual.byImpact.length > 0 && (
+          {(residual?.byImpact || []).length > 0 && (
             <div className="mb-3 flex flex-wrap gap-2">
-              {residual.byImpact.map(([impact, count]) => (
+              {(residual?.byImpact || []).map(([impact, count]) => (
                 <span
                   key={impact}
                   className="rounded border border-slate-800 bg-slate-900/60 px-2 py-1 font-mono text-xs text-slate-300"
@@ -357,14 +358,14 @@ export default function ExecutiveRiskPage() {
             </div>
           )}
 
-          {residual.open.length === 0 ? (
+          {(residual?.open || []).length === 0 ? (
             <p className="text-xs font-mono text-amber-300">
               Nothing is open on the register. That is an unassessed register, not a low
               risk position — this surface cannot tell the two apart.
             </p>
           ) : (
             <div className="space-y-1">
-              {residual.open.slice(0, 10).map((risk) => (
+              {(residual?.open || []).slice(0, 10).map((risk) => (
                 <button
                   key={risk.id}
                   onClick={() => router.push("/risk")}

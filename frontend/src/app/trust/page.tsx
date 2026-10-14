@@ -337,7 +337,7 @@ export default function TrustCenterPage() {
             <p className="mb-1 text-[11px] font-mono uppercase text-slate-500">
               Audit packages
             </p>
-            {!trust?.availableAuditPackages || trust.availableAuditPackages.length === 0 ? (
+            {!Array.isArray(trust?.availableAuditPackages) || trust.availableAuditPackages.length === 0 ? (
               <p className="font-mono text-[11px] text-amber-300">
                 No approved or frozen audit package is available, so there is nothing here
                 an auditor could be handed.
@@ -353,7 +353,7 @@ export default function TrustCenterPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {trust.availableAuditPackages.map((pkg) => (
+                  {(trust?.availableAuditPackages || []).map((pkg) => (
                     <tr key={pkg.id} className="border-b border-slate-900 last:border-0">
                       <td className="py-1.5 text-slate-200">{pkg.packageName}</td>
                       <td className="py-1.5 font-mono text-slate-400">
@@ -378,13 +378,13 @@ export default function TrustCenterPage() {
             <p className="mb-1 text-[11px] font-mono uppercase text-slate-500">
               Published artifacts
             </p>
-            {!trust?.publishedArtifacts || trust.publishedArtifacts.length === 0 ? (
+            {!Array.isArray(trust?.publishedArtifacts) || trust.publishedArtifacts.length === 0 ? (
               <p className="font-mono text-[11px] text-slate-500">
                 Nothing has been published to the trust center.
               </p>
             ) : (
               <div className="space-y-1">
-                {trust.publishedArtifacts.map((artifact) => (
+                {(trust?.publishedArtifacts || []).map((artifact) => (
                   <div
                     key={artifact.id}
                     className="flex items-center justify-between rounded border border-slate-800 px-2 py-1.5"
@@ -407,14 +407,14 @@ export default function TrustCenterPage() {
           requirement="Claims this platform is permitted to make, in their approved wording."
           count={trust?.claims?.length ?? 0}
         >
-          {!trust?.claims || trust.claims.length === 0 ? (
+          {!Array.isArray(trust?.claims) || trust.claims.length === 0 ? (
             <p className="text-xs font-mono text-amber-300">
               No approved claims are registered. Nothing on this page has cleared claim
               review, so nothing here should be quoted in a procurement response.
             </p>
           ) : (
             <div className="space-y-2">
-              {trust.claims.map((claim) => (
+              {(trust?.claims || []).map((claim) => (
                 <div key={claim.claimKey} className="rounded border border-slate-800 p-2">
                   <p className="text-xs text-slate-200">{claim.claimWording}</p>
                   <p className="mt-1 font-mono text-[11px] text-slate-500">

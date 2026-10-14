@@ -107,7 +107,7 @@ export default function ConnectorsPage() {
     const tier = getProviderTier(config.provider);
     const newConn: Connector = {
       id: `conn-${Date.now().toString(36)}`,
-      tenantId: state.tenant.id,
+      tenantId: state?.tenant?.id || "demo-tenant",
       name: config.name,
       provider: config.provider,
       sourceRegion: config.region,
@@ -124,7 +124,7 @@ export default function ConnectorsPage() {
 
   // Subscribe to real-time SSE stream for instant connector health updates
   const { isConnected: isSseConnected } = useEventStream({
-    tenantId: state.tenant.id,
+    tenantId: state?.tenant?.id || "demo-tenant",
     enabled: true,
     onEvent: (event) => {
       const eventType = String(event.type);
@@ -193,7 +193,7 @@ export default function ConnectorsPage() {
     try {
       const calculatedTier = getProviderTier(provider);
       const created = await ZoikoShieldApiClient.createConnector({
-        tenantId: state.tenant.id,
+        tenantId: state?.tenant?.id || "demo-tenant",
         name,
         provider,
         sourceRegion: region,
@@ -338,9 +338,9 @@ export default function ConnectorsPage() {
       // Search query
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
-        const matchesName = conn.name.toLowerCase().includes(query);
-        const matchesProvider = conn.provider.toLowerCase().includes(query);
-        const matchesId = conn.id.toLowerCase().includes(query);
+        const matchesName = (conn.name || "").toLowerCase().includes(query);
+        const matchesProvider = (conn.provider || "").toLowerCase().includes(query);
+        const matchesId = (conn.id || "").toLowerCase().includes(query);
         if (!matchesName && !matchesProvider && !matchesId) {
           return false;
         }

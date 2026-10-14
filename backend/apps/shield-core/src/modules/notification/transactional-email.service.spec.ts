@@ -217,7 +217,9 @@ describe('TransactionalEmailService', () => {
           invitation_url: 'https://app.zoikoshield.com/invite/abc',
         },
       });
-      expect(receipt.htmlBody).toContain('https://app.zoikoshield.com/invite/abc');
+      expect(receipt.htmlBody).toContain(
+        'https://app.zoikoshield.com/invite/abc',
+      );
     });
   });
 

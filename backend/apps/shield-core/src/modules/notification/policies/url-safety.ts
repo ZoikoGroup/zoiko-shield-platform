@@ -30,7 +30,10 @@ function loopbackHttpPermitted(): boolean {
  * Fail-closed validation of a customer-facing call-to-action URL.
  * Throws BadRequestException on any unsafe or unparseable value.
  */
-export function assertSafeCtaUrl(rawUrl: string, contextLabel = 'CTA URL'): void {
+export function assertSafeCtaUrl(
+  rawUrl: string,
+  contextLabel = 'CTA URL',
+): void {
   if (typeof rawUrl !== 'string' || rawUrl.trim() === '') {
     throw new BadRequestException(
       `Action safety violation: ${contextLabel} is empty or not a string.`,
@@ -39,6 +42,7 @@ export function assertSafeCtaUrl(rawUrl: string, contextLabel = 'CTA URL'): void
 
   // Control characters (including CR/LF) must never reach a mail header,
   // an HTML attribute, or the plaintext body.
+  // eslint-disable-next-line no-control-regex
   if (/[\u0000-\u001f\u007f]/.test(rawUrl)) {
     throw new BadRequestException(
       `Action safety violation: ${contextLabel} contains control characters.`,

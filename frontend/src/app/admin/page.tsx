@@ -80,7 +80,7 @@ export default function PlatformAdminPage() {
   const [breakGlassReason, setBreakGlassReason] = useState("Emergency platform operator intervention");
 
   // Tenant offer toggling
-  const activeOffers: CommercialOfferType[] = state.tenant.activeOffers || [
+  const activeOffers: CommercialOfferType[] = state?.tenant?.activeOffers || [
     "MANAGED_DEFENSE",
     "CONTINUOUS_ASSURANCE",
     "INCIDENT_RESPONSE_RETAINER",
@@ -374,7 +374,7 @@ export default function PlatformAdminPage() {
               <Server className="w-4 h-4 text-purple-400" />
             </div>
             <div className="text-xl font-bold text-white">
-              {state.connectors.filter((c) => c.status === "ACTIVE").length} / 50 Max
+              {(state?.connectors || []).filter((c) => c.status === "ACTIVE").length} / 50 Max
             </div>
             <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
               <div className="bg-purple-500 h-full" style={{ width: "14%" }} />

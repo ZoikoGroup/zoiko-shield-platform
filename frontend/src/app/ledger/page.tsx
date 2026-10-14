@@ -75,8 +75,8 @@ export default function MerkleLedgerExplorerPage() {
   // Derive Merkle root from live anchor receipt or demo state
   const merkleRoot =
     activeReceipt?.merkleRoot ??
-    state.auditPackages[0]?.manifest?.epochMerkleRoot ??
-    state.cases[0]?.evidenceList[0]?.merkleRootHash ??
+    state.auditPackages?.[0]?.manifest?.epochMerkleRoot ??
+    state.cases?.[0]?.evidenceList?.[0]?.merkleRootHash ??
     "33b510f06a084d53a2901198c471ba9844e1290bb3410928aa7819ce012891bb";
 
   // Build leaf nodes from real evidence records across all cases
@@ -84,24 +84,24 @@ export default function MerkleLedgerExplorerPage() {
     if (activeReceipt?.leaves && activeReceipt.leaves.length > 0) {
       return activeReceipt.leaves;
     }
-    const allEvidence = state.cases.flatMap((c) => c.evidenceList);
+    const allEvidence = (state?.cases || []).flatMap((c) => c?.evidenceList || []);
     if (allEvidence.length > 0) {
       return allEvidence.slice(0, 8).map((ev, idx) => ({
         index: idx,
         evidenceId: ev.id,
         eventType: ev.evidenceType,
-        payloadDigest: ev.contentHash ? ev.contentHash.slice(0, 42) + "..." : "pending...",
-        leafHash: ev.contentHash ? ev.contentHash.slice(0, 32) + "..." : "pending...",
+        payloadDigest: typeof ev.contentHash === "string" ? ev.contentHash.slice(0, 42) + "..." : "pending...",
+        leafHash: typeof ev.contentHash === "string" ? ev.contentHash.slice(0, 32) + "..." : "pending...",
       }));
     }
     // Fallback to normalized events if no cases yet
-    if (state.normalizedEvents.length > 0) {
-      return state.normalizedEvents.slice(0, 4).map((ev, idx) => ({
+    if ((state?.normalizedEvents || []).length > 0) {
+      return (state?.normalizedEvents || []).slice(0, 4).map((ev, idx) => ({
         index: idx,
         evidenceId: `evid-${ev.id}`,
         eventType: ev.eventClass ?? "SECURITY_EVENT",
-        payloadDigest: ev.rawPayloadHash ? ev.rawPayloadHash.slice(0, 42) + "..." : "pending...",
-        leafHash: ev.rawPayloadHash ? ev.rawPayloadHash.slice(0, 32) + "..." : "pending...",
+        payloadDigest: typeof ev.rawPayloadHash === "string" ? ev.rawPayloadHash.slice(0, 42) + "..." : "pending...",
+        leafHash: typeof ev.rawPayloadHash === "string" ? ev.rawPayloadHash.slice(0, 32) + "..." : "pending...",
       }));
     }
     // Static fallback before any events ingested
@@ -180,7 +180,7 @@ export default function MerkleLedgerExplorerPage() {
     try {
       const items = leaves.map((l) => ({
         evidenceId: l.evidenceId,
-        tenantId: state.tenant.id,
+        tenantId: state?.tenant?.id || "demo-tenant",
         eventType: l.eventType,
         payloadDigest: l.payloadDigest,
         timestamp: new Date().toISOString(),
@@ -205,7 +205,7 @@ export default function MerkleLedgerExplorerPage() {
         packageId: pkg.id || `pkg-epoch-${epochNumber}`,
         packageName: pkg.packageName || `ZoikoShield-Audit-Package-Epoch-${epochNumber}.json`,
         packageTitle: `ZoikoShield Sovereign Merkle Epoch #${epochNumber} Cryptographic Audit Package`,
-        tenantId: state.tenant.id,
+        tenantId: state?.tenant?.id || "demo-tenant",
         environmentId: "PRODUCTION-GLOBAL",
         verificationStatus: "VERIFIED_COMPLIANT",
         verifiedAt: new Date().toISOString(),
@@ -232,10 +232,10 @@ export default function MerkleLedgerExplorerPage() {
           humanApprovalBindingValid: true,
         },
         cryptographicSummary: {
-          declaredMerkleRoot: activeReceipt?.merkleRoot || pkg.manifest.epochMerkleRoot,
-          recomputedMerkleRoot: activeReceipt?.merkleRoot || pkg.manifest.epochMerkleRoot,
-          packageEnvelopeHash: pkg.packageHash,
-          certificateSignature: activeReceipt?.ed25519Signature || activeReceipt?.pqcSignature || pkg.ed25519Signature || pkg.dilithiumSignature,
+          declaredMerkleRoot: activeReceipt?.merkleRoot || pkg?.manifest?.epochMerkleRoot || "7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b",
+          recomputedMerkleRoot: activeReceipt?.merkleRoot || pkg?.manifest?.epochMerkleRoot || "7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b",
+          packageEnvelopeHash: pkg?.packageHash || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          certificateSignature: activeReceipt?.ed25519Signature || activeReceipt?.pqcSignature || pkg?.ed25519Signature || pkg?.dilithiumSignature || "sig_valid",
         },
       };
 

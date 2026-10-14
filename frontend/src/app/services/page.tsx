@@ -83,10 +83,11 @@ export default function CommercialServicesPage() {
       activeFilter === "ALL" ||
       s.status === activeFilter ||
       s.category === activeFilter;
+    const q = (searchQuery || "").toLowerCase();
     const matchesSearch =
-      s.serviceName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.publicOutcomeDescription.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.category.toLowerCase().includes(searchQuery.toLowerCase());
+      (s.serviceName || "").toLowerCase().includes(q) ||
+      (s.publicOutcomeDescription || "").toLowerCase().includes(q) ||
+      (s.category || "").toLowerCase().includes(q);
     return matchesFilter && matchesSearch;
   });
 

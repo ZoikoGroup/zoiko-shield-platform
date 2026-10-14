@@ -43,10 +43,10 @@ export default function G1LaunchGatePage() {
   const loadRoster = async () => {
     try {
       const data = await ZoikoShieldApiClient.getG1Roster();
-      setGateStatus(data.gateStatus);
-      setAllApproved(data.allApproved);
-      setRatifiedCount(data.ratifiedApprovalsCount);
-      setApprovers(Array.isArray(data.approvers) ? data.approvers : []);
+      setGateStatus(data?.gateStatus || "PENDING_MULTI_APPROVER_SIGNOFF");
+      setAllApproved(Boolean(data?.allApproved));
+      setRatifiedCount(typeof data?.ratifiedApprovalsCount === "number" ? data.ratifiedApprovalsCount : 0);
+      setApprovers(Array.isArray(data?.approvers) ? data.approvers : []);
     } catch (err) {
       console.error("Failed to load G1 roster", err);
     } finally {
@@ -71,9 +71,9 @@ export default function G1LaunchGatePage() {
         evidenceNotes
       );
 
-      setGateStatus(res.gateStatus);
-      setAllApproved(res.allApproved);
-      setRatifiedCount(res.ratifiedApprovalsCount);
+      setGateStatus(res?.gateStatus || "PENDING_MULTI_APPROVER_SIGNOFF");
+      setAllApproved(Boolean(res?.allApproved));
+      setRatifiedCount(typeof res?.ratifiedApprovalsCount === "number" ? res.ratifiedApprovalsCount : 0);
       setSigningRole(null);
       setSignatoryName("");
       setEvidenceNotes("");

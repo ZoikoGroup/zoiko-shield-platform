@@ -254,7 +254,7 @@ export default function SectorPacksPage() {
               <span>Tailored SecOps & Governance Modules</span>
             </div>
             <ul className="space-y-2.5 text-xs text-slate-300">
-              {selectedPack.tailoredFeatures.map((feat, i) => (
+              {(selectedPack.tailoredFeatures || []).map((feat, i) => (
                 <li key={i} className="flex items-start gap-2.5">
                   <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
                   <span>{feat}</span>
@@ -271,7 +271,7 @@ export default function SectorPacksPage() {
                 <span>Target Regulatory & Framework Alignments</span>
               </div>
               <div className="flex flex-wrap gap-2">
-                {selectedPack.targetRegimes.map((reg, i) => (
+                {(selectedPack.targetRegimes || []).map((reg, i) => (
                   <span
                     key={i}
                     className="px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-slate-200 text-xs font-mono"
@@ -288,7 +288,7 @@ export default function SectorPacksPage() {
                 <span>Active Certified Connectors</span>
               </div>
               <div className="flex flex-wrap gap-2">
-                {selectedPack.activeConnectors.map((conn, i) => (
+                {(selectedPack.activeConnectors || []).map((conn, i) => (
                   <span
                     key={i}
                     className="px-2 py-0.5 rounded bg-cyan-950/40 border border-cyan-500/30 text-cyan-300 text-xs font-mono"

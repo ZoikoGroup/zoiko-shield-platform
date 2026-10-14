@@ -377,7 +377,7 @@ export default function AiGovernancePage() {
                 state: transition === "ACCEPT" ? "ACCEPTED" : transition === "MODIFY" ? "MODIFIED" : transition === "REJECT" ? "REJECTED" : "ESCALATED",
               },
               humanDecisionAndRationale: {
-                decidedBy: state.session.fullName,
+                decidedBy: state?.session?.fullName || "Lead Security Analyst",
                 decision: transition,
                 rationale: notes,
                 decidedAt: new Date().toISOString(),
@@ -1243,10 +1243,10 @@ export default function AiGovernancePage() {
                     {/* Field 2: Sources & Spans */}
                     <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/90 space-y-2">
                       <div className="text-[11px] font-bold text-cyan-400">
-                        2. DECISION SOURCES &amp; GROUND TRUTH SPANS ({selectedEnvelope.sourcesAndSpans.length})
+                        2. DECISION SOURCES &amp; GROUND TRUTH SPANS ({(selectedEnvelope.sourcesAndSpans || []).length})
                       </div>
                       <div className="space-y-1.5">
-                        {selectedEnvelope.sourcesAndSpans.map((src, sIdx) => (
+                        {(selectedEnvelope.sourcesAndSpans || []).map((src, sIdx) => (
                           <div key={sIdx} className="p-2.5 rounded-lg bg-slate-900 border border-slate-800/80 space-y-1">
                             <div className="flex items-center justify-between text-[10px]">
                               <span className="text-emerald-400 font-bold">{src.sourceId} ({src.sourceType})</span>
@@ -1287,7 +1287,7 @@ export default function AiGovernancePage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="p-3.5 rounded-xl bg-slate-950/70 border border-slate-800/90 space-y-1.5">
                         <span className="font-bold text-cyan-400 text-[11px]">5. ALTERNATIVE HYPOTHESES / ACTIONS</span>
-                        {selectedEnvelope.alternativeHypothesesOrActions.map((alt, aIdx) => (
+                        {(selectedEnvelope.alternativeHypothesesOrActions || []).map((alt, aIdx) => (
                           <div key={aIdx} className="text-[11px] text-slate-300">
                             <div className="font-bold text-white">{alt.title}</div>
                             <div className="text-slate-400">{alt.tradeOffs}</div>
@@ -1450,10 +1450,10 @@ export default function AiGovernancePage() {
                   if (inventorySearch.trim()) {
                     const q = inventorySearch.toLowerCase();
                     return (
-                      m.modelId.toLowerCase().includes(q) ||
-                      m.provider.toLowerCase().includes(q) ||
-                      m.modelFamily.toLowerCase().includes(q) ||
-                      m.purpose.toLowerCase().includes(q)
+                      (m.modelId || "").toLowerCase().includes(q) ||
+                      (m.provider || "").toLowerCase().includes(q) ||
+                      (m.modelFamily || "").toLowerCase().includes(q) ||
+                      (m.purpose || "").toLowerCase().includes(q)
                     );
                   }
                   return true;
@@ -1738,7 +1738,7 @@ export default function AiGovernancePage() {
               <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 space-y-3">
                 <h4 className="text-sm font-semibold text-slate-200">Provider Inference Share</h4>
                 <div className="space-y-3">
-                  {Object.entries(supplyChain.providerShares).map(([provider, share]) => (
+                  {Object.entries(supplyChain.providerShares || {}).map(([provider, share]) => (
                     <div key={provider} className="space-y-1 text-xs font-mono">
                       <div className="flex items-center justify-between text-slate-300">
                         <span>{provider}</span>
@@ -1793,13 +1793,13 @@ export default function AiGovernancePage() {
               <Badge variant="pass">Overall Compliance: {complianceDrift.score.toFixed(1)}%</Badge>
             </div>
 
-            {complianceDrift.slaAlarms.length === 0 ? (
+            {(complianceDrift?.slaAlarms || []).length === 0 ? (
               <div className="p-6 text-center text-xs font-mono text-emerald-400 bg-emerald-950/20 border border-emerald-500/30 rounded-xl">
                 ✓ All Continuous Compliance Controls Operating Within Nominal SLA Tolerances. Zero Alarms.
               </div>
             ) : (
               <div className="space-y-3">
-                {complianceDrift.slaAlarms.map((alarm, idx) => (
+                {(complianceDrift?.slaAlarms || []).map((alarm, idx) => (
                   <div
                     key={`${alarm.alarmId || "alarm"}-${idx}`}
                     className="p-4 rounded-xl bg-amber-950/20 border border-amber-500/40 flex flex-col md:flex-row md:items-center justify-between gap-4 font-mono text-xs"
@@ -1907,7 +1907,7 @@ export default function AiGovernancePage() {
                     <div className="p-2.5 rounded-lg bg-slate-950/60 border border-slate-800/80 space-y-1">
                       <span className="text-[10px] text-slate-400 uppercase tracking-wider">NIST AI RMF Core Functions:</span>
                       <div className="flex items-center gap-1.5 flex-wrap">
-                        {uc.nistFunctions.map((fn, fIdx) => (
+                        {(uc.nistFunctions || []).map((fn, fIdx) => (
                           <span key={fIdx} className="px-1.5 py-0.5 rounded bg-emerald-950/50 text-emerald-300 border border-emerald-500/30 text-[10px] font-bold">
                             {fn}
                           </span>
@@ -2090,7 +2090,7 @@ export default function AiGovernancePage() {
                       <div className="space-y-1.5 pt-1">
                         <span className="text-[11px] text-slate-400 uppercase">Verified Citations:</span>
                         <div className="space-y-1">
-                          {gateResult.verifiedCitations.map((cit, cIdx) => (
+                          {(gateResult.verifiedCitations || []).map((cit, cIdx) => (
                             <div key={cIdx} className="flex items-center gap-1.5 text-[11px] text-emerald-300">
                               <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
                               <span>{cit}</span>
@@ -2099,11 +2099,11 @@ export default function AiGovernancePage() {
                         </div>
                       </div>
 
-                      {gateResult.hallucinatedSpans.length > 0 && (
+                      {(gateResult.hallucinatedSpans || []).length > 0 && (
                         <div className="p-3 rounded-lg bg-rose-950/40 border border-rose-500/40 space-y-1">
                           <span className="text-[11px] font-bold text-rose-300">⚠️ Ungrounded / Hallucinated Spans:</span>
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            {gateResult.hallucinatedSpans.map((span, sIdx) => (
+                            {(gateResult.hallucinatedSpans || []).map((span, sIdx) => (
                               <span key={sIdx} className="px-2 py-0.5 rounded bg-rose-900/60 text-rose-200 border border-rose-500/40 text-[10px]">
                                 {span}
                               </span>
@@ -2412,7 +2412,7 @@ export default function AiGovernancePage() {
             <div className="space-y-2">
               <span className="font-bold text-cyan-300">5-Whys Causality Chain:</span>
               <div className="space-y-1.5 pl-2 border-l-2 border-cyan-500/40">
-                {activeRca.fiveWhys.map((why, idx) => (
+                {(activeRca?.fiveWhys || []).map((why, idx) => (
                   <p key={idx} className="text-slate-300">
                     {why}
                   </p>
@@ -2423,7 +2423,7 @@ export default function AiGovernancePage() {
             <div className="space-y-2">
               <span className="font-bold text-emerald-300">Recommended Engineering Fixes:</span>
               <ul className="list-disc pl-5 space-y-1 text-slate-300">
-                {activeRca.recommendedFixes.map((fix, idx) => (
+                {(activeRca?.recommendedFixes || []).map((fix, idx) => (
                   <li key={idx}>{fix}</li>
                 ))}
               </ul>

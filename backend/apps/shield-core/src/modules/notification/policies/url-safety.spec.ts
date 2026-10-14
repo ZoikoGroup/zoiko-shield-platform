@@ -40,7 +40,9 @@ describe('assertSafeCtaUrl (Gate 3 Action Safety)', () => {
 
   it('rejects control characters that would break out of a header or attribute', () => {
     expect(() =>
-      assertSafeCtaUrl('https://app.zoikoshield.com/a\r\nBcc:attacker@evil.example'),
+      assertSafeCtaUrl(
+        'https://app.zoikoshield.com/a\r\nBcc:attacker@evil.example',
+      ),
     ).toThrow(BadRequestException);
   });
 
@@ -54,8 +56,12 @@ describe('assertSafeCtaUrl (Gate 3 Action Safety)', () => {
   describe('loopback HTTP affordance', () => {
     it('permits http://localhost outside production', () => {
       process.env.NODE_ENV = 'development';
-      expect(() => assertSafeCtaUrl('http://localhost:3000/invite')).not.toThrow();
-      expect(() => assertSafeCtaUrl('http://127.0.0.1:3000/invite')).not.toThrow();
+      expect(() =>
+        assertSafeCtaUrl('http://localhost:3000/invite'),
+      ).not.toThrow();
+      expect(() =>
+        assertSafeCtaUrl('http://127.0.0.1:3000/invite'),
+      ).not.toThrow();
     });
 
     it('fails closed on loopback HTTP in production', () => {
