@@ -200,6 +200,23 @@ export default function MerkleLedgerExplorerPage() {
     setStatusMessage(null);
     try {
       const pkg = await ZoikoShieldApiClient.generateAuditPackage();
+
+      // This file is downloaded as a cryptographic audit certificate - an
+      // auditor or customer reads it as proof. Every value below must be
+      // either a real figure this session has, or an explicit "not yet
+      // sealed" state; none of it may be a fabricated hash, signature, or
+      // hardcoded "true" standing in for a check nothing actually ran.
+      const declaredMerkleRoot = activeReceipt?.merkleRoot || pkg?.manifest?.epochMerkleRoot;
+      const packageEnvelopeHash = pkg?.packageHash;
+      const certificateSignature =
+        activeReceipt?.ed25519Signature ||
+        activeReceipt?.pqcSignature ||
+        pkg?.ed25519Signature ||
+        pkg?.dilithiumSignature;
+      const isFullySealed = Boolean(
+        declaredMerkleRoot && packageEnvelopeHash && certificateSignature,
+      );
+
       const exportPayload = {
         certificateId: `cert-${Date.now().toString(16)}`,
         packageId: pkg.id || `pkg-epoch-${epochNumber}`,
@@ -207,8 +224,8 @@ export default function MerkleLedgerExplorerPage() {
         packageTitle: `ZoikoShield Sovereign Merkle Epoch #${epochNumber} Cryptographic Audit Package`,
         tenantId: state?.tenant?.id || "demo-tenant",
         environmentId: "PRODUCTION-GLOBAL",
-        verificationStatus: "VERIFIED_COMPLIANT",
-        verifiedAt: new Date().toISOString(),
+        verificationStatus: isFullySealed ? "VERIFIED_COMPLIANT" : "PENDING_SEAL",
+        verifiedAt: isFullySealed ? new Date().toISOString() : null,
         verifierVersion: "1.0.0-ZS-MERKLE-V1 (Zero-Dependency Offline)",
         epochNumber,
         leavesCount: leaves.length,
@@ -219,23 +236,25 @@ export default function MerkleLedgerExplorerPage() {
           payloadDigest: l.payloadDigest,
           timestamp: l.timestamp ?? activeReceipt?.sealedAt ?? new Date().toISOString(),
         })),
+        // Each flag reflects whether this session actually has the material
+        // to back that claim - never a blanket true regardless of data.
         checks: {
-          envelopeIntegrity: true,
-          manifestCoreHashMatch: true,
-          merkleRootIntegrity: true,
+          envelopeIntegrity: isFullySealed,
+          manifestCoreHashMatch: Boolean(packageEnvelopeHash),
+          merkleRootIntegrity: Boolean(declaredMerkleRoot),
           evidenceFilesIntegrity: {
-            totalFiles: leaves.length || 8,
-            validFiles: leaves.length || 8,
+            totalFiles: leaves.length,
+            validFiles: leaves.length,
             corruptedFiles: 0,
           },
-          witnessAttestationValid: true,
-          humanApprovalBindingValid: true,
+          witnessAttestationValid: Boolean(activeReceipt?.sealedAt),
+          humanApprovalBindingValid: isFullySealed,
         },
         cryptographicSummary: {
-          declaredMerkleRoot: activeReceipt?.merkleRoot || pkg?.manifest?.epochMerkleRoot || "7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b",
-          recomputedMerkleRoot: activeReceipt?.merkleRoot || pkg?.manifest?.epochMerkleRoot || "7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b",
-          packageEnvelopeHash: pkg?.packageHash || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-          certificateSignature: activeReceipt?.ed25519Signature || activeReceipt?.pqcSignature || pkg?.ed25519Signature || pkg?.dilithiumSignature || "sig_valid",
+          declaredMerkleRoot: declaredMerkleRoot || "PENDING_SEAL",
+          recomputedMerkleRoot: declaredMerkleRoot || "PENDING_SEAL",
+          packageEnvelopeHash: packageEnvelopeHash || "PENDING_SEAL",
+          certificateSignature: certificateSignature || "PENDING_SEAL",
         },
       };
 
@@ -251,7 +270,11 @@ export default function MerkleLedgerExplorerPage() {
         URL.revokeObjectURL(url);
       }
 
-      setStatusMessage(`Signed Audit Package for Epoch #${epochNumber} downloaded successfully!`);
+      setStatusMessage(
+        isFullySealed
+          ? `Signed Audit Package for Epoch #${epochNumber} downloaded successfully!`
+          : `Audit Package for Epoch #${epochNumber} downloaded - marked PENDING_SEAL because this package has not finished sealing yet.`,
+      );
     } catch (err) {
       console.error("Audit package export error:", err);
       setStatusMessage(`Export failed: ${err instanceof Error ? err.message : String(err)}`);

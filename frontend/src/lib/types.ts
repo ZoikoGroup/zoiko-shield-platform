@@ -370,7 +370,10 @@ export interface AuditPackage {
   status: 'GENERATED' | 'VERIFIED' | 'EXPORTED';
   generatedAt: string;
   sizeBytes: number;
-  manifest: {
+  // Nullable in the database (AuditPackageManifest?): a package that has not
+  // been built/frozen yet exists with no manifest row. Marking this required
+  // was the lie that let a freshly created package crash the audit page.
+  manifest?: {
     evidenceCount: number;
     casesCount: number;
     controlEvaluationsCount: number;

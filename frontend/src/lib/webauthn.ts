@@ -62,18 +62,22 @@ export interface PasskeyAssertionPayload {
 export async function requestPasskeyAssertion(
   options: PasskeyAuthenticationOptions
 ): Promise<PasskeyAssertionPayload> {
-  const safeChallenge =
-    options && typeof options.challenge === "string" && options.challenge.length > 0
-      ? options.challenge
-      : "dGVzdC1jaGFsbGVuZ2Utbm9uY2U";
+  // The challenge is the WebAuthn anti-replay nonce: it must come from the
+  // server, unpredictable and single-use. A missing/malformed one must fail
+  // the ceremony, never fall back to a fixed value - that would let any bug
+  // or interference that blanks this field turn every assertion into one
+  // signed over the same known challenge, which is replayable.
+  if (!options || typeof options.challenge !== "string" || options.challenge.length === 0) {
+    throw new Error("Passkey ceremony received no challenge from the server.");
+  }
   const safeRpId =
-    options && typeof options.rpId === "string" && options.rpId.length > 0
+    typeof options.rpId === "string" && options.rpId.length > 0
       ? options.rpId
       : (typeof window !== "undefined" ? window.location.hostname : "localhost");
-  const creds = Array.isArray(options?.allowCredentials) ? options.allowCredentials : [];
+  const creds = Array.isArray(options.allowCredentials) ? options.allowCredentials : [];
 
   const publicKey: PublicKeyCredentialRequestOptions = {
-    challenge: base64UrlToBuffer(safeChallenge),
+    challenge: base64UrlToBuffer(options.challenge),
     rpId: safeRpId,
     allowCredentials: creds.map((c) => ({
       type: "public-key" as const,
@@ -120,19 +124,22 @@ export interface PasskeyRegistrationPayload {
 export async function createPasskeyCredential(
   options: PasskeyRegistrationOptions
 ): Promise<PasskeyRegistrationPayload> {
-  const safeChallenge =
-    options && typeof options.challenge === "string" && options.challenge.length > 0
-      ? options.challenge
-      : "dGVzdC1jaGFsbGVuZ2Utbm9uY2U";
-  const safeUserId =
-    options?.user?.id && typeof options.user.id === "string" && options.user.id.length > 0
-      ? options.user.id
-      : "dXNlci1pZA";
-  const safeRp = options?.rp || { id: "localhost", name: "ZoikoShield Enterprise" };
+  // Same anti-replay requirement as requestPasskeyAssertion.
+  if (!options || typeof options.challenge !== "string" || options.challenge.length === 0) {
+    throw new Error("Passkey registration received no challenge from the server.");
+  }
+  // The WebAuthn user handle must uniquely identify this principal: a fixed
+  // fallback would let every registration that hits this path share one
+  // handle, so an authenticator's existing resident credential for that
+  // handle gets silently reused or overwritten across unrelated accounts.
+  if (!options.user?.id || typeof options.user.id !== "string" || options.user.id.length === 0) {
+    throw new Error("Passkey registration received no user handle from the server.");
+  }
+  const safeRp = options.rp || { id: "localhost", name: "ZoikoShield Enterprise" };
   const safeUser = {
-    id: base64UrlToBuffer(safeUserId),
-    name: options?.user?.name || "operator@zoikoshield.corp",
-    displayName: options?.user?.displayName || "Lead Analyst",
+    id: base64UrlToBuffer(options.user.id),
+    name: options.user?.name || "operator@zoikoshield.corp",
+    displayName: options.user?.displayName || "Lead Analyst",
   };
   const pubParams = Array.isArray(options?.pubKeyCredParams)
     ? (options.pubKeyCredParams as PublicKeyCredentialParameters[])
@@ -140,7 +147,7 @@ export async function createPasskeyCredential(
   const excludeCreds = Array.isArray(options?.excludeCredentials) ? options.excludeCredentials : [];
 
   const publicKey: PublicKeyCredentialCreationOptions = {
-    challenge: base64UrlToBuffer(safeChallenge),
+    challenge: base64UrlToBuffer(options.challenge),
     rp: safeRp,
     user: safeUser,
     pubKeyCredParams: pubParams,

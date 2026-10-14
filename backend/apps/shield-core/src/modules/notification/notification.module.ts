@@ -16,6 +16,10 @@ import { NotificationAcknowledgementService } from './acknowledgement/notificati
 import { DomainEventNotificationConsumer } from './consumers/domain-event-notification.consumer';
 import { ProductionEmailTemplateEngine } from './templates/production-email-template.engine';
 import { TenantIsolationValidator } from './policies/tenant-isolation-validator.service';
+import {
+  RECIPIENT_MEMBERSHIP_RESOLVER,
+  PrismaRecipientMembershipResolver,
+} from './policies/recipient-membership-resolver';
 import { SenderClassRouterService } from './channels/sender-class-router.service';
 import { NotificationAuditReconstructionService } from './audit/notification-audit-reconstruction.service';
 
@@ -38,6 +42,10 @@ import { NotificationAuditReconstructionService } from './audit/notification-aud
     TenantIsolationValidator,
     SenderClassRouterService,
     NotificationAuditReconstructionService,
+    {
+      provide: RECIPIENT_MEMBERSHIP_RESOLVER,
+      useClass: PrismaRecipientMembershipResolver,
+    },
   ],
   exports: [
     NotificationPolicyService,
