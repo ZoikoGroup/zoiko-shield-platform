@@ -107,6 +107,7 @@ export default function NotificationsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [acking, setAcking] = useState<string | null>(null);
+  const [isSampleData, setIsSampleData] = useState(false);
 
   // Quick Dispatch modal state
   const [showDispatchModal, setShowDispatchModal] = useState(false);
@@ -126,9 +127,16 @@ export default function NotificationsPage() {
       } else {
         baseItems = SAMPLE_NOTIFICATIONS;
       }
-    } catch {
-      // Backend is offline or errored - always provide verified sample notifications for demo
+      setIsSampleData(false);
+    } catch (err) {
+      // Fall back to fixtures so the surface stays explorable, but keep the
+      // failure visible. Delivery records are an audit surface: a swallowed
+      // error here reads as "every notification was delivered".
+      setError(
+        `${err instanceof BackendError ? err.message : String(err)} \u2014 showing sample data, not live delivery records.`,
+      );
       baseItems = SAMPLE_NOTIFICATIONS;
+      setIsSampleData(true);
     }
 
     // Merge any emails dispatched from the Production Email Template Studio
@@ -142,6 +150,7 @@ export default function NotificationsPage() {
     } catch {}
 
     setItems(baseItems);
+    // Must run on every path, including an early return added later.
     setIsLoading(false);
   }, []);
 
@@ -160,22 +169,29 @@ export default function NotificationsPage() {
     setDispatchSuccessMsg(null);
 
     const deliveryId = `del-${Math.random().toString(36).slice(2, 10)}`;
-    const newDelivery: NotificationDelivery = {
-      id: deliveryId,
-      event_id: `evt-email-${dispatchTemplate.toLowerCase()} (Dispatched Email Notification)`,
-      channel: `EMAIL (${dispatchRecipient})`,
-      status: "DELIVERED",
-      attempt_count: 1,
-      delivered_at: new Date().toISOString(),
-      error_code: null,
-      created_at: new Date().toISOString(),
-    };
 
+    // The delivery record is written from the dispatch result, never ahead of
+    // it: a row that reads DELIVERED when shield-core never accepted the
+    // request is a fabricated audit record.
+    let dispatchError: string | null = null;
     try {
       await backend.post(`/api/v1/notifications/templates/${dispatchTemplate}/send-test`, {
         recipientEmail: dispatchRecipient,
       });
-    } catch {}
+    } catch (err) {
+      dispatchError = err instanceof BackendError ? err.message : String(err);
+    }
+
+    const newDelivery: NotificationDelivery = {
+      id: deliveryId,
+      event_id: `evt-email-${dispatchTemplate.toLowerCase()} (Dispatched Email Notification)`,
+      channel: `EMAIL (${dispatchRecipient})`,
+      status: dispatchError ? "FAILED" : "DELIVERED",
+      attempt_count: 1,
+      delivered_at: dispatchError ? null : new Date().toISOString(),
+      error_code: dispatchError ? "DISPATCH_REQUEST_REJECTED" : null,
+      created_at: new Date().toISOString(),
+    };
 
     // Save to localStorage so it persists everywhere
     try {
@@ -186,21 +202,50 @@ export default function NotificationsPage() {
     setItems((prev) => [newDelivery, ...prev]);
     setIsDispatching(false);
     setShowDispatchModal(false);
-    setDispatchSuccessMsg(
-      `Email notification sent successfully to ${dispatchRecipient}! Delivery status: DELIVERED (Transport: SMTP Relay Verified). Acknowledgment enabled below.`
-    );
-    setTimeout(() => setDispatchSuccessMsg(null), 10000);
+    if (dispatchError) {
+      setError(`Email to ${dispatchRecipient} was not dispatched: ${dispatchError}`);
+    } else {
+      setDispatchSuccessMsg(
+        `Email notification dispatched to ${dispatchRecipient}. Template ${dispatchTemplate}, delivery status DELIVERED. Acknowledgment enabled below.`
+      );
+      setTimeout(() => setDispatchSuccessMsg(null), 10000);
+    }
   };
 
   const acknowledge = async (id: string) => {
     setAcking(id);
     setError(null);
+    // Records that only ever existed in this browser (fixtures, or an email
+    // dispatched while offline) have no server state to reconcile, so a local
+    // flip is honest for them and only for them.
+    let localOnly = isSampleData;
+    try {
+      const localDispatched = JSON.parse(localStorage.getItem("zoiko_dispatched_emails") || "[]");
+      if (Array.isArray(localDispatched) && localDispatched.some((d: any) => d.id === id)) {
+        localOnly = true;
+      }
+    } catch {}
+
+    let persisted = false;
     try {
       await backend.post(`/api/v1/notifications/${id}/acknowledge`, {
         acknowledgementType: "ACKNOWLEDGED",
       });
-    } catch {
-      // Local state update when offline
+      persisted = true;
+    } catch (err) {
+      if (!localOnly) {
+        // Acknowledgement is an audited act. Flipping the badge when
+        // shield-core refused the request tells an operator a P0 alert was
+        // signed off when no record of it exists.
+        setError(
+          `Acknowledgement of ${id} was not recorded: ${err instanceof BackendError ? err.message : String(err)}`,
+        );
+      }
+    }
+
+    if (!persisted && !localOnly) {
+      setAcking(null);
+      return;
     }
 
     // Update localStorage state
@@ -272,6 +317,13 @@ export default function NotificationsPage() {
       {error && (
         <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-500/50 text-rose-300 text-xs font-mono">
           {error}
+        </div>
+      )}
+
+      {isSampleData && (
+        <div className="p-3 rounded-lg bg-amber-950/40 border border-amber-500/50 text-amber-200 text-xs">
+          Sample data &mdash; shield-core is unreachable. The rows below are
+          demonstration fixtures, not real delivery records.
         </div>
       )}
 

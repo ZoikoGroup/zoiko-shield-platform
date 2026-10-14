@@ -301,10 +301,38 @@ export function resolveAllowlistedActionType(rawAction: string): string {
   );
 }
 
+/**
+ * Acronyms that must stay upper-case in customer-facing copy. Blanket
+ * lower-casing would render these as 'Sso', 'Dkim', 'Ip', which reads as a
+ * defect in a security product.
+ */
+const PRESERVED_ACRONYMS = new Set([
+  'ABAC', 'AI', 'API', 'CSPM', 'CSV', 'DKIM', 'DLP', 'DMARC', 'DNS', 'DORA',
+  'EDR', 'GDPR', 'HSM', 'IAM', 'ID', 'IP', 'JIT', 'JSON', 'JWT', 'KMS', 'MDM',
+  'MFA', 'ML', 'MTLS', 'OIDC', 'OTP', 'P0', 'P1', 'PII', 'RBAC', 'RLS', 'SAML',
+  'SCIM', 'SIEM', 'SLA', 'SLO', 'SOC', 'SPF', 'SSL', 'SSO', 'TLS', 'TOTP',
+  'URL', 'VPN', 'XDR',
+]);
+
+/**
+ * Humanizes an un-allowlisted enum code for display.
+ *
+ * Tokens are title-cased, except recognized acronyms which are preserved in
+ * upper case. Input is typically SCREAMING_SNAKE_CASE, so each token is
+ * normalized rather than left as-is.
+ */
 function formatSafeFallback(str: string): string {
   return str
-    .toLowerCase()
     .replace(/[_-]/g, ' ')
-    .replace(/\b\w/g, (char) => char.toUpperCase())
+    .split(/\s+/)
+    .filter((token) => token.length > 0)
+    .map((token) => {
+      const upper = token.toUpperCase();
+      if (PRESERVED_ACRONYMS.has(upper)) {
+        return upper;
+      }
+      return token.charAt(0).toUpperCase() + token.slice(1).toLowerCase();
+    })
+    .join(' ')
     .trim();
 }

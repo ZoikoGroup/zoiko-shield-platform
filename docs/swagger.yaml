@@ -29804,6 +29804,33 @@ paths:
       operationId: postAuthPasswordRecoveryRequest
       security: []
       description: Starts password recovery and sends a one-time code when the account exists. The response remains non-enumerating so callers cannot discover registered email addresses.
+  /auth/forgot-password:
+    post:
+      tags:
+        - Auth
+      summary: Request a password recovery code
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostAuthPasswordRecoveryRequestRequest'
+      responses:
+        '201':
+          description: Request a password recovery code successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostAuthPasswordRecoveryRequestResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postAuthForgotPassword
+      security: []
+      description: Starts password recovery and sends a one-time code when the account exists. The response remains non-enumerating so callers cannot discover registered email addresses. Equivalent alias route of /auth/password-recovery/request — the controller declares both paths on one handler, so they share behaviour and access contract.
   /auth/password-recovery/verify:
     post:
       tags:
@@ -29875,6 +29902,45 @@ paths:
       security:
         - RecoveryGrantAuth: []
       description: Consumes the recovery_grant cookie, validates and stores the new password, revokes all existing sessions, and clears the recovery grant.
+  /auth/reset-password:
+    post:
+      tags:
+        - Auth
+      summary: Reset password using a recovery grant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostAuthPasswordRecoveryResetRequest'
+      responses:
+        '201':
+          description: Reset password using a recovery grant successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostAuthPasswordRecoveryResetResponse'
+          headers:
+            Set-Cookie:
+              description: httpOnly authentication, refresh, or recovery cookie set/cleared by this operation.
+              schema:
+                type: string
+        '400':
+          description: Request validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication is missing or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postAuthResetPassword
+      security:
+        - RecoveryGrantAuth: []
+      description: Consumes the recovery_grant cookie, validates and stores the new password, revokes all existing sessions, and clears the recovery grant. Equivalent alias route of /auth/password-recovery/reset — the controller declares both paths on one handler, so they share behaviour and access contract.
   /api/v1/auth/switch-tenant:
     post:
       tags:
@@ -32874,6 +32940,38 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: patchCatalogProductsByIdRelease
   /api/v1/api-clients:
+    get:
+      tags:
+        - DeveloperAPI
+      summary: List tenant API clients
+      description: Lists the API clients registered for the supplied tenant context, backing the developer surface.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Registered API clients for the tenant.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '401':
+          description: Unauthorized - Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Tenant context is not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getApiClients
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
     post:
       tags:
         - DeveloperAPI
@@ -33415,6 +33513,35 @@ paths:
       parameters:
         - $ref: '#/components/parameters/TenantIdHeader'
   /api/v1/controls:
+    post:
+      tags:
+        - Controls
+      summary: Create control objective
+      description: Create control objective. Validates the documented request and returns the created or resulting resource. State-changing operations also enforce the service lifecycle and conflict rules. Equivalent alias route of /api/v1/controls/objectives — the controller declares both paths on one handler, so they share behaviour and access contract.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostControlsObjectivesRequest'
+      responses:
+        '201':
+          description: Create control objective successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostControlsObjectivesResponse'
+        '400':
+          description: Bad Request - Invalid payload or parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postControls
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
     get:
       parameters:
         - $ref: '#/components/parameters/TenantIdHeader'
@@ -35982,6 +36109,38 @@ paths:
         - CookieAuth: []
         - BearerAuth: []
       description: Run pre-freeze validation checklist. Validates the documented request and returns the created or resulting resource. State-changing operations also enforce the service lifecycle and conflict rules.
+  /api/v1/audit-packages/{packageId}/verify:
+    post:
+      tags:
+        - AuditPackages
+      summary: Run pre-freeze validation checklist
+      parameters:
+        - name: packageId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique package ID identifying the target resource.
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '201':
+          description: Run pre-freeze validation checklist successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostAuditPackagesByPackageIdValidateResponse'
+        '404':
+          description: The referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postAuditPackagesPackageIdVerify
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      description: Run pre-freeze validation checklist. Validates the documented request and returns the created or resulting resource. State-changing operations also enforce the service lifecycle and conflict rules. Equivalent alias route of /api/v1/audit-packages/{packageId}/validate — the controller declares both paths on one handler, so they share behaviour and access contract.
   /api/v1/audit-packages/{packageId}/approve:
     post:
       tags:
@@ -37881,6 +38040,67 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: patchRolesByRoleIdPermissions
+  /api/v1/roles/{roleId}:
+    patch:
+      tags:
+        - RBAC
+      summary: Update a role's permission set
+      description: Replace the full set of permissions attached to a role. Requires platform:role:manage scope. Equivalent alias route of /roles/{roleId}/permissions — the controller declares both paths on one handler, so they share behaviour and access contract.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique role ID identifying the target resource.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchRolesByRoleIdPermissionsRequest'
+      responses:
+        '200':
+          description: Role permissions updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoleResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Missing platform:role:manage scope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Role not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: The request conflicts with the current resource state.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: patchRolesRoleId
   /tenants/{tenantId}/invitations:
     post:
       tags:
@@ -38015,6 +38235,48 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postAuthInvitationsByTokenAccept
+  /api/v1/invitations/{token}/accept:
+    post:
+      tags:
+        - RBAC
+      summary: Accept a tenant invitation
+      description: Accept a pending invitation using its single-use token. Creates or updates a TenantMembership — role and tenant come from the invitation, never self-chosen. The accepting user's email must match the invited email. Equivalent alias route of /auth/invitations/{token}/accept — the controller declares both paths on one handler, so they share behaviour and access contract.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: token
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique token identifying the target resource.
+      responses:
+        '200':
+          description: Membership granted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MembershipResponse'
+        '401':
+          description: Authentication is missing or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Invitation email mismatch
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Invitation not found, expired, or already used
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postInvitationsTokenAccept
   /onboarding:
     post:
       tags:
@@ -38197,6 +38459,67 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: patchTenantByIdStatus
+  /api/v1/tenants/{id}:
+    patch:
+      tags:
+        - Tenant
+      summary: Update tenant lifecycle status
+      description: 'Transition a tenant to a new lifecycle state. Follows the state machine: PROVISIONING → ACTIVE → RESTRICTED/SUSPENDED/OFFBOARDING → CLOSED. Requires tenant:manage permission on the target tenant. Records a tenant_status_changed identity event.'
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique ID identifying the target resource.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchTenantByIdStatusRequest'
+      responses:
+        '200':
+          description: Tenant status updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TenantFull'
+        '400':
+          description: Request validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Missing tenant:manage permission
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Tenant not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Illegal state transition
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: patchTenantsId
   /tenant/{tenantId}/environments:
     post:
       tags:
@@ -41633,6 +41956,43 @@ paths:
       operationId: postControlsObjectivesByIdEvaluate
       security:
         - InternalServiceAuth: []
+  /api/v1/control-tests/{testId}/evaluate:
+    post:
+      tags:
+        - Controls
+      summary: Evaluate control objective
+      description: Evaluate control objective. Validates the documented request and returns the created or resulting resource. State-changing operations also enforce the service lifecycle and conflict rules. Equivalent alias route of /api/v1/controls/objectives/{id}/evaluate — the controller declares both paths on one handler, so they share behaviour and access contract.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: testId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Unique ID identifying the target resource.
+      responses:
+        '200':
+          description: Evaluate control objective successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostControlsObjectivesByIdEvaluateResponse'
+        '400':
+          description: Bad Request - Invalid payload or parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: The referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postControlTestsTestIdEvaluate
+      security:
+        - InternalServiceAuth: []
   /api/v1/controls/results:
     get:
       tags:
@@ -41653,6 +42013,38 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: getControlsResults
+      security:
+        - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - name: tenantId
+          in: query
+          required: false
+          schema:
+            type: string
+            nullable: true
+            format: uuid
+          description: Optional tenant ID filter.
+  /api/v1/control-evaluations:
+    get:
+      tags:
+        - Controls
+      summary: List control results
+      description: List control results. Applies the documented path, query, and tenant filters and returns the current persisted or computed result using the response model below. Equivalent alias route of /api/v1/controls/results — the controller declares both paths on one handler, so they share behaviour and access contract.
+      responses:
+        '200':
+          description: List control results successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GetControlsResultsResponse'
+        '400':
+          description: Bad Request - Invalid payload or parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getControlEvaluations
       security:
         - InternalServiceAuth: []
       parameters:
@@ -43973,6 +44365,124 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: postAiUsage
+      security:
+        - InternalServiceAuth: []
+  /internal/v1/ai/provider-cost-events:
+    post:
+      tags:
+        - InternalMicroservices
+      summary: Record an AI provider cost event
+      description: Records a provider price change used by AI cost governance. Restricted to trusted services using a signed workload token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - provider
+                - model
+                - modelClass
+                - providerPriceVersion
+                - newUnitCost
+                - costUnit
+                - effectiveAt
+                - sourceReference
+                - recordedBy
+              properties:
+                tenantId:
+                  type: string
+                environmentId:
+                  type: string
+                governanceProfileId:
+                  type: string
+                provider:
+                  type: string
+                model:
+                  type: string
+                modelClass:
+                  type: string
+                providerPriceVersion:
+                  type: string
+                priorUnitCost:
+                  type: number
+                  minimum: 0
+                newUnitCost:
+                  type: number
+                  minimum: 0
+                costUnit:
+                  type: string
+                effectiveAt:
+                  type: string
+                  format: date-time
+                sourceReference:
+                  type: string
+                recordedBy:
+                  type: string
+      responses:
+        '201':
+          description: Cost event recorded.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 201
+                  data:
+                    type: object
+        '400':
+          description: Bad Request - Invalid payload or parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Unauthorized - Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postInternalAiProviderCostEvents
+      security:
+        - InternalServiceAuth: []
+    get:
+      tags:
+        - InternalMicroservices
+      summary: List AI provider cost events
+      description: Lists recorded provider cost events for the supplied tenant and environment context. Restricted to trusted services using a signed workload token.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+        - $ref: '#/components/parameters/EnvironmentIdHeader'
+      responses:
+        '200':
+          description: Recorded provider cost events.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 200
+                  data:
+                    type: array
+                    items:
+                      type: object
+        '401':
+          description: Unauthorized - Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Tenant context is not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getInternalAiProviderCostEvents
       security:
         - InternalServiceAuth: []
   /api/v1/ai/usage/{id}:
@@ -47636,6 +48146,44 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
   /api/v1/ir/work-orders:
+    get:
+      tags:
+        - IncidentWorkOrders
+      summary: List incident response work orders
+      description: Lists incident response work orders within the caller's tenant and environment boundary.
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Incident response work orders for the tenant.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 200
+                  data:
+                    type: array
+                    items:
+                      type: object
+        '401':
+          description: Unauthorized - Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Forbidden - Tenant context is not authorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getIrWorkOrders
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
     post:
       tags:
         - IncidentWorkOrders
@@ -51159,6 +51707,49 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/v1/ai/governance/profiles/{id}:
+    get:
+      tags:
+        - AIGovernance
+      summary: Get an AI governance profile
+      description: Returns a single AI governance profile within the caller's tenant and environment boundary.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Governance profile identifier.
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: The requested governance profile.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  statusCode:
+                    type: integer
+                    example: 200
+                  data:
+                    type: object
+        '401':
+          description: Unauthorized - Missing or invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: The referenced resource was not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: getAiGovernanceProfileById
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
   /api/v1/ai/governance/profiles/provider-cost-events:
     get:
       tags:

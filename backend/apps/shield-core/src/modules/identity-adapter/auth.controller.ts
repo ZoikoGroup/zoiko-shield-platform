@@ -285,7 +285,10 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @AuthenticationOnlyEndpoint()
-  @Get(['me', '/api/v1/me'])
+  // 'me' alone: the controller already carries the 'api/v1/auth' prefix, so a
+  // '/api/v1/me' suffix produced /api/v1/auth/api/v1/me and /auth/api/v1/me.
+  // Both were malformed, undocumented and uncalled.
+  @Get('me')
   me(@CurrentUser() user: AuthenticatedUser) {
     return user;
   }

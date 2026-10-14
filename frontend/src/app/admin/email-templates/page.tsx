@@ -81,6 +81,8 @@ const DOMAINS: TemplateDomain[] = [
   { id: "4.16", code: "GOV", name: "Governance & Admin Notices", count: 8 },
 ];
 
+// Static reference data: module scope so it is not re-allocated on every
+// render and does not need to be a hook dependency.
 const EMAIL_TITLES: Record<string, string[]> = {
   IAM: [
     "Email verification required",
@@ -927,6 +929,14 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
                   <iframe
                     title="Email Preview"
                     srcDoc={previewOutput.htmlBody}
+                    // Rendered email HTML carries tenant-supplied variable
+                    // content and a CTA href. An unsandboxed srcDoc iframe
+                    // inherits this console's origin, so anything executable in
+                    // the preview would run with admin session access. An empty
+                    // sandbox gives it an opaque origin with no scripts, forms,
+                    // or top-level navigation — all a preview needs.
+                    sandbox=""
+                    referrerPolicy="no-referrer"
                     className="w-full min-h-[620px] bg-transparent border-0"
                   />
                 ) : (
