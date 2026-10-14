@@ -500,11 +500,11 @@ export default function ContinuousCompliancePage() {
               <Badge variant="pass">OVERALL SCORE: {doraEvaluation?.overallComplianceScore ?? 92}%</Badge>
             </div>
 
-            {doraEvaluation?.evaluations && (
+            {Array.isArray(doraEvaluation?.evaluations) && doraEvaluation.evaluations.length > 0 && (
               <div className="space-y-3 pt-4 border-t border-slate-800/60">
                 <h4 className="text-xs font-mono font-bold text-slate-300 uppercase">Article Breakdown:</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {doraEvaluation.evaluations.map((item: any, idx: number) => (
+                  {(doraEvaluation.evaluations || []).map((item: any, idx: number) => (
                     <div
                       key={idx}
                       className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1.5"
@@ -595,7 +595,7 @@ export default function ContinuousCompliancePage() {
               </Badge>
             </div>
 
-            {driftState.slaAlarms.length === 0 ? (
+            {(driftState?.slaAlarms || []).length === 0 ? (
               <div className="p-8 rounded-xl bg-slate-950/40 border border-slate-800/60 text-center space-y-2">
                 <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
                 <h4 className="text-sm font-bold text-slate-200">Zero Posture Drift Alarms</h4>
@@ -603,7 +603,7 @@ export default function ContinuousCompliancePage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {driftState.slaAlarms.map((alarm) => (
+                {(driftState?.slaAlarms || []).map((alarm) => (
                   <div
                     key={alarm.alarmId}
                     className="p-4 rounded-xl bg-slate-950/60 border border-amber-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3"

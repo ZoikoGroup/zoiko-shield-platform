@@ -311,32 +311,32 @@ export default function AuditorWorkspacePage() {
                     </span>
                   </div>
                   <span className="text-[11px] text-slate-400 font-mono">
-                    Computed At: {new Date(merkleProof.verifiedAt).toLocaleTimeString()}
+                    Computed At: {merkleProof.verifiedAt ? new Date(merkleProof.verifiedAt).toLocaleTimeString() : new Date().toLocaleTimeString()}
                   </span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
                   <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">
                     <span className="text-slate-400 block text-[10px]">LEAF DIGEST</span>
-                    <span className="text-emerald-400 break-all">{merkleProof.leafHash}</span>
+                    <span className="text-emerald-400 break-all">{merkleProof.leafHash || "N/A"}</span>
                   </div>
                   <div className="bg-slate-900 p-3 rounded-lg border border-slate-800">
                     <span className="text-slate-400 block text-[10px]">DECLARED EPOCH ROOT</span>
-                    <span className="text-indigo-400 break-all">{merkleProof.merkleRoot}</span>
+                    <span className="text-indigo-400 break-all">{merkleProof.merkleRoot || "N/A"}</span>
                   </div>
                 </div>
 
                 <div className="space-y-2 mt-4">
                   <span className="text-xs font-semibold text-slate-300 block">
-                    Proof Path Traversal ({merkleProof.path.length} intermediate branches):
+                    Proof Path Traversal ({(merkleProof.path || []).length} intermediate branches):
                   </span>
-                  {merkleProof.path.map((step: any, idx: number) => (
+                  {(merkleProof.path || []).map((step: any, idx: number) => (
                     <div
                       key={idx}
                       className="flex items-center justify-between bg-slate-900/80 px-3.5 py-2.5 rounded-lg border border-slate-800 text-xs font-mono"
                     >
-                      <span className="text-slate-400">Step {idx + 1} ({step.position})</span>
-                      <span className="text-slate-300 break-all">{step.siblingHash}</span>
+                      <span className="text-slate-400">Step {idx + 1} ({step?.position || "sibling"})</span>
+                      <span className="text-slate-300 break-all">{step?.siblingHash || "N/A"}</span>
                       <span className="px-2 py-0.5 rounded text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800">
                         MATCH
                       </span>

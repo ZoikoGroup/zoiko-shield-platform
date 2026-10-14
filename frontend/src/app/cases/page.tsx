@@ -98,14 +98,14 @@ export default function CasesListPage() {
       )}
 
       <div className="space-y-3">
-        {state.cases.length === 0 && !isLoading ? (
+        {(state?.cases || []).length === 0 && !isLoading ? (
           <UnavailableState
             title="No Open Cases"
             message="No incident cases currently open. Promote a detection alert to open a workspace."
             retryAction={() => router.push("/alerts")}
           />
         ) : (
-          state.cases.map((c, idx) => (
+          (state?.cases || []).map((c, idx) => (
             <Link key={c.id || idx} href={`/cases/${c.id}`} className="block group">
               <Card
                 variant="cyber"
@@ -124,9 +124,9 @@ export default function CasesListPage() {
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-400 font-mono">
                     <span>Case ID: {c.id}</span>
                     <span>•</span>
-                    <span>Owner: {c.ownerName}</span>
+                    <span>Owner: {c.ownerName || "Unassigned"}</span>
                     <span>•</span>
-                    <span>Created: {formatTimestamp(c.createdAt)}</span>
+                    <span>Created: {c.createdAt ? formatTimestamp(c.createdAt) : "Just now"}</span>
                   </div>
 
                   <div className="flex items-center gap-2 pt-1">

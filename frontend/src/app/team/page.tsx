@@ -54,7 +54,7 @@ export default function TeamPage() {
     setIsMembersLoading(true);
     setMembersError(null);
     try {
-      const data = await ZoikoShieldApiClient.listTenantMembers(state.tenant.id);
+      const data = await ZoikoShieldApiClient.listTenantMembers(state?.tenant?.id || "demo-tenant");
       setMembers(data);
     } catch (err: any) {
       setMembersError(err?.message || "Unable to load the tenant roster");
@@ -62,7 +62,7 @@ export default function TeamPage() {
     } finally {
       setIsMembersLoading(false);
     }
-  }, [state.tenant.id]);
+  }, [state?.tenant?.id]);
 
   useEffect(() => {
     void loadMembers();
@@ -86,7 +86,7 @@ export default function TeamPage() {
       const attestation = await createPasskeyCredential(options);
       const created = await ZoikoShieldApiClient.registerPasskey({
         ...attestation,
-        label: `${state.session.fullName}'s passkey`,
+        label: `${state?.session?.fullName || "Analyst"}'s passkey`,
       });
       setPasskeys((prev) => [created, ...prev]);
     } catch (err: any) {
@@ -115,7 +115,7 @@ export default function TeamPage() {
     setInviteError(null);
     try {
       await ZoikoShieldApiClient.inviteAnalyst(
-        state.tenant.id,
+        state?.tenant?.id || "demo-tenant",
         email,
         role
       );
@@ -216,13 +216,13 @@ export default function TeamPage() {
                   <tr key={member.id} className="hover:bg-slate-900/40">
                     <td className="p-3 font-sans font-semibold text-slate-200 flex items-center gap-2">
                       <div className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-300 flex items-center justify-center text-[10px] font-mono">
-                        {member.principalId.charAt(0).toUpperCase()}
+                        {(member.principalId || "U").charAt(0).toUpperCase()}
                       </div>
                       <span className="break-all">{member.principalId}</span>
                     </td>
                     <td className="p-3 text-slate-300">
-                      {member.roles.length > 0
-                        ? member.roles.map((r) => r.name).join(", ")
+                      {Array.isArray(member.roles) && member.roles.length > 0
+                        ? member.roles.map((r: any) => r?.name || String(r)).join(", ")
                         : "no roles assigned"}
                     </td>
                     <td className="p-3 text-slate-400">
@@ -258,7 +258,7 @@ export default function TeamPage() {
               Passkeys ({passkeys.length})
             </h3>
             <p className="text-[11px] font-mono text-slate-500 mt-0.5">
-              Enroll a FIDO2/WebAuthn passkey for {state.session.email} to unlock passwordless sign-in
+              Enroll a FIDO2/WebAuthn passkey for {state?.session?.email || "current user"} to unlock passwordless sign-in
               and PASSKEY-assurance step-up.
             </p>
           </div>
@@ -314,12 +314,12 @@ export default function TeamPage() {
       </Card>
 
       {/* Pending Invitations */}
-      {state.invitations.length > 0 && (
+      {(state?.invitations || []).length > 0 && (
         <Card className="space-y-4">
           <div className="flex items-center justify-between pb-3 border-b border-slate-800">
             <h3 className="font-semibold text-slate-100 flex items-center gap-2">
               <Clock className="w-4 h-4 text-amber-400" />
-              Pending Invitations ({state.invitations.length})
+              Pending Invitations ({(state?.invitations || []).length})
             </h3>
             <span className="text-xs font-mono text-slate-400">
               Backend Requirement: Invitee must authenticate before accepting
@@ -327,7 +327,7 @@ export default function TeamPage() {
           </div>
 
           <div className="space-y-2">
-            {state.invitations.map((inv, idx) => (
+            {(state?.invitations || []).map((inv, idx) => (
               <div
                 key={inv.id || inv.token || idx}
                 className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-mono"

@@ -72,7 +72,7 @@ export default function PolicyManagementPage() {
       setPolicies((prev) => prev.map((p) => (p.id === id ? updated : p)));
       setSelectedPolicy(updated);
       setActionSuccessMessage(
-        `Policy ${id} signed. Current approvers: [${updated.approvers.join(", ")}]. Status: ${updated.status}`
+        `Policy ${id} signed. Current approvers: [${(updated?.approvers || []).join(", ")}]. Status: ${updated.status}`
       );
       setTimeout(() => setActionSuccessMessage(null), 6000);
     } catch (err: any) {
@@ -389,7 +389,7 @@ export default function PolicyManagementPage() {
                   <Lock className="h-4 w-4 text-emerald-400" />
                   <span>Dual-Custody Approvers:</span>
                   <span className="text-slate-200 font-mono">
-                    {selectedPolicy.approvers.length > 0
+                    {Array.isArray(selectedPolicy.approvers) && selectedPolicy.approvers.length > 0
                       ? selectedPolicy.approvers.join(", ")
                       : "Awaiting sign-off (Quorum: 2)"}
                   </span>

@@ -31,18 +31,19 @@ import {
 export default function DashboardPage() {
   const [state] = useDemoState();
 
-  const activeAlerts = state.alerts.filter((a) => a.status === "NEW");
-  const activeCases = state.cases.filter((c) => c.status !== "CLOSED");
+  const activeAlerts = (state.alerts || []).filter((a) => a.status === "NEW");
+  const activeCases = (state.cases || []).filter((c) => c.status !== "CLOSED");
   const activeAiIncidents = (state.aiIncidents || []).filter((i) => i.state !== "CLOSED");
   const experienceStatus = state.experienceStatus?.status || "HEALTHY_SYNCED";
 
   // Compute compliance posture from real control test results
-  const totalControls = state.controlTests.length;
-  const passedControls = state.controlTests.filter((c) => c.result === "PASS").length;
+  const controlTests = state.controlTests || [];
+  const totalControls = controlTests.length;
+  const passedControls = controlTests.filter((c) => c.result === "PASS").length;
   const complianceRate = totalControls > 0 ? Math.round((passedControls / totalControls) * 100) : 100;
   const frameworkLabels =
     totalControls > 0
-      ? [...new Set(state.controlTests.map((c) => c.framework.split("_")[0]))].join(", ")
+      ? [...new Set(controlTests.map((c) => (c.framework || "").split("_")[0]))].join(", ")
       : "SOC 2 Type II, ISO 27001:2022";
 
   // Real connector data, fetched from the backend below. This used to be

@@ -198,7 +198,17 @@ export default function FindingDetailPage() {
     [findingId],
   );
   const evidence = useContractSources(specs);
-  const finding = sourceData<Finding>(evidence, "finding");
+  const rawFinding = sourceData<Finding>(evidence, "finding");
+  const finding = useMemo(() => {
+    if (!rawFinding) return null;
+    return {
+      ...rawFinding,
+      evidenceLinks: Array.isArray(rawFinding.evidenceLinks) ? rawFinding.evidenceLinks : [],
+      factors: Array.isArray(rawFinding.factors) ? rawFinding.factors : [],
+      attackPath: Array.isArray(rawFinding.attackPath) ? rawFinding.attackPath : [],
+      remediations: Array.isArray(rawFinding.remediations) ? rawFinding.remediations : [],
+    };
+  }, [rawFinding]);
 
   const assertion = finding?.assertion;
   const integrity = finding?.priorityIntegrity;
@@ -350,7 +360,7 @@ export default function FindingDetailPage() {
                 />
               </div>
             )}
-            {finding.evidenceLinks.length === 0 ? (
+            {(finding.evidenceLinks || []).length === 0 ? (
               <p className="mt-3 text-xs font-mono text-amber-300">
                 No raw evidence is attached, so this finding cannot be traced back to
                 what the scanner actually observed.
@@ -366,7 +376,7 @@ export default function FindingDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {finding.evidenceLinks.map((row) => (
+                  {(finding.evidenceLinks || []).map((row) => (
                     <tr key={row.id} className="border-b border-slate-900 last:border-0">
                       <td className="py-1.5 font-mono text-slate-300">
                         {row.collector}
@@ -430,7 +440,7 @@ export default function FindingDetailPage() {
               </p>
             )}
 
-            {finding.factors.length === 0 ? (
+            {(finding.factors || []).length === 0 ? (
               <p className="text-xs font-mono text-amber-300">
                 No factor breakdown is recorded, so this rating cannot be taken apart.
               </p>
@@ -446,7 +456,7 @@ export default function FindingDetailPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {finding.factors.map((factor) => (
+                  {(finding.factors || []).map((factor) => (
                     <tr
                       key={factor.id}
                       className="border-b border-slate-900 last:border-0"
@@ -475,14 +485,14 @@ export default function FindingDetailPage() {
             title="Attack path"
             requirement="The route to exploitation, with observed and inferred steps distinguished."
           >
-            {finding.attackPath.length === 0 ? (
+            {(finding.attackPath || []).length === 0 ? (
               <p className="text-xs font-mono text-amber-300">
                 No attack path is recorded. Exploitability has not been reasoned about
                 here — which is not the same as this being unexploitable.
               </p>
             ) : (
               <ol className="space-y-2">
-                {finding.attackPath.map((node) => (
+                {(finding.attackPath || []).map((node) => (
                   <li
                     key={node.id}
                     className={`rounded border p-2 ${node.inferred ? "border-dashed border-slate-700" : "border-slate-800"}`}
@@ -515,13 +525,13 @@ export default function FindingDetailPage() {
             title="Remediation"
             requirement="What is being done, by whom, and whether the fix was verified."
           >
-            {finding.remediations.length === 0 ? (
+            {(finding.remediations || []).length === 0 ? (
               <p className="text-xs font-mono text-amber-300">
                 No remediation has been proposed for this finding.
               </p>
             ) : (
               <div className="space-y-2">
-                {finding.remediations.map((remediation) => (
+                {(finding.remediations || []).map((remediation) => (
                   <div
                     key={remediation.id}
                     className="rounded border border-slate-800 p-2"

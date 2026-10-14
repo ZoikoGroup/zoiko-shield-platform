@@ -182,19 +182,19 @@ export default function PricingPage() {
                   <div className="flex items-center justify-between text-slate-300">
                     <span className="text-slate-500">Protected Assets:</span>
                     <span className="font-semibold text-slate-200">
-                      {plan.allocations.maxProtectedAssets ? `${plan.allocations.maxProtectedAssets} Nodes` : "Unlimited / Custom"}
+                      {plan.allocations?.maxProtectedAssets ? `${plan.allocations.maxProtectedAssets} Nodes` : "Unlimited / Custom"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-slate-300">
                     <span className="text-slate-500">Telemetry Ingest:</span>
                     <span className="font-semibold text-slate-200">
-                      {plan.allocations.includedTelemetryGbPerDay ? `${plan.allocations.includedTelemetryGbPerDay} GB / day` : "Custom Band"}
+                      {plan.allocations?.includedTelemetryGbPerDay ? `${plan.allocations.includedTelemetryGbPerDay} GB / day` : "Custom Band"}
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-slate-300">
                     <span className="text-slate-500">Response SLA:</span>
                     <span className="font-semibold text-emerald-400">
-                      {plan.allocations.incidentResponseSlaHours
+                      {plan.allocations?.incidentResponseSlaHours
                         ? `${plan.allocations.incidentResponseSlaHours}h Target (Order Form Bound)`
                         : "Custom / SOW Bound"}
                     </span>
@@ -202,7 +202,11 @@ export default function PricingPage() {
                   <div className="flex items-center justify-between text-slate-300">
                     <span className="text-slate-500">Evidence Retention:</span>
                     <span className="font-semibold text-slate-200">
-                      {plan.allocations.retentionDays >= 365 ? `${plan.allocations.retentionDays / 365} Years` : `${plan.allocations.retentionDays} Days`}
+                      {plan.allocations?.retentionDays != null
+                        ? plan.allocations.retentionDays >= 365
+                          ? `${plan.allocations.retentionDays / 365} Years`
+                          : `${plan.allocations.retentionDays} Days`
+                        : "90 Days"}
                     </span>
                   </div>
                 </div>
@@ -213,7 +217,7 @@ export default function PricingPage() {
                     Core Capabilities Included
                   </div>
                   <ul className="space-y-2 text-xs text-slate-300">
-                    {plan.highlightedFeatures.map((feat, i) => (
+                    {(plan.highlightedFeatures || []).map((feat, i) => (
                       <li key={i} className="flex items-start gap-2">
                         <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
                         <span>{feat}</span>
@@ -225,21 +229,21 @@ export default function PricingPage() {
                 {/* Support Model */}
                 <div className="pt-2 p-2.5 rounded-lg bg-slate-950/60 border border-slate-800 text-[11px] text-slate-400">
                   <span className="font-semibold text-slate-300 block mb-0.5">Support Level:</span>
-                  {plan.supportModel}
+                  {plan.supportModel || "Standard Platform Support"}
                 </div>
               </div>
 
               {/* Action Button */}
               <div className="pt-6">
                 <Link
-                  href={plan.pricing.isContractOnly ? "/team" : "/onboarding"}
+                  href={plan.pricing?.isContractOnly ? "/team" : "/onboarding"}
                   className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
                     isPop
                       ? "bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-[0_0_20px_rgba(6,182,212,0.4)]"
                       : "bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700"
                   }`}
                 >
-                  <span>{plan.pricing.isContractOnly ? "Contact Enterprise Sales" : "Deploy Shield Tier"}</span>
+                  <span>{plan.pricing?.isContractOnly ? "Contact Enterprise Sales" : "Deploy Shield Tier"}</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </div>
@@ -353,45 +357,52 @@ export default function PricingPage() {
               </span>
             </div>
 
-            {recommendation && (
-              <div className="space-y-4">
-                <div>
-                  <h3 className="text-2xl font-black text-slate-100 flex items-center gap-2">
-                    {recommendation.recommendedPlan.displayName}
-                    <Sparkles className="w-5 h-5 text-cyan-400" />
-                  </h3>
-                  <p className="text-xs font-mono text-cyan-400 mt-0.5">
-                    {recommendation.recommendedPlan.pricing.isContractOnly
-                      ? "Custom Enterprise Agreement"
-                      : `$${recommendation.recommendedPlan.pricing.monthlyUsd?.toLocaleString()} / month baseline`}
-                  </p>
-                </div>
-
-                <div className="space-y-2 pt-1">
-                  <div className="text-[11px] font-mono font-bold text-slate-400 uppercase">
-                    Solver Sizing Rationale:
+            {(() => {
+              const rec = (recommendation as any)?.data || recommendation;
+              const plan = rec?.recommendedPlan;
+              if (!rec || !plan) return null;
+              return (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-100 flex items-center gap-2">
+                      {plan.displayName || "Shield Essential"}
+                      <Sparkles className="w-5 h-5 text-cyan-400" />
+                    </h3>
+                    <p className="text-xs font-mono text-cyan-400 mt-0.5">
+                      {plan.pricing?.isContractOnly
+                        ? "Custom Enterprise Agreement"
+                        : plan.pricing?.monthlyUsd
+                        ? `$${plan.pricing.monthlyUsd.toLocaleString()} / month baseline`
+                        : "Custom Enterprise Agreement"}
+                    </p>
                   </div>
-                  <ul className="space-y-1.5 text-xs text-slate-300">
-                    {recommendation.rationale.map((r, i) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                        <span>{r}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
 
-                <div className="pt-3 border-t border-slate-800">
-                  <Link
-                    href={recommendation.recommendedPlan.pricing.isContractOnly ? "/team" : "/onboarding"}
-                    className="w-full py-2 px-4 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md"
-                  >
-                    <span>Proceed with {recommendation.recommendedPlan.displayName}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
+                  <div className="space-y-2 pt-1">
+                    <div className="text-[11px] font-mono font-bold text-slate-400 uppercase">
+                      Solver Sizing Rationale:
+                    </div>
+                    <ul className="space-y-1.5 text-xs text-slate-300">
+                      {(rec.rationale || []).map((r: string, i: number) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                          <span>{r}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-800">
+                    <Link
+                      href={plan.pricing?.isContractOnly ? "/team" : "/onboarding"}
+                      className="w-full py-2 px-4 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md"
+                    >
+                      <span>Proceed with {plan.displayName || "Selected Plan"}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         </div>
       </div>

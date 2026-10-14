@@ -29,7 +29,7 @@ export default function IngestionPage() {
   const router = useRouter();
   const [state] = useDemoState();
   const [selectedConnectorId, setSelectedConnectorId] = useState(
-    state.connectors[0]?.id ?? "conn-webhook-gateway-01"
+    state?.connectors?.[0]?.id ?? "conn-webhook-gateway-01"
   );
   const [rawJson, setRawJson] = useState(`{
   "eventName": "AttachUserPolicy",
@@ -266,7 +266,7 @@ export default function IngestionPage() {
               onChange={(e) => setSelectedConnectorId(e.target.value)}
               className="bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1 text-xs text-cyan-300 font-mono"
             >
-              {state.connectors.map((c, idx) => (
+              {(state?.connectors || []).map((c, idx) => (
                 <option key={c.id || idx} value={c.id}>
                   {c.name}
                 </option>

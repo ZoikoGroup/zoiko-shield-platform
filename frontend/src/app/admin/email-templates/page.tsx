@@ -569,7 +569,7 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
           category: d.code,
           name: templateName,
           gate: isP0 ? ("P0" as const) : ("P1" as const),
-          senderClass: isOps ? "internal_ops_sender" : `${d.code.toLowerCase()}_sender`,
+          senderClass: isOps ? "internal_ops_sender" : `${(d.code || "").toLowerCase()}_sender`,
           subject: `Zoiko Shield — ${templateName}`,
           preheader: isOps
             ? "Internal production event requiring response through the incident system and approved runbook."
@@ -620,11 +620,12 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
   const filteredTemplates = useMemo(() => {
     return templates.filter((t) => {
       const matchesDomain = selectedDomain === "ALL" || t.category === selectedDomain;
+      const q = searchQuery.toLowerCase();
       const matchesSearch =
         searchQuery === "" ||
-        t.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        t.subject.toLowerCase().includes(searchQuery.toLowerCase());
+        (t.id || "").toLowerCase().includes(q) ||
+        (t.name || "").toLowerCase().includes(q) ||
+        (t.subject || "").toLowerCase().includes(q);
       return matchesDomain && matchesSearch;
     });
   }, [templates, selectedDomain, searchQuery]);

@@ -63,6 +63,7 @@ export class TenantIsolationValidator {
     // Reject CR/LF and control characters outright: a recipient value reaches
     // SMTP headers, where an embedded newline becomes header injection
     // (e.g. a smuggled Bcc: to an out-of-tenant address).
+    // eslint-disable-next-line no-control-regex
     if (/[\u0000-\u001f\u007f]/.test(recipientEmail)) {
       throw new BadRequestException(
         'Tenant isolation violation: Recipient email contains control characters',

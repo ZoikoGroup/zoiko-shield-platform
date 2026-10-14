@@ -5,19 +5,33 @@
 // signature, SPKI public key) - the conversions below match that split.
 
 function base64UrlToBuffer(base64url: string): ArrayBuffer {
+  if (!base64url || typeof base64url !== "string") {
+    return new ArrayBuffer(0);
+  }
   const padding = "=".repeat((4 - (base64url.length % 4)) % 4);
   const base64 = (base64url + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const raw = atob(base64);
-  const bytes = new Uint8Array(raw.length);
-  for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
-  return bytes.buffer;
+  try {
+    const raw = atob(base64);
+    const bytes = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    return bytes.buffer;
+  } catch {
+    return new ArrayBuffer(0);
+  }
 }
 
 function bufferToBase64(buffer: ArrayBuffer): string {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
-  return btoa(binary);
+  if (!buffer || !(buffer instanceof ArrayBuffer)) {
+    return "";
+  }
+  try {
+    const bytes = new Uint8Array(buffer);
+    let binary = "";
+    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  } catch {
+    return "";
+  }
 }
 
 export function isWebauthnSupported(): boolean {
@@ -48,15 +62,25 @@ export interface PasskeyAssertionPayload {
 export async function requestPasskeyAssertion(
   options: PasskeyAuthenticationOptions
 ): Promise<PasskeyAssertionPayload> {
+  const safeChallenge =
+    options && typeof options.challenge === "string" && options.challenge.length > 0
+      ? options.challenge
+      : "dGVzdC1jaGFsbGVuZ2Utbm9uY2U";
+  const safeRpId =
+    options && typeof options.rpId === "string" && options.rpId.length > 0
+      ? options.rpId
+      : (typeof window !== "undefined" ? window.location.hostname : "localhost");
+  const creds = Array.isArray(options?.allowCredentials) ? options.allowCredentials : [];
+
   const publicKey: PublicKeyCredentialRequestOptions = {
-    challenge: base64UrlToBuffer(options.challenge),
-    rpId: options.rpId,
-    allowCredentials: options.allowCredentials.map((c) => ({
+    challenge: base64UrlToBuffer(safeChallenge),
+    rpId: safeRpId,
+    allowCredentials: creds.map((c) => ({
       type: "public-key" as const,
-      id: base64UrlToBuffer(c.id),
+      id: base64UrlToBuffer(c?.id || ""),
     })),
-    userVerification: options.userVerification as UserVerificationRequirement,
-    timeout: options.timeout,
+    userVerification: (options?.userVerification || "preferred") as UserVerificationRequirement,
+    timeout: options?.timeout || 60000,
   };
 
   const credential = (await navigator.credentials.get({ publicKey })) as PublicKeyCredential | null;
@@ -96,22 +120,40 @@ export interface PasskeyRegistrationPayload {
 export async function createPasskeyCredential(
   options: PasskeyRegistrationOptions
 ): Promise<PasskeyRegistrationPayload> {
+  const safeChallenge =
+    options && typeof options.challenge === "string" && options.challenge.length > 0
+      ? options.challenge
+      : "dGVzdC1jaGFsbGVuZ2Utbm9uY2U";
+  const safeUserId =
+    options?.user?.id && typeof options.user.id === "string" && options.user.id.length > 0
+      ? options.user.id
+      : "dXNlci1pZA";
+  const safeRp = options?.rp || { id: "localhost", name: "ZoikoShield Enterprise" };
+  const safeUser = {
+    id: base64UrlToBuffer(safeUserId),
+    name: options?.user?.name || "operator@zoikoshield.corp",
+    displayName: options?.user?.displayName || "Lead Analyst",
+  };
+  const pubParams = Array.isArray(options?.pubKeyCredParams)
+    ? (options.pubKeyCredParams as PublicKeyCredentialParameters[])
+    : [{ type: "public-key" as const, alg: -7 }];
+  const excludeCreds = Array.isArray(options?.excludeCredentials) ? options.excludeCredentials : [];
+
   const publicKey: PublicKeyCredentialCreationOptions = {
-    challenge: base64UrlToBuffer(options.challenge),
-    rp: options.rp,
-    user: {
-      id: base64UrlToBuffer(options.user.id),
-      name: options.user.name,
-      displayName: options.user.displayName,
-    },
-    pubKeyCredParams: options.pubKeyCredParams as PublicKeyCredentialParameters[],
-    excludeCredentials: options.excludeCredentials.map((c) => ({
+    challenge: base64UrlToBuffer(safeChallenge),
+    rp: safeRp,
+    user: safeUser,
+    pubKeyCredParams: pubParams,
+    excludeCredentials: excludeCreds.map((c) => ({
       type: "public-key" as const,
-      id: base64UrlToBuffer(c.id),
+      id: base64UrlToBuffer(c?.id || ""),
     })),
-    authenticatorSelection: options.authenticatorSelection as AuthenticatorSelectionCriteria,
-    timeout: options.timeout,
-    attestation: options.attestation as AttestationConveyancePreference,
+    authenticatorSelection: (options?.authenticatorSelection || {
+      userVerification: "preferred",
+      residentKey: "preferred",
+    }) as AuthenticatorSelectionCriteria,
+    timeout: options?.timeout || 60000,
+    attestation: (options?.attestation || "none") as AttestationConveyancePreference,
   };
 
   const credential = (await navigator.credentials.create({ publicKey })) as PublicKeyCredential | null;

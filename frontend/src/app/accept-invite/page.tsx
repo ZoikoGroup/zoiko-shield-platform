@@ -292,7 +292,7 @@ function AcceptInviteInner() {
                 <span>Authentication Authority (ZoikoID)</span>
               </h2>
               <div className="space-y-2">
-                {invitation.identityProviders.map((idp) => (
+                {(invitation.identityProviders || []).map((idp) => (
                   <label
                     key={idp.id}
                     className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${

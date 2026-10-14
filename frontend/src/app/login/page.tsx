@@ -21,7 +21,7 @@ export default function LoginPage() {
   // A principal can belong to more than one tenant, so shield-core requires
   // the sign-in to name one. `npm run seed:dev-tenant` prints the id it
   // provisioned.
-  const [tenantId, setTenantId] = useState(state.tenant.id);
+  const [tenantId, setTenantId] = useState(state?.tenant?.id || "tenant-acme-corp");
   const [isLoading, setIsLoading] = useState(false);
   const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

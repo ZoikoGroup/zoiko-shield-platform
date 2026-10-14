@@ -47,7 +47,13 @@ describe('SenderClassRouterService (Gate 9 Router)', () => {
     expect(profile.mandatoryDkimAlignment).toBe(true);
   });
 
-  it.each(['constructor', 'toString', '__proto__', 'hasOwnProperty', 'valueOf'])(
+  it.each([
+    'constructor',
+    'toString',
+    '__proto__',
+    'hasOwnProperty',
+    'valueOf',
+  ])(
     'does not resolve inherited Object.prototype key "%s" as a profile',
     (key) => {
       // A bare this.profiles[key] lookup returns a truthy prototype member,
@@ -108,9 +114,9 @@ describe('SenderClassRouterService (Gate 9 Router)', () => {
       for (const template of templates.filter(
         (t) => t.category === 'PRIV' || t.category === 'OFF',
       )) {
-        expect(router.resolveSenderProfile(template.senderClass).fromAddress).toBe(
-          'privacy-officer@zoikoshield.com',
-        );
+        expect(
+          router.resolveSenderProfile(template.senderClass).fromAddress,
+        ).toBe('privacy-officer@zoikoshield.com');
       }
     });
   });

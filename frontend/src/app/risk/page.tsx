@@ -173,7 +173,7 @@ export default function RiskRegisterPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {risk.factors.map((factor) => (
+                    {(risk.factors || []).map((factor) => (
                       <tr key={factor.factor} className="border-b border-slate-900">
                         <td className="py-1 text-slate-300">{factor.factor}</td>
                         <td className="py-1 text-slate-300">{factor.value}</td>

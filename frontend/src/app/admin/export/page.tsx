@@ -299,7 +299,7 @@ export default function ExportOffboardingPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {job.artifacts.map((artifact) => (
+                          {(job.artifacts || []).map((artifact) => (
                             <tr
                               key={artifact.id}
                               className="border-b border-slate-900 last:border-0"

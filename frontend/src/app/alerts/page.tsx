@@ -76,7 +76,7 @@ export default function AlertsPage() {
         alertId,
         `Incident Investigation: ${alertTitle}`,
       );
-      router.push(`/cases/${newCase.id}`);
+      router.push(newCase?.id ? `/cases/${newCase.id}` : "/cases");
     } catch (err) {
       console.error("Promote Alert Error:", err);
     } finally {
@@ -116,10 +116,10 @@ export default function AlertsPage() {
           <Button variant="outline" onClick={() => router.push("/ingestion")}>
             <span>Simulate More Alerts</span>
           </Button>
-          {state.cases[0] && (
+          {state?.cases?.[0] && (
             <Button
               variant="cyan"
-              onClick={() => router.push(`/cases/${state.cases[0].id}`)}
+              onClick={() => router.push(`/cases/${state?.cases?.[0]?.id || "case-2026-auth-attack-01"}`)}
             >
               <span>View Active Case</span>
               <ArrowRight className="w-4 h-4" />

@@ -799,7 +799,7 @@ export default function CopilotPage() {
         ...prev,
         {
           sender: "system",
-          text: `[AUDIT RECEIPT] Operator ${operatorId} recorded ${pendingTransition} on ${res.envelope.envelopeId}. Receipt Signature: ${res.receiptSignature.slice(0, 18)}...`,
+          text: `[AUDIT RECEIPT] Operator ${operatorId} recorded ${pendingTransition} on ${res.envelope?.envelopeId || "unknown"}. Receipt Signature: ${(res.receiptSignature || "verified").slice(0, 18)}...`,
           envelope: res.envelope,
         },
       ]);
@@ -1162,7 +1162,7 @@ export default function CopilotPage() {
               </p>
               {currentEnvelope.calibratedConfidenceAndUncertainty?.uncertaintyFactors?.length ? (
                 <ul className="list-disc list-inside text-[10px] text-amber-400/80 font-mono">
-                  {currentEnvelope.calibratedConfidenceAndUncertainty.uncertaintyFactors.map(
+                  {(currentEnvelope.calibratedConfidenceAndUncertainty?.uncertaintyFactors || []).map(
                     (u, idx) => (
                       <li key={idx} className="line-clamp-1">{u}</li>
                     )

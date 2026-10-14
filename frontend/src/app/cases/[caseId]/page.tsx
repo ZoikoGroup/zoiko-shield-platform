@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
+import { useDemoState } from "@/lib/demo-state";
 import { Case, AiInvestigationSummary } from "@/lib/types";
 import { formatTimestamp } from "@/lib/utils";
 import { Card } from "@/ui/Card";
@@ -33,6 +34,7 @@ export default function CaseWorkspacePage() {
   const params = useParams();
   const router = useRouter();
   const caseId = params?.caseId as string;
+  const [state] = useDemoState();
 
   const [activeTab, setActiveTab] = useState<string>("overview");
 
@@ -60,7 +62,9 @@ export default function CaseWorkspacePage() {
     loadCases();
   }, [loadCases]);
 
-  const currentCase: Case | undefined = cases?.find((c) => c.id === caseId);
+  const currentCase: Case | undefined =
+    cases?.find((c) => c.id === caseId) ||
+    (state?.cases || []).find((c) => c.id === caseId);
 
   if (isLoading && !cases) {
     return (
@@ -170,11 +174,11 @@ export default function CaseWorkspacePage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-3 border-t border-slate-800 font-mono text-xs text-slate-400">
           <div>
             <span className="text-slate-500 block text-[10px]">CASE OWNER:</span>
-            <span className="text-slate-200">{currentCase.ownerName}</span>
+            <span className="text-slate-200">{currentCase.ownerName || "Lead SOC Analyst"}</span>
           </div>
           <div>
             <span className="text-slate-500 block text-[10px]">CREATED:</span>
-            <span className="text-slate-200">{formatTimestamp(currentCase.createdAt)}</span>
+            <span className="text-slate-200">{currentCase.createdAt ? formatTimestamp(currentCase.createdAt) : "Just now"}</span>
           </div>
           <div>
             <span className="text-slate-500 block text-[10px]">EVIDENCE COUNT:</span>
