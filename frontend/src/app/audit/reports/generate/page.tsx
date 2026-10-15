@@ -85,10 +85,13 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <Card variant="cyber" className="p-4">
-      <div className="mb-3 border-b border-slate-800 pb-2">
-        <h2 className="text-sm font-semibold text-slate-100">{title}</h2>
-        <p className="text-[11px] font-mono text-slate-500">{requirement}</p>
+    <Card variant="cyber" className="p-4 border-[#162238] bg-[#0a0f1d]">
+      <div className="mb-3 border-b border-[#162238] pb-2">
+        <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+          {title}
+        </h2>
+        <p className="text-[11px] font-mono text-slate-400 mt-0.5">{requirement}</p>
       </div>
       {children}
     </Card>
@@ -199,7 +202,7 @@ export default function BoardReportGenerationPage() {
                   <select
                     value={selectedDefinition?.id ?? ""}
                     onChange={(e) => setDefinitionId(e.target.value)}
-                    className="mt-1 w-full rounded border border-slate-800 bg-slate-900 px-2 py-1.5 text-xs text-slate-200"
+                    className="mt-1 w-full rounded-lg border border-[#162238] bg-[#0c1322] px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500/60 font-mono"
                   >
                     {definitions.map((definition) => (
                       <option key={definition.id} value={definition.id}>
@@ -209,36 +212,36 @@ export default function BoardReportGenerationPage() {
                   </select>
                 </label>
                 <label className="block">
-                  <span className="text-[11px] font-mono uppercase text-slate-500">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
                     Period start
                   </span>
                   <input
                     type="date"
                     value={periodStart}
                     onChange={(e) => setPeriodStart(e.target.value)}
-                    className="mt-1 w-full rounded border border-slate-800 bg-slate-900 px-2 py-1.5 text-xs text-slate-200"
+                    className="mt-1 w-full rounded-lg border border-[#162238] bg-[#0c1322] px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500/60 font-mono"
                   />
                 </label>
                 <label className="block">
-                  <span className="text-[11px] font-mono uppercase text-slate-500">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
                     Period end
                   </span>
                   <input
                     type="date"
                     value={periodEnd}
                     onChange={(e) => setPeriodEnd(e.target.value)}
-                    className="mt-1 w-full rounded border border-slate-800 bg-slate-900 px-2 py-1.5 text-xs text-slate-200"
+                    className="mt-1 w-full rounded-lg border border-[#162238] bg-[#0c1322] px-2.5 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500/60 font-mono"
                   />
                 </label>
               </div>
 
               {selectedDefinition && (
-                <div className="mt-3 rounded border border-slate-800 bg-slate-950/40 p-3">
-                  <p className="text-xs text-slate-300">{selectedDefinition.purpose}</p>
-                  <p className="mt-1 font-mono text-[11px] text-slate-500">
-                    type {selectedDefinition.report_type} · audience{" "}
-                    {selectedDefinition.audience} · definition version{" "}
-                    {selectedDefinition.version}
+                <div className="mt-3 rounded-lg border border-[#162238] bg-[#0c1322] p-3 shadow-sm">
+                  <p className="text-xs text-slate-200 font-medium">{selectedDefinition.purpose}</p>
+                  <p className="mt-1 font-mono text-[11px] text-slate-400">
+                    type <span className="text-cyan-400">{selectedDefinition.report_type}</span> · audience{" "}
+                    <span className="text-slate-300">{selectedDefinition.audience}</span> · definition version{" "}
+                    <span className="text-cyan-400">{selectedDefinition.version}</span>
                   </p>
                   {parseJsonArray(selectedDefinition.source_requirements).length > 0 && (
                     <p className="mt-1 font-mono text-[11px] text-slate-500">

@@ -176,16 +176,16 @@ export default function MsspFleetCockpitPage() {
 
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 text-slate-100">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-6">
+      {/* Header Banner */}
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <Building className="w-8 h-8 text-cyan-400" />
-            <h1 className="text-3xl font-bold tracking-tight text-white">
-              MSSP Partner Console & Delegated Fleet Cockpit
+            <Building className="w-7 h-7 text-cyan-400" />
+            <h1 className="text-2xl font-bold tracking-tight text-white">
+              MSSP Partner Console &amp; Delegated Fleet Cockpit
             </h1>
           </div>
-          <p className="text-slate-400 text-sm max-w-3xl">
+          <p className="text-slate-400 text-xs max-w-3xl font-mono">
             Unified multi-tenant security operations, cryptographically verified zero-leakage isolation boundaries, dual-signed 2-Party JIT customer support, and cloud least-privilege CIEM remediation.
           </p>
         </div>
@@ -194,9 +194,9 @@ export default function MsspFleetCockpitPage() {
           <Button
             onClick={loadInitialData}
             variant="outline"
-            className="border-slate-700 bg-slate-900/60 hover:bg-slate-800 text-slate-200"
+            className="border-slate-700/80 bg-[#080c16] hover:bg-slate-800 text-slate-200 text-xs font-mono"
           >
-            <RefreshCw className="w-4 h-4 mr-2" />
+            <RefreshCw className="w-3.5 h-3.5 mr-2" />
             Refresh Fleet Telemetry
           </Button>
         </div>

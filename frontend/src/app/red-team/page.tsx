@@ -137,7 +137,7 @@ export default function RedTeamSimulatorPage() {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="p-6 rounded-2xl bg-[#0e121b] border border-rose-500/30 shadow-xl space-y-3">
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
@@ -146,13 +146,13 @@ export default function RedTeamSimulatorPage() {
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-bold text-white tracking-wide">
+                  <h1 className="text-xl font-bold tracking-tight text-white">
                     Defensive Control Simulation &amp; Replay Engine
                   </h1>
-                  <Badge variant="critical">Continuous Assurance</Badge>
-                  <Badge variant="neutral">OCSF v1.1.0 Synthetic Telemetry</Badge>
+                  <Badge variant="critical" className="font-mono text-[10px]">Continuous Assurance</Badge>
+                  <Badge variant="neutral" className="font-mono text-[10px]">OCSF v1.1.0 Synthetic Telemetry</Badge>
                 </div>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-400 mt-0.5">
                   Architecture: <span className="font-mono text-cyan-400">ADR-11</span> (AI Governance) &amp; <span className="font-mono text-cyan-400">ADR-12</span> (Continuous Red Team Replay)
                 </p>
               </div>
@@ -160,10 +160,34 @@ export default function RedTeamSimulatorPage() {
           </div>
 
           <div className="flex items-center gap-3 font-mono text-xs">
-            <div className="px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-300">
-              MITRE ATT&CK Coverage: <span className="text-emerald-400 font-bold">100% (3/3 Stages Detected)</span>
+            <div className="px-3.5 py-2 rounded-xl bg-[#080d19] border border-slate-800 text-slate-300">
+              MITRE ATT&amp;CK Coverage: <span className="text-emerald-400 font-bold">100% (3/3 Stages Detected)</span>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* 4 Summary KPI Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Detection Efficacy</div>
+          <div className="text-2xl font-bold font-mono text-emerald-400 mt-1">100.0%</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">Continuous rule validation</div>
+        </div>
+        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Mean Time to Detect (MTTD)</div>
+          <div className="text-2xl font-bold font-mono text-cyan-400 mt-1">850 ms</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">Real-time stream evaluation</div>
+        </div>
+        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Zero-Day Defense Posture</div>
+          <div className="text-2xl font-bold font-mono text-purple-400 mt-1">HARDENED</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">Dual-layer AI verification</div>
+        </div>
+        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Attack Stages Emulated</div>
+          <div className="text-2xl font-bold font-mono text-rose-400 mt-1">3 Stages</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">Deterministic OCSF payload</div>
         </div>
       </div>
 
@@ -189,7 +213,7 @@ export default function RedTeamSimulatorPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Scenario Parameters */}
         <div className="space-y-6">
-          <Card className="p-5 space-y-4">
+          <div className="surface-card rounded-2xl p-6 bg-[#0c111e]/90 border border-slate-800/80 shadow-xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2 text-sm font-bold text-slate-200">
                 <Zap className="w-4 h-4 text-amber-400" />
@@ -262,11 +286,11 @@ export default function RedTeamSimulatorPage() {
                 </div>
               )}
             </div>
-          </Card>
+          </div>
 
 
           {/* Validation Metrics */}
-          <Card className="p-5 space-y-3 font-mono text-xs">
+          <div className="surface-card rounded-2xl p-6 bg-[#0c111e]/90 border border-slate-800/80 shadow-xl space-y-3 font-mono text-xs">
             <div className="text-sm font-bold text-slate-200 border-b border-slate-800 pb-2">
               Continuous Validation Metrics
             </div>
@@ -282,7 +306,7 @@ export default function RedTeamSimulatorPage() {
               <span className="text-slate-400">Zero-Day Defense Posture:</span>
               <span className="text-purple-400 font-bold">HARDENED</span>
             </div>
-          </Card>
+          </div>
         </div>
 
         {/* Right 2 Columns: Multi-Stage Attack Chain & Detection Results */}

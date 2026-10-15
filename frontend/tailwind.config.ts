@@ -12,10 +12,19 @@ const config: Config = {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        navy: {
+          950: "#060911",
+          900: "#080c16",
+          850: "#0b101c",
+          800: "#0c111e",
+          750: "#101626",
+          700: "#141c2e",
+          600: "#1b273f",
+        },
         cyber: {
-          dark: "#0a0c10",
-          card: "#11141c",
-          border: "#1e2433",
+          dark: "#060911",
+          card: "#0c111e",
+          border: "#162238",
           accent: "#00f0ff",
           purple: "#a855f7",
           emerald: "#10b981",

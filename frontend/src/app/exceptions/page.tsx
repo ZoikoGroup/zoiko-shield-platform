@@ -133,42 +133,76 @@ export default function ExceptionsPage() {
 
   if (isLoading) return <LoadingState message="Loading exceptions…" />;
 
+  const activeCount = records.filter(r => (r.status || '').toUpperCase() === 'APPROVED').length;
+  const requestedCount = records.filter(r => (r.status || '').toUpperCase() === 'REQUESTED').length;
+  const overdueCount = records.filter(r => expiryLabel(r.expires_at).overdue).length;
+  const missingCompensating = records.filter(r => parseControls(r.compensating_controls).length === 0).length;
+
   return (
-    <div className="space-y-5 p-6">
-      <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-[#060911] text-slate-100 p-6 space-y-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-[#162238] pb-6">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" onClick={() => router.push("/risk")}>
-            <ArrowLeft className="w-4 h-4" />
+          <Button variant="ghost" onClick={() => router.push("/risk")} className="border border-[#162238] bg-[#0c111e] hover:bg-[#111a2e] text-slate-300">
+            <ArrowLeft className="w-4 h-4 text-cyan-400" />
             <span>Risk register</span>
           </Button>
           <div>
-            <h1 className="text-lg font-semibold text-slate-100">Exception workflow</h1>
-            <p className="text-xs font-mono text-slate-500">
+            <div className="flex items-center gap-2 mb-1">
+              <Badge variant="info" className="font-mono text-[10px] tracking-wider border-cyan-500/30 bg-cyan-500/10 text-cyan-400">
+                SPEC §W28 / GOVERNANCE CONTROLS
+              </Badge>
+            </div>
+            <h1 className="text-2xl font-bold tracking-tight text-white">Exception workflow</h1>
+            <p className="text-xs font-mono text-slate-400 mt-1">
               Controls currently excepted, their compensating controls and expiry.
             </p>
           </div>
         </div>
-        <Button variant="ghost" onClick={() => void load()}>
-          <RefreshCw className="w-4 h-4" />
+        <Button variant="ghost" onClick={() => void load()} className="border border-[#162238] bg-[#0c111e] hover:bg-[#111a2e] text-slate-300">
+          <RefreshCw className="w-4 h-4 text-cyan-400" />
           <span>Refresh</span>
         </Button>
       </div>
 
       {error && (
-        <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-500/50 text-rose-300 text-xs font-mono">
+        <div className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-300 text-xs font-mono">
           {error}
         </div>
       )}
 
+      {/* KPI Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-emerald-500/40 transition-all">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 font-mono">Active Approved</span>
+          <div className="text-2xl font-bold text-emerald-400 mt-1 font-mono">{activeCount}</div>
+          <span className="text-[10px] text-emerald-400/80 mt-1 inline-block font-mono">Operative exceptions</span>
+        </Card>
+        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-amber-500/40 transition-all">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 font-mono">Pending Approval</span>
+          <div className="text-2xl font-bold text-amber-300 mt-1 font-mono">{requestedCount}</div>
+          <span className="text-[10px] text-amber-400/80 mt-1 inline-block font-mono">Awaiting risk review</span>
+        </Card>
+        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-rose-500/40 transition-all">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 font-mono">Expired / Overdue</span>
+          <div className="text-2xl font-bold text-rose-400 mt-1 font-mono">{overdueCount}</div>
+          <span className="text-[10px] text-rose-400/80 mt-1 inline-block font-mono">Lapsed approvals</span>
+        </Card>
+        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-cyan-500/40 transition-all">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 font-mono">Missing Compensating</span>
+          <div className="text-2xl font-bold text-slate-200 mt-1 font-mono">{missingCompensating}</div>
+          <span className="text-[10px] text-slate-500 mt-1 inline-block font-mono">Require mitigation review</span>
+        </Card>
+      </div>
+
       {records.length === 0 ? (
-        <Card variant="cyber" className="p-6">
-          <p className="text-sm text-slate-300">No exceptions are recorded for this tenant.</p>
-          <p className="text-xs font-mono text-slate-500 mt-1">
+        <Card className="surface-card border border-[#162238] p-8 text-center rounded-xl">
+          <p className="text-sm font-semibold text-slate-200">No exceptions are recorded for this tenant.</p>
+          <p className="text-xs font-mono text-slate-500 mt-1.5 max-w-md mx-auto">
             Nothing is currently excepted from a control.
           </p>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {records.map((record) => {
             const controls = parseControls(record.compensating_controls);
             const expiry = expiryLabel(record.expires_at);
@@ -179,59 +213,61 @@ export default function ExceptionsPage() {
               record.risk_id ||
               "no scope recorded";
             return (
-              <Card key={record.id} variant="cyber" className="p-4">
-                <div className="flex items-start justify-between gap-4 mb-2">
+              <Card key={record.id} className="surface-card p-5 border border-[#162238] rounded-xl hover:border-cyan-500/30 transition-all shadow-md">
+                <div className="flex items-start justify-between gap-4 mb-3">
                   <div>
-                    <h2 className="text-sm font-semibold text-slate-100">{record.reason}</h2>
-                    <p className="text-xs font-mono text-slate-500 mt-0.5 break-all">
+                    <h2 className="text-sm font-semibold text-white tracking-wide">{record.reason}</h2>
+                    <p className="text-xs font-mono text-cyan-400/80 mt-0.5 break-all">
                       applies to {scope}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
-                    <Badge variant={statusVariant(record.status)}>{record.status}</Badge>
+                    <Badge variant={statusVariant(record.status)} className="font-mono text-[10px] uppercase font-semibold">
+                      {record.status}
+                    </Badge>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs font-mono mb-3">
-                  <span className="text-slate-400">requested by {record.requested_by}</span>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs font-mono mb-4 bg-[#060911] p-3 rounded-lg border border-[#162238]">
+                  <span className="text-slate-400"><span className="text-slate-500 uppercase text-[10px]">requested by:</span> {record.requested_by}</span>
                   <span className="text-slate-400">
-                    approved by {record.approved_by || "nobody yet"}
+                    <span className="text-slate-500 uppercase text-[10px]">approved by:</span> {record.approved_by || "nobody yet"}
                   </span>
                   <span
-                    className={`flex items-center gap-1 ${
-                      expiry.overdue ? "text-rose-300" : "text-slate-400"
+                    className={`flex items-center gap-1.5 ${
+                      expiry.overdue ? "text-rose-400 font-semibold" : "text-emerald-400"
                     }`}
                   >
-                    <Clock className="w-3 h-3" />
+                    <Clock className="w-3.5 h-3.5" />
                     {expiry.text}
                   </span>
                 </div>
 
-                <div className="text-xs font-mono mb-3">
-                  <p className="text-slate-500 mb-1">Compensating controls</p>
+                <div className="text-xs font-mono mb-4">
+                  <p className="text-slate-400 uppercase text-[10px] font-semibold mb-1.5">Compensating controls</p>
                   {controls.length > 0 ? (
-                    <ul className="list-disc list-inside text-slate-300">
+                    <div className="flex flex-wrap gap-2">
                       {controls.map((control) => (
-                        <li key={control}>{control}</li>
+                        <span key={control} className="px-2.5 py-1 rounded bg-[#060911] border border-[#162238] text-slate-300 text-xs">
+                          {control}
+                        </span>
                       ))}
-                    </ul>
+                    </div>
                   ) : (
-                    // The spec requires compensating controls. An exception
-                    // granted without them is a gap with nothing standing in
-                    // for the control it replaced, and should read as one.
-                    <p className="text-amber-300">
+                    <div className="p-2.5 rounded bg-amber-500/5 border border-amber-500/20 text-amber-300">
                       None recorded — nothing is standing in for the excepted control.
-                    </p>
+                    </div>
                   )}
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex gap-2 pt-2 border-t border-[#162238]">
                   {record.status === "REQUESTED" && (
                     <Button
                       variant="primary"
                       size="sm"
                       isLoading={actioning === record.id}
                       onClick={() => void act(record.id, "approve")}
+                      className="border border-emerald-500/30 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs shadow-sm"
                     >
                       <CheckCircle2 className="w-4 h-4" />
                       <span>Approve</span>
@@ -243,6 +279,7 @@ export default function ExceptionsPage() {
                       size="sm"
                       isLoading={actioning === record.id}
                       onClick={() => void act(record.id, "revoke")}
+                      className="border border-rose-500/30 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 font-semibold text-xs"
                     >
                       <XCircle className="w-4 h-4" />
                       <span>Revoke</span>

@@ -2,7 +2,7 @@ import React from "react";
 import { cn } from "@/lib/utils";
 
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: "default" | "cyber" | "ai" | "glass";
+  variant?: "default" | "cyber" | "ai" | "glass" | "well";
   glow?: boolean;
 }
 
@@ -16,22 +16,24 @@ export const Card: React.FC<CardProps> = ({
   const getVariantStyles = () => {
     switch (variant) {
       case "cyber":
-        return "bg-[#11141c]/90 border border-cyan-500/20 shadow-[0_4px_24px_rgba(0,0,0,0.5)]";
+        return "bg-[#0c111e]/95 border border-cyan-500/25 shadow-[0_4px_24px_rgba(0,0,0,0.6)]";
       case "ai":
-        return "bg-gradient-to-b from-purple-950/30 to-[#0e1017]/90 border border-purple-500/30 shadow-[0_0_20px_rgba(168,85,247,0.15)]";
+        return "bg-gradient-to-b from-purple-950/20 to-[#0c111e]/95 border border-purple-500/30 shadow-[0_0_20px_rgba(168,85,247,0.12)]";
       case "glass":
-        return "bg-slate-900/60 backdrop-blur-md border border-slate-800/80 shadow-xl";
+        return "bg-[#0c111e]/80 backdrop-blur-md border border-slate-800/90 shadow-xl";
+      case "well":
+        return "bg-[#080c16] border border-[#141f33]";
       default:
-        return "bg-[#10131a] border border-slate-800 shadow-md";
+        return "bg-[#0c111e] border border-[#162238] shadow-[0_2px_12px_rgba(0,0,0,0.3)]";
     }
   };
 
   return (
     <div
       className={cn(
-        "rounded-xl p-5 transition-all",
+        "rounded-xl p-5 transition-all duration-200",
         getVariantStyles(),
-        glow && "hover:border-cyan-500/40 hover:shadow-[0_0_24px_rgba(6,182,212,0.15)]",
+        glow && "hover:border-cyan-500/40 hover:shadow-[0_0_24px_rgba(6,182,212,0.14)]",
         className
       )}
       {...props}
@@ -40,3 +42,4 @@ export const Card: React.FC<CardProps> = ({
     </div>
   );
 };
+

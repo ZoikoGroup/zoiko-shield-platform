@@ -127,64 +127,67 @@ export default function PolicyManagementPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between pb-6 border-b border-slate-800">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Badge variant="neutral" className="bg-blue-950/60 text-blue-400 border-blue-800 text-xs">
-              Contract W12 • Policy Governance
-            </Badge>
-            <Badge variant="active" className="bg-emerald-950/60 text-emerald-400 border-emerald-800 text-xs">
-              4-Eyes Dual Custody
-            </Badge>
+    <div className="space-y-6 pb-16">
+      {/* Header Banner */}
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-b from-[#0c111e] to-[#070b14] shadow-xl">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="neutral" className="bg-cyan-950/60 text-cyan-400 border-cyan-800/60 text-xs font-mono">
+                Contract W12 • Policy Governance
+              </Badge>
+              <Badge variant="pass" className="text-xs font-mono">
+                4-Eyes Dual Custody
+              </Badge>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-3">
+              <Sliders className="h-6 w-6 text-cyan-400" />
+              <span>Policy &amp; Configuration Lifecycle Management</span>
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-400 max-w-3xl leading-relaxed">
+              Auditable policy definitions, YAML diff evaluation, staged canary rollout, dual-custody authorization, and atomic rollback.
+            </p>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Sliders className="h-6 w-6 text-blue-400" />
-            Policy & Configuration Lifecycle Management
-          </h1>
-          <p className="text-sm text-slate-400 mt-1">
-            Auditable policy definitions, YAML diff evaluation, staged canary rollout, dual-custody authorization, and atomic rollback.
-          </p>
-        </div>
 
-        <div className="mt-4 md:mt-0 flex gap-3">
-          <Button
-            variant="secondary"
-            className="border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800"
-            onClick={fetchPolicies}
-            disabled={loading}
-          >
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </Button>
-          <Button
-            className="bg-blue-600 hover:bg-blue-500 text-white"
-            onClick={() => {
-              if (selectedPolicy) {
-                setStagedEnvInput(selectedPolicy.stagedEnvironment);
-                setCanaryPercentInput(selectedPolicy.canaryPercentage);
-                setIsStageModalOpen(true);
-              }
-            }}
-            disabled={!selectedPolicy}
-          >
-            <Send className="h-4 w-4 mr-2" />
-            Stage Canary Rollout
-          </Button>
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <Button
+              variant="outline"
+              className="border-slate-800 hover:border-cyan-500/40 text-slate-300"
+              onClick={fetchPolicies}
+              disabled={loading}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 mr-2 text-cyan-400 ${loading ? "animate-spin" : ""}`} />
+              Refresh
+            </Button>
+            <Button
+              variant="cyan"
+              className="shadow-[0_0_15px_rgba(0,240,255,0.25)]"
+              onClick={() => {
+                if (selectedPolicy) {
+                  setStagedEnvInput(selectedPolicy.stagedEnvironment);
+                  setCanaryPercentInput(selectedPolicy.canaryPercentage);
+                  setIsStageModalOpen(true);
+                }
+              }}
+              disabled={!selectedPolicy}
+            >
+              <Send className="h-3.5 w-3.5 mr-2" />
+              Stage Canary Rollout
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Domain Filters */}
-      <div className="mt-4 flex items-center gap-2 overflow-x-auto pb-2">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1">
         {["ALL", "IAM", "DETECTION", "RESPONSE", "RESIDENCY"].map((domain) => (
           <button
             key={domain}
             onClick={() => setSelectedDomain(domain)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all ${
               selectedDomain === domain
-                ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
-                : "bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800"
+                ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_12px_rgba(0,240,255,0.2)]"
+                : "bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800/80"
             }`}
           >
             {domain === "ALL" ? "All Domains" : domain}
@@ -193,35 +196,47 @@ export default function PolicyManagementPage() {
       </div>
 
       {actionSuccessMessage && (
-        <div className="mt-4 p-4 rounded-lg bg-emerald-950/80 border border-emerald-700 text-emerald-200 text-sm flex items-center gap-3">
-          <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
-          <span>{actionSuccessMessage}</span>
+        <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs flex items-center justify-between gap-3 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+          <div className="flex items-center gap-2.5">
+            <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+            <span className="font-mono">{actionSuccessMessage}</span>
+          </div>
+          <button onClick={() => setActionSuccessMessage(null)} className="text-slate-400 hover:text-white text-xs px-2 py-1">
+            ✕
+          </button>
         </div>
       )}
 
       {errorMessage && (
-        <div className="mt-4 p-4 rounded-lg bg-red-950/80 border border-red-700 text-red-200 text-sm flex items-center gap-3">
-          <AlertTriangle className="h-5 w-5 text-red-400 shrink-0" />
-          <span>{errorMessage}</span>
+        <div className="p-4 rounded-xl bg-red-950/40 border border-red-500/40 text-red-300 text-xs flex items-center justify-between gap-3 shadow-[0_0_15px_rgba(244,63,94,0.15)]">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="h-4 w-4 text-red-400 shrink-0" />
+            <span className="font-mono">{errorMessage}</span>
+          </div>
+          <button onClick={() => setErrorMessage(null)} className="text-slate-400 hover:text-white text-xs px-2 py-1">
+            ✕
+          </button>
         </div>
       )}
 
       {/* Main Grid */}
-      <div className="mt-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column: Policy List */}
-        <div className="lg:col-span-5 space-y-4">
-          <h2 className="text-sm font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
-            <Layers className="h-4 w-4 text-blue-400" />
-            Governed Policy Catalog ({policies.length})
-          </h2>
+        <div className="lg:col-span-5 space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-xs font-mono uppercase tracking-wider text-slate-400 flex items-center gap-2">
+              <Layers className="h-3.5 w-3.5 text-cyan-400" />
+              <span>Governed Policy Catalog ({policies.length})</span>
+            </h2>
+          </div>
 
           {loading ? (
-            <div className="p-8 text-center text-slate-400 text-sm bg-slate-900/30 rounded-xl border border-slate-800">
-              <RefreshCw className="h-6 w-6 animate-spin mx-auto text-blue-400 mb-2" />
+            <div className="p-8 text-center text-slate-400 text-xs font-mono bg-slate-900/30 rounded-xl border border-slate-800">
+              <RefreshCw className="h-5 w-5 animate-spin mx-auto text-cyan-400 mb-2" />
               Loading live policies from Shield Core...
             </div>
           ) : policies.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 text-sm bg-slate-900/30 rounded-xl border border-slate-800">
+            <div className="p-8 text-center text-slate-400 text-xs font-mono bg-slate-900/30 rounded-xl border border-slate-800">
               No policies found in domain {selectedDomain}.
             </div>
           ) : (
@@ -231,20 +246,21 @@ export default function PolicyManagementPage() {
                 return (
                   <Card
                     key={policy.id}
+                    variant="cyber"
                     onClick={() => setSelectedPolicy(policy)}
                     className={`p-4 cursor-pointer transition-all border ${
                       isSelected
-                        ? "bg-slate-900/90 border-blue-500 shadow-lg shadow-blue-500/10"
-                        : "bg-slate-900/40 border-slate-800 hover:border-slate-700 hover:bg-slate-900/60"
+                        ? "bg-gradient-to-b from-[#0e172a] to-[#0a101f] border-cyan-500/60 shadow-[0_0_20px_rgba(0,240,255,0.15)]"
+                        : "bg-gradient-to-b from-[#0c111e] to-[#070b14] border-slate-800/80 hover:border-slate-700 hover:bg-[#0e1424]"
                     }`}
                   >
-                    <div className="flex items-start justify-between">
-                      <div>
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="space-y-1">
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-mono text-blue-400 font-bold">{policy.domain}</span>
+                          <span className="text-xs font-mono text-cyan-400 font-bold">{policy.domain}</span>
                           <span className="text-xs font-mono text-slate-500">• {policy.version}</span>
                         </div>
-                        <h3 className="font-semibold text-slate-100 text-sm mt-1">{policy.policyName}</h3>
+                        <h3 className="font-bold text-white text-sm">{policy.policyName}</h3>
                       </div>
                       <Badge
                         variant={
@@ -256,17 +272,18 @@ export default function PolicyManagementPage() {
                             ? "simulated"
                             : "fail"
                         }
+                        className="text-[10px] font-mono shrink-0"
                       >
                         {policy.status}
                       </Badge>
                     </div>
 
-                    <p className="text-xs text-slate-400 mt-2 line-clamp-2">{policy.diffSummary}</p>
+                    <p className="text-xs text-slate-400 mt-2 line-clamp-2 leading-relaxed">{policy.diffSummary}</p>
 
-                    <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400">
-                      <span className="font-mono text-[11px] text-slate-500">Commit: {policy.commitHash}</span>
-                      <span className="flex items-center gap-1 font-medium">
-                        Rollout: <span className="text-slate-200">{policy.canaryPercentage}%</span>
+                    <div className="mt-3 pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400 font-mono">
+                      <span className="text-[11px] text-slate-500">Commit: {policy.commitHash}</span>
+                      <span className="flex items-center gap-1.5 font-semibold">
+                        Rollout: <span className="text-cyan-300">{policy.canaryPercentage}%</span>
                       </span>
                     </div>
                   </Card>
@@ -279,18 +296,18 @@ export default function PolicyManagementPage() {
         {/* Right Column: Policy Detail & Diff Viewer */}
         <div className="lg:col-span-7 space-y-6">
           {selectedPolicy ? (
-            <Card className="p-6 bg-slate-900/60 border-slate-800">
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-slate-800 pb-4 gap-4">
-                <div>
+            <Card variant="cyber" className="p-6 bg-gradient-to-b from-[#0c111e] to-[#070b14] space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-slate-800/80 pb-4 gap-4">
+                <div className="space-y-1">
                   <div className="flex items-center gap-2">
-                    <Badge variant="neutral" className="text-xs border-slate-700 text-slate-300">
+                    <Badge variant="neutral" className="text-xs font-mono border-slate-700 text-slate-300">
                       {selectedPolicy.id}
                     </Badge>
-                    <span className="text-xs text-slate-400">Target: {selectedPolicy.stagedEnvironment}</span>
+                    <span className="text-xs font-mono text-slate-400">Target: {selectedPolicy.stagedEnvironment}</span>
                   </div>
-                  <h2 className="text-xl font-bold text-white mt-1">{selectedPolicy.policyName}</h2>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Authored by {selectedPolicy.author} • Updated {new Date(selectedPolicy.updatedAt).toLocaleString()}
+                  <h2 className="text-xl font-bold text-white tracking-tight">{selectedPolicy.policyName}</h2>
+                  <p className="text-xs text-slate-400 font-mono">
+                    Authored by <strong className="text-slate-300">{selectedPolicy.author}</strong> • Updated {new Date(selectedPolicy.updatedAt).toLocaleString()}
                   </p>
                 </div>
 
@@ -298,19 +315,20 @@ export default function PolicyManagementPage() {
                   {selectedPolicy.status === "PENDING_APPROVAL" && (
                     <Button
                       size="sm"
-                      className="bg-emerald-600 hover:bg-emerald-500 text-white"
+                      variant="cyan"
+                      className="shadow-[0_0_12px_rgba(0,240,255,0.25)]"
                       onClick={() => handleApprove(selectedPolicy.id)}
                       disabled={actionLoading}
                     >
                       <CheckCircle className="h-4 w-4 mr-1.5" />
-                      Dual-Sign & Promote
+                      Dual-Sign &amp; Promote
                     </Button>
                   )}
                   {selectedPolicy.status !== "ROLLED_BACK" && (
                     <Button
                       size="sm"
                       variant="danger"
-                      className="border-red-800 bg-red-950/30 text-red-400 hover:bg-red-900/50"
+                      className="border-red-800 bg-red-950/40 text-red-300 hover:bg-red-900/60 shadow-[0_0_12px_rgba(244,63,94,0.15)]"
                       onClick={() => setIsRollbackModalOpen(true)}
                       disabled={actionLoading}
                     >
@@ -323,28 +341,30 @@ export default function PolicyManagementPage() {
 
               {/* Rollback Notification if active */}
               {selectedPolicy.status === "ROLLED_BACK" && (
-                <div className="mt-4 p-4 rounded-lg bg-red-950/40 border border-red-800 text-red-300 text-xs">
-                  <div className="font-semibold flex items-center gap-1.5 mb-1">
+                <div className="p-4 rounded-xl bg-red-950/40 border border-red-500/40 text-red-300 text-xs space-y-1 shadow-[0_0_15px_rgba(244,63,94,0.15)]">
+                  <div className="font-bold flex items-center gap-2">
                     <RotateCcw className="h-4 w-4 text-red-400" />
-                    Policy Rolled Back to Safe Baseline
+                    <span>Policy Rolled Back to Safe Baseline</span>
                   </div>
-                  <p>Reason: {selectedPolicy.reversalReason || "Emergency operational rollback"}</p>
+                  <p className="font-mono text-slate-300">Reason: {selectedPolicy.reversalReason || "Emergency operational rollback"}</p>
                 </div>
               )}
 
               {/* Staged Rollout Progress Bar */}
-              <div className="mt-4 p-4 rounded-lg bg-slate-950/60 border border-slate-800">
-                <div className="flex justify-between items-center text-xs font-semibold mb-2">
-                  <span className="text-slate-300 flex items-center gap-1.5">
-                    <Sliders className="h-3.5 w-3.5 text-blue-400" />
+              <div className="p-4 rounded-xl bg-[#060a12] border border-slate-800/80 space-y-2">
+                <div className="flex justify-between items-center text-xs font-semibold">
+                  <span className="text-slate-300 flex items-center gap-1.5 font-mono">
+                    <Sliders className="h-3.5 w-3.5 text-cyan-400" />
                     Staged Regional Canary Rollout Ring ({selectedPolicy.stagedEnvironment})
                   </span>
-                  <span className="text-blue-400 font-mono">{selectedPolicy.canaryPercentage}% Live Enforced</span>
+                  <span className="text-cyan-400 font-mono font-bold">{selectedPolicy.canaryPercentage}% Live Enforced</span>
                 </div>
-                <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-800">
                   <div
                     className={`h-2 transition-all duration-500 ${
-                      selectedPolicy.status === "ROLLED_BACK" ? "bg-red-500" : "bg-blue-500"
+                      selectedPolicy.status === "ROLLED_BACK"
+                        ? "bg-red-500 shadow-[0_0_8px_rgba(244,63,94,0.5)]"
+                        : "bg-gradient-to-r from-cyan-500 to-blue-500 shadow-[0_0_8px_rgba(0,240,255,0.5)]"
                     }`}
                     style={{ width: `${selectedPolicy.canaryPercentage}%` }}
                   />
@@ -352,31 +372,31 @@ export default function PolicyManagementPage() {
               </div>
 
               {/* Side-by-Side YAML Diff Viewer */}
-              <div className="mt-6">
-                <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
-                  <FileCode2 className="h-4 w-4 text-slate-400" />
-                  Immutable Policy Specification Diff (Previous vs Proposed)
+              <div className="space-y-3">
+                <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                  <FileCode2 className="h-4 w-4 text-cyan-400" />
+                  <span>Immutable Policy Specification Diff (Previous vs Proposed)</span>
                 </h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-xs">
                   {/* Previous */}
-                  <div className="p-4 rounded-lg bg-slate-950 border border-red-900/40">
-                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-red-900/30 text-red-400 text-[11px] font-bold">
+                  <div className="p-4 rounded-xl bg-[#060a12] border border-red-900/40 space-y-2">
+                    <div className="flex items-center justify-between pb-2 border-b border-red-900/30 text-red-400 text-[11px] font-bold">
                       <span>BASELINE (Previous Active)</span>
                       <XCircle className="h-3.5 w-3.5" />
                     </div>
-                    <pre className="text-slate-400 whitespace-pre-wrap leading-relaxed">
+                    <pre className="text-slate-400 whitespace-pre-wrap leading-relaxed text-[11px]">
                       {selectedPolicy.diffContent?.previous || "# No previous configuration"}
                     </pre>
                   </div>
 
                   {/* Proposed */}
-                  <div className="p-4 rounded-lg bg-slate-950 border border-emerald-900/40">
-                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-emerald-900/30 text-emerald-400 text-[11px] font-bold">
+                  <div className="p-4 rounded-xl bg-[#060a12] border border-emerald-900/40 space-y-2">
+                    <div className="flex items-center justify-between pb-2 border-b border-emerald-900/30 text-emerald-400 text-[11px] font-bold">
                       <span>PROPOSED (Current Spec)</span>
                       <CheckCircle className="h-3.5 w-3.5" />
                     </div>
-                    <pre className="text-emerald-300 whitespace-pre-wrap leading-relaxed">
+                    <pre className="text-emerald-300 whitespace-pre-wrap leading-relaxed text-[11px]">
                       {selectedPolicy.diffContent?.proposed || "# No proposed specification"}
                     </pre>
                   </div>
@@ -384,23 +404,23 @@ export default function PolicyManagementPage() {
               </div>
 
               {/* Signatures and Cryptographic Chain */}
-              <div className="mt-6 pt-4 border-t border-slate-800 flex flex-col md:flex-row md:items-center justify-between text-xs text-slate-400 gap-2">
+              <div className="pt-4 border-t border-slate-800/80 flex flex-col md:flex-row md:items-center justify-between text-xs text-slate-400 gap-3 font-mono">
                 <div className="flex items-center gap-2">
                   <Lock className="h-4 w-4 text-emerald-400" />
                   <span>Dual-Custody Approvers:</span>
-                  <span className="text-slate-200 font-mono">
+                  <span className="text-slate-200">
                     {Array.isArray(selectedPolicy.approvers) && selectedPolicy.approvers.length > 0
                       ? selectedPolicy.approvers.join(", ")
                       : "Awaiting sign-off (Quorum: 2)"}
                   </span>
                 </div>
-                <div className="font-mono text-[11px] text-slate-500">
-                  KMS DER Signature: <span className="text-blue-400">EC_SIGN_P256_SHA256 (Cloud KMS)</span>
+                <div className="text-[11px] text-slate-500">
+                  KMS DER Signature: <span className="text-cyan-400">EC_SIGN_P256_SHA256 (Cloud KMS)</span>
                 </div>
               </div>
             </Card>
           ) : (
-            <div className="p-12 text-center text-slate-500 text-sm bg-slate-900/20 rounded-xl border border-slate-800/60">
+            <div className="p-12 text-center text-slate-500 text-xs font-mono bg-slate-900/20 rounded-2xl border border-slate-800/60">
               Select a policy from the catalog to view details and lifecycle controls.
             </div>
           )}
@@ -416,19 +436,19 @@ export default function PolicyManagementPage() {
       >
         <div className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Target Environment</label>
+            <label className="block text-xs font-mono font-semibold text-slate-300 mb-1.5">Target Environment</label>
             <input
               type="text"
               value={stagedEnvInput}
               onChange={(e) => setStagedEnvInput(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-blue-500"
+              className="w-full bg-[#060a12] border border-slate-700 rounded-lg px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-500 font-mono"
             />
           </div>
 
           <div>
-            <div className="flex justify-between text-xs font-semibold text-slate-300 mb-1">
+            <div className="flex justify-between text-xs font-mono font-semibold text-slate-300 mb-1.5">
               <span>Canary Percentage</span>
-              <span className="text-blue-400">{canaryPercentInput}%</span>
+              <span className="text-cyan-400 font-bold">{canaryPercentInput}%</span>
             </div>
             <input
               type="range"
@@ -437,9 +457,9 @@ export default function PolicyManagementPage() {
               step={5}
               value={canaryPercentInput}
               onChange={(e) => setCanaryPercentInput(Number(e.target.value))}
-              className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
+              className="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-400"
             />
-            <div className="flex justify-between text-[11px] text-slate-500 mt-1">
+            <div className="flex justify-between text-[10px] text-slate-500 font-mono mt-1.5">
               <span>0% (Halted)</span>
               <span>25% (Canary Ring 1)</span>
               <span>50% (Ring 2)</span>
@@ -449,16 +469,18 @@ export default function PolicyManagementPage() {
 
           <div className="pt-4 border-t border-slate-800 flex justify-end gap-3">
             <Button
-              variant="secondary"
+              variant="outline"
               onClick={() => setIsStageModalOpen(false)}
               disabled={actionLoading}
+              className="border-slate-800 text-slate-300"
             >
               Cancel
             </Button>
             <Button
-              className="bg-blue-600 hover:bg-blue-500 text-white"
+              variant="cyan"
               onClick={handleStageSubmit}
               disabled={actionLoading}
+              className="shadow-[0_0_12px_rgba(0,240,255,0.25)]"
             >
               {actionLoading ? "Applying..." : "Apply Canary Rollout"}
             </Button>
@@ -474,33 +496,34 @@ export default function PolicyManagementPage() {
         description="Instantly drops canary enforcement to 0% and logs the auditable reversal reason."
       >
         <div className="space-y-4">
-          <div className="p-3 rounded-lg bg-red-950/40 border border-red-800 text-xs text-red-300 flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4 shrink-0" />
+          <div className="p-3.5 rounded-xl bg-red-950/40 border border-red-500/40 text-xs text-red-300 flex items-center gap-2.5">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-red-400" />
             <span>This action takes immediate effect across all regional cells.</span>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Rollback Rationale / Trigger</label>
+            <label className="block text-xs font-mono font-semibold text-slate-300 mb-1.5">Rollback Rationale / Trigger</label>
             <textarea
               rows={3}
               value={rollbackReasonInput}
               onChange={(e) => setRollbackReasonInput(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-red-500"
+              className="w-full bg-[#060a12] border border-slate-700 rounded-lg px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-red-500 font-mono"
               placeholder="State the observed regression, anomaly, or operational justification..."
             />
           </div>
 
           <div className="pt-4 border-t border-slate-800 flex justify-end gap-3">
             <Button
-              variant="secondary"
+              variant="outline"
               onClick={() => setIsRollbackModalOpen(false)}
               disabled={actionLoading}
+              className="border-slate-800 text-slate-300"
             >
               Cancel
             </Button>
             <Button
               variant="danger"
-              className="border-red-800 bg-red-600 hover:bg-red-500 text-white"
+              className="border-red-800 bg-red-600 hover:bg-red-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.3)]"
               onClick={handleRollbackSubmit}
               disabled={actionLoading || !rollbackReasonInput.trim()}
             >

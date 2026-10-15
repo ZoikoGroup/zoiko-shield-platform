@@ -103,92 +103,141 @@ export default function RiskRegisterPage() {
     );
   }
 
+  const criticalCount = risks.filter(r => ['CRITICAL', 'VERY_HIGH', 'HIGH'].includes((r.impact || '').toUpperCase())).length;
+  const withFactorsCount = risks.filter(r => r.factors && r.factors.length > 0).length;
+  const unassignedCount = risks.filter(r => !r.owner_id).length;
+
   return (
-    <div className="space-y-5 p-6">
-      <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-[#060911] text-slate-100 p-6 space-y-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-[#162238] pb-6">
         <div>
-          <h1 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
-            <ShieldAlert className="w-5 h-5 text-cyan-400" />
-            Risk register
+          <div className="flex items-center gap-2 mb-1.5">
+            <Badge variant="info" className="font-mono text-[10px] tracking-wider border-cyan-500/30 bg-cyan-500/10 text-cyan-400">
+              SPEC §W27 / RISK ASSURANCE
+            </Badge>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 shadow-sm shadow-cyan-500/20">
+              <ShieldAlert className="w-6 h-6" />
+            </div>
+            <span className="bg-gradient-to-r from-white via-slate-100 to-cyan-300 bg-clip-text text-transparent">
+              Risk register
+            </span>
           </h1>
-          <p className="text-xs font-mono text-slate-500">
+          <p className="text-xs font-mono text-slate-400 mt-1">
             Every risk, its contributing factors, its owner and its treatment.
           </p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="ghost" onClick={() => void load()}>
-            <RefreshCw className="w-4 h-4" />
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" onClick={() => void load()} className="border border-[#162238] bg-[#0c111e] hover:bg-[#111a2e] text-slate-300">
+            <RefreshCw className="w-4 h-4 text-cyan-400" />
             <span>Refresh</span>
           </Button>
-          <Button variant="secondary" onClick={() => router.push("/exceptions")}>
+          <Button variant="secondary" onClick={() => router.push("/exceptions")} className="border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300">
             <span>Exceptions</span>
             <ArrowRight className="w-4 h-4" />
           </Button>
         </div>
       </div>
 
+      {/* Dynamic Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-cyan-500/40 transition-all">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Total Risks Logged</span>
+          <div className="text-2xl font-bold text-white mt-1 font-mono">{risks.length}</div>
+          <span className="text-[10px] text-slate-500 mt-1 inline-block font-mono">Active register items</span>
+        </Card>
+        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-rose-500/40 transition-all">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">High & Critical Severity</span>
+          <div className="text-2xl font-bold text-rose-400 mt-1 font-mono">{criticalCount}</div>
+          <span className="text-[10px] text-rose-400/80 mt-1 inline-block font-mono">Requiring immediate mitigation</span>
+        </Card>
+        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-emerald-500/40 transition-all">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Factor Coverage</span>
+          <div className="text-2xl font-bold text-emerald-400 mt-1 font-mono">
+            {risks.length > 0 ? `${Math.round((withFactorsCount / risks.length) * 100)}%` : "100%"}
+          </div>
+          <span className="text-[10px] text-emerald-400/80 mt-1 inline-block font-mono">{withFactorsCount} / {risks.length} decomposed</span>
+        </Card>
+        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-amber-500/40 transition-all">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Unassigned Owners</span>
+          <div className="text-2xl font-bold text-amber-300 mt-1 font-mono">{unassignedCount}</div>
+          <span className="text-[10px] text-amber-400/80 mt-1 inline-block font-mono">Pending accountability</span>
+        </Card>
+      </div>
+
       {risks.length === 0 ? (
-        <Card variant="cyber" className="p-6">
-          <p className="text-sm text-slate-300">No risks are recorded for this tenant.</p>
-          <p className="text-xs font-mono text-slate-500 mt-1">
+        <Card className="surface-card border border-[#162238] p-8 text-center rounded-xl">
+          <p className="text-sm font-semibold text-slate-200">No risks are recorded for this tenant.</p>
+          <p className="text-xs font-mono text-slate-500 mt-1.5 max-w-md mx-auto">
             This is an empty register, not a clean bill of health — nothing has assessed
             this tenant yet.
           </p>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-4">
           {risks.map((risk) => (
-            <Card key={risk.id} variant="cyber" className="p-4">
-              <div className="flex items-start justify-between gap-4 mb-2">
+            <Card key={risk.id} className="surface-card p-5 border border-[#162238] rounded-xl hover:border-cyan-500/30 transition-all shadow-md">
+              <div className="flex items-start justify-between gap-4 mb-3">
                 <div>
-                  <h2 className="text-sm font-semibold text-slate-100">{risk.title}</h2>
+                  <h2 className="text-sm font-semibold text-white tracking-wide">{risk.title}</h2>
                   {risk.description && (
-                    <p className="text-xs text-slate-400 mt-0.5">{risk.description}</p>
+                    <p className="text-xs text-slate-400 mt-1">{risk.description}</p>
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <Badge variant={severityVariant(risk.impact)}>
+                  <Badge variant={severityVariant(risk.impact)} className="font-mono text-[10px] uppercase font-semibold">
                     {risk.likelihood} / {risk.impact}
                   </Badge>
-                  {risk.status && <Badge variant="neutral">{risk.status}</Badge>}
+                  {risk.status && (
+                    <Badge variant="neutral" className="font-mono text-[10px] border-[#162238] text-slate-300">
+                      {risk.status}
+                    </Badge>
+                  )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs font-mono text-slate-400 mb-3">
-                <span>owner: {risk.owner_id || "unassigned"}</span>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs font-mono text-slate-400 mb-4 bg-[#060911] p-3 rounded-lg border border-[#162238]">
+                <span><span className="text-slate-500 uppercase text-[10px]">owner:</span> {risk.owner_id || "unassigned"}</span>
                 <span>
-                  raised: {risk.created_at ? formatTimestamp(risk.created_at) : "unknown"}
+                  <span className="text-slate-500 uppercase text-[10px]">raised:</span> {risk.created_at ? formatTimestamp(risk.created_at) : "unknown"}
                 </span>
-                <span className="break-all">id: {risk.id}</span>
+                <span className="break-all text-[11px] text-slate-400">
+                  <span className="text-slate-500 uppercase text-[10px]">id:</span> {risk.id}
+                </span>
               </div>
 
               {risk.factors && risk.factors.length > 0 ? (
-                <table className="w-full text-xs font-mono">
-                  <thead>
-                    <tr className="text-slate-500 text-left border-b border-slate-800">
-                      <th className="py-1">Factor</th>
-                      <th className="py-1">Value</th>
-                      <th className="py-1">Contribution</th>
-                      <th className="py-1">Source</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {(risk.factors || []).map((factor) => (
-                      <tr key={factor.factor} className="border-b border-slate-900">
-                        <td className="py-1 text-slate-300">{factor.factor}</td>
-                        <td className="py-1 text-slate-300">{factor.value}</td>
-                        <td className="py-1 text-slate-200">{factor.contribution}</td>
-                        <td className="py-1 text-slate-500 break-all">
-                          {factor.sourceRef || "not stated"}
-                        </td>
+                <div className="overflow-x-auto border border-[#162238] rounded-lg">
+                  <table className="w-full text-xs font-mono">
+                    <thead className="bg-[#060911] border-b border-[#162238]">
+                      <tr className="text-slate-400 text-left text-[10px] uppercase">
+                        <th className="py-2.5 px-3">Factor</th>
+                        <th className="py-2.5 px-3">Value</th>
+                        <th className="py-2.5 px-3">Contribution</th>
+                        <th className="py-2.5 px-3">Source</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-[#162238]">
+                      {(risk.factors || []).map((factor) => (
+                        <tr key={factor.factor} className="hover:bg-slate-800/30 transition-colors">
+                          <td className="py-2.5 px-3 text-slate-200 font-medium">{factor.factor}</td>
+                          <td className="py-2.5 px-3 text-cyan-400">{factor.value}</td>
+                          <td className="py-2.5 px-3 text-emerald-400 font-semibold">{factor.contribution}</td>
+                          <td className="py-2.5 px-3 text-slate-400 break-all text-[11px]">
+                            {factor.sourceRef || "not stated"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               ) : (
-                <p className="text-xs font-mono text-amber-300">
-                  No factor breakdown is recorded, so this rating cannot be taken apart.
-                </p>
+                <div className="p-3 bg-amber-500/5 border border-amber-500/20 rounded-lg">
+                  <p className="text-xs font-mono text-amber-300">
+                    No factor breakdown is recorded, so this rating cannot be taken apart.
+                  </p>
+                </div>
               )}
             </Card>
           ))}

@@ -102,18 +102,18 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <Card variant="cyber" className="p-4">
-      <div className="mb-3 flex items-baseline justify-between border-b border-slate-800 pb-2">
+    <div className="surface-card rounded-2xl bg-[#0c111e]/90 border border-slate-800/80 p-6 shadow-xl space-y-4">
+      <div className="flex items-baseline justify-between border-b border-slate-800/80 pb-3">
         <div>
-          <h2 className="text-sm font-semibold text-slate-100">{title}</h2>
-          <p className="text-[11px] font-mono text-slate-500">{requirement}</p>
+          <h2 className="text-sm font-bold text-white tracking-wide">{title}</h2>
+          <p className="text-[11px] font-mono text-slate-400 mt-0.5">{requirement}</p>
         </div>
         {count !== undefined && (
-          <span className="font-mono text-lg text-slate-200">{count}</span>
+          <span className="font-mono text-xl font-bold text-cyan-400 bg-cyan-950/40 border border-cyan-500/30 px-2.5 py-0.5 rounded-lg">{count}</span>
         )}
       </div>
       {children}
-    </Card>
+    </div>
   );
 }
 

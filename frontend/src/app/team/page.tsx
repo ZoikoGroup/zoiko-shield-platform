@@ -148,18 +148,19 @@ export default function TeamPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Header Banner */}
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Badge variant="pass">ERB-01 STEP 3</Badge>
             <span className="text-xs font-mono text-cyan-400 font-bold">
-              IDENTITY & ROLE-BASED ACCESS CONTROL
+              IDENTITY &amp; ROLE-BASED ACCESS CONTROL
             </span>
           </div>
-          <h1 className="text-2xl font-black text-slate-100 tracking-tight">
-            Security Team & Invitations
+          <h1 className="text-2xl font-black text-white tracking-tight">
+            Security Team &amp; Invitations
           </h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-xs text-slate-400 max-w-2xl">
             Issue tenant-scoped invitations, switch to invited identity (`@CurrentUser()`), and accept membership.
           </p>
         </div>

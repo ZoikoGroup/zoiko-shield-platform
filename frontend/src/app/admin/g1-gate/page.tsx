@@ -97,16 +97,16 @@ export default function G1LaunchGatePage() {
   return (
     <div className="space-y-8 pb-16">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono">
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>G1 MULTI-APPROVER LAUNCH GATE PROTOCOL (§05 & §16)</span>
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-100">
-            G1 Launch Gate & Live Response Authority
+          <h1 className="text-2xl font-extrabold tracking-tight text-white">
+            G1 Launch Gate &amp; Live Response Authority
           </h1>
-          <p className="text-slate-400 text-sm max-w-3xl">
+          <p className="text-slate-400 text-xs max-w-3xl">
             Independent cryptographic ratification across all 8 canonical domain leads. Controls fail-closed unlock for live R2+ autonomous response mutations.
           </p>
         </div>
@@ -117,14 +117,14 @@ export default function G1LaunchGatePage() {
               setRefreshing(true);
               loadRoster();
             }}
-            className="p-2 rounded-lg bg-slate-900 border border-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
+            className="p-2 rounded-lg bg-[#080c16] border border-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
             title="Refresh Roster"
           >
             <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
           </button>
           <button
             onClick={handleReset}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-mono transition-colors border border-slate-700"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#080c16] hover:bg-slate-800 text-slate-300 text-xs font-mono transition-colors border border-slate-800"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Reset Roster</span>

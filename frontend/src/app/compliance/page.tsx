@@ -244,47 +244,52 @@ export default function ContinuousCompliancePage() {
   return (
     <div className="space-y-8 pb-16">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>CONTINUOUS ASSURANCE & POSTURE DRIFT RADAR (§55 / ADR-08)</span>
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-b from-[#0c111e] to-[#070b14] shadow-xl">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div className="space-y-2">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono shadow-[0_0_15px_rgba(0,240,255,0.12)]">
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>CONTINUOUS ASSURANCE &amp; POSTURE DRIFT RADAR (§55 / ADR-08)</span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white flex items-center gap-3">
+              Continuous Compliance &amp; Sector Assurance
+            </h1>
+            <p className="text-slate-400 text-xs sm:text-sm max-w-3xl leading-relaxed">
+              Real-time automated control evaluation across SOC 2 Type II, ISO/IEC 27001:2022, DORA Article 10/11 ICT risk governance, NIS2 Directive, and PCI DSS 4.0.1.
+            </p>
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-100">
-            Continuous Compliance & Sector Assurance
-          </h1>
-          <p className="text-slate-400 text-sm max-w-3xl">
-            Real-time automated control evaluation across SOC 2 Type II, ISO/IEC 27001:2022, DORA Article 10/11 ICT risk governance, NIS2 Directive, and PCI DSS 4.0.1.
-          </p>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Button
-            variant="outline"
-            onClick={loadData}
-            title="Refresh Compliance Telemetry"
-          >
-            <RefreshCw className="w-3.5 h-3.5" />
-            <span>Refresh</span>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <Button
+              variant="outline"
+              onClick={loadData}
+              title="Refresh Compliance Telemetry"
+              className="border-slate-800 hover:border-cyan-500/40 text-slate-300 hover:text-white"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Refresh</span>
+            </Button>
 
-          <Button
-            variant="cyan"
-            onClick={handleRunEvaluation}
-            disabled={evaluating}
-          >
-            <Play className={`w-3.5 h-3.5 ${evaluating ? "animate-spin" : ""}`} />
-            <span>{evaluating ? "Evaluating..." : "Run Posture Scan"}</span>
-          </Button>
+            <Button
+              variant="cyan"
+              onClick={handleRunEvaluation}
+              disabled={evaluating}
+              className="shadow-[0_0_15px_rgba(0,240,255,0.25)]"
+            >
+              <Play className={`w-3.5 h-3.5 ${evaluating ? "animate-spin" : ""}`} />
+              <span>{evaluating ? "Evaluating..." : "Run Posture Scan"}</span>
+            </Button>
 
-          <Button
-            variant="outline"
-            onClick={handleExportAirgapBundle}
-            disabled={exportingAirgap}
-          >
-            <Download className="w-3.5 h-3.5 text-cyan-400" />
-            <span>{exportingAirgap ? "Exporting..." : "Export Airgap Bundle"}</span>
-          </Button>
+            <Button
+              variant="outline"
+              onClick={handleExportAirgapBundle}
+              disabled={exportingAirgap}
+              className="border-slate-800 hover:border-slate-700 text-slate-300"
+            >
+              <Download className="w-3.5 h-3.5 text-cyan-400" />
+              <span>{exportingAirgap ? "Exporting..." : "Export Airgap Bundle"}</span>
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -296,111 +301,123 @@ export default function ContinuousCompliancePage() {
       )}
 
       {actionSuccess && (
-        <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-800/80 text-emerald-300 text-xs flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+        <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-emerald-300 text-xs flex items-center justify-between gap-3 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
+          <div className="flex items-center gap-2.5">
             <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-            <span>{actionSuccess}</span>
+            <span className="font-mono">{actionSuccess}</span>
           </div>
-          <button onClick={() => setActionSuccess(null)} className="text-slate-400 hover:text-slate-200 text-xs">
+          <button onClick={() => setActionSuccess(null)} className="text-slate-400 hover:text-slate-200 text-xs px-2 py-1">
             ✕
           </button>
         </div>
       )}
 
       {/* KPI Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-5 bg-slate-900/60 border-slate-800/80 space-y-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card variant="cyber" className="p-5 space-y-2 bg-gradient-to-b from-[#0c111e] to-[#070b14]">
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span className="font-mono">OVERALL COMPLIANCE</span>
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span className="font-mono text-[11px] uppercase tracking-wider text-slate-400">OVERALL COMPLIANCE</span>
+            <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-black text-emerald-400">{driftState.score.toFixed(1)}%</span>
-            <span className="text-xs text-emerald-500 font-semibold font-mono">TARGET &gt;= 95%</span>
+            <span className="text-3xl font-black text-emerald-400 font-mono tracking-tight">{driftState.score.toFixed(1)}%</span>
+            <span className="text-[10px] text-emerald-400 font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 border border-emerald-500/20">TARGET &gt;= 95%</span>
           </div>
-          <div className="text-xs text-slate-400">Zero non-compliant controls detected</div>
+          <div className="text-[11px] text-slate-400 font-mono">Zero non-compliant controls detected</div>
         </Card>
 
-        <Card className="p-5 bg-slate-900/60 border-slate-800/80 space-y-2">
+        <Card variant="cyber" className="p-5 space-y-2 bg-gradient-to-b from-[#0c111e] to-[#070b14]">
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span className="font-mono">POSTURE DRIFT STATUS</span>
-            <Activity className="w-4 h-4 text-cyan-400" />
+            <span className="font-mono text-[11px] uppercase tracking-wider text-slate-400">POSTURE DRIFT STATUS</span>
+            <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
+              <Activity className="w-4 h-4 text-cyan-400" />
+            </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-cyan-400">{driftState.driftStatus}</span>
-            <Badge variant="pass">ACTIVE</Badge>
+            <span className="text-2xl font-black text-cyan-400 font-mono">{driftState.driftStatus}</span>
+            <Badge variant="pass" className="text-[10px]">ACTIVE</Badge>
           </div>
-          <div className="text-xs text-slate-400">Sub-second telemetry evaluation</div>
+          <div className="text-[11px] text-slate-400 font-mono">Sub-second telemetry evaluation</div>
         </Card>
 
-        <Card className="p-5 bg-slate-900/60 border-slate-800/80 space-y-2">
+        <Card variant="cyber" className="p-5 space-y-2 bg-gradient-to-b from-[#0c111e] to-[#070b14]">
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span className="font-mono">ACTIVE SLA ALARMS</span>
-            <AlertTriangle className={`w-4 h-4 ${driftState.slaAlarms.length > 0 ? "text-amber-400" : "text-slate-500"}`} />
+            <span className="font-mono text-[11px] uppercase tracking-wider text-slate-400">ACTIVE SLA ALARMS</span>
+            <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center">
+              <AlertTriangle className={`w-4 h-4 ${driftState.slaAlarms.length > 0 ? "text-amber-400" : "text-slate-500"}`} />
+            </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className={`text-3xl font-black ${driftState.slaAlarms.length > 0 ? "text-amber-400" : "text-slate-100"}`}>
+            <span className={`text-3xl font-black font-mono ${driftState.slaAlarms.length > 0 ? "text-amber-400" : "text-slate-100"}`}>
               {driftState.slaAlarms.length}
             </span>
-            <span className="text-xs text-slate-400">Pending Remediation</span>
+            <span className="text-xs text-slate-400 font-mono">Pending Remediation</span>
           </div>
-          <div className="text-xs text-slate-400">0 critical breach risks</div>
+          <div className="text-[11px] text-slate-400 font-mono">0 critical breach risks</div>
         </Card>
 
-        <Card className="p-5 bg-slate-900/60 border-slate-800/80 space-y-2">
+        <Card variant="cyber" className="p-5 space-y-2 bg-gradient-to-b from-[#0c111e] to-[#070b14]">
           <div className="flex items-center justify-between text-xs text-slate-400">
-            <span className="font-mono">SECTOR OVERLAYS</span>
-            <Layers className="w-4 h-4 text-purple-400" />
+            <span className="font-mono text-[11px] uppercase tracking-wider text-slate-400">SECTOR OVERLAYS</span>
+            <div className="w-7 h-7 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center">
+              <Layers className="w-4 h-4 text-purple-400" />
+            </div>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-2xl font-black text-purple-400">DORA + NIS2</span>
-            <Badge variant="neutral">ADR-08</Badge>
+            <span className="text-2xl font-black text-purple-400 font-mono">DORA + NIS2</span>
+            <Badge variant="neutral" className="text-[10px]">ADR-08</Badge>
           </div>
-          <div className="text-xs text-slate-400">Financial & Essential Entities enabled</div>
+          <div className="text-[11px] text-slate-400 font-mono">Financial &amp; Essential Entities</div>
         </Card>
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-slate-800/80 gap-2">
+      {/* Cyber Tabs Navigation */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-slate-800/80">
         <button
           onClick={() => setActiveTab("overview")}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+          className={`px-4 py-2.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 ${
             activeTab === "overview"
-              ? "border-cyan-500 text-cyan-400 bg-cyan-500/5"
-              : "border-transparent text-slate-400 hover:text-slate-200"
+              ? "bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 shadow-[0_0_12px_rgba(0,240,255,0.15)]"
+              : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 border border-transparent"
           }`}
         >
-          Framework Scorecards
+          <ShieldCheck className="w-3.5 h-3.5" />
+          <span>Framework Scorecards</span>
         </button>
         <button
           onClick={() => setActiveTab("dora")}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+          className={`px-4 py-2.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 ${
             activeTab === "dora"
-              ? "border-cyan-500 text-cyan-400 bg-cyan-500/5"
-              : "border-transparent text-slate-400 hover:text-slate-200"
+              ? "bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 shadow-[0_0_12px_rgba(0,240,255,0.15)]"
+              : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 border border-transparent"
           }`}
         >
-          DORA Overlay (EU 2022/2554)
+          <Layers className="w-3.5 h-3.5" />
+          <span>DORA Overlay (EU 2022/2554)</span>
         </button>
         <button
           onClick={() => setActiveTab("nis2")}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+          className={`px-4 py-2.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 ${
             activeTab === "nis2"
-              ? "border-cyan-500 text-cyan-400 bg-cyan-500/5"
-              : "border-transparent text-slate-400 hover:text-slate-200"
+              ? "bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 shadow-[0_0_12px_rgba(0,240,255,0.15)]"
+              : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 border border-transparent"
           }`}
         >
-          NIS2 Directive (EU 2022/2555)
+          <Lock className="w-3.5 h-3.5" />
+          <span>NIS2 Directive (EU 2022/2555)</span>
         </button>
         <button
           onClick={() => setActiveTab("drift")}
-          className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+          className={`px-4 py-2.5 text-xs font-semibold rounded-lg transition-all flex items-center gap-2 ${
             activeTab === "drift"
-              ? "border-cyan-500 text-cyan-400 bg-cyan-500/5"
-              : "border-transparent text-slate-400 hover:text-slate-200"
+              ? "bg-cyan-500/15 text-cyan-300 border border-cyan-500/40 shadow-[0_0_12px_rgba(0,240,255,0.15)]"
+              : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/60 border border-transparent"
           }`}
         >
-          Posture Drift & SLA Alarms ({driftState.slaAlarms.length})
+          <Activity className="w-3.5 h-3.5" />
+          <span>Posture Drift &amp; SLA Alarms ({driftState.slaAlarms.length})</span>
         </button>
       </div>
 
@@ -411,42 +428,43 @@ export default function ContinuousCompliancePage() {
             {frameworks.map((fw) => (
               <Card
                 key={fw.code}
-                className="p-5 bg-slate-900/60 border-slate-800/80 hover:border-slate-700 transition-all flex flex-col justify-between space-y-4"
+                variant="cyber"
+                className="p-5 flex flex-col justify-between space-y-4 hover:border-cyan-500/40 transition-all bg-gradient-to-b from-[#0c111e] to-[#070b14]"
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono text-cyan-400 uppercase tracking-wider">{fw.category}</span>
+                    <span className="text-[11px] font-mono text-cyan-400 uppercase tracking-wider font-semibold">{fw.category}</span>
                     <Badge variant={fw.status === "COMPLIANT" ? "pass" : "fail"}>{fw.status}</Badge>
                   </div>
                   <div className="space-y-1">
-                    <h3 className="text-lg font-bold text-slate-100">{fw.name}</h3>
+                    <h3 className="text-base font-bold text-white">{fw.name}</h3>
                     <p className="text-xs text-slate-400 leading-relaxed">{fw.description}</p>
                   </div>
                 </div>
 
-                <div className="space-y-3 pt-2 border-t border-slate-800/60">
+                <div className="space-y-3 pt-3 border-t border-slate-800/80">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">Scorecard Readiness:</span>
+                    <span className="text-slate-400 font-mono text-[11px]">Readiness Score:</span>
                     <span className="text-emerald-400 font-bold font-mono text-sm">{fw.score}%</span>
                   </div>
 
-                  <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
+                  <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-800">
                     <div
-                      className="bg-emerald-400 h-full rounded-full transition-all duration-500"
+                      className="bg-gradient-to-r from-cyan-500 to-emerald-400 h-full rounded-full transition-all duration-500 shadow-[0_0_8px_rgba(0,240,255,0.4)]"
                       style={{ width: `${fw.score}%` }}
                     />
                   </div>
 
                   <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
                     <span>Verified Controls:</span>
-                    <span className="text-slate-200">
+                    <span className="text-slate-200 font-semibold">
                       {fw.controlsPassed} / {fw.totalControls} Passed
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
                     <span>Evidence Digest:</span>
-                    <span className="text-cyan-400 truncate max-w-[140px]" title={fw.merkleRoot}>
+                    <span className="text-cyan-400 truncate max-w-[150px] font-mono" title={fw.merkleRoot}>
                       {truncateHash(fw.merkleRoot, 10, 6)}
                     </span>
                   </div>
@@ -456,14 +474,14 @@ export default function ContinuousCompliancePage() {
           </div>
 
           {/* Quick Cross-Navigation links */}
-          <div className="p-6 rounded-2xl bg-gradient-to-r from-cyan-950/30 to-blue-950/30 border border-cyan-800/40 flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="p-6 rounded-2xl bg-gradient-to-r from-cyan-950/30 via-[#0c1527] to-blue-950/30 border border-cyan-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
             <div className="space-y-1 text-center sm:text-left">
-              <h4 className="text-base font-bold text-slate-100 flex items-center justify-center sm:justify-start gap-2">
+              <h4 className="text-base font-bold text-white flex items-center justify-center sm:justify-start gap-2">
                 <FileCheck className="w-4 h-4 text-cyan-400" />
                 <span>Continuous Security Controls Matrix</span>
               </h4>
               <p className="text-xs text-slate-400">
-                Inspect individual SOC 2 & ISO 27001 control test assertions, rerun evaluations, and review audit packages.
+                Inspect individual SOC 2 &amp; ISO 27001 control test assertions, rerun evaluations, and review audit packages.
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -474,7 +492,7 @@ export default function ContinuousCompliancePage() {
                 </Button>
               </Link>
               <Link href="/ledger">
-                <Button variant="outline">
+                <Button variant="outline" className="border-slate-700 hover:border-cyan-500/40 text-slate-300">
                   <span>Explore Merkle Ledger</span>
                 </Button>
               </Link>
@@ -486,37 +504,37 @@ export default function ContinuousCompliancePage() {
       {/* Tab 2: DORA Overlay */}
       {activeTab === "dora" && (
         <div className="space-y-6">
-          <Card className="p-6 bg-slate-900/60 border-slate-800/80 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <Card variant="cyber" className="p-6 space-y-5 bg-gradient-to-b from-[#0c111e] to-[#070b14]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-cyan-400" />
                   <span>DORA (EU 2022/2554) ICT Resilience Framework</span>
                 </h3>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-400 mt-0.5">
                   Evaluates financial institution digital operational resilience, ICT third-party risk, and incident notification limits.
                 </p>
               </div>
-              <Badge variant="pass">OVERALL SCORE: {doraEvaluation?.overallComplianceScore ?? 92}%</Badge>
+              <Badge variant="pass" className="font-mono">OVERALL SCORE: {doraEvaluation?.overallComplianceScore ?? 92}%</Badge>
             </div>
 
             {Array.isArray(doraEvaluation?.evaluations) && doraEvaluation.evaluations.length > 0 && (
-              <div className="space-y-3 pt-4 border-t border-slate-800/60">
-                <h4 className="text-xs font-mono font-bold text-slate-300 uppercase">Article Breakdown:</h4>
+              <div className="space-y-3 pt-2">
+                <h4 className="text-xs font-mono font-bold text-slate-300 uppercase tracking-wider">Article Breakdown:</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {(doraEvaluation.evaluations || []).map((item: any, idx: number) => (
                     <div
                       key={idx}
-                      className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1.5"
+                      className="p-4 rounded-xl bg-slate-950/70 border border-slate-800/80 hover:border-cyan-500/30 transition-all space-y-2"
                     >
                       <div className="flex items-center justify-between">
                         <span className="text-xs font-mono text-cyan-400 font-bold">{item.article} ({item.controlCode})</span>
                         <Badge variant={item.status === "COMPLIANT" ? "pass" : "medium"}>{item.status}</Badge>
                       </div>
                       <div className="text-xs font-medium text-slate-200">{item.title}</div>
-                      <div className="text-[11px] text-slate-400 flex items-center justify-between font-mono pt-1">
+                      <div className="text-[11px] text-slate-400 flex items-center justify-between font-mono pt-2 border-t border-slate-900">
                         <span>Domain: {item.domain}</span>
-                        <span className="text-slate-300">{item.evidenceDigest}</span>
+                        <span className="text-cyan-400/90">{item.evidenceDigest}</span>
                       </div>
                     </div>
                   ))}
@@ -530,46 +548,46 @@ export default function ContinuousCompliancePage() {
       {/* Tab 3: NIS2 Directive */}
       {activeTab === "nis2" && (
         <div className="space-y-6">
-          <Card className="p-6 bg-slate-900/60 border-slate-800/80 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <Card variant="cyber" className="p-6 space-y-5 bg-gradient-to-b from-[#0c111e] to-[#070b14]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-purple-400" />
                   <span>NIS2 Directive (EU 2022/2555) Essential Entity Compliance</span>
                 </h3>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-400 mt-0.5">
                   Continuous assurance for critical infrastructure, early warning SLA alarms (24h), and supply chain security.
                 </p>
               </div>
-              <Badge variant="pass">OVERALL SCORE: {nis2Evaluation?.overallComplianceScore ?? 95}%</Badge>
+              <Badge variant="pass" className="font-mono">OVERALL SCORE: {nis2Evaluation?.overallComplianceScore ?? 95}%</Badge>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-800/60">
-              <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+              <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-1.5">
                 <div className="text-xs text-slate-400 font-mono">24H EARLY WARNING</div>
-                <div className="text-lg font-bold text-emerald-400 flex items-center gap-1.5">
+                <div className="text-base font-bold text-emerald-400 flex items-center gap-1.5 font-mono">
                   <CheckCircle2 className="w-4 h-4" />
                   <span>WITHIN WINDOW</span>
                 </div>
-                <div className="text-[11px] text-slate-500">Target response &lt; 24h</div>
+                <div className="text-[11px] text-slate-500 font-mono">Target response &lt; 24h</div>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
+              <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-1.5">
                 <div className="text-xs text-slate-400 font-mono">72H INCIDENT NOTIFICATION</div>
-                <div className="text-lg font-bold text-emerald-400 flex items-center gap-1.5">
+                <div className="text-base font-bold text-emerald-400 flex items-center gap-1.5 font-mono">
                   <CheckCircle2 className="w-4 h-4" />
                   <span>WITHIN WINDOW</span>
                 </div>
-                <div className="text-[11px] text-slate-500">Target response &lt; 72h</div>
+                <div className="text-[11px] text-slate-500 font-mono">Target response &lt; 72h</div>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-950/60 border border-slate-800/80 space-y-1">
+              <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800/80 space-y-1.5">
                 <div className="text-xs text-slate-400 font-mono">30D FINAL REPORT</div>
-                <div className="text-lg font-bold text-emerald-400 flex items-center gap-1.5">
+                <div className="text-base font-bold text-emerald-400 flex items-center gap-1.5 font-mono">
                   <CheckCircle2 className="w-4 h-4" />
                   <span>PREPARED</span>
                 </div>
-                <div className="text-[11px] text-slate-500">Automated ledger bundle</div>
+                <div className="text-[11px] text-slate-500 font-mono">Automated ledger bundle</div>
               </div>
             </div>
           </Card>
@@ -579,14 +597,14 @@ export default function ContinuousCompliancePage() {
       {/* Tab 4: Posture Drift & Alarms */}
       {activeTab === "drift" && (
         <div className="space-y-6">
-          <Card className="p-6 bg-slate-900/60 border-slate-800/80 space-y-4">
-            <div className="flex items-center justify-between">
+          <Card variant="cyber" className="p-6 space-y-5 bg-gradient-to-b from-[#0c111e] to-[#070b14]">
+            <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
               <div>
-                <h3 className="text-lg font-bold text-slate-100 flex items-center gap-2">
+                <h3 className="text-lg font-bold text-white flex items-center gap-2">
                   <Activity className="w-5 h-5 text-amber-400" />
                   <span>Live Posture Drift SLA Alarms</span>
                 </h3>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-400 mt-0.5">
                   Continuous monitoring for configuration regression, latency spikes, or access drift breaching compliance SLAs.
                 </p>
               </div>
@@ -598,7 +616,7 @@ export default function ContinuousCompliancePage() {
             {(driftState?.slaAlarms || []).length === 0 ? (
               <div className="p-8 rounded-xl bg-slate-950/40 border border-slate-800/60 text-center space-y-2">
                 <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
-                <h4 className="text-sm font-bold text-slate-200">Zero Posture Drift Alarms</h4>
+                <h4 className="text-sm font-bold text-white">Zero Posture Drift Alarms</h4>
                 <p className="text-xs text-slate-400">All controls and telemetry pipelines are operating within nominal compliance SLAs.</p>
               </div>
             ) : (
@@ -606,15 +624,15 @@ export default function ContinuousCompliancePage() {
                 {(driftState?.slaAlarms || []).map((alarm) => (
                   <div
                     key={alarm.alarmId}
-                    className="p-4 rounded-xl bg-slate-950/60 border border-amber-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    className="p-4 rounded-xl bg-slate-950/70 border border-amber-900/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-amber-500/40 transition-all"
                   >
-                    <div className="space-y-1">
+                    <div className="space-y-1.5">
                       <div className="flex items-center gap-2">
                         <Badge variant="medium">{alarm.severity}</Badge>
-                        <span className="text-xs font-mono text-slate-300 font-bold">{alarm.controlId}</span>
-                        <span className="text-[11px] text-slate-500 font-mono">{formatTimestamp(alarm.detectedAt)}</span>
+                        <span className="text-xs font-mono text-cyan-300 font-bold">{alarm.controlId}</span>
+                        <span className="text-[11px] text-slate-500 font-mono">• {formatTimestamp(alarm.detectedAt)}</span>
                       </div>
-                      <p className="text-xs text-slate-200">{alarm.message}</p>
+                      <p className="text-xs text-slate-200 leading-relaxed">{alarm.message}</p>
                     </div>
 
                     <Button
@@ -622,8 +640,9 @@ export default function ContinuousCompliancePage() {
                       size="sm"
                       onClick={() => handleRemediateAlarm(alarm.alarmId)}
                       disabled={remediatingId === alarm.alarmId}
+                      className="shrink-0"
                     >
-                      <Zap className={`w-3 h-3 ${remediatingId === alarm.alarmId ? "animate-spin" : ""}`} />
+                      <Zap className={`w-3.5 h-3.5 ${remediatingId === alarm.alarmId ? "animate-spin" : ""}`} />
                       <span>{remediatingId === alarm.alarmId ? "Remediating..." : "Auto-Remediate"}</span>
                     </Button>
                   </div>

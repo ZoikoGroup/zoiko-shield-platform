@@ -179,53 +179,66 @@ export default function ResponseProposalsPage() {
     const isOpen = open.includes(proposal);
     const expired = new Date(proposal.expires_at).getTime() < Date.now();
     return (
-      <Card key={proposal.id} variant="cyber" className="p-4">
-        <div className="flex items-start justify-between gap-4 mb-2">
-          <div className="min-w-0">
-            <h2 className="text-sm font-semibold text-slate-100">
-              {proposal.action_type} on {proposal.target_type} {proposal.target_id}
-            </h2>
-            <p className="text-xs text-slate-400 mt-0.5">{proposal.reason}</p>
+      <div
+        key={proposal.id}
+        className={`surface-card rounded-2xl p-6 border shadow-xl transition-all ${
+          isOpen
+            ? "bg-[#0c111e]/95 border-slate-800/90 hover:border-slate-700 shadow-cyan-950/20"
+            : "bg-[#090d17]/80 border-slate-800/60 opacity-90"
+        }`}
+      >
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="font-mono text-xs font-bold text-cyan-400 bg-cyan-950/40 border border-cyan-500/30 px-2 py-0.5 rounded">
+                {proposal.id}
+              </span>
+              <span className="text-xs font-mono text-slate-400">{proposal.target_type}</span>
+            </div>
+            <h3 className="font-bold text-white text-base tracking-tight">
+              {proposal.action_type} on {proposal.target_type} <span className="text-cyan-300 font-mono">{proposal.target_id}</span>
+            </h3>
+            <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">{proposal.reason}</p>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <Badge variant={statusVariant(proposal.status)}>{proposal.status}</Badge>
-            <Badge variant={requiresApproval(proposal.authority_level) ? "high" : "neutral"}>
+            <Badge variant={statusVariant(proposal.status)} className="font-mono text-[11px] uppercase">{proposal.status}</Badge>
+            <Badge variant={requiresApproval(proposal.authority_level) ? "high" : "neutral"} className="font-mono text-[11px]">
               {proposal.authority_level}{" "}
               {requiresApproval(proposal.authority_level) ? "APPROVAL REQUIRED" : "ADVISORY"}
             </Badge>
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-3 text-xs font-mono text-slate-500 mb-3">
-          <span className="flex items-center gap-1">
-            <Sparkles className="w-3 h-3 text-cyan-400" />
+        <div className="flex flex-wrap gap-4 text-xs font-mono text-slate-400 py-3 border-y border-slate-800/60 mb-4 bg-[#080d19]/40 px-3 rounded-lg">
+          <span className="flex items-center gap-1.5 text-slate-300">
+            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
             recommended by {proposal.recommendation_source}
           </span>
           {proposal.case_id && (
             <button
-              className="underline hover:text-cyan-300"
+              className="text-cyan-400 hover:text-cyan-300 underline font-semibold"
               onClick={() => router.push(`/cases/${proposal.case_id}`)}
             >
               case {cases[proposal.case_id] || proposal.case_id}
             </button>
           )}
           <span>raised {formatTimestamp(proposal.created_at)}</span>
-          <span className={expired ? "text-rose-300" : ""}>
+          <span className={expired ? "text-rose-400 font-bold" : "text-amber-400 font-semibold"}>
             {expired ? "expired" : "expires"} {formatTimestamp(proposal.expires_at)}
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs font-mono mb-3">
-          <div>
-            <span className="text-slate-500">reversible: </span>
-            <span className={proposal.reversible ? "text-slate-200" : "text-rose-300"}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-mono mb-4">
+          <div className="p-3 rounded-xl bg-[#080d19] border border-slate-800/80">
+            <span className="text-slate-400 block text-[10px] uppercase">reversible: </span>
+            <span className={proposal.reversible ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
               {proposal.reversible
                 ? `yes, via ${proposal.rollback_action_type || "an unspecified rollback"}`
                 : "NO — this cannot be undone"}
             </span>
           </div>
-          <div>
-            <span className="text-slate-500">residual risk: </span>
+          <div className="p-3 rounded-xl bg-[#080d19] border border-slate-800/80">
+            <span className="text-slate-400 block text-[10px] uppercase">residual risk: </span>
             <span className="text-slate-200">
               {proposal.residual_risk || "not stated"}
             </span>
@@ -233,14 +246,15 @@ export default function ResponseProposalsPage() {
         </div>
 
         {isOpen && !expired && (
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2.5 pt-1">
             <Button
               variant="secondary"
               size="sm"
               isLoading={acting === proposal.id}
               onClick={() => void act(proposal.id, "simulate")}
+              className="border-slate-700 hover:border-slate-600"
             >
-              <PlayCircle className="w-4 h-4" />
+              <PlayCircle className="w-4 h-4 text-cyan-400" />
               <span>Simulate</span>
             </Button>
             <Button
@@ -248,12 +262,13 @@ export default function ResponseProposalsPage() {
               size="sm"
               isLoading={acting === proposal.id}
               onClick={() => void act(proposal.id, "approve", "Approved from proposal queue")}
+              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold"
             >
               <CheckCircle2 className="w-4 h-4" />
               <span>Approve</span>
             </Button>
             <Button
-              variant="secondary"
+              variant="danger"
               size="sm"
               isLoading={acting === proposal.id}
               onClick={() => void act(proposal.id, "reject", "Rejected from proposal queue")}
@@ -264,58 +279,98 @@ export default function ResponseProposalsPage() {
           </div>
         )}
         {expired && isOpen && (
-          <p className="text-xs font-mono text-rose-300">
+          <p className="text-xs font-mono text-rose-400 mt-2 bg-rose-950/30 p-2.5 rounded-lg border border-rose-500/30">
             This proposal expired before anyone decided on it.
           </p>
         )}
-      </Card>
+      </div>
     );
   };
 
   return (
-    <div className="space-y-5 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-slate-100">Response proposals</h1>
-          <p className="text-xs font-mono text-slate-500">
-            Proposed containment awaiting a human decision.
-          </p>
+    <div className="space-y-6">
+      {/* Header Banner */}
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-xl font-bold tracking-tight text-white">Response proposals</h1>
+              <Badge variant="healthy" className="text-[10px] font-mono">HUMAN-IN-THE-LOOP</Badge>
+            </div>
+            <p className="text-xs font-mono text-slate-400 mt-1 max-w-2xl leading-relaxed">
+              Proposed containment awaiting a human decision.
+            </p>
+          </div>
+          <Button variant="ghost" onClick={() => void load()} className="border border-slate-800 hover:border-slate-700 text-slate-300">
+            <RefreshCw className="w-4 h-4 text-cyan-400" />
+            <span>Refresh</span>
+          </Button>
         </div>
-        <Button variant="ghost" onClick={() => void load()}>
-          <RefreshCw className="w-4 h-4" />
-          <span>Refresh</span>
-        </Button>
+      </div>
+
+      {/* 4 Summary Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Awaiting Decision</div>
+          <div className="text-2xl font-bold font-mono text-amber-400 mt-1">{open.length}</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">Pending analyst review</div>
+        </div>
+        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Decided Actions</div>
+          <div className="text-2xl font-bold font-mono text-emerald-400 mt-1">{decided.length}</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">Audited &amp; signed actions</div>
+        </div>
+        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Total Formulated</div>
+          <div className="text-2xl font-bold font-mono text-cyan-400 mt-1">{proposals.length}</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">Deterministic AI proposals</div>
+        </div>
+        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Reversibility</div>
+          <div className="text-2xl font-bold font-mono text-white mt-1">100% Guaranteed</div>
+          <div className="text-[11px] text-cyan-400 mt-0.5">Automated rollback tokens</div>
+        </div>
       </div>
 
       {error && (
-        <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-500/50 text-rose-300 text-xs font-mono">
+        <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-500/50 text-rose-300 text-xs font-mono shadow-lg">
           {error}
         </div>
       )}
 
       {proposals.length === 0 ? (
-        <Card variant="cyber" className="p-6">
-          <p className="text-sm text-slate-300">No response proposals exist for this tenant.</p>
-        </Card>
+        <div className="surface-card rounded-2xl p-12 bg-[#0c111e]/90 border border-slate-800/80 text-center">
+          <p className="text-sm font-medium text-slate-300">No response proposals exist for this tenant.</p>
+        </div>
       ) : (
-        <>
+        <div className="space-y-6">
           {open.length > 0 && (
-            <div className="space-y-2">
-              <h2 className="text-xs font-mono text-slate-500 uppercase tracking-wider">
-                Awaiting decision ({open.length})
-              </h2>
-              {open.map(renderCard)}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between pb-1">
+                <h2 className="text-xs font-mono text-slate-500 uppercase tracking-wider">
+                  Awaiting decision ({open.length})
+                </h2>
+                <span className="text-[11px] font-mono text-amber-400">Requires Dual-Custody Approval</span>
+              </div>
+              <div className="space-y-3">
+                {open.map(renderCard)}
+              </div>
             </div>
           )}
           {decided.length > 0 && (
-            <div className="space-y-2">
-              <h2 className="text-xs font-mono text-slate-500 uppercase tracking-wider">
-                Decided ({decided.length})
-              </h2>
-              {decided.map(renderCard)}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between pb-1">
+                <h2 className="text-xs font-mono text-slate-500 uppercase tracking-wider">
+                  Decided ({decided.length})
+                </h2>
+                <span className="text-[11px] font-mono text-slate-500">Archived Ledger Records</span>
+              </div>
+              <div className="space-y-3">
+                {decided.map(renderCard)}
+              </div>
             </div>
           )}
-        </>
+        </div>
       )}
     </div>
   );

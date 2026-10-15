@@ -145,16 +145,16 @@ export default function PlatformAdminPage() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto p-6">
       {/* Header Banner */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-[#141226] via-[#10141f] to-[#111f26] border border-cyan-500/30 shadow-[0_0_35px_rgba(6,182,212,0.12)] flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="surface-card p-6 rounded-2xl bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] border border-slate-800/80 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="w-2.5 h-2.5 rounded-full bg-purple-400 animate-pulse" />
-            <span className="text-xs font-mono font-bold text-purple-300 tracking-wider uppercase">
+            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
+            <span className="text-xs font-mono font-bold text-cyan-300 tracking-wider uppercase">
               SUPER-ADMIN OPERATIONS CENTER
             </span>
             <Badge variant="ai">PLATFORM_ROLE_MANAGE</Badge>
           </div>
-          <h1 className="text-2xl font-black text-slate-100 tracking-tight">
+          <h1 className="text-2xl font-black text-white tracking-tight">
             Multi-Tenant Administration &amp; Platform Controls
           </h1>
           <p className="text-sm text-slate-400 max-w-2xl leading-relaxed">
@@ -193,10 +193,10 @@ export default function PlatformAdminPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs">
           {/* Circuit Breaker 1: AI Inference Kill-Switch */}
-          <Card className={`p-5 space-y-3 border transition-all ${
+          <div className={`surface-card p-5 rounded-xl space-y-3 border transition-all ${
             isAiKillSwitchEngaged
               ? "bg-rose-950/40 border-rose-500/50 shadow-[0_0_20px_rgba(244,63,94,0.2)]"
-              : "bg-slate-900/60 border-slate-800"
+              : "bg-[#0c111e]/90 border-slate-800/80 shadow-lg"
           }`}>
             <div className="flex items-center justify-between">
               <span className="text-slate-300 font-bold">AI INFERENCE CIRCUIT BREAKER</span>
@@ -217,13 +217,13 @@ export default function PlatformAdminPage() {
                 {isAiKillSwitchEngaged ? "Disengage Switch" : "Break-Glass Freeze"}
               </Button>
             </div>
-          </Card>
+          </div>
 
           {/* Circuit Breaker 2: Ingestion Throttling */}
-          <Card className={`p-5 space-y-3 border transition-all ${
+          <div className={`surface-card p-5 rounded-xl space-y-3 border transition-all ${
             isIngestThrottled
               ? "bg-amber-950/40 border-amber-500/50 shadow-[0_0_20px_rgba(245,158,11,0.2)]"
-              : "bg-slate-900/60 border-slate-800"
+              : "bg-[#0c111e]/90 border-slate-800/80 shadow-lg"
           }`}>
             <div className="flex items-center justify-between">
               <span className="text-slate-300 font-bold">INGESTION PIPELINE THROTTLER</span>
@@ -244,13 +244,13 @@ export default function PlatformAdminPage() {
                 {isIngestThrottled ? "Restore Full Speed" : "Throttle 50%"}
               </Button>
             </div>
-          </Card>
+          </div>
 
           {/* Circuit Breaker 3: SOAR Containment Freeze */}
-          <Card className={`p-5 space-y-3 border transition-all ${
+          <div className={`surface-card p-5 rounded-xl space-y-3 border transition-all ${
             isSoarFrozen
               ? "bg-purple-950/40 border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.2)]"
-              : "bg-slate-900/60 border-slate-800"
+              : "bg-[#0c111e]/90 border-slate-800/80 shadow-lg"
           }`}>
             <div className="flex items-center justify-between">
               <span className="text-slate-300 font-bold">SOAR PLAYBOOK AUTONOMOUS FREEZE</span>
@@ -271,7 +271,7 @@ export default function PlatformAdminPage() {
                 {isSoarFrozen ? "Unfreeze SOAR" : "Freeze Containment"}
               </Button>
             </div>
-          </Card>
+          </div>
         </div>
       </div>
 

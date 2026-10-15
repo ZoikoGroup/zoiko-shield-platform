@@ -135,91 +135,113 @@ export default function EvidenceOperationsPage() {
   const verified = records.length - needsAttention.length;
 
   return (
-    <div className="space-y-5 p-6">
-      <div className="flex items-center justify-between">
+    <div className="min-h-screen bg-[#060911] text-slate-100 p-6 space-y-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-[#162238] pb-6">
         <div>
-          <h1 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
-            <FileWarning className="w-5 h-5 text-amber-400" />
-            Evidence operations
+          <div className="flex items-center gap-2 mb-1.5">
+            <Badge variant="info" className="font-mono text-[10px] tracking-wider border-amber-500/30 bg-amber-500/10 text-amber-400">
+              SPEC §W24 / ASSURANCE QUEUE
+            </Badge>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 shadow-sm shadow-amber-500/20">
+              <FileWarning className="w-6 h-6" />
+            </div>
+            <span className="bg-gradient-to-r from-white via-slate-100 to-amber-300 bg-clip-text text-transparent">
+              Evidence operations
+            </span>
           </h1>
-          <p className="text-xs font-mono text-slate-500">
-            Records whose integrity or completeness is not established.
+          <p className="text-xs font-mono text-slate-400 mt-1">
+            Records whose integrity or completeness is not established. Worst-first prioritized verification.
           </p>
         </div>
-        <Button variant="ghost" onClick={() => void load()}>
-          <RefreshCw className="w-4 h-4" />
+        <Button variant="ghost" onClick={() => void load()} className="border border-[#162238] bg-[#0c111e] hover:bg-[#111a2e] text-slate-300">
+          <RefreshCw className="w-4 h-4 text-cyan-400" />
           <span>Refresh</span>
         </Button>
       </div>
 
       {error && (
-        <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-500/50 text-rose-300 text-xs font-mono">
+        <div className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-300 text-xs font-mono">
           {error}
         </div>
       )}
 
-      <Card variant="cyber" className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs font-mono">
-          <div>
-            <p className="text-slate-500">total records</p>
-            <p className="text-slate-200 text-base">{records.length}</p>
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-cyan-500/40 transition-all">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 font-mono">Total Records</span>
+          <div className="text-2xl font-bold text-white mt-1 font-mono">{records.length}</div>
+          <span className="text-[10px] text-slate-500 mt-1 inline-block font-mono">Ingested evidence items</span>
+        </Card>
+        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-emerald-500/40 transition-all">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 font-mono">Fully Verified & Complete</span>
+          <div className="text-2xl font-bold text-emerald-400 mt-1 font-mono">{verified}</div>
+          <span className="text-[10px] text-emerald-400/80 mt-1 inline-block font-mono">Passed cryptographic assurance</span>
+        </Card>
+        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-amber-500/40 transition-all">
+          <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 font-mono">Needing Attention</span>
+          <div className={`text-2xl font-bold mt-1 font-mono ${needsAttention.length > 0 ? "text-amber-400" : "text-slate-400"}`}>
+            {needsAttention.length}
           </div>
-          <div>
-            <p className="text-slate-500">fully verified and complete</p>
-            <p className="text-slate-200 text-base">{verified}</p>
-          </div>
-          <div>
-            <p className="text-slate-500">needing attention</p>
-            <p
-              className={`text-base ${needsAttention.length > 0 ? "text-amber-300" : "text-slate-200"}`}
-            >
-              {needsAttention.length}
-            </p>
-          </div>
-        </div>
-      </Card>
+          <span className="text-[10px] text-amber-400/80 mt-1 inline-block font-mono">Pending, degraded or unverified</span>
+        </Card>
+      </div>
 
       {records.length === 0 ? (
-        <Card variant="cyber" className="p-6">
-          <p className="text-sm text-slate-300">No evidence records exist for this tenant.</p>
-          <p className="text-xs font-mono text-slate-500 mt-1">
+        <Card className="surface-card border border-[#162238] p-8 text-center rounded-xl">
+          <p className="text-sm font-semibold text-slate-200">No evidence records exist for this tenant.</p>
+          <p className="text-xs font-mono text-slate-500 mt-1.5 max-w-md mx-auto">
             An empty ledger is not a clean one — nothing has been collected yet.
           </p>
         </Card>
       ) : needsAttention.length === 0 ? (
-        <Card variant="cyber" className="p-6">
-          <p className="text-sm text-slate-200 flex items-center gap-2">
-            <ShieldCheck className="w-4 h-4 text-emerald-400" />
-            Every record is verified and complete.
-          </p>
+        <Card className="surface-card border border-[#162238] p-8 text-center rounded-xl">
+          <div className="flex flex-col items-center justify-center">
+            <div className="p-3 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 mb-3 shadow-lg shadow-emerald-500/10">
+              <ShieldCheck className="w-8 h-8" />
+            </div>
+            <p className="text-sm font-semibold text-white">Every record is verified and complete.</p>
+            <p className="text-xs font-mono text-slate-400 mt-1">
+              Zero unverified items in the work queue.
+            </p>
+          </div>
         </Card>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-3">
           {needsAttention.map((record) => (
-            <Card key={record.id} variant="cyber" className="p-4">
-              <div className="flex items-start justify-between gap-4">
+            <Card key={record.id} className="surface-card p-4 border border-[#162238] rounded-xl hover:border-amber-500/30 transition-all">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="text-sm text-slate-200">{record.evidence_type}</p>
-                  <div className="flex flex-wrap gap-3 text-xs font-mono text-slate-500 mt-1">
-                    <span>from {record.source_system_id}</span>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold text-white tracking-wide">{record.evidence_type}</p>
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-[#060911] border border-[#162238] text-slate-400">
+                      ID: {record.id.slice(0, 8)}…
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3 text-xs font-mono text-slate-400 mt-1.5">
+                    <span>from <span className="text-cyan-400">{record.source_system_id}</span></span>
+                    <span>•</span>
                     <span>collected {formatTimestamp(record.created_at)}</span>
-                    <span className="break-all">
-                      {record.content_hash?.slice(0, 16)}…
+                    <span>•</span>
+                    <span className="break-all text-[11px] text-slate-400">
+                      SHA: <span className="text-emerald-400">{record.content_hash?.slice(0, 16)}…</span>
                     </span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <Badge variant={integrityVariant(record.integrity_state)}>
+                  <Badge variant={integrityVariant(record.integrity_state)} className="font-mono text-[10px]">
                     {record.integrity_state}
                   </Badge>
-                  <Badge variant={completenessVariant(record.completeness_state)}>
+                  <Badge variant={completenessVariant(record.completeness_state)} className="font-mono text-[10px]">
                     {record.completeness_state}
                   </Badge>
                   <Button
-                    variant="secondary"
+                    variant="primary"
                     size="sm"
                     isLoading={verifying === record.id}
                     onClick={() => void verify(record.id)}
+                    className="border border-cyan-500/30 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold text-xs shadow-sm"
                   >
                     <span>Verify</span>
                   </Button>

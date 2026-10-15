@@ -284,24 +284,24 @@ export default function MerkleLedgerExplorerPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="min-h-screen bg-[#060911] text-slate-100 p-6 space-y-6">
       {/* Header Banner */}
-      <div className="p-6 rounded-2xl bg-[#0e121b] border border-cyan-500/30 shadow-xl space-y-3">
+      <div className="surface-card p-6 rounded-2xl border border-cyan-500/30 shadow-[0_0_35px_rgba(6,182,212,0.12)] space-y-3 bg-gradient-to-r from-[#0c111e] via-[#080d1a] to-[#120e24]">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+              <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 shadow-sm shadow-cyan-500/20">
                 <GitCommit className="w-6 h-6" />
               </div>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-xl font-bold text-white tracking-wide">
                     Cryptographic Evidence &amp; Merkle Anchoring Explorer
                   </h1>
-                  <Badge variant="anchored">ZS-MERKLE-V1 Profile</Badge>
-                  <Badge variant="pass">Dual-Witness Sealed</Badge>
+                  <Badge variant="info" className="font-mono text-[10px]">ZS-MERKLE-V1 Profile</Badge>
+                  <Badge variant="pass" className="font-mono text-[10px]">Dual-Witness Sealed</Badge>
                 </div>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-400 mt-1">
                   Architecture: <span className="font-mono text-cyan-400">ADR-01</span> (Immutable Merkle Evidence Ledger) &amp; <span className="font-mono text-cyan-400">ZS-MERKLE-V1</span>
                 </p>
               </div>
@@ -309,11 +309,11 @@ export default function MerkleLedgerExplorerPage() {
           </div>
 
           <div className="flex items-center gap-3 font-mono text-xs">
-            <div className="px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-300">
+            <div className="px-3 py-1.5 rounded-lg bg-[#060911] border border-[#162238] text-slate-300">
               Active Epoch:{" "}
               <span className="text-cyan-400 font-bold">#{epochNumber}</span>
             </div>
-            <div className="px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-300">
+            <div className="px-3 py-1.5 rounded-lg bg-[#060911] border border-[#162238] text-slate-300">
               {leaves.length} Leaf{leaves.length !== 1 ? "ves" : ""} Anchored
             </div>
           </div>
@@ -323,34 +323,34 @@ export default function MerkleLedgerExplorerPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Checkpoint Card & Witness Signatures */}
         <div className="space-y-6">
-          <Card className="p-5 space-y-4 font-mono text-xs">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+          <Card className="surface-card p-5 border border-[#162238] rounded-xl space-y-4 font-mono text-xs shadow-md">
+            <div className="flex items-center justify-between border-b border-[#162238] pb-3">
               <div className="flex items-center gap-2 text-sm font-bold text-slate-100">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
                 <span>Epoch Checkpoint #{epochNumber}</span>
               </div>
-              <Badge variant="healthy">VERIFIED</Badge>
+              <Badge variant="pass" className="font-mono text-[10px]">VERIFIED</Badge>
             </div>
 
-            <div className="space-y-2.5">
+            <div className="space-y-3">
               <div>
-                <span className="text-slate-500">Declared Merkle Root:</span>
-                <div className="p-2 bg-slate-950 border border-slate-800 rounded text-[11px] text-cyan-300 font-bold break-all mt-1">
+                <span className="text-slate-400 uppercase text-[10px] font-semibold">Declared Merkle Root:</span>
+                <div className="p-2.5 bg-[#060911] border border-[#162238] rounded-lg text-[11px] text-cyan-300 font-bold break-all mt-1">
                   {merkleRoot}
                 </div>
               </div>
 
               <div>
-                <span className="text-slate-500">Checkpoint Dual-Signatures:</span>
-                <div className="mt-1.5 space-y-1.5">
-                  <div className="p-2 bg-slate-900/60 border border-slate-800 rounded text-[11px] text-slate-300">
+                <span className="text-slate-400 uppercase text-[10px] font-semibold">Checkpoint Dual-Signatures:</span>
+                <div className="mt-1.5 space-y-2">
+                  <div className="p-2.5 bg-[#060911] border border-[#162238] rounded-lg text-[11px] text-slate-300">
                     <div className="flex items-center justify-between font-bold text-cyan-400">
                       <span>Post-Quantum (FIPS 204 ML-DSA-65)</span>
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                     </div>
                     <div className="text-[10px] text-slate-400 truncate mt-0.5">{pqcSignature}</div>
                   </div>
-                  <div className="p-2 bg-slate-900/60 border border-slate-800 rounded text-[11px] text-slate-300">
+                  <div className="p-2.5 bg-[#060911] border border-[#162238] rounded-lg text-[11px] text-slate-300">
                     <div className="flex items-center justify-between font-bold text-emerald-400">
                       <span>Classical (NIST ECDSA P-256)</span>
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
@@ -358,10 +358,10 @@ export default function MerkleLedgerExplorerPage() {
                     <div className="text-[10px] text-slate-400 truncate mt-0.5">{ecdsaSignature}</div>
                   </div>
                   {activeReceipt?.hsmKeyCustody && (
-                    <div className="p-2 bg-slate-900/60 border border-slate-800 rounded text-[10px] text-slate-300 space-y-0.5">
-                      <div className="flex items-center justify-between text-purple-400 font-bold">
+                    <div className="p-2.5 bg-[#060911] border border-[#162238] rounded-lg text-[10px] text-slate-300 space-y-0.5">
+                      <div className="flex items-center justify-between text-indigo-400 font-bold">
                         <span>HSM Key Custody</span>
-                        <Badge variant="neutral">{activeReceipt.hsmKeyCustody.fipsLevel}</Badge>
+                        <Badge variant="neutral" className="text-[10px]">{activeReceipt.hsmKeyCustody.fipsLevel}</Badge>
                       </div>
                       <div className="truncate text-slate-400 font-mono">{activeReceipt.hsmKeyCustody.keyId} ({activeReceipt.hsmKeyCustody.provider})</div>
                     </div>
@@ -372,20 +372,20 @@ export default function MerkleLedgerExplorerPage() {
               <div className="pt-2 space-y-2">
                 <Button
                   variant="outline"
-                  className="w-full py-2 flex items-center justify-center gap-2 border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10 font-bold"
+                  className="w-full py-2.5 flex items-center justify-center gap-2 border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10 font-bold bg-[#0c111e]"
                   onClick={() => handleSealEpochBatch()}
                   isLoading={isSealing}
                 >
-                  <RefreshCw className="w-4 h-4" />
+                  <RefreshCw className="w-4 h-4 text-cyan-400" />
                   <span>Seal Live Epoch Batch</span>
                 </Button>
                 <Button
                   variant="outline"
-                  className="w-full py-2 flex items-center justify-center gap-2 border-slate-700 text-slate-300 hover:bg-slate-800 font-bold"
+                  className="w-full py-2.5 flex items-center justify-center gap-2 border-[#162238] text-slate-300 hover:bg-slate-800 font-bold bg-[#0c111e]"
                   onClick={() => handleExportAuditPackage()}
                   isLoading={isExporting}
                 >
-                  <Download className="w-4 h-4" />
+                  <Download className="w-4 h-4 text-cyan-400" />
                   <span>Export Signed Audit Package</span>
                 </Button>
               </div>
@@ -393,10 +393,10 @@ export default function MerkleLedgerExplorerPage() {
           </Card>
 
           {/* Inclusion Proof Card */}
-          <Card className="p-5 space-y-3 font-mono text-xs">
-            <div className="text-sm font-bold text-slate-200 border-b border-slate-800 pb-2 flex items-center justify-between">
+          <Card className="surface-card p-5 border border-[#162238] rounded-xl space-y-3 font-mono text-xs shadow-md">
+            <div className="text-sm font-bold text-slate-200 border-b border-[#162238] pb-2 flex items-center justify-between">
               <span>On-Demand Inclusion Proof</span>
-              <Badge variant="neutral">Leaf #{selectedLeafIndex}</Badge>
+              <Badge variant="neutral" className="font-mono text-[10px]">Leaf #{selectedLeafIndex}</Badge>
             </div>
 
             <p className="text-slate-400 text-[11px]">
@@ -405,12 +405,12 @@ export default function MerkleLedgerExplorerPage() {
             </p>
 
             {inclusionProof && (
-              <div className="p-2.5 rounded bg-slate-950 border border-slate-800 text-[11px] space-y-1">
+              <div className="p-2.5 rounded-lg bg-[#060911] border border-[#162238] text-[11px] space-y-1">
                 <div className="flex items-center justify-between text-slate-400">
                   <span>Audit Path Sibling Depth:</span>
                   <span className="text-cyan-400 font-bold">{inclusionProof.auditPath?.length || 0} nodes</span>
                 </div>
-                <div className="text-[10px] text-slate-500 truncate">
+                <div className="text-[10px] text-slate-400 truncate">
                   Leaf Hash: {inclusionProof.leafHash}
                 </div>
               </div>
@@ -418,7 +418,7 @@ export default function MerkleLedgerExplorerPage() {
 
             <Button
               variant="primary"
-              className="w-full py-2 flex items-center justify-center gap-2 bg-cyan-600 hover:bg-cyan-500 font-bold"
+              className="w-full py-2.5 flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold border border-cyan-400/30 shadow-md shadow-cyan-950/40"
               onClick={() => handleVerifyInclusionProof()}
               disabled={isVerifying}
             >
@@ -430,7 +430,7 @@ export default function MerkleLedgerExplorerPage() {
             </Button>
 
             {verificationResult && (
-              <div className={`p-3 rounded border text-[11px] flex items-center gap-2 ${
+              <div className={`p-3 rounded-lg border text-[11px] flex items-center gap-2 ${
                 verificationResult.valid
                   ? "bg-emerald-950/40 border-emerald-500/40 text-emerald-300"
                   : "bg-rose-950/40 border-rose-500/40 text-rose-300"
@@ -454,7 +454,7 @@ export default function MerkleLedgerExplorerPage() {
             )}
 
             {statusMessage && (
-              <div className="p-2 rounded bg-cyan-950/30 border border-cyan-500/30 text-cyan-300 text-[10px]">
+              <div className="p-2.5 rounded-lg bg-cyan-950/30 border border-cyan-500/30 text-cyan-300 text-[10px]">
                 {statusMessage}
               </div>
             )}
@@ -463,15 +463,15 @@ export default function MerkleLedgerExplorerPage() {
 
         {/* Right 2 Columns: Merkle Tree Leaf Nodes */}
         <div className="lg:col-span-2 space-y-6">
-          <Card className="p-6 space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+          <Card className="surface-card p-6 border border-[#162238] rounded-xl space-y-5 shadow-lg">
+            <div className="flex items-center justify-between border-b border-[#162238] pb-4">
               <div className="flex items-center gap-2">
                 <Layers className="w-5 h-5 text-cyan-400" />
                 <h2 className="text-sm font-bold text-slate-100">
                   Domain-Separated Binary Merkle Tree (ZS-MERKLE-V1) Leaves
                 </h2>
               </div>
-              <span className="text-xs font-mono text-slate-400">
+              <span className="text-xs font-mono text-cyan-400/80">
                 {leaves.length} Leaves in Batch
               </span>
             </div>
@@ -481,32 +481,32 @@ export default function MerkleLedgerExplorerPage() {
                 <div
                   key={leaf.index}
                   onClick={() => setSelectedLeafIndex(leaf.index)}
-                  className={`p-4 rounded-xl border font-mono text-xs transition-all cursor-pointer space-y-2 ${
+                  className={`p-4 rounded-xl border font-mono text-xs transition-all cursor-pointer space-y-2.5 ${
                     selectedLeafIndex === leaf.index
-                      ? "bg-cyan-500/10 border-cyan-500/60 shadow-lg shadow-cyan-900/20"
-                      : "bg-slate-950 border-slate-800 hover:border-slate-700"
+                      ? "bg-cyan-500/10 border-cyan-400 shadow-[0_0_20px_rgba(0,240,255,0.15)] ring-1 ring-cyan-400/30"
+                      : "bg-[#060911] border-[#162238] hover:border-cyan-500/40"
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">
+                      <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30 text-[10px]">
                         LEAF #{leaf.index}
                       </span>
-                      <span className="text-slate-200 font-bold truncate max-w-[180px]">
+                      <span className="text-slate-200 font-bold truncate max-w-[220px]">
                         {leaf.evidenceId}
                       </span>
                     </div>
-                    <Badge variant="neutral">{leaf.eventType}</Badge>
+                    <Badge variant="neutral" className="font-mono text-[10px]">{leaf.eventType}</Badge>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
-                    <div className="p-2 rounded bg-slate-900/60 border border-slate-800">
-                      <span className="text-slate-500">Payload Digest:</span>
-                      <div className="text-slate-300 font-bold truncate">{leaf.payloadDigest}</div>
+                    <div className="p-2 rounded bg-[#0c111e] border border-[#162238]">
+                      <span className="text-slate-500 text-[10px] uppercase font-semibold">Payload Digest:</span>
+                      <div className="text-slate-300 font-bold truncate mt-0.5">{leaf.payloadDigest}</div>
                     </div>
-                    <div className="p-2 rounded bg-slate-900/60 border border-slate-800">
-                      <span className="text-slate-500">Domain-Separated Hash (0x00 || Leaf):</span>
-                      <div className="text-cyan-400 font-bold truncate">{leaf.leafHash}</div>
+                    <div className="p-2 rounded bg-[#0c111e] border border-[#162238]">
+                      <span className="text-slate-500 text-[10px] uppercase font-semibold">Domain-Separated Hash (0x00 || Leaf):</span>
+                      <div className="text-cyan-400 font-bold truncate mt-0.5">{leaf.leafHash}</div>
                     </div>
                   </div>
                 </div>

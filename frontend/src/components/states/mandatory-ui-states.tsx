@@ -42,17 +42,17 @@ export const LoadingState: React.FC<StateProps> = ({
     role="status"
     aria-live="polite"
     aria-busy="true"
-    className="flex flex-col items-center justify-center p-12 rounded-xl border border-slate-800 bg-slate-950/60 backdrop-blur-md text-center space-y-4"
+    className="flex flex-col items-center justify-center p-12 rounded-xl border border-[#162238] bg-[#0c111e]/90 backdrop-blur-md text-center space-y-4 shadow-xl"
   >
     <div className="relative">
-      <div className="w-12 h-12 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin flex items-center justify-center" />
-      <Loader2 className="w-6 h-6 text-indigo-400 absolute inset-0 m-auto animate-pulse" />
+      <div className="w-12 h-12 rounded-full border-2 border-cyan-500/20 border-t-cyan-400 animate-spin flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.2)]" />
+      <Loader2 className="w-6 h-6 text-cyan-400 absolute inset-0 m-auto animate-pulse" />
     </div>
     <div className="space-y-1">
-      <h3 className="text-sm font-semibold text-slate-200">{title}</h3>
+      <h3 className="text-sm font-semibold text-slate-100">{title}</h3>
       <p className="text-xs text-slate-400 max-w-sm">{message}</p>
     </div>
-    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-slate-900 border border-slate-800 text-slate-400">
+    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-[#080c16] border border-[#162238] text-slate-400">
       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
       Cell: {regionalCell} [sovereign]
     </div>
@@ -121,9 +121,9 @@ export const StaleState: React.FC<StateProps> = ({
     {retryAction && (
       <button
         onClick={() => retryAction()}
-        className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 font-medium"
+        className="text-xs text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-mono font-medium transition-colors"
       >
-        <RefreshCw className="w-3 h-3" /> Refresh
+        <RefreshCw className="w-3 h-3 text-cyan-400" /> Refresh
       </button>
     )}
   </div>

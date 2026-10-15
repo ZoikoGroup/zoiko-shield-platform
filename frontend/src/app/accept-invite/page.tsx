@@ -183,7 +183,7 @@ function AcceptInviteInner() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto py-8 space-y-6">
+    <div className="max-w-3xl mx-auto py-8 space-y-8">
       <div className="text-center space-y-2">
         <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-cyan-500 to-indigo-600 flex items-center justify-center text-slate-950 font-black text-xl shadow-[0_0_30px_rgba(6,182,212,0.4)] mx-auto">
           ZS
@@ -194,8 +194,8 @@ function AcceptInviteInner() {
             TENANT OWNER ACTIVATION
           </span>
         </div>
-        <h1 className="text-2xl font-black text-slate-100 tracking-tight">
-          Activate Your ZoikoShield Organization
+        <h1 className="text-3xl font-black text-slate-100 tracking-tight">
+          Activate Your ZoikoShield Workspace
         </h1>
         <p className="text-sm text-slate-400">
           Review legal entity metadata, accept access disclosures, and authenticate with ZoikoID.
@@ -203,14 +203,14 @@ function AcceptInviteInner() {
       </div>
 
       {error && (
-        <div className="p-3.5 rounded-xl bg-rose-950/50 border border-rose-500/50 text-rose-300 text-xs font-mono flex items-center gap-2">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
+        <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-500/50 text-rose-300 text-xs font-mono flex items-center gap-2 shadow-[0_0_15px_rgba(244,63,94,0.15)]">
+          <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-400" />
           <span>{error}</span>
         </div>
       )}
 
       {successRedirect && (
-        <div className="p-4 rounded-xl bg-emerald-950/50 border border-emerald-500/50 text-emerald-300 text-xs font-mono flex items-center gap-2">
+        <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 text-xs font-mono flex items-center gap-2 shadow-[0_0_15px_rgba(16,185,129,0.15)]">
           <CheckCircle className="w-4 h-4 flex-shrink-0 text-emerald-400 animate-pulse" />
           <span>Activation token accepted! Redirecting to secure identity verification...</span>
         </div>
@@ -219,32 +219,32 @@ function AcceptInviteInner() {
       {invitation && (
         <form onSubmit={handleActivate} className="space-y-6">
           {/* Tenant & Environment Overview */}
-          <Card variant="cyber" className="p-5 space-y-4">
+          <Card variant="cyber" className="p-6 space-y-4">
             <h2 className="text-sm font-mono font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
               <Building2 className="w-4 h-4 text-cyan-400" />
               <span>Target Organization &amp; Environment</span>
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
-              <div className="p-3 bg-slate-900/80 rounded-xl border border-slate-800 space-y-1">
+              <div className="p-3.5 bg-[#060911] rounded-xl border border-[#162238] space-y-1 shadow-inner">
                 <span className="text-slate-500 block">Organization Name</span>
                 <span className="text-slate-100 font-bold">{invitation.tenant.name}</span>
                 <span className="text-slate-500 text-[10px] block">Slug: {invitation.tenant.slug}</span>
               </div>
-              <div className="p-3 bg-slate-900/80 rounded-xl border border-slate-800 space-y-1">
+              <div className="p-3.5 bg-[#060911] rounded-xl border border-[#162238] space-y-1 shadow-inner">
                 <span className="text-slate-500 block">Environment &amp; Region</span>
                 <span className="text-cyan-400 font-bold">{invitation.environment.name}</span>
                 <span className="text-slate-400 text-[10px] block">
                   Region: {invitation.environment.region} ({invitation.environment.type})
                 </span>
               </div>
-              <div className="p-3 bg-slate-900/80 rounded-xl border border-slate-800 space-y-1">
+              <div className="p-3.5 bg-[#060911] rounded-xl border border-[#162238] space-y-1 shadow-inner">
                 <span className="text-slate-500 block">Invited Owner Identity</span>
                 <span className="text-slate-200 font-bold flex items-center gap-1.5">
                   <Mail className="w-3.5 h-3.5 text-cyan-400" />
                   {invitation.owner.email}
                 </span>
               </div>
-              <div className="p-3 bg-slate-900/80 rounded-xl border border-slate-800 space-y-1">
+              <div className="p-3.5 bg-[#060911] rounded-xl border border-[#162238] space-y-1 shadow-inner">
                 <span className="text-slate-500 block">Token Expiration</span>
                 <span className="text-amber-400 font-bold">
                   {new Date(invitation.expiresAt).toLocaleString()}
@@ -254,7 +254,7 @@ function AcceptInviteInner() {
           </Card>
 
           {/* Access Disclosure Terms */}
-          <Card variant="cyber" className="p-5 space-y-3">
+          <Card variant="cyber" className="p-6 space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-mono font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
                 <FileText className="w-4 h-4 text-cyan-400" />
@@ -264,7 +264,7 @@ function AcceptInviteInner() {
                 v{invitation.accessDisclosure.version}
               </Badge>
             </div>
-            <div className="p-3.5 bg-slate-950/80 rounded-xl border border-slate-800 text-[11px] font-mono text-slate-300 max-h-48 overflow-y-auto leading-relaxed whitespace-pre-wrap">
+            <div className="p-4 bg-[#060911] rounded-xl border border-[#162238] text-[11px] font-mono text-slate-300 max-h-48 overflow-y-auto leading-relaxed whitespace-pre-wrap shadow-inner">
               {invitation.accessDisclosure.content || (
                 "By activating this tenant organization on the ZoikoShield Platform, you affirm that you are the authorized representative of the legal entity. All telemetry, audit trails, and Merkle ledger entries within this tenant will be cryptographically anchored and accessible according to your organization's role-based and Cedar deterministic policies."
               )}
@@ -286,7 +286,7 @@ function AcceptInviteInner() {
 
           {/* Identity Provider Selection */}
           {invitation.identityProviders && invitation.identityProviders.length > 0 && (
-            <Card variant="cyber" className="p-5 space-y-3">
+            <Card variant="cyber" className="p-6 space-y-3">
               <h2 className="text-sm font-mono font-bold text-slate-200 uppercase tracking-wider flex items-center gap-2">
                 <KeyRound className="w-4 h-4 text-cyan-400" />
                 <span>Authentication Authority (ZoikoID)</span>
@@ -295,10 +295,10 @@ function AcceptInviteInner() {
                 {(invitation.identityProviders || []).map((idp) => (
                   <label
                     key={idp.id}
-                    className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${
+                    className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-all ${
                       selectedIdp === idp.id
-                        ? "bg-cyan-950/40 border-cyan-500/60 text-cyan-200"
-                        : "bg-slate-900/50 border-slate-800 text-slate-400 hover:border-slate-700"
+                        ? "bg-gradient-to-r from-cyan-950/50 to-[#0a0f1d] border-cyan-400/80 text-cyan-200 shadow-[0_0_15px_rgba(6,182,212,0.15)] ring-1 ring-cyan-400/30"
+                        : "bg-[#060911] border-[#162238] text-slate-400 hover:border-slate-700"
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
@@ -312,7 +312,7 @@ function AcceptInviteInner() {
                       />
                       <span className="text-xs font-mono font-bold text-slate-200">{idp.name}</span>
                     </div>
-                    <span className="text-[10px] font-mono uppercase bg-slate-800 px-2 py-0.5 rounded text-slate-300">
+                    <span className="text-[10px] font-mono uppercase bg-[#0a0f1d] border border-[#162238] px-2 py-0.5 rounded text-slate-300">
                       {idp.protocol}
                     </span>
                   </label>
@@ -336,7 +336,7 @@ function AcceptInviteInner() {
             <Button
               type="button"
               variant="outline"
-              className="w-full sm:w-auto"
+              className="w-full sm:w-auto border-[#162238] bg-[#0a0f1d] hover:border-slate-700"
               onClick={() => router.push("/login")}
             >
               Cancel

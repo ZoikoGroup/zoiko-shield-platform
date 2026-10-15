@@ -836,13 +836,13 @@ export default function CopilotPage() {
   return (
     <div className="space-y-8 pb-16">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono">
             <Bot className="w-3.5 h-3.5" />
             <span>DETERMINISTIC AI COPILOT • SPEC §16.1 COMPLIANT</span>
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-100">
+          <h1 className="text-2xl font-extrabold tracking-tight text-white">
             ZoikoShield AI Security Copilot
           </h1>
           <p className="text-slate-400 text-xs max-w-2xl">
@@ -852,11 +852,11 @@ export default function CopilotPage() {
 
         {/* Governance & Rule CAT-02 Neutrality Badge */}
         <div className="flex items-center gap-3">
-          <div className="px-3 py-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-right shrink-0">
+          <div className="px-3 py-1.5 rounded-lg bg-[#080c16] border border-slate-800 text-right shrink-0">
             <div className="text-[10px] font-mono text-slate-500 uppercase">Governance Rule CAT-02</div>
             <div className="text-xs font-mono text-cyan-400 font-bold">Unbranded AI Architecture</div>
           </div>
-          <div className="px-3 py-1.5 rounded-lg bg-slate-900/90 border border-slate-800 text-right shrink-0">
+          <div className="px-3 py-1.5 rounded-lg bg-[#080c16] border border-slate-800 text-right shrink-0">
             <div className="text-[10px] font-mono text-slate-500 uppercase">Decision Rights Spec</div>
             <div className="text-xs font-mono text-emerald-400 font-bold">§16.1 10-Field Mandatory</div>
           </div>
@@ -883,7 +883,7 @@ export default function CopilotPage() {
               className={`p-3 rounded-xl flex items-center gap-2 text-xs font-mono font-medium transition-all ${
                 isActive
                   ? "bg-cyan-500/20 text-cyan-300 border-2 border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.2)]"
-                  : "bg-slate-900/60 text-slate-400 border border-slate-800 hover:text-slate-200 hover:bg-slate-900"
+                  : "bg-[#0c111e]/80 text-slate-400 border border-slate-800/80 hover:text-slate-200 hover:bg-[#0f1627]"
               }`}
             >
               {item.icon}
@@ -897,7 +897,7 @@ export default function CopilotPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: Chat History & Input */}
         <div className="lg:col-span-6 space-y-4">
-          <div className="rounded-2xl bg-slate-900/70 border border-slate-800 p-5 space-y-4 min-h-[520px] max-h-[640px] overflow-y-auto flex flex-col justify-between">
+          <div className="surface-card rounded-2xl bg-[#0c111e]/90 border border-slate-800/80 p-5 space-y-4 min-h-[520px] max-h-[640px] overflow-y-auto flex flex-col justify-between shadow-xl">
             <div className="space-y-4">
               {chatHistory.map((msg, i) => (
                 <div

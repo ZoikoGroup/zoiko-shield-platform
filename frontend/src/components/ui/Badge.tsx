@@ -27,6 +27,7 @@ export type BadgeVariant =
   | "active"
   | "healthy"
   | "neutral"
+  | "info"
   | "llm-enabled"
   | "llm-disabled";
 
@@ -96,6 +97,11 @@ export const Badge: React.FC<BadgeProps> = ({
         return {
           wrapper: "bg-violet-950/70 border-violet-500/50 text-violet-300 border-dashed",
           icon: <Server className="w-3.5 h-3.5 text-violet-400" />,
+        };
+      case "info":
+        return {
+          wrapper: "bg-cyan-950/70 border-cyan-500/50 text-cyan-300 shadow-[0_0_8px_rgba(6,182,212,0.15)]",
+          icon: <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />,
         };
       default:
         return {

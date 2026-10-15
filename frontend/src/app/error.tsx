@@ -54,7 +54,7 @@ export default function ErrorBoundary({
 
   return (
     <div className="min-h-[60vh] flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-[#11141c] border border-rose-500/40 rounded-2xl p-6 shadow-[0_0_50px_rgba(244,63,94,0.15)] text-center space-y-5">
+      <div className="max-w-md w-full bg-[#0a0f1d] border border-rose-500/40 rounded-2xl p-6 shadow-[0_0_50px_rgba(244,63,94,0.15)] text-center space-y-5">
         <div className="w-12 h-12 rounded-xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center mx-auto text-rose-400 shadow-[0_0_20px_rgba(244,63,94,0.3)]">
           <AlertOctagon className="w-6 h-6" />
         </div>

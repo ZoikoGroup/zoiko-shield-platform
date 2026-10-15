@@ -20,21 +20,21 @@ export const Button: React.FC<ButtonProps> = ({
   const getVariant = () => {
     switch (variant) {
       case "primary":
-        return "bg-cyan-600 hover:bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.35)] border border-cyan-400/40";
+        return "bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-semibold shadow-[0_0_20px_rgba(6,182,212,0.35)] border border-cyan-400/50";
       case "cyan":
-        return "bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/50 hover:border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.2)]";
+        return "bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/40 hover:border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.18)]";
       case "secondary":
-        return "bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700";
+        return "bg-[#0f172a] hover:bg-[#1e293b] text-slate-200 border border-[#1e293b] hover:border-slate-600";
       case "danger":
-        return "bg-rose-600/90 hover:bg-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.35)] border border-rose-500/40";
+        return "bg-rose-600 hover:bg-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.35)] border border-rose-500/40";
       case "outline":
-        return "bg-transparent hover:bg-slate-800/60 text-slate-300 border border-slate-700 hover:border-slate-500";
+        return "bg-transparent hover:bg-slate-800/60 text-slate-300 border border-slate-700/80 hover:border-slate-500";
       case "ghost":
         return "bg-transparent hover:bg-slate-800/40 text-slate-400 hover:text-slate-200";
       case "ai":
         return "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-[0_0_18px_rgba(168,85,247,0.4)] border border-purple-400/50";
       default:
-        return "bg-slate-800 text-white";
+        return "bg-[#0f172a] text-white border border-[#1e293b]";
     }
   };
 

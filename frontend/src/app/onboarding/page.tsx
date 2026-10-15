@@ -67,17 +67,18 @@ export default function OnboardingPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
-      <div className="space-y-1">
+      {/* Header Banner */}
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl space-y-2">
         <div className="flex items-center gap-2">
           <Badge variant="pass">ERB-01 STEP 2</Badge>
           <span className="text-xs font-mono text-cyan-400 font-bold">
-            COMMERCIAL CHAIN & TENANCY PROVISIONING
+            COMMERCIAL CHAIN &amp; TENANCY PROVISIONING
           </span>
         </div>
-        <h1 className="text-2xl font-black text-slate-100 tracking-tight">
-          Organization & Tenancy Onboarding
+        <h1 className="text-2xl font-black text-white tracking-tight">
+          Organization &amp; Tenancy Onboarding
         </h1>
-        <p className="text-sm text-slate-400">
+        <p className="text-xs text-slate-400">
           Provision tenant isolation boundary bound to an approved Commercial Order (`orderId`), assign legal entity metadata, and bind `TENANT_OWNER` authority.
         </p>
       </div>
