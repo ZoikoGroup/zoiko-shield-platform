@@ -70,9 +70,15 @@ export default function AuditPage() {
   const [generateError, setGenerateError] = useState<string | null>(null);
 
   const latestPackage = auditPackages[0];
-  const manifest: Partial<AuditPackage["manifest"]> =
+  const manifest: Partial<NonNullable<AuditPackage["manifest"]>> =
     (latestPackage && typeof latestPackage === "object" && (latestPackage.manifest || (latestPackage as any)?.data?.manifest)) || {};
-  const packageSizeKB = (((latestPackage?.sizeBytes ?? 428190) / 1024)).toFixed(1);
+  // A package that exists but has not been built/sealed yet has no manifest
+  // (AuditPackageManifest? is nullable). That is a real, honest state worth
+  // showing as pending - never papered over with fabricated "_verified"
+  // strings or placeholder counts, since this page is the evidence a
+  // customer or auditor reads as proof of cryptographic integrity.
+  const isSealed = Boolean(latestPackage?.manifest);
+  const packageSizeKB = (((latestPackage?.sizeBytes ?? 0) / 1024)).toFixed(1);
   const generatedDate = latestPackage?.generatedAt || new Date().toISOString();
 
   const handleGenerate = async () => {
@@ -173,8 +179,14 @@ export default function AuditPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Badge variant="anchored">ML-DSA-65 Sealed</Badge>
-              <Badge variant="pass">ECDSA-P256 Valid</Badge>
+              {isSealed ? (
+                <>
+                  <Badge variant="anchored">ML-DSA-65 Sealed</Badge>
+                  <Badge variant="pass">ECDSA-P256 Valid</Badge>
+                </>
+              ) : (
+                <Badge variant="pending">Awaiting Seal</Badge>
+              )}
             </div>
           </div>
 
@@ -186,19 +198,25 @@ export default function AuditPage() {
               <div>
                 <span className="text-slate-500">PQC ML-DSA-65 (FIPS 204):</span>
                 <p className="text-emerald-400 truncate text-[11px]">
-                  {latestPackage.dilithiumSignature || "pqc_mldsa65_verified"}
+                  {latestPackage.dilithiumSignature || (
+                    <em className="text-slate-500 not-italic">Not yet generated</em>
+                  )}
                 </p>
               </div>
               <div>
                 <span className="text-slate-500">CLASSICAL ECDSA-P256:</span>
                 <p className="text-cyan-300 truncate text-[11px]">
-                  {latestPackage.ecdsaP256Signature || latestPackage.ed25519Signature || "ecdsa_p256_verified"}
+                  {latestPackage.ecdsaP256Signature || latestPackage.ed25519Signature || (
+                    <em className="text-slate-500 not-italic">Not yet generated</em>
+                  )}
                 </p>
               </div>
               <div>
                 <span className="text-slate-500">PACKAGE SHA-256:</span>
                 <p className="text-slate-200 truncate text-[11px]">
-                  {latestPackage.packageHash || "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}
+                  {latestPackage.packageHash || (
+                    <em className="text-slate-500 not-italic">Not yet generated</em>
+                  )}
                 </p>
               </div>
             </div>
@@ -207,22 +225,30 @@ export default function AuditPage() {
               <span className="text-[10px] font-bold text-cyan-400 uppercase">
                 Manifest Contents & Proofs:
               </span>
-              <div className="flex justify-between">
-                <span className="text-slate-500">EVIDENCE COUNT:</span>
-                <span className="text-slate-200">{manifest?.evidenceCount ?? 14} Records</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">INCIDENT CASES:</span>
-                <span className="text-slate-200">{manifest?.casesCount ?? 3} Cases</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">CONTROL TESTS:</span>
-                <span className="text-emerald-400">{manifest?.controlEvaluationsCount ?? 4} / 4 Passed</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-500">TSA TOKEN:</span>
-                <span className="text-cyan-300 font-semibold">{manifest?.tsaTimestampProof || "RFC3161_TSA_SEAL_VALID"}</span>
-              </div>
+              {isSealed ? (
+                <>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">EVIDENCE COUNT:</span>
+                    <span className="text-slate-200">{manifest.evidenceCount ?? "—"} Records</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">INCIDENT CASES:</span>
+                    <span className="text-slate-200">{manifest.casesCount ?? "—"} Cases</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">CONTROL TESTS:</span>
+                    <span className="text-emerald-400">{manifest.controlEvaluationsCount ?? "—"} / 4 Passed</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">TSA TOKEN:</span>
+                    <span className="text-cyan-300 font-semibold">{manifest.tsaTimestampProof || "—"}</span>
+                  </div>
+                </>
+              ) : (
+                <p className="text-xs text-slate-500 italic">
+                  Manifest not yet built — this package has not been sealed.
+                </p>
+              )}
             </div>
           </div>
         </Card>

@@ -3,6 +3,7 @@ import {
   Logger,
   BadRequestException,
   Optional,
+  Inject,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
 import {
@@ -10,6 +11,8 @@ import {
   EmailRenderInput,
 } from './templates/production-email-template.engine';
 import { TenantIsolationValidator } from './policies/tenant-isolation-validator.service';
+import type { RecipientMembershipResolver } from './policies/recipient-membership-resolver';
+import { RECIPIENT_MEMBERSHIP_RESOLVER } from './policies/recipient-membership-resolver';
 
 export type NotificationTemplateCategory =
   | 'USG/UsageThreshold75Percent'
@@ -33,6 +36,20 @@ export interface SendTransactionalEmailInput {
   recipients: EmailRecipient[];
   variables: Record<string, any>;
   priority?: 'HIGH' | 'NORMAL' | 'LOW';
+  /**
+   * Opt-in Gate 3 recipient-membership check: reject dispatch if a recipient
+   * resolves to a principal who is not an active member of `tenantId`.
+   *
+   * Left off by default because the only two callers in this codebase today
+   * (owner invitation, password-recovery OTP) are legitimately sending to a
+   * recipient who is either not yet a member of the tenant (that is the
+   * point of an invitation) or to a pseudo-tenant with no real membership
+   * concept (`identity-service` for OTP). Forcing the check on unconditionally
+   * would reject both of them. A future caller that emails existing
+   * tenant-scoped content (case details, billing records, security alerts)
+   * to a fixed audience should set this to true.
+   */
+  requireRecipientMembership?: boolean;
 }
 
 export interface DispatchedEmailReceipt {
@@ -54,14 +71,19 @@ export class TransactionalEmailService {
   private readonly logger = new Logger(TransactionalEmailService.name);
   private readonly templateEngine: ProductionEmailTemplateEngine;
   private readonly tenantIsolationValidator: TenantIsolationValidator;
+  private readonly recipientMembershipResolver?: RecipientMembershipResolver;
 
   constructor(
     @Optional() templateEngine?: ProductionEmailTemplateEngine,
     @Optional() tenantIsolationValidator?: TenantIsolationValidator,
+    @Optional()
+    @Inject(RECIPIENT_MEMBERSHIP_RESOLVER)
+    recipientMembershipResolver?: RecipientMembershipResolver,
   ) {
     this.templateEngine = templateEngine || new ProductionEmailTemplateEngine();
     this.tenantIsolationValidator =
       tenantIsolationValidator || new TenantIsolationValidator();
+    this.recipientMembershipResolver = recipientMembershipResolver;
   }
 
   /**
@@ -89,6 +111,33 @@ export class TransactionalEmailService {
           input.variables.onboardingUrl ||
           input.variables.onboarding_url,
       });
+    }
+
+    // Opt-in Gate 3 recipient-membership check (see SendTransactionalEmailInput.requireRecipientMembership).
+    if (input.requireRecipientMembership) {
+      if (!this.recipientMembershipResolver) {
+        // Asked for a check this instance cannot perform. Failing closed and
+        // loudly here is safer than silently dispatching unchecked: a caller
+        // that requires this guarantee should find out immediately that its
+        // DI wiring is missing the resolver, not months later in an audit.
+        throw new BadRequestException(
+          'Gate 3 recipient-membership check was requested but no RecipientMembershipResolver is configured.',
+        );
+      }
+      for (const recipient of input.recipients) {
+        const safe = await this.recipientMembershipResolver.isSafeRecipient(
+          input.tenantId,
+          recipient.email,
+        );
+        if (!safe) {
+          this.logger.error(
+            `[P0 SECURITY DEFECT] Cross-tenant recipient blocked! Tenant: ${input.tenantId}, recipient resolves to a principal with no active membership in this tenant.`,
+          );
+          throw new BadRequestException(
+            'Tenant isolation boundary violation: Recipient is a known principal with no active membership in the target tenant.',
+          );
+        }
+      }
     }
 
     const firstRecipient = input.recipients[0];

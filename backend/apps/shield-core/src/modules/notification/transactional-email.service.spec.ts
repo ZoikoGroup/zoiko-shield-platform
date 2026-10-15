@@ -241,4 +241,98 @@ describe('TransactionalEmailService', () => {
       }),
     ).rejects.toThrow(BadRequestException);
   });
+
+  describe('Gate 3 opt-in recipient-membership check', () => {
+    it('does not call the resolver when requireRecipientMembership is unset', async () => {
+      const resolver = { isSafeRecipient: jest.fn() };
+      const svc = new TransactionalEmailService(
+        undefined,
+        undefined,
+        resolver as any,
+      );
+      await svc.dispatchTransactionalEmail({
+        tenantId: 'tenant-acme',
+        templateKey: 'ZS-EML-SEC-001',
+        recipients: [{ email: 'a@acme.com', name: 'A' }],
+        variables: {
+          organizationName: 'Acme',
+          referenceId: 'R1',
+          statusLabel: 'ACTIVE',
+          occurredAtLocal: 'x',
+          timezone: 'UTC',
+        },
+      });
+      expect(resolver.isSafeRecipient).not.toHaveBeenCalled();
+    });
+
+    it('fails closed when the check is requested but no resolver is wired', async () => {
+      const svc = new TransactionalEmailService();
+      await expect(
+        svc.dispatchTransactionalEmail({
+          tenantId: 'tenant-acme',
+          templateKey: 'ZS-EML-SEC-001',
+          recipients: [{ email: 'a@acme.com', name: 'A' }],
+          variables: {
+            organizationName: 'Acme',
+            referenceId: 'R1',
+            statusLabel: 'ACTIVE',
+            occurredAtLocal: 'x',
+            timezone: 'UTC',
+          },
+          requireRecipientMembership: true,
+        }),
+      ).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejects a recipient the resolver reports as unsafe', async () => {
+      const resolver = { isSafeRecipient: jest.fn().mockResolvedValue(false) };
+      const svc = new TransactionalEmailService(
+        undefined,
+        undefined,
+        resolver as any,
+      );
+      await expect(
+        svc.dispatchTransactionalEmail({
+          tenantId: 'tenant-acme',
+          templateKey: 'ZS-EML-SEC-001',
+          recipients: [{ email: 'outsider@evil-corp.com', name: 'O' }],
+          variables: {
+            organizationName: 'Acme',
+            referenceId: 'R1',
+            statusLabel: 'ACTIVE',
+            occurredAtLocal: 'x',
+            timezone: 'UTC',
+          },
+          requireRecipientMembership: true,
+        }),
+      ).rejects.toThrow(BadRequestException);
+      expect(resolver.isSafeRecipient).toHaveBeenCalledWith(
+        'tenant-acme',
+        'outsider@evil-corp.com',
+      );
+    });
+
+    it('dispatches when the resolver reports every recipient as safe', async () => {
+      const resolver = { isSafeRecipient: jest.fn().mockResolvedValue(true) };
+      const svc = new TransactionalEmailService(
+        undefined,
+        undefined,
+        resolver as any,
+      );
+      const receipt = await svc.dispatchTransactionalEmail({
+        tenantId: 'tenant-acme',
+        templateKey: 'ZS-EML-SEC-001',
+        recipients: [{ email: 'member@acme.com', name: 'M' }],
+        variables: {
+          organizationName: 'Acme',
+          referenceId: 'R1',
+          statusLabel: 'ACTIVE',
+          occurredAtLocal: 'x',
+          timezone: 'UTC',
+        },
+        requireRecipientMembership: true,
+      });
+      expect(receipt.deliveryStatus).toBe('DELIVERED');
+    });
+  });
 });
