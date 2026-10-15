@@ -1,0 +1,64 @@
+name: Deploy Platform to VM
+
+concurrency:
+  group: deploy-zoikoshield-platform
+  cancel-in-progress: false
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "frontend/**"
+      - "docker-compose.yml"
+      - ".github/workflows/deploy-vm.yml"
+  workflow_dispatch:
+    inputs:
+      target:
+        description: "What to deploy"
+        type: choice
+        options: [all, backend, frontend]
+        default: all
+      force:
+        description: "Rebuild even if nothing changed"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend (5 services + migrations)
+    if: ${{ github.event_name == 'push' || inputs.target != 'frontend' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - name: Deploy backend on VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.GCP_SSH_HOST }}
+          username: ${{ secrets.GCP_SSH_USER }}
+          key: ${{ secrets.GCP_SSH_KEY }}
+          command_timeout: 40m
+          script: |
+            set -e
+            ~/deploy-zoikoshield.sh backend ${{ inputs.force && '--force' || '' }}
+
+  frontend:
+    name: Frontend (platform UI)
+    needs: backend
+    if: ${{ !cancelled() && needs.backend.result != 'failure' && (github.event_name == 'push' || inputs.target != 'backend') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Deploy frontend on VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.GCP_SSH_HOST }}
+          username: ${{ secrets.GCP_SSH_USER }}
+          key: ${{ secrets.GCP_SSH_KEY }}
+          command_timeout: 25m
+          script: |
+            set -e
+            ~/deploy-zoikoshield.sh frontend ${{ inputs.force && '--force' || '' }}
