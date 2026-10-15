@@ -105,8 +105,20 @@ export default function CasesListPage() {
     });
   }, [displayCases, searchQuery, filterMode]);
 
-  const openCasesCount = displayCases.filter((c) => c.status !== "CLOSED").length || 18;
-  const criticalCasesCount = displayCases.filter((c) => c.severity === "CRITICAL").length || 4;
+  // No `|| N` fallback: displayCases already resolves to demo data when the
+  // API has nothing, so by this point a count of 0 is a real answer (e.g.
+  // every case is closed) and must render as 0, not a fabricated number.
+  const openCasesCount = displayCases.filter((c) => c.status !== "CLOSED").length;
+  const criticalCasesCount = displayCases.filter((c) => c.severity === "CRITICAL").length;
+  const needsAnalystReviewCount = displayCases.filter(
+    (c) => c.status === "OPEN" && !c.assignee,
+  ).length;
+  const awaitingTriageCount = displayCases.filter(
+    (c) => c.severity === "CRITICAL" && c.status === "OPEN",
+  ).length;
+  const pendingResponseProposalsCount = displayCases.filter(
+    (c) => Boolean(c.responseProposal),
+  ).length;
 
   return (
     <div className="space-y-6">
@@ -169,7 +181,7 @@ export default function CasesListPage() {
           <div className="text-3xl font-extrabold text-slate-100 font-mono tracking-tight">
             {openCasesCount}
           </div>
-          <div className="text-[11px] text-slate-400 font-mono">4 require analyst review</div>
+          <div className="text-[11px] text-slate-400 font-mono">{needsAnalystReviewCount} require analyst review</div>
         </Card>
 
         <Card className="p-4 space-y-1 hover:border-rose-500/30">
@@ -180,7 +192,7 @@ export default function CasesListPage() {
           <div className="text-3xl font-extrabold text-slate-100 font-mono tracking-tight">
             {criticalCasesCount}
           </div>
-          <div className="text-[11px] text-rose-400 font-mono font-medium">2 awaiting triage</div>
+          <div className="text-[11px] text-rose-400 font-mono font-medium">{awaitingTriageCount} awaiting triage</div>
         </Card>
 
         <Card className="p-4 space-y-1 hover:border-amber-500/30">
@@ -188,10 +200,10 @@ export default function CasesListPage() {
             <span>SLA AT RISK</span>
             <Clock className="w-3.5 h-3.5 text-amber-400" />
           </div>
-          <div className="text-3xl font-extrabold text-slate-100 font-mono tracking-tight">
-            2
+          <div className="text-3xl font-extrabold text-slate-500 font-mono tracking-tight">
+            &mdash;
           </div>
-          <div className="text-[11px] text-amber-400 font-mono font-medium">Action required</div>
+          <div className="text-[11px] text-slate-500 font-mono font-medium">SLA tracking not yet wired to case data</div>
         </Card>
 
         <Card className="p-4 space-y-1 hover:border-purple-500/30">
@@ -200,7 +212,7 @@ export default function CasesListPage() {
             <FileText className="w-3.5 h-3.5 text-purple-400" />
           </div>
           <div className="text-3xl font-extrabold text-slate-100 font-mono tracking-tight">
-            3
+            {pendingResponseProposalsCount}
           </div>
           <div className="text-[11px] text-purple-400 font-mono font-medium">Pending human approval</div>
         </Card>

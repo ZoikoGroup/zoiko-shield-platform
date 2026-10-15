@@ -215,12 +215,26 @@ function normalizeCertificate(input: any): VerificationCertificate {
     manifestCoreHashMatch: input.checks?.manifestCoreHashMatch ?? Boolean(input.manifest || input.manifestCoreHash || input.packageHash),
     merkleRootIntegrity: input.checks?.merkleRootIntegrity ?? Boolean(input.merkleRoot || input.cryptographicSummary?.declaredMerkleRoot || input.manifest?.epochMerkleRoot),
     evidenceFilesIntegrity: {
-      totalFiles: input.checks?.evidenceFilesIntegrity?.totalFiles ?? (input.manifest?.evidenceCount || input.leavesCount || input.leaves?.length || 8),
-      validFiles: input.checks?.evidenceFilesIntegrity?.validFiles ?? (input.manifest?.evidenceCount || input.leavesCount || input.leaves?.length || 8),
+      // No `|| 8`: a pasted certificate for a genuinely empty package (0
+      // evidence files) is a real, valid state that must render as 0, not a
+      // fabricated passing count on a tool whose entire job is telling the
+      // truth about what was actually verified.
+      totalFiles: input.checks?.evidenceFilesIntegrity?.totalFiles ?? (input.manifest?.evidenceCount ?? input.leavesCount ?? input.leaves?.length ?? 0),
+      validFiles: input.checks?.evidenceFilesIntegrity?.validFiles ?? (input.manifest?.evidenceCount ?? input.leavesCount ?? input.leaves?.length ?? 0),
       corruptedFiles: input.checks?.evidenceFilesIntegrity?.corruptedFiles ?? 0,
     },
     witnessAttestationValid: input.checks?.witnessAttestationValid ?? Boolean(input.dilithiumSignature || input.ed25519Signature || input.witnessSignatures?.length),
-    humanApprovalBindingValid: input.checks?.humanApprovalBindingValid ?? true,
+    // Never defaults to true: without the certificate's own attestation and
+    // without any signature evidence to bind an approver to, there is
+    // nothing here that could make "human approval binding" valid.
+    humanApprovalBindingValid:
+      input.checks?.humanApprovalBindingValid ??
+      Boolean(
+        input.dilithiumSignature ||
+          input.ed25519Signature ||
+          input.cryptographicSummary?.certificateSignature ||
+          input.witnessSignatures?.length,
+      ),
   };
 
   const cryptographicSummary = {
@@ -273,9 +287,12 @@ function normalizeCertificate(input: any): VerificationCertificate {
             envelopeIntegrity: true,
             manifestCoreHashMatch: true,
             merkleRootIntegrity: vcResult.isValid,
-            evidenceFilesIntegrity: { totalFiles: 1, validFiles: 1, corruptedFiles: 0 },
+            evidenceFilesIntegrity: { totalFiles: 1, validFiles: vcResult.isValid ? 1 : 0, corruptedFiles: vcResult.isValid ? 0 : 1 },
             witnessAttestationValid: vcResult.isValid,
-            humanApprovalBindingValid: true,
+            // Must track the real verification result, not a fixed true -
+            // a TAMPER_DETECTED credential cannot also claim a valid
+            // approval binding.
+            humanApprovalBindingValid: vcResult.isValid,
           },
           cryptographicSummary: {
             declaredMerkleRoot: vcResult.attestationDigest,
@@ -479,15 +496,21 @@ function normalizeCertificate(input: any): VerificationCertificate {
                   <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#060911]/80 border border-[#162238]">
                     <span className="text-slate-300">4. Evidence Files Count &amp; Integrity</span>
                     <span className="text-cyan-400 font-bold">
-                      {certificate.checks?.evidenceFilesIntegrity?.validFiles ?? 8} / {certificate.checks?.evidenceFilesIntegrity?.totalFiles ?? 8} Files Valid
+                      {certificate.checks?.evidenceFilesIntegrity?.validFiles ?? 0} / {certificate.checks?.evidenceFilesIntegrity?.totalFiles ?? 0} Files Valid
                     </span>
                   </div>
 
                   <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#060911]/80 border border-[#162238]">
                     <span className="text-slate-300">5. Multi-Signatory Witness &amp; Approver</span>
-                    <span className="text-purple-400 font-bold flex items-center gap-1">
-                      <Fingerprint className="w-3.5 h-3.5" /> ATTESTED
-                    </span>
+                    {certificate.checks?.witnessAttestationValid && certificate.checks?.humanApprovalBindingValid ? (
+                      <span className="text-purple-400 font-bold flex items-center gap-1">
+                        <Fingerprint className="w-3.5 h-3.5" /> ATTESTED
+                      </span>
+                    ) : (
+                      <span className="text-rose-400 font-bold flex items-center gap-1">
+                        <XCircle className="w-3.5 h-3.5" /> NOT ATTESTED
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

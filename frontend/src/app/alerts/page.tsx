@@ -91,10 +91,13 @@ export default function AlertsPage() {
     }
   };
 
-  const criticalCount = alerts.filter((a) => a.severity === "CRITICAL").length || 12;
-  const highCount = alerts.filter((a) => a.severity === "HIGH").length || 9;
-  const unassignedCount = alerts.filter((a) => !a.assignee || a.assignee === "unassigned").length || 6;
-  const totalCount = alerts.length > 0 ? alerts.length : 38;
+  // No fallback numbers: alerts is set directly from the API with no demo
+  // backfill, so a count of 0 here is a real answer (zero alerts of that
+  // kind exist), not an unloaded state.
+  const criticalCount = alerts.filter((a) => a.severity === "CRITICAL").length;
+  const highCount = alerts.filter((a) => a.severity === "HIGH").length;
+  const unassignedCount = alerts.filter((a) => !a.assignee || a.assignee === "unassigned").length;
+  const totalCount = alerts.length;
 
   const filteredAlerts = useMemo(() => {
     if (filterSeverity === "critical") return alerts.filter((a) => a.severity === "CRITICAL");

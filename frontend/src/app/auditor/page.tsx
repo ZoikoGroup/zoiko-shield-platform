@@ -173,17 +173,26 @@ export default function AuditorWorkspacePage() {
         <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-emerald-500/40 transition-all">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Ledger Seal Status</span>
-            <div className="p-1 rounded-full bg-emerald-500/10 text-emerald-400">
+            <div className={`p-1 rounded-full ${workspace?.activeLedgerIntegrity ? "bg-emerald-500/10 text-emerald-400" : "bg-slate-700/30 text-slate-500"}`}>
               <CheckCircle2 className="w-4 h-4" />
             </div>
           </div>
           <div className="text-lg font-bold text-white mt-1.5 font-mono">
-            {workspace?.activeLedgerIntegrity || "TAMPER_PROOF_SEALED"}
+            {workspace?.activeLedgerIntegrity || "UNKNOWN"}
           </div>
-          <span className="text-[10px] text-emerald-400 mt-1 inline-flex items-center gap-1 font-mono">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            SHA-256 Hash Chain Valid
-          </span>
+          {/* A missing status is not a green check: the ledger integrity has
+              not been confirmed, not confirmed-good, if the workspace never
+              loaded or the backend did not report it. */}
+          {workspace?.activeLedgerIntegrity ? (
+            <span className="text-[10px] text-emerald-400 mt-1 inline-flex items-center gap-1 font-mono">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              SHA-256 Hash Chain Valid
+            </span>
+          ) : (
+            <span className="text-[10px] text-slate-500 mt-1 inline-flex items-center gap-1 font-mono">
+              Not yet confirmed
+            </span>
+          )}
         </Card>
 
         <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-cyan-500/40 transition-all">
@@ -194,9 +203,13 @@ export default function AuditorWorkspacePage() {
             </div>
           </div>
           <div className="text-lg font-bold text-white mt-1.5 font-mono">
-            {workspace?.frozenImmutablePackages || 6} <span className="text-slate-500 font-sans text-sm">/ {workspace?.totalAuditPackages || 8}</span>
+            {workspace?.frozenImmutablePackages ?? 0} <span className="text-slate-500 font-sans text-sm">/ {workspace?.totalAuditPackages ?? 0}</span>
           </div>
-          <span className="text-[10px] text-cyan-400/80 mt-1 inline-block font-mono">100% Immutable Evidence</span>
+          <span className="text-[10px] text-cyan-400/80 mt-1 inline-block font-mono">
+            {(workspace?.totalAuditPackages ?? 0) > 0
+              ? `${Math.round(((workspace?.frozenImmutablePackages ?? 0) / workspace.totalAuditPackages) * 100)}% Immutable Evidence`
+              : "No audit packages yet"}
+          </span>
         </Card>
 
         <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-amber-500/40 transition-all">
@@ -220,9 +233,11 @@ export default function AuditorWorkspacePage() {
             </div>
           </div>
           <div className="text-lg font-bold text-indigo-300 mt-1.5 font-mono">
-            {attestationPosture?.genuineHosts || 4} / {attestationPosture?.totalHostsAttested || 4} GENUINE
+            {attestationPosture?.genuineHosts ?? 0} / {attestationPosture?.totalHostsAttested ?? 0} GENUINE
           </div>
-          <span className="text-[10px] text-indigo-400 mt-1 inline-block font-mono">Confidential Computing Active</span>
+          <span className="text-[10px] text-indigo-400 mt-1 inline-block font-mono">
+            {attestationPosture ? "Confidential Computing Active" : "Attestation not yet confirmed"}
+          </span>
         </Card>
       </div>
 

@@ -207,7 +207,7 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-1.5 text-slate-400">
           <Activity className="w-3.5 h-3.5 text-cyan-400" />
-          <span>Service health: {healthyConnectors.length}/{displayConnectors.length || 8} verified</span>
+          <span>Service health: {healthyConnectors.length}/{displayConnectors.length} verified</span>
         </div>
       </div>
 
@@ -257,7 +257,7 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-baseline justify-between">
             <div className="text-3xl font-extrabold text-slate-100 font-mono tracking-tight">
-              {activeAlerts.length || 12}
+              {activeAlerts.length}
             </div>
             {/* Red Mini Sparkline */}
             <svg className="w-20 h-8 stroke-rose-400 fill-none" viewBox="0 0 100 40">
@@ -283,7 +283,7 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-baseline justify-between">
             <div className="text-3xl font-extrabold text-slate-100 font-mono tracking-tight">
-              {activeCases.length || 4}
+              {activeCases.length}
             </div>
             {/* Amber Mini Sparkline */}
             <svg className="w-20 h-8 stroke-amber-400 fill-none" viewBox="0 0 100 40">
@@ -309,7 +309,7 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-baseline justify-between">
             <div className="text-3xl font-extrabold text-slate-100 font-mono tracking-tight">
-              {displayConnectors.length || 8}
+              {displayConnectors.length}
             </div>
             {/* Cyan Mini Sparkline */}
             <svg className="w-20 h-8 stroke-cyan-400 fill-none" viewBox="0 0 100 40">
@@ -368,7 +368,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="px-2 py-0.5 rounded bg-[#141f33] border border-slate-700/60 text-xs font-mono text-cyan-300">
-                    {activeAlerts.length || 12} open alerts
+                    {activeAlerts.length} open alerts
                   </span>
                 </div>
               </div>
@@ -668,7 +668,7 @@ export default function DashboardPage() {
               <div className="flex items-center justify-between pb-2 border-b border-[#141d2e]">
                 <h3 className="font-bold text-slate-100 text-sm">Data sources</h3>
                 <span className="px-2 py-0.5 rounded bg-[#141f33] text-slate-300 border border-slate-700/60 text-[10px] font-mono">
-                  {displayConnectors.length || 8} configured
+                  {displayConnectors.length} configured
                 </span>
               </div>
 

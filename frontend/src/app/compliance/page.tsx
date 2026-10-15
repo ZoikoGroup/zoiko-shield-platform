@@ -109,28 +109,38 @@ export default function ContinuousCompliancePage() {
       description: "Annex A controls covering access management (A.5.15), cryptographic keys, and Merkle event logging (A.8.16).",
     },
     {
+      // Unlike the three static entries above, DORA and NIS2 are backed by a
+      // real evaluation call (handleRunEvaluation). Before that has ever run
+      // for this tenant, doraEvaluation is null, and claiming COMPLIANT with
+      // a specific score and a Merkle evidence root under a EU regulatory
+      // framework name - when no evaluation happened - is a false
+      // regulatory compliance claim, not a harmless placeholder.
       name: "DORA (EU 2022/2554)",
       code: "DORA-EU-2022",
       category: "Financial Sector ICT Resilience",
-      score: doraEvaluation?.overallComplianceScore ?? 92,
-      status: "COMPLIANT",
-      controlsPassed: doraEvaluation?.compliantCount ?? 6,
-      totalControls: doraEvaluation?.totalArticlesEvaluated ?? 7,
-      lastEvaluatedAt: doraEvaluation?.evaluatedAt ?? new Date().toISOString(),
-      merkleRoot: doraEvaluation?.merkleEvidenceRoot ?? "d0a1b2c3d4e5f67890abcdef1234567890abcdef1234567890abcdef12345678",
-      description: "ICT risk management framework, Article 10 continuous anomaly detection, Article 11 response rollback, and 4h incident reporting.",
+      score: doraEvaluation?.overallComplianceScore ?? 0,
+      status: doraEvaluation ? "COMPLIANT" : "PARTIAL",
+      controlsPassed: doraEvaluation?.compliantCount ?? 0,
+      totalControls: doraEvaluation?.totalArticlesEvaluated ?? 0,
+      lastEvaluatedAt: doraEvaluation?.evaluatedAt ?? "",
+      merkleRoot: doraEvaluation?.merkleEvidenceRoot ?? "NOT_YET_EVALUATED",
+      description: doraEvaluation
+        ? "ICT risk management framework, Article 10 continuous anomaly detection, Article 11 response rollback, and 4h incident reporting."
+        : "Not yet evaluated for this tenant. Run an evaluation to generate a scored, evidenced result.",
     },
     {
       name: "NIS2 Directive (EU 2022/2555)",
       code: "NIS2-EU-2022",
       category: "Critical Infrastructure & Essential Entities",
-      score: nis2Evaluation?.overallComplianceScore ?? 95,
-      status: "COMPLIANT",
-      controlsPassed: nis2Evaluation?.compliantCount ?? 7,
-      totalControls: nis2Evaluation?.totalControlsEvaluated ?? 8,
-      lastEvaluatedAt: nis2Evaluation?.evaluatedAt ?? new Date().toISOString(),
-      merkleRoot: nis2Evaluation?.merkleEvidenceRoot ?? "a1b2c3d4e5f67890abcdef1234567890abcdef1234567890abcdef1234567890",
-      description: "24h early warning, 72h incident notification, cybersecurity risk management measures, and supply chain assurance.",
+      score: nis2Evaluation?.overallComplianceScore ?? 0,
+      status: nis2Evaluation ? "COMPLIANT" : "PARTIAL",
+      controlsPassed: nis2Evaluation?.compliantCount ?? 0,
+      totalControls: nis2Evaluation?.totalControlsEvaluated ?? 0,
+      lastEvaluatedAt: nis2Evaluation?.evaluatedAt ?? "",
+      merkleRoot: nis2Evaluation?.merkleEvidenceRoot ?? "NOT_YET_EVALUATED",
+      description: nis2Evaluation
+        ? "24h early warning, 72h incident notification, cybersecurity risk management measures, and supply chain assurance."
+        : "Not yet evaluated for this tenant. Run an evaluation to generate a scored, evidenced result.",
     },
     {
       name: "PCI DSS 4.0.1",
@@ -157,8 +167,11 @@ export default function ContinuousCompliancePage() {
 
       if (drift) {
         setDriftState({
-          score: drift.score ?? 98.4,
-          driftStatus: drift.driftStatus ?? drift.status ?? "HEALTHY",
+          // A real API response that omits its own score/status must not
+          // read as a healthy default - that is a missing measurement, not
+          // a confirmed-healthy one.
+          score: drift.score ?? 0,
+          driftStatus: drift.driftStatus ?? drift.status ?? "UNKNOWN",
           lastEvaluatedAt: drift.lastEvaluatedAt ?? drift.lastAssessedAt ?? new Date().toISOString(),
           slaAlarms: (drift.slaAlarms || []).map((a) => ({
             alarmId: a.alarmId || "alarm-01",
