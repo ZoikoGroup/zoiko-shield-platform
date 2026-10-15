@@ -76,32 +76,43 @@ export default function ControlsPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Badge variant="pass">ERB-01 STEP 10</Badge>
-            <span className="text-xs font-mono text-cyan-400 font-bold">
-              CONTINUOUS COMPLIANCE
-            </span>
+    <div className="space-y-6 pb-12">
+      {/* Header Banner */}
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-b from-[#0c111e] to-[#070b14] shadow-xl">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Badge variant="pass" className="text-[10px] font-mono">ERB-01 STEP 10</Badge>
+              <span className="text-xs font-mono text-cyan-400 font-bold tracking-wider">
+                CONTINUOUS COMPLIANCE
+              </span>
+            </div>
+            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+              Continuous Security Controls Matrix
+            </h1>
+            <p className="text-xs sm:text-sm text-slate-400 max-w-3xl leading-relaxed">
+              Real-time automated control evaluation across certified SOC 2 Type II and ISO 27001:2022 frameworks on shield-ingest (:3002). Sector overlays (DORA, NIS2) deferred to Phase 2 midpoint per ADR-08.
+            </p>
           </div>
-          <h1 className="text-2xl font-black text-slate-100 tracking-tight">
-            Continuous Security Controls Matrix
-          </h1>
-          <p className="text-sm text-slate-400">
-            Real-time automated control evaluation across certified SOC 2 Type II and ISO 27001:2022 frameworks on shield-ingest (:3002). Sector overlays (DORA, NIS2) deferred to Phase 2 midpoint per ADR-08.
-          </p>
-        </div>
 
-        <div className="flex items-center gap-3">
-          <Button variant="cyan" onClick={() => handleEvaluateAll()}>
-            <Play className="w-3.5 h-3.5" />
-            <span>Evaluate All Controls</span>
-          </Button>
-          <Button variant="primary" onClick={() => router.push("/audit")}>
-            <span>Proceed to Audit Package</span>
-            <ArrowRight className="w-4 h-4" />
-          </Button>
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <Button
+              variant="cyan"
+              onClick={() => handleEvaluateAll()}
+              className="shadow-[0_0_15px_rgba(0,240,255,0.25)]"
+            >
+              <Play className="w-3.5 h-3.5" />
+              <span>Evaluate All Controls</span>
+            </Button>
+            <Button
+              variant="primary"
+              onClick={() => router.push("/audit")}
+              className="shadow-[0_0_15px_rgba(59,130,246,0.25)]"
+            >
+              <span>Proceed to Audit Package</span>
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -137,26 +148,26 @@ export default function ControlsPage() {
 
         return (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="p-3.5 rounded-xl bg-slate-950/80 border border-emerald-500/30 flex items-center justify-between">
-              <div className="space-y-0.5">
+            <div className="p-4 rounded-xl bg-gradient-to-b from-[#0c111e] to-[#070b14] border border-emerald-500/30 flex items-center justify-between shadow-lg">
+              <div className="space-y-1">
                 <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase tracking-wider">FRESH EVIDENCE (&lt;24H)</span>
-                <p className="text-xl font-black text-slate-100 font-mono">{freshCount} Controls</p>
+                <p className="text-2xl font-black text-white font-mono">{freshCount} Controls</p>
               </div>
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
             </div>
-            <div className="p-3.5 rounded-xl bg-slate-950/80 border border-amber-500/30 flex items-center justify-between">
-              <div className="space-y-0.5">
+            <div className="p-4 rounded-xl bg-gradient-to-b from-[#0c111e] to-[#070b14] border border-amber-500/30 flex items-center justify-between shadow-lg">
+              <div className="space-y-1">
                 <span className="text-[10px] font-mono text-amber-400 font-bold uppercase tracking-wider">AGING EVIDENCE (24–72H)</span>
-                <p className="text-xl font-black text-slate-100 font-mono">{agingCount} Controls</p>
+                <p className="text-2xl font-black text-white font-mono">{agingCount} Controls</p>
               </div>
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+              <span className="w-3 h-3 rounded-full bg-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.6)]" />
             </div>
-            <div className="p-3.5 rounded-xl bg-slate-950/80 border border-rose-500/30 flex items-center justify-between">
-              <div className="space-y-0.5">
+            <div className="p-4 rounded-xl bg-gradient-to-b from-[#0c111e] to-[#070b14] border border-rose-500/30 flex items-center justify-between shadow-lg">
+              <div className="space-y-1">
                 <span className="text-[10px] font-mono text-rose-400 font-bold uppercase tracking-wider">STALE EVIDENCE (&gt;72H SLA)</span>
-                <p className="text-xl font-black text-slate-100 font-mono">{staleCount} Controls</p>
+                <p className="text-2xl font-black text-white font-mono">{staleCount} Controls</p>
               </div>
-              <span className="w-2.5 h-2.5 rounded-full bg-rose-400" />
+              <span className="w-3 h-3 rounded-full bg-rose-400 shadow-[0_0_10px_rgba(244,63,94,0.6)]" />
             </div>
           </div>
         );
@@ -164,7 +175,7 @@ export default function ControlsPage() {
 
       {/* Controls Grid */}
       {!isLoading && controlTests.length === 0 ? (
-        <Card variant="cyber" className="p-6">
+        <Card variant="cyber" className="p-8 text-center bg-gradient-to-b from-[#0c111e] to-[#070b14]">
           <p className="text-sm text-slate-300">
             No controls have been evaluated for this tenant yet.
           </p>
@@ -182,14 +193,14 @@ export default function ControlsPage() {
                 : { text: `STALE (${ageHours}h ago)`, color: "text-rose-400 bg-rose-950/60 border-rose-500/30" };
 
           return (
-            <Card key={ctrl.id || idx} variant="cyber" className="space-y-4">
+            <Card key={ctrl.id || idx} variant="cyber" className="space-y-4 bg-gradient-to-b from-[#0c111e] to-[#070b14] hover:border-cyan-500/40 transition-all p-5">
               <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="text-xs font-mono font-bold text-cyan-400">
                       {ctrl.controlId}
                     </span>
-                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-700">
                       {ctrl.framework}
                     </span>
                     <span className={`text-[9px] font-mono px-2 py-0.5 rounded border font-semibold ${freshnessTag.color}`}>
@@ -197,7 +208,7 @@ export default function ControlsPage() {
                     </span>
                   </div>
                   <button
-                    className="font-semibold text-sm text-slate-100 text-left hover:text-cyan-300 underline-offset-2 hover:underline"
+                    className="font-bold text-sm text-white text-left hover:text-cyan-300 underline-offset-2 hover:underline transition-colors block"
                     onClick={() => router.push(`/controls/${ctrl.id || ctrl.controlId}`)}
                   >
                     {ctrl.controlName}
@@ -211,24 +222,25 @@ export default function ControlsPage() {
                         ? "pending"
                         : "fail"
                   }
+                  className="font-mono text-[10px]"
                 >
                   {ctrl.result}
                 </Badge>
               </div>
 
-              <div className="p-3 rounded-xl bg-slate-950/80 border border-slate-800 space-y-1.5 font-mono text-xs text-slate-300">
-                <div className="flex justify-between">
-                  <span className="text-slate-500">EVALUATED EVENTS:</span>
-                  <span className="text-cyan-300">{ctrl.evaluatedEventsCount}</span>
+              <div className="p-3.5 rounded-xl bg-[#060a12] border border-slate-800/80 space-y-2 font-mono text-xs text-slate-300">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 text-[11px]">EVALUATED EVENTS:</span>
+                  <span className="text-cyan-300 font-semibold">{ctrl.evaluatedEventsCount}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500">LAST EVALUATION:</span>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 text-[11px]">LAST EVALUATION:</span>
                   <span className="text-slate-400">{formatTimestamp(ctrl.lastEvaluatedAt)}</span>
                 </div>
                 {ctrl.evidenceSampleHash && (
-                  <div className="flex justify-between pt-1 border-t border-slate-900">
-                    <span className="text-slate-500">EVIDENCE SAMPLE HASH:</span>
-                    <span className="text-emerald-400">
+                  <div className="flex justify-between items-center pt-1.5 border-t border-slate-900">
+                    <span className="text-slate-500 text-[11px]">EVIDENCE SAMPLE HASH:</span>
+                    <span className="text-emerald-400 truncate max-w-[180px]">
                       {truncateHash(ctrl.evidenceSampleHash, 8, 6)}
                     </span>
                   </div>
@@ -244,8 +256,9 @@ export default function ControlsPage() {
                   variant="outline"
                   onClick={() => handleEvaluate(ctrl.id)}
                   isLoading={evaluatingId === ctrl.id}
+                  className="border-slate-800 hover:border-cyan-500/40 text-slate-300"
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
+                  <RotateCcw className="w-3.5 h-3.5 text-cyan-400" />
                   <span>Re-Evaluate</span>
                 </Button>
               </div>

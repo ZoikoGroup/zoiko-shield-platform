@@ -118,14 +118,19 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <Card variant="cyber" className="p-4">
-      <div className="mb-3 flex items-baseline justify-between border-b border-slate-800 pb-2">
+    <Card variant="cyber" className="p-4 border-[#162238] bg-[#0a0f1d]">
+      <div className="mb-3 flex items-baseline justify-between border-b border-[#162238] pb-2">
         <div>
-          <h2 className="text-sm font-semibold text-slate-100">{title}</h2>
-          <p className="text-[11px] font-mono text-slate-500">{requirement}</p>
+          <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+            {title}
+          </h2>
+          <p className="text-[11px] font-mono text-slate-400 mt-0.5">{requirement}</p>
         </div>
         {count !== undefined && (
-          <span className="font-mono text-lg text-slate-200">{count}</span>
+          <span className="font-mono text-lg font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 px-2 py-0.5 rounded">
+            {count}
+          </span>
         )}
       </div>
       {children}
@@ -256,11 +261,11 @@ export default function ShiftHandoverPage() {
               {commitments.map(({ row, margin }) => (
                 <div
                   key={row.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-800 p-2"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#162238] bg-[#0c1322] p-2.5 shadow-sm"
                 >
                   <div>
-                    <p className="text-xs text-slate-200">{row.title}</p>
-                    <p className="text-[11px] font-mono text-slate-500">
+                    <p className="text-xs text-slate-100 font-medium">{row.title}</p>
+                    <p className="text-[11px] font-mono text-slate-400">
                       {row.slaClock?.coverage_tier} · clock {row.slaClock?.status}
                       {row.slaClock?.paused_at
                         ? ` · paused: ${row.slaClock.pause_reason ?? "no reason recorded"}`
@@ -310,10 +315,10 @@ export default function ShiftHandoverPage() {
                 if (!row.owner_id) why.push("unassigned");
                 if (row.slaClock?.paused_at) why.push("clock paused");
                 return (
-                  <div key={row.id} className="rounded border border-slate-800 p-2">
+                  <div key={row.id} className="rounded-lg border border-[#162238] bg-[#0c1322] p-2.5 shadow-sm">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge variant={severityVariant(row.severity)}>{row.severity}</Badge>
-                      <span className="text-xs text-slate-200">{row.title}</span>
+                      <Badge variant={severityVariant(row.severity)} className="font-mono text-[10px]">{row.severity}</Badge>
+                      <span className="text-xs text-slate-100 font-medium">{row.title}</span>
                       <span className="text-[11px] font-mono text-amber-300">
                         {why.join(" · ")}
                       </span>

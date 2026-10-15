@@ -154,14 +154,19 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <Card variant="cyber" className="p-4">
-      <div className="mb-3 flex items-baseline justify-between border-b border-slate-800 pb-2">
+    <Card variant="cyber" className="p-4 border-[#162238] bg-[#0a0f1d]">
+      <div className="mb-3 flex items-baseline justify-between border-b border-[#162238] pb-2">
         <div>
-          <h2 className="text-sm font-semibold text-slate-100">{title}</h2>
-          <p className="text-[11px] font-mono text-slate-500">{requirement}</p>
+          <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+            {title}
+          </h2>
+          <p className="text-[11px] font-mono text-slate-400 mt-0.5">{requirement}</p>
         </div>
         {count !== undefined && (
-          <span className="font-mono text-lg text-slate-200">{count}</span>
+          <span className="font-mono text-lg font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 px-2 py-0.5 rounded">
+            {count}
+          </span>
         )}
       </div>
       {children}
@@ -242,7 +247,7 @@ export default function ExportOffboardingPage() {
                 return (
                   <div
                     key={job.id}
-                    className="rounded border border-slate-800 bg-slate-950/40 p-3"
+                    className="rounded-lg border border-[#162238] bg-[#0c1322] p-3 shadow-sm hover:border-[#1e293b] transition-colors"
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant={exportStatusVariant(job.status)}>{job.status}</Badge>

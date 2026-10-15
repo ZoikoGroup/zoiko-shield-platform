@@ -359,96 +359,99 @@ export default function ConnectorsPage() {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Badge variant="pass">ERB-01 STEP 4</Badge>
-            <span className="text-xs font-mono text-cyan-400 font-bold">
-              INGESTION PIPELINE & TIER CERTIFICATION
-            </span>
-            <span
-              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold ${
-                isSseConnected
-                  ? "bg-emerald-950/80 border border-emerald-500/40 text-emerald-300"
-                  : "bg-amber-950/80 border border-amber-500/40 text-amber-300"
-              }`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${isSseConnected ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
-              {isSseConnected ? "SSE LIVE STREAM" : "POLLING FALLBACK"}
-            </span>
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="pass" className="font-mono text-[10px]">ERB-01 STEP 4</Badge>
+              <span className="text-xs font-mono text-cyan-400 font-bold uppercase tracking-wider">
+                INGESTION PIPELINE &amp; TIER CERTIFICATION
+              </span>
+              <span
+                className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-semibold ${
+                  isSseConnected
+                    ? "bg-emerald-950/80 border border-emerald-500/40 text-emerald-300"
+                    : "bg-amber-950/80 border border-amber-500/40 text-amber-300"
+                }`}
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${isSseConnected ? "bg-emerald-400 animate-pulse" : "bg-amber-400"}`} />
+                {isSseConnected ? "SSE LIVE STREAM" : "POLLING FALLBACK"}
+              </span>
+            </div>
+            <h1 className="text-xl font-bold tracking-tight text-white">
+              Security Telemetry Connectors &amp; Tier Certification
+            </h1>
+            <p className="text-xs font-mono text-slate-400 max-w-3xl mt-0.5">
+              HMAC-authenticated ingestion connectors with 3-tier certification (<span className="text-emerald-400 font-semibold">P0 Certified GA</span>, <span className="text-amber-400 font-semibold">P1 Preview</span>, and <span className="text-slate-300 font-semibold">Experimental</span>) and automated OCSF v1.1 normalization.
+            </p>
           </div>
-          <h1 className="text-2xl font-black text-slate-100 tracking-tight">
-            Security Telemetry Connectors & Tier Certification
-          </h1>
-          <p className="text-sm text-slate-400 max-w-3xl">
-            HMAC-authenticated ingestion connectors with 3-tier certification (<span className="text-emerald-400 font-semibold">P0 Certified GA</span>, <span className="text-amber-400 font-semibold">P1 Preview</span>, and <span className="text-slate-300 font-semibold">Experimental</span>) and automated OCSF v1.1 normalization.
-          </p>
-        </div>
 
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            className="border-cyan-500/40 text-cyan-300 hover:bg-cyan-950/40 font-mono text-xs"
-            onClick={() => {
-              setConfigProvider("aws-cloudtrail");
-              setIsConfigModalOpen(true);
-            }}
-          >
-            <Zap className="w-3.5 h-3.5 mr-1 text-cyan-400" />
-            <span>Configure Credentials & Ping</span>
-          </Button>
-          <Button variant="primary" onClick={() => setIsAddModalOpen(true)}>
-            <Plus className="w-4 h-4" />
-            <span>Add Connector</span>
-          </Button>
-          <Button variant="cyan" onClick={() => router.push("/ingestion")}>
-            <span>Test Ingestion Console</span>
-            <ArrowRight className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <Button
+              variant="outline"
+              className="border-cyan-500/40 text-cyan-300 hover:bg-cyan-950/40 font-mono text-xs"
+              onClick={() => {
+                setConfigProvider("aws-cloudtrail");
+                setIsConfigModalOpen(true);
+              }}
+            >
+              <Zap className="w-3.5 h-3.5 mr-1 text-cyan-400" />
+              <span>Configure Credentials</span>
+            </Button>
+            <Button variant="primary" onClick={() => setIsAddModalOpen(true)}>
+              <Plus className="w-4 h-4" />
+              <span>Add Connector</span>
+            </Button>
+            <Button variant="cyan" onClick={() => router.push("/ingestion")} className="font-bold">
+              <span>Ingestion Console</span>
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
         </div>
       </div>
 
       {/* Metrics Summary Strip */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Card className="p-3.5 space-y-1 bg-slate-900/60 border-slate-800">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="surface-card p-4 rounded-xl border border-slate-800/80 bg-[#0c111e]/90 hover:border-cyan-500/30 transition-all shadow-lg">
           <div className="text-[11px] font-mono text-slate-400 flex items-center justify-between">
             <span>TOTAL CONNECTORS</span>
             <Network className="w-3.5 h-3.5 text-cyan-400" />
           </div>
-          <div className="text-xl font-bold font-mono text-white">{connectors.length}</div>
-          <div className="text-[10px] font-mono text-emerald-400">
+          <div className="text-xl font-bold font-mono text-white mt-1">{connectors.length}</div>
+          <div className="text-[10px] font-mono text-emerald-400 mt-1 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             {connectors.filter((c) => c.status === "ACTIVE").length} Active Feeds
           </div>
-        </Card>
+        </div>
 
-        <Card className="p-3.5 space-y-1 bg-slate-900/60 border-slate-800">
+        <div className="surface-card p-4 rounded-xl border border-slate-800/80 bg-[#0c111e]/90 hover:border-emerald-500/30 transition-all shadow-lg">
           <div className="text-[11px] font-mono text-slate-400 flex items-center justify-between">
             <span>P0 CERTIFIED GA</span>
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
           </div>
-          <div className="text-xl font-bold font-mono text-emerald-400">{p0Count}</div>
-          <div className="text-[10px] font-mono text-slate-400">100% Production SLA</div>
-        </Card>
+          <div className="text-xl font-bold font-mono text-emerald-400 mt-1">{p0Count}</div>
+          <div className="text-[10px] font-mono text-slate-400 mt-1">100% Production SLA</div>
+        </div>
 
-        <Card className="p-3.5 space-y-1 bg-slate-900/60 border-slate-800">
+        <div className="surface-card p-4 rounded-xl border border-slate-800/80 bg-[#0c111e]/90 hover:border-amber-500/30 transition-all shadow-lg">
           <div className="text-[11px] font-mono text-slate-400 flex items-center justify-between">
             <span>P1 PREVIEW</span>
             <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
           </div>
-          <div className="text-xl font-bold font-mono text-amber-400">{p1Count}</div>
-          <div className="text-[10px] font-mono text-slate-400">Gated Preview Stream</div>
-        </Card>
+          <div className="text-xl font-bold font-mono text-amber-400 mt-1">{p1Count}</div>
+          <div className="text-[10px] font-mono text-slate-400 mt-1">Gated Preview Stream</div>
+        </div>
 
-        <Card className="p-3.5 space-y-1 bg-slate-900/60 border-slate-800">
+        <div className="surface-card p-4 rounded-xl border border-slate-800/80 bg-[#0c111e]/90 hover:border-purple-500/30 transition-all shadow-lg">
           <div className="text-[11px] font-mono text-slate-400 flex items-center justify-between">
             <span>EVENTS INGESTED</span>
             <Activity className="w-3.5 h-3.5 text-purple-400" />
           </div>
-          <div className="text-xl font-bold font-mono text-purple-300">
+          <div className="text-xl font-bold font-mono text-purple-300 mt-1">
             {totalEventsIngested.toLocaleString()}
           </div>
-          <div className="text-[10px] font-mono text-cyan-400">OCSF v1.1 Normalized</div>
-        </Card>
+          <div className="text-[10px] font-mono text-cyan-400 mt-1">OCSF v1.1 Normalized</div>
+        </div>
       </div>
 
       {actionMessage && (
@@ -498,7 +501,7 @@ export default function ConnectorsPage() {
       )}
 
       {/* Filter and Search Toolbar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 text-xs font-mono">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 rounded-xl surface-card border border-slate-800/80 bg-[#0c111e]/90 text-xs font-mono shadow-lg">
         <div className="flex items-center gap-2 flex-1">
           <Search className="w-4 h-4 text-slate-500 shrink-0" />
           <input
@@ -506,7 +509,7 @@ export default function ConnectorsPage() {
             placeholder="Search connectors by name, provider, or ID..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full max-w-sm px-3 py-1.5 bg-slate-950 border border-slate-700 rounded-lg text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-400 font-sans"
+            className="w-full max-w-sm px-3 py-1.5 bg-[#080c16] border border-slate-700/80 rounded-lg text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-cyan-400 font-sans"
           />
         </div>
 

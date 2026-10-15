@@ -159,7 +159,7 @@ export default function SectorPacksPage() {
   const [selectedPack, setSelectedPack] = useState<SectorPack>(SECTOR_PACKS[0]);
 
   return (
-    <div className="space-y-10 pb-16">
+    <div className="space-y-8 pb-16">
       {/* Header */}
       <div className="space-y-3">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono">
@@ -184,16 +184,16 @@ export default function SectorPacksPage() {
               onClick={() => setSelectedPack(pack)}
               className={`cursor-pointer rounded-2xl p-6 transition-all duration-300 flex flex-col justify-between space-y-4 ${
                 isSelected
-                  ? "bg-gradient-to-b from-cyan-950/40 to-slate-900/90 border-2 border-cyan-500/60 shadow-[0_0_25px_rgba(6,182,212,0.2)]"
-                  : "bg-slate-900/60 border border-slate-800/80 hover:border-slate-700"
+                  ? "bg-gradient-to-b from-[#0e1d33] to-[#0a0f1d] border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.25)] ring-1 ring-cyan-400/30"
+                  : "bg-[#0a0f1d]/90 border border-[#162238] hover:border-cyan-500/40 hover:bg-[#0c1322] hover:shadow-[0_0_20px_rgba(6,182,212,0.1)]"
               }`}
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800">
+                  <div className="p-2.5 rounded-xl bg-[#060911] border border-[#162238] shadow-inner">
                     {pack.icon}
                   </div>
-                  <span className="px-2 py-0.5 rounded-full bg-slate-800 text-cyan-300 font-mono text-[10px] font-bold border border-slate-700">
+                  <span className="px-2.5 py-1 rounded-full bg-[#060911] text-cyan-300 font-mono text-[10px] font-bold border border-[#162238]">
                     {pack.badge}
                   </span>
                 </div>
@@ -208,7 +208,7 @@ export default function SectorPacksPage() {
                 </p>
               </div>
 
-              <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs font-mono">
+              <div className="pt-3 border-t border-[#162238] flex items-center justify-between text-xs font-mono">
                 <span className="text-slate-500">Plan Alignment:</span>
                 <span className="text-slate-200 font-semibold">{pack.recommendedPlan}</span>
               </div>
@@ -218,10 +218,10 @@ export default function SectorPacksPage() {
       </div>
 
       {/* Deep-Dive Pack Inspector */}
-      <div className="p-8 rounded-2xl bg-gradient-to-br from-slate-900/90 to-slate-950 border border-cyan-500/40 shadow-2xl space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+      <div className="p-8 rounded-2xl bg-gradient-to-br from-[#0c1424] via-[#0a0f1d] to-[#060911] border border-cyan-500/40 shadow-[0_0_40px_rgba(6,182,212,0.15)] space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#162238] pb-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-slate-950 border border-slate-800">
+            <div className="p-3 rounded-xl bg-[#060911] border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]">
               {selectedPack.icon}
             </div>
             <div>
@@ -231,27 +231,27 @@ export default function SectorPacksPage() {
               <h2 className="text-2xl font-bold text-slate-100">{selectedPack.name}</h2>
             </div>
           </div>
-          <div className="px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 text-xs font-mono text-cyan-400 font-bold">
+          <div className="px-3.5 py-1.5 rounded-lg bg-[#060911] border border-cyan-500/30 text-xs font-mono text-cyan-300 font-bold shadow-inner">
             {selectedPack.recommendedPlan}
           </div>
         </div>
 
         {/* Statutory Caveat Alert Box */}
-        <div className="p-4 rounded-xl bg-amber-950/30 border border-amber-500/30 flex items-start gap-3 text-xs text-amber-200">
+        <div className="p-4 rounded-xl bg-amber-950/20 border border-amber-500/30 flex items-start gap-3 text-xs text-amber-200/90">
           <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
           <div className="space-y-1">
-            <span className="font-bold text-amber-100">Statutory Disclosure & Scope Boundary:</span>
-            <p className="text-amber-200/90 leading-relaxed">{selectedPack.statutoryCaveat}</p>
+            <span className="font-bold text-amber-100">Statutory Disclosure &amp; Scope Boundary:</span>
+            <p className="text-amber-200/80 leading-relaxed">{selectedPack.statutoryCaveat}</p>
           </div>
         </div>
 
         {/* Feature Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Tailored Capabilities */}
-          <div className="space-y-3 p-5 rounded-xl bg-slate-950/70 border border-slate-800">
-            <div className="text-xs font-mono font-bold text-slate-400 uppercase flex items-center gap-2">
+          <div className="space-y-3 p-5 rounded-xl bg-[#060911]/80 border border-[#162238]">
+            <div className="text-xs font-mono font-bold text-slate-300 uppercase flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-cyan-400" />
-              <span>Tailored SecOps & Governance Modules</span>
+              <span>Tailored SecOps &amp; Governance Modules</span>
             </div>
             <ul className="space-y-2.5 text-xs text-slate-300">
               {(selectedPack.tailoredFeatures || []).map((feat, i) => (
@@ -264,17 +264,17 @@ export default function SectorPacksPage() {
           </div>
 
           {/* Compliance Regimes & Connectors */}
-          <div className="space-y-4 p-5 rounded-xl bg-slate-950/70 border border-slate-800">
+          <div className="space-y-4 p-5 rounded-xl bg-[#060911]/80 border border-[#162238]">
             <div>
-              <div className="text-xs font-mono font-bold text-slate-400 uppercase mb-2 flex items-center gap-2">
+              <div className="text-xs font-mono font-bold text-slate-300 uppercase mb-2 flex items-center gap-2">
                 <FileCheck2 className="w-4 h-4 text-cyan-400" />
-                <span>Target Regulatory & Framework Alignments</span>
+                <span>Target Regulatory &amp; Framework Alignments</span>
               </div>
               <div className="flex flex-wrap gap-2">
                 {(selectedPack.targetRegimes || []).map((reg, i) => (
                   <span
                     key={i}
-                    className="px-2.5 py-1 rounded bg-slate-900 border border-slate-700 text-slate-200 text-xs font-mono"
+                    className="px-2.5 py-1 rounded bg-[#0a0f1d] border border-[#162238] text-slate-200 text-xs font-mono"
                   >
                     {reg}
                   </span>
@@ -282,8 +282,8 @@ export default function SectorPacksPage() {
               </div>
             </div>
 
-            <div className="pt-2 border-t border-slate-800">
-              <div className="text-xs font-mono font-bold text-slate-400 uppercase mb-2 flex items-center gap-2">
+            <div className="pt-3 border-t border-[#162238]">
+              <div className="text-xs font-mono font-bold text-slate-300 uppercase mb-2 flex items-center gap-2">
                 <Server className="w-4 h-4 text-cyan-400" />
                 <span>Active Certified Connectors</span>
               </div>
@@ -291,7 +291,7 @@ export default function SectorPacksPage() {
                 {(selectedPack.activeConnectors || []).map((conn, i) => (
                   <span
                     key={i}
-                    className="px-2 py-0.5 rounded bg-cyan-950/40 border border-cyan-500/30 text-cyan-300 text-xs font-mono"
+                    className="px-2.5 py-1 rounded bg-cyan-950/40 border border-cyan-500/30 text-cyan-300 text-xs font-mono"
                   >
                     {conn}
                   </span>
@@ -302,17 +302,17 @@ export default function SectorPacksPage() {
         </div>
 
         {/* CTA */}
-        <div className="pt-2 flex items-center justify-between">
+        <div className="pt-2 flex flex-col sm:flex-row items-center justify-between gap-4">
           <Link
             href="/pricing"
-            className="text-xs font-mono text-cyan-400 hover:text-cyan-300 flex items-center gap-1.5"
+            className="text-xs font-mono text-cyan-400 hover:text-cyan-300 flex items-center gap-1.5 transition-colors"
           >
-            <span>View plan tier pricing & allocations</span>
+            <span>View plan tier pricing &amp; allocations</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
           <Link
             href="/onboarding"
-            className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(6,182,212,0.3)]"
+            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(6,182,212,0.35)] hover:shadow-[0_0_25px_rgba(6,182,212,0.5)]"
           >
             <span>Provision {selectedPack.name.split(" ")[0]} Pack</span>
             <ArrowRight className="w-4 h-4" />

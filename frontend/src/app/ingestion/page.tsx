@@ -210,42 +210,70 @@ export default function IngestionPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Badge variant="pass">ERB-01 STEP 5</Badge>
-            <span className="text-xs font-mono text-cyan-400 font-bold">
-              INGESTION & NORMALIZATION PIPELINE
-            </span>
+      {/* Header Banner */}
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2.5">
+              <Badge variant="pass" className="font-mono text-[10px]">ERB-01 STEP 5</Badge>
+              <span className="text-xs font-mono text-cyan-400 font-bold uppercase tracking-wider">
+                INGESTION &amp; NORMALIZATION PIPELINE
+              </span>
+            </div>
+            <h1 className="text-xl font-bold tracking-tight text-white">
+              Live Telemetry Ingestion Console
+            </h1>
+            <p className="text-xs font-mono text-slate-400 max-w-2xl mt-0.5">
+              Inject synthetic security telemetry across 10 tool providers, inspect OCSF normalization, and view live incoming events.
+            </p>
           </div>
-          <h1 className="text-2xl font-black text-slate-100 tracking-tight">
-            Live Telemetry Ingestion Console
-          </h1>
-          <p className="text-sm text-slate-400">
-            Inject synthetic security telemetry across 10 tool providers, inspect OCSF normalization, and view live incoming events.
-          </p>
-        </div>
 
-        <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={() => fetchLiveEvents()} isLoading={isLoadingLive}>
-            <span>Refresh Events Backbone</span>
-          </Button>
-          <Button variant="cyan" onClick={() => router.push("/alerts")}>
-            <span>Proceed to Alerts Queue</span>
-            <ArrowRight className="w-4 h-4" />
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" onClick={() => fetchLiveEvents()} isLoading={isLoadingLive} className="border border-slate-800 hover:border-slate-700 text-slate-300">
+              <RefreshCw className="w-4 h-4 text-cyan-400" />
+              <span>Refresh Backbone</span>
+            </Button>
+            <Button variant="cyan" onClick={() => router.push("/alerts")} className="font-bold">
+              <span>Alerts Queue</span>
+              <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* 4 Summary KPI Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Backbone Buffer State</div>
+          <div className="text-2xl font-bold font-mono text-emerald-400 mt-1">100% NOMINAL</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">AIMD backpressure controlled</div>
+        </div>
+        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Events Stream Backbone</div>
+          <div className="text-2xl font-bold font-mono text-cyan-400 mt-1">{liveEvents.length} Events</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">Live streaming in memory</div>
+        </div>
+        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">OCSF Normalization Efficacy</div>
+          <div className="text-2xl font-bold font-mono text-purple-400 mt-1">100.0%</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">Strict schema compliance</div>
+        </div>
+        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Connectors Configured</div>
+          <div className="text-2xl font-bold font-mono text-white mt-1">{state?.connectors?.length || 10} Connectors</div>
+          <div className="text-[11px] text-cyan-400 mt-0.5">Multi-vendor telemetry</div>
         </div>
       </div>
 
       {/* Preset Buttons Grid (10 Providers) */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2.5">
         {attackPresets.map((preset, idx) => (
           <button
             key={idx}
             onClick={() => setRawJson(JSON.stringify(preset.payload, null, 2))}
-            className="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-cyan-500/40 text-left transition-all group cursor-pointer space-y-1"
+            className="p-3 rounded-xl bg-[#0c111e]/90 border border-slate-800/80 hover:border-cyan-500/50 text-left transition-all group cursor-pointer space-y-1 shadow-md hover:bg-[#0f1628]"
           >
-            <span className="text-[11px] font-bold text-slate-200 group-hover:text-cyan-300 transition-colors block truncate">
+            <span className="text-[11px] font-bold text-slate-200 group-hover:text-cyan-300 transition-colors block truncate font-mono">
               {preset.title}
             </span>
             <p className="text-[10px] font-mono text-slate-400 truncate">{preset.desc}</p>

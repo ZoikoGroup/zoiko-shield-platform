@@ -298,6 +298,7 @@ export interface Case {
   status: 'OPEN' | 'INVESTIGATING' | 'CONTAINED' | 'RESOLVED' | 'CLOSED';
   ownerId: string;
   ownerName: string;
+  assignee?: string;
   createdAt: string;
   updatedAt: string;
   linkedAlertIds: string[];

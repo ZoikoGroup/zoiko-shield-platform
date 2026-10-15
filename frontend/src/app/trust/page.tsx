@@ -98,14 +98,14 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <Card variant="cyber" className="p-4">
-      <div className="mb-3 flex items-baseline justify-between border-b border-slate-800 pb-2">
+    <Card variant="cyber" className="p-5 space-y-4">
+      <div className="flex items-baseline justify-between border-b border-[#162238] pb-3">
         <div>
-          <h2 className="text-sm font-semibold text-slate-100">{title}</h2>
-          <p className="text-[11px] font-mono text-slate-500">{requirement}</p>
+          <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">{title}</h2>
+          <p className="text-[11px] font-mono text-slate-400 mt-0.5">{requirement}</p>
         </div>
         {count !== undefined && (
-          <span className="font-mono text-lg text-slate-200">{count}</span>
+          <span className="font-mono text-base font-bold text-cyan-400 px-2 py-0.5 rounded bg-cyan-950/30 border border-cyan-500/20">{count}</span>
         )}
       </div>
       {children}
@@ -194,16 +194,16 @@ export default function TrustCenterPage() {
         >
           <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
             {componentStatuses.map((component) => (
-              <div key={component.label} className="rounded border border-slate-800 p-2">
+              <div key={component.label} className="rounded-xl border border-[#162238] bg-[#060911]/80 p-3 shadow-inner">
                 <p className="text-[11px] font-mono uppercase text-slate-500">
                   {component.label}
                 </p>
-                <p className={`font-mono text-sm ${component.tone}`}>{component.value}</p>
+                <p className={`font-mono text-sm font-bold mt-1 ${component.tone}`}>{component.value}</p>
               </div>
             ))}
           </div>
           {unknownCount > 0 && (
-            <p className="mt-2 font-mono text-[11px] text-amber-300">
+            <p className="mt-2 font-mono text-[11px] text-amber-300/90">
               {unknownCount} of {componentStatuses.length} components report UNKNOWN. The
               platform cannot currently observe them, which is not the same as their being
               healthy — this page will not show an all-clear while any component is
@@ -211,7 +211,7 @@ export default function TrustCenterPage() {
             </p>
           )}
           {health?.generatedAt && (
-            <p className="mt-1 font-mono text-[11px] text-slate-600">
+            <p className="mt-1 font-mono text-[11px] text-slate-500">
               read at {formatTimestamp(health.generatedAt)}
             </p>
           )}
@@ -249,7 +249,7 @@ export default function TrustCenterPage() {
               {services.map((service, index) => (
                 <div
                   key={service.id ?? service.serviceId ?? index}
-                  className="rounded border border-slate-800 p-2"
+                  className="rounded-xl border border-[#162238] bg-[#060911]/60 p-3 hover:border-cyan-500/30 transition-colors"
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-semibold text-slate-100">
@@ -258,9 +258,9 @@ export default function TrustCenterPage() {
                     {service.status && <Badge variant="neutral">{service.status}</Badge>}
                   </div>
                   {service.description && (
-                    <p className="mt-0.5 text-xs text-slate-400">{service.description}</p>
+                    <p className="mt-1 text-xs text-slate-400 leading-relaxed">{service.description}</p>
                   )}
-                  <p className="mt-0.5 font-mono text-[11px] text-slate-500">
+                  <p className="mt-1 font-mono text-[11px] text-slate-500">
                     regions:{" "}
                     {service.regions && service.regions.length > 0
                       ? service.regions.join(", ")
@@ -273,14 +273,14 @@ export default function TrustCenterPage() {
 
           {domains.length > 0 && (
             <div className="mt-3">
-              <p className="mb-1 text-[11px] font-mono uppercase text-slate-500">
+              <p className="mb-2 text-[11px] font-mono uppercase text-slate-500">
                 Capability domains
               </p>
               <div className="flex flex-wrap gap-2">
                 {domains.map((domain, index) => (
                   <span
                     key={domain.domain ?? index}
-                    className="rounded border border-slate-800 bg-slate-900/60 px-2 py-1 font-mono text-[11px] text-slate-300"
+                    className="rounded-lg border border-[#162238] bg-[#060911] px-2.5 py-1 font-mono text-[11px] text-slate-300"
                   >
                     {domain.name ?? domain.domain}
                     {domain.total !== undefined && (
@@ -300,23 +300,23 @@ export default function TrustCenterPage() {
           title="Trust posture"
           requirement="What the platform asserts about itself, and what backs it."
         >
-          <div className="rounded border border-amber-500/40 bg-amber-500/5 p-3">
-            <p className="text-[11px] font-mono uppercase text-amber-200">
+          <div className="rounded-xl border border-amber-500/30 bg-amber-950/15 p-4 space-y-2">
+            <p className="text-[11px] font-mono uppercase text-amber-200 font-bold">
               Unattested assertions
             </p>
-            <div className="mt-1 grid gap-2 md:grid-cols-2">
+            <div className="grid gap-2 md:grid-cols-2">
               <p className="font-mono text-xs text-slate-300">
                 trustStatus:{" "}
-                <span className="text-amber-300">{trust?.trustStatus ?? "not stated"}</span>
+                <span className="text-amber-300 font-bold">{trust?.trustStatus ?? "not stated"}</span>
               </p>
               <p className="font-mono text-xs text-slate-300">
                 securityPosture:{" "}
-                <span className="text-amber-300">
+                <span className="text-amber-300 font-bold">
                   {trust?.securityPosture ?? "not stated"}
                 </span>
               </p>
             </div>
-            <p className="mt-2 font-mono text-[11px] text-amber-300/80">
+            <p className="mt-2 font-mono text-[11px] text-amber-300/80 leading-relaxed">
               These two values are returned as fixed strings by the trust-center service.
               They are not derived from the claims, audit packages or control evidence
               below, and would read the same if all of it were absent. They are shown here
@@ -333,8 +333,8 @@ export default function TrustCenterPage() {
             (trust?.publishedArtifacts?.length ?? 0)
           }
         >
-          <div className="mb-3">
-            <p className="mb-1 text-[11px] font-mono uppercase text-slate-500">
+          <div className="mb-4">
+            <p className="mb-2 text-[11px] font-mono uppercase text-slate-500 font-bold">
               Audit packages
             </p>
             {!Array.isArray(trust?.availableAuditPackages) || trust.availableAuditPackages.length === 0 ? (
@@ -343,39 +343,41 @@ export default function TrustCenterPage() {
                 an auditor could be handed.
               </p>
             ) : (
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-slate-800 text-left font-mono text-slate-500">
-                    <th className="py-1">Package</th>
-                    <th className="py-1">Framework</th>
-                    <th className="py-1">Status</th>
-                    <th className="py-1">Frozen</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(trust?.availableAuditPackages || []).map((pkg) => (
-                    <tr key={pkg.id} className="border-b border-slate-900 last:border-0">
-                      <td className="py-1.5 text-slate-200">{pkg.packageName}</td>
-                      <td className="py-1.5 font-mono text-slate-400">
-                        {pkg.frameworkScope} {pkg.frameworkVersion}
-                      </td>
-                      <td className="py-1.5">
-                        <Badge variant={pkg.status === "FROZEN" ? "healthy" : "pending"}>
-                          {pkg.status}
-                        </Badge>
-                      </td>
-                      <td className="py-1.5 font-mono text-slate-500">
-                        {pkg.frozenAt ? formatTimestamp(pkg.frozenAt) : "not frozen"}
-                      </td>
+              <div className="overflow-x-auto rounded-xl border border-[#162238]">
+                <table className="w-full text-xs">
+                  <thead>
+                    <tr className="border-b border-[#162238] text-left font-mono text-slate-400 bg-[#060911]/80">
+                      <th className="py-2.5 px-3">Package</th>
+                      <th className="py-2.5 px-3">Framework</th>
+                      <th className="py-2.5 px-3">Status</th>
+                      <th className="py-2.5 px-3">Frozen</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-[#162238]/60">
+                    {(trust?.availableAuditPackages || []).map((pkg) => (
+                      <tr key={pkg.id} className="hover:bg-[#0c1424] transition-colors">
+                        <td className="py-2 px-3 text-slate-200 font-medium">{pkg.packageName}</td>
+                        <td className="py-2 px-3 font-mono text-slate-400">
+                          {pkg.frameworkScope} {pkg.frameworkVersion}
+                        </td>
+                        <td className="py-2 px-3">
+                          <Badge variant={pkg.status === "FROZEN" ? "healthy" : "pending"}>
+                            {pkg.status}
+                          </Badge>
+                        </td>
+                        <td className="py-2 px-3 font-mono text-slate-500">
+                          {pkg.frozenAt ? formatTimestamp(pkg.frozenAt) : "not frozen"}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
 
           <div>
-            <p className="mb-1 text-[11px] font-mono uppercase text-slate-500">
+            <p className="mb-2 text-[11px] font-mono uppercase text-slate-500 font-bold">
               Published artifacts
             </p>
             {!Array.isArray(trust?.publishedArtifacts) || trust.publishedArtifacts.length === 0 ? (
@@ -383,11 +385,11 @@ export default function TrustCenterPage() {
                 Nothing has been published to the trust center.
               </p>
             ) : (
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 {(trust?.publishedArtifacts || []).map((artifact) => (
                   <div
                     key={artifact.id}
-                    className="flex items-center justify-between rounded border border-slate-800 px-2 py-1.5"
+                    className="flex items-center justify-between rounded-xl border border-[#162238] bg-[#060911]/60 px-3 py-2 hover:border-cyan-500/30 transition-colors"
                   >
                     <span className="text-xs text-slate-200">
                       {artifact.title ?? artifact.artifactType ?? artifact.id}
@@ -415,8 +417,8 @@ export default function TrustCenterPage() {
           ) : (
             <div className="space-y-2">
               {(trust?.claims || []).map((claim) => (
-                <div key={claim.claimKey} className="rounded border border-slate-800 p-2">
-                  <p className="text-xs text-slate-200">{claim.claimWording}</p>
+                <div key={claim.claimKey} className="rounded-xl border border-[#162238] bg-[#060911]/60 p-3 hover:border-cyan-500/30 transition-colors">
+                  <p className="text-xs text-slate-200 font-medium">{claim.claimWording}</p>
                   <p className="mt-1 font-mono text-[11px] text-slate-500">
                     {claim.claimKey} · scope {claim.scope} · evidence required:{" "}
                     {claim.evidenceRequirement || "not stated"}

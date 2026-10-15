@@ -121,22 +121,24 @@ export function ContractSurface({
   const { status, reasons } = evidence;
 
   return (
-    <div className="space-y-5 p-6">
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-800 pb-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-lg font-semibold text-slate-100">{title}</h1>
-            <Badge variant="neutral">{contractId}</Badge>
-            <Badge variant={STATUS_BADGE[status]}>{status}</Badge>
+    <div className="space-y-6">
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-b from-[#0e1424] to-[#0a0e1a] shadow-xl">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-xl font-bold tracking-tight text-white">{title}</h1>
+              <Badge variant="neutral" className="font-mono text-[11px] bg-slate-900 border-slate-700 text-slate-300">{contractId}</Badge>
+              <Badge variant={STATUS_BADGE[status]} className="font-mono text-[11px] uppercase tracking-wider">{status}</Badge>
+            </div>
+            <p className="mt-1.5 text-xs font-mono text-slate-400 max-w-3xl leading-relaxed">{purpose}</p>
           </div>
-          <p className="mt-1 text-xs font-mono text-slate-500">{purpose}</p>
-        </div>
-        <div className="flex gap-2">
-          {actions}
-          <Button variant="ghost" onClick={evidence.reload}>
-            <RefreshCw className="h-4 w-4" />
-            <span>Refresh</span>
-          </Button>
+          <div className="flex items-center gap-2.5">
+            {actions}
+            <Button variant="ghost" onClick={evidence.reload} className="border border-slate-800 hover:border-slate-700 text-slate-300">
+              <RefreshCw className="h-4 w-4 text-cyan-400" />
+              <span>Refresh</span>
+            </Button>
+          </div>
         </div>
       </div>
 

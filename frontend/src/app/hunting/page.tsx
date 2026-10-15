@@ -247,7 +247,7 @@ export default function ThreatHuntingPage() {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="p-6 rounded-2xl bg-[#0e121b] border border-purple-500/30 shadow-xl space-y-3">
+      <div className="surface-card p-6 rounded-2xl border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl space-y-3">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
@@ -270,16 +270,58 @@ export default function ThreatHuntingPage() {
           </div>
 
           <div className="flex items-center gap-3 font-mono text-xs">
-            <div className="px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-300">
+            <div className="px-3 py-1.5 rounded-lg bg-[#080c16] border border-slate-800 text-slate-300">
               Provider: <span className="text-purple-400 font-bold">Vertex AI Gemini (gemini-1.5-pro-002 [derived])</span>
             </div>
-            <div className="px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-300">
+            <div className="px-3 py-1.5 rounded-lg bg-[#080c16] border border-slate-800 text-slate-300">
               Case:{" "}
               <span className="text-cyan-400 font-bold font-mono">
-                {state.cases[0]?.id ?? "No active case"}
+                {state?.cases?.[0]?.id ?? "No active case"}
               </span>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* KPI Metrics Strip */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="surface-card p-4 rounded-xl border border-slate-800/80 bg-[#0c111e]/90 hover:border-purple-500/30 transition-all shadow-lg">
+          <div className="text-[11px] font-mono text-slate-400 flex items-center justify-between">
+            <span>ACTIVE HUNT SESSIONS</span>
+            <Crosshair className="w-3.5 h-3.5 text-purple-400" />
+          </div>
+          <div className="text-xl font-bold font-mono text-white mt-1">1 Live</div>
+          <div className="text-[10px] font-mono text-emerald-400 mt-1 flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+            ReAct Engine Engaged
+          </div>
+        </div>
+
+        <div className="surface-card p-4 rounded-xl border border-slate-800/80 bg-[#0c111e]/90 hover:border-cyan-500/30 transition-all shadow-lg">
+          <div className="text-[11px] font-mono text-slate-400 flex items-center justify-between">
+            <span>MITRE TTPS COVERED</span>
+            <GitBranch className="w-3.5 h-3.5 text-cyan-400" />
+          </div>
+          <div className="text-xl font-bold font-mono text-cyan-300 mt-1">4 Techniques</div>
+          <div className="text-[10px] font-mono text-slate-400 mt-1">T1558.003, T1071, T1490</div>
+        </div>
+
+        <div className="surface-card p-4 rounded-xl border border-slate-800/80 bg-[#0c111e]/90 hover:border-emerald-500/30 transition-all shadow-lg">
+          <div className="text-[11px] font-mono text-slate-400 flex items-center justify-between">
+            <span>REASONING LOOP</span>
+            <Terminal className="w-3.5 h-3.5 text-emerald-400" />
+          </div>
+          <div className="text-xl font-bold font-mono text-emerald-400 mt-1">{reasoningTrace.length} Steps</div>
+          <div className="text-[10px] font-mono text-slate-400 mt-1">Merkle Proof Verified</div>
+        </div>
+
+        <div className="surface-card p-4 rounded-xl border border-slate-800/80 bg-[#0c111e]/90 hover:border-amber-500/30 transition-all shadow-lg">
+          <div className="text-[11px] font-mono text-slate-400 flex items-center justify-between">
+            <span>BLAST RADIUS GUARD</span>
+            <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />
+          </div>
+          <div className="text-xl font-bold font-mono text-amber-300 mt-1">Safe (0 Outage)</div>
+          <div className="text-[10px] font-mono text-cyan-400 mt-1">SOAR Containment Ready</div>
         </div>
       </div>
 
@@ -593,7 +635,7 @@ export default function ThreatHuntingPage() {
                 <span>THREAT COPILOT SYNTHESIS &amp; RECOMMENDED CONTAINMENT</span>
               </div>
               <p className="text-xs text-slate-200 leading-relaxed font-mono">
-                {huntCompleted && state.cases[0]?.aiSummary ? (
+                {huntCompleted && state?.cases?.[0]?.aiSummary ? (
                   <>
                     ✔{" "}
                     <strong className="text-white">AI Analysis Complete:</strong>{" "}

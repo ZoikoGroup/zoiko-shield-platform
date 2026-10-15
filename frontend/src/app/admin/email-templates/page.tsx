@@ -702,12 +702,12 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
   if (loading) return <LoadingState message="Loading 226 Production Email Templates (ZS-EML-TPL-001)..." />;
 
   return (
-    <div className="space-y-6 p-6 min-h-screen bg-slate-950 text-slate-100">
+    <div className="space-y-6 p-6 min-h-screen bg-[#060911] text-slate-100">
       {/* Header Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#162238] pb-5">
         <div>
           <div className="flex items-center gap-3">
-            <div className="p-2 rounded-lg bg-sky-500/10 border border-sky-500/20 text-sky-400">
+            <div className="p-2.5 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 shadow-sm shadow-cyan-500/20">
               <Mail className="w-6 h-6" />
             </div>
             <div>
@@ -715,10 +715,14 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
                 <h1 className="text-xl font-bold tracking-tight text-white">
                   Production Email Template Studio
                 </h1>
-                <Badge variant="pass">ZS-EML-TPL-001 v2.0</Badge>
-                <Badge variant="neutral">226 Templates</Badge>
+                <Badge variant="pass" className="font-mono text-[10px] tracking-wider border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
+                  ZS-EML-TPL-001 v2.0
+                </Badge>
+                <Badge variant="info" className="font-mono text-[10px] tracking-wider border-cyan-500/30 bg-cyan-500/10 text-cyan-400">
+                  226 Templates
+                </Badge>
               </div>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-slate-400 mt-1 font-mono">
                 Engineering Specification Baseline • Fail-Closed Variable Validation • Mandatory Security Footers
               </p>
             </div>
@@ -731,15 +735,15 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
             variant="secondary"
             size="sm"
             onClick={handleResetVars}
-            className="text-xs flex items-center gap-1.5"
+            className="text-xs flex items-center gap-1.5 border border-[#162238] bg-[#0c1322] hover:bg-[#162238] text-slate-200"
           >
-            <RefreshCw className="w-3.5 h-3.5" /> Reset Variables
+            <RefreshCw className="w-3.5 h-3.5 text-cyan-400" /> Reset Variables
           </Button>
           <Button
             variant="outline"
             size="sm"
             onClick={handleInjectSecretTest}
-            className="text-xs flex items-center gap-1.5 text-amber-400 border-amber-500/30 hover:bg-amber-500/10"
+            className="text-xs flex items-center gap-1.5 text-amber-400 border-amber-500/30 bg-amber-500/5 hover:bg-amber-500/10"
             title="Test Security Release Gate: injecting secrets must fail closed"
           >
             <KeyRound className="w-3.5 h-3.5" /> Test Secret Gate
@@ -753,8 +757,8 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
           onClick={() => setSelectedDomain("ALL")}
           className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 ${
             selectedDomain === "ALL"
-              ? "bg-sky-500 text-white shadow-lg shadow-sky-500/20"
-              : "bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800"
+              ? "bg-cyan-500 text-slate-950 font-semibold shadow-lg shadow-cyan-500/20"
+              : "bg-[#0a0f1d] text-slate-400 hover:text-slate-200 border border-[#162238]"
           }`}
         >
           All Domains (226)
@@ -765,12 +769,12 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
             onClick={() => setSelectedDomain(domain.code)}
             className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 ${
               selectedDomain === domain.code
-                ? "bg-sky-500 text-white shadow-lg shadow-sky-500/20"
-                : "bg-slate-900/60 text-slate-400 hover:text-slate-200 border border-slate-800"
+                ? "bg-cyan-500 text-slate-950 font-semibold shadow-lg shadow-cyan-500/20"
+                : "bg-[#0a0f1d] text-slate-400 hover:text-slate-200 border border-[#162238]"
             }`}
           >
             <span>{domain.code}</span>
-            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-slate-800/80 text-slate-300">
+            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#162238] text-cyan-300 font-mono">
               {domain.count}
             </span>
           </button>
@@ -788,7 +792,7 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
               placeholder="Search 226 templates..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-sky-500"
+              className="w-full bg-[#0a0f1d] border border-[#162238] rounded-lg pl-9 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/60"
             />
           </div>
 
@@ -801,19 +805,19 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
                   onClick={() => setSelectedTemplateId(tpl.id)}
                   className={`w-full text-left p-2.5 rounded-lg border transition-all ${
                     isSelected
-                      ? "bg-sky-950/40 border-sky-500/50 shadow-sm"
-                      : "bg-slate-900/40 border-slate-800/80 hover:bg-slate-900 hover:border-slate-700"
+                      ? "bg-cyan-950/30 border-cyan-500/50 shadow-sm"
+                      : "bg-[#0a0f1d] border-[#162238] hover:bg-[#0c1322] hover:border-[#1e293b]"
                   }`}
                 >
                   <div className="flex items-center justify-between gap-1 mb-1">
-                    <span className="font-mono text-[11px] font-semibold text-sky-400">
+                    <span className="font-mono text-[11px] font-semibold text-cyan-400">
                       {tpl.id}
                     </span>
                     <span
-                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase ${
+                      className={`text-[9px] font-bold px-1.5 py-0.5 rounded uppercase font-mono ${
                         tpl.gate === "P0"
                           ? "bg-red-500/20 text-red-300 border border-red-500/30"
-                          : "bg-slate-800 text-slate-400"
+                          : "bg-slate-800 text-slate-400 border border-slate-700/50"
                       }`}
                     >
                       {tpl.gate}
@@ -834,17 +838,17 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
         {/* Center/Right Column: Live Visualizer & Variable Inspector (9 cols) */}
         <div className="lg:col-span-9 space-y-4">
           {/* Top Bar: Template Metadata & Format Toggle */}
-          <Card className="p-4 bg-slate-900/70 border-slate-800">
+          <Card className="p-4 bg-[#0a0f1d] border-[#162238]">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm font-bold text-sky-400">
+                  <span className="font-mono text-sm font-bold text-cyan-400">
                     {currentTemplate?.id}
                   </span>
-                  <Badge variant={currentTemplate?.gate === "P0" ? "fail" : "neutral"}>
+                  <Badge variant={currentTemplate?.gate === "P0" ? "fail" : "neutral"} className="font-mono text-[10px]">
                     GATE {currentTemplate?.gate}
                   </Badge>
-                  <Badge variant="neutral">{currentTemplate?.senderClass}</Badge>
+                  <Badge variant="neutral" className="font-mono text-[10px]">{currentTemplate?.senderClass}</Badge>
                 </div>
                 <h3 className="text-sm font-semibold text-slate-100 mt-1">
                   {currentTemplate?.name}
@@ -853,11 +857,11 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
 
               {/* Viewport, Theme & Format Tabs */}
               <div className="flex items-center gap-2">
-                <div className="flex items-center rounded-lg bg-slate-950 p-1 border border-slate-800">
+                <div className="flex items-center rounded-lg bg-[#0c1322] p-1 border border-[#162238]">
                   <button
                     onClick={() => setFormatTab("html")}
                     className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${
-                      formatTab === "html" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-slate-200"
+                      formatTab === "html" ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40" : "text-slate-400 hover:text-slate-200"
                     }`}
                   >
                     HTML
@@ -865,7 +869,7 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
                   <button
                     onClick={() => setFormatTab("plaintext")}
                     className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${
-                      formatTab === "plaintext" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-slate-200"
+                      formatTab === "plaintext" ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40" : "text-slate-400 hover:text-slate-200"
                     }`}
                   >
                     Plain Text
@@ -873,7 +877,7 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
                   <button
                     onClick={() => setFormatTab("variables")}
                     className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${
-                      formatTab === "variables" ? "bg-slate-800 text-white" : "text-slate-400 hover:text-slate-200"
+                      formatTab === "variables" ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40" : "text-slate-400 hover:text-slate-200"
                     }`}
                   >
                     Variables Form
@@ -882,11 +886,11 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
 
                 {formatTab === "html" && (
                   <>
-                    <div className="flex items-center rounded-lg bg-slate-950 p-1 border border-slate-800">
+                    <div className="flex items-center rounded-lg bg-[#0c1322] p-1 border border-[#162238]">
                       <button
                         onClick={() => setViewMode("desktop")}
                         className={`p-1.5 rounded transition-all ${
-                          viewMode === "desktop" ? "bg-slate-800 text-sky-400" : "text-slate-500"
+                          viewMode === "desktop" ? "bg-cyan-500/20 text-cyan-400" : "text-slate-500 hover:text-slate-300"
                         }`}
                         title="Desktop Preview (600px)"
                       >
@@ -895,7 +899,7 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
                       <button
                         onClick={() => setViewMode("mobile")}
                         className={`p-1.5 rounded transition-all ${
-                          viewMode === "mobile" ? "bg-slate-800 text-sky-400" : "text-slate-500"
+                          viewMode === "mobile" ? "bg-cyan-500/20 text-cyan-400" : "text-slate-500 hover:text-slate-300"
                         }`}
                         title="Mobile Preview (380px)"
                       >
@@ -905,10 +909,10 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
 
                     <button
                       onClick={() => setColorScheme((prev) => (prev === "dark" ? "light" : "dark"))}
-                      className="p-2 rounded-lg bg-slate-950 border border-slate-800 text-slate-400 hover:text-slate-200"
+                      className="p-2 rounded-lg bg-[#0c1322] border border-[#162238] text-slate-400 hover:text-slate-200 hover:border-slate-700"
                       title="Toggle Dark / Light Simulation"
                     >
-                      {colorScheme === "dark" ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
+                      {colorScheme === "dark" ? <Moon className="w-3.5 h-3.5 text-cyan-400" /> : <Sun className="w-3.5 h-3.5 text-amber-400" />}
                     </button>
                   </>
                 )}
@@ -918,13 +922,13 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
 
           {/* Tab 1: HTML Visualizer */}
           {formatTab === "html" && (
-            <div className="flex justify-center bg-slate-950/80 p-6 rounded-xl border border-slate-800/80 min-h-[500px]">
+            <div className="flex justify-center bg-[#0a0f1d] p-6 rounded-xl border border-[#162238] min-h-[500px]">
               <div
                 style={{
                   width: viewMode === "desktop" ? "600px" : "380px",
                   transition: "width 0.2s ease-in-out",
                 }}
-                className="overflow-hidden rounded-xl shadow-2xl border border-slate-800"
+                className="overflow-hidden rounded-xl shadow-2xl border border-[#162238]"
               >
                 {previewOutput ? (
                   <iframe
@@ -951,10 +955,10 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
 
           {/* Tab 2: Plain Text Parity View */}
           {formatTab === "plaintext" && (
-            <Card className="p-4 bg-slate-900 border-slate-800">
-              <div className="flex items-center justify-between pb-3 mb-3 border-b border-slate-800">
+            <Card className="p-4 bg-[#0a0f1d] border-[#162238]">
+              <div className="flex items-center justify-between pb-3 mb-3 border-b border-[#162238]">
                 <div className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                  <FileText className="w-4 h-4 text-sky-400" /> Plain-Text WCAG 2.2 AA Parity Contract
+                  <FileText className="w-4 h-4 text-cyan-400" /> Plain-Text WCAG 2.2 AA Parity Contract
                 </div>
                 <Button
                   variant="outline"
@@ -964,12 +968,12 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
                       navigator.clipboard.writeText(previewOutput.plainTextBody);
                     }
                   }}
-                  className="text-xs flex items-center gap-1"
+                  className="text-xs flex items-center gap-1 border-[#162238] bg-[#0c1322] hover:bg-[#162238] text-slate-300"
                 >
-                  <Copy className="w-3 h-3" /> Copy Text
+                  <Copy className="w-3 h-3 text-cyan-400" /> Copy Text
                 </Button>
               </div>
-              <pre className="text-xs font-mono text-slate-300 bg-slate-950 p-4 rounded-lg border border-slate-800 whitespace-pre-wrap leading-relaxed max-h-[550px] overflow-y-auto">
+              <pre className="text-xs font-mono text-slate-300 bg-[#060911] p-4 rounded-lg border border-[#162238] whitespace-pre-wrap leading-relaxed max-h-[550px] overflow-y-auto">
                 {previewOutput?.plainTextBody || "Generating plaintext..."}
               </pre>
             </Card>
@@ -977,18 +981,18 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
 
           {/* Tab 3: Variable Form Inspector */}
           {formatTab === "variables" && (
-            <Card className="p-5 bg-slate-900 border-slate-800 space-y-4">
-              <h4 className="text-xs font-semibold text-slate-200 uppercase tracking-wider">
+            <Card className="p-5 bg-[#0a0f1d] border-[#162238] space-y-4">
+              <h4 className="text-xs font-semibold text-slate-200 uppercase tracking-wider font-mono text-cyan-400">
                 Safe Variables Payload Inspector
               </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
                 <div>
                   <label className="block text-slate-400 mb-1">Recipient First Name</label>
                   <input
                     type="text"
                     value={vars.recipientFirstName}
                     onChange={(e) => setVars({ ...vars, recipientFirstName: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-slate-200 focus:outline-none focus:border-sky-500"
+                    className="w-full bg-[#0c1322] border border-[#162238] rounded p-2 text-slate-200 focus:outline-none focus:border-cyan-500/60"
                   />
                 </div>
                 <div>
@@ -997,7 +1001,7 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
                     type="text"
                     value={vars.organizationName}
                     onChange={(e) => setVars({ ...vars, organizationName: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-slate-200 focus:outline-none focus:border-sky-500"
+                    className="w-full bg-[#0c1322] border border-[#162238] rounded p-2 text-slate-200 focus:outline-none focus:border-cyan-500/60"
                   />
                 </div>
                 <div>
@@ -1006,7 +1010,7 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
                     type="text"
                     value={vars.referenceId}
                     onChange={(e) => setVars({ ...vars, referenceId: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-slate-200 focus:outline-none focus:border-sky-500"
+                    className="w-full bg-[#0c1322] border border-[#162238] rounded p-2 text-slate-200 focus:outline-none focus:border-cyan-500/60"
                   />
                 </div>
                 <div>
@@ -1015,7 +1019,7 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
                     type="text"
                     value={vars.statusLabel}
                     onChange={(e) => setVars({ ...vars, statusLabel: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-slate-200 focus:outline-none focus:border-sky-500"
+                    className="w-full bg-[#0c1322] border border-[#162238] rounded p-2 text-slate-200 focus:outline-none focus:border-cyan-500/60"
                   />
                 </div>
                 <div>
@@ -1024,7 +1028,7 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
                     type="text"
                     value={vars.occurredAtLocal}
                     onChange={(e) => setVars({ ...vars, occurredAtLocal: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-slate-200 focus:outline-none focus:border-sky-500"
+                    className="w-full bg-[#0c1322] border border-[#162238] rounded p-2 text-slate-200 focus:outline-none focus:border-cyan-500/60"
                   />
                 </div>
                 <div>
@@ -1033,7 +1037,7 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
                     type="text"
                     value={vars.timezone}
                     onChange={(e) => setVars({ ...vars, timezone: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-slate-200 focus:outline-none focus:border-sky-500"
+                    className="w-full bg-[#0c1322] border border-[#162238] rounded p-2 text-slate-200 focus:outline-none focus:border-cyan-500/60"
                   />
                 </div>
                 <div className="md:col-span-2">
@@ -1042,7 +1046,7 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
                     type="text"
                     value={vars.actionUrl}
                     onChange={(e) => setVars({ ...vars, actionUrl: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-slate-200 focus:outline-none focus:border-sky-500"
+                    className="w-full bg-[#0c1322] border border-[#162238] rounded p-2 text-slate-200 focus:outline-none focus:border-cyan-500/60"
                   />
                 </div>
               </div>
@@ -1050,13 +1054,13 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
           )}
 
           {/* Bottom Bar: Test Dispatcher & Audit Hash Fingerprint */}
-          <Card className="p-4 bg-slate-900 border-slate-800">
+          <Card className="p-4 bg-[#0a0f1d] border-[#162238]">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                <Hash className="w-4 h-4 text-slate-500" />
+                <Hash className="w-4 h-4 text-cyan-500/60" />
                 <div className="text-xs font-mono text-slate-400">
                   <span className="text-slate-500">Audit Hash:</span>{" "}
-                  <span className="text-sky-300">
+                  <span className="text-cyan-300">
                     {previewOutput?.renderHash || "SHA-256 (computing...)"}
                   </span>
                 </div>
@@ -1069,14 +1073,14 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
                   value={testRecipient}
                   onChange={(e) => setTestRecipient(e.target.value)}
                   placeholder="operator@zoikoshield.corp"
-                  className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-sky-500 w-56"
+                  className="bg-[#0c1322] border border-[#162238] rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500/60 w-56 font-mono"
                 />
                 <Button
                   variant="primary"
                   size="sm"
                   onClick={handleSendTest}
                   disabled={sendingTest}
-                  className="text-xs flex items-center gap-1.5"
+                  className="text-xs flex items-center gap-1.5 bg-cyan-500 text-slate-950 font-semibold hover:bg-cyan-400"
                 >
                   <Send className="w-3.5 h-3.5" />
                   {sendingTest ? "Dispatching..." : "Send Test"}
@@ -1086,7 +1090,7 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
 
             {testSentMessage && (
               <div
-                className={`mt-3 p-2.5 rounded text-xs flex flex-wrap items-center justify-between gap-2 ${
+                className={`mt-3 p-2.5 rounded text-xs flex flex-wrap items-center justify-between gap-2 font-mono ${
                   testSentMessage.startsWith("Dispatched")
                     ? "bg-emerald-950/40 border border-emerald-500/30 text-emerald-300"
                     : "bg-red-950/40 border border-red-500/30 text-red-300"
@@ -1103,7 +1107,7 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
                 {testSentMessage.startsWith("Dispatched") && (
                   <a
                     href="/notifications"
-                    className="inline-flex items-center gap-1 text-sky-400 hover:text-sky-300 underline font-semibold text-xs ml-auto"
+                    className="inline-flex items-center gap-1 text-cyan-400 hover:text-cyan-300 underline font-semibold text-xs ml-auto"
                   >
                     <span>View in Notification Center &rarr;</span>
                   </a>

@@ -207,24 +207,25 @@ export default function ActionsAndFreezePage() {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="p-6 rounded-2xl bg-[#0e121b] border border-amber-500/30 shadow-xl space-y-3">
+      {/* Header Banner */}
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl space-y-3">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
+              <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
                 <AlertOctagon className="w-6 h-6" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-bold text-white tracking-wide">
+                  <h1 className="text-xl font-bold tracking-tight text-white">
                     Governed SOAR Response &amp; Emergency Freeze Console
                   </h1>
-                  <Badge variant={isFrozen ? "critical" : "healthy"}>
+                  <Badge variant={isFrozen ? "critical" : "healthy"} className="font-mono text-[10px]">
                     {isFrozen ? "LOCKDOWN ACTIVE" : "OPERATIONAL"}
                   </Badge>
-                  <Badge variant="neutral">R0–R4 Authority Tiers</Badge>
+                  <Badge variant="neutral" className="font-mono text-[10px]">R0–R4 Authority Tiers</Badge>
                 </div>
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-slate-400 mt-0.5">
                   Dual-Custody Quorum, Dry-Run Pre-Flight Simulation &amp; Automated Rollback Compensation (ADR-04)
                 </p>
               </div>
@@ -232,10 +233,38 @@ export default function ActionsAndFreezePage() {
           </div>
 
           <div className="flex items-center gap-3 font-mono text-xs">
-            <div className="px-3 py-1.5 rounded-lg bg-slate-900/80 border border-slate-800 text-slate-300">
+            <div className="px-3.5 py-2 rounded-xl bg-[#080d19] border border-slate-800 text-slate-300">
               Authority Engine: <span className="text-amber-400 font-bold">Dual-Custody Hardware Attested</span>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* 4 Summary KPI Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Active Tier Policy</div>
+          <div className="text-2xl font-bold font-mono text-cyan-400 mt-1">{selectedAuthorityTier}</div>
+          <div className="text-[11px] text-slate-400 mt-0.5">Dual-custody verification</div>
+        </div>
+        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">SOAR Automation State</div>
+          <div className={`text-2xl font-bold font-mono mt-1 ${isFrozen ? "text-rose-400" : "text-emerald-400"}`}>
+            {isFrozen ? "FROZEN" : "OPERATIONAL"}
+          </div>
+          <div className="text-[11px] text-slate-400 mt-0.5">Global containment guard</div>
+        </div>
+        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Dual-Custody Hardware Gate</div>
+          <div className="text-2xl font-bold font-mono text-purple-400 mt-1">
+            {quorumReceipt ? "ATTESTED" : "ARMED"}
+          </div>
+          <div className="text-[11px] text-slate-400 mt-0.5">FIDO2 2-of-N hardware sign-off</div>
+        </div>
+        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Rollback Compensation</div>
+          <div className="text-2xl font-bold font-mono text-emerald-400 mt-1">100% REVERSIBLE</div>
+          <div className="text-[11px] text-cyan-400 mt-0.5">Cryptographic redemption tokens</div>
         </div>
       </div>
 
@@ -249,7 +278,7 @@ export default function ActionsAndFreezePage() {
       )}
 
       {/* R0–R4 Authority Tier Ladder Selector */}
-      <Card className="p-5 space-y-4 border-slate-800">
+      <div className="surface-card rounded-2xl p-6 bg-[#0c111e]/90 border border-slate-800/80 shadow-xl space-y-4">
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-cyan-400" />
@@ -327,7 +356,7 @@ export default function ActionsAndFreezePage() {
             );
           })}
         </div>
-      </Card>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Emergency Freeze & Rollback Trigger */}

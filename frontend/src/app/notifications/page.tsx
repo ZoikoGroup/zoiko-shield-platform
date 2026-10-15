@@ -275,27 +275,31 @@ export default function NotificationsPage() {
 
   return (
     <div className="space-y-5 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
-            <Bell className="w-5 h-5 text-cyan-400" />
-            Notifications
+      {/* Header Banner */}
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono">
+            <Bell className="w-3.5 h-3.5" />
+            <span>NOTIFICATION &amp; DELIVERY TRACKING</span>
+          </div>
+          <h1 className="text-2xl font-extrabold tracking-tight text-white">
+            Notifications &amp; Acknowledgment Ledger
           </h1>
-          <p className="text-xs font-mono text-slate-500">
-            Delivered to you, with delivery outcome and acknowledgment.
+          <p className="text-slate-400 text-xs max-w-2xl font-mono">
+            Delivered to you with delivery outcome, retry tracking, and audited sign-off acknowledgment.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button
             variant="primary"
             onClick={() => setShowDispatchModal(true)}
-            className="text-xs flex items-center gap-1.5 bg-sky-600 hover:bg-sky-500 text-white shadow-sm"
+            className="text-xs flex items-center gap-1.5 bg-cyan-600 hover:bg-cyan-500 text-white shadow-sm font-bold"
           >
             <Send className="w-3.5 h-3.5" />
             <span>Send Test Email</span>
           </Button>
           <a href="/admin/email-templates">
-            <Button variant="outline" className="text-xs flex items-center gap-1.5 border-sky-500/40 text-sky-400 hover:bg-sky-500/10">
+            <Button variant="outline" className="text-xs flex items-center gap-1.5 border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/10 font-mono">
               <Mail className="w-4 h-4" />
               <span>Template Studio (226)</span>
             </Button>

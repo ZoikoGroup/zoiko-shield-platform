@@ -85,32 +85,32 @@ function Metric({
 }) {
   const unknown = value === undefined || value === null || value === "UNKNOWN";
   return (
-    <details className="rounded border border-slate-800 bg-slate-950/40 p-3">
+    <details className="rounded-lg border border-[#162238] bg-[#0c1322] p-3 shadow-sm hover:border-[#1e293b] transition-all">
       <summary className="cursor-pointer list-none">
-        <p className="text-[11px] font-mono uppercase tracking-wide text-slate-500">
+        <p className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
           {label}
         </p>
         <p
-          className={`font-mono text-2xl ${
-            unknown ? "text-slate-500" : warn ? "text-amber-300" : "text-slate-100"
+          className={`font-mono text-2xl font-bold mt-1 ${
+            unknown ? "text-slate-500" : warn ? "text-amber-400" : "text-white"
           }`}
         >
           {unknown ? "unknown" : String(value)}
         </p>
         {limitation && (
-          <p className="mt-1 text-[11px] font-mono text-amber-300/80">limited</p>
+          <p className="mt-1 text-[10px] font-mono text-amber-300/90 font-medium">limited</p>
         )}
       </summary>
-      <div className="mt-2 space-y-1 border-t border-slate-800 pt-2">
-        <p className="text-[11px] text-slate-400">
+      <div className="mt-2.5 space-y-1.5 border-t border-[#162238] pt-2">
+        <p className="text-[11px] text-slate-300">
           {definition ?? "No definition was stated by the source."}
         </p>
-        <p className="font-mono text-[11px] text-slate-600 break-all">source: {source}</p>
+        <p className="font-mono text-[10px] text-cyan-400/80 break-all">source: {source}</p>
         {limitation && (
-          <p className="font-mono text-[11px] text-amber-300/80">limitation: {limitation}</p>
+          <p className="font-mono text-[10px] text-amber-300/90">limitation: {limitation}</p>
         )}
         {unknown && (
-          <p className="font-mono text-[11px] text-amber-300/80">
+          <p className="font-mono text-[10px] text-amber-300/90">
             This input is unknown, not zero. It is excluded from any judgement on this
             page rather than counted as healthy.
           </p>
@@ -130,10 +130,13 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <Card variant="cyber" className="p-4">
-      <div className="mb-3 border-b border-slate-800 pb-2">
-        <h2 className="text-sm font-semibold text-slate-100">{title}</h2>
-        <p className="text-[11px] font-mono text-slate-500">{requirement}</p>
+    <Card variant="cyber" className="p-4 border-[#162238] bg-[#0a0f1d]">
+      <div className="mb-3 border-b border-[#162238] pb-2">
+        <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+          <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+          {title}
+        </h2>
+        <p className="text-[11px] font-mono text-slate-400 mt-0.5">{requirement}</p>
       </div>
       {children}
     </Card>

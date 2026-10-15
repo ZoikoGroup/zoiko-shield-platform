@@ -42,8 +42,8 @@ export default function NotFound() {
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center p-6">
-      <Card variant="cyber" className="max-w-lg w-full p-8 border-cyan-500/40 text-center space-y-6">
-        <div className="w-14 h-14 mx-auto rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
+      <Card variant="cyber" className="max-w-lg w-full p-8 border-cyan-500/40 text-center space-y-6 shadow-[0_0_40px_rgba(6,182,212,0.15)]">
+        <div className="w-14 h-14 mx-auto rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center shadow-[0_0_20px_rgba(6,182,212,0.25)]">
           <Shield className="w-7 h-7 text-cyan-400" />
         </div>
 
@@ -51,17 +51,17 @@ export default function NotFound() {
           <span className="text-xs font-mono text-cyan-400 font-bold uppercase tracking-wider">
             Route Resolution Gateway
           </span>
-          <h1 className="text-xl font-bold text-slate-100 mt-1">
+          <h1 className="text-2xl font-black text-slate-100 mt-1">
             Navigated to Non-Standard Route
           </h1>
-          <p className="text-xs font-mono text-slate-400 mt-2 break-all bg-slate-950 p-2 rounded border border-slate-800">
+          <p className="text-xs font-mono text-cyan-300/90 mt-2 break-all bg-[#060911] p-2.5 rounded-xl border border-[#162238] shadow-inner">
             {pathname}
           </p>
         </div>
 
         {suggestion && (
-          <div className="p-4 rounded-xl bg-cyan-950/40 border border-cyan-500/40 text-left space-y-2">
-            <div className="text-xs font-mono text-cyan-300 flex items-center gap-1.5 font-semibold">
+          <div className="p-4 rounded-xl bg-gradient-to-r from-cyan-950/40 to-[#0a0f1d] border border-cyan-500/40 text-left space-y-2.5 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+            <div className="text-xs font-mono text-cyan-300 flex items-center gap-1.5 font-bold">
               <CheckCircle2 className="w-4 h-4 text-cyan-400" />
               Suggested Destination:
             </div>
@@ -70,7 +70,7 @@ export default function NotFound() {
               variant="primary"
               size="sm"
               onClick={() => router.push(suggestion.path)}
-              className="w-full text-xs flex items-center justify-center gap-1.5 mt-2 bg-cyan-600 hover:bg-cyan-500"
+              className="w-full text-xs flex items-center justify-center gap-1.5 mt-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold shadow-[0_0_15px_rgba(6,182,212,0.3)]"
             >
               <span>Go to {suggestion.path}</span>
               <ArrowRight className="w-3.5 h-3.5" />
@@ -78,34 +78,34 @@ export default function NotFound() {
           </div>
         )}
 
-        <div className="pt-2 border-t border-slate-800 flex flex-wrap items-center justify-center gap-2">
+        <div className="pt-3 border-t border-[#162238] flex flex-wrap items-center justify-center gap-2">
           <Link href="/controls">
-            <Button variant="outline" size="sm" className="text-xs border-slate-700">
+            <Button variant="outline" size="sm" className="text-xs border-[#162238] bg-[#060911] hover:border-cyan-500/40 hover:text-cyan-300">
               Controls
             </Button>
           </Link>
           <Link href="/audit">
-            <Button variant="outline" size="sm" className="text-xs border-slate-700">
+            <Button variant="outline" size="sm" className="text-xs border-[#162238] bg-[#060911] hover:border-cyan-500/40 hover:text-cyan-300">
               Audit
             </Button>
           </Link>
           <Link href="/cases">
-            <Button variant="outline" size="sm" className="text-xs border-slate-700">
+            <Button variant="outline" size="sm" className="text-xs border-[#162238] bg-[#060911] hover:border-cyan-500/40 hover:text-cyan-300">
               Cases
             </Button>
           </Link>
           <Link href="/ledger">
-            <Button variant="outline" size="sm" className="text-xs border-slate-700">
+            <Button variant="outline" size="sm" className="text-xs border-[#162238] bg-[#060911] hover:border-cyan-500/40 hover:text-cyan-300">
               Ledger
             </Button>
           </Link>
           <Link href="/notifications">
-            <Button variant="outline" size="sm" className="text-xs border-slate-700">
+            <Button variant="outline" size="sm" className="text-xs border-[#162238] bg-[#060911] hover:border-cyan-500/40 hover:text-cyan-300">
               Notifications
             </Button>
           </Link>
           <Link href="/">
-            <Button variant="ghost" size="sm" className="text-xs flex items-center gap-1">
+            <Button variant="ghost" size="sm" className="text-xs flex items-center gap-1 text-cyan-400 hover:text-cyan-300">
               <Home className="w-3.5 h-3.5" />
               <span>Command Center</span>
             </Button>

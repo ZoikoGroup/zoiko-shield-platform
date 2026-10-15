@@ -71,14 +71,14 @@ export default function PricingPage() {
   }, [assets, telemetryGb, requires24x7, requiresSovereign]);
 
   return (
-    <div className="space-y-10 pb-16">
+    <div className="min-h-screen bg-[#060911] text-slate-100 p-6 space-y-10">
       {/* Header Banner */}
       <div className="text-center space-y-4 max-w-3xl mx-auto pt-4">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono">
           <Scale className="w-3.5 h-3.5" />
           <span>TRANSPARENT BAND-BASED SECURITY PRICING</span>
         </div>
-        <h1 className="text-4xl font-extrabold tracking-tight text-slate-100 sm:text-5xl">
+        <h1 className="text-4xl font-extrabold tracking-tight text-white sm:text-5xl">
           Outcome-Driven Security Plans
         </h1>
         <p className="text-slate-400 text-base leading-relaxed">
@@ -94,10 +94,10 @@ export default function PricingPage() {
           <button
             type="button"
             onClick={() => setIsAnnual(!isAnnual)}
-            className="w-14 h-7 bg-slate-800 rounded-full p-1 border border-slate-700 transition-colors relative"
+            className="w-14 h-7 bg-[#0c111e] rounded-full p-1 border border-[#162238] transition-colors relative"
           >
             <div
-              className={`w-5 h-5 bg-cyan-400 rounded-full transition-transform shadow-md ${
+              className={`w-5 h-5 bg-cyan-400 rounded-full transition-transform shadow-[0_0_10px_rgba(0,240,255,0.6)] ${
                 isAnnual ? "translate-x-7" : "translate-x-0"
               }`}
             />
@@ -109,10 +109,10 @@ export default function PricingPage() {
       </div>
 
       {/* Mandatory Source of Truth & Commercial Sizing Disclaimer Banner */}
-      <div className="p-4 rounded-xl bg-slate-900/80 border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.1)] flex items-start gap-3 text-xs text-slate-300">
+      <div className="surface-card p-5 rounded-xl border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.1)] flex items-start gap-3 text-xs text-slate-300 bg-[#0c111e]">
         <ShieldCheck className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
         <div className="space-y-1.5">
-          <p className="font-semibold text-slate-100 flex items-center gap-2">
+          <p className="font-semibold text-white flex items-center gap-2">
             <span>Commercial Sizing & Anti-Perverse Incentive Notice</span>
             <span className="px-2 py-0.5 rounded bg-cyan-950 border border-cyan-500/40 text-[10px] font-mono text-cyan-300">RULE PR-02</span>
           </p>
@@ -138,8 +138,8 @@ export default function PricingPage() {
               key={plan.key}
               className={`relative rounded-2xl p-6 flex flex-col justify-between transition-all duration-300 ${
                 isPop
-                  ? "bg-gradient-to-b from-cyan-950/40 via-slate-900/90 to-slate-950/90 border-2 border-cyan-500/60 shadow-[0_0_30px_rgba(6,182,212,0.2)]"
-                  : "bg-slate-900/60 border border-slate-800/80 hover:border-slate-700"
+                  ? "bg-gradient-to-b from-cyan-950/40 via-[#0c111e] to-[#060911] border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.25)] ring-1 ring-cyan-400/30"
+                  : "surface-card bg-[#0c111e] border border-[#162238] hover:border-cyan-500/40 shadow-lg"
               }`}
             >
               {isPop && (

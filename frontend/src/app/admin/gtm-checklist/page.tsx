@@ -53,13 +53,13 @@ export default function GTMChecklistPage() {
   return (
     <div className="space-y-8 pb-16">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono">
             <ShieldCheck className="w-3.5 h-3.5" />
             <span>COMMERCIAL GO-TO-MARKET GOVERNANCE</span>
           </div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-slate-100">
+          <h1 className="text-2xl font-extrabold tracking-tight text-white">
             Section 12 Pre-Flight GTM Checklist
           </h1>
           <p className="text-slate-400 text-xs max-w-3xl">
@@ -72,7 +72,7 @@ export default function GTMChecklistPage() {
           <button
             onClick={handleRecheck}
             disabled={rechecking}
-            className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-700 text-slate-200 text-xs font-mono font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+            className="px-4 py-2 rounded-xl bg-[#080c16] hover:bg-slate-800 border border-slate-700/80 text-slate-200 text-xs font-mono font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-cyan-400 ${rechecking ? "animate-spin" : ""}`} />
             <span>Re-Verify 12 Rules</span>
@@ -81,7 +81,7 @@ export default function GTMChecklistPage() {
       </div>
 
       {/* 100% Green Certification Banner */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-slate-900 to-cyan-950/40 border border-emerald-500/40 shadow-[0_0_30px_rgba(16,185,129,0.15)] flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="surface-card p-6 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-[#0c111e] to-cyan-950/40 border border-emerald-500/40 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 flex items-center justify-center shrink-0 shadow-lg">
             <CheckCircle2 className="w-7 h-7" />
@@ -89,7 +89,7 @@ export default function GTMChecklistPage() {
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-bold text-slate-100">
-                12 / 12 Pre-Flight Rules Verified & Enforced
+                12 / 12 Pre-Flight Rules Verified &amp; Enforced
               </h2>
               <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold border border-emerald-500/40">
                 GTM CERTIFIED PASS
@@ -108,10 +108,10 @@ export default function GTMChecklistPage() {
       </div>
 
       {/* 12-Item Rules Table */}
-      <div className="p-6 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-4">
+      <div className="surface-card p-6 rounded-2xl bg-[#0c111e]/90 border border-slate-800/80 shadow-xl space-y-4">
         <div className="space-y-1">
           <h3 className="text-base font-bold text-slate-100">
-            Mandatory Commercial & Governance Verification Matrix
+            Mandatory Commercial &amp; Governance Verification Matrix
           </h3>
           <p className="text-xs text-slate-400">
             Every rule maps directly to code-enforced unit tests, schema evaluators, and API gates.

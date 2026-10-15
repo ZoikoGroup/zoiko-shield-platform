@@ -785,9 +785,9 @@ export default function AiGovernancePage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="min-h-screen bg-[#060911] text-slate-100 p-6 space-y-8">
       {/* Header Banner */}
-      <div className="p-6 rounded-2xl bg-gradient-to-r from-[#121422] via-[#10141f] to-[#1a1128] border border-cyan-500/30 shadow-[0_0_35px_rgba(6,182,212,0.12)] flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="p-6 rounded-2xl bg-gradient-to-r from-[#0c111e] via-[#080d1a] to-[#120e24] border border-cyan-500/30 shadow-[0_0_35px_rgba(6,182,212,0.12)] flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />

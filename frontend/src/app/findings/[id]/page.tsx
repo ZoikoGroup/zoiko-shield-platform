@@ -161,10 +161,10 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <Card variant="cyber" className="p-4">
-      <div className="mb-3 border-b border-slate-800 pb-2">
-        <h2 className="text-sm font-semibold text-slate-100">{title}</h2>
-        <p className="text-[11px] font-mono text-slate-500">{requirement}</p>
+    <Card variant="cyber" className="p-5 space-y-4">
+      <div className="border-b border-[#162238] pb-3">
+        <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">{title}</h2>
+        <p className="text-[11px] font-mono text-slate-400 mt-0.5">{requirement}</p>
       </div>
       {children}
     </Card>
@@ -173,11 +173,11 @@ function Section({
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div>
+    <div className="space-y-0.5">
       <p className="text-[11px] font-mono uppercase tracking-wide text-slate-500">
         {label}
       </p>
-      <p className="text-xs text-slate-200">{value ?? "not stated"}</p>
+      <div className="text-xs text-slate-200 font-medium">{value ?? "not stated"}</div>
     </div>
   );
 }

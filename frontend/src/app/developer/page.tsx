@@ -131,14 +131,14 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <Card variant="cyber" className="p-4">
-      <div className="mb-3 flex items-baseline justify-between border-b border-slate-800 pb-2">
+    <Card variant="cyber" className="p-5 space-y-4">
+      <div className="flex items-baseline justify-between border-b border-[#162238] pb-3">
         <div>
-          <h2 className="text-sm font-semibold text-slate-100">{title}</h2>
-          <p className="text-[11px] font-mono text-slate-500">{requirement}</p>
+          <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">{title}</h2>
+          <p className="text-[11px] font-mono text-slate-400 mt-0.5">{requirement}</p>
         </div>
         {count !== undefined && (
-          <span className="font-mono text-lg text-slate-200">{count}</span>
+          <span className="font-mono text-base font-bold text-cyan-400 px-2 py-0.5 rounded bg-cyan-950/30 border border-cyan-500/20">{count}</span>
         )}
       </div>
       {children}
@@ -186,7 +186,7 @@ export default function DeveloperSurfacePage() {
               {clients.map((client) => (
                 <div
                   key={client.id}
-                  className="rounded border border-slate-800 bg-slate-950/40 p-3"
+                  className="rounded-xl border border-[#162238] bg-[#060911]/80 p-4 space-y-3 shadow-inner"
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant={clientStatusVariant(client.status)}>
@@ -199,15 +199,15 @@ export default function DeveloperSurfacePage() {
                       {client.client_id}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-slate-400">{client.purpose}</p>
+                  <p className="text-xs text-slate-400">{client.purpose}</p>
 
-                  <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-4 p-3 rounded-lg bg-[#0a0f1d] border border-[#162238]">
                     <div>
                       <p className="text-[11px] font-mono uppercase text-slate-500">
                         Environment
                       </p>
                       <p
-                        className={`font-mono text-[11px] ${client.environment_scope ? "text-slate-300" : "text-amber-300"}`}
+                        className={`font-mono text-[11px] font-bold ${client.environment_scope ? "text-cyan-300" : "text-amber-300"}`}
                       >
                         {client.environment_scope ?? "unscoped — reaches all environments"}
                       </p>
@@ -242,8 +242,8 @@ export default function DeveloperSurfacePage() {
                     </div>
                   </div>
 
-                  <div className="mt-2">
-                    <p className="text-[11px] font-mono uppercase text-slate-500">
+                  <div className="pt-2">
+                    <p className="text-[11px] font-mono uppercase text-slate-500 font-bold mb-1.5">
                       Credential versions (rotation)
                     </p>
                     {(client.credentials ?? []).length === 0 ? (
@@ -251,54 +251,56 @@ export default function DeveloperSurfacePage() {
                         No credential has been issued, so this client cannot authenticate.
                       </p>
                     ) : (
-                      <table className="mt-1 w-full text-[11px] font-mono">
-                        <thead>
-                          <tr className="border-b border-slate-800 text-left text-slate-500">
-                            <th className="py-1">v</th>
-                            <th className="py-1">Fingerprint</th>
-                            <th className="py-1">Status</th>
-                            <th className="py-1">Issued</th>
-                            <th className="py-1">Expires</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {(client.credentials ?? []).map((credential) => (
-                            <tr
-                              key={credential.id}
-                              className="border-b border-slate-900 last:border-0"
-                            >
-                              <td className="py-1 text-slate-300">
-                                {credential.secret_version}
-                              </td>
-                              <td className="py-1 break-all text-slate-400">
-                                {truncateHash(credential.fingerprint, 10, 8)}
-                              </td>
-                              <td
-                                className={`py-1 ${credential.status === "ACTIVE" ? "text-emerald-300" : credential.status === "RETIRING" ? "text-amber-300" : "text-slate-500"}`}
-                              >
-                                {credential.status}
-                              </td>
-                              <td className="py-1 text-slate-500">
-                                {formatTimestamp(credential.issued_at)}
-                              </td>
-                              <td className="py-1 text-slate-500">
-                                {credential.expires_at
-                                  ? formatTimestamp(credential.expires_at)
-                                  : "—"}
-                              </td>
+                      <div className="overflow-x-auto rounded-lg border border-[#162238]">
+                        <table className="w-full text-[11px] font-mono">
+                          <thead>
+                            <tr className="border-b border-[#162238] text-left text-slate-400 bg-[#060911]">
+                              <th className="py-1.5 px-2.5">v</th>
+                              <th className="py-1.5 px-2.5">Fingerprint</th>
+                              <th className="py-1.5 px-2.5">Status</th>
+                              <th className="py-1.5 px-2.5">Issued</th>
+                              <th className="py-1.5 px-2.5">Expires</th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody className="divide-y divide-[#162238]/60">
+                            {(client.credentials ?? []).map((credential) => (
+                              <tr
+                                key={credential.id}
+                                className="hover:bg-[#0c1424] transition-colors"
+                              >
+                                <td className="py-1.5 px-2.5 text-slate-300">
+                                  {credential.secret_version}
+                                </td>
+                                <td className="py-1.5 px-2.5 break-all text-slate-400">
+                                  {truncateHash(credential.fingerprint, 10, 8)}
+                                </td>
+                                <td
+                                  className={`py-1.5 px-2.5 font-bold ${credential.status === "ACTIVE" ? "text-emerald-300" : credential.status === "RETIRING" ? "text-amber-300" : "text-slate-500"}`}
+                                >
+                                  {credential.status}
+                                </td>
+                                <td className="py-1.5 px-2.5 text-slate-500">
+                                  {formatTimestamp(credential.issued_at)}
+                                </td>
+                                <td className="py-1.5 px-2.5 text-slate-500">
+                                  {credential.expires_at
+                                    ? formatTimestamp(credential.expires_at)
+                                    : "—"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
                     )}
-                    <p className="mt-1 font-mono text-[11px] text-slate-600">
+                    <p className="mt-1.5 font-mono text-[11px] text-slate-500">
                       Secrets are stored as a hash and a fingerprint only; the raw value is
                       returned once at issue and cannot be shown again here.
                     </p>
                   </div>
 
-                  <div className="mt-2">
-                    <p className="text-[11px] font-mono uppercase text-slate-500">
+                  <div className="pt-2">
+                    <p className="text-[11px] font-mono uppercase text-slate-500 font-bold mb-1">
                       Scopes
                     </p>
                     {(client.scopeGrants ?? []).length === 0 ? (
@@ -320,12 +322,12 @@ export default function DeveloperSurfacePage() {
                                 className={
                                   revoked || expired
                                     ? "text-slate-600 line-through"
-                                    : "text-cyan-300"
+                                    : "text-cyan-300 font-bold"
                                 }
                               >
                                 {grant.scope}
                               </span>
-                              <span className="text-slate-600">
+                              <span className="text-slate-500">
                                 {grant.environment_id ?? "all environments"} · granted by{" "}
                                 {grant.granted_by} · decision{" "}
                                 {truncateHash(grant.authorization_decision_id, 8, 6)}
@@ -360,7 +362,7 @@ export default function DeveloperSurfacePage() {
               All {clients.length} clients are bound to an environment scope.
             </p>
           ) : (
-            <div className="rounded border border-amber-500/40 bg-amber-500/5 p-3">
+            <div className="rounded-xl border border-amber-500/30 bg-amber-950/15 p-4">
               <p className="text-xs font-semibold text-amber-200">
                 {unscoped.length} of {clients.length} clients carry no environment scope
               </p>
@@ -402,25 +404,25 @@ export default function DeveloperSurfacePage() {
           requirement="The throughput a client can expect before it is throttled."
         >
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-            <div className="rounded border border-slate-800 p-2">
+            <div className="rounded-xl border border-[#162238] bg-[#060911]/80 p-3 shadow-inner">
               <p className="text-[11px] font-mono uppercase text-slate-500">
                 Requests per client
               </p>
-              <p className="font-mono text-lg text-slate-200">
+              <p className="font-mono text-xl font-bold text-slate-100 mt-1">
                 {RATE_LIMIT.maxRequestsPerClient}
               </p>
             </div>
-            <div className="rounded border border-slate-800 p-2">
+            <div className="rounded-xl border border-[#162238] bg-[#060911]/80 p-3 shadow-inner">
               <p className="text-[11px] font-mono uppercase text-slate-500">Window</p>
-              <p className="font-mono text-lg text-slate-200">
+              <p className="font-mono text-xl font-bold text-slate-100 mt-1">
                 {RATE_LIMIT.windowSeconds}s
               </p>
             </div>
-            <div className="rounded border border-slate-800 p-2">
+            <div className="rounded-xl border border-[#162238] bg-[#060911]/80 p-3 shadow-inner">
               <p className="text-[11px] font-mono uppercase text-slate-500">
                 On exceed
               </p>
-              <p className="font-mono text-sm text-slate-200">429 RATE_LIMITED</p>
+              <p className="font-mono text-sm font-bold text-rose-300 mt-1">429 RATE_LIMITED</p>
             </div>
           </div>
           <p className="mt-2 font-mono text-[11px] text-amber-300/80">
@@ -440,9 +442,9 @@ export default function DeveloperSurfacePage() {
             {clients.map((client) => (
               <div
                 key={client.id}
-                className="flex items-center justify-between rounded border border-slate-800 px-2 py-1.5"
+                className="flex items-center justify-between rounded-xl border border-[#162238] bg-[#060911]/60 px-3 py-2"
               >
-                <span className="text-xs text-slate-200">{client.name}</span>
+                <span className="text-xs text-slate-200 font-medium">{client.name}</span>
                 <span className="font-mono text-[11px] text-slate-400">
                   last used{" "}
                   {client.last_used_at ? formatTimestamp(client.last_used_at) : "never"}

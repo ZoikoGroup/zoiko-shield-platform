@@ -174,11 +174,11 @@ export default function JitElevationPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Badge variant="ai">PLATFORM ADMIN ONLY</Badge>
-            <span className="text-xs font-mono text-purple-400 font-bold">
+            <span className="text-xs font-mono text-cyan-400 font-bold">
               CROSS-TENANT SUPPORT ACCESS (PLATFORM_ROLE_MANAGE)
             </span>
             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-semibold ${
@@ -190,10 +190,10 @@ export default function JitElevationPage() {
               {isSseConnected ? "SSE LIVE STREAM" : "POLLING FALLBACK"}
             </span>
           </div>
-          <h1 className="text-2xl font-black text-slate-100 tracking-tight">
-            Platform Admin: Support Access & Dual-Approval JIT
+          <h1 className="text-2xl font-black text-white tracking-tight">
+            Platform Admin: Support Access &amp; Dual-Approval JIT
           </h1>
-          <p className="text-sm text-slate-400">
+          <p className="text-xs text-slate-400 max-w-2xl">
             Time-decaying Just-In-Time cross-tenant access gated by peer admin dual-approval on `shield-core:3001` with signed, time-bound approval records.
           </p>
         </div>
