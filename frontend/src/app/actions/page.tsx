@@ -1,728 +1,198 @@
 "use client";
 
-import React, { useState } from "react";
-import { useDemoState } from "@/lib/demo-state";
-import { ZoikoShieldApiClient } from "@/lib/api-client";
-import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
+import React, { useMemo, useState } from "react";
+import { Square, Lock, AlertTriangle, ListChecks, Hourglass, Check } from "lucide-react";
+import ActionsConsole from "./console";
 import {
-  Lock,
-  Unlock,
-  AlertOctagon,
-  RotateCcw,
-  FileCheck2,
-  CheckCircle2,
-  ShieldAlert,
-  ShieldCheck,
-  Fingerprint,
-  Layers,
-  Zap,
-  Play,
-  Terminal,
-  Server,
-  Globe,
-  Key,
-  UserX,
-  AlertTriangle,
-  Flame,
-  ArrowRight,
-} from "lucide-react";
-import {
-  DegradedState,
-  RecoveryState,
-} from "@/components/states/mandatory-ui-states";
-import { DualCustodyApprovalModal } from "@/components/cases/DualCustodyApprovalModal";
+  WorkspacePage, PageHeader, KpiGrid, Panel, Pill, DataTable, ActionButton, KeyValues,
+  CONSOLE_TAB, type Tone,
+} from "@/components/mockup/kit";
 
-interface SimulationScenario {
-  id: string;
-  actionType: string;
-  targetRef: string;
-  provider: string;
-  authorityLevel: "R1" | "R2" | "R3" | "R4";
-  blastRadiusScore: number;
-  compensatingCommand: string;
-  reversibilityTier: "R1" | "R2";
-  beforeState: string;
-  afterState: string;
-  impactSummary: string;
-}
+type Tier = "R0 · Read-only" | "R1 · Low" | "R2 · Elevated" | "R3 · High" | "R4 · Critical";
+type Act = { id: string; source: string; action: string; tier: Tier; status: string; statusTone: Tone; target: string };
 
-const SCENARIOS: SimulationScenario[] = [
-  {
-    id: "scen-edr-01",
-    actionType: "ISOLATE_ENDPOINT",
-    targetRef: "srv-db-prod-02.internal",
-    provider: "CrowdStrike Falcon EDR",
-    authorityLevel: "R2",
-    blastRadiusScore: 0.05,
-    compensatingCommand: "UNISOLATE_ENDPOINT",
-    reversibilityTier: "R1",
-    beforeState: "NETWORK_CONNECTED (All TCP/UDP Ingress/Egress Active)",
-    afterState: "NETWORK_ISOLATED (Only Encrypted SOAR Tunnel Allowed)",
-    impactSummary: "0 workstations affected. 1 server isolated. Zero downtime via active DB replica failover.",
-  },
-  {
-    id: "scen-gcp-armor-01",
-    actionType: "BLOCK_PERIMETER_IP",
-    targetRef: "198.51.100.42/32 (C2 Drop)",
-    provider: "Google Cloud Armor Security Policy",
-    authorityLevel: "R2",
-    blastRadiusScore: 0.02,
-    compensatingCommand: "REMOVE_CLOUD_ARMOR_IP_RULE",
-    reversibilityTier: "R1",
-    beforeState: "INGRESS_PERMITTED (Edge inspection in mirror mode)",
-    afterState: "INGRESS_DROPPED (403 Forbidden with 60m TTL auto-decay in Cloud Armor)",
-    impactSummary: "Perimeter edge drop active across Google Cloud Armor edge nodes. Collateral impact: 0 legitimate users.",
-  },
-  {
-    id: "scen-gcp-iam-01",
-    actionType: "REVOKE_GCP_SA_KEY",
-    targetRef: "compromised-runner@zoiko-shield.iam.gserviceaccount.com",
-    provider: "GCP IAM & Service Accounts",
-    authorityLevel: "R3",
-    blastRadiusScore: 0.12,
-    compensatingCommand: "RESTORE_IAM_ROLE_BINDING",
-    reversibilityTier: "R2",
-    beforeState: "SA_KEY_ACTIVE (Private key active for Cloud Run & GKE workload pipelines)",
-    afterState: "SA_KEY_REVOKED (GCP Service Account key disabled and member role binding evicted)",
-    impactSummary: "Lateral movement vector severed. Ephemeral keys revoked in GCP IAM. Safe rollback snapshot stored.",
-  },
-  {
-    id: "scen-gw-01",
-    actionType: "INVALIDATE_USER_SESSIONS",
-    targetRef: "victor.compromised@zoikoshield.corp",
-    provider: "Google Workspace & Cloud Identity",
-    authorityLevel: "R2",
-    blastRadiusScore: 0.08,
-    compensatingCommand: "RESTORE_USER_SESSION_CACHE",
-    reversibilityTier: "R1",
-    beforeState: "ACCOUNT_ENABLED (OAuth2 refresh tokens and WebAuthn sessions active)",
-    afterState: "SESSIONS_REVOKED (All active Google Workspace tokens revoked via Continuous Access Evaluation)",
-    impactSummary: "Single compromised credential quarantined. Identity cache snapshot preserved for fast restore.",
-  },
+const ACTIONS: Act[] = [
+  { id: "ACT-2026-0187", source: "Incident command", action: "Isolate compromised endpoint", tier: "R3 · High", status: "Approval required", statusTone: "rose", target: "WIN-WS-0142" },
+  { id: "ACT-2026-0186", source: "Response proposal", action: "Revoke privileged sessions", tier: "R3 · High", status: "Awaiting signer 2", statusTone: "amber", target: "3 privileged identities" },
+  { id: "ACT-2026-0185", source: "Detection rule", action: "Block malicious IP range", tier: "R2 · Elevated", status: "Frozen by policy", statusTone: "amber", target: "203.0.113.0/24" },
+  { id: "ACT-2026-0184", source: "Hunt workbench", action: "Enrich suspicious domain", tier: "R0 · Read-only", status: "Complete", statusTone: "emerald", target: "login-acme.example" },
+  { id: "ACT-2026-0183", source: "Case workspace", action: "Collect process metadata", tier: "R1 · Low", status: "Safe to simulate", statusTone: "blue", target: "ep-win-042" },
+  { id: "ACT-2026-0182", source: "Manual request", action: "Change firewall policy", tier: "R4 · Critical", status: "Rejected", statusTone: "rose", target: "edge-fw-01" },
 ];
+const TIER_TONE: Record<Tier, Tone> = { "R0 · Read-only": "emerald", "R1 · Low": "blue", "R2 · Elevated": "amber", "R3 · High": "rose", "R4 · Critical": "rose" };
+const HIGH = (t: Tier) => t === "R3 · High" || t === "R4 · Critical";
 
-export default function ActionsAndFreezePage() {
-  const [state] = useDemoState();
-  const [selectedAuthorityTier, setSelectedAuthorityTier] = useState<"R0" | "R1" | "R2" | "R3" | "R4">("R2");
-  const [selectedScenario, setSelectedScenario] = useState<SimulationScenario>(SCENARIOS[0]);
-  
-  // Emergency Freeze State
-  const [freezeScope, setFreezeScope] = useState<"GLOBAL" | "TENANT" | "ACTION_TYPE" | "CONNECTOR">("TENANT");
-  const [freezeReason, setFreezeReason] = useState(
-    "Suspected compromised lateral credentials under investigation"
+const FILTERS = [
+  { id: "all", label: "All requests" },
+  { id: "high", label: "R3–R4 high risk" },
+  { id: "pending", label: "Pending authorization" },
+  { id: "frozen", label: "Frozen" },
+];
+const DETAIL_TABS = ["Action overview", "Policy & risk", "Approval evidence", "Rollback plan"];
+
+export default function SoarActionsFreezePage() {
+  const [tab, setTab] = useState("overview");
+  const [filter, setFilter] = useState("all");
+  const [detailTab, setDetailTab] = useState(DETAIL_TABS[0]);
+  const [selectedId, setSelectedId] = useState(ACTIONS[0].id);
+  // Global freeze is read here as the demo posture; lifting it is a privileged,
+  // audited workflow that lives in the live console, not a toggle on this view.
+  const freezeActive = true;
+
+  const rows = useMemo(
+    () =>
+      ACTIONS.filter((a) =>
+        filter === "all" ? true : filter === "high" ? HIGH(a.tier) : filter === "pending" ? /approval|signer/i.test(a.status) : /frozen/i.test(a.status),
+      ),
+    [filter],
   );
-  const [isFrozen, setIsFrozen] = useState(false);
-  const [activeFreezeId, setActiveFreezeId] = useState<string | null>(null);
-  const [freezeLoading, setFreezeLoading] = useState(false);
-
-  // Simulation State
-  const [isSimulating, setIsSimulating] = useState(false);
-  const [activeSimulationReceipt, setActiveSimulationReceipt] = useState<any | null>(null);
-
-  // Rollback State
-  const [rollbackToken, setRollbackToken] = useState(
-    () => state.cases[0]?.responseProposal?.id ?? "ZS-ROLLBACK-TOKEN-8F7A9C2B"
-  );
-  const [rollbackLoading, setRollbackLoading] = useState(false);
-  const [rollbackSuccess, setRollbackSuccess] = useState(false);
-  const [rollbackError, setRollbackError] = useState<string | null>(null);
-  const [rollbackProgress, setRollbackProgress] = useState(0);
-  const [rollbackStageText, setRollbackStageText] = useState("");
-  
-  // Dual-Custody State
-  const [isDualCustodyOpen, setIsDualCustodyOpen] = useState(false);
-  const [quorumReceipt, setQuorumReceipt] = useState<{
-    quorumId: string;
-    approver1: string;
-    approver2: string;
-    rollbackToken: string;
-  } | null>(null);
-
-  const handleToggleFreeze = async () => {
-    setFreezeLoading(true);
-    try {
-      if (isFrozen && activeFreezeId) {
-        await ZoikoShieldApiClient.releaseFreezeSOAR(activeFreezeId);
-        setIsFrozen(false);
-        setActiveFreezeId(null);
-      } else {
-        const result = await ZoikoShieldApiClient.freezeSOAR(freezeScope, freezeReason);
-        setIsFrozen(true);
-        setActiveFreezeId(result.freezeId);
-      }
-    } catch (err: any) {
-      console.error("Freeze toggle error:", err);
-    } finally {
-      setFreezeLoading(false);
-    }
-  };
-
-  const handleRunSimulation = async () => {
-    setIsSimulating(true);
-    try {
-      const res = await ZoikoShieldApiClient.simulateResponseProposal(
-        selectedScenario.id,
-        selectedScenario.actionType,
-        selectedScenario.targetRef
-      );
-      setActiveSimulationReceipt(res);
-    } catch (err: any) {
-      console.error("Simulation error:", err);
-    } finally {
-      setIsSimulating(false);
-    }
-  };
-
-  const handleExecuteRollback = async () => {
-    setRollbackLoading(true);
-    setRollbackError(null);
-    setRollbackSuccess(false);
-    setRollbackProgress(20);
-    setRollbackStageText("Validating token signature & single-use authorization in Merkle ledger");
-
-    try {
-      await new Promise((r) => setTimeout(r, 400));
-      setRollbackProgress(50);
-      setRollbackStageText(`Dispatching certified compensating adapter (${selectedScenario.compensatingCommand})`);
-
-      await new Promise((r) => setTimeout(r, 500));
-      setRollbackProgress(80);
-      setRollbackStageText("Reconciling endpoint connectivity, identity cache & perimeter ACL");
-
-      await ZoikoShieldApiClient.executeRollbackSOAR(rollbackToken);
-
-      setRollbackProgress(100);
-      setRollbackStageText("Compensating rollback successfully executed & anchored to cryptographic evidence epoch");
-      setRollbackSuccess(true);
-      setTimeout(() => setRollbackSuccess(false), 8000);
-    } catch (err: any) {
-      setRollbackError(err.message ?? "Rollback failed");
-    } finally {
-      setRollbackLoading(false);
-    }
-  };
+  const sel = ACTIONS.find((a) => a.id === selectedId) ?? ACTIONS[0];
+  const blocked = freezeActive && HIGH(sel.tier);
 
   return (
-    <div className="space-y-6">
-      {/* Header Banner */}
-      {/* Header Banner */}
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl space-y-3">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
-                <AlertOctagon className="w-6 h-6" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-bold tracking-tight text-white">
-                    Governed SOAR Response &amp; Emergency Freeze Console
-                  </h1>
-                  <Badge variant={isFrozen ? "critical" : "healthy"} className="font-mono text-[10px]">
-                    {isFrozen ? "LOCKDOWN ACTIVE" : "OPERATIONAL"}
-                  </Badge>
-                  <Badge variant="neutral" className="font-mono text-[10px]">R0–R4 Authority Tiers</Badge>
+    <WorkspacePage
+      header={
+        <PageHeader
+          eyebrow="Workspace 10 · Secure response control"
+          title="SOAR Actions & Freeze"
+          subtitle="Monitor response execution, enforce risk-tier controls, and verify dual-custody authorization."
+          actions={
+            <>
+              {freezeActive && (
+                <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-950/30 px-3 py-2 max-w-md">
+                  <Square className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" />
+                  <div><div className="text-[11px] font-bold text-amber-200 uppercase">Global execution freeze · enabled (demo)</div><div className="text-[10px] text-slate-400">High-risk changes are blocked; no live response actions will run.</div></div>
                 </div>
-                <p className="text-xs text-slate-400 mt-0.5">
-                  Dual-Custody Quorum, Dry-Run Pre-Flight Simulation &amp; Automated Rollback Compensation (ADR-04)
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 font-mono text-xs">
-            <div className="px-3.5 py-2 rounded-xl bg-[#080d19] border border-slate-800 text-slate-300">
-              Authority Engine: <span className="text-amber-400 font-bold">Dual-Custody Hardware Attested</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 4 Summary KPI Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Active Tier Policy</div>
-          <div className="text-2xl font-bold font-mono text-cyan-400 mt-1">{selectedAuthorityTier}</div>
-          <div className="text-[11px] text-slate-400 mt-0.5">Dual-custody verification</div>
-        </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">SOAR Automation State</div>
-          <div className={`text-2xl font-bold font-mono mt-1 ${isFrozen ? "text-rose-400" : "text-emerald-400"}`}>
-            {isFrozen ? "FROZEN" : "OPERATIONAL"}
-          </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">Global containment guard</div>
-        </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Dual-Custody Hardware Gate</div>
-          <div className="text-2xl font-bold font-mono text-purple-400 mt-1">
-            {quorumReceipt ? "ATTESTED" : "ARMED"}
-          </div>
-          <div className="text-[11px] text-slate-400 mt-0.5">FIDO2 2-of-N hardware sign-off</div>
-        </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Rollback Compensation</div>
-          <div className="text-2xl font-bold font-mono text-emerald-400 mt-1">100% REVERSIBLE</div>
-          <div className="text-[11px] text-cyan-400 mt-0.5">Cryptographic redemption tokens</div>
-        </div>
-      </div>
-
-      {/* Mandatory Degraded State if Frozen */}
-      {isFrozen && (
-        <DegradedState
-          title="Emergency Autonomous Freeze Active (SOAR Halted)"
-          message={`Tenant automation frozen: "${freezeReason}". Scope: ${freezeScope}. All live actions require human step-up authorization.`}
-          fallbackReason="SOAR_EMERGENCY_KILLSWITCH_ENGAGED"
+              )}
+              <ActionButton onClick={() => setTab(CONSOLE_TAB)}>View Policy</ActionButton>
+            </>
+          }
         />
-      )}
-
-      {/* R0–R4 Authority Tier Ladder Selector */}
-      <div className="surface-card rounded-2xl p-6 bg-[#0c111e]/90 border border-slate-800/80 shadow-xl space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-cyan-400" />
-            <h2 className="text-sm font-bold text-slate-100">
-              SOAR Autonomous Response Authority Ladder (R0–R4)
-            </h2>
+      }
+      kpis={
+        <KpiGrid
+          items={[
+            { label: "Action requests", value: "42", hint: "within selected demo period", tone: "blue", icon: <ListChecks className="w-3.5 h-3.5" /> },
+            { label: "Pending authorization", value: "3", hint: "2 require independent signers", tone: "amber", icon: <Hourglass className="w-3.5 h-3.5" /> },
+            { label: "Frozen / blocked", value: "2", hint: "execution not permitted", tone: "rose", icon: <Square className="w-3.5 h-3.5" /> },
+            { label: "Completed actions", value: "21", hint: "historical simulation results", tone: "emerald", icon: <Check className="w-3.5 h-3.5" /> },
+          ]}
+        />
+      }
+      tabs={[{ id: "overview", label: "Overview" }]}
+      activeTab={tab}
+      onTabChange={setTab}
+      console={<ActionsConsole />}
+      consoleLabel="Live SOAR console"
+      footer={<div className="flex justify-between text-[10px] text-slate-500"><span>ZOIKOSHIELD · SOAR ACTIONS &amp; FREEZE · DESIGN REVIEW</span><span>Synthetic information only · Not representative of verified production readiness</span></div>}
+    >
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <Panel title="Governed action queue" meta="View audit history →">
+          <div className="text-[11px] text-slate-500 -mt-1 mb-3">Risk tier, initiator, authorization and execution status</div>
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {FILTERS.map((f) => (
+              <button key={f.id} type="button" onClick={() => setFilter(f.id)} className={`px-3 py-1.5 rounded-lg border text-[11px] font-semibold ${filter === f.id ? "bg-sky-600 border-sky-500 text-white" : "border-[#1e2b44] text-slate-300"}`}>{f.label}{f.id === "all" ? " · 42" : ""}</button>
+            ))}
           </div>
-          <span className="text-xs text-slate-400 font-mono">
-            Active Tier Policy: <strong className="text-cyan-300">{selectedAuthorityTier}</strong>
-          </span>
-        </div>
+          <DataTable
+            rows={rows}
+            rowKey={(r) => r.id}
+            selectedKey={sel.id}
+            onSelect={(r) => setSelectedId(r.id)}
+            columns={[
+              { key: "id", header: "Action ID / source", render: (r) => <div><div className="font-mono font-semibold text-slate-100">{r.id}</div><div className="text-[10px] text-slate-500">{r.source}</div></div> },
+              { key: "a", header: "Requested action", render: (r) => r.action },
+              { key: "t", header: "Risk tier", render: (r) => <Pill tone={TIER_TONE[r.tier]}>{r.tier}</Pill> },
+              { key: "s", header: "Execution status", render: (r) => <Pill tone={r.statusTone}>{r.status}</Pill> },
+            ]}
+          />
+          <div className="text-[11px] text-slate-500 mt-3">Selected: {sel.id} · Filter: {filter} · All actions are synthetic examples, not live operations.</div>
+        </Panel>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 font-mono text-xs">
-          {[
-            {
-              tier: "R0" as const,
-              title: "R0: Observation",
-              desc: "Read-only telemetry normalization & threat observation. Zero mutation.",
-              badge: "INFORMATIONAL",
-              badgeVariant: "neutral" as const,
-              color: "border-slate-800 hover:border-slate-700",
-            },
-            {
-              tier: "R1" as const,
-              title: "R1: Dry-Run Sim",
-              desc: "Blast-radius diff prediction & pre-flight simulation receipts.",
-              badge: "GOVERNED DEFAULT",
-              badgeVariant: "pass" as const,
-              color: "border-blue-500/40 hover:border-blue-500/70",
-            },
-            {
-              tier: "R2" as const,
-              title: "R2: Dual-Custody",
-              desc: "Perimeter & host containment with 2-of-N hardware sign-off.",
-              badge: "QUORUM GATED",
-              badgeVariant: "critical" as const,
-              color: "border-amber-500/40 hover:border-amber-500/70",
-            },
-            {
-              tier: "R3" as const,
-              title: "R3: IAM Revoke",
-              desc: "Automated credential revocation with single-use compensation.",
-              badge: "STEP-UP SIGNED",
-              badgeVariant: "critical" as const,
-              color: "border-purple-500/40 hover:border-purple-500/70",
-            },
-            {
-              tier: "R4" as const,
-              title: "R4: Sovereign Self-Heal",
-              desc: "Autonomous multi-layer containment with instant fail-closed kill-switch.",
-              badge: "FAILSAFE GATED",
-              badgeVariant: "ai" as const,
-              color: "border-emerald-500/40 hover:border-emerald-500/70",
-            },
-          ].map((item) => {
-            const isSelected = selectedAuthorityTier === item.tier;
-            return (
-              <div
-                key={item.tier}
-                onClick={() => setSelectedAuthorityTier(item.tier)}
-                className={`p-3.5 rounded-xl border cursor-pointer transition-all duration-200 ${
-                  isSelected
-                    ? "bg-slate-900 border-cyan-500 shadow-[0_0_15px_rgba(6,182,212,0.15)] ring-1 ring-cyan-500"
-                    : "bg-slate-950/60 " + item.color
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className={`font-bold ${isSelected ? "text-cyan-300" : "text-slate-200"}`}>
-                    {item.title}
-                  </span>
-                  <Badge variant={item.badgeVariant}>{item.badge}</Badge>
-                </div>
-                <p className="text-[11px] text-slate-400 leading-relaxed">{item.desc}</p>
+        <Panel title={sel.action} meta={`${sel.tier.split(" ·")[0]} · ${sel.tier.split("· ")[1].toUpperCase()} RISK${blocked ? " · BLOCKED" : ""}`} metaTone={TIER_TONE[sel.tier]}>
+          <div className="text-[11px] text-slate-500 -mt-1 mb-3">{sel.id} · Linked to CASE-2026-1043</div>
+          <div className="flex flex-wrap gap-1.5 mb-3" role="tablist">
+            {DETAIL_TABS.map((d) => (
+              <button key={d} type="button" role="tab" aria-selected={detailTab === d} onClick={() => setDetailTab(d)} className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold ${detailTab === d ? "bg-sky-600 text-white" : "text-slate-300 hover:text-white"}`}>{d}</button>
+            ))}
+          </div>
+          {detailTab === "Action overview" && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="rounded-lg border border-[#162238] p-3">
+                <div className="text-xs font-bold text-slate-200 mb-2">Request context</div>
+                <KeyValues cols={1} items={[
+                  { k: "Origin", v: sel.source },
+                  { k: "Tenant", v: "Acme Corporation (DEMO)" },
+                  { k: "Target", v: sel.target },
+                  { k: "Current state", v: sel.status === "Complete" ? "Executed (simulation)" : "Not executed", tone: sel.status === "Complete" ? "emerald" : "rose" },
+                ]} />
               </div>
-            );
-          })}
-        </div>
+              <div className="rounded-lg border border-[#162238] p-3">
+                <div className="text-xs font-bold text-slate-200 mb-2">Scope &amp; reversibility</div>
+                <ul className="space-y-1.5 text-[11px] text-slate-300">
+                  {["One target; restricted scope", "Preserve forensic evidence", "Pre-execution impact simulation", "Single-use rollback authorization"].map((s) => <li key={s} className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-sky-400" />{s}</li>)}
+                </ul>
+              </div>
+            </div>
+          )}
+          {detailTab === "Policy & risk" && (
+            <KeyValues items={[{ k: "Risk tier", v: sel.tier }, { k: "Policy", v: HIGH(sel.tier) ? "Two independent signers + passkey" : "Single analyst approval" }, { k: "Freeze applies", v: HIGH(sel.tier) ? "Yes" : "No", tone: HIGH(sel.tier) ? "amber" : "emerald" }, { k: "Blast radius", v: "Single target (simulated)" }]} />
+          )}
+          {detailTab === "Approval evidence" && <p className="text-xs text-slate-400">No approval signatures are recorded for {sel.id}. Approval evidence is read from the live authorization chain.</p>}
+          {detailTab === "Rollback plan" && <p className="text-xs text-slate-400">A rollback plan is required before execution: restore network policy, re-enable sessions, and record a reversal receipt bound to the original action.</p>}
+          {blocked && (
+            <div className="mt-3 flex items-start gap-2 rounded-lg border border-rose-500/40 bg-rose-950/30 p-3 text-[11px] text-rose-200">
+              <Lock className="w-4 h-4 shrink-0" /> <span><b>Execution denied.</b> Global freeze is active and independent, time-limited R3 approvals have not been completed. Copilot recommendations cannot execute changes.</span>
+            </div>
+          )}
+        </Panel>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column: Emergency Freeze & Rollback Trigger */}
-        <div className="space-y-6">
-          {/* Emergency Kill-Switch */}
-          <Card className="p-5 space-y-4 border-amber-500/30">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2 text-sm font-bold text-slate-100">
-                <AlertOctagon className="w-4 h-4 text-rose-500" />
-                <span>Emergency SOAR Kill-Switch</span>
-              </div>
-              <Badge variant={isFrozen ? "critical" : "neutral"}>
-                {isFrozen ? "ENGAGED" : "ARMED"}
-              </Badge>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <Panel title="Execution preview & safeguards" meta="Simulated steps only · No system changes">
+          <ul className="space-y-2">
+            {[
+              ["Validate scope and asset identity", "Preview complete", "emerald"],
+              ["Calculate impact and blast radius", "Preview complete", "emerald"],
+              ["Verify independent WebAuthn signatures", "Blocked · quorum missing", "amber"],
+              ["Release global execution freeze", "Blocked · elevated access", "amber"],
+              [`${sel.action.split(" ")[0]} target, record result & receipt`, "Not executed", "amber"],
+              ["Verify outcome and issue rollback receipt", "Not executed", "amber"],
+            ].map(([l, s, t]) => (
+              <li key={l} className="flex items-center justify-between gap-3 rounded-lg border border-[#162238] px-3 py-2 text-xs">
+                <span className="flex items-center gap-2 text-slate-200">{t === "emerald" ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />}{l}</span>
+                <span className={`text-[11px] ${t === "emerald" ? "text-emerald-300" : "text-amber-300"}`}>{s}</span>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+        <Panel title="Independent approval & freeze controls" meta="Fail-closed · Auditable">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="rounded-lg border border-[#162238] p-3">
+              <div className="text-xs font-bold text-slate-200 mb-3">Authorization chain</div>
+              <ol className="space-y-3 text-[11px]">
+                <li><div className="font-semibold text-emerald-300">✓ Action proposed</div><div className="text-slate-500">Request recorded · 14 Oct, 13:42</div></li>
+                <li><div className="font-semibold text-amber-300">1 · Signer 1 · Pending</div><div className="text-slate-500">Authorized incident responder · passkey verification required</div></li>
+                <li><div className="font-semibold text-amber-300">2 · Signer 2 · Pending</div><div className="text-slate-500">Independent authorized reviewer · cannot be the initiator or signer 1</div></li>
+                <li><div className="font-semibold text-sky-300">Execution gate · Locked</div><div className="text-slate-500">Freeze + quorum policies enforced</div></li>
+              </ol>
             </div>
-
-            <div className="space-y-3 font-mono text-xs">
-              <div className="space-y-1.5">
-                <label className="text-slate-400">Freeze Scope:</label>
-                <select
-                  value={freezeScope}
-                  onChange={(e) => setFreezeScope(e.target.value as any)}
-                  disabled={isFrozen}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-amber-500"
-                >
-                  <option value="TENANT">TENANT (Lockdown Current Org Only)</option>
-                  <option value="GLOBAL">GLOBAL (Platform-Wide Sovereign Freeze)</option>
-                  <option value="ACTION_TYPE">ACTION_TYPE (Freeze Specific Action e.g. IAM Revoke)</option>
-                  <option value="CONNECTOR">CONNECTOR (Freeze Ingestion Connector)</option>
-                </select>
+            <div className="rounded-lg border border-[#162238] p-3">
+              <div className="text-xs font-bold text-slate-200 mb-3">Emergency freeze</div>
+              <div className="rounded-lg border border-amber-500/40 bg-amber-950/30 p-2.5 mb-3">
+                <div className="text-[11px] font-bold text-amber-200">● GLOBAL FREEZE IS ACTIVE</div>
+                <div className="text-[10px] text-slate-400">All prohibited execution requests remain blocked. Authorized unfreeze requires a privileged, audited workflow.</div>
               </div>
-
-              <div className="space-y-1.5">
-                <label className="text-slate-400">Reason / Incident Identifier:</label>
-                <textarea
-                  value={freezeReason}
-                  onChange={(e) => setFreezeReason(e.target.value)}
-                  disabled={isFrozen}
-                  rows={2}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-amber-500 resize-none"
-                />
+              <div className="space-y-1.5 text-[11px]">
+                <div className="flex justify-between"><span className="text-slate-400">Action signing</span><span className="text-amber-300 font-semibold">Unavailable</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Proof &amp; audit</span><span className="text-slate-200">Log preview only</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Rollback</span><span className="text-slate-200">Plan required</span></div>
               </div>
-
-              <Button
-                variant="primary"
-                onClick={handleToggleFreeze}
-                isLoading={freezeLoading}
-                className={`w-full py-2.5 font-bold flex items-center justify-center gap-2 ${
-                  isFrozen
-                    ? "bg-rose-600 hover:bg-rose-500 text-white shadow-lg shadow-rose-900/40 animate-pulse"
-                    : "bg-amber-600 hover:bg-amber-500 text-slate-950 font-extrabold shadow-lg shadow-amber-900/30"
-                }`}
-              >
-                {isFrozen ? (
-                  <>
-                    <Unlock className="w-4 h-4" />
-                    <span>Release Emergency Freeze</span>
-                  </>
-                ) : (
-                  <>
-                    <Lock className="w-4 h-4" />
-                    <span>Engage Emergency Freeze</span>
-                  </>
-                )}
-              </Button>
-
-              {isFrozen && activeFreezeId && (
-                <div className="p-3 rounded-lg bg-rose-950/40 border border-rose-500/40 text-[11px] text-rose-300 space-y-1">
-                  <div>
-                    🚨 <strong className="text-white">Active Freeze ID:</strong> {activeFreezeId}
-                  </div>
-                  <div>
-                    Scope: {freezeScope} | Locked by: {state.session?.email ?? "sec-ops@enterprise.corp"}
-                  </div>
-                  <div className="text-slate-400 text-[10px]">
-                    All automated SOAR mutations blocked with zero bypass.
-                  </div>
-                </div>
-              )}
+              <button type="button" disabled className="mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-[#1e2b44] bg-[#080c16] text-xs text-slate-500 cursor-not-allowed"><Lock className="w-3.5 h-3.5" /> Execute action — DISABLED</button>
             </div>
-          </Card>
-
-          {/* Rollback Redemption */}
-          <Card className="p-5 space-y-4 border-slate-800">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2 text-sm font-bold text-slate-200">
-                <RotateCcw className="w-4 h-4 text-cyan-400" />
-                <span>Single-Use Rollback Redemption</span>
-              </div>
-            </div>
-
-            <div className="space-y-3 font-mono text-xs">
-              {/* Dual-Custody Quorum Validation Trigger */}
-              <div className="p-3.5 rounded-xl bg-slate-950/80 border border-purple-500/30 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-purple-300 font-bold flex items-center gap-1.5 text-xs">
-                    <Fingerprint className="w-4 h-4 text-purple-400" />
-                    Dual-Custody Quorum Gate
-                  </span>
-                  <Badge variant={quorumReceipt ? "healthy" : "critical"}>
-                    {quorumReceipt ? "QUORUM ATTESTED" : "FIDO2 2-OF-N REQUIRED"}
-                  </Badge>
-                </div>
-                <p className="text-[11px] text-slate-400">
-                  Verify 2-of-N hardware attestation quorum to issue cryptographic rollback tokens and execute live containment.
-                </p>
-                <Button
-                  variant="primary"
-                  size="sm"
-                  onClick={() => setIsDualCustodyOpen(true)}
-                  className="w-full text-xs font-mono bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-md shadow-purple-950/50"
-                >
-                  <Lock className="w-3.5 h-3.5" /> Launch Dual-Custody Hardware Gate
-                </Button>
-              </div>
-
-              {/* Single-Use Token Input */}
-              <div className="space-y-1.5">
-                <label className="text-slate-400">Active Single-Use Rollback Token:</label>
-                <input
-                  type="text"
-                  value={quorumReceipt?.rollbackToken || rollbackToken}
-                  onChange={(e) => setRollbackToken(e.target.value)}
-                  className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-cyan-300 font-bold focus:outline-none focus:border-cyan-500"
-                />
-              </div>
-
-              <Button
-                variant="outline"
-                className="w-full py-2 flex items-center justify-center gap-2 border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/10"
-                onClick={handleExecuteRollback}
-                isLoading={rollbackLoading}
-              >
-                <RotateCcw className="w-4 h-4" />
-                <span>Redeem Token &amp; Execute Rollback</span>
-              </Button>
-
-              {/* Multi-Stage Recovery State Visualizer */}
-              {(rollbackLoading || rollbackSuccess) && (
-                <RecoveryState
-                  title="Automated Rollback Compensation Active"
-                  message="Executing compensating action across certified provider adapters."
-                  rollbackStage={rollbackStageText}
-                  progressPercent={rollbackProgress}
-                  rollbackToken={quorumReceipt?.rollbackToken || rollbackToken}
-                  isReverted={rollbackSuccess}
-                />
-              )}
-
-              {rollbackError && (
-                <div className="p-3 rounded-lg bg-rose-950/30 border border-rose-500/30 text-[11px] text-rose-300">
-                  ❌ {rollbackError}
-                </div>
-              )}
-            </div>
-          </Card>
-        </div>
-
-        {/* Right 2 Columns: Scenario Selector & Blast-Radius Diff Visualizer */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Containment Scenario Selector */}
-          <Card className="p-5 space-y-4 border-slate-800">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Terminal className="w-4 h-4 text-cyan-400" />
-                <h2 className="text-sm font-bold text-slate-100">
-                  Certified Action Scenarios &amp; Containment Drivers
-                </h2>
-              </div>
-              <Badge variant="neutral">4 Certified Adapters</Badge>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 font-mono text-xs">
-              {SCENARIOS.map((scen) => {
-                const isSelected = selectedScenario.id === scen.id;
-                return (
-                  <div
-                    key={scen.id}
-                    onClick={() => {
-                      setSelectedScenario(scen);
-                      setActiveSimulationReceipt(null);
-                    }}
-                    className={`p-3 rounded-xl border cursor-pointer transition-all ${
-                      isSelected
-                        ? "bg-slate-900/90 border-cyan-500 shadow-md ring-1 ring-cyan-500/60"
-                        : "bg-slate-950/40 border-slate-800 hover:border-slate-700"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-2">
-                        {scen.actionType === "ISOLATE_ENDPOINT" && <Server className="w-3.5 h-3.5 text-rose-400" />}
-                        {scen.actionType === "APPLY_WAF_BLOCK" && <Globe className="w-3.5 h-3.5 text-amber-400" />}
-                        {scen.actionType === "REVOKE_IAM_SESSION" && <Key className="w-3.5 h-3.5 text-purple-400" />}
-                        {scen.actionType === "DISABLE_USER_ACCOUNT" && <UserX className="w-3.5 h-3.5 text-blue-400" />}
-                        <span className="font-bold text-white text-[11px]">{scen.actionType}</span>
-                      </div>
-                      <Badge variant={scen.authorityLevel === "R3" ? "critical" : "pass"}>
-                        {scen.authorityLevel}
-                      </Badge>
-                    </div>
-                    <div className="text-[11px] text-slate-300 font-semibold truncate mb-1">
-                      {scen.targetRef}
-                    </div>
-                    <div className="text-[10px] text-slate-500">
-                      Provider: {scen.provider} | Rollback: {scen.compensatingCommand}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="pt-2 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-xs text-slate-400 font-mono">
-                <span>Blast Radius Risk:</span>
-                <span className="text-emerald-400 font-bold font-mono">
-                  {(selectedScenario.blastRadiusScore * 100).toFixed(0)}% (Low Collateral)
-                </span>
-              </div>
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={handleRunSimulation}
-                isLoading={isSimulating}
-                className="flex items-center gap-2 font-mono text-xs bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold shadow-md shadow-cyan-950/40"
-              >
-                <Play className="w-3.5 h-3.5" />
-                <span>Run Pre-Flight Blast-Radius Simulation</span>
-              </Button>
-            </div>
-          </Card>
-
-          {/* Pre-Execution Simulation Receipt & Infrastructure Delta */}
-          <Card className="p-6 space-y-5 border-slate-800">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-              <div className="flex items-center gap-2">
-                <FileCheck2 className="w-5 h-5 text-cyan-400" />
-                <h2 className="text-sm font-bold text-slate-100">
-                  Pre-Flight Blast-Radius Simulation &amp; Cryptographic State Delta
-                </h2>
-              </div>
-              <Badge variant="anchored">Cryptographically Signed</Badge>
-            </div>
-
-            <div className="space-y-4">
-              {/* Dual-Custody Attestation Card if present */}
-              {quorumReceipt && (
-                <div className="p-4 rounded-xl bg-purple-950/30 border border-purple-500/50 space-y-3 font-mono text-xs shadow-[0_0_20px_rgba(168,85,247,0.15)] animate-in fade-in duration-300">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-purple-400" />
-                      <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold border border-purple-500/40">
-                        {quorumReceipt.quorumId.toUpperCase()}
-                      </span>
-                      <span className="text-slate-200 font-bold">Dual-Custody Cryptographic Quorum Receipt</span>
-                    </div>
-                    <Badge variant="pass">2/2 FIDO2 ATTESTED</Badge>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
-                    <div className="p-2.5 rounded bg-slate-900/80 border border-slate-800 space-y-1">
-                      <span className="text-cyan-400 font-bold flex items-center gap-1.5">
-                        <Fingerprint className="w-3.5 h-3.5" /> 1. Primary Initiator:
-                      </span>
-                      <div className="text-slate-100 font-semibold">{quorumReceipt.approver1}</div>
-                      <div className="text-[10px] text-slate-400">FIDO2 Hardware Attestation: VERIFIED</div>
-                    </div>
-                    <div className="p-2.5 rounded bg-slate-900/80 border border-slate-800 space-y-1">
-                      <span className="text-purple-400 font-bold flex items-center gap-1.5">
-                        <Fingerprint className="w-3.5 h-3.5" /> 2. Secondary Approver:
-                      </span>
-                      <div className="text-slate-100 font-semibold">{quorumReceipt.approver2}</div>
-                      <div className="text-[10px] text-slate-400">Two-Man Invariant: VERIFIED DISTINCT</div>
-                    </div>
-                  </div>
-
-                  <div className="p-2.5 rounded bg-slate-900/80 border border-slate-800 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-400">Issued Single-Use Rollback Token:</span>
-                    <span className="text-cyan-300 font-bold bg-slate-950 px-2.5 py-1 rounded border border-cyan-500/30">
-                      {quorumReceipt.rollbackToken}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* Simulation Result Card */}
-              <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3 font-mono text-xs">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 font-bold border border-cyan-500/30">
-                      {activeSimulationReceipt ? `RECEIPT #${activeSimulationReceipt.id || activeSimulationReceipt.receiptId}` : `SCENARIO: ${selectedScenario.id.toUpperCase()}`}
-                    </span>
-                    <span className="text-slate-300 font-bold">{selectedScenario.actionType}</span>
-                  </div>
-                  <Badge variant="healthy">
-                    {activeSimulationReceipt ? "SIMULATED & SIGNED" : "READY FOR DRY-RUN"}
-                  </Badge>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-[11px]">
-                  <div className="p-2.5 rounded bg-slate-900/60 border border-slate-800">
-                    <span className="text-slate-400 font-bold">Target Resource:</span>
-                    <div className="text-amber-300 font-bold mt-0.5 truncate">{selectedScenario.targetRef}</div>
-                  </div>
-                  <div className="p-2.5 rounded bg-slate-900/60 border border-slate-800">
-                    <span className="text-slate-400 font-bold">Execution Authority:</span>
-                    <div className="text-purple-400 font-bold mt-0.5">{selectedScenario.authorityLevel} (Dual-Custody)</div>
-                  </div>
-                  <div className="p-2.5 rounded bg-slate-900/60 border border-slate-800">
-                    <span className="text-slate-400 font-bold">Compensating Action:</span>
-                    <div className="text-cyan-300 font-bold mt-0.5">{selectedScenario.compensatingCommand}</div>
-                  </div>
-                </div>
-
-                {/* State Delta Diff Box */}
-                <div className="p-3.5 rounded-lg bg-slate-900/60 border border-slate-800 space-y-2.5 text-[11px]">
-                  <div className="text-cyan-400 font-bold flex items-center gap-1.5">
-                    <Zap className="w-3.5 h-3.5" /> PREDICTED INFRASTRUCTURE STATE DELTA:
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                    <div className="p-2.5 rounded bg-rose-950/20 border border-rose-500/30 space-y-1">
-                      <span className="text-rose-300 font-bold text-[10px] uppercase tracking-wider">Before State:</span>
-                      <p className="text-slate-300 text-[11px] leading-relaxed">{selectedScenario.beforeState}</p>
-                    </div>
-                    <div className="p-2.5 rounded bg-emerald-950/20 border border-emerald-500/30 space-y-1">
-                      <span className="text-emerald-300 font-bold text-[10px] uppercase tracking-wider">After State:</span>
-                      <p className="text-slate-300 text-[11px] leading-relaxed">{selectedScenario.afterState}</p>
-                    </div>
-                  </div>
-
-                  <div className="p-2.5 rounded bg-slate-950/70 border border-slate-800 text-slate-300 text-[11px]">
-                    <strong className="text-slate-200">Impact Assessment: </strong>
-                    {selectedScenario.impactSummary}
-                  </div>
-
-                  {activeSimulationReceipt && (
-                    <div className="pt-2 border-t border-slate-800 text-[10px] text-slate-400 flex items-center justify-between">
-                      <span>Safety Attestation Hash:</span>
-                      <span className="text-cyan-300 font-mono font-semibold">
-                        {activeSimulationReceipt.safetyAttestationHash}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </Card>
-        </div>
+          </div>
+        </Panel>
       </div>
-
-      {/* Dual-Custody Approval Modal */}
-      <DualCustodyApprovalModal
-        isOpen={isDualCustodyOpen}
-        onClose={() => setIsDualCustodyOpen(false)}
-        caseId={state.cases[0]?.id || "case-live-01"}
-        proposalId={selectedScenario.id}
-        actionType={selectedScenario.actionType}
-        targetResource={selectedScenario.targetRef}
-        blastRadiusScore={selectedScenario.blastRadiusScore}
-        reversibilityTier={selectedScenario.reversibilityTier}
-        rollbackCommand={selectedScenario.compensatingCommand}
-        onQuorumApproved={(receipt) => {
-          setQuorumReceipt(receipt);
-          setRollbackToken(receipt.rollbackToken);
-        }}
-      />
-    </div>
+    </WorkspacePage>
   );
 }

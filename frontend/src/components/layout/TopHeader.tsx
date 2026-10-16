@@ -353,7 +353,10 @@ export const TopHeader: React.FC = () => {
       if (pathname.includes("email-templates")) return { section: "PLATFORM ADMIN", current: "Template Studio Finale" };
       return { section: "PLATFORM ADMIN", current: "Operations & Entitlements" };
     }
-    if (pathname.startsWith("/team") || pathname.startsWith("/onboarding")) return { section: "ADMINISTRATION", current: "Tenant Management" };
+    if (pathname.startsWith("/tenant-management")) return { section: "ADMINISTRATION", current: "Tenant Management" };
+    if (pathname.startsWith("/team")) return { section: "ADMINISTRATION", current: "Team & Access" };
+    if (pathname.startsWith("/onboarding")) return { section: "ADMINISTRATION", current: "Organization Onboarding" };
+    if (pathname.startsWith("/help")) return { section: "ZOIKOSHIELD", current: "Help & Documentation" };
     if (pathname.startsWith("/partner")) return { section: "MSSP OPERATIONS", current: "MSSP Fleet & 2-Party JIT" };
     if (pathname.startsWith("/trust")) return { section: "ZOIKOSHIELD", current: "Trust Center" };
 

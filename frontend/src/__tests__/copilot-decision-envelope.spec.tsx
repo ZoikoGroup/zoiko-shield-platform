@@ -14,7 +14,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-import CopilotPage from '@/app/copilot/page';
+import CopilotPage from '@/app/copilot/console';
 import { ZoikoShieldApiClient } from '@/lib/api-client';
 
 describe('AI Security Copilot & Spec §16.1 Decision Review Envelope Suite', () => {

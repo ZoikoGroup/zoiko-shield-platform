@@ -1,320 +1,163 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { ZoikoShieldApiClient } from "@/lib/api-client";
-import Link from "next/link";
+import React, { useState } from "react";
+import { Lock, FileText, Download, FileSearch } from "lucide-react";
+import G1GateConsole from "./console";
 import {
-  ShieldCheck,
-  ShieldAlert,
-  Lock,
-  Unlock,
-  UserCheck,
-  CheckCircle2,
-  Clock,
-  RefreshCw,
-  AlertTriangle,
-  RotateCcw,
-  KeyRound,
-  FileCheck,
-  ArrowRight,
-} from "lucide-react";
+  WorkspacePage, PageHeader, NoticeBanner, KpiGrid, Panel, Pill, DataTable, NumberedList,
+  ProgressRow, CheckRow, KeyValues, ActionButton, FooterStrip, CONSOLE_TAB, useTabFilter,
+} from "@/components/mockup/kit";
 
-interface G1ApproverState {
-  roleId: string;
-  roleTitle: string;
-  signatoryName?: string;
-  signatureProof?: string;
-  ratified: boolean;
-  signedAt?: string;
-}
+const ROSTER = [
+  { n: "01", role: "CISO", remit: "Security risk and control posture" },
+  { n: "02", role: "DPO", remit: "Privacy, residency and data protection" },
+  { n: "03", role: "VP Engineering", remit: "Release integrity and engineering sign-off" },
+  { n: "04", role: "AI Risk Lead", remit: "AI safety and model governance" },
+  { n: "05", role: "QA Lead", remit: "Test evidence and regression coverage" },
+  { n: "06", role: "SRE Lead", remit: "Operational readiness and recovery" },
+  { n: "07", role: "Product Lead", remit: "Product acceptance and release scope" },
+  { n: "08", role: "SOC Lead", remit: "Detection and response operations" },
+];
+
+const TABS = [
+  { id: "roster", label: "Ratification Roster" },
+  { id: "evidence", label: "Release Evidence" },
+  { id: "history", label: "Approval History" },
+  { id: "preconditions", label: "Launch Preconditions" },
+  { id: "exceptions", label: "Governance Exceptions" },
+];
 
 export default function G1LaunchGatePage() {
-  const [gateStatus, setGateStatus] = useState("PENDING_MULTI_APPROVER_SIGNOFF");
-  const [allApproved, setAllApproved] = useState(false);
-  const [ratifiedCount, setRatifiedCount] = useState(0);
-  const [approvers, setApprovers] = useState<G1ApproverState[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [actionSuccess, setActionSuccess] = useState<string | null>(null);
-
-  // Signing modal state
-  const [signingRole, setSigningRole] = useState<G1ApproverState | null>(null);
-  const [signatoryName, setSignatoryName] = useState("");
-  const [evidenceNotes, setEvidenceNotes] = useState("");
-
-  const loadRoster = async () => {
-    try {
-      const data = await ZoikoShieldApiClient.getG1Roster();
-      setGateStatus(data?.gateStatus || "PENDING_MULTI_APPROVER_SIGNOFF");
-      setAllApproved(Boolean(data?.allApproved));
-      setRatifiedCount(typeof data?.ratifiedApprovalsCount === "number" ? data.ratifiedApprovalsCount : 0);
-      setApprovers(Array.isArray(data?.approvers) ? data.approvers : []);
-    } catch (err) {
-      console.error("Failed to load G1 roster", err);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  useEffect(() => {
-    loadRoster();
-  }, []);
-
-  const handleSign = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!signingRole) return;
-    try {
-      const proof = `ecdsa-p256-sig-${Date.now()}-${signingRole.roleId}`;
-      const res = await ZoikoShieldApiClient.signG1Roster(
-        signingRole.roleId,
-        signatoryName,
-        proof,
-        evidenceNotes
-      );
-
-      setGateStatus(res?.gateStatus || "PENDING_MULTI_APPROVER_SIGNOFF");
-      setAllApproved(Boolean(res?.allApproved));
-      setRatifiedCount(typeof res?.ratifiedApprovalsCount === "number" ? res.ratifiedApprovalsCount : 0);
-      setSigningRole(null);
-      setSignatoryName("");
-      setEvidenceNotes("");
-      setActionSuccess(`Ratified signature recorded for ${signingRole.roleTitle}.`);
-      loadRoster();
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  const handleReset = async () => {
-    try {
-      await ZoikoShieldApiClient.resetG1Roster();
-      setActionSuccess("G1 Roster reset to unratified baseline (0 / 8 signatures).");
-      loadRoster();
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  const [tab, setTab] = useState("roster");
+  const show = useTabFilter(tab, "roster");
+  // The demo snapshot carries no verified signatures; ratification is read from
+  // the governance roster in the live console, never inferred here.
+  const signed = 0;
 
   return (
-    <div className="space-y-8 pb-16">
-      {/* Header Banner */}
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>G1 MULTI-APPROVER LAUNCH GATE PROTOCOL (§05 & §16)</span>
-          </div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-white">
-            G1 Launch Gate &amp; Live Response Authority
-          </h1>
-          <p className="text-slate-400 text-xs max-w-3xl">
-            Independent cryptographic ratification across all 8 canonical domain leads. Controls fail-closed unlock for live R2+ autonomous response mutations.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3 flex-wrap">
-          <Link
-            href="/risk"
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-xs font-mono transition-colors border border-cyan-500/30 font-bold shadow-sm"
-          >
-            <span>Executive Risk (Step 3)</span>
-            <ArrowRight className="w-3.5 h-3.5 text-cyan-400" />
-          </Link>
-          <button
-            onClick={() => {
-              setRefreshing(true);
-              loadRoster();
-            }}
-            className="p-2 rounded-lg bg-[#080c16] border border-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
-            title="Refresh Roster"
-          >
-            <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
-          </button>
-          <button
-            onClick={handleReset}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#080c16] hover:bg-slate-800 text-slate-300 text-xs font-mono transition-colors border border-slate-800"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset Roster</span>
-          </button>
-        </div>
-      </div>
-
-      {actionSuccess && (
-        <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-800/80 text-emerald-300 text-xs flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-            <span>{actionSuccess}</span>
-          </div>
-          <button onClick={() => setActionSuccess(null)} className="text-slate-400 hover:text-slate-200 text-xs">
-            ✕
-          </button>
-        </div>
-      )}
-
-      {/* R2+ Live Response Safety Status Banner */}
-      <div
-        className={`p-5 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-all ${
-          allApproved
-            ? "bg-emerald-950/30 border-emerald-500/40 text-emerald-300"
-            : "bg-rose-950/30 border-rose-800/80 text-rose-300"
-        }`}
-      >
-        <div className="flex items-start gap-3">
-          {allApproved ? (
-            <Unlock className="w-6 h-6 text-emerald-400 shrink-0 mt-0.5" />
-          ) : (
-            <Lock className="w-6 h-6 text-rose-400 shrink-0 mt-0.5" />
-          )}
-          <div className="space-y-1">
-            <div className="font-bold text-sm tracking-wide flex items-center gap-2">
-              <span>LIVE R2+ RESPONSE STATUS:</span>
-              <span className="font-mono underline">
-                {allApproved ? "RATIFIED (LIVE MUTATIONS ENABLED)" : "FAIL-CLOSED (SIMULATION ONLY)"}
-              </span>
-            </div>
-            <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
-              {allApproved
-                ? "All 8 canonical domain leads have ratified the G1 launch gate. R2+ autonomous response actions (IAM revocation, user suspension, EDR isolation) have live execution authority."
-                : "Live R2+ response actions remain fail-closed in code. Attempted mutations simulate and record receipts without modifying external target infrastructure until 8/8 signatures are ratified."}
-            </p>
-          </div>
-        </div>
-
-        <div className="shrink-0 p-3 rounded-xl bg-slate-950/80 border border-slate-800 text-center font-mono">
-          <div className="text-[10px] text-slate-500 uppercase">Ratification Progress</div>
-          <div className="text-2xl font-black text-cyan-400">{ratifiedCount} / 8</div>
-          <div className="text-[10px] text-slate-400">Signatures Recorded</div>
-        </div>
-      </div>
-
-      {/* 8 Approver Cards Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {approvers.map((approver) => (
-          <div
-            key={approver.roleId}
-            className={`p-5 rounded-xl border flex flex-col justify-between space-y-4 transition-all ${
-              approver.ratified
-                ? "bg-emerald-950/20 border-emerald-500/40"
-                : "bg-slate-900/60 border-slate-800 hover:border-slate-700"
-            }`}
-          >
-            <div className="space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-mono text-[10px] font-bold text-slate-500 uppercase">
-                  {approver.roleId}
-                </span>
-                {approver.ratified ? (
-                  <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono font-bold flex items-center gap-1">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-400" /> RATIFIED
-                  </span>
-                ) : (
-                  <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-mono font-bold flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-amber-400" /> PENDING
-                  </span>
-                )}
-              </div>
-
-              <div>
-                <h3 className="text-sm font-bold text-slate-100">{approver.roleTitle}</h3>
-                {approver.signatoryName && (
-                  <p className="text-xs text-cyan-300 mt-1 font-mono">
-                    Signed by: {approver.signatoryName}
-                  </p>
-                )}
-                {approver.signedAt && (
-                  <p className="text-[10px] text-slate-500 font-mono mt-0.5" suppressHydrationWarning>
-                    {new Date(approver.signedAt).toLocaleDateString()} at{" "}
-                    {new Date(approver.signedAt).toLocaleTimeString()}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <div>
-              {!approver.ratified ? (
-                <button
-                  onClick={() => {
-                    setSigningRole(approver);
-                    setSignatoryName("");
-                    setEvidenceNotes("");
-                  }}
-                  className="w-full py-2 px-3 rounded-lg bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 border border-cyan-500/40 text-xs font-mono font-semibold transition-colors flex items-center justify-center gap-1.5"
-                >
-                  <KeyRound className="w-3.5 h-3.5 text-cyan-400" />
-                  <span>Ratify Signature</span>
-                </button>
-              ) : (
-                <div className="text-[10px] font-mono text-slate-500 truncate">
-                  Proof: {approver.signatureProof?.slice(0, 20)}...
+    <WorkspacePage
+      header={
+        <PageHeader
+          icon={<Lock className="w-5 h-5" />}
+          title="G1 Launch Gate Protocol"
+          routeTag="/admin/g1-gate"
+          subtitle="Eight-signer ratification cockpit · authorized executive approvals before any production promotion"
+          actions={
+            <>
+              <ActionButton onClick={() => setTab("preconditions")}><FileText className="w-3.5 h-3.5" /> Review protocol</ActionButton>
+              <ActionButton primary onClick={() => setTab(CONSOLE_TAB)}><Download className="w-3.5 h-3.5" /> Export demonstration report</ActionButton>
+            </>
+          }
+        />
+      }
+      banner={
+        <NoticeBanner
+          tone="rose"
+          icon={<Lock className="w-4 h-4" />}
+          title="Production promotion blocked — G1 not ratified"
+          body="Example state: no verified signatures recorded; launch controls must fail closed until all eight authorized roles sign the same release decision."
+          tag="Demo snapshot · not a live attestation"
+        />
+      }
+      kpis={
+        <KpiGrid
+          items={[
+            { label: "Required approvals", value: `${signed} / 8`, tag: "0% ratified", hint: "Distinct authorized executive signers", tone: "rose" },
+            { label: "Release gate", value: "BLOCKED", tag: "Fail closed", hint: "Production promotion disabled", tone: "amber" },
+            { label: "Approval roster", value: "8", tag: "Source defined", hint: "Mandatory governance roles", tone: "cyan" },
+            { label: "Release artifact", value: "UNBOUND", tag: "Review required", hint: "No verified digest selected", tone: "purple" },
+            { label: "Verified evidence", value: "UNKNOWN", tag: "Not assessed", hint: "Do not infer readiness from UI", tone: "amber" },
+          ]}
+        />
+      }
+      tabs={TABS}
+      activeTab={tab}
+      onTabChange={setTab}
+      console={<G1GateConsole />}
+      consoleLabel="Live ratification console"
+      footer={<FooterStrip tone="rose" left="Design review only · G1 sign-off cannot be inferred from a screenshot. Confirm current formal roster, eight eligible signers, release evidence and enforced server-side gate before promotion." right="Simulated data · no production approval" />}
+    >
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
+        {show("roster") && (
+          <Panel title="Eight-Domain Executive Sign-Off Roster" meta={`${signed} / 8 sample signatures`} className="xl:col-span-3">
+            <DataTable
+              rows={ROSTER}
+              rowKey={(r) => r.n}
+              columns={[
+                { key: "role", header: "Required role", render: (r) => <span><span className="font-mono text-slate-500 mr-2">{r.n}</span><span className="font-semibold text-slate-100">{r.role}</span></span> },
+                { key: "remit", header: "Review remit*", render: (r) => r.remit },
+                { key: "state", header: "Gate state", render: () => <Pill tone="amber">Not signed</Pill> },
+                { key: "sig", header: "Signature proof", render: () => <span className="text-slate-500">No signature</span> },
+                { key: "act", header: "Action", render: () => <button type="button" onClick={() => setTab(CONSOLE_TAB)} className="text-sky-300 hover:underline">Review →</button> },
+              ]}
+            />
+          </Panel>
+        )}
+        {show("preconditions", "evidence") && (
+          <Panel title="Gate Decision & Release Controls" meta="Platform-only · read-only demo" className="xl:col-span-2">
+            <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-rose-500/40 bg-rose-950/30 mb-4">
+              <div className="flex items-center gap-3">
+                <Lock className="w-5 h-5 text-rose-300" />
+                <div>
+                  <div className="text-sm font-bold text-slate-100">Launch authorization unavailable</div>
+                  <div className="text-[11px] text-slate-400">Approval progress — illustrative, not live</div>
                 </div>
-              )}
+              </div>
+              <Pill tone="rose">Gate closed</Pill>
             </div>
-          </div>
-        ))}
+            <ProgressRow label={`${signed} of 8 signed decisions`} value={signed} max={8} display={`${Math.round((signed / 8) * 100)}% ratification`} tone="rose" />
+            <div className="mt-4 rounded-lg border border-rose-500/30 bg-[#140a10] p-3">
+              <div className="text-xs font-bold text-slate-200 mb-2">Blocking requirements</div>
+              <CheckRow label="Eight distinct executive approvals must be evidenced" status={`${signed} / 8`} tone="rose" />
+              <CheckRow label="Signed release artifact not selected or verified" status="Unknown" tone="rose" />
+              <CheckRow label="Roster provenance not independently confirmed" status="Review" tone="amber" />
+              <CheckRow label="Production readiness cannot be inferred from demo data" status="Unverified" tone="amber" />
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-4">
+              <ActionButton disabled><Lock className="w-3.5 h-3.5" /> Promote to production · Disabled</ActionButton>
+              <ActionButton onClick={() => setTab(CONSOLE_TAB)}><FileSearch className="w-3.5 h-3.5" /> Inspect sign-off evidence</ActionButton>
+            </div>
+          </Panel>
+        )}
       </div>
 
-      {/* Signature Modal */}
-      {signingRole && (
-        <div className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl">
-            <h3 className="text-base font-bold text-slate-100 flex items-center gap-2">
-              <KeyRound className="w-4 h-4 text-cyan-400" />
-              Ratify G1 Gate Approval
-            </h3>
-            <p className="text-xs text-slate-400">
-              Record digital signature for <strong className="text-slate-200">{signingRole.roleTitle}</strong>.
-            </p>
-
-            <form onSubmit={handleSign} className="space-y-4 text-xs">
-              <div>
-                <label className="block text-slate-400 mb-1">Signatory Full Name</label>
-                <input
-                  type="text"
-                  placeholder="E.g. Dr. Maya Patel"
-                  value={signatoryName}
-                  onChange={(e) => setSignatoryName(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:outline-none focus:border-cyan-500"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-400 mb-1">Evidence Reference / Approval Notes</label>
-                <textarea
-                  placeholder="E.g. Verified AI Model Safety Evaluation & PQC Merkle Root Sealing"
-                  value={evidenceNotes}
-                  onChange={(e) => setEvidenceNotes(e.target.value)}
-                  rows={2}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-slate-200 focus:outline-none focus:border-cyan-500"
-                />
-              </div>
-
-              <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 text-[11px] text-slate-400">
-                <div className="font-mono text-cyan-400 font-bold mb-0.5">ECDSA P-256 Signature Stamp:</div>
-                An immutable cryptographic audit record will be anchored to the evidence chain upon submission.
-              </div>
-
-              <div className="pt-3 flex justify-end gap-3 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setSigningRole(null)}
-                  className="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-lg bg-cyan-500 text-slate-950 font-bold hover:bg-cyan-400"
-                >
-                  Confirm Ratification
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {show("preconditions") && (
+          <Panel title="Approval Control Sequence" meta="Target UX safeguards">
+            <NumberedList
+              items={[
+                { title: "Role-bound authentication", sub: "Executive identity + required step-up", tag: "Pending", tone: "amber" },
+                { title: "Release-context binding", sub: "Signature must reference specific release digest", tag: "Pending", tone: "amber" },
+                { title: "Independent ratification", sub: "All eight distinct, eligible signers", tag: "Pending", tone: "amber" },
+                { title: "Auditable decision event", sub: "Evidence retained; no silent override", tag: "Pending", tone: "amber" },
+              ]}
+            />
+          </Panel>
+        )}
+        {show("history", "evidence") && (
+          <Panel title="Governance Evidence & History" meta="Inspect audit log →">
+            <div className="rounded-lg border border-[#162238] bg-[#080c16] p-3 mb-3">
+              <div className="text-xs font-semibold text-slate-200">No approval events in this demo snapshot</div>
+              <div className="text-[11px] text-slate-500">Verified signatures must be read from the governance roster.</div>
+            </div>
+            <KeyValues
+              cols={1}
+              items={[
+                { k: "Document of record", v: "docs/g1-gate-signoff-roster.md", tone: "rose" },
+                { k: "Signature action", v: "/governance/g1-roster/sign", tone: "rose" },
+                { k: "Gate promotion decision", v: "BLOCKED · DEMO" },
+              ]}
+            />
+          </Panel>
+        )}
+        {show("exceptions") && (
+          <Panel title="Engineering Hardening Checks" meta="Known reference gaps">
+            <CheckRow label="Durable dual-custody quorum" sub="Reference audit identifies an in-memory approval store; persistence needs verification." status="Open" tone="amber" />
+            <CheckRow label="Secret and signing key governance" sub="Remove hard-coded quorum key fallbacks before production release." status="Open" tone="amber" />
+            <CheckRow label="Measured platform readiness" sub="Replace static TrustBar badges with authoritative service health before ratification." status="Open" tone="amber" />
+          </Panel>
+        )}
+      </div>
+    </WorkspacePage>
   );
 }

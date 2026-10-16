@@ -1,413 +1,219 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { backend, asList, BackendError } from "@/lib/backend";
-import { formatTimestamp } from "@/lib/utils";
-import { Card } from "@/ui/Card";
-import { Button } from "@/ui/Button";
-import { Badge } from "@/ui/Badge";
-import { CheckCircle2, PlayCircle, RefreshCw, Sparkles, XCircle } from "lucide-react";
-import { LoadingState } from "@/components/states/mandatory-ui-states";
+import React, { useMemo, useState } from "react";
+import Link from "next/link";
+import { FileText, Plus, Clock, CheckCircle2, XCircle, Download, MessageSquare, PencilLine, Monitor, ShieldCheck } from "lucide-react";
+import ResponseProposalsConsole from "./console";
+import {
+  WorkspacePage, PageHeader, KpiGrid, Panel, Pill, DataTable, SearchInput, EventList,
+  ActionButton, CONSOLE_TAB, type Tone,
+} from "@/components/mockup/kit";
 
-/**
- * W34 — Response proposal card, with the human decision recorded.
- *
- * shield-core could create, approve, reject and simulate response proposals,
- * and nothing displayed them. A proposal could be raised against a case and
- * expire unseen, because the only way to act on one was an API call.
- *
- * The card labels where the recommendation came from and whether it is
- * advisory or requires approval, because accepting a machine's suggestion
- * without knowing it was a machine's is exactly what the contract exists to
- * prevent. Reversibility and residual risk sit next to the accept button
- * rather than behind a link: they are what the decision turns on.
- */
+type Risk = "High" | "Medium" | "Low";
+type Status = "Pending" | "Approved" | "Executed" | "In Review";
+type Proposal = { id: string; title: string; trigger: string; risk: Risk; status: Status; owner: string; initials: string; created: string };
 
-type Proposal = {
-  id: string;
-  case_id: string | null;
-  action_type: string;
-  target_type: string;
-  target_id: string;
-  reason: string;
-  authority_level: string;
-  recommendation_source: string;
-  reversible: boolean;
-  rollback_action_type: string | null;
-  residual_risk: string | null;
-  blast_radius?: string | null;
-  kms_key_signature?: string | null;
-  status: string;
-  expires_at: string;
-  created_at: string;
-};
+const PROPOSALS: Proposal[] = [
+  { id: "RSP-2026-0047", title: "Isolate compromised endpoint", trigger: "INC-2026-00473", risk: "High", status: "Pending", owner: "James Diaz", initials: "JD", created: "14 Oct 14:03" },
+  { id: "RSP-2026-0046", title: "Revoke user sessions", trigger: "ALT-2026-00128", risk: "Medium", status: "Approved", owner: "Aisha Khan", initials: "AK", created: "14 Oct 13:41" },
+  { id: "RSP-2026-0045", title: "Block malicious IP range", trigger: "INC-2026-00470", risk: "High", status: "Pending", owner: "Michael Tan", initials: "MT", created: "14 Oct 11:27" },
+  { id: "RSP-2026-0044", title: "Reset compromised accounts", trigger: "CASE-2026-0123", risk: "Medium", status: "Approved", owner: "Priya Nair", initials: "PN", created: "14 Oct 09:52" },
+  { id: "RSP-2026-0043", title: "Collect forensic evidence", trigger: "ALT-2026-00121", risk: "Low", status: "Executed", owner: "James Diaz", initials: "JD", created: "14 Oct 08:33" },
+  { id: "RSP-2026-0042", title: "Contain ransomware spread", trigger: "INC-2026-00468", risk: "High", status: "In Review", owner: "Sarah Chen", initials: "SC", created: "13 Oct 22:16" },
+  { id: "RSP-2026-0041", title: "Disable malicious OAuth app", trigger: "CASE-2026-0121", risk: "Medium", status: "Approved", owner: "Aisha Khan", initials: "AK", created: "13 Oct 18:44" },
+  { id: "RSP-2026-0040", title: "Quarantine suspicious file", trigger: "ALT-2026-00110", risk: "Low", status: "Executed", owner: "Michael Tan", initials: "MT", created: "13 Oct 16:02" },
+];
+const RISK_TONE: Record<Risk, Tone> = { High: "rose", Medium: "amber", Low: "blue" };
+const STATUS_TONE: Record<Status, Tone> = { Pending: "amber", Approved: "emerald", Executed: "emerald", "In Review": "blue" };
 
-type CaseSummary = { id: string; title: string };
-
-function statusVariant(status: string) {
-  switch ((status || "").toUpperCase()) {
-    case "APPROVED":
-      return "pass" as const;
-    case "REJECTED":
-    case "EXPIRED":
-      return "fail" as const;
-    case "SIMULATED":
-      return "simulated" as const;
-    default:
-      return "pending" as const;
-  }
-}
-
-/** R0/R1 are advisory or simulated; R2 and above change a customer system. */
-function requiresApproval(authorityLevel: string): boolean {
-  return !["R0", "R1"].includes((authorityLevel || "").toUpperCase());
-}
-
-const SAMPLE_PROPOSALS: Proposal[] = [
-  {
-    id: "PROP-ACT-882",
-    case_id: "case-2026-auth-attack-01",
-    action_type: "REVOKE_SESSION_AND_QUARANTINE",
-    target_type: "USER_IDENTITY",
-    target_id: "victim.engineer@acme.com",
-    reason: "Containment of compromised credential storm detected across eu-west-1 (ERB-01 Playbook).",
-    authority_level: "R2",
-    recommendation_source: "shield-ai (gemini-2.0-pro-security)",
-    reversible: true,
-    rollback_action_type: "RESTORE_USER_SESSION_CACHE",
-    residual_risk: "None — Zero Collateral Disruption Verified via WASM Dry-Run Sandbox",
-    blast_radius: "0 Downstream Dependents (Isolated to Session Cache)",
-    kms_key_signature: "sha256:42c68b71d9a0e44b931fa0172e819ac4092bbf1841... [Cloud KMS Hardware Custody]",
-    status: "PROPOSED",
-    expires_at: new Date(Date.now() + 3600000).toISOString(),
-    created_at: new Date(Date.now() - 300000).toISOString(),
-  },
-  {
-    id: "PROP-ACT-883",
-    case_id: "case-2026-auth-attack-01",
-    action_type: "ISOLATE_HOST_ENDPOINT",
-    target_type: "AWS_EC2_INSTANCE",
-    target_id: "i-09f4b82c918a",
-    reason: "Contain lateral movement beaconing to unrecognized C2 IP 198.51.100.44.",
-    authority_level: "R3",
-    recommendation_source: "shield-ai (gemini-2.0-pro-security)",
-    reversible: true,
-    rollback_action_type: "ATTACH_SECURITY_GROUP_DEFAULT",
-    residual_risk: "Temporary egress block for worker tier",
-    blast_radius: "0 Core Workloads Disrupted (Worker Auto-Healed)",
-    kms_key_signature: "sha256:77f19a02ce55b881a... [Cloud KMS Hardware Custody]",
-    status: "SIMULATED",
-    expires_at: new Date(Date.now() + 7200000).toISOString(),
-    created_at: new Date(Date.now() - 600000).toISOString(),
-  },
+const STEPS = [
+  { action: "Verify endpoint context and user", type: "Validation", risk: "Low" as Risk, auto: "Automated", status: "Completed" },
+  { action: "Notify user and IT team", type: "Notification", risk: "Low" as Risk, auto: "Automated", status: "Pending" },
+  { action: "Isolate endpoint from network", type: "Containment", risk: "High" as Risk, auto: "Semi-automated", status: "Pending" },
+  { action: "Collect memory and system logs", type: "Evidence", risk: "Low" as Risk, auto: "Automated", status: "Pending" },
+  { action: "Create case and update status", type: "Case Mgmt", risk: "Low" as Risk, auto: "Automated", status: "Pending" },
 ];
 
+const DETAIL_TABS = ["Overview", "Actions (5)", "Evidence (3)", "Risk & Impact", "Approvals (2)"];
+
 export default function ResponseProposalsPage() {
-  const router = useRouter();
-  const [proposals, setProposals] = useState<Proposal[]>([]);
-  const [cases, setCases] = useState<Record<string, string>>({});
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [acting, setActing] = useState<string | null>(null);
+  const [tab, setTab] = useState("overview");
+  const [query, setQuery] = useState("");
+  const [status, setStatus] = useState("All");
+  const [risk, setRisk] = useState("All");
+  const [detailTab, setDetailTab] = useState(DETAIL_TABS[0]);
+  const [selectedId, setSelectedId] = useState(PROPOSALS[0].id);
 
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const caseList = asList<CaseSummary>(await backend.get("/api/v1/cases"));
-      setCases(Object.fromEntries(caseList.map((c) => [c.id, c.title])));
-      if (caseList.length > 0) {
-        const perCase = await Promise.all(
-          caseList.map((c) =>
-            backend
-              .get(`/api/v1/cases/${c.id}/response-proposals`)
-              .then((r) => asList<Proposal>(r)),
-          ),
-        );
-        const combined = perCase.flat();
-        setProposals(combined.length > 0 ? combined : SAMPLE_PROPOSALS);
-      } else {
-        setProposals(SAMPLE_PROPOSALS);
-      }
-    } catch {
-      // Backend offline fallback - ensure verified proposals load for live demo
-      setCases({
-        "case-2026-auth-attack-01": "CASE-2026-0812: Multi-Vector Credential Abuse Investigation",
-      });
-      setProposals(SAMPLE_PROPOSALS);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
-
-  const act = async (
-    id: string,
-    action: "approve" | "reject" | "simulate",
-    reason?: string,
-  ) => {
-    setActing(id);
-    setError(null);
-    try {
-      await backend.post(
-        `/api/v1/response-proposals/${id}/${action}`,
-        action === "simulate" ? undefined : { reason: reason ?? "" },
-      );
-    } catch {
-      // Optimistic update for demo presentation
-    } finally {
-      setProposals((prev) =>
-        prev.map((p) =>
-          p.id === id
-            ? {
-                ...p,
-                status: action === "simulate" ? "SIMULATED" : action === "approve" ? "APPROVED" : "REJECTED",
-              }
-            : p,
-        ),
-      );
-      setActing(null);
-    }
-  };
-
-  if (isLoading) return <LoadingState message="Loading response proposals…" />;
-
-  const open = proposals.filter((p) =>
-    ["PROPOSED", "PENDING", "SIMULATED"].includes((p.status || "").toUpperCase()),
-  );
-  const decided = proposals.filter((p) => !open.includes(p));
-
-  const renderCard = (proposal: Proposal) => {
-    const isOpen = open.includes(proposal);
-    const expired = new Date(proposal.expires_at).getTime() < Date.now();
-    return (
-      <div
-        key={proposal.id}
-        className={`surface-card rounded-2xl p-6 border shadow-xl transition-all ${
-          isOpen
-            ? "bg-[#0c111e]/95 border-slate-800/90 hover:border-slate-700 shadow-cyan-950/20"
-            : "bg-[#090d17]/80 border-slate-800/60 opacity-90"
-        }`}
-      >
-        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-4">
-          <div>
-            <div className="flex items-center gap-2 mb-1.5">
-              <span className="font-mono text-xs font-bold text-cyan-400 bg-cyan-950/40 border border-cyan-500/30 px-2 py-0.5 rounded">
-                {proposal.id}
-              </span>
-              <span className="text-xs font-mono text-slate-400">{proposal.target_type}</span>
-            </div>
-            <h3 className="font-bold text-white text-base tracking-tight">
-              {proposal.action_type} on {proposal.target_type} <span className="text-cyan-300 font-mono">{proposal.target_id}</span>
-            </h3>
-            <p className="text-xs text-slate-300 mt-1.5 leading-relaxed">{proposal.reason}</p>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Badge variant={statusVariant(proposal.status)} className="font-mono text-[11px] uppercase">{proposal.status}</Badge>
-            <Badge variant={requiresApproval(proposal.authority_level) ? "high" : "neutral"} className="font-mono text-[11px]">
-              {proposal.authority_level}{" "}
-              {requiresApproval(proposal.authority_level) ? "APPROVAL REQUIRED" : "ADVISORY"}
-            </Badge>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-4 text-xs font-mono text-slate-400 py-3 border-y border-slate-800/60 mb-4 bg-[#080d19]/40 px-3 rounded-lg">
-          <span className="flex items-center gap-1.5 text-slate-300">
-            <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
-            recommended by {proposal.recommendation_source}
-          </span>
-          {proposal.case_id && (
-            <button
-              className="text-cyan-400 hover:text-cyan-300 underline font-semibold"
-              onClick={() => router.push(`/cases/${proposal.case_id}`)}
-            >
-              case {cases[proposal.case_id] || proposal.case_id}
-            </button>
-          )}
-          <span>raised {formatTimestamp(proposal.created_at)}</span>
-          <span className={expired ? "text-rose-400 font-bold" : "text-amber-400 font-semibold"}>
-            {expired ? "expired" : "expires"} {formatTimestamp(proposal.expires_at)}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-mono mb-4">
-          <div className="p-3 rounded-xl bg-[#080d19] border border-slate-800/80">
-            <span className="text-slate-400 block text-[10px] uppercase">reversible: </span>
-            <span className={proposal.reversible ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
-              {proposal.reversible
-                ? `yes, via ${proposal.rollback_action_type || "an unspecified rollback"}`
-                : "NO — this cannot be undone"}
-            </span>
-          </div>
-          <div className="p-3 rounded-xl bg-[#080d19] border border-slate-800/80">
-            <span className="text-slate-400 block text-[10px] uppercase">residual risk: </span>
-            <span className="text-slate-200">
-              {proposal.residual_risk || "not stated"}
-            </span>
-          </div>
-          <div className="p-3 rounded-xl bg-[#080d19] border border-slate-800/80">
-            <span className="text-slate-400 block text-[10px] uppercase">blast radius: </span>
-            <span className="text-cyan-300 font-semibold">
-              {proposal.blast_radius || "0 Downstream Dependents (Contained)"}
-            </span>
-          </div>
-          <div className="p-3 rounded-xl bg-[#080d19] border border-slate-800/80">
-            <span className="text-slate-400 block text-[10px] uppercase">hardware kms signature: </span>
-            <span className="text-slate-300 truncate block text-[11px]">
-              {proposal.kms_key_signature || "sha256:42c68b71d9a0e... [Cloud KMS Hardware Custody]"}
-            </span>
-          </div>
-        </div>
-
-        {proposal.status === "SIMULATED" && (
-          <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/40 text-emerald-300 text-xs font-mono mb-4 flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-            <span>
-              <strong>Sandbox Dry-Run Verified:</strong> 0 Downstream Dependents Disrupted • Blast-Radius Threshold: PASS • Atomic Rollback Token Active
-            </span>
-          </div>
-        )}
-
-        {isOpen && !expired && (
-          <div className="flex flex-wrap items-center gap-2.5 pt-1">
-            <Button
-              variant="secondary"
-              size="sm"
-              isLoading={acting === proposal.id}
-              onClick={() => void act(proposal.id, "simulate")}
-              className="border-slate-700 hover:border-slate-600"
-            >
-              <PlayCircle className="w-4 h-4 text-cyan-400" />
-              <span>Simulate</span>
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              isLoading={acting === proposal.id}
-              onClick={() => void act(proposal.id, "approve", "Approved from proposal queue")}
-              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold"
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Approve</span>
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              isLoading={acting === proposal.id}
-              onClick={() => void act(proposal.id, "reject", "Rejected from proposal queue")}
-            >
-              <XCircle className="w-4 h-4" />
-              <span>Reject</span>
-            </Button>
-          </div>
-        )}
-        {expired && isOpen && (
-          <p className="text-xs font-mono text-rose-400 mt-2 bg-rose-950/30 p-2.5 rounded-lg border border-rose-500/30">
-            This proposal expired before anyone decided on it.
-          </p>
-        )}
-      </div>
-    );
-  };
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return PROPOSALS.filter((p) => (status === "All" || p.status === status) && (risk === "All" || p.risk === risk) && (!q || `${p.id} ${p.title} ${p.trigger} ${p.owner}`.toLowerCase().includes(q)));
+  }, [query, status, risk]);
+  const sel = PROPOSALS.find((p) => p.id === selectedId) ?? PROPOSALS[0];
+  const pending = PROPOSALS.filter((p) => p.status === "Pending").length;
+  const approved = PROPOSALS.filter((p) => p.status === "Approved" || p.status === "Executed").length;
+  const decidable = sel.status === "Pending" || sel.status === "In Review";
 
   return (
-    <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-xl font-bold tracking-tight text-white">Response proposals</h1>
-              <Badge variant="healthy" className="text-[10px] font-mono">HUMAN-IN-THE-LOOP</Badge>
-            </div>
-            <p className="text-xs font-mono text-slate-400 mt-1 max-w-2xl leading-relaxed">
-              Proposed containment awaiting a human decision.
-            </p>
+    <WorkspacePage
+      header={
+        <PageHeader
+          icon={<FileText className="w-5 h-5" />}
+          title="Response Proposals"
+          subtitle="Review, refine and approve security response actions with governance and audit"
+          actions={
+            <>
+              <ActionButton onClick={() => setTab(CONSOLE_TAB)}><Download className="w-3.5 h-3.5" /> Export</ActionButton>
+              <ActionButton primary onClick={() => setTab(CONSOLE_TAB)}><Plus className="w-3.5 h-3.5" /> New Proposal</ActionButton>
+            </>
+          }
+        />
+      }
+      kpis={
+        <KpiGrid
+          items={[
+            { label: "Total Proposals", value: "18", hint: "Last 7 days · sample set", tone: "purple", icon: <FileText className="w-3.5 h-3.5" /> },
+            { label: "Pending Approval", value: String(pending + 3), tag: "2 high risk", hint: "Awaiting human decision", tone: "rose", icon: <Clock className="w-3.5 h-3.5" /> },
+            { label: "Approved", value: "11", tag: "61% approval rate", hint: `${approved} shown below`, tone: "emerald", icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+            { label: "Rejected", value: "2", tag: "11% rejection rate", hint: "Reasons recorded", tone: "amber", icon: <XCircle className="w-3.5 h-3.5" /> },
+          ]}
+        />
+      }
+      tabs={[{ id: "overview", label: "All proposals" }]}
+      activeTab={tab}
+      onTabChange={setTab}
+      console={<ResponseProposalsConsole />}
+      consoleLabel="Live decision queue"
+      footer={<div className="text-[10px] text-slate-500">Sample proposals for design review. Approvals and rejections are recorded only in the live decision queue, against real proposals.</div>}
+    >
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
+        <Panel title="All Response Proposals" meta={`Showing ${rows.length} of 18 proposals`} metaTone="slate" className="xl:col-span-3">
+          <div className="flex flex-wrap gap-2 mb-3">
+            <SearchInput value={query} onChange={setQuery} placeholder="Search proposals..." />
+            <select aria-label="Status filter" value={status} onChange={(e) => setStatus(e.target.value)} className="px-3 py-2 rounded-lg bg-[#080c16] border border-[#162238] text-xs text-slate-300">
+              {["All", "Pending", "Approved", "Executed", "In Review"].map((s) => <option key={s} value={s}>Status: {s}</option>)}
+            </select>
+            <select aria-label="Risk filter" value={risk} onChange={(e) => setRisk(e.target.value)} className="px-3 py-2 rounded-lg bg-[#080c16] border border-[#162238] text-xs text-slate-300">
+              {["All", "High", "Medium", "Low"].map((s) => <option key={s} value={s}>Risk: {s}</option>)}
+            </select>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="secondary"
-              onClick={() => router.push("/admin")}
-              className="border border-rose-500/40 text-rose-300 hover:bg-rose-500/10 text-xs font-mono"
-            >
-              <span>🛑 Emergency Kill-Switch (Step 11) →</span>
-            </Button>
-            <Button variant="ghost" onClick={() => void load()} className="border border-slate-800 hover:border-slate-700 text-slate-300">
-              <RefreshCw className="w-4 h-4 text-cyan-400" />
-              <span>Refresh</span>
-            </Button>
+          <DataTable
+            rows={rows}
+            rowKey={(r) => r.id}
+            selectedKey={sel.id}
+            onSelect={(r) => setSelectedId(r.id)}
+            columns={[
+              { key: "id", header: "ID", render: (r) => <span className="font-mono">{r.id}</span> },
+              { key: "t", header: "Title", render: (r) => <span className="font-semibold text-slate-100">{r.title}</span> },
+              { key: "tr", header: "Trigger / Case", render: (r) => <span className="font-mono text-slate-400">{r.trigger}</span> },
+              { key: "r", header: "Risk", render: (r) => <Pill tone={RISK_TONE[r.risk]}>{r.risk}</Pill> },
+              { key: "s", header: "Status", render: (r) => <Pill tone={STATUS_TONE[r.status]}>{r.status}</Pill> },
+              { key: "o", header: "Owner", render: (r) => <span className="flex items-center gap-1.5"><span className="w-6 h-6 rounded-full bg-sky-700 text-[9px] font-bold text-white flex items-center justify-center">{r.initials}</span>{r.owner}</span> },
+              { key: "c", header: "Created ↓", render: (r) => <span className="font-mono">{r.created}</span> },
+            ]}
+          />
+        </Panel>
+
+        <Panel title={sel.id} meta={`${sel.status.toUpperCase()} · ${sel.risk.toUpperCase()} RISK`} metaTone={RISK_TONE[sel.risk]} className="xl:col-span-2">
+          <div className="text-base font-bold text-slate-100">{sel.title}</div>
+          <p className="text-[11px] text-slate-400 mb-3">Proposed response for {sel.trigger}. Requires human approval before any execution.</p>
+          <div className="flex flex-wrap gap-1 mb-3" role="tablist">
+            {DETAIL_TABS.map((d) => (
+              <button key={d} type="button" role="tab" aria-selected={detailTab === d} onClick={() => setDetailTab(d)} className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold ${detailTab === d ? "bg-sky-600 text-white" : "text-slate-300 hover:text-white"}`}>{d}</button>
+            ))}
           </div>
-        </div>
-      </div>
-
-      {/* 4 Summary Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Awaiting Decision</div>
-          <div className="text-2xl font-bold font-mono text-amber-400 mt-1">{open.length}</div>
-          <div className="text-[11px] text-slate-400 mt-0.5">Pending analyst review</div>
-        </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Decided Actions</div>
-          <div className="text-2xl font-bold font-mono text-emerald-400 mt-1">{decided.length}</div>
-          <div className="text-[11px] text-slate-400 mt-0.5">Audited &amp; signed actions</div>
-        </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Total Formulated</div>
-          <div className="text-2xl font-bold font-mono text-cyan-400 mt-1">{proposals.length}</div>
-          <div className="text-[11px] text-slate-400 mt-0.5">Deterministic AI proposals</div>
-        </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Reversibility</div>
-          <div className="text-2xl font-bold font-mono text-white mt-1">100% Guaranteed</div>
-          <div className="text-[11px] text-cyan-400 mt-0.5">Automated rollback tokens</div>
-        </div>
-      </div>
-
-      {error && (
-        <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-500/50 text-rose-300 text-xs font-mono shadow-lg">
-          {error}
-        </div>
-      )}
-
-      {proposals.length === 0 ? (
-        <div className="surface-card rounded-2xl p-12 bg-[#0c111e]/90 border border-slate-800/80 text-center">
-          <p className="text-sm font-medium text-slate-300">No response proposals exist for this tenant.</p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {open.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between pb-1">
-                <h2 className="text-xs font-mono text-slate-500 uppercase tracking-wider">
-                  Awaiting decision ({open.length})
-                </h2>
-                <span className="text-[11px] font-mono text-amber-400">Requires Dual-Custody Approval</span>
+          {detailTab === "Overview" && (
+            <div className="grid grid-cols-2 gap-3 text-[11px]">
+              <div className="space-y-2">
+                <div><div className="text-slate-500">Trigger</div><div className="font-semibold text-slate-200">Multiple failed login attempts</div><div className="text-slate-500 font-mono">{sel.trigger}</div></div>
+                <div><div className="text-slate-500">Proposed by</div><div className="font-semibold text-slate-200">{sel.owner}</div><div className="text-slate-500">{sel.created} (UTC)</div></div>
               </div>
-              <div className="space-y-3">
-                {open.map(renderCard)}
+              <div className="space-y-2">
+                <div className="flex items-start gap-2"><Monitor className="w-4 h-4 text-slate-400" /><div><div className="text-slate-500">Target asset</div><div className="font-semibold text-slate-200">WIN-WS-0142</div><div className="text-slate-500">10.20.5.42 · Windows 11 Pro</div></div></div>
+                <div className="flex items-start gap-2"><ShieldCheck className="w-4 h-4 text-emerald-400" /><div><div className="text-slate-500">Recommended action</div><div className="font-semibold text-slate-200">{sel.title}</div><div className="text-slate-500">Apply containment playbook</div></div></div>
               </div>
             </div>
           )}
-          {decided.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between pb-1">
-                <h2 className="text-xs font-mono text-slate-500 uppercase tracking-wider">
-                  Decided ({decided.length})
-                </h2>
-                <span className="text-[11px] font-mono text-slate-500">Archived Ledger Records</span>
-              </div>
-              <div className="space-y-3">
-                {decided.map(renderCard)}
-              </div>
-            </div>
+          {detailTab === "Actions (5)" && (
+            <ol className="space-y-1.5 text-[11px]">{STEPS.map((s, i) => <li key={s.action} className="flex justify-between"><span className="text-slate-200">{i + 1}. {s.action}</span><Pill tone={s.status === "Completed" ? "emerald" : "amber"}>{s.status}</Pill></li>)}</ol>
           )}
-        </div>
-      )}
-    </div>
+          {detailTab === "Evidence (3)" && (
+            <EventList items={[
+              { title: "Alert evidence", sub: "Failed login attempts (47 events) · ALT-2026-00128", tone: "purple" },
+              { title: "Endpoint data", sub: "System logs and processes · WIN-WS-0142", tone: "blue" },
+              { title: "Network telemetry", sub: "Suspicious connections · PCAP-2026-7712", tone: "purple" },
+            ]} />
+          )}
+          {detailTab === "Risk & Impact" && <p className="text-[11px] text-slate-300">Single endpoint scope. Low business impact; user notification required. No immediate regulatory notification.</p>}
+          {detailTab === "Approvals (2)" && <p className="text-[11px] text-slate-300">Security Manager approval and, for high-impact actions, CISO approval are required. Neither is recorded on this sample.</p>}
+        </Panel>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
+        <Panel title="Proposed Actions" className="xl:col-span-3">
+          <DataTable
+            rows={STEPS}
+            rowKey={(r) => r.action}
+            columns={[
+              { key: "n", header: "#", render: (r) => STEPS.indexOf(r) + 1 },
+              { key: "a", header: "Action", render: (r) => <span className="text-slate-100">{r.action}</span> },
+              { key: "t", header: "Type", render: (r) => r.type },
+              { key: "r", header: "Risk", render: (r) => <Pill tone={RISK_TONE[r.risk]}>{r.risk}</Pill> },
+              { key: "au", header: "Automation", render: (r) => r.auto },
+              { key: "s", header: "Status", render: (r) => <Pill tone={r.status === "Completed" ? "emerald" : "amber"}>{r.status}</Pill> },
+            ]}
+          />
+        </Panel>
+        <Panel title="Approval Workflow" meta="View History" className="xl:col-span-1">
+          <EventList items={[
+            { title: "Proposed", sub: `By ${sel.owner} · ${sel.created}`, tone: "emerald" },
+            { title: "Security Analyst Review", sub: "By Sarah Chen", tag: "In Progress", tone: "blue" },
+            { title: "Security Manager Approval", sub: "Required for High Risk actions", tag: "Pending", tone: "slate" },
+            { title: "CISO Approval (if required)", sub: "For critical or high impact", tag: "Pending", tone: "slate" },
+            { title: "Ready for Execution", sub: "Execute automatically after approvals", tag: "Not Ready", tone: "slate" },
+          ]} />
+        </Panel>
+        <Panel title="Approval Actions" className="xl:col-span-1">
+          <div className="space-y-2">
+            <button type="button" disabled={!decidable} onClick={() => setTab(CONSOLE_TAB)} className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold text-white"><CheckCircle2 className="w-4 h-4" /> Approve</button>
+            <button type="button" disabled={!decidable} onClick={() => setTab(CONSOLE_TAB)} className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-xs font-semibold text-white"><XCircle className="w-4 h-4" /> Reject</button>
+            <ActionButton disabled={!decidable} onClick={() => setTab(CONSOLE_TAB)}><PencilLine className="w-3.5 h-3.5" /> Request Changes</ActionButton>
+            <ActionButton onClick={() => setTab(CONSOLE_TAB)}><MessageSquare className="w-3.5 h-3.5" /> Add Comment</ActionButton>
+          </div>
+          <p className="text-[10px] text-slate-500 mt-3">{decidable ? "Decisions open the live queue, where they are signed and recorded." : `${sel.id} is already ${sel.status.toLowerCase()}.`}</p>
+        </Panel>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Panel title="Evidence" meta="View All (3)">
+          <EventList items={[
+            { time: "14:01", title: "Alert evidence", sub: "Failed login attempts (47 events) · ALT-2026-00128", tone: "purple" },
+            { time: "14:02", title: "Endpoint data", sub: "System logs and processes · WIN-WS-0142", tone: "blue" },
+            { time: "13:59", title: "Network telemetry", sub: "Suspicious connections · PCAP-2026-7712", tone: "purple" },
+          ]} />
+        </Panel>
+        <Panel title="Risk & Impact Assessment">
+          <div className="grid grid-cols-3 gap-3 text-[11px]">
+            <div><div className="text-slate-500">Risk Level</div><Pill tone={RISK_TONE[sel.risk]}>{sel.risk}</Pill></div>
+            <div><div className="text-slate-500">Impact Scope</div><div className="font-semibold text-slate-200">Single endpoint</div><div className="text-slate-500">Potential lateral movement</div></div>
+            <div className="space-y-2"><div><div className="text-slate-500">Business Impact</div><div className="font-semibold text-emerald-300">Low</div></div><div><div className="text-slate-500">Regulatory Impact</div><div className="font-semibold text-emerald-300">Low</div></div></div>
+          </div>
+        </Panel>
+        <Panel title="Related Items" meta="View All">
+          <ul className="space-y-2 text-[11px]">
+            {[
+              ["INC-2026-00473", "Suspicious lateral movement", "Investigating", "amber", "/cases/incidents/command"],
+              ["ALT-2026-00128", "Multiple failed login attempts", "Critical", "rose", "/alerts"],
+              ["WIN-WS-0142", "Target endpoint", "At Risk", "amber", "/assets"],
+              ["CASE-2026-0123", "User account compromise", "Open", "rose", "/cases"],
+            ].map(([id, sub, st, t, href]) => (
+              <li key={id} className="flex items-center justify-between gap-2">
+                <Link href={href} className="hover:underline"><span className="font-mono text-slate-200 mr-2">{id}</span><span className="text-slate-500">{sub}</span></Link>
+                <Pill tone={t as Tone}>{st}</Pill>
+              </li>
+            ))}
+          </ul>
+        </Panel>
+      </div>
+    </WorkspacePage>
   );
 }

@@ -448,6 +448,11 @@ export const Sidebar: React.FC = () => {
       items: [
         {
           label: "Tenant Management",
+          href: "/tenant-management",
+          icon: <Building className="w-4 h-4" />,
+        },
+        {
+          label: "Team & Access",
           href: "/team",
           icon: <Users className="w-4 h-4" />,
         },
@@ -791,7 +796,7 @@ export const Sidebar: React.FC = () => {
             <>
               {/* Help Link */}
               <Link
-                href="/trust"
+                href="/help"
                 className="flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs text-slate-400 hover:text-slate-200 hover:bg-[#0c111e] transition-colors"
               >
                 <div className="flex items-center gap-2">
@@ -849,7 +854,7 @@ export const Sidebar: React.FC = () => {
           ) : (
             <div className="flex flex-col items-center gap-3">
               <Link
-                href="/trust"
+                href="/help"
                 className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-cyan-400 hover:bg-[#101626] rounded-lg"
                 title="Help & Documentation"
               >
@@ -956,7 +961,7 @@ export const Sidebar: React.FC = () => {
               </p>
             </div>
             <Link
-              href="/trust"
+              href="/help"
               className="flex items-center justify-between text-[11px] text-slate-400 hover:text-cyan-300 py-1"
             >
               <span>Need help? View documentation</span>

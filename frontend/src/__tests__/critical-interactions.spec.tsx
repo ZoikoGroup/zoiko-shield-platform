@@ -26,9 +26,9 @@ global.EventSource = vi.fn(function () {
 }) as any;
 
 // Import interactive cockpit pages
-import G1GatePage from '@/app/admin/g1-gate/page';
+import G1GatePage from '@/app/admin/g1-gate/console';
 import JitElevationPage from '@/app/admin/jit/page';
-import PlatformAdminPage from '@/app/admin/page';
+import PlatformAdminPage from '@/app/admin/console';
 import PlatformHealthPage from '@/app/admin/platform-health/page';
 import LedgerPage from '@/app/ledger/page';
 

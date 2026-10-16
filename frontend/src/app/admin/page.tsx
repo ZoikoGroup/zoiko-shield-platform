@@ -1,446 +1,227 @@
 "use client";
 
-import React, { useState } from "react";
-import Link from "next/link";
-import { useDemoState } from "@/lib/demo-state";
-import { CommercialOfferType, Tenant } from "@/lib/types";
-import { Card } from "@/ui/Card";
-import { Button } from "@/ui/Button";
-import { Badge } from "@/ui/Badge";
-import { Modal } from "@/ui/Modal";
+import React, { useMemo, useState } from "react";
+import { SlidersHorizontal, BookOpen, Plus, Lock, AlertOctagon } from "lucide-react";
+import PlatformAdminConsole from "./console";
 import {
-  KeyRound,
-  Lock,
-  ShieldCheck,
-  Zap,
-  CheckCircle2,
-  AlertTriangle,
-  Flame,
-  ShieldAlert,
-  Server,
-  Activity,
-  Layers,
-  ArrowRight,
-  RefreshCw,
-  PlusCircle,
-  TrendingUp,
-  Cpu,
-  Radio,
-  Building,
-  Users,
-} from "lucide-react";
+  WorkspacePage, PageHeader, NoticeBanner, KpiGrid, Panel, Pill, DataTable, SearchInput,
+  KeyValues, StepFlow, ProgressRow, EventList, CheckRow, FooterStrip, ActionButton,
+  CONSOLE_TAB, useTabFilter, type Tone,
+} from "@/components/mockup/kit";
 
-const ALL_COMMERCIAL_OFFERS: Array<{ key: CommercialOfferType; name: string; description: string; badgeVariant: "active" | "anchored" | "ai" | "critical" | "high" }> = [
-  {
-    key: "MANAGED_DEFENSE",
-    name: "Managed Defense",
-    description: "24x7 SOC threat triage, automated SOAR playbooks, and EDR containment.",
-    badgeVariant: "active",
-  },
-  {
-    key: "CONTINUOUS_ASSURANCE",
-    name: "Continuous Assurance",
-    description: "Automated SOC 2 & ISO 27001 control evaluation and cryptographic audit packages.",
-    badgeVariant: "anchored",
-  },
-  {
-    key: "INCIDENT_RESPONSE_RETAINER",
-    name: "Incident Response Retainer",
-    description: "24x7 emergency SLA response capacity and purpose-bound legal-sensitive records (§16.4).",
-    badgeVariant: "high",
-  },
-  {
-    key: "EXPOSURE_MANAGEMENT",
-    name: "Exposure Management",
-    description: "Continuous attack surface mapping and multi-hop attack path discovery.",
-    badgeVariant: "critical",
-  },
-  {
-    key: "AI_SECURITY",
-    name: "AI Security & Governance",
-    description: "NIST/EU AI Act model inventory, PSI drift monitoring, and anti-hallucination circuit breakers.",
-    badgeVariant: "ai",
-  },
+type Entitlement = {
+  id: string; capability: string; owner: string; source: string;
+  state: "ENABLED" | "PENDING" | "RECONCILE" | "UNVERIFIED"; tag: string;
+  scope: string; runtime: string; contract: string; impact: string;
+};
+
+// Illustrative register: every row is labelled as a sample in the UI and none
+// of it is read back as a real entitlement decision.
+const ENTITLEMENTS: Entitlement[] = [
+  { id: "EN-101", capability: "Core detection & casework", owner: "Shield Core", source: "Enterprise demo", state: "ENABLED", tag: "REVIEWED", scope: "Tenant · demo", runtime: "Untested", contract: "Not verified", impact: "STANDARD" },
+  { id: "EN-102", capability: "Threat Hunting Copilot", owner: "Threat Hunting", source: "Enterprise demo", state: "ENABLED", tag: "REVIEWED", scope: "Tenant · demo", runtime: "Untested", contract: "Not verified", impact: "STANDARD" },
+  { id: "EN-103", capability: "AI Security Copilot", owner: "AI Services", source: "Enterprise demo", state: "ENABLED", tag: "REVIEWED", scope: "Tenant · demo", runtime: "Untested", contract: "Not verified", impact: "STANDARD" },
+  { id: "EN-104", capability: "SOAR execution privileges", owner: "Response Broker", source: "Restricted", state: "PENDING", tag: "HIGH RISK", scope: "Unassigned · demo", runtime: "Untested", contract: "Not verified", impact: "HIGH IMPACT" },
+  { id: "EN-105", capability: "Evidence export & verifier", owner: "Audit Services", source: "Enterprise demo", state: "ENABLED", tag: "REVIEWED", scope: "Tenant · demo", runtime: "Untested", contract: "Not verified", impact: "STANDARD" },
+  { id: "EN-106", capability: "Data ingestion quota", owner: "Ingestion", source: "100 GB / day", state: "RECONCILE", tag: "QUOTA", scope: "Tenant · demo", runtime: "Untested", contract: "Not verified", impact: "MEDIUM" },
+  { id: "EN-107", capability: "Regional retention policy", owner: "Evidence Vault", source: "90 days sample", state: "RECONCILE", tag: "POLICY", scope: "Region unspecified", runtime: "Untested", contract: "Not verified", impact: "MEDIUM" },
+  { id: "EN-108", capability: "IR Retainer access", owner: "IR Services", source: "Contract-bound", state: "UNVERIFIED", tag: "CONTRACT", scope: "Contract-bound", runtime: "Untested", contract: "Not verified", impact: "MEDIUM" },
 ];
 
-export default function PlatformAdminPage() {
-  const [state, setState] = useDemoState();
-  const [actionMessage, setActionMessage] = useState<string | null>(null);
+const STATE_TONE: Record<Entitlement["state"], Tone> = { ENABLED: "emerald", PENDING: "purple", RECONCILE: "amber", UNVERIFIED: "rose" };
 
-  // Kill Switch states
-  const [isAiKillSwitchEngaged, setIsAiKillSwitchEngaged] = useState(
-    (state.aiIncidents || []).some((i) => i.killSwitchEngaged)
-  );
-  const [isIngestThrottled, setIsIngestThrottled] = useState(false);
-  const [isSoarFrozen, setIsSoarFrozen] = useState(false);
+const TABS = [
+  { id: "register", label: "Entitlement register" },
+  { id: "quota", label: "Quota & usage" },
+  { id: "changes", label: "Change requests" },
+  { id: "policy", label: "Policy evaluation" },
+  { id: "audit", label: "Audit & reconciliation" },
+];
 
-  // Break-glass modal
-  const [isBreakGlassModalOpen, setIsBreakGlassModalOpen] = useState(false);
-  const [breakGlassTarget, setBreakGlassTarget] = useState<"AI_KILL_SWITCH" | "INGEST_THROTTLE" | "SOAR_FREEZE" | null>(null);
-  const [breakGlassReason, setBreakGlassReason] = useState("Emergency platform operator intervention");
+export default function OperationsEntitlementsPage() {
+  const [tab, setTab] = useState("register");
+  const [query, setQuery] = useState("");
+  const [selectedId, setSelectedId] = useState("EN-104");
+  const show = useTabFilter(tab, "register");
 
-  // Tenant offer toggling
-  const activeOffers: CommercialOfferType[] = state?.tenant?.activeOffers || [
-    "MANAGED_DEFENSE",
-    "CONTINUOUS_ASSURANCE",
-    "INCIDENT_RESPONSE_RETAINER",
-    "EXPOSURE_MANAGEMENT",
-    "AI_SECURITY",
-  ];
-
-  const handleToggleOffer = (offerKey: CommercialOfferType) => {
-    const isCurrentlyActive = activeOffers.includes(offerKey);
-    const updatedOffers: CommercialOfferType[] = isCurrentlyActive
-      ? activeOffers.filter((o) => o !== offerKey)
-      : [...activeOffers, offerKey];
-
-    setState((prev) => ({
-      ...prev,
-      tenant: {
-        ...prev.tenant,
-        activeOffers: updatedOffers,
-      },
-    }));
-
-    setActionMessage(
-      isCurrentlyActive
-        ? `🔒 Revoked commercial capability: ${offerKey}`
-        : `✅ Provisioned commercial capability: ${offerKey}`
-    );
-    setTimeout(() => setActionMessage(null), 3500);
-  };
-
-  const handleTriggerBreakGlass = (target: "AI_KILL_SWITCH" | "INGEST_THROTTLE" | "SOAR_FREEZE") => {
-    setBreakGlassTarget(target);
-    setIsBreakGlassModalOpen(true);
-  };
-
-  const handleConfirmBreakGlass = () => {
-    if (!breakGlassTarget) return;
-
-    if (breakGlassTarget === "AI_KILL_SWITCH") {
-      const newState = !isAiKillSwitchEngaged;
-      setIsAiKillSwitchEngaged(newState);
-      setState((prev) => ({
-        ...prev,
-        aiIncidents: (prev.aiIncidents || []).map((i) => ({
-          ...i,
-          killSwitchEngaged: newState,
-        })),
-      }));
-      setActionMessage(newState ? "🚨 Global AI Inference Kill-Switch ENGAGED" : "✅ Global AI Kill-Switch DISENGAGED");
-    } else if (breakGlassTarget === "INGEST_THROTTLE") {
-      setIsIngestThrottled(!isIngestThrottled);
-      setActionMessage(!isIngestThrottled ? "⚠️ Telemetry Ingestion Throttled to 50%" : "✅ Telemetry Ingestion Restored to 100%");
-    } else if (breakGlassTarget === "SOAR_FREEZE") {
-      setIsSoarFrozen(!isSoarFrozen);
-      setActionMessage(!isSoarFrozen ? "🛑 Autonomous SOAR Containment Playbooks FROZEN" : "✅ SOAR Playbooks Resumed");
-    }
-
-    setIsBreakGlassModalOpen(false);
-    setBreakGlassTarget(null);
-    setTimeout(() => setActionMessage(null), 4000);
-  };
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? ENTITLEMENTS.filter((e) => `${e.id} ${e.capability} ${e.owner} ${e.tag}`.toLowerCase().includes(q)) : ENTITLEMENTS;
+  }, [query]);
+  const selected = ENTITLEMENTS.find((e) => e.id === selectedId) ?? ENTITLEMENTS[0];
+  const highRisk = selected.impact === "HIGH IMPACT";
 
   return (
-    <div className="space-y-8 max-w-7xl mx-auto p-6">
-      {/* Header Banner */}
-      <div className="surface-card p-6 rounded-2xl bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] border border-slate-800/80 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
-            <span className="text-xs font-mono font-bold text-cyan-300 tracking-wider uppercase">
-              SUPER-ADMIN OPERATIONS CENTER
-            </span>
-            <Badge variant="ai">PLATFORM_ROLE_MANAGE</Badge>
-          </div>
-          <h1 className="text-2xl font-black text-white tracking-tight">
-            Multi-Tenant Administration &amp; Platform Controls
-          </h1>
-          <p className="text-sm text-slate-400 max-w-2xl leading-relaxed">
-            Provision commercial capability offers, execute emergency circuit breakers, monitor live ingestion quotas, and manage JIT support access elevations.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3 flex-wrap">
-          <Link href="/admin/jit">
-            <Button variant="cyan" size="md">
-              <KeyRound className="w-4 h-4" />
-              <span>JIT Elevation Center</span>
-            </Button>
-          </Link>
-          <Link href="/ledger">
-            <Button variant="outline" size="md" className="border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10 font-bold">
-              <Lock className="w-4 h-4 text-cyan-400" />
-              <span>Evidence Ledger (Step 12) →</span>
-            </Button>
-          </Link>
-        </div>
-      </div>
-
-      {actionMessage && (
-        <div className="p-3 rounded-xl bg-cyan-950/60 border border-cyan-500/40 text-cyan-300 text-xs font-mono flex items-center justify-between shadow-lg">
-          <span>{actionMessage}</span>
-          <button onClick={() => setActionMessage(null)} className="text-slate-400 hover:text-slate-200">
-            ✕
-          </button>
-        </div>
-      )}
-
-      {/* Grid 1: Emergency Kill-Switches & Platform Circuit Breakers */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <ShieldAlert className="w-5 h-5 text-rose-400" />
-            Emergency Platform Circuit Breakers &amp; Kill-Switches
-          </h2>
-          <span className="text-xs font-mono text-slate-400">Simulation Sandbox Guarded</span>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs">
-          {/* Circuit Breaker 1: AI Inference Kill-Switch */}
-          <div className={`surface-card p-5 rounded-xl space-y-3 border transition-all ${
-            isAiKillSwitchEngaged
-              ? "bg-rose-950/40 border-rose-500/50 shadow-[0_0_20px_rgba(244,63,94,0.2)]"
-              : "bg-[#0c111e]/90 border-slate-800/80 shadow-lg"
-          }`}>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-300 font-bold">AI INFERENCE CIRCUIT BREAKER</span>
-              <Flame className={`w-4 h-4 ${isAiKillSwitchEngaged ? "text-rose-400 animate-pulse" : "text-slate-500"}`} />
+    <WorkspacePage
+      header={
+        <PageHeader
+          icon={<SlidersHorizontal className="w-5 h-5" />}
+          title="Operations & Entitlements"
+          routeTag="/admin · OPERATOR"
+          subtitle="Operator control plane · contract-bound capabilities, quota policy and governed change management"
+          actions={
+            <>
+              <ActionButton onClick={() => setTab("policy")}><BookOpen className="w-3.5 h-3.5" /> View policy catalogue</ActionButton>
+              <ActionButton primary onClick={() => setTab(CONSOLE_TAB)}><Plus className="w-3.5 h-3.5" /> Draft change request</ActionButton>
+            </>
+          }
+        />
+      }
+      banner={
+        <NoticeBanner
+          tone="rose"
+          title="Demo / internal operator view — no customer entitlement changes can be applied"
+          body="Illustrative entitlements require contract reconciliation and authorization checks. Feature display does not establish runtime enforcement or commercial eligibility."
+          tag="Sandbox · data not live"
+        />
+      }
+      kpis={
+        <KpiGrid
+          items={[
+            { label: "Sample entitlement entries", value: String(ENTITLEMENTS.length).padStart(2, "0"), tag: "Not live", hint: "Illustrative product capabilities", tone: "cyan" },
+            { label: "Reconciliation flags", value: "03", tag: "Requires review", hint: "Commercial / quota / region", tone: "amber" },
+            { label: "Pending change requests", value: "02", tag: "No mutation", hint: "Awaiting authorized decision", tone: "purple" },
+            { label: "Independent approvals", value: "0 / 2", tag: "Execution blocked", hint: "Selected high-risk SOAR privilege", tone: "rose" },
+            { label: "Enforcement verification", value: "UNKNOWN", tag: "Fail closed", hint: "Backend checks not independently tested", tone: "emerald" },
+          ]}
+        />
+      }
+      tabs={TABS}
+      activeTab={tab}
+      onTabChange={setTab}
+      console={<PlatformAdminConsole />}
+      consoleLabel="Live admin console"
+      footer={<FooterStrip left="Concept design · not production. Values are synthetic. Platform operations cannot bypass tenant isolation, signed approvals, or contract authorization." right="ZoikoShield v3.2" />}
+    >
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        {show("register", "policy") && (
+          <Panel title="Entitlement & Capability Register" meta="8 sample entries · policy-derived access required" className="xl:col-span-2">
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <SearchInput value={query} onChange={setQuery} placeholder="Search capability, service, rule ID" />
+              <Pill tone="amber">Sandbox read-only</Pill>
             </div>
-            <p className="text-slate-400 font-sans text-xs">
-              Halts all foundation model inference queries globally and forces instant fallback to Tier-1 deterministic rule engines.
-            </p>
-            <div className="pt-2 flex items-center justify-between border-t border-slate-800">
-              <span className={`text-[11px] font-bold ${isAiKillSwitchEngaged ? "text-rose-400" : "text-emerald-400"}`}>
-                STATUS: {isAiKillSwitchEngaged ? "CONTAINED / ENGAGED" : "NOMINAL / ACTIVE"}
-              </span>
-              <Button
-                variant={isAiKillSwitchEngaged ? "primary" : "danger"}
-                size="sm"
-                onClick={() => handleTriggerBreakGlass("AI_KILL_SWITCH")}
-              >
-                {isAiKillSwitchEngaged ? "Disengage Switch" : "Break-Glass Freeze"}
-              </Button>
-            </div>
-          </div>
-
-          {/* Circuit Breaker 2: Ingestion Throttling */}
-          <div className={`surface-card p-5 rounded-xl space-y-3 border transition-all ${
-            isIngestThrottled
-              ? "bg-amber-950/40 border-amber-500/50 shadow-[0_0_20px_rgba(245,158,11,0.2)]"
-              : "bg-[#0c111e]/90 border-slate-800/80 shadow-lg"
-          }`}>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-300 font-bold">INGESTION PIPELINE THROTTLER</span>
-              <Radio className={`w-4 h-4 ${isIngestThrottled ? "text-amber-400 animate-pulse" : "text-slate-500"}`} />
-            </div>
-            <p className="text-slate-400 font-sans text-xs">
-              Buffers incoming webhooks and throttles connector ingestion during high-volume DDoS or upstream provider storms.
-            </p>
-            <div className="pt-2 flex items-center justify-between border-t border-slate-800">
-              <span className={`text-[11px] font-bold ${isIngestThrottled ? "text-amber-400" : "text-emerald-400"}`}>
-                STATUS: {isIngestThrottled ? "50% THROTTLED" : "100% NOMINAL"}
-              </span>
-              <Button
-                variant={isIngestThrottled ? "primary" : "outline"}
-                size="sm"
-                onClick={() => handleTriggerBreakGlass("INGEST_THROTTLE")}
-              >
-                {isIngestThrottled ? "Restore Full Speed" : "Throttle 50%"}
-              </Button>
-            </div>
-          </div>
-
-          {/* Circuit Breaker 3: SOAR Containment Freeze */}
-          <div className={`surface-card p-5 rounded-xl space-y-3 border transition-all ${
-            isSoarFrozen
-              ? "bg-purple-950/40 border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.2)]"
-              : "bg-[#0c111e]/90 border-slate-800/80 shadow-lg"
-          }`}>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-300 font-bold">SOAR PLAYBOOK AUTONOMOUS FREEZE</span>
-              <Lock className={`w-4 h-4 ${isSoarFrozen ? "text-purple-400 animate-pulse" : "text-slate-500"}`} />
-            </div>
-            <p className="text-slate-400 font-sans text-xs">
-              Freezes autonomous R2/R3 remediation containment actions across cloud IAM, firewalls, and EDR agents.
-            </p>
-            <div className="pt-2 flex items-center justify-between border-t border-slate-800">
-              <span className={`text-[11px] font-bold ${isSoarFrozen ? "text-purple-400" : "text-emerald-400"}`}>
-                STATUS: {isSoarFrozen ? "FROZEN (R0 ONLY)" : "NOMINAL (R0-R3)"}
-              </span>
-              <Button
-                variant={isSoarFrozen ? "primary" : "outline"}
-                size="sm"
-                onClick={() => handleTriggerBreakGlass("SOAR_FREEZE")}
-              >
-                {isSoarFrozen ? "Unfreeze SOAR" : "Freeze Containment"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Grid 2: Commercial Offer Entitlement Matrix (Tenant Provisioning) */}
-      <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-              <Building className="w-5 h-5 text-cyan-400" />
-              Tenant Commercial Offer Entitlement Matrix
-            </h2>
-            <p className="text-xs text-slate-400">
-              Tenant: <strong className="text-white font-mono">{state.tenant.organizationName}</strong> ({state.tenant.slug}) | Plan Tier: <strong className="text-cyan-300 font-mono">{state.tenant.planTier || "ENTERPRISE_PREMIUM"}</strong>
-            </p>
-          </div>
-          <Badge variant="pass">5/5 Capabilities Configurable</Badge>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {ALL_COMMERCIAL_OFFERS.map((offer) => {
-            const isEnrolled = activeOffers.includes(offer.key);
-
-            return (
-              <Card
-                key={offer.key}
-                className={`p-5 space-y-3 border transition-all ${
-                  isEnrolled
-                    ? "bg-slate-900/80 border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.1)]"
-                    : "bg-slate-950/60 border-slate-800 opacity-60"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <Badge variant={offer.badgeVariant}>{offer.name}</Badge>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
-                    isEnrolled ? "bg-emerald-950 text-emerald-300 border border-emerald-500/30" : "bg-slate-800 text-slate-500"
-                  }`}>
-                    {isEnrolled ? "ACTIVE" : "REVOKED"}
-                  </span>
-                </div>
-
-                <div className="space-y-1">
-                  <h4 className="text-sm font-bold text-slate-100 font-sans">{offer.name}</h4>
-                  <p className="text-xs text-slate-400 leading-relaxed font-sans">{offer.description}</p>
-                </div>
-
-                <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between">
-                  <span className="text-[10px] font-mono text-slate-500">Spec Key: {offer.key}</span>
-                  <Button
-                    variant={isEnrolled ? "outline" : "primary"}
-                    size="sm"
-                    onClick={() => handleToggleOffer(offer.key)}
-                  >
-                    {isEnrolled ? "Revoke Offer" : "Grant Offer"}
-                  </Button>
-                </div>
-              </Card>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Grid 3: Real-Time Resource Quotas & Ingestion Metering */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-bold text-white flex items-center gap-2">
-            <Activity className="w-5 h-5 text-emerald-400" />
-            Real-Time Resource Quotas &amp; Metering Telemetry
-          </h2>
-          <span className="text-xs font-mono text-slate-400">Monthly Rolling Period</span>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-mono text-xs">
-          <Card className="p-4 space-y-2 bg-slate-900/60 border-slate-800">
-            <div className="flex items-center justify-between text-slate-400">
-              <span>TELEMETRY INGESTION</span>
-              <Radio className="w-4 h-4 text-cyan-400" />
-            </div>
-            <div className="text-xl font-bold text-white">42.8 GB / 500 GB</div>
-            <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
-              <div className="bg-cyan-500 h-full" style={{ width: "8.5%" }} />
-            </div>
-            <span className="text-[10px] text-slate-500">8.5% of Monthly Limit Consumed</span>
-          </Card>
-
-          <Card className="p-4 space-y-2 bg-slate-900/60 border-slate-800">
-            <div className="flex items-center justify-between text-slate-400">
-              <span>NORMALIZED EVENTS</span>
-              <Activity className="w-4 h-4 text-emerald-400" />
-            </div>
-            <div className="text-xl font-bold text-white">2.84M / 10M</div>
-            <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
-              <div className="bg-emerald-500 h-full" style={{ width: "28.4%" }} />
-            </div>
-            <span className="text-[10px] text-slate-500">28.4% of OCSF Pipeline Throughput</span>
-          </Card>
-
-          <Card className="p-4 space-y-2 bg-slate-900/60 border-slate-800">
-            <div className="flex items-center justify-between text-slate-400">
-              <span>ACTIVE CONNECTORS</span>
-              <Server className="w-4 h-4 text-purple-400" />
-            </div>
-            <div className="text-xl font-bold text-white">
-              {(state?.connectors || []).filter((c) => c.status === "ACTIVE").length} / 50 Max
-            </div>
-            <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
-              <div className="bg-purple-500 h-full" style={{ width: "14%" }} />
-            </div>
-            <span className="text-[10px] text-slate-500">P0 GA &amp; P1 Preview Streams</span>
-          </Card>
-
-          <Card className="p-4 space-y-2 bg-slate-900/60 border-slate-800">
-            <div className="flex items-center justify-between text-slate-400">
-              <span>MONITORED IDENTITIES</span>
-              <Users className="w-4 h-4 text-amber-400" />
-            </div>
-            <div className="text-xl font-bold text-white">1,240 / 5,000</div>
-            <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden">
-              <div className="bg-amber-500 h-full" style={{ width: "24.8%" }} />
-            </div>
-            <span className="text-[10px] text-slate-500">Entra ID &amp; Okta Cloud Synced</span>
-          </Card>
-        </div>
-      </div>
-
-      {/* Break-Glass Emergency Confirmation Modal */}
-      <Modal
-        isOpen={isBreakGlassModalOpen}
-        onClose={() => setIsBreakGlassModalOpen(false)}
-        title="Execute Break-Glass Circuit Breaker"
-        description="Emergency administrative action. All modifications are logged to the immutable ledger."
-      >
-        <div className="space-y-4">
-          <div className="p-4 rounded-xl bg-rose-950/30 border border-rose-500/40 text-xs text-rose-200 space-y-2">
-            <div className="flex items-center gap-2 font-bold text-rose-300 text-sm">
-              <AlertTriangle className="w-4 h-4 text-rose-400" />
-              <span>Break-Glass Target: {breakGlassTarget}</span>
-            </div>
-            <p>
-              Executing this circuit breaker will instantly modify platform behavior across all connected tenant systems.
-            </p>
-          </div>
-
-          <div className="space-y-1.5 text-xs">
-            <label className="text-slate-300 font-mono">Mandatory Operator Justification:</label>
-            <textarea
-              rows={3}
-              value={breakGlassReason}
-              onChange={(e) => setBreakGlassReason(e.target.value)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-sans"
+            <DataTable
+              rows={rows}
+              rowKey={(r) => r.id}
+              selectedKey={selected.id}
+              onSelect={(r) => setSelectedId(r.id)}
+              columns={[
+                { key: "id", header: "ID", render: (r) => <span className="font-mono text-slate-400">{r.id}</span> },
+                { key: "cap", header: "Product capability", render: (r) => <span className="font-semibold text-slate-100">{r.capability}</span> },
+                { key: "owner", header: "Service owner", render: (r) => r.owner },
+                { key: "src", header: "Entitlement source*", render: (r) => r.source },
+                { key: "state", header: "Mock state", render: (r) => <Pill tone={STATE_TONE[r.state]}>{r.state}</Pill> },
+                { key: "tag", header: "Control tag", render: (r) => <span className="font-mono text-[10px] text-slate-400">{r.tag}</span> },
+              ]}
             />
-          </div>
+            <div className="flex flex-wrap justify-between gap-2 mt-3 text-[10px] text-slate-500">
+              <span>* Scope values are UX examples, not the verified commercial contract.</span>
+              <span className="font-mono font-bold text-emerald-400">NO CROSS-TENANT CONTENT</span>
+            </div>
+            <div className="mt-4 rounded-lg border border-[#162238] bg-[#080c16] p-3">
+              <div className="flex justify-between text-xs mb-3">
+                <span className="font-semibold text-slate-200">Entitlement Enforcement Path</span>
+                <span className="text-[10px] text-slate-500">Proposed checks, not confirmed integration</span>
+              </div>
+              <StepFlow
+                steps={[
+                  { label: "Contract / plan", sub: "Source of truth", state: "pending" },
+                  { label: "Entitlement rule", sub: "Effective version", state: "pending" },
+                  { label: "Policy decision", sub: "Fail closed", state: "pending" },
+                  { label: "Usage enforcement", sub: "Audit outcome", state: "pending" },
+                ]}
+              />
+            </div>
+          </Panel>
+        )}
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
-            <Button variant="outline" onClick={() => setIsBreakGlassModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="danger" onClick={handleConfirmBreakGlass}>
-              <ShieldAlert className="w-4 h-4" />
-              <span>Confirm &amp; Execute</span>
-            </Button>
-          </div>
+        <div className="space-y-4">
+          {show("register", "policy") && (
+            <Panel title={`Selected Entitlement: ${selected.capability}`} meta={`${selected.impact} · DRAFT ONLY`} metaTone={highRisk ? "rose" : "cyan"}>
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div className="flex items-start gap-3">
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center border ${highRisk ? "bg-rose-950/50 border-rose-500/40 text-rose-300" : "bg-cyan-950/40 border-cyan-500/40 text-cyan-300"}`}>
+                    <AlertOctagon className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-sm font-bold text-slate-100">{selected.capability}</div>
+                    <div className="text-[11px] text-slate-500">{selected.id} · {selected.tag} · No grant in effect</div>
+                  </div>
+                </div>
+                <Pill tone={highRisk ? "rose" : STATE_TONE[selected.state]}>{highRisk ? "BLOCKED" : selected.state}</Pill>
+              </div>
+              <KeyValues
+                items={[
+                  { k: "Proposed capability", v: selected.owner },
+                  { k: "Contract entitlement", v: selected.contract.toUpperCase(), tone: "amber" },
+                  { k: "Tenant/region scope", v: selected.scope },
+                  { k: "Runtime enforcement", v: selected.runtime.toUpperCase(), tone: "amber" },
+                ]}
+              />
+              {highRisk && (
+                <p className="mt-4 text-[11px] text-amber-200 border-l-2 border-amber-500 bg-amber-950/30 px-3 py-2 rounded">
+                  The operator may prepare a request but cannot directly enable high-risk response privileges. Contract scope, authorized roles and independent signers must be validated.
+                </p>
+              )}
+              <div className="grid grid-cols-2 gap-2 mt-4">
+                <ActionButton onClick={() => setTab("policy")}>View policy &amp; evidence</ActionButton>
+                <ActionButton primary onClick={() => setTab(CONSOLE_TAB)}>Create approval request</ActionButton>
+              </div>
+            </Panel>
+          )}
+
+          {show("changes") && (
+            <Panel title="Change Approval & Activation Gate" meta="Separate principals required">
+              <StepFlow
+                steps={[
+                  { label: "Draft", sub: "Prepared", state: "active" },
+                  { label: "Commercial", sub: "Pending", state: "pending" },
+                  { label: "Security", sub: "Pending", state: "pending" },
+                  { label: "Activate", sub: "Blocked", state: "blocked" },
+                ]}
+              />
+              <div className="flex justify-between text-[11px] mt-4 mb-3">
+                <span className="font-semibold text-amber-300">0 / 2 independent approvals</span>
+                <span className="text-slate-500">No activation token · No direct override</span>
+              </div>
+              <button type="button" disabled className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-rose-500/40 bg-rose-950/30 text-xs font-semibold text-rose-300 cursor-not-allowed">
+                <Lock className="w-3.5 h-3.5" /> Apply entitlement change — disabled
+              </button>
+            </Panel>
+          )}
         </div>
-      </Modal>
-    </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {show("quota") && (
+          <Panel title="Usage & Quota Policy" meta="Illustrative limits only">
+            <div className="space-y-4">
+              <ProgressRow label="Data ingestion" value={72} max={100} display="72 / 100 GB per day" tone="cyan" />
+              <ProgressRow label="AI analysis requests" value={2800} max={5000} display="2,800 / 5,000" tone="purple" />
+              <ProgressRow label="Evidence export" value={36} max={100} display="36 / 100 packages" tone="emerald" />
+            </div>
+            <p className="text-[11px] text-slate-500 mt-4">Soft / hard limit behavior must be validated against the entitlement-enforcement service.</p>
+          </Panel>
+        )}
+        {show("audit") && (
+          <Panel title="Reconciliation & Integration Gaps" meta="3 design-test issues" metaTone="amber">
+            <CheckRow label="Overlapping commercial modules" sub="Confirm one authoritative entitlement source" status="Review" tone="amber" />
+            <CheckRow label="Quota enforcement not tested" sub="Validate hard-stop and threshold behavior" status="Verify" tone="amber" />
+            <CheckRow label="Region/retention scope unspecified" sub="Resolve contractual and policy precedence" status="Review" tone="amber" />
+          </Panel>
+        )}
+        {show("changes", "audit") && (
+          <Panel title="Governed Change / Audit Trail" meta="Simulated entries">
+            <EventList
+              items={[
+                { title: "EN-104 change draft recorded", sub: "High-risk response execution · Operator", tag: "Demo", tone: "cyan" },
+                { title: "Commercial reconciliation requested", sub: "Contract source not independently confirmed", tag: "Pending", tone: "amber" },
+                { title: "Attempted activation prevented", sub: "Missing approval and enforceable scope", tag: "Blocked", tone: "rose" },
+              ]}
+            />
+          </Panel>
+        )}
+      </div>
+    </WorkspacePage>
   );
 }

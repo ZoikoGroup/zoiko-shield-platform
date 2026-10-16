@@ -1,460 +1,179 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { Card } from "@/ui/Card";
-import { Badge } from "@/ui/Badge";
-import { formatTimestamp } from "@/lib/utils";
-import { useContractSources, sourceList } from "@/lib/contract-state";
-import { ContractSurface, UnbackedField } from "@/components/contracts/ContractSurface";
+import Link from "next/link";
+import { Server, Activity, ShieldAlert, User, Network, AlertTriangle, Clock } from "lucide-react";
+import AssetsConsole from "./console";
+import {
+  WorkspacePage, PageHeader, KpiGrid, Panel, Pill, DataTable, SearchInput, KeyValues,
+  ProgressRow, EventList, useTabFilter, type Tone,
+} from "@/components/mockup/kit";
 
-/**
- * W29 — Asset inventory.
- *
- * The contract asks for owner, criticality, source authority/reconciliation,
- * coverage, identity confidence and a review queue.
- *
- * An inventory is the one place where a confident-looking list is most
- * dangerous: every downstream severity calculation treats these rows as
- * ground truth. So the columns that matter here are not the asset names but
- * the provenance — which connector asserted this asset, whether two sources
- * agree, how long ago anything confirmed it still exists, and how confident
- * the resolver was when it decided two records were the same thing.
- *
- * Owner is the one requirement with no backing: security_context.Asset has
- * no owner column and nothing else records asset ownership, so it is shown
- * as unmet rather than substituted with the last actor who touched the row.
- */
+type Exposure = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
+type Telemetry = "DELAYED" | "COVERED" | "STALE" | "UNKNOWN";
+type Asset = { id: string; type: string; owner: string; exposure: Exposure; telemetry: Telemetry; seen: string; findings: number; source: string; cases: number; evidence: number; confidence: string };
 
-type AssetAlias = {
-  id: string;
-  source_system: string;
-  source_account_id?: string | null;
-  external_type: string;
-  external_id: string;
-  first_seen_at: string;
-  last_seen_at: string;
-};
+const ASSETS: Asset[] = [
+  { id: "srv-api-014", type: "Server", owner: "Cloud Ops", exposure: "CRITICAL", telemetry: "DELAYED", seen: "19m ago", findings: 4, source: "Azure Monitor", cases: 2, evidence: 5, confidence: "Partial · delayed feed" },
+  { id: "ep-win-042", type: "Endpoint", owner: "SOC / IT", exposure: "HIGH", telemetry: "COVERED", seen: "2m ago", findings: 3, source: "Endpoint EDR", cases: 1, evidence: 4, confidence: "High" },
+  { id: "id-admin-07", type: "Identity", owner: "IAM Team", exposure: "HIGH", telemetry: "COVERED", seen: "5m ago", findings: 2, source: "Okta Identity", cases: 1, evidence: 3, confidence: "High" },
+  { id: "cloud-vpc-03", type: "Cloud", owner: "Cloud Ops", exposure: "MEDIUM", telemetry: "COVERED", seen: "3m ago", findings: 1, source: "AWS CloudTrail", cases: 0, evidence: 2, confidence: "High" },
+  { id: "db-ledger-02", type: "Database", owner: "Data Team", exposure: "MEDIUM", telemetry: "STALE", seen: "42m ago", findings: 1, source: "Cloud logs", cases: 0, evidence: 1, confidence: "Low · stale feed" },
+  { id: "edge-fw-01", type: "Network", owner: "Network Ops", exposure: "LOW", telemetry: "COVERED", seen: "1m ago", findings: 0, source: "Network Firewall", cases: 0, evidence: 1, confidence: "High" },
+  { id: "app-portal-09", type: "App", owner: "UNASSIGNED", exposure: "HIGH", telemetry: "UNKNOWN", seen: "Never", findings: 2, source: "Not mapped", cases: 0, evidence: 0, confidence: "Unknown" },
+  { id: "srv-build-07", type: "Server", owner: "Platform", exposure: "LOW", telemetry: "COVERED", seen: "6m ago", findings: 0, source: "Azure Monitor", cases: 0, evidence: 1, confidence: "High" },
+];
+const EXP_TONE: Record<Exposure, Tone> = { CRITICAL: "rose", HIGH: "amber", MEDIUM: "amber", LOW: "emerald" };
+const TEL_TONE: Record<Telemetry, Tone> = { DELAYED: "amber", COVERED: "emerald", STALE: "amber", UNKNOWN: "rose" };
 
-type Asset = {
-  id: string;
-  external_id?: string | null;
-  asset_type: string;
-  name: string;
-  criticality: string;
-  status: string;
-  environment_id?: string;
-  first_seen_at: string;
-  last_seen_at: string;
-  aliases?: AssetAlias[];
-};
+const TABS = [
+  { id: "all", label: "All Assets" },
+  { id: "exposure", label: "Exposure" },
+  { id: "coverage", label: "Discovery Coverage" },
+  { id: "relationships", label: "Asset Relationships" },
+  { id: "history", label: "Change History" },
+];
 
-type IdentityEntity = {
-  id: string;
-  email?: string | null;
-  display_name?: string | null;
-  identity_type: string;
-  status: string;
-  confidence: number;
-  last_seen_at: string;
-};
+export default function AssetsInventoryPage() {
+  const [tab, setTab] = useState("all");
+  const [query, setQuery] = useState("");
+  const [type, setType] = useState("All");
+  const [risk, setRisk] = useState("All");
+  const [selectedId, setSelectedId] = useState("srv-api-014");
+  const show = useTabFilter(tab, "all");
 
-type ResolutionDecision = {
-  id: string;
-  entity_type: string;
-  source_system: string;
-  external_id: string;
-  resolved_entity_id?: string | null;
-  decision: string;
-  confidence: number;
-  resolver_version: string;
-  reason: string;
-  created_at: string;
-};
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return ASSETS.filter((a) => (type === "All" || a.type === type) && (risk === "All" || a.exposure === risk) && (!q || `${a.id} ${a.owner} ${a.type}`.toLowerCase().includes(q)));
+  }, [query, type, risk]);
+  const sel = ASSETS.find((a) => a.id === selectedId) ?? ASSETS[0];
 
-/** Beyond this, "last seen" stops being evidence that the asset still exists. */
-const COVERAGE_BUDGET_DAYS = 7;
-/** Resolver confidence below which a decision belongs in front of a human. */
-const REVIEW_CONFIDENCE_THRESHOLD = 0.85;
-
-function criticalityVariant(criticality: string) {
-  const value = (criticality || "").toUpperCase();
-  if (value === "CRITICAL") return "critical" as const;
-  if (value === "HIGH") return "high" as const;
-  if (value === "MEDIUM") return "medium" as const;
-  return "low" as const;
-}
-
-function daysSince(iso?: string): number | null {
-  if (!iso) return null;
-  const ms = Date.now() - new Date(iso).getTime();
-  return Number.isFinite(ms) ? ms / 86_400_000 : null;
-}
-
-function Section({
-  title,
-  requirement,
-  count,
-  children,
-}: {
-  title: string;
-  requirement: string;
-  count?: number;
-  children: React.ReactNode;
-}) {
   return (
-    <div className="surface-card rounded-2xl bg-[#0c111e]/90 border border-slate-800/80 p-6 shadow-xl space-y-4">
-      <div className="flex items-baseline justify-between border-b border-slate-800/80 pb-3">
-        <div>
-          <h2 className="text-sm font-bold text-white tracking-wide">{title}</h2>
-          <p className="text-[11px] font-mono text-slate-400 mt-0.5">{requirement}</p>
-        </div>
-        {count !== undefined && (
-          <span className="font-mono text-xl font-bold text-cyan-400 bg-cyan-950/40 border border-cyan-500/30 px-2.5 py-0.5 rounded-lg">{count}</span>
+    <WorkspacePage
+      header={
+        <PageHeader
+          icon={<Server className="w-5 h-5" />}
+          title="Assets & Inventory"
+          subtitle="Identify assets, prioritize exposure and verify telemetry coverage across your tenant"
+          actions={<Pill tone="amber">Simulated tenant</Pill>}
+        />
+      }
+      kpis={
+        <KpiGrid
+          items={[
+            { label: "Discovered assets", value: "1,284", tag: "From 7 source feeds", hint: "No inventory guarantee", tone: "blue", icon: <Server className="w-3.5 h-3.5" /> },
+            { label: "Telemetry monitored", value: "1,056", tag: "82.2% of discovered", hint: "228 need verification", tone: "cyan", icon: <Activity className="w-3.5 h-3.5" /> },
+            { label: "Priority exposures", value: "37", tag: "9 critical · 28 high", hint: "Requires analyst triage", tone: "rose", icon: <ShieldAlert className="w-3.5 h-3.5" /> },
+            { label: "Ownership gaps", value: "18", tag: "No verified owner", hint: "Needs classification", tone: "amber", icon: <User className="w-3.5 h-3.5" /> },
+            { label: "Source blind spots", value: "3", tag: "Connectors stale or delayed", hint: "Last full refresh: 2m", tone: "amber", icon: <Network className="w-3.5 h-3.5" /> },
+          ]}
+        />
+      }
+      tabs={TABS}
+      activeTab={tab}
+      onTabChange={setTab}
+      console={<AssetsConsole />}
+      consoleLabel="Live asset & identity resolution"
+      footer={<div className="text-[10px] font-mono text-slate-500">ZOIKOSHIELD · UI CONCEPT · ASSETS &amp; INVENTORY · DEMO RECORDS ONLY</div>}
+    >
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        {show("exposure", "relationships") && (
+          <Panel title="Asset inventory" meta="VIEW ALL →" className="xl:col-span-2">
+            <div className="flex flex-wrap gap-2 mb-3">
+              <SearchInput value={query} onChange={setQuery} placeholder="Search hostname, identity or IP..." />
+              <select aria-label="Type filter" value={type} onChange={(e) => setType(e.target.value)} className="px-3 py-2 rounded-lg bg-[#080c16] border border-[#162238] text-xs text-slate-300">
+                {["All", "Server", "Endpoint", "Identity", "Cloud", "Database", "Network", "App"].map((t) => <option key={t} value={t}>Type: {t}</option>)}
+              </select>
+              <select aria-label="Risk filter" value={risk} onChange={(e) => setRisk(e.target.value)} className="px-3 py-2 rounded-lg bg-[#080c16] border border-[#162238] text-xs text-slate-300">
+                {["All", "CRITICAL", "HIGH", "MEDIUM", "LOW"].map((t) => <option key={t} value={t}>Risk: {t}</option>)}
+              </select>
+            </div>
+            <DataTable
+              rows={rows}
+              rowKey={(r) => r.id}
+              selectedKey={sel.id}
+              onSelect={(r) => setSelectedId(r.id)}
+              columns={[
+                { key: "id", header: "Asset / ID", render: (r) => <span className="font-mono font-semibold text-slate-100">{r.id}</span> },
+                { key: "t", header: "Type", render: (r) => r.type },
+                { key: "o", header: "Owner", render: (r) => <span className={r.owner === "UNASSIGNED" ? "text-amber-300 font-semibold" : ""}>{r.owner}</span> },
+                { key: "e", header: "Exposure", render: (r) => <Pill tone={EXP_TONE[r.exposure]}>{r.exposure}</Pill> },
+                { key: "tel", header: "Telemetry", render: (r) => <Pill tone={TEL_TONE[r.telemetry]}>{r.telemetry}</Pill> },
+                { key: "s", header: "Last seen", render: (r) => <span className={r.seen === "Never" ? "text-amber-300" : ""}>{r.seen}</span> },
+                { key: "f", header: "Findings", render: (r) => <span className="font-mono">{r.findings}</span> },
+              ]}
+            />
+          </Panel>
+        )}
+        {show("exposure", "relationships") && (
+          <Panel title="Selected asset" meta={sel.exposure === "CRITICAL" ? "CRITICAL RISK" : `${sel.exposure} RISK`} metaTone={EXP_TONE[sel.exposure]}>
+            <div className="text-[11px] text-slate-500 -mt-1 mb-3">Evidence-linked asset profile · read-only view</div>
+            <div className="rounded-lg border border-[#162238] bg-[#080c16] p-3 mb-4">
+              <div className="text-lg font-bold font-mono text-slate-100">{sel.id}</div>
+              <div className="text-[11px] text-slate-500 mb-2">{sel.type} · Tenant inventory ID: AST-{sel.id.split("-").pop()}</div>
+              <Pill tone={TEL_TONE[sel.telemetry]}>Telemetry {sel.telemetry.toLowerCase()}</Pill>
+            </div>
+            <KeyValues
+              items={[
+                { k: "Owner", v: sel.owner },
+                { k: "Source", v: sel.source },
+                { k: "Last observed", v: sel.seen },
+                { k: "Linked cases", v: `${sel.cases} open` },
+                { k: "Evidence records", v: `${sel.evidence} referenced` },
+                { k: "Confidence", v: sel.confidence, tone: sel.confidence.startsWith("High") ? "emerald" : "amber" },
+              ]}
+            />
+            {sel.findings > 0 && (
+              <>
+                <div className="text-[10px] font-mono uppercase tracking-wider text-slate-500 mt-4 mb-2">Priority findings</div>
+                <div className="space-y-2">
+                  <div className="flex items-start gap-2 rounded-lg border border-rose-500/40 bg-rose-950/30 p-2.5 text-[11px]"><AlertTriangle className="w-3.5 h-3.5 text-rose-300 shrink-0 mt-0.5" /><div><div className="font-semibold text-slate-100">Exposed service requires validation</div><div className="text-slate-500">Finding F-204 · Evidence linked</div></div></div>
+                  {sel.telemetry !== "COVERED" && <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-950/30 p-2.5 text-[11px]"><Clock className="w-3.5 h-3.5 text-amber-300 shrink-0 mt-0.5" /><div><div className="font-semibold text-slate-100">Incomplete monitoring coverage</div><div className="text-slate-500">Last known ingestion {sel.seen}</div></div></div>}
+                </div>
+              </>
+            )}
+            <div className="grid grid-cols-2 gap-2 mt-4">
+              <Link href="/cases" className="py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-center text-xs font-semibold text-white">Open related case →</Link>
+              <Link href="/ledger" className="py-2 rounded-lg border border-[#1e2b44] text-center text-xs font-semibold text-slate-200 hover:bg-[#101828]">Review evidence →</Link>
+            </div>
+          </Panel>
         )}
       </div>
-      {children}
-    </div>
-  );
-}
 
-export default function AssetInventoryPage() {
-  const [criticalityFilter, setCriticalityFilter] = useState<string>("ALL");
-
-  const specs = useMemo(
-    () => [
-      { key: "assets", label: "Asset inventory", path: "/api/v1/context/assets?limit=200" },
-      {
-        key: "identities",
-        label: "Identity entities",
-        path: "/api/v1/context/identities?limit=200",
-      },
-      {
-        key: "decisions",
-        label: "Resolution decisions",
-        path: "/api/v1/context/assets/resolution-decisions?limit=200",
-        optional: true,
-      },
-    ],
-    [],
-  );
-  const evidence = useContractSources(specs);
-
-  const assets = sourceList<Asset>(evidence, "assets");
-  const identities = sourceList<IdentityEntity>(evidence, "identities");
-  const decisions = sourceList<ResolutionDecision>(evidence, "decisions");
-
-  const filtered = useMemo(
-    () =>
-      criticalityFilter === "ALL"
-        ? assets
-        : assets.filter((a) => (a.criticality || "").toUpperCase() === criticalityFilter),
-    [assets, criticalityFilter],
-  );
-
-  // Coverage is not "how many assets do we have" — it is how many of them
-  // something has confirmed recently enough to still be believable.
-  const coverage = useMemo(() => {
-    const stale = assets.filter((a) => {
-      const days = daysSince(a.last_seen_at);
-      return days === null || days > COVERAGE_BUDGET_DAYS;
-    });
-    const singleSourced = assets.filter((a) => (a.aliases?.length ?? 0) <= 1);
-    const unsourced = assets.filter((a) => (a.aliases?.length ?? 0) === 0);
-    return { stale, singleSourced, unsourced };
-  }, [assets]);
-
-  const sourceSystems = useMemo(() => {
-    const counts = new Map<string, number>();
-    for (const asset of assets) {
-      for (const alias of asset.aliases ?? []) {
-        counts.set(alias.source_system, (counts.get(alias.source_system) ?? 0) + 1);
-      }
-    }
-    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
-  }, [assets]);
-
-  const lowConfidenceIdentities = useMemo(
-    () => identities.filter((i) => i.confidence < REVIEW_CONFIDENCE_THRESHOLD),
-    [identities],
-  );
-
-  const reviewQueue = useMemo(
-    () =>
-      decisions
-        .filter(
-          (d) =>
-            d.confidence < REVIEW_CONFIDENCE_THRESHOLD ||
-            !d.resolved_entity_id ||
-            d.decision.toUpperCase().includes("CONFLICT"),
-        )
-        .sort((a, b) => a.confidence - b.confidence),
-    [decisions],
-  );
-
-  const filterControl = (
-    <select
-      value={criticalityFilter}
-      onChange={(e) => setCriticalityFilter(e.target.value)}
-      className="rounded border border-slate-800 bg-slate-900 px-3 py-1.5 text-sm text-slate-200"
-      aria-label="Filter by criticality"
-    >
-      {["ALL", "CRITICAL", "HIGH", "MEDIUM", "LOW"].map((value) => (
-        <option key={value} value={value}>
-          {value === "ALL" ? "All criticalities" : value}
-        </option>
-      ))}
-    </select>
-  );
-
-  return (
-    <ContractSurface
-      contractId="W29"
-      title="Asset inventory"
-      purpose="Owner, criticality, source authority and reconciliation, coverage, identity confidence and the review queue behind the inventory."
-      evidence={evidence}
-      actions={filterControl}
-    >
-      <div className="space-y-4">
-        <Section
-          title="Coverage"
-          requirement={`How much of the inventory is still corroborated, against a ${COVERAGE_BUDGET_DAYS}-day confirmation budget.`}
-        >
-          <div className="grid grid-cols-2 gap-2 md:grid-cols-4">
-            {[
-              { label: "Assets", value: assets.length, warn: false },
-              {
-                label: `Unseen >${COVERAGE_BUDGET_DAYS}d`,
-                value: coverage.stale.length,
-                warn: coverage.stale.length > 0,
-              },
-              {
-                label: "Single-sourced",
-                value: coverage.singleSourced.length,
-                warn: coverage.singleSourced.length > 0,
-              },
-              {
-                label: "No source alias",
-                value: coverage.unsourced.length,
-                warn: coverage.unsourced.length > 0,
-              },
-            ].map((tile) => (
-              <div key={tile.label} className="rounded border border-slate-800 p-2">
-                <p className="text-[11px] font-mono uppercase text-slate-500">
-                  {tile.label}
-                </p>
-                <p
-                  className={`font-mono text-lg ${tile.warn ? "text-amber-300" : "text-slate-200"}`}
-                >
-                  {tile.value}
-                </p>
-              </div>
-            ))}
-          </div>
-          <p className="mt-2 text-[11px] font-mono text-slate-500">
-            An asset corroborated by one connector is that connector&apos;s claim. An
-            asset corroborated by none is in the inventory for a reason nothing here
-            records.
-          </p>
-        </Section>
-
-        <Section
-          title="Source authority"
-          requirement="Which systems assert this population, and how often."
-          count={sourceSystems.length}
-        >
-          {sourceSystems.length === 0 ? (
-            <p className="text-xs font-mono text-amber-300">
-              No asset carries a source alias, so nothing in this inventory can name the
-              system that asserted it.
-            </p>
-          ) : (
-            <div className="flex flex-wrap gap-2">
-              {sourceSystems.map(([system, count]) => (
-                <span
-                  key={system}
-                  className="rounded border border-slate-800 bg-slate-900/60 px-2 py-1 font-mono text-xs text-slate-300"
-                >
-                  {system} <span className="text-slate-500">· {count}</span>
-                </span>
-              ))}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {show("coverage") && (
+          <Panel title="Discovery & telemetry coverage" meta="Coverage values are illustrative, not contractual">
+            <div className="space-y-4">
+              <ProgressRow label="Monitored assets" value={82} display="82%" tone="cyan" />
+              <ProgressRow label="Verified owners" value={93} display="93%" tone="emerald" />
+              <ProgressRow label="Fresh telemetry" value={79} display="79%" tone="amber" />
             </div>
-          )}
-        </Section>
-
-        <Section
-          title="Inventory"
-          requirement="Each asset with its criticality, asserting sources and last confirmation."
-          count={filtered.length}
-        >
-          <div className="mb-3">
-            <UnbackedField
-              label="Asset owner"
-              requirement="security_context.Asset has no owner column and no ownership record exists elsewhere, so no row below can name an accountable owner."
+          </Panel>
+        )}
+        {show("exposure") && (
+          <Panel title="Exposure priorities" meta="Ranked by impact and validated evidence">
+            <EventList
+              items={[
+                { title: "9 critical assets", sub: "Potentially exposed infrastructure", tone: "rose" },
+                { title: "18 without confirmed owner", sub: "Accountability verification required", tone: "amber" },
+                { title: "3 sources delayed", sub: "Ingestion freshness below target", tone: "blue" },
+              ]}
             />
-          </div>
-          {filtered.length === 0 ? (
-            <p className="text-xs font-mono text-amber-300">
-              No assets match. An empty inventory is an uningested estate, not a small
-              one.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs">
-                <thead>
-                  <tr className="border-b border-slate-800 text-left font-mono text-slate-500">
-                    <th className="py-1 pr-3">Asset</th>
-                    <th className="py-1 pr-3">Type</th>
-                    <th className="py-1 pr-3">Criticality</th>
-                    <th className="py-1 pr-3">Asserted by</th>
-                    <th className="py-1 pr-3">Last seen</th>
-                    <th className="py-1">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((asset) => {
-                    const days = daysSince(asset.last_seen_at);
-                    const stale = days === null || days > COVERAGE_BUDGET_DAYS;
-                    const aliases = asset.aliases ?? [];
-                    return (
-                      <tr key={asset.id} className="border-b border-slate-900 last:border-0">
-                        <td className="py-1.5 pr-3">
-                          <span className="text-slate-200">{asset.name}</span>
-                          <span className="block font-mono text-[11px] text-slate-600 break-all">
-                            {asset.external_id ?? asset.id}
-                          </span>
-                        </td>
-                        <td className="py-1.5 pr-3 font-mono text-slate-400">
-                          {asset.asset_type}
-                        </td>
-                        <td className="py-1.5 pr-3">
-                          <Badge variant={criticalityVariant(asset.criticality)}>
-                            {asset.criticality}
-                          </Badge>
-                        </td>
-                        <td className="py-1.5 pr-3 font-mono text-[11px]">
-                          {aliases.length === 0 ? (
-                            <span className="text-amber-300">no source</span>
-                          ) : (
-                            <span
-                              className={
-                                aliases.length === 1 ? "text-amber-300/80" : "text-slate-300"
-                              }
-                            >
-                              {Array.from(new Set(aliases.map((a) => a.source_system))).join(
-                                ", ",
-                              )}
-                              {aliases.length === 1 ? " (single)" : ""}
-                            </span>
-                          )}
-                        </td>
-                        <td
-                          className={`py-1.5 pr-3 font-mono text-[11px] ${stale ? "text-amber-300" : "text-slate-500"}`}
-                        >
-                          {formatTimestamp(asset.last_seen_at)}
-                          {days !== null && ` (${Math.round(days)}d)`}
-                        </td>
-                        <td className="py-1.5 font-mono text-[11px] text-slate-400">
-                          {asset.status}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </Section>
-
-        <Section
-          title="Identity confidence"
-          requirement={`Identities the resolver was less than ${REVIEW_CONFIDENCE_THRESHOLD} confident about.`}
-          count={lowConfidenceIdentities.length}
-        >
-          {identities.length === 0 ? (
-            <p className="text-xs font-mono text-amber-300">
-              No identity entities are resolved for this tenant.
-            </p>
-          ) : lowConfidenceIdentities.length === 0 ? (
-            <p className="text-xs font-mono text-slate-400">
-              All {identities.length} resolved identities are at or above{" "}
-              {REVIEW_CONFIDENCE_THRESHOLD} confidence.
-            </p>
-          ) : (
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b border-slate-800 text-left font-mono text-slate-500">
-                  <th className="py-1">Identity</th>
-                  <th className="py-1">Type</th>
-                  <th className="py-1">Confidence</th>
-                  <th className="py-1">Last seen</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lowConfidenceIdentities.map((identity) => (
-                  <tr key={identity.id} className="border-b border-slate-900 last:border-0">
-                    <td className="py-1.5 text-slate-200">
-                      {identity.display_name || identity.email || identity.id}
-                    </td>
-                    <td className="py-1.5 font-mono text-slate-400">
-                      {identity.identity_type}
-                    </td>
-                    <td className="py-1.5 font-mono text-amber-300">
-                      {identity.confidence.toFixed(2)}
-                    </td>
-                    <td className="py-1.5 font-mono text-slate-500">
-                      {formatTimestamp(identity.last_seen_at)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </Section>
-
-        <Section
-          title="Reconciliation review queue"
-          requirement="Resolution decisions that a human should confirm before downstream logic relies on them."
-          count={reviewQueue.length}
-        >
-          {decisions.length === 0 ? (
-            <p className="text-xs font-mono text-amber-300">
-              No resolution decisions are recorded, so how this inventory was reconciled
-              cannot be reviewed.
-            </p>
-          ) : reviewQueue.length === 0 ? (
-            <p className="text-xs font-mono text-slate-400">
-              All {decisions.length} recorded decisions resolved to an entity at or above{" "}
-              {REVIEW_CONFIDENCE_THRESHOLD} confidence.
-            </p>
-          ) : (
-            <div className="space-y-2">
-              {reviewQueue.map((decision) => (
-                <div key={decision.id} className="rounded border border-slate-800 p-2">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant={decision.confidence < 0.6 ? "high" : "medium"}>
-                      {decision.confidence.toFixed(2)}
-                    </Badge>
-                    <span className="font-mono text-xs text-slate-300">
-                      {decision.decision}
-                    </span>
-                    <span className="font-mono text-[11px] text-slate-500 break-all">
-                      {decision.source_system}:{decision.external_id}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[11px] text-slate-400">{decision.reason}</p>
-                  <p className="mt-0.5 font-mono text-[11px] text-slate-600">
-                    resolver {decision.resolver_version} ·{" "}
-                    {decision.resolved_entity_id
-                      ? `resolved to ${decision.resolved_entity_id}`
-                      : "unresolved"}{" "}
-                    · {formatTimestamp(decision.created_at)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </Section>
+          </Panel>
+        )}
+        {show("history") && (
+          <Panel title="Recent inventory changes" meta="All events are synthetic examples">
+            <EventList
+              items={[
+                { time: "13:46", title: "srv-api-014", sub: "telemetry delayed", tone: "amber" },
+                { time: "13:33", title: "ep-win-042", sub: "new exposure finding", tone: "rose" },
+                { time: "13:17", title: "cloud-vpc-03", sub: "owner verified", tone: "emerald" },
+                { time: "12:58", title: "app-portal-09", sub: "coverage unconfirmed", tone: "amber" },
+              ]}
+            />
+          </Panel>
+        )}
       </div>
-    </ContractSurface>
+    </WorkspacePage>
   );
 }

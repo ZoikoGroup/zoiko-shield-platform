@@ -1,1103 +1,192 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
-import { useDemoState } from "@/lib/demo-state";
-import { ZoikoShieldApiClient } from "@/lib/api-client";
+import React, { useMemo, useState } from "react";
+import { Plus, AlertTriangle, ClipboardList, Clock, AlertOctagon, Check } from "lucide-react";
+import IrRetainerConsole from "./console";
 import {
-  IncidentResponseRetainer,
-  IncidentWorkOrder,
-  WorkOrderConsumptionRecord,
-  IncidentLegalSensitiveRecord,
-  IncidentLegalAccessEvent,
-} from "@/lib/types";
-import { Card } from "@/ui/Card";
-import { Button } from "@/ui/Button";
-import { Badge } from "@/ui/Badge";
-import { Modal } from "@/ui/Modal";
-import {
-  PhoneCall,
-  Shield,
-  Clock,
-  CheckCircle2,
-  AlertTriangle,
-  FileText,
-  Lock,
-  Plus,
-  ArrowRight,
-  TrendingUp,
-  UserCheck,
-  KeyRound,
-  FileCheck,
-  Scale,
-  RefreshCw,
-  Eye,
-  History,
-  ShieldAlert,
-  HelpCircle,
-  ExternalLink,
-} from "lucide-react";
-import {
-  LoadingState,
-  DegradedState,
-  StaleState,
-} from "@/components/states/mandatory-ui-states";
+  WorkspacePage, PageHeader, KpiGrid, Panel, Pill, DataTable, KeyValues, EventList, ProgressRow,
+  StepFlow, ActionButton, CONSOLE_TAB, type Tone,
+} from "@/components/mockup/kit";
 
-export default function IrRetainerPage() {
-  const [state, setState] = useDemoState();
-  const [retainers, setRetainers] = useState<IncidentResponseRetainer[]>([]);
-  const [workOrders, setWorkOrders] = useState<IncidentWorkOrder[]>([]);
-  const [selectedWorkOrder, setSelectedWorkOrder] = useState<IncidentWorkOrder | null>(null);
-  const [consumptionList, setConsumptionList] = useState<WorkOrderConsumptionRecord[]>([]);
-  const [legalRecords, setLegalRecords] = useState<IncidentLegalSensitiveRecord[]>([]);
-  const [auditLogs, setAuditLogs] = useState<IncidentLegalAccessEvent[]>([]);
+type Priority = "P1 · Critical" | "P2 · High" | "P3 · Medium";
+type Req = { id: string; when: string; title: string; caseRef: string; kind: string; priority: Priority; state: string; stateTone: Tone; sla: string };
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [isDegraded, setIsDegraded] = useState(false);
-  const [isStale, setIsStale] = useState(false);
+const REQUESTS: Req[] = [
+  { id: "IR-2026-0047", when: "14 Oct · 12:42", title: "Suspected identity compromise", caseRef: "CASE-2026-1043", kind: "Identity", priority: "P1 · Critical", state: "Awaiting accept", stateTone: "amber", sla: "18 min left" },
+  { id: "IR-2026-0046", when: "14 Oct · 11:26", title: "Cloud account exfiltration", caseRef: "CASE-2026-1041", kind: "Cloud", priority: "P2 · High", state: "Scoping", stateTone: "blue", sla: "Met" },
+  { id: "IR-2026-0045", when: "13 Oct · 16:10", title: "Forensic evidence review", caseRef: "CASE-2026-1039", kind: "Advisory", priority: "P3 · Medium", state: "Engaged", stateTone: "purple", sla: "Met" },
+  { id: "IR-2026-0044", when: "12 Oct · 09:35", title: "Endpoint recovery guidance", caseRef: "CASE-2026-1035", kind: "Endpoint", priority: "P2 · High", state: "Resolved", stateTone: "emerald", sla: "Complete" },
+  { id: "IR-2026-0043", when: "11 Oct · 14:04", title: "Ransomware tabletop assistance", caseRef: "SIM-2026-0072", kind: "Exercise", priority: "P3 · Medium", state: "Resolved", stateTone: "emerald", sla: "Complete" },
+  { id: "IR-2026-0042", when: "10 Oct · 18:15", title: "Threat intelligence consultation", caseRef: "CASE-2026-1029", kind: "Advisory", priority: "P3 · Medium", state: "Resolved", stateTone: "emerald", sla: "Complete" },
+];
+const PRIO_TONE: Record<Priority, Tone> = { "P1 · Critical": "rose", "P2 · High": "amber", "P3 · Medium": "blue" };
 
-  // Modals
-  const [isActivateModalOpen, setIsActivateModalOpen] = useState(false);
-  const [isLogHoursModalOpen, setIsLogHoursModalOpen] = useState(false);
-  const [isLegalRecordModalOpen, setIsLegalRecordModalOpen] = useState(false);
-  const [isAccessPromptModalOpen, setIsAccessPromptModalOpen] = useState(false);
-  const [viewingRecord, setViewingRecord] = useState<IncidentLegalSensitiveRecord | null>(null);
+const FILTERS = [
+  { id: "all", label: "All requests" },
+  { id: "awaiting", label: "Awaiting provider" },
+  { id: "engaged", label: "Engaged" },
+  { id: "resolved", label: "Resolved" },
+];
 
-  // Form states
-  const [activationForm, setActivationForm] = useState({
-    incidentReference: "INC-2026-9021",
-    activationReason: "Suspected Cobalt Strike Beacon on Domain Controller",
-    activationReference: "HOTLINE-AUTH-0912",
-    responseAuthority: "R2" as "R0" | "R1" | "R2" | "R3" | "R4",
-    readinessEvidenceRefs: "evidence://vault/auth-log-01, evidence://vault/network-capture-02",
-    customerContact: "Sarah Chen (Lead Analyst)",
-  });
-
-  const [logHoursForm, setLogHoursForm] = useState({
-    hours: 4,
-    workDescription: "Deep memory forensics, process tree extraction, and C2 firewall rule deployment",
-    evidenceReference: "evidence://vault/forensic-memory-dump-02",
-  });
-
-  const [legalAccessReason, setLegalAccessReason] = useState("REGULATOR_INQUIRY");
-  const [pendingPurposeToQuery, setPendingPurposeToQuery] = useState("REGULATOR_INQUIRY");
-  const [accessPromptForm, setAccessPromptForm] = useState({
-    operatorName: "Sarah Chen (Lead Analyst)",
-    accessReason: "Statutory regulatory inquiry filing preparation (§16.4)",
-  });
-
-  const [legalForm, setLegalForm] = useState({
-    purpose: "REGULATOR_INQUIRY" as const,
-    privilegeStatus: "NO_PRIVILEGE_CLAIMED" as const,
-    notificationStatus: "NOT_APPLICABLE" as const,
-    counselControlled: false,
-    contentReference: "evidence://vault/factual-forensic-report-v1",
-    accessReason: "Preparation for statutory regulatory inquiry filing",
-  });
-
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const [rets, wos] = await Promise.all([
-        ZoikoShieldApiClient.getIncidentRetainers(),
-        ZoikoShieldApiClient.getIncidentWorkOrders(),
-      ]);
-      const safeRets = Array.isArray(rets) ? rets : Array.isArray((rets as any)?.data) ? (rets as any).data : state.incidentRetainers || [];
-      const safeWos = Array.isArray(wos) ? wos : Array.isArray((wos as any)?.data) ? (wos as any).data : state.incidentWorkOrders || [];
-      setRetainers(safeRets);
-      setWorkOrders(safeWos);
-      if (safeWos.length > 0 && !selectedWorkOrder) {
-        setSelectedWorkOrder(safeWos[0]);
-      }
-      setAuditLogs(state.legalAccessAuditLogs || []);
-      setIsDegraded(false);
-      setIsStale(false);
-    } catch {
-      setRetainers(state.incidentRetainers || []);
-      setWorkOrders(state.incidentWorkOrders || []);
-      setAuditLogs(state.legalAccessAuditLogs || []);
-      setIsDegraded(true);
-      setIsStale(true);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [selectedWorkOrder, state.incidentRetainers, state.incidentWorkOrders, state.legalAccessAuditLogs]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  useEffect(() => {
-    if (selectedWorkOrder) {
-      ZoikoShieldApiClient.getWorkOrderConsumption(selectedWorkOrder.id).then((res) => {
-        setConsumptionList(Array.isArray(res) ? res : Array.isArray((res as any)?.data) ? (res as any).data : state.workOrderConsumption || []);
-      });
-      ZoikoShieldApiClient.listLegalSensitiveRecords(selectedWorkOrder.id, legalAccessReason).then((res) => {
-        setLegalRecords(Array.isArray(res) ? res : Array.isArray((res as any)?.data) ? (res as any).data : state.legalSensitiveRecords || []);
-      });
-    }
-  }, [selectedWorkOrder, legalAccessReason, state.workOrderConsumption, state.legalSensitiveRecords]);
-
-  const activeRetainer = retainers[0] || state.incidentRetainers?.[0];
-  const hasActiveRetainer = Boolean(activeRetainer);
-  // `??`, not `||`: a real retainer can legitimately have 0 included hours
-  // (a pure incident-response-on-demand plan), and that must render as 0,
-  // not silently become a fabricated 40h baseline.
-  const includedHours = activeRetainer?.includedHours ?? 0;
-  const consumedHours = activeRetainer?.consumedHours ?? 0;
-  const remainingHours = activeRetainer?.remainingHours ?? Math.max(0, includedHours - consumedHours);
-  const consumptionPercent = includedHours > 0 ? Math.min(100, Math.round((consumedHours / includedHours) * 100)) : 0;
-
-  const handleActivateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!activeRetainer) return;
-    try {
-      const created = await ZoikoShieldApiClient.activateWorkOrder({
-        retainerId: activeRetainer.id,
-        incidentReference: activationForm.incidentReference,
-        activationReason: activationForm.activationReason,
-        activationReference: activationForm.activationReference,
-        responseAuthority: activationForm.responseAuthority,
-        readinessEvidenceRefs: activationForm.readinessEvidenceRefs
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
-        customerContact: activationForm.customerContact,
-      });
-      setIsActivateModalOpen(false);
-      setSelectedWorkOrder(created);
-      await loadData();
-    } catch (err) {
-      console.error("Activation failed:", err);
-    }
-  };
-
-  const handleLogHoursSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedWorkOrder) return;
-    try {
-      await ZoikoShieldApiClient.logWorkOrderHours(selectedWorkOrder.id, {
-        hours: Number(logHoursForm.hours),
-        workDescription: logHoursForm.workDescription,
-        evidenceReference: logHoursForm.evidenceReference,
-      });
-      setIsLogHoursModalOpen(false);
-      await loadData();
-      if (selectedWorkOrder) {
-        const updatedConsumption = await ZoikoShieldApiClient.getWorkOrderConsumption(selectedWorkOrder.id);
-        setConsumptionList(updatedConsumption);
-      }
-    } catch (err) {
-      console.error("Log hours failed:", err);
-    }
-  };
-
-  const handleCreateLegalRecordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedWorkOrder) return;
-    try {
-      await ZoikoShieldApiClient.createLegalSensitiveRecord({
-        workOrderId: selectedWorkOrder.id,
-        purpose: legalForm.purpose,
-        privilegeStatus: legalForm.privilegeStatus,
-        notificationStatus: legalForm.notificationStatus,
-        counselControlled: legalForm.counselControlled,
-        contentReference: legalForm.contentReference,
-        accessReason: legalForm.accessReason,
-      });
-      setIsLegalRecordModalOpen(false);
-      const updatedLegal = await ZoikoShieldApiClient.listLegalSensitiveRecords(
-        selectedWorkOrder.id,
-        legalAccessReason
-      );
-      setLegalRecords(updatedLegal);
-    } catch (err) {
-      console.error("Create legal record failed:", err);
-    }
-  };
-
-  const handlePromptAccess = (newPurpose: string) => {
-    setPendingPurposeToQuery(newPurpose);
-    setIsAccessPromptModalOpen(true);
-  };
-
-  const handleConfirmAccessReason = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!accessPromptForm.accessReason.trim()) return;
-
-    setLegalAccessReason(pendingPurposeToQuery);
-    setIsAccessPromptModalOpen(false);
-
-    // Record access event into audit trail
-    const newAccessEvent: IncidentLegalAccessEvent = {
-      id: `audit-acc-${Date.now().toString().slice(-6)}`,
-      recordId: selectedWorkOrder ? selectedWorkOrder.id : "all",
-      workOrderId: selectedWorkOrder ? selectedWorkOrder.id : "all",
-      tenantId: state.tenant.id,
-      accessorId: state.session.userId,
-      accessorName: accessPromptForm.operatorName,
-      accessReason: accessPromptForm.accessReason,
-      purpose: pendingPurposeToQuery as any,
-      timestamp: new Date().toISOString(),
-      ipAddress: "192.168.1.50 (Corporate VPN)",
-    };
-
-    setState((prev) => ({
-      ...prev,
-      legalAccessAuditLogs: [newAccessEvent, ...(prev.legalAccessAuditLogs || [])],
-    }));
-    setAuditLogs((prev) => [newAccessEvent, ...prev]);
-
-    if (selectedWorkOrder) {
-      try {
-        const records = await ZoikoShieldApiClient.listLegalSensitiveRecords(
-          selectedWorkOrder.id,
-          accessPromptForm.accessReason
-        );
-        setLegalRecords(records);
-      } catch {
-        // Safe fallback
-      }
-    }
-  };
-
-  if (isLoading) {
-    return <LoadingState message="Connecting to Commercial Retainer Ledger & 24x7 SLA Engine..." />;
-  }
+export default function IrRetainerSlaPage() {
+  const [tab, setTab] = useState("overview");
+  const [filter, setFilter] = useState("all");
+  const [selectedId, setSelectedId] = useState(REQUESTS[0].id);
+  const rows = useMemo(
+    () =>
+      REQUESTS.filter((r) =>
+        filter === "all" ? true : filter === "awaiting" ? r.state === "Awaiting accept" : filter === "engaged" ? ["Engaged", "Scoping"].includes(r.state) : r.state === "Resolved",
+      ),
+    [filter],
+  );
+  const sel = REQUESTS.find((r) => r.id === selectedId) ?? REQUESTS[0];
+  const counts = {
+    all: REQUESTS.length,
+    awaiting: REQUESTS.filter((r) => r.state === "Awaiting accept").length,
+    engaged: REQUESTS.filter((r) => ["Engaged", "Scoping"].includes(r.state)).length,
+    resolved: REQUESTS.filter((r) => r.state === "Resolved").length,
+  } as Record<string, number>;
 
   return (
-    <div className="space-y-8 p-6 max-w-7xl mx-auto">
-      {/* Degraded / Stale state alerts */}
-      {isDegraded && (
-        <DegradedState
-          message="Operating in cached ledger mode. Live SLA verification updates may be delayed."
-          fallbackReason="IR_LEDGER_OFFLINE_CACHE_ACTIVE"
-          retryAction={loadData}
+    <WorkspacePage
+      header={
+        <PageHeader
+          eyebrow="Workspace 11 · Incident response services"
+          title="IR Retainer & SLA"
+          subtitle="Confirm response coverage, request specialist assistance, and track engagement deadlines."
+          actions={
+            <>
+              <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-950/30 px-3 py-2 max-w-sm">
+                <AlertTriangle className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" />
+                <div><div className="text-[11px] font-bold text-amber-200 uppercase">Entitlements not yet verified</div><div className="text-[10px] text-slate-400">Actual coverage, availability and SLA targets are governed by the signed agreement.</div></div>
+              </div>
+              <ActionButton primary onClick={() => setTab(CONSOLE_TAB)}><Plus className="w-3.5 h-3.5" /> Request IR support</ActionButton>
+            </>
+          }
         />
-      )}
-      {isStale && !isDegraded && <StaleState retryAction={loadData} />}
-
-      {!hasActiveRetainer && (
-        <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-500/50 text-amber-200 text-xs">
-          No active incident response retainer is configured for this tenant. The hour ledger, overage and rollover
-          policies, and SLA response windows below show placeholder shapes only &mdash; they are not real contract terms.
-        </div>
-      )}
-
-      {/* Header Banner */}
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <div className="flex items-center gap-3 mb-1.5 flex-wrap">
-              <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-                <PhoneCall className="w-6 h-6 text-cyan-400" />
-                Incident Response Retainer &amp; SLA Engine
-              </h1>
-              <Badge variant="active" className="font-mono text-[10px]">ACTIVE ANNUAL TERM</Badge>
-              <Badge variant="anchored" className="font-mono text-[10px]">§16.4 SPECIFICATION</Badge>
-              <Badge variant="high" className="font-mono text-[10px]">PURPOSE-BOUND ACCESS</Badge>
-            </div>
-            <p className="text-xs font-mono text-slate-400 mt-0.5">
-              Ground-truth commercial hour ledger, 24x7 SLA response commitments, and purpose-bound legal-sensitive records.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <Button variant="ghost" size="sm" onClick={loadData} className="border border-slate-800 hover:border-slate-700 text-slate-300 gap-2">
-              <RefreshCw className="w-4 h-4 text-cyan-400" /> Refresh
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              onClick={() => setIsActivateModalOpen(true)}
-              className="gap-2 shadow-lg shadow-rose-950/40 font-bold"
-            >
-              <Shield className="w-4 h-4" /> Activate Emergency Work Order
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* 4 Summary KPI Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Total Retainer Balance</div>
-          <div className="text-2xl font-bold font-mono text-cyan-400 mt-1">{remainingHours}h / {includedHours}h</div>
-          <div className="text-[11px] text-slate-400 mt-0.5">{consumptionPercent}% consumed</div>
-        </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">24x7 SLA Response</div>
-          <div className="text-2xl font-bold font-mono text-emerald-400 mt-1">&lt; 30 mins</div>
-          <div className="text-[11px] text-slate-400 mt-0.5">Guaranteed acknowledgment</div>
-        </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Active Work Orders</div>
-          <div className="text-2xl font-bold font-mono text-purple-400 mt-1">{workOrders.length}</div>
-          <div className="text-[11px] text-slate-400 mt-0.5">Itemized forensic records</div>
-        </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
-          <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Legal Privilege Status</div>
-          <div className="text-2xl font-bold font-mono text-amber-400 mt-1">PURPOSE BOUND</div>
-          <div className="text-[11px] text-slate-400 mt-0.5">§16.4 Cryptographic custody</div>
-        </div>
-      </div>
-
-      {/* Grid 1: Retainer Summary, Response SLA, Readiness Obligations */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Retainer Term & Hour Ledger */}
-        <div className="surface-card rounded-2xl p-6 bg-[#0c111e]/90 border border-slate-800/80 shadow-xl relative overflow-hidden">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <span className="text-xs font-mono font-medium text-cyan-400 uppercase tracking-wider">
-                Annual Term (365 Days)
-              </span>
-              <h3 className="text-lg font-bold text-white mt-1">Included Hours Ledger</h3>
-            </div>
-            <Badge variant={hasActiveRetainer ? "active" : "neutral"}>{activeRetainer?.status || "NO ACTIVE RETAINER"}</Badge>
-          </div>
-
-          <div className="space-y-4">
-            <div>
-              <div className="flex justify-between text-sm mb-1.5">
-                <span className="text-slate-400">Balance Status</span>
-                <span className="font-mono text-white font-semibold">
-                  {remainingHours}h remaining / {includedHours}h total
-                </span>
-              </div>
-              <div className="w-full bg-slate-800 rounded-full h-3 overflow-hidden p-0.5 border border-slate-700/50">
-                <div
-                  className={`h-full rounded-full transition-all duration-500 ${
-                    consumptionPercent >= 80 ? "bg-amber-500" : "bg-cyan-500"
-                  }`}
-                  style={{ width: `${consumptionPercent}%` }}
-                />
-              </div>
-              <div className="flex justify-between text-[11px] font-mono text-slate-500 mt-1">
-                <span>Consumed: {consumedHours}h ({consumptionPercent}%)</span>
-                <span>Warning Threshold: {activeRetainer?.warningThresholdPercent ?? "—"}%</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/80 text-xs">
-              <div>
-                <span className="text-slate-500 block">Overage Policy</span>
-                <span className="font-mono text-slate-300 font-medium">
-                  {hasActiveRetainer ? (
-                    <>{activeRetainer?.overagePolicy || "UNSPECIFIED"} (Cap: {activeRetainer?.overageCapHours ?? 0}h @ ${activeRetainer?.overageRate ?? 0}/h)</>
-                  ) : (
-                    "No retainer configured"
-                  )}
-                </span>
-              </div>
-              <div>
-                <span className="text-slate-500 block">Rollover Policy</span>
-                <span className="font-mono text-slate-300 font-medium">
-                  {hasActiveRetainer ? (
-                    <>{activeRetainer?.rolloverPolicy || "UNSPECIFIED"} (Max: {activeRetainer?.rolloverCapHours ?? 0}h)</>
-                  ) : (
-                    "No retainer configured"
-                  )}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* 24x7 Response Window & SLA */}
-        <div className="surface-card rounded-2xl p-6 bg-[#0c111e]/90 border border-slate-800/80 shadow-xl">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <span className="text-xs font-mono font-medium text-emerald-400 uppercase tracking-wider">
-                Response Window Guarantee
-              </span>
-              <h3 className="text-lg font-bold text-white mt-1">24x7 Emergency SLA</h3>
-            </div>
-            <Clock className="w-5 h-5 text-emerald-400" />
-          </div>
-
-          <div className="space-y-3.5 text-xs">
-            <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#080d19] border border-slate-800">
-              <span className="text-slate-400 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> SLA Acknowledgement
-              </span>
-              <span className="font-mono text-emerald-300 font-bold">
-                {hasActiveRetainer ? <>&lt; {activeRetainer?.responseWindow?.acknowledgementTargetMinutes ?? "—"} mins</> : "N/A"}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#080d19] border border-slate-800">
-              <span className="text-slate-400 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Incident Activation Target
-              </span>
-              <span className="font-mono text-emerald-300 font-bold">
-                {hasActiveRetainer ? <>&lt; {activeRetainer?.responseWindow?.activationResponseMinutes ?? "—"} mins</> : "N/A"}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#080d19] border border-slate-800">
-              <span className="text-slate-400 flex items-center gap-2">
-                <Shield className="w-4 h-4 text-cyan-400" /> Max Response Authority
-              </span>
-              <Badge variant="neutral">{activeRetainer?.maximumResponseAuthority || "R2"} (Containment)</Badge>
-            </div>
-          </div>
-        </div>
-
-        {/* Readiness Obligations (§16.4) */}
-        <div className="surface-card rounded-2xl p-6 bg-[#0c111e]/90 border border-slate-800/80 shadow-xl">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <span className="text-xs font-mono font-medium text-amber-400 uppercase tracking-wider">
-                Readiness Obligations
-              </span>
-              <h3 className="text-lg font-bold text-white mt-1">Pre-Authorized Scope</h3>
-            </div>
-            <UserCheck className="w-5 h-5 text-amber-400" />
-          </div>
-
-          <div className="space-y-2 text-xs">
-            <div className="flex items-center justify-between py-1.5 border-b border-slate-800/60">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <KeyRound className="w-3.5 h-3.5 text-cyan-400" /> Named Contacts
-              </span>
-              <span className="font-mono text-slate-300">
-                {activeRetainer?.readinessObligations?.namedContacts?.contacts?.join(", ") || "Sarah Chen, CISO"}
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between py-1.5 border-b border-slate-800/60">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <FileCheck className="w-3.5 h-3.5 text-emerald-400" /> Access &amp; Credential Escrow
-              </span>
-              <span className="font-mono text-emerald-400">VERIFIED</span>
-            </div>
-
-            <div className="flex items-center justify-between py-1.5 border-b border-slate-800/60">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <Scale className="w-3.5 h-3.5 text-purple-400" /> Evidence Preservation
-              </span>
-              <span className="font-mono text-emerald-400">ACTIVE WORM</span>
-            </div>
-
-            <div className="flex items-center justify-between py-1.5">
-              <span className="text-slate-400 flex items-center gap-1.5">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-400" /> Excluded Services
-              </span>
-              <span className="font-mono text-slate-400 text-[11px]">
-                No Routine IT / No Uncontracted Legal Advice
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Grid 2: Incident Work Orders & Itemized Consumption Ledger */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Work Orders List (7 cols) */}
-        <div className="lg:col-span-7 space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <FileText className="w-5 h-5 text-cyan-400" />
-              Incident Work Orders
-            </h3>
-            <span className="text-xs font-mono text-slate-400">
-              {(workOrders || []).length} Activated Work Orders
-            </span>
-          </div>
-
-          <div className="space-y-3">
-            {(workOrders || []).map((wo) => {
-              const isSelected = selectedWorkOrder?.id === wo.id;
-              return (
-                <div
-                  key={wo.id}
-                  onClick={() => setSelectedWorkOrder(wo)}
-                  className={`p-4 rounded-xl border transition-all cursor-pointer ${
-                    isSelected
-                      ? "bg-slate-800/80 border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.15)]"
-                      : "bg-slate-900/40 border-slate-800 hover:border-slate-700"
-                  }`}
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-sm text-cyan-300">
-                        {wo.incidentReference}
-                      </span>
-                      <Badge variant={wo.status === "ACTIVE" ? "critical" : "neutral"}>
-                        {wo.status}
-                      </Badge>
-                      <Badge variant="neutral">{wo.responseAuthority}</Badge>
-                    </div>
-                    <span className="text-xs font-mono text-slate-400">
-                      Consumed: <strong className="text-white">{wo.consumedHours}h</strong> / {wo.includedHours}h
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-slate-300 mb-3">{wo.activationReason}</p>
-
-                  <div className="flex justify-between items-center text-[11px] font-mono text-slate-500 pt-2 border-t border-slate-800/60">
-                    <span>Ref: {wo.activationReference}</span>
-                    <span>Contact: {wo.customerContact || "Lead Analyst"}</span>
-                    <span className="text-cyan-400 flex items-center gap-1 font-sans">
-                      Select Work Order <ArrowRight className="w-3 h-3" />
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Itemized Consumption Ledger (5 cols) */}
-        <div className="lg:col-span-5 space-y-4">
-          <div className="flex justify-between items-center">
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-emerald-400" />
-              Consumption Ledger
-            </h3>
-            {selectedWorkOrder && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsLogHoursModalOpen(true)}
-                className="gap-1.5 text-xs h-7"
-              >
-                <Plus className="w-3.5 h-3.5" /> Log Hours
-              </Button>
-            )}
-          </div>
-
-          <Card className="p-4 bg-slate-900/60 border-slate-800 backdrop-blur-md min-h-[300px]">
-            {selectedWorkOrder ? (
-              <div className="space-y-3">
-                <div className="flex justify-between items-center pb-2 border-b border-slate-800 text-xs text-slate-400">
-                  <span>Work Order: <strong className="text-white font-mono">{selectedWorkOrder.incidentReference}</strong></span>
-                  <span className="font-mono text-cyan-300">{selectedWorkOrder.consumedHours}h Total Logged</span>
-                </div>
-
-                {consumptionList.length === 0 ? (
-                  <p className="text-xs text-slate-500 py-8 text-center">
-                    No consumption logged against this work order yet.
-                  </p>
-                ) : (
-                  <div className="space-y-2.5">
-                    {consumptionList.map((c) => (
-                      <div
-                        key={c.id}
-                        className="p-3 rounded-lg bg-slate-800/40 border border-slate-800/80 text-xs space-y-1.5"
-                      >
-                        <div className="flex justify-between items-center">
-                          <span className="font-mono font-bold text-emerald-400">+{c.hours} Hours</span>
-                          <span className="text-[11px] font-mono text-slate-500">
-                            {new Date(c.createdAt).toLocaleTimeString()}
-                          </span>
-                        </div>
-                        <p className="text-slate-300 text-xs">{c.workDescription}</p>
-                        <div className="text-[10px] font-mono text-cyan-400/80 truncate">
-                          Evidence Ref: {c.evidenceReference}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-xs text-slate-500 py-12 text-center">
-                Select a work order to view itemized consumption.
-              </p>
-            )}
-          </Card>
-        </div>
-      </div>
-
-      {/* Grid 3: Purpose-Bound Legal-Sensitive Records & Statutory Disclaimers (§16.4) */}
-      <div className="space-y-6 pt-6 border-t border-slate-800">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h3 className="text-lg font-bold text-white flex items-center gap-2">
-              <Scale className="w-5 h-5 text-purple-400" />
-              Purpose-Bound Legal-Sensitive Records (§16.4)
-            </h3>
-            <p className="text-xs text-slate-400">
-              Access is purpose-bound, non-automatic, and strictly logged. ZoikoShield does not represent that legal privilege automatically exists.
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3 flex-wrap">
-            <div className="flex items-center gap-2 bg-slate-900 border border-slate-700 px-3 py-1.5 rounded-lg text-xs">
-              <span className="text-slate-400">Active Purpose Filter:</span>
-              <span className="font-mono font-bold text-cyan-300">{legalAccessReason}</span>
-              <button
-                onClick={() => handlePromptAccess(legalAccessReason === "REGULATORY_INQUIRY" ? "LEGAL_DEFENSE" : "REGULATORY_INQUIRY")}
-                className="text-[10px] font-mono text-cyan-400 underline hover:text-cyan-200 ml-1"
-              >
-                Change Filter
-              </button>
-            </div>
-
-            {selectedWorkOrder && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsLegalRecordModalOpen(true)}
-                className="gap-1.5 text-xs text-purple-300 border-purple-500/30 hover:bg-purple-950/40"
-              >
-                <Plus className="w-3.5 h-3.5" /> Record Legal Artifact
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Statutory Legal Disclaimer Banner */}
-        <div className="p-4 rounded-xl bg-amber-950/25 border border-amber-500/40 text-xs text-amber-200 space-y-1.5 shadow-lg shadow-amber-950/20">
-          <div className="flex items-center gap-2 font-bold text-amber-300 text-sm">
-            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-            <span>Statutory Non-Legal Advice Disclaimer (Specification §16.4)</span>
-          </div>
-          <p className="leading-relaxed text-slate-300">
-            ZoikoShield Incident Response and retainer telemetry services do <strong className="text-amber-200">not</strong> establish attorney-client privilege or provide a breach-notification, regulatory, or legal conclusion unless a separately contracted service is executed and directly controlled by qualified legal counsel. All record access requests are verified, purpose-bound, and cryptographically recorded.
-          </p>
-        </div>
-
-        {/* Legal Records Table */}
-        <Card className="p-4 bg-slate-900/60 border-slate-800 backdrop-blur-md overflow-x-auto">
-          {legalRecords.length === 0 ? (
-            <div className="py-8 text-center space-y-2">
-              <Scale className="w-8 h-8 text-slate-600 mx-auto" />
-              <p className="text-xs text-slate-400">
-                No legal-sensitive records matching active purpose &apos;{legalAccessReason}&apos;.
-              </p>
-              <button
-                onClick={() => handlePromptAccess("REGULATORY_INQUIRY")}
-                className="text-xs text-cyan-400 hover:text-cyan-300 underline"
-              >
-                Prompt purpose-bound query
-              </button>
-            </div>
-          ) : (
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-slate-800 text-slate-400 font-mono text-[11px]">
-                  <th className="pb-2">RECORD ID</th>
-                  <th className="pb-2">PURPOSE</th>
-                  <th className="pb-2">PRIVILEGE STATUS</th>
-                  <th className="pb-2">COUNSEL CONTROL</th>
-                  <th className="pb-2">CONTENT REFERENCE</th>
-                  <th className="pb-2">ACCESS REASON</th>
-                  <th className="pb-2">ACTION</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/60 font-mono text-slate-300">
-                {legalRecords.map((r) => (
-                  <tr key={r.id} className="hover:bg-slate-800/30">
-                    <td className="py-2.5 text-cyan-400">{r.id}</td>
-                    <td className="py-2.5">
-                      <Badge variant="neutral">{r.purpose}</Badge>
-                    </td>
-                    <td className="py-2.5">
-                      <Badge variant={r.privilegeStatus === "COUNSEL_ASSERTED" ? "critical" : "neutral"}>
-                        {r.privilegeStatus}
-                      </Badge>
-                    </td>
-                    <td className="py-2.5">
-                      {r.counselControlled ? (
-                        <span className="text-purple-400 font-bold">COUNSEL CONTROLLED</span>
-                      ) : (
-                        <span className="text-slate-500">NONE (FACTUAL ONLY)</span>
-                      )}
-                    </td>
-                    <td className="py-2.5 truncate max-w-[180px] text-slate-400">
-                      {r.contentReference}
-                    </td>
-                    <td className="py-2.5 text-slate-400">{r.accessReason}</td>
-                    <td className="py-2.5">
-                      <button
-                        onClick={() => setViewingRecord(r)}
-                        className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-sans text-xs"
-                      >
-                        <Eye className="w-3.5 h-3.5" /> Inspect
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </Card>
-
-        {/* Live Purpose-Bound Access Audit Log */}
-        <Card className="p-5 bg-slate-900/60 border-slate-800 backdrop-blur-md space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-            <div className="space-y-0.5">
-              <h4 className="text-sm font-bold text-white flex items-center gap-2">
-                <History className="w-4 h-4 text-cyan-400" />
-                Live Purpose-Bound Access Audit Log (`IncidentLegalAccessEvent`)
-              </h4>
-              <p className="text-xs text-slate-400">
-                Every inspection of legal-sensitive evidence is cryptographically recorded with operator identity and statutory access justification.
-              </p>
-            </div>
-            <Badge variant="anchored">{auditLogs.length} Events Logged</Badge>
-          </div>
-
-          <div className="space-y-2">
-            {auditLogs.map((log) => (
-              <div
-                key={log.id}
-                className="p-3 rounded-lg bg-slate-950/70 border border-slate-800/80 font-mono text-xs flex flex-col md:flex-row md:items-center justify-between gap-2"
-              >
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2">
-                    <span className="font-bold text-cyan-300">{log.accessorName}</span>
-                    <Badge variant="neutral">{log.purpose}</Badge>
-                    <span className="text-slate-500 text-[10px]">{log.id}</span>
-                  </div>
-                  <p className="text-slate-300 font-sans text-xs">{log.accessReason}</p>
-                </div>
-
-                <div className="text-right text-[11px] text-slate-400 shrink-0">
-                  <div>{new Date(log.timestamp).toLocaleString()}</div>
-                  <div className="text-slate-500 text-[10px]">{log.ipAddress || "Verified TLS Session"}</div>
-                </div>
-              </div>
+      }
+      kpis={
+        <KpiGrid
+          items={[
+            { label: "Contract validation", value: "Unverified", hint: "Customer terms awaiting confirmation", tone: "amber", icon: <ClipboardList className="w-3.5 h-3.5" /> },
+            { label: "Demo retainer usage", value: "18 / 50 h", hint: "Illustrative quota · not billing data", tone: "blue", icon: <Clock className="w-3.5 h-3.5" /> },
+            { label: "Open IR requests", value: String(counts.awaiting + counts.engaged), hint: `${counts.awaiting} awaiting provider acknowledgement`, tone: "purple" },
+            { label: "At-risk demo SLA", value: String(counts.awaiting), hint: "Illustrative P1 response window", tone: "rose", icon: <AlertOctagon className="w-3.5 h-3.5" /> },
+          ]}
+        />
+      }
+      tabs={[{ id: "overview", label: "Overview" }]}
+      activeTab={tab}
+      onTabChange={setTab}
+      console={<IrRetainerConsole />}
+      consoleLabel="Live work orders & hour ledger"
+      footer={<div className="flex justify-between text-[10px] text-slate-500"><span>ZOIKOSHIELD · IR RETAINER &amp; SLA · DESIGN REVIEW</span><span>All names, services, timers, contracts and metrics are simulated · Not evidence of operational readiness</span></div>}
+    >
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <Panel title="IR service requests & engagements" meta="View engagement history →">
+          <div className="text-[11px] text-slate-500 -mt-1 mb-3">Customer requests, response acknowledgment, ownership and linked incidents</div>
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {FILTERS.map((f) => (
+              <button key={f.id} type="button" onClick={() => setFilter(f.id)} className={`px-3 py-1.5 rounded-lg border text-[11px] font-semibold ${filter === f.id ? "bg-sky-600 border-sky-500 text-white" : "border-[#1e2b44] text-slate-300"}`}>{f.label} · {counts[f.id]}</button>
             ))}
           </div>
-        </Card>
+          <DataTable
+            rows={rows}
+            rowKey={(r) => r.id}
+            selectedKey={sel.id}
+            onSelect={(r) => setSelectedId(r.id)}
+            columns={[
+              { key: "id", header: "Request", render: (r) => <div><div className="font-mono font-semibold text-slate-100">{r.id}</div><div className="text-[10px] text-slate-500">{r.when}</div></div> },
+              { key: "t", header: "Incident / service", render: (r) => <div><div className="font-semibold text-slate-100">{r.title}</div><div className="text-[10px] text-slate-500">{r.caseRef} · {r.kind}</div></div> },
+              { key: "p", header: "Priority", render: (r) => <Pill tone={PRIO_TONE[r.priority]}>{r.priority}</Pill> },
+              { key: "s", header: "State", render: (r) => <Pill tone={r.stateTone}>{r.state}</Pill> },
+              { key: "sla", header: "SLA clock *", render: (r) => <span className={r.sla.includes("left") ? "font-semibold text-rose-300" : r.sla === "Met" ? "text-emerald-300" : "text-slate-400"}>{r.sla}</span> },
+            ]}
+          />
+        </Panel>
+
+        <Panel title={sel.state === "Awaiting accept" ? "Provider acknowledgment pending" : sel.title} meta={`${sel.priority.toUpperCase()}${sel.state === "Awaiting accept" ? " · NOT ACCEPTED" : ""}`} metaTone={PRIO_TONE[sel.priority]}>
+          <div className="text-[11px] text-slate-500 -mt-1 mb-3">{sel.id} · Linked to {sel.caseRef}</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="rounded-lg border border-[#162238] p-3">
+              <div className="text-xs font-bold text-slate-200 mb-2">Request context</div>
+              <KeyValues cols={1} items={[
+                { k: "Requestor", v: "Sarah Chen · Analyst" },
+                { k: "Requested assistance", v: sel.title },
+                { k: "Submitted", v: sel.when },
+                { k: "Provider acknowledgement", v: sel.state === "Awaiting accept" ? "Not received" : "Received", tone: sel.state === "Awaiting accept" ? "rose" : "emerald" },
+              ]} />
+            </div>
+            <div className="rounded-lg border border-[#162238] p-3">
+              <div className="text-xs font-bold text-slate-200 mb-2">Scope and service boundary</div>
+              <KeyValues cols={1} items={[
+                { k: "Response coverage", v: "Unverified", tone: "amber" },
+                { k: "Assigned responder", v: sel.state === "Awaiting accept" ? "Not assigned" : "Provider engineer" },
+                { k: "Case status", v: sel.state === "Resolved" ? "Closed" : "Internal triage ongoing" },
+                { k: "Authority", v: "Provider decides acceptance" },
+              ]} />
+            </div>
+          </div>
+          <div className="mt-3 rounded-lg border border-[#162238] p-3">
+            <div className="text-xs font-bold text-slate-200 mb-3">Engagement lifecycle · Provider confirmation required</div>
+            <StepFlow steps={[
+              { label: "Submitted", sub: "Customer request", state: "done" },
+              { label: "Acknowledge", sub: sel.state === "Awaiting accept" ? "Provider pending" : "Received", state: sel.state === "Awaiting accept" ? "active" : "done" },
+              { label: "Accept & scope", sub: ["Engaged", "Resolved"].includes(sel.state) ? "Scoped" : "Not commenced", state: ["Engaged", "Resolved"].includes(sel.state) ? "done" : "pending" },
+              { label: "IR engagement", sub: sel.state === "Resolved" ? "Complete" : sel.state === "Engaged" ? "In progress" : "Not commenced", state: sel.state === "Resolved" ? "done" : sel.state === "Engaged" ? "active" : "pending" },
+            ]} />
+          </div>
+          <p className="mt-3 text-[11px] text-amber-200 border border-amber-500/40 bg-amber-950/30 rounded-lg p-2.5"><b>Action required:</b> Verify the contracted duty channel, then follow the customer escalation protocol. Submitting this request does not confirm provider acceptance or guarantee dispatch.</p>
+        </Panel>
       </div>
 
-      {/* Modal 1: Mandatory Purpose-Bound Access Reason Prompt */}
-      <Modal
-        isOpen={isAccessPromptModalOpen}
-        onClose={() => setIsAccessPromptModalOpen(false)}
-        title="Purpose-Bound Legal Access Verification (§16.4)"
-        description="Provide a statutory access justification before loading sensitive legal artifacts."
-      >
-        <form onSubmit={handleConfirmAccessReason} className="space-y-4">
-          <div className="p-3.5 rounded-xl bg-purple-950/30 border border-purple-500/40 text-xs text-purple-200 space-y-1">
-            <span className="font-bold text-purple-300 block">Access Purpose:</span>
-            <p>Querying legal records under purpose <strong className="text-white font-mono">{pendingPurposeToQuery}</strong>.</p>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-mono text-slate-300">Operator Stated Purpose / Justification:</label>
-            <textarea
-              rows={3}
-              required
-              value={accessPromptForm.accessReason}
-              onChange={(e) => setAccessPromptForm({ ...accessPromptForm, accessReason: e.target.value })}
-              placeholder="e.g. Statutory regulatory response compilation for SEC / DORA inquiry..."
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-sans"
-            />
-          </div>
-
-          <div className="p-3 bg-slate-950 border border-slate-800 rounded-lg text-[11px] text-slate-400">
-            <span className="text-amber-400 font-bold block mb-0.5">Audit Notice:</span>
-            Your operator identity, timestamp, and justification will be recorded into the immutable audit ledger.
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
-            <Button variant="outline" type="button" onClick={() => setIsAccessPromptModalOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="primary" type="submit">
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Verify &amp; Load Records</span>
-            </Button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Modal 2: Inspect Legal Record Detail */}
-      {viewingRecord && (
-        <Modal
-          isOpen={!!viewingRecord}
-          onClose={() => setViewingRecord(null)}
-          title={`Legal Artifact: ${viewingRecord.id}`}
-          description="Detailed metadata and counsel control verification."
-        >
-          <div className="space-y-4 text-xs font-mono">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
-                <span className="text-[10px] text-slate-400 block">PURPOSE</span>
-                <span className="text-cyan-300 font-bold">{viewingRecord.purpose}</span>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <Panel title="Response targets & escalation" meta="View policy details →">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="rounded-lg border border-[#162238] p-3">
+              <div className="text-xs font-bold text-slate-200 mb-3">Illustrative SLA matrix</div>
+              <div className="space-y-3">
+                <ProgressRow label="P1 · Critical — 30 min target" value={75} display="Provider ack" tone="rose" />
+                <ProgressRow label="P2 · High — 1 hour target" value={30} display="Provider ack" tone="amber" />
+                <ProgressRow label="P3 · Medium — 4 hours target" value={12} display="Provider ack" tone="blue" />
               </div>
-              <div className="p-3 rounded-lg bg-slate-950 border border-slate-800">
-                <span className="text-[10px] text-slate-400 block">PRIVILEGE STATUS</span>
-                <span className="text-amber-400 font-bold">{viewingRecord.privilegeStatus}</span>
-              </div>
+              <p className="text-[10px] text-slate-500 mt-3">Targets are demo assumptions, not confirmed contractual commitments.</p>
             </div>
-
-            <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
-              <span className="text-[10px] text-slate-400 block">CONTENT REFERENCE VAULT</span>
-              <span className="text-slate-200">{viewingRecord.contentReference}</span>
-            </div>
-
-            <div className="p-3 rounded-lg bg-slate-950 border border-slate-800 space-y-1">
-              <span className="text-[10px] text-slate-400 block">STATUTORY NON-LEGAL ADVICE DISCLAIMER</span>
-              <p className="text-slate-300 font-sans text-xs leading-relaxed">
-                {viewingRecord.noLegalAdviceWording || "This work order does not establish legal privilege or provide a breach-notification, regulatory, or legal conclusion."}
-              </p>
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <Button variant="outline" onClick={() => setViewingRecord(null)}>
-                Close
-              </Button>
+            <div className="rounded-lg border border-[#162238] p-3">
+              <div className="text-xs font-bold text-slate-200 mb-3">Escalation and communication record</div>
+              <EventList items={[
+                { title: "Internal priority confirmed", sub: "12:42 · Case priority and supporting evidence checked", tone: "emerald" },
+                { title: "IR support request created", sub: "12:44 · Demonstration request reference issued", tone: "emerald" },
+                { title: "Provider acknowledgment outstanding", sub: "Acceptance not evidenced · escalation review required", tone: "amber" },
+                { title: "Specialist mobilization", sub: "Not scheduled until coverage and acceptance confirmed", tone: "slate" },
+              ]} />
             </div>
           </div>
-        </Modal>
-      )}
-
-      {/* Modal 3: Activate Emergency Work Order */}
-      {isActivateModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <Card className="w-full max-w-lg bg-slate-900 border-slate-800 p-6 space-y-4 shadow-2xl">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-red-400" />
-                  Activate Emergency IR Work Order
-                </h3>
-                <p className="text-xs text-slate-400 mt-1">
-                  Creates an isolated incident work order against active retainer {activeRetainer?.id}.
-                </p>
+        </Panel>
+        <Panel title="Retainer & authorized contacts" meta="Contract source →">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="rounded-lg border border-[#162238] p-3">
+              <div className="text-xs font-bold text-slate-200 mb-3">Illustrative entitlement record</div>
+              <div className="space-y-2 text-[11px]">
+                <div className="flex justify-between"><span className="text-slate-400">Contract verification</span><span className="font-semibold text-amber-300">Pending validation</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Proposed coverage</span><span className="font-semibold text-slate-200">24/7 · Subject to signed terms</span></div>
+                <div className="flex justify-between"><span className="text-slate-400">Sample retainer balance</span><span className="font-semibold text-slate-200">32 of 50 h remaining</span></div>
               </div>
-              <button
-                onClick={() => setIsActivateModalOpen(false)}
-                className="text-slate-500 hover:text-slate-300 text-sm"
-              >
-                ✕
-              </button>
+              <div className="mt-3"><ProgressRow label="" value={18} max={50} display="" tone="blue" /></div>
+              <p className="text-[10px] text-slate-500 mt-2">No coverage guarantee or billing authorization implied.</p>
             </div>
-
-            <form onSubmit={handleActivateSubmit} className="space-y-3 text-xs">
-              <div>
-                <label className="block text-slate-400 mb-1">Incident Reference</label>
-                <input
-                  type="text"
-                  value={activationForm.incidentReference}
-                  onChange={(e) => setActivationForm({ ...activationForm, incidentReference: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white font-mono focus:border-cyan-500 focus:outline-none"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-400 mb-1">Activation Reason</label>
-                <input
-                  type="text"
-                  value={activationForm.activationReason}
-                  onChange={(e) => setActivationForm({ ...activationForm, activationReason: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:border-cyan-500 focus:outline-none"
-                  required
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-400 mb-1">Response Authority</label>
-                  <select
-                    value={activationForm.responseAuthority}
-                    onChange={(e) =>
-                      setActivationForm({
-                        ...activationForm,
-                        responseAuthority: e.target.value as "R0" | "R1" | "R2" | "R3" | "R4",
-                      })
-                    }
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:border-cyan-500 focus:outline-none"
-                  >
-                    <option value="R0">R0 - Observation Only</option>
-                    <option value="R1">R1 - Recommendation Only</option>
-                    <option value="R2">R2 - Automated Containment</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-slate-400 mb-1">Authorization Ref</label>
-                  <input
-                    type="text"
-                    value={activationForm.activationReference}
-                    onChange={(e) => setActivationForm({ ...activationForm, activationReference: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white font-mono focus:border-cyan-500 focus:outline-none"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-400 mb-1">Readiness Evidence Vault Refs (comma-separated)</label>
-                <input
-                  type="text"
-                  value={activationForm.readinessEvidenceRefs}
-                  onChange={(e) => setActivationForm({ ...activationForm, readinessEvidenceRefs: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white font-mono focus:border-cyan-500 focus:outline-none"
-                  required
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-                <Button variant="outline" type="button" onClick={() => setIsActivateModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button variant="danger" type="submit">
-                  Confirm &amp; Activate
-                </Button>
-              </div>
-            </form>
-          </Card>
-        </div>
-      )}
-
-      {/* Modal 4: Log Hours */}
-      {isLogHoursModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <Card className="w-full max-w-md bg-slate-900 border-slate-800 p-6 space-y-4 shadow-2xl">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-cyan-400" />
-                  Log Work Hours
-                </h3>
-                <p className="text-xs text-slate-400 mt-1">
-                  Deducts hours from included balance for {selectedWorkOrder?.incidentReference}.
-                </p>
-              </div>
-              <button
-                onClick={() => setIsLogHoursModalOpen(false)}
-                className="text-slate-500 hover:text-slate-300 text-sm"
-              >
-                ✕
-              </button>
+            <div className="rounded-lg border border-[#162238] p-3">
+              <div className="text-xs font-bold text-slate-200 mb-3">Escalation contact directory</div>
+              <EventList items={[
+                { title: "Contracted duty desk", sub: "Contact method · Verify agreement", tag: "Unverified", tone: "amber" },
+                { title: "IR engagement lead", sub: "Assigned on provider acceptance", tag: "Not assigned", tone: "blue" },
+                { title: "Sarah Chen", sub: "Tenant requester · Security Analyst", tag: "Requester", tone: "emerald" },
+              ]} />
+              <div className="flex items-center gap-1 text-[10px] text-slate-500 mt-2"><Check className="w-3 h-3" /> Contacts are tenant-scoped</div>
             </div>
-
-            <form onSubmit={handleLogHoursSubmit} className="space-y-3 text-xs">
-              <div>
-                <label className="block text-slate-400 mb-1">Hours Spent</label>
-                <input
-                  type="number"
-                  min="0.5"
-                  step="0.5"
-                  value={logHoursForm.hours}
-                  onChange={(e) => setLogHoursForm({ ...logHoursForm, hours: Number(e.target.value) })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white font-mono focus:border-cyan-500 focus:outline-none"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-400 mb-1">Work Description</label>
-                <textarea
-                  rows={3}
-                  value={logHoursForm.workDescription}
-                  onChange={(e) => setLogHoursForm({ ...logHoursForm, workDescription: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:border-cyan-500 focus:outline-none"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-400 mb-1">Evidence Reference Link</label>
-                <input
-                  type="text"
-                  value={logHoursForm.evidenceReference}
-                  onChange={(e) => setLogHoursForm({ ...logHoursForm, evidenceReference: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white font-mono focus:border-cyan-500 focus:outline-none"
-                  required
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-                <Button variant="outline" type="button" onClick={() => setIsLogHoursModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button variant="primary" type="submit">
-                  Record Consumption
-                </Button>
-              </div>
-            </form>
-          </Card>
-        </div>
-      )}
-
-      {/* Modal 5: Create Legal-Sensitive Record */}
-      {isLegalRecordModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-          <Card className="w-full max-w-lg bg-slate-900 border-slate-800 p-6 space-y-4 shadow-2xl">
-            <div className="flex justify-between items-start">
-              <div>
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Scale className="w-5 h-5 text-purple-400" />
-                  Record Legal-Sensitive Artifact
-                </h3>
-                <p className="text-xs text-slate-400 mt-1">
-                  Stores purpose-bound legal context with statutory disclaimer (§16.4).
-                </p>
-              </div>
-              <button
-                onClick={() => setIsLegalRecordModalOpen(false)}
-                className="text-slate-500 hover:text-slate-300 text-sm"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleCreateLegalRecordSubmit} className="space-y-3 text-xs">
-              <div>
-                <label className="block text-slate-400 mb-1">Purpose Classification</label>
-                <select
-                  value={legalForm.purpose}
-                  onChange={(e) =>
-                    setLegalForm({
-                      ...legalForm,
-                      purpose: e.target.value as any,
-                    })
-                  }
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:border-cyan-500 focus:outline-none"
-                >
-                  <option value="REGULATOR_INQUIRY">REGULATOR_INQUIRY</option>
-                  <option value="LEGAL_DEFENSE">LEGAL_DEFENSE</option>
-                  <option value="INSURER_PROOF">INSURER_PROOF</option>
-                  <option value="INCIDENT_COORDINATION">INCIDENT_COORDINATION</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-slate-400 mb-1">Content Reference Link</label>
-                <input
-                  type="text"
-                  value={legalForm.contentReference}
-                  onChange={(e) => setLegalForm({ ...legalForm, contentReference: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white font-mono focus:border-cyan-500 focus:outline-none"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-400 mb-1">Access &amp; Purpose Justification</label>
-                <textarea
-                  rows={2}
-                  value={legalForm.accessReason}
-                  onChange={(e) => setLegalForm({ ...legalForm, accessReason: e.target.value })}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 text-white focus:border-cyan-500 focus:outline-none"
-                  required
-                />
-              </div>
-
-              <div className="p-3 bg-slate-950/80 rounded-lg border border-slate-800 text-[11px] text-slate-400">
-                <span className="text-amber-400 font-bold block mb-1">Legal Notice Attached:</span>
-                &quot;This work order does not establish legal privilege or provide a breach-notification, regulatory, or legal conclusion.&quot;
-              </div>
-
-              <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-                <Button variant="outline" type="button" onClick={() => setIsLegalRecordModalOpen(false)}>
-                  Cancel
-                </Button>
-                <Button variant="ai" type="submit">
-                  Store Record
-                </Button>
-              </div>
-            </form>
-          </Card>
-        </div>
-      )}
-    </div>
+          </div>
+        </Panel>
+      </div>
+    </WorkspacePage>
   );
 }
