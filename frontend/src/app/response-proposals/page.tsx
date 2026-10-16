@@ -78,7 +78,7 @@ const SAMPLE_PROPOSALS: Proposal[] = [
     rollback_action_type: "RESTORE_USER_SESSION_CACHE",
     residual_risk: "None — Zero Collateral Disruption Verified via WASM Dry-Run Sandbox",
     blast_radius: "0 Downstream Dependents (Isolated to Session Cache)",
-    kms_key_signature: "sha256:42c68b71d9a0e44b931fa0172e819ac4092bbf1841... [Cloud HSM FIPS 140-3 Level 3]",
+    kms_key_signature: "sha256:42c68b71d9a0e44b931fa0172e819ac4092bbf1841... [Cloud KMS Hardware Custody]",
     status: "PROPOSED",
     expires_at: new Date(Date.now() + 3600000).toISOString(),
     created_at: new Date(Date.now() - 300000).toISOString(),
@@ -96,7 +96,7 @@ const SAMPLE_PROPOSALS: Proposal[] = [
     rollback_action_type: "ATTACH_SECURITY_GROUP_DEFAULT",
     residual_risk: "Temporary egress block for worker tier",
     blast_radius: "0 Core Workloads Disrupted (Worker Auto-Healed)",
-    kms_key_signature: "sha256:77f19a02ce55b881a... [Cloud HSM FIPS 140-3 Level 3]",
+    kms_key_signature: "sha256:77f19a02ce55b881a... [Cloud KMS Hardware Custody]",
     status: "SIMULATED",
     expires_at: new Date(Date.now() + 7200000).toISOString(),
     created_at: new Date(Date.now() - 600000).toISOString(),
@@ -258,7 +258,7 @@ export default function ResponseProposalsPage() {
           <div className="p-3 rounded-xl bg-[#080d19] border border-slate-800/80">
             <span className="text-slate-400 block text-[10px] uppercase">hardware kms signature: </span>
             <span className="text-slate-300 truncate block text-[11px]">
-              {proposal.kms_key_signature || "sha256:42c68b71d9a0e... [Cloud HSM FIPS 140-3]"}
+              {proposal.kms_key_signature || "sha256:42c68b71d9a0e... [Cloud KMS Hardware Custody]"}
             </span>
           </div>
         </div>

@@ -2262,7 +2262,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
             name: "Public Sector & Defense Infrastructure",
             badge: "FedRAMP High & CMMC L2",
             status: "ACTIVE",
-            statutoryCaveat: "FIPS 140-3 cryptographic module boundary and dedicated sovereign cell placement.",
+            statutoryCaveat: "Cryptographic module boundary and dedicated sovereign cell placement.",
             activeControls: ["FEDRAMP-AC-2-ACCOUNT-MANAGEMENT", "FEDRAMP-AU-2-EVENT-LOGGING", "FEDRAMP-SC-13-CRYPTOGRAPHIC-PROTECTION"],
           },
           {
