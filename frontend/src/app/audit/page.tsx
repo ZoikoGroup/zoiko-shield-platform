@@ -1,342 +1,179 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { ZoikoShieldApiClient } from "@/lib/api-client";
-import type { AuditPackage } from "@/lib/types";
-import { formatTimestamp, truncateHash } from "@/lib/utils";
-import { Card } from "@/ui/Card";
-import { Button } from "@/ui/Button";
-import { Badge } from "@/ui/Badge";
-import { VerifierTerminal } from "@/components/audit/VerifierTerminal";
+import React, { useMemo, useState } from "react";
+import Link from "next/link";
+import { FileText, Download, ScanLine, ShieldCheck, Clock, AlertTriangle, Lock, CheckCircle2, Info } from "lucide-react";
+import AuditConsole from "./console";
 import {
-  FileCheck2,
-  Download,
-  Lock,
-  CheckCircle2,
-  Sparkles,
-  Shield,
-  KeyRound,
-  ArrowRight,
-  RefreshCw,
-} from "lucide-react";
-import {
-  LoadingState,
-  StaleState,
-  UnavailableState,
-  DegradedState,
-} from "@/components/states/mandatory-ui-states";
+  WorkspacePage, PageHeader, NoticeBanner, KpiGrid, Panel, Pill, DataTable, SearchInput,
+  KeyValues, EventList, ActionButton, CONSOLE_TAB, useTabFilter, type Tone,
+} from "@/components/mockup/kit";
 
-export default function AuditPage() {
-  const router = useRouter();
-  const [auditPackages, setAuditPackages] = useState<AuditPackage[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isStale, setIsStale] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
+type Pkg = { id: string; contents: string; created: string; proof: "Proof valid" | "Review due" | "Proof mismatch" | "Not checked"; records: number; case: string };
 
-  useEffect(() => {
-    setIsLoading(true);
-    ZoikoShieldApiClient.getAuditPackages()
-      .then((pkgs) => {
-        setAuditPackages(pkgs);
-        setIsStale(false);
-        setLoadError(null);
-      })
-      .catch((err) => {
-        setIsStale(true);
-        setLoadError(err instanceof Error ? err.message : String(err));
-      })
-      .finally(() => {
-        setIsLoading(false);
-      });
-  }, []);
+const PACKAGES: Pkg[] = [
+  { id: "ZS-AUD-2614", contents: "Identity incident evidence", created: "14 Oct · 12:26", proof: "Proof valid", records: 18, case: "C-1028" },
+  { id: "ZS-AUD-2613", contents: "Detection rule change", created: "14 Oct · 10:18", proof: "Review due", records: 7, case: "CHG-0412" },
+  { id: "ZS-AUD-2612", contents: "SOC shift handover", created: "13 Oct · 22:05", proof: "Proof valid", records: 11, case: "SHIFT-1013" },
+  { id: "ZS-AUD-2611", contents: "Connector configuration", created: "13 Oct · 18:42", proof: "Proof mismatch", records: 5, case: "CONN-009" },
+  { id: "ZS-AUD-2610", contents: "SOAR approval decisions", created: "12 Oct · 16:07", proof: "Not checked", records: 9, case: "ACT-0187" },
+];
+const PROOF_TONE: Record<Pkg["proof"], Tone> = { "Proof valid": "emerald", "Review due": "amber", "Proof mismatch": "rose", "Not checked": "blue" };
 
-  const refreshAuditPackages = async () => {
-    setIsLoading(true);
-    try {
-      const pkgs = await ZoikoShieldApiClient.getAuditPackages();
-      setAuditPackages(pkgs);
-      setIsStale(false);
-      setLoadError(null);
-    } catch (err) {
-      setIsStale(true);
-      setLoadError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setIsLoading(false);
-    }
-  };
+const TABS = [
+  { id: "overview", label: "Overview" },
+  { id: "packages", label: "Audit packages" },
+  { id: "chain", label: "Evidence chain" },
+  { id: "offline", label: "Offline verification" },
+  { id: "auditor", label: "Auditor Workspace" },
+  { id: "trail", label: "Audit trail" },
+];
 
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generateError, setGenerateError] = useState<string | null>(null);
-
-  const latestPackage = auditPackages[0];
-  const manifest: Partial<NonNullable<AuditPackage["manifest"]>> =
-    (latestPackage && typeof latestPackage === "object" && (latestPackage.manifest || (latestPackage as any)?.data?.manifest)) || {};
-  // A package that exists but has not been built/sealed yet has no manifest
-  // (AuditPackageManifest? is nullable). That is a real, honest state worth
-  // showing as pending - never papered over with fabricated "_verified"
-  // strings or placeholder counts, since this page is the evidence a
-  // customer or auditor reads as proof of cryptographic integrity.
-  const isSealed = Boolean(latestPackage?.manifest);
-  const packageSizeKB = (((latestPackage?.sizeBytes ?? 0) / 1024)).toFixed(1);
-  const generatedDate = latestPackage?.generatedAt || new Date().toISOString();
-
-  const handleGenerate = async () => {
-    setIsGenerating(true);
-    setGenerateError(null);
-    try {
-      const pkg = await ZoikoShieldApiClient.generateAuditPackage();
-      setAuditPackages((prev) => [pkg, ...prev.filter((p) => p.id !== pkg.id)]);
-    } catch (err) {
-      console.error("Generate Audit Package Error:", err);
-      setGenerateError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setIsGenerating(false);
-    }
-  };
+export default function AuditVerifierPage() {
+  const [tab, setTab] = useState("overview");
+  const [query, setQuery] = useState("");
+  const [selectedId, setSelectedId] = useState(PACKAGES[0].id);
+  const show = useTabFilter(tab, "overview");
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? PACKAGES.filter((p) => `${p.id} ${p.contents} ${p.case}`.toLowerCase().includes(q)) : PACKAGES;
+  }, [query]);
+  const sel = PACKAGES.find((p) => p.id === selectedId) ?? PACKAGES[0];
+  const valid = sel.proof === "Proof valid";
 
   return (
-    <div className="space-y-6 pb-16">
-      {/* Header Banner */}
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-b from-[#0c111e] to-[#070b14] shadow-xl">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <Badge variant="anchored" className="text-[10px] font-mono">ERB-01 STEP 10</Badge>
-              <span className="text-xs font-mono text-cyan-400 font-bold tracking-wider">
-                POST-QUANTUM AUDIT EXPORT
-              </span>
+    <WorkspacePage
+      header={
+        <PageHeader
+          icon={<FileText className="w-5 h-5" />}
+          eyebrow="Assurance / Independent verification"
+          title="Audit & Verifier"
+          subtitle="Inspect sealed audit packages, validate evidence integrity, and prepare independently verifiable records."
+          actions={
+            <>
+              <ActionButton onClick={() => setTab("offline")}><Download className="w-3.5 h-3.5" /> Offline verifier guide</ActionButton>
+              <ActionButton primary onClick={() => setTab(CONSOLE_TAB)}><ScanLine className="w-3.5 h-3.5" /> Verify proof</ActionButton>
+            </>
+          }
+        />
+      }
+      banner={
+        <NoticeBanner
+          tone="cyan"
+          icon={<Info className="w-4 h-4" />}
+          title="Demo workspace"
+          body="All values, identifiers, and verification outcomes are simulated. Cryptographic integrity does not establish evidence completeness, control effectiveness, or regulatory certification."
+        />
+      }
+      kpis={
+        <KpiGrid
+          items={[
+            { label: "Sealed audit packages", value: "12", hint: "3 prepared in the selected period", tone: "blue", icon: <FileText className="w-3.5 h-3.5" /> },
+            { label: "Proof checks completed", value: "128", hint: "Illustrative verifier run count", tone: "emerald", icon: <ShieldCheck className="w-3.5 h-3.5" /> },
+            { label: "Packages awaiting review", value: "3", hint: "Human assurance review required", tone: "amber", icon: <Clock className="w-3.5 h-3.5" /> },
+            { label: "Integrity exceptions", value: "1", hint: "Investigate before disclosure", tone: "rose", icon: <AlertTriangle className="w-3.5 h-3.5" /> },
+          ]}
+        />
+      }
+      tabs={TABS}
+      activeTab={tab}
+      onTabChange={setTab}
+      console={<AuditConsole />}
+      consoleLabel="Live package export & verifier"
+      footer={<div className="flex justify-between text-[10px] text-slate-500"><span>ZoikoShield · Audit &amp; Verifier · v3.2</span><span>Sample data only · No live telemetry or certification assertions</span></div>}
+    >
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
+        {show("packages", "chain") && (
+          <Panel title="Audit package register" meta="View all packages →" className="xl:col-span-3">
+            <div className="text-[11px] text-slate-500 -mt-1 mb-3">Searchable, tenant-scoped packages · immutable identifiers</div>
+            <div className="mb-3"><SearchInput value={query} onChange={setQuery} placeholder="Search ID, case, or evidence" /></div>
+            <DataTable
+              rows={rows}
+              rowKey={(r) => r.id}
+              selectedKey={sel.id}
+              onSelect={(r) => setSelectedId(r.id)}
+              columns={[
+                { key: "id", header: "Package ID", render: (r) => <span className="font-mono font-semibold text-sky-300">{r.id}</span> },
+                { key: "c", header: "Contents / scope", render: (r) => r.contents },
+                { key: "t", header: "Created (UTC)", render: (r) => <span className="font-mono">{r.created}</span> },
+                { key: "p", header: "Proof status", render: (r) => <Pill tone={PROOF_TONE[r.proof]}>{r.proof}</Pill> },
+                { key: "a", header: "Action", render: (r) => <span className="text-sky-300">{r.proof === "Proof mismatch" ? "Investigate →" : r.proof === "Not checked" ? "Verify proof →" : "Inspect package →"}</span> },
+              ]}
+            />
+          </Panel>
+        )}
+        {show("offline", "packages") && (
+          <Panel title={`Selected package · ${sel.contents}`} meta="DEMO" className="xl:col-span-2">
+            <div className="text-[11px] text-slate-500 -mt-1 mb-3">{sel.id} · Case {sel.case} · Read-only</div>
+            <div className={`flex items-center justify-between rounded-lg border px-3 py-2 text-xs ${valid ? "border-emerald-500/40 bg-emerald-950/30 text-emerald-200" : "border-amber-500/40 bg-amber-950/30 text-amber-200"}`}>
+              <span className="flex items-center gap-2">{valid ? <CheckCircle2 className="w-4 h-4" /> : <AlertTriangle className="w-4 h-4" />}{valid ? "Inclusion proof valid in simulated verifier run" : `${sel.proof} — not verified`}</span>
+              {valid && <span className="font-mono">12:31 UTC</span>}
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-              Audit Package Export &amp; Offline Verifier
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-400 max-w-3xl leading-relaxed">
-              Export hybrid ECDSA-P256 + ML-DSA-65 (FIPS 204) sealed packages and execute standalone zero-dependency verification.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 shrink-0">
-            <Button
-              variant="primary"
-              onClick={() => handleGenerate()}
-              isLoading={isGenerating}
-              className="shadow-[0_0_15px_rgba(59,130,246,0.25)]"
-            >
-              <Lock className="w-4 h-4" />
-              <span>Generate Sealed Audit Package</span>
-            </Button>
-            <Button
-              variant="cyan"
-              onClick={() => router.push("/admin/jit")}
-              className="shadow-[0_0_15px_rgba(0,240,255,0.25)]"
-            >
-              <span>JIT Elevation Center</span>
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <div className="rounded-lg border border-[#162238] p-2.5"><div className="text-[10px] text-slate-500">Evidence records</div><div className="text-xs font-semibold text-slate-100">{sel.records} · sealed snapshot</div></div>
+              <div className="rounded-lg border border-[#162238] p-2.5"><div className="text-[10px] text-slate-500">Verifier profile</div><div className="text-xs font-semibold text-slate-100">ZS-MERKLE-V1</div></div>
+            </div>
+            <div className="mt-3 rounded-lg border border-[#162238] bg-[#080c16] p-3 font-mono text-[11px] space-y-1">
+              {[["Merkle epoch", "#1043 · illustrative"], ["Root hash", "SHA-256: 9bc7…e41f"], ["Timestamp receipt", "RFC 3161 · demo"], ["Offline verifier", "verifier-cli · available"]].map(([k, v]) => (
+                <div key={k} className="flex justify-between"><span className="text-slate-500">{k}</span><span className="text-slate-200">{v}</span></div>
+              ))}
+            </div>
+            <p className="text-[11px] text-slate-500 mt-3">Integrity confirms that the submitted bytes match the recorded proof. Review provenance, completeness, and access scope separately.</p>
+            <div className="grid grid-cols-2 gap-2 mt-3">
+              <ActionButton primary onClick={() => setTab(CONSOLE_TAB)}><ScanLine className="w-3.5 h-3.5" /> Run verification</ActionButton>
+              <ActionButton onClick={() => setTab(CONSOLE_TAB)}><Download className="w-3.5 h-3.5" /> Export proof package</ActionButton>
+            </div>
+          </Panel>
+        )}
       </div>
 
-      {/* Mandatory UI States */}
-      {isLoading && (
-        <LoadingState
-          title="Loading Audit Packages..."
-          message="Retrieving Merkle epoch manifests and quantum-safe signatures."
-          regionalCell="us-east-1"
-        />
-      )}
-
-      {isStale && !isLoading && auditPackages.length > 0 && (
-        <StaleState
-          title="Cached Audit Export View"
-          message="Showing last verified package manifest. Could not reach the backend for a fresh copy."
-          retryAction={refreshAuditPackages}
-        />
-      )}
-
-      {isStale && !isLoading && auditPackages.length === 0 && (
-        <UnavailableState
-          title="Audit Packages Unavailable"
-          message={loadError || "Could not load audit packages from the backend."}
-          retryAction={refreshAuditPackages}
-        />
-      )}
-
-      {generateError && !isGenerating && (
-        <div className="p-4 rounded-xl bg-rose-950/40 border border-rose-500/40 text-rose-300 text-xs font-mono shadow-[0_0_15px_rgba(244,63,94,0.15)]">
-          Failed to generate audit package: {generateError}
-        </div>
-      )}
-
-      {/* Package Details Card */}
-      {latestPackage ? (
-        <Card variant="cyber" className="p-6 bg-gradient-to-b from-[#0c111e] to-[#070b14] space-y-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800/80">
-            <div className="flex items-center gap-3.5">
-              <div className="w-11 h-11 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-300 shadow-[0_0_12px_rgba(0,240,255,0.15)]">
-                <FileCheck2 className="w-5 h-5" />
-              </div>
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
+        {show("chain", "trail") && (
+          <Panel title="Evidence and audit trail" meta="View immutable trail →" className="xl:col-span-3">
+            <div className="text-[11px] text-slate-500 -mt-1 mb-3">Traceable verification events · selected tenant</div>
+            <EventList
+              items={[
+                { time: "12:31", title: "Proof inclusion verified · ZS-AUD-2614", sub: "Independent recomputation matched the simulated anchor root", tag: "Verified", tone: "emerald" },
+                { time: "12:26", title: "Audit package sealed · Identity incident evidence", sub: "Snapshot frozen · 18 records · initiated by an authorized principal", tag: "Sealed", tone: "blue" },
+                { time: "10:18", title: "Control-change package awaiting review", sub: "Evidence scope and authorization review not yet completed", tag: "Pending", tone: "amber" },
+                { time: "Yday", title: "Connector package integrity mismatch", sub: "Verification failed — excluded from verified exports pending investigation", tag: "Exception", tone: "rose" },
+              ]}
+            />
+          </Panel>
+        )}
+        {show("auditor") && (
+          <Panel title="External auditor access" meta="NOT SHARED" metaTone="amber" className="xl:col-span-2">
+            <div className="text-[11px] text-slate-500 -mt-1 mb-3">Independent review · least-privilege boundary</div>
+            <div className="flex items-start gap-3">
+              <Lock className="w-6 h-6 text-slate-300 shrink-0" />
               <div>
-                <h3 className="font-bold text-white text-base">
-                  {latestPackage.packageName || latestPackage.id || "ZoikoShield Audit Package"}
-                </h3>
-                <p className="text-xs font-mono text-cyan-400 mt-0.5">
-                  Size: {packageSizeKB} KB • Generated: {formatTimestamp(generatedDate)}
-                </p>
+                <div className="text-sm font-bold text-slate-100">Read-only Auditor Workspace</div>
+                <p className="text-[11px] text-slate-400 mt-1">Grant only the authorized evidence package, with a defined purpose, expiration, and logged access. No tenant-wide visibility by default.</p>
               </div>
             </div>
-
-            <div className="flex items-center gap-2">
-              {isSealed ? (
-                <>
-                  <Badge variant="anchored" className="text-[10px] font-mono">ML-DSA-65 Sealed</Badge>
-                  <Badge variant="pass" className="text-[10px] font-mono">ECDSA-P256 Valid</Badge>
-                </>
-              ) : (
-                <Badge variant="pending" className="text-[10px] font-mono">Awaiting Seal</Badge>
-              )}
+            <div className="flex flex-wrap gap-1.5 mt-3">
+              {["Named auditor identity", "Scope-limited evidence", "Expiring access", "Offline verification"].map((t) => <Pill key={t} tone="slate">{t}</Pill>)}
             </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-xs text-slate-300">
-            <div className="p-4 rounded-xl bg-[#060a12] border border-slate-800/80 space-y-2.5">
-              <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider">
-                Hybrid Cryptographic Seals:
-              </span>
-              <div>
-                <span className="text-slate-500 text-[11px]">PQC ML-DSA-65 (FIPS 204):</span>
-                <p className="text-emerald-400 truncate text-[11px] mt-0.5">
-                  {latestPackage.dilithiumSignature || (
-                    <em className="text-slate-500 not-italic">Not yet generated</em>
-                  )}
-                </p>
-              </div>
-              <div>
-                <span className="text-slate-500 text-[11px]">CLASSICAL ECDSA-P256:</span>
-                <p className="text-cyan-300 truncate text-[11px] mt-0.5">
-                  {latestPackage.ecdsaP256Signature || latestPackage.ed25519Signature || (
-                    <em className="text-slate-500 not-italic">Not yet generated</em>
-                  )}
-                </p>
-              </div>
-              <div>
-                <span className="text-slate-500 text-[11px]">PACKAGE SHA-256:</span>
-                <p className="text-slate-200 truncate text-[11px] mt-0.5">
-                  {latestPackage.packageHash || (
-                    <em className="text-slate-500 not-italic">Not yet generated</em>
-                  )}
-                </p>
-              </div>
+            <p className="text-[11px] text-slate-500 mt-3">An auditor may verify an exported package independently without relying on ZoikoShield&apos;s online systems.</p>
+            <div className="flex gap-2 mt-3">
+              <Link href="/auditor" className="px-3 py-2 rounded-lg border border-sky-500/50 bg-sky-950/40 text-xs font-semibold text-sky-200 hover:bg-sky-900/50">View auditor requirements</Link>
+              <ActionButton disabled><Lock className="w-3.5 h-3.5" /> Request grant · admin role</ActionButton>
             </div>
-
-            <div className="p-4 rounded-xl bg-[#060a12] border border-slate-800/80 space-y-2.5">
-              <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider">
-                Manifest Contents &amp; Proofs:
-              </span>
-              {isSealed ? (
-                <>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500 text-[11px]">EVIDENCE COUNT:</span>
-                    <span className="text-slate-200">{manifest.evidenceCount ?? "—"} Records</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500 text-[11px]">INCIDENT CASES:</span>
-                    <span className="text-slate-200">{manifest.casesCount ?? "—"} Cases</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500 text-[11px]">CONTROL TESTS:</span>
-                    <span className="text-emerald-400 font-semibold">{manifest.controlEvaluationsCount ?? "—"} / 4 Passed</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-500 text-[11px]">TSA TOKEN:</span>
-                    <span className="text-cyan-300 font-semibold truncate max-w-[180px]">{manifest.tsaTimestampProof || "—"}</span>
-                  </div>
-                </>
-              ) : (
-                <p className="text-xs text-slate-500 italic">
-                  Manifest not yet built — this package has not been sealed.
-                </p>
-              )}
-            </div>
-          </div>
-        </Card>
-      ) : (
-        <Card variant="cyber" className="py-12 text-center text-slate-400 space-y-3 font-mono text-xs bg-gradient-to-b from-[#0c111e] to-[#070b14]">
-          <p>No audit package generated yet.</p>
-          <Button variant="primary" onClick={() => handleGenerate()} isLoading={isGenerating}>
-            Generate Sealed Audit Package
-          </Button>
-        </Card>
+          </Panel>
+        )}
+      </div>
+      {tab === "offline" && (
+        <Panel title="Offline verification" meta="verifier-cli">
+          <KeyValues
+            cols={3}
+            items={[
+              { k: "1 · Export", v: "Download the sealed package and its proof bundle" },
+              { k: "2 · Verify", v: "Run verifier-cli against the bundle on an isolated host" },
+              { k: "3 · Compare", v: "Match the recomputed root to the anchored epoch root" },
+            ]}
+          />
+        </Panel>
       )}
-
-      {/* Embedded Verifier Terminal Component */}
-      <VerifierTerminal auditPackage={latestPackage} />
-
-      {/* Evidence Freshness & Honest Governance Disclosures Panel */}
-      <Card variant="cyber" className="p-6 bg-gradient-to-b from-[#0c111e] to-[#070b14] space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
-          <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-cyan-400" />
-            <h3 className="font-bold text-white text-sm">
-              Evidence Freshness SLA &amp; Honest Governance Disclosures
-            </h3>
-          </div>
-          <Badge variant="pass" className="font-mono text-[10px]">AUDITOR TRANSPARENCY</Badge>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Freshness breakdown */}
-          <div className="p-4 rounded-xl bg-[#060a12] border border-slate-800/80 space-y-2.5 font-mono text-xs">
-            <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider">
-              Evidence Telemetry Cadence SLA:
-            </span>
-            <div className="flex justify-between items-center">
-              <span className="text-slate-500 text-[11px]">FRESHNESS THRESHOLD:</span>
-              <span className="text-emerald-400 font-semibold">72 Hours Maximum SLA</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-slate-500 text-[11px]">LATEST PACKAGE AGE:</span>
-              <span className="text-slate-200">
-                {latestPackage
-                  ? `${(() => {
-                      const t = new Date(latestPackage.generatedAt || Date.now()).getTime();
-                      return !isNaN(t) ? Math.max(0, (Date.now() - t) / 3600000).toFixed(1) : "0.0";
-                    })()}h since generation`
-                  : "No package generated"}
-              </span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span className="text-slate-500 text-[11px]">PER-RECORD EVIDENCE FRESHNESS:</span>
-              <span className="text-amber-300">Not computed on this view</span>
-            </div>
-            <div className="flex justify-between items-center pt-1.5 border-t border-slate-900">
-              <span className="text-slate-500 text-[11px]">MERKLE LEAF ANCHORS:</span>
-              <span className="text-cyan-300">RFC 6962 Domain-Separated</span>
-            </div>
-          </div>
-
-          {/* Honest disclosures */}
-          <div className="p-4 rounded-xl bg-[#060a12] border border-slate-800/80 space-y-2.5 font-mono text-xs">
-            <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider">
-              Statutory Disclaimers &amp; Framework Posture:
-            </span>
-            <div className="text-[11px] text-slate-300 space-y-2 font-sans leading-relaxed">
-              <p>
-                • <strong className="text-cyan-300">SOC 2 Type II &amp; ISO/IEC 27001:2022:</strong> Active certification baseline targets with continuous control evaluation.
-              </p>
-              <p>
-                • <strong className="text-cyan-300">NIST CSF (v2.0):</strong> Voluntary reference alignment framework; not a commercial certification scheme.
-              </p>
-              <p>
-                • <strong className="text-amber-300">Regional Cell Status:</strong> Synthetic In-Process Simulation (no live cloud OpenTofu infra deployed locally).
-              </p>
-              <p>
-                • <strong className="text-amber-300">G1 Release Gate:</strong> PENDING MULTI-APPROVER SIGN-OFF (awaiting human executive ratification).
-              </p>
-            </div>
-          </div>
-        </div>
-      </Card>
-    </div>
+    </WorkspacePage>
   );
 }

@@ -14,7 +14,7 @@ vi.mock('next/navigation', () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-import JitElevationPage from '@/app/admin/jit-elevation/page';
+import JitElevationPage from '@/app/admin/jit-elevation/console';
 import RetainersAndSlaOperationsPage from '@/app/operations/retainers/page';
 import G1LaunchGatePage from '@/app/admin/g1-gate/page';
 import { ZoikoShieldApiClient } from '@/lib/api-client';

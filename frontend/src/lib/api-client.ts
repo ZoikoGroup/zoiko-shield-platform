@@ -398,6 +398,7 @@ export class ZoikoShieldApiClient {
     dataClass?: string;
     timezone?: string;
     accessDisclosureVersion?: string;
+    legalCountry?: string;
   }): Promise<Tenant> {
     const payload = {
       orderId: data.orderId || "00000000-0000-4000-8000-000000000001",
@@ -410,7 +411,10 @@ export class ZoikoShieldApiClient {
       retentionPolicyRef: "retention-standard-7y",
       legalEntity: {
         legalName: data.legalEntityName,
-        country: "GB",
+        // The DTO field is countryOfRegistration. A `country` key here is
+        // silently stripped by the whitelisting ValidationPipe, so the legal
+        // country was never persisted.
+        countryOfRegistration: data.legalCountry || "GB",
       },
       ownerEmail: data.ownerEmail || "owner@acme.com",
       environment: {

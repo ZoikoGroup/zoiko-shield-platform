@@ -1,179 +1,198 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import Link from "next/link";
-import { ZoikoShieldApiClient } from "@/lib/api-client";
-import { GTMChecklistItem } from "@/lib/types";
+import React, { useMemo, useState } from "react";
+import { ClipboardCheck, ListChecks, Download, Lock, UserX } from "lucide-react";
+import GtmChecklistConsole from "./console";
 import {
-  CheckCircle2,
-  ShieldCheck,
-  AlertOctagon,
-  RefreshCw,
-  FileCheck2,
-  Lock,
-  Scale,
-  Building,
-  Radio,
-  Server,
-  Sparkles,
-  ExternalLink,
-  ArrowRight,
-} from "lucide-react";
+  WorkspacePage, PageHeader, NoticeBanner, KpiGrid, Panel, Pill, DataTable, SearchInput,
+  NumberedList, ProgressRow, EventList, FooterStrip, ActionButton, CheckRow, CONSOLE_TAB, useTabFilter,
+} from "@/components/mockup/kit";
 
-export default function GTMChecklistPage() {
-  const [items, setItems] = useState<GTMChecklistItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [rechecking, setRechecking] = useState(false);
-  const [lastCheckTime, setLastCheckTime] = useState<string>("");
+type Item = { n: string; title: string; owner: string; evidence: "LINKED" | "MISSING" };
 
-  const loadChecklist = async () => {
-    try {
-      const data = await ZoikoShieldApiClient.getGTMChecklist();
-      setItems(data);
-      setLastCheckTime(new Date().toLocaleTimeString());
-    } catch (err) {
-      console.error("Failed to load GTM checklist", err);
-    } finally {
-      setLoading(false);
-      setRechecking(false);
-    }
-  };
+// "Recorded" reflects the demo flag set; evidence state is what is actually
+// attached. The page never treats a recorded flag as release authorization.
+const ITEMS: Item[] = [
+  { n: "01", title: "Market positioning & buyer definition", owner: "Product", evidence: "LINKED" },
+  { n: "02", title: "Pricing and plan disclosures", owner: "Commercial", evidence: "LINKED" },
+  { n: "03", title: "Entitlement and packaging review", owner: "Commercial", evidence: "LINKED" },
+  { n: "04", title: "Master service agreement approval", owner: "Legal", evidence: "MISSING" },
+  { n: "05", title: "Privacy and residency disclosure", owner: "Privacy", evidence: "LINKED" },
+  { n: "06", title: "Customer onboarding demonstration", owner: "Product", evidence: "LINKED" },
+  { n: "07", title: "Tenant access & role documentation", owner: "Security", evidence: "LINKED" },
+  { n: "08", title: "Connector setup walkthrough", owner: "Engineering", evidence: "LINKED" },
+  { n: "09", title: "Incident escalation service handbook", owner: "IR Operations", evidence: "MISSING" },
+  { n: "10", title: "Sales enablement and product demos", owner: "Marketing", evidence: "LINKED" },
+  { n: "11", title: "Billing and invoice rehearsal", owner: "Finance", evidence: "MISSING" },
+  { n: "12", title: "Customer support and handoff plan", owner: "Support", evidence: "LINKED" },
+];
 
-  useEffect(() => {
-    loadChecklist();
-  }, []);
+const TABS = [
+  { id: "checklist", label: "Readiness checklist" },
+  { id: "evidence", label: "Evidence register" },
+  { id: "owners", label: "Owners & follow-ups" },
+  { id: "commercial", label: "Commercial controls" },
+  { id: "deps", label: "Release dependencies" },
+];
 
-  const handleRecheck = () => {
-    setRechecking(true);
-    setTimeout(() => {
-      loadChecklist();
-    }, 500);
-  };
+export default function GtmPreFlightPage() {
+  const [tab, setTab] = useState("checklist");
+  const [query, setQuery] = useState("");
+  const [evidenceFilter, setEvidenceFilter] = useState<"ALL" | "LINKED" | "MISSING">("ALL");
+  const show = useTabFilter(tab, "checklist");
 
-  const passCount = items.filter((i) => i.auditPass).length;
+  const linked = ITEMS.filter((i) => i.evidence === "LINKED").length;
+  const missing = ITEMS.length - linked;
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return ITEMS.filter(
+      (i) =>
+        (evidenceFilter === "ALL" || i.evidence === evidenceFilter) &&
+        (!q || `${i.title} ${i.owner}`.toLowerCase().includes(q)),
+    );
+  }, [query, evidenceFilter]);
 
   return (
-    <div className="space-y-8 pb-16">
-      {/* Header */}
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            <span>COMMERCIAL GO-TO-MARKET GOVERNANCE</span>
-          </div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-white">
-            Section 12 Pre-Flight GTM Checklist
-          </h1>
-          <p className="text-slate-400 text-xs max-w-3xl">
-            Continuous validation cockpit enforcing all 12 commercial catalogue, pricing integrity, connector tiering, regulatory deferral, and 24/7 MDR operational readiness rules before public launch.
-          </p>
-        </div>
-
-        {/* Action Button */}
-        <div className="flex items-center gap-3 shrink-0 flex-wrap">
-          <button
-            onClick={handleRecheck}
-            disabled={rechecking}
-            className="px-4 py-2 rounded-xl bg-[#080c16] hover:bg-slate-800 border border-slate-700/80 text-slate-200 text-xs font-mono font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 text-cyan-400 ${rechecking ? "animate-spin" : ""}`} />
-            <span>Re-Verify 12 Rules</span>
-          </button>
-          <Link
-            href="/notifications"
-            className="px-4 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold flex items-center gap-2 transition-colors shadow-sm"
-          >
-            <span>Notification Center (Step 15)</span>
-            <ArrowRight className="w-3.5 h-3.5 text-cyan-400" />
-          </Link>
-        </div>
-      </div>
-
-      {/* 100% Green Certification Banner */}
-      <div className="surface-card p-6 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-[#0c111e] to-cyan-950/40 border border-emerald-500/40 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 flex items-center justify-center shrink-0 shadow-lg">
-            <CheckCircle2 className="w-7 h-7" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-bold text-slate-100">
-                12 / 12 Pre-Flight Rules Verified &amp; Enforced
-              </h2>
-              <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-mono text-[10px] font-bold border border-emerald-500/40">
-                GTM CERTIFIED PASS
-              </span>
+    <WorkspacePage
+      header={
+        <PageHeader
+          icon={<ClipboardCheck className="w-5 h-5" />}
+          title="GTM Pre-Flight Checklist"
+          routeTag="/admin/gtm-checklist"
+          subtitle="Commercial readiness review · twelve recorded checks · evidence-linked release governance"
+          actions={
+            <>
+              <ActionButton onClick={() => setTab(CONSOLE_TAB)}><ListChecks className="w-3.5 h-3.5" /> Review checklist</ActionButton>
+              <ActionButton primary onClick={() => setTab(CONSOLE_TAB)}><Download className="w-3.5 h-3.5" /> Export demo review</ActionButton>
+            </>
+          }
+        />
+      }
+      banner={
+        <NoticeBanner
+          tone="rose"
+          title="GTM checklist reported 12/12 — release authorization still blocked"
+          body="Demo flags do not replace supporting evidence, verified platform readiness or the independent eight-signer G1 launch decision."
+          tag="Illustrative status · not verified"
+        />
+      }
+      kpis={
+        <KpiGrid
+          items={[
+            { label: "Reported checklist result", value: `${ITEMS.length} / ${ITEMS.length}`, tag: "Self-reported", hint: "Demo flags recorded as passed", tone: "emerald" },
+            { label: "Linked evidence", value: `${linked} / ${ITEMS.length}`, tag: `${Math.round((linked / ITEMS.length) * 100)}% attached`, hint: `${missing} proof files still missing`, tone: "cyan" },
+            { label: "Evidence gaps", value: String(missing), tag: "Needs follow-up", hint: "Request authoritative records", tone: "amber" },
+            { label: "G1 approval signatures", value: "0 / 8", tag: "Not verified", hint: "Illustrative locked release gate", tone: "rose" },
+            { label: "Release decision", value: "BLOCKED", tag: "Fail-closed", hint: "No production authorization", tone: "purple" },
+          ]}
+        />
+      }
+      tabs={TABS}
+      activeTab={tab}
+      onTabChange={setTab}
+      console={<GtmChecklistConsole />}
+      consoleLabel="Live checklist console"
+      footer={<FooterStrip left="Design review only · 12/12 is the user-supplied demo presentation state, not a validated launch authorization." right="G1 ratification required · No cross-tenant data" />}
+    >
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        {show("evidence", "owners") && (
+          <Panel title="Twelve-Point Go-to-Market Register" meta={`12 recorded passes · ${linked} proof links`} className="xl:col-span-2">
+            <div className="flex flex-wrap gap-2 mb-3">
+              <SearchInput value={query} onChange={setQuery} placeholder="Search controls or evidence" />
+              <select
+                aria-label="Evidence filter"
+                value={evidenceFilter}
+                onChange={(e) => setEvidenceFilter(e.target.value as typeof evidenceFilter)}
+                className="px-3 py-2 rounded-lg bg-[#080c16] border border-[#162238] text-xs text-slate-300"
+              >
+                <option value="ALL">Evidence: All</option>
+                <option value="LINKED">Linked</option>
+                <option value="MISSING">Missing</option>
+              </select>
+              <Pill tone="amber">Read-only demo</Pill>
             </div>
-            <p className="text-xs text-slate-400 mt-1">
-              Zero public claim violations. Internal microservices masked, Aletheia moniker unbranded, anti-perverse billing verified, deferred frameworks fail-closed.
-            </p>
-          </div>
-        </div>
+            <DataTable
+              rows={rows}
+              rowKey={(r) => r.n}
+              columns={[
+                { key: "n", header: "#", render: (r) => <span className="font-mono text-slate-500">{r.n}</span> },
+                { key: "t", header: "Control / launch readiness item*", render: (r) => <span className="font-semibold text-slate-100">{r.title}</span> },
+                { key: "o", header: "Owner team", render: (r) => r.owner },
+                { key: "r", header: "Recorded", render: () => <Pill tone="emerald">✓ Recorded</Pill> },
+                { key: "e", header: "Evidence", render: (r) => <Pill tone={r.evidence === "LINKED" ? "cyan" : "amber"}>{r.evidence === "LINKED" ? "● Linked" : "◐ Missing"}</Pill> },
+              ]}
+            />
+            <div className="flex justify-between text-[10px] text-slate-500 mt-3">
+              <span>* Control labels are proposed UX examples; confirm canonical 12 item names in source.</span>
+              <span className="font-mono font-bold text-slate-300">12 / 12 DEMO FLAGS</span>
+            </div>
+          </Panel>
+        )}
 
-        <div className="text-right font-mono text-xs text-slate-400 shrink-0">
-          <div>Audited at: <span className="text-slate-200">{lastCheckTime || "Live"}</span></div>
-          <div className="text-[10px] text-emerald-400 font-semibold mt-0.5">CI Check: `npm run check:capability-claims`</div>
+        <div className="space-y-4">
+          {show("deps", "commercial") && (
+            <Panel title="Production Release Decision" meta="Authorization locked" metaTone="rose">
+              <div className="flex items-center gap-3 p-3 rounded-lg border border-rose-500/40 bg-rose-950/30 mb-4">
+                <UserX className="w-6 h-6 text-rose-300" />
+                <div>
+                  <div className="text-lg font-black text-slate-100">NO GO</div>
+                  <div className="text-[11px] text-slate-400">Checklist completion does not equal release authorization</div>
+                </div>
+              </div>
+              <CheckRow label="GTM recorded checklist" status="12 / 12" tone="emerald" />
+              <CheckRow label="Evidence linked to checks" status={`${linked} / 12`} tone="amber" />
+              <CheckRow label="G1 executive ratification" status="0 / 8 (demo)" tone="rose" />
+              <CheckRow label="Platform service readiness" status="Unverified" tone="amber" />
+              <button type="button" disabled className="mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-rose-500/40 bg-rose-950/30 text-xs font-semibold text-rose-300 cursor-not-allowed">
+                <Lock className="w-3.5 h-3.5" /> Production release disabled
+              </button>
+            </Panel>
+          )}
+          {show("commercial", "evidence") && (
+            <Panel title="Proof Validation Rules" meta="Proposed safeguards">
+              <NumberedList
+                items={[
+                  { title: "Evidence provenance", sub: "Approved document version and owner", tag: "Review", tone: "amber" },
+                  { title: "Freshness & applicability", sub: "Valid for planned release and regions", tag: "Review", tone: "amber" },
+                  { title: "Independent gate ratification", sub: "Eight eligible signers for same artifact", tag: "Required", tone: "rose" },
+                ]}
+              />
+            </Panel>
+          )}
         </div>
       </div>
 
-      {/* 12-Item Rules Table */}
-      <div className="surface-card p-6 rounded-2xl bg-[#0c111e]/90 border border-slate-800/80 shadow-xl space-y-4">
-        <div className="space-y-1">
-          <h3 className="text-base font-bold text-slate-100">
-            Mandatory Commercial &amp; Governance Verification Matrix
-          </h3>
-          <p className="text-xs text-slate-400">
-            Every rule maps directly to code-enforced unit tests, schema evaluators, and API gates.
-          </p>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300 border-collapse">
-            <thead>
-              <tr className="border-b border-slate-800 text-[11px] font-mono text-slate-400 uppercase">
-                <th className="py-2.5 px-3">Rule Code</th>
-                <th className="py-2.5 px-3">Domain</th>
-                <th className="py-2.5 px-3">Verification Rule Requirement</th>
-                <th className="py-2.5 px-3">Enforcement Status</th>
-                <th className="py-2.5 px-3">Underlying Code Verification Proof</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60">
-              {items.map((item) => (
-                <tr key={item.ruleCode} className="hover:bg-slate-900/80 transition-colors">
-                  <td className="py-3 px-3 font-mono font-bold text-cyan-400">
-                    {item.ruleCode}
-                  </td>
-                  <td className="py-3 px-3 font-mono text-slate-400 text-[11px]">
-                    {item.domain}
-                  </td>
-                  <td className="py-3 px-3 text-slate-200">
-                    <div className="font-semibold">{item.title}</div>
-                    <div className="text-[11px] text-slate-400 mt-0.5">{item.ruleStatement}</div>
-                  </td>
-                  <td className="py-3 px-3">
-                    <span
-                      className={`px-2 py-0.5 rounded-full font-mono text-[10px] font-bold border ${
-                        item.status === "VERIFIED"
-                          ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                          : item.status === "GATED_ENFORCED"
-                          ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
-                          : "bg-purple-500/20 text-purple-300 border-purple-500/30"
-                      }`}
-                    >
-                      ✓ {item.status}
-                    </span>
-                  </td>
-                  <td className="py-3 px-3 font-mono text-[11px] text-slate-400">
-                    <div className="text-cyan-300 font-semibold">{item.verificationSource}</div>
-                    <div className="text-[10px] text-slate-500">Automated Proof Verified</div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {show("evidence") && (
+          <Panel title="Evidence Coverage by Workstream" meta="Example categorization">
+            <div className="space-y-3.5">
+              <ProgressRow label="Offer & pricing" value={3} max={3} tone="emerald" />
+              <ProgressRow label="Legal & privacy" value={1} max={2} tone="amber" />
+              <ProgressRow label="Product demonstration" value={2} max={2} tone="cyan" />
+              <ProgressRow label="Support operations" value={1} max={2} tone="amber" />
+              <ProgressRow label="Commercial operations" value={2} max={3} tone="purple" />
+            </div>
+          </Panel>
+        )}
+        {show("owners", "evidence") && (
+          <Panel title="Outstanding Evidence Requests" meta={`${missing} pending attachments`}>
+            {ITEMS.filter((i) => i.evidence === "MISSING").map((i) => (
+              <CheckRow key={i.n} label={i.title} sub={`${i.owner} · Signed or current record required`} status="Missing" tone="amber" />
+            ))}
+          </Panel>
+        )}
+        {show("owners", "deps") && (
+          <Panel title="Approval & Review Trail" meta="Governance history">
+            <EventList
+              items={[
+                { title: "Checklist demo flags imported", sub: "12 entries · provenance unverified", tag: "Simulated", tone: "cyan" },
+                { title: "Evidence validation requested", sub: `${missing} supporting records not linked`, tag: "Illustrative", tone: "amber" },
+                { title: "Production release remains locked", sub: "Independent G1 authorization required", tag: "Blocked", tone: "rose" },
+              ]}
+            />
+          </Panel>
+        )}
       </div>
-    </div>
+    </WorkspacePage>
   );
 }

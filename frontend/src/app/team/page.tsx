@@ -1,429 +1,179 @@
 "use client";
 
-import React, { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { useDemoState } from "@/lib/demo-state";
-import { ZoikoShieldApiClient } from "@/lib/api-client";
-import { isWebauthnSupported, createPasskeyCredential } from "@/lib/webauthn";
-import { RegisteredPasskey, TenantMember } from "@/lib/types";
-import { Card } from "@/ui/Card";
-import { Button } from "@/ui/Button";
-import { Badge } from "@/ui/Badge";
-import { Modal } from "@/ui/Modal";
+import React, { useMemo, useState } from "react";
+import { Users, FileText, UserPlus, Lock, Mail, KeyRound, Clock, Eye, AlertTriangle } from "lucide-react";
+import TeamConsole from "./console";
 import {
-  Users,
-  UserPlus,
-  Mail,
-  CheckCircle2,
-  Clock,
-  Shield,
-  ArrowRight,
-  UserCheck,
-  Sparkles,
-  Fingerprint,
-  Trash2,
-  PlusCircle,
-} from "lucide-react";
-import {
-  LoadingState,
-  UnauthorizedState,
-  PartialState,
-  StaleState,
-} from "@/components/states/mandatory-ui-states";
+  WorkspacePage, PageHeader, NoticeBanner, KpiGrid, Panel, Pill, DataTable, SearchInput,
+  KeyValues, EventList, ActionButton, CONSOLE_TAB, useTabFilter, type Tone,
+} from "@/components/mockup/kit";
 
-export default function TeamPage() {
-  const router = useRouter();
-  const [state] = useDemoState();
-  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  const [email, setEmail] = useState("analyst.ops@acme.com");
-  const [role, setRole] = useState<"SECURITY_ANALYST" | "AUDITOR" | "TENANT_ADMIN">("SECURITY_ANALYST");
-  const [isLoading, setIsLoading] = useState(false);
-  const [inviteError, setInviteError] = useState<string | null>(null);
-  const [acceptingToken, setAcceptingToken] = useState<string | null>(null);
+type Member = {
+  initials: string; name: string; email: string; role: string; status: "Active" | "Limited" | "Suspended";
+  assurance: string; review: string; reviewTone: Tone; team: string; ref: string; privilege: string; lastAuth: string;
+};
 
-  const [passkeys, setPasskeys] = useState<RegisteredPasskey[]>([]);
-  const [isPasskeyEnrolling, setIsPasskeyEnrolling] = useState(false);
-  const [revokingPasskeyId, setRevokingPasskeyId] = useState<string | null>(null);
-  const [passkeyError, setPasskeyError] = useState<string | null>(null);
+const MEMBERS: Member[] = [
+  { initials: "OR", name: "Olivia Reed", email: "olivia.reed@acme.example", role: "Tenant Owner", status: "Active", assurance: "Passkey + step-up", review: "Current", reviewTone: "emerald", team: "Executive", ref: "USR-DEMO-001", privilege: "Tenant owner", lastAuth: "14 Oct · 09:02 UTC" },
+  { initials: "DR", name: "Daniel Ross", email: "daniel.ross@acme.example", role: "Tenant Admin", status: "Active", assurance: "Passkey", review: "Due 18 Oct", reviewTone: "amber", team: "Platform", ref: "USR-DEMO-004", privilege: "Tenant administration", lastAuth: "14 Oct · 10:15 UTC" },
+  { initials: "SC", name: "Sarah Chen", email: "sarah.chen@acme.example", role: "Security Analyst", status: "Active", assurance: "Passkey", review: "Current", reviewTone: "emerald", team: "Security Operations", ref: "USR-DEMO-014", privilege: "Case-scoped analyst", lastAuth: "14 Oct · 11:32 UTC" },
+  { initials: "PN", name: "Priya Nair", email: "priya.nair@acme.example", role: "Incident Responder", status: "Active", assurance: "Passkey", review: "Current", reviewTone: "emerald", team: "Incident Response", ref: "USR-DEMO-019", privilege: "Response proposals", lastAuth: "14 Oct · 08:47 UTC" },
+  { initials: "JK", name: "James Kim", email: "james.kim@audit.example", role: "External Auditor", status: "Limited", assurance: "Passkey + expiry", review: "Expires 20 Oct", reviewTone: "amber", team: "External audit", ref: "USR-DEMO-022", privilege: "Read-only audit scope", lastAuth: "13 Oct · 16:20 UTC" },
+];
 
-  const [members, setMembers] = useState<TenantMember[]>([]);
-  const [isMembersLoading, setIsMembersLoading] = useState(true);
-  const [membersError, setMembersError] = useState<string | null>(null);
+const TABS = [
+  { id: "members", label: "Members" },
+  { id: "invitations", label: "Invitations (2)" },
+  { id: "roles", label: "Roles & Permissions" },
+  { id: "passkeys", label: "Passkeys & Authentication" },
+  { id: "reviews", label: "Access Reviews" },
+  { id: "audit", label: "Tenant Audit History" },
+];
 
-  const loadMembers = useCallback(async () => {
-    setIsMembersLoading(true);
-    setMembersError(null);
-    try {
-      const data = await ZoikoShieldApiClient.listTenantMembers(state?.tenant?.id || "demo-tenant");
-      setMembers(data);
-    } catch (err: any) {
-      setMembersError(err?.message || "Unable to load the tenant roster");
-      setMembers([]);
-    } finally {
-      setIsMembersLoading(false);
-    }
-  }, [state?.tenant?.id]);
-
-  useEffect(() => {
-    void loadMembers();
-  }, [loadMembers]);
-
-  useEffect(() => {
-    ZoikoShieldApiClient.listPasskeys()
-      .then(setPasskeys)
-      .catch(() => setPasskeys([]));
-  }, []);
-
-  const handleEnrollPasskey = async () => {
-    if (!isWebauthnSupported()) {
-      setPasskeyError("This browser does not support passkeys (WebAuthn).");
-      return;
-    }
-    setIsPasskeyEnrolling(true);
-    setPasskeyError(null);
-    try {
-      const options = await ZoikoShieldApiClient.getPasskeyRegistrationOptions();
-      const attestation = await createPasskeyCredential(options);
-      const created = await ZoikoShieldApiClient.registerPasskey({
-        ...attestation,
-        label: `${state?.session?.fullName || "Analyst"}'s passkey`,
-      });
-      setPasskeys((prev) => [created, ...prev]);
-    } catch (err: any) {
-      setPasskeyError(err.message || "Passkey enrollment failed");
-    } finally {
-      setIsPasskeyEnrolling(false);
-    }
-  };
-
-  const handleRevokePasskey = async (id: string) => {
-    setRevokingPasskeyId(id);
-    setPasskeyError(null);
-    try {
-      await ZoikoShieldApiClient.revokePasskey(id);
-      setPasskeys((prev) => prev.filter((p) => p.id !== id));
-    } catch (err: any) {
-      setPasskeyError(err.message || "Unable to revoke passkey");
-    } finally {
-      setRevokingPasskeyId(null);
-    }
-  };
-
-  const handleSendInvite = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setInviteError(null);
-    try {
-      await ZoikoShieldApiClient.inviteAnalyst(
-        state?.tenant?.id || "demo-tenant",
-        email,
-        role
-      );
-      setIsInviteModalOpen(false);
-      setEmail("analyst.ops@acme.com");
-    } catch (err: any) {
-      console.error("Invite Error:", err);
-      setInviteError(err?.message || "Failed to issue membership invitation.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleAcceptInviteAsInvitee = async (inv: any) => {
-    setAcceptingToken(inv.token);
-    try {
-      // 1. Authenticate identity as the invited user per @CurrentUser() requirement on shield-core
-      await ZoikoShieldApiClient.login(inv.invitedEmail, "demo-password");
-      // 2. Accept the invitation
-      await ZoikoShieldApiClient.acceptInvitation(inv.token);
-      // 3. The roster changed; re-fetch the real membership list rather than
-      // trusting whatever it was before this accept.
-      await loadMembers();
-    } catch (err) {
-      console.error("Accept Invitation Error:", err);
-    } finally {
-      setAcceptingToken(null);
-    }
-  };
+export default function TeamAccessPage() {
+  const [tab, setTab] = useState("members");
+  const [query, setQuery] = useState("");
+  const [selectedRef, setSelectedRef] = useState("USR-DEMO-014");
+  const show = useTabFilter(tab, "members");
+  const rows = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return q ? MEMBERS.filter((m) => `${m.name} ${m.email} ${m.role}`.toLowerCase().includes(q)) : MEMBERS;
+  }, [query]);
+  const sel = MEMBERS.find((m) => m.ref === selectedRef) ?? MEMBERS[0];
 
   return (
-    <div className="space-y-6">
-      {/* Header Banner */}
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <Badge variant="pass">ERB-01 STEP 3</Badge>
-            <span className="text-xs font-mono text-cyan-400 font-bold">
-              IDENTITY &amp; ROLE-BASED ACCESS CONTROL
-            </span>
-          </div>
-          <h1 className="text-2xl font-black text-white tracking-tight">
-            Security Team &amp; Invitations
-          </h1>
-          <p className="text-xs text-slate-400 max-w-2xl">
-            Issue tenant-scoped invitations, switch to invited identity (`@CurrentUser()`), and accept membership.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Button variant="primary" onClick={() => setIsInviteModalOpen(true)}>
-            <UserPlus className="w-4 h-4" />
-            <span>Invite Security Analyst</span>
-          </Button>
-          <Button variant="cyan" onClick={() => router.push("/connectors")}>
-            <span>Proceed to Connectors</span>
-            <ArrowRight className="w-4 h-4" />
-          </Button>
-        </div>
+    <WorkspacePage
+      header={
+        <PageHeader
+          icon={<Users className="w-5 h-5" />}
+          title="Team & Access"
+          subtitle="Manage tenant membership, invitations, roles, passkeys and evidence-backed access reviews"
+          actions={
+            <>
+              <ActionButton onClick={() => setTab("audit")}><FileText className="w-3.5 h-3.5" /> Export access report</ActionButton>
+              <ActionButton primary onClick={() => setTab(CONSOLE_TAB)}><UserPlus className="w-3.5 h-3.5" /> Invite member</ActionButton>
+            </>
+          }
+        />
+      }
+      banner={
+        <NoticeBanner
+          tone="cyan"
+          icon={<Lock className="w-4 h-4" />}
+          title="Tenant boundary: Acme Corporation"
+          body="Only this tenant's users and membership grants are visible. Platform roles cannot be assigned here."
+          tag="Permission model · to be verified"
+        />
+      }
+      kpis={
+        <KpiGrid
+          items={[
+            { label: "Active tenant members", value: "21", hint: "24 total · 1 suspended · 2 invited", tone: "cyan", icon: <Users className="w-3.5 h-3.5" /> },
+            { label: "Passkeys registered", value: "21 / 24", hint: "Phishing-resistant credentials", tone: "emerald", icon: <KeyRound className="w-3.5 h-3.5" /> },
+            { label: "Pending invitations", value: "2", hint: "Acceptance not confirmed", tone: "amber", icon: <Mail className="w-3.5 h-3.5" /> },
+            { label: "Access reviews due", value: "2", hint: "Includes one elevated grant", tone: "purple", icon: <Clock className="w-3.5 h-3.5" /> },
+            { label: "Support access grants", value: "0 ACTIVE", hint: "No standing support access · proposed", tone: "slate", icon: <Lock className="w-3.5 h-3.5" /> },
+          ]}
+        />
+      }
+      tabs={TABS}
+      activeTab={tab}
+      onTabChange={setTab}
+      console={<TeamConsole />}
+      consoleLabel="Live team console"
+      footer={<div className="flex justify-between text-[10px] text-slate-500"><span>ZoikoShield · Team &amp; Access · All names, metrics and events are illustrative</span><span className="font-mono font-bold">DESIGN REVIEW ONLY · NOT VERIFIED PRODUCTION BEHAVIOR</span></div>}
+    >
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
+        {show("roles", "passkeys") && (
+          <Panel title="Members & Role Assignments" meta="24 tenant identities · Acme only" className="xl:col-span-2">
+            <div className="mb-3"><SearchInput value={query} onChange={setQuery} placeholder="Search name, email or role" /></div>
+            <DataTable
+              rows={rows}
+              rowKey={(r) => r.ref}
+              selectedKey={sel.ref}
+              onSelect={(r) => setSelectedRef(r.ref)}
+              columns={[
+                { key: "m", header: "Member", render: (r) => <div className="flex items-center gap-2"><span className="w-7 h-7 rounded-full bg-sky-700 text-[10px] font-bold text-white flex items-center justify-center">{r.initials}</span><div><div className="font-semibold text-slate-100">{r.name}</div><div className="text-[10px] text-slate-500">{r.email}</div></div></div> },
+                { key: "r", header: "Tenant role", render: (r) => r.role },
+                { key: "s", header: "Status", render: (r) => <Pill tone={r.status === "Active" ? "emerald" : "blue"}>{r.status}</Pill> },
+                { key: "a", header: "Identity assurance", render: (r) => <span className="text-slate-300">{r.assurance}</span> },
+                { key: "n", header: "Next review", render: (r) => <Pill tone={r.reviewTone}>{r.review}</Pill> },
+              ]}
+            />
+            <div className="flex justify-between text-[11px] text-slate-500 mt-3">
+              <span>Showing {rows.length} of 24 demo identities · Invitation and provisioning results are not verified</span>
+            </div>
+          </Panel>
+        )}
+        {show("roles") && (
+          <Panel title="Selected Member" meta="Read-only details">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <span className="w-11 h-11 rounded-full bg-sky-600 text-sm font-bold text-white flex items-center justify-center">{sel.initials}</span>
+                <div><div className="text-base font-bold text-slate-100">{sel.name}</div><div className="text-[11px] text-slate-500">{sel.role} · {sel.team}</div></div>
+              </div>
+              <Pill tone={sel.status === "Active" ? "emerald" : "blue"}>{sel.status}</Pill>
+            </div>
+            <KeyValues
+              items={[
+                { k: "Tenant", v: "Acme Corporation" },
+                { k: "Principal reference", v: sel.ref },
+                { k: "Role", v: sel.role },
+                { k: "Privilege level", v: sel.privilege },
+                { k: "Passkey enrollment", v: "Registered (demo)", tone: "emerald" },
+                { k: "Last authentication", v: sel.lastAuth },
+                { k: "Platform administrator", v: "Not authorized", tone: "rose" },
+                { k: "Next entitlement review", v: sel.review },
+              ]}
+            />
+            <div className="grid grid-cols-2 gap-2 mt-4">
+              <ActionButton onClick={() => setTab("roles")}><Eye className="w-3.5 h-3.5" /> View permissions</ActionButton>
+              <ActionButton primary onClick={() => setTab(CONSOLE_TAB)}>Request role change</ActionButton>
+            </div>
+          </Panel>
+        )}
       </div>
 
-      {/* Active Team Members */}
-      <Card className="space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-          <h3 className="font-semibold text-slate-100 flex items-center gap-2">
-            <Users className="w-4 h-4 text-cyan-400" />
-            Active Team Members ({members.length})
-          </h3>
-          <span className="text-xs font-mono text-slate-400">
-            Tenant: {state.tenant.id}
-          </span>
-        </div>
-
-        {membersError && (
-          <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-500/50 text-rose-300 text-xs font-mono">
-            {membersError}
-          </div>
-        )}
-
-        {isMembersLoading ? (
-          <p className="text-xs font-mono text-slate-500 py-2">Loading tenant roster…</p>
-        ) : members.length === 0 ? (
-          <p className="text-xs font-mono text-slate-500 py-2">
-            No members are recorded for this tenant yet.
-          </p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs font-mono">
-              <thead className="bg-slate-900/80 text-slate-400 uppercase border-b border-slate-800">
-                <tr>
-                  <th className="p-3">Principal</th>
-                  <th className="p-3">Roles</th>
-                  <th className="p-3">Joined</th>
-                  <th className="p-3">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800">
-                {members.map((member) => (
-                  <tr key={member.id} className="hover:bg-slate-900/40">
-                    <td className="p-3 font-sans font-semibold text-slate-200 flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-cyan-500/20 text-cyan-300 flex items-center justify-center text-[10px] font-mono">
-                        {(member.principalId || "U").charAt(0).toUpperCase()}
-                      </div>
-                      <span className="break-all">{member.principalId}</span>
-                    </td>
-                    <td className="p-3 text-slate-300">
-                      {Array.isArray(member.roles) && member.roles.length > 0
-                        ? member.roles.map((r: any) => r?.name || String(r)).join(", ")
-                        : "no roles assigned"}
-                    </td>
-                    <td className="p-3 text-slate-400">
-                      {member.joinedAt ? new Date(member.joinedAt).toLocaleString() : "unknown"}
-                    </td>
-                    <td className="p-3">
-                      <Badge
-                        variant={
-                          member.status === "ACTIVE"
-                            ? "healthy"
-                            : member.status === "PENDING"
-                              ? "pending"
-                              : "fail"
-                        }
-                      >
-                        {member.status}
-                      </Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-
-      {/* Passkeys (WebAuthn) */}
-      <Card className="space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-          <div>
-            <h3 className="font-semibold text-slate-100 flex items-center gap-2">
-              <Fingerprint className="w-4 h-4 text-cyan-400" />
-              Passkeys ({passkeys.length})
-            </h3>
-            <p className="text-[11px] font-mono text-slate-500 mt-0.5">
-              Enroll a FIDO2/WebAuthn passkey for {state?.session?.email || "current user"} to unlock passwordless sign-in
-              and PASSKEY-assurance step-up.
-            </p>
-          </div>
-          <Button
-            variant="cyan"
-            size="sm"
-            isLoading={isPasskeyEnrolling}
-            onClick={handleEnrollPasskey}
-          >
-            <PlusCircle className="w-3.5 h-3.5" />
-            <span>Enroll Passkey</span>
-          </Button>
-        </div>
-
-        {passkeyError && (
-          <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-500/50 text-rose-300 text-xs font-mono">
-            {passkeyError}
-          </div>
-        )}
-
-        {passkeys.length === 0 ? (
-          <p className="text-xs font-mono text-slate-500 py-2">
-            No passkeys enrolled yet. Register one above, then use &quot;Sign in with Passkey&quot; on the
-            login screen.
-          </p>
-        ) : (
-          <div className="space-y-2">
-            {passkeys.map((pk) => (
-              <div
-                key={pk.id}
-                className="p-3 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between gap-3 text-xs font-mono"
-              >
-                <div>
-                  <span className="text-slate-200 font-semibold">{pk.label || "Unnamed passkey"}</span>
-                  <div className="text-[10px] text-slate-500 mt-0.5">
-                    Registered {new Date(pk.createdAt).toLocaleString()}
-                    {pk.lastUsedAt && ` • Last used ${new Date(pk.lastUsedAt).toLocaleString()}`}
-                  </div>
-                </div>
-                <Button
-                  size="sm"
-                  variant="danger"
-                  isLoading={revokingPasskeyId === pk.id}
-                  onClick={() => handleRevokePasskey(pk.id)}
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Revoke</span>
-                </Button>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
-
-      {/* Pending Invitations */}
-      {(state?.invitations || []).length > 0 && (
-        <Card className="space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-            <h3 className="font-semibold text-slate-100 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-amber-400" />
-              Pending Invitations ({(state?.invitations || []).length})
-            </h3>
-            <span className="text-xs font-mono text-slate-400">
-              Backend Requirement: Invitee must authenticate before accepting
-            </span>
-          </div>
-
-          <div className="space-y-2">
-            {(state?.invitations || []).map((inv, idx) => (
-              <div
-                key={inv.id || inv.token || idx}
-                className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-mono"
-              >
-                <div>
-                  <span className="text-slate-200 font-semibold">{inv.invitedEmail}</span>
-                  <span className="text-slate-500 ml-2">({inv.assignedRole})</span>
-                  <div className="text-[10px] text-slate-500 mt-0.5">
-                    Token: {inv.token}
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <Badge variant={inv.status === "ACCEPTED" ? "pass" : "pending"}>
-                    {inv.status}
-                  </Badge>
-
-                  {inv.status === "PENDING" && (
-                    <Button
-                      size="sm"
-                      variant="cyan"
-                      isLoading={acceptingToken === inv.token}
-                      onClick={() => handleAcceptInviteAsInvitee(inv)}
-                    >
-                      <UserCheck className="w-3.5 h-3.5" />
-                      <span>Switch to Invitee & Accept</span>
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </Card>
-      )}
-
-      {/* Invite Modal */}
-      <Modal
-        isOpen={isInviteModalOpen}
-        onClose={() => setIsInviteModalOpen(false)}
-        title="Invite Security Analyst"
-        description="Issue role-scoped membership invitation to the tenant via POST /api/v1/tenants/:tenantId/invitations."
-      >
-        <form onSubmit={handleSendInvite} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-mono text-slate-300">
-              Invited Analyst Email:
-            </label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="analyst.ops@acme.com"
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="text-xs font-mono text-slate-300">
-              Assigned Role:
-            </label>
-            <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as any)}
-              className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
-            >
-              <option value="SECURITY_ANALYST">
-                SECURITY_ANALYST (Triage & Response)
-              </option>
-              <option value="AUDITOR">AUDITOR (Read-Only Evidence)</option>
-              <option value="TENANT_ADMIN">TENANT_ADMIN (Full Admin)</option>
-            </select>
-          </div>
-
-          {inviteError && (
-            <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-500/50 text-rose-300 text-xs font-mono">
-              {inviteError}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {show("invitations") && (
+          <Panel title="Invitations & Acceptance" meta="2 awaiting resolution">
+            <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-950/30 p-2.5 text-[11px] text-amber-200 mb-3">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" /> <span><b>Delivery not verified.</b> Invite workflow must show actual API and email results; do not imply that activation email was sent.</span>
             </div>
-          )}
-
-          <div className="pt-2 flex justify-end gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsInviteModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary" isLoading={isLoading}>
-              <Mail className="w-4 h-4" />
-              <span>Send Invitation</span>
-            </Button>
-          </div>
-        </form>
-      </Modal>
-    </div>
+            <EventList
+              items={[
+                { title: "morgan.lee@acme.example", sub: "Proposed role: Security Analyst · expires 20 Oct", tag: "Pending", tone: "amber" },
+                { title: "natalie.fox@acme.example", sub: "Proposed role: Compliance Reviewer · expires 21 Oct", tag: "Not accepted", tone: "rose" },
+              ]}
+            />
+            <p className="text-[10px] text-slate-500 mt-3">Invites are tenant-bound, one-time, email-matched and time-limited. Never display an invitation as delivered solely because its record was created.</p>
+          </Panel>
+        )}
+        {show("reviews") && (
+          <Panel title="Elevated Access & Reviews" meta="Owner authorization required">
+            <EventList
+              items={[
+                { title: "AR-0062 · Temporary evidence export", sub: "Requester: Daniel Ross · stated purpose: external audit", tag: "Step-up & review", tone: "amber" },
+                { title: "AR-0064 · External auditor renewal", sub: "James Kim · access expiry: 20 Oct 2026 · read-only scope", tag: "Expires soon", tone: "amber" },
+              ]}
+            />
+            <p className="text-[10px] text-slate-500 mt-3">Sensitive role changes require server-side checks, a documented purpose, and an auditable decision. Tenant invitations must not grant platform-wide roles.</p>
+          </Panel>
+        )}
+        {show("audit", "passkeys") && (
+          <Panel title="Identity & Audit Signals" meta="Tenant-only activity">
+            <EventList
+              items={[
+                { time: "11:32", title: "Passkey registered", sub: "Sarah Chen · identity event", tone: "cyan" },
+                { time: "11:05", title: "Role review requested", sub: "Daniel Ross · awaiting owner action", tone: "amber" },
+                { time: "10:42", title: "Audit-only membership examined", sub: "Olivia Reed · scope: Acme Corporation", tone: "cyan" },
+                { time: "09:58", title: "Invitation awaiting acceptance", sub: "No email delivery confirmation", tone: "amber" },
+              ]}
+            />
+            <p className="text-[10px] text-slate-500 mt-3">Authentication, permissions and data visibility must be verified on the backend—not inferred from these UI badges.</p>
+          </Panel>
+        )}
+      </div>
+    </WorkspacePage>
   );
 }
