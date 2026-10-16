@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import {
   Sparkles,
   Bot,
@@ -161,6 +162,25 @@ const PRESETS: Record<CopilotMode, CopilotPreset> = {
       payload: {
         summary:
           "Correlated 14 OCSF v1.1.0 authentication events spanning 22 minutes. Identity 'marcus.vance' established SMB session on bastion host (T1021.002) followed by attempted privilege escalation toward crown-jewel RDS instance 'srv-db-prod-01'.",
+        artifactTitle: "forensic_lateral_movement_trajectory.json",
+        artifactType: "FORENSIC_CORRELATION",
+        testBaseline: "Grounded on 14 OCSF v1.1 Events (100% Deterministic)",
+        targetEnvironment: "Case Workspace / Incident Command",
+        artifactContent: `{
+  "incident_id": "INC-2026-0921",
+  "threat_actor": "APT-29 / Midnight Blizzard (Simulated)",
+  "mitre_technique": "T1021.002 (SMB/Windows Admin Shares) + T1078.004 (Cloud Accounts)",
+  "attack_chain": [
+    { "hop": 1, "asset": "usr-compromised-analyst", "action": "Credential Brute-Force", "status": "COMPROMISED" },
+    { "hop": 2, "asset": "ec2-jump-01 (10.0.1.14)", "action": "SMB Pipe Execution", "status": "CONTAINED" },
+    { "hop": 3, "asset": "srv-db-prod-01 (10.0.4.88)", "action": "Direct RDS Exfil Probe", "status": "BLOCKED" }
+  ],
+  "blast_radius_prediction": {
+    "affected_hosts": 1,
+    "projected_downtime_seconds": 0,
+    "containment_risk": "LOW"
+  }
+}`,
       },
     },
   },
@@ -265,6 +285,23 @@ const PRESETS: Record<CopilotMode, CopilotPreset> = {
       payload: {
         summary:
           "Evaluated 48 JIT elevation requests against SOC 2 CC6.1 and ISO/IEC 27001:2022 A.5.18 controls. All 48 sessions satisfied dual-approver quorum and terminated within maximum 60-minute duration. Merkle epoch roots verified against the dual-signed (ECDSA P-256 + ML-DSA-65) checkpoint.",
+        artifactTitle: "soc2_cc61_iso27001_jit_attestation.json",
+        artifactType: "CRYPTOGRAPHIC_EVIDENCE",
+        testBaseline: "Merkle Epoch #1043 Inclusion Proof Verified (PQC ML-DSA-65)",
+        targetEnvironment: "Continuous Assurance Matrix / Audit Package Studio",
+        artifactContent: `{
+  "evaluation_id": "eval-cc61-epoch1043",
+  "control_id": "SOC2-CC6.1-JIT-QUORUM",
+  "framework": "AICPA SOC 2 Type II / ISO 27001:2022 A.5.18",
+  "total_sessions_evaluated": 48,
+  "sessions_compliant": 48,
+  "quorum_compliance_rate": 1.0,
+  "max_session_duration_minutes": 60,
+  "actual_max_duration_minutes": 45,
+  "merkle_epoch_root": "0xe04d5c01d3f30f169d455842cb27f59a03a031f19e9a817ae45cf4c45d2d850b",
+  "attestation_status": "CRYPTOGRAPHICALLY_VERIFIED",
+  "post_quantum_signature": "ML-DSA-65 / FIPS 204 Validated"
+}`,
       },
     },
   },
@@ -369,6 +406,30 @@ const PRESETS: Record<CopilotMode, CopilotPreset> = {
       payload: {
         summary:
           "Drafted R3 Containment Action: (1) Attach inline deny policy `AWSRevokeOlderSessions` to DeployBot, (2) Invalidate active STS session tokens, (3) Rotate KMS data keys accessed in past 4 hours. Automated rollback script prepared.",
+        artifactTitle: "containment_proposal_act_iam_freeze.sh",
+        artifactType: "GOVERNED_SOAR_ACTION",
+        testBaseline: "Zero-Downtime Reversibility Receipt: ZS-RB-TOKEN-9941",
+        targetEnvironment: "SOAR Sandboxed Execution Gateway",
+        artifactContent: `#!/usr/bin/env bash
+# ZoikoShield Governed Response Execution — Action ID: ACT-IAM-FREEZE-R3
+# Reversibility Tier: R3 (Dual-Operator Quorum Required)
+# Rollback Compensation Token: ZS-RB-TOKEN-9941
+
+set -euo pipefail
+
+TARGET_ROLE="arn:aws:iam::123456789012:role/DeployBot"
+REVOKE_TIME="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+
+echo "[1/3] Attaching inline session revocation policy AWSRevokeOlderSessions..."
+aws iam put-role-policy --role-name "DeployBot" \\
+  --policy-name "AWSRevokeOlderSessions" \\
+  --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Deny","Action":["*"],"Resource":["*"],"Condition":{"DateLessThan":{"aws:TokenIssueTime":"'\${REVOKE_TIME}'"}}}]}'
+
+echo "[2/3] Invalidating active AWS STS session tokens for DeployBot..."
+aws iam update-role --role-name "DeployBot" --description "LOCKED_BY_ZOIKOSHIELD_INCIDENT_0941"
+
+echo "[3/3] Emitting cryptographically anchored SOAR execution receipt..."
+# Audit digest sha256:7b66e8983b13042126dd93ef... anchored to Merkle ledger`,
       },
     },
   },
@@ -462,6 +523,21 @@ const PRESETS: Record<CopilotMode, CopilotPreset> = {
       payload: {
         summary:
           "Generated statutory timeline for Case CAS-1082: Initial breach detection at 08:14 UTC, containment achieved at 08:32 UTC (18 min). Zero customer PII exfiltration detected across S3 access logs. Draft marked 'Privileged & Confidential - Counsel Controlled'.",
+        artifactTitle: "executive_incident_disclosure_inc_1082.md",
+        artifactType: "LEGAL_COUNSEL_BRIEFING",
+        testBaseline: "Marked Privileged & Confidential • 18-Minute Containment SLA Satisfied",
+        targetEnvironment: "Legal & Executive Reporting Portal",
+        artifactContent: `# PRIVILEGED & CONFIDENTIAL // ATTORNEY-CLIENT COMMUNICATION
+## Executive Incident Briefing: Incident INC-2026-1082
+- **Incident Classification:** P1 High — Contained Credential Compromise
+- **Affected Entity:** Acme Financial Services Inc. [US East Cell]
+- **Time of Detection:** 2026-10-15 08:14:02 UTC (Sliding-window brute force alarm)
+- **Time of Containment:** 2026-10-15 08:32:19 UTC (Total Triage to Containment: 18m 17s)
+- **Customer PII Exposure:** 0 records (CloudTrail S3 GetObject audit: Zero exfiltration detected)
+- **Regulatory Notification Requirements:**
+  - EU GDPR Art 33: Non-reportable (no breach of personal data confirmed)
+  - SEC Item 1.05: Non-material (zero operational disruption or financial loss)
+- **Forensic Chain-of-Custody:** Merkle Epoch #1043 digest \`0xe04d5c01d3f...\` verified.`,
       },
     },
   },
@@ -555,6 +631,34 @@ const PRESETS: Record<CopilotMode, CopilotPreset> = {
       payload: {
         summary:
           "Generated Sigma rule `win_security_kerberos_asrep_roasting.yml` mapped to MITRE T1558.004 with high-fidelity filter on EventID 4768 and Ticket Encryption Type 0x17 (RC4-HMAC). Tested against past 90-day event baseline with 0 false positives.",
+        artifactTitle: "win_security_kerberos_asrep_roasting.yml",
+        artifactType: "SIGMA_RULE_YAML",
+        testBaseline: "90-Day Baseline: 0 False Positives (1.2M events backtested)",
+        targetEnvironment: "Detection Engine (ClickHouse + Sigma Parser)",
+        artifactContent: `title: AS-REP Roasting Vulnerable Kerberos Pre-Authentication
+id: 5a8a1cb9-8e79-4d69-b1d3-356a59914751
+status: production
+description: Detects AS-REP Roasting attacks where Kerberos pre-authentication is not required (Ticket Encryption Type 0x17 RC4-HMAC).
+references:
+    - https://attack.mitre.org/techniques/T1558/004/
+author: ZoikoShield AI Detection Engine
+date: 2026-10-15
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 4768
+        TicketOptions: '0x40810010'
+        TicketEncryptionType: '0x17'
+        PreAuthType: '0'
+    condition: selection
+falsepositives:
+    - Legacy service accounts explicitly allowlisted
+level: high
+tags:
+    - attack.credential_access
+    - attack.t1558.004`,
       },
     },
   },
@@ -648,6 +752,32 @@ const PRESETS: Record<CopilotMode, CopilotPreset> = {
       payload: {
         summary:
           "Shield Professional ($4,000/mo) includes 1,000 assets, 100 GB/day telemetry, AI Copilot, attack graphs, and 1-hour response SLA. Shield Advanced ($8,000/mo) expands to 5,000 assets, 500 GB/day, Rule SVC-01 certified 24/7/365 continuous MDR with 15-minute containment SLAs, and continuous security validation.",
+        artifactTitle: "plan_tier_operational_comparison.json",
+        artifactType: "COMMERCIAL_SPEC_MATRIX",
+        testBaseline: "Audited against Price Book ADR-06 & Contractual SLAs ADR-07",
+        targetEnvironment: "Commercial Sizing Calculator & Entitlements Engine",
+        artifactContent: `{
+  "tiers": {
+    "Professional": {
+      "monthly_fee": "$4,000",
+      "protected_assets_limit": 1000,
+      "daily_ingestion_gb": 100,
+      "response_sla": "60 minutes",
+      "dual_approver_quorum": true,
+      "ai_copilot_decision_envelopes": true,
+      "merkle_evidence_retention": "1 year"
+    },
+    "Advanced": {
+      "monthly_fee": "$8,000",
+      "protected_assets_limit": 5000,
+      "daily_ingestion_gb": 500,
+      "response_sla": "15 minutes (Rule SVC-01 24/7/365)",
+      "dual_approver_quorum": true,
+      "ai_copilot_decision_envelopes": true,
+      "merkle_evidence_retention": "7 years (Immutable Post-Quantum)"
+    }
+  }
+}`,
       },
     },
   },
@@ -687,13 +817,33 @@ export default function CopilotPage() {
   const [escalatedToRole, setEscalatedToRole] = useState("SOC_MANAGER");
   const [submittingDecision, setSubmittingDecision] = useState(false);
   const [decisionError, setDecisionError] = useState<string | null>(null);
+  const [copiedArtifact, setCopiedArtifact] = useState(false);
   const [lastReceipt, setLastReceipt] = useState<{
     signature: string;
     decidedAt: string;
     status: string;
   } | null>(null);
 
+  const handleCopyArtifact = () => {
+    if (!currentEnvelope?.payload?.artifactContent) return;
+    navigator.clipboard.writeText(currentEnvelope.payload.artifactContent);
+    setCopiedArtifact(true);
+    setTimeout(() => setCopiedArtifact(false), 2000);
+  };
+
   const activePreset = PRESETS[activeMode];
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const modeParam = params.get("mode")?.toUpperCase();
+      if (modeParam && modeParam in PRESETS) {
+        const mode = modeParam as CopilotMode;
+        setActiveMode(mode);
+        setCurrentEnvelope(PRESETS[mode].defaultEnvelope);
+      }
+    }
+  }, []);
 
   const handleSend = async (queryText?: string) => {
     const text = queryText || customInput;
@@ -709,7 +859,19 @@ export default function CopilotPage() {
         mode: activeMode,
       });
 
-      const env = res.envelope || activePreset.defaultEnvelope;
+      const env = res.envelope
+        ? {
+            ...res.envelope,
+            payload: {
+              ...activePreset.defaultEnvelope.payload,
+              ...res.envelope.payload,
+              summary:
+                res.summary ||
+                res.envelope.payload?.summary ||
+                activePreset.defaultEnvelope.payload?.summary,
+            },
+          }
+        : activePreset.defaultEnvelope;
       setCurrentEnvelope(env);
 
       setChatHistory((prev) => [
@@ -851,7 +1013,7 @@ export default function CopilotPage() {
         </div>
 
         {/* Governance & Rule CAT-02 Neutrality Badge */}
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <div className="px-3 py-1.5 rounded-lg bg-[#080c16] border border-slate-800 text-right shrink-0">
             <div className="text-[10px] font-mono text-slate-500 uppercase">Governance Rule CAT-02</div>
             <div className="text-xs font-mono text-cyan-400 font-bold">Unbranded AI Architecture</div>
@@ -860,6 +1022,13 @@ export default function CopilotPage() {
             <div className="text-[10px] font-mono text-slate-500 uppercase">Decision Rights Spec</div>
             <div className="text-xs font-mono text-emerald-400 font-bold">§16.1 10-Field Mandatory</div>
           </div>
+          <Link
+            href="/ai-governance"
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600/30 to-cyan-600/30 border border-purple-500/40 text-purple-300 hover:text-white hover:border-purple-400 text-xs font-mono font-bold transition-all shadow-[0_0_12px_rgba(168,85,247,0.2)] shrink-0"
+          >
+            <span>AI Governance (Step 7)</span>
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
       </div>
 
@@ -933,6 +1102,16 @@ export default function CopilotPage() {
                     }`}
                   >
                     <p>{msg.text}</p>
+                    {msg.sender === "system" && msg.text.includes("recorded ACCEPT") && (
+                      <div className="mt-2.5 pt-2 border-t border-emerald-500/30">
+                        <Link
+                          href="/response-proposals"
+                          className="inline-flex items-center gap-1.5 text-xs text-cyan-300 hover:text-cyan-200 font-sans font-medium"
+                        >
+                          <span>⚡ Inspect Proposal in Autonomous SOAR Proposals →</span>
+                        </Link>
+                      </div>
+                    )}
                     {msg.envelope && msg.sender === "copilot" && (
                       <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[10px] font-mono text-slate-400">
                         <span>
@@ -1250,6 +1429,55 @@ export default function CopilotPage() {
                   "LEAD_SECURITY_ANALYST, SOC_MANAGER"}
               </div>
             </div>
+
+            {/* Synthesized Artifact & Executable Payload Preview */}
+            {currentEnvelope.payload?.artifactContent && (
+              <div className="p-3 rounded-xl bg-slate-900 border border-cyan-500/40 space-y-2.5 shadow-lg">
+                <div className="flex items-center justify-between text-[10px] font-mono">
+                  <div className="flex items-center gap-1.5 text-cyan-400 font-bold uppercase">
+                    <Code className="w-3.5 h-3.5" />
+                    <span>Synthesized Artifact &amp; Executable Payload</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-500/30 font-mono text-[9px] font-bold">
+                      {currentEnvelope.payload.artifactType}
+                    </span>
+                    <button
+                      onClick={handleCopyArtifact}
+                      className="px-2 py-0.5 rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-[9px] font-mono flex items-center gap-1 transition-colors"
+                    >
+                      {copiedArtifact ? <Check className="w-3 h-3 text-emerald-400" /> : <FileText className="w-3 h-3 text-slate-400" />}
+                      <span>{copiedArtifact ? "Copied!" : "Copy Code"}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-[9px] font-mono text-slate-400 px-1">
+                  <span className="text-slate-300 font-semibold">{currentEnvelope.payload.artifactTitle}</span>
+                  <span className="text-emerald-400 font-medium">{currentEnvelope.payload.testBaseline}</span>
+                </div>
+
+                <pre className="p-3 rounded-lg bg-slate-950 border border-slate-800 text-[10px] font-mono text-slate-200 overflow-x-auto max-h-56 leading-relaxed select-all">
+                  <code>{currentEnvelope.payload.artifactContent}</code>
+                </pre>
+
+                <div className="flex items-center justify-between pt-1 text-[10px] font-mono">
+                  <span className="text-slate-500 text-[9px]">Target: {currentEnvelope.payload.targetEnvironment || "ZoikoShield Runtime"}</span>
+                  <div className="flex items-center gap-2">
+                    {activeMode === "DEVELOP" && (
+                      <span className="text-emerald-400 font-bold text-[9px] flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Ready for Rule Engine Deployment
+                      </span>
+                    )}
+                    {activeMode === "RESPOND" && (
+                      <span className="text-amber-400 font-bold text-[9px] flex items-center gap-1">
+                        <Lock className="w-3 h-3" /> WASM Reversibility Token Verified
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Field 8: Decision Controls & Interactive Actions */}
             <div className="p-3 rounded-lg bg-slate-900 border border-cyan-500/30 space-y-2">

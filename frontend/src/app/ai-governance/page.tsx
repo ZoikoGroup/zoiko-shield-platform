@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
 import { Card } from "@/components/ui/Card";
@@ -812,6 +813,12 @@ export default function AiGovernancePage() {
             <Flame className="w-4 h-4 text-rose-400" />
             <span>Declare AI Incident</span>
           </Button>
+          <Link href="/policies">
+            <Button variant="outline" size="md" className="border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10 font-bold">
+              <ShieldCheck className="w-4 h-4 text-cyan-400" />
+              <span>Cedar Policies (Step 8) →</span>
+            </Button>
+          </Link>
         </div>
       </div>
 

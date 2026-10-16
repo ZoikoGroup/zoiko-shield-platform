@@ -391,19 +391,36 @@ export default function AlertDetailPage() {
             Case and evidence
           </h2>
           {detail.linkedCase ? (
-            <Button
-              variant="secondary"
-              className="mb-3"
-              onClick={() => router.push(`/cases/${detail.linkedCase!.caseId}`)}
-            >
-              <span>
-                Open case ({detail.linkedCase.relationship ? detail.linkedCase.relationship.toLowerCase() : "linked"})
-              </span>
-            </Button>
+            <div className="flex flex-wrap items-center gap-2 mb-3">
+              <Button
+                variant="secondary"
+                onClick={() => router.push(`/cases/${detail.linkedCase!.caseId}`)}
+              >
+                <span>
+                  Open case ({detail.linkedCase.relationship ? detail.linkedCase.relationship.toLowerCase() : "linked"})
+                </span>
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => router.push("/cases/incidents/command")}
+              >
+                <span>🚨 Incident Command War Room (W19) →</span>
+              </Button>
+            </div>
           ) : (
-            <p className="text-xs font-mono text-slate-400 mb-3">
-              No case is linked to this alert.
-            </p>
+            <div className="space-y-2 mb-3">
+              <p className="text-xs font-mono text-slate-400">
+                No case is linked to this alert.
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push("/cases/incidents/command")}
+                className="border-cyan-500/40 text-cyan-300"
+              >
+                <span>🚨 Incident Command War Room (W19) →</span>
+              </Button>
+            </div>
           )}
           {Array.isArray(detail.evidence) && detail.evidence.length > 0 ? (
             <ul className="space-y-1.5 text-xs font-mono">

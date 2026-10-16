@@ -169,6 +169,12 @@ export default function PlatformAdminPage() {
               <span>JIT Elevation Center</span>
             </Button>
           </Link>
+          <Link href="/ledger">
+            <Button variant="outline" size="md" className="border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10 font-bold">
+              <Lock className="w-4 h-4 text-cyan-400" />
+              <span>Evidence Ledger (Step 12) →</span>
+            </Button>
+          </Link>
         </div>
       </div>
 

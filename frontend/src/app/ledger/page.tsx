@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
 import { truncateHash } from "@/lib/utils";
@@ -15,6 +16,7 @@ import {
   ShieldCheck,
   Download,
   RefreshCw,
+  ArrowRight,
 } from "lucide-react";
 import {
   LoadingState,
@@ -308,7 +310,7 @@ export default function MerkleLedgerExplorerPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 font-mono text-xs">
+          <div className="flex items-center gap-3 font-mono text-xs flex-wrap">
             <div className="px-3 py-1.5 rounded-lg bg-[#060911] border border-[#162238] text-slate-300">
               Active Epoch:{" "}
               <span className="text-cyan-400 font-bold">#{epochNumber}</span>
@@ -316,6 +318,16 @@ export default function MerkleLedgerExplorerPage() {
             <div className="px-3 py-1.5 rounded-lg bg-[#060911] border border-[#162238] text-slate-300">
               {leaves.length} Leaf{leaves.length !== 1 ? "ves" : ""} Anchored
             </div>
+            <Link href="/controls">
+              <Button
+                variant="primary"
+                size="sm"
+                className="bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold shadow-[0_0_15px_rgba(6,182,212,0.25)] flex items-center gap-1.5"
+              >
+                <span>Continuous Controls (Step 13)</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Button>
+            </Link>
           </div>
         </div>
       </div>

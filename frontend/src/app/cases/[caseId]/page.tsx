@@ -162,7 +162,13 @@ export default function CaseWorkspacePage() {
             </h1>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="secondary" onClick={() => router.push("/cases/incidents/command")}>
+              <span>🚨 Incident Command (W19)</span>
+            </Button>
+            <Button variant="secondary" onClick={() => router.push(`/copilot?mode=INVESTIGATION&caseId=${encodeURIComponent(currentCase.id)}`)}>
+              <span>🤖 AI Copilot (Step 6) →</span>
+            </Button>
             <Button variant="cyan" onClick={() => router.push("/controls")}>
               <span>Proceed to Controls</span>
               <ArrowRight className="w-4 h-4" />

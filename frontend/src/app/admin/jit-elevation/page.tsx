@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
 import { JitElevationSession } from "@/lib/types";
 import {
@@ -16,6 +17,7 @@ import {
   RefreshCw,
   Ban,
   Lock,
+  ArrowRight,
 } from "lucide-react";
 
 export default function JitElevationPage() {
@@ -235,7 +237,14 @@ export default function JitElevationPage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <Link
+            href="/response-proposals"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-xs font-mono transition-colors border border-cyan-500/30 font-bold shadow-sm"
+          >
+            <span>Autonomous SOAR (Step 10)</span>
+            <ArrowRight className="w-3.5 h-3.5 text-cyan-400" />
+          </Link>
           <button
             onClick={() => {
               setRefreshing(true);

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
 import { GTMChecklistItem } from "@/lib/types";
 import {
@@ -16,6 +17,7 @@ import {
   Server,
   Sparkles,
   ExternalLink,
+  ArrowRight,
 } from "lucide-react";
 
 export default function GTMChecklistPage() {
@@ -68,7 +70,7 @@ export default function GTMChecklistPage() {
         </div>
 
         {/* Action Button */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-3 shrink-0 flex-wrap">
           <button
             onClick={handleRecheck}
             disabled={rechecking}
@@ -77,6 +79,13 @@ export default function GTMChecklistPage() {
             <RefreshCw className={`w-3.5 h-3.5 text-cyan-400 ${rechecking ? "animate-spin" : ""}`} />
             <span>Re-Verify 12 Rules</span>
           </button>
+          <Link
+            href="/notifications"
+            className="px-4 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold flex items-center gap-2 transition-colors shadow-sm"
+          >
+            <span>Notification Center (Step 15)</span>
+            <ArrowRight className="w-3.5 h-3.5 text-cyan-400" />
+          </Link>
         </div>
       </div>
 
