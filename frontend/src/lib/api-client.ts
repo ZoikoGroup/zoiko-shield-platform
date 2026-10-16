@@ -1311,10 +1311,13 @@ export class ZoikoShieldApiClient {
           status: "VERIFIED",
           generatedAt: new Date().toISOString(),
           sizeBytes: 428190,
+          // Counts reflect this session's own demo state honestly, including
+          // zero - a demo tenant with no cases yet must show 0 cases, not a
+          // fabricated non-zero number that misrepresents its own data.
           manifest: {
-            evidenceCount: state.cases.reduce((acc, c) => acc + c.evidenceList.length, 0) || 14,
-            casesCount: state.cases.length || 3,
-            controlEvaluationsCount: state.controlTests.length || 4,
+            evidenceCount: state.cases.reduce((acc, c) => acc + c.evidenceList.length, 0),
+            casesCount: state.cases.length,
+            controlEvaluationsCount: state.controlTests.length,
             epochMerkleRoot: "7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b",
             tsaTimestampProof: `RFC3161_TSA_SEAL_${new Date().toISOString().slice(0, 10)}_VALID`,
           },
@@ -1323,25 +1326,45 @@ export class ZoikoShieldApiClient {
     );
 
     const rawAny = raw as any;
-    const manifest = rawAny?.manifest || rawAny?.manifestData || {};
+    const rawManifest = rawAny?.manifest || rawAny?.manifestData;
+    const manifest = rawManifest || {};
+    // This whole block normalizes a REAL backend response. Signatures and
+    // hashes are left empty, never backfilled with a fake-but-real-looking
+    // value (sha256Mock(...) et al.), because a mock value here would be
+    // visually and structurally indistinguishable from a genuine one to the
+    // audit/ledger pages that read these fields - exactly the gap that let
+    // those pages' "not yet generated" fallbacks silently never trigger.
+    // `status` defaults to GENERATED, not VERIFIED: a package is not
+    // verified until the backend explicitly says so.
     const pkg: AuditPackage = {
       id: rawAny?.id || `pkg-${generateUUID().slice(0, 8)}`,
       tenantId: rawAny?.tenantId || rawAny?.tenant_id || getState().tenant?.id || "demo-tenant",
       packageName: rawAny?.packageName || rawAny?.purpose || `ZoikoShield-Audit-Package-${rawAny?.id ? String(rawAny.id).slice(0, 8) : "export"}.zip`,
-      packageHash: rawAny?.packageHash || rawAny?.frozen_manifest_hash || sha256Mock(rawAny?.id || "hash"),
-      dilithiumSignature: rawAny?.dilithiumSignature || `pqc_mldsa65_${sha256Mock(rawAny?.id || "sig").slice(0, 48)}`,
-      ecdsaP256Signature: rawAny?.ecdsaP256Signature || `ecdsa_p256_${sha256Mock(rawAny?.id || "p256").slice(0, 48)}`,
-      ed25519Signature: rawAny?.ed25519Signature || rawAny?.ecdsaP256Signature,
-      status: rawAny?.status || "VERIFIED",
+      packageHash: rawAny?.packageHash || rawAny?.frozen_manifest_hash || "",
+      dilithiumSignature: rawAny?.dilithiumSignature || "",
+      ecdsaP256Signature: rawAny?.ecdsaP256Signature || "",
+      ed25519Signature: rawAny?.ed25519Signature || rawAny?.ecdsaP256Signature || "",
+      status: rawAny?.status || "GENERATED",
       generatedAt: rawAny?.generatedAt || rawAny?.created_at || new Date().toISOString(),
-      sizeBytes: typeof rawAny?.sizeBytes === "number" ? rawAny.sizeBytes : 428190,
-      manifest: {
-        evidenceCount: typeof manifest.evidenceCount === "number" ? manifest.evidenceCount : (getState().cases?.reduce((acc: number, c: any) => acc + (c.evidenceList?.length || 0), 0) || 14),
-        casesCount: typeof manifest.casesCount === "number" ? manifest.casesCount : (getState().cases?.length || 3),
-        controlEvaluationsCount: typeof manifest.controlEvaluationsCount === "number" ? manifest.controlEvaluationsCount : 4,
-        epochMerkleRoot: manifest.epochMerkleRoot || "7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b",
-        tsaTimestampProof: manifest.tsaTimestampProof || `RFC3161_TSA_SEAL_${new Date().toISOString().slice(0, 10)}_VALID`,
-      },
+      sizeBytes: typeof rawAny?.sizeBytes === "number" ? rawAny.sizeBytes : 0,
+      // This branch normalizes a REAL backend response (rawAny), not demo
+      // data. A missing epochMerkleRoot/tsaTimestampProof here means the
+      // package has not actually been sealed - backfilling the exact same
+      // fixed-looking hash/token every time would make an unsealed package
+      // indistinguishable from a genuinely verified one to any code (or
+      // person) reading pkg.manifest downstream, which is what let the
+      // audit and ledger pages' own "pending seal" checks never fire. The
+      // manifest object itself is only present when the backend actually
+      // sent one, same reasoning as getAuditPackages() above.
+      manifest: rawManifest
+        ? {
+            evidenceCount: typeof manifest.evidenceCount === "number" ? manifest.evidenceCount : (getState().cases?.reduce((acc: number, c: any) => acc + (c.evidenceList?.length || 0), 0) ?? 0),
+            casesCount: typeof manifest.casesCount === "number" ? manifest.casesCount : (getState().cases?.length ?? 0),
+            controlEvaluationsCount: typeof manifest.controlEvaluationsCount === "number" ? manifest.controlEvaluationsCount : 0,
+            epochMerkleRoot: manifest.epochMerkleRoot || "",
+            tsaTimestampProof: manifest.tsaTimestampProof || "",
+          }
+        : undefined,
     };
 
     const state = getState();
@@ -1426,26 +1449,41 @@ export class ZoikoShieldApiClient {
       }
     );
     if (!Array.isArray(pkgs)) return [];
+    // Same principle as generateAuditPackage() above: this normalizes
+    // whatever each package record actually is (real backend row or demo
+    // seed). A field the record doesn't have is left empty/zero, never
+    // backfilled with a fake-but-real-looking signature, hash, or count -
+    // this is the function that populates every package the audit and
+    // ledger pages display, so a fabricated field here reaches the UI as
+    // if it were genuine for every package in the list, not just one.
     return pkgs.map((raw: any) => {
-      const manifest = raw?.manifest || raw?.manifestData || {};
+      const rawManifest = raw?.manifest || raw?.manifestData;
+      const manifest = rawManifest || {};
       return {
         id: raw?.id || `pkg-${generateUUID().slice(0, 8)}`,
         tenantId: raw?.tenantId || raw?.tenant_id || getState().tenant?.id || "demo-tenant",
         packageName: raw?.packageName || raw?.purpose || `ZoikoShield-Audit-Package-${raw?.id ? String(raw.id).slice(0, 8) : "export"}.zip`,
-        packageHash: raw?.packageHash || raw?.frozen_manifest_hash || sha256Mock(raw?.id || "hash"),
-        dilithiumSignature: raw?.dilithiumSignature || `pqc_mldsa65_${sha256Mock(raw?.id || "sig").slice(0, 48)}`,
-        ecdsaP256Signature: raw?.ecdsaP256Signature || `ecdsa_p256_${sha256Mock(raw?.id || "p256").slice(0, 48)}`,
-        ed25519Signature: raw?.ed25519Signature || raw?.ecdsaP256Signature,
-        status: raw?.status || "VERIFIED",
+        packageHash: raw?.packageHash || raw?.frozen_manifest_hash || "",
+        dilithiumSignature: raw?.dilithiumSignature || "",
+        ecdsaP256Signature: raw?.ecdsaP256Signature || "",
+        ed25519Signature: raw?.ed25519Signature || raw?.ecdsaP256Signature || "",
+        status: raw?.status || "GENERATED",
         generatedAt: raw?.generatedAt || raw?.created_at || new Date().toISOString(),
-        sizeBytes: typeof raw?.sizeBytes === "number" ? raw.sizeBytes : 428190,
-        manifest: {
-          evidenceCount: typeof manifest.evidenceCount === "number" ? manifest.evidenceCount : 14,
-          casesCount: typeof manifest.casesCount === "number" ? manifest.casesCount : 3,
-          controlEvaluationsCount: typeof manifest.controlEvaluationsCount === "number" ? manifest.controlEvaluationsCount : 4,
-          epochMerkleRoot: manifest.epochMerkleRoot || "7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b",
-          tsaTimestampProof: manifest.tsaTimestampProof || "RFC3161_TSA_SEAL_VALID",
-        },
+        sizeBytes: typeof raw?.sizeBytes === "number" ? raw.sizeBytes : 0,
+        // Only present a manifest object when the record actually had one -
+        // AuditPackage.manifest is optional precisely because the database's
+        // AuditPackageManifest relation is nullable until a package is
+        // built, and the audit/ledger pages key their "pending seal" state
+        // off that presence, not off its field values.
+        manifest: rawManifest
+          ? {
+              evidenceCount: typeof manifest.evidenceCount === "number" ? manifest.evidenceCount : 0,
+              casesCount: typeof manifest.casesCount === "number" ? manifest.casesCount : 0,
+              controlEvaluationsCount: typeof manifest.controlEvaluationsCount === "number" ? manifest.controlEvaluationsCount : 0,
+              epochMerkleRoot: manifest.epochMerkleRoot || "",
+              tsaTimestampProof: manifest.tsaTimestampProof || "",
+            }
+          : undefined,
       } as AuditPackage;
     });
   }
@@ -5015,7 +5053,8 @@ export class ZoikoShieldApiClient {
           receiptId: `airgap-sync-rcpt-${generateUUID()}`,
           batchId: batch.batchId || `batch-${Date.now()}`,
           sourceNodeId: batch.sourceNodeId || 'field-node-01',
-          syncedEventsCount: batch.events?.length || 10,
+          // Reflects what the caller actually submitted, including zero.
+          syncedEventsCount: batch.events?.length ?? 0,
           duplicateEventsIgnored: 0,
           batchMerkleRoot: 'b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2',
           computedMerkleRoot: 'b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2',

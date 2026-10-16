@@ -260,7 +260,7 @@ export default function IngestionPage() {
         </div>
         <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Connectors Configured</div>
-          <div className="text-2xl font-bold font-mono text-white mt-1">{state?.connectors?.length || 10} Connectors</div>
+          <div className="text-2xl font-bold font-mono text-white mt-1">{state?.connectors?.length ?? 0} Connectors</div>
           <div className="text-[11px] text-cyan-400 mt-0.5">Multi-vendor telemetry</div>
         </div>
       </div>

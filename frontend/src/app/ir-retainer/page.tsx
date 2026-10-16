@@ -138,10 +138,14 @@ export default function IrRetainerPage() {
   }, [selectedWorkOrder, legalAccessReason, state.workOrderConsumption, state.legalSensitiveRecords]);
 
   const activeRetainer = retainers[0] || state.incidentRetainers?.[0];
-  const includedHours = activeRetainer?.includedHours || 40;
-  const consumedHours = activeRetainer?.consumedHours || 0;
+  const hasActiveRetainer = Boolean(activeRetainer);
+  // `??`, not `||`: a real retainer can legitimately have 0 included hours
+  // (a pure incident-response-on-demand plan), and that must render as 0,
+  // not silently become a fabricated 40h baseline.
+  const includedHours = activeRetainer?.includedHours ?? 0;
+  const consumedHours = activeRetainer?.consumedHours ?? 0;
   const remainingHours = activeRetainer?.remainingHours ?? Math.max(0, includedHours - consumedHours);
-  const consumptionPercent = Math.min(100, Math.round((consumedHours / includedHours) * 100));
+  const consumptionPercent = includedHours > 0 ? Math.min(100, Math.round((consumedHours / includedHours) * 100)) : 0;
 
   const handleActivateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -272,6 +276,13 @@ export default function IrRetainerPage() {
       )}
       {isStale && !isDegraded && <StaleState retryAction={loadData} />}
 
+      {!hasActiveRetainer && (
+        <div className="p-3.5 rounded-xl bg-amber-950/40 border border-amber-500/50 text-amber-200 text-xs">
+          No active incident response retainer is configured for this tenant. The hour ledger, overage and rollover
+          policies, and SLA response windows below show placeholder shapes only &mdash; they are not real contract terms.
+        </div>
+      )}
+
       {/* Header Banner */}
       <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -341,7 +352,7 @@ export default function IrRetainerPage() {
               </span>
               <h3 className="text-lg font-bold text-white mt-1">Included Hours Ledger</h3>
             </div>
-            <Badge variant="active">{activeRetainer?.status || "ACTIVE"}</Badge>
+            <Badge variant={hasActiveRetainer ? "active" : "neutral"}>{activeRetainer?.status || "NO ACTIVE RETAINER"}</Badge>
           </div>
 
           <div className="space-y-4">
@@ -362,7 +373,7 @@ export default function IrRetainerPage() {
               </div>
               <div className="flex justify-between text-[11px] font-mono text-slate-500 mt-1">
                 <span>Consumed: {consumedHours}h ({consumptionPercent}%)</span>
-                <span>Warning Threshold: {activeRetainer?.warningThresholdPercent || 80}%</span>
+                <span>Warning Threshold: {activeRetainer?.warningThresholdPercent ?? "—"}%</span>
               </div>
             </div>
 
@@ -370,13 +381,21 @@ export default function IrRetainerPage() {
               <div>
                 <span className="text-slate-500 block">Overage Policy</span>
                 <span className="font-mono text-slate-300 font-medium">
-                  {activeRetainer?.overagePolicy || "REQUIRE_APPROVAL"} (Cap: {activeRetainer?.overageCapHours || 20}h @ ${activeRetainer?.overageRate || 350}/h)
+                  {hasActiveRetainer ? (
+                    <>{activeRetainer?.overagePolicy || "UNSPECIFIED"} (Cap: {activeRetainer?.overageCapHours ?? 0}h @ ${activeRetainer?.overageRate ?? 0}/h)</>
+                  ) : (
+                    "No retainer configured"
+                  )}
                 </span>
               </div>
               <div>
                 <span className="text-slate-500 block">Rollover Policy</span>
                 <span className="font-mono text-slate-300 font-medium">
-                  {activeRetainer?.rolloverPolicy || "CAPPED"} (Max: {activeRetainer?.rolloverCapHours || 10}h)
+                  {hasActiveRetainer ? (
+                    <>{activeRetainer?.rolloverPolicy || "UNSPECIFIED"} (Max: {activeRetainer?.rolloverCapHours ?? 0}h)</>
+                  ) : (
+                    "No retainer configured"
+                  )}
                 </span>
               </div>
             </div>
@@ -401,7 +420,7 @@ export default function IrRetainerPage() {
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" /> SLA Acknowledgement
               </span>
               <span className="font-mono text-emerald-300 font-bold">
-                &lt; {activeRetainer?.responseWindow?.acknowledgementTargetMinutes || 30} mins
+                {hasActiveRetainer ? <>&lt; {activeRetainer?.responseWindow?.acknowledgementTargetMinutes ?? "—"} mins</> : "N/A"}
               </span>
             </div>
 
@@ -410,7 +429,7 @@ export default function IrRetainerPage() {
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Incident Activation Target
               </span>
               <span className="font-mono text-emerald-300 font-bold">
-                &lt; {activeRetainer?.responseWindow?.activationResponseMinutes || 60} mins
+                {hasActiveRetainer ? <>&lt; {activeRetainer?.responseWindow?.activationResponseMinutes ?? "—"} mins</> : "N/A"}
               </span>
             </div>
 
