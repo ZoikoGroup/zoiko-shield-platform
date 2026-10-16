@@ -25,21 +25,21 @@ import RiskPage from '@/app/risk/page';
 import AuditPage from '@/app/audit/page';
 import LedgerPage from '@/app/ledger/page';
 import ConnectorsPage from '@/app/connectors/page';
-import AssetsPage from '@/app/assets/page';
 import IngestionPage from '@/app/ingestion/page';
 import IrRetainerPage from '@/app/ir-retainer/page';
 import ActionsPage from '@/app/actions/page';
 import RedTeamPage from '@/app/red-team/page';
 import ResponseProposalsPage from '@/app/response-proposals/page';
 import PlaybooksPage from '@/app/playbooks/page';
-import IncidentCommandPage from '@/app/cases/incidents/command/page';
 import CopilotPage from '@/app/copilot/page';
 import HuntingPage from '@/app/hunting/page';
 import TenantManagementPage from '@/app/tenant-management/page';
 import HelpPage from '@/app/help/page';
 
 // Every redesigned page keeps its previous, fully wired implementation mounted
-// behind the last tab so no live workflow was lost in the redesign.
+// behind the last tab so no live workflow was lost in the redesign. The G2
+// contract routes (/assets, /cases/incidents/command) are excluded: their page
+// must be the evidence-derived ContractSurface itself (G2-EXPERIENCE-01).
 const WORKSPACES: [string, React.ComponentType][] = [
   ['/admin', AdminPage],
   ['/admin/gtm-checklist', GtmChecklistPage],
@@ -54,14 +54,12 @@ const WORKSPACES: [string, React.ComponentType][] = [
   ['/audit', AuditPage],
   ['/ledger', LedgerPage],
   ['/connectors', ConnectorsPage],
-  ['/assets', AssetsPage],
   ['/ingestion', IngestionPage],
   ['/ir-retainer', IrRetainerPage],
   ['/actions', ActionsPage],
   ['/red-team', RedTeamPage],
   ['/response-proposals', ResponseProposalsPage],
   ['/playbooks', PlaybooksPage],
-  ['/cases/incidents/command', IncidentCommandPage],
   ['/copilot', CopilotPage],
   ['/hunting', HuntingPage],
 ];
