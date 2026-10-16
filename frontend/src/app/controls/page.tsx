@@ -105,12 +105,28 @@ export default function ControlsPage() {
               <span>Evaluate All Controls</span>
             </Button>
             <Button
+              variant="outline"
+              onClick={() => router.push("/sector-packs")}
+              className="border-purple-500/40 hover:border-purple-400 text-purple-300 hover:bg-purple-950/30"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-purple-400" />
+              <span>Sector Overlays (DORA / NIS2)</span>
+            </Button>
+            <Button
               variant="primary"
               onClick={() => router.push("/audit")}
               className="shadow-[0_0_15px_rgba(59,130,246,0.25)]"
             >
               <span>Proceed to Audit Package</span>
               <ArrowRight className="w-4 h-4" />
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => router.push("/pricing")}
+              className="border-slate-800 hover:border-cyan-500/40 text-slate-300"
+            >
+              <span>Commercial Sizing (Step 14)</span>
+              <ArrowRight className="w-4 h-4 text-cyan-400" />
             </Button>
           </div>
         </div>

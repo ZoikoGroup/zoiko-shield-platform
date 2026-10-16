@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
+import Link from "next/link";
 import {
   ShieldCheck,
   ShieldAlert,
@@ -15,6 +16,7 @@ import {
   RotateCcw,
   KeyRound,
   FileCheck,
+  ArrowRight,
 } from "lucide-react";
 
 interface G1ApproverState {
@@ -111,7 +113,14 @@ export default function G1LaunchGatePage() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <Link
+            href="/risk"
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 text-xs font-mono transition-colors border border-cyan-500/30 font-bold shadow-sm"
+          >
+            <span>Executive Risk (Step 3)</span>
+            <ArrowRight className="w-3.5 h-3.5 text-cyan-400" />
+          </Link>
           <button
             onClick={() => {
               setRefreshing(true);

@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from "react";
 import { Card } from "@/ui/Card";
 import { Badge } from "@/ui/Badge";
+import Link from "next/link";
 import { formatTimestamp } from "@/lib/utils";
 import { useContractSources, sourceData, sourceList } from "@/lib/contract-state";
 import { ContractSurface, UnbackedField } from "@/components/contracts/ContractSurface";
@@ -245,19 +246,37 @@ export default function IncidentCommandPage() {
   const internalNotes = notes.filter((n) => n.classification === "INTERNAL");
 
   const selector = (
-    <select
-      value={activeId ?? ""}
-      onChange={(e) => setSelectedId(e.target.value || null)}
-      className="rounded border border-slate-800 bg-slate-900 px-3 py-1.5 text-sm text-slate-200"
-      aria-label="Incident under command"
-    >
-      {activeIncidents.length === 0 && <option value="">No open incidents</option>}
-      {activeIncidents.map((row) => (
-        <option key={row.id} value={row.id}>
-          {row.severity} · {row.title}
-        </option>
-      ))}
-    </select>
+    <div className="flex flex-wrap items-center gap-2">
+      <select
+        value={activeId ?? ""}
+        onChange={(e) => setSelectedId(e.target.value || null)}
+        className="rounded border border-slate-800 bg-slate-900 px-3 py-1.5 text-sm text-slate-200"
+        aria-label="Incident under command"
+      >
+        {activeIncidents.length === 0 && <option value="">No open incidents</option>}
+        {activeIncidents.map((row) => (
+          <option key={row.id} value={row.id}>
+            {row.severity} · {row.title}
+          </option>
+        ))}
+      </select>
+      {activeId && (
+        <Link
+          href={`/copilot?mode=INVESTIGATION&caseId=${encodeURIComponent(activeId)}`}
+          className="inline-flex items-center gap-1.5 rounded border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-300 hover:bg-cyan-500/20 transition-colors"
+        >
+          <span>🤖 AI Copilot Investigation (Step 6) →</span>
+        </Link>
+      )}
+      {activeId && (
+        <Link
+          href={`/cases/${encodeURIComponent(activeId)}`}
+          className="inline-flex items-center gap-1.5 rounded border border-slate-700 bg-slate-800/80 px-2.5 py-1.5 text-xs font-medium text-slate-300 hover:bg-slate-700 transition-colors"
+        >
+          <span>Case Workspace →</span>
+        </Link>
+      )}
+    </div>
   );
 
   if (listEvidence.status !== "LOADING" && activeIncidents.length === 0) {

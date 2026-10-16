@@ -15,8 +15,37 @@ import {
   Server,
   FileCheck2,
   Lock,
+  Play,
+  X,
+  Sliders,
+  Check,
+  ShieldCheck,
+  Key,
+  RefreshCw,
+  Copy,
 } from "lucide-react";
 import Link from "next/link";
+
+export type SectorControlId =
+  | "DORA-ART10-BACKUP-RESILIENCE"
+  | "DORA-ART11-ANOMALY-DETECTION-LATENCY"
+  | "NIS2-ART21-SUPPLY-CHAIN-EARLY-WARNING"
+  | "PCI-DSS-REQ10.2-AUDIT-IMMUTABILITY";
+
+export interface SectorEvaluationResult {
+  evaluationId: string;
+  controlId: SectorControlId;
+  framework: "DORA_EU" | "NIS2_EU" | "PCI_DSS_V4_0_1";
+  controlTitle: string;
+  result: "PASS" | "FAIL" | "DEGRADED";
+  complianceScore: number;
+  observedMetrics: Record<string, unknown>;
+  evidenceDigests: string[];
+  rationale: string;
+  evaluatedAt: string;
+  attestationDigest: string;
+  disclaimer: string;
+}
 
 interface SectorPack {
   id: string;
@@ -158,19 +187,149 @@ const SECTOR_PACKS: SectorPack[] = [
 export default function SectorPacksPage() {
   const [selectedPack, setSelectedPack] = useState<SectorPack>(SECTOR_PACKS[0]);
 
+  // Sector Control Evaluator State
+  const [evaluatorOpen, setEvaluatorOpen] = useState(false);
+  const [evaluatorControl, setEvaluatorControl] = useState<SectorControlId>("DORA-ART10-BACKUP-RESILIENCE");
+  const [rtoInput, setRtoInput] = useState<number>(42);
+  const [rpoInput, setRpoInput] = useState<number>(0);
+  const [latencyInput, setLatencyInput] = useState<number>(18);
+  const [reportingHoursInput, setReportingHoursInput] = useState<number>(14);
+  const [merkleSealed, setMerkleSealed] = useState<boolean>(true);
+  const [pipelineRef, setPipelineRef] = useState<string>("REF-EU-FINTECH-2026-DORA-01");
+  const [evaluationResult, setEvaluationResult] = useState<SectorEvaluationResult | null>(null);
+  const [evaluating, setEvaluating] = useState(false);
+  const [copiedDigest, setCopiedDigest] = useState(false);
+
+  const openEvaluatorForPack = (packId: string) => {
+    if (packId === "telecom") {
+      setEvaluatorControl("NIS2-ART21-SUPPLY-CHAIN-EARLY-WARNING");
+      setPipelineRef("REF-EU-TELCO-2026-NIS2-01");
+    } else if (packId === "fintech") {
+      setEvaluatorControl("DORA-ART10-BACKUP-RESILIENCE");
+      setPipelineRef("REF-EU-FINTECH-2026-DORA-01");
+    } else {
+      setEvaluatorControl("PCI-DSS-REQ10.2-AUDIT-IMMUTABILITY");
+      setPipelineRef("REF-GLOBAL-PCI-2026-01");
+    }
+    setEvaluationResult(null);
+    setEvaluatorOpen(true);
+  };
+
+  const runEvaluation = () => {
+    setEvaluating(true);
+    setTimeout(() => {
+      let result: "PASS" | "FAIL" | "DEGRADED" = "PASS";
+      let complianceScore = 100;
+      let controlTitle = "";
+      let rationale = "";
+      let framework: "DORA_EU" | "NIS2_EU" | "PCI_DSS_V4_0_1" = "DORA_EU";
+
+      if (evaluatorControl === "DORA-ART10-BACKUP-RESILIENCE") {
+        framework = "DORA_EU";
+        controlTitle = "DORA Art 10: ICT Systems Backup & Automated Failover Recovery";
+        if (rtoInput > 60 || rpoInput > 0) {
+          result = "FAIL";
+          complianceScore = 40;
+          rationale = `RTO/RPO target violated: Actual RTO=${rtoInput}s (max 60s), RPO=${rpoInput}s (max 0s).`;
+        } else {
+          result = "PASS";
+          complianceScore = 98;
+          rationale = `Sovereign standby failover demonstrated: RTO=${rtoInput}s (<60s target), RPO=${rpoInput}s (Zero Data Loss).`;
+        }
+      } else if (evaluatorControl === "DORA-ART11-ANOMALY-DETECTION-LATENCY") {
+        framework = "DORA_EU";
+        controlTitle = "DORA Art 11: Anomaly Detection & Incident Response Latency";
+        if (latencyInput > 60) {
+          result = "FAIL";
+          complianceScore = 30;
+          rationale = `Detection latency of ${latencyInput}s exceeds DORA 60-second real-time SLA threshold.`;
+        } else if (latencyInput > 30) {
+          result = "DEGRADED";
+          complianceScore = 75;
+          rationale = `Detection latency of ${latencyInput}s within grace period (<60s) but exceeds 30s target.`;
+        } else {
+          result = "PASS";
+          complianceScore = 95;
+          rationale = `Detection latency of ${latencyInput}s strictly satisfies DORA real-time alerting criteria (<30s).`;
+        }
+      } else if (evaluatorControl === "NIS2-ART21-SUPPLY-CHAIN-EARLY-WARNING") {
+        framework = "NIS2_EU";
+        controlTitle = "NIS2 Art 21: Critical Supply Chain Early Warning & Threat Notification";
+        if (reportingHoursInput > 24) {
+          result = "FAIL";
+          complianceScore = 35;
+          rationale = `Incident notification of ${reportingHoursInput}h breached NIS2 statutory 24-hour early warning SLA.`;
+        } else {
+          result = "PASS";
+          complianceScore = 92;
+          rationale = `Incident notification submitted within NIS2 24-hour early warning window (${reportingHoursInput}h).`;
+        }
+      } else {
+        framework = "PCI_DSS_V4_0_1";
+        controlTitle = "PCI-DSS Req 10.2: Audit Log Immutability & Merkle Proof Anchoring";
+        if (!merkleSealed) {
+          result = "FAIL";
+          complianceScore = 20;
+          rationale = "Audit records not yet sealed in immutable Merkle epoch.";
+        } else {
+          result = "PASS";
+          complianceScore = 100;
+          rationale = "Audit records anchored in RFC 6962 Merkle tree with dual-signer post-quantum signatures (ML-DSA-65).";
+        }
+      }
+
+      setEvaluationResult({
+        evaluationId: `eval-sector-${Math.random().toString(36).substring(2, 10)}`,
+        controlId: evaluatorControl,
+        framework,
+        controlTitle,
+        result,
+        complianceScore,
+        observedMetrics: {
+          rtoActualSeconds: rtoInput,
+          rpoActualSeconds: rpoInput,
+          detectionLatencySeconds: latencyInput,
+          incidentReportingHours: reportingHoursInput,
+          merkleEpochAnchored: merkleSealed,
+        },
+        evidenceDigests: ["sha256:7b66e8983b13042126dd93ef2b89012a44bb01c8"],
+        rationale,
+        evaluatedAt: new Date().toISOString(),
+        attestationDigest: "sha256:e04d5c01d3f30f169d455842cb27f59a03a031f19e9a817ae45cf4c45d2d850b",
+        disclaimer: "Automated control evaluation is continuous evidence telemetry and does not constitute statutory certification or legal advice.",
+      });
+      setEvaluating(false);
+    }, 350);
+  };
+
+  const handleCopyDigest = (digest: string) => {
+    navigator.clipboard.writeText(digest);
+    setCopiedDigest(true);
+    setTimeout(() => setCopiedDigest(false), 2000);
+  };
+
   return (
     <div className="space-y-8 pb-16">
       {/* Header */}
       <div className="space-y-3">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono">
-          <Building2 className="w-3.5 h-3.5" />
-          <span>INDUSTRY SPECIALIZATIONS</span>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono">
+            <Building2 className="w-3.5 h-3.5" />
+            <span>INDUSTRY SPECIALIZATIONS • CONTINUOUS SECTOR ASSURANCE</span>
+          </div>
+          <button
+            onClick={() => openEvaluatorForPack(selectedPack.id)}
+            className="px-4 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/40 text-cyan-300 font-mono text-xs font-bold flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(6,182,212,0.15)]"
+          >
+            <Play className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Run Sector Control Evaluation</span>
+          </button>
         </div>
         <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-slate-100">
           Tailored Sector Defense Packs
         </h1>
         <p className="text-slate-400 text-sm max-w-3xl leading-relaxed">
-          Pre-packaged compliance configurations, domain-specific telemetry pipelines, and specialized governance workflows tailored to the threat models of high-stakes industries.
+          Pre-packaged compliance configurations, domain-specific telemetry pipelines, and continuous assurance evaluators (DORA, NIS2, PCI DSS v4.0.1) grounded in Spec §18 and ADR-08.
         </p>
       </div>
 
@@ -210,7 +369,15 @@ export default function SectorPacksPage() {
 
               <div className="pt-3 border-t border-[#162238] flex items-center justify-between text-xs font-mono">
                 <span className="text-slate-500">Plan Alignment:</span>
-                <span className="text-slate-200 font-semibold">{pack.recommendedPlan}</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openEvaluatorForPack(pack.id);
+                  }}
+                  className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-semibold transition-colors"
+                >
+                  <span>Test Evaluation →</span>
+                </button>
               </div>
             </div>
           );
@@ -231,8 +398,17 @@ export default function SectorPacksPage() {
               <h2 className="text-2xl font-bold text-slate-100">{selectedPack.name}</h2>
             </div>
           </div>
-          <div className="px-3.5 py-1.5 rounded-lg bg-[#060911] border border-cyan-500/30 text-xs font-mono text-cyan-300 font-bold shadow-inner">
-            {selectedPack.recommendedPlan}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => openEvaluatorForPack(selectedPack.id)}
+              className="px-4 py-2 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/50 text-cyan-300 font-mono text-xs font-bold flex items-center gap-2 transition-all shadow-[0_0_15px_rgba(6,182,212,0.2)]"
+            >
+              <Play className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Simulate Continuous Evaluation</span>
+            </button>
+            <div className="px-3.5 py-1.5 rounded-lg bg-[#060911] border border-cyan-500/30 text-xs font-mono text-cyan-300 font-bold shadow-inner">
+              {selectedPack.recommendedPlan}
+            </div>
           </div>
         </div>
 
@@ -310,15 +486,292 @@ export default function SectorPacksPage() {
             <span>View plan tier pricing &amp; allocations</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
-          <Link
-            href="/onboarding"
-            className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(6,182,212,0.35)] hover:shadow-[0_0_25px_rgba(6,182,212,0.5)]"
-          >
-            <span>Provision {selectedPack.name.split(" ")[0]} Pack</span>
-            <ArrowRight className="w-4 h-4" />
-          </Link>
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <button
+              onClick={() => openEvaluatorForPack(selectedPack.id)}
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#060911] hover:bg-[#0c1424] border border-cyan-500/40 text-cyan-300 font-mono text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md"
+            >
+              <Sliders className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Evaluate Sector Overlay</span>
+            </button>
+            <Link
+              href="/onboarding"
+              className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(6,182,212,0.35)] hover:shadow-[0_0_25px_rgba(6,182,212,0.5)]"
+            >
+              <span>Provision {selectedPack.name.split(" ")[0]} Pack</span>
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
         </div>
       </div>
+
+      {/* Interactive Sector Control Evaluation Modal */}
+      {evaluatorOpen && (
+        <div
+          id="sector-evaluator-modal"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+        >
+          <div className="w-full max-w-2xl rounded-2xl bg-slate-900 border border-cyan-500/50 p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-cyan-500/20 text-cyan-400 border border-cyan-500/40">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-100 font-mono">
+                    Continuous Sector Control Evaluator
+                  </h3>
+                  <p className="text-[11px] font-mono text-slate-400">
+                    ADR-08 Sector Registry • Continuous Assurance Specification §18
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setEvaluatorOpen(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Control Selector */}
+            <div className="space-y-2">
+              <label className="text-xs font-mono font-bold text-slate-300 uppercase">
+                Target Sector Control Definition
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {[
+                  {
+                    id: "DORA-ART10-BACKUP-RESILIENCE",
+                    label: "DORA Art 10: ICT Backup & Resilience",
+                    regime: "EU DORA",
+                  },
+                  {
+                    id: "DORA-ART11-ANOMALY-DETECTION-LATENCY",
+                    label: "DORA Art 11: Real-Time Detection Latency",
+                    regime: "EU DORA",
+                  },
+                  {
+                    id: "NIS2-ART21-SUPPLY-CHAIN-EARLY-WARNING",
+                    label: "NIS2 Art 21: Early Warning SLA",
+                    regime: "EU NIS2",
+                  },
+                  {
+                    id: "PCI-DSS-REQ10.2-AUDIT-IMMUTABILITY",
+                    label: "PCI-DSS Req 10.2: Audit Merkle Seal",
+                    regime: "PCI DSS v4.0.1",
+                  },
+                ].map((ctrl) => (
+                  <button
+                    key={ctrl.id}
+                    onClick={() => {
+                      setEvaluatorControl(ctrl.id as SectorControlId);
+                      setEvaluationResult(null);
+                    }}
+                    className={`p-2.5 rounded-xl text-left border text-xs font-mono transition-all ${
+                      evaluatorControl === ctrl.id
+                        ? "bg-cyan-500/20 text-cyan-200 border-cyan-500/50 shadow-[0_0_12px_rgba(6,182,212,0.2)]"
+                        : "bg-slate-950/80 text-slate-400 border-slate-800 hover:border-slate-700"
+                    }`}
+                  >
+                    <div className="text-[10px] text-cyan-400 font-bold">{ctrl.regime}</div>
+                    <div className="font-semibold text-slate-200 line-clamp-1">{ctrl.label}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Dynamic Metric Sliders depending on selected control */}
+            <div className="p-4 rounded-xl bg-slate-950/90 border border-slate-800 space-y-4">
+              <div className="text-xs font-mono font-bold text-slate-300 uppercase flex items-center justify-between">
+                <span>Observed Telemetry Inputs</span>
+                <span className="text-[10px] text-cyan-400 font-normal">Live Parameter Tuning</span>
+              </div>
+
+              {evaluatorControl === "DORA-ART10-BACKUP-RESILIENCE" && (
+                <div className="space-y-3">
+                  <div>
+                    <div className="flex justify-between text-xs font-mono text-slate-300 mb-1">
+                      <span>RTO Actual (Target &lt; 60s):</span>
+                      <span className={rtoInput <= 60 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+                        {rtoInput}s
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="120"
+                      value={rtoInput}
+                      onChange={(e) => setRtoInput(Number(e.target.value))}
+                      className="w-full accent-cyan-400 bg-slate-800 rounded-lg h-2"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-xs font-mono text-slate-300 mb-1">
+                      <span>RPO Actual (Target = 0s):</span>
+                      <span className={rpoInput === 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+                        {rpoInput}s
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="30"
+                      value={rpoInput}
+                      onChange={(e) => setRpoInput(Number(e.target.value))}
+                      className="w-full accent-cyan-400 bg-slate-800 rounded-lg h-2"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {evaluatorControl === "DORA-ART11-ANOMALY-DETECTION-LATENCY" && (
+                <div>
+                  <div className="flex justify-between text-xs font-mono text-slate-300 mb-1">
+                    <span>Detection Latency (Target &lt; 30s SLA, Max 60s):</span>
+                    <span className={latencyInput <= 30 ? "text-emerald-400 font-bold" : latencyInput <= 60 ? "text-amber-400 font-bold" : "text-rose-400 font-bold"}>
+                      {latencyInput}s
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="5"
+                    max="90"
+                    value={latencyInput}
+                    onChange={(e) => setLatencyInput(Number(e.target.value))}
+                    className="w-full accent-cyan-400 bg-slate-800 rounded-lg h-2"
+                  />
+                </div>
+              )}
+
+              {evaluatorControl === "NIS2-ART21-SUPPLY-CHAIN-EARLY-WARNING" && (
+                <div>
+                  <div className="flex justify-between text-xs font-mono text-slate-300 mb-1">
+                    <span>Early Warning Notification Latency (Target &lt; 24h):</span>
+                    <span className={reportingHoursInput <= 24 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+                      {reportingHoursInput}h
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1"
+                    max="48"
+                    value={reportingHoursInput}
+                    onChange={(e) => setReportingHoursInput(Number(e.target.value))}
+                    className="w-full accent-cyan-400 bg-slate-800 rounded-lg h-2"
+                  />
+                </div>
+              )}
+
+              {evaluatorControl === "PCI-DSS-REQ10.2-AUDIT-IMMUTABILITY" && (
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-mono text-slate-300">
+                    <span className="block font-bold">RFC 6962 Merkle Tree Epoch Proof Sealed:</span>
+                    <span className="text-[10px] text-slate-500">Requires dual ML-DSA-65 post-quantum signature</span>
+                  </div>
+                  <button
+                    onClick={() => setMerkleSealed(!merkleSealed)}
+                    className={`px-3 py-1 rounded-lg text-xs font-mono font-bold transition-all border ${
+                      merkleSealed
+                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                        : "bg-rose-500/20 text-rose-300 border-rose-500/40"
+                    }`}
+                  >
+                    {merkleSealed ? "SEALED (ACTIVE)" : "UNSEALED (DRIFT)"}
+                  </button>
+                </div>
+              )}
+
+              <div className="pt-2 border-t border-slate-800/80">
+                <label className="text-[10px] font-mono text-slate-400 uppercase block mb-1">
+                  ADR-08 Signed Customer Pipeline Reference
+                </label>
+                <input
+                  type="text"
+                  value={pipelineRef}
+                  onChange={(e) => setPipelineRef(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs font-mono text-slate-200 focus:outline-none focus:border-cyan-500"
+                />
+              </div>
+            </div>
+
+            {/* Run Button */}
+            <button
+              onClick={runEvaluation}
+              disabled={evaluating}
+              className="w-full py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-mono font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(6,182,212,0.3)] disabled:opacity-50"
+            >
+              {evaluating ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>Evaluating Continuous Assurance Telemetry...</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3.5 h-3.5" />
+                  <span>Execute Automated Sector Control Evaluation</span>
+                </>
+              )}
+            </button>
+
+            {/* Evaluation Results Card */}
+            {evaluationResult && (
+              <div className="p-4 rounded-xl bg-slate-950 border border-cyan-500/40 space-y-3 animate-in fade-in duration-200">
+                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                        evaluationResult.result === "PASS"
+                          ? "bg-emerald-950 text-emerald-300 border-emerald-500/40"
+                          : evaluationResult.result === "DEGRADED"
+                          ? "bg-amber-950 text-amber-300 border-amber-500/40"
+                          : "bg-rose-950 text-rose-300 border-rose-500/40"
+                      }`}
+                    >
+                      {evaluationResult.result}
+                    </span>
+                    <span className="text-xs font-mono font-bold text-slate-200">
+                      Score: {evaluationResult.complianceScore}/100
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-cyan-400">
+                    {evaluationResult.framework}
+                  </span>
+                </div>
+
+                <div className="space-y-1.5 text-xs font-mono">
+                  <div className="text-slate-200 font-semibold">{evaluationResult.controlTitle}</div>
+                  <p className="text-slate-400 text-[11px] leading-relaxed">
+                    {evaluationResult.rationale}
+                  </p>
+                </div>
+
+                <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1 text-[10px] font-mono">
+                  <div className="flex justify-between items-center text-slate-400">
+                    <span className="text-slate-500 uppercase">Cryptographic Attestation Digest:</span>
+                    <button
+                      onClick={() => handleCopyDigest(evaluationResult.attestationDigest)}
+                      className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+                    >
+                      <Copy className="w-3 h-3" />
+                      <span>{copiedDigest ? "Copied" : "Copy Digest"}</span>
+                    </button>
+                  </div>
+                  <div className="text-emerald-400 truncate select-all">
+                    {evaluationResult.attestationDigest}
+                  </div>
+                </div>
+
+                <div className="text-[10px] font-mono text-slate-500 italic border-t border-slate-800 pt-2">
+                  {evaluationResult.disclaimer}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+

@@ -128,13 +128,19 @@ export default function RiskRegisterPage() {
             Every risk, its contributing factors, its owner and its treatment.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button variant="ghost" onClick={() => void load()} className="border border-[#162238] bg-[#0c111e] hover:bg-[#111a2e] text-slate-300">
             <RefreshCw className="w-4 h-4 text-cyan-400" />
             <span>Refresh</span>
           </Button>
+          <Button variant="secondary" onClick={() => router.push("/risk/executive")} className="border border-purple-500/30 bg-purple-500/10 hover:bg-purple-500/20 text-purple-300">
+            <span>Executive Board (W31)</span>
+          </Button>
           <Button variant="secondary" onClick={() => router.push("/exceptions")} className="border border-cyan-500/30 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300">
             <span>Exceptions</span>
+          </Button>
+          <Button variant="primary" onClick={() => router.push("/alerts")} className="shadow-[0_0_15px_rgba(6,182,212,0.25)] bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold">
+            <span>Live Alerts Queue (Step 4)</span>
             <ArrowRight className="w-4 h-4" />
           </Button>
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { backend, asList, BackendError } from "@/lib/backend";
 import { formatTimestamp } from "@/lib/utils";
 import { Card } from "@/ui/Card";
@@ -298,12 +299,12 @@ export default function NotificationsPage() {
             <Send className="w-3.5 h-3.5" />
             <span>Send Test Email</span>
           </Button>
-          <a href="/admin/email-templates">
-            <Button variant="outline" className="text-xs flex items-center gap-1.5 border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/10 font-mono">
-              <Mail className="w-4 h-4" />
-              <span>Template Studio (226)</span>
+          <Link href="/admin/email-templates">
+            <Button variant="outline" className="text-xs flex items-center gap-1.5 border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/10 font-mono font-bold">
+              <Mail className="w-4 h-4 text-cyan-400" />
+              <span>Template Studio (Step 16 Finale) →</span>
             </Button>
-          </a>
+          </Link>
           <Button variant="ghost" onClick={() => void load()}>
             <RefreshCw className="w-4 h-4" />
             <span>Refresh</span>

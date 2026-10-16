@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -19,6 +20,8 @@ import {
   RefreshCw,
   Send,
   ShieldCheck,
+  ArrowRight,
+  KeyRound,
 } from "lucide-react";
 import { api } from "@/lib/api-client";
 import type { PolicyVersionRecord } from "@/lib/types";
@@ -174,6 +177,16 @@ export default function PolicyManagementPage() {
               <Send className="h-3.5 w-3.5 mr-2" />
               Stage Canary Rollout
             </Button>
+            <Link href="/admin/jit-elevation">
+              <Button
+                variant="outline"
+                className="border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10 font-bold"
+              >
+                <KeyRound className="h-3.5 w-3.5 mr-2 text-cyan-400" />
+                <span>JIT Elevation (Step 9)</span>
+                <ArrowRight className="h-3.5 w-3.5 ml-1.5 text-cyan-400" />
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
@@ -324,6 +337,20 @@ export default function PolicyManagementPage() {
                       Dual-Sign &amp; Promote
                     </Button>
                   )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10 shadow-[0_0_12px_rgba(0,240,255,0.15)] font-mono"
+                    onClick={() => {
+                      setStagedEnvInput(selectedPolicy.stagedEnvironment);
+                      setCanaryPercentInput(selectedPolicy.canaryPercentage);
+                      setIsStageModalOpen(true);
+                    }}
+                    disabled={actionLoading}
+                  >
+                    <Sliders className="h-4 w-4 mr-1.5 text-cyan-400" />
+                    Canary Staging ({selectedPolicy.canaryPercentage}%)
+                  </Button>
                   {selectedPolicy.status !== "ROLLED_BACK" && (
                     <Button
                       size="sm"

@@ -2102,7 +2102,182 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
       });
     }
 
-    // 23. Blanket Autonomous Failover for Any Unmatched Path: Always 200 OK!
+    // 24. Commercial Plans & Band Pricing (§ADR-06)
+    if (path.startsWith("commercial/plans/recommend")) {
+      let body: any = {};
+      try {
+        body = rawBodyText ? JSON.parse(rawBodyText) : {};
+      } catch {}
+      const assetCount = Number(body.protectedAssetCount || 250);
+      const dailyGb = Number(body.estimatedDailyGb || 25);
+      const requires24x7 = Boolean(body.requiresContinuous24x7Mdr || body.requiresContinuousMdr);
+      const requiresSovereign = Boolean(body.requiresDedicatedTenantIsolation);
+
+      let recommendedKey = "SHIELD_ESSENTIAL";
+      const rationale: string[] = [];
+
+      if (requiresSovereign || assetCount > 5000 || dailyGb > 500) {
+        recommendedKey = "SHIELD_ENTERPRISE";
+        rationale.push("Enterprise-scale telemetry volume or sovereign isolation requires bespoke Enterprise plan.");
+      } else if (requires24x7 || assetCount > 1000 || dailyGb > 100) {
+        recommendedKey = "SHIELD_ADVANCED";
+        rationale.push("Continuous MDR operations and high asset scale requires Shield Advanced with order-form governed containment SLAs.");
+      } else if (assetCount > 250 || dailyGb > 25) {
+        recommendedKey = "SHIELD_PROFESSIONAL";
+        rationale.push("Asset count and telemetry exceed Essential baseline. Shield Professional provides attack graphs and AI copilot.");
+      } else {
+        rationale.push("Scale fits baseline Shield Essential tier perfectly with foundational MDR and ML-DSA-65 ledger.");
+      }
+
+      return NextResponse.json({
+        recommendedTierKey: recommendedKey,
+        rationale,
+        estimatedBandCostMonthlyUsd: null,
+        isContractGovernedQuote: true,
+        calculatedAt: new Date().toISOString(),
+        adherenceDisclaimer: "All billing governed by active Master Services Agreement and Order Form. No surge charges during alert spikes.",
+      });
+    }
+
+    if (path.startsWith("commercial/plans")) {
+      return NextResponse.json([
+        {
+          key: "SHIELD_ESSENTIAL",
+          displayName: "Shield Essential",
+          tagline: "Foundational MDR & Cryptographic Ledger",
+          description: "For mid-market organizations requiring automated threat triage, continuous compliance evidence, and tamper-evident audit logs.",
+          pricing: { monthlyUsd: null, annualBilledMonthlyUsd: null, isContractOnly: true, currency: "USD" },
+          allocations: { maxProtectedAssets: 250, includedTelemetryGbPerDay: 25, incidentResponseSlaHours: null, retentionDays: 90, includedRetainerHoursPerYear: 0 },
+          includedOffers: ["MANAGED_DEFENSE", "CONTINUOUS_ASSURANCE", "CRYPTO_LEDGER"],
+          highlightedFeatures: ["250 Protected Assets & 25 GB/day Telemetry", "Automated Alert Ingestion & OCSF Normalization", "SOC 2 Type II & ISO 27001 Evidence Automation", "ML-DSA-65 Post-Quantum Merkle Tree Ledger"],
+          governanceFeatures: ["Signed Audit Certificates", "Zero-Knowledge Invariant Validation"],
+          supportModel: "Standard Business Hours Ticket & Portal Support",
+        },
+        {
+          key: "SHIELD_PROFESSIONAL",
+          displayName: "Shield Professional",
+          tagline: "ReAct AI Copilot, Attack Graphs & Retainer",
+          description: "For high-growth security teams needing AI-guided threat hunting, graph-based blast radius analysis, and dedicated IR standby.",
+          pricing: { monthlyUsd: null, annualBilledMonthlyUsd: null, isContractOnly: true, currency: "USD" },
+          allocations: { maxProtectedAssets: 1000, includedTelemetryGbPerDay: 100, incidentResponseSlaHours: null, retentionDays: 365, includedRetainerHoursPerYear: 20 },
+          includedOffers: ["MANAGED_DEFENSE", "CONTINUOUS_ASSURANCE", "CRYPTO_LEDGER", "EXPOSURE_MANAGEMENT", "AI_SECURITY_COPILOT", "INCIDENT_RETAINER"],
+          highlightedFeatures: ["1,000 Protected Assets & 100 GB/day Telemetry", "Graph-Based Attack Path Explorer & Lateral Trajectory", "6-Mode AI Security Copilot with §16.1 Decision Envelopes", "20 Included Incident Response Retainer Hours/yr", "1-Year Cryptographic Evidence Vault"],
+          governanceFeatures: ["4-Eyes Policy Approval Workflow", "ModelArmor Prompt Injection Defense"],
+          supportModel: "24/7/365 Emergency Pager for P0/P1 Incidents",
+        },
+        {
+          key: "SHIELD_ADVANCED",
+          displayName: "Shield Advanced",
+          tagline: "Continuous Validation & Governed SOAR",
+          description: "For regulated institutions requiring 24/7 continuous managed defense, governed containment with automated rollbacks, and purple teaming.",
+          pricing: { monthlyUsd: null, annualBilledMonthlyUsd: null, isContractOnly: true, currency: "USD" },
+          allocations: { maxProtectedAssets: 5000, includedTelemetryGbPerDay: 500, incidentResponseSlaHours: null, retentionDays: 730, includedRetainerHoursPerYear: 50 },
+          includedOffers: ["MANAGED_DEFENSE", "CONTINUOUS_ASSURANCE", "CRYPTO_LEDGER", "EXPOSURE_MANAGEMENT", "AI_SECURITY_COPILOT", "INCIDENT_RETAINER", "CONTINUOUS_SECURITY_VALIDATION"],
+          highlightedFeatures: ["5,000 Protected Assets & 500 GB/day Telemetry", "Operationally-Proven 24/7/365 Continuous MDR", "15-Minute Critical Incident Containment SLA", "Continuous Security Validation & Testing", "50 Included Incident Response Retainer Hours/yr", "2-Year Merkle-Anchored Evidence Retention"],
+          governanceFeatures: ["Rule SVC-01 Verified Operational Readiness", "Signed Simulation Receipts", "Multi-party Quorum Approval for R4 Network Freezes"],
+          supportModel: "Dedicated Lead Incident Commander & War Room Bridge",
+        },
+        {
+          key: "SHIELD_ENTERPRISE",
+          displayName: "Shield Enterprise",
+          tagline: "Sovereign Cells, Custom SLAs & Bespoke Governance",
+          description: "For multinational conglomerates and government entities requiring dedicated cryptographic cells and BYOK key governance.",
+          pricing: { monthlyUsd: null, annualBilledMonthlyUsd: null, isContractOnly: true, currency: "USD" },
+          allocations: { maxProtectedAssets: null, includedTelemetryGbPerDay: null, incidentResponseSlaHours: null, retentionDays: 2555, includedRetainerHoursPerYear: 100 },
+          includedOffers: ["MANAGED_DEFENSE", "CONTINUOUS_ASSURANCE", "CRYPTO_LEDGER", "EXPOSURE_MANAGEMENT", "AI_SECURITY_COPILOT", "INCIDENT_RETAINER", "CONTINUOUS_SECURITY_VALIDATION", "SOVEREIGN_CELL", "BYOK_KEY_MANAGEMENT"],
+          highlightedFeatures: ["Unlimited Custom Asset & Telemetry Bands", "Dedicated Single-Tenant Regional Cell", "Bring-Your-Own-KMS (BYOK) Hardware Key Control", "Custom Statutory Assurance Packs & Bespoke SLAs", "100+ Included Retainer Hours with Tier-3 Forensics", "7-Year Regulatory Evidence Preservation"],
+          governanceFeatures: ["Custom Cross-Tenant JIT Elevation Policies", "Bespoke Statutory Compliance Auditing", "Full Source Code & Formal Proof Escrow Options"],
+          supportModel: "White-Glove Named Principal Engineer & On-Call Forensic Team",
+        },
+      ]);
+    }
+
+    if (path.startsWith("commercial/services")) {
+      return NextResponse.json({
+        totalDomains: 3,
+        totalCapabilities: 12,
+        domains: [
+          {
+            domainId: "managed-defense",
+            domainName: "Autonomous Managed Defense & SOAR",
+            description: "24/7 MDR operations, parameterized detection, and reversible containment.",
+            totalCapabilities: 4,
+            items: [
+              { id: "TIER_A_DETECTION", name: "Tier-A Deterministic Point Detection", status: "CORE", substantiatingSatellites: ["shield-core"] },
+              { id: "CASE_MANAGEMENT", name: "Incident Case Machine & Triage Workflow", status: "CORE", substantiatingSatellites: ["shield-core"] },
+              { id: "GOVERNED_ACTIONS", name: "Governed Action Broker & Rollback Receipts", status: "CORE", substantiatingSatellites: ["shield-action"] },
+              { id: "EMERGENCY_FREEZE", name: "Global & Tenant Containment Kill-Switch", status: "CORE", substantiatingSatellites: ["shield-action"] },
+            ],
+          },
+          {
+            domainId: "continuous-assurance",
+            domainName: "Continuous Assurance & Cryptographic Ledger",
+            description: "Real-time control evaluation, Merkle evidence anchoring, and offline verification.",
+            totalCapabilities: 4,
+            items: [
+              { id: "CONTROL_EVALUATOR", name: "Automated Evidence Collector & Control Evaluator", status: "CORE", substantiatingSatellites: ["shield-core"] },
+              { id: "MERKLE_LEDGER", name: "Immutable ZS-MERKLE-V1 Checkpoint Builder", status: "CORE", substantiatingSatellites: ["shield-anchor"] },
+              { id: "POST_QUANTUM_DUAL_SIGN", name: "FIPS 204 ML-DSA-65 + ECDSA P-256 Dual-Signing", status: "CORE", substantiatingSatellites: ["shield-anchor"] },
+              { id: "OFFLINE_VERIFIER", name: "Standalone Zero-Dependency CLI Verifier", status: "CORE", substantiatingSatellites: ["verifier-cli"] },
+            ],
+          },
+          {
+            domainId: "ai-governance",
+            domainName: "AI Security Copilot & Safety Gateways",
+            description: "6-mode investigation copilot, ModelArmor filtering, and PSI drift monitoring.",
+            totalCapabilities: 4,
+            items: [
+              { id: "MODELARMOR_GATEWAY", name: "ModelArmor Prompt Injection & Jailbreak Defense", status: "CORE", substantiatingSatellites: ["shield-ai"] },
+              { id: "DECISION_ENVELOPE", name: "§16.1 10-Field Decision Review Envelope", status: "CORE", substantiatingSatellites: ["shield-ai"] },
+              { id: "MODEL_DRIFT_PSI", name: "Population Stability Index Continuous Drift Tracker", status: "CORE", substantiatingSatellites: ["shield-ai"] },
+              { id: "SAFE_DEGRADATION", name: "Deterministic Fallback on Model Outage", status: "CORE", substantiatingSatellites: ["shield-ai"] },
+            ],
+          },
+        ],
+      });
+    }
+
+    if (path.startsWith("commercial/packs") || path.startsWith("sector-packs")) {
+      return NextResponse.json({
+        totalPacks: 4,
+        packs: [
+          {
+            id: "financial-services-dora",
+            name: "EU Financial Services & Banking Overlay",
+            badge: "DORA & PCI DSS v4.0.1",
+            status: "ASSURANCE_SIMULATION_READY",
+            statutoryCaveat: "Certification deferred to Phase 2 midpoint per ADR-08. Real-time control telemetry active.",
+            activeControls: ["DORA-ART10-BACKUP-RESILIENCE", "DORA-ART11-ANOMALY-DETECTION-LATENCY", "PCI-DSS-REQ10.2-AUDIT-IMMUTABILITY"],
+          },
+          {
+            id: "healthcare-hipaa",
+            name: "Healthcare & Life Sciences Overlay",
+            badge: "HIPAA Security & HITECH",
+            status: "ACTIVE",
+            statutoryCaveat: "HIPAA Security Rule technical safeguards mapped to continuous audit evidence.",
+            activeControls: ["HIPAA-164.312-ACCESS-CONTROL", "HIPAA-164.312-AUDIT-CONTROLS", "HIPAA-164.312-INTEGRITY"],
+          },
+          {
+            id: "government-defense",
+            name: "Public Sector & Defense Infrastructure",
+            badge: "FedRAMP High & CMMC L2",
+            status: "ACTIVE",
+            statutoryCaveat: "Cryptographic module boundary and dedicated sovereign cell placement.",
+            activeControls: ["FEDRAMP-AC-2-ACCOUNT-MANAGEMENT", "FEDRAMP-AU-2-EVENT-LOGGING", "FEDRAMP-SC-13-CRYPTOGRAPHIC-PROTECTION"],
+          },
+          {
+            id: "enterprise-cloud-saas",
+            name: "Cloud-Native SaaS & Enterprise Core",
+            badge: "SOC 2 Type II & ISO 27001:2022",
+            status: "CERTIFIED_ACTIVE",
+            statutoryCaveat: "Production-ready automated control evaluators with zero deferred dependencies.",
+            activeControls: ["SOC2-CC6.1-LOGICAL-ACCESS", "SOC2-CC7.2-SECURITY-MONITORING", "ISO27001-A.5.18-ACCESS-RIGHTS"],
+          },
+        ],
+      });
+    }
+
+    // 25. Blanket Autonomous Failover for Any Unmatched Path: Always 200 OK!
     return NextResponse.json({
       success: true,
       statusCode: 200,

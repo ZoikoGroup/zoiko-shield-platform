@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import Link from "next/link";
 import { backend, asList, BackendError } from "@/lib/backend";
 import { Card } from "@/ui/Card";
 import { Button } from "@/ui/Button";
@@ -22,7 +23,8 @@ import {
   Copy,
   Hash,
   KeyRound,
-  ExternalLink
+  ExternalLink,
+  RotateCcw
 } from "lucide-react";
 import { LoadingState } from "@/components/states/mandatory-ui-states";
 
@@ -730,7 +732,17 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
         </div>
 
         {/* Global Controls */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link href="/admin/platform-health">
+            <Button
+              variant="primary"
+              size="sm"
+              className="text-xs flex items-center gap-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold shadow-[0_0_15px_rgba(6,182,212,0.25)]"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Restart Walkthrough (Step 1) →</span>
+            </Button>
+          </Link>
           <Button
             variant="secondary"
             size="sm"
