@@ -122,13 +122,12 @@ export const DemoGuideBar: React.FC = () => {
                 router.push(s.route);
               }}
               title={s.title}
-              className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold transition-all shrink-0 ${
-                activeStep === s.step
+              className={`px-2 py-0.5 rounded text-[11px] font-mono font-bold transition-all shrink-0 ${activeStep === s.step
                   ? "bg-cyan-500 text-slate-950 font-black shadow-[0_0_12px_rgba(6,182,212,0.6)] scale-105"
                   : s.step < activeStep
-                  ? "bg-slate-800/80 text-emerald-400 border border-emerald-500/30 hover:bg-slate-700"
-                  : "bg-slate-900/90 text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-              }`}
+                    ? "bg-slate-800/80 text-emerald-400 border border-emerald-500/30 hover:bg-slate-700"
+                    : "bg-slate-900/90 text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                }`}
             >
               {s.step}
             </button>
