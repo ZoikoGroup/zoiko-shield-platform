@@ -373,14 +373,14 @@ const defaultJitSessions: JitSessionItem[] = [
 ];
 
 const defaultG1Roster = [
-  { roleId: "ciso", roleTitle: "Chief Information Security Officer (CISO)", ratified: true, signatoryName: "Elena Rostova, CISO", signedAt: new Date(Date.now() - 3600000).toISOString() },
-  { roleId: "dpo", roleTitle: "Data Protection Officer (DPO)", ratified: true, signatoryName: "Jean-Luc Moreau, DPO", signedAt: new Date(Date.now() - 3600000).toISOString() },
-  { roleId: "vp_eng", roleTitle: "VP of Engineering", ratified: true, signatoryName: "David K. Zhang, VP Eng", signedAt: new Date(Date.now() - 3600000).toISOString() },
-  { roleId: "ai_risk_lead", roleTitle: "AI Risk & Safety Governance Lead", ratified: true, signatoryName: "Dr. Aris Thorne", signedAt: new Date(Date.now() - 3600000).toISOString() },
-  { roleId: "qa_lead", roleTitle: "Quality Assurance & Release Lead", ratified: true, signatoryName: "Sarah M. Jenkins", signedAt: new Date(Date.now() - 3600000).toISOString() },
-  { roleId: "sre_lead", roleTitle: "Site Reliability Engineering Lead", ratified: true, signatoryName: "Vikram Malhotra", signedAt: new Date(Date.now() - 3600000).toISOString() },
-  { roleId: "product_lead", roleTitle: "Security Product Lead", ratified: true, signatoryName: "Chloe Davenport", signedAt: new Date(Date.now() - 3600000).toISOString() },
-  { roleId: "soc_lead", roleTitle: "SOC Incident Commander", ratified: true, signatoryName: "Marcus Vance, Lead SOC", signedAt: new Date(Date.now() - 3600000).toISOString() },
+  { roleId: "ciso", roleTitle: "Chief Information Security Officer (CISO)", ratified: false },
+  { roleId: "dpo", roleTitle: "Data Protection Officer (DPO)", ratified: true, signatoryName: "Jean-Luc Moreau, DPO", signatureProof: "ecdsa-p256-sig-dpo-ratified", signedAt: new Date(Date.now() - 3600000).toISOString() },
+  { roleId: "vp_eng", roleTitle: "VP of Engineering", ratified: true, signatoryName: "David K. Zhang, VP Eng", signatureProof: "ecdsa-p256-sig-vpeng-ratified", signedAt: new Date(Date.now() - 3600000).toISOString() },
+  { roleId: "ai_risk_lead", roleTitle: "AI Risk & Safety Governance Lead", ratified: false },
+  { roleId: "qa_lead", roleTitle: "Quality Assurance & Release Lead", ratified: true, signatoryName: "Sarah M. Jenkins", signatureProof: "ecdsa-p256-sig-qa-ratified", signedAt: new Date(Date.now() - 3600000).toISOString() },
+  { roleId: "sre_lead", roleTitle: "Site Reliability Engineering Lead", ratified: true, signatoryName: "Vikram Malhotra", signatureProof: "ecdsa-p256-sig-sre-ratified", signedAt: new Date(Date.now() - 3600000).toISOString() },
+  { roleId: "product_lead", roleTitle: "Security Product Lead", ratified: true, signatoryName: "Chloe Davenport", signatureProof: "ecdsa-p256-sig-product-ratified", signedAt: new Date(Date.now() - 3600000).toISOString() },
+  { roleId: "soc_lead", roleTitle: "SOC Incident Commander", ratified: true, signatoryName: "Marcus Vance, Lead SOC", signatureProof: "ecdsa-p256-sig-soc-ratified", signedAt: new Date(Date.now() - 3600000).toISOString() },
 ];
 
 interface FreezeStatusItem {
@@ -393,6 +393,13 @@ interface FreezeStatusItem {
   } | null;
 }
 
+const defaultProposalsState: Record<string, string> = {
+  "PROP-2026-0914": "PROPOSED",
+  "PROP-2026-0915": "SIMULATED",
+  "PROP-ACT-882": "PROPOSED",
+  "PROP-ACT-883": "SIMULATED",
+};
+
 const globalStore = globalThis as unknown as {
   __zoikoDeliveries?: DeliveryItem[];
   __zoikoConnectors?: ConnectorItem[];
@@ -400,6 +407,7 @@ const globalStore = globalThis as unknown as {
   __zoikoJitSessions?: JitSessionItem[];
   __zoikoG1Roster?: typeof defaultG1Roster;
   __zoikoFreezeStatus?: FreezeStatusItem;
+  __zoikoProposalsState?: Record<string, string>;
 };
 if (!globalStore.__zoikoDeliveries) {
   globalStore.__zoikoDeliveries = defaultDeliveries;
@@ -419,6 +427,9 @@ if (!globalStore.__zoikoG1Roster) {
 if (!globalStore.__zoikoFreezeStatus) {
   globalStore.__zoikoFreezeStatus = { frozen: false, status: "OPERATIONAL", freeze: null };
 }
+if (!globalStore.__zoikoProposalsState) {
+  globalStore.__zoikoProposalsState = { ...defaultProposalsState };
+}
 
 const inMemoryDeliveries = globalStore.__zoikoDeliveries!;
 const inMemoryConnectors = globalStore.__zoikoConnectors!;
@@ -426,6 +437,7 @@ const inMemoryPolicies = globalStore.__zoikoPolicies!;
 const inMemoryJitSessions = globalStore.__zoikoJitSessions!;
 const inMemoryG1Roster = globalStore.__zoikoG1Roster!;
 const inMemoryFreezeStatus = globalStore.__zoikoFreezeStatus!;
+const inMemoryProposalsState = globalStore.__zoikoProposalsState!;
 
 /**
  * Creates a valid Server-Sent Events (SSE) stream for EventSource clients.
@@ -704,7 +716,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
         let body: any = {};
         try {
           body = JSON.parse(rawBodyText || "{}");
-        } catch {}
+        } catch { }
 
         const newId = `conn-${body.provider || "generic"}-${Date.now().toString(36)}`;
         const newConn: ConnectorItem = {
@@ -733,7 +745,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
       let body: any = {};
       try {
         body = JSON.parse(rawBodyText || "{}");
-      } catch {}
+      } catch { }
 
       return NextResponse.json({
         success: true,
@@ -752,7 +764,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
         let body: any = {};
         try {
           body = JSON.parse(rawBodyText || "{}");
-        } catch {}
+        } catch { }
 
         return NextResponse.json({
           success: true,
@@ -821,7 +833,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
         try {
           const bodyJson = JSON.parse(rawBodyText || "{}");
           if (bodyJson.recipientEmail) recipient = bodyJson.recipientEmail;
-        } catch {}
+        } catch { }
 
         const parts = path.split("/");
         const templateId = parts[parts.indexOf("send-test") - 1] || "ZS-EML-IAM-001";
@@ -895,7 +907,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
         let body: any = {};
         try {
           body = JSON.parse(rawBodyText || "{}");
-        } catch {}
+        } catch { }
         return NextResponse.json({
           id: "inv-" + crypto.randomUUID().slice(0, 8),
           email: body.email || "analyst@acme.com",
@@ -1444,7 +1456,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
         let body: any = {};
         try {
           body = JSON.parse(rawBodyText || "{}");
-        } catch {}
+        } catch { }
         const parts = path.split("/");
         const id = decodeURIComponent(parts[parts.indexOf("stage") - 1]);
         const policy = inMemoryPolicies.find((p) => p.id === id);
@@ -1461,7 +1473,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
         let body: any = {};
         try {
           body = JSON.parse(rawBodyText || "{}");
-        } catch {}
+        } catch { }
         const parts = path.split("/");
         const id = decodeURIComponent(parts[parts.indexOf("rollback") - 1]);
         const policy = inMemoryPolicies.find((p) => p.id === id);
@@ -1494,7 +1506,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
         let body: any = {};
         try {
           body = JSON.parse(rawBodyText || "{}");
-        } catch {}
+        } catch { }
 
         const newSession: JitSessionItem = {
           sessionId: `jit-sess-${Date.now().toString(36)}`,
@@ -1517,7 +1529,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
         let body: any = {};
         try {
           body = JSON.parse(rawBodyText || "{}");
-        } catch {}
+        } catch { }
         const parts = path.split("/");
         const id = parts[parts.indexOf("approve") - 1];
         const session = inMemoryJitSessions.find((s) => s.sessionId === id);
@@ -1548,7 +1560,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
         let body: any = {};
         try {
           body = JSON.parse(rawBodyText || "{}");
-        } catch {}
+        } catch { }
         const app = inMemoryG1Roster.find((a) => a.roleId === body.roleId);
         if (app) {
           app.ratified = true;
@@ -1599,7 +1611,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
     }
     if (path.startsWith("response/freeze") || path.startsWith("response/emergency-freeze") || path.startsWith("actions/freeze")) {
       let body: any = {};
-      try { body = JSON.parse(rawBodyText || "{}"); } catch {}
+      try { body = JSON.parse(rawBodyText || "{}"); } catch { }
       inMemoryFreezeStatus.frozen = true;
       inMemoryFreezeStatus.status = "EMERGENCY_FREEZE_ENGAGED";
       inMemoryFreezeStatus.freeze = {
@@ -1631,7 +1643,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
     if (path.startsWith("ai/incidents")) {
       if (method === "POST") {
         let body: any = {};
-        try { body = JSON.parse(rawBodyText || "{}"); } catch {}
+        try { body = JSON.parse(rawBodyText || "{}"); } catch { }
         return NextResponse.json({
           id: `ai-inc-${Date.now().toString(36)}`,
           tenantId: body.tenantId || "tenant-bank-01",
@@ -1917,6 +1929,55 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
     }
 
     // 24. AI Security Copilot & Prompt Safety
+    if (path.startsWith("ai/decisions")) {
+      let body: any = {};
+      try {
+        body = JSON.parse(rawBodyText || "{}");
+      } catch { }
+
+      const decision = body.decision || "ACCEPT";
+      const decidedBy = body.decidedBy || "usr-sarah-chen-01";
+      const rationale = body.rationale || "Attributable human decision recorded.";
+      const now = new Date().toISOString();
+      const envelopeId = body.envelopeId || `env-${Date.now()}`;
+
+      return NextResponse.json({
+        status: "RECORDED",
+        receiptSignature: `ZS-DEC-RECEIPT-${Date.now().toString(16)}-VERIFIED`,
+        decidedAt: now,
+        envelope: {
+          envelopeId,
+          tenantId: "00000000-0000-4000-8000-000000000001",
+          environmentId: "PRODUCTION",
+          createdAt: now,
+          aiLabelAndUseCaseName: {
+            aiLabel: "ZoikoShield Guarded ModelArmor Engine v2.4",
+            useCaseName: "COPILOT_DECISION_RECORDED",
+            riskTier: "LOW",
+          },
+          controls: {
+            state: decision,
+            currentState: decision,
+            availableTransitions: ["ACCEPT", "MODIFY", "REJECT", "ESCALATE"],
+          },
+          humanDecisionAndRationale: {
+            decision,
+            decidedBy,
+            decidedAt: now,
+            rationale,
+            modifiedContent: body.modifiedContent,
+            escalatedToRole: body.escalatedToRole,
+            signature: `SIG-${Date.now().toString(16)}`,
+          },
+          appealOrFeedbackRoute: {
+            appealUrl: "https://shield.zoikogroup.com/appeals/v1",
+            feedbackChannel: "secops-human-review@zoikogroup.com",
+            customerAffecting: false,
+          },
+        },
+      });
+    }
+
     if (path.startsWith("ai") || path.startsWith("copilot")) {
       return NextResponse.json({
         success: true,
@@ -1926,12 +1987,83 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
       });
     }
 
+    // 25. G1 Multi-Approver Launch Gate Protocol (§05 & §16)
+    if (path.startsWith("governance/g1-roster")) {
+      if (path === "governance/g1-roster/reset" && req.method === "POST") {
+        inMemoryG1Roster.forEach((a: any) => {
+          a.ratified = false;
+          delete a.signedAt;
+          delete a.signatureProof;
+          delete a.signatoryName;
+          delete a.evidenceNotes;
+        });
+        return NextResponse.json({
+          gateStatus: "PENDING_MULTI_APPROVER_SIGNOFF",
+          allApproved: false,
+          ratifiedApprovalsCount: 0,
+          requiredApprovalsCount: inMemoryG1Roster.length,
+          missingRoles: inMemoryG1Roster.map((a: any) => a.roleId),
+          approvers: inMemoryG1Roster,
+          signedCount: 0,
+          totalApprovers: inMemoryG1Roster.length,
+        });
+      }
+
+      if (path === "governance/g1-roster/sign" && req.method === "POST") {
+        let body: any = {};
+        try {
+          body = JSON.parse(rawBodyText || "{}");
+        } catch { }
+
+        const { roleId, signatoryName, signatureProof, evidenceNotes } = body;
+        const approver: any = inMemoryG1Roster.find((a: any) => a.roleId === roleId);
+        if (approver) {
+          approver.ratified = true;
+          approver.signatoryName = signatoryName || "Authorized Security Signatory";
+          approver.signatureProof = signatureProof || `ecdsa-p256-sig-${Date.now()}-${roleId}`;
+          approver.signedAt = new Date().toISOString();
+          approver.evidenceNotes = evidenceNotes || "Cryptographic G1 Ratification verified.";
+        }
+
+        const signedCount = inMemoryG1Roster.filter((a: any) => a.ratified).length;
+        const total = inMemoryG1Roster.length;
+        const isAll = signedCount === total && total > 0;
+
+        return NextResponse.json({
+          gateStatus: isAll ? "RATIFIED" : "PENDING_MULTI_APPROVER_SIGNOFF",
+          allApproved: isAll,
+          ratifiedApprovalsCount: signedCount,
+          requiredApprovalsCount: total,
+          missingRoles: inMemoryG1Roster.filter((a: any) => !a.ratified).map((a: any) => a.roleId),
+          approvers: inMemoryG1Roster,
+          signedCount,
+          totalApprovers: total,
+        });
+      }
+
+      // Default GET /api/v1/governance/g1-roster
+      const signedCount = inMemoryG1Roster.filter((a: any) => a.ratified).length;
+      const total = inMemoryG1Roster.length;
+      const isAll = signedCount === total && total > 0;
+
+      return NextResponse.json({
+        gateStatus: isAll ? "RATIFIED" : "PENDING_MULTI_APPROVER_SIGNOFF",
+        allApproved: isAll,
+        ratifiedApprovalsCount: signedCount,
+        requiredApprovalsCount: total,
+        missingRoles: inMemoryG1Roster.filter((a: any) => !a.ratified).map((a: any) => a.roleId),
+        approvers: inMemoryG1Roster,
+        signedCount,
+        totalApprovers: total,
+      });
+    }
+
     // 20. Commercial Plans Recommendation
     if (path.startsWith("commercial/plans/recommend")) {
       let body: any = {};
       try {
         body = JSON.parse(rawBodyText || "{}");
-      } catch {}
+      } catch { }
 
       const assets = body.protectedAssetCount || 250;
       const gb = body.estimatedDailyGb || 25;
@@ -2107,7 +2239,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
       let body: any = {};
       try {
         body = rawBodyText ? JSON.parse(rawBodyText) : {};
-      } catch {}
+      } catch { }
       const assetCount = Number(body.protectedAssetCount || 250);
       const dailyGb = Number(body.estimatedDailyGb || 25);
       const requires24x7 = Boolean(body.requiresContinuous24x7Mdr || body.requiresContinuousMdr);

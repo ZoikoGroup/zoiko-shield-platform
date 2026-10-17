@@ -123,6 +123,11 @@ const SEARCH_ITEMS = [
   { type: "WORKSPACE", title: "MSSP Fleet & 2-Party JIT", subtitle: "Multi-tenant MSSP fleet management", route: "/partner/fleet" },
   { type: "WORKSPACE", title: "Team & Access Control", subtitle: "Tenant memberships, passkeys & separation of duties", route: "/team" },
   { type: "WORKSPACE", title: "Trust Center & Attestations", subtitle: "Public security standards, SOC 2, ISO 27001", route: "/trust" },
+  { type: "WORKSPACE", title: "Tenant Management & Boundaries", subtitle: "Data residency, sovereign boundaries & profile", route: "/tenant-management" },
+  { type: "WORKSPACE", title: "Product Guides & Runbooks", subtitle: "Integrated help, documentation & troubleshooting", route: "/help" },
+  { type: "WORKSPACE", title: "Tenant Onboarding Wizard", subtitle: "Organization profile & sovereign data fencing", route: "/onboarding" },
+  { type: "WORKSPACE", title: "Auditor Sealed Verification Portal", subtitle: "Independent external auditor verification", route: "/auditor" },
+  { type: "WORKSPACE", title: "Regulated Sector Packs", subtitle: "DORA, HIPAA, FedRAMP, and CMMC industry overlays", route: "/sector-packs" },
 ];
 
 export const TopHeader: React.FC = () => {
