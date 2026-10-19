@@ -199,11 +199,10 @@ export default function PlatformAdminPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 font-mono text-xs">
           {/* Circuit Breaker 1: AI Inference Kill-Switch */}
-          <div className={`surface-card p-5 rounded-xl space-y-3 border transition-all ${
-            isAiKillSwitchEngaged
+          <div className={`surface-card p-5 rounded-xl space-y-3 border transition-all ${isAiKillSwitchEngaged
               ? "bg-rose-950/40 border-rose-500/50 shadow-[0_0_20px_rgba(244,63,94,0.2)]"
               : "bg-[#0c111e]/90 border-slate-800/80 shadow-lg"
-          }`}>
+            }`}>
             <div className="flex items-center justify-between">
               <span className="text-slate-300 font-bold">AI INFERENCE CIRCUIT BREAKER</span>
               <Flame className={`w-4 h-4 ${isAiKillSwitchEngaged ? "text-rose-400 animate-pulse" : "text-slate-500"}`} />
@@ -226,11 +225,10 @@ export default function PlatformAdminPage() {
           </div>
 
           {/* Circuit Breaker 2: Ingestion Throttling */}
-          <div className={`surface-card p-5 rounded-xl space-y-3 border transition-all ${
-            isIngestThrottled
+          <div className={`surface-card p-5 rounded-xl space-y-3 border transition-all ${isIngestThrottled
               ? "bg-amber-950/40 border-amber-500/50 shadow-[0_0_20px_rgba(245,158,11,0.2)]"
               : "bg-[#0c111e]/90 border-slate-800/80 shadow-lg"
-          }`}>
+            }`}>
             <div className="flex items-center justify-between">
               <span className="text-slate-300 font-bold">INGESTION PIPELINE THROTTLER</span>
               <Radio className={`w-4 h-4 ${isIngestThrottled ? "text-amber-400 animate-pulse" : "text-slate-500"}`} />
@@ -253,11 +251,10 @@ export default function PlatformAdminPage() {
           </div>
 
           {/* Circuit Breaker 3: SOAR Containment Freeze */}
-          <div className={`surface-card p-5 rounded-xl space-y-3 border transition-all ${
-            isSoarFrozen
+          <div className={`surface-card p-5 rounded-xl space-y-3 border transition-all ${isSoarFrozen
               ? "bg-purple-950/40 border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.2)]"
               : "bg-[#0c111e]/90 border-slate-800/80 shadow-lg"
-          }`}>
+            }`}>
             <div className="flex items-center justify-between">
               <span className="text-slate-300 font-bold">SOAR PLAYBOOK AUTONOMOUS FREEZE</span>
               <Lock className={`w-4 h-4 ${isSoarFrozen ? "text-purple-400 animate-pulse" : "text-slate-500"}`} />
@@ -303,17 +300,15 @@ export default function PlatformAdminPage() {
             return (
               <Card
                 key={offer.key}
-                className={`p-5 space-y-3 border transition-all ${
-                  isEnrolled
+                className={`p-5 space-y-3 border transition-all ${isEnrolled
                     ? "bg-slate-900/80 border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.1)]"
                     : "bg-slate-950/60 border-slate-800 opacity-60"
-                }`}
+                  }`}
               >
                 <div className="flex items-start justify-between gap-2">
                   <Badge variant={offer.badgeVariant}>{offer.name}</Badge>
-                  <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
-                    isEnrolled ? "bg-emerald-950 text-emerald-300 border border-emerald-500/30" : "bg-slate-800 text-slate-500"
-                  }`}>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${isEnrolled ? "bg-emerald-950 text-emerald-300 border border-emerald-500/30" : "bg-slate-800 text-slate-500"
+                    }`}>
                     {isEnrolled ? "ACTIVE" : "REVOKED"}
                   </span>
                 </div>
