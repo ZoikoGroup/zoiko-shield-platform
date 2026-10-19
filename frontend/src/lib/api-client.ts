@@ -4908,7 +4908,7 @@ export class ZoikoShieldApiClient {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   static async getAuditorMerklePath(nodeHash: string): Promise<any> {
@@ -4936,7 +4936,7 @@ export class ZoikoShieldApiClient {
         };
       }
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   static async getAuditorEvidenceChain(packageId: string): Promise<any> {
@@ -4976,7 +4976,7 @@ export class ZoikoShieldApiClient {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   static async generateAuditorFreezeCertificate(packageId: string): Promise<any> {
@@ -5008,7 +5008,7 @@ export class ZoikoShieldApiClient {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   // --- Workstream 4: Air-Gapped & Offline Standalone Verification ---
@@ -5041,7 +5041,7 @@ export class ZoikoShieldApiClient {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   static async syncAirgapTelemetryBatch(batch: any): Promise<any> {
@@ -5068,7 +5068,7 @@ export class ZoikoShieldApiClient {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   // --- Workstream 3: OT & Critical Infrastructure Safety Interlock ---
@@ -5105,7 +5105,7 @@ export class ZoikoShieldApiClient {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   static async analyzeOtNetworkEvent(event: any): Promise<any> {
@@ -5135,7 +5135,7 @@ export class ZoikoShieldApiClient {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   static async evaluateOtActuatorInterlock(request: any): Promise<any> {
@@ -5183,7 +5183,7 @@ export class ZoikoShieldApiClient {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   static async configureByokKmsKey(config: any): Promise<any> {
@@ -5204,7 +5204,7 @@ export class ZoikoShieldApiClient {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   static async getHardwareAttestationPosture(): Promise<any> {
@@ -5238,7 +5238,7 @@ export class ZoikoShieldApiClient {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   static async splitMpcThresholdKey(dto: any): Promise<any> {
@@ -5265,7 +5265,7 @@ export class ZoikoShieldApiClient {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   // --- G4: MSSP Fleet Posture, Cross-Tenant Isolation & 2-Party JIT ---
@@ -5318,7 +5318,7 @@ export class ZoikoShieldApiClient {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   static async auditMsspFleetIsolation(): Promise<any> {
@@ -5339,7 +5339,7 @@ export class ZoikoShieldApiClient {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   static async requestTwoPartyJitSupport(dto: {
@@ -5370,7 +5370,7 @@ export class ZoikoShieldApiClient {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   static async approveCustomerJitSupport(dto: {
@@ -5392,7 +5392,7 @@ export class ZoikoShieldApiClient {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   static async authorizePlatformLeadJitSupport(dto: {
@@ -5416,7 +5416,7 @@ export class ZoikoShieldApiClient {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   static async revokeJitSupportSession(dto: {
@@ -5438,7 +5438,7 @@ export class ZoikoShieldApiClient {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   // --- G4: Cloud CIEM Least-Privilege Role Remediation ---
@@ -5500,7 +5500,7 @@ resource "aws_iam_policy" "least_privilege" {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   // --- G4: Cross-Region DR Ledger Replication & Failover Drill ---
@@ -5524,7 +5524,7 @@ resource "aws_iam_policy" "least_privilege" {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   static async executeCrossRegionFailoverDrill(dto?: {
@@ -5553,7 +5553,7 @@ resource "aws_iam_policy" "least_privilege" {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   // --- High-Throughput Batch Stream Ingestion ---
@@ -5574,7 +5574,7 @@ resource "aws_iam_policy" "least_privilege" {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   static async getStreamBufferMetrics(): Promise<any> {
@@ -5593,7 +5593,7 @@ resource "aws_iam_policy" "least_privilege" {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   // --- Autonomous ReAct AI Investigation ---
@@ -5643,7 +5643,7 @@ resource "aws_iam_policy" "least_privilege" {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   static async getInvestigationProvenanceGraph(incidentId: string): Promise<any> {
@@ -5662,7 +5662,7 @@ resource "aws_iam_policy" "least_privilege" {
         },
       })
     );
-    return res.data;
+    return res?.data ?? res;
   }
 
   static async getPolicies(domain?: string): Promise<PolicyVersionRecord[]> {
