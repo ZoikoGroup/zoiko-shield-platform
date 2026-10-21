@@ -231,15 +231,129 @@ export class ZoikoShieldApiClient {
     );
 
     const state = getState();
-    state.session = session;
+    state.session = {
+      ...session,
+      isAuthenticated: true,
+    };
     // Carry the tenant the user actually signed in to, so every later request
     // sends an x-tenant-id the backend will accept.
     if (resolvedTenantId && state.tenant) {
       state.tenant.id = resolvedTenantId;
     }
     state.currentStep = 2;
+
+    if (typeof window !== "undefined") {
+      try {
+        const maxAge = 86400 * 7; // 7 days
+        document.cookie = `zoiko_auth=true; path=/; max-age=${maxAge}; SameSite=Lax`;
+        document.cookie = `zoiko_shield_access_token=${session.token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        document.cookie = `zoiko_shield_tenant_id=${resolvedTenantId}; path=/; max-age=${maxAge}; SameSite=Lax`;
+      } catch {}
+    }
+
     saveDemoState(state);
-    return session;
+    return state.session;
+  }
+
+  /**
+   * Clears active authentication session and all auth cookies,
+   * returning the client to an unauthenticated state.
+   */
+  static logout(): void {
+    if (typeof window !== "undefined") {
+      try {
+        document.cookie = "zoiko_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        document.cookie = "zoiko_shield_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        document.cookie = "shield_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        document.cookie = "zoiko_shield_tenant_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+
+        const state = getState();
+        state.session = {
+          userId: "",
+          email: "",
+          fullName: "",
+          role: "SECURITY_ANALYST",
+          tenantId: "",
+          environment: "",
+          token: "",
+          isAuthenticated: false,
+        };
+        saveDemoState(state);
+      } catch {}
+    }
+  }
+
+  /**
+   * Registers a new organization / evaluation tenant with an initial administrator.
+   */
+  static async registerOrganization(payload: {
+    organizationName: string;
+    slug: string;
+    fullName: string;
+    email: string;
+    password?: string;
+    region?: string;
+    compliancePacks?: string[];
+  }): Promise<{ tenant: any; session: UserSession }> {
+    const res = await this.safeFetch<any>(
+      "/api/v1/auth/register",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      () => {
+        const tenantId = `tenant-${generateUUID().slice(0, 8)}`;
+        const userObj: UserSession = {
+          userId: `usr-${generateUUID().slice(0, 8)}`,
+          email: payload.email,
+          fullName: payload.fullName,
+          role: "TENANT_OWNER",
+          tenantId,
+          environment: "EVALUATION-SANDBOX",
+          token: `jwt-bearer-${generateUUID()}`,
+          isAuthenticated: true,
+        };
+        const tenantObj = {
+          id: tenantId,
+          orderId: `ord-eval-${generateUUID().slice(0, 8)}`,
+          organizationName: payload.organizationName,
+          slug: payload.slug,
+          legalEntityName: `${payload.organizationName} LLC`,
+          planTier: "ENTERPRISE_PREMIUM",
+          activeOffers: ["MANAGED_DEFENSE", "CONTINUOUS_ASSURANCE", "AI_SECURITY"],
+          isEnterprisePlus: true,
+          environmentName: "EVALUATION-SANDBOX",
+          homeRegion: payload.region || "us-east-1",
+          dataResidencyRegion: payload.region || "us-east-1",
+          dataClass: "RESTRICTED",
+          accessDisclosureVersion: "1.0.0",
+          status: "ACTIVE",
+          createdAt: new Date().toISOString(),
+        };
+        return { tenant: tenantObj, session: userObj };
+      }
+    );
+
+    const state = getState();
+    if (res.tenant) {
+      state.tenant = res.tenant;
+    }
+    if (res.session) {
+      state.session = { ...res.session, isAuthenticated: true };
+    }
+    state.currentStep = 2;
+
+    if (typeof window !== "undefined") {
+      try {
+        const maxAge = 86400 * 7;
+        document.cookie = `zoiko_auth=true; path=/; max-age=${maxAge}; SameSite=Lax`;
+        document.cookie = `zoiko_shield_access_token=${state.session.token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        document.cookie = `zoiko_shield_tenant_id=${state.tenant.id}; path=/; max-age=${maxAge}; SameSite=Lax`;
+      } catch {}
+    }
+
+    saveDemoState(state);
+    return res;
   }
 
   // --- WebAuthn / Passkey login ---

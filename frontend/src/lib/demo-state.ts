@@ -898,6 +898,92 @@ export function resetDemoState(): DemoState {
   return initial;
 }
 
+export function injectDemoAttackStorm(prevState: DemoState): DemoState {
+  const stormTimestamp = new Date().toISOString();
+  const stormSuffix = Math.random().toString(36).substring(2, 7);
+
+  const newAlerts: Alert[] = [
+    {
+      id: `alert-storm-saml-${stormSuffix}`,
+      tenantId: prevState.tenant.id,
+      detectionRuleId: "rule-golden-saml-forgery",
+      detectionRuleVersion: 2,
+      ruleName: "MITRE T1606.002 Golden SAML Token Forgery",
+      title: "Active Golden SAML Private Key Misuse & Unsigned Token Burst",
+      severity: "CRITICAL",
+      priority: "P1",
+      status: "NEW",
+      sourceConnector: "okta-identity",
+      assignee: "Unassigned",
+      sourceEventIds: [`evt-saml-${stormSuffix}-01`, `evt-saml-${stormSuffix}-02`],
+      affectedAssets: ["idp.corporate.sso", "adfs-federation-core.internal"],
+      affectedIdentities: ["sarah.chen@acme.com", "service-account-k8s@acme.com"],
+      mitreTechnique: "T1606.002",
+      createdAt: stormTimestamp,
+    },
+    {
+      id: `alert-storm-iam-${stormSuffix}`,
+      tenantId: prevState.tenant.id,
+      detectionRuleId: "rule-iam-priv-escalate-burst",
+      detectionRuleVersion: 1,
+      ruleName: "MITRE T1078.004 Cloud Administrator Persistence",
+      title: "Anomalous Cross-Account AssumeRole with High-Blast Wildcard Policy",
+      severity: "HIGH",
+      priority: "P1",
+      status: "NEW",
+      sourceConnector: "aws-cloudtrail",
+      assignee: "Marcus Vance",
+      sourceEventIds: [`evt-iam-${stormSuffix}-01`],
+      affectedAssets: ["arn:aws:iam::123456789012:role/SovereignRootElevation"],
+      affectedIdentities: ["cloud-ops-ci@acme.com"],
+      mitreTechnique: "T1078.004",
+      createdAt: stormTimestamp,
+    },
+    {
+      id: `alert-storm-egress-${stormSuffix}`,
+      tenantId: prevState.tenant.id,
+      detectionRuleId: "rule-ai-exfiltration-vector",
+      detectionRuleVersion: 3,
+      ruleName: "MITRE T1567 Exfiltration Over Web Service",
+      title: "Suspicious LLM Training Embedding Egress to Unvetted Foreign Endpoint",
+      severity: "CRITICAL",
+      priority: "P1",
+      status: "NEW",
+      sourceConnector: "palo-alto-cortex-xdr",
+      assignee: "Unassigned",
+      sourceEventIds: [`evt-llm-${stormSuffix}-01`],
+      affectedAssets: ["k8s-ai-infer-cluster-04", "model-runtime-vllm"],
+      affectedIdentities: ["data-scientist-lead@acme.com"],
+      mitreTechnique: "T1567",
+      createdAt: stormTimestamp,
+    },
+  ];
+
+  const newAiIncident: AiIncident = {
+    id: `ai-inc-storm-${stormSuffix}`,
+    tenantId: prevState.tenant.id,
+    title: "Copilot Tool Execution Bypass: Unauthorized Sovereign KMS Key Export",
+    severity: "SEV1_CRITICAL",
+    state: "CONTAINED_KILL_SWITCH",
+    trigger: "TOOL_MISUSE",
+    affectedModel: "gpt-4-security-copilot-v2",
+    killSwitchEngaged: true,
+    fallbackModeActive: true,
+    rootCauseSummary: "Autonomous reasoning agent attempted to formulate AWS KMS Decrypt tool call bypassing Cedar 4-Eyes policy gate #104. Model Armor Filter intercepted and revoked tool execution.",
+    declaredBy: "Autonomous Remediation Daemon (Storm Simulator)",
+    createdAt: stormTimestamp,
+  };
+
+  const updated: DemoState = {
+    ...prevState,
+    alerts: [...newAlerts, ...(prevState.alerts || [])],
+    aiIncidents: [newAiIncident, ...(prevState.aiIncidents || [])],
+  };
+
+  saveDemoState(updated);
+  return updated;
+}
+
 export function useDemoState(): [
   DemoState,
   (state: DemoState | ((prev: DemoState) => DemoState)) => void,

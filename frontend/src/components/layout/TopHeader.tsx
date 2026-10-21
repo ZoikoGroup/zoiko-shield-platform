@@ -764,6 +764,20 @@ export const TopHeader: React.FC = () => {
               </div>
             </button>
 
+            {/* Direct Prominent Logout Button */}
+            <button
+              type="button"
+              onClick={() => {
+                ZoikoShieldApiClient.logout();
+                window.location.href = "/login?logout=true";
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-rose-400 bg-rose-950/30 hover:bg-rose-900/50 border border-rose-500/30 hover:border-rose-500/60 shadow-[0_0_10px_rgba(244,63,94,0.15)] transition-all ml-1.5"
+              title="Sign Out of ZoikoShield Platform"
+            >
+              <LogOut className="w-3.5 h-3.5 text-rose-400" />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
+
             {/* Profile & Switcher Popover */}
             {activeMenu === "profile" && (
               <div className="absolute right-0 mt-2 w-80 rounded-2xl bg-[#0a0f1d] border border-cyan-500/40 shadow-[0_10px_40px_rgba(0,0,0,0.85)] z-50 p-4 text-xs font-mono text-slate-200 space-y-4 animate-in fade-in slide-in-from-top-2 duration-150">
@@ -843,6 +857,21 @@ export const TopHeader: React.FC = () => {
                     <span>Tenant Members & Passkeys</span>
                     <User className="w-3.5 h-3.5" />
                   </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveMenu(null);
+                      ZoikoShieldApiClient.logout();
+                      window.location.href = "/login?logout=true";
+                    }}
+                    className="w-full mt-1.5 p-2 rounded-lg flex items-center justify-between text-left text-xs font-semibold text-rose-400 hover:bg-rose-950/30 border border-rose-500/30 hover:border-rose-500/60 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <LogOut className="w-3.5 h-3.5" />
+                      <span>Sign Out</span>
+                    </div>
+                    <ArrowRight className="w-3 h-3 text-rose-400" />
+                  </button>
                 </div>
               </div>
             )}
