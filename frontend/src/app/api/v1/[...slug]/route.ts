@@ -544,7 +544,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
       signal: isEventStream ? undefined : AbortSignal.timeout(BACKEND_TIMEOUT_MS),
     });
 
-    if (backendRes.status >= 500 || (backendRes.status >= 400 && (path === "auth/login" || path.endsWith("/login")))) {
+    if (backendRes.status >= 400) {
       throw new Error(`Backend service error HTTP ${backendRes.status} on /api/v1/${path}`);
     }
   } catch (error) {
@@ -2138,7 +2138,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
     }
 
     // 15. JIT Elevation Sessions Cockpit
-    if (path.startsWith("jit")) {
+    if (path.startsWith("jit") || path.startsWith("admin/jit")) {
       if (path.includes("sessions") && method === "GET") {
         return NextResponse.json(inMemoryJitSessions);
       }

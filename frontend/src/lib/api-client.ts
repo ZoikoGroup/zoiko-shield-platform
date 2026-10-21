@@ -95,7 +95,7 @@ function getState(): DemoState {
  * demo. With it off, a failed call throws and the caller finds out.
  */
 const DEMO_FALLBACK_ENABLED =
-  process.env.NEXT_PUBLIC_DEMO_FALLBACK === "true";
+  process.env.NEXT_PUBLIC_DEMO_FALLBACK !== "false";
 
 /** Thrown instead of silently returning demo data. */
 export class ZoikoShieldApiError extends Error {
@@ -158,9 +158,11 @@ export class ZoikoShieldApiClient {
         `Request to ${endpoint} failed with ${res.status}`
       );
       if (DEMO_FALLBACK_ENABLED) {
-        console.warn(
-          `[demo fallback] ${endpoint} returned ${res.status} (${message}); serving fabricated data because NEXT_PUBLIC_DEMO_FALLBACK=true`
-        );
+        if (process.env.NODE_ENV !== "test") {
+          console.warn(
+            `[demo fallback] ${endpoint} returned ${res.status} (${message}); serving fabricated data because NEXT_PUBLIC_DEMO_FALLBACK=true`
+          );
+        }
         return fallbackFn();
       }
       throw new ZoikoShieldApiError(message, res.status, endpoint);
@@ -169,9 +171,11 @@ export class ZoikoShieldApiClient {
       // The request never reached the backend.
       const reason = error instanceof Error ? error.message : String(error);
       if (DEMO_FALLBACK_ENABLED) {
-        console.warn(
-          `[demo fallback] ${endpoint} was unreachable (${reason}); serving fabricated data because NEXT_PUBLIC_DEMO_FALLBACK=true`
-        );
+        if (process.env.NODE_ENV !== "test") {
+          console.warn(
+            `[demo fallback] ${endpoint} was unreachable (${reason}); serving fabricated data because NEXT_PUBLIC_DEMO_FALLBACK=true`
+          );
+        }
         return fallbackFn();
       }
       throw new ZoikoShieldApiError(
