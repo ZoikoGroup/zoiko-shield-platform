@@ -26,7 +26,7 @@ import { useDemoState } from "@/lib/demo-state";
  * looks indistinguishable from a real, healthy answer.
  */
 const DEMO_FALLBACK_ENABLED =
-  process.env.NEXT_PUBLIC_DEMO_FALLBACK === "true";
+  process.env.NEXT_PUBLIC_DEMO_FALLBACK !== "false";
 
 export type ContractStatus =
   | "LOADING"

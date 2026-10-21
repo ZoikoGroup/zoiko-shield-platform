@@ -49,7 +49,7 @@ All accounts are pre-seeded in the Neon Cloud Database and autonomous authentica
 ## 2. Chronological Walkthrough: Screen 0 to Stage 16
 
 ### Screen 0: Authentication, Hardware MFA & Passkey Gate
-- **URL:** [`/login`](http://localhost:3000/login)
+- **URL:** [`/login`](https://app.zoikoshield.com/login) *(Local: `http://localhost:3000/login`)*
 - **What to Check:**
   - Login form with Tenant ID, Email, and Password fields.
   - Hardware Security Key (FIDO2 / WebAuthn) & Passkey enrollment options.
@@ -62,7 +62,7 @@ All accounts are pre-seeded in the Neon Cloud Database and autonomous authentica
 ---
 
 ### Stage 1: Platform Health & Microservice Topology Cockpit
-- **URL:** [`/admin/platform-health`](http://localhost:3000/admin/platform-health)
+- **URL:** [`/admin/platform-health`](https://app.zoikoshield.com/admin/platform-health) *(Local: `http://localhost:3000/admin/platform-health`)*
 - **What to Check:**
   - Microservices grid: `shield-core`, `shield-ingest`, `shield-stream`, `shield-rules`, `shield-worker`.
   - Continuous Disaster Recovery drill metrics: RPO = 0.00s, RTO = 420ms.
@@ -72,7 +72,7 @@ All accounts are pre-seeded in the Neon Cloud Database and autonomous authentica
 ---
 
 ### Stage 2: G1 Launch Gate 8-Signer Ratification
-- **URL:** [`/admin/g1-gate`](http://localhost:3000/admin/g1-gate)
+- **URL:** [`/admin/g1-gate`](https://app.zoikoshield.com/admin/g1-gate) *(Local: `http://localhost:3000/admin/g1-gate`)*
 - **What to Check:**
   - 8 Required Stakeholder Signers (CISO, CTO, VP Product, Head of Compliance, Lead Architect, SOC Director, DPO, External Auditor).
   - Hardware HSM / PQC cryptographic signatures with timestamped verification digests.
@@ -84,7 +84,7 @@ All accounts are pre-seeded in the Neon Cloud Database and autonomous authentica
 ---
 
 ### Stage 3: Executive Risk Scorecards & CISO Board Governance
-- **URL:** [`/risk`](http://localhost:3000/risk) & [`/risk/executive`](http://localhost:3000/risk/executive)
+- **URL:** [`/risk`](https://app.zoikoshield.com/risk) & [`/risk/executive`](https://app.zoikoshield.com/risk/executive)
 - **What to Check:**
   - Real-time Aggregate Security Score (e.g., 94.2/100).
   - Open risk distribution across Identity, Cloud Infrastructure, Data Protection, and Supply Chain.
@@ -93,7 +93,7 @@ All accounts are pre-seeded in the Neon Cloud Database and autonomous authentica
 ---
 
 ### Stage 4: Real-Time Alert Queue & OCSF Normalization
-- **URL:** [`/alerts`](http://localhost:3000/alerts) & [`/alerts/alt-failed-login-bruteforce-01`](http://localhost:3000/alerts/alt-failed-login-bruteforce-01)
+- **URL:** [`/alerts`](https://app.zoikoshield.com/alerts) & [`/alerts/alt-failed-login-bruteforce-01`](https://app.zoikoshield.com/alerts/alt-failed-login-bruteforce-01)
 - **What to Check:**
   - OCSF 1.1.0 standardized security event telemetry.
   - MITRE ATT&CK tactic/technique mappings (`T1110.001 - Brute Force: Password Guessing`).
@@ -104,7 +104,7 @@ All accounts are pre-seeded in the Neon Cloud Database and autonomous authentica
 ---
 
 ### Stage 5: Incident Command War Room & Containment Actions
-- **URL:** [`/cases/incidents/command`](http://localhost:3000/cases/incidents/command) & [`/cases/case-2026-auth-attack-01`](http://localhost:3000/cases/case-2026-auth-attack-01)
+- **URL:** [`/cases/incidents/command`](https://app.zoikoshield.com/cases/incidents/command) & [`/cases/case-2026-auth-attack-01`](https://app.zoikoshield.com/cases/case-2026-auth-attack-01)
 - **What to Check:**
   - Dynamic War Room timeline showing attack progression from initial ingress to lateral movement.
   - Real-time SLA countdown clock and assigned Incident Commander.
@@ -117,7 +117,7 @@ All accounts are pre-seeded in the Neon Cloud Database and autonomous authentica
 ---
 
 ### Stage 6: AI Security Copilot (§16.1 Autonomous Reasoning)
-- **URL:** [`/copilot`](http://localhost:3000/copilot)
+- **URL:** [`/copilot`](https://app.zoikoshield.com/copilot)
 - **What to Check:**
   - Autonomous ReAct investigation loop (Thought -> Action -> Observation).
   - Evidence citations linking back to raw OCSF events and hash digests.
@@ -129,7 +129,7 @@ All accounts are pre-seeded in the Neon Cloud Database and autonomous authentica
 ---
 
 ### Stage 7: AI Governance, Model Armor & Lifecycle Gates
-- **URL:** [`/ai-governance`](http://localhost:3000/ai-governance)
+- **URL:** [`/ai-governance`](https://app.zoikoshield.com/ai-governance)
 - **What to Check:**
   - Model inventory with security ratings: Claude 3.5 Sonnet, Gemini 1.5 Pro, Llama 3 70B.
   - Model Armor safety filters: Prompt Injection Guard (99.8% catch rate), PII Redaction Filter, Hallucination Verifier.
@@ -138,7 +138,7 @@ All accounts are pre-seeded in the Neon Cloud Database and autonomous authentica
 ---
 
 ### Stage 8: Cedar Fine-Grained Policies & 4-Eyes Governance
-- **URL:** [`/policies`](http://localhost:3000/policies)
+- **URL:** [`/policies`](https://app.zoikoshield.com/policies)
 - **What to Check:**
   - Formally verified Cedar language authorization rules.
   - Canary staged deployment percentage (e.g., 10% canary in staging-eu-west3).
@@ -151,7 +151,7 @@ All accounts are pre-seeded in the Neon Cloud Database and autonomous authentica
 ---
 
 ### Stage 9: Just-In-Time (JIT) Privilege Elevation Cockpit
-- **URL:** [`/admin/jit-elevation`](http://localhost:3000/admin/jit-elevation) & [`/admin/jit`](http://localhost:3000/admin/jit)
+- **URL:** [`/admin/jit-elevation`](https://app.zoikoshield.com/admin/jit-elevation) & [`/admin/jit`](https://app.zoikoshield.com/admin/jit)
 - **What to Check:**
   - Ephemeral Zero-Trust admin grants capped to 30 or 60 minutes.
   - Justification requirements and 2-party signoff for incident response.
@@ -164,7 +164,7 @@ All accounts are pre-seeded in the Neon Cloud Database and autonomous authentica
 ---
 
 ### Stage 10: Autonomous SOAR Proposals & Sandboxing
-- **URL:** [`/response-proposals`](http://localhost:3000/response-proposals) & [`/actions`](http://localhost:3000/actions)
+- **URL:** [`/response-proposals`](https://app.zoikoshield.com/response-proposals) & [`/actions`](https://app.zoikoshield.com/actions)
 - **What to Check:**
   - AI-generated remediation playbooks held in pending approval.
   - Blast-radius impact simulator showing affected assets before execution.
@@ -176,7 +176,7 @@ All accounts are pre-seeded in the Neon Cloud Database and autonomous authentica
 ---
 
 ### Stage 11: Multi-Tenant Administration & Emergency Kill-Switches
-- **URL:** [`/admin`](http://localhost:3000/admin)
+- **URL:** [`/admin`](https://app.zoikoshield.com/admin)
 - **What to Check:**
   - Tenant configuration, resource quota metering, and isolation parameters.
   - **Triple Circuit Breakers:**
@@ -189,7 +189,7 @@ All accounts are pre-seeded in the Neon Cloud Database and autonomous authentica
 ---
 
 ### Stage 12: Cryptographic Evidence Ledger & Immutable Blocks
-- **URL:** [`/ledger`](http://localhost:3000/ledger) & [`/evidence-operations`](http://localhost:3000/evidence-operations)
+- **URL:** [`/ledger`](https://app.zoikoshield.com/ledger) & [`/evidence-operations`](https://app.zoikoshield.com/evidence-operations)
 - **What to Check:**
   - Sequential blockchain-style ledger blocks with SHA-256 Merkle roots.
   - Tamper-evident hash chain linkage: changing any byte invalidates subsequent roots.
@@ -198,7 +198,7 @@ All accounts are pre-seeded in the Neon Cloud Database and autonomous authentica
 ---
 
 ### Stage 13: Continuous Control Matrix & Compliance Frameworks
-- **URL:** [`/controls`](http://localhost:3000/controls) & [`/compliance`](http://localhost:3000/compliance)
+- **URL:** [`/controls`](https://app.zoikoshield.com/controls) & [`/compliance`](https://app.zoikoshield.com/compliance)
 - **What to Check:**
   - Automated control evaluation across **DORA**, **NIS2**, **SOC 2 Type II**, **ISO 27001**, and **PCI-DSS 4.0.1**.
   - Evidence freshness indicators: fresh, decaying, or stale.
@@ -207,7 +207,7 @@ All accounts are pre-seeded in the Neon Cloud Database and autonomous authentica
 ---
 
 ### Stage 14: Commercial Pricing & GTM Launch Checklist
-- **URL:** [`/pricing`](http://localhost:3000/pricing) & [`/admin/gtm-checklist`](http://localhost:3000/admin/gtm-checklist)
+- **URL:** [`/pricing`](https://app.zoikoshield.com/pricing) & [`/admin/gtm-checklist`](https://app.zoikoshield.com/admin/gtm-checklist)
 - **What to Check:**
   - Transparent enterprise pricing tiers with Anti-Perverse Incentive Guarantee.
   - Pre-flight checklist validating all security, operational, and commercial requirements.
@@ -217,7 +217,7 @@ All accounts are pre-seeded in the Neon Cloud Database and autonomous authentica
 ## 3. Deep-Dive: Notification Center & Email Template Engine (Stages 15 & 16)
 
 ### Stage 15: Notification Center & Delivery State Machine
-- **URL:** [`/notifications`](http://localhost:3000/notifications)
+- **URL:** [`/notifications`](https://app.zoikoshield.com/notifications)
 - **What to Check:**
   1. **Triage Filter Tabs:**
      - `All notifications`
@@ -237,7 +237,7 @@ All accounts are pre-seeded in the Neon Cloud Database and autonomous authentica
 ---
 
 ### Stage 16: Production Email Template Studio (226 Templates across 16 Domains)
-- **URL:** [`/admin/email-templates`](http://localhost:3000/admin/email-templates)
+- **URL:** [`/admin/email-templates`](https://app.zoikoshield.com/admin/email-templates)
 - **What to Check & Demonstrate:**
 
 #### A. 16 Enterprise Functional Domains
@@ -280,7 +280,7 @@ Navigate the domain selector to inspect the complete coverage:
 ## 4. Auxiliary Consoles & Sovereign Capabilities
 
 ### Auxiliary 1: Independent External Auditor Cryptographic Cockpit
-- **URL:** [`/auditor`](http://localhost:3000/auditor)
+- **URL:** [`/auditor`](https://app.zoikoshield.com/auditor)
 - **Role:** `AUDITOR_EXTERNAL (READ-ONLY)`
 - **Key Tabs & Verifications:**
   1. **Merkle Path Visualizer (Tab 1):** Enter leaf digest and click **Verify Proof** to step through binary sibling branches up to the declared epoch root.
@@ -296,7 +296,7 @@ Navigate the domain selector to inspect the complete coverage:
 ---
 
 ### Auxiliary 2: Partner & MSSP Multi-Tenant Fleet Cockpit
-- **URL:** [`/partner/fleet`](http://localhost:3000/partner/fleet)
+- **URL:** [`/partner/fleet`](https://app.zoikoshield.com/partner/fleet)
 - **What to Check:**
   - Multi-tenant security posture dashboard across managed customer fleets.
   - Cryptographic tenant isolation seal verifying zero data leakage.
@@ -307,10 +307,10 @@ Navigate the domain selector to inspect the complete coverage:
 
 ### Auxiliary 3: Public Services, Developer APIs & Trust Center
 - **URLs:**
-  - Developer API Credentials: [`/developer`](http://localhost:3000/developer)
-  - Commercial Trust Center: [`/trust`](http://localhost:3000/trust)
-  - Regulated Sector Packs: [`/sector-packs`](http://localhost:3000/sector-packs)
-  - Entitlements & Catalog: [`/services`](http://localhost:3000/services)
+  - Developer API Credentials: [`/developer`](https://app.zoikoshield.com/developer)
+  - Commercial Trust Center: [`/trust`](https://app.zoikoshield.com/trust)
+  - Regulated Sector Packs: [`/sector-packs`](https://app.zoikoshield.com/sector-packs)
+  - Entitlements & Catalog: [`/services`](https://app.zoikoshield.com/services)
 - **What to Check:**
   - Public capability disclosures matching ADR-08 and ADR-20 boundaries.
   - Client SDK access tokens with rate-limiting quotas.

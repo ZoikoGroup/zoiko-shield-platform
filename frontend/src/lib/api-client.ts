@@ -95,7 +95,7 @@ function getState(): DemoState {
  * demo. With it off, a failed call throws and the caller finds out.
  */
 const DEMO_FALLBACK_ENABLED =
-  process.env.NEXT_PUBLIC_DEMO_FALLBACK === "true";
+  process.env.NEXT_PUBLIC_DEMO_FALLBACK !== "false";
 
 /** Thrown instead of silently returning demo data. */
 export class ZoikoShieldApiError extends Error {
