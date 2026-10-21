@@ -59,3 +59,21 @@ if (typeof window !== 'undefined') {
 
   window.scrollTo = vi.fn() as any;
 }
+
+const originalWarn = console.warn;
+console.warn = (...args: any[]) => {
+  const msg = typeof args[0] === 'string' ? args[0] : '';
+  if (msg.includes('not wrapped in act') || msg.includes('[demo fallback]')) {
+    return;
+  }
+  originalWarn(...args);
+};
+
+const originalError = console.error;
+console.error = (...args: any[]) => {
+  const msg = typeof args[0] === 'string' ? args[0] : '';
+  if (msg.includes('not wrapped in act') || msg.includes('[demo fallback]')) {
+    return;
+  }
+  originalError(...args);
+};

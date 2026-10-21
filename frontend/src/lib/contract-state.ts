@@ -1114,9 +1114,11 @@ export function useContractSources(
             if (DEMO_FALLBACK_ENABLED) {
               const fallbackData = getFallbackDataForPath(spec.path, spec.key);
               if (fallbackData !== undefined) {
-                console.warn(
-                  `[demo fallback] ${spec.path} returned ${response.status}; serving fabricated data because NEXT_PUBLIC_DEMO_FALLBACK=true`,
-                );
+                if (process.env.NODE_ENV !== "test") {
+                  console.warn(
+                    `[demo fallback] ${spec.path} returned ${response.status}; serving fabricated data because NEXT_PUBLIC_DEMO_FALLBACK=true`,
+                  );
+                }
                 return {
                   ...base,
                   ok: true,
@@ -1152,9 +1154,11 @@ export function useContractSources(
           if (DEMO_FALLBACK_ENABLED) {
             const fallbackData = getFallbackDataForPath(spec.path, spec.key);
             if (fallbackData !== undefined) {
-              console.warn(
-                `[demo fallback] ${spec.path} was unreachable; serving fabricated data because NEXT_PUBLIC_DEMO_FALLBACK=true`,
-              );
+              if (process.env.NODE_ENV !== "test") {
+                console.warn(
+                  `[demo fallback] ${spec.path} was unreachable; serving fabricated data because NEXT_PUBLIC_DEMO_FALLBACK=true`,
+                );
+              }
               return {
                 ...base,
                 ok: true,
