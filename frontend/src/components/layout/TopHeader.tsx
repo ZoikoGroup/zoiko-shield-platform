@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
+import { findActiveNav } from "@/components/layout/nav-config";
 import {
   Search,
   Bell,
@@ -328,42 +329,10 @@ export const TopHeader: React.FC = () => {
 
   // Compute Breadcrumbs
   const getBreadcrumbs = () => {
-    if (pathname === "/") return { section: "SECURITY OPERATIONS", current: "Command Center" };
-    if (pathname.startsWith("/alerts") || pathname.startsWith("/detections")) return { section: "SECURITY OPERATIONS", current: "Detection & Alerts" };
-    if (pathname.startsWith("/cases")) {
-      if (pathname.includes("incidents/command")) return { section: "OPERATIONS & RESPONSE", current: "Incident Command" };
-      return { section: "SECURITY OPERATIONS", current: "Case Workspace" };
-    }
-    if (pathname.startsWith("/hunting")) return { section: "SECURITY OPERATIONS", current: "Threat Hunting" };
-    if (pathname.startsWith("/copilot")) return { section: "SECURITY OPERATIONS", current: "AI Security Copilot" };
-    if (pathname.startsWith("/ai-governance")) return { section: "GOVERNANCE & SAFETY", current: "AI Governance & Safety Cockpit" };
-    if (pathname.startsWith("/playbooks")) return { section: "OPERATIONS & RESPONSE", current: "Playbook Runs" };
-    if (pathname.startsWith("/response-proposals")) return { section: "OPERATIONS & RESPONSE", current: "Response Proposals" };
-    if (pathname.startsWith("/actions")) return { section: "OPERATIONS & RESPONSE", current: "SOAR Actions & Freeze" };
-    if (pathname.startsWith("/red-team")) return { section: "OPERATIONS & RESPONSE", current: "Simulation & Training" };
-    if (pathname.startsWith("/ir-retainer")) return { section: "OPERATIONS & RESPONSE", current: "IR Retainer & SLA" };
-    if (pathname.startsWith("/ingestion")) return { section: "DATA & INTEGRATIONS", current: "Data Sources & Ingestion" };
-    if (pathname.startsWith("/connectors")) return { section: "DATA & INTEGRATIONS", current: "Connectors Wizard" };
-    if (pathname.startsWith("/assets")) return { section: "DATA & INTEGRATIONS", current: "Assets & Inventory" };
-    if (pathname.startsWith("/ledger") || pathname.startsWith("/audit")) return { section: "COMPLIANCE & GOVERNANCE", current: "Evidence & Compliance" };
-    if (pathname.startsWith("/controls") || pathname.startsWith("/policies")) return { section: "COMPLIANCE & GOVERNANCE", current: "Policy & Controls" };
-    if (pathname.startsWith("/risk")) return { section: "COMPLIANCE & GOVERNANCE", current: "Risk & Exceptions" };
+    const match = findActiveNav(pathname);
+    if (match) return { section: match.group.label.toUpperCase(), current: match.item.label };
     if (pathname.startsWith("/pricing")) return { section: "COMMERCIAL & SIZING", current: "Commercial Plan Ladder" };
-    if (pathname.startsWith("/notifications")) return { section: "OPERATIONS", current: "Notification Center" };
-    if (pathname.startsWith("/admin")) {
-      if (pathname.includes("g1-gate")) return { section: "PLATFORM ADMIN", current: "G1 Launch Gate Protocol" };
-      if (pathname.includes("jit")) return { section: "PLATFORM ADMIN", current: "JIT Elevation Quorum" };
-      if (pathname.includes("gtm-checklist")) return { section: "PLATFORM ADMIN", current: "GTM Pre-Flight Checklist" };
-      if (pathname.includes("platform-health")) return { section: "PLATFORM ADMIN", current: "Platform Service Health" };
-      if (pathname.includes("email-templates")) return { section: "PLATFORM ADMIN", current: "Template Studio Finale" };
-      return { section: "PLATFORM ADMIN", current: "Operations & Entitlements" };
-    }
-    if (pathname.startsWith("/tenant-management")) return { section: "ADMINISTRATION", current: "Tenant Management" };
-    if (pathname.startsWith("/team")) return { section: "ADMINISTRATION", current: "Team & Access" };
-    if (pathname.startsWith("/onboarding")) return { section: "ADMINISTRATION", current: "Organization Onboarding" };
     if (pathname.startsWith("/help")) return { section: "ZOIKOSHIELD", current: "Help & Documentation" };
-    if (pathname.startsWith("/partner")) return { section: "MSSP OPERATIONS", current: "MSSP Fleet & 2-Party JIT" };
-    if (pathname.startsWith("/trust")) return { section: "ZOIKOSHIELD", current: "Trust Center" };
 
     const pathSegment = pathname.split("/").filter(Boolean)[0] || "Command Center";
     return {
