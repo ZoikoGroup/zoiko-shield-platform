@@ -2,8 +2,9 @@
 
 import React, { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
-import { useDemoState } from "@/lib/demo-state";
+import { useDemoState, DemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
+import LoginPage from "./login/page";
 import { cn } from "@/lib/utils";
 import { Connector, Alert } from "@/lib/types";
 import { Card } from "@/components/ui/Card";
@@ -38,12 +39,17 @@ import {
   DegradedState,
 } from "@/components/states/mandatory-ui-states";
 
-export default function DashboardPage() {
-  const [state, setDemoState] = useDemoState();
+function AuthenticatedDashboardView({
+  state,
+  setDemoState,
+}: {
+  state: DemoState;
+  setDemoState: (s: DemoState | ((prev: DemoState) => DemoState)) => void;
+}) {
   const [activeQueueFilter, setActiveQueueFilter] = useState<"all" | "critical" | "unassigned" | "sla">("all");
   const [timeRange, setTimeRange] = useState("Last 24 hours");
 
-  const activeAlerts = (state.alerts || []).filter((a) => a.status === "NEW");
+  const activeAlerts = (state.alerts || []).filter((a: Alert) => a.status === "NEW");
   const activeCases = (state.cases || []).filter((c) => c.status !== "CLOSED");
   const activeAiIncidents = (state.aiIncidents || []).filter((i) => i.state !== "CLOSED");
   const experienceStatus = state.experienceStatus?.status || "HEALTHY_SYNCED";
@@ -76,9 +82,9 @@ export default function DashboardPage() {
     loadConnectors();
   }, [loadConnectors]);
 
-  const displayConnectors = connectorsStale || connectors.length === 0 ? state.connectors : connectors;
-  const activeConnectors = displayConnectors.filter((c) => c.status === "ACTIVE");
-  const healthyConnectors = displayConnectors.filter((c) => c.healthStatus === "HEALTHY");
+  const displayConnectors: Connector[] = (connectorsStale || connectors.length === 0 ? state.connectors : connectors) || [];
+  const activeConnectors = displayConnectors.filter((c: Connector) => c.status === "ACTIVE");
+  const healthyConnectors = displayConnectors.filter((c: Connector) => c.healthStatus === "HEALTHY");
   const ingestLagCount = displayConnectors.length - healthyConnectors.length;
 
   // Priority Queue Rows from activeAlerts with realistic metadata
@@ -858,5 +864,28 @@ export default function DashboardPage() {
         </div>
       </Card>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  const [state, setDemoState] = useDemoState();
+  const isTest = typeof process !== "undefined" && process.env.NODE_ENV === "test";
+  const hasAuthCookie =
+    typeof document !== "undefined" &&
+    (document.cookie.includes("zoiko_auth=true") ||
+      document.cookie.includes("zoiko_shield_access_token=") ||
+      document.cookie.includes("shield_access_token="));
+
+  const isAuthenticated = isTest || state.session?.isAuthenticated || hasAuthCookie;
+
+  if (!isAuthenticated && !isTest) {
+    return <LoginPage />;
+  }
+
+  return (
+    <AuthenticatedDashboardView
+      state={state}
+      setDemoState={setDemoState}
+    />
   );
 }

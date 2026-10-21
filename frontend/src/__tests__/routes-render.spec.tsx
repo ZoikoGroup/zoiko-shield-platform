@@ -47,6 +47,7 @@ import JitElevationApprovalPage from '@/app/admin/jit-elevation/page';
 import MsspFleetCockpitPage from '@/app/partner/fleet/page';
 import EmailTemplatesPage from '@/app/admin/email-templates/page';
 import AcceptInvitePage from '@/app/accept-invite/page';
+import RegisterPage from '@/app/register/page';
 
 describe('ZoikoShield Route Pages Smoke Tests', () => {
   beforeEach(() => {
@@ -247,6 +248,31 @@ describe('ZoikoShield Route Pages Smoke Tests', () => {
       render(<AcceptInvitePage />);
       expect(screen.getByText(/Invalid or Expired Activation Token|Activate Your ZoikoShield Workspace/i)).toBeInTheDocument();
       expect(screen.getByText(/ZoikoShield Tenancy Activation Gateway/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('24. Redesigned Authentication Gate (/login)', () => {
+    it('renders login gate with branding, 4 demo roles, password toggle, and register option', () => {
+      render(<LoginPage />);
+      expect(screen.getByText(/ZoikoShield Authentication Gate/i)).toBeInTheDocument();
+      expect(screen.getByText(/Sign In to Platform/i)).toBeInTheDocument();
+      expect(screen.getByText(/Platform Super Admin/i)).toBeInTheDocument();
+      expect(screen.getByText(/Tenant Administrator \/ CISO/i)).toBeInTheDocument();
+      expect(screen.getByText(/Senior Security Analyst/i)).toBeInTheDocument();
+      expect(screen.getByText(/Read-Only Compliance Auditor/i)).toBeInTheDocument();
+      expect(screen.getByText(/Forgot password\?/i)).toBeInTheDocument();
+      expect(screen.getByText(/Create New Account/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('25. New Account Creation & Evaluation Registration (/register)', () => {
+    it('renders evaluation tenant self-service registration and invitation tabs', () => {
+      render(<RegisterPage />);
+      expect(screen.getByText(/Create ZoikoShield Account/i)).toBeInTheDocument();
+      expect(screen.getByText(/New Evaluation Tenant/i)).toBeInTheDocument();
+      expect(screen.getByText(/Join with Invitation Token/i)).toBeInTheDocument();
+      expect(screen.getByText(/Register Dedicated Evaluation Tenant/i)).toBeInTheDocument();
+      expect(screen.getByText(/Provision Evaluation Tenant & Issue Session/i)).toBeInTheDocument();
     });
   });
 });

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { useDemoState, resetDemoState } from "@/lib/demo-state";
+import { useDemoState, resetDemoState, injectDemoAttackStorm } from "@/lib/demo-state";
 import { Button } from "@/components/ui/Button";
 import {
   RotateCcw,
@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   Sparkles,
   ExternalLink,
+  Zap,
 } from "lucide-react";
 
 export const DEMO_STEPS = [
@@ -67,6 +68,15 @@ export const DemoGuideBar: React.FC = () => {
     router.push(targetRoute);
   };
 
+  const [injectedBanner, setInjectedBanner] = useState<string | null>(null);
+
+  const handleInjectStorm = () => {
+    const updated = injectDemoAttackStorm(state);
+    setDemoState(updated);
+    setInjectedBanner("Storm Injected: 3 P1 threats + 1 AI incident added!");
+    setTimeout(() => setInjectedBanner(null), 4500);
+  };
+
   const handleReset = () => {
     if (confirm("Reset demo data to initial state?")) {
       const fresh = resetDemoState();
@@ -105,6 +115,11 @@ export const DemoGuideBar: React.FC = () => {
               <span className="text-xs sm:text-sm font-bold text-white tracking-tight">
                 {currentStepObj.title}
               </span>
+              {injectedBanner && (
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse">
+                  ⚡ {injectedBanner}
+                </span>
+              )}
             </div>
             <p className="text-[11px] text-slate-400 max-w-lg truncate hidden sm:block">
               {currentStepObj.desc}
@@ -158,6 +173,19 @@ export const DemoGuideBar: React.FC = () => {
             <ChevronRight className="w-3.5 h-3.5" />
           </Button>
 
+          {/* Trigger Test Attack Data */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleInjectStorm}
+            title="Inject Live Test Attack Data (3 P1 Threats + 1 AI Incident)"
+            className="border-amber-500/40 text-amber-300 hover:bg-amber-950/40 hover:border-amber-400 h-8 px-2.5 flex items-center gap-1.5 text-xs font-mono font-bold shadow-[0_0_10px_rgba(245,158,11,0.2)]"
+          >
+            <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+            <span className="hidden sm:inline">Inject Test Data</span>
+          </Button>
+
+          {/* Reset Demo State */}
           <Button
             size="sm"
             variant="ghost"

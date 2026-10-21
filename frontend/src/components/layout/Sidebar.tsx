@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useDemoState } from "@/lib/demo-state";
+import { ZoikoShieldApiClient } from "@/lib/api-client";
 import {
   LayoutDashboard,
   Radio,
@@ -504,9 +505,10 @@ export const Sidebar: React.FC = () => {
           badgeVariant: "anchored" as const,
         },
         {
-          label: "Switch Account / Login",
-          href: "/login",
-          icon: <LogIn className="w-4 h-4" />,
+          label: "Sign Out / Logout",
+          href: "/login?logout=true",
+          icon: <LogOut className="w-4 h-4 text-rose-400" />,
+          badge: "EXIT",
         },
       ],
     },
@@ -536,11 +538,11 @@ export const Sidebar: React.FC = () => {
     .toUpperCase();
 
   return (
-    <div className="flex shrink-0 relative z-30 select-none">
+    <div className="flex shrink-0 relative z-30 select-none h-screen sticky top-0 overflow-hidden">
       {/* Primary Sidebar Rail/Panel */}
       <aside
         className={cn(
-          "bg-[#080c16] border-r border-[#141c2e] min-h-[calc(100vh-50px)] flex flex-col justify-between transition-all duration-300 text-slate-300",
+          "bg-[#080c16] border-r border-[#141c2e] h-screen flex flex-col justify-between transition-all duration-300 text-slate-300 overflow-hidden",
           isCollapsed ? "w-[72px] px-2 py-3" : "w-72 lg:w-80 px-3.5 py-4"
         )}
       >
@@ -833,15 +835,36 @@ export const Sidebar: React.FC = () => {
                       <span className="absolute top-0.5 right-0.5 w-1.5 h-1.5 rounded-full bg-rose-500" />
                     )}
                   </Link>
-                  <Link
-                    href="/login"
-                    className="p-1 hover:text-rose-400 hover:bg-[#141f33] rounded"
-                    title="Sign Out"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      ZoikoShieldApiClient.logout();
+                      window.location.href = "/login?logout=true";
+                    }}
+                    className="p-1 hover:text-rose-400 hover:bg-[#141f33] rounded transition-colors"
+                    title="Sign Out of Platform"
                   >
                     <LogOut className="w-3.5 h-3.5" />
-                  </Link>
+                  </button>
                 </div>
               </div>
+
+              {/* Full-Width Prominent Sign Out Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  ZoikoShieldApiClient.logout();
+                  window.location.href = "/login?logout=true";
+                }}
+                className="w-full flex items-center justify-between px-3 py-2 rounded-lg bg-rose-950/30 hover:bg-rose-900/50 border border-rose-500/30 hover:border-rose-500/60 text-xs font-mono font-bold text-rose-400 transition-all shadow-[0_0_12px_rgba(244,63,94,0.15)] group"
+                title="Sign Out of Platform"
+              >
+                <div className="flex items-center gap-2">
+                  <LogOut className="w-3.5 h-3.5 text-rose-400 group-hover:scale-110 transition-transform" />
+                  <span>Sign Out / Logout</span>
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 text-rose-400/60 group-hover:translate-x-0.5 transition-transform" />
+              </button>
 
               {/* Version & Environment Tag */}
               <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 px-1">
@@ -860,6 +883,17 @@ export const Sidebar: React.FC = () => {
               >
                 <HelpCircle className="w-4 h-4" />
               </Link>
+              <button
+                type="button"
+                onClick={() => {
+                  ZoikoShieldApiClient.logout();
+                  window.location.href = "/login?logout=true";
+                }}
+                className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-rose-400 hover:bg-[#101626] rounded-lg"
+                title="Sign Out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
               <div
                 className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-slate-950 font-bold text-xs shadow-[0_0_10px_rgba(6,182,212,0.3)]"
                 title={`${state.session.fullName} (${state.session.role})`}
