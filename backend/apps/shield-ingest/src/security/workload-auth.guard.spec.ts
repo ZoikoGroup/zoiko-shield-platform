@@ -39,4 +39,18 @@ describe('WorkloadAuthGuard', () => {
       UnauthorizedException,
     );
   });
+
+  it.each([
+    'demo-jwt-session-token-998811',
+    'jwt-bearer-anything',
+    'demo-anything',
+  ])(
+    'rejects the user-session demo token %s (no internal-service identity)',
+    (token) => {
+      const guard = new WorkloadAuthGuard(new Reflector());
+      expect(() => guard.canActivate(context(`Bearer ${token}`))).toThrow(
+        UnauthorizedException,
+      );
+    },
+  );
 });
