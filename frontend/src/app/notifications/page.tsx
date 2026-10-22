@@ -2,7 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Bell, CheckCircle2 } from "lucide-react";
+import { AlertTriangle, Bell, CheckCircle2 } from "lucide-react";
 import NotificationsConsole from "./console";
 import { backend, asList } from "@/lib/backend";
 import { useDemoState } from "@/lib/demo-state";
@@ -27,7 +27,16 @@ type Note = {
   message: string;
   source: string;
   linked: string;
+  /** Who the record says it was delivered to - never substituted with the viewer. */
+  recipient: string;
 };
+
+/** "EMAIL (ops@example.com)" -> "ops@example.com"; other channel strings pass through. */
+function recipientFromChannel(channel: unknown): string {
+  if (typeof channel !== "string" || !channel) return "Unknown recipient";
+  const match = channel.match(/\(([^)]+)\)/);
+  return match ? match[1] : channel;
+}
 
 const DELIVERY_TONE: Record<Delivery, Tone> = {
   "EMAIL FAILED": "rose",
@@ -57,118 +66,91 @@ export default function NotificationCenterPage() {
   const [items, setItems] = useState<Note[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
+  // Set when neither notifications nor alerts could be loaded from the backend.
+  const [unavailable, setUnavailable] = useState(false);
   const show = useTabFilter(tab, "all");
 
-  const recipientName = demoState.session?.fullName || "Admin Operator";
-  const recipientEmail = demoState.session?.email || (demoState.tenant?.slug ? `admin@${demoState.tenant.slug}.com` : "security@zoikoshield.io");
+  const viewerName = demoState.session?.fullName || demoState.session?.email || "Signed-in user";
+  const viewerEmail = demoState.session?.email || "";
 
-  // Build live notifications from backend API and demo state
+  // Build the inbox from backend records only. Demo data served by the proxy
+  // when the backend is down is rejected ({ live: true }), so the page never
+  // shows invented deliveries as this user's notifications.
   const loadNotifications = useCallback(async () => {
     setIsLoading(true);
     const notes: Note[] = [];
 
+    const [deliveryResult, alertResult] = await Promise.allSettled([
+      backend.get("/api/v1/notifications", { live: true }),
+      backend.get("/api/v1/alerts?limit=15", { live: true }),
+    ]);
+    setUnavailable(deliveryResult.status === "rejected" && alertResult.status === "rejected");
+    const deliveryList = deliveryResult.status === "fulfilled" ? asList<any>(deliveryResult.value) : [];
+    const alertList = alertResult.status === "fulfilled" ? asList<any>(alertResult.value) : [];
+
+    // Template Studio dispatches made from this browser.
+    let localDispatched: any[] = [];
     try {
-      // 1. Fetch live delivery records from backend
-      let deliveryList: any[] = [];
-      let alertList: any[] = [];
+      localDispatched = JSON.parse(localStorage.getItem("zoiko_dispatched_emails") || "[]");
+    } catch {}
 
-      try {
-        const dRes = await backend.get("/api/v1/notifications");
-        deliveryList = asList<any>(dRes);
-      } catch {}
+    for (const d of [...localDispatched, ...deliveryList]) {
+      if (!d || !d.id) continue;
+      const timeStr = d.created_at || d.delivered_at
+        ? new Date(d.created_at || d.delivered_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+        : "Just now";
 
-      try {
-        const aRes = await backend.get("/api/v1/alerts?limit=15");
-        alertList = asList<any>(aRes);
-      } catch {}
+      const isDead = d.status === "DEAD_LETTERED";
+      const isFailed = d.status === "FAILED";
+      const isAcked = d.status === "ACKNOWLEDGED";
 
-      // Check any local template dispatches
-      let localDispatched: any[] = [];
-      try {
-        localDispatched = JSON.parse(localStorage.getItem("zoiko_dispatched_emails") || "[]");
-      } catch {}
+      const deliveryStatus: Delivery = isDead ? "DEAD-LETTER" : isFailed ? "EMAIL FAILED" : "DELIVERED";
+      const channelName = d.channel?.toUpperCase().includes("WEBHOOK") ? "Webhook" : "Email";
+      const recipient = recipientFromChannel(d.channel);
 
-      const allDeliveries = [...localDispatched, ...(Array.isArray(deliveryList) ? deliveryList : [])];
+      notes.push({
+        id: d.id,
+        time: timeStr,
+        title: d.event_id?.replace("evt-email-", "").replace("evt-sec-", "") || `Notification Notice (${d.id})`,
+        ref: `${channelName} · Recipient: ${recipient}`,
+        channel: channelName,
+        severity: isDead || isFailed ? "CRITICAL" : "HIGH",
+        delivery: deliveryStatus,
+        ack: isAcked ? "ACKED" : "PENDING",
+        unread: !isAcked,
+        security: true,
+        message: `Delivery record ${d.id} (${d.status || "UNKNOWN"}) to ${recipient}.`,
+        source: "Notification Dispatch Service",
+        linked: "/notifications",
+        recipient,
+      });
+    }
 
-      // Map deliveries
-      for (const d of allDeliveries) {
-        if (!d || !d.id) continue;
-        const timeStr = d.created_at || d.delivered_at
-          ? new Date(d.created_at || d.delivered_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-          : "Just now";
+    for (const a of alertList) {
+      if (!a || !a.id) continue;
+      const alertTime = a.createdAt || a.timestamp;
+      const timeStr = alertTime
+        ? new Date(alertTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+        : "Recent";
 
-        const isDead = d.status === "DEAD_LETTERED";
-        const isFailed = d.status === "FAILED";
-        const isAcked = d.status === "ACKNOWLEDGED";
+      const isAcked = a.status === "ACKNOWLEDGED" || a.status === "TRIAGED" || a.status === "CLOSED";
 
-        const deliveryStatus: Delivery = isDead ? "DEAD-LETTER" : isFailed ? "EMAIL FAILED" : "DELIVERED";
-        const channelName = d.channel?.toUpperCase().includes("WEBHOOK") ? "Webhook" : "Email";
-
-        notes.push({
-          id: d.id,
-          time: timeStr,
-          title: d.event_id?.replace("evt-email-", "").replace("evt-sec-", "") || `Notification Notice (${d.id})`,
-          ref: `${channelName} · Recipient: ${recipientEmail}`,
-          channel: channelName,
-          severity: isDead || isFailed ? "CRITICAL" : "HIGH",
-          delivery: deliveryStatus,
-          ack: isAcked ? "ACKED" : "PENDING",
-          unread: !isAcked,
-          security: true,
-          message: `Delivery record ${d.id}. Cryptographic dispatch receipt verified for ${recipientEmail}.`,
-          source: "Notification Dispatch Service",
-          linked: "/notifications",
-        });
-      }
-
-      // Map backend alerts
-      const activeAlerts = Array.isArray(alertList) && alertList.length > 0 ? alertList : (demoState.alerts || []);
-      for (const a of activeAlerts) {
-        if (!a || !a.id) continue;
-        const alertTime = a.createdAt || (a as any).timestamp;
-        const timeStr = alertTime
-          ? new Date(alertTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-          : "Recent";
-
-        const isAcked = a.status === "ACKNOWLEDGED" || a.status === "TRIAGED" || a.status === "CLOSED";
-
-        notes.push({
-          id: a.id,
-          time: timeStr,
-          title: a.title,
-          ref: `MITRE ${a.mitreTechnique || "T1078"} · Recipient: ${recipientEmail}`,
-          channel: "In-App + Email",
-          severity: a.severity === "CRITICAL" ? "CRITICAL" : a.severity === "HIGH" ? "HIGH" : "MEDIUM",
-          delivery: "DELIVERED",
-          ack: isAcked ? "ACKED" : "PENDING",
-          unread: a.status === "NEW" || !isAcked,
-          security: true,
-          message: (a as any).description || a.ruleName || a.title,
-          source: "Detection Engine",
-          linked: "/cases/incidents/command",
-        });
-      }
-    } catch {
-      // Fallback seamlessly to demoState alerts if offline
-      if (demoState.alerts) {
-        for (const a of demoState.alerts) {
-          notes.push({
-            id: a.id,
-            time: "Recent",
-            title: a.title,
-            ref: `Security Alert · Recipient: ${recipientEmail}`,
-            channel: "In-App + Email",
-            severity: a.severity === "CRITICAL" ? "CRITICAL" : "HIGH",
-            delivery: "DELIVERED",
-            ack: a.status === "NEW" ? "PENDING" : "ACKED",
-            unread: a.status === "NEW",
-            security: true,
-            message: (a as any).description || a.title,
-            source: "Detection & Alerts",
-            linked: "/cases/incidents/command",
-          });
-        }
-      }
+      notes.push({
+        id: a.id,
+        time: timeStr,
+        title: a.title,
+        ref: a.mitreTechnique ? `MITRE ${a.mitreTechnique} · In-app alert` : "In-app alert",
+        channel: "In-App",
+        severity: a.severity === "CRITICAL" ? "CRITICAL" : a.severity === "HIGH" ? "HIGH" : "MEDIUM",
+        delivery: "DELIVERED",
+        ack: isAcked ? "ACKED" : "PENDING",
+        unread: a.status === "NEW" || !isAcked,
+        security: true,
+        message: a.description || a.ruleName || a.title,
+        source: "Detection Engine",
+        linked: "/cases/incidents/command",
+        recipient: "In-app (tenant analysts)",
+      });
     }
 
     // Deduplicate by ID
@@ -184,7 +166,7 @@ export default function NotificationCenterPage() {
       setSelectedId(unique[0].id);
     }
     setIsLoading(false);
-  }, [recipientEmail, selectedId, demoState.alerts]);
+  }, [selectedId]);
 
   useEffect(() => {
     void loadNotifications();
@@ -223,19 +205,17 @@ export default function NotificationCenterPage() {
     );
     if (failedNotes.length === 0) {
       return [
-        {
-          title: "All channels verified & operational",
-          sub: "0 dead-lettered notices · TLS 1.3 encryption active",
-          tone: "emerald" as Tone,
-        },
+        unavailable
+          ? { title: "Delivery status unknown", sub: "Backend not connected", tone: "amber" as Tone }
+          : { title: "No failed deliveries", sub: "0 failed or dead-lettered notices", tone: "emerald" as Tone },
       ];
     }
     return failedNotes.map((n) => ({
       title: `${n.id} · ${n.title}`,
-      sub: `Delivery status: ${n.delivery} — Recipient: ${recipientEmail}`,
+      sub: `Delivery status: ${n.delivery} — Recipient: ${n.recipient}`,
       tone: (n.delivery === "DEAD-LETTER" || n.delivery === "EMAIL FAILED" ? "rose" : "amber") as Tone,
     }));
-  }, [items, recipientEmail]);
+  }, [items, unavailable]);
 
   return (
     <WorkspacePage
@@ -255,13 +235,23 @@ export default function NotificationCenterPage() {
         />
       }
       banner={
-        <NoticeBanner
-          tone="emerald"
-          icon={<CheckCircle2 className="w-4 h-4" />}
-          title="Active Recipient Delivery & Assurance Ledger"
-          body={`Live delivery telemetry verified for ${recipientEmail}. Real-time delivery tracking, RFC 3161 cryptographic timestamping, and HMAC-SHA256 signature chains.`}
-          tag="Live · Verified Ingest"
-        />
+        unavailable ? (
+          <NoticeBanner
+            tone="amber"
+            icon={<AlertTriangle className="w-4 h-4" />}
+            title="Notification service not connected"
+            body="The backend could not be reached, so no delivery records or alerts are shown. Nothing here is sample data."
+            tag="Offline"
+          />
+        ) : (
+          <NoticeBanner
+            tone="emerald"
+            icon={<CheckCircle2 className="w-4 h-4" />}
+            title="Delivery ledger"
+            body="Delivery records and alerts as reported by the backend. Each record shows the recipient it was actually sent to."
+            tag="Live"
+          />
+        )
       }
       kpis={
         <KpiGrid
@@ -269,7 +259,7 @@ export default function NotificationCenterPage() {
             {
               label: "Unread for you",
               value: String(items.filter((n) => n.unread).length),
-              hint: `Recipient: ${recipientEmail}`,
+              hint: viewerEmail ? `Signed in as ${viewerEmail}` : "Signed-in user",
               tone: "blue",
             },
             {
@@ -308,7 +298,7 @@ export default function NotificationCenterPage() {
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
         <Panel title="Notification Inbox" meta={isLoading ? "Connecting to stream..." : `${items.length} records`} className="xl:col-span-3">
           <div className="text-[11px] text-slate-500 -mt-1 mb-3">
-            Recipient-scoped inbox for {recipientName} &lt;{recipientEmail}&gt;
+            Signed in as {viewerName}{viewerEmail ? <> &lt;{viewerEmail}&gt;</> : null}
           </div>
           <div className="mb-3">
             <SearchInput
@@ -397,12 +387,12 @@ export default function NotificationCenterPage() {
                     ),
                   },
                   { k: "Source", v: sel.source },
-                  { k: "Recipient", v: recipientName },
+                  { k: "Recipient", v: sel.recipient },
                 ]}
               />
             </div>
             <div className="mt-3 text-[11px] text-slate-400 font-mono">
-              Delivery Target: <span className="text-cyan-400">{recipientEmail}</span>
+              Delivery Target: <span className="text-cyan-400">{sel.recipient}</span>
             </div>
             <div className="mt-4 text-[10px] font-mono uppercase tracking-wider text-slate-500">Message</div>
             <p className="text-xs text-slate-300 mt-1">{sel.message}</p>
@@ -435,7 +425,7 @@ export default function NotificationCenterPage() {
               </ActionButton>
             </div>
             <div className="text-[10px] text-emerald-400 mt-3 font-mono">
-              Audit: available · Channel: {sel.channel} · TLS: 1.3 verified · Merkle Proof: anchored
+              Channel: {sel.channel}
             </div>
           </Panel>
         )}

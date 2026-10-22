@@ -257,20 +257,7 @@ function LoginForm() {
       const target = redirectTarget.startsWith("/") ? redirectTarget : "/";
       window.location.href = target;
     } catch (err: any) {
-      console.warn("Hardware passkey encountered error, falling back to sovereign token:", err);
-      try {
-        const fallbackAssertion = {
-          credentialId: "fido2-cred-" + Math.random().toString(36).substring(2, 10),
-          clientDataJsonBase64: typeof btoa !== "undefined" ? btoa(JSON.stringify({ type: "webauthn.get", challenge: "sovereign-challenge" })) : "",
-          authenticatorDataBase64: typeof btoa !== "undefined" ? btoa("zoiko-sovereign-authdata-" + Date.now()) : "",
-          signatureBase64: typeof btoa !== "undefined" ? btoa("zoiko-fido2-signature-" + Date.now()) : "",
-        };
-        await ZoikoShieldApiClient.loginWithPasskey(fallbackAssertion, tenantId);
-        const target = redirectTarget.startsWith("/") ? redirectTarget : "/";
-        window.location.href = target;
-      } catch (innerErr: any) {
-        setError(innerErr.message || "Passkey biometric authentication failed");
-      }
+      setError(err?.message || "Passkey sign-in failed.");
     } finally {
       setIsPasskeyLoading(false);
     }

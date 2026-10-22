@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { isWebauthnSupported, requestPasskeyAssertion } from "@/lib/webauthn";
+import { ZoikoShieldApiClient } from "@/lib/api-client";
 
 export interface DualCustodyModalProps {
   isOpen: boolean;
@@ -60,25 +61,31 @@ export const DualCustodyApprovalModal: React.FC<DualCustodyModalProps> = ({
   const initiatorRole = "SECURITY_OPERATIONS_LEAD";
   const singleUseRollbackToken = `ZS-ROLLBACK-TOKEN-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
 
+  // Each signature is a real passkey assertion over a backend-issued challenge.
+  // A cancelled or failed ceremony leaves the quorum step unsigned.
+  const signWithPasskey = async (): Promise<boolean> => {
+    if (!isWebauthnSupported()) {
+      setErrorMessage("This browser does not support passkeys, so the dual-custody signature cannot be collected.");
+      return false;
+    }
+    try {
+      const options = await ZoikoShieldApiClient.getPasskeyStepUpOptions();
+      await requestPasskeyAssertion(options);
+      return true;
+    } catch (err) {
+      setErrorMessage(err instanceof Error ? err.message : "Passkey signature failed.");
+      return false;
+    }
+  };
+
   const handleInitiatorSign = async () => {
     setIsSigningFido(true);
     setErrorMessage(null);
     try {
-      if (isWebauthnSupported()) {
-        try {
-          await requestPasskeyAssertion({
-            challenge: btoa(`ZS-INIT-${Date.now()}`),
-            rpId: window.location.hostname || "localhost",
-            allowCredentials: [],
-            userVerification: "preferred",
-            timeout: 10000,
-          });
-        } catch {
-          // Graceful fallback for environments without registered hardware keys
-        }
+      if (await signWithPasskey()) {
+        setInitiatorFido2Signed(true);
+        setStep(2);
       }
-      setInitiatorFido2Signed(true);
-      setStep(2);
     } finally {
       setIsSigningFido(false);
     }
@@ -92,21 +99,10 @@ export const DualCustodyApprovalModal: React.FC<DualCustodyModalProps> = ({
     setErrorMessage(null);
     setIsSigningFido(true);
     try {
-      if (isWebauthnSupported()) {
-        try {
-          await requestPasskeyAssertion({
-            challenge: btoa(`ZS-SEC-${Date.now()}`),
-            rpId: window.location.hostname || "localhost",
-            allowCredentials: [],
-            userVerification: "preferred",
-            timeout: 10000,
-          });
-        } catch {
-          // Graceful fallback
-        }
+      if (await signWithPasskey()) {
+        setSecondaryFido2Signed(true);
+        setStep(3);
       }
-      setSecondaryFido2Signed(true);
-      setStep(3);
     } finally {
       setIsSigningFido(false);
     }

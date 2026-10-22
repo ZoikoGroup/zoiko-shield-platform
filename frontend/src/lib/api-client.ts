@@ -109,11 +109,34 @@ export class ZoikoShieldApiError extends Error {
   }
 }
 
+/** Validates passkey authentication options from the backend; never invents a challenge. */
+function toAuthenticationOptions(res: any): PasskeyAuthenticationOptions {
+  if (!res || typeof res.challenge !== "string" || res.challenge.length === 0) {
+    throw new ZoikoShieldApiError(
+      "The identity service returned no passkey challenge.",
+      null,
+      "/api/v1/auth/passkeys"
+    );
+  }
+  return {
+    challenge: res.challenge,
+    rpId: typeof res.rpId === "string" && res.rpId ? res.rpId : window.location.hostname,
+    allowCredentials: Array.isArray(res.allowCredentials) ? res.allowCredentials : [],
+    userVerification: res.userVerification || "preferred",
+    timeout: res.timeout || 60000,
+  };
+}
+
 export class ZoikoShieldApiClient {
+  /**
+   * Pass `null` as fallbackFn for calls whose answer must come from the
+   * backend (sign-in, registration, passkeys, step-up): fabricating those
+   * would turn a rejection into a session or a verified signature.
+   */
   private static async safeFetch<T>(
     endpoint: string,
     options: RequestInit = {},
-    fallbackFn: () => T
+    fallbackFn: (() => T) | null
   ): Promise<T> {
     try {
       const state = getState();
@@ -157,7 +180,7 @@ export class ZoikoShieldApiClient {
         res,
         `Request to ${endpoint} failed with ${res.status}`
       );
-      if (DEMO_FALLBACK_ENABLED) {
+      if (DEMO_FALLBACK_ENABLED && fallbackFn) {
         if (process.env.NODE_ENV !== "test") {
           console.warn(
             `[demo fallback] ${endpoint} returned ${res.status} (${message}); serving fabricated data because NEXT_PUBLIC_DEMO_FALLBACK=true`
@@ -170,7 +193,7 @@ export class ZoikoShieldApiClient {
       if (error instanceof ZoikoShieldApiError) throw error;
       // The request never reached the backend.
       const reason = error instanceof Error ? error.message : String(error);
-      if (DEMO_FALLBACK_ENABLED) {
+      if (DEMO_FALLBACK_ENABLED && fallbackFn) {
         if (process.env.NODE_ENV !== "test") {
           console.warn(
             `[demo fallback] ${endpoint} was unreachable (${reason}); serving fabricated data because NEXT_PUBLIC_DEMO_FALLBACK=true`
@@ -210,24 +233,7 @@ export class ZoikoShieldApiClient {
           tenantId: resolvedTenantId,
         }),
       },
-      () => {
-        const state = getState();
-        const role = email.includes("owner")
-          ? "TENANT_OWNER"
-          : email.includes("admin")
-            ? "SUPER_ADMIN"
-            : "SECURITY_ANALYST";
-        return {
-          userId: `usr-${generateUUID().slice(0, 8)}`,
-          email,
-          fullName: email.split("@")[0].replace(".", " ").toUpperCase(),
-          role,
-          tenantId: state.tenant.id,
-          environment: state.tenant.environmentName,
-          token: `jwt-${generateUUID()}`,
-          isAuthenticated: true,
-        };
-      }
+      null
     );
 
     const state = getState();
@@ -237,8 +243,9 @@ export class ZoikoShieldApiClient {
     };
     // Carry the tenant the user actually signed in to, so every later request
     // sends an x-tenant-id the backend will accept.
-    if (resolvedTenantId && state.tenant) {
-      state.tenant.id = resolvedTenantId;
+    const signedInTenantId = session.tenantId || resolvedTenantId;
+    if (signedInTenantId && state.tenant) {
+      state.tenant.id = signedInTenantId;
     }
     state.currentStep = 2;
 
@@ -247,7 +254,7 @@ export class ZoikoShieldApiClient {
         const maxAge = 86400 * 7; // 7 days
         document.cookie = `zoiko_auth=true; path=/; max-age=${maxAge}; SameSite=Lax`;
         document.cookie = `zoiko_shield_access_token=${session.token}; path=/; max-age=${maxAge}; SameSite=Lax`;
-        document.cookie = `zoiko_shield_tenant_id=${resolvedTenantId}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        document.cookie = `zoiko_shield_tenant_id=${signedInTenantId}; path=/; max-age=${maxAge}; SameSite=Lax`;
       } catch {}
     }
 
@@ -305,37 +312,7 @@ export class ZoikoShieldApiClient {
         method: "POST",
         body: JSON.stringify(payload),
       },
-      () => {
-        const tenantId = `tenant-${generateUUID().slice(0, 8)}`;
-        const userObj: UserSession = {
-          userId: `usr-${generateUUID().slice(0, 8)}`,
-          email: payload.email,
-          fullName: payload.fullName,
-          role: "TENANT_OWNER",
-          tenantId,
-          environment: "EVALUATION-SANDBOX",
-          token: `jwt-bearer-${generateUUID()}`,
-          isAuthenticated: true,
-        };
-        const tenantObj = {
-          id: tenantId,
-          orderId: `ord-eval-${generateUUID().slice(0, 8)}`,
-          organizationName: payload.organizationName,
-          slug: payload.slug,
-          legalEntityName: `${payload.organizationName} LLC`,
-          planTier: "ENTERPRISE_PREMIUM",
-          activeOffers: ["MANAGED_DEFENSE", "CONTINUOUS_ASSURANCE", "AI_SECURITY"],
-          isEnterprisePlus: true,
-          environmentName: "EVALUATION-SANDBOX",
-          homeRegion: payload.region || "us-east-1",
-          dataResidencyRegion: payload.region || "us-east-1",
-          dataClass: "RESTRICTED",
-          accessDisclosureVersion: "1.0.0",
-          status: "ACTIVE",
-          createdAt: new Date().toISOString(),
-        };
-        return { tenant: tenantObj, session: userObj };
-      }
+      null
     );
 
     const state = getState();
@@ -361,36 +338,15 @@ export class ZoikoShieldApiClient {
   }
 
   // --- WebAuthn / Passkey login ---
-  // Options are harmless to simulate offline (they carry no proof of anything);
-  // the assertion verify step below always hits the live backend since that is
-  // where the actual cryptographic proof-of-possession is checked.
+  // The challenge must come from the backend that will verify the assertion;
+  // a locally invented one can only produce a ceremony nobody can check.
   static async getPasskeyLoginOptions(email: string): Promise<PasskeyAuthenticationOptions> {
-    const fallback: PasskeyAuthenticationOptions = {
-      challenge: generateUUID().replace(/-/g, ""),
-      rpId: typeof window !== "undefined" ? window.location.hostname : "localhost",
-      allowCredentials: [],
-      userVerification: "required",
-      timeout: 120_000,
-    };
-    try {
-      const res = await this.safeFetch<any>(
-        "/api/v1/auth/passkeys/authentication/options",
-        { method: "POST", body: JSON.stringify({ email }) },
-        () => fallback
-      );
-      if (res && typeof res === "object" && !Array.isArray(res) && typeof res.challenge === "string" && res.challenge.length > 0) {
-        return {
-          challenge: res.challenge,
-          rpId: res.rpId || fallback.rpId,
-          allowCredentials: Array.isArray(res.allowCredentials) ? res.allowCredentials : [],
-          userVerification: res.userVerification || fallback.userVerification,
-          timeout: res.timeout || fallback.timeout,
-        };
-      }
-      return fallback;
-    } catch {
-      return fallback;
-    }
+    const res = await this.safeFetch<any>(
+      "/api/v1/auth/passkeys/authentication/options",
+      { method: "POST", body: JSON.stringify({ email }) },
+      null
+    );
+    return toAuthenticationOptions(res);
   }
 
   static async loginWithPasskey(
@@ -405,16 +361,7 @@ export class ZoikoShieldApiClient {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...assertion, tenantId, environmentId }),
       },
-      () => ({
-        user: {
-          id: `usr-${generateUUID().slice(0, 8)}`,
-          email: "passkey.operator@zoikoshield.corp",
-          fullName: "Passkey Security Operator",
-          role: "SECURITY_ANALYST",
-          tenantId: tenantId || getState().tenant.id,
-          environment: environmentId || getState().tenant.environmentName,
-        },
-      })
+      null
     );
     const user = data.user || {};
     const session: UserSession = {
@@ -436,38 +383,28 @@ export class ZoikoShieldApiClient {
 
   // --- WebAuthn / Passkey enrollment (requires an authenticated session) ---
   static async getPasskeyRegistrationOptions(): Promise<PasskeyRegistrationOptions> {
-    const fallback: PasskeyRegistrationOptions = {
-      challenge: generateUUID().replace(/-/g, ""),
-      rp: { name: "ZoikoShield Zero-Trust Platform", id: typeof window !== "undefined" ? window.location.hostname : "localhost" },
-      user: { id: generateUUID(), name: "secops.analyst@zoikoshield.corp", displayName: "SecOps Analyst" },
-      pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
-      excludeCredentials: [],
-      authenticatorSelection: { userVerification: "preferred", residentKey: "preferred" },
-      timeout: 60000,
-      attestation: "none",
-    };
-    try {
-      const res = await this.safeFetch<any>(
-        "/api/v1/auth/passkeys/registration/options",
-        { method: "POST" },
-        () => fallback
+    const res = await this.safeFetch<any>(
+      "/api/v1/auth/passkeys/registration/options",
+      { method: "POST" },
+      null
+    );
+    if (!res || typeof res.challenge !== "string" || !res.challenge || !res.rp?.id || !res.user?.id) {
+      throw new ZoikoShieldApiError(
+        "The identity service returned incomplete passkey registration options.",
+        null,
+        "/api/v1/auth/passkeys/registration/options"
       );
-      if (res && typeof res === "object" && !Array.isArray(res) && typeof res.challenge === "string" && res.challenge.length > 0) {
-        return {
-          challenge: res.challenge,
-          rp: res.rp || fallback.rp,
-          user: res.user || fallback.user,
-          pubKeyCredParams: Array.isArray(res.pubKeyCredParams) ? res.pubKeyCredParams : fallback.pubKeyCredParams,
-          excludeCredentials: Array.isArray(res.excludeCredentials) ? res.excludeCredentials : [],
-          authenticatorSelection: res.authenticatorSelection || fallback.authenticatorSelection,
-          timeout: res.timeout || fallback.timeout,
-          attestation: res.attestation || fallback.attestation,
-        };
-      }
-      return fallback;
-    } catch {
-      return fallback;
     }
+    return {
+      challenge: res.challenge,
+      rp: res.rp,
+      user: res.user,
+      pubKeyCredParams: Array.isArray(res.pubKeyCredParams) ? res.pubKeyCredParams : [{ type: "public-key", alg: -7 }],
+      excludeCredentials: Array.isArray(res.excludeCredentials) ? res.excludeCredentials : [],
+      authenticatorSelection: res.authenticatorSelection || { userVerification: "preferred", residentKey: "preferred" },
+      timeout: res.timeout || 60000,
+      attestation: res.attestation || "none",
+    };
   }
 
   static async registerPasskey(payload: PasskeyRegistrationPayload): Promise<RegisteredPasskey> {
@@ -478,14 +415,7 @@ export class ZoikoShieldApiClient {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       },
-      () => ({
-        id: `pk-${generateUUID().slice(0, 8)}`,
-        credentialId: generateUUID(),
-        label: payload.label || "FIDO2 Hardware Key",
-        createdAt: new Date().toISOString(),
-        lastUsedAt: new Date().toISOString(),
-        transports: "usb,nfc",
-      })
+      null
     );
   }
 
@@ -1703,67 +1633,36 @@ export class ZoikoShieldApiClient {
   // raises a session's assurance to PASSKEY. There is no JIT-specific
   // challenge system; a registered passkey is a registered passkey.
   static async getPasskeyStepUpOptions(): Promise<PasskeyAuthenticationOptions> {
-    const fallback: PasskeyAuthenticationOptions = {
-      challenge: generateUUID().replace(/-/g, ""),
-      rpId: typeof window !== "undefined" ? window.location.hostname : "localhost",
-      allowCredentials: [],
-      userVerification: "required",
-      timeout: 120_000,
-    };
-    try {
-      const res = await this.safeFetch<any>(
-        "/api/v1/auth/passkeys/step-up/options",
-        { method: "POST" },
-        () => fallback
-      );
-      if (res && typeof res === "object" && !Array.isArray(res) && typeof res.challenge === "string" && res.challenge.length > 0) {
-        return {
-          challenge: res.challenge,
-          rpId: res.rpId || fallback.rpId,
-          allowCredentials: Array.isArray(res.allowCredentials) ? res.allowCredentials : [],
-          userVerification: res.userVerification || fallback.userVerification,
-          timeout: res.timeout || fallback.timeout,
-        };
-      }
-      return fallback;
-    } catch {
-      return fallback;
-    }
+    const res = await this.safeFetch<any>(
+      "/api/v1/auth/passkeys/step-up/options",
+      { method: "POST" },
+      null
+    );
+    return toAuthenticationOptions(res);
   }
 
   static async verifyJitStepUp(
     requestId: string,
     assertion: PasskeyAssertionPayload
   ): Promise<{ verified: boolean; hardwareProofDigest: string; verifiedAt: string }> {
-    const fallback = {
-      verified: true,
-      hardwareProofDigest: `fido2-stepup-${assertion?.credentialId || generateUUID().slice(0, 8)}`,
-      verifiedAt: new Date().toISOString(),
+    const res = await this.safeFetch<any>(
+      `/api/v1/authz/jit/${requestId}/stepup`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          credentialId: assertion.credentialId,
+          clientDataJsonBase64: assertion.clientDataJsonBase64,
+          authenticatorDataBase64: assertion.authenticatorDataBase64,
+          signatureBase64: assertion.signatureBase64,
+        }),
+      },
+      null
+    );
+    return {
+      verified: res?.verified === true,
+      hardwareProofDigest: String(res?.hardwareProofDigest ?? ""),
+      verifiedAt: String(res?.verifiedAt ?? ""),
     };
-    try {
-      const res = await this.safeFetch<any>(
-        `/api/v1/authz/jit/${requestId}/stepup`,
-        {
-          method: "POST",
-          body: JSON.stringify({
-            credentialId: assertion.credentialId,
-            clientDataJsonBase64: assertion.clientDataJsonBase64,
-            authenticatorDataBase64: assertion.authenticatorDataBase64,
-            signatureBase64: assertion.signatureBase64,
-          }),
-        },
-        () => fallback
-      );
-      if (res && typeof res === "object" && !Array.isArray(res) && typeof res.verified === "boolean") {
-        return res;
-      }
-      return fallback;
-    } catch (err) {
-      if (err instanceof Error && err.message.includes("failed")) {
-        throw err;
-      }
-      return fallback;
-    }
   }
 
   // --- Step 11: AI Safety Incident Lifecycle (§23) & Emergency Kill-Switch ---

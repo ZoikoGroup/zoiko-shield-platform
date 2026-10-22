@@ -97,19 +97,28 @@ export const TopHeader: React.FC = () => {
   // Dynamic Live Notifications State
   const [notifications, setNotifications] = useState<HeaderNotification[]>([]);
   const [isLoadingNotifs, setIsLoadingNotifs] = useState(false);
+  // True when the backend could not answer and the proxy served demo data,
+  // which is never shown as a user's notifications.
+  const [notifsUnavailable, setNotifsUnavailable] = useState(false);
 
   // Fetch Live Notifications from Backend
   const fetchLiveNotifications = useCallback(async () => {
     setIsLoadingNotifs(true);
     try {
+      const headers: Record<string, string> = {};
+      if (state.session?.token) headers["Authorization"] = `Bearer ${state.session.token}`;
+      if (state.tenant?.id) headers["x-tenant-id"] = state.tenant.id;
       const [alertsRes, notifsRes] = await Promise.allSettled([
-        fetch("/api/v1/alerts?limit=10"),
-        fetch("/api/v1/notifications"),
+        fetch("/api/v1/alerts?limit=10", { headers }),
+        fetch("/api/v1/notifications", { headers }),
       ]);
 
       const items: HeaderNotification[] = [];
+      const isLive = (r: PromiseSettledResult<Response>): r is PromiseFulfilledResult<Response> =>
+        r.status === "fulfilled" && r.value.ok && r.value.headers.get("x-zoiko-fallback") !== "true";
+      setNotifsUnavailable(!isLive(alertsRes) && !isLive(notifsRes));
 
-      if (alertsRes.status === "fulfilled" && alertsRes.value.ok) {
+      if (isLive(alertsRes)) {
         const data = await alertsRes.value.json().catch(() => []);
         const alertsList = Array.isArray(data) ? data : data?.data || [];
         alertsList.forEach((a: any) => {
@@ -130,7 +139,7 @@ export const TopHeader: React.FC = () => {
         });
       }
 
-      if (notifsRes.status === "fulfilled" && notifsRes.value.ok) {
+      if (isLive(notifsRes)) {
         const notifData = await notifsRes.value.json().catch(() => []);
         const deliveryList = Array.isArray(notifData) ? notifData : notifData?.data || [];
         deliveryList.forEach((d: any) => {
@@ -140,10 +149,7 @@ export const TopHeader: React.FC = () => {
           const timeAgo = minsAgo < 60 ? `${minsAgo}m ago` : `${Math.floor(minsAgo / 60)}h ago`;
           const isDead = d.status === "DEAD_LETTERED" || d.status === "FAILED";
           const isAck = d.status === "ACKNOWLEDGED";
-          let channelDisplay = d.channel || "operator";
-          if (channelDisplay.includes("acme") || channelDisplay.includes("owner@") || channelDisplay.includes("security@zoikoshield.io")) {
-            channelDisplay = state.session?.email ? `EMAIL (${state.session.email})` : "EMAIL (security-ops@zoikoshield.corp)";
-          }
+          const channelDisplay = d.channel || "operator";
           items.push({
             id: String(d.id),
             title: isDead
@@ -158,32 +164,13 @@ export const TopHeader: React.FC = () => {
         });
       }
 
-      if (items.length === 0 && state.alerts && state.alerts.length > 0) {
-        state.alerts.slice(0, 5).forEach((a) => {
-          const timestamp = a.createdAt;
-          const created = timestamp ? new Date(timestamp).getTime() : Date.now();
-          const minsAgo = Math.max(1, Math.floor((Date.now() - created) / 60000));
-          const timeAgo = minsAgo < 60 ? `${minsAgo}m ago` : `${Math.floor(minsAgo / 60)}h ago`;
-          const isAck = a.status === "TRIAGED" || a.status === "CLOSED";
-          items.push({
-            id: `alert-${a.id}`,
-            title: `${a.priority || "P1"} Alert: ${a.title}`,
-            category: "DETECTION_ALERT",
-            severity: a.severity === "CRITICAL" ? "CRITICAL" : a.severity === "HIGH" ? "HIGH" : "MEDIUM",
-            timeAgo,
-            acknowledged: isAck,
-            route: "/alerts",
-          });
-        });
-      }
-
       setNotifications(items);
     } catch (err) {
       console.warn("Failed to load header notifications from backend:", err);
     } finally {
       setIsLoadingNotifs(false);
     }
-  }, [state.alerts]);
+  }, [state.session?.token, state.tenant?.id]);
 
   useEffect(() => {
     fetchLiveNotifications();
@@ -566,6 +553,12 @@ export const TopHeader: React.FC = () => {
                       <div className="animate-spin w-5 h-5 border-2 border-cyan-400 border-t-transparent rounded-full mx-auto mb-2" />
                       <div className="text-xs font-bold text-slate-200">Connecting to Live Ingestion Streams...</div>
                       <p className="text-[11px] text-slate-400 font-mono">Syncing real-time alerts and delivery queues.</p>
+                    </div>
+                  ) : notifications.length === 0 && notifsUnavailable ? (
+                    <div className="p-8 text-center space-y-2">
+                      <AlertTriangle className="w-8 h-8 text-amber-400 mx-auto" />
+                      <div className="text-xs font-bold text-slate-200">Notification service not connected</div>
+                      <p className="text-[11px] text-slate-400">Alerts and deliveries will appear here once the backend is reachable.</p>
                     </div>
                   ) : notifications.length === 0 ? (
                     <div className="p-8 text-center space-y-2">

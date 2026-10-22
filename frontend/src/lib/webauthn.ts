@@ -87,35 +87,21 @@ export async function requestPasskeyAssertion(
     timeout: options?.timeout || 60000,
   };
 
+  let credential: PublicKeyCredential | null;
   try {
-    if (typeof navigator !== "undefined" && navigator.credentials?.get) {
-      const credential = (await navigator.credentials.get({ publicKey })) as PublicKeyCredential | null;
-      if (credential) {
-        const response = credential.response as AuthenticatorAssertionResponse;
-        return {
-          credentialId: credential.id,
-          clientDataJsonBase64: bufferToBase64(response.clientDataJSON),
-          authenticatorDataBase64: bufferToBase64(response.authenticatorData),
-          signatureBase64: bufferToBase64(response.signature),
-        };
-      }
-    }
-  } catch (err: any) {
-    console.info("Hardware WebAuthn key absent or prompt dismissed; activating sovereign Level 3 passkey attestation:", err?.message || err);
+    credential = (await navigator.credentials.get({ publicKey })) as PublicKeyCredential | null;
+  } catch (err) {
+    throw new Error(describeCeremonyError(err, "sign in"));
   }
-
-  // Graceful sovereign FIDO2 assertion (Level 3 attested)
-  const clientData = JSON.stringify({
-    type: "webauthn.get",
-    challenge: options.challenge,
-    origin: typeof window !== "undefined" ? window.location.origin : "https://app.zoikoshield.com",
-    crossOrigin: false,
-  });
+  if (!credential) {
+    throw new Error("Passkey sign-in was cancelled.");
+  }
+  const response = credential.response as AuthenticatorAssertionResponse;
   return {
-    credentialId: "fido2-cred-" + Math.random().toString(36).substring(2, 10),
-    clientDataJsonBase64: typeof btoa !== "undefined" ? btoa(clientData) : "",
-    authenticatorDataBase64: typeof btoa !== "undefined" ? btoa("zoiko-sovereign-authdata-" + Date.now()) : "",
-    signatureBase64: typeof btoa !== "undefined" ? btoa("zoiko-fido2-ml-dsa-sig-" + Date.now()) : "",
+    credentialId: credential.id,
+    clientDataJsonBase64: bufferToBase64(response.clientDataJSON),
+    authenticatorDataBase64: bufferToBase64(response.authenticatorData),
+    signatureBase64: bufferToBase64(response.signature),
   };
 }
 
@@ -153,7 +139,7 @@ export async function createPasskeyCredential(
   if (!options.user?.id || typeof options.user.id !== "string" || options.user.id.length === 0) {
     throw new Error("Passkey registration received no user handle from the server.");
   }
-  const safeRp = options.rp || { id: "localhost", name: "ZoikoShield Enterprise" };
+  const safeRp = options.rp || { id: window.location.hostname, name: "ZoikoShield Enterprise" };
   const safeUser = {
     id: base64UrlToBuffer(options.user.id),
     name: options.user?.name || "operator@zoikoshield.corp",
@@ -181,37 +167,45 @@ export async function createPasskeyCredential(
     attestation: (options?.attestation || "none") as AttestationConveyancePreference,
   };
 
+  let credential: PublicKeyCredential | null;
   try {
-    if (typeof navigator !== "undefined" && navigator.credentials?.create) {
-      const credential = (await navigator.credentials.create({ publicKey })) as PublicKeyCredential | null;
-      if (credential) {
-        const response = credential.response as AuthenticatorAttestationResponse;
-        const publicKeySpki = response.getPublicKey?.();
-        if (publicKeySpki) {
-          return {
-            credentialId: credential.id,
-            publicKeySpkiBase64: bufferToBase64(publicKeySpki),
-            clientDataJsonBase64: bufferToBase64(response.clientDataJSON),
-            transports: response.getTransports?.().join(",") || undefined,
-          };
-        }
-      }
-    }
-  } catch (err: any) {
-    console.info("Hardware passkey creation unavailable or cancelled; generating sovereign Level 3 credentials:", err?.message || err);
+    credential = (await navigator.credentials.create({ publicKey })) as PublicKeyCredential | null;
+  } catch (err) {
+    throw new Error(describeCeremonyError(err, "register"));
   }
-
-  const clientData = JSON.stringify({
-    type: "webauthn.create",
-    challenge: options.challenge,
-    origin: typeof window !== "undefined" ? window.location.origin : "https://app.zoikoshield.com",
-    crossOrigin: false,
-  });
-
+  if (!credential) {
+    throw new Error("Passkey creation was cancelled.");
+  }
+  const response = credential.response as AuthenticatorAttestationResponse;
+  const publicKeySpki = response.getPublicKey?.();
+  if (!publicKeySpki) {
+    throw new Error("Authenticator did not return a public key");
+  }
   return {
-    credentialId: "fido2-cred-" + Math.random().toString(36).substring(2, 10),
-    publicKeySpkiBase64: typeof btoa !== "undefined" ? btoa("zoiko-sovereign-spki-key-" + Date.now()) : "",
-    clientDataJsonBase64: typeof btoa !== "undefined" ? btoa(clientData) : "",
-    transports: "internal,hybrid",
+    credentialId: credential.id,
+    publicKeySpkiBase64: bufferToBase64(publicKeySpki),
+    clientDataJsonBase64: bufferToBase64(response.clientDataJSON),
+    transports: response.getTransports?.().join(",") || undefined,
   };
+}
+
+/**
+ * Turns a WebAuthn DOMException into something a user can act on. A failed
+ * ceremony is always an error: substituting a made-up signature here would
+ * make every cancelled or unregistered passkey look like a successful one.
+ */
+function describeCeremonyError(err: unknown, action: "sign in" | "register"): string {
+  const name = err instanceof Error ? err.name : "";
+  if (name === "NotAllowedError") {
+    return action === "sign in"
+      ? "No passkey was used. Either the prompt was cancelled, or this device has no passkey registered for this site - register one under Team & Access first."
+      : "Passkey registration was cancelled or timed out.";
+  }
+  if (name === "SecurityError") {
+    return `Passkeys are not configured for ${window.location.hostname}. The identity service's WEBAUTHN_RP_ID must match this domain.`;
+  }
+  if (name === "InvalidStateError" && action === "register") {
+    return "This authenticator already has a passkey for this account.";
+  }
+  return err instanceof Error && err.message ? err.message : `Passkey ${action} failed.`;
 }
