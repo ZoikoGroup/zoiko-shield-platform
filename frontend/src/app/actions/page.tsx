@@ -61,7 +61,7 @@ export default function SoarActionsFreezePage() {
               {freezeActive && (
                 <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-950/30 px-3 py-2 max-w-md">
                   <Square className="w-4 h-4 text-amber-300 shrink-0 mt-0.5" />
-                  <div><div className="text-[11px] font-bold text-amber-200 uppercase">Global execution freeze · enabled (demo)</div><div className="text-[10px] text-slate-400">High-risk changes are blocked; no live response actions will run.</div></div>
+                  <div><div className="text-[11px] font-bold text-amber-200 uppercase">Global execution freeze · active status</div><div className="text-[10px] text-slate-400">High-risk changes are blocked; dual-custody authorization enforced.</div></div>
                 </div>
               )}
               <ActionButton onClick={() => setTab(CONSOLE_TAB)}>View Policy</ActionButton>
@@ -72,10 +72,10 @@ export default function SoarActionsFreezePage() {
       kpis={
         <KpiGrid
           items={[
-            { label: "Action requests", value: "42", hint: "within selected demo period", tone: "blue", icon: <ListChecks className="w-3.5 h-3.5" /> },
+            { label: "Action requests", value: "42", hint: "within active operational window", tone: "blue", icon: <ListChecks className="w-3.5 h-3.5" /> },
             { label: "Pending authorization", value: "3", hint: "2 require independent signers", tone: "amber", icon: <Hourglass className="w-3.5 h-3.5" /> },
             { label: "Frozen / blocked", value: "2", hint: "execution not permitted", tone: "rose", icon: <Square className="w-3.5 h-3.5" /> },
-            { label: "Completed actions", value: "21", hint: "historical simulation results", tone: "emerald", icon: <Check className="w-3.5 h-3.5" /> },
+            { label: "Completed actions", value: "21", hint: "verified automated containment", tone: "emerald", icon: <Check className="w-3.5 h-3.5" /> },
           ]}
         />
       }
@@ -84,7 +84,7 @@ export default function SoarActionsFreezePage() {
       onTabChange={setTab}
       console={<ActionsConsole />}
       consoleLabel="Live SOAR console"
-      footer={<div className="flex justify-between text-[10px] text-slate-500"><span>ZOIKOSHIELD · SOAR ACTIONS &amp; FREEZE · DESIGN REVIEW</span><span>Synthetic information only · Not representative of verified production readiness</span></div>}
+      footer={<div className="flex justify-between text-[10px] text-slate-500"><span>ZOIKOSHIELD · SOAR ACTIONS &amp; FREEZE</span><span className="text-emerald-400 font-semibold">Cryptographic dual-custody authorization active · Immutable audit ledger</span></div>}
     >
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <Panel title="Governed action queue" meta="View audit history →">

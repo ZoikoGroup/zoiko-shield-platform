@@ -13,16 +13,68 @@ import {
   UnavailableState,
 } from "@/components/states/mandatory-ui-states";
 
-export default function OnboardingPage() {
+import { useDemoState } from "@/lib/demo-state";
+
+export interface OnboardingConsoleProps {
+  orderId?: string;
+  setOrderId?: (v: string) => void;
+  orgName?: string;
+  setOrgName?: (v: string) => void;
+  slug?: string;
+  setSlug?: (v: string) => void;
+  legalEntity?: string;
+  setLegalEntity?: (v: string) => void;
+  ownerEmail?: string;
+  setOwnerEmail?: (v: string) => void;
+  environment?: string;
+  setEnvironment?: (v: string) => void;
+  region?: string;
+  setRegion?: (v: string) => void;
+  dataClass?: "PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED";
+  setDataClass?: (v: "PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED") => void;
+}
+
+export default function OnboardingPage(props: OnboardingConsoleProps = {}) {
   const router = useRouter();
-  const [orderId, setOrderId] = useState("00000000-0000-4000-8000-000000000001");
-  const [orgName, setOrgName] = useState("Acme Financial Services Inc.");
-  const [slug, setSlug] = useState("acme-financial");
-  const [legalEntity, setLegalEntity] = useState("Acme Financial Services Global Ltd");
-  const [ownerEmail, setOwnerEmail] = useState("owner@acme.com");
-  const [environment, setEnvironment] = useState("PRODUCTION-US-EAST");
-  const [region, setRegion] = useState("us-east-1");
-  const [dataClass, setDataClass] = useState<"PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED">("RESTRICTED");
+  const [demoState] = useDemoState();
+  const [internalOrderId, setInternalOrderId] = useState(() => props.orderId || demoState.tenant?.orderId || "00000000-0000-4000-8000-000000000001");
+  const [internalOrgName, setInternalOrgName] = useState(() => props.orgName || demoState.tenant?.organizationName || "");
+  const [internalSlug, setInternalSlug] = useState(() => props.slug || demoState.tenant?.slug || "");
+  const [internalLegalEntity, setInternalLegalEntity] = useState(() => props.legalEntity || demoState.tenant?.legalEntityName || demoState.tenant?.organizationName || "");
+  const [internalOwnerEmail, setInternalOwnerEmail] = useState(() => props.ownerEmail || demoState.session?.email || "");
+  const [internalEnvironment, setInternalEnvironment] = useState(() => props.environment || demoState.tenant?.environmentName || "PRODUCTION-US-EAST");
+  const [internalRegion, setInternalRegion] = useState(() => props.region || demoState.tenant?.homeRegion || "us-east-1");
+  const [internalDataClass, setInternalDataClass] = useState<"PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED">(() => props.dataClass || (demoState.tenant?.dataClass as any) || "RESTRICTED");
+
+  // Keep internal state synchronized with props when they update
+  React.useEffect(() => {
+    if (props.orderId !== undefined) setInternalOrderId(props.orderId);
+    if (props.orgName !== undefined) setInternalOrgName(props.orgName);
+    if (props.slug !== undefined) setInternalSlug(props.slug);
+    if (props.legalEntity !== undefined) setInternalLegalEntity(props.legalEntity);
+    if (props.ownerEmail !== undefined) setInternalOwnerEmail(props.ownerEmail);
+    if (props.environment !== undefined) setInternalEnvironment(props.environment);
+    if (props.region !== undefined) setInternalRegion(props.region);
+    if (props.dataClass !== undefined) setInternalDataClass(props.dataClass);
+  }, [props.orderId, props.orgName, props.slug, props.legalEntity, props.ownerEmail, props.environment, props.region, props.dataClass]);
+
+  const orderId = props.orderId ?? internalOrderId;
+  const setOrderId = props.setOrderId ?? setInternalOrderId;
+  const orgName = props.orgName ?? internalOrgName;
+  const setOrgName = props.setOrgName ?? setInternalOrgName;
+  const slug = props.slug ?? internalSlug;
+  const setSlug = props.setSlug ?? setInternalSlug;
+  const legalEntity = props.legalEntity ?? internalLegalEntity;
+  const setLegalEntity = props.setLegalEntity ?? setInternalLegalEntity;
+  const ownerEmail = props.ownerEmail ?? internalOwnerEmail;
+  const setOwnerEmail = props.setOwnerEmail ?? setInternalOwnerEmail;
+  const environment = props.environment ?? internalEnvironment;
+  const setEnvironment = props.setEnvironment ?? setInternalEnvironment;
+  const region = props.region ?? internalRegion;
+  const setRegion = props.setRegion ?? setInternalRegion;
+  const dataClass = props.dataClass ?? internalDataClass;
+  const setDataClass = props.setDataClass ?? setInternalDataClass;
+
   const [isLoading, setIsLoading] = useState(false);
   const [provisionedTenant, setProvisionedTenant] = useState<any>(null);
   const [errorState, setErrorState] = useState<"UNAUTHORIZED" | "UNAVAILABLE" | null>(null);
@@ -217,9 +269,11 @@ export default function OnboardingPage() {
                 >
                   <option value="us-east-1">us-east-1 (N. Virginia)</option>
                   <option value="us-west-2">us-west-2 (Oregon)</option>
+                  <option value="eu-west-2">eu-west-2 (London)</option>
                   <option value="eu-west-1">eu-west-1 (Ireland)</option>
                   <option value="eu-central-1">eu-central-1 (Frankfurt)</option>
                   <option value="ap-south-1">ap-south-1 (Mumbai)</option>
+                  <option value="ap-southeast-1">ap-southeast-1 (Singapore)</option>
                 </select>
               </div>
 

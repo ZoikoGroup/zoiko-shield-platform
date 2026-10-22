@@ -26,8 +26,8 @@ const badgeClass = (variant?: NavBadgeVariant) =>
     ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
     : "bg-[#141f33] text-slate-300 border border-slate-700/60";
 
-const signOut = () => {
-  ZoikoShieldApiClient.logout();
+const signOut = async () => {
+  await ZoikoShieldApiClient.logout();
   window.location.href = "/login?logout=true";
 };
 
@@ -64,7 +64,7 @@ export const Sidebar: React.FC = () => {
       })).filter((g) => g.items.length > 0)
     : NAV_GROUPS;
 
-  const userInitials = (state.session.fullName || "Sarah Chen")
+  const userInitials = (state.session.fullName || state.session.email || "Operator")
     .split(" ")
     .map((n) => n[0])
     .join("")
@@ -124,7 +124,7 @@ export const Sidebar: React.FC = () => {
                   <Building className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                   <div className="truncate">
                     <div className="text-xs font-semibold text-slate-100 truncate">
-                      {state.tenant.organizationName || "Acme Corporation"}
+                      {state.tenant.organizationName || "ZoikoShield Enterprise"}
                     </div>
                     <div className="text-[10px] text-slate-400">
                       {state.tenant.planTier || "Enterprise Tenant"}
@@ -270,7 +270,7 @@ export const Sidebar: React.FC = () => {
                   </div>
                   <div className="truncate text-xs">
                     <div className="font-semibold text-slate-200 truncate">
-                      {state.session.fullName || "Sarah Chen"}
+                      {state.session.fullName || state.session.email || "Active Operator"}
                     </div>
                     <div className="text-[10px] font-mono text-cyan-400 truncate">
                       {state.session.role?.replace(/_/g, " ") || "Security Analyst"}

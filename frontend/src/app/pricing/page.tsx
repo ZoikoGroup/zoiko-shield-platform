@@ -19,8 +19,16 @@ import {
   ArrowRight,
   Flame,
   Scale,
+  CreditCard,
+  X,
+  FileText,
+  Check,
+  Receipt,
+  ShieldAlert,
+  DollarSign,
 } from "lucide-react";
 import Link from "next/link";
+import { Button } from "@/components/ui/Button";
 
 export default function PricingPage() {
   const [plans, setPlans] = useState<PlanTier[]>([]);
@@ -34,6 +42,18 @@ export default function PricingPage() {
   const [requiresSovereign, setRequiresSovereign] = useState(false);
   const [recommendation, setRecommendation] = useState<PlanRecommendation | null>(null);
   const [calculating, setCalculating] = useState(false);
+
+  // Simulated Payment & Checkout State
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
+  const [selectedPlanForCheckout, setSelectedPlanForCheckout] = useState<PlanTier | null>(null);
+  const [cardholderName, setCardholderName] = useState("Acme Corp Security Operations");
+  const [cardNumber, setCardNumber] = useState("4242 4242 4242 4242");
+  const [cardExpiry, setCardExpiry] = useState("12/28");
+  const [cardCvc, setCardCvc] = useState("123");
+  const [paymentToken, setPaymentToken] = useState("tok_visa_valid");
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [paymentError, setPaymentError] = useState<string | null>(null);
+  const [paymentReceipt, setPaymentReceipt] = useState<any | null>(null);
 
   useEffect(() => {
     async function loadPlans() {
@@ -70,6 +90,70 @@ export default function PricingPage() {
     updateRecommendation();
   }, [assets, telemetryGb, requires24x7, requiresSovereign]);
 
+  const openCheckoutForPlan = (plan: PlanTier) => {
+    setSelectedPlanForCheckout(plan);
+    setPaymentError(null);
+    setPaymentReceipt(null);
+    setIsCheckoutOpen(true);
+  };
+
+  const setTestCardPreset = (presetType: "VISA_VALID" | "MC_VALID" | "DECLINED" | "WIRE") => {
+    setPaymentError(null);
+    if (presetType === "VISA_VALID") {
+      setCardNumber("4242 4242 4242 4242");
+      setCardExpiry("12/28");
+      setCardCvc("123");
+      setPaymentToken("tok_visa_valid");
+    } else if (presetType === "MC_VALID") {
+      setCardNumber("5555 5555 5555 4444");
+      setCardExpiry("08/29");
+      setCardCvc("456");
+      setPaymentToken("tok_mastercard");
+    } else if (presetType === "DECLINED") {
+      setCardNumber("4000 0000 0000 0002");
+      setCardExpiry("10/27");
+      setCardCvc("999");
+      setPaymentToken("tok_invalid_charge");
+    } else if (presetType === "WIRE") {
+      setCardNumber("WIRE-ACH-ESCROW-2026");
+      setCardExpiry("12/30");
+      setCardCvc("000");
+      setPaymentToken("wire_escrow_sovereign");
+    }
+  };
+
+  const handleProcessPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedPlanForCheckout) return;
+
+    setIsProcessingPayment(true);
+    setPaymentError(null);
+    setPaymentReceipt(null);
+
+    const monthlyCost = isAnnual
+      ? (selectedPlanForCheckout.pricing?.annualBilledMonthlyUsd || 10000)
+      : (selectedPlanForCheckout.pricing?.monthlyUsd || 12000);
+    const totalAmount = isAnnual ? monthlyCost * 12 : monthlyCost;
+
+    try {
+      const res = await ZoikoShieldApiClient.processPayment({
+        amount: totalAmount,
+        currency: "USD",
+        paymentMethodToken: paymentToken,
+        planTier: selectedPlanForCheckout.key,
+        billingPeriod: isAnnual ? "ANNUAL" : "MONTHLY",
+        cardNumber,
+        cardholderName,
+      });
+
+      setPaymentReceipt(res.data);
+    } catch (err: any) {
+      setPaymentError(err.message || "Payment authorization failed. Simulated card was declined.");
+    } finally {
+      setIsProcessingPayment(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#060911] text-slate-100 p-6 space-y-10">
       {/* Header Banner */}
@@ -103,8 +187,18 @@ export default function PricingPage() {
             />
           </button>
           <span className={`text-xs font-medium flex items-center gap-1.5 ${isAnnual ? "text-cyan-400 font-semibold" : "text-slate-400"}`}>
-            Annual Commitment
+            Annual Commitment (20% Savings)
           </span>
+          <button
+            type="button"
+            onClick={() => {
+              if (plans.length > 0) openCheckoutForPlan(plans[1] || plans[0]);
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 text-xs font-mono font-bold hover:bg-cyan-500/25 transition-all shadow-[0_0_15px_rgba(6,182,212,0.2)] ml-2"
+          >
+            <CreditCard className="w-3.5 h-3.5 text-cyan-400" />
+            <span>💳 Test Payment Flow</span>
+          </button>
         </div>
       </div>
 
@@ -252,17 +346,25 @@ export default function PricingPage() {
               </div>
 
               {/* Action Button */}
-              <div className="pt-6">
-                <Link
-                  href={plan.pricing?.isContractOnly ? "/team" : "/onboarding"}
-                  className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${
+              <div className="pt-6 space-y-2">
+                <button
+                  type="button"
+                  onClick={() => openCheckoutForPlan(plan)}
+                  className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
                     isPop
                       ? "bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-[0_0_20px_rgba(6,182,212,0.4)]"
-                      : "bg-slate-800 hover:bg-slate-700 text-slate-100 border border-slate-700"
+                      : "bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/40"
                   }`}
                 >
-                  <span>{plan.pricing?.isContractOnly ? "Contact Enterprise Sales" : "Deploy Shield Tier"}</span>
-                  <ArrowRight className="w-3.5 h-3.5" />
+                  <CreditCard className="w-3.5 h-3.5" />
+                  <span>💳 Subscribe &amp; Pay (Test Checkout)</span>
+                </button>
+                <Link
+                  href={plan.pricing?.isContractOnly ? "/team" : "/onboarding"}
+                  className="w-full py-1 text-center text-[11px] text-slate-500 hover:text-slate-300 flex items-center justify-center gap-1 transition-colors"
+                >
+                  <span>{plan.pricing?.isContractOnly ? "Contact Enterprise Sales" : "Deploy via Onboarding"}</span>
+                  <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
             </div>
@@ -409,13 +511,21 @@ export default function PricingPage() {
                     </ul>
                   </div>
 
-                  <div className="pt-3 border-t border-slate-800">
+                  <div className="pt-3 border-t border-slate-800 space-y-2">
+                    <button
+                      type="button"
+                      onClick={() => openCheckoutForPlan(plan)}
+                      className="w-full py-2.5 px-4 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
+                    >
+                      <CreditCard className="w-3.5 h-3.5" />
+                      <span>💳 Authorize &amp; Pay for {plan.displayName || "Selected Plan"}</span>
+                    </button>
                     <Link
                       href={plan.pricing?.isContractOnly ? "/team" : "/onboarding"}
-                      className="w-full py-2 px-4 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md"
+                      className="w-full py-1 text-center text-[11px] text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1"
                     >
-                      <span>Proceed with {plan.displayName || "Selected Plan"}</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <span>Or complete manual enterprise onboarding</span>
+                      <ArrowRight className="w-3 h-3" />
                     </Link>
                   </div>
                 </div>
@@ -424,6 +534,321 @@ export default function PricingPage() {
           </div>
         </div>
       </div>
+
+      {/* Interactive Commercial Plan Subscription & Payment Checkout Modal */}
+      {isCheckoutOpen && selectedPlanForCheckout && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150">
+          <div className="w-full max-w-2xl my-8 rounded-2xl bg-[#090e1c] border border-cyan-500/40 shadow-[0_0_60px_rgba(6,182,212,0.35)] p-6 md:p-8 space-y-6 text-slate-200">
+            {/* Modal Header */}
+            <div className="flex items-start justify-between border-b border-slate-800 pb-4">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
+                    <CreditCard className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-lg md:text-xl font-black text-slate-100">
+                      Commercial Subscription &amp; Payment Gate
+                    </h2>
+                    <p className="text-xs text-slate-400 font-mono">
+                      Stripe-compatible tokenized payment authorization with RFC 3161 proof receipt
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsCheckoutOpen(false)}
+                className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                title="Close modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {paymentReceipt ? (
+              /* Success Receipt View */
+              <div className="space-y-5 animate-in fade-in duration-200">
+                <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-bold">
+                    <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                    <span>Payment Successfully Authorized &amp; Plan Provisioned!</span>
+                  </div>
+                  <p className="text-xs text-slate-300">
+                    Your sovereign commercial tier has been upgraded to <strong>{selectedPlanForCheckout.displayName}</strong>.
+                    Billing adheres strictly to Rule PR-02: zero surcharges for security alert storms.
+                  </p>
+                </div>
+
+                {/* Cryptographic Transaction Details */}
+                <div className="p-4 rounded-xl bg-[#060911] border border-[#162238] space-y-2.5 font-mono text-xs">
+                  <div className="text-[11px] text-cyan-400 font-bold uppercase tracking-wider flex items-center justify-between border-b border-slate-800/80 pb-2">
+                    <span>Audit Evidence &amp; Receipt Proof</span>
+                    <span className="text-emerald-400">STATUS: {paymentReceipt.status}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-300">
+                    <span className="text-slate-500">Transaction ID:</span>
+                    <span className="text-slate-200">{paymentReceipt.providerPaymentId}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-300">
+                    <span className="text-slate-500">Amount Charged:</span>
+                    <span className="text-emerald-300 font-bold">
+                      ${paymentReceipt.amount?.toLocaleString()} {paymentReceipt.currency}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-slate-300">
+                    <span className="text-slate-500">Plan Tier:</span>
+                    <span className="text-cyan-300">{paymentReceipt.planTier} ({paymentReceipt.billingPeriod})</span>
+                  </div>
+                  <div className="flex justify-between text-slate-300">
+                    <span className="text-slate-500">Payment Instrument:</span>
+                    <span className="text-slate-200">
+                      {paymentReceipt.paymentMethod?.brand} •••• {paymentReceipt.paymentMethod?.last4}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-slate-300">
+                    <span className="text-slate-500">Target Tenant:</span>
+                    <span className="text-slate-200">{paymentReceipt.tenantId}</span>
+                  </div>
+                  <div className="pt-2 border-t border-slate-800/80 space-y-1">
+                    <span className="text-slate-500 text-[10px] block">RFC 3161 Merkle Hash:</span>
+                    <span className="text-cyan-400 text-[10px] break-all block">
+                      {paymentReceipt.rfc3161AuditHash}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Receipt Actions */}
+                <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setPaymentReceipt(null);
+                      setPaymentError(null);
+                    }}
+                  >
+                    Test Another Card / Payment
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    onClick={() => setIsCheckoutOpen(false)}
+                  >
+                    Done &amp; Return to Platform
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              /* Checkout Form View */
+              <form onSubmit={handleProcessPayment} className="space-y-5">
+                {/* Plan Selection Summary Card */}
+                <div className="p-4 rounded-xl bg-[#060911] border border-[#162238] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider font-bold">
+                      Selected Plan Tier:
+                    </div>
+                    <div className="text-base font-black text-slate-100 mt-0.5">
+                      {selectedPlanForCheckout.displayName}
+                    </div>
+                    <div className="text-xs text-slate-400">
+                      {isAnnual ? "Billed annually with 20% commitment discount" : "Billed monthly"}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-2xl font-black text-cyan-400">
+                      ${(isAnnual
+                        ? (selectedPlanForCheckout.pricing?.annualBilledMonthlyUsd || 10000) * 12
+                        : (selectedPlanForCheckout.pricing?.monthlyUsd || 12000)
+                      ).toLocaleString()}
+                    </div>
+                    <div className="text-[10px] font-mono text-slate-500">
+                      {isAnnual ? "/ year total" : "/ month"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Plan Switcher Pills */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-mono text-slate-400 uppercase tracking-wider">
+                    Switch Plan Tier:
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {plans.map((p) => (
+                      <button
+                        key={p.key}
+                        type="button"
+                        onClick={() => setSelectedPlanForCheckout(p)}
+                        className={`p-2 rounded-lg text-xs font-mono text-center border transition-all ${
+                          selectedPlanForCheckout.key === p.key
+                            ? "bg-cyan-500/20 border-cyan-400 text-cyan-300 font-bold"
+                            : "bg-[#060911] border-[#162238] text-slate-400 hover:text-slate-200"
+                        }`}
+                      >
+                        {p.displayName.replace("Shield ", "")}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 1-Click Tester Card Presets */}
+                <div className="space-y-2 pt-2 border-t border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider">
+                      QA TEST CARDS (1-CLICK FILL):
+                    </span>
+                    <span className="text-[10px] font-mono text-cyan-400">Simulated Stripe Tokens</span>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setTestCardPreset("VISA_VALID")}
+                      className={`p-2 rounded-lg border text-left text-xs transition-all ${
+                        paymentToken === "tok_visa_valid"
+                          ? "bg-emerald-950/40 border-emerald-400 text-emerald-300 font-bold"
+                          : "bg-[#060911] border-[#162238] text-slate-400 hover:border-slate-700"
+                      }`}
+                    >
+                      <div className="text-[10px] text-emerald-400 font-mono">SUCCESS</div>
+                      <div>Visa (4242)</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTestCardPreset("MC_VALID")}
+                      className={`p-2 rounded-lg border text-left text-xs transition-all ${
+                        paymentToken === "tok_mastercard"
+                          ? "bg-emerald-950/40 border-emerald-400 text-emerald-300 font-bold"
+                          : "bg-[#060911] border-[#162238] text-slate-400 hover:border-slate-700"
+                      }`}
+                    >
+                      <div className="text-[10px] text-emerald-400 font-mono">SUCCESS</div>
+                      <div>Mastercard</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTestCardPreset("DECLINED")}
+                      className={`p-2 rounded-lg border text-left text-xs transition-all ${
+                        paymentToken === "tok_invalid_charge"
+                          ? "bg-rose-950/40 border-rose-400 text-rose-300 font-bold"
+                          : "bg-[#060911] border-[#162238] text-slate-400 hover:border-slate-700"
+                      }`}
+                    >
+                      <div className="text-[10px] text-rose-400 font-mono">TEST ERROR</div>
+                      <div>Declined (0002)</div>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setTestCardPreset("WIRE")}
+                      className={`p-2 rounded-lg border text-left text-xs transition-all ${
+                        paymentToken === "wire_escrow_sovereign"
+                          ? "bg-cyan-950/40 border-cyan-400 text-cyan-300 font-bold"
+                          : "bg-[#060911] border-[#162238] text-slate-400 hover:border-slate-700"
+                      }`}
+                    >
+                      <div className="text-[10px] text-cyan-400 font-mono">ENTERPRISE</div>
+                      <div>Corporate Wire</div>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Payment Fields */}
+                <div className="space-y-3 pt-2">
+                  <div className="space-y-1">
+                    <label className="text-xs font-mono text-slate-300">Billing Organization / Cardholder Name:</label>
+                    <input
+                      type="text"
+                      required
+                      value={cardholderName}
+                      onChange={(e) => setCardholderName(e.target.value)}
+                      className="w-full bg-[#060911] border border-[#162238] rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-xs font-mono text-slate-300 flex items-center justify-between">
+                      <span>Card Number / Payment Token:</span>
+                      <span className="text-[10px] text-cyan-400 font-normal">Token: {paymentToken}</span>
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="text"
+                        required
+                        value={cardNumber}
+                        onChange={(e) => setCardNumber(e.target.value)}
+                        className="w-full bg-[#060911] border border-[#162238] rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
+                      />
+                      <CreditCard className="w-4 h-4 text-slate-500 absolute right-3 top-3" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <label className="text-xs font-mono text-slate-300">Expiration (MM/YY):</label>
+                      <input
+                        type="text"
+                        required
+                        value={cardExpiry}
+                        onChange={(e) => setCardExpiry(e.target.value)}
+                        placeholder="MM/YY"
+                        className="w-full bg-[#060911] border border-[#162238] rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-xs font-mono text-slate-300">Security CVC:</label>
+                      <input
+                        type="text"
+                        required
+                        value={cardCvc}
+                        onChange={(e) => setCardCvc(e.target.value)}
+                        placeholder="123"
+                        className="w-full bg-[#060911] border border-[#162238] rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Decline Error Banner */}
+                {paymentError && (
+                  <div className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-500/50 text-rose-300 text-xs font-mono space-y-1">
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
+                      <span>Payment Declined (Testing Failure Verification)</span>
+                    </div>
+                    <p className="text-[11px] text-slate-300">
+                      {paymentError}
+                    </p>
+                  </div>
+                )}
+
+                {/* Authorize & Submit */}
+                <div className="flex items-center justify-between border-t border-slate-800 pt-4">
+                  <div className="text-[11px] font-mono text-slate-500 flex items-center gap-1.5">
+                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                    <span>256-Bit TLS &amp; Tokenized Card Escrow</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsCheckoutOpen(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      variant="primary"
+                      isLoading={isProcessingPayment}
+                      className="font-bold shadow-[0_0_20px_rgba(6,182,212,0.3)]"
+                    >
+                      <span>Authorize &amp; Complete Payment</span>
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

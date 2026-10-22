@@ -64,24 +64,15 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // If authenticated and visiting /login or /register, redirect to dashboard or redirect target unless logging out
-  if (isAuth && (url.pathname === '/login' || url.pathname === '/register')) {
-    const isExplicitLogout = request.nextUrl.searchParams.get('logout') === 'true';
-    if (isExplicitLogout) {
-      const cleanLoginRes = NextResponse.next();
-      cleanLoginRes.cookies.set('zoiko_auth', '', { maxAge: 0, path: '/' });
-      cleanLoginRes.cookies.set('zoiko_shield_access_token', '', { maxAge: 0, path: '/' });
-      cleanLoginRes.cookies.set('shield_access_token', '', { maxAge: 0, path: '/' });
-      cleanLoginRes.cookies.set('zoiko_shield_tenant_id', '', { maxAge: 0, path: '/' });
-      return cleanLoginRes;
-    }
-
-    const redirectParam = request.nextUrl.searchParams.get('redirect');
-    const targetUrl = new URL(
-      redirectParam && redirectParam.startsWith('/') ? redirectParam : '/',
-      request.url
-    );
-    return NextResponse.redirect(targetUrl);
+  // 3. Handle explicit logout on /login: clean auth cookies immediately
+  if (url.pathname === '/login' && request.nextUrl.searchParams.get('logout') === 'true') {
+    const cleanLoginRes = NextResponse.next();
+    cleanLoginRes.cookies.set('zoiko_auth', '', { maxAge: 0, path: '/' });
+    cleanLoginRes.cookies.set('zoiko_shield_access_token', '', { maxAge: 0, path: '/' });
+    cleanLoginRes.cookies.set('shield_access_token', '', { maxAge: 0, path: '/' });
+    cleanLoginRes.cookies.set('zoiko_shield_tenant_id', '', { maxAge: 0, path: '/' });
+    cleanLoginRes.headers.set('Cache-Control', 'no-store, max-age=0');
+    return cleanLoginRes;
   }
 
   return NextResponse.next();

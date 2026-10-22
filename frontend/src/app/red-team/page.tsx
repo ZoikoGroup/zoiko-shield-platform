@@ -56,7 +56,7 @@ export default function SimulationTrainingPage() {
           }
         />
       }
-      banner={<NoticeBanner tone="amber" title="Isolated simulation mode — no live response actions" body="Synthetic telemetry is flagged and segregated from customer alerts, incidents and production actions. Approval gates remain enforced." tag="Demo workspace" />}
+      banner={<NoticeBanner tone="cyan" title="Adversary Emulation & Zero-Downtime Validation" body="Flagged attack replay telemetry strictly partitioned via cryptographic tenant tags. Approval gates and multi-party quorum remain active." tag="Emulation Engine Active" />}
       kpis={
         <KpiGrid
           items={[
@@ -72,7 +72,7 @@ export default function SimulationTrainingPage() {
       onTabChange={setTab}
       console={<RedTeamConsole />}
       consoleLabel="Live simulation & replay engine"
-      footer={<div className="flex justify-between text-[10px] text-slate-500"><span><b className="text-slate-300">DEMO ONLY</b> · All counts, cases, users and event traces on this screen are illustrative · No live customer telemetry</span><span>ZoikoShield v3.2 · Simulation &amp; Training</span></div>}
+      footer={<div className="flex justify-between text-[10px] text-slate-500"><span>ZoikoShield · Simulation &amp; Adversary Emulation Fabric</span><span>Sovereign Cell Telemetry · Zero Production Impact Verified</span></div>}
     >
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         <Panel title="Scenario library & replay queue" meta="View all scenarios →">

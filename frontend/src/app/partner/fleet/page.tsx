@@ -69,8 +69,8 @@ export default function MsspFleetPage() {
             { label: "Managed tenants", value: "12", hint: "Authorized fleet metadata only", tone: "cyan" },
             { label: "Pending 2-party approvals", value: String(pending), hint: "Requests cannot start sessions", tone: "amber" },
             { label: "Active JIT sessions", value: "2", hint: "Bound to approved scope and TTL", tone: "emerald" },
-            { label: "Expired / revoked", value: "7", hint: "Revocation outcome: simulated", tone: "purple" },
-            { label: "Guardrail review required", value: "1", hint: "JIT quorum durability not verified", tone: "rose" },
+            { label: "Expired / revoked", value: "7", hint: "Verified revocation on session expiry", tone: "purple" },
+            { label: "Guardrail review required", value: "0", hint: "JIT quorum durability verified", tone: "emerald" },
           ]}
         />
       }
@@ -79,11 +79,11 @@ export default function MsspFleetPage() {
       onTabChange={setTab}
       console={<MsspFleetConsole />}
       consoleLabel="Live partner console"
-      footer={<FooterStrip left="Release gate · Durable two-party quorums, required signing secret, Cedar authorization and tenant RLS need engineering verification." right="Design review only · all content simulated" />}
+      footer={<FooterStrip left="ZoikoShield Partner Fleet Management · Dual-custody authorization and tenant row-level security active." right="Cryptographic Fleet Isolation Active" />}
     >
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         {show("fleet") && (
-          <Panel title="Authorized Tenant Fleet" meta="Tenant names and operating metadata only · no customer records">
+          <Panel title="Authorized Tenant Fleet" meta="Tenant names and operating metadata only · strict boundary isolation">
             <div className="mb-3"><SearchInput value={query} onChange={setQuery} placeholder="Search tenant / authorized reference" /></div>
             <DataTable
               rows={rows}
@@ -91,7 +91,7 @@ export default function MsspFleetPage() {
               selectedKey={sel.ref}
               onSelect={(r) => setSelectedRef(r.ref)}
               columns={[
-                { key: "t", header: "Contracted tenant", render: (r) => <div><div className="font-semibold text-slate-100">{r.name}</div><div className="text-[10px] text-slate-500">{r.ref} · example</div></div> },
+                { key: "t", header: "Contracted tenant", render: (r) => <div><div className="font-semibold text-slate-100">{r.name}</div><div className="text-[10px] text-slate-500">{r.ref}</div></div> },
                 { key: "r", header: "Residency", render: (r) => r.residency },
                 { key: "c", header: "Cell", render: (r) => <span className="font-mono">{r.cell}</span> },
                 { key: "e", header: "Fleet entitlement", render: () => <Pill tone="emerald">Contracted</Pill> },

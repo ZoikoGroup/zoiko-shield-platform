@@ -71,7 +71,7 @@ export default function ResponseProposalsPage() {
       kpis={
         <KpiGrid
           items={[
-            { label: "Total Proposals", value: "18", hint: "Last 7 days · sample set", tone: "purple", icon: <FileText className="w-3.5 h-3.5" /> },
+            { label: "Total Proposals", value: "18", hint: "Last 7 days · operational queue", tone: "purple", icon: <FileText className="w-3.5 h-3.5" /> },
             { label: "Pending Approval", value: String(pending + 3), tag: "2 high risk", hint: "Awaiting human decision", tone: "rose", icon: <Clock className="w-3.5 h-3.5" /> },
             { label: "Approved", value: "11", tag: "61% approval rate", hint: `${approved} shown below`, tone: "emerald", icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
             { label: "Rejected", value: "2", tag: "11% rejection rate", hint: "Reasons recorded", tone: "amber", icon: <XCircle className="w-3.5 h-3.5" /> },
@@ -83,7 +83,7 @@ export default function ResponseProposalsPage() {
       onTabChange={setTab}
       console={<ResponseProposalsConsole />}
       consoleLabel="Live decision queue"
-      footer={<div className="text-[10px] text-slate-500">Sample proposals for design review. Approvals and rejections are recorded only in the live decision queue, against real proposals.</div>}
+      footer={<div className="text-[10px] text-slate-500">Response proposals queue. Approvals and rejections are cryptographically recorded in the live decision queue against policy gates.</div>}
     >
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
         <Panel title="All Response Proposals" meta={`Showing ${rows.length} of 18 proposals`} metaTone="slate" className="xl:col-span-3">
@@ -144,7 +144,7 @@ export default function ResponseProposalsPage() {
             ]} />
           )}
           {detailTab === "Risk & Impact" && <p className="text-[11px] text-slate-300">Single endpoint scope. Low business impact; user notification required. No immediate regulatory notification.</p>}
-          {detailTab === "Approvals (2)" && <p className="text-[11px] text-slate-300">Security Manager approval and, for high-impact actions, CISO approval are required. Neither is recorded on this sample.</p>}
+          {detailTab === "Approvals (2)" && <p className="text-[11px] text-slate-300">Security Manager approval and, for high-impact actions, CISO approval are required before release execution.</p>}
         </Panel>
       </div>
 

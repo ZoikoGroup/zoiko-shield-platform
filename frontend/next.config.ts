@@ -72,6 +72,15 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.output = {
+        ...config.output,
+        chunkLoadTimeout: 300000, // 300s to prevent chunk load timeout on cold dev server builds
+      };
+    }
+    return config;
+  },
 };
 
 export default nextConfig;

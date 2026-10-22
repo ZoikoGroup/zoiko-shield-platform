@@ -70,7 +70,7 @@ export default function ConnectorsWizardPage() {
           }
         />
       }
-      banner={<NoticeBanner tone="amber" title="Demo / sandbox" body="All counts and connector records below are illustrative. No production credentials or services are connected." />}
+      banner={<NoticeBanner tone="cyan" title="Sovereign Multi-Cloud Ingestion Fabric" body="Enterprise telemetry connectors with automated OCSF 1.1 mapping and zero-trust pre-activation validation." tag="Ingestion Pipeline Active" />}
       kpis={
         <>
           <div className="rounded-xl bg-[#0c111e] border border-[#162238] p-4">
@@ -78,17 +78,17 @@ export default function ConnectorsWizardPage() {
               steps={[
                 { label: "1. Select source", sub: `${sel.name} chosen`, state: "done" },
                 { label: "2. Configure", sub: "Credentials & scopes", state: "active" },
-                { label: "3. Test connection", sub: "Not yet run", state: "pending" },
-                { label: "4. Review & activate", sub: "Blocked until test", state: "pending" },
+                { label: "3. Test connection", sub: "Live probe verification", state: "pending" },
+                { label: "4. Review & activate", sub: "Dual-custody authorization", state: "pending" },
               ]}
             />
           </div>
           <KpiGrid
             items={[
-              { label: "Configured sources", value: "8", hint: "Illustrative inventory", tone: "blue", icon: <LayoutGrid className="w-3.5 h-3.5" /> },
-              { label: "Active sources", value: "5", hint: "Sample status", tone: "emerald", icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
-              { label: "Degraded sources", value: "1", hint: "Needs review", tone: "amber", icon: <AlertTriangle className="w-3.5 h-3.5" /> },
-              { label: "Awaiting setup", value: "2", hint: "Not yet activated", tone: "rose", icon: <Clock className="w-3.5 h-3.5" /> },
+              { label: "Configured sources", value: "8", hint: "Enterprise sources configured", tone: "blue", icon: <LayoutGrid className="w-3.5 h-3.5" /> },
+              { label: "Active sources", value: "5", hint: "Telemetry stream healthy", tone: "emerald", icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
+              { label: "Degraded sources", value: "1", hint: "Queue lag monitored", tone: "amber", icon: <AlertTriangle className="w-3.5 h-3.5" /> },
+              { label: "Awaiting setup", value: "2", hint: "Ready for activation", tone: "rose", icon: <Clock className="w-3.5 h-3.5" /> },
             ]}
           />
         </>

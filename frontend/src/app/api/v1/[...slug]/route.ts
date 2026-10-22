@@ -104,11 +104,34 @@ interface JitSessionItem {
   approverRole?: string;
 }
 
+interface TenantMemberItem {
+  id: string;
+  tenantId: string;
+  email: string;
+  fullName: string;
+  role: string;
+  status: string;
+  joinedAt: string;
+}
+
+interface TenantInvitationItem {
+  id: string;
+  tenantId: string;
+  email: string;
+  role: string;
+  status: string;
+  token: string;
+  expiresAt: string;
+}
+
+const tenantInvitationsStore: TenantInvitationItem[] = [];
+const tenantMembersStore: TenantMemberItem[] = [];
+
 const defaultDeliveries: DeliveryItem[] = [
   {
     id: "del-email-template-1044",
     event_id: "evt-email-zs-eml-iam-001 (Template Studio Dispatch)",
-    channel: "EMAIL (operator@zoikoshield.corp)",
+    channel: "EMAIL (security@zoikoshield.io)",
     status: "DELIVERED",
     attempt_count: 1,
     delivered_at: new Date(Date.now() - 45000).toISOString(),
@@ -118,7 +141,7 @@ const defaultDeliveries: DeliveryItem[] = [
   {
     id: "del-p0-alert-1043",
     event_id: "evt-sec-p0-lateral-movement",
-    channel: "EMAIL (security-alerts@zoikoshield.com)",
+    channel: "EMAIL (security@zoikoshield.io)",
     status: "DELIVERED",
     attempt_count: 1,
     delivered_at: new Date(Date.now() - 300000).toISOString(),
@@ -128,7 +151,7 @@ const defaultDeliveries: DeliveryItem[] = [
   {
     id: "del-jit-elev-1042",
     event_id: "evt-jit-elevation-approved",
-    channel: "EMAIL (auth-notices@zoikoshield.com)",
+    channel: "EMAIL (security@zoikoshield.io)",
     status: "DELIVERED",
     attempt_count: 1,
     delivered_at: new Date(Date.now() - 1200000).toISOString(),
@@ -138,7 +161,7 @@ const defaultDeliveries: DeliveryItem[] = [
   {
     id: "del-merkle-epoch-1041",
     event_id: "evt-merkle-epoch-sealed",
-    channel: "EMAIL (compliance-officer@zoikoshield.com)",
+    channel: "EMAIL (security@zoikoshield.io)",
     status: "DELIVERED",
     attempt_count: 1,
     delivered_at: new Date(Date.now() - 3600000).toISOString(),
@@ -148,7 +171,7 @@ const defaultDeliveries: DeliveryItem[] = [
   {
     id: "del-webhook-dlq-1039",
     event_id: "evt-staging-webhook-sync",
-    channel: "WEBHOOK (https://staging.internal/hook)",
+    channel: "WEBHOOK (https://api.zoikoshield.corp/events)",
     status: "DEAD_LETTERED",
     attempt_count: 3,
     delivered_at: null,
@@ -160,7 +183,7 @@ const defaultDeliveries: DeliveryItem[] = [
 const defaultConnectors: ConnectorItem[] = [
   {
     id: "conn-webhook-gateway-01",
-    tenantId: "tenant-acme-prod-01",
+    tenantId: "tenant-sovereign-01",
     name: "Primary Security Gateway Webhook",
     provider: "generic-webhook",
     sourceRegion: "us-east-1",
@@ -176,7 +199,7 @@ const defaultConnectors: ConnectorItem[] = [
   },
   {
     id: "conn-entra-id-prod",
-    tenantId: "tenant-acme-prod-01",
+    tenantId: "tenant-sovereign-01",
     name: "Microsoft Entra ID / Graph Audit Connector",
     provider: "microsoft-entra",
     sourceRegion: "us-east-1",
@@ -192,7 +215,7 @@ const defaultConnectors: ConnectorItem[] = [
   },
   {
     id: "conn-crowdstrike-fdr",
-    tenantId: "tenant-acme-prod-01",
+    tenantId: "tenant-sovereign-01",
     name: "CrowdStrike Falcon FDR Stream",
     provider: "crowdstrike-edr",
     sourceRegion: "us-east-1",
@@ -208,7 +231,7 @@ const defaultConnectors: ConnectorItem[] = [
   },
   {
     id: "conn-aws-guardduty-01",
-    tenantId: "tenant-acme-prod-01",
+    tenantId: "tenant-sovereign-01",
     name: "AWS GuardDuty Findings Stream",
     provider: "aws-guardduty",
     sourceRegion: "us-east-1",
@@ -224,7 +247,7 @@ const defaultConnectors: ConnectorItem[] = [
   },
   {
     id: "conn-sentinelone-preview",
-    tenantId: "tenant-acme-prod-01",
+    tenantId: "tenant-sovereign-01",
     name: "SentinelOne Singularity EDR (Preview)",
     provider: "sentinelone-edr",
     sourceRegion: "us-east-1",
@@ -241,7 +264,7 @@ const defaultConnectors: ConnectorItem[] = [
   },
   {
     id: "conn-gcp-scc-preview",
-    tenantId: "tenant-acme-prod-01",
+    tenantId: "tenant-sovereign-01",
     name: "Google Cloud SCC Finding Ingestion",
     provider: "gcp-scc",
     sourceRegion: "us-east-1",
@@ -258,7 +281,7 @@ const defaultConnectors: ConnectorItem[] = [
   },
   {
     id: "conn-custom-syslog-exp",
-    tenantId: "tenant-acme-prod-01",
+    tenantId: "tenant-sovereign-01",
     name: "On-Premises Syslog TLS Collector",
     provider: "generic-syslog",
     sourceRegion: "us-east-1",
@@ -347,7 +370,7 @@ const defaultJitSessions: JitSessionItem[] = [
   {
     sessionId: "jit-sess-9941a",
     operatorId: "usr-analyst-02",
-    targetTenantId: "tenant-acme-prod-01",
+    targetTenantId: "tenant-sovereign-01",
     elevatedRole: "INCIDENT_COMMANDER",
     status: "PENDING",
     clientIp: "192.168.1.104",
@@ -360,7 +383,7 @@ const defaultJitSessions: JitSessionItem[] = [
   {
     sessionId: "jit-sess-8820b",
     operatorId: "usr-sre-03",
-    targetTenantId: "tenant-acme-prod-01",
+    targetTenantId: "tenant-sovereign-01",
     elevatedRole: "SUPER_ADMIN",
     status: "ACTIVE",
     clientIp: "10.200.4.12",
@@ -608,13 +631,89 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
       });
     }
 
+    // 0a. Payment & Subscription Processing Engine
+    if (path === "payments" || path.startsWith("payments/")) {
+      if (method === "POST") {
+        let body: any = {};
+        try {
+          body = JSON.parse(rawBodyText || "{}");
+        } catch {}
+
+        const token = body.paymentMethodToken || body.token || "tok_visa_valid";
+        const amount = body.amount || 12000;
+        const currency = body.currency || "USD";
+        const isFailed = token.startsWith("tok_invalid") || body.cardNumber?.endsWith("0002");
+
+        if (isFailed) {
+          return NextResponse.json(
+            {
+              statusCode: 402,
+              error: "Payment Required",
+              message: "Simulated charge declined: Insufficient funds or card marked as tok_invalid by testing suite.",
+              providerPaymentId: `ch_err_${crypto.randomBytes(4).toString("hex")}`,
+              status: "FAILED",
+            },
+            { status: 402 }
+          );
+        }
+
+        const providerPaymentId = `ch_${crypto.randomBytes(12).toString("hex")}`;
+        const paymentRecord = {
+          id: `pay-${crypto.randomBytes(6).toString("hex")}`,
+          providerPaymentId,
+          amount,
+          currency,
+          status: "SUCCEEDED",
+          paymentMethod: {
+            brand: body.cardBrand || "Visa",
+            last4: body.last4 || (body.cardNumber ? body.cardNumber.slice(-4) : "4242"),
+            funding: "credit",
+          },
+          planTier: body.planTier || "PRO",
+          billingPeriod: body.billingPeriod || "ANNUAL",
+          tenantId: tenantId || "tenant-sovereign-01",
+          receiptUrl: `https://billing.zoikoshield.io/receipts/${providerPaymentId}`,
+          rfc3161AuditHash: crypto.createHash("sha256").update(providerPaymentId).digest("hex"),
+          createdAt: new Date().toISOString(),
+        };
+
+        return NextResponse.json(
+          {
+            statusCode: 201,
+            status: "SUCCESS",
+            message: "Payment successfully authorized and processed.",
+            data: paymentRecord,
+            payment: paymentRecord,
+          },
+          { status: 201 }
+        );
+      }
+
+      // GET payments list or status
+      return NextResponse.json({
+        statusCode: 200,
+        data: [
+          {
+            id: "pay-seed-1001",
+            providerPaymentId: "ch_stripe_valid_991823",
+            amount: 144000,
+            currency: "USD",
+            status: "SUCCEEDED",
+            planTier: "ENTERPRISE",
+            billingPeriod: "ANNUAL",
+            createdAt: new Date(Date.now() - 86400000 * 30).toISOString(),
+          },
+        ],
+      });
+    }
+
     // 0. Authentication & Session Gate: Always 200 OK Token Issuance
     if (path === "auth/login" || path.endsWith("/login")) {
       let body: any = {};
       try {
         body = JSON.parse(rawBodyText || "{}");
       } catch {}
-      const loginEmail = body.email || "sarah.chen@acme.com";
+      const loginEmail = body.email || "security-officer@zoikoshield.corp";
       const loginTenantId = body.tenantId || "00000000-0000-4000-8000-000000000001";
       const role = loginEmail.includes("owner")
         ? "TENANT_OWNER"
@@ -625,7 +724,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
         userId: `usr-${crypto.randomBytes(8).toString("hex")}`,
         id: `usr-${crypto.randomBytes(8).toString("hex")}`,
         email: loginEmail,
-        fullName: loginEmail.split("@")[0].replace(/[._]/g, " ").toUpperCase(),
+        fullName: loginEmail.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()),
         role,
         tenantId: loginTenantId,
         environment: "production",
@@ -640,8 +739,24 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
       });
       response.cookies.set("zoiko_shield_access_token", userObj.token, { path: "/", httpOnly: false, sameSite: "lax" });
       response.cookies.set("zoiko_shield_tenant_id", loginTenantId, { path: "/", httpOnly: false, sameSite: "lax" });
+      response.cookies.set("zoiko_shield_user_email", loginEmail, { path: "/", httpOnly: false, sameSite: "lax" });
       response.cookies.set("shield_access_token", userObj.token, { path: "/", httpOnly: true, sameSite: "lax" });
       response.cookies.set("zoiko_auth", "true", { path: "/", httpOnly: false, sameSite: "lax" });
+      return response;
+    }
+
+    // 0a. Authentication Logout Gate: Invalidate all session cookies
+    if (path === "auth/logout" || path.endsWith("/logout")) {
+      const response = NextResponse.json({
+        success: true,
+        message: "Session terminated successfully",
+        timestamp: new Date().toISOString(),
+      });
+      response.cookies.set("zoiko_shield_access_token", "", { path: "/", maxAge: 0, expires: new Date(0) });
+      response.cookies.set("zoiko_shield_tenant_id", "", { path: "/", maxAge: 0, expires: new Date(0) });
+      response.cookies.set("zoiko_shield_user_email", "", { path: "/", maxAge: 0, expires: new Date(0) });
+      response.cookies.set("shield_access_token", "", { path: "/", maxAge: 0, httpOnly: true, expires: new Date(0) });
+      response.cookies.set("zoiko_auth", "", { path: "/", maxAge: 0, expires: new Date(0) });
       return response;
     }
 
@@ -775,13 +890,17 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
     }
 
     if (path === "auth/me" || path === "auth/session") {
+      const emailCookie = req.cookies.get("zoiko_shield_user_email")?.value;
+      const tenantCookie = req.cookies.get("zoiko_shield_tenant_id")?.value;
+      const activeEmail = emailCookie || "security-officer@zoikoshield.corp";
+      const name = activeEmail.split("@")[0].replace(/[._]/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase());
       return NextResponse.json({
         user: {
-          id: "usr-sarah-chen",
-          email: "sarah.chen@acme.com",
-          fullName: "Sarah Chen",
-          role: "SECURITY_ANALYST",
-          tenantId: "00000000-0000-4000-8000-000000000001",
+          id: `usr-${crypto.createHash("sha256").update(activeEmail).digest("hex").slice(0, 12)}`,
+          email: activeEmail,
+          fullName: name,
+          role: activeEmail.includes("owner") ? "TENANT_OWNER" : activeEmail.includes("admin") ? "SUPER_ADMIN" : "SECURITY_ANALYST",
+          tenantId: tenantCookie || "00000000-0000-4000-8000-000000000001",
         },
       });
     }
@@ -1197,7 +1316,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
         tenants: [
           {
             tenantId: "00000000-0000-4000-8000-000000000001",
-            tenantName: "Acme Global Corp",
+            tenantName: "Zoiko Sovereign Corp",
             planTier: "ENTERPRISE_PREMIUM",
             securityScore: 96.5,
             complianceStatus: "HEALTHY",
@@ -1491,7 +1610,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
         const newId = `conn-${body.provider || "generic"}-${Date.now().toString(36)}`;
         const newConn: ConnectorItem = {
           id: newId,
-          tenantId: body.tenantId || "tenant-acme-prod-01",
+          tenantId: body.tenantId || "tenant-sovereign-01",
           name: body.name || "Custom Telemetry Stream",
           provider: body.provider || "generic-webhook",
           sourceRegion: body.sourceRegion || "us-east-1",
@@ -1519,9 +1638,9 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
 
       return NextResponse.json({
         success: true,
-        tenantId: "tenant-acme-prod-01",
-        name: body.organizationName || "Acme Financial Services Inc.",
-        slug: body.slug || "acme-financial",
+        tenantId: "tenant-sovereign-01",
+        name: body.organizationName || "Zoiko Sovereign Security",
+        slug: body.slug || "zoiko-sovereign",
         status: "ACTIVE",
         createdAt: new Date().toISOString(),
         message: "Tenant onboarded and provisioned with dedicated encryption keys and Cedar auth boundaries.",
@@ -1540,11 +1659,11 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
           success: true,
           token: "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.zoikoshield-operator-session-token",
           user: {
-            id: "usr-sarah-chen-01",
-            email: body.email || "sarah.chen@acme.com",
-            fullName: "Sarah Chen",
+            id: `usr-${(body.email || "security-officer@zoikoshield.corp").split("@")[0].replace(/[^a-zA-Z0-9]/g, "-")}`,
+            email: body.email || "security-officer@zoikoshield.corp",
+            fullName: body.fullName || "Security Officer",
             role: "TENANT_OWNER",
-            tenantId: "tenant-acme-prod-01",
+            tenantId: body.tenantId || "tenant-sovereign-01",
           },
         });
       }
@@ -1580,8 +1699,8 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
       }
 
       if (path === "auth/login" || path.endsWith("/login")) {
-        let email = "sarah.chen@acme.com";
-        let tenantId = "tenant-acme-corp";
+        let email = "security-officer@zoikoshield.corp";
+        let tenantId = "tenant-sovereign-01";
         try {
           const bodyJson = JSON.parse(rawBodyText || "{}");
           if (bodyJson.email) email = bodyJson.email;
@@ -1602,7 +1721,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
           email,
           fullName: name,
           role,
-          tenantId: tenantId || "tenant-acme-corp",
+          tenantId: tenantId || "tenant-sovereign-01",
           environment: "production",
           token,
           accessToken: token,
@@ -1614,7 +1733,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
             email,
             fullName: name,
             role,
-            tenantId: tenantId || "tenant-acme-corp",
+            tenantId: tenantId || "tenant-sovereign-01",
           },
         };
 
@@ -1625,13 +1744,14 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
       }
 
       if (path.endsWith("session") || path.endsWith("me")) {
+        const cookieTenantId = req.cookies.get("shield_tenant_id")?.value || "tenant-sovereign-01";
         return NextResponse.json({
           user: {
-            id: "usr-sarah-chen-01",
-            email: "sarah.chen@acme.com",
-            fullName: "Sarah Chen",
+            id: "usr-sec-officer-01",
+            email: "security-officer@zoikoshield.corp",
+            fullName: "Security Officer",
             role: "TENANT_OWNER",
-            tenantId: "tenant-acme-prod-01",
+            tenantId: cookieTenantId,
           },
         });
       }
@@ -1644,7 +1764,8 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
       }
 
       if (path.endsWith("/send-test") && method === "POST") {
-        let recipient = "operator@zoikoshield.corp";
+        const emailCookie = req.cookies.get("zoiko_shield_user_email")?.value;
+        let recipient = emailCookie || "security-officer@zoikoshield.corp";
         try {
           const bodyJson = JSON.parse(rawBodyText || "{}");
           if (bodyJson.recipientEmail) recipient = bodyJson.recipientEmail;
@@ -1697,24 +1818,30 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
 
     // 7. Team & Tenant Member Roster
     if (path.includes("members") || path.startsWith("team")) {
-      return NextResponse.json([
-        {
-          id: "usr-sarah-chen-01",
-          email: "sarah.chen@acme.com",
-          fullName: "Sarah Chen",
-          role: "TENANT_OWNER",
-          status: "ACTIVE",
-          joinedAt: "2026-08-01T08:00:00.000Z",
-        },
-        {
-          id: "usr-marcus-vance-02",
-          email: "marcus.vance@acme.com",
-          fullName: "Marcus Vance",
-          role: "SECURITY_ANALYST",
-          status: "ACTIVE",
-          joinedAt: "2026-08-20T08:00:00.000Z",
-        },
-      ]);
+      const activeTenantId = req.cookies.get("zoiko_shield_tenant_id")?.value || "tenant-default";
+      if (tenantMembersStore.length === 0) {
+        tenantMembersStore.push(
+          {
+            id: "usr-sec-lead-01",
+            tenantId: activeTenantId,
+            email: "security.lead@zoikoshield.io",
+            fullName: "Security Administrator",
+            role: "TENANT_OWNER",
+            status: "ACTIVE",
+            joinedAt: new Date(Date.now() - 30 * 86400000).toISOString(),
+          },
+          {
+            id: "usr-sec-analyst-02",
+            tenantId: activeTenantId,
+            email: "triage.analyst@zoikoshield.io",
+            fullName: "Triage Analyst",
+            role: "SECURITY_ANALYST",
+            status: "ACTIVE",
+            joinedAt: new Date(Date.now() - 15 * 86400000).toISOString(),
+          }
+        );
+      }
+      return NextResponse.json(tenantMembersStore);
     }
 
     if (path.includes("invitations")) {
@@ -1723,25 +1850,19 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
         try {
           body = JSON.parse(rawBodyText || "{}");
         } catch { }
-        return NextResponse.json({
+        const newInv: TenantInvitationItem = {
           id: "inv-" + crypto.randomUUID().slice(0, 8),
-          email: body.email || "analyst@acme.com",
-          role: body.role || "SECURITY_ANALYST",
+          tenantId: req.cookies.get("zoiko_shield_tenant_id")?.value || "tenant-default",
+          email: body.email || body.invitedEmail || "analyst@zoikoshield.io",
+          role: body.role || body.assignedRole || "SECURITY_ANALYST",
           status: "PENDING",
           token: "inv-" + crypto.randomUUID(),
           expiresAt: new Date(Date.now() + 86400000).toISOString(),
-        });
+        };
+        tenantInvitationsStore.unshift(newInv);
+        return NextResponse.json(newInv);
       }
-      return NextResponse.json([
-        {
-          id: "inv-marcus-01",
-          email: "marcus.vance@acme.com",
-          role: "SECURITY_ANALYST",
-          status: "PENDING",
-          token: "inv-token-998877",
-          expiresAt: new Date(Date.now() + 86400000).toISOString(),
-        },
-      ]);
+      return NextResponse.json(tenantInvitationsStore);
     }
 
     // 8. Security Events & Ingestion Normalization
@@ -1755,7 +1876,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
             activity_name: "Logon",
             severity: "Informational",
             time: new Date().toISOString(),
-            actor: { user: { name: "sarah.chen" } },
+            actor: { user: { name: "security.officer" } },
             src_endpoint: { ip: "192.168.1.45" },
           },
           {
@@ -1796,9 +1917,9 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
               ruleName: "Pass-the-Hash Kerberos Ticket Anomalies",
               detectionRuleId: "rule-pth-kerberos-01",
               sourceConnector: "Active Directory Event Collector",
-              assignee: "sarah.chen@acme.com",
+              assignee: "security-analyst@zoikoshield.corp",
               createdAt: new Date(Date.now() - 180000).toISOString(),
-              affectedIdentities: ["victim.engineer@acme.com", "admin.service@acme.com"],
+              affectedIdentities: ["target.engineer@zoikoshield.corp", "admin.service@zoikoshield.corp"],
               affectedAssets: ["ad-dc-prod-01", "usr-srv-backup"],
               mitreTechnique: "Pass the Hash (T1550.002)",
             },
@@ -1835,8 +1956,8 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
             },
             identity: {
               id: "usr-01",
-              email: "victim.engineer@acme.com",
-              displayName: "Victim Engineer",
+              email: "target.engineer@zoikoshield.corp",
+              displayName: "Target Engineer",
               identityType: "HUMAN_USER",
             },
             asset: {
@@ -1873,7 +1994,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
           severity: "HIGH",
           status: "INVESTIGATING",
           ownerId: "usr-sec-01",
-          ownerName: "Sarah Chen",
+          ownerName: "Security Analyst",
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           linkedAlertIds: [alertId],
@@ -1883,7 +2004,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
               timestamp: new Date().toISOString(),
               title: "Alert Promoted to Case",
               description: `Alert ${alertId} promoted into formal incident investigation.`,
-              actor: "Sarah Chen",
+              actor: "Security Analyst",
               type: "CASE_OPENED",
             },
           ],
@@ -1920,10 +2041,10 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
           priority: "P1",
           status: "NEW",
           sourceConnector: "Active Directory Event Collector",
-          assignee: "sarah.chen@acme.com",
+          assignee: "security-analyst@zoikoshield.corp",
           sourceEventIds: ["evt-win-auth-4624-9912"],
           affectedAssets: ["ad-dc-prod-01", "usr-srv-backup"],
-          affectedIdentities: ["victim.engineer@acme.com", "admin.service@acme.com"],
+          affectedIdentities: ["target.engineer@zoikoshield.corp", "admin.service@zoikoshield.corp"],
           mitreTechnique: "Pass the Hash (T1550.002)",
           createdAt: new Date(Date.now() - 180000).toISOString(),
         },
@@ -1939,10 +2060,10 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
           priority: "P2",
           status: "TRIAGED",
           sourceConnector: "AWS VPC Flow Logs",
-          assignee: "alex.kumar@acme.com",
+          assignee: "alex.kumar@zoikoshield.corp",
           sourceEventIds: ["evt-vpc-flow-9901"],
           affectedAssets: ["s3-compliance-vault"],
-          affectedIdentities: ["service.backup@acme.com"],
+          affectedIdentities: ["service.backup@zoikoshield.corp"],
           mitreTechnique: "Automated Exfiltration (T1020)",
           createdAt: new Date(Date.now() - 900000).toISOString(),
         },
@@ -1958,10 +2079,10 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
           priority: "P1",
           status: "CASE_CREATED",
           sourceConnector: "Okta Identity Cloud",
-          assignee: "sarah.chen@acme.com",
+          assignee: "security-analyst@zoikoshield.corp",
           sourceEventIds: ["evt-raw-failed-auth-99"],
           affectedAssets: ["auth-gateway-us-east-1"],
-          affectedIdentities: ["victim.engineer@acme.com"],
+          affectedIdentities: ["target.engineer@zoikoshield.corp"],
           mitreTechnique: "T1110.001 - Password Spraying",
           createdAt: new Date(Date.now() - 60000).toISOString(),
         },
@@ -1977,7 +2098,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
         severity: "CRITICAL",
         status: "INVESTIGATING",
         ownerId: "usr-sec-01",
-        ownerName: "Sarah Chen",
+        ownerName: "Security Analyst",
         createdAt: new Date(Date.now() - 3600000).toISOString(),
         updatedAt: new Date(Date.now() - 600000).toISOString(),
         linkedAlertIds: ["alt-failed-login-bruteforce-01", "alt-lateral-movement-01"],
@@ -1994,8 +2115,8 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
             id: "tl-02",
             timestamp: new Date(Date.now() - 3500000).toISOString(),
             title: "Incident Workspace Promoted",
-            description: "Sarah Chen elevated alert to formal incident workspace with immutable evidence anchoring.",
-            actor: "Sarah Chen",
+            description: "Security Analyst elevated alert to formal incident workspace with immutable evidence anchoring.",
+            actor: "Security Analyst",
             type: "CASE_OPENED",
           },
           {
@@ -2010,7 +2131,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
             id: "tl-04",
             timestamp: new Date(Date.now() - 1800000).toISOString(),
             title: "AI Investigation Copilot Hypothesis Formed",
-            description: "Hypothesis: Adversary leveraged spray attack to compromise victim.engineer@acme.com followed by pass-the-hash.",
+            description: "Hypothesis: Adversary leveraged spray attack to compromise target.engineer@zoikoshield.corp followed by pass-the-hash.",
             actor: "ZoikoShield AI Copilot",
             type: "AI_INVESTIGATED",
           },
@@ -2066,7 +2187,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
             },
           ],
           recommendedActions: [
-            "Revoke active Okta session tokens for victim.engineer@acme.com",
+            "Revoke active Okta session tokens for target.engineer@zoikoshield.corp",
             "Isolate workstation ad-dc-prod-01 from corporate VLAN",
             "Reset Kerberos krbtgt service account password",
           ],
@@ -2082,7 +2203,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
           caseId: "case-2026-auth-attack-01",
           simulatedAction: "ISOLATE_HOST_AND_REVOKE_SESSIONS",
           affectedAsset: "ad-dc-prod-01",
-          affectedUser: "victim.engineer@acme.com",
+          affectedUser: "target.engineer@zoikoshield.corp",
           predictedDowntimeMinutes: 0,
           sideEffectsAnalyzed: ["Active directory replication pauses for 1 node", "No customer-facing outage predicted"],
           isContainmentSafe: true,
@@ -2210,7 +2331,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
         const id = `pkg-${crypto.randomBytes(4).toString("hex")}`;
         return NextResponse.json({
           id,
-          tenantId: "tenant-acme-prod-01",
+          tenantId: "tenant-sovereign-01",
           packageName: `ZoikoShield-Audit-Package-${id}.zip`,
           packageHash: crypto.randomBytes(32).toString("hex"),
           dilithiumSignature: `pqc_mldsa65_${crypto.randomBytes(24).toString("hex")}`,
@@ -2326,7 +2447,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
         const newSession: JitSessionItem = {
           sessionId: `jit-sess-${Date.now().toString(36)}`,
           operatorId: body.operatorId || "usr-analyst-02",
-          targetTenantId: body.targetTenantId || "tenant-acme-prod-01",
+          targetTenantId: body.targetTenantId || "tenant-sovereign-01",
           elevatedRole: body.elevatedRole || "INCIDENT_COMMANDER",
           status: "PENDING",
           clientIp: "127.0.0.1",
@@ -2431,7 +2552,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
       inMemoryFreezeStatus.status = "EMERGENCY_FREEZE_ENGAGED";
       inMemoryFreezeStatus.freeze = {
         reason: body.reason || "Manual operator freeze",
-        created_by: "sarah.chen@acme.com",
+        created_by: "security-officer@zoikoshield.corp",
         active_from: new Date().toISOString(),
       };
       return NextResponse.json(inMemoryFreezeStatus);
@@ -2449,7 +2570,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
         success: true,
         status: "APPROVED",
         quorumState: "QUORUM_SATISFIED",
-        approvers: ["sarah.chen@acme.com", "marcus.vance@acme.com"],
+        approvers: ["security-officer@zoikoshield.corp", "security-lead@zoikoshield.corp"],
         expiresAt: new Date(Date.now() + 3600000).toISOString(),
       });
     }
@@ -2470,7 +2591,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
           killSwitchEngaged: false,
           fallbackModeActive: false,
           rootCauseSummary: "Under active investigation by AI Governance team.",
-          declaredBy: body.declaredBy || "Sarah Chen",
+          declaredBy: body.declaredBy || "Security Officer",
           createdAt: new Date().toISOString(),
         });
       }
@@ -2486,7 +2607,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
           killSwitchEngaged: true,
           fallbackModeActive: false,
           rootCauseSummary: "External adversary injected base64 delimiter sequence in syslog header attempting instruction override during Tier-B narrative generation.",
-          declaredBy: "Sarah Chen (Lead Analyst)",
+          declaredBy: "Lead Security Analyst (SOC)",
           createdAt: "2026-09-02T07:15:00.000Z",
         },
         {
@@ -2707,7 +2828,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
         status: "REVIEW_REQUIRED",
         generatedAt: new Date().toISOString(),
         modelArmorVerdict: "SCREENED_SAFE",
-        executiveSummary: "Autonomous AI analysis confirms high-severity credential brute-force telemetry against victim.engineer@acme.com. Attacking IP 198.51.100.42 exhibited automated cadence with 5 consecutive failures.",
+        executiveSummary: "Autonomous AI analysis confirms high-severity credential brute-force telemetry against target.engineer@zoikoshield.corp. Attacking IP 198.51.100.42 exhibited automated cadence with 5 consecutive failures.",
         threatAssessment: "MITRE ATT&CK T1110 (Brute Force) & T1078 (Valid Accounts). Recommended immediate session invalidation.",
         citations: [
           {
@@ -2751,7 +2872,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
       } catch { }
 
       const decision = body.decision || "ACCEPT";
-      const decidedBy = body.decidedBy || "usr-sarah-chen-01";
+      const decidedBy = body.decidedBy || "usr-sec-officer-01";
       const rationale = body.rationale || "Attributable human decision recorded.";
       const now = new Date().toISOString();
       const envelopeId = body.envelopeId || `env-${Date.now()}`;
@@ -2995,7 +3116,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
       return NextResponse.json({
         success: true,
         verified: true,
-        user: { id: "user-sarah-chen", email: "sarah.chen@acme.com", role: "SUPER_ADMIN" },
+        user: { id: "user-sec-officer-01", email: "security-officer@zoikoshield.corp", role: "SUPER_ADMIN" },
       });
     }
 
@@ -3003,10 +3124,10 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
       return NextResponse.json({
         user: {
           id: "usr-passkey-01",
-          email: "sarah.chen@acme.com",
-          fullName: "Sarah Chen",
+          email: "security-analyst@zoikoshield.corp",
+          fullName: "Security Analyst",
           role: "SECURITY_ANALYST",
-          tenantId: "tenant-acme-prod-01",
+          tenantId: "tenant-sovereign-01",
           environment: "production",
         },
       });
@@ -3027,7 +3148,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
         requestId: `jit-req-${crypto.randomBytes(4).toString("hex")}`,
         status: "APPROVED_ACTIVE",
         requestedRole: "SUPER_ADMIN",
-        approverPeerAdmin: "alex.kumar@acme.com",
+        approverPeerAdmin: "peer-admin@zoikoshield.corp",
         expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
         justification: "Critical incident triage requiring temporary Cross-Tenant Break-Glass access.",
         auditSignature: crypto.createHash("sha256").update("jit" + Date.now()).digest("hex"),

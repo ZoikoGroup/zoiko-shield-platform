@@ -95,7 +95,7 @@ function getState(): DemoState {
  * demo. With it off, a failed call throws and the caller finds out.
  */
 const DEMO_FALLBACK_ENABLED =
-  process.env.NEXT_PUBLIC_DEMO_FALLBACK !== "false";
+  process.env.NEXT_PUBLIC_DEMO_FALLBACK === "true";
 
 /** Thrown instead of silently returning demo data. */
 export class ZoikoShieldApiError extends Error {
@@ -259,13 +259,17 @@ export class ZoikoShieldApiClient {
    * Clears active authentication session and all auth cookies,
    * returning the client to an unauthenticated state.
    */
-  static logout(): void {
+  static async logout(): Promise<void> {
     if (typeof window !== "undefined") {
       try {
         document.cookie = "zoiko_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         document.cookie = "zoiko_shield_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         document.cookie = "shield_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
         document.cookie = "zoiko_shield_tenant_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+
+        try {
+          await fetch("/api/v1/auth/logout", { method: "POST", keepalive: true });
+        } catch {}
 
         const state = getState();
         state.session = {
@@ -534,7 +538,7 @@ export class ZoikoShieldApiClient {
         // country was never persisted.
         countryOfRegistration: data.legalCountry || "GB",
       },
-      ownerEmail: data.ownerEmail || "owner@acme.com",
+      ownerEmail: data.ownerEmail || (getState().session?.email ?? "owner@zoikoshield.corp"),
       environment: {
         name: data.environmentName,
         environmentType: "PRODUCTION",
@@ -642,8 +646,8 @@ export class ZoikoShieldApiClient {
         }
         return {
           id: token,
-          tenantId: "tenant-acme-prod-01",
-          invitedEmail: "analyst.ops@acme.com",
+          tenantId: getState().tenant?.id || "tenant-sovereign-01",
+          invitedEmail: "analyst.ops@zoikoshield.corp",
           assignedRole: "SECURITY_ANALYST",
           token,
           status: "ACCEPTED",
@@ -657,7 +661,7 @@ export class ZoikoShieldApiClient {
     if (existing) {
       existing.status = "ACCEPTED";
     }
-    const emailToUse = rawInv?.invitedEmail || (existing ? existing.invitedEmail : "analyst.ops@acme.com");
+    const emailToUse = rawInv?.invitedEmail || (existing ? existing.invitedEmail : "analyst.ops@zoikoshield.corp");
     const roleToUse = rawInv?.assignedRole || (existing ? existing.assignedRole : "SECURITY_ANALYST");
     state.team.push({
       id: `usr-${generateUUID().slice(0, 8)}`,
@@ -834,7 +838,7 @@ export class ZoikoShieldApiClient {
           eventActivity: (rawPayload.activity as any) || "LOGIN_ATTEMPT",
           severity: (rawPayload.severity as any) || "HIGH",
           actorUserId: (rawPayload.userId as string) || "usr-target-victim",
-          actorEmail: (rawPayload.email as string) || "victim.engineer@acme.com",
+          actorEmail: (rawPayload.email as string) || "target.engineer@zoikoshield.corp",
           sourceIp: (rawPayload.sourceIp as string) || "198.51.100.42",
           action: (rawPayload.action as string) || "AUTH_PASSWORD_LOGIN",
           outcome: (rawPayload.outcome as any) || "FAILED",
@@ -861,7 +865,7 @@ export class ZoikoShieldApiClient {
       eventActivity: (rawPayload.activity as any) || (rawPayload.eventActivity as any) || "LOGIN_ATTEMPT",
       severity: (rawPayload.severity as any) || "HIGH",
       actorUserId: (rawPayload.userId as string) || (rawPayload.actorUserId as string) || "usr-target-victim",
-      actorEmail: (rawPayload.email as string) || (rawPayload.actorEmail as string) || "victim.engineer@acme.com",
+      actorEmail: (rawPayload.email as string) || (rawPayload.actorEmail as string) || "target.engineer@zoikoshield.corp",
       sourceIp: (rawPayload.sourceIp as string) || "198.51.100.42",
       action: (rawPayload.action as string) || "AUTH_PASSWORD_LOGIN",
       outcome: (rawPayload.outcome as any) || "FAILED",
@@ -992,8 +996,8 @@ export class ZoikoShieldApiClient {
         const state = getState();
         const currentCase = state.cases.find((c) => c.id === caseId);
         const targetEmail = currentCase?.evidenceList[0]?.rawPayload
-          ? (currentCase.evidenceList[0].rawPayload as any).affectedIdentities?.[0] || "victim.engineer@acme.com"
-          : "victim.engineer@acme.com";
+          ? (currentCase.evidenceList[0].rawPayload as any).affectedIdentities?.[0] || "target.engineer@zoikoshield.corp"
+          : "target.engineer@zoikoshield.corp";
 
         return {
           outputId: `ai-out-${generateUUID().slice(0, 8)}`,
@@ -1054,7 +1058,7 @@ export class ZoikoShieldApiClient {
           {
             sourceId: currentCase?.evidenceList[0]?.id || "ev-telemetry-01",
             sourceType: "OCSF_AUTH_LOG",
-            exactSpan: "5 consecutive failed logins within 4.2s from IP 198.51.100.42 targeting account victim.engineer@acme.com",
+            exactSpan: "5 consecutive failed logins within 4.2s from IP 198.51.100.42 targeting account target.engineer@zoikoshield.corp",
             confidence: 0.96,
           },
           {
@@ -1105,7 +1109,7 @@ export class ZoikoShieldApiClient {
         humanDecisionAndRationale: {},
         appealOrFeedbackRoute: {
           appealUrl: `https://trust.zoikoshield.io/appeals/cases/${caseId}/decisions/${envelopeId}`,
-          feedbackChannel: "secops-ai-oversight@acme.com",
+          feedbackChannel: "secops-ai-oversight@zoikoshield.corp",
           customerAffecting: true,
         },
         payload: summary,
@@ -1211,7 +1215,7 @@ export class ZoikoShieldApiClient {
           },
           appealOrFeedbackRoute: {
             appealUrl: `https://trust.zoikoshield.io/appeals/decisions/${envelopeId}`,
-            feedbackChannel: "secops-ai-oversight@acme.com",
+            feedbackChannel: "secops-ai-oversight@zoikoshield.corp",
             customerAffecting: true,
           },
           payload: {},
@@ -1304,7 +1308,7 @@ export class ZoikoShieldApiClient {
         tenantId: state.tenant.id,
         caseId,
         actionType: "RESET_USER_SESSIONS",
-        targetAsset: "victim.engineer@acme.com",
+        targetAsset: "target.engineer@zoikoshield.corp",
         authorityLevel: "R1_RECOMMEND",
         status: "PROPOSED",
         proposedAt: new Date().toISOString(),
@@ -1329,7 +1333,7 @@ export class ZoikoShieldApiClient {
         body: JSON.stringify({ proposalId, actionType, targetRef }),
       },
       () => {
-        const target = targetRef || "victim.engineer@acme.com";
+        const target = targetRef || "target.engineer@zoikoshield.corp";
         const act = actionType || "ISOLATE_ENDPOINT";
         return {
           id: `rcpt-sim-${generateUUID().slice(0, 8)}`,
@@ -1645,7 +1649,7 @@ export class ZoikoShieldApiClient {
       requestId: `jit-req-${generateUUID().slice(0, 8)}`,
       status: "APPROVED_ACTIVE",
       requestedRole: "SUPER_ADMIN",
-      approverPeerAdmin: "alex.kumar@acme.com",
+      approverPeerAdmin: "alex.kumar@zoikoshield.corp",
       expiresAt: new Date(Date.now() + durationMinutes * 60 * 1000).toISOString(),
       justification,
       auditSignature: sha256Mock("jit" + Date.now()),
@@ -2346,7 +2350,7 @@ export class ZoikoShieldApiClient {
           hours: data.hours,
           workDescription: data.workDescription,
           evidenceReference: data.evidenceReference,
-          loggedBy: state.session?.userId || "usr-sarah-chen-01",
+          loggedBy: state.session?.userId || "usr-sec-lead-01",
           occurredAt: new Date().toISOString(),
           createdAt: new Date().toISOString(),
         };
@@ -2419,7 +2423,7 @@ export class ZoikoShieldApiClient {
           accessReason: data.accessReason,
           noLegalAdviceWording:
             "This work order does not establish legal privilege or provide a breach-notification, regulatory, or legal conclusion.",
-          recordedBy: state.session?.userId || "usr-sarah-chen-01",
+          recordedBy: state.session?.userId || "usr-sec-lead-01",
           createdAt: new Date().toISOString(),
         };
         return rec;
@@ -3134,6 +3138,84 @@ export class ZoikoShieldApiClient {
     );
   }
 
+  // --- Payment & Subscription Processing ---
+  static async processPayment(payload: {
+    amount: number;
+    currency?: string;
+    paymentMethodToken: string;
+    planTier: string;
+    billingPeriod: "MONTHLY" | "ANNUAL";
+    cardNumber?: string;
+    cardholderName?: string;
+  }): Promise<{
+    statusCode: number;
+    status: string;
+    message: string;
+    data: any;
+  }> {
+    return this.safeFetch(
+      "/api/v1/payments",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      () => {
+        const isFailed = payload.paymentMethodToken?.startsWith("tok_invalid") || payload.cardNumber?.endsWith("0002");
+        if (isFailed) {
+          throw new ZoikoShieldApiError(
+            "Simulated charge declined: Insufficient funds or card marked as tok_invalid by testing suite.",
+            402,
+            "/api/v1/payments"
+          );
+        }
+        const providerPaymentId = `ch_${generateUUID().replace(/-/g, "").substring(0, 24)}`;
+        return {
+          statusCode: 201,
+          status: "SUCCESS",
+          message: "Payment successfully authorized and processed.",
+          data: {
+            id: `pay-${generateUUID().substring(0, 8)}`,
+            providerPaymentId,
+            amount: payload.amount,
+            currency: payload.currency || "USD",
+            status: "SUCCEEDED",
+            paymentMethod: {
+              brand: "Visa",
+              last4: payload.cardNumber ? payload.cardNumber.slice(-4) : "4242",
+              funding: "credit",
+            },
+            planTier: payload.planTier,
+            billingPeriod: payload.billingPeriod,
+            tenantId: getState().tenant.id,
+            receiptUrl: `https://billing.zoikoshield.io/receipts/${providerPaymentId}`,
+            rfc3161AuditHash: sha256Mock(providerPaymentId),
+            createdAt: new Date().toISOString(),
+          },
+        };
+      }
+    );
+  }
+
+  static async getPaymentHistory(): Promise<any[]> {
+    return this.safeFetch<any[]>(
+      "/api/v1/payments",
+      { method: "GET" },
+      () => [
+        {
+          id: "pay-seed-1001",
+          providerPaymentId: "ch_stripe_valid_991823",
+          amount: 144000,
+          currency: "USD",
+          status: "SUCCEEDED",
+          planTier: "ENTERPRISE",
+          billingPeriod: "ANNUAL",
+          paymentMethod: { brand: "Visa", last4: "4242" },
+          createdAt: new Date(Date.now() - 86400000 * 30).toISOString(),
+        },
+      ]
+    );
+  }
+
   // --- MDR Service Obligations & Section 12 GTM Checklist ---
   static async getMdrServiceObligation(contractId: string): Promise<MdrServiceObligation> {
     return this.safeFetch<MdrServiceObligation>(
@@ -3141,7 +3223,7 @@ export class ZoikoShieldApiClient {
       { method: "GET" },
       () => ({
         id: "obl-mdr-demo-001",
-        contractId: contractId || "ctr-acme-prod-2026",
+        contractId: contractId || "ctr-sovereign-prod-2026",
         tenantId: "00000000-0000-4000-8000-000000000001",
         coverageTier: "CONTINUOUS_24X7",
         readinessStatus: "OPERATIONALLY_PROVEN",
@@ -5403,8 +5485,8 @@ export class ZoikoShieldApiClient {
           activeJitSessionsCount: 1,
           tenants: [
             {
-              tenantId: 'tenant-acme-corp',
-              tenantName: 'Acme Global Corp',
+              tenantId: 'tenant-sovereign-01',
+              tenantName: 'Zoiko Sovereign Corp',
               planTier: 'ENTERPRISE_PREMIUM',
               securityScore: 96.5,
               complianceStatus: 'HEALTHY',

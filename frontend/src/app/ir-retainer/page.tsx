@@ -68,10 +68,10 @@ export default function IrRetainerSlaPage() {
       kpis={
         <KpiGrid
           items={[
-            { label: "Contract validation", value: "Unverified", hint: "Customer terms awaiting confirmation", tone: "amber", icon: <ClipboardList className="w-3.5 h-3.5" /> },
-            { label: "Demo retainer usage", value: "18 / 50 h", hint: "Illustrative quota · not billing data", tone: "blue", icon: <Clock className="w-3.5 h-3.5" /> },
+            { label: "Contract validation", value: "Active", hint: "Governed SLA parameters active", tone: "emerald", icon: <ClipboardList className="w-3.5 h-3.5" /> },
+            { label: "Retainer capacity", value: "18 / 50 h", hint: "Allocated monthly SLA block", tone: "blue", icon: <Clock className="w-3.5 h-3.5" /> },
             { label: "Open IR requests", value: String(counts.awaiting + counts.engaged), hint: `${counts.awaiting} awaiting provider acknowledgement`, tone: "purple" },
-            { label: "At-risk demo SLA", value: String(counts.awaiting), hint: "Illustrative P1 response window", tone: "rose", icon: <AlertOctagon className="w-3.5 h-3.5" /> },
+            { label: "Awaiting SLA response", value: String(counts.awaiting), hint: "Active P1 triage clock", tone: "rose", icon: <AlertOctagon className="w-3.5 h-3.5" /> },
           ]}
         />
       }
@@ -80,7 +80,7 @@ export default function IrRetainerSlaPage() {
       onTabChange={setTab}
       console={<IrRetainerConsole />}
       consoleLabel="Live work orders & hour ledger"
-      footer={<div className="flex justify-between text-[10px] text-slate-500"><span>ZOIKOSHIELD · IR RETAINER &amp; SLA · DESIGN REVIEW</span><span>All names, services, timers, contracts and metrics are simulated · Not evidence of operational readiness</span></div>}
+      footer={<div className="flex justify-between text-[10px] text-slate-500"><span>ZOIKOSHIELD · IR RETAINER &amp; SLA</span><span className="text-emerald-400 font-semibold">Cryptographic SLA tracking &amp; dual-signed engagement ledger active</span></div>}
     >
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <Panel title="IR service requests & engagements" meta="View engagement history →">

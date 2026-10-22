@@ -70,7 +70,7 @@ const SAMPLE_PROPOSALS: Proposal[] = [
     case_id: "case-2026-auth-attack-01",
     action_type: "REVOKE_SESSION_AND_QUARANTINE",
     target_type: "USER_IDENTITY",
-    target_id: "victim.engineer@acme.com",
+    target_id: "target.engineer@zoikoshield.corp",
     reason: "Containment of compromised credential storm detected across eu-west-1 (ERB-01 Playbook).",
     authority_level: "R2",
     recommendation_source: "shield-ai (gemini-2.0-pro-security)",

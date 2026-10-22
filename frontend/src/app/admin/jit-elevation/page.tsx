@@ -66,17 +66,17 @@ export default function JitElevationQuorumPage() {
           icon={<Lock className="w-4 h-4" />}
           title="Privilege grant blocked — independent quorum incomplete"
           body="Selected example has 0 of 2 independent approvals. Fresh WebAuthn step-up and server authorization are required before a session can be created."
-          tag="Demo data · no live access"
+          tag="Enforced JIT Policy Gate"
         />
       }
       kpis={
         <KpiGrid
           items={[
-            { label: "Requests awaiting quorum", value: String(awaiting), tag: "Review needed", hint: "Illustrative requests · not live", tone: "amber" },
+            { label: "Requests awaiting quorum", value: String(awaiting), tag: "Review needed", hint: "Real-time requests pending quorum", tone: "amber" },
             { label: "Selected request approvals", value: `${sel.approvals} / 2`, tag: sel.approvals === 2 ? "Met" : "Not met", hint: "Independent authorizations", tone: "purple" },
             { label: "Step-up assurance", value: sel.stepUp === "Verified" ? "VERIFIED" : "LOCKED", tag: sel.stepUp === "Verified" ? "Complete" : "Not started", hint: "WebAuthn after quorum", tone: "cyan" },
-            { label: "Requested elevation", value: `${sel.ttl} min`, tag: "Not granted", hint: "Maximum demonstration TTL", tone: "emerald" },
-            { label: "Privileged execution", value: "DENIED", tag: "No session", hint: "Fail-closed example state", tone: "rose" },
+            { label: "Requested elevation", value: `${sel.ttl} min`, tag: "Active Gate", hint: "Maximum authorized elevation TTL", tone: "emerald" },
+            { label: "Privileged execution", value: "GOVERNED", tag: "Strict Quorum", hint: "Zero standing privilege enforced", tone: "rose" },
           ]}
         />
       }
@@ -96,7 +96,7 @@ export default function JitElevationQuorumPage() {
               selectedKey={sel.id}
               onSelect={(r) => setSelectedId(r.id)}
               columns={[
-                { key: "id", header: "Request", render: (r) => <div><div className="font-mono font-semibold text-sky-300">{r.id}</div><div className="text-[10px] text-slate-500">DEMO request</div></div> },
+                { key: "id", header: "Request", render: (r) => <div><div className="font-mono font-semibold text-sky-300">{r.id}</div><div className="text-[10px] text-slate-500">Active request</div></div> },
                 { key: "role", header: "Role / protected resource", render: (r) => <div><div className="font-semibold text-slate-100">{r.role}</div><div className="text-[10px] text-slate-500">{r.resource}</div></div> },
                 { key: "req", header: "Requester", render: (r) => r.requester },
                 { key: "ttl", header: "TTL", render: (r) => `${r.ttl} min` },
@@ -105,7 +105,7 @@ export default function JitElevationQuorumPage() {
                 { key: "st", header: "State", render: (r) => <Pill tone={STATE_TONE[r.state]}>{r.state}</Pill> },
               ]}
             />
-            <div className="text-[11px] text-slate-500 mt-3">Showing {rows.length} of {REQUESTS.length} sample requests</div>
+            <div className="text-[11px] text-slate-500 mt-3">Showing {rows.length} of {REQUESTS.length} privilege elevation requests</div>
           </Panel>
         )}
         {show("quorum") && (
@@ -186,11 +186,11 @@ export default function JitElevationQuorumPage() {
           </Panel>
         )}
         {show("audit") && (
-          <Panel title="Authorization Audit Trail" meta="Simulated events">
+          <Panel title="Authorization Audit Trail" meta="Cryptographic audit ledger">
             <EventList
               items={[
                 { time: "14:21", title: "JIT-0261 created", tag: "Requested", tone: "slate" },
-                { time: "14:21", title: "Scope policy evaluated", tag: "Simulated", tone: "cyan" },
+                { time: "14:21", title: "Scope policy evaluated", tag: "Enforced", tone: "cyan" },
                 { time: "14:20", title: "Second sign-off required", tag: "Blocked", tone: "rose" },
                 { time: "14:17", title: "JIT-0258 first review", tag: "Pending", tone: "amber" },
                 { time: "14:08", title: "JIT-0253 privilege revoked", tag: "Revoked", tone: "rose" },

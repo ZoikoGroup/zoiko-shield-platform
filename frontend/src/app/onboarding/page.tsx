@@ -1,25 +1,30 @@
 "use client";
 
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Building2, Info, ClipboardList, Save, Lock, X, AlertTriangle, CheckCircle2 } from "lucide-react";
 import OnboardingConsole from "./console";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
+import { useDemoState } from "@/lib/demo-state";
 import {
   WorkspacePage, PageHeader, NoticeBanner, KpiGrid, Panel, Pill, StepFlow, EventList,
   ActionButton, type Tone,
 } from "@/components/mockup/kit";
 
 const REGIONS = [
-  { id: "eu-west-2", label: "UK London · eu-west-2" },
-  { id: "eu-central-1", label: "EU Frankfurt · eu-central-1" },
   { id: "us-east-1", label: "US East · us-east-1" },
   { id: "us-west-2", label: "US West · us-west-2" },
+  { id: "eu-west-2", label: "UK London · eu-west-2" },
+  { id: "eu-west-1", label: "EU Ireland · eu-west-1" },
+  { id: "eu-central-1", label: "EU Frankfurt · eu-central-1" },
+  { id: "ap-south-1", label: "APAC Mumbai · ap-south-1" },
   { id: "ap-southeast-1", label: "APAC Singapore · ap-southeast-1" },
 ];
 const COUNTRIES = [
-  { id: "GB", label: "United Kingdom" },
   { id: "US", label: "United States" },
+  { id: "GB", label: "United Kingdom" },
   { id: "DE", label: "Germany" },
+  { id: "IE", label: "Ireland" },
+  { id: "IN", label: "India" },
   { id: "SG", label: "Singapore" },
 ];
 
@@ -49,19 +54,62 @@ function Field({
 
 export default function OrganizationOnboardingPage() {
   const [tab, setTab] = useState("review");
-  const [tenantName, setTenantName] = useState("Example Research Ltd");
-  const [slug, setSlug] = useState("example-research");
-  const [orderId, setOrderId] = useState("00000000-0000-4000-8000-000000001042");
-  const [legalName, setLegalName] = useState("Example Research Limited");
-  const [ownerEmail, setOwnerEmail] = useState("owner@example.test");
+  const [demoState] = useDemoState();
+
+  const [hasUserEdited, setHasUserEdited] = useState(false);
+  const [tenantName, setTenantName] = useState(() => demoState.tenant?.organizationName || "");
+  const [slug, setSlug] = useState(() => demoState.tenant?.slug || (demoState.tenant?.organizationName ? demoState.tenant.organizationName.toLowerCase().replace(/[^a-z0-9]/g, "-") : ""));
+  const [orderId, setOrderId] = useState(() => {
+    const oId = demoState.tenant?.orderId;
+    return oId && UUID_RE.test(oId) ? oId : "00000000-0000-4000-8000-000000000001";
+  });
+  const [legalName, setLegalName] = useState(() => demoState.tenant?.legalEntityName || demoState.tenant?.organizationName || "");
+  const [ownerEmail, setOwnerEmail] = useState(() => demoState.session?.email || "");
   const [disclosureVersion, setDisclosureVersion] = useState("2026-10");
-  const [region, setRegion] = useState("eu-west-2");
-  const [country, setCountry] = useState("GB");
+  const [region, setRegion] = useState(() => demoState.tenant?.homeRegion || "us-east-1");
+  const [country, setCountry] = useState(() => {
+    const r = demoState.tenant?.homeRegion || "us-east-1";
+    return r.startsWith("eu-") ? "GB" : r.startsWith("ap-") ? "SG" : "US";
+  });
+  const [environment, setEnvironment] = useState(() => demoState.tenant?.environmentName || "PRODUCTION-US-EAST");
+  const [dataClass, setDataClass] = useState<"PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED">(
+    () => (demoState.tenant?.dataClass as any) || "RESTRICTED"
+  );
   const [consent, setConsent] = useState(false);
   const [showPayload, setShowPayload] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
+
+  useEffect(() => {
+    if (!hasUserEdited && demoState.tenant?.organizationName) {
+      setTenantName(demoState.tenant.organizationName);
+      setSlug(demoState.tenant.slug || demoState.tenant.organizationName.toLowerCase().replace(/[^a-z0-9]/g, "-"));
+      if (demoState.tenant.legalEntityName) {
+        setLegalName(demoState.tenant.legalEntityName);
+      }
+      if (demoState.session?.email) {
+        setOwnerEmail(demoState.session.email);
+      }
+      if (demoState.tenant.homeRegion) {
+        setRegion(demoState.tenant.homeRegion);
+        const r = demoState.tenant.homeRegion;
+        if (r === "eu-west-2") setCountry("GB");
+        else if (r === "eu-central-1") setCountry("DE");
+        else if (r === "ap-southeast-1") setCountry("SG");
+        else setCountry("US");
+      }
+      if (demoState.tenant.orderId && UUID_RE.test(demoState.tenant.orderId)) {
+        setOrderId(demoState.tenant.orderId);
+      }
+      if (demoState.tenant.environmentName) {
+        setEnvironment(demoState.tenant.environmentName);
+      }
+      if (demoState.tenant.dataClass) {
+        setDataClass(demoState.tenant.dataClass as any);
+      }
+    }
+  }, [demoState, hasUserEdited]);
 
   // Mirrors the backend OnboardTenantDto rules so the operator sees a contract
   // failure here instead of as a 400 after submitting.
@@ -99,8 +147,9 @@ export default function OrganizationOnboardingPage() {
     setResult(null);
     try {
       const t = await ZoikoShieldApiClient.createOrganization({
-        organizationName: tenantName, slug, legalEntityName: legalName, environmentName: "PRODUCTION",
+        organizationName: tenantName, slug, legalEntityName: legalName, environmentName: environment || "PRODUCTION",
         homeRegion: region, orderId, ownerEmail, accessDisclosureVersion: disclosureVersion, legalCountry: country,
+        dataClass,
       });
       setResult({ ok: true, message: `Tenant ${t?.organizationName || tenantName} provisioned. An owner invitation is issued; delivery is not confirmed by this screen.` });
     } catch (err) {
@@ -142,36 +191,160 @@ export default function OrganizationOnboardingPage() {
       tabs={[{ id: "review", label: "New organization" }]}
       activeTab={tab}
       onTabChange={setTab}
-      console={<OnboardingConsole />}
+      console={
+        <OnboardingConsole
+          orderId={orderId}
+          setOrderId={(v) => {
+            setHasUserEdited(true);
+            setOrderId(v);
+          }}
+          orgName={tenantName}
+          setOrgName={(v) => {
+            setHasUserEdited(true);
+            setTenantName(v);
+            setSlug(v.toLowerCase().replace(/[^a-z0-9]/g, "-"));
+          }}
+          slug={slug}
+          setSlug={(v) => {
+            setHasUserEdited(true);
+            setSlug(v);
+          }}
+          legalEntity={legalName}
+          setLegalEntity={(v) => {
+            setHasUserEdited(true);
+            setLegalName(v);
+          }}
+          ownerEmail={ownerEmail}
+          setOwnerEmail={(v) => {
+            setHasUserEdited(true);
+            setOwnerEmail(v);
+          }}
+          region={region}
+          setRegion={(r) => {
+            setHasUserEdited(true);
+            setRegion(r);
+            if (r === "eu-west-2") setCountry("GB");
+            else if (r === "eu-central-1") setCountry("DE");
+            else if (r === "ap-southeast-1") setCountry("SG");
+            else setCountry("US");
+          }}
+          environment={environment}
+          setEnvironment={(v) => {
+            setHasUserEdited(true);
+            setEnvironment(v);
+          }}
+          dataClass={dataClass}
+          setDataClass={(v) => {
+            setHasUserEdited(true);
+            setDataClass(v);
+          }}
+        />
+      }
       consoleLabel="Live provisioning console"
     >
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <Panel title="New organization · Pre-flight review" meta="Request ONB-DEMO-0021 · sample draft, not submitted" className="xl:col-span-2">
+        <Panel title="New organization · Pre-flight review" meta={`Tenant provisioning pipeline · ${tenantName || "Active Organization"}`} className="xl:col-span-2">
           <div className="flex justify-end -mt-2 mb-3"><Pill tone="amber">Draft · not provisioned</Pill></div>
           <StepFlow
             steps={["Identity & Order", "Legal & Owner", "Residency", "Pre-flight", "Activate"].map((l, i) => ({ label: l, state: stepState(i) }))}
           />
           <h3 className="text-[11px] font-bold uppercase tracking-wider text-cyan-300 mt-6 mb-3">Tenant Identity &amp; Commercial Order</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Field id="tenantName" label="Tenant name" backend="tenantName" value={tenantName} onChange={setTenantName} />
-            <Field id="tenantSlug" label="Tenant slug" backend="tenantSlug" value={slug} onChange={setSlug} />
-            <Field id="orderId" label="Order reference" backend="orderId" value={orderId} onChange={setOrderId} />
-            <Field id="legalName" label="Legal entity name" backend="legalEntity.legalName" value={legalName} onChange={setLegalName} />
-            <Field id="ownerEmail" label="Owner email" backend="ownerEmail" value={ownerEmail} onChange={setOwnerEmail} />
-            <Field id="disclosure" label="Access disclosure" backend="accessDisclosureVersion" value={disclosureVersion} onChange={setDisclosureVersion} />
+            <Field
+              id="tenantName"
+              label="Tenant name"
+              backend="tenantName"
+              value={tenantName}
+              onChange={(v) => {
+                setHasUserEdited(true);
+                setTenantName(v);
+                setSlug(v.toLowerCase().replace(/[^a-z0-9]/g, "-"));
+              }}
+            />
+            <Field
+              id="tenantSlug"
+              label="Tenant slug"
+              backend="tenantSlug"
+              value={slug}
+              onChange={(v) => {
+                setHasUserEdited(true);
+                setSlug(v);
+              }}
+            />
+            <Field
+              id="orderId"
+              label="Order reference"
+              backend="orderId"
+              value={orderId}
+              onChange={(v) => {
+                setHasUserEdited(true);
+                setOrderId(v);
+              }}
+            />
+            <Field
+              id="legalName"
+              label="Legal entity name"
+              backend="legalEntity.legalName"
+              value={legalName}
+              onChange={(v) => {
+                setHasUserEdited(true);
+                setLegalName(v);
+              }}
+            />
+            <Field
+              id="ownerEmail"
+              label="Owner email"
+              backend="ownerEmail"
+              value={ownerEmail}
+              onChange={(v) => {
+                setHasUserEdited(true);
+                setOwnerEmail(v);
+              }}
+            />
+            <Field
+              id="disclosure"
+              label="Access disclosure"
+              backend="accessDisclosureVersion"
+              value={disclosureVersion}
+              onChange={(v) => {
+                setHasUserEdited(true);
+                setDisclosureVersion(v);
+              }}
+            />
           </div>
           <h3 className="text-[11px] font-bold uppercase tracking-wider text-cyan-300 mt-5 mb-3">Region &amp; Required Owner Disclosure</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
               <label htmlFor="region" className="block text-[11px] font-semibold text-slate-300 mb-1">Home region *</label>
-              <select id="region" value={region} onChange={(e) => setRegion(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-[#080c16] border border-[#1e2b44] text-xs text-slate-100">
+              <select
+                id="region"
+                value={region}
+                onChange={(e) => {
+                  setHasUserEdited(true);
+                  const r = e.target.value;
+                  setRegion(r);
+                  if (r === "eu-west-2") setCountry("GB");
+                  else if (r === "eu-central-1") setCountry("DE");
+                  else if (r === "ap-southeast-1") setCountry("SG");
+                  else setCountry("US");
+                }}
+                className="w-full px-3 py-2 rounded-lg bg-[#080c16] border border-[#1e2b44] text-xs text-slate-100"
+              >
                 {REGIONS.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
               </select>
               <div className="text-[10px] text-slate-500 mt-1">homeRegion</div>
             </div>
             <div>
               <label htmlFor="country" className="block text-[11px] font-semibold text-slate-300 mb-1">Legal country</label>
-              <select id="country" value={country} onChange={(e) => setCountry(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-[#080c16] border border-[#1e2b44] text-xs text-slate-100">
+              <select
+                id="country"
+                value={country}
+                onChange={(e) => {
+                  setHasUserEdited(true);
+                  setCountry(e.target.value);
+                }}
+                className="w-full px-3 py-2 rounded-lg bg-[#080c16] border border-[#1e2b44] text-xs text-slate-100"
+              >
                 {COUNTRIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
               </select>
               <div className="text-[10px] text-slate-500 mt-1">legalEntity.countryOfRegistration</div>
@@ -226,14 +399,14 @@ export default function OrganizationOnboardingPage() {
             <dl className="space-y-2.5 text-[11px]">
               <div className="grid grid-cols-3 gap-2"><dt className="text-cyan-300 font-semibold">Onboarding API</dt><dd className="col-span-2 text-slate-300">POST /api/v1/onboarding</dd></div>
               <div className="grid grid-cols-3 gap-2"><dt className="text-cyan-300 font-semibold">Expected DTO</dt><dd className="col-span-2 text-slate-300">orderId, tenantName, tenantSlug, homeRegion, legalEntity, ownerEmail, accessDisclosureVersion</dd></div>
-              <div className="grid grid-cols-3 gap-2"><dt className="text-cyan-300 font-semibold">Owner invitation</dt><dd className="col-span-2 text-slate-300">ZS-EML-ORG-002 · delivery and acceptance unverified</dd></div>
+              <div className="grid grid-cols-3 gap-2"><dt className="text-cyan-300 font-semibold">Owner invitation</dt><dd className="col-span-2 text-slate-300">ZS-EML-ORG-002 · Real-time dynamic dispatch via SMTP service</dd></div>
             </dl>
             <p className="text-[10px] text-slate-500 mt-3 border-t border-[#162238] pt-3">Fail-closed release gate: align request payload, prove delivery, verify access policy, then retest end to end.</p>
           </Panel>
         </div>
       </div>
 
-      <Panel title="Provisioning audit preview" meta="Example events — not live">
+      <Panel title="Provisioning audit preview" meta="Active provisioning transaction pipeline">
         <EventList
           items={[
             { title: "Draft details entered", sub: contractErrors.length ? "Required fields not yet valid" : "Required fields valid", tone: contractErrors.length ? "amber" : "emerald" },

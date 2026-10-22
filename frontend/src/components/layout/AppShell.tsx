@@ -2,9 +2,21 @@
 
 import React, { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { TopHeader } from "@/components/layout/TopHeader";
-import { DemoGuideBar } from "@/components/layout/DemoGuideBar";
+import dynamic from "next/dynamic";
+
+const Sidebar = dynamic(
+  () => import("@/components/layout/Sidebar").then((m) => m.Sidebar),
+  { ssr: false }
+);
+const TopHeader = dynamic(
+  () => import("@/components/layout/TopHeader").then((m) => m.TopHeader),
+  { ssr: false }
+);
+const DemoGuideBar = dynamic(
+  () => import("@/components/layout/DemoGuideBar").then((m) => m.DemoGuideBar),
+  { ssr: false }
+);
+
 import { useDemoState } from "@/lib/demo-state";
 
 const PUBLIC_PREFIXES = [
@@ -35,13 +47,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       document.cookie.includes("zoiko_shield_access_token=") ||
       document.cookie.includes("shield_access_token="));
 
-  const isAuthenticated = isTest || state.session?.isAuthenticated || hasAuthCookie;
+  const isAuthenticated = isTest || Boolean(state.session?.isAuthenticated && hasAuthCookie);
 
   useEffect(() => {
-    // If attempting to access a protected deep URL while unauthenticated, redirect immediately to login
+    // If attempting to access a protected deep URL while unauthenticated, redirect cleanly to login
     if (isClient && !isPublicRoute && pathname !== "/" && !isAuthenticated && !isTest) {
-      const redirectUrl = `/login?redirect=${encodeURIComponent(pathname)}`;
-      window.location.replace(redirectUrl);
+      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
+        window.location.replace("/login");
+      }
     }
   }, [isClient, isPublicRoute, isAuthenticated, pathname, isTest]);
 
@@ -75,7 +88,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // - Left side: Persistent, stable Sidebar (never unmounts or jumps on page navigation)
   // - Right side: Dynamic page content area ({children})
   return (
-    <div className="flex flex-1 h-screen overflow-hidden bg-[#060911] text-slate-100 antialiased">
+    <div className="flex flex-1 h-screen overflow-hidden bg-[#060911] text-slate-100 antialiased app-shell">
       {/* Stable Left-Side Navigation: static rail, locked at h-screen */}
       <Sidebar />
 

@@ -123,7 +123,7 @@ export default function AlertDetailPage() {
           status: "CASE_CREATED",
           sourceEventIds: ["evt-raw-failed-auth-99"],
           affectedAssets: ["auth-gateway-us-east-1"],
-          affectedIdentities: ["victim.engineer@acme.com"],
+          affectedIdentities: ["target.engineer@zoikoshield.corp"],
           createdAt: new Date().toISOString(),
         };
         setDetail({
@@ -146,7 +146,7 @@ export default function AlertDetailPage() {
             reasonCode: "THRESHOLD_EXCEEDED",
             incompleteData: false,
             evaluatedAt: new Date().toISOString(),
-            eventPayloadSnapshot: { attempts: 5, target: "victim.engineer@acme.com" },
+            eventPayloadSnapshot: { attempts: 5, target: "target.engineer@zoikoshield.corp" },
           },
           coverage: { state: "FULL", incompleteData: false, contextHealth: "HEALTHY" },
           context: {
@@ -157,7 +157,7 @@ export default function AlertDetailPage() {
           },
           identity: {
             id: "usr-victim",
-            email: "victim.engineer@acme.com",
+            email: "target.engineer@zoikoshield.corp",
             displayName: "Victim Engineer",
             identityType: "CORP_USER",
           },

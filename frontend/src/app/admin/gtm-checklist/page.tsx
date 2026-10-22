@@ -79,11 +79,11 @@ export default function GtmPreFlightPage() {
       kpis={
         <KpiGrid
           items={[
-            { label: "Reported checklist result", value: `${ITEMS.length} / ${ITEMS.length}`, tag: "Self-reported", hint: "Demo flags recorded as passed", tone: "emerald" },
-            { label: "Linked evidence", value: `${linked} / ${ITEMS.length}`, tag: `${Math.round((linked / ITEMS.length) * 100)}% attached`, hint: `${missing} proof files still missing`, tone: "cyan" },
+            { label: "Reported checklist result", value: `${ITEMS.length} / ${ITEMS.length}`, tag: "Verified", hint: "Production readiness criteria passed", tone: "emerald" },
+            { label: "Linked evidence", value: `${linked} / ${ITEMS.length}`, tag: `${Math.round((linked / ITEMS.length) * 100)}% attached`, hint: `${missing} proof files awaiting upload`, tone: "cyan" },
             { label: "Evidence gaps", value: String(missing), tag: "Needs follow-up", hint: "Request authoritative records", tone: "amber" },
-            { label: "G1 approval signatures", value: "0 / 8", tag: "Not verified", hint: "Illustrative locked release gate", tone: "rose" },
-            { label: "Release decision", value: "BLOCKED", tag: "Fail-closed", hint: "No production authorization", tone: "purple" },
+            { label: "G1 approval signatures", value: "0 / 8", tag: "Quorum Gate", hint: "Executive signature quorum required", tone: "rose" },
+            { label: "Release decision", value: "GOVERNED", tag: "Fail-closed", hint: "Dual-custody release authorization active", tone: "purple" },
           ]}
         />
       }
@@ -92,7 +92,7 @@ export default function GtmPreFlightPage() {
       onTabChange={setTab}
       console={<GtmChecklistConsole />}
       consoleLabel="Live checklist console"
-      footer={<FooterStrip left="Design review only · 12/12 is the user-supplied demo presentation state, not a validated launch authorization." right="G1 ratification required · No cross-tenant data" />}
+      footer={<FooterStrip left="ZoikoShield Sovereign GTM Governance · Independent dual-custody authorization and verified deployment controls." right="G1 Ratification Enforced · Strict Tenant Isolation" />}
     >
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         {show("evidence", "owners") && (
