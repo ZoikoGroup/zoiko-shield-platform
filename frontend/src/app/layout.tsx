@@ -13,8 +13,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <head>
+        {/* Apply the saved theme before first paint, on every page including /login. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                var t = localStorage.getItem('zoiko_theme');
+                if (t === 'light' || t === 'cyber') {
+                  document.documentElement.classList.remove('dark');
+                  document.documentElement.classList.add(t);
+                  document.documentElement.setAttribute('data-theme', t);
+                }
+              } catch (e) {}
+            `,
+          }}
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `
@@ -36,7 +51,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="min-h-screen bg-[#060911] text-slate-100 flex flex-col antialiased">
+      <body className="min-h-screen bg-canvas text-slate-100 flex flex-col antialiased">
         <AppShell>{children}</AppShell>
       </body>
     </html>

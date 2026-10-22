@@ -109,7 +109,7 @@ export default function AlertsPage() {
   return (
     <div className="space-y-6">
       {/* Top Header matching Reference: WORKSPACE 02 / Detection & Alerts */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between pb-3 border-b border-[#141d2e] gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between pb-3 border-b border-line gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[10px] font-mono text-cyan-400 font-bold tracking-wider uppercase">
@@ -136,7 +136,7 @@ export default function AlertsPage() {
 
         {/* Right Reference Pills */}
         <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0a0e18] border border-cyan-500/30 text-xs font-mono text-cyan-300">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-cyan-500/30 text-xs font-mono text-cyan-300">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span>Live Telemetry Pipeline · OCSF Ingest Active</span>
           </div>
@@ -230,7 +230,7 @@ export default function AlertsPage() {
         {/* Left: Alert Activity Graph (8 cols) */}
         <div className="lg:col-span-8">
           <Card className="p-5 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-[#141d2e] gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-line gap-2">
               <div>
                 <h3 className="font-bold text-slate-100 text-sm">Alert activity</h3>
                 <p className="text-xs text-slate-400">Signals, matches and actionable alerts by hour</p>
@@ -244,7 +244,7 @@ export default function AlertsPage() {
                   <span className="w-2 h-2 rounded-full bg-rose-500" />
                   <span className="text-slate-400">Critical matches</span>
                 </div>
-                <span className="px-2 py-0.5 rounded bg-[#141f33] text-[10px] text-slate-300">
+                <span className="px-2 py-0.5 rounded bg-line text-[10px] text-slate-300">
                   LAST 24 HOURS
                 </span>
               </div>
@@ -253,14 +253,14 @@ export default function AlertsPage() {
             {/* Barchart + Line SVG */}
             <div className="pt-2">
               <svg className="w-full h-44 overflow-visible" viewBox="0 0 600 150">
-                <line x1="25" y1="20" x2="590" y2="20" stroke="#141f33" strokeDasharray="3 3" />
-                <line x1="25" y1="60" x2="590" y2="60" stroke="#141f33" strokeDasharray="3 3" />
-                <line x1="25" y1="100" x2="590" y2="100" stroke="#141f33" strokeDasharray="3 3" />
+                <line x1="25" y1="20" x2="590" y2="20" stroke="rgb(var(--c-line))" strokeDasharray="3 3" />
+                <line x1="25" y1="60" x2="590" y2="60" stroke="rgb(var(--c-line))" strokeDasharray="3 3" />
+                <line x1="25" y1="100" x2="590" y2="100" stroke="rgb(var(--c-line))" strokeDasharray="3 3" />
 
-                <text x="5" y="24" fill="#64748b" fontSize="9" fontFamily="monospace">80</text>
-                <text x="5" y="64" fill="#64748b" fontSize="9" fontFamily="monospace">60</text>
-                <text x="5" y="104" fill="#64748b" fontSize="9" fontFamily="monospace">40</text>
-                <text x="5" y="138" fill="#64748b" fontSize="9" fontFamily="monospace">0</text>
+                <text x="5" y="24" fill="rgb(var(--c-slate-500))" fontSize="9" fontFamily="monospace">80</text>
+                <text x="5" y="64" fill="rgb(var(--c-slate-500))" fontSize="9" fontFamily="monospace">60</text>
+                <text x="5" y="104" fill="rgb(var(--c-slate-500))" fontSize="9" fontFamily="monospace">40</text>
+                <text x="5" y="138" fill="rgb(var(--c-slate-500))" fontSize="9" fontFamily="monospace">0</text>
 
                 {/* Bars for Event Signals (Cyan columns) */}
                 {[
@@ -302,12 +302,12 @@ export default function AlertsPage() {
                   strokeLinecap="round"
                 />
 
-                <text x="40" y="146" fill="#64748b" fontSize="9" fontFamily="monospace">00:00</text>
-                <text x="145" y="146" fill="#64748b" fontSize="9" fontFamily="monospace">04:00</text>
-                <text x="250" y="146" fill="#64748b" fontSize="9" fontFamily="monospace">08:00</text>
-                <text x="355" y="146" fill="#64748b" fontSize="9" fontFamily="monospace">12:00</text>
-                <text x="460" y="146" fill="#64748b" fontSize="9" fontFamily="monospace">16:00</text>
-                <text x="540" y="146" fill="#64748b" fontSize="9" fontFamily="monospace">20:00</text>
+                <text x="40" y="146" fill="rgb(var(--c-slate-500))" fontSize="9" fontFamily="monospace">00:00</text>
+                <text x="145" y="146" fill="rgb(var(--c-slate-500))" fontSize="9" fontFamily="monospace">04:00</text>
+                <text x="250" y="146" fill="rgb(var(--c-slate-500))" fontSize="9" fontFamily="monospace">08:00</text>
+                <text x="355" y="146" fill="rgb(var(--c-slate-500))" fontSize="9" fontFamily="monospace">12:00</text>
+                <text x="460" y="146" fill="rgb(var(--c-slate-500))" fontSize="9" fontFamily="monospace">16:00</text>
+                <text x="540" y="146" fill="rgb(var(--c-slate-500))" fontSize="9" fontFamily="monospace">20:00</text>
               </svg>
             </div>
           </Card>
@@ -317,13 +317,13 @@ export default function AlertsPage() {
         <div className="lg:col-span-4">
           <Card className="h-full p-5 space-y-4 flex flex-col justify-between">
             <div>
-              <div className="pb-2 border-b border-[#141d2e]">
+              <div className="pb-2 border-b border-line">
                 <h3 className="font-bold text-slate-100 text-sm">Triage health &amp; data trust</h3>
                 <p className="text-[11px] text-slate-400">Do not treat missing telemetry as zero incidents</p>
               </div>
 
               <div className="space-y-3 mt-4 text-xs font-mono">
-                <div className="flex items-center justify-between py-1 border-b border-[#141f33]">
+                <div className="flex items-center justify-between py-1 border-b border-line">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-rose-500" />
                     <span className="text-slate-300">Critical alerts near SLA</span>
@@ -331,7 +331,7 @@ export default function AlertsPage() {
                   <span className="text-rose-400 font-bold">2</span>
                 </div>
 
-                <div className="flex items-center justify-between py-1 border-b border-[#141f33]">
+                <div className="flex items-center justify-between py-1 border-b border-line">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-amber-400" />
                     <span className="text-slate-300">Oldest unassigned critical</span>
@@ -339,7 +339,7 @@ export default function AlertsPage() {
                   <span className="text-slate-200">16 min</span>
                 </div>
 
-                <div className="flex items-center justify-between py-1 border-b border-[#141f33]">
+                <div className="flex items-center justify-between py-1 border-b border-line">
                   <div className="flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-cyan-400" />
                     <span className="text-slate-300">Sample ingestion delay</span>
@@ -357,7 +357,7 @@ export default function AlertsPage() {
               </div>
             </div>
 
-            <div className="pt-3 border-t border-[#141d2e]">
+            <div className="pt-3 border-t border-line">
               <div className="text-[10px] font-mono text-cyan-400/80 text-center uppercase tracking-wider">
                 DATA SOURCE: LIVE TELEMETRY STREAM · OCSF 1.1 INGEST VERIFIED
               </div>
@@ -371,7 +371,7 @@ export default function AlertsPage() {
         {/* Left: Priority Alert Queue (8 cols) */}
         <div className="lg:col-span-8">
           <Card className="p-5 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#141d2e] gap-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-line gap-3">
               <div>
                 <h3 className="font-bold text-slate-100 text-sm">Priority alert queue</h3>
                 <p className="text-xs text-slate-400">Next actions sorted by severity, age and investigation readiness</p>
@@ -385,7 +385,7 @@ export default function AlertsPage() {
                     "px-2.5 py-1 rounded text-xs font-mono font-medium transition-all",
                     filterSeverity === "all"
                       ? "bg-cyan-500 text-slate-950 font-bold"
-                      : "bg-[#0c111e] text-slate-400 border border-[#162238]"
+                      : "bg-raised text-slate-400 border border-line"
                   )}
                 >
                   All {totalCount}
@@ -396,7 +396,7 @@ export default function AlertsPage() {
                     "px-2.5 py-1 rounded text-xs font-mono font-medium transition-all",
                     filterSeverity === "critical"
                       ? "bg-cyan-500 text-slate-950 font-bold"
-                      : "bg-[#0c111e] text-slate-400 border border-[#162238]"
+                      : "bg-raised text-slate-400 border border-line"
                   )}
                 >
                   Critical {criticalCount}
@@ -407,7 +407,7 @@ export default function AlertsPage() {
                     "px-2.5 py-1 rounded text-xs font-mono font-medium transition-all",
                     filterSeverity === "high"
                       ? "bg-cyan-500 text-slate-950 font-bold"
-                      : "bg-[#0c111e] text-slate-400 border border-[#162238]"
+                      : "bg-raised text-slate-400 border border-line"
                   )}
                 >
                   High {highCount}
@@ -418,7 +418,7 @@ export default function AlertsPage() {
                     "px-2.5 py-1 rounded text-xs font-mono font-medium transition-all",
                     filterSeverity === "unassigned"
                       ? "bg-cyan-500 text-slate-950 font-bold"
-                      : "bg-[#0c111e] text-slate-400 border border-[#162238]"
+                      : "bg-raised text-slate-400 border border-line"
                   )}
                 >
                   Unassigned {unassignedCount}
@@ -430,7 +430,7 @@ export default function AlertsPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
-                  <tr className="border-b border-[#162238] text-[10px] font-mono text-slate-400 uppercase tracking-wider">
+                  <tr className="border-b border-line text-[10px] font-mono text-slate-400 uppercase tracking-wider">
                     <th className="py-2.5 px-3">SEVERITY</th>
                     <th className="py-2.5 px-3">DETECTION / TITLE</th>
                     <th className="py-2.5 px-3">SOURCE</th>
@@ -440,7 +440,7 @@ export default function AlertsPage() {
                     <th className="py-2.5 px-3 text-right">ACTION</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#141d2e]">
+                <tbody className="divide-y divide-line">
                   {alerts.length === 0 ? (
                     <tr>
                       <td colSpan={7} className="py-6 text-center text-slate-500 font-mono">
@@ -449,7 +449,7 @@ export default function AlertsPage() {
                     </tr>
                   ) : (
                     (filteredAlerts.length > 0 ? filteredAlerts : alerts).map((alert) => (
-                      <tr key={alert.id} className="hover:bg-[#080c16]/70 transition-colors group">
+                      <tr key={alert.id} className="hover:bg-surface/70 transition-colors group">
                         <td className="py-3 px-3">
                           <span
                             className={cn(
@@ -490,7 +490,7 @@ export default function AlertsPage() {
                           <div className="flex items-center justify-end gap-1.5">
                             <button
                               onClick={() => router.push(`/alerts/${alert.id}`)}
-                              className="px-2 py-1 rounded bg-[#0f172a] hover:bg-slate-800 text-slate-300 border border-[#1e293b] text-xs font-mono transition-colors"
+                              className="px-2 py-1 rounded bg-overlay hover:bg-slate-800 text-slate-300 border border-line-strong text-xs font-mono transition-colors"
                             >
                               Open
                             </button>
@@ -517,13 +517,13 @@ export default function AlertsPage() {
         {/* Right: Detection Operations (4 cols) */}
         <div className="lg:col-span-4 space-y-4">
           <Card className="p-5 space-y-4">
-            <div className="pb-2 border-b border-[#141d2e]">
+            <div className="pb-2 border-b border-line">
               <h3 className="font-bold text-slate-100 text-sm">Detection operations</h3>
               <p className="text-xs text-slate-400">Controls and safe analyst actions</p>
             </div>
 
             {/* Human Approval Required Notice */}
-            <div className="p-3.5 rounded-xl bg-[#080c16] border border-cyan-500/30 space-y-1">
+            <div className="p-3.5 rounded-xl bg-surface border border-cyan-500/30 space-y-1">
               <div className="flex items-center gap-1.5 text-cyan-400 font-mono font-semibold text-xs">
                 <Lock className="w-3.5 h-3.5" />
                 <span>Human approval required</span>
@@ -538,11 +538,11 @@ export default function AlertsPage() {
               <div className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                 RULE GOVERNANCE
               </div>
-              <div className="flex items-center justify-between py-1 border-b border-[#141f33]">
+              <div className="flex items-center justify-between py-1 border-b border-line">
                 <span className="text-slate-300">Published detection rules</span>
                 <span className="text-cyan-400 font-bold">48</span>
               </div>
-              <div className="flex items-center justify-between py-1 border-b border-[#141f33]">
+              <div className="flex items-center justify-between py-1 border-b border-line">
                 <span className="text-slate-300">Changes awaiting approval</span>
                 <span className="text-amber-400 font-bold">2</span>
               </div>

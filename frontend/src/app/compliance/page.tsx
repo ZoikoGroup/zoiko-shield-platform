@@ -257,7 +257,7 @@ export default function ContinuousCompliancePage() {
   return (
     <div className="space-y-8 pb-16">
       {/* Header Banner */}
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-b from-[#0c111e] to-[#070b14] shadow-xl">
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-b from-raised to-canvas shadow-xl">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div className="space-y-2">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono shadow-[0_0_15px_rgba(0,240,255,0.12)]">
@@ -327,7 +327,7 @@ export default function ContinuousCompliancePage() {
 
       {/* KPI Overview Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card variant="cyber" className="p-5 space-y-2 bg-gradient-to-b from-[#0c111e] to-[#070b14]">
+        <Card variant="cyber" className="p-5 space-y-2 bg-gradient-to-b from-raised to-canvas">
           <div className="flex items-center justify-between text-xs text-slate-400">
             <span className="font-mono text-[11px] uppercase tracking-wider text-slate-400">OVERALL COMPLIANCE</span>
             <div className="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
@@ -341,7 +341,7 @@ export default function ContinuousCompliancePage() {
           <div className="text-[11px] text-slate-400 font-mono">Zero non-compliant controls detected</div>
         </Card>
 
-        <Card variant="cyber" className="p-5 space-y-2 bg-gradient-to-b from-[#0c111e] to-[#070b14]">
+        <Card variant="cyber" className="p-5 space-y-2 bg-gradient-to-b from-raised to-canvas">
           <div className="flex items-center justify-between text-xs text-slate-400">
             <span className="font-mono text-[11px] uppercase tracking-wider text-slate-400">POSTURE DRIFT STATUS</span>
             <div className="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
@@ -355,7 +355,7 @@ export default function ContinuousCompliancePage() {
           <div className="text-[11px] text-slate-400 font-mono">Sub-second telemetry evaluation</div>
         </Card>
 
-        <Card variant="cyber" className="p-5 space-y-2 bg-gradient-to-b from-[#0c111e] to-[#070b14]">
+        <Card variant="cyber" className="p-5 space-y-2 bg-gradient-to-b from-raised to-canvas">
           <div className="flex items-center justify-between text-xs text-slate-400">
             <span className="font-mono text-[11px] uppercase tracking-wider text-slate-400">ACTIVE SLA ALARMS</span>
             <div className="w-7 h-7 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center justify-center">
@@ -371,7 +371,7 @@ export default function ContinuousCompliancePage() {
           <div className="text-[11px] text-slate-400 font-mono">0 critical breach risks</div>
         </Card>
 
-        <Card variant="cyber" className="p-5 space-y-2 bg-gradient-to-b from-[#0c111e] to-[#070b14]">
+        <Card variant="cyber" className="p-5 space-y-2 bg-gradient-to-b from-raised to-canvas">
           <div className="flex items-center justify-between text-xs text-slate-400">
             <span className="font-mono text-[11px] uppercase tracking-wider text-slate-400">SECTOR OVERLAYS</span>
             <div className="w-7 h-7 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center">
@@ -442,7 +442,7 @@ export default function ContinuousCompliancePage() {
               <Card
                 key={fw.code}
                 variant="cyber"
-                className="p-5 flex flex-col justify-between space-y-4 hover:border-cyan-500/40 transition-all bg-gradient-to-b from-[#0c111e] to-[#070b14]"
+                className="p-5 flex flex-col justify-between space-y-4 hover:border-cyan-500/40 transition-all bg-gradient-to-b from-raised to-canvas"
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -487,7 +487,7 @@ export default function ContinuousCompliancePage() {
           </div>
 
           {/* Quick Cross-Navigation links */}
-          <div className="p-6 rounded-2xl bg-gradient-to-r from-cyan-950/30 via-[#0c1527] to-blue-950/30 border border-cyan-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
+          <div className="p-6 rounded-2xl bg-gradient-to-r from-cyan-950/30 via-overlay to-blue-950/30 border border-cyan-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
             <div className="space-y-1 text-center sm:text-left">
               <h4 className="text-base font-bold text-white flex items-center justify-center sm:justify-start gap-2">
                 <FileCheck className="w-4 h-4 text-cyan-400" />
@@ -517,7 +517,7 @@ export default function ContinuousCompliancePage() {
       {/* Tab 2: DORA Overlay */}
       {activeTab === "dora" && (
         <div className="space-y-6">
-          <Card variant="cyber" className="p-6 space-y-5 bg-gradient-to-b from-[#0c111e] to-[#070b14]">
+          <Card variant="cyber" className="p-6 space-y-5 bg-gradient-to-b from-raised to-canvas">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
               <div>
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -561,7 +561,7 @@ export default function ContinuousCompliancePage() {
       {/* Tab 3: NIS2 Directive */}
       {activeTab === "nis2" && (
         <div className="space-y-6">
-          <Card variant="cyber" className="p-6 space-y-5 bg-gradient-to-b from-[#0c111e] to-[#070b14]">
+          <Card variant="cyber" className="p-6 space-y-5 bg-gradient-to-b from-raised to-canvas">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800/80 pb-4">
               <div>
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">
@@ -610,7 +610,7 @@ export default function ContinuousCompliancePage() {
       {/* Tab 4: Posture Drift & Alarms */}
       {activeTab === "drift" && (
         <div className="space-y-6">
-          <Card variant="cyber" className="p-6 space-y-5 bg-gradient-to-b from-[#0c111e] to-[#070b14]">
+          <Card variant="cyber" className="p-6 space-y-5 bg-gradient-to-b from-raised to-canvas">
             <div className="flex items-center justify-between border-b border-slate-800/80 pb-4">
               <div>
                 <h3 className="text-lg font-bold text-white flex items-center gap-2">

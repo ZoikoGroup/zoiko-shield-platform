@@ -83,7 +83,7 @@ export default function FindingsListPage() {
     <select
       value={severityFilter}
       onChange={(e) => setSeverityFilter(e.target.value)}
-      className="rounded-xl border border-[#162238] bg-[#0a0f1d] px-3.5 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-cyan-400 transition-colors"
+      className="rounded-xl border border-line bg-surface px-3.5 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-cyan-400 transition-colors"
       aria-label="Filter by severity"
     >
       {["ALL", "CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"].map((value) => (
@@ -119,7 +119,7 @@ export default function FindingsListPage() {
         <Card variant="cyber" className="p-5">
           <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
             {tiles.map((tile) => (
-              <div key={tile.label} className="rounded-xl border border-[#162238] bg-[#060911]/80 p-3 shadow-inner">
+              <div key={tile.label} className="rounded-xl border border-line bg-canvas/80 p-3 shadow-inner">
                 <p className="text-[11px] font-mono uppercase text-slate-500">
                   {tile.label}
                 </p>
@@ -154,10 +154,10 @@ export default function FindingsListPage() {
               reported anything — it is not a clean bill of health for this estate.
             </p>
           ) : (
-            <div className="overflow-x-auto rounded-xl border border-[#162238]">
+            <div className="overflow-x-auto rounded-xl border border-line">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b border-[#162238] text-left font-mono text-slate-400 bg-[#060911]/80">
+                  <tr className="border-b border-line text-left font-mono text-slate-400 bg-canvas/80">
                     <th className="py-2.5 px-3">Finding</th>
                     <th className="py-2.5 px-3">Severity</th>
                     <th className="py-2.5 px-3">Priority</th>
@@ -166,12 +166,12 @@ export default function FindingsListPage() {
                     <th className="py-2.5 px-3">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#162238]/60">
+                <tbody className="divide-y divide-line/60">
                   {filtered.map((finding) => (
                     <tr
                       key={finding.id}
                       onClick={() => router.push(`/findings/${finding.id}`)}
-                      className="cursor-pointer hover:bg-[#0c1424] transition-colors"
+                      className="cursor-pointer hover:bg-raised transition-colors"
                     >
                       <td className="py-2.5 px-3">
                         <span className="text-slate-200 font-medium">{finding.title}</span>
@@ -231,7 +231,7 @@ export default function FindingsListPage() {
                   ))}
                 </tbody>
               </table>
-              <div className="p-3 bg-[#060911]/40 border-t border-[#162238]">
+              <div className="p-3 bg-canvas/40 border-t border-line">
                 <p className="font-mono text-[11px] text-slate-500">
                   * priority computed over at least one unresolved input, so not comparable
                   with a score derived from complete inputs.

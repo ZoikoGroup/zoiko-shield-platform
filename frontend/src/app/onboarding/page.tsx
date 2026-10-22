@@ -45,7 +45,7 @@ function Field({
         value={value}
         placeholder={placeholder}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full px-3 py-2 rounded-lg bg-[#080c16] border border-[#1e2b44] text-xs text-slate-100 outline-none focus:border-sky-500"
+        className="w-full px-3 py-2 rounded-lg bg-surface border border-line-strong text-xs text-slate-100 outline-none focus:border-sky-500"
       />
       <div className="text-[10px] text-slate-500 mt-1">Backend field: {backend}</div>
     </div>
@@ -328,7 +328,7 @@ export default function OrganizationOnboardingPage() {
                   else if (r === "ap-southeast-1") setCountry("SG");
                   else setCountry("US");
                 }}
-                className="w-full px-3 py-2 rounded-lg bg-[#080c16] border border-[#1e2b44] text-xs text-slate-100"
+                className="w-full px-3 py-2 rounded-lg bg-surface border border-line-strong text-xs text-slate-100"
               >
                 {REGIONS.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
               </select>
@@ -343,7 +343,7 @@ export default function OrganizationOnboardingPage() {
                   setHasUserEdited(true);
                   setCountry(e.target.value);
                 }}
-                className="w-full px-3 py-2 rounded-lg bg-[#080c16] border border-[#1e2b44] text-xs text-slate-100"
+                className="w-full px-3 py-2 rounded-lg bg-surface border border-line-strong text-xs text-slate-100"
               >
                 {COUNTRIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
               </select>
@@ -351,7 +351,7 @@ export default function OrganizationOnboardingPage() {
             </div>
             <div>
               <span className="block text-[11px] font-semibold text-slate-300 mb-1">Activation path</span>
-              <div className="px-3 py-2 rounded-lg bg-[#080c16] border border-[#1e2b44] text-xs text-slate-100">Owner invitation</div>
+              <div className="px-3 py-2 rounded-lg bg-surface border border-line-strong text-xs text-slate-100">Owner invitation</div>
               <div className="text-[10px] text-slate-500 mt-1">Activation pending</div>
             </div>
           </div>
@@ -370,7 +370,7 @@ export default function OrganizationOnboardingPage() {
           {showPayload && (
             <div className="mt-3 relative">
               <button type="button" aria-label="Close payload" onClick={() => setShowPayload(false)} className="absolute right-2 top-2 text-slate-500 hover:text-slate-200"><X className="w-3.5 h-3.5" /></button>
-              <pre className="text-[11px] font-mono text-slate-300 bg-[#05080f] border border-[#162238] rounded-lg p-3 overflow-x-auto">POST /api/v1/onboarding{"\n"}{JSON.stringify(payload, null, 2)}</pre>
+              <pre className="text-[11px] font-mono text-slate-300 bg-canvas border border-line rounded-lg p-3 overflow-x-auto">POST /api/v1/onboarding{"\n"}{JSON.stringify(payload, null, 2)}</pre>
             </div>
           )}
           {result && (
@@ -401,7 +401,7 @@ export default function OrganizationOnboardingPage() {
               <div className="grid grid-cols-3 gap-2"><dt className="text-cyan-300 font-semibold">Expected DTO</dt><dd className="col-span-2 text-slate-300">orderId, tenantName, tenantSlug, homeRegion, legalEntity, ownerEmail, accessDisclosureVersion</dd></div>
               <div className="grid grid-cols-3 gap-2"><dt className="text-cyan-300 font-semibold">Owner invitation</dt><dd className="col-span-2 text-slate-300">ZS-EML-ORG-002 · Real-time dynamic dispatch via SMTP service</dd></div>
             </dl>
-            <p className="text-[10px] text-slate-500 mt-3 border-t border-[#162238] pt-3">Fail-closed release gate: align request payload, prove delivery, verify access policy, then retest end to end.</p>
+            <p className="text-[10px] text-slate-500 mt-3 border-t border-line pt-3">Fail-closed release gate: align request payload, prove delivery, verify access policy, then retest end to end.</p>
           </Panel>
         </div>
       </div>

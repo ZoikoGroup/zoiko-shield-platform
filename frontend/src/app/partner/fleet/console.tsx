@@ -177,7 +177,7 @@ export default function MsspFleetCockpitPage() {
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-8 text-slate-100">
       {/* Header Banner */}
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-raised via-surface to-canvas shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 mb-2">
             <Building className="w-7 h-7 text-cyan-400" />
@@ -194,7 +194,7 @@ export default function MsspFleetCockpitPage() {
           <Button
             onClick={loadInitialData}
             variant="outline"
-            className="border-slate-700/80 bg-[#080c16] hover:bg-slate-800 text-slate-200 text-xs font-mono"
+            className="border-slate-700/80 bg-surface hover:bg-slate-800 text-slate-200 text-xs font-mono"
           >
             <RefreshCw className="w-3.5 h-3.5 mr-2" />
             Refresh Fleet Telemetry

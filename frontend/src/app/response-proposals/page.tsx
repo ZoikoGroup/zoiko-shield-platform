@@ -89,10 +89,10 @@ export default function ResponseProposalsPage() {
         <Panel title="All Response Proposals" meta={`Showing ${rows.length} of 18 proposals`} metaTone="slate" className="xl:col-span-3">
           <div className="flex flex-wrap gap-2 mb-3">
             <SearchInput value={query} onChange={setQuery} placeholder="Search proposals..." />
-            <select aria-label="Status filter" value={status} onChange={(e) => setStatus(e.target.value)} className="px-3 py-2 rounded-lg bg-[#080c16] border border-[#162238] text-xs text-slate-300">
+            <select aria-label="Status filter" value={status} onChange={(e) => setStatus(e.target.value)} className="px-3 py-2 rounded-lg bg-surface border border-line text-xs text-slate-300">
               {["All", "Pending", "Approved", "Executed", "In Review"].map((s) => <option key={s} value={s}>Status: {s}</option>)}
             </select>
-            <select aria-label="Risk filter" value={risk} onChange={(e) => setRisk(e.target.value)} className="px-3 py-2 rounded-lg bg-[#080c16] border border-[#162238] text-xs text-slate-300">
+            <select aria-label="Risk filter" value={risk} onChange={(e) => setRisk(e.target.value)} className="px-3 py-2 rounded-lg bg-surface border border-line text-xs text-slate-300">
               {["All", "High", "Medium", "Low"].map((s) => <option key={s} value={s}>Risk: {s}</option>)}
             </select>
           </div>

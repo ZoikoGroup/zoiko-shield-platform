@@ -128,7 +128,7 @@ export default function PlatformServiceHealthPage() {
                 { k: "Evidence verification", v: "Cryptographic hash verified", tone: "emerald" },
               ]}
             />
-            <div className="mt-3 rounded-lg border border-[#162238] p-3 text-[11px] text-slate-400">
+            <div className="mt-3 rounded-lg border border-line p-3 text-[11px] text-slate-400">
               <span className="font-semibold text-slate-200">Operator impact · </span>
               Tenant evidence is never exposed through this platform-level health view.
             </div>

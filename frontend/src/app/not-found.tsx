@@ -54,13 +54,13 @@ export default function NotFound() {
           <h1 className="text-2xl font-black text-slate-100 mt-1">
             Navigated to Non-Standard Route
           </h1>
-          <p className="text-xs font-mono text-cyan-300/90 mt-2 break-all bg-[#060911] p-2.5 rounded-xl border border-[#162238] shadow-inner">
+          <p className="text-xs font-mono text-cyan-300/90 mt-2 break-all bg-canvas p-2.5 rounded-xl border border-line shadow-inner">
             {pathname}
           </p>
         </div>
 
         {suggestion && (
-          <div className="p-4 rounded-xl bg-gradient-to-r from-cyan-950/40 to-[#0a0f1d] border border-cyan-500/40 text-left space-y-2.5 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+          <div className="p-4 rounded-xl bg-gradient-to-r from-cyan-950/40 to-surface border border-cyan-500/40 text-left space-y-2.5 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
             <div className="text-xs font-mono text-cyan-300 flex items-center gap-1.5 font-bold">
               <CheckCircle2 className="w-4 h-4 text-cyan-400" />
               Suggested Destination:
@@ -78,29 +78,29 @@ export default function NotFound() {
           </div>
         )}
 
-        <div className="pt-3 border-t border-[#162238] flex flex-wrap items-center justify-center gap-2">
+        <div className="pt-3 border-t border-line flex flex-wrap items-center justify-center gap-2">
           <Link href="/controls">
-            <Button variant="outline" size="sm" className="text-xs border-[#162238] bg-[#060911] hover:border-cyan-500/40 hover:text-cyan-300">
+            <Button variant="outline" size="sm" className="text-xs border-line bg-canvas hover:border-cyan-500/40 hover:text-cyan-300">
               Controls
             </Button>
           </Link>
           <Link href="/audit">
-            <Button variant="outline" size="sm" className="text-xs border-[#162238] bg-[#060911] hover:border-cyan-500/40 hover:text-cyan-300">
+            <Button variant="outline" size="sm" className="text-xs border-line bg-canvas hover:border-cyan-500/40 hover:text-cyan-300">
               Audit
             </Button>
           </Link>
           <Link href="/cases">
-            <Button variant="outline" size="sm" className="text-xs border-[#162238] bg-[#060911] hover:border-cyan-500/40 hover:text-cyan-300">
+            <Button variant="outline" size="sm" className="text-xs border-line bg-canvas hover:border-cyan-500/40 hover:text-cyan-300">
               Cases
             </Button>
           </Link>
           <Link href="/ledger">
-            <Button variant="outline" size="sm" className="text-xs border-[#162238] bg-[#060911] hover:border-cyan-500/40 hover:text-cyan-300">
+            <Button variant="outline" size="sm" className="text-xs border-line bg-canvas hover:border-cyan-500/40 hover:text-cyan-300">
               Ledger
             </Button>
           </Link>
           <Link href="/notifications">
-            <Button variant="outline" size="sm" className="text-xs border-[#162238] bg-[#060911] hover:border-cyan-500/40 hover:text-cyan-300">
+            <Button variant="outline" size="sm" className="text-xs border-line bg-canvas hover:border-cyan-500/40 hover:text-cyan-300">
               Notifications
             </Button>
           </Link>

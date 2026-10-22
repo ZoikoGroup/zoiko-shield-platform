@@ -106,7 +106,7 @@ export default function G1LaunchGatePage() {
               <Pill tone="rose">Gate closed</Pill>
             </div>
             <ProgressRow label={`${signed} of 8 signed decisions`} value={signed} max={8} display={`${Math.round((signed / 8) * 100)}% ratification`} tone="rose" />
-            <div className="mt-4 rounded-lg border border-rose-500/30 bg-[#140a10] p-3">
+            <div className="mt-4 rounded-lg border border-rose-500/30 bg-rose-950/40 p-3">
               <div className="text-xs font-bold text-slate-200 mb-2">Blocking requirements</div>
               <CheckRow label="Eight distinct executive approvals must be evidenced" status={`${signed} / 8`} tone="rose" />
               <CheckRow label="Signed release artifact not selected or verified" status="Unknown" tone="rose" />
@@ -136,7 +136,7 @@ export default function G1LaunchGatePage() {
         )}
         {show("history", "evidence") && (
           <Panel title="Governance Evidence & History" meta="Inspect audit log →">
-            <div className="rounded-lg border border-[#162238] bg-[#080c16] p-3 mb-3">
+            <div className="rounded-lg border border-line bg-surface p-3 mb-3">
               <div className="text-xs font-semibold text-slate-200">No approval events in this demo snapshot</div>
               <div className="text-[11px] text-slate-500">Verified signatures must be read from the governance roster.</div>
             </div>

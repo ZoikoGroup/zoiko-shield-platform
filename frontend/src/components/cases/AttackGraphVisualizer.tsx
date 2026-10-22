@@ -207,7 +207,7 @@ export function AttackGraphVisualizer({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Interactive Canvas */}
-        <div className="lg:col-span-2 relative min-h-[460px] p-6 rounded-2xl bg-[#080c14] border border-slate-800/80 shadow-2xl overflow-hidden flex flex-col justify-between">
+        <div className="lg:col-span-2 relative min-h-[460px] p-6 rounded-2xl bg-canvas border border-slate-800/80 shadow-2xl overflow-hidden flex flex-col justify-between">
           {/* Subtle Cyber Grid Background */}
           <div
             className="absolute inset-0 opacity-15 pointer-events-none"

@@ -135,8 +135,8 @@ export default function EvidenceOperationsPage() {
   const verified = records.length - needsAttention.length;
 
   return (
-    <div className="min-h-screen bg-[#060911] text-slate-100 p-6 space-y-6">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-[#162238] pb-6">
+    <div className="min-h-screen bg-canvas text-slate-100 p-6 space-y-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-line pb-6">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
             <Badge variant="info" className="font-mono text-[10px] tracking-wider border-amber-500/30 bg-amber-500/10 text-amber-400">
@@ -155,7 +155,7 @@ export default function EvidenceOperationsPage() {
             Records whose integrity or completeness is not established. Worst-first prioritized verification.
           </p>
         </div>
-        <Button variant="ghost" onClick={() => void load()} className="border border-[#162238] bg-[#0c111e] hover:bg-[#111a2e] text-slate-300">
+        <Button variant="ghost" onClick={() => void load()} className="border border-line bg-raised hover:bg-overlay text-slate-300">
           <RefreshCw className="w-4 h-4 text-cyan-400" />
           <span>Refresh</span>
         </Button>
@@ -169,17 +169,17 @@ export default function EvidenceOperationsPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-cyan-500/40 transition-all">
+        <Card className="surface-card p-4 border border-line rounded-xl hover:border-cyan-500/40 transition-all">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 font-mono">Total Records</span>
           <div className="text-2xl font-bold text-white mt-1 font-mono">{records.length}</div>
           <span className="text-[10px] text-slate-500 mt-1 inline-block font-mono">Ingested evidence items</span>
         </Card>
-        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-emerald-500/40 transition-all">
+        <Card className="surface-card p-4 border border-line rounded-xl hover:border-emerald-500/40 transition-all">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 font-mono">Fully Verified & Complete</span>
           <div className="text-2xl font-bold text-emerald-400 mt-1 font-mono">{verified}</div>
           <span className="text-[10px] text-emerald-400/80 mt-1 inline-block font-mono">Passed cryptographic assurance</span>
         </Card>
-        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-amber-500/40 transition-all">
+        <Card className="surface-card p-4 border border-line rounded-xl hover:border-amber-500/40 transition-all">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 font-mono">Needing Attention</span>
           <div className={`text-2xl font-bold mt-1 font-mono ${needsAttention.length > 0 ? "text-amber-400" : "text-slate-400"}`}>
             {needsAttention.length}
@@ -189,14 +189,14 @@ export default function EvidenceOperationsPage() {
       </div>
 
       {records.length === 0 ? (
-        <Card className="surface-card border border-[#162238] p-8 text-center rounded-xl">
+        <Card className="surface-card border border-line p-8 text-center rounded-xl">
           <p className="text-sm font-semibold text-slate-200">No evidence records exist for this tenant.</p>
           <p className="text-xs font-mono text-slate-500 mt-1.5 max-w-md mx-auto">
             An empty ledger is not a clean one — nothing has been collected yet.
           </p>
         </Card>
       ) : needsAttention.length === 0 ? (
-        <Card className="surface-card border border-[#162238] p-8 text-center rounded-xl">
+        <Card className="surface-card border border-line p-8 text-center rounded-xl">
           <div className="flex flex-col items-center justify-center">
             <div className="p-3 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 mb-3 shadow-lg shadow-emerald-500/10">
               <ShieldCheck className="w-8 h-8" />
@@ -210,12 +210,12 @@ export default function EvidenceOperationsPage() {
       ) : (
         <div className="space-y-3">
           {needsAttention.map((record) => (
-            <Card key={record.id} className="surface-card p-4 border border-[#162238] rounded-xl hover:border-amber-500/30 transition-all">
+            <Card key={record.id} className="surface-card p-4 border border-line rounded-xl hover:border-amber-500/30 transition-all">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <p className="text-sm font-semibold text-white tracking-wide">{record.evidence_type}</p>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-[#060911] border border-[#162238] text-slate-400">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-canvas border border-line text-slate-400">
                       ID: {record.id.slice(0, 8)}…
                     </span>
                   </div>

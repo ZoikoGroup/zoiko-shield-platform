@@ -170,7 +170,7 @@ function AuthenticatedDashboardView({
   return (
     <div className="space-y-6">
       {/* Page Header (Command Center) */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-[#141d2e]">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-2 border-b border-line">
         <div className="flex items-center gap-3.5">
           <div className="w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.15)] shrink-0">
             <LayoutGrid className="w-5 h-5" />
@@ -192,7 +192,7 @@ function AuthenticatedDashboardView({
 
         {/* Time Filter Dropdown */}
         <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0c111e] border border-[#162238] text-xs font-mono text-slate-300">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-raised border border-line text-xs font-mono text-slate-300">
             <Clock className="w-3.5 h-3.5 text-cyan-400" />
             <span>{timeRange}</span>
             <ChevronDown className="w-3 h-3 text-slate-400" />
@@ -201,7 +201,7 @@ function AuthenticatedDashboardView({
       </div>
 
       {/* Status Bar Ribbon */}
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 rounded-xl bg-[#0a0e18] border border-[#141f33] text-xs font-mono text-slate-400">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2 rounded-xl bg-surface border border-line text-xs font-mono text-slate-400">
         <div className="flex items-center gap-2">
           <Activity className="w-3.5 h-3.5 text-emerald-400" />
           <span className="font-semibold text-emerald-300">SOVEREIGN CELL TELEMETRY STREAM — ACTIVE</span>
@@ -367,13 +367,13 @@ function AuthenticatedDashboardView({
           <Card className="h-full flex flex-col justify-between p-5 space-y-4">
             <div>
               {/* Card Header & Controls */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-[#141d2e] gap-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-line gap-3">
                 <div>
                   <h3 className="font-bold text-slate-100 text-base">Priority queue</h3>
                   <p className="text-xs text-slate-400">Your next operational decisions</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 rounded bg-[#141f33] border border-slate-700/60 text-xs font-mono text-cyan-300">
+                  <span className="px-2 py-0.5 rounded bg-line border border-slate-700/60 text-xs font-mono text-cyan-300">
                     {activeAlerts.length} open alerts
                   </span>
                 </div>
@@ -387,7 +387,7 @@ function AuthenticatedDashboardView({
                     "px-3 py-1 rounded-md text-xs font-mono font-medium transition-all",
                     activeQueueFilter === "all"
                       ? "bg-cyan-500 text-slate-950 font-bold shadow-[0_0_12px_rgba(6,182,212,0.4)]"
-                      : "bg-[#0c111e] text-slate-400 hover:text-slate-200 border border-[#162238]"
+                      : "bg-raised text-slate-400 hover:text-slate-200 border border-line"
                   )}
                 >
                   All ({priorityQueueItems.length + 7})
@@ -398,7 +398,7 @@ function AuthenticatedDashboardView({
                     "px-3 py-1 rounded-md text-xs font-mono font-medium transition-all",
                     activeQueueFilter === "critical"
                       ? "bg-cyan-500 text-slate-950 font-bold shadow-[0_0_12px_rgba(6,182,212,0.4)]"
-                      : "bg-[#0c111e] text-slate-400 hover:text-slate-200 border border-[#162238]"
+                      : "bg-raised text-slate-400 hover:text-slate-200 border border-line"
                   )}
                 >
                   Critical (4)
@@ -409,7 +409,7 @@ function AuthenticatedDashboardView({
                     "px-3 py-1 rounded-md text-xs font-mono font-medium transition-all",
                     activeQueueFilter === "unassigned"
                       ? "bg-cyan-500 text-slate-950 font-bold shadow-[0_0_12px_rgba(6,182,212,0.4)]"
-                      : "bg-[#0c111e] text-slate-400 hover:text-slate-200 border border-[#162238]"
+                      : "bg-raised text-slate-400 hover:text-slate-200 border border-line"
                   )}
                 >
                   Unassigned (2)
@@ -420,7 +420,7 @@ function AuthenticatedDashboardView({
                     "px-3 py-1 rounded-md text-xs font-mono font-medium transition-all",
                     activeQueueFilter === "sla"
                       ? "bg-cyan-500 text-slate-950 font-bold shadow-[0_0_12px_rgba(6,182,212,0.4)]"
-                      : "bg-[#0c111e] text-slate-400 hover:text-slate-200 border border-[#162238]"
+                      : "bg-raised text-slate-400 hover:text-slate-200 border border-line"
                   )}
                 >
                   SLA risk (1)
@@ -431,7 +431,7 @@ function AuthenticatedDashboardView({
               <div className="overflow-x-auto mt-2">
                 <table className="w-full text-left text-xs">
                   <thead>
-                    <tr className="border-b border-[#162238] text-[10px] font-mono text-slate-400 uppercase tracking-wider">
+                    <tr className="border-b border-line text-[10px] font-mono text-slate-400 uppercase tracking-wider">
                       <th className="py-2.5 px-3">SEVERITY</th>
                       <th className="py-2.5 px-3">ALERT / CONTEXT</th>
                       <th className="py-2.5 px-3">OWNER</th>
@@ -439,9 +439,9 @@ function AuthenticatedDashboardView({
                       <th className="py-2.5 px-3 text-right">NEXT STEP</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#141d2e]">
+                  <tbody className="divide-y divide-line">
                     {filteredQueue.map((item) => (
-                      <tr key={item.id} className="hover:bg-[#080c16]/70 transition-colors group">
+                      <tr key={item.id} className="hover:bg-surface/70 transition-colors group">
                         <td className="py-3 px-3">
                           <span
                             className={cn(
@@ -482,7 +482,7 @@ function AuthenticatedDashboardView({
                         </td>
                         <td className="py-3 px-3 text-right">
                           <Link href={item.href}>
-                            <button className="px-3 py-1 rounded bg-[#0f172a] hover:bg-cyan-500 hover:text-slate-950 text-cyan-300 border border-cyan-500/30 hover:border-cyan-400 text-xs font-semibold transition-all">
+                            <button className="px-3 py-1 rounded bg-overlay hover:bg-cyan-500 hover:text-slate-950 text-cyan-300 border border-cyan-500/30 hover:border-cyan-400 text-xs font-semibold transition-all">
                               {item.action}
                             </button>
                           </Link>
@@ -495,7 +495,7 @@ function AuthenticatedDashboardView({
             </div>
 
             {/* Table Footer Link */}
-            <div className="pt-2 flex items-center justify-between text-xs border-t border-[#141d2e] text-slate-400">
+            <div className="pt-2 flex items-center justify-between text-xs border-t border-line text-slate-400">
               <span>Showing high-priority operational items</span>
               <Link href="/alerts" className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1 font-mono">
                 <span>View all active alerts</span>
@@ -509,7 +509,7 @@ function AuthenticatedDashboardView({
         <div className="lg:col-span-4 space-y-5">
           {/* Top Card: Human Approvals */}
           <Card className="p-5 space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-[#141d2e]">
+            <div className="flex items-center justify-between pb-2 border-b border-line">
               <div className="flex items-center gap-2">
                 <Lock className="w-4 h-4 text-purple-400" />
                 <h3 className="font-bold text-slate-100 text-sm">Human approvals</h3>
@@ -524,7 +524,7 @@ function AuthenticatedDashboardView({
             </p>
 
             <Link href="/response-proposals" className="block group">
-              <div className="p-3.5 rounded-xl bg-[#080c16] border border-[#141f33] group-hover:border-purple-500/40 transition-all flex items-center justify-between">
+              <div className="p-3.5 rounded-xl bg-surface border border-line group-hover:border-purple-500/40 transition-all flex items-center justify-between">
                 <div className="space-y-0.5">
                   <div className="font-bold text-slate-200 group-hover:text-purple-300 transition-colors text-xs flex items-center gap-1.5">
                     <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
@@ -541,24 +541,24 @@ function AuthenticatedDashboardView({
 
           {/* Bottom Card: Signal Integrity */}
           <Card className="p-5 space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-[#141d2e]">
+            <div className="flex items-center justify-between pb-2 border-b border-line">
               <div className="flex items-center gap-2">
                 <Activity className="w-4 h-4 text-cyan-400" />
                 <h3 className="font-bold text-slate-100 text-sm">Signal integrity</h3>
               </div>
               <Link href="/admin/platform-health">
-                <span className="px-2 py-0.5 rounded bg-[#141f33] text-slate-300 hover:text-cyan-300 border border-slate-700/60 text-[10px] font-mono font-medium transition-colors cursor-pointer">
+                <span className="px-2 py-0.5 rounded bg-line text-slate-300 hover:text-cyan-300 border border-slate-700/60 text-[10px] font-mono font-medium transition-colors cursor-pointer">
                   Review status
                 </span>
               </Link>
             </div>
 
             <div className="space-y-2.5 text-xs">
-              <div className="flex items-center justify-between py-1 border-b border-[#141f33]">
+              <div className="flex items-center justify-between py-1 border-b border-line">
                 <span className="text-slate-400 font-mono">Telemetry freshness</span>
                 <span className="text-emerald-400 font-medium">Real-time (&lt;1.2s)</span>
               </div>
-              <div className="flex items-center justify-between py-1 border-b border-[#141f33]">
+              <div className="flex items-center justify-between py-1 border-b border-line">
                 <span className="text-slate-400 font-mono">Connector availability</span>
                 <span className="text-emerald-400 font-medium">Healthy (10/10 active)</span>
               </div>
@@ -576,7 +576,7 @@ function AuthenticatedDashboardView({
         {/* Left: Threat Activity Chart (6 cols = 50%) */}
         <div className="lg:col-span-6">
           <Card className="h-full p-5 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-[#141d2e] gap-2">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-line gap-2">
               <div>
                 <h3 className="font-bold text-slate-100 text-sm">Threat activity</h3>
                 <p className="text-xs text-slate-400">Illustrative last 24 hours</p>
@@ -593,7 +593,7 @@ function AuthenticatedDashboardView({
                     <span className="text-slate-400">Triaged</span>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded bg-[#141f33] text-[10px] font-mono text-slate-300">
+                <span className="px-2 py-0.5 rounded bg-line text-[10px] font-mono text-slate-300">
                   24 hours
                 </span>
               </div>
@@ -603,15 +603,15 @@ function AuthenticatedDashboardView({
             <div className="pt-2">
               <svg className="w-full h-40 overflow-visible" viewBox="0 0 500 140">
                 {/* Horizontal Grid lines */}
-                <line x1="30" y1="20" x2="490" y2="20" stroke="#162238" strokeDasharray="3 3" />
-                <line x1="30" y1="60" x2="490" y2="60" stroke="#162238" strokeDasharray="3 3" />
-                <line x1="30" y1="100" x2="490" y2="100" stroke="#162238" strokeDasharray="3 3" />
+                <line x1="30" y1="20" x2="490" y2="20" stroke="rgb(var(--c-line))" strokeDasharray="3 3" />
+                <line x1="30" y1="60" x2="490" y2="60" stroke="rgb(var(--c-line))" strokeDasharray="3 3" />
+                <line x1="30" y1="100" x2="490" y2="100" stroke="rgb(var(--c-line))" strokeDasharray="3 3" />
 
                 {/* Y-axis labels */}
-                <text x="10" y="24" fill="#64748b" fontSize="10" fontFamily="monospace">60</text>
-                <text x="10" y="64" fill="#64748b" fontSize="10" fontFamily="monospace">40</text>
-                <text x="10" y="104" fill="#64748b" fontSize="10" fontFamily="monospace">20</text>
-                <text x="15" y="136" fill="#64748b" fontSize="10" fontFamily="monospace">0</text>
+                <text x="10" y="24" fill="rgb(var(--c-slate-500))" fontSize="10" fontFamily="monospace">60</text>
+                <text x="10" y="64" fill="rgb(var(--c-slate-500))" fontSize="10" fontFamily="monospace">40</text>
+                <text x="10" y="104" fill="rgb(var(--c-slate-500))" fontSize="10" fontFamily="monospace">20</text>
+                <text x="15" y="136" fill="rgb(var(--c-slate-500))" fontSize="10" fontFamily="monospace">0</text>
 
                 {/* Shaded Area for Unresolved (Rose) */}
                 <defs>
@@ -652,16 +652,16 @@ function AuthenticatedDashboardView({
                 />
 
                 {/* Data points */}
-                <circle cx="300" cy="50" r="4" fill="#f43f5e" stroke="#0c111e" strokeWidth="2" />
-                <circle cx="310" cy="80" r="4" fill="#06b6d4" stroke="#0c111e" strokeWidth="2" />
+                <circle cx="300" cy="50" r="4" fill="#f43f5e" stroke="rgb(var(--c-raised))" strokeWidth="2" />
+                <circle cx="310" cy="80" r="4" fill="#06b6d4" stroke="rgb(var(--c-raised))" strokeWidth="2" />
 
                 {/* X-axis labels */}
-                <text x="40" y="135" fill="#64748b" fontSize="9" fontFamily="monospace">00:00</text>
-                <text x="120" y="135" fill="#64748b" fontSize="9" fontFamily="monospace">04:00</text>
-                <text x="200" y="135" fill="#64748b" fontSize="9" fontFamily="monospace">08:00</text>
-                <text x="280" y="135" fill="#64748b" fontSize="9" fontFamily="monospace">12:00</text>
-                <text x="360" y="135" fill="#64748b" fontSize="9" fontFamily="monospace">16:00</text>
-                <text x="440" y="135" fill="#64748b" fontSize="9" fontFamily="monospace">20:00</text>
+                <text x="40" y="135" fill="rgb(var(--c-slate-500))" fontSize="9" fontFamily="monospace">00:00</text>
+                <text x="120" y="135" fill="rgb(var(--c-slate-500))" fontSize="9" fontFamily="monospace">04:00</text>
+                <text x="200" y="135" fill="rgb(var(--c-slate-500))" fontSize="9" fontFamily="monospace">08:00</text>
+                <text x="280" y="135" fill="rgb(var(--c-slate-500))" fontSize="9" fontFamily="monospace">12:00</text>
+                <text x="360" y="135" fill="rgb(var(--c-slate-500))" fontSize="9" fontFamily="monospace">16:00</text>
+                <text x="440" y="135" fill="rgb(var(--c-slate-500))" fontSize="9" fontFamily="monospace">20:00</text>
               </svg>
             </div>
           </Card>
@@ -671,9 +671,9 @@ function AuthenticatedDashboardView({
         <div className="lg:col-span-3">
           <Card className="h-full p-5 space-y-3 flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between pb-2 border-b border-[#141d2e]">
+              <div className="flex items-center justify-between pb-2 border-b border-line">
                 <h3 className="font-bold text-slate-100 text-sm">Data sources</h3>
-                <span className="px-2 py-0.5 rounded bg-[#141f33] text-slate-300 border border-slate-700/60 text-[10px] font-mono">
+                <span className="px-2 py-0.5 rounded bg-line text-slate-300 border border-slate-700/60 text-[10px] font-mono">
                   {displayConnectors.length} configured
                 </span>
               </div>
@@ -713,7 +713,7 @@ function AuthenticatedDashboardView({
               </div>
             </div>
 
-            <Link href="/connectors" className="text-xs text-cyan-400 hover:text-cyan-300 font-mono flex items-center justify-between pt-2 border-t border-[#141d2e]">
+            <Link href="/connectors" className="text-xs text-cyan-400 hover:text-cyan-300 font-mono flex items-center justify-between pt-2 border-t border-line">
               <span>Manage connectors</span>
               <ArrowRight className="w-3 h-3" />
             </Link>
@@ -724,7 +724,7 @@ function AuthenticatedDashboardView({
         <div className="lg:col-span-3">
           <Card className="h-full p-5 space-y-3 flex flex-col justify-between">
             <div>
-              <div className="flex items-center justify-between pb-2 border-b border-[#141d2e]">
+              <div className="flex items-center justify-between pb-2 border-b border-line">
                 <h3 className="font-bold text-slate-100 text-sm">Recent activity</h3>
                 <Link href="/ledger" className="text-slate-400 hover:text-cyan-300 text-xs font-mono">
                   Audit trail &gt;
@@ -778,7 +778,7 @@ function AuthenticatedDashboardView({
               </div>
             </div>
 
-            <div className="pt-2 border-t border-[#141d2e] text-[10px] font-mono text-slate-500 flex items-center justify-between">
+            <div className="pt-2 border-t border-line text-[10px] font-mono text-slate-500 flex items-center justify-between">
               <span>Cryptographic verification</span>
               <span className="text-emerald-400">PASS ✓</span>
             </div>
@@ -788,7 +788,7 @@ function AuthenticatedDashboardView({
 
       {/* ERB-01 Interactive Demonstration Workflow (Preserved full navigation to all stages) */}
       <Card className="p-5 space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-[#141d2e]">
+        <div className="flex items-center justify-between pb-3 border-b border-line">
           <div>
             <h3 className="font-bold text-slate-100 text-sm flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-cyan-400" />
@@ -803,7 +803,7 @@ function AuthenticatedDashboardView({
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <Link href="/alerts" className="group">
-            <div className="p-3 rounded-lg bg-[#080c16] border border-[#141f33] hover:border-rose-500/40 transition-all space-y-1">
+            <div className="p-3 rounded-lg bg-surface border border-line hover:border-rose-500/40 transition-all space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono font-bold text-rose-400">STAGE 1</span>
                 <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-rose-500/20 text-rose-300">P1 ALERTS</span>
@@ -818,7 +818,7 @@ function AuthenticatedDashboardView({
           </Link>
 
           <Link href="/cases" className="group">
-            <div className="p-3 rounded-lg bg-[#080c16] border border-[#141f33] hover:border-purple-500/40 transition-all space-y-1">
+            <div className="p-3 rounded-lg bg-surface border border-line hover:border-purple-500/40 transition-all space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono font-bold text-purple-400">STAGE 2</span>
                 <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-purple-500/20 text-purple-300">AI COPILOT</span>
@@ -833,7 +833,7 @@ function AuthenticatedDashboardView({
           </Link>
 
           <Link href="/actions" className="group">
-            <div className="p-3 rounded-lg bg-[#080c16] border border-[#141f33] hover:border-amber-500/40 transition-all space-y-1">
+            <div className="p-3 rounded-lg bg-surface border border-line hover:border-amber-500/40 transition-all space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono font-bold text-amber-400">STAGE 3</span>
                 <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-amber-500/20 text-amber-300">DUAL CUSTODY</span>
@@ -848,7 +848,7 @@ function AuthenticatedDashboardView({
           </Link>
 
           <Link href="/ledger" className="group">
-            <div className="p-3 rounded-lg bg-[#080c16] border border-[#141f33] hover:border-cyan-500/40 transition-all space-y-1">
+            <div className="p-3 rounded-lg bg-surface border border-line hover:border-cyan-500/40 transition-all space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono font-bold text-cyan-400">STAGE 4</span>
                 <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-cyan-500/20 text-cyan-300">MERKLE PQC</span>

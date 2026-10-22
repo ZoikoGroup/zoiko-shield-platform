@@ -108,8 +108,8 @@ export default function RiskRegisterPage() {
   const unassignedCount = risks.filter(r => !r.owner_id).length;
 
   return (
-    <div className="min-h-screen bg-[#060911] text-slate-100 p-6 space-y-6">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-[#162238] pb-6">
+    <div className="min-h-screen bg-canvas text-slate-100 p-6 space-y-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-line pb-6">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
             <Badge variant="info" className="font-mono text-[10px] tracking-wider border-cyan-500/30 bg-cyan-500/10 text-cyan-400">
@@ -129,7 +129,7 @@ export default function RiskRegisterPage() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant="ghost" onClick={() => void load()} className="border border-[#162238] bg-[#0c111e] hover:bg-[#111a2e] text-slate-300">
+          <Button variant="ghost" onClick={() => void load()} className="border border-line bg-raised hover:bg-overlay text-slate-300">
             <RefreshCw className="w-4 h-4 text-cyan-400" />
             <span>Refresh</span>
           </Button>
@@ -148,24 +148,24 @@ export default function RiskRegisterPage() {
 
       {/* Dynamic Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-cyan-500/40 transition-all">
+        <Card className="surface-card p-4 border border-line rounded-xl hover:border-cyan-500/40 transition-all">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Total Risks Logged</span>
           <div className="text-2xl font-bold text-white mt-1 font-mono">{risks.length}</div>
           <span className="text-[10px] text-slate-500 mt-1 inline-block font-mono">Active register items</span>
         </Card>
-        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-rose-500/40 transition-all">
+        <Card className="surface-card p-4 border border-line rounded-xl hover:border-rose-500/40 transition-all">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">High & Critical Severity</span>
           <div className="text-2xl font-bold text-rose-400 mt-1 font-mono">{criticalCount}</div>
           <span className="text-[10px] text-rose-400/80 mt-1 inline-block font-mono">Requiring immediate mitigation</span>
         </Card>
-        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-emerald-500/40 transition-all">
+        <Card className="surface-card p-4 border border-line rounded-xl hover:border-emerald-500/40 transition-all">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Factor Coverage</span>
           <div className="text-2xl font-bold text-emerald-400 mt-1 font-mono">
             {risks.length > 0 ? `${Math.round((withFactorsCount / risks.length) * 100)}%` : "100%"}
           </div>
           <span className="text-[10px] text-emerald-400/80 mt-1 inline-block font-mono">{withFactorsCount} / {risks.length} decomposed</span>
         </Card>
-        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-amber-500/40 transition-all">
+        <Card className="surface-card p-4 border border-line rounded-xl hover:border-amber-500/40 transition-all">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Unassigned Owners</span>
           <div className="text-2xl font-bold text-amber-300 mt-1 font-mono">{unassignedCount}</div>
           <span className="text-[10px] text-amber-400/80 mt-1 inline-block font-mono">Pending accountability</span>
@@ -173,7 +173,7 @@ export default function RiskRegisterPage() {
       </div>
 
       {risks.length === 0 ? (
-        <Card className="surface-card border border-[#162238] p-8 text-center rounded-xl">
+        <Card className="surface-card border border-line p-8 text-center rounded-xl">
           <p className="text-sm font-semibold text-slate-200">No risks are recorded for this tenant.</p>
           <p className="text-xs font-mono text-slate-500 mt-1.5 max-w-md mx-auto">
             This is an empty register, not a clean bill of health — nothing has assessed
@@ -183,7 +183,7 @@ export default function RiskRegisterPage() {
       ) : (
         <div className="space-y-4">
           {risks.map((risk) => (
-            <Card key={risk.id} className="surface-card p-5 border border-[#162238] rounded-xl hover:border-cyan-500/30 transition-all shadow-md">
+            <Card key={risk.id} className="surface-card p-5 border border-line rounded-xl hover:border-cyan-500/30 transition-all shadow-md">
               <div className="flex items-start justify-between gap-4 mb-3">
                 <div>
                   <h2 className="text-sm font-semibold text-white tracking-wide">{risk.title}</h2>
@@ -196,14 +196,14 @@ export default function RiskRegisterPage() {
                     {risk.likelihood} / {risk.impact}
                   </Badge>
                   {risk.status && (
-                    <Badge variant="neutral" className="font-mono text-[10px] border-[#162238] text-slate-300">
+                    <Badge variant="neutral" className="font-mono text-[10px] border-line text-slate-300">
                       {risk.status}
                     </Badge>
                   )}
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs font-mono text-slate-400 mb-4 bg-[#060911] p-3 rounded-lg border border-[#162238]">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs font-mono text-slate-400 mb-4 bg-canvas p-3 rounded-lg border border-line">
                 <span><span className="text-slate-500 uppercase text-[10px]">owner:</span> {risk.owner_id || "unassigned"}</span>
                 <span>
                   <span className="text-slate-500 uppercase text-[10px]">raised:</span> {risk.created_at ? formatTimestamp(risk.created_at) : "unknown"}
@@ -214,9 +214,9 @@ export default function RiskRegisterPage() {
               </div>
 
               {risk.factors && risk.factors.length > 0 ? (
-                <div className="overflow-x-auto border border-[#162238] rounded-lg">
+                <div className="overflow-x-auto border border-line rounded-lg">
                   <table className="w-full text-xs font-mono">
-                    <thead className="bg-[#060911] border-b border-[#162238]">
+                    <thead className="bg-canvas border-b border-line">
                       <tr className="text-slate-400 text-left text-[10px] uppercase">
                         <th className="py-2.5 px-3">Factor</th>
                         <th className="py-2.5 px-3">Value</th>
@@ -224,7 +224,7 @@ export default function RiskRegisterPage() {
                         <th className="py-2.5 px-3">Source</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#162238]">
+                    <tbody className="divide-y divide-line">
                       {(risk.factors || []).map((factor) => (
                         <tr key={factor.factor} className="hover:bg-slate-800/30 transition-colors">
                           <td className="py-2.5 px-3 text-slate-200 font-medium">{factor.factor}</td>

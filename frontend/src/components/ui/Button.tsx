@@ -24,7 +24,7 @@ export const Button: React.FC<ButtonProps> = ({
       case "cyan":
         return "bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/40 hover:border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.18)]";
       case "secondary":
-        return "bg-[#0f172a] hover:bg-[#1e293b] text-slate-200 border border-[#1e293b] hover:border-slate-600";
+        return "bg-overlay hover:bg-line-strong text-slate-200 border border-line-strong hover:border-slate-600";
       case "danger":
         return "bg-rose-600 hover:bg-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.35)] border border-rose-500/40";
       case "outline":
@@ -34,7 +34,7 @@ export const Button: React.FC<ButtonProps> = ({
       case "ai":
         return "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-[0_0_18px_rgba(168,85,247,0.4)] border border-purple-400/50";
       default:
-        return "bg-[#0f172a] text-white border border-[#1e293b]";
+        return "bg-overlay text-white border border-line-strong";
     }
   };
 

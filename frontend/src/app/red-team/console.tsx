@@ -137,7 +137,7 @@ export default function RedTeamSimulatorPage() {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl">
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-raised via-surface to-canvas shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
@@ -160,7 +160,7 @@ export default function RedTeamSimulatorPage() {
           </div>
 
           <div className="flex items-center gap-3 font-mono text-xs">
-            <div className="px-3.5 py-2 rounded-xl bg-[#080d19] border border-slate-800 text-slate-300">
+            <div className="px-3.5 py-2 rounded-xl bg-surface border border-slate-800 text-slate-300">
               MITRE ATT&amp;CK Coverage: <span className="text-emerald-400 font-bold">100% (3/3 Stages Detected)</span>
             </div>
           </div>
@@ -169,22 +169,22 @@ export default function RedTeamSimulatorPage() {
 
       {/* 4 Summary KPI Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Detection Efficacy</div>
           <div className="text-2xl font-bold font-mono text-emerald-400 mt-1">100.0%</div>
           <div className="text-[11px] text-slate-400 mt-0.5">Continuous rule validation</div>
         </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Mean Time to Detect (MTTD)</div>
           <div className="text-2xl font-bold font-mono text-cyan-400 mt-1">850 ms</div>
           <div className="text-[11px] text-slate-400 mt-0.5">Real-time stream evaluation</div>
         </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Zero-Day Defense Posture</div>
           <div className="text-2xl font-bold font-mono text-purple-400 mt-1">HARDENED</div>
           <div className="text-[11px] text-slate-400 mt-0.5">Dual-layer AI verification</div>
         </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Attack Stages Emulated</div>
           <div className="text-2xl font-bold font-mono text-rose-400 mt-1">3 Stages</div>
           <div className="text-[11px] text-slate-400 mt-0.5">Deterministic OCSF payload</div>
@@ -213,7 +213,7 @@ export default function RedTeamSimulatorPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Scenario Parameters */}
         <div className="space-y-6">
-          <div className="surface-card rounded-2xl p-6 bg-[#0c111e]/90 border border-slate-800/80 shadow-xl space-y-4">
+          <div className="surface-card rounded-2xl p-6 bg-raised/90 border border-slate-800/80 shadow-xl space-y-4">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2 text-sm font-bold text-slate-200">
                 <Zap className="w-4 h-4 text-amber-400" />
@@ -290,7 +290,7 @@ export default function RedTeamSimulatorPage() {
 
 
           {/* Validation Metrics */}
-          <div className="surface-card rounded-2xl p-6 bg-[#0c111e]/90 border border-slate-800/80 shadow-xl space-y-3 font-mono text-xs">
+          <div className="surface-card rounded-2xl p-6 bg-raised/90 border border-slate-800/80 shadow-xl space-y-3 font-mono text-xs">
             <div className="text-sm font-bold text-slate-200 border-b border-slate-800 pb-2">
               Continuous Validation Metrics
             </div>

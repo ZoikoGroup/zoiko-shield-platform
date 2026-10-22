@@ -254,7 +254,7 @@ export default function PlatformHealthPage() {
   return (
     <div className="space-y-8 pb-16">
       {/* Header Banner */}
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-raised via-surface to-canvas shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono">
             <Activity className="w-3.5 h-3.5" />
@@ -274,7 +274,7 @@ export default function PlatformHealthPage() {
               setRefreshing(true);
               loadHealth();
             }}
-            className="p-2 rounded-lg bg-[#080c16] border border-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
+            className="p-2 rounded-lg bg-surface border border-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
             title="Refresh Health States"
           >
             <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
@@ -298,7 +298,7 @@ export default function PlatformHealthPage() {
 
       {/* Overall Platform Readiness Banner */}
       {snapshot && (
-        <div className="surface-card p-6 rounded-2xl bg-[#0c111e]/90 border border-slate-800/80 shadow-xl space-y-4">
+        <div className="surface-card p-6 rounded-2xl bg-raised/90 border border-slate-800/80 shadow-xl space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="space-y-1">
               <div className="text-xs font-mono text-slate-400 uppercase">Overall Platform Readiness</div>

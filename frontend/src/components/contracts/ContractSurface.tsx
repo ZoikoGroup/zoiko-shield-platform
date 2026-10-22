@@ -122,7 +122,7 @@ export function ContractSurface({
 
   return (
     <div className="space-y-6">
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-b from-[#0e1424] to-[#0a0e1a] shadow-xl">
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-b from-raised to-surface shadow-xl">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2.5">

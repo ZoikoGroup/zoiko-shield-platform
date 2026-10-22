@@ -132,7 +132,7 @@ function Section({
 }) {
   return (
     <Card variant="cyber" className="p-5 space-y-4">
-      <div className="flex items-baseline justify-between border-b border-[#162238] pb-3">
+      <div className="flex items-baseline justify-between border-b border-line pb-3">
         <div>
           <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">{title}</h2>
           <p className="text-[11px] font-mono text-slate-400 mt-0.5">{requirement}</p>
@@ -186,7 +186,7 @@ export default function DeveloperSurfacePage() {
               {clients.map((client) => (
                 <div
                   key={client.id}
-                  className="rounded-xl border border-[#162238] bg-[#060911]/80 p-4 space-y-3 shadow-inner"
+                  className="rounded-xl border border-line bg-canvas/80 p-4 space-y-3 shadow-inner"
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge variant={clientStatusVariant(client.status)}>
@@ -201,7 +201,7 @@ export default function DeveloperSurfacePage() {
                   </div>
                   <p className="text-xs text-slate-400">{client.purpose}</p>
 
-                  <div className="grid grid-cols-2 gap-2 md:grid-cols-4 p-3 rounded-lg bg-[#0a0f1d] border border-[#162238]">
+                  <div className="grid grid-cols-2 gap-2 md:grid-cols-4 p-3 rounded-lg bg-surface border border-line">
                     <div>
                       <p className="text-[11px] font-mono uppercase text-slate-500">
                         Environment
@@ -251,10 +251,10 @@ export default function DeveloperSurfacePage() {
                         No credential has been issued, so this client cannot authenticate.
                       </p>
                     ) : (
-                      <div className="overflow-x-auto rounded-lg border border-[#162238]">
+                      <div className="overflow-x-auto rounded-lg border border-line">
                         <table className="w-full text-[11px] font-mono">
                           <thead>
-                            <tr className="border-b border-[#162238] text-left text-slate-400 bg-[#060911]">
+                            <tr className="border-b border-line text-left text-slate-400 bg-canvas">
                               <th className="py-1.5 px-2.5">v</th>
                               <th className="py-1.5 px-2.5">Fingerprint</th>
                               <th className="py-1.5 px-2.5">Status</th>
@@ -262,11 +262,11 @@ export default function DeveloperSurfacePage() {
                               <th className="py-1.5 px-2.5">Expires</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-[#162238]/60">
+                          <tbody className="divide-y divide-line/60">
                             {(client.credentials ?? []).map((credential) => (
                               <tr
                                 key={credential.id}
-                                className="hover:bg-[#0c1424] transition-colors"
+                                className="hover:bg-raised transition-colors"
                               >
                                 <td className="py-1.5 px-2.5 text-slate-300">
                                   {credential.secret_version}
@@ -404,7 +404,7 @@ export default function DeveloperSurfacePage() {
           requirement="The throughput a client can expect before it is throttled."
         >
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
-            <div className="rounded-xl border border-[#162238] bg-[#060911]/80 p-3 shadow-inner">
+            <div className="rounded-xl border border-line bg-canvas/80 p-3 shadow-inner">
               <p className="text-[11px] font-mono uppercase text-slate-500">
                 Requests per client
               </p>
@@ -412,13 +412,13 @@ export default function DeveloperSurfacePage() {
                 {RATE_LIMIT.maxRequestsPerClient}
               </p>
             </div>
-            <div className="rounded-xl border border-[#162238] bg-[#060911]/80 p-3 shadow-inner">
+            <div className="rounded-xl border border-line bg-canvas/80 p-3 shadow-inner">
               <p className="text-[11px] font-mono uppercase text-slate-500">Window</p>
               <p className="font-mono text-xl font-bold text-slate-100 mt-1">
                 {RATE_LIMIT.windowSeconds}s
               </p>
             </div>
-            <div className="rounded-xl border border-[#162238] bg-[#060911]/80 p-3 shadow-inner">
+            <div className="rounded-xl border border-line bg-canvas/80 p-3 shadow-inner">
               <p className="text-[11px] font-mono uppercase text-slate-500">
                 On exceed
               </p>
@@ -442,7 +442,7 @@ export default function DeveloperSurfacePage() {
             {clients.map((client) => (
               <div
                 key={client.id}
-                className="flex items-center justify-between rounded-xl border border-[#162238] bg-[#060911]/60 px-3 py-2"
+                className="flex items-center justify-between rounded-xl border border-line bg-canvas/60 px-3 py-2"
               >
                 <span className="text-xs text-slate-200 font-medium">{client.name}</span>
                 <span className="font-mono text-[11px] text-slate-400">

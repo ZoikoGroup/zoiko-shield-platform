@@ -16,15 +16,15 @@ export const Card: React.FC<CardProps> = ({
   const getVariantStyles = () => {
     switch (variant) {
       case "cyber":
-        return "bg-[#0c111e]/95 border border-cyan-500/25 shadow-[0_4px_24px_rgba(0,0,0,0.6)]";
+        return "bg-raised/95 border border-cyan-500/25 shadow-[0_4px_24px_rgba(0,0,0,0.6)]";
       case "ai":
-        return "bg-gradient-to-b from-purple-950/20 to-[#0c111e]/95 border border-purple-500/30 shadow-[0_0_20px_rgba(168,85,247,0.12)]";
+        return "bg-gradient-to-b from-purple-950/20 to-raised/95 border border-purple-500/30 shadow-[0_0_20px_rgba(168,85,247,0.12)]";
       case "glass":
-        return "bg-[#0c111e]/80 backdrop-blur-md border border-slate-800/90 shadow-xl";
+        return "bg-raised/80 backdrop-blur-md border border-slate-800/90 shadow-xl";
       case "well":
-        return "bg-[#080c16] border border-[#141f33]";
+        return "bg-surface border border-line";
       default:
-        return "bg-[#0c111e] border border-[#162238] shadow-[0_2px_12px_rgba(0,0,0,0.3)]";
+        return "bg-raised border border-line shadow-[0_2px_12px_rgba(0,0,0,0.3)]";
     }
   };
 

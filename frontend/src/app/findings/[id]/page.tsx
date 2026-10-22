@@ -162,7 +162,7 @@ function Section({
 }) {
   return (
     <Card variant="cyber" className="p-5 space-y-4">
-      <div className="border-b border-[#162238] pb-3">
+      <div className="border-b border-line pb-3">
         <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">{title}</h2>
         <p className="text-[11px] font-mono text-slate-400 mt-0.5">{requirement}</p>
       </div>

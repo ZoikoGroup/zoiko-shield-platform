@@ -247,7 +247,7 @@ export default function ThreatHuntingPage() {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="surface-card p-6 rounded-2xl border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl space-y-3">
+      <div className="surface-card p-6 rounded-2xl border border-slate-800/80 bg-gradient-to-r from-raised via-surface to-canvas shadow-xl space-y-3">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
@@ -270,10 +270,10 @@ export default function ThreatHuntingPage() {
           </div>
 
           <div className="flex items-center gap-3 font-mono text-xs">
-            <div className="px-3 py-1.5 rounded-lg bg-[#080c16] border border-slate-800 text-slate-300">
+            <div className="px-3 py-1.5 rounded-lg bg-surface border border-slate-800 text-slate-300">
               Provider: <span className="text-purple-400 font-bold">Vertex AI Gemini (gemini-1.5-pro-002 [derived])</span>
             </div>
-            <div className="px-3 py-1.5 rounded-lg bg-[#080c16] border border-slate-800 text-slate-300">
+            <div className="px-3 py-1.5 rounded-lg bg-surface border border-slate-800 text-slate-300">
               Case:{" "}
               <span className="text-cyan-400 font-bold font-mono">
                 {state?.cases?.[0]?.id ?? "No active case"}
@@ -285,7 +285,7 @@ export default function ThreatHuntingPage() {
 
       {/* KPI Metrics Strip */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="surface-card p-4 rounded-xl border border-slate-800/80 bg-[#0c111e]/90 hover:border-purple-500/30 transition-all shadow-lg">
+        <div className="surface-card p-4 rounded-xl border border-slate-800/80 bg-raised/90 hover:border-purple-500/30 transition-all shadow-lg">
           <div className="text-[11px] font-mono text-slate-400 flex items-center justify-between">
             <span>ACTIVE HUNT SESSIONS</span>
             <Crosshair className="w-3.5 h-3.5 text-purple-400" />
@@ -297,7 +297,7 @@ export default function ThreatHuntingPage() {
           </div>
         </div>
 
-        <div className="surface-card p-4 rounded-xl border border-slate-800/80 bg-[#0c111e]/90 hover:border-cyan-500/30 transition-all shadow-lg">
+        <div className="surface-card p-4 rounded-xl border border-slate-800/80 bg-raised/90 hover:border-cyan-500/30 transition-all shadow-lg">
           <div className="text-[11px] font-mono text-slate-400 flex items-center justify-between">
             <span>MITRE TTPS COVERED</span>
             <GitBranch className="w-3.5 h-3.5 text-cyan-400" />
@@ -306,7 +306,7 @@ export default function ThreatHuntingPage() {
           <div className="text-[10px] font-mono text-slate-400 mt-1">T1558.003, T1071, T1490</div>
         </div>
 
-        <div className="surface-card p-4 rounded-xl border border-slate-800/80 bg-[#0c111e]/90 hover:border-emerald-500/30 transition-all shadow-lg">
+        <div className="surface-card p-4 rounded-xl border border-slate-800/80 bg-raised/90 hover:border-emerald-500/30 transition-all shadow-lg">
           <div className="text-[11px] font-mono text-slate-400 flex items-center justify-between">
             <span>REASONING LOOP</span>
             <Terminal className="w-3.5 h-3.5 text-emerald-400" />
@@ -315,7 +315,7 @@ export default function ThreatHuntingPage() {
           <div className="text-[10px] font-mono text-slate-400 mt-1">Merkle Proof Verified</div>
         </div>
 
-        <div className="surface-card p-4 rounded-xl border border-slate-800/80 bg-[#0c111e]/90 hover:border-amber-500/30 transition-all shadow-lg">
+        <div className="surface-card p-4 rounded-xl border border-slate-800/80 bg-raised/90 hover:border-amber-500/30 transition-all shadow-lg">
           <div className="text-[11px] font-mono text-slate-400 flex items-center justify-between">
             <span>BLAST RADIUS GUARD</span>
             <ShieldAlert className="w-3.5 h-3.5 text-amber-400" />

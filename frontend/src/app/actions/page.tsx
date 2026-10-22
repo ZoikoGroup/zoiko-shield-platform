@@ -91,7 +91,7 @@ export default function SoarActionsFreezePage() {
           <div className="text-[11px] text-slate-500 -mt-1 mb-3">Risk tier, initiator, authorization and execution status</div>
           <div className="flex flex-wrap gap-1.5 mb-3">
             {FILTERS.map((f) => (
-              <button key={f.id} type="button" onClick={() => setFilter(f.id)} className={`px-3 py-1.5 rounded-lg border text-[11px] font-semibold ${filter === f.id ? "bg-sky-600 border-sky-500 text-white" : "border-[#1e2b44] text-slate-300"}`}>{f.label}{f.id === "all" ? " · 42" : ""}</button>
+              <button key={f.id} type="button" onClick={() => setFilter(f.id)} className={`px-3 py-1.5 rounded-lg border text-[11px] font-semibold ${filter === f.id ? "bg-sky-600 border-sky-500 text-white" : "border-line-strong text-slate-300"}`}>{f.label}{f.id === "all" ? " · 42" : ""}</button>
             ))}
           </div>
           <DataTable
@@ -118,7 +118,7 @@ export default function SoarActionsFreezePage() {
           </div>
           {detailTab === "Action overview" && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="rounded-lg border border-[#162238] p-3">
+              <div className="rounded-lg border border-line p-3">
                 <div className="text-xs font-bold text-slate-200 mb-2">Request context</div>
                 <KeyValues cols={1} items={[
                   { k: "Origin", v: sel.source },
@@ -127,7 +127,7 @@ export default function SoarActionsFreezePage() {
                   { k: "Current state", v: sel.status === "Complete" ? "Executed (simulation)" : "Not executed", tone: sel.status === "Complete" ? "emerald" : "rose" },
                 ]} />
               </div>
-              <div className="rounded-lg border border-[#162238] p-3">
+              <div className="rounded-lg border border-line p-3">
                 <div className="text-xs font-bold text-slate-200 mb-2">Scope &amp; reversibility</div>
                 <ul className="space-y-1.5 text-[11px] text-slate-300">
                   {["One target; restricted scope", "Preserve forensic evidence", "Pre-execution impact simulation", "Single-use rollback authorization"].map((s) => <li key={s} className="flex items-center gap-2"><span className="w-1.5 h-1.5 rounded-full bg-sky-400" />{s}</li>)}
@@ -159,7 +159,7 @@ export default function SoarActionsFreezePage() {
               [`${sel.action.split(" ")[0]} target, record result & receipt`, "Not executed", "amber"],
               ["Verify outcome and issue rollback receipt", "Not executed", "amber"],
             ].map(([l, s, t]) => (
-              <li key={l} className="flex items-center justify-between gap-3 rounded-lg border border-[#162238] px-3 py-2 text-xs">
+              <li key={l} className="flex items-center justify-between gap-3 rounded-lg border border-line px-3 py-2 text-xs">
                 <span className="flex items-center gap-2 text-slate-200">{t === "emerald" ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />}{l}</span>
                 <span className={`text-[11px] ${t === "emerald" ? "text-emerald-300" : "text-amber-300"}`}>{s}</span>
               </li>
@@ -168,7 +168,7 @@ export default function SoarActionsFreezePage() {
         </Panel>
         <Panel title="Independent approval & freeze controls" meta="Fail-closed · Auditable">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="rounded-lg border border-[#162238] p-3">
+            <div className="rounded-lg border border-line p-3">
               <div className="text-xs font-bold text-slate-200 mb-3">Authorization chain</div>
               <ol className="space-y-3 text-[11px]">
                 <li><div className="font-semibold text-emerald-300">✓ Action proposed</div><div className="text-slate-500">Request recorded · 14 Oct, 13:42</div></li>
@@ -177,7 +177,7 @@ export default function SoarActionsFreezePage() {
                 <li><div className="font-semibold text-sky-300">Execution gate · Locked</div><div className="text-slate-500">Freeze + quorum policies enforced</div></li>
               </ol>
             </div>
-            <div className="rounded-lg border border-[#162238] p-3">
+            <div className="rounded-lg border border-line p-3">
               <div className="text-xs font-bold text-slate-200 mb-3">Emergency freeze</div>
               <div className="rounded-lg border border-amber-500/40 bg-amber-950/30 p-2.5 mb-3">
                 <div className="text-[11px] font-bold text-amber-200">● GLOBAL FREEZE IS ACTIVE</div>
@@ -188,7 +188,7 @@ export default function SoarActionsFreezePage() {
                 <div className="flex justify-between"><span className="text-slate-400">Proof &amp; audit</span><span className="text-slate-200">Log preview only</span></div>
                 <div className="flex justify-between"><span className="text-slate-400">Rollback</span><span className="text-slate-200">Plan required</span></div>
               </div>
-              <button type="button" disabled className="mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-[#1e2b44] bg-[#080c16] text-xs text-slate-500 cursor-not-allowed"><Lock className="w-3.5 h-3.5" /> Execute action — DISABLED</button>
+              <button type="button" disabled className="mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-line-strong bg-surface text-xs text-slate-500 cursor-not-allowed"><Lock className="w-3.5 h-3.5" /> Execute action — DISABLED</button>
             </div>
           </div>
         </Panel>

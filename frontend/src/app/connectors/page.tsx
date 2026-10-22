@@ -31,7 +31,7 @@ function MaskedField({ id, label, hint }: { id: string; label: string; hint: str
   return (
     <div>
       <label htmlFor={id} className="block text-[11px] font-semibold text-slate-300 mb-1">{label}</label>
-      <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-[#080c16] border border-[#1e2b44] text-xs">
+      <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-surface border border-line-strong text-xs">
         <input id={id} type="password" autoComplete="off" placeholder="•••• •••• ••••" className="bg-transparent outline-none text-slate-100 placeholder:text-slate-500 w-full" />
         <span className="text-[10px] text-slate-500 shrink-0 ml-2">{hint}</span>
       </div>
@@ -73,7 +73,7 @@ export default function ConnectorsWizardPage() {
       banner={<NoticeBanner tone="cyan" title="Sovereign Multi-Cloud Ingestion Fabric" body="Enterprise telemetry connectors with automated OCSF 1.1 mapping and zero-trust pre-activation validation." tag="Ingestion Pipeline Active" />}
       kpis={
         <>
-          <div className="rounded-xl bg-[#0c111e] border border-[#162238] p-4">
+          <div className="rounded-xl bg-raised border border-line p-4">
             <StepFlow
               steps={[
                 { label: "1. Select source", sub: `${sel.name} chosen`, state: "done" },
@@ -104,21 +104,21 @@ export default function ConnectorsWizardPage() {
           <div className="mb-2"><SearchInput value={query} onChange={setQuery} placeholder="Search connectors" /></div>
           <div className="flex flex-wrap gap-1.5 mb-3">
             {(["All", "Cloud", "Identity", "Dev tools"] as const).map((k) => (
-              <button key={k} type="button" onClick={() => setKind(k)} className={`px-2.5 py-1 rounded-full border text-[11px] ${kind === k ? "bg-sky-600 border-sky-500 text-white" : "border-[#1e2b44] text-slate-300"}`}>{k}</button>
+              <button key={k} type="button" onClick={() => setKind(k)} className={`px-2.5 py-1 rounded-full border text-[11px] ${kind === k ? "bg-sky-600 border-sky-500 text-white" : "border-line-strong text-slate-300"}`}>{k}</button>
             ))}
           </div>
           <ul className="space-y-2">
             {list.map((c) => (
               <li key={c.name}>
-                <button type="button" onClick={() => choose(c)} className={`w-full flex items-center gap-3 rounded-lg border p-2.5 text-left ${c.name === sel.name ? "border-sky-500 bg-sky-950/40" : "border-[#162238] hover:border-slate-600"}`}>
-                  <span className="w-9 h-9 rounded-lg bg-[#13203a] text-sm font-bold text-sky-200 flex items-center justify-center">{c.code}</span>
+                <button type="button" onClick={() => choose(c)} className={`w-full flex items-center gap-3 rounded-lg border p-2.5 text-left ${c.name === sel.name ? "border-sky-500 bg-sky-950/40" : "border-line hover:border-slate-600"}`}>
+                  <span className="w-9 h-9 rounded-lg bg-line text-sm font-bold text-sky-200 flex items-center justify-center">{c.code}</span>
                   <span className="flex-1 min-w-0"><span className="block text-xs font-semibold text-slate-100">{c.name}</span><span className="block text-[10px] text-slate-500 truncate">{c.sub}</span></span>
                   <Pill tone={c.name === sel.name ? "amber" : "emerald"}>{c.name === sel.name ? "Selected" : "Available"}</Pill>
                 </button>
               </li>
             ))}
           </ul>
-          <div className="mt-4 rounded-lg border border-[#162238] p-3">
+          <div className="mt-4 rounded-lg border border-line p-3">
             <div className="text-xs font-semibold text-slate-200 mb-1">Setup guidance</div>
             <p className="text-[11px] text-slate-400">Select a source, configure the minimum required permissions, test connectivity and verify mapped events before activation.</p>
           </div>
@@ -127,7 +127,7 @@ export default function ConnectorsWizardPage() {
 
         <Panel title={`Configuration · ${sel.name}`} meta="DRAFT · NOT ACTIVATED" metaTone="amber" className="xl:col-span-6">
           <div className="flex items-center gap-3 mb-3">
-            <span className="w-12 h-12 rounded-lg bg-[#13203a] text-lg font-bold text-sky-200 flex items-center justify-center">{sel.code}</span>
+            <span className="w-12 h-12 rounded-lg bg-line text-lg font-bold text-sky-200 flex items-center justify-center">{sel.code}</span>
             <div><div className="text-base font-bold text-slate-100">{sel.name}</div><div className="text-[11px] text-slate-500">{sel.sub} · Demo configuration</div></div>
           </div>
           <p className="text-[11px] text-slate-400 mb-4">Connection details are tenant-scoped. Configure only authorized read permissions.</p>
@@ -135,18 +135,18 @@ export default function ConnectorsWizardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
               <label htmlFor="conn-name" className="block text-[11px] font-semibold text-slate-300 mb-1">Connector display name</label>
-              <input id="conn-name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-[#080c16] border border-[#1e2b44] text-xs text-slate-100 outline-none focus:border-sky-500" />
+              <input id="conn-name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-surface border border-line-strong text-xs text-slate-100 outline-none focus:border-sky-500" />
             </div>
             <div>
               <span className="block text-[11px] font-semibold text-slate-300 mb-1">Authentication method</span>
-              <div className="px-3 py-2 rounded-lg bg-[#080c16] border border-[#1e2b44] text-xs text-slate-100">{sel.auth}</div>
+              <div className="px-3 py-2 rounded-lg bg-surface border border-line-strong text-xs text-slate-100">{sel.auth}</div>
             </div>
             <MaskedField id="conn-tenant" label={sel.idLabel} hint="masked" />
             <MaskedField id="conn-app" label={sel.appLabel} hint="masked" />
             <MaskedField id="conn-secret" label="Client secret" hint="write-only" />
             <div>
               <label htmlFor="conn-region" className="block text-[11px] font-semibold text-slate-300 mb-1">Source region</label>
-              <select id="conn-region" className="w-full px-3 py-2 rounded-lg bg-[#080c16] border border-[#1e2b44] text-xs text-slate-100">
+              <select id="conn-region" className="w-full px-3 py-2 rounded-lg bg-surface border border-line-strong text-xs text-slate-100">
                 <option>US East (example)</option><option>EU West (example)</option><option>UK South (example)</option>
               </select>
             </div>
@@ -162,7 +162,7 @@ export default function ConnectorsWizardPage() {
             ["resource", "Resource activity logs"],
             ["diagnostic", "Optional diagnostic telemetry"],
           ] as const).map(([k, label]) => (
-            <label key={k} className="flex items-center justify-between py-2 border-b border-[#111a2b] text-xs text-slate-200">
+            <label key={k} className="flex items-center justify-between py-2 border-b border-line text-xs text-slate-200">
               <span className="flex items-center gap-2"><input type="checkbox" checked={collect[k]} onChange={(e) => setCollect((c) => ({ ...c, [k]: e.target.checked }))} className="accent-sky-500" />{label}</span>
               <span className="text-[10px] text-slate-500">{collect[k] ? "Enabled" : "Off"}</span>
             </label>
@@ -184,7 +184,7 @@ export default function ConnectorsWizardPage() {
           <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-300 mb-2">Pre-activation gates</div>
           <ul className="space-y-1.5">
             {GATES.map((g) => (
-              <li key={g.label} className="flex items-center justify-between rounded-md border border-[#162238] px-2.5 py-1.5 text-xs">
+              <li key={g.label} className="flex items-center justify-between rounded-md border border-line px-2.5 py-1.5 text-xs">
                 <span className="flex items-center gap-2 text-slate-200">{g.status === "Complete" ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Circle className="w-3.5 h-3.5 text-slate-500" />}{g.label}</span>
                 <span className="text-[10px] text-slate-500">{g.status}</span>
               </li>
@@ -195,12 +195,12 @@ export default function ConnectorsWizardPage() {
             <thead><tr className="text-left text-slate-500"><th className="py-1">Source field</th><th>Target</th><th>Check</th></tr></thead>
             <tbody>
               {[["TimeGenerated", "time"], ["ResourceId", "resource.uid"], ["Severity", "severity"]].map(([s, t]) => (
-                <tr key={s} className="border-t border-[#111a2b]"><td className="py-1.5 text-slate-300">{s}</td><td className="text-slate-300">{t}</td><td className="text-amber-300">Not tested</td></tr>
+                <tr key={s} className="border-t border-line"><td className="py-1.5 text-slate-300">{s}</td><td className="text-slate-300">{t}</td><td className="text-amber-300">Not tested</td></tr>
               ))}
             </tbody>
           </table>
           <div className="text-[10px] font-bold uppercase tracking-wider text-cyan-300 mt-4 mb-2">Activation control</div>
-          <button type="button" disabled className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-[#1e2b44] bg-[#080c16] text-xs text-slate-500 cursor-not-allowed"><Lock className="w-3.5 h-3.5" /> Activate connector · unavailable</button>
+          <button type="button" disabled className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-line-strong bg-surface text-xs text-slate-500 cursor-not-allowed"><Lock className="w-3.5 h-3.5" /> Activate connector · unavailable</button>
         </Panel>
       </div>
     </WorkspacePage>

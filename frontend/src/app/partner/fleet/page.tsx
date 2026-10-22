@@ -126,8 +126,8 @@ export default function MsspFleetPage() {
               ]}
             />
             <div className="grid grid-cols-2 gap-2 mt-4">
-              <div className="flex items-center gap-2 rounded-lg border border-[#162238] p-2.5 text-xs"><CheckCircle2 className="w-4 h-4 text-emerald-400" /><div><div className="font-semibold text-slate-200">MSSP security approver</div><div className="text-[10px] text-slate-500">Approved · recorded</div></div></div>
-              <div className="flex items-center gap-2 rounded-lg border border-[#162238] p-2.5 text-xs"><Clock className="w-4 h-4 text-amber-400" /><div><div className="font-semibold text-slate-200">Customer Tenant Owner</div><div className="text-[10px] text-slate-500">Awaiting independent decision</div></div></div>
+              <div className="flex items-center gap-2 rounded-lg border border-line p-2.5 text-xs"><CheckCircle2 className="w-4 h-4 text-emerald-400" /><div><div className="font-semibold text-slate-200">MSSP security approver</div><div className="text-[10px] text-slate-500">Approved · recorded</div></div></div>
+              <div className="flex items-center gap-2 rounded-lg border border-line p-2.5 text-xs"><Clock className="w-4 h-4 text-amber-400" /><div><div className="font-semibold text-slate-200">Customer Tenant Owner</div><div className="text-[10px] text-slate-500">Awaiting independent decision</div></div></div>
             </div>
             <div className="flex items-center justify-between mt-4">
               <span className="text-[11px] text-slate-500">No connection or data access yet</span>
@@ -156,7 +156,7 @@ export default function MsspFleetPage() {
                 { key: "st", header: "Status", render: (r) => <Pill tone={r.st === "Active" ? "emerald" : "slate"}>{r.st}</Pill> },
               ]}
             />
-            <div className="flex items-center justify-between mt-3 rounded-lg border border-[#162238] p-2.5 text-[11px]">
+            <div className="flex items-center justify-between mt-3 rounded-lg border border-line p-2.5 text-[11px]">
               <span className="flex items-center gap-1.5 text-sky-300 font-semibold"><Ban className="w-3.5 h-3.5" /> Immediate revoke</span>
               <span className="text-slate-500">Break-glass removal requires authorized control</span>
             </div>

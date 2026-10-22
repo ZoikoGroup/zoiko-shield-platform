@@ -189,8 +189,8 @@ export default function ResponseProposalsPage() {
         key={proposal.id}
         className={`surface-card rounded-2xl p-6 border shadow-xl transition-all ${
           isOpen
-            ? "bg-[#0c111e]/95 border-slate-800/90 hover:border-slate-700 shadow-cyan-950/20"
-            : "bg-[#090d17]/80 border-slate-800/60 opacity-90"
+            ? "bg-raised/95 border-slate-800/90 hover:border-slate-700 shadow-cyan-950/20"
+            : "bg-surface/80 border-slate-800/60 opacity-90"
         }`}
       >
         <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-4">
@@ -215,7 +215,7 @@ export default function ResponseProposalsPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-4 text-xs font-mono text-slate-400 py-3 border-y border-slate-800/60 mb-4 bg-[#080d19]/40 px-3 rounded-lg">
+        <div className="flex flex-wrap gap-4 text-xs font-mono text-slate-400 py-3 border-y border-slate-800/60 mb-4 bg-surface/40 px-3 rounded-lg">
           <span className="flex items-center gap-1.5 text-slate-300">
             <Sparkles className="w-3.5 h-3.5 text-cyan-400" />
             recommended by {proposal.recommendation_source}
@@ -235,7 +235,7 @@ export default function ResponseProposalsPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs font-mono mb-4">
-          <div className="p-3 rounded-xl bg-[#080d19] border border-slate-800/80">
+          <div className="p-3 rounded-xl bg-surface border border-slate-800/80">
             <span className="text-slate-400 block text-[10px] uppercase">reversible: </span>
             <span className={proposal.reversible ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
               {proposal.reversible
@@ -243,19 +243,19 @@ export default function ResponseProposalsPage() {
                 : "NO — this cannot be undone"}
             </span>
           </div>
-          <div className="p-3 rounded-xl bg-[#080d19] border border-slate-800/80">
+          <div className="p-3 rounded-xl bg-surface border border-slate-800/80">
             <span className="text-slate-400 block text-[10px] uppercase">residual risk: </span>
             <span className="text-slate-200">
               {proposal.residual_risk || "not stated"}
             </span>
           </div>
-          <div className="p-3 rounded-xl bg-[#080d19] border border-slate-800/80">
+          <div className="p-3 rounded-xl bg-surface border border-slate-800/80">
             <span className="text-slate-400 block text-[10px] uppercase">blast radius: </span>
             <span className="text-cyan-300 font-semibold">
               {proposal.blast_radius || "0 Downstream Dependents (Contained)"}
             </span>
           </div>
-          <div className="p-3 rounded-xl bg-[#080d19] border border-slate-800/80">
+          <div className="p-3 rounded-xl bg-surface border border-slate-800/80">
             <span className="text-slate-400 block text-[10px] uppercase">hardware kms signature: </span>
             <span className="text-slate-300 truncate block text-[11px]">
               {proposal.kms_key_signature || "sha256:42c68b71d9a0e... [Cloud KMS Hardware Custody]"}
@@ -317,7 +317,7 @@ export default function ResponseProposalsPage() {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl">
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-raised via-surface to-canvas shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2.5">
@@ -346,22 +346,22 @@ export default function ResponseProposalsPage() {
 
       {/* 4 Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Awaiting Decision</div>
           <div className="text-2xl font-bold font-mono text-amber-400 mt-1">{open.length}</div>
           <div className="text-[11px] text-slate-400 mt-0.5">Pending analyst review</div>
         </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Decided Actions</div>
           <div className="text-2xl font-bold font-mono text-emerald-400 mt-1">{decided.length}</div>
           <div className="text-[11px] text-slate-400 mt-0.5">Audited &amp; signed actions</div>
         </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Total Formulated</div>
           <div className="text-2xl font-bold font-mono text-cyan-400 mt-1">{proposals.length}</div>
           <div className="text-[11px] text-slate-400 mt-0.5">Deterministic AI proposals</div>
         </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Reversibility</div>
           <div className="text-2xl font-bold font-mono text-white mt-1">100% Guaranteed</div>
           <div className="text-[11px] text-cyan-400 mt-0.5">Automated rollback tokens</div>
@@ -375,7 +375,7 @@ export default function ResponseProposalsPage() {
       )}
 
       {proposals.length === 0 ? (
-        <div className="surface-card rounded-2xl p-12 bg-[#0c111e]/90 border border-slate-800/80 text-center">
+        <div className="surface-card rounded-2xl p-12 bg-raised/90 border border-slate-800/80 text-center">
           <p className="text-sm font-medium text-slate-300">No response proposals exist for this tenant.</p>
         </div>
       ) : (

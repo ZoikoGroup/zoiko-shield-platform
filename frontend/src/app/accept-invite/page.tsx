@@ -225,26 +225,26 @@ function AcceptInviteInner() {
               <span>Target Organization &amp; Environment</span>
             </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs font-mono">
-              <div className="p-3.5 bg-[#060911] rounded-xl border border-[#162238] space-y-1 shadow-inner">
+              <div className="p-3.5 bg-canvas rounded-xl border border-line space-y-1 shadow-inner">
                 <span className="text-slate-500 block">Organization Name</span>
                 <span className="text-slate-100 font-bold">{invitation.tenant.name}</span>
                 <span className="text-slate-500 text-[10px] block">Slug: {invitation.tenant.slug}</span>
               </div>
-              <div className="p-3.5 bg-[#060911] rounded-xl border border-[#162238] space-y-1 shadow-inner">
+              <div className="p-3.5 bg-canvas rounded-xl border border-line space-y-1 shadow-inner">
                 <span className="text-slate-500 block">Environment &amp; Region</span>
                 <span className="text-cyan-400 font-bold">{invitation.environment.name}</span>
                 <span className="text-slate-400 text-[10px] block">
                   Region: {invitation.environment.region} ({invitation.environment.type})
                 </span>
               </div>
-              <div className="p-3.5 bg-[#060911] rounded-xl border border-[#162238] space-y-1 shadow-inner">
+              <div className="p-3.5 bg-canvas rounded-xl border border-line space-y-1 shadow-inner">
                 <span className="text-slate-500 block">Invited Owner Identity</span>
                 <span className="text-slate-200 font-bold flex items-center gap-1.5">
                   <Mail className="w-3.5 h-3.5 text-cyan-400" />
                   {invitation.owner.email}
                 </span>
               </div>
-              <div className="p-3.5 bg-[#060911] rounded-xl border border-[#162238] space-y-1 shadow-inner">
+              <div className="p-3.5 bg-canvas rounded-xl border border-line space-y-1 shadow-inner">
                 <span className="text-slate-500 block">Token Expiration</span>
                 <span className="text-amber-400 font-bold">
                   {new Date(invitation.expiresAt).toLocaleString()}
@@ -264,7 +264,7 @@ function AcceptInviteInner() {
                 v{invitation.accessDisclosure.version}
               </Badge>
             </div>
-            <div className="p-4 bg-[#060911] rounded-xl border border-[#162238] text-[11px] font-mono text-slate-300 max-h-48 overflow-y-auto leading-relaxed whitespace-pre-wrap shadow-inner">
+            <div className="p-4 bg-canvas rounded-xl border border-line text-[11px] font-mono text-slate-300 max-h-48 overflow-y-auto leading-relaxed whitespace-pre-wrap shadow-inner">
               {invitation.accessDisclosure.content || (
                 "By activating this tenant organization on the ZoikoShield Platform, you affirm that you are the authorized representative of the legal entity. All telemetry, audit trails, and Merkle ledger entries within this tenant will be cryptographically anchored and accessible according to your organization's role-based and Cedar deterministic policies."
               )}
@@ -297,8 +297,8 @@ function AcceptInviteInner() {
                     key={idp.id}
                     className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-all ${
                       selectedIdp === idp.id
-                        ? "bg-gradient-to-r from-cyan-950/50 to-[#0a0f1d] border-cyan-400/80 text-cyan-200 shadow-[0_0_15px_rgba(6,182,212,0.15)] ring-1 ring-cyan-400/30"
-                        : "bg-[#060911] border-[#162238] text-slate-400 hover:border-slate-700"
+                        ? "bg-gradient-to-r from-cyan-950/50 to-surface border-cyan-400/80 text-cyan-200 shadow-[0_0_15px_rgba(6,182,212,0.15)] ring-1 ring-cyan-400/30"
+                        : "bg-canvas border-line text-slate-400 hover:border-slate-700"
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
@@ -312,7 +312,7 @@ function AcceptInviteInner() {
                       />
                       <span className="text-xs font-mono font-bold text-slate-200">{idp.name}</span>
                     </div>
-                    <span className="text-[10px] font-mono uppercase bg-[#0a0f1d] border border-[#162238] px-2 py-0.5 rounded text-slate-300">
+                    <span className="text-[10px] font-mono uppercase bg-surface border border-line px-2 py-0.5 rounded text-slate-300">
                       {idp.protocol}
                     </span>
                   </label>
@@ -336,7 +336,7 @@ function AcceptInviteInner() {
             <Button
               type="button"
               variant="outline"
-              className="w-full sm:w-auto border-[#162238] bg-[#0a0f1d] hover:border-slate-700"
+              className="w-full sm:w-auto border-line bg-surface hover:border-slate-700"
               onClick={() => router.push("/login")}
             >
               Cancel

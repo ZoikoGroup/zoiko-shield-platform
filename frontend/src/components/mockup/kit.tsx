@@ -121,7 +121,7 @@ export function ActionButton({
           ? "bg-slate-900/60 border-slate-800 text-slate-500 cursor-not-allowed"
           : primary
             ? "bg-sky-600 hover:bg-sky-500 border-sky-500 text-white"
-            : "bg-[#0c111e] hover:bg-[#101828] border-[#1e2b44] text-slate-200",
+            : "bg-raised hover:bg-overlay border-line-strong text-slate-200",
       )}
     >
       {children}
@@ -195,7 +195,7 @@ export function KpiGrid({ items }: { items: Kpi[] }) {
 
 export function KpiCard({ label, value, hint, tag, tone = "cyan", icon }: Kpi) {
   return (
-    <div className="relative overflow-hidden rounded-xl bg-[#0c111e] border border-[#162238] p-4">
+    <div className="relative overflow-hidden rounded-xl bg-raised border border-line p-4">
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-[11px] text-slate-400 min-w-0">
           {icon ? <span className={TEXT[tone]}>{icon}</span> : <span className={cn("w-2 h-2 rounded-full shrink-0", DOT[tone])} />}
@@ -230,8 +230,8 @@ export function Panel({
   bodyClassName?: string;
 }) {
   return (
-    <section className={cn("rounded-xl bg-[#0c111e] border border-[#162238] flex flex-col min-w-0", className)}>
-      <header className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[#162238]">
+    <section className={cn("rounded-xl bg-raised border border-line flex flex-col min-w-0", className)}>
+      <header className="flex items-center justify-between gap-3 px-4 py-3 border-b border-line">
         <h2 className="text-sm font-bold text-slate-100">{title}</h2>
         {meta && <span className={cn("text-[10px] font-mono", TEXT[metaTone])}>{meta}</span>}
       </header>
@@ -273,7 +273,7 @@ export function TabBar({ tabs, active, onChange }: { tabs: TabDef[]; active: str
             "px-3.5 py-2 rounded-lg text-xs font-semibold border whitespace-nowrap transition-colors",
             active === t.id
               ? "bg-sky-600 border-sky-500 text-white"
-              : "bg-[#0c111e] border-[#162238] text-slate-300 hover:text-white hover:border-slate-600",
+              : "bg-raised border-line text-slate-300 hover:text-white hover:border-slate-600",
           )}
         >
           {t.label}
@@ -293,7 +293,7 @@ export function SearchInput({
   placeholder: string;
 }) {
   return (
-    <label className="flex items-center gap-2 flex-1 min-w-[180px] px-3 py-2 rounded-lg bg-[#080c16] border border-[#162238] text-xs text-slate-300">
+    <label className="flex items-center gap-2 flex-1 min-w-[180px] px-3 py-2 rounded-lg bg-surface border border-line text-xs text-slate-300">
       <Search className="w-3.5 h-3.5 text-slate-500 shrink-0" />
       <input
         value={value}
@@ -334,7 +334,7 @@ export function DataTable<T>({
     <div className="overflow-x-auto -mx-4">
       <table className="w-full text-xs">
         <thead>
-          <tr className="text-left text-[10px] font-mono uppercase tracking-wider text-slate-500 border-b border-[#162238]">
+          <tr className="text-left text-[10px] font-mono uppercase tracking-wider text-slate-500 border-b border-line">
             {columns.map((c) => (
               <th key={c.key} className={cn("px-4 py-2 font-semibold whitespace-nowrap", c.className)}>
                 {c.header}
@@ -358,8 +358,8 @@ export function DataTable<T>({
                   key={k}
                   onClick={onSelect ? () => onSelect(r) : undefined}
                   className={cn(
-                    "border-b border-[#111a2b] last:border-0",
-                    onSelect && "cursor-pointer hover:bg-[#101828]",
+                    "border-b border-line last:border-0",
+                    onSelect && "cursor-pointer hover:bg-overlay",
                     selected && "bg-sky-950/40 shadow-[inset_3px_0_0_#38bdf8]",
                   )}
                 >
@@ -446,7 +446,7 @@ export function NumberedList({
     <ol className="space-y-2.5">
       {items.map((it, i) => (
         <li key={it.title} className="flex items-start gap-3">
-          <span className="w-6 h-6 shrink-0 rounded-md border border-[#1e2b44] bg-[#080c16] text-[11px] font-bold text-slate-300 flex items-center justify-center">
+          <span className="w-6 h-6 shrink-0 rounded-md border border-line-strong bg-surface text-[11px] font-bold text-slate-300 flex items-center justify-center">
             {i + 1}
           </span>
           <div className="flex-1 min-w-0">
@@ -518,7 +518,7 @@ export function CheckRow({
   tone?: Tone;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 py-2 border-b border-[#111a2b] last:border-0">
+    <div className="flex items-center justify-between gap-3 py-2 border-b border-line last:border-0">
       <div className="min-w-0">
         <div className="text-xs font-semibold text-slate-200">{label}</div>
         {sub && <div className="text-[11px] text-slate-500">{sub}</div>}
@@ -530,7 +530,7 @@ export function CheckRow({
 
 export function FooterStrip({ left, right, tone = "amber" }: { left: React.ReactNode; right?: React.ReactNode; tone?: Tone }) {
   return (
-    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 rounded-xl border border-[#162238] bg-[#0a0f1a] px-4 py-2.5 text-[11px]">
+    <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 rounded-xl border border-line bg-surface px-4 py-2.5 text-[11px]">
       <div className="flex items-center gap-2 text-slate-400">
         <AlertTriangle className={cn("w-3.5 h-3.5 shrink-0", TEXT[tone])} />
         <span>{left}</span>

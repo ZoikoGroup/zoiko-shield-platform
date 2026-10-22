@@ -102,7 +102,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="surface-card rounded-2xl bg-[#0c111e]/90 border border-slate-800/80 p-6 shadow-xl space-y-4">
+    <div className="surface-card rounded-2xl bg-raised/90 border border-slate-800/80 p-6 shadow-xl space-y-4">
       <div className="flex items-baseline justify-between border-b border-slate-800/80 pb-3">
         <div>
           <h2 className="text-sm font-bold text-white tracking-wide">{title}</h2>

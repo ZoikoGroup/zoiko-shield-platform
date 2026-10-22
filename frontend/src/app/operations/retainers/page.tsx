@@ -124,9 +124,9 @@ export default function RetainersAndSlaOperationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#060911] text-slate-100 p-6 space-y-6">
+    <div className="min-h-screen bg-canvas text-slate-100 p-6 space-y-6">
       {/* Top Header */}
-      <div className="surface-card p-6 rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-[#0c111e] via-[#080d1a] to-[#120e24] shadow-[0_0_35px_rgba(6,182,212,0.12)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="surface-card p-6 rounded-2xl border border-cyan-500/30 bg-gradient-to-r from-raised via-surface to-purple-950/50 shadow-[0_0_35px_rgba(6,182,212,0.12)] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-cyan-400 animate-pulse" />
@@ -148,7 +148,7 @@ export default function RetainersAndSlaOperationsPage() {
             setRefreshing(true);
             setTimeout(() => setRefreshing(false), 500);
           }}
-          className="p-2.5 rounded-lg bg-[#060911] border border-[#162238] text-slate-300 hover:text-white transition-colors self-start sm:self-auto shadow-sm"
+          className="p-2.5 rounded-lg bg-canvas border border-line text-slate-300 hover:text-white transition-colors self-start sm:self-auto shadow-sm"
           title="Refresh Timers"
         >
           <RefreshCw className={`w-4 h-4 text-cyan-400 ${refreshing ? "animate-spin" : ""}`} />
@@ -168,7 +168,7 @@ export default function RetainersAndSlaOperationsPage() {
       )}
 
       {/* Rule SVC-01 Callout */}
-      <div className="surface-card p-4 rounded-xl border border-cyan-500/20 flex items-start gap-3 text-xs bg-[#0c111e]/80">
+      <div className="surface-card p-4 rounded-xl border border-cyan-500/20 flex items-start gap-3 text-xs bg-raised/80">
         <ShieldAlert className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
         <div className="space-y-1">
           <span className="font-semibold text-white">
@@ -182,22 +182,22 @@ export default function RetainersAndSlaOperationsPage() {
 
       {/* Retainer Capacity Meters */}
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-cyan-500/40 transition-all space-y-1">
+        <Card className="surface-card p-4 border border-line rounded-xl hover:border-cyan-500/40 transition-all space-y-1">
           <div className="text-slate-400 text-xs font-mono font-semibold uppercase">ANNUAL INCLUDED HOURS</div>
           <div className="text-2xl font-bold text-white font-mono">{includedHours}.0 hrs</div>
           <div className="text-[10px] text-slate-500 font-mono">Contractual tier allocation</div>
         </Card>
-        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-cyan-500/40 transition-all space-y-1">
+        <Card className="surface-card p-4 border border-line rounded-xl hover:border-cyan-500/40 transition-all space-y-1">
           <div className="text-slate-400 text-xs font-mono font-semibold uppercase">CONSUMED TO DATE</div>
           <div className="text-2xl font-bold text-cyan-400 font-mono">{consumedHours} hrs</div>
           <div className="text-[10px] text-cyan-400/80 font-mono">29.0% of total tier allowance</div>
         </Card>
-        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-emerald-500/40 transition-all space-y-1">
+        <Card className="surface-card p-4 border border-line rounded-xl hover:border-emerald-500/40 transition-all space-y-1">
           <div className="text-slate-400 text-xs font-mono font-semibold uppercase">AVAILABLE RETAINER BALANCE</div>
           <div className="text-2xl font-bold text-emerald-400 font-mono">{remainingHours} hrs</div>
           <div className="text-[10px] text-emerald-400/80 font-mono">Active hours remaining</div>
         </Card>
-        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-amber-500/40 transition-all space-y-1">
+        <Card className="surface-card p-4 border border-line rounded-xl hover:border-amber-500/40 transition-all space-y-1">
           <div className="text-slate-400 text-xs font-mono font-semibold uppercase">OVERAGE PROTECTION CAP</div>
           <div className="text-2xl font-bold text-amber-400 font-mono">+{overageCapHours}.0 hrs</div>
           <div className="text-[10px] text-amber-400/80 font-mono">Anti-perverse billing guard active</div>
@@ -205,8 +205,8 @@ export default function RetainersAndSlaOperationsPage() {
       </div>
 
       {/* Active Work Orders and SLA Clocks */}
-      <Card className="surface-card p-6 border border-[#162238] rounded-xl space-y-4 shadow-lg">
-        <div className="flex items-center justify-between border-b border-[#162238] pb-4">
+      <Card className="surface-card p-6 border border-line rounded-xl space-y-4 shadow-lg">
+        <div className="flex items-center justify-between border-b border-line pb-4">
           <div className="space-y-0.5">
             <h2 className="text-lg font-bold text-white">Active Incident Work Orders & Response Windows</h2>
             <p className="text-xs text-slate-400">Real-time countdown clocks against contractual triage and activation milestones</p>
@@ -221,7 +221,7 @@ export default function RetainersAndSlaOperationsPage() {
             return (
               <div
                 key={wo.id}
-                className="p-5 rounded-xl bg-[#060911] border border-[#162238] hover:border-cyan-500/30 transition-all space-y-4 shadow-sm"
+                className="p-5 rounded-xl bg-canvas border border-line hover:border-cyan-500/30 transition-all space-y-4 shadow-sm"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-3">
@@ -259,7 +259,7 @@ export default function RetainersAndSlaOperationsPage() {
                 {/* SLA Milestone Countdown Clocks */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Triage Milestone */}
-                  <div className="p-3.5 rounded-lg bg-[#0c111e] border border-[#162238] space-y-2">
+                  <div className="p-3.5 rounded-lg bg-raised border border-line space-y-2">
                     <div className="flex items-center justify-between text-xs font-mono">
                       <span className="text-slate-400 flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5 text-cyan-400" />
@@ -274,7 +274,7 @@ export default function RetainersAndSlaOperationsPage() {
                       )}
                     </div>
 
-                    <div className="w-full bg-[#060911] rounded-full h-2 overflow-hidden border border-[#162238]">
+                    <div className="w-full bg-canvas rounded-full h-2 overflow-hidden border border-line">
                       <div
                         className={`h-full transition-all ${
                           wo.isTriageBreached ? "bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]" : "bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.5)]"
@@ -291,7 +291,7 @@ export default function RetainersAndSlaOperationsPage() {
                   </div>
 
                   {/* Activation Milestone */}
-                  <div className="p-3.5 rounded-lg bg-[#0c111e] border border-[#162238] space-y-2">
+                  <div className="p-3.5 rounded-lg bg-raised border border-line space-y-2">
                     <div className="flex items-center justify-between text-xs font-mono">
                       <span className="text-slate-400 flex items-center gap-1.5">
                         <Zap className="w-3.5 h-3.5 text-indigo-400" />
@@ -304,7 +304,7 @@ export default function RetainersAndSlaOperationsPage() {
                       )}
                     </div>
 
-                    <div className="w-full bg-[#060911] rounded-full h-2 overflow-hidden border border-[#162238]">
+                    <div className="w-full bg-canvas rounded-full h-2 overflow-hidden border border-line">
                       <div
                         className={`h-full transition-all ${
                           wo.isResponseBreached ? "bg-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]" : "bg-indigo-500 shadow-[0_0_10px_rgba(99,102,241,0.5)]"

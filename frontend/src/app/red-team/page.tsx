@@ -49,7 +49,7 @@ export default function SimulationTrainingPage() {
           subtitle="Replay synthetic attacks, validate detections and rehearse governed response workflows"
           actions={
             <>
-              <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#1e2b44] text-xs text-slate-300"><Clock className="w-3.5 h-3.5" /> Last 7 days</span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-line-strong text-xs text-slate-300"><Clock className="w-3.5 h-3.5" /> Last 7 days</span>
               <ActionButton onClick={() => setTab(CONSOLE_TAB)}><History className="w-3.5 h-3.5" /> Replay history</ActionButton>
               <ActionButton primary onClick={() => setTab(CONSOLE_TAB)}><Play className="w-3.5 h-3.5" /> Create isolated replay</ActionButton>
             </>
@@ -79,7 +79,7 @@ export default function SimulationTrainingPage() {
           <ul className="space-y-2">
             {SCENARIOS.map((s) => (
               <li key={s.id}>
-                <button type="button" onClick={() => setSelected(s.id)} className={`w-full text-left rounded-lg border p-3 ${s.id === sel.id ? "border-sky-500 bg-sky-950/40" : "border-[#162238] hover:border-slate-600"}`}>
+                <button type="button" onClick={() => setSelected(s.id)} className={`w-full text-left rounded-lg border p-3 ${s.id === sel.id ? "border-sky-500 bg-sky-950/40" : "border-line hover:border-slate-600"}`}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="text-xs font-bold text-slate-100">{s.id} · {s.title}</div>
                     <Pill tone={s.id === sel.id ? "blue" : STATE_TONE[s.state]}>{s.id === sel.id ? "SELECTED" : s.state === "SELECTED" ? "READY" : s.state}</Pill>
@@ -126,8 +126,8 @@ export default function SimulationTrainingPage() {
             ))}
           </ol>
           <div className="mt-4 space-y-1.5 text-[11px]">
-            <div className="flex justify-between rounded-md bg-[#080c16] px-2.5 py-1.5"><span className="text-slate-200"><span className="text-emerald-400">●</span> OCSF event normalized · synthetic=true</span><span className="font-mono text-slate-500">00:00</span></div>
-            <div className="flex justify-between rounded-md bg-[#080c16] px-2.5 py-1.5"><span className="text-slate-200"><span className="text-amber-400">●</span> One rule assertion missed · analyst review required</span><span className="font-mono text-slate-500">05:26</span></div>
+            <div className="flex justify-between rounded-md bg-surface px-2.5 py-1.5"><span className="text-slate-200"><span className="text-emerald-400">●</span> OCSF event normalized · synthetic=true</span><span className="font-mono text-slate-500">00:00</span></div>
+            <div className="flex justify-between rounded-md bg-surface px-2.5 py-1.5"><span className="text-slate-200"><span className="text-amber-400">●</span> One rule assertion missed · analyst review required</span><span className="font-mono text-slate-500">05:26</span></div>
           </div>
         </Panel>
         <Panel title="Detection validation" meta="MITRE ATT&CK mapped">
@@ -138,7 +138,7 @@ export default function SimulationTrainingPage() {
             <ProgressRow label="Lateral Movement" value={0} max={1} tone="rose" />
             <ProgressRow label="Discovery" value={1} max={1} tone="blue" />
           </div>
-          <div className="flex justify-between text-[11px] mt-4 pt-3 border-t border-[#162238]"><span className="text-slate-500">Expected: 5 · Passed: 4</span><span className="text-amber-300 font-semibold">1 coverage gap →</span></div>
+          <div className="flex justify-between text-[11px] mt-4 pt-3 border-t border-line"><span className="text-slate-500">Expected: 5 · Passed: 4</span><span className="text-amber-300 font-semibold">1 coverage gap →</span></div>
         </Panel>
         <Panel title="Evidence & outcomes" meta="Review package →">
           <CheckRow label="Synthetic event receipt" status="Captured" tone="emerald" />

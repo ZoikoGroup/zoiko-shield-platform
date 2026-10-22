@@ -343,16 +343,16 @@ export default function SectorPacksPage() {
               onClick={() => setSelectedPack(pack)}
               className={`cursor-pointer rounded-2xl p-6 transition-all duration-300 flex flex-col justify-between space-y-4 ${
                 isSelected
-                  ? "bg-gradient-to-b from-[#0e1d33] to-[#0a0f1d] border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.25)] ring-1 ring-cyan-400/30"
-                  : "bg-[#0a0f1d]/90 border border-[#162238] hover:border-cyan-500/40 hover:bg-[#0c1322] hover:shadow-[0_0_20px_rgba(6,182,212,0.1)]"
+                  ? "bg-gradient-to-b from-overlay to-surface border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.25)] ring-1 ring-cyan-400/30"
+                  : "bg-surface/90 border border-line hover:border-cyan-500/40 hover:bg-raised hover:shadow-[0_0_20px_rgba(6,182,212,0.1)]"
               }`}
             >
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <div className="p-2.5 rounded-xl bg-[#060911] border border-[#162238] shadow-inner">
+                  <div className="p-2.5 rounded-xl bg-canvas border border-line shadow-inner">
                     {pack.icon}
                   </div>
-                  <span className="px-2.5 py-1 rounded-full bg-[#060911] text-cyan-300 font-mono text-[10px] font-bold border border-[#162238]">
+                  <span className="px-2.5 py-1 rounded-full bg-canvas text-cyan-300 font-mono text-[10px] font-bold border border-line">
                     {pack.badge}
                   </span>
                 </div>
@@ -367,7 +367,7 @@ export default function SectorPacksPage() {
                 </p>
               </div>
 
-              <div className="pt-3 border-t border-[#162238] flex items-center justify-between text-xs font-mono">
+              <div className="pt-3 border-t border-line flex items-center justify-between text-xs font-mono">
                 <span className="text-slate-500">Plan Alignment:</span>
                 <button
                   onClick={(e) => {
@@ -385,10 +385,10 @@ export default function SectorPacksPage() {
       </div>
 
       {/* Deep-Dive Pack Inspector */}
-      <div className="p-8 rounded-2xl bg-gradient-to-br from-[#0c1424] via-[#0a0f1d] to-[#060911] border border-cyan-500/40 shadow-[0_0_40px_rgba(6,182,212,0.15)] space-y-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#162238] pb-5">
+      <div className="p-8 rounded-2xl bg-gradient-to-br from-raised via-surface to-canvas border border-cyan-500/40 shadow-[0_0_40px_rgba(6,182,212,0.15)] space-y-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-line pb-5">
           <div className="flex items-center gap-3">
-            <div className="p-3 rounded-xl bg-[#060911] border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]">
+            <div className="p-3 rounded-xl bg-canvas border border-cyan-500/30 shadow-[0_0_15px_rgba(6,182,212,0.15)]">
               {selectedPack.icon}
             </div>
             <div>
@@ -406,7 +406,7 @@ export default function SectorPacksPage() {
               <Play className="w-3.5 h-3.5 text-cyan-400" />
               <span>Simulate Continuous Evaluation</span>
             </button>
-            <div className="px-3.5 py-1.5 rounded-lg bg-[#060911] border border-cyan-500/30 text-xs font-mono text-cyan-300 font-bold shadow-inner">
+            <div className="px-3.5 py-1.5 rounded-lg bg-canvas border border-cyan-500/30 text-xs font-mono text-cyan-300 font-bold shadow-inner">
               {selectedPack.recommendedPlan}
             </div>
           </div>
@@ -424,7 +424,7 @@ export default function SectorPacksPage() {
         {/* Feature Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Tailored Capabilities */}
-          <div className="space-y-3 p-5 rounded-xl bg-[#060911]/80 border border-[#162238]">
+          <div className="space-y-3 p-5 rounded-xl bg-canvas/80 border border-line">
             <div className="text-xs font-mono font-bold text-slate-300 uppercase flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-cyan-400" />
               <span>Tailored SecOps &amp; Governance Modules</span>
@@ -440,7 +440,7 @@ export default function SectorPacksPage() {
           </div>
 
           {/* Compliance Regimes & Connectors */}
-          <div className="space-y-4 p-5 rounded-xl bg-[#060911]/80 border border-[#162238]">
+          <div className="space-y-4 p-5 rounded-xl bg-canvas/80 border border-line">
             <div>
               <div className="text-xs font-mono font-bold text-slate-300 uppercase mb-2 flex items-center gap-2">
                 <FileCheck2 className="w-4 h-4 text-cyan-400" />
@@ -450,7 +450,7 @@ export default function SectorPacksPage() {
                 {(selectedPack.targetRegimes || []).map((reg, i) => (
                   <span
                     key={i}
-                    className="px-2.5 py-1 rounded bg-[#0a0f1d] border border-[#162238] text-slate-200 text-xs font-mono"
+                    className="px-2.5 py-1 rounded bg-surface border border-line text-slate-200 text-xs font-mono"
                   >
                     {reg}
                   </span>
@@ -458,7 +458,7 @@ export default function SectorPacksPage() {
               </div>
             </div>
 
-            <div className="pt-3 border-t border-[#162238]">
+            <div className="pt-3 border-t border-line">
               <div className="text-xs font-mono font-bold text-slate-300 uppercase mb-2 flex items-center gap-2">
                 <Server className="w-4 h-4 text-cyan-400" />
                 <span>Active Certified Connectors</span>
@@ -489,7 +489,7 @@ export default function SectorPacksPage() {
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <button
               onClick={() => openEvaluatorForPack(selectedPack.id)}
-              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-[#060911] hover:bg-[#0c1424] border border-cyan-500/40 text-cyan-300 font-mono text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md"
+              className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-canvas hover:bg-raised border border-cyan-500/40 text-cyan-300 font-mono text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md"
             >
               <Sliders className="w-3.5 h-3.5 text-cyan-400" />
               <span>Evaluate Sector Overlay</span>

@@ -144,7 +144,7 @@ export default function RiskExceptionsPage() {
             <div className="text-[11px] text-slate-500 -mt-1 mb-3">Review permissions, expiry, ownership and audit evidence</div>
             <ul className="space-y-3">
               {EXCEPTIONS.map((e) => (
-                <li key={e.id} className="flex items-start justify-between gap-3 border-b border-[#111a2b] pb-3 last:border-0">
+                <li key={e.id} className="flex items-start justify-between gap-3 border-b border-line pb-3 last:border-0">
                   <div className="min-w-0"><div className="text-xs"><span className="font-mono text-sky-300 mr-2">{e.id}</span><span className="font-semibold text-slate-100">{e.title}</span></div><div className="text-[11px] text-slate-500">{e.meta}</div></div>
                   <Pill tone={e.tone}>{e.state}</Pill>
                 </li>
@@ -177,7 +177,7 @@ export default function RiskExceptionsPage() {
                 { title: "Second authorized signer", sub: "Separate principal required", tag: "Blocked", tone: "slate" },
               ]}
             />
-            <div className="flex justify-between text-[11px] mt-3 pt-3 border-t border-[#162238]">
+            <div className="flex justify-between text-[11px] mt-3 pt-3 border-t border-line">
               <span className="text-slate-500">INTEGRITY</span><span className="text-emerald-400 font-semibold">Proof status: cryptographic hash signed</span>
             </div>
             <ActionButton disabled><Circle className="w-3 h-3" /> Approve / activate unavailable in analyst view</ActionButton>

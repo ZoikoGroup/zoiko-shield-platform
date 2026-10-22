@@ -111,10 +111,10 @@ export default function AuditVerifierPage() {
               {valid && <span className="font-mono">12:31 UTC</span>}
             </div>
             <div className="grid grid-cols-2 gap-2 mt-3">
-              <div className="rounded-lg border border-[#162238] p-2.5"><div className="text-[10px] text-slate-500">Evidence records</div><div className="text-xs font-semibold text-slate-100">{sel.records} · sealed snapshot</div></div>
-              <div className="rounded-lg border border-[#162238] p-2.5"><div className="text-[10px] text-slate-500">Verifier profile</div><div className="text-xs font-semibold text-slate-100">ZS-MERKLE-V1</div></div>
+              <div className="rounded-lg border border-line p-2.5"><div className="text-[10px] text-slate-500">Evidence records</div><div className="text-xs font-semibold text-slate-100">{sel.records} · sealed snapshot</div></div>
+              <div className="rounded-lg border border-line p-2.5"><div className="text-[10px] text-slate-500">Verifier profile</div><div className="text-xs font-semibold text-slate-100">ZS-MERKLE-V1</div></div>
             </div>
-            <div className="mt-3 rounded-lg border border-[#162238] bg-[#080c16] p-3 font-mono text-[11px] space-y-1">
+            <div className="mt-3 rounded-lg border border-line bg-surface p-3 font-mono text-[11px] space-y-1">
               {[["Merkle epoch", "#1043 · active ledger"], ["Root hash", "SHA-256: 9bc7…e41f"], ["Timestamp receipt", "RFC 3161 · verified"], ["Offline verifier", "verifier-cli · available"]].map(([k, v]) => (
                 <div key={k} className="flex justify-between"><span className="text-slate-500">{k}</span><span className="text-slate-200">{v}</span></div>
               ))}

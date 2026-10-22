@@ -284,7 +284,7 @@ export default function IrRetainerPage() {
       )}
 
       {/* Header Banner */}
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl">
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-raised via-surface to-canvas shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-3 mb-1.5 flex-wrap">
@@ -319,22 +319,22 @@ export default function IrRetainerPage() {
 
       {/* 4 Summary KPI Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Total Retainer Balance</div>
           <div className="text-2xl font-bold font-mono text-cyan-400 mt-1">{remainingHours}h / {includedHours}h</div>
           <div className="text-[11px] text-slate-400 mt-0.5">{consumptionPercent}% consumed</div>
         </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">24x7 SLA Response</div>
           <div className="text-2xl font-bold font-mono text-emerald-400 mt-1">&lt; 30 mins</div>
           <div className="text-[11px] text-slate-400 mt-0.5">Guaranteed acknowledgment</div>
         </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Active Work Orders</div>
           <div className="text-2xl font-bold font-mono text-purple-400 mt-1">{workOrders.length}</div>
           <div className="text-[11px] text-slate-400 mt-0.5">Itemized forensic records</div>
         </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Legal Privilege Status</div>
           <div className="text-2xl font-bold font-mono text-amber-400 mt-1">PURPOSE BOUND</div>
           <div className="text-[11px] text-slate-400 mt-0.5">§16.4 Cryptographic custody</div>
@@ -344,7 +344,7 @@ export default function IrRetainerPage() {
       {/* Grid 1: Retainer Summary, Response SLA, Readiness Obligations */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Retainer Term & Hour Ledger */}
-        <div className="surface-card rounded-2xl p-6 bg-[#0c111e]/90 border border-slate-800/80 shadow-xl relative overflow-hidden">
+        <div className="surface-card rounded-2xl p-6 bg-raised/90 border border-slate-800/80 shadow-xl relative overflow-hidden">
           <div className="flex justify-between items-start mb-4">
             <div>
               <span className="text-xs font-mono font-medium text-cyan-400 uppercase tracking-wider">
@@ -403,7 +403,7 @@ export default function IrRetainerPage() {
         </div>
 
         {/* 24x7 Response Window & SLA */}
-        <div className="surface-card rounded-2xl p-6 bg-[#0c111e]/90 border border-slate-800/80 shadow-xl">
+        <div className="surface-card rounded-2xl p-6 bg-raised/90 border border-slate-800/80 shadow-xl">
           <div className="flex justify-between items-start mb-4">
             <div>
               <span className="text-xs font-mono font-medium text-emerald-400 uppercase tracking-wider">
@@ -415,7 +415,7 @@ export default function IrRetainerPage() {
           </div>
 
           <div className="space-y-3.5 text-xs">
-            <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#080d19] border border-slate-800">
+            <div className="flex items-center justify-between p-2.5 rounded-lg bg-surface border border-slate-800">
               <span className="text-slate-400 flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" /> SLA Acknowledgement
               </span>
@@ -424,7 +424,7 @@ export default function IrRetainerPage() {
               </span>
             </div>
 
-            <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#080d19] border border-slate-800">
+            <div className="flex items-center justify-between p-2.5 rounded-lg bg-surface border border-slate-800">
               <span className="text-slate-400 flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" /> Incident Activation Target
               </span>
@@ -433,7 +433,7 @@ export default function IrRetainerPage() {
               </span>
             </div>
 
-            <div className="flex items-center justify-between p-2.5 rounded-lg bg-[#080d19] border border-slate-800">
+            <div className="flex items-center justify-between p-2.5 rounded-lg bg-surface border border-slate-800">
               <span className="text-slate-400 flex items-center gap-2">
                 <Shield className="w-4 h-4 text-cyan-400" /> Max Response Authority
               </span>
@@ -443,7 +443,7 @@ export default function IrRetainerPage() {
         </div>
 
         {/* Readiness Obligations (§16.4) */}
-        <div className="surface-card rounded-2xl p-6 bg-[#0c111e]/90 border border-slate-800/80 shadow-xl">
+        <div className="surface-card rounded-2xl p-6 bg-raised/90 border border-slate-800/80 shadow-xl">
           <div className="flex justify-between items-start mb-4">
             <div>
               <span className="text-xs font-mono font-medium text-amber-400 uppercase tracking-wider">

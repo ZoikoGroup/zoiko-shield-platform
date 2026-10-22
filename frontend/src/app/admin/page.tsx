@@ -118,7 +118,7 @@ export default function OperationsEntitlementsPage() {
               <span>* Scope values are UX examples, not the verified commercial contract.</span>
               <span className="font-mono font-bold text-emerald-400">NO CROSS-TENANT CONTENT</span>
             </div>
-            <div className="mt-4 rounded-lg border border-[#162238] bg-[#080c16] p-3">
+            <div className="mt-4 rounded-lg border border-line bg-surface p-3">
               <div className="flex justify-between text-xs mb-3">
                 <span className="font-semibold text-slate-200">Entitlement Enforcement Path</span>
                 <span className="text-[10px] text-slate-500">Proposed checks, not confirmed integration</span>

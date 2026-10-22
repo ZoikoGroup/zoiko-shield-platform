@@ -286,9 +286,9 @@ export default function MerkleLedgerExplorerPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#060911] text-slate-100 p-6 space-y-6">
+    <div className="min-h-screen bg-canvas text-slate-100 p-6 space-y-6">
       {/* Header Banner */}
-      <div className="surface-card p-6 rounded-2xl border border-cyan-500/30 shadow-[0_0_35px_rgba(6,182,212,0.12)] space-y-3 bg-gradient-to-r from-[#0c111e] via-[#080d1a] to-[#120e24]">
+      <div className="surface-card p-6 rounded-2xl border border-cyan-500/30 shadow-[0_0_35px_rgba(6,182,212,0.12)] space-y-3 bg-gradient-to-r from-raised via-surface to-purple-950/50">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
@@ -311,11 +311,11 @@ export default function MerkleLedgerExplorerPage() {
           </div>
 
           <div className="flex items-center gap-3 font-mono text-xs flex-wrap">
-            <div className="px-3 py-1.5 rounded-lg bg-[#060911] border border-[#162238] text-slate-300">
+            <div className="px-3 py-1.5 rounded-lg bg-canvas border border-line text-slate-300">
               Active Epoch:{" "}
               <span className="text-cyan-400 font-bold">#{epochNumber}</span>
             </div>
-            <div className="px-3 py-1.5 rounded-lg bg-[#060911] border border-[#162238] text-slate-300">
+            <div className="px-3 py-1.5 rounded-lg bg-canvas border border-line text-slate-300">
               {leaves.length} Leaf{leaves.length !== 1 ? "ves" : ""} Anchored
             </div>
             <Link href="/controls">
@@ -335,8 +335,8 @@ export default function MerkleLedgerExplorerPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column: Checkpoint Card & Witness Signatures */}
         <div className="space-y-6">
-          <Card className="surface-card p-5 border border-[#162238] rounded-xl space-y-4 font-mono text-xs shadow-md">
-            <div className="flex items-center justify-between border-b border-[#162238] pb-3">
+          <Card className="surface-card p-5 border border-line rounded-xl space-y-4 font-mono text-xs shadow-md">
+            <div className="flex items-center justify-between border-b border-line pb-3">
               <div className="flex items-center gap-2 text-sm font-bold text-slate-100">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
                 <span>Epoch Checkpoint #{epochNumber}</span>
@@ -347,7 +347,7 @@ export default function MerkleLedgerExplorerPage() {
             <div className="space-y-3">
               <div>
                 <span className="text-slate-400 uppercase text-[10px] font-semibold">Declared Merkle Root:</span>
-                <div className="p-2.5 bg-[#060911] border border-[#162238] rounded-lg text-[11px] text-cyan-300 font-bold break-all mt-1">
+                <div className="p-2.5 bg-canvas border border-line rounded-lg text-[11px] text-cyan-300 font-bold break-all mt-1">
                   {merkleRoot}
                 </div>
               </div>
@@ -355,14 +355,14 @@ export default function MerkleLedgerExplorerPage() {
               <div>
                 <span className="text-slate-400 uppercase text-[10px] font-semibold">Checkpoint Dual-Signatures:</span>
                 <div className="mt-1.5 space-y-2">
-                  <div className="p-2.5 bg-[#060911] border border-[#162238] rounded-lg text-[11px] text-slate-300">
+                  <div className="p-2.5 bg-canvas border border-line rounded-lg text-[11px] text-slate-300">
                     <div className="flex items-center justify-between font-bold text-cyan-400">
                       <span>Post-Quantum (FIPS 204 ML-DSA-65)</span>
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
                     </div>
                     <div className="text-[10px] text-slate-400 truncate mt-0.5">{pqcSignature}</div>
                   </div>
-                  <div className="p-2.5 bg-[#060911] border border-[#162238] rounded-lg text-[11px] text-slate-300">
+                  <div className="p-2.5 bg-canvas border border-line rounded-lg text-[11px] text-slate-300">
                     <div className="flex items-center justify-between font-bold text-emerald-400">
                       <span>Classical (NIST ECDSA P-256)</span>
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
@@ -370,7 +370,7 @@ export default function MerkleLedgerExplorerPage() {
                     <div className="text-[10px] text-slate-400 truncate mt-0.5">{ecdsaSignature}</div>
                   </div>
                   {activeReceipt?.hsmKeyCustody && (
-                    <div className="p-2.5 bg-[#060911] border border-[#162238] rounded-lg text-[10px] text-slate-300 space-y-0.5">
+                    <div className="p-2.5 bg-canvas border border-line rounded-lg text-[10px] text-slate-300 space-y-0.5">
                       <div className="flex items-center justify-between text-indigo-400 font-bold">
                         <span>HSM Key Custody</span>
                         <Badge variant="neutral" className="text-[10px]">{activeReceipt.hsmKeyCustody.fipsLevel}</Badge>
@@ -384,7 +384,7 @@ export default function MerkleLedgerExplorerPage() {
               <div className="pt-2 space-y-2">
                 <Button
                   variant="outline"
-                  className="w-full py-2.5 flex items-center justify-center gap-2 border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10 font-bold bg-[#0c111e]"
+                  className="w-full py-2.5 flex items-center justify-center gap-2 border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10 font-bold bg-raised"
                   onClick={() => handleSealEpochBatch()}
                   isLoading={isSealing}
                 >
@@ -393,7 +393,7 @@ export default function MerkleLedgerExplorerPage() {
                 </Button>
                 <Button
                   variant="outline"
-                  className="w-full py-2.5 flex items-center justify-center gap-2 border-[#162238] text-slate-300 hover:bg-slate-800 font-bold bg-[#0c111e]"
+                  className="w-full py-2.5 flex items-center justify-center gap-2 border-line text-slate-300 hover:bg-slate-800 font-bold bg-raised"
                   onClick={() => handleExportAuditPackage()}
                   isLoading={isExporting}
                 >
@@ -405,8 +405,8 @@ export default function MerkleLedgerExplorerPage() {
           </Card>
 
           {/* Inclusion Proof Card */}
-          <Card className="surface-card p-5 border border-[#162238] rounded-xl space-y-3 font-mono text-xs shadow-md">
-            <div className="text-sm font-bold text-slate-200 border-b border-[#162238] pb-2 flex items-center justify-between">
+          <Card className="surface-card p-5 border border-line rounded-xl space-y-3 font-mono text-xs shadow-md">
+            <div className="text-sm font-bold text-slate-200 border-b border-line pb-2 flex items-center justify-between">
               <span>On-Demand Inclusion Proof</span>
               <Badge variant="neutral" className="font-mono text-[10px]">Leaf #{selectedLeafIndex}</Badge>
             </div>
@@ -417,7 +417,7 @@ export default function MerkleLedgerExplorerPage() {
             </p>
 
             {inclusionProof && (
-              <div className="p-2.5 rounded-lg bg-[#060911] border border-[#162238] text-[11px] space-y-1">
+              <div className="p-2.5 rounded-lg bg-canvas border border-line text-[11px] space-y-1">
                 <div className="flex items-center justify-between text-slate-400">
                   <span>Audit Path Sibling Depth:</span>
                   <span className="text-cyan-400 font-bold">{inclusionProof.auditPath?.length || 0} nodes</span>
@@ -475,8 +475,8 @@ export default function MerkleLedgerExplorerPage() {
 
         {/* Right 2 Columns: Merkle Tree Leaf Nodes */}
         <div className="lg:col-span-2 space-y-6">
-          <Card className="surface-card p-6 border border-[#162238] rounded-xl space-y-5 shadow-lg">
-            <div className="flex items-center justify-between border-b border-[#162238] pb-4">
+          <Card className="surface-card p-6 border border-line rounded-xl space-y-5 shadow-lg">
+            <div className="flex items-center justify-between border-b border-line pb-4">
               <div className="flex items-center gap-2">
                 <Layers className="w-5 h-5 text-cyan-400" />
                 <h2 className="text-sm font-bold text-slate-100">
@@ -496,7 +496,7 @@ export default function MerkleLedgerExplorerPage() {
                   className={`p-4 rounded-xl border font-mono text-xs transition-all cursor-pointer space-y-2.5 ${
                     selectedLeafIndex === leaf.index
                       ? "bg-cyan-500/10 border-cyan-400 shadow-[0_0_20px_rgba(0,240,255,0.15)] ring-1 ring-cyan-400/30"
-                      : "bg-[#060911] border-[#162238] hover:border-cyan-500/40"
+                      : "bg-canvas border-line hover:border-cyan-500/40"
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -512,11 +512,11 @@ export default function MerkleLedgerExplorerPage() {
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
-                    <div className="p-2 rounded bg-[#0c111e] border border-[#162238]">
+                    <div className="p-2 rounded bg-raised border border-line">
                       <span className="text-slate-500 text-[10px] uppercase font-semibold">Payload Digest:</span>
                       <div className="text-slate-300 font-bold truncate mt-0.5">{leaf.payloadDigest}</div>
                     </div>
-                    <div className="p-2 rounded bg-[#0c111e] border border-[#162238]">
+                    <div className="p-2 rounded bg-raised border border-line">
                       <span className="text-slate-500 text-[10px] uppercase font-semibold">Domain-Separated Hash (0x00 || Leaf):</span>
                       <div className="text-cyan-400 font-bold truncate mt-0.5">{leaf.leafHash}</div>
                     </div>

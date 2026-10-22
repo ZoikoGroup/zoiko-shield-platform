@@ -115,9 +115,9 @@ export const VerifierTerminal: React.FC<VerifierTerminalProps> = ({
       </div>
 
       {/* Terminal Screen */}
-      <div className="rounded-2xl bg-[#090c10] border border-slate-800 shadow-[0_4px_30px_rgba(0,0,0,0.8)] overflow-hidden font-mono text-xs">
+      <div className="rounded-2xl bg-canvas border border-slate-800 shadow-[0_4px_30px_rgba(0,0,0,0.8)] overflow-hidden font-mono text-xs">
         {/* Terminal Header */}
-        <div className="bg-[#12161f] border-b border-slate-800 px-4 py-2.5 flex items-center justify-between text-slate-400">
+        <div className="bg-raised border-b border-slate-800 px-4 py-2.5 flex items-center justify-between text-slate-400">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded-full bg-rose-500/80" />
             <div className="w-3 h-3 rounded-full bg-amber-500/80" />

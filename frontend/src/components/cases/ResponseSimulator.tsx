@@ -305,7 +305,7 @@ export const ResponseSimulator: React.FC<ResponseSimulatorProps> = ({
 
           {/* Simulation Receipt Banner */}
           {receipt && (
-            <div className="rounded-2xl bg-[#0f131d] border-2 border-dashed border-violet-500/40 p-5 space-y-4">
+            <div className="rounded-2xl bg-raised border-2 border-dashed border-violet-500/40 p-5 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-violet-500/20">
                 <div className="flex items-center gap-2">
                   <Badge variant="simulated">SIMULATION RECEIPT</Badge>
@@ -369,7 +369,7 @@ export const ResponseSimulator: React.FC<ResponseSimulatorProps> = ({
 
           {/* 3. Two-Man Rule Dual-Custody Approval Quorum (R2+ Containment Governance) */}
           {receipt && (
-            <div className="rounded-2xl bg-gradient-to-b from-[#0f172a] to-[#090d16] border border-cyan-500/30 p-5 space-y-4">
+            <div className="rounded-2xl bg-gradient-to-b from-overlay to-surface border border-cyan-500/30 p-5 space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-slate-800">
                 <div className="flex items-center gap-2">
                   <Badge variant="pass">2-MAN RULE QUORUM</Badge>

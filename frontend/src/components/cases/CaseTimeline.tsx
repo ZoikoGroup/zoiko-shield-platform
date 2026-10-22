@@ -56,11 +56,11 @@ export const CaseTimeline: React.FC<CaseTimelineProps> = ({ timeline }) => {
         {timeline.map((entry, idx) => (
           <div key={entry.id || idx} className="relative group">
             {/* Timeline node icon */}
-            <div className="absolute -left-6 top-0.5 w-6 h-6 rounded-full bg-[#11141c] border border-slate-700 flex items-center justify-center shadow-md">
+            <div className="absolute -left-6 top-0.5 w-6 h-6 rounded-full bg-raised border border-slate-700 flex items-center justify-center shadow-md">
               {getIcon(entry.type)}
             </div>
 
-            <div className="bg-[#141824]/60 border border-slate-800/80 rounded-xl p-3.5 space-y-1 hover:border-slate-700 transition-colors">
+            <div className="bg-overlay/60 border border-slate-800/80 rounded-xl p-3.5 space-y-1 hover:border-slate-700 transition-colors">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-semibold text-sm text-slate-200">
                   {entry.title}
