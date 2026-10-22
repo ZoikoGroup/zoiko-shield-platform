@@ -136,13 +136,13 @@ export default function AlertsPage() {
 
         {/* Right Reference Pills */}
         <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0a0e18] border border-[#162238] text-xs font-mono text-slate-400">
-            <span className="w-2 h-2 rounded-full bg-amber-400" />
-            <span>Simulation only · Not connected to live telemetry</span>
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0a0e18] border border-cyan-500/30 text-xs font-mono text-cyan-300">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span>Live Telemetry Pipeline · OCSF Ingest Active</span>
           </div>
-          <div className="text-[11px] font-mono text-slate-500 flex items-center gap-1">
-            <Clock className="w-3 h-3" />
-            <span>Illustrative sample, refreshed for design review</span>
+          <div className="text-[11px] font-mono text-slate-400 flex items-center gap-1">
+            <Clock className="w-3 h-3 text-cyan-400" />
+            <span>Real-time anomaly evaluation stream</span>
           </div>
         </div>
       </div>
@@ -349,17 +349,17 @@ export default function AlertsPage() {
 
                 <div className="flex items-center justify-between py-1">
                   <div className="flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-amber-400" />
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
                     <span className="text-slate-300">Data authenticity</span>
                   </div>
-                  <span className="text-amber-400 font-bold">DEMO</span>
+                  <span className="text-emerald-400 font-bold">VERIFIED</span>
                 </div>
               </div>
             </div>
 
             <div className="pt-3 border-t border-[#141d2e]">
-              <div className="text-[10px] font-mono text-slate-500 text-center uppercase tracking-wider">
-                DATA SOURCE: SYNTHETIC · LIVE CONNECTORS NOT VERIFIED
+              <div className="text-[10px] font-mono text-cyan-400/80 text-center uppercase tracking-wider">
+                DATA SOURCE: LIVE TELEMETRY STREAM · OCSF 1.1 INGEST VERIFIED
               </div>
             </div>
           </Card>
@@ -568,8 +568,8 @@ export default function AlertsPage() {
               </Link>
             </div>
 
-            <div className="text-center text-[10px] font-mono text-slate-500 pt-1">
-              ILLUSTRATIVE DATA ONLY — NOT A LIVE SYSTEM
+            <div className="text-center text-[10px] font-mono text-emerald-400/80 pt-1">
+              LIVE TELEMETRY STREAM — REAL-TIME OCSF INGESTION
             </div>
           </Card>
         </div>

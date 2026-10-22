@@ -182,7 +182,7 @@ export const AiSummaryPanel: React.FC<AiSummaryPanelProps> = ({
                 {
                   sourceId: "ev-telemetry-01",
                   sourceType: "OCSF_AUTH_LOG",
-                  exactSpan: "5 consecutive failed logins within 4.2s from IP 198.51.100.42 targeting victim.engineer@acme.com",
+                  exactSpan: "5 consecutive failed logins within 4.2s from IP 198.51.100.42 targeting target.engineer@zoikoshield.corp",
                   confidence: 0.96,
                 },
                 {
@@ -574,7 +574,7 @@ export const AiSummaryPanel: React.FC<AiSummaryPanelProps> = ({
                 <span className="text-[11px] text-slate-400">
                   Oversight Feedback Channel:{" "}
                   <span className="font-mono text-slate-300">
-                    {currentEnvelope?.appealOrFeedbackRoute?.feedbackChannel || "secops-ai-oversight@acme.com"}
+                    {currentEnvelope?.appealOrFeedbackRoute?.feedbackChannel || "secops-ai-oversight@zoikoshield.corp"}
                   </span>
                 </span>
               </div>

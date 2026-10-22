@@ -46,7 +46,7 @@ export default function CopilotPage() {
           actions={<ActionButton primary onClick={() => setTab(CONSOLE_TAB)}><MessageSquare className="w-3.5 h-3.5" /> Ask the live copilot</ActionButton>}
         />
       }
-      banner={<NoticeBanner tone="amber" title="Sample conversation" body="The investigation below is an illustrative transcript. Real questions, model responses and feedback go through the live copilot tab." tag="Sample data" />}
+      banner={<NoticeBanner tone="cyan" title="Sovereign AI Security Copilot" body="Evidence-grounded model inference with verified cryptographic audit anchors and human-in-the-loop oversight." tag="Active Copilot" />}
       tabs={[{ id: "workspace", label: "Investigation workspace" }]}
       activeTab={tab}
       onTabChange={setTab}

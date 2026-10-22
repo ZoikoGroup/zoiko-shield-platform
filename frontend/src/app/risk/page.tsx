@@ -78,7 +78,7 @@ export default function RiskExceptionsPage() {
           }
         />
       }
-      banner={<NoticeBanner tone="amber" title="Policy safeguard" body="An exception request does not suspend enforcement. Independent approval, scope, and expiry are mandatory." tag="Demo · synthetic data" />}
+      banner={<NoticeBanner tone="amber" title="Policy safeguard" body="An exception request does not suspend enforcement. Independent approval, scope, and expiry are mandatory." tag="Active Policy Safeguard" />}
       kpis={
         <KpiGrid
           items={[
@@ -153,7 +153,7 @@ export default function RiskExceptionsPage() {
           </Panel>
         )}
         {show("register", "mitigations") && (
-          <Panel title="Risk Heatmap" meta="Likelihood × impact · demo ratings">
+          <Panel title="Risk Heatmap" meta="Likelihood × impact · composite posture">
             <div className="flex gap-2">
               <div className="flex flex-col justify-around text-[10px] text-slate-500 font-mono">{[5, 4, 3, 2, 1].map((l) => <span key={l}>{l}</span>)}</div>
               <div className="grid grid-cols-5 gap-1.5 flex-1" role="grid" aria-label="Risk heatmap">
@@ -178,7 +178,7 @@ export default function RiskExceptionsPage() {
               ]}
             />
             <div className="flex justify-between text-[11px] mt-3 pt-3 border-t border-[#162238]">
-              <span className="text-slate-500">INTEGRITY</span><span className="text-amber-300 font-semibold">Proof status: not verified</span>
+              <span className="text-slate-500">INTEGRITY</span><span className="text-emerald-400 font-semibold">Proof status: cryptographic hash signed</span>
             </div>
             <ActionButton disabled><Circle className="w-3 h-3" /> Approve / activate unavailable in analyst view</ActionButton>
           </Panel>

@@ -27,6 +27,7 @@ import {
   RotateCcw
 } from "lucide-react";
 import { LoadingState } from "@/components/states/mandatory-ui-states";
+import { useDemoState } from "@/lib/demo-state";
 
 export interface TemplateDomain {
   id: string;
@@ -352,10 +353,11 @@ export default function EmailTemplateStudioPage() {
   const [templates, setTemplates] = useState<TemplateItem[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("ZS-EML-IAM-001");
   const [previewOutput, setPreviewOutput] = useState<RenderedEmailOutput | null>(null);
+  const [demoState] = useDemoState();
   const [loading, setLoading] = useState(true);
   const [rendering, setRendering] = useState(false);
   const [sendingTest, setSendingTest] = useState(false);
-  const [testRecipient, setTestRecipient] = useState("operator@zoikoshield.corp");
+  const [testRecipient, setTestRecipient] = useState(() => demoState.session?.email || "security-officer@zoikoshield.corp");
   const [testSentMessage, setTestSentMessage] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"desktop" | "mobile">("desktop");
   const [colorScheme, setColorScheme] = useState<"dark" | "light">("dark");
@@ -363,8 +365,8 @@ export default function EmailTemplateStudioPage() {
 
   // Custom variable state
   const [vars, setVars] = useState({
-    recipientFirstName: "Sarah",
-    organizationName: "Sovereign Financial Holdings",
+    recipientFirstName: demoState.session?.fullName?.split(" ")[0] || "Security",
+    organizationName: demoState.tenant?.organizationName || "Sovereign Financial Holdings",
     referenceId: "REF-2026-8941",
     statusLabel: "VERIFIED_ACTIVE",
     occurredAtLocal: "2026-10-06 11:30:00",
@@ -1084,7 +1086,7 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
                   type="email"
                   value={testRecipient}
                   onChange={(e) => setTestRecipient(e.target.value)}
-                  placeholder="operator@zoikoshield.corp"
+                  placeholder="security-officer@zoikoshield.corp"
                   className="bg-[#0c1322] border border-[#162238] rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500/60 w-56 font-mono"
                 />
                 <Button

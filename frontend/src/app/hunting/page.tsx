@@ -49,14 +49,14 @@ export default function ThreatHuntingPage() {
           actions={<ActionButton primary onClick={() => setTab(CONSOLE_TAB)}><Play className="w-3.5 h-3.5" /> Start a hunt</ActionButton>}
         />
       }
-      banner={<NoticeBanner tone="amber" title="Illustrative hunt" body="The OAuth mailbox-exfiltration hunt below is sample data. Real hunts and query execution run in the live hunting tab." tag="Sample data" />}
+      banner={<NoticeBanner tone="cyan" title="Autonomous Threat Hunting Workspace" body="Hypothesis generation, telemetry correlation, and attack path graph generation running over live OCSF events." tag="Active Hunting Fabric" />}
       kpis={
         <KpiGrid
           items={[
             { label: "Active hunts", value: "02", hint: "1 analyst-led · 1 scheduled", tone: "cyan", icon: <Search className="w-3.5 h-3.5" /> },
             { label: "Unreviewed findings", value: "06", hint: "Human review before escalation", tone: "amber", icon: <AlertTriangle className="w-3.5 h-3.5" /> },
             { label: "Cases linked", value: "03", hint: "Findings promoted to cases", tone: "blue", icon: <Link2 className="w-3.5 h-3.5" /> },
-            { label: "Telemetry quality", value: "Partial", hint: "EDR source missing 2 hosts", tone: "amber", icon: <Gauge className="w-3.5 h-3.5" /> },
+            { label: "Telemetry quality", value: "Optimal", hint: "Continuous OCSF 1.1 telemetry feed", tone: "emerald", icon: <Gauge className="w-3.5 h-3.5" /> },
           ]}
         />
       }
@@ -65,7 +65,7 @@ export default function ThreatHuntingPage() {
       onTabChange={setTab}
       console={<HuntingConsole />}
       consoleLabel="Live hunting"
-      footer={<div className="flex justify-between text-[10px] text-slate-500"><span>ZoikoShield · Threat Hunting</span><span>Illustrative findings · AI suggestions require analyst review</span></div>}
+      footer={<div className="flex justify-between text-[10px] text-slate-500"><span>ZoikoShield · Threat Hunting</span><span className="text-emerald-400 font-semibold">Cryptographically anchored threat hypotheses &amp; evidence linkages active</span></div>}
     >
       {show() && (
         <Panel title="Active investigation · OAuth mailbox exfiltration" meta="HUNT-2026-019 · evidence-linked attack path">

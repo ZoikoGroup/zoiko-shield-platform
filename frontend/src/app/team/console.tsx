@@ -35,7 +35,7 @@ export default function TeamPage() {
   const router = useRouter();
   const [state] = useDemoState();
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
-  const [email, setEmail] = useState("analyst.ops@acme.com");
+  const [email, setEmail] = useState("");
   const [role, setRole] = useState<"SECURITY_ANALYST" | "AUDITOR" | "TENANT_ADMIN">("SECURITY_ANALYST");
   const [isLoading, setIsLoading] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
@@ -120,7 +120,7 @@ export default function TeamPage() {
         role
       );
       setIsInviteModalOpen(false);
-      setEmail("analyst.ops@acme.com");
+      setEmail("");
     } catch (err: any) {
       console.error("Invite Error:", err);
       setInviteError(err?.message || "Failed to issue membership invitation.");
@@ -381,7 +381,7 @@ export default function TeamPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="analyst.ops@acme.com"
+              placeholder="colleague@organization.com"
               className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
             />
           </div>

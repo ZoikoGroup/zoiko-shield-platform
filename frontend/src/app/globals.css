@@ -11,41 +11,221 @@
   --accent-cyan: #00f0ff;
 }
 
-html.light {
+/* ==========================================================================
+   LIGHT THEME OVERRIDES (Bug ZSH 4)
+   ========================================================================== */
+html.light,
+html[data-theme="light"] {
   --background: #f8fafc;
   --foreground: #0f172a;
-  --sidebar-bg: #f1f5f9;
+  --sidebar-bg: #ffffff;
   --card-bg: #ffffff;
   --card-border: #cbd5e1;
   --accent-cyan: #0284c7;
+  color-scheme: light;
 }
 
-html.light body {
-  background-color: #f8fafc;
-  color: #0f172a;
+html.light body,
+html[data-theme="light"] body,
+html.light .app-shell,
+html[data-theme="light"] .app-shell {
+  background-color: #f8fafc !important;
+  color: #0f172a !important;
 }
 
-html.light .surface-card {
-  background: #ffffff;
-  border-color: #e2e8f0;
+/* Backgrounds: App Shell & Pages */
+html.light main,
+html[data-theme="light"] main,
+html.light .cyber-grid,
+html[data-theme="light"] .cyber-grid,
+html.light .bg-\[\#060911\],
+html[data-theme="light"] .bg-\[\#060911\] {
+  background-color: #f8fafc !important;
+  background-image: linear-gradient(to right, rgba(0, 0, 0, 0.04) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(0, 0, 0, 0.04) 1px, transparent 1px) !important;
 }
 
-html.light .surface-well {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
+/* Sidebars & Headers */
+html.light aside,
+html[data-theme="light"] aside,
+html.light header,
+html[data-theme="light"] header,
+html.light .surface-card,
+html[data-theme="light"] .surface-card,
+html.light .glass-panel,
+html[data-theme="light"] .glass-panel,
+html.light .bg-\[\#080c16\],
+html[data-theme="light"] .bg-\[\#080c16\] {
+  background-color: #ffffff !important;
+  border-color: #e2e8f0 !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05) !important;
 }
 
-html.cyber {
-  --background: #020617;
+/* Cards & Wells */
+html.light .surface-well,
+html[data-theme="light"] .surface-well,
+html.light .bg-\[\#0c111e\],
+html[data-theme="light"] .bg-\[\#0c111e\],
+html.light .bg-\[\#0a0f1d\],
+html[data-theme="light"] .bg-\[\#0a0f1d\],
+html.light .bg-\[\#0b101d\],
+html[data-theme="light"] .bg-\[\#0b101d\],
+html.light .bg-\[\#0e1424\],
+html[data-theme="light"] .bg-\[\#0e1424\],
+html.light .bg-\[\#05080f\],
+html[data-theme="light"] .bg-\[\#05080f\],
+html.light .bg-slate-900,
+html[data-theme="light"] .bg-slate-900,
+html.light .bg-slate-950,
+html[data-theme="light"] .bg-slate-950,
+html.light .bg-slate-800,
+html[data-theme="light"] .bg-slate-800 {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+/* Borders */
+html.light .border-\[\#141c2e\],
+html.light .border-\[\#141d2e\],
+html.light .border-\[\#162238\],
+html.light .border-\[\#1e2b44\],
+html.light .border-\[\#152033\],
+html.light .border-slate-800,
+html.light .border-slate-700,
+html[data-theme="light"] .border-\[\#141c2e\],
+html[data-theme="light"] .border-\[\#141d2e\],
+html[data-theme="light"] .border-\[\#162238\],
+html[data-theme="light"] .border-\[\#1e2b44\],
+html[data-theme="light"] .border-\[\#152033\],
+html[data-theme="light"] .border-slate-800,
+html[data-theme="light"] .border-slate-700 {
+  border-color: #e2e8f0 !important;
+}
+
+/* Typography */
+html.light .text-slate-100,
+html.light .text-white,
+html.light .text-slate-200,
+html[data-theme="light"] .text-slate-100,
+html[data-theme="light"] .text-white,
+html[data-theme="light"] .text-slate-200 {
+  color: #0f172a !important;
+}
+
+html.light .text-slate-300,
+html.light .text-slate-400,
+html[data-theme="light"] .text-slate-300,
+html[data-theme="light"] .text-slate-400 {
+  color: #334155 !important;
+}
+
+html.light .text-slate-500,
+html[data-theme="light"] .text-slate-500 {
+  color: #64748b !important;
+}
+
+/* Inputs & Form Controls */
+html.light input,
+html.light select,
+html.light textarea,
+html[data-theme="light"] input,
+html[data-theme="light"] select,
+html[data-theme="light"] textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #cbd5e1 !important;
+}
+
+html.light input::placeholder,
+html[data-theme="light"] input::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Table Rows & Hovers */
+html.light tr:hover,
+html[data-theme="light"] tr:hover {
+  background-color: #f1f5f9 !important;
+}
+
+/* Popover menus */
+html.light .surface-popover,
+html.light [role="dialog"],
+html[data-theme="light"] .surface-popover,
+html[data-theme="light"] [role="dialog"] {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* ==========================================================================
+   CYBER THEME OVERRIDES (Bug ZSH 4)
+   ========================================================================== */
+html.cyber,
+html[data-theme="cyber"] {
+  --background: #010409;
   --foreground: #e0f2fe;
-  --sidebar-bg: #020617;
-  --card-bg: #070e22;
-  --card-border: #0284c7;
+  --sidebar-bg: #030816;
+  --card-bg: #050d24;
+  --card-border: #00f0ff;
   --accent-cyan: #00f0ff;
+  color-scheme: dark;
 }
 
-html.cyber .surface-card {
-  box-shadow: 0 0 15px rgba(6, 182, 212, 0.15);
+html.cyber body,
+html.cyber main,
+html.cyber .app-shell,
+html[data-theme="cyber"] body,
+html[data-theme="cyber"] main,
+html[data-theme="cyber"] .app-shell {
+  background-color: #010409 !important;
+  color: #e0f2fe !important;
+}
+
+html.cyber .cyber-grid,
+html[data-theme="cyber"] .cyber-grid {
+  background-size: 28px 28px !important;
+  background-image: 
+    linear-gradient(to right, rgba(0, 240, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(0, 240, 255, 0.08) 1px, transparent 1px) !important;
+}
+
+html.cyber header,
+html[data-theme="cyber"] header {
+  background-color: rgba(3, 8, 22, 0.95) !important;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.35) !important;
+  box-shadow: 0 4px 20px rgba(0, 240, 255, 0.18) !important;
+}
+
+html.cyber aside,
+html[data-theme="cyber"] aside {
+  background-color: #030816 !important;
+  border-right: 1px solid rgba(0, 240, 255, 0.25) !important;
+  box-shadow: 4px 0 20px rgba(0, 240, 255, 0.12) !important;
+}
+
+html.cyber .surface-card,
+html.cyber .border-\[\#162238\],
+html.cyber .border-\[\#1e2b44\],
+html.cyber .border-\[\#141d2e\],
+html.cyber .border-slate-800,
+html[data-theme="cyber"] .surface-card,
+html[data-theme="cyber"] .border-\[\#162238\],
+html[data-theme="cyber"] .border-\[\#1e2b44\],
+html[data-theme="cyber"] .border-\[\#141d2e\],
+html[data-theme="cyber"] .border-slate-800 {
+  border-color: rgba(0, 240, 255, 0.4) !important;
+  box-shadow: 0 0 15px rgba(0, 240, 255, 0.15), inset 0 0 15px rgba(0, 240, 255, 0.03) !important;
+}
+
+html.cyber h1,
+html.cyber h2,
+html.cyber h3,
+html[data-theme="cyber"] h1,
+html[data-theme="cyber"] h2,
+html[data-theme="cyber"] h3 {
+  text-shadow: 0 0 12px rgba(0, 240, 255, 0.35) !important;
 }
 
 body {

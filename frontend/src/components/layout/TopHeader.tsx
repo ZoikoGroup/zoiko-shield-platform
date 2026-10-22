@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useDemoState } from "@/lib/demo-state";
@@ -39,79 +39,31 @@ import {
 interface HeaderNotification {
   id: string;
   title: string;
-  category: "P0_ALERT" | "JIT_QUORUM" | "MERKLE_SEAL" | "AI_DRIFT" | "SOAR_FREEZE";
-  severity: "CRITICAL" | "HIGH" | "INFO";
+  category: string;
+  severity: "CRITICAL" | "HIGH" | "MEDIUM" | "INFO";
   timeAgo: string;
   acknowledged: boolean;
   route: string;
 }
 
-const DEFAULT_NOTIFICATIONS: HeaderNotification[] = [
-  {
-    id: "notif-1",
-    title: "P0 Alert: Credential-Stuffing Burst detected on ec2-jump-01",
-    category: "P0_ALERT",
-    severity: "CRITICAL",
-    timeAgo: "2m ago",
-    acknowledged: false,
-    route: "/cases/incidents/command",
-  },
-  {
-    id: "notif-2",
-    title: "JIT Elevation Request awaiting 2nd signatory quorum (DB Admin)",
-    category: "JIT_QUORUM",
-    severity: "HIGH",
-    timeAgo: "14m ago",
-    acknowledged: false,
-    route: "/admin/jit-elevation",
-  },
-  {
-    id: "notif-3",
-    title: "EU AI Act Drift Alert: Model PSI Variance on Gemini 1.5 Pro",
-    category: "AI_DRIFT",
-    severity: "HIGH",
-    timeAgo: "28m ago",
-    acknowledged: false,
-    route: "/ai-governance",
-  },
-  {
-    id: "notif-4",
-    title: "Cryptographic Epoch #1043 sealed with FIPS 204 ML-DSA-65",
-    category: "MERKLE_SEAL",
-    severity: "INFO",
-    timeAgo: "1h ago",
-    acknowledged: false,
-    route: "/ledger",
-  },
-  {
-    id: "notif-5",
-    title: "Emergency SOAR execution freeze engaged in simulation sandbox",
-    category: "SOAR_FREEZE",
-    severity: "INFO",
-    timeAgo: "2h ago",
-    acknowledged: true,
-    route: "/actions",
-  },
-];
-
 const SEARCH_ITEMS = [
-  // 16 Demo Walkthrough Stages
-  { type: "DEMO STEP", title: "1. Platform Service Health Matrix", subtitle: "Core microservices, storage engines, DR drill", route: "/admin/platform-health" },
-  { type: "DEMO STEP", title: "2. G1 Launch Gate Multi-Signer Protocol", subtitle: "8-domain cryptographic ratification ceremony", route: "/admin/g1-gate" },
-  { type: "DEMO STEP", title: "3. Executive Risk & Financial Exposure", subtitle: "Board-level CISO scorecard & attack path", route: "/risk" },
-  { type: "DEMO STEP", title: "4. Detection & Alerts Queue", subtitle: "OCSF-normalized multi-source telemetry storm", route: "/alerts" },
-  { type: "DEMO STEP", title: "5. Incident Command War Room", subtitle: "P1 Major incident orchestration, host containment", route: "/cases/incidents/command" },
-  { type: "DEMO STEP", title: "6. AI Security Copilot (Spec §16.1)", subtitle: "10-field decision review envelope, KMS signing", route: "/copilot" },
-  { type: "DEMO STEP", title: "7. AI Safety & Governance Cockpit", subtitle: "NIST AI RMF, EU AI Act, Model Armor filters", route: "/ai-governance" },
-  { type: "DEMO STEP", title: "8. Cedar Policy Lifecycle & Canary", subtitle: "Side-by-side YAML diff, 4-eyes approval ring", route: "/policies" },
-  { type: "DEMO STEP", title: "9. JIT Privileged Access Quorum", subtitle: "Zero standing privileges, FIDO2 hardware step-up", route: "/admin/jit-elevation" },
-  { type: "DEMO STEP", title: "10. Autonomous SOAR Sandboxing", subtitle: "WASM dry-run simulation, 0-blast-radius receipt", route: "/response-proposals" },
-  { type: "DEMO STEP", title: "11. Emergency Kill-Switch & Circuit Breakers", subtitle: "Super-admin kill-switches, tenant capability toggles", route: "/admin" },
-  { type: "DEMO STEP", title: "12. RFC 3161 Merkle Evidence Ledger", subtitle: "Immutable Merkle proof explorer, PQC signatures", route: "/ledger" },
-  { type: "DEMO STEP", title: "13. Continuous Security Controls Matrix", subtitle: "Real-time SOC 2 Type II & ISO 27001 evaluation", route: "/controls" },
-  { type: "DEMO STEP", title: "14. Commercial Pricing & Sizing Calculator", subtitle: "Anti-perverse pricing guarantee, band guidance", route: "/pricing" },
-  { type: "DEMO STEP", title: "15. Notification Center & Delivery Ledger", subtitle: "Audited delivery tracking, DLQ replay ledger", route: "/notifications" },
-  { type: "DEMO STEP", title: "16. 226 Production Email Templates Studio", subtitle: "Fail-closed security release gate test", route: "/admin/email-templates" },
+  // 16 Core Cockpit Workspaces
+  { type: "CORE COCKPIT", title: "1. Platform Service Health Matrix", subtitle: "Core microservices, storage engines, DR drill", route: "/admin/platform-health" },
+  { type: "CORE COCKPIT", title: "2. G1 Launch Gate Multi-Signer Protocol", subtitle: "8-domain cryptographic ratification ceremony", route: "/admin/g1-gate" },
+  { type: "CORE COCKPIT", title: "3. Executive Risk & Financial Exposure", subtitle: "Board-level CISO scorecard & attack path", route: "/risk" },
+  { type: "CORE COCKPIT", title: "4. Detection & Alerts Queue", subtitle: "OCSF-normalized multi-source telemetry storm", route: "/alerts" },
+  { type: "CORE COCKPIT", title: "5. Incident Command War Room", subtitle: "P1 Major incident orchestration, host containment", route: "/cases/incidents/command" },
+  { type: "CORE COCKPIT", title: "6. AI Security Copilot (Spec §16.1)", subtitle: "10-field decision review envelope, KMS signing", route: "/copilot" },
+  { type: "CORE COCKPIT", title: "7. AI Safety & Governance Cockpit", subtitle: "NIST AI RMF, EU AI Act, Model Armor filters", route: "/ai-governance" },
+  { type: "CORE COCKPIT", title: "8. Cedar Policy Lifecycle & Canary", subtitle: "Side-by-side YAML diff, 4-eyes approval ring", route: "/policies" },
+  { type: "CORE COCKPIT", title: "9. JIT Privileged Access Quorum", subtitle: "Zero standing privileges, FIDO2 hardware step-up", route: "/admin/jit-elevation" },
+  { type: "CORE COCKPIT", title: "10. Autonomous SOAR Sandboxing", subtitle: "WASM dry-run simulation, 0-blast-radius receipt", route: "/response-proposals" },
+  { type: "CORE COCKPIT", title: "11. Emergency Kill-Switch & Circuit Breakers", subtitle: "Super-admin kill-switches, tenant capability toggles", route: "/admin" },
+  { type: "CORE COCKPIT", title: "12. RFC 3161 Merkle Evidence Ledger", subtitle: "Immutable Merkle proof explorer, PQC signatures", route: "/ledger" },
+  { type: "CORE COCKPIT", title: "13. Continuous Security Controls Matrix", subtitle: "Real-time SOC 2 Type II & ISO 27001 evaluation", route: "/controls" },
+  { type: "CORE COCKPIT", title: "14. Commercial Pricing & Sizing Calculator", subtitle: "Anti-perverse pricing guarantee, band guidance", route: "/pricing" },
+  { type: "CORE COCKPIT", title: "15. Notification Center & Delivery Ledger", subtitle: "Audited delivery tracking, DLQ replay ledger", route: "/notifications" },
+  { type: "CORE COCKPIT", title: "16. 226 Production Email Templates Studio", subtitle: "Fail-closed security release gate test", route: "/admin/email-templates" },
 
   // Operational Workspaces
   { type: "WORKSPACE", title: "Command Center Dashboard", subtitle: "Primary SecOps operational command", route: "/" },
@@ -142,8 +94,108 @@ export const TopHeader: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedSearchIdx, setSelectedSearchIdx] = useState(0);
 
-  // Notifications State
-  const [notifications, setNotifications] = useState<HeaderNotification[]>(DEFAULT_NOTIFICATIONS);
+  // Dynamic Live Notifications State
+  const [notifications, setNotifications] = useState<HeaderNotification[]>([]);
+  const [isLoadingNotifs, setIsLoadingNotifs] = useState(false);
+
+  // Fetch Live Notifications from Backend
+  const fetchLiveNotifications = useCallback(async () => {
+    setIsLoadingNotifs(true);
+    try {
+      const [alertsRes, notifsRes] = await Promise.allSettled([
+        fetch("/api/v1/alerts?limit=10"),
+        fetch("/api/v1/notifications"),
+      ]);
+
+      const items: HeaderNotification[] = [];
+
+      if (alertsRes.status === "fulfilled" && alertsRes.value.ok) {
+        const data = await alertsRes.value.json().catch(() => []);
+        const alertsList = Array.isArray(data) ? data : data?.data || [];
+        alertsList.forEach((a: any) => {
+          const timestamp = a.createdAt || a.created_at || a.timestamp;
+          const created = timestamp ? new Date(timestamp).getTime() : Date.now();
+          const minsAgo = Math.max(1, Math.floor((Date.now() - created) / 60000));
+          const timeAgo = minsAgo < 60 ? `${minsAgo}m ago` : `${Math.floor(minsAgo / 60)}h ago`;
+          const isAck = a.status === "TRIAGED" || a.status === "CLOSED";
+          items.push({
+            id: `alert-${a.id}`,
+            title: `${a.priority || "P1"} Alert: ${a.title || a.message || "Security anomaly detected"}`,
+            category: "DETECTION_ALERT",
+            severity: a.severity === "CRITICAL" ? "CRITICAL" : a.severity === "HIGH" ? "HIGH" : "MEDIUM",
+            timeAgo,
+            acknowledged: isAck,
+            route: "/alerts",
+          });
+        });
+      }
+
+      if (notifsRes.status === "fulfilled" && notifsRes.value.ok) {
+        const notifData = await notifsRes.value.json().catch(() => []);
+        const deliveryList = Array.isArray(notifData) ? notifData : notifData?.data || [];
+        deliveryList.forEach((d: any) => {
+          const timestamp = d.created_at || d.delivered_at || d.timestamp;
+          const created = timestamp ? new Date(timestamp).getTime() : Date.now();
+          const minsAgo = Math.max(1, Math.floor((Date.now() - created) / 60000));
+          const timeAgo = minsAgo < 60 ? `${minsAgo}m ago` : `${Math.floor(minsAgo / 60)}h ago`;
+          const isDead = d.status === "DEAD_LETTERED" || d.status === "FAILED";
+          const isAck = d.status === "ACKNOWLEDGED";
+          let channelDisplay = d.channel || "operator";
+          if (channelDisplay.includes("acme") || channelDisplay.includes("owner@") || channelDisplay.includes("security@zoikoshield.io")) {
+            channelDisplay = state.session?.email ? `EMAIL (${state.session.email})` : "EMAIL (security-ops@zoikoshield.corp)";
+          }
+          items.push({
+            id: String(d.id),
+            title: isDead
+              ? `Delivery Failure: ${d.event_id || "Notice"} dead-lettered (${d.error_code || "Timeout"})`
+              : `Security Dispatch: ${d.event_id || "Notice"} dispatched to ${channelDisplay}`,
+            category: isDead ? "DLQ_FAILURE" : "DISPATCH_NOTICE",
+            severity: isDead ? "CRITICAL" : "INFO",
+            timeAgo,
+            acknowledged: isAck,
+            route: "/notifications",
+          });
+        });
+      }
+
+      if (items.length === 0 && state.alerts && state.alerts.length > 0) {
+        state.alerts.slice(0, 5).forEach((a) => {
+          const timestamp = a.createdAt;
+          const created = timestamp ? new Date(timestamp).getTime() : Date.now();
+          const minsAgo = Math.max(1, Math.floor((Date.now() - created) / 60000));
+          const timeAgo = minsAgo < 60 ? `${minsAgo}m ago` : `${Math.floor(minsAgo / 60)}h ago`;
+          const isAck = a.status === "TRIAGED" || a.status === "CLOSED";
+          items.push({
+            id: `alert-${a.id}`,
+            title: `${a.priority || "P1"} Alert: ${a.title}`,
+            category: "DETECTION_ALERT",
+            severity: a.severity === "CRITICAL" ? "CRITICAL" : a.severity === "HIGH" ? "HIGH" : "MEDIUM",
+            timeAgo,
+            acknowledged: isAck,
+            route: "/alerts",
+          });
+        });
+      }
+
+      setNotifications(items);
+    } catch (err) {
+      console.warn("Failed to load header notifications from backend:", err);
+    } finally {
+      setIsLoadingNotifs(false);
+    }
+  }, [state.alerts]);
+
+  useEffect(() => {
+    fetchLiveNotifications();
+    const interval = setInterval(fetchLiveNotifications, 30000);
+    return () => clearInterval(interval);
+  }, [fetchLiveNotifications]);
+
+  useEffect(() => {
+    if (activeMenu === "notifications") {
+      fetchLiveNotifications();
+    }
+  }, [activeMenu, fetchLiveNotifications]);
 
   // Theme & Brightness State
   const [themeMode, setThemeMode] = useState<"dark" | "light" | "cyber">("dark");
@@ -165,6 +217,11 @@ export const TopHeader: React.FC = () => {
       const savedTheme = (localStorage.getItem("zoiko_theme") as "dark" | "light" | "cyber") || "dark";
       setThemeMode(savedTheme);
       document.documentElement.className = savedTheme;
+      document.documentElement.setAttribute("data-theme", savedTheme);
+      if (typeof document !== "undefined" && document.body) {
+        document.body.className = savedTheme;
+        document.body.setAttribute("data-theme", savedTheme);
+      }
 
       const savedBrightness = localStorage.getItem("zoiko_brightness");
       if (savedBrightness) {
@@ -246,6 +303,11 @@ export const TopHeader: React.FC = () => {
   const handleThemeChange = (mode: "dark" | "light" | "cyber") => {
     setThemeMode(mode);
     document.documentElement.className = mode;
+    document.documentElement.setAttribute("data-theme", mode);
+    if (typeof document !== "undefined" && document.body) {
+      document.body.className = mode;
+      document.body.setAttribute("data-theme", mode);
+    }
     try {
       localStorage.setItem("zoiko_theme", mode);
     } catch {}
@@ -266,32 +328,61 @@ export const TopHeader: React.FC = () => {
   // Notification Handlers
   const unreadCount = notifications.filter((n) => !n.acknowledged).length;
 
-  const handleAcknowledgeNotification = (id: string, e: React.MouseEvent) => {
+  const handleAcknowledgeNotification = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, acknowledged: true } : n))
     );
+    try {
+      if (id.startsWith("alert-")) {
+        const alertId = id.replace("alert-", "");
+        await fetch(`/api/v1/alerts/${alertId}/triage`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "TRIAGED" }),
+        });
+      } else {
+        await fetch(`/api/v1/notifications/${id}/acknowledge`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+    } catch {}
   };
 
-  const handleMarkAllRead = () => {
+  const handleMarkAllRead = async () => {
+    const unacked = notifications.filter((n) => !n.acknowledged);
     setNotifications((prev) => prev.map((n) => ({ ...n, acknowledged: true })));
+    for (const item of unacked) {
+      try {
+        if (item.id.startsWith("alert-")) {
+          const alertId = item.id.replace("alert-", "");
+          await fetch(`/api/v1/alerts/${alertId}/triage`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "TRIAGED" }),
+          });
+        } else {
+          await fetch(`/api/v1/notifications/${item.id}/acknowledge`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+          });
+        }
+      } catch {}
+    }
   };
 
-  // Demo Persona Switcher
-  const handleSwitchPersona = (
-    roleName: string,
-    roleTitle: "SECURITY_ANALYST" | "SUPER_ADMIN" | "TENANT_OWNER" | "AUDITOR",
-    email: string
+  // Tenant Role Switcher (Restricted to active tenant context)
+  const handleSwitchRole = (
+    roleTitle: "SECURITY_ANALYST" | "SUPER_ADMIN" | "TENANT_OWNER" | "AUDITOR"
   ) => {
-    setDemoState({
-      ...state,
+    setDemoState((prev) => ({
+      ...prev,
       session: {
-        ...state.session,
-        fullName: roleName,
+        ...prev.session,
         role: roleTitle,
-        email: email,
       },
-    });
+    }));
     setActiveMenu(null);
   };
 
@@ -342,7 +433,7 @@ export const TopHeader: React.FC = () => {
   };
 
   const breadcrumbs = getBreadcrumbs();
-  const userInitials = (state.session.fullName || "Sarah Chen")
+  const userInitials = (state.session.fullName || state.session.email || "ZS")
     .split(" ")
     .map((n) => n[0])
     .join("")
@@ -386,10 +477,10 @@ export const TopHeader: React.FC = () => {
 
         {/* Right: Actions, Badges & Interactive Dropdowns */}
         <div className="flex items-center gap-3 shrink-0 relative">
-          {/* Environment / Demo Pill */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[11px] font-mono font-medium">
-            <AlertTriangle className="w-3 h-3 text-amber-400" />
-            <span>SIMULATED DEMO</span>
+          {/* Environment / Status Pill */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[11px] font-mono font-medium shadow-[0_0_12px_rgba(16,185,129,0.15)]">
+            <ShieldCheck className="w-3 h-3 text-emerald-400" />
+            <span>ACTIVE DEFENSE</span>
           </div>
 
           {/* Region Indicator */}
@@ -470,57 +561,71 @@ export const TopHeader: React.FC = () => {
                 </div>
 
                 <div className="max-h-[340px] overflow-y-auto divide-y divide-slate-800/60">
-                  {notifications.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => {
-                        setActiveMenu(null);
-                        router.push(item.route);
-                      }}
-                      className={`p-3 transition-colors cursor-pointer flex flex-col gap-1.5 ${
-                        item.acknowledged
-                          ? "bg-[#080c16]/50 opacity-70 hover:opacity-100 hover:bg-[#0c1222]"
-                          : "bg-cyan-950/20 hover:bg-cyan-950/40"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span
-                          className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded uppercase ${
-                            item.severity === "CRITICAL"
-                              ? "bg-rose-500/20 text-rose-300 border border-rose-500/40"
-                              : item.severity === "HIGH"
-                              ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                              : "bg-blue-500/20 text-blue-300 border border-blue-500/40"
-                          }`}
-                        >
-                          {item.severity}
-                        </span>
-                        <span className="text-[10px] font-mono text-slate-500">{item.timeAgo}</span>
-                      </div>
-                      <p className="text-xs text-slate-200 font-medium leading-snug">{item.title}</p>
-                      <div className="flex items-center justify-between pt-1">
-                        <span className="text-[10px] font-mono text-cyan-400 flex items-center gap-1 hover:underline">
-                          <span>View Detail</span>
-                          <ArrowRight className="w-2.5 h-2.5" />
-                        </span>
-                        {!item.acknowledged ? (
-                          <button
-                            type="button"
-                            onClick={(e) => handleAcknowledgeNotification(item.id, e)}
-                            className="px-2 py-0.5 rounded bg-slate-800 hover:bg-emerald-600 hover:text-white border border-slate-700 text-[10px] font-mono text-slate-300 transition-colors flex items-center gap-1"
-                          >
-                            <Check className="w-3 h-3 text-emerald-400" />
-                            <span>Ack</span>
-                          </button>
-                        ) : (
-                          <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
-                            <CheckCircle2 className="w-3 h-3" />
-                            <span>Acknowledged</span>
-                          </span>
-                        )}
-                      </div>
+                  {isLoadingNotifs && notifications.length === 0 ? (
+                    <div className="p-8 text-center space-y-2">
+                      <div className="animate-spin w-5 h-5 border-2 border-cyan-400 border-t-transparent rounded-full mx-auto mb-2" />
+                      <div className="text-xs font-bold text-slate-200">Connecting to Live Ingestion Streams...</div>
+                      <p className="text-[11px] text-slate-400 font-mono">Syncing real-time alerts and delivery queues.</p>
                     </div>
-                  ))}
+                  ) : notifications.length === 0 ? (
+                    <div className="p-8 text-center space-y-2">
+                      <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
+                      <div className="text-xs font-bold text-slate-200">All Notifications Acknowledged</div>
+                      <p className="text-[11px] text-slate-400">No active P0/P1 threat alerts or dead-lettered delivery notices.</p>
+                    </div>
+                  ) : (
+                    notifications.map((item) => (
+                      <div
+                        key={item.id}
+                        onClick={() => {
+                          setActiveMenu(null);
+                          router.push(item.route);
+                        }}
+                        className={`p-3 transition-colors cursor-pointer flex flex-col gap-1.5 ${
+                          item.acknowledged
+                            ? "bg-[#080c16]/50 opacity-70 hover:opacity-100 hover:bg-[#0c1222]"
+                            : "bg-cyan-950/20 hover:bg-cyan-950/40"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span
+                            className={`text-[9px] font-mono font-bold px-1.5 py-0.5 rounded uppercase ${
+                              item.severity === "CRITICAL"
+                                ? "bg-rose-500/20 text-rose-300 border border-rose-500/40"
+                                : item.severity === "HIGH"
+                                ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                                : "bg-blue-500/20 text-blue-300 border border-blue-500/40"
+                            }`}
+                          >
+                            {item.severity}
+                          </span>
+                          <span className="text-[10px] font-mono text-slate-500">{item.timeAgo}</span>
+                        </div>
+                        <p className="text-xs text-slate-200 font-medium leading-snug">{item.title}</p>
+                        <div className="flex items-center justify-between pt-1">
+                          <span className="text-[10px] font-mono text-cyan-400 flex items-center gap-1 hover:underline">
+                            <span>View Detail</span>
+                            <ArrowRight className="w-2.5 h-2.5" />
+                          </span>
+                          {!item.acknowledged ? (
+                            <button
+                              type="button"
+                              onClick={(e) => handleAcknowledgeNotification(item.id, e)}
+                              className="px-2 py-0.5 rounded bg-slate-800 hover:bg-emerald-600 hover:text-white border border-slate-700 text-[10px] font-mono text-slate-300 transition-colors flex items-center gap-1"
+                            >
+                              <Check className="w-3 h-3 text-emerald-400" />
+                              <span>Ack</span>
+                            </button>
+                          ) : (
+                            <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3" />
+                              <span>Acknowledged</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
 
                 <div className="p-2.5 bg-[#080c16] border-t border-slate-800 text-center">
@@ -721,11 +826,11 @@ export const TopHeader: React.FC = () => {
               }`}
             >
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-slate-950 font-bold text-xs shadow-[0_0_10px_rgba(6,182,212,0.3)]">
-                {userInitials || "SC"}
+                {userInitials || "ZS"}
               </div>
               <div className="hidden sm:block text-left text-xs leading-tight">
                 <div className="font-semibold text-slate-200">
-                  {state.session.fullName || "Sarah Chen"}
+                  {state.session.fullName || state.session.email || "Security Analyst"}
                 </div>
                 <div className="text-[10px] font-mono text-cyan-400">
                   {state.session.role?.replace(/_/g, " ") || "Security Analyst"}
@@ -736,8 +841,8 @@ export const TopHeader: React.FC = () => {
             {/* Direct Prominent Logout Button */}
             <button
               type="button"
-              onClick={() => {
-                ZoikoShieldApiClient.logout();
+              onClick={async () => {
+                await ZoikoShieldApiClient.logout();
                 window.location.href = "/login?logout=true";
               }}
               className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-rose-400 bg-rose-950/30 hover:bg-rose-900/50 border border-rose-500/30 hover:border-rose-500/60 shadow-[0_0_10px_rgba(244,63,94,0.15)] transition-all ml-1.5"
@@ -755,7 +860,7 @@ export const TopHeader: React.FC = () => {
                     {userInitials}
                   </div>
                   <div>
-                    <div className="font-bold text-sm text-white">{state.session.fullName}</div>
+                    <div className="font-bold text-sm text-white">{state.session.fullName || state.session.email}</div>
                     <div className="text-[11px] text-cyan-400">{state.session.email}</div>
                     <div className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 mt-0.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -774,23 +879,28 @@ export const TopHeader: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Demo Persona Switcher */}
+                {/* Active Tenant Security Role */}
                 <div className="space-y-1.5">
-                  <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
-                    Switch Active Persona (Demo Role)
-                  </label>
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                      Tenant Role &amp; Permissions
+                    </label>
+                    <span className="text-[10px] font-mono text-cyan-400 font-bold truncate max-w-[140px]">
+                      {state.tenant.organizationName}
+                    </span>
+                  </div>
                   <div className="space-y-1">
                     {[
-                      { name: "Sarah Chen", role: "SECURITY_ANALYST" as const, displayRole: "Security Analyst", email: "sarah.chen@acme.com" },
-                      { name: "Marcus Vance", role: "SUPER_ADMIN" as const, displayRole: "SOC Manager", email: "marcus.vance@acme.com" },
-                      { name: "Olivia Reed", role: "TENANT_OWNER" as const, displayRole: "CISO / Tenant Owner", email: "olivia.reed@acme.com" },
+                      { role: "TENANT_OWNER" as const, displayRole: "Tenant Administrator / CISO", desc: "Full administrative & cryptographic governance" },
+                      { role: "SECURITY_ANALYST" as const, displayRole: "Senior Security Analyst", desc: "SecOps telemetry, alerts & SOAR actions" },
+                      { role: "AUDITOR" as const, displayRole: "Compliance Auditor", desc: "Read-only continuous evidence verification" },
                     ].map((p) => {
-                      const isCurrent = state.session.fullName === p.name;
+                      const isCurrent = state.session.role === p.role;
                       return (
                         <button
-                          key={p.name}
+                          key={p.role}
                           type="button"
-                          onClick={() => handleSwitchPersona(p.name, p.role, p.email)}
+                          onClick={() => handleSwitchRole(p.role)}
                           className={`w-full p-2 rounded-lg flex items-center justify-between text-left transition-all border ${
                             isCurrent
                               ? "bg-cyan-500/20 border-cyan-500/50 text-cyan-300 font-bold"
@@ -798,8 +908,8 @@ export const TopHeader: React.FC = () => {
                           }`}
                         >
                           <div>
-                            <div className="text-xs">{p.name}</div>
-                            <div className="text-[10px] text-slate-400">{p.displayRole}</div>
+                            <div className="text-xs">{p.displayRole}</div>
+                            <div className="text-[10px] text-slate-400">{p.desc}</div>
                           </div>
                           {isCurrent && <Check className="w-3.5 h-3.5 text-cyan-400" />}
                         </button>
@@ -828,9 +938,9 @@ export const TopHeader: React.FC = () => {
                   </Link>
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       setActiveMenu(null);
-                      ZoikoShieldApiClient.logout();
+                      await ZoikoShieldApiClient.logout();
                       window.location.href = "/login?logout=true";
                     }}
                     className="w-full mt-1.5 p-2 rounded-lg flex items-center justify-between text-left text-xs font-semibold text-rose-400 hover:bg-rose-950/30 border border-rose-500/30 hover:border-rose-500/60 transition-colors"

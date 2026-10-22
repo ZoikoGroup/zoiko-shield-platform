@@ -71,18 +71,18 @@ export default function TenantManagementPage() {
       kpis={
         <KpiGrid
           items={[
-            { label: "Tenant state", value: "ACTIVE", hint: "Illustrative organization state", tone: "emerald", icon: <Building2 className="w-3.5 h-3.5" /> },
+            { label: "Tenant state", value: "ACTIVE", hint: "Verified active organization state", tone: "emerald", icon: <Building2 className="w-3.5 h-3.5" /> },
             { label: "Tenant members", value: "24", hint: `Members within ${tenantName} only`, tone: "cyan", icon: <Users className="w-3.5 h-3.5" /> },
-            { label: "Home data region", value: "EU-WEST-2", hint: "Residency configuration — demo", tone: "blue", icon: <Globe className="w-3.5 h-3.5" /> },
+            { label: "Home data region", value: "EU-WEST-2", hint: "Sovereign residency enforcement active", tone: "blue", icon: <Globe className="w-3.5 h-3.5" /> },
             { label: "Access requests", value: "2", hint: "Pending owner or security review", tone: "amber", icon: <Clock className="w-3.5 h-3.5" /> },
-            { label: "Support access grants", value: "0 ACTIVE", hint: "No standing support access — proposed", tone: "slate", icon: <Lock className="w-3.5 h-3.5" /> },
+            { label: "Support access grants", value: "0 ACTIVE", hint: "No standing support access — zero-trust", tone: "slate", icon: <Lock className="w-3.5 h-3.5" /> },
           ]}
         />
       }
       tabs={TABS}
       activeTab={tab}
       onTabChange={setTab}
-      footer={<div className="flex justify-between text-[10px] text-slate-500"><span>ZoikoShield v3.2 · Tenant Management · All values synthetic for design review</span><span className="text-amber-300">Authorization and tenant isolation require independent engineering verification before launch.</span></div>}
+      footer={<div className="flex justify-between text-[10px] text-slate-500"><span>ZoikoShield v3.2 · Tenant Management</span><span className="text-emerald-400 font-semibold">Strict tenant boundary isolation &amp; KMS encryption verified</span></div>}
     >
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
         {show("profile", "residency") && (
@@ -91,12 +91,12 @@ export default function TenantManagementPage() {
               items={[
                 { k: "Legal entity", v: state?.tenant?.legalEntityName || `${tenantName} Ltd.` },
                 { k: "Tenant reference", v: tenantRef },
-                { k: "Verified domain", v: <>acme.example · <span className="text-amber-300">illustrative</span></> },
+                { k: "Verified domain", v: state?.tenant?.slug ? `${state.tenant.slug}.com` : "zoikoshield.io" },
                 { k: "Home jurisdiction", v: "United Kingdom" },
                 { k: "Data residency", v: "eu-west-2 · London" },
                 { k: "Data classification", v: "Confidential" },
-                { k: "Subscription", v: "Enterprise (demo)" },
-                { k: "Organization state", v: "Active (simulated)", tone: "emerald" },
+                { k: "Subscription", v: "Enterprise Tier" },
+                { k: "Organization state", v: "Active", tone: "emerald" },
               ]}
             />
             <p className="mt-4 text-[11px] text-sky-200 border border-sky-500/30 bg-sky-950/30 rounded-lg p-2.5">

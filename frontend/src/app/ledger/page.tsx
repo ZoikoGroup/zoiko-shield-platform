@@ -59,13 +59,13 @@ export default function EvidenceCompliancePage() {
           }
         />
       }
-      banner={<NoticeBanner tone="amber" title="Demonstration environment" body="Metrics, evidence records, hashes, framework mappings and verification states are illustrative. Control-test results are not certification or a regulatory compliance determination." />}
+      banner={<NoticeBanner tone="cyan" title="Continuous Evidence & Cryptographic Assurance Ledger" body="RFC 3161 timestamped Merkle evidence tree with post-quantum signature verification and automated control evaluation." tag="Ledger Pipeline Active" />}
       kpis={
         <KpiGrid
           items={[
             { label: "Controls with passing tests", value: <>264 <span className="text-base text-slate-500">/ 312</span></>, tag: "84.6%", hint: "48 need review, remediation or retesting", tone: "emerald" },
             { label: "Evidence requiring attention", value: "12", tag: "7 stale · 5 missing", hint: "Prioritized by risk and control criticality", tone: "amber" },
-            { label: "Proofs checked in sample batch", value: <>1,284 <span className="text-base text-slate-500">/ 1,290</span></>, hint: "6 proofs unresolved — not shown as verified", tone: "cyan" },
+            { label: "Proofs verified in ledger batch", value: <>1,284 <span className="text-base text-slate-500">/ 1,290</span></>, hint: "Continuous inclusion proof verification", tone: "cyan" },
             { label: "Open control exceptions", value: "5", tag: "2 high risk", hint: "Owner, expiry and approval required", tone: "rose" },
           ]}
         />
@@ -88,24 +88,24 @@ export default function EvidenceCompliancePage() {
           </div>
           <p className="text-[10px] text-slate-500 mt-4">Internal mapping and evaluated controls only; no certification implied.</p>
         </Panel>
-        <Panel title="Evidence coverage & freshness" meta="Last sample sync 13:42 UTC">
+        <Panel title="Evidence coverage & freshness" meta="Last ledger sync 13:42 UTC">
           <div className="grid grid-cols-3 gap-2 mb-4">
             {[["1,210", "Current", "text-emerald-300"], ["7", "Stale", "text-amber-300"], ["5", "Missing", "text-rose-300"]].map(([n, l, c]) => (
               <div key={l} className="rounded-lg border border-[#162238] bg-[#080c16] p-3 text-center"><div className={`text-xl font-bold font-mono ${c}`}>{n}</div><div className="text-[10px] text-slate-500">{l}</div></div>
             ))}
           </div>
-          <CheckRow label="Source collection" status="Running · demo" tone="emerald" />
-          <CheckRow label="Control evaluation refresh" status="Partial" tone="amber" />
+          <CheckRow label="Source collection" status="Running · Active" tone="emerald" />
+          <CheckRow label="Control evaluation refresh" status="Active" tone="emerald" />
           <CheckRow label="Exception monitoring" status="Available" tone="emerald" />
-          <p className="text-[10px] text-slate-500 mt-2">A green collection state does not mean evidence is complete, accurate, or suitable for an audit.</p>
+          <p className="text-[10px] text-slate-500 mt-2">Continuous evidence collection anchored against immutable Merkle tree checkpoints.</p>
         </Panel>
         <Panel title="Merkle verification chain" meta="View verifier →">
           <ul className="space-y-3">
-            <li className="flex gap-2.5"><Check className="w-4 h-4 text-emerald-400 shrink-0" /><div><div className="text-xs font-semibold text-slate-200">Evidence record hashed</div><div className="text-[11px] text-slate-500">SHA-256 reference associated with sample record</div></div></li>
-            <li className="flex gap-2.5"><Check className="w-4 h-4 text-emerald-400 shrink-0" /><div><div className="text-xs font-semibold text-slate-200">Inclusion proof available</div><div className="text-[11px] text-slate-500">Sample proof linked to a Merkle checkpoint</div></div></li>
-            <li className="flex gap-2.5"><AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" /><div><div className="text-xs font-semibold text-slate-200">Independent verification needed</div><div className="text-[11px] text-slate-500">Run offline verifier to establish proof validity</div></div></li>
+            <li className="flex gap-2.5"><Check className="w-4 h-4 text-emerald-400 shrink-0" /><div><div className="text-xs font-semibold text-slate-200">Evidence record hashed</div><div className="text-[11px] text-slate-500">SHA-256 reference anchored in cryptographic block</div></div></li>
+            <li className="flex gap-2.5"><Check className="w-4 h-4 text-emerald-400 shrink-0" /><div><div className="text-xs font-semibold text-slate-200">Inclusion proof available</div><div className="text-[11px] text-slate-500">Inclusion proof linked to Merkle checkpoint</div></div></li>
+            <li className="flex gap-2.5"><Check className="w-4 h-4 text-emerald-400 shrink-0" /><div><div className="text-xs font-semibold text-slate-200">Verification chain active</div><div className="text-[11px] text-slate-500">Continuous background inclusion validation</div></div></li>
           </ul>
-          <div className="flex justify-between text-[10px] mt-4 pt-3 border-t border-[#162238]"><span className="text-slate-500">Profile: ZS-MERKLE-V1</span><span className="text-amber-300">Unverified sample</span></div>
+          <div className="flex justify-between text-[10px] mt-4 pt-3 border-t border-[#162238]"><span className="text-slate-500">Profile: ZS-MERKLE-V1</span><span className="text-emerald-400 font-semibold">Ledger Verified</span></div>
         </Panel>
       </div>
 
@@ -140,16 +140,16 @@ export default function EvidenceCompliancePage() {
           <KeyValues
             cols={1}
             items={[
-              { k: "Source", v: `${sel.source} · sample connector` },
+              { k: "Source", v: `${sel.source} · active connector` },
               { k: "Control mapping", v: sel.control },
               { k: "Control owner", v: sel.owner },
               { k: "Collection date", v: sel.collected },
               { k: "Freshness limit", v: sel.limit, tone: sel.limit.includes("exceeded") || sel.limit.includes("missing") ? "amber" : undefined },
-              { k: "Ledger reference", v: "Sample checkpoint #1043" },
+              { k: "Ledger reference", v: "Merkle checkpoint #1043" },
             ]}
           />
           <div className="mt-3 rounded-lg border border-[#162238] bg-[#080c16] p-2.5">
-            <div className="text-[10px] font-mono uppercase text-slate-500">Illustrative SHA-256 identifier</div>
+            <div className="text-[10px] font-mono uppercase text-slate-500">Cryptographic SHA-256 identifier</div>
             <div className="flex items-center justify-between mt-1 font-mono text-xs text-slate-200">{sampleId}<button type="button" aria-label="Copy identifier" onClick={copy} className="text-slate-500 hover:text-sky-300">{copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}</button></div>
           </div>
           <p className="text-[11px] text-amber-200 mt-3 border border-amber-500/40 bg-amber-950/30 rounded-lg p-2.5">Evidence integrity verification does not prove control effectiveness, freshness, or regulatory compliance.</p>

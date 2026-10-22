@@ -26,7 +26,7 @@ import { useDemoState } from "@/lib/demo-state";
  * looks indistinguishable from a real, healthy answer.
  */
 const DEMO_FALLBACK_ENABLED =
-  process.env.NEXT_PUBLIC_DEMO_FALLBACK !== "false";
+  process.env.NEXT_PUBLIC_DEMO_FALLBACK === "true";
 
 export type ContractStatus =
   | "LOADING"
@@ -191,8 +191,8 @@ function getFallbackDataForPath(path: string, key: string): unknown {
         id: "dec-res-02",
         entity_type: "IDENTITY",
         source_system: "microsoft-entra",
-        external_id: "sarah.chen@acme.com",
-        resolved_entity_id: "id-usr-sarah-chen",
+        external_id: "security.lead@zoikoshield.corp",
+        resolved_entity_id: "id-usr-sec-lead",
         decision: "RESOLVED_EXACT_MATCH",
         confidence: 0.99,
         resolver_version: "v2.1-deterministic",
@@ -281,9 +281,9 @@ function getFallbackDataForPath(path: string, key: string): unknown {
   if (cleanPath.startsWith("/api/v1/context/identities")) {
     return [
       {
-        id: "id-usr-sarah-chen",
-        email: "sarah.chen@acme.com",
-        display_name: "Sarah Chen (Lead Analyst)",
+        id: "id-usr-sec-lead",
+        email: "security.lead@zoikoshield.corp",
+        display_name: "Lead Security Operator",
         identity_type: "HUMAN_USER",
         status: "ACTIVE",
         confidence: 0.99,
@@ -552,7 +552,7 @@ function getFallbackDataForPath(path: string, key: string): unknown {
         likelihood: "LOW",
         impact: "CRITICAL",
         status: "MITIGATED",
-        owner_id: "sarah.chen",
+        owner_id: "security.lead",
         factors: [
           { factor: "Hardware MFA Enforcement", value: "FIDO2_MANDATORY", contribution: -40, sourceRef: "entra-id" },
           { factor: "JIT Timebox Window", value: "60_MINUTES", contribution: -30, sourceRef: "shield-jit" },
@@ -608,7 +608,7 @@ function getFallbackDataForPath(path: string, key: string): unknown {
         report_definition_version: "v3.2",
         period_start: "2026-08-01T00:00:00.000Z",
         period_end: "2026-09-01T00:00:00.000Z",
-        generated_by: "sarah.chen@acme.com",
+        generated_by: "security.lead@zoikoshield.corp",
         freshness_state: "FRESH",
         completeness_state: "COMPLETE",
         snapshot_hash: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -627,7 +627,7 @@ function getFallbackDataForPath(path: string, key: string): unknown {
         severity: "CRITICAL",
         priority: "P1",
         status: "CONTAINMENT_IN_PROGRESS",
-        owner_id: "sarah.chen",
+        owner_id: "security.lead",
         created_at: "2026-09-02T08:00:00.000Z",
         acknowledged_at: "2026-09-02T08:05:00.000Z",
         slaClock: {
@@ -651,7 +651,7 @@ function getFallbackDataForPath(path: string, key: string): unknown {
         notes: [
           {
             id: "note-01",
-            author_id: "sarah.chen",
+            author_id: "security.lead",
             content: "Network containment playbook executed via WASM sandbox; SG updated to isolate attacker IP 198.51.100.24.",
             classification: "OPERATIONAL_BRIEF",
             created_at: new Date().toISOString(),
@@ -677,7 +677,7 @@ function getFallbackDataForPath(path: string, key: string): unknown {
       {
         id: "tl-02",
         entry_type: "ACTION_EXECUTED",
-        actor_id: "sarah.chen",
+        actor_id: "security.lead",
         occurred_at: new Date(Date.now() - 900000).toISOString(),
         title: "Automated Network Isolation Rule Deployed",
         summary: "Enforced SG egress/ingress block and triggered JIT hardware credential invalidation.",
@@ -694,7 +694,7 @@ function getFallbackDataForPath(path: string, key: string): unknown {
         decision_type: "CONTAINMENT_STRATEGY",
         decision: "EXECUTE_IMMEDIATE_NETWORK_ISOLATION",
         rationale: "Correlated credential attack indicated active lateral traversal attempt against sovereign evidence database.",
-        actor_id: "sarah.chen",
+        actor_id: "security.lead",
         evidence_refs: JSON.stringify(["evi-01", "evi-02"]),
         policy_version: "v4.2",
         created_at: new Date(Date.now() - 900000).toISOString(),
@@ -706,7 +706,7 @@ function getFallbackDataForPath(path: string, key: string): unknown {
     return [
       {
         id: "nt-01",
-        author_id: "sarah.chen",
+        author_id: "security.lead",
         content: "Customer notification drafted in accordance with DORA Art. 19 SLA (under 4h threshold).",
         classification: "REGULATORY_RECORD",
         created_at: new Date(Date.now() - 600000).toISOString(),
@@ -741,7 +741,7 @@ function getFallbackDataForPath(path: string, key: string): unknown {
         id: "evi-link-02",
         evidence_id: "evi-02",
         relationship: "MITIGATION_RECEIPT",
-        added_by: "sarah.chen",
+        added_by: "security.lead",
         added_at: new Date(Date.now() - 900000).toISOString(),
         note: "AWS Security Group revocation cryptographic audit log",
       },
@@ -772,10 +772,10 @@ function getFallbackDataForPath(path: string, key: string): unknown {
       status: "CONTAINMENT_IN_PROGRESS",
       region: "eu-west-1",
       environment_id: "PRODUCTION-CORE",
-      owner_id: "sarah.chen",
+      owner_id: "security.lead",
       queue_id: "queue-p1-critical",
       primary_asset_id: "ast-k8s-prod-cluster-01",
-      primary_identity_id: "id-usr-sarah-chen",
+      primary_identity_id: "id-usr-sec-lead",
       created_by: "system-kafka-ingest",
       created_at: new Date(Date.now() - 1800000).toISOString(),
       acknowledged_at: new Date(Date.now() - 1500000).toISOString(),
@@ -792,10 +792,10 @@ function getFallbackDataForPath(path: string, key: string): unknown {
         status: "CONTAINMENT_IN_PROGRESS",
         region: "eu-west-1",
         environment_id: "PRODUCTION-CORE",
-        owner_id: "sarah.chen",
+        owner_id: "security.lead",
         queue_id: "queue-p1-critical",
         primary_asset_id: "ast-k8s-prod-cluster-01",
-        primary_identity_id: "id-usr-sarah-chen",
+        primary_identity_id: "id-usr-sec-lead",
         created_by: "system-kafka-ingest",
         created_at: new Date(Date.now() - 1800000).toISOString(),
         acknowledged_at: new Date(Date.now() - 1500000).toISOString(),
@@ -862,7 +862,7 @@ function getFallbackDataForPath(path: string, key: string): unknown {
       status: "COMPLETED",
       reason: "Quarterly automated sovereign verification drill",
       initiated_at: new Date(Date.now() - 86400000).toISOString(),
-      initiated_by: "sarah.chen@acme.com",
+      initiated_by: "security.lead@zoikoshield.corp",
     };
   }
 
@@ -876,7 +876,7 @@ function getFallbackDataForPath(path: string, key: string): unknown {
         formats: "PARQUET_AND_JSON_LD",
         status: "READY",
         progress: 100,
-        requested_by: "sarah.chen@acme.com",
+        requested_by: "security.lead@zoikoshield.corp",
         created_at: "2026-09-02T08:00:00.000Z",
         completed_at: new Date().toISOString(),
         artifacts: [
@@ -905,7 +905,7 @@ function getFallbackDataForPath(path: string, key: string): unknown {
         principal_id: "prn-svc-audit-ingest",
         status: "ACTIVE",
         purpose: "Real-time OCSF evidence streaming into enterprise data lake",
-        created_by: "sarah.chen",
+        created_by: "security.lead",
         created_at: "2026-08-01T08:00:00.000Z",
         last_used_at: new Date().toISOString(),
         credentials: [
@@ -921,14 +921,14 @@ function getFallbackDataForPath(path: string, key: string): unknown {
           {
             id: "sg-01",
             scope: "telemetry:ingest",
-            granted_by: "sarah.chen",
+            granted_by: "security.lead",
             authorization_decision_id: "dec-auth-9912",
             effective_from: "2026-08-01T08:00:00.000Z",
           },
           {
             id: "sg-02",
             scope: "ledger:read-proof",
-            granted_by: "sarah.chen",
+            granted_by: "security.lead",
             authorization_decision_id: "dec-auth-9913",
             effective_from: "2026-08-01T08:00:00.000Z",
           },
@@ -941,12 +941,12 @@ function getFallbackDataForPath(path: string, key: string): unknown {
     return [
       {
         id: "whk-01",
-        endpoint_url: "https://siem.internal.acme.corp/webhooks/zoikoshield",
+        endpoint_url: "https://siem.internal.zoikoshield.corp/webhooks/zoikoshield",
         event_types: JSON.stringify(["FINDING_CREATED", "ACTION_EXECUTED", "MERKLE_ROOT_ANCHORED"]),
         payload_version: "v2.0",
         data_minimization_profile: "STRICT_ANONYMIZED",
         status: "ACTIVE",
-        created_by: "sarah.chen",
+        created_by: "security.lead",
         verified_at: "2026-08-01T08:00:00.000Z",
         created_at: "2026-08-01T08:00:00.000Z",
       },

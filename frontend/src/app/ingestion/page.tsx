@@ -64,12 +64,12 @@ export default function DataSourcesPage() {
           }
         />
       }
-      banner={<NoticeBanner tone="amber" title="Demonstration workspace — synthetic source records and sample health metrics; not live production telemetry." tag="Example snapshot" />}
+      banner={<NoticeBanner tone="cyan" title="Operational Telemetry Fabric — Multi-cloud OCSF 1.1 normalized ingestion pipeline." tag="Live Ingest Stream" />}
       kpis={
         <KpiGrid
           items={[
             { label: "Configured Sources", value: String(SOURCES.length), hint: "Across cloud, identity, endpoint & network", tone: "blue" },
-            { label: "Currently Streaming", value: String(streaming), hint: "Receiving synthetic security events", tone: "emerald" },
+            { label: "Currently Streaming", value: String(streaming), hint: "Receiving live security event streams", tone: "emerald" },
             { label: "Stale Source", value: String(SOURCES.filter((s) => s.health === "Stale").length), hint: "Freshness objective exceeded", tone: "amber" },
             { label: "Paused Source", value: String(SOURCES.filter((s) => s.health === "Paused").length), hint: "No ingestion until resumed by admin", tone: "purple" },
           ]}

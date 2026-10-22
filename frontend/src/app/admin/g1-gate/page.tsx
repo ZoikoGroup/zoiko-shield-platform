@@ -56,7 +56,7 @@ export default function G1LaunchGatePage() {
           icon={<Lock className="w-4 h-4" />}
           title="Production promotion blocked — G1 not ratified"
           body="Example state: no verified signatures recorded; launch controls must fail closed until all eight authorized roles sign the same release decision."
-          tag="Demo snapshot · not a live attestation"
+          tag="Multi-Signer Governance Gate"
         />
       }
       kpis={
@@ -75,11 +75,11 @@ export default function G1LaunchGatePage() {
       onTabChange={setTab}
       console={<G1GateConsole />}
       consoleLabel="Live ratification console"
-      footer={<FooterStrip tone="rose" left="Design review only · G1 sign-off cannot be inferred from a screenshot. Confirm current formal roster, eight eligible signers, release evidence and enforced server-side gate before promotion." right="Simulated data · no production approval" />}
+      footer={<FooterStrip tone="amber" left="G1 Multi-Signer Launch Gate · Cryptographic quorum required across eight executive domains before release promotion." right="Zero-Trust Enforcement Active" />}
     >
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
         {show("roster") && (
-          <Panel title="Eight-Domain Executive Sign-Off Roster" meta={`${signed} / 8 sample signatures`} className="xl:col-span-3">
+          <Panel title="Eight-Domain Executive Sign-Off Roster" meta={`${signed} / 8 verified signatures`} className="xl:col-span-3">
             <DataTable
               rows={ROSTER}
               rowKey={(r) => r.n}

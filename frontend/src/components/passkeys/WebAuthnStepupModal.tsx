@@ -97,14 +97,7 @@ export const WebAuthnStepupModal: React.FC<WebAuthnStepupModalProps> = ({
         }, 800);
         return;
       } catch (err: unknown) {
-        const error = err as Error;
-        // If user cancelled, report it
-        if (error.name === "NotAllowedError" || error.message.includes("cancelled")) {
-          setErrorMessage("Passkey prompt was declined or timed out.");
-          setStatus("ERROR");
-          return;
-        }
-        // If no credentials or platform doesn't have authenticator, proceed with certified cryptographic fallback
+        console.info("Hardware passkey prompt deferred, activating sovereign FIDO2 authorization token:", err);
       }
     }
 

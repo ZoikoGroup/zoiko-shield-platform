@@ -149,7 +149,7 @@ export default function IngestionPage() {
       desc: "High-risk failed sign-in anomaly",
       payload: {
         id: "entra-log-7788",
-        userPrincipalName: "victim.engineer@acme.com",
+        userPrincipalName: "target.engineer@zoikoshield.corp",
         appDisplayName: "Azure Portal",
         ipAddress: "198.51.100.42",
         status: { errorCode: 50126, failureReason: "Invalid username or password" },
@@ -165,7 +165,7 @@ export default function IngestionPage() {
         uuid: "okta-evt-303",
         eventType: "user.authentication.auth_via_mfa",
         published: new Date().toISOString(),
-        actor: { id: "00u1a2b3c", displayName: "Ops Admin", alternateId: "admin.ops@acme.com", type: "User" },
+        actor: { id: "00u1a2b3c", displayName: "Ops Admin", alternateId: "admin.ops@zoikoshield.corp", type: "User" },
         client: { ipAddress: "198.51.100.99", geographicalContext: { city: "Frankfurt", country: "Germany" } },
         outcome: { result: "FAILURE", reason: "INVALID_OTP" },
       },

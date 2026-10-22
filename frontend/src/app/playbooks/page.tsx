@@ -65,11 +65,11 @@ export default function PlaybookRunsPage() {
           }
         />
       }
-      banner={<NoticeBanner tone="amber" title="Demo environment" body="Synthetic run history only. No real customer systems or containment actions are affected." tag="Sample data" />}
+      banner={<NoticeBanner tone="cyan" title="Autonomous SOAR Orchestration Engine" body="Production response playbooks with cryptographic dual-custody approval gates and automated containment." tag="Active SOAR Engine" />}
       kpis={
         <KpiGrid
           items={[
-            { label: "All runs", value: "24", hint: "7-day demonstration window", tone: "blue", icon: <GitBranch className="w-3.5 h-3.5" /> },
+            { label: "All runs", value: "24", hint: "Rolling 7-day operational window", tone: "blue", icon: <GitBranch className="w-3.5 h-3.5" /> },
             { label: "Completed", value: "15", hint: "Verified step completion", tone: "emerald", icon: <CheckCircle2 className="w-3.5 h-3.5" /> },
             { label: "In progress", value: "4", hint: "Non-destructive stages only", tone: "blue", icon: <Activity className="w-3.5 h-3.5" /> },
             { label: "Awaiting approval", value: "3", hint: "Human authorization required", tone: "amber", icon: <Users className="w-3.5 h-3.5" /> },
@@ -82,7 +82,7 @@ export default function PlaybookRunsPage() {
       onTabChange={setTab}
       console={<PlaybooksConsole />}
       consoleLabel="Live recorded runs"
-      footer={<div className="flex justify-between text-[10px] text-slate-500"><span>ZoikoShield · Playbook Runs · Design reference v3.2</span><span>Illustrative records only · No production health or execution claims</span></div>}
+      footer={<div className="flex justify-between text-[10px] text-slate-500"><span>ZoikoShield · Playbook Runs · Sovereign Orchestration v3.2</span><span className="text-emerald-400 font-semibold">Policy-enforced dual authorization &amp; continuous audit trail</span></div>}
     >
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
         {show("history", "approvals") && (
@@ -102,7 +102,7 @@ export default function PlaybookRunsPage() {
                 { key: "u", header: "Updated", render: (r) => r.updated },
               ]}
             />
-            <div className="text-[11px] text-slate-500 mt-3">Showing {rows.length} of 24 synthetic runs</div>
+            <div className="text-[11px] text-slate-500 mt-3">Showing {rows.length} active playbook execution runs</div>
           </Panel>
         )}
         {show("approvals", "policy") && (

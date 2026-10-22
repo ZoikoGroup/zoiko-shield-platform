@@ -82,11 +82,11 @@ export function AttackGraphVisualizer({
     {
       id: "node-identity",
       label: "Targeted Identity",
-      sublabel: "victim.engineer@acme.com",
+      sublabel: "target.engineer@zoikoshield.corp",
       type: "target_identity",
       status: "targeted",
       details: {
-        ipOrHost: "victim.engineer@acme.com",
+        ipOrHost: "target.engineer@zoikoshield.corp",
         description:
           "Privileged engineer identity targeted with credential stuffing. 3 active OAuth session tokens scheduled for immediate revocation.",
       },

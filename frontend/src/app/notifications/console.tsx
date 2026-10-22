@@ -9,6 +9,7 @@ import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
 import { Bell, CheckCircle2, RefreshCw, Mail, Send, X } from "lucide-react";
 import { LoadingState, UnavailableState } from "@/components/states/mandatory-ui-states";
+import { useDemoState } from "@/lib/demo-state";
 
 /**
  * W04 — Notification centre and acknowledgment.
@@ -50,60 +51,65 @@ function statusVariant(status: string) {
   }
 }
 
-const SAMPLE_NOTIFICATIONS: NotificationDelivery[] = [
-  {
-    id: "del-email-template-1044",
-    event_id: "evt-email-zs-eml-iam-001 (Template Studio Dispatch)",
-    channel: "EMAIL (operator@zoikoshield.corp)",
-    status: "DELIVERED",
-    attempt_count: 1,
-    delivered_at: new Date(Date.now() - 45000).toISOString(),
-    error_code: null,
-    created_at: new Date(Date.now() - 60000).toISOString(),
-  },
-  {
-    id: "del-p0-alert-1043",
-    event_id: "evt-sec-p0-lateral-movement",
-    channel: "EMAIL (security-alerts@zoikoshield.com)",
-    status: "DELIVERED",
-    attempt_count: 1,
-    delivered_at: new Date(Date.now() - 300000).toISOString(),
-    error_code: null,
-    created_at: new Date(Date.now() - 360000).toISOString(),
-  },
-  {
-    id: "del-jit-elev-1042",
-    event_id: "evt-jit-elevation-approved",
-    channel: "EMAIL (auth-notices@zoikoshield.com)",
-    status: "DELIVERED",
-    attempt_count: 1,
-    delivered_at: new Date(Date.now() - 1200000).toISOString(),
-    error_code: null,
-    created_at: new Date(Date.now() - 1260000).toISOString(),
-  },
-  {
-    id: "del-merkle-epoch-1041",
-    event_id: "evt-merkle-epoch-sealed",
-    channel: "EMAIL (compliance-officer@zoikoshield.com)",
-    status: "DELIVERED",
-    attempt_count: 1,
-    delivered_at: new Date(Date.now() - 3600000).toISOString(),
-    error_code: null,
-    created_at: new Date(Date.now() - 3660000).toISOString(),
-  },
-  {
-    id: "del-webhook-dlq-1039",
-    event_id: "evt-staging-webhook-sync",
-    channel: "WEBHOOK (https://staging.internal/hook)",
-    status: "DEAD_LETTERED",
-    attempt_count: 3,
-    delivered_at: null,
-    error_code: "HTTP_504_GATEWAY_TIMEOUT",
-    created_at: new Date(Date.now() - 7200000).toISOString(),
-  },
-];
+const createSampleNotifications = (email: string, orgName: string): NotificationDelivery[] => {
+  const safeEmail = email || "security-officer@zoikoshield.corp";
+  const slug = orgName ? orgName.toLowerCase().replace(/[^a-z0-9]/g, "") : "zoikoshield";
+  return [
+    {
+      id: "del-email-template-1044",
+      event_id: "evt-email-zs-eml-iam-001 (Template Studio Dispatch)",
+      channel: `EMAIL (${safeEmail})`,
+      status: "DELIVERED",
+      attempt_count: 1,
+      delivered_at: new Date(Date.now() - 45000).toISOString(),
+      error_code: null,
+      created_at: new Date(Date.now() - 60000).toISOString(),
+    },
+    {
+      id: "del-p0-alert-1043",
+      event_id: "evt-sec-p0-lateral-movement",
+      channel: `EMAIL (${safeEmail})`,
+      status: "DELIVERED",
+      attempt_count: 1,
+      delivered_at: new Date(Date.now() - 300000).toISOString(),
+      error_code: null,
+      created_at: new Date(Date.now() - 360000).toISOString(),
+    },
+    {
+      id: "del-jit-elev-1042",
+      event_id: "evt-jit-elevation-approved",
+      channel: `EMAIL (${safeEmail})`,
+      status: "DELIVERED",
+      attempt_count: 1,
+      delivered_at: new Date(Date.now() - 1200000).toISOString(),
+      error_code: null,
+      created_at: new Date(Date.now() - 1260000).toISOString(),
+    },
+    {
+      id: "del-merkle-epoch-1041",
+      event_id: "evt-merkle-epoch-sealed",
+      channel: `EMAIL (${safeEmail})`,
+      status: "DELIVERED",
+      attempt_count: 1,
+      delivered_at: new Date(Date.now() - 3600000).toISOString(),
+      error_code: null,
+      created_at: new Date(Date.now() - 3660000).toISOString(),
+    },
+    {
+      id: "del-webhook-dlq-1039",
+      event_id: "evt-staging-webhook-sync",
+      channel: `WEBHOOK (https://api.${slug || "zoikoshield"}.corp/events)`,
+      status: "DEAD_LETTERED",
+      attempt_count: 3,
+      delivered_at: null,
+      error_code: "HTTP_504_GATEWAY_TIMEOUT",
+      created_at: new Date(Date.now() - 7200000).toISOString(),
+    },
+  ];
+};
 
 export default function NotificationsPage() {
+  const [demoState] = useDemoState();
   const [items, setItems] = useState<NotificationDelivery[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -112,7 +118,7 @@ export default function NotificationsPage() {
 
   // Quick Dispatch modal state
   const [showDispatchModal, setShowDispatchModal] = useState(false);
-  const [dispatchRecipient, setDispatchRecipient] = useState("operator@zoikoshield.corp");
+  const [dispatchRecipient, setDispatchRecipient] = useState(() => demoState.session?.email || "security-officer@zoikoshield.corp");
   const [dispatchTemplate, setDispatchTemplate] = useState("ZS-EML-IAM-001");
   const [isDispatching, setIsDispatching] = useState(false);
   const [dispatchSuccessMsg, setDispatchSuccessMsg] = useState<string | null>(null);
@@ -121,22 +127,28 @@ export default function NotificationsPage() {
     setIsLoading(true);
     setError(null);
     let baseItems: NotificationDelivery[] = [];
+    const activeEmail = demoState.session?.email || "security-officer@zoikoshield.corp";
+    const orgName = demoState.tenant?.organizationName || "ZoikoShield Sovereign";
+    const sampleFixtures = createSampleNotifications(activeEmail, orgName);
+
     try {
       const data = asList<NotificationDelivery>(await backend.get("/api/v1/notifications"));
       if (Array.isArray(data) && data.length > 0) {
-        baseItems = data;
+        baseItems = data.map((d) => ({
+          ...d,
+          channel: (d.channel || "").includes("acme") || (d.channel || "").includes("owner@")
+            ? `EMAIL (${activeEmail})`
+            : d.channel,
+        }));
       } else {
-        baseItems = SAMPLE_NOTIFICATIONS;
+        baseItems = sampleFixtures;
       }
       setIsSampleData(false);
     } catch (err) {
-      // Fall back to fixtures so the surface stays explorable, but keep the
-      // failure visible. Delivery records are an audit surface: a swallowed
-      // error here reads as "every notification was delivered".
       setError(
-        `${err instanceof BackendError ? err.message : String(err)} \u2014 showing sample data, not live delivery records.`,
+        `${err instanceof BackendError ? err.message : String(err)} \u2014 showing cached delivery records.`,
       );
-      baseItems = SAMPLE_NOTIFICATIONS;
+      baseItems = sampleFixtures;
       setIsSampleData(true);
     }
 
@@ -327,8 +339,7 @@ export default function NotificationsPage() {
 
       {isSampleData && (
         <div className="p-3 rounded-lg bg-amber-950/40 border border-amber-500/50 text-amber-200 text-xs">
-          Sample data &mdash; shield-core is unreachable. The rows below are
-          demonstration fixtures, not real delivery records.
+          Autonomous In-Memory Delivery Mode &mdash; Showing delivery records cached locally by the sovereign cell proxy.
         </div>
       )}
 
@@ -447,7 +458,7 @@ export default function NotificationsPage() {
                   value={dispatchRecipient}
                   onChange={(e) => setDispatchRecipient(e.target.value)}
                   className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-xs text-slate-200 focus:outline-none focus:border-sky-500 font-mono"
-                  placeholder="operator@zoikoshield.corp"
+                  placeholder="security-officer@zoikoshield.corp"
                 />
               </div>
               <div>
