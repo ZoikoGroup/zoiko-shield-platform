@@ -252,14 +252,14 @@ describe('ZoikoShield Route Pages Smoke Tests', () => {
   });
 
   describe('24. Redesigned Authentication Gate (/login)', () => {
-    it('renders login gate with branding, 4 demo roles, password toggle, and register option', () => {
+    it('renders login gate with branding, password toggle, and register option without demo role cards', () => {
       render(<LoginPage />);
       expect(screen.getByText(/ZoikoShield Authentication Gate/i)).toBeInTheDocument();
       expect(screen.getByText(/Sign In to Platform/i)).toBeInTheDocument();
-      expect(screen.getByText(/Platform Super Admin/i)).toBeInTheDocument();
-      expect(screen.getByText(/Tenant Administrator \/ CISO/i)).toBeInTheDocument();
-      expect(screen.getByText(/Senior Security Analyst/i)).toBeInTheDocument();
-      expect(screen.getByText(/Read-Only Compliance Auditor/i)).toBeInTheDocument();
+      expect(screen.queryByText(/Platform Super Admin/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Tenant Administrator \/ CISO/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Senior Security Analyst/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Read-Only Compliance Auditor/i)).not.toBeInTheDocument();
       expect(screen.getByText(/Forgot password\?/i)).toBeInTheDocument();
       expect(screen.getByText(/Create New Account/i)).toBeInTheDocument();
     });
