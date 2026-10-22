@@ -28,12 +28,22 @@ function tenantHeaders(): Record<string, string> {
   // Only a tenant the client actually has. Inventing one makes an unscoped
   // request look scoped to the backend.
   if (state.tenant?.id) headers["x-tenant-id"] = state.tenant.id;
+  if (state.session?.token) headers["Authorization"] = `Bearer ${state.session.token}`;
   return headers;
+}
+
+interface RequestOptions {
+  /**
+   * Reject demo data the /api/v1 proxy serves when the backend is down
+   * (marked with x-zoiko-fallback), instead of returning it as if it were real.
+   */
+  live?: boolean;
 }
 
 async function request<T>(
   path: string,
   init: RequestInit = {},
+  options: RequestOptions = {},
 ): Promise<T> {
   let response: Response;
   try {
@@ -64,6 +74,10 @@ async function request<T>(
     throw new BackendError(message, response.status, path);
   }
 
+  if (options.live && response.headers.get("x-zoiko-fallback") === "true") {
+    throw new BackendError("ZoikoShield backend is unreachable; demo data withheld.", null, path);
+  }
+
   if (response.status === 204) return undefined as T;
 
   const body = await response.json();
@@ -76,7 +90,7 @@ async function request<T>(
 }
 
 export const backend = {
-  get: <T>(path: string) => request<T>(path),
+  get: <T>(path: string, options?: RequestOptions) => request<T>(path, {}, options),
   post: <T>(path: string, body?: unknown) =>
     request<T>(path, {
       method: "POST",

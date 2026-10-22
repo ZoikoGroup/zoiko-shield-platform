@@ -20,6 +20,7 @@ import {
   requestPasskeyAssertion,
   PasskeyAssertionPayload,
 } from "@/lib/webauthn";
+import { ZoikoShieldApiClient } from "@/lib/api-client";
 
 export interface WebAuthnStepupModalProps {
   isOpen: boolean;
@@ -67,62 +68,37 @@ export const WebAuthnStepupModal: React.FC<WebAuthnStepupModalProps> = ({
     setStatus("PROMPTING");
     setErrorMessage(null);
 
-    // If browser supports WebAuthn, attempt live ceremony with graceful simulation fallback
-    if (isWebauthnSupported()) {
-      try {
-        const challenge = "ZS-CHALLENGE-" + Math.random().toString(36).substring(2, 12);
-        // Note: In local dev / offline mode, navigator.credentials might reject if no real passkey is registered
-        const result = await requestPasskeyAssertion({
-          challenge: btoa(challenge),
-          rpId: window.location.hostname || "localhost",
-          allowCredentials: [],
-          userVerification: "preferred",
-          timeout: 30000,
-        });
-
-        const receipt = {
-          credentialId: result.credentialId,
-          signature: result.signatureBase64.substring(0, 32) + "...",
-          timestamp: new Date().toISOString(),
-        };
-        setAuthReceipt(receipt);
-        setStatus("SUCCESS");
-        setTimeout(() => {
-          onSuccess({
-            credentialId: receipt.credentialId,
-            signature: result.signatureBase64,
-            verifiedAt: receipt.timestamp,
-            hardwareBacked: true,
-          });
-        }, 800);
-        return;
-      } catch (err: unknown) {
-        console.info("Hardware passkey prompt deferred, activating sovereign FIDO2 authorization token:", err);
-      }
+    if (!isWebauthnSupported()) {
+      setErrorMessage("This browser does not support passkeys, so step-up cannot be completed.");
+      setStatus("ERROR");
+      return;
     }
 
-    // Cryptographic fallback simulation (FIDO2 certified sandbox token)
-    setTimeout(() => {
-      const simulatedCredentialId = "fido2-cred-" + Math.random().toString(36).substring(2, 10);
-      const simulatedSig = "MEYCIQC" + Math.random().toString(36).substring(2, 15) + "IhAIAP" + Math.random().toString(36).substring(2, 15);
-      const timestamp = new Date().toISOString();
+    // A real passkey assertion over the backend's challenge; there is no
+    // simulated success path.
+    try {
+      const options = await ZoikoShieldApiClient.getPasskeyStepUpOptions();
+      const result = await requestPasskeyAssertion(options);
 
       const receipt = {
-        credentialId: simulatedCredentialId,
-        signature: simulatedSig,
-        timestamp,
+        credentialId: result.credentialId,
+        signature: result.signatureBase64.substring(0, 32) + "...",
+        timestamp: new Date().toISOString(),
       };
       setAuthReceipt(receipt);
       setStatus("SUCCESS");
       setTimeout(() => {
         onSuccess({
           credentialId: receipt.credentialId,
-          signature: receipt.signature,
+          signature: result.signatureBase64,
           verifiedAt: receipt.timestamp,
-          hardwareBacked: false,
+          hardwareBacked: true,
         });
       }, 800);
-    }, 1200);
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : "Passkey step-up failed.");
+      setStatus("ERROR");
+    }
   };
 
   return (

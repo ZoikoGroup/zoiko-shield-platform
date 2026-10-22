@@ -79,33 +79,14 @@ export default function JitElevationPage() {
       // 1. Request dual-authorized JIT elevation
       const result = await ZoikoShieldApiClient.requestJitElevation(state.tenant.id, justification, durationMinutes);
 
-      // 2. FIDO2 / WebAuthn hardware step-up:
-      // In accordance with modal banner ("FIDO2 Passkey / WebAuthn verification simulated on submit"),
-      // we attempt the real hardware passkey ceremony if supported. If no physical hardware key
-      // is registered or the ceremony is cancelled/unsupported in this environment, we seamlessly fall back
-      // to a simulated cryptographic assertion so presentation and evaluation flows never fail.
-      const options = await ZoikoShieldApiClient.getPasskeyStepUpOptions();
-      let assertion: any;
-      if (isWebauthnSupported()) {
-        try {
-          assertion = await requestPasskeyAssertion(options);
-        } catch (passkeyErr) {
-          console.warn("Hardware passkey ceremony unavailable or cancelled; using simulated assertion for demo:", passkeyErr);
-          assertion = {
-            credentialId: `fido2-cred-${Date.now().toString(36)}`,
-            clientDataJsonBase64: btoa(JSON.stringify({ type: "webauthn.get", challenge: options?.challenge || "simulated-challenge", origin: typeof window !== "undefined" ? window.location.origin : "http://localhost:3000" })),
-            authenticatorDataBase64: btoa("simulated-authenticator-data"),
-            signatureBase64: btoa(`sim-sig-${Date.now()}`),
-          };
-        }
-      } else {
-        assertion = {
-          credentialId: `fido2-cred-${Date.now().toString(36)}`,
-          clientDataJsonBase64: btoa(JSON.stringify({ type: "webauthn.get", challenge: options?.challenge || "simulated-challenge", origin: typeof window !== "undefined" ? window.location.origin : "http://localhost:3000" })),
-          authenticatorDataBase64: btoa("simulated-authenticator-data"),
-          signatureBase64: btoa(`sim-sig-${Date.now()}`),
-        };
+      // 2. FIDO2 / WebAuthn hardware step-up: a real passkey assertion over the
+      // backend's challenge. There is no simulated path - if the ceremony fails,
+      // the elevation is not activated.
+      if (!isWebauthnSupported()) {
+        throw new Error("This browser does not support passkeys, so hardware step-up cannot be completed.");
       }
+      const options = await ZoikoShieldApiClient.getPasskeyStepUpOptions();
+      const assertion = await requestPasskeyAssertion(options);
 
       const stepUpResult = await ZoikoShieldApiClient.verifyJitStepUp(
         result.requestId,
@@ -373,7 +354,7 @@ export default function JitElevationPage() {
 
           <div className="p-3 rounded-lg bg-slate-900 border border-slate-800 flex items-center gap-2 text-xs font-mono text-cyan-300">
             <Fingerprint className="w-4 h-4 text-cyan-400" />
-            <span>FIDO2 Passkey / WebAuthn verification simulated on submit.</span>
+            <span>Submitting asks for your registered passkey (FIDO2 / WebAuthn).</span>
           </div>
 
           <div className="pt-2 flex justify-end gap-2">
