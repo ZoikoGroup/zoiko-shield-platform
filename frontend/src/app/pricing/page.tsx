@@ -155,7 +155,7 @@ export default function PricingPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#060911] text-slate-100 p-6 space-y-10">
+    <div className="min-h-screen bg-canvas text-slate-100 p-6 space-y-10">
       {/* Header Banner */}
       <div className="text-center space-y-4 max-w-3xl mx-auto pt-4">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono">
@@ -178,7 +178,7 @@ export default function PricingPage() {
           <button
             type="button"
             onClick={() => setIsAnnual(!isAnnual)}
-            className="w-14 h-7 bg-[#0c111e] rounded-full p-1 border border-[#162238] transition-colors relative"
+            className="w-14 h-7 bg-raised rounded-full p-1 border border-line transition-colors relative"
           >
             <div
               className={`w-5 h-5 bg-cyan-400 rounded-full transition-transform shadow-[0_0_10px_rgba(0,240,255,0.6)] ${
@@ -203,7 +203,7 @@ export default function PricingPage() {
       </div>
 
       {/* Mandatory Source of Truth & Commercial Sizing Disclaimer Banner */}
-      <div className="surface-card p-5 rounded-xl border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.1)] flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 text-xs text-slate-300 bg-[#0c111e]">
+      <div className="surface-card p-5 rounded-xl border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.1)] flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 text-xs text-slate-300 bg-raised">
         <div className="flex items-start gap-3">
           <ShieldCheck className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
           <div className="space-y-1.5 max-w-3xl">
@@ -250,8 +250,8 @@ export default function PricingPage() {
               key={plan.key}
               className={`relative rounded-2xl p-6 flex flex-col justify-between transition-all duration-300 ${
                 isPop
-                  ? "bg-gradient-to-b from-cyan-950/40 via-[#0c111e] to-[#060911] border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.25)] ring-1 ring-cyan-400/30"
-                  : "surface-card bg-[#0c111e] border border-[#162238] hover:border-cyan-500/40 shadow-lg"
+                  ? "bg-gradient-to-b from-cyan-950/40 via-raised to-canvas border-2 border-cyan-400/80 shadow-[0_0_30px_rgba(6,182,212,0.25)] ring-1 ring-cyan-400/30"
+                  : "surface-card bg-raised border border-line hover:border-cyan-500/40 shadow-lg"
               }`}
             >
               {isPop && (
@@ -538,7 +538,7 @@ export default function PricingPage() {
       {/* Interactive Commercial Plan Subscription & Payment Checkout Modal */}
       {isCheckoutOpen && selectedPlanForCheckout && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150">
-          <div className="w-full max-w-2xl my-8 rounded-2xl bg-[#090e1c] border border-cyan-500/40 shadow-[0_0_60px_rgba(6,182,212,0.35)] p-6 md:p-8 space-y-6 text-slate-200">
+          <div className="w-full max-w-2xl my-8 rounded-2xl bg-surface border border-cyan-500/40 shadow-[0_0_60px_rgba(6,182,212,0.35)] p-6 md:p-8 space-y-6 text-slate-200">
             {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-slate-800 pb-4">
               <div className="space-y-1">
@@ -581,7 +581,7 @@ export default function PricingPage() {
                 </div>
 
                 {/* Cryptographic Transaction Details */}
-                <div className="p-4 rounded-xl bg-[#060911] border border-[#162238] space-y-2.5 font-mono text-xs">
+                <div className="p-4 rounded-xl bg-canvas border border-line space-y-2.5 font-mono text-xs">
                   <div className="text-[11px] text-cyan-400 font-bold uppercase tracking-wider flex items-center justify-between border-b border-slate-800/80 pb-2">
                     <span>Audit Evidence &amp; Receipt Proof</span>
                     <span className="text-emerald-400">STATUS: {paymentReceipt.status}</span>
@@ -643,7 +643,7 @@ export default function PricingPage() {
               /* Checkout Form View */
               <form onSubmit={handleProcessPayment} className="space-y-5">
                 {/* Plan Selection Summary Card */}
-                <div className="p-4 rounded-xl bg-[#060911] border border-[#162238] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="p-4 rounded-xl bg-canvas border border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
                     <div className="text-[10px] font-mono text-cyan-400 uppercase tracking-wider font-bold">
                       Selected Plan Tier:
@@ -682,7 +682,7 @@ export default function PricingPage() {
                         className={`p-2 rounded-lg text-xs font-mono text-center border transition-all ${
                           selectedPlanForCheckout.key === p.key
                             ? "bg-cyan-500/20 border-cyan-400 text-cyan-300 font-bold"
-                            : "bg-[#060911] border-[#162238] text-slate-400 hover:text-slate-200"
+                            : "bg-canvas border-line text-slate-400 hover:text-slate-200"
                         }`}
                       >
                         {p.displayName.replace("Shield ", "")}
@@ -706,7 +706,7 @@ export default function PricingPage() {
                       className={`p-2 rounded-lg border text-left text-xs transition-all ${
                         paymentToken === "tok_visa_valid"
                           ? "bg-emerald-950/40 border-emerald-400 text-emerald-300 font-bold"
-                          : "bg-[#060911] border-[#162238] text-slate-400 hover:border-slate-700"
+                          : "bg-canvas border-line text-slate-400 hover:border-slate-700"
                       }`}
                     >
                       <div className="text-[10px] text-emerald-400 font-mono">SUCCESS</div>
@@ -718,7 +718,7 @@ export default function PricingPage() {
                       className={`p-2 rounded-lg border text-left text-xs transition-all ${
                         paymentToken === "tok_mastercard"
                           ? "bg-emerald-950/40 border-emerald-400 text-emerald-300 font-bold"
-                          : "bg-[#060911] border-[#162238] text-slate-400 hover:border-slate-700"
+                          : "bg-canvas border-line text-slate-400 hover:border-slate-700"
                       }`}
                     >
                       <div className="text-[10px] text-emerald-400 font-mono">SUCCESS</div>
@@ -730,7 +730,7 @@ export default function PricingPage() {
                       className={`p-2 rounded-lg border text-left text-xs transition-all ${
                         paymentToken === "tok_invalid_charge"
                           ? "bg-rose-950/40 border-rose-400 text-rose-300 font-bold"
-                          : "bg-[#060911] border-[#162238] text-slate-400 hover:border-slate-700"
+                          : "bg-canvas border-line text-slate-400 hover:border-slate-700"
                       }`}
                     >
                       <div className="text-[10px] text-rose-400 font-mono">TEST ERROR</div>
@@ -742,7 +742,7 @@ export default function PricingPage() {
                       className={`p-2 rounded-lg border text-left text-xs transition-all ${
                         paymentToken === "wire_escrow_sovereign"
                           ? "bg-cyan-950/40 border-cyan-400 text-cyan-300 font-bold"
-                          : "bg-[#060911] border-[#162238] text-slate-400 hover:border-slate-700"
+                          : "bg-canvas border-line text-slate-400 hover:border-slate-700"
                       }`}
                     >
                       <div className="text-[10px] text-cyan-400 font-mono">ENTERPRISE</div>
@@ -760,7 +760,7 @@ export default function PricingPage() {
                       required
                       value={cardholderName}
                       onChange={(e) => setCardholderName(e.target.value)}
-                      className="w-full bg-[#060911] border border-[#162238] rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
+                      className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
                     />
                   </div>
 
@@ -775,7 +775,7 @@ export default function PricingPage() {
                         required
                         value={cardNumber}
                         onChange={(e) => setCardNumber(e.target.value)}
-                        className="w-full bg-[#060911] border border-[#162238] rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
+                        className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
                       />
                       <CreditCard className="w-4 h-4 text-slate-500 absolute right-3 top-3" />
                     </div>
@@ -790,7 +790,7 @@ export default function PricingPage() {
                         value={cardExpiry}
                         onChange={(e) => setCardExpiry(e.target.value)}
                         placeholder="MM/YY"
-                        className="w-full bg-[#060911] border border-[#162238] rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
+                        className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
                       />
                     </div>
                     <div className="space-y-1">
@@ -801,7 +801,7 @@ export default function PricingPage() {
                         value={cardCvc}
                         onChange={(e) => setCardCvc(e.target.value)}
                         placeholder="123"
-                        className="w-full bg-[#060911] border border-[#162238] rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
+                        className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
                       />
                     </div>
                   </div>

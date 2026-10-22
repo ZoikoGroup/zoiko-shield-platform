@@ -103,7 +103,7 @@ export default function GtmPreFlightPage() {
                 aria-label="Evidence filter"
                 value={evidenceFilter}
                 onChange={(e) => setEvidenceFilter(e.target.value as typeof evidenceFilter)}
-                className="px-3 py-2 rounded-lg bg-[#080c16] border border-[#162238] text-xs text-slate-300"
+                className="px-3 py-2 rounded-lg bg-surface border border-line text-xs text-slate-300"
               >
                 <option value="ALL">Evidence: All</option>
                 <option value="LINKED">Linked</option>

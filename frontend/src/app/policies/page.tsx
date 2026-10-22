@@ -132,7 +132,7 @@ export default function PolicyManagementPage() {
   return (
     <div className="space-y-6 pb-16">
       {/* Header Banner */}
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-b from-[#0c111e] to-[#070b14] shadow-xl">
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-b from-raised to-canvas shadow-xl">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div className="space-y-2">
             <div className="flex items-center gap-2 flex-wrap">
@@ -263,8 +263,8 @@ export default function PolicyManagementPage() {
                     onClick={() => setSelectedPolicy(policy)}
                     className={`p-4 cursor-pointer transition-all border ${
                       isSelected
-                        ? "bg-gradient-to-b from-[#0e172a] to-[#0a101f] border-cyan-500/60 shadow-[0_0_20px_rgba(0,240,255,0.15)]"
-                        : "bg-gradient-to-b from-[#0c111e] to-[#070b14] border-slate-800/80 hover:border-slate-700 hover:bg-[#0e1424]"
+                        ? "bg-gradient-to-b from-overlay to-raised border-cyan-500/60 shadow-[0_0_20px_rgba(0,240,255,0.15)]"
+                        : "bg-gradient-to-b from-raised to-canvas border-slate-800/80 hover:border-slate-700 hover:bg-raised"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -309,7 +309,7 @@ export default function PolicyManagementPage() {
         {/* Right Column: Policy Detail & Diff Viewer */}
         <div className="lg:col-span-7 space-y-6">
           {selectedPolicy ? (
-            <Card variant="cyber" className="p-6 bg-gradient-to-b from-[#0c111e] to-[#070b14] space-y-5">
+            <Card variant="cyber" className="p-6 bg-gradient-to-b from-raised to-canvas space-y-5">
               <div className="flex flex-col sm:flex-row sm:items-start justify-between border-b border-slate-800/80 pb-4 gap-4">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
@@ -378,7 +378,7 @@ export default function PolicyManagementPage() {
               )}
 
               {/* Staged Rollout Progress Bar */}
-              <div className="p-4 rounded-xl bg-[#060a12] border border-slate-800/80 space-y-2">
+              <div className="p-4 rounded-xl bg-canvas border border-slate-800/80 space-y-2">
                 <div className="flex justify-between items-center text-xs font-semibold">
                   <span className="text-slate-300 flex items-center gap-1.5 font-mono">
                     <Sliders className="h-3.5 w-3.5 text-cyan-400" />
@@ -407,7 +407,7 @@ export default function PolicyManagementPage() {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-xs">
                   {/* Previous */}
-                  <div className="p-4 rounded-xl bg-[#060a12] border border-red-900/40 space-y-2">
+                  <div className="p-4 rounded-xl bg-canvas border border-red-900/40 space-y-2">
                     <div className="flex items-center justify-between pb-2 border-b border-red-900/30 text-red-400 text-[11px] font-bold">
                       <span>BASELINE (Previous Active)</span>
                       <XCircle className="h-3.5 w-3.5" />
@@ -418,7 +418,7 @@ export default function PolicyManagementPage() {
                   </div>
 
                   {/* Proposed */}
-                  <div className="p-4 rounded-xl bg-[#060a12] border border-emerald-900/40 space-y-2">
+                  <div className="p-4 rounded-xl bg-canvas border border-emerald-900/40 space-y-2">
                     <div className="flex items-center justify-between pb-2 border-b border-emerald-900/30 text-emerald-400 text-[11px] font-bold">
                       <span>PROPOSED (Current Spec)</span>
                       <CheckCircle className="h-3.5 w-3.5" />
@@ -468,7 +468,7 @@ export default function PolicyManagementPage() {
               type="text"
               value={stagedEnvInput}
               onChange={(e) => setStagedEnvInput(e.target.value)}
-              className="w-full bg-[#060a12] border border-slate-700 rounded-lg px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-500 font-mono"
+              className="w-full bg-canvas border border-slate-700 rounded-lg px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-cyan-500 font-mono"
             />
           </div>
 
@@ -534,7 +534,7 @@ export default function PolicyManagementPage() {
               rows={3}
               value={rollbackReasonInput}
               onChange={(e) => setRollbackReasonInput(e.target.value)}
-              className="w-full bg-[#060a12] border border-slate-700 rounded-lg px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-red-500 font-mono"
+              className="w-full bg-canvas border border-slate-700 rounded-lg px-3.5 py-2 text-sm text-slate-100 focus:outline-none focus:border-red-500 font-mono"
               placeholder="State the observed regression, anomaly, or operational justification..."
             />
           </div>

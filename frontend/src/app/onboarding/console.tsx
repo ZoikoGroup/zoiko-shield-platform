@@ -120,7 +120,7 @@ export default function OnboardingPage(props: OnboardingConsoleProps = {}) {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Header Banner */}
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl space-y-2">
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-raised via-surface to-canvas shadow-xl space-y-2">
         <div className="flex items-center gap-2">
           <Badge variant="pass">ERB-01 STEP 2</Badge>
           <span className="text-xs font-mono text-cyan-400 font-bold">

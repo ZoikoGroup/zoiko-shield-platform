@@ -51,7 +51,7 @@ export const TrustBar: React.FC = () => {
   }, []);
 
   return (
-    <header className="sticky top-0 z-40 w-full bg-[#0d1017]/95 backdrop-blur-md border-b border-slate-800/80 px-4 py-2.5 flex items-center justify-between shadow-lg">
+    <header className="sticky top-0 z-40 w-full bg-surface/95 backdrop-blur-md border-b border-slate-800/80 px-4 py-2.5 flex items-center justify-between shadow-lg">
       {/* Brand & Tenancy Title */}
       <div className="flex items-center gap-4">
         <Link href="/" className="flex items-center gap-2.5 group">

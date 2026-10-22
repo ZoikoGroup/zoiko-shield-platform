@@ -377,11 +377,11 @@ function normalizeCertificate(input: any): VerificationCertificate {
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={handleLoadSample} className="flex items-center gap-1.5 text-xs font-mono border-[#162238] bg-[#0a0f1d] hover:border-cyan-500/40">
+          <Button variant="outline" onClick={handleLoadSample} className="flex items-center gap-1.5 text-xs font-mono border-line bg-surface hover:border-cyan-500/40">
             <Sparkles className="w-3.5 h-3.5 text-purple-400" />
             <span>Load Merkle Sample</span>
           </Button>
-          <Button variant="outline" onClick={handleLoadVcSample} className="flex items-center gap-1.5 text-xs font-mono border-[#162238] bg-[#0a0f1d] hover:border-cyan-500/40">
+          <Button variant="outline" onClick={handleLoadVcSample} className="flex items-center gap-1.5 text-xs font-mono border-line bg-surface hover:border-cyan-500/40">
             <Fingerprint className="w-3.5 h-3.5 text-cyan-400" />
             <span>Load W3C VC Sample</span>
           </Button>
@@ -408,7 +408,7 @@ function normalizeCertificate(input: any): VerificationCertificate {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left: Input Payload & File Upload */}
         <Card variant="cyber" className="p-6 space-y-4">
-          <div className="flex items-center justify-between border-b border-[#162238] pb-3">
+          <div className="flex items-center justify-between border-b border-line pb-3">
             <div className="flex items-center gap-2 text-xs font-mono text-slate-200 font-semibold">
               <UploadCloud className="w-4 h-4 text-cyan-400" />
               <span>Input Audit Certificate JSON</span>
@@ -423,7 +423,7 @@ function normalizeCertificate(input: any): VerificationCertificate {
             value={jsonInput}
             onChange={(e) => setJsonInput(e.target.value)}
             rows={14}
-            className="w-full bg-[#060911] border border-[#162238] rounded-xl p-3 font-mono text-xs text-slate-200 focus:outline-none focus:border-cyan-400 transition-colors shadow-inner"
+            className="w-full bg-canvas border border-line rounded-xl p-3 font-mono text-xs text-slate-200 focus:outline-none focus:border-cyan-400 transition-colors shadow-inner"
             placeholder="Paste raw audit_certificate.json content here..."
           />
 
@@ -435,7 +435,7 @@ function normalizeCertificate(input: any): VerificationCertificate {
 
         {/* Right: Verification Certificate Report Card */}
         <Card variant="cyber" className="p-6 space-y-4">
-          <div className="flex items-center justify-between border-b border-[#162238] pb-3">
+          <div className="flex items-center justify-between border-b border-line pb-3">
             <div className="flex items-center gap-2 text-xs font-mono text-slate-200 font-semibold">
               <ShieldCheck className="w-4 h-4 text-emerald-400" />
               <span>Verification Status &amp; Attestation</span>
@@ -450,7 +450,7 @@ function normalizeCertificate(input: any): VerificationCertificate {
           {certificate ? (
             <div className="space-y-4 font-mono text-xs">
               {/* Package Header */}
-              <div className="p-3.5 rounded-xl bg-[#060911] border border-[#162238] space-y-1.5 shadow-inner">
+              <div className="p-3.5 rounded-xl bg-canvas border border-line space-y-1.5 shadow-inner">
                 <div className="text-[11px] text-slate-400">Package Title:</div>
                 <div className="text-slate-100 font-bold">{certificate.packageTitle}</div>
                 <div className="flex items-center justify-between text-[11px] pt-1 text-slate-500">
@@ -466,7 +466,7 @@ function normalizeCertificate(input: any): VerificationCertificate {
                 </span>
                 
                 <div className="grid grid-cols-1 gap-2">
-                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#060911]/80 border border-[#162238]">
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-canvas/80 border border-line">
                     <span className="text-slate-300">1. Envelope Hash Binding</span>
                     {certificate.checks?.envelopeIntegrity ? (
                       <span className="text-emerald-400 font-bold flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> VERIFIED</span>
@@ -475,7 +475,7 @@ function normalizeCertificate(input: any): VerificationCertificate {
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#060911]/80 border border-[#162238]">
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-canvas/80 border border-line">
                     <span className="text-slate-300">2. ManifestCore SHA-256 Match</span>
                     {certificate.checks?.manifestCoreHashMatch ? (
                       <span className="text-emerald-400 font-bold flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> MATCH</span>
@@ -484,7 +484,7 @@ function normalizeCertificate(input: any): VerificationCertificate {
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#060911]/80 border border-[#162238]">
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-canvas/80 border border-line">
                     <span className="text-slate-300">3. ZS-MERKLE-V1 Root Recomputation</span>
                     {certificate.checks?.merkleRootIntegrity ? (
                       <span className="text-emerald-400 font-bold flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> EXACT MATCH</span>
@@ -493,14 +493,14 @@ function normalizeCertificate(input: any): VerificationCertificate {
                     )}
                   </div>
 
-                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#060911]/80 border border-[#162238]">
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-canvas/80 border border-line">
                     <span className="text-slate-300">4. Evidence Files Count &amp; Integrity</span>
                     <span className="text-cyan-400 font-bold">
                       {certificate.checks?.evidenceFilesIntegrity?.validFiles ?? 0} / {certificate.checks?.evidenceFilesIntegrity?.totalFiles ?? 0} Files Valid
                     </span>
                   </div>
 
-                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#060911]/80 border border-[#162238]">
+                  <div className="flex items-center justify-between p-2.5 rounded-xl bg-canvas/80 border border-line">
                     <span className="text-slate-300">5. Multi-Signatory Witness &amp; Approver</span>
                     {certificate.checks?.witnessAttestationValid && certificate.checks?.humanApprovalBindingValid ? (
                       <span className="text-purple-400 font-bold flex items-center gap-1">
@@ -516,17 +516,17 @@ function normalizeCertificate(input: any): VerificationCertificate {
               </div>
 
               {/* Cryptographic Summary Digest */}
-              <div className="p-3.5 rounded-xl bg-[#060911] border border-cyan-500/30 space-y-1.5 text-[10px] shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+              <div className="p-3.5 rounded-xl bg-canvas border border-cyan-500/30 space-y-1.5 text-[10px] shadow-[0_0_15px_rgba(6,182,212,0.1)]">
                 <div className="text-cyan-400 font-bold flex items-center gap-1">
                   <Hash className="w-3 h-3" /> Merkle Root (Declared &amp; Recomputed):
                 </div>
-                <div className="text-slate-300 break-all bg-[#0a0f1d] p-2 rounded-lg border border-[#162238]">
+                <div className="text-slate-300 break-all bg-surface p-2 rounded-lg border border-line">
                   {certificate.cryptographicSummary?.declaredMerkleRoot || "92abf5c07c0797acbc9221d3fee713133e60376feb552d783b213078cf2fff46"}
                 </div>
                 <div className="text-purple-400 font-bold flex items-center gap-1 pt-1">
                   <Lock className="w-3 h-3" /> Certificate Signature (ML-DSA-65 / ECDSA-P256):
                 </div>
-                <div className="text-slate-300 break-all bg-[#0a0f1d] p-2 rounded-lg border border-[#162238]">
+                <div className="text-slate-300 break-all bg-surface p-2 rounded-lg border border-line">
                   {certificate.cryptographicSummary?.certificateSignature || "ba0bd3422984a2d2bcc56f089d6e11e8b86c2c662b62b9b8369e7d61e678c09a"}
                 </div>
               </div>
@@ -541,7 +541,7 @@ function normalizeCertificate(input: any): VerificationCertificate {
       </div>
 
       {/* W26 — Live Auditor Workspace: real, authenticated, read-only access */}
-      <div className="space-y-4 pt-6 border-t border-[#162238]">
+      <div className="space-y-4 pt-6 border-t border-line">
         <div className="flex items-center gap-2">
           <Badge variant="active">LIVE</Badge>
           <span className="text-xs font-mono text-cyan-400 font-bold">AUDITOR WORKSPACE</span>
@@ -583,7 +583,7 @@ function normalizeCertificate(input: any): VerificationCertificate {
             </label>
             <div className="flex gap-2">
               <input
-                className="flex-1 bg-[#060911] border border-[#162238] rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:border-cyan-400 transition-colors"
+                className="flex-1 bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:border-cyan-400 transition-colors"
                 placeholder="Package ID"
                 value={evidencePackageId}
                 onChange={(e) => setEvidencePackageId(e.target.value)}
@@ -592,7 +592,7 @@ function normalizeCertificate(input: any): VerificationCertificate {
                 variant="outline"
                 onClick={() => void handleLookupEvidenceChain()}
                 disabled={isLoadingEvidenceChain}
-                className="border-[#162238] bg-[#060911] hover:border-cyan-400"
+                className="border-line bg-canvas hover:border-cyan-400"
               >
                 <Search className="w-3.5 h-3.5" />
               </Button>
@@ -601,7 +601,7 @@ function normalizeCertificate(input: any): VerificationCertificate {
               <p className="text-rose-300 text-[11px] font-mono">{evidenceChainError}</p>
             )}
             {evidenceChain && (
-              <pre className="text-[10px] text-slate-300 bg-[#060911] p-3 rounded-xl border border-[#162238] overflow-auto max-h-48 font-mono shadow-inner">
+              <pre className="text-[10px] text-slate-300 bg-canvas p-3 rounded-xl border border-line overflow-auto max-h-48 font-mono shadow-inner">
                 {JSON.stringify(evidenceChain, null, 2)}
               </pre>
             )}
@@ -614,7 +614,7 @@ function normalizeCertificate(input: any): VerificationCertificate {
             </label>
             <div className="flex gap-2">
               <input
-                className="flex-1 bg-[#060911] border border-[#162238] rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:border-cyan-400 transition-colors"
+                className="flex-1 bg-canvas border border-line rounded-xl px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:border-cyan-400 transition-colors"
                 placeholder="Leaf node hash"
                 value={merkleNodeHash}
                 onChange={(e) => setMerkleNodeHash(e.target.value)}
@@ -623,7 +623,7 @@ function normalizeCertificate(input: any): VerificationCertificate {
                 variant="outline"
                 onClick={() => void handleLookupMerklePath()}
                 disabled={isLoadingMerklePath}
-                className="border-[#162238] bg-[#060911] hover:border-cyan-400"
+                className="border-line bg-canvas hover:border-cyan-400"
               >
                 <Search className="w-3.5 h-3.5" />
               </Button>
@@ -632,7 +632,7 @@ function normalizeCertificate(input: any): VerificationCertificate {
               <p className="text-rose-300 text-[11px] font-mono">{merklePathError}</p>
             )}
             {merklePathResult && (
-              <pre className="text-[10px] text-slate-300 bg-[#060911] p-3 rounded-xl border border-[#162238] overflow-auto max-h-48 font-mono shadow-inner">
+              <pre className="text-[10px] text-slate-300 bg-canvas p-3 rounded-xl border border-line overflow-auto max-h-48 font-mono shadow-inner">
                 {JSON.stringify(merklePathResult, null, 2)}
               </pre>
             )}

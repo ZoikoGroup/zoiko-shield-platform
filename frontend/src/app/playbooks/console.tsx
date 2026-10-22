@@ -237,7 +237,7 @@ export default function PlaybooksRunPage() {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl">
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-raised via-surface to-canvas shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-400">
@@ -262,24 +262,24 @@ export default function PlaybooksRunPage() {
 
       {/* 4 Summary Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Total Playbook Runs</div>
           <div className="text-2xl font-bold font-mono text-white mt-1">{runs.length}</div>
           <div className="text-[11px] text-cyan-400/80 mt-0.5">Verified execution plans</div>
         </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Active Freeze Guard</div>
           <div className={`text-2xl font-bold font-mono mt-1 ${freezeStatus?.frozen ? "text-rose-400" : "text-emerald-400"}`}>
             {freezeStatus?.frozen ? "FROZEN" : "NOMINAL"}
           </div>
           <div className="text-[11px] text-slate-400 mt-0.5">Emergency containment killswitch</div>
         </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Required Authority</div>
           <div className="text-2xl font-bold font-mono text-purple-400 mt-1">{detail?.requiredAuthority || "R2 Dual-Custody"}</div>
           <div className="text-[11px] text-slate-400 mt-0.5">Dual-custody quorum enabled</div>
         </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Planned Steps</div>
           <div className="text-2xl font-bold font-mono text-cyan-400 mt-1">
             {detail?.plannedSteps ? detail.plannedSteps.length : 0} Steps
@@ -296,7 +296,7 @@ export default function PlaybooksRunPage() {
       )}
 
       {/* Emergency Freeze Control Bar */}
-      <div className={`surface-card rounded-2xl p-5 border shadow-xl bg-[#0c111e]/90 ${freezeStatus?.frozen ? "border-rose-500/50 bg-rose-950/10" : "border-slate-800/80"}`}>
+      <div className={`surface-card rounded-2xl p-5 border shadow-xl bg-raised/90 ${freezeStatus?.frozen ? "border-rose-500/50 bg-rose-950/10" : "border-slate-800/80"}`}>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className={`p-2.5 rounded-xl border ${freezeStatus?.frozen ? "bg-rose-500/20 border-rose-500/40 text-rose-400" : "bg-slate-900 border-slate-800 text-cyan-400"}`}>
@@ -355,7 +355,7 @@ export default function PlaybooksRunPage() {
             <span className="text-[11px] font-mono text-slate-500">{runs.length} Runs</span>
           </div>
           {runs.length === 0 ? (
-            <div className="surface-card rounded-2xl p-6 bg-[#0c111e]/90 border border-slate-800 text-center">
+            <div className="surface-card rounded-2xl p-6 bg-raised/90 border border-slate-800 text-center">
               <p className="text-sm text-slate-300">No playbook runs are recorded for this tenant.</p>
             </div>
           ) : (
@@ -367,7 +367,7 @@ export default function PlaybooksRunPage() {
                   className={`p-4 rounded-xl cursor-pointer border transition-all ${
                     selectedRunId === run.id
                       ? "bg-cyan-950/20 border-cyan-500/60 shadow-lg shadow-cyan-950/30"
-                      : "bg-[#0c111e]/80 border-slate-800/80 hover:border-slate-700 hover:bg-[#0f1628]/60"
+                      : "bg-raised/80 border-slate-800/80 hover:border-slate-700 hover:bg-overlay/60"
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
@@ -389,7 +389,7 @@ export default function PlaybooksRunPage() {
 
         <div className="lg:col-span-7">
           {detail ? (
-            <div className="surface-card rounded-2xl p-6 bg-[#0c111e]/90 border border-slate-800/80 shadow-2xl space-y-5">
+            <div className="surface-card rounded-2xl p-6 bg-raised/90 border border-slate-800/80 shadow-2xl space-y-5">
               <div className="flex items-start justify-between border-b border-slate-800/80 pb-4">
                 <div>
                   <div className="flex items-center gap-2">
@@ -404,19 +404,19 @@ export default function PlaybooksRunPage() {
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 text-xs font-mono">
-                <div className="p-2.5 rounded-lg bg-[#080d19] border border-slate-800/60">
+                <div className="p-2.5 rounded-lg bg-surface border border-slate-800/60">
                   <div className="text-[10px] text-slate-500 uppercase">Case Link</div>
                   <div className="text-cyan-400 font-bold truncate mt-0.5">{detail.caseId}</div>
                 </div>
-                <div className="p-2.5 rounded-lg bg-[#080d19] border border-slate-800/60">
+                <div className="p-2.5 rounded-lg bg-surface border border-slate-800/60">
                   <div className="text-[10px] text-slate-500 uppercase">Trigger Source</div>
                   <div className="text-purple-300 font-bold truncate mt-0.5">{detail.triggeredBy}</div>
                 </div>
-                <div className="p-2.5 rounded-lg bg-[#080d19] border border-slate-800/60">
+                <div className="p-2.5 rounded-lg bg-surface border border-slate-800/60">
                   <div className="text-[10px] text-slate-500 uppercase">Started At</div>
                   <div className="text-slate-300 truncate mt-0.5">{formatTimestamp(detail.startedAt)}</div>
                 </div>
-                <div className="p-2.5 rounded-lg bg-[#080d19] border border-slate-800/60">
+                <div className="p-2.5 rounded-lg bg-surface border border-slate-800/60">
                   <div className="text-[10px] text-slate-500 uppercase">Completed At</div>
                   <div className="text-slate-300 truncate mt-0.5">{detail.completedAt ? formatTimestamp(detail.completedAt) : "Active"}</div>
                 </div>
@@ -451,7 +451,7 @@ export default function PlaybooksRunPage() {
                     detail.plannedSteps.map((step) => (
                       <div
                         key={step.stepNumber}
-                        className="p-3.5 rounded-xl bg-[#080d19] border border-slate-800/80 text-xs font-mono text-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-2 hover:border-slate-700 transition-all"
+                        className="p-3.5 rounded-xl bg-surface border border-slate-800/80 text-xs font-mono text-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-2 hover:border-slate-700 transition-all"
                       >
                         <div className="flex items-center gap-2.5">
                           <span className="w-6 h-6 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 flex items-center justify-center font-bold text-[11px]">
@@ -480,7 +480,7 @@ export default function PlaybooksRunPage() {
               </div>
             </div>
           ) : (
-            <div className="surface-card rounded-2xl p-12 bg-[#0c111e]/90 border border-slate-800/80 text-center">
+            <div className="surface-card rounded-2xl p-12 bg-raised/90 border border-slate-800/80 text-center">
               <Activity className="w-8 h-8 text-slate-600 mx-auto mb-3" />
               <p className="text-sm font-medium text-slate-300">Select a playbook run from the queue to view details.</p>
               <p className="text-xs text-slate-500 mt-1 font-mono">Audit parameters, authority requirements and step plans will render here.</p>

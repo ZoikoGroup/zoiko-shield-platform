@@ -208,7 +208,7 @@ export default function ActionsAndFreezePage() {
     <div className="space-y-6">
       {/* Header Banner */}
       {/* Header Banner */}
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl space-y-3">
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-raised via-surface to-canvas shadow-xl space-y-3">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-3">
@@ -233,7 +233,7 @@ export default function ActionsAndFreezePage() {
           </div>
 
           <div className="flex items-center gap-3 font-mono text-xs">
-            <div className="px-3.5 py-2 rounded-xl bg-[#080d19] border border-slate-800 text-slate-300">
+            <div className="px-3.5 py-2 rounded-xl bg-surface border border-slate-800 text-slate-300">
               Authority Engine: <span className="text-amber-400 font-bold">Dual-Custody Hardware Attested</span>
             </div>
           </div>
@@ -242,26 +242,26 @@ export default function ActionsAndFreezePage() {
 
       {/* 4 Summary KPI Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Active Tier Policy</div>
           <div className="text-2xl font-bold font-mono text-cyan-400 mt-1">{selectedAuthorityTier}</div>
           <div className="text-[11px] text-slate-400 mt-0.5">Dual-custody verification</div>
         </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">SOAR Automation State</div>
           <div className={`text-2xl font-bold font-mono mt-1 ${isFrozen ? "text-rose-400" : "text-emerald-400"}`}>
             {isFrozen ? "FROZEN" : "OPERATIONAL"}
           </div>
           <div className="text-[11px] text-slate-400 mt-0.5">Global containment guard</div>
         </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Dual-Custody Hardware Gate</div>
           <div className="text-2xl font-bold font-mono text-purple-400 mt-1">
             {quorumReceipt ? "ATTESTED" : "ARMED"}
           </div>
           <div className="text-[11px] text-slate-400 mt-0.5">FIDO2 2-of-N hardware sign-off</div>
         </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Rollback Compensation</div>
           <div className="text-2xl font-bold font-mono text-emerald-400 mt-1">100% REVERSIBLE</div>
           <div className="text-[11px] text-cyan-400 mt-0.5">Cryptographic redemption tokens</div>
@@ -278,7 +278,7 @@ export default function ActionsAndFreezePage() {
       )}
 
       {/* R0–R4 Authority Tier Ladder Selector */}
-      <div className="surface-card rounded-2xl p-6 bg-[#0c111e]/90 border border-slate-800/80 shadow-xl space-y-4">
+      <div className="surface-card rounded-2xl p-6 bg-raised/90 border border-slate-800/80 shadow-xl space-y-4">
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <div className="flex items-center gap-2">
             <Layers className="w-4 h-4 text-cyan-400" />

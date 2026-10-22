@@ -85,7 +85,7 @@ function Metric({
 }) {
   const unknown = value === undefined || value === null || value === "UNKNOWN";
   return (
-    <details className="rounded-lg border border-[#162238] bg-[#0c1322] p-3 shadow-sm hover:border-[#1e293b] transition-all">
+    <details className="rounded-lg border border-line bg-raised p-3 shadow-sm hover:border-line-strong transition-all">
       <summary className="cursor-pointer list-none">
         <p className="text-[10px] font-mono uppercase tracking-wider text-slate-400">
           {label}
@@ -101,7 +101,7 @@ function Metric({
           <p className="mt-1 text-[10px] font-mono text-amber-300/90 font-medium">limited</p>
         )}
       </summary>
-      <div className="mt-2.5 space-y-1.5 border-t border-[#162238] pt-2">
+      <div className="mt-2.5 space-y-1.5 border-t border-line pt-2">
         <p className="text-[11px] text-slate-300">
           {definition ?? "No definition was stated by the source."}
         </p>
@@ -130,8 +130,8 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <Card variant="cyber" className="p-4 border-[#162238] bg-[#0a0f1d]">
-      <div className="mb-3 border-b border-[#162238] pb-2">
+    <Card variant="cyber" className="p-4 border-line bg-surface">
+      <div className="mb-3 border-b border-line pb-2">
         <h2 className="text-sm font-semibold text-white flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
           {title}

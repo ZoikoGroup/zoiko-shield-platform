@@ -145,7 +145,7 @@ export default function PlatformAdminPage() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto p-6">
       {/* Header Banner */}
-      <div className="surface-card p-6 rounded-2xl bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] border border-slate-800/80 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+      <div className="surface-card p-6 rounded-2xl bg-gradient-to-r from-raised via-surface to-canvas border border-slate-800/80 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 animate-pulse" />
@@ -201,7 +201,7 @@ export default function PlatformAdminPage() {
           {/* Circuit Breaker 1: AI Inference Kill-Switch */}
           <div className={`surface-card p-5 rounded-xl space-y-3 border transition-all ${isAiKillSwitchEngaged
               ? "bg-rose-950/40 border-rose-500/50 shadow-[0_0_20px_rgba(244,63,94,0.2)]"
-              : "bg-[#0c111e]/90 border-slate-800/80 shadow-lg"
+              : "bg-raised/90 border-slate-800/80 shadow-lg"
             }`}>
             <div className="flex items-center justify-between">
               <span className="text-slate-300 font-bold">AI INFERENCE CIRCUIT BREAKER</span>
@@ -227,7 +227,7 @@ export default function PlatformAdminPage() {
           {/* Circuit Breaker 2: Ingestion Throttling */}
           <div className={`surface-card p-5 rounded-xl space-y-3 border transition-all ${isIngestThrottled
               ? "bg-amber-950/40 border-amber-500/50 shadow-[0_0_20px_rgba(245,158,11,0.2)]"
-              : "bg-[#0c111e]/90 border-slate-800/80 shadow-lg"
+              : "bg-raised/90 border-slate-800/80 shadow-lg"
             }`}>
             <div className="flex items-center justify-between">
               <span className="text-slate-300 font-bold">INGESTION PIPELINE THROTTLER</span>
@@ -253,7 +253,7 @@ export default function PlatformAdminPage() {
           {/* Circuit Breaker 3: SOAR Containment Freeze */}
           <div className={`surface-card p-5 rounded-xl space-y-3 border transition-all ${isSoarFrozen
               ? "bg-purple-950/40 border-purple-500/50 shadow-[0_0_20px_rgba(168,85,247,0.2)]"
-              : "bg-[#0c111e]/90 border-slate-800/80 shadow-lg"
+              : "bg-raised/90 border-slate-800/80 shadow-lg"
             }`}>
             <div className="flex items-center justify-between">
               <span className="text-slate-300 font-bold">SOAR PLAYBOOK AUTONOMOUS FREEZE</span>

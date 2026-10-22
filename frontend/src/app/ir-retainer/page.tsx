@@ -87,7 +87,7 @@ export default function IrRetainerSlaPage() {
           <div className="text-[11px] text-slate-500 -mt-1 mb-3">Customer requests, response acknowledgment, ownership and linked incidents</div>
           <div className="flex flex-wrap gap-1.5 mb-3">
             {FILTERS.map((f) => (
-              <button key={f.id} type="button" onClick={() => setFilter(f.id)} className={`px-3 py-1.5 rounded-lg border text-[11px] font-semibold ${filter === f.id ? "bg-sky-600 border-sky-500 text-white" : "border-[#1e2b44] text-slate-300"}`}>{f.label} · {counts[f.id]}</button>
+              <button key={f.id} type="button" onClick={() => setFilter(f.id)} className={`px-3 py-1.5 rounded-lg border text-[11px] font-semibold ${filter === f.id ? "bg-sky-600 border-sky-500 text-white" : "border-line-strong text-slate-300"}`}>{f.label} · {counts[f.id]}</button>
             ))}
           </div>
           <DataTable
@@ -108,7 +108,7 @@ export default function IrRetainerSlaPage() {
         <Panel title={sel.state === "Awaiting accept" ? "Provider acknowledgment pending" : sel.title} meta={`${sel.priority.toUpperCase()}${sel.state === "Awaiting accept" ? " · NOT ACCEPTED" : ""}`} metaTone={PRIO_TONE[sel.priority]}>
           <div className="text-[11px] text-slate-500 -mt-1 mb-3">{sel.id} · Linked to {sel.caseRef}</div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="rounded-lg border border-[#162238] p-3">
+            <div className="rounded-lg border border-line p-3">
               <div className="text-xs font-bold text-slate-200 mb-2">Request context</div>
               <KeyValues cols={1} items={[
                 { k: "Requestor", v: "Sarah Chen · Analyst" },
@@ -117,7 +117,7 @@ export default function IrRetainerSlaPage() {
                 { k: "Provider acknowledgement", v: sel.state === "Awaiting accept" ? "Not received" : "Received", tone: sel.state === "Awaiting accept" ? "rose" : "emerald" },
               ]} />
             </div>
-            <div className="rounded-lg border border-[#162238] p-3">
+            <div className="rounded-lg border border-line p-3">
               <div className="text-xs font-bold text-slate-200 mb-2">Scope and service boundary</div>
               <KeyValues cols={1} items={[
                 { k: "Response coverage", v: "Unverified", tone: "amber" },
@@ -127,7 +127,7 @@ export default function IrRetainerSlaPage() {
               ]} />
             </div>
           </div>
-          <div className="mt-3 rounded-lg border border-[#162238] p-3">
+          <div className="mt-3 rounded-lg border border-line p-3">
             <div className="text-xs font-bold text-slate-200 mb-3">Engagement lifecycle · Provider confirmation required</div>
             <StepFlow steps={[
               { label: "Submitted", sub: "Customer request", state: "done" },
@@ -143,7 +143,7 @@ export default function IrRetainerSlaPage() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <Panel title="Response targets & escalation" meta="View policy details →">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="rounded-lg border border-[#162238] p-3">
+            <div className="rounded-lg border border-line p-3">
               <div className="text-xs font-bold text-slate-200 mb-3">Illustrative SLA matrix</div>
               <div className="space-y-3">
                 <ProgressRow label="P1 · Critical — 30 min target" value={75} display="Provider ack" tone="rose" />
@@ -152,7 +152,7 @@ export default function IrRetainerSlaPage() {
               </div>
               <p className="text-[10px] text-slate-500 mt-3">Targets are demo assumptions, not confirmed contractual commitments.</p>
             </div>
-            <div className="rounded-lg border border-[#162238] p-3">
+            <div className="rounded-lg border border-line p-3">
               <div className="text-xs font-bold text-slate-200 mb-3">Escalation and communication record</div>
               <EventList items={[
                 { title: "Internal priority confirmed", sub: "12:42 · Case priority and supporting evidence checked", tone: "emerald" },
@@ -165,7 +165,7 @@ export default function IrRetainerSlaPage() {
         </Panel>
         <Panel title="Retainer & authorized contacts" meta="Contract source →">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="rounded-lg border border-[#162238] p-3">
+            <div className="rounded-lg border border-line p-3">
               <div className="text-xs font-bold text-slate-200 mb-3">Illustrative entitlement record</div>
               <div className="space-y-2 text-[11px]">
                 <div className="flex justify-between"><span className="text-slate-400">Contract verification</span><span className="font-semibold text-amber-300">Pending validation</span></div>
@@ -175,7 +175,7 @@ export default function IrRetainerSlaPage() {
               <div className="mt-3"><ProgressRow label="" value={18} max={50} display="" tone="blue" /></div>
               <p className="text-[10px] text-slate-500 mt-2">No coverage guarantee or billing authorization implied.</p>
             </div>
-            <div className="rounded-lg border border-[#162238] p-3">
+            <div className="rounded-lg border border-line p-3">
               <div className="text-xs font-bold text-slate-200 mb-3">Escalation contact directory</div>
               <EventList items={[
                 { title: "Contracted duty desk", sub: "Contact method · Verify agreement", tag: "Unverified", tone: "amber" },

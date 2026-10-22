@@ -99,7 +99,7 @@ export default function G1LaunchGatePage() {
   return (
     <div className="space-y-8 pb-16">
       {/* Header Banner */}
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-raised via-surface to-canvas shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono">
             <ShieldCheck className="w-3.5 h-3.5" />
@@ -126,14 +126,14 @@ export default function G1LaunchGatePage() {
               setRefreshing(true);
               loadRoster();
             }}
-            className="p-2 rounded-lg bg-[#080c16] border border-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
+            className="p-2 rounded-lg bg-surface border border-slate-800 text-slate-400 hover:text-slate-200 transition-colors"
             title="Refresh Roster"
           >
             <RefreshCw className={`w-4 h-4 ${refreshing ? "animate-spin" : ""}`} />
           </button>
           <button
             onClick={handleReset}
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-[#080c16] hover:bg-slate-800 text-slate-300 text-xs font-mono transition-colors border border-slate-800"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-surface hover:bg-slate-800 text-slate-300 text-xs font-mono transition-colors border border-slate-800"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Reset Roster</span>

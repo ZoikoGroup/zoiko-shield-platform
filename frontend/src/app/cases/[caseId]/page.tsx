@@ -137,7 +137,7 @@ export default function CaseWorkspacePage() {
   return (
     <div className="space-y-6">
       {/* Case Header Banner */}
-      <div className="p-6 rounded-2xl bg-[#0e121b] border border-cyan-500/30 shadow-xl space-y-4">
+      <div className="p-6 rounded-2xl bg-raised border border-cyan-500/30 shadow-xl space-y-4">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">

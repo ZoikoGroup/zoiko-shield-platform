@@ -129,8 +129,8 @@ export default function DetectionsPage() {
   ).length;
 
   return (
-    <div className="min-h-screen bg-[#060911] text-slate-100 p-6 space-y-6">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-[#162238] pb-6">
+    <div className="min-h-screen bg-canvas text-slate-100 p-6 space-y-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-line pb-6">
         <div>
           <div className="flex items-center gap-2 mb-1.5">
             <Badge variant="info" className="font-mono text-[10px] tracking-wider border-cyan-500/30 bg-cyan-500/10 text-cyan-400">
@@ -149,7 +149,7 @@ export default function DetectionsPage() {
             Every detection, its versions, what each needs to run, and what it has matched.
           </p>
         </div>
-        <Button variant="ghost" onClick={() => void load()} className="border border-[#162238] bg-[#0c111e] hover:bg-[#111a2e] text-slate-300">
+        <Button variant="ghost" onClick={() => void load()} className="border border-line bg-raised hover:bg-overlay text-slate-300">
           <RefreshCw className="w-4 h-4 text-cyan-400" />
           <span>Refresh</span>
         </Button>
@@ -163,22 +163,22 @@ export default function DetectionsPage() {
 
       {/* KPI Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-cyan-500/40 transition-all">
+        <Card className="surface-card p-4 border border-line rounded-xl hover:border-cyan-500/40 transition-all">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 font-mono">Registered Rules</span>
           <div className="text-2xl font-bold text-white mt-1 font-mono">{definitions.length}</div>
           <span className="text-[10px] text-slate-500 mt-1 inline-block font-mono">Detection definitions</span>
         </Card>
-        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-emerald-500/40 transition-all">
+        <Card className="surface-card p-4 border border-line rounded-xl hover:border-emerald-500/40 transition-all">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 font-mono">Active Published</span>
           <div className="text-2xl font-bold text-emerald-400 mt-1 font-mono">{totalPublished}</div>
           <span className="text-[10px] text-emerald-400/80 mt-1 inline-block font-mono">Live rule versions</span>
         </Card>
-        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-indigo-500/40 transition-all">
+        <Card className="surface-card p-4 border border-line rounded-xl hover:border-indigo-500/40 transition-all">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 font-mono">Total Matches</span>
           <div className="text-2xl font-bold text-indigo-300 mt-1 font-mono">{totalMatches}</div>
           <span className="text-[10px] text-indigo-400/80 mt-1 inline-block font-mono">Telemetry events flagged</span>
         </Card>
-        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-amber-500/40 transition-all">
+        <Card className="surface-card p-4 border border-line rounded-xl hover:border-amber-500/40 transition-all">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 font-mono">Inert Definitions</span>
           <div className="text-2xl font-bold text-amber-300 mt-1 font-mono">{noPublishedCount}</div>
           <span className="text-[10px] text-amber-400/80 mt-1 inline-block font-mono">No published version</span>
@@ -186,7 +186,7 @@ export default function DetectionsPage() {
       </div>
 
       {definitions.length === 0 ? (
-        <Card className="surface-card border border-[#162238] p-8 text-center rounded-xl">
+        <Card className="surface-card border border-line p-8 text-center rounded-xl">
           <p className="text-sm font-semibold text-amber-300">No detections are registered.</p>
           <p className="text-xs font-mono text-slate-400 mt-1.5 max-w-md mx-auto">
             Nothing will ever match. Detection definitions are published at
@@ -201,7 +201,7 @@ export default function DetectionsPage() {
             );
             const published = versions.filter((v) => v.status === "PUBLISHED");
             return (
-              <Card key={definition.id} className="surface-card p-5 border border-[#162238] rounded-xl hover:border-cyan-500/30 transition-all shadow-md">
+              <Card key={definition.id} className="surface-card p-5 border border-line rounded-xl hover:border-cyan-500/30 transition-all shadow-md">
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <div>
                     <h2 className="text-sm font-semibold text-white tracking-wide">
@@ -231,11 +231,11 @@ export default function DetectionsPage() {
                     {versions.map((version) => (
                       <div
                         key={version.id}
-                        className="border border-[#162238] bg-[#060911] rounded-xl p-3.5 space-y-2.5"
+                        className="border border-line bg-canvas rounded-xl p-3.5 space-y-2.5"
                       >
                         <div className="flex items-center justify-between gap-3">
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-mono font-bold text-slate-200 px-2 py-0.5 rounded bg-[#0c111e] border border-[#162238]">
+                            <span className="text-xs font-mono font-bold text-slate-200 px-2 py-0.5 rounded bg-raised border border-line">
                               v{version.version}
                             </span>
                             <Badge
@@ -271,7 +271,7 @@ export default function DetectionsPage() {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs font-mono bg-[#0c111e] p-2.5 rounded-lg border border-[#162238]">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs font-mono bg-raised p-2.5 rounded-lg border border-line">
                           <div>
                             <span className="text-slate-500 text-[10px] uppercase font-semibold">event types: </span>
                             <span className="text-slate-300">

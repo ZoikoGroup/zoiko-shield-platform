@@ -62,7 +62,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // Render clean full-screen layout without authenticated sidebar or top header
   if (isPublicRoute) {
     return (
-      <div className="min-h-screen w-full bg-[#060911] text-slate-100 flex flex-col antialiased">
+      <div className="min-h-screen w-full bg-canvas text-slate-100 flex flex-col antialiased">
         {children}
       </div>
     );
@@ -72,7 +72,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // Render children (which renders LoginPage directly) without sidebar or top header
   if (!isAuthenticated && !isTest && pathname === "/") {
     return (
-      <div className="min-h-screen w-full bg-[#060911] text-slate-100 flex flex-col antialiased">
+      <div className="min-h-screen w-full bg-canvas text-slate-100 flex flex-col antialiased">
         {children}
       </div>
     );
@@ -88,7 +88,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // - Left side: Persistent, stable Sidebar (never unmounts or jumps on page navigation)
   // - Right side: Dynamic page content area ({children})
   return (
-    <div className="flex flex-1 h-screen overflow-hidden bg-[#060911] text-slate-100 antialiased app-shell">
+    <div className="flex flex-1 h-screen overflow-hidden bg-canvas text-slate-100 antialiased app-shell">
       {/* Stable Left-Side Navigation: static rail, locked at h-screen */}
       <Sidebar />
 

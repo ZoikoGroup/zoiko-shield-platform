@@ -55,7 +55,7 @@ export default function GTMChecklistPage() {
   return (
     <div className="space-y-8 pb-16">
       {/* Header */}
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-raised via-surface to-canvas shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono">
             <ShieldCheck className="w-3.5 h-3.5" />
@@ -74,7 +74,7 @@ export default function GTMChecklistPage() {
           <button
             onClick={handleRecheck}
             disabled={rechecking}
-            className="px-4 py-2 rounded-xl bg-[#080c16] hover:bg-slate-800 border border-slate-700/80 text-slate-200 text-xs font-mono font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
+            className="px-4 py-2 rounded-xl bg-surface hover:bg-slate-800 border border-slate-700/80 text-slate-200 text-xs font-mono font-medium flex items-center gap-2 transition-colors disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 text-cyan-400 ${rechecking ? "animate-spin" : ""}`} />
             <span>Re-Verify 12 Rules</span>
@@ -90,7 +90,7 @@ export default function GTMChecklistPage() {
       </div>
 
       {/* 100% Green Certification Banner */}
-      <div className="surface-card p-6 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-[#0c111e] to-cyan-950/40 border border-emerald-500/40 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="surface-card p-6 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-raised to-cyan-950/40 border border-emerald-500/40 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-emerald-500/20 border border-emerald-500/50 text-emerald-400 flex items-center justify-center shrink-0 shadow-lg">
             <CheckCircle2 className="w-7 h-7" />
@@ -117,7 +117,7 @@ export default function GTMChecklistPage() {
       </div>
 
       {/* 12-Item Rules Table */}
-      <div className="surface-card p-6 rounded-2xl bg-[#0c111e]/90 border border-slate-800/80 shadow-xl space-y-4">
+      <div className="surface-card p-6 rounded-2xl bg-raised/90 border border-slate-800/80 shadow-xl space-y-4">
         <div className="space-y-1">
           <h3 className="text-base font-bold text-slate-100">
             Mandatory Commercial &amp; Governance Verification Matrix

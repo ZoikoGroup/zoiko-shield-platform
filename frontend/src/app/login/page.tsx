@@ -314,7 +314,7 @@ function LoginForm() {
         </div>
 
         {/* Security Assurance Tag */}
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#0c111e] border border-[#162238] text-[11px] font-mono text-cyan-400">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-raised border border-line text-[11px] font-mono text-cyan-400">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
           <span>FIPS 204 ML-DSA-65 Cryptographic Session Enforcement</span>
         </div>
@@ -373,7 +373,7 @@ function LoginForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="e.g. security-officer@zoikoshield.corp"
-              className="w-full bg-[#060911] border border-[#162238] rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-400 font-mono transition-colors shadow-inner"
+              className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-400 font-mono transition-colors shadow-inner"
             />
           </div>
 
@@ -402,7 +402,7 @@ function LoginForm() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter password"
-                className="w-full bg-[#060911] border border-[#162238] rounded-xl pl-4 pr-11 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-400 font-mono transition-colors shadow-inner"
+                className="w-full bg-canvas border border-line rounded-xl pl-4 pr-11 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-400 font-mono transition-colors shadow-inner"
               />
               <button
                 type="button"
@@ -434,7 +434,7 @@ function LoginForm() {
               value={tenantId}
               onChange={(e) => setTenantId(e.target.value.trim())}
               placeholder="e.g. tenant-sovereign-01"
-              className="w-full bg-[#060911] border border-[#162238] rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-400 font-mono transition-colors shadow-inner"
+              className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-400 font-mono transition-colors shadow-inner"
             />
           </div>
 
@@ -463,15 +463,15 @@ function LoginForm() {
         {/* WebAuthn / Passkey Alternative */}
         <div className="space-y-3 pt-2">
           <div className="flex items-center gap-3">
-            <div className="h-px flex-1 bg-[#162238]" />
+            <div className="h-px flex-1 bg-line" />
             <span className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">or sign in with</span>
-            <div className="h-px flex-1 bg-[#162238]" />
+            <div className="h-px flex-1 bg-line" />
           </div>
 
           <Button
             type="button"
             variant="outline"
-            className="w-full border-[#162238] bg-[#060911] hover:border-cyan-500/50 hover:bg-[#0c1424] transition-colors flex items-center justify-center gap-2"
+            className="w-full border-line bg-canvas hover:border-cyan-500/50 hover:bg-raised transition-colors flex items-center justify-center gap-2"
             isLoading={isPasskeyLoading}
             onClick={handlePasskeyLogin}
           >
@@ -483,7 +483,7 @@ function LoginForm() {
 
 
         {/* Account Creation & Invitation Notice */}
-        <div className="pt-4 border-t border-[#162238] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
+        <div className="pt-4 border-t border-line flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
           <div>
             New to ZoikoShield?
           </div>
@@ -513,7 +513,7 @@ function LoginForm() {
       {/* Forgot Password Modal */}
       {isForgotModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="w-full max-w-md rounded-2xl bg-[#090e1c] border border-cyan-500/40 shadow-[0_0_50px_rgba(6,182,212,0.3)] p-6 space-y-4 text-slate-200">
+          <div className="w-full max-w-md rounded-2xl bg-surface border border-cyan-500/40 shadow-[0_0_50px_rgba(6,182,212,0.3)] p-6 space-y-4 text-slate-200">
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <div className="flex items-center gap-2">
                 <Key className="w-4 h-4 text-cyan-400" />
@@ -542,7 +542,7 @@ function LoginForm() {
                     A cryptographic password recovery link has been dispatched to <strong>{forgotEmail}</strong>.
                   </p>
                 </div>
-                <div className="p-2.5 rounded-lg bg-[#060911] border border-[#162238] text-[10px] font-mono text-slate-400 space-y-0.5">
+                <div className="p-2.5 rounded-lg bg-canvas border border-line text-[10px] font-mono text-slate-400 space-y-0.5">
                   <div className="text-cyan-400 font-bold">RFC 3161 Evidence Stamp:</div>
                   <div className="truncate">{forgotSuccessProof}</div>
                 </div>
@@ -571,7 +571,7 @@ function LoginForm() {
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
                     placeholder="analyst@zoikoshield.corp"
-                    className="w-full bg-[#060911] border border-[#162238] rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-400 font-mono"
+                    className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-400 font-mono"
                   />
                 </div>
                 <div className="flex items-center justify-end gap-2 pt-2">
@@ -599,7 +599,7 @@ function LoginForm() {
       {/* Role Permissions & Functionality Matrix Modal */}
       {isRoleMatrixOpen && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto animate-in fade-in duration-150">
-          <div className="w-full max-w-3xl my-8 rounded-2xl bg-[#090e1c] border border-cyan-500/40 shadow-[0_0_60px_rgba(6,182,212,0.35)] p-6 md:p-8 space-y-6 text-slate-200">
+          <div className="w-full max-w-3xl my-8 rounded-2xl bg-surface border border-cyan-500/40 shadow-[0_0_60px_rgba(6,182,212,0.35)] p-6 md:p-8 space-y-6 text-slate-200">
             {/* Modal Header */}
             <div className="flex items-start justify-between border-b border-slate-800 pb-4">
               <div className="space-y-1">
@@ -639,7 +639,7 @@ function LoginForm() {
                     className={`p-2.5 rounded-xl border text-left transition-all ${
                       isActive
                         ? "bg-cyan-500/15 border-cyan-400 shadow-[0_0_15px_rgba(6,182,212,0.25)] text-cyan-300"
-                        : "bg-[#060911] border-[#162238] hover:border-slate-700 text-slate-400 hover:text-slate-200"
+                        : "bg-canvas border-line hover:border-slate-700 text-slate-400 hover:text-slate-200"
                     }`}
                   >
                     <div className="text-[10px] font-mono font-bold tracking-wider uppercase mb-1">
@@ -662,7 +662,7 @@ function LoginForm() {
               return (
                 <div className="space-y-5">
                   {/* Persona Header & 1-Click Login Action */}
-                  <div className="p-4 rounded-xl bg-[#060911] border border-[#162238] flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="p-4 rounded-xl bg-canvas border border-line flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="space-y-1.5 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-sm font-black text-slate-100">
@@ -698,7 +698,7 @@ function LoginForm() {
                       {currentRole.primaryCockpits.map((cockpit, idx) => (
                         <div
                           key={idx}
-                          className="p-2.5 rounded-lg bg-[#0c1424] border border-[#162238] flex items-center justify-between text-xs"
+                          className="p-2.5 rounded-lg bg-raised border border-line flex items-center justify-between text-xs"
                         >
                           <span className="font-semibold text-slate-200">{cockpit.title}</span>
                           <span className="font-mono text-[10px] text-cyan-400 px-1.5 py-0.5 rounded bg-cyan-950/40 border border-cyan-500/30">
@@ -772,7 +772,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#060911] flex items-center justify-center">
+        <div className="min-h-screen bg-canvas flex items-center justify-center">
           <LoadingState
             title="Loading Authentication Gate..."
             message="Initializing cryptographic state & security policy engine."

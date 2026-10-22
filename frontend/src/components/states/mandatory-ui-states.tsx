@@ -42,7 +42,7 @@ export const LoadingState: React.FC<StateProps> = ({
     role="status"
     aria-live="polite"
     aria-busy="true"
-    className="flex flex-col items-center justify-center p-12 rounded-xl border border-[#162238] bg-[#0c111e]/90 backdrop-blur-md text-center space-y-4 shadow-xl"
+    className="flex flex-col items-center justify-center p-12 rounded-xl border border-line bg-raised/90 backdrop-blur-md text-center space-y-4 shadow-xl"
   >
     <div className="relative">
       <div className="w-12 h-12 rounded-full border-2 border-cyan-500/20 border-t-cyan-400 animate-spin flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.2)]" />
@@ -52,7 +52,7 @@ export const LoadingState: React.FC<StateProps> = ({
       <h3 className="text-sm font-semibold text-slate-100">{title}</h3>
       <p className="text-xs text-slate-400 max-w-sm">{message}</p>
     </div>
-    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-[#080c16] border border-[#162238] text-slate-400">
+    <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-surface border border-line text-slate-400">
       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
       Cell: {regionalCell} [sovereign]
     </div>

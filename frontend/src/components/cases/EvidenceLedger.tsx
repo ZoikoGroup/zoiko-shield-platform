@@ -49,7 +49,7 @@ export const EvidenceLedger: React.FC<EvidenceLedgerProps> = ({
             {evidenceList.map((ev, idx) => (
               <div
                 key={ev.id || idx}
-                className="bg-[#121622] border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:border-cyan-500/30 transition-all"
+                className="bg-overlay border border-slate-800 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 hover:border-cyan-500/30 transition-all"
               >
                 <div className="space-y-1.5 max-w-xl">
                   <div className="flex items-center gap-2">

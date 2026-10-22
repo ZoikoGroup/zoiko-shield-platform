@@ -120,7 +120,7 @@ export default function TenantManagementPage() {
                 ["Privileged role assignments", "3"],
                 ["Access reviews pending", "2"],
               ].map(([k, v]) => (
-                <div key={k} className="flex justify-between border-b border-[#111a2b] pb-2"><span className="text-slate-400">{k}</span><span className="font-semibold text-slate-100">{v}</span></div>
+                <div key={k} className="flex justify-between border-b border-line pb-2"><span className="text-slate-400">{k}</span><span className="font-semibold text-slate-100">{v}</span></div>
               ))}
               <div className="flex justify-between"><span className="text-slate-400">Evidence proof state</span><span className="font-semibold text-amber-300">Unverified</span></div>
             </div>

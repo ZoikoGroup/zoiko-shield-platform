@@ -118,8 +118,8 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <Card variant="cyber" className="p-4 border-[#162238] bg-[#0a0f1d]">
-      <div className="mb-3 flex items-baseline justify-between border-b border-[#162238] pb-2">
+    <Card variant="cyber" className="p-4 border-line bg-surface">
+      <div className="mb-3 flex items-baseline justify-between border-b border-line pb-2">
         <div>
           <h2 className="text-sm font-semibold text-white flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
@@ -261,7 +261,7 @@ export default function ShiftHandoverPage() {
               {commitments.map(({ row, margin }) => (
                 <div
                   key={row.id}
-                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#162238] bg-[#0c1322] p-2.5 shadow-sm"
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-line bg-raised p-2.5 shadow-sm"
                 >
                   <div>
                     <p className="text-xs text-slate-100 font-medium">{row.title}</p>
@@ -315,7 +315,7 @@ export default function ShiftHandoverPage() {
                 if (!row.owner_id) why.push("unassigned");
                 if (row.slaClock?.paused_at) why.push("clock paused");
                 return (
-                  <div key={row.id} className="rounded-lg border border-[#162238] bg-[#0c1322] p-2.5 shadow-sm">
+                  <div key={row.id} className="rounded-lg border border-line bg-raised p-2.5 shadow-sm">
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant={severityVariant(row.severity)} className="font-mono text-[10px]">{row.severity}</Badge>
                       <span className="text-xs text-slate-100 font-medium">{row.title}</span>

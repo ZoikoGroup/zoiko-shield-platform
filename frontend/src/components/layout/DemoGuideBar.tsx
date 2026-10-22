@@ -90,7 +90,7 @@ export const DemoGuideBar: React.FC = () => {
       <div className="fixed bottom-4 right-4 z-50">
         <button
           onClick={() => setIsMinimized(false)}
-          className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#080d19]/90 backdrop-blur-md border border-cyan-500/50 text-cyan-300 text-xs font-mono font-bold shadow-[0_0_20px_rgba(6,182,212,0.35)] hover:scale-105 hover:border-cyan-400 transition-all"
+          className="flex items-center gap-2 px-4 py-2 rounded-full bg-surface/90 backdrop-blur-md border border-cyan-500/50 text-cyan-300 text-xs font-mono font-bold shadow-[0_0_20px_rgba(6,182,212,0.35)] hover:scale-105 hover:border-cyan-400 transition-all"
         >
           <Sparkles className="w-4 h-4 text-cyan-400 animate-pulse" />
           <span>Walkthrough Guide • Step {activeStep}/16</span>
@@ -100,7 +100,7 @@ export const DemoGuideBar: React.FC = () => {
   }
 
   return (
-    <div className="fixed bottom-0 inset-x-0 z-40 bg-[#080d19]/95 backdrop-blur-md border-t border-cyan-500/30 px-4 py-2.5 shadow-[0_-5px_30px_rgba(0,0,0,0.85)]">
+    <div className="fixed bottom-0 inset-x-0 z-40 bg-surface/95 backdrop-blur-md border-t border-cyan-500/30 px-4 py-2.5 shadow-[0_-5px_30px_rgba(0,0,0,0.85)]">
       <div className="max-w-[1720px] mx-auto flex flex-col lg:flex-row items-center justify-between gap-3">
         {/* Left: Step Info */}
         <div className="flex items-center gap-3 shrink-0">

@@ -70,11 +70,11 @@ export default function HelpDocumentationPage() {
       <TabBar tabs={TABS} active={tab} onChange={setTab} />
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <section className="xl:col-span-2 rounded-xl border border-[#162238] bg-gradient-to-r from-[#0d1628] to-[#0a101d] p-5 border-l-4 border-l-sky-500">
+        <section className="xl:col-span-2 rounded-xl border border-line bg-gradient-to-r from-overlay to-surface p-5 border-l-4 border-l-sky-500">
           <h2 className="text-lg font-bold text-slate-100">Knowledge that moves your investigation forward</h2>
           <p className="text-xs text-slate-400 mt-1">Search documentation, attack-response runbooks, API references and troubleshooting paths.</p>
           <form className="flex gap-2 mt-4" onSubmit={(e) => e.preventDefault()}>
-            <label className="flex items-center gap-2 flex-1 px-3 py-2.5 rounded-lg bg-[#080c16] border border-[#1e2b44] text-xs">
+            <label className="flex items-center gap-2 flex-1 px-3 py-2.5 rounded-lg bg-surface border border-line-strong text-xs">
               <Search className="w-4 h-4 text-slate-500" />
               <input value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search help" placeholder="Search by product, workflow, error message or article..." className="bg-transparent outline-none w-full text-slate-200 placeholder:text-slate-500" />
             </label>
@@ -86,8 +86,8 @@ export default function HelpDocumentationPage() {
             ))}
           </div>
         </section>
-        <section className="rounded-xl border border-[#162238] bg-[#0c111e] p-5">
-          <h2 className="flex items-center gap-2 text-base font-bold text-slate-100 pb-3 border-b border-[#162238]"><ShieldCheck className="w-5 h-5 text-sky-400" /> Trusted support pathways</h2>
+        <section className="rounded-xl border border-line bg-raised p-5">
+          <h2 className="flex items-center gap-2 text-base font-bold text-slate-100 pb-3 border-b border-line"><ShieldCheck className="w-5 h-5 text-sky-400" /> Trusted support pathways</h2>
           <ul className="space-y-3 mt-3 text-xs text-slate-300">
             <li className="flex gap-2"><Check className="w-4 h-4 text-emerald-400 shrink-0" /> Scope help articles to your tenant and role</li>
             <li className="flex gap-2"><Lock className="w-4 h-4 text-amber-400 shrink-0" /> Never paste credentials, tokens or customer secrets</li>
@@ -104,8 +104,8 @@ export default function HelpDocumentationPage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
             {WORKFLOWS.map((w) => (
-              <Link key={w.title} href={w.href} className="flex items-center gap-4 rounded-xl border border-[#162238] bg-[#0c111e] p-4 hover:border-sky-500/50 transition-colors">
-                <span className="w-11 h-11 rounded-lg border border-[#1e2b44] bg-[#080c16] flex items-center justify-center text-sky-300">{w.icon}</span>
+              <Link key={w.title} href={w.href} className="flex items-center gap-4 rounded-xl border border-line bg-raised p-4 hover:border-sky-500/50 transition-colors">
+                <span className="w-11 h-11 rounded-lg border border-line-strong bg-surface flex items-center justify-center text-sky-300">{w.icon}</span>
                 <span className="flex-1"><span className="block text-sm font-bold text-slate-100">{w.title}</span><span className="block text-[11px] text-slate-500">{w.sub}</span></span>
                 <ChevronRight className="w-4 h-4 text-slate-500" />
               </Link>
@@ -115,7 +115,7 @@ export default function HelpDocumentationPage() {
       )}
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <section className="xl:col-span-2 rounded-xl border border-[#162238] bg-[#0c111e] p-5">
+        <section className="xl:col-span-2 rounded-xl border border-line bg-raised p-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-bold text-slate-100">{query ? `Results for "${query}"` : "Recommended guides"}</h2>
             <Pill tone="blue">Curated workflows</Pill>
@@ -126,24 +126,24 @@ export default function HelpDocumentationPage() {
               {guides.length === 0 ? (
                 <tr><td colSpan={3} className="py-6 text-center text-slate-500">No guides match. Try a broader term, or open a support request.</td></tr>
               ) : guides.map((g) => (
-                <tr key={g.title} className="border-t border-[#111a2b]">
+                <tr key={g.title} className="border-t border-line">
                   <td className="py-2.5"><span className="flex items-center gap-2.5 text-slate-200"><span className="text-sky-400">{g.icon}</span>{g.title}</span></td>
-                  <td className="py-2.5"><span className="px-2 py-1 rounded-md border border-[#1e2b44] bg-[#080c16] text-[10px] text-slate-300">{g.area}</span></td>
+                  <td className="py-2.5"><span className="px-2 py-1 rounded-md border border-line-strong bg-surface text-[10px] text-slate-300">{g.area}</span></td>
                   <td className="py-2.5 text-right"><Link href={g.href} className="text-sky-300 font-semibold hover:underline">Open ›</Link></td>
                 </tr>
               ))}
             </tbody>
           </table>
         </section>
-        <section className="rounded-xl border border-[#162238] bg-[#0c111e] p-5">
-          <h2 className="text-base font-bold text-slate-100 pb-3 border-b border-[#162238]">Support &amp; escalation</h2>
+        <section className="rounded-xl border border-line bg-raised p-5">
+          <h2 className="text-base font-bold text-slate-100 pb-3 border-b border-line">Support &amp; escalation</h2>
           <div className="space-y-2.5 mt-3">
             {[
               { title: "Create a support request", sub: "Secure request with redacted diagnostic context", href: "/notifications", icon: <MessageSquare className="w-4 h-4" /> },
               { title: "Security-critical incident", sub: "Use Incident Command and your contracted process", href: "/cases/incidents/command", icon: <Flame className="w-4 h-4" /> },
               { title: "Service availability", sub: "View only measured, current service status", href: "/admin/platform-health", icon: <Clock className="w-4 h-4" /> },
             ].map((s) => (
-              <Link key={s.title} href={s.href} className="flex items-center gap-3 rounded-lg border border-[#1e2b44] bg-[#080c16] p-3 hover:border-sky-500/50">
+              <Link key={s.title} href={s.href} className="flex items-center gap-3 rounded-lg border border-line-strong bg-surface p-3 hover:border-sky-500/50">
                 <span className="text-sky-300">{s.icon}</span>
                 <span className="flex-1"><span className="block text-xs font-semibold text-slate-100">{s.title}</span><span className="block text-[10px] text-slate-500">{s.sub}</span></span>
                 <ChevronRight className="w-4 h-4 text-slate-500" />
@@ -153,7 +153,7 @@ export default function HelpDocumentationPage() {
         </section>
       </div>
 
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-4 rounded-xl border border-[#162238] bg-[#0c111e] p-5 border-l-4 border-l-amber-500">
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-4 rounded-xl border border-line bg-raised p-5 border-l-4 border-l-amber-500">
         {[
           { icon: <AlertTriangle className="w-6 h-6 text-amber-400" />, title: "Troubleshooting essentials", sub: "Authentication denied? Check the tenant binding and generic sign-in error." },
           { icon: <Network className="w-6 h-6 text-sky-400" />, title: "Connector data delayed?", sub: "Review last-seen time, source auth and normalization." },

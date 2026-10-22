@@ -78,7 +78,7 @@ export default function ControlsPage() {
   return (
     <div className="space-y-6 pb-12">
       {/* Header Banner */}
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-b from-[#0c111e] to-[#070b14] shadow-xl">
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-b from-raised to-canvas shadow-xl">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -164,21 +164,21 @@ export default function ControlsPage() {
 
         return (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="p-4 rounded-xl bg-gradient-to-b from-[#0c111e] to-[#070b14] border border-emerald-500/30 flex items-center justify-between shadow-lg">
+            <div className="p-4 rounded-xl bg-gradient-to-b from-raised to-canvas border border-emerald-500/30 flex items-center justify-between shadow-lg">
               <div className="space-y-1">
                 <span className="text-[10px] font-mono text-emerald-400 font-bold uppercase tracking-wider">FRESH EVIDENCE (&lt;24H)</span>
                 <p className="text-2xl font-black text-white font-mono">{freshCount} Controls</p>
               </div>
               <span className="w-3 h-3 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
             </div>
-            <div className="p-4 rounded-xl bg-gradient-to-b from-[#0c111e] to-[#070b14] border border-amber-500/30 flex items-center justify-between shadow-lg">
+            <div className="p-4 rounded-xl bg-gradient-to-b from-raised to-canvas border border-amber-500/30 flex items-center justify-between shadow-lg">
               <div className="space-y-1">
                 <span className="text-[10px] font-mono text-amber-400 font-bold uppercase tracking-wider">AGING EVIDENCE (24–72H)</span>
                 <p className="text-2xl font-black text-white font-mono">{agingCount} Controls</p>
               </div>
               <span className="w-3 h-3 rounded-full bg-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.6)]" />
             </div>
-            <div className="p-4 rounded-xl bg-gradient-to-b from-[#0c111e] to-[#070b14] border border-rose-500/30 flex items-center justify-between shadow-lg">
+            <div className="p-4 rounded-xl bg-gradient-to-b from-raised to-canvas border border-rose-500/30 flex items-center justify-between shadow-lg">
               <div className="space-y-1">
                 <span className="text-[10px] font-mono text-rose-400 font-bold uppercase tracking-wider">STALE EVIDENCE (&gt;72H SLA)</span>
                 <p className="text-2xl font-black text-white font-mono">{staleCount} Controls</p>
@@ -191,7 +191,7 @@ export default function ControlsPage() {
 
       {/* Controls Grid */}
       {!isLoading && controlTests.length === 0 ? (
-        <Card variant="cyber" className="p-8 text-center bg-gradient-to-b from-[#0c111e] to-[#070b14]">
+        <Card variant="cyber" className="p-8 text-center bg-gradient-to-b from-raised to-canvas">
           <p className="text-sm text-slate-300">
             No controls have been evaluated for this tenant yet.
           </p>
@@ -209,7 +209,7 @@ export default function ControlsPage() {
                 : { text: `STALE (${ageHours}h ago)`, color: "text-rose-400 bg-rose-950/60 border-rose-500/30" };
 
           return (
-            <Card key={ctrl.id || idx} variant="cyber" className="space-y-4 bg-gradient-to-b from-[#0c111e] to-[#070b14] hover:border-cyan-500/40 transition-all p-5">
+            <Card key={ctrl.id || idx} variant="cyber" className="space-y-4 bg-gradient-to-b from-raised to-canvas hover:border-cyan-500/40 transition-all p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -244,7 +244,7 @@ export default function ControlsPage() {
                 </Badge>
               </div>
 
-              <div className="p-3.5 rounded-xl bg-[#060a12] border border-slate-800/80 space-y-2 font-mono text-xs text-slate-300">
+              <div className="p-3.5 rounded-xl bg-canvas border border-slate-800/80 space-y-2 font-mono text-xs text-slate-300">
                 <div className="flex justify-between items-center">
                   <span className="text-slate-500 text-[11px]">EVALUATED EVENTS:</span>
                   <span className="text-cyan-300 font-semibold">{ctrl.evaluatedEventsCount}</span>

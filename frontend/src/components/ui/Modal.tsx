@@ -54,7 +54,7 @@ export const Modal: React.FC<ModalProps> = ({
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 overflow-y-auto bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
       <div
         className={cn(
-          "w-full my-auto max-h-[calc(100vh-3rem)] flex flex-col bg-[#11141c] border border-cyan-500/30 rounded-2xl p-5 sm:p-6 shadow-[0_0_50px_rgba(0,0,0,0.8)] relative text-slate-100",
+          "w-full my-auto max-h-[calc(100vh-3rem)] flex flex-col bg-raised border border-cyan-500/30 rounded-2xl p-5 sm:p-6 shadow-[0_0_50px_rgba(0,0,0,0.8)] relative text-slate-100",
           getMaxWidth()
         )}
       >

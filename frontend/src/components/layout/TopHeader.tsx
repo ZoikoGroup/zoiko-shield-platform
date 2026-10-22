@@ -83,6 +83,17 @@ const SEARCH_ITEMS = [
   { type: "WORKSPACE", title: "Regulated Sector Packs", subtitle: "DORA, HIPAA, FedRAMP, and CMMC industry overlays", route: "/sector-packs" },
 ];
 
+/**
+ * Themes are colour-token sets keyed off a class on <html> (see
+ * tailwind.config.ts). Only the theme class is swapped; other classes stay.
+ */
+function applyTheme(mode: "dark" | "light" | "cyber") {
+  const root = document.documentElement;
+  root.classList.remove("dark", "light", "cyber");
+  root.classList.add(mode);
+  root.setAttribute("data-theme", mode);
+}
+
 export const TopHeader: React.FC = () => {
   const router = useRouter();
   const pathname = usePathname();
@@ -216,12 +227,7 @@ export const TopHeader: React.FC = () => {
     try {
       const savedTheme = (localStorage.getItem("zoiko_theme") as "dark" | "light" | "cyber") || "dark";
       setThemeMode(savedTheme);
-      document.documentElement.className = savedTheme;
-      document.documentElement.setAttribute("data-theme", savedTheme);
-      if (typeof document !== "undefined" && document.body) {
-        document.body.className = savedTheme;
-        document.body.setAttribute("data-theme", savedTheme);
-      }
+      applyTheme(savedTheme);
 
       const savedBrightness = localStorage.getItem("zoiko_brightness");
       if (savedBrightness) {
@@ -302,12 +308,7 @@ export const TopHeader: React.FC = () => {
   // Theme Switcher Handlers
   const handleThemeChange = (mode: "dark" | "light" | "cyber") => {
     setThemeMode(mode);
-    document.documentElement.className = mode;
-    document.documentElement.setAttribute("data-theme", mode);
-    if (typeof document !== "undefined" && document.body) {
-      document.body.className = mode;
-      document.body.setAttribute("data-theme", mode);
-    }
+    applyTheme(mode);
     try {
       localStorage.setItem("zoiko_theme", mode);
     } catch {}
@@ -444,7 +445,7 @@ export const TopHeader: React.FC = () => {
     <>
       <header
         ref={navRef}
-        className="sticky top-0 z-30 w-full bg-[#080c16]/95 backdrop-blur-md border-b border-[#141d2e] px-4 md:px-6 py-2.5 flex items-center justify-between gap-4 transition-colors"
+        className="sticky top-0 z-30 w-full bg-surface/95 backdrop-blur-md border-b border-line px-4 md:px-6 py-2.5 flex items-center justify-between gap-4 transition-colors"
       >
         {/* Left: Breadcrumbs */}
         <div className="flex items-center gap-2 text-xs font-mono">
@@ -462,13 +463,13 @@ export const TopHeader: React.FC = () => {
           <button
             type="button"
             onClick={() => setIsSearchModalOpen(true)}
-            className="w-full flex items-center justify-between bg-[#0c111e] border border-[#162238] hover:border-cyan-500/40 rounded-lg px-3 py-1.5 text-xs text-slate-400 hover:text-slate-300 transition-all shadow-sm group"
+            className="w-full flex items-center justify-between bg-raised border border-line hover:border-cyan-500/40 rounded-lg px-3 py-1.5 text-xs text-slate-400 hover:text-slate-300 transition-all shadow-sm group"
           >
             <div className="flex items-center gap-2">
               <Search className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors shrink-0" />
               <span className="text-slate-400 font-sans text-xs">Search alerts, cases, assets, controls...</span>
             </div>
-            <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-[#141d2e] border border-slate-700/60 text-[10px] font-mono text-slate-400 group-hover:text-cyan-300 transition-colors">
+            <div className="flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-overlay border border-slate-700/60 text-[10px] font-mono text-slate-400 group-hover:text-cyan-300 transition-colors">
               <Command className="w-2.5 h-2.5" />
               <span>K</span>
             </div>
@@ -505,7 +506,7 @@ export const TopHeader: React.FC = () => {
           <Link
             href="/admin/platform-health"
             title="Microservices Readiness Health (Step 1)"
-            className="hidden md:flex items-center gap-1.5 px-2 py-1 rounded bg-[#0c111e] border border-[#162238] hover:border-cyan-500/40 text-xs font-mono text-slate-300 transition-colors"
+            className="hidden md:flex items-center gap-1.5 px-2 py-1 rounded bg-raised border border-line hover:border-cyan-500/40 text-xs font-mono text-slate-300 transition-colors"
           >
             <Activity
               className={`w-3.5 h-3.5 ${
@@ -523,7 +524,7 @@ export const TopHeader: React.FC = () => {
               className={`relative p-1.5 rounded-lg transition-colors ${
                 activeMenu === "notifications"
                   ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-[0_0_12px_rgba(6,182,212,0.3)]"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-[#141d2e]"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-overlay"
               }`}
               title="Notifications"
             >
@@ -537,8 +538,8 @@ export const TopHeader: React.FC = () => {
 
             {/* Notification Popover Dropdown */}
             {activeMenu === "notifications" && (
-              <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-[#0a0f1d] border border-cyan-500/40 shadow-[0_10px_40px_rgba(0,0,0,0.85)] z-50 overflow-hidden text-slate-200 animate-in fade-in slide-in-from-top-2 duration-150">
-                <div className="p-3.5 bg-gradient-to-r from-[#0d1527] to-[#080d19] border-b border-slate-800 flex items-center justify-between">
+              <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-2xl bg-surface border border-cyan-500/40 shadow-[0_10px_40px_rgba(0,0,0,0.85)] z-50 overflow-hidden text-slate-200 animate-in fade-in slide-in-from-top-2 duration-150">
+                <div className="p-3.5 bg-gradient-to-r from-overlay to-surface border-b border-slate-800 flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Bell className="w-4 h-4 text-cyan-400" />
                     <span className="text-xs font-mono font-bold text-white uppercase tracking-wider">
@@ -583,7 +584,7 @@ export const TopHeader: React.FC = () => {
                         }}
                         className={`p-3 transition-colors cursor-pointer flex flex-col gap-1.5 ${
                           item.acknowledged
-                            ? "bg-[#080c16]/50 opacity-70 hover:opacity-100 hover:bg-[#0c1222]"
+                            ? "bg-surface/50 opacity-70 hover:opacity-100 hover:bg-raised"
                             : "bg-cyan-950/20 hover:bg-cyan-950/40"
                         }`}
                       >
@@ -628,7 +629,7 @@ export const TopHeader: React.FC = () => {
                   )}
                 </div>
 
-                <div className="p-2.5 bg-[#080c16] border-t border-slate-800 text-center">
+                <div className="p-2.5 bg-surface border-t border-slate-800 text-center">
                   <Link
                     href="/notifications"
                     onClick={() => setActiveMenu(null)}
@@ -650,7 +651,7 @@ export const TopHeader: React.FC = () => {
               className={`p-1.5 rounded-lg transition-colors ${
                 activeMenu === "help"
                   ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
-                  : "text-slate-400 hover:text-slate-200 hover:bg-[#141d2e]"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-overlay"
               }`}
               title="Help & Shortcuts"
             >
@@ -659,7 +660,7 @@ export const TopHeader: React.FC = () => {
 
             {/* Help Popover Dropdown */}
             {activeMenu === "help" && (
-              <div className="absolute right-0 mt-2 w-72 rounded-2xl bg-[#0a0f1d] border border-cyan-500/40 shadow-[0_10px_40px_rgba(0,0,0,0.85)] z-50 p-4 text-xs font-mono text-slate-300 space-y-3 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="absolute right-0 mt-2 w-72 rounded-2xl bg-surface border border-cyan-500/40 shadow-[0_10px_40px_rgba(0,0,0,0.85)] z-50 p-4 text-xs font-mono text-slate-300 space-y-3 animate-in fade-in slide-in-from-top-2 duration-150">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                   <span className="font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                     <HelpCircle className="w-4 h-4 text-cyan-400" />
@@ -716,7 +717,7 @@ export const TopHeader: React.FC = () => {
               className={`p-1.5 rounded-lg transition-colors ${
                 activeMenu === "theme"
                   ? "bg-cyan-500/20 text-cyan-300 border border-cyan-500/40"
-                  : "text-slate-400 hover:text-cyan-400 hover:bg-[#141d2e]"
+                  : "text-slate-400 hover:text-cyan-400 hover:bg-overlay"
               }`}
               title="Display & Theme Settings"
             >
@@ -729,7 +730,7 @@ export const TopHeader: React.FC = () => {
 
             {/* Theme & Brightness Popover */}
             {activeMenu === "theme" && (
-              <div className="absolute right-0 mt-2 w-72 rounded-2xl bg-[#0a0f1d] border border-cyan-500/40 shadow-[0_10px_40px_rgba(0,0,0,0.85)] z-50 p-4 text-xs font-mono text-slate-200 space-y-4 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="absolute right-0 mt-2 w-72 rounded-2xl bg-surface border border-cyan-500/40 shadow-[0_10px_40px_rgba(0,0,0,0.85)] z-50 p-4 text-xs font-mono text-slate-200 space-y-4 animate-in fade-in slide-in-from-top-2 duration-150">
                 <div className="flex items-center justify-between border-b border-slate-800 pb-2">
                   <span className="font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
                     <Sliders className="w-4 h-4 text-cyan-400" />
@@ -821,8 +822,8 @@ export const TopHeader: React.FC = () => {
             <button
               type="button"
               onClick={() => setActiveMenu((prev) => (prev === "profile" ? null : "profile"))}
-              className={`flex items-center gap-2 pl-2 border-l border-[#162238] transition-all rounded-r-lg p-1 ${
-                activeMenu === "profile" ? "bg-[#141d2e]" : "hover:bg-[#101726]"
+              className={`flex items-center gap-2 pl-2 border-l border-line transition-all rounded-r-lg p-1 ${
+                activeMenu === "profile" ? "bg-overlay" : "hover:bg-overlay"
               }`}
             >
               <div className="w-7 h-7 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-slate-950 font-bold text-xs shadow-[0_0_10px_rgba(6,182,212,0.3)]">
@@ -854,7 +855,7 @@ export const TopHeader: React.FC = () => {
 
             {/* Profile & Switcher Popover */}
             {activeMenu === "profile" && (
-              <div className="absolute right-0 mt-2 w-80 rounded-2xl bg-[#0a0f1d] border border-cyan-500/40 shadow-[0_10px_40px_rgba(0,0,0,0.85)] z-50 p-4 text-xs font-mono text-slate-200 space-y-4 animate-in fade-in slide-in-from-top-2 duration-150">
+              <div className="absolute right-0 mt-2 w-80 rounded-2xl bg-surface border border-cyan-500/40 shadow-[0_10px_40px_rgba(0,0,0,0.85)] z-50 p-4 text-xs font-mono text-slate-200 space-y-4 animate-in fade-in slide-in-from-top-2 duration-150">
                 <div className="flex items-center gap-3 border-b border-slate-800 pb-3">
                   <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-slate-950 font-black text-sm shadow-[0_0_12px_rgba(6,182,212,0.4)]">
                     {userInitials}
@@ -965,11 +966,11 @@ export const TopHeader: React.FC = () => {
           onClick={() => setIsSearchModalOpen(false)}
         >
           <div
-            className="w-full max-w-2xl rounded-2xl bg-[#090e1c] border border-cyan-500/50 shadow-[0_0_50px_rgba(6,182,212,0.3)] overflow-hidden text-slate-200"
+            className="w-full max-w-2xl rounded-2xl bg-surface border border-cyan-500/50 shadow-[0_0_50px_rgba(6,182,212,0.3)] overflow-hidden text-slate-200"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Search Input Box */}
-            <div className="p-4 border-b border-slate-800 flex items-center gap-3 bg-gradient-to-r from-[#0c1428] to-[#070b16]">
+            <div className="p-4 border-b border-slate-800 flex items-center gap-3 bg-gradient-to-r from-overlay to-surface">
               <Search className="w-5 h-5 text-cyan-400 shrink-0" />
               <input
                 ref={searchInputRef}
@@ -1039,7 +1040,7 @@ export const TopHeader: React.FC = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-3 bg-[#060a14] border-t border-slate-800 flex items-center justify-between text-[11px] font-mono text-slate-400">
+            <div className="p-3 bg-canvas border-t border-slate-800 flex items-center justify-between text-[11px] font-mono text-slate-400">
               <div className="flex items-center gap-3">
                 <span>
                   <kbd className="px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-slate-300">↑</kbd>{" "}

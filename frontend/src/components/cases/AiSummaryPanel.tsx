@@ -378,7 +378,7 @@ export const AiSummaryPanel: React.FC<AiSummaryPanelProps> = ({
           </div>
 
           {/* ── Field 8 & 9: Human Decision Controls & Recorded Evidence (Spec §16.1 #8 & #9) ── */}
-          <div className="p-5 rounded-xl bg-[#11141c] border border-amber-500/30 space-y-4">
+          <div className="p-5 rounded-xl bg-raised border border-amber-500/30 space-y-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
               <div className="flex items-center gap-2">
                 <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />

@@ -128,7 +128,7 @@ export default function JitElevationQuorumPage() {
                 { k: "Request binding", v: "Tenant + principal + role" },
               ]}
             />
-            <div className="mt-4 rounded-lg border border-[#162238] bg-[#080c16] p-3">
+            <div className="mt-4 rounded-lg border border-line bg-surface p-3">
               <div className="flex justify-between text-[11px] mb-3">
                 <span className="font-semibold text-cyan-300">Mandatory access sequence</span>
                 <span className="text-amber-300">{sel.approvals}/2 approvals · step-up locked</span>
@@ -180,7 +180,7 @@ export default function JitElevationQuorumPage() {
                 { key: "rem", header: "Remaining", render: () => "0 min" },
               ]}
             />
-            <p className="text-[11px] text-slate-500 mt-3 border border-[#162238] rounded-lg p-2.5">
+            <p className="text-[11px] text-slate-500 mt-3 border border-line rounded-lg p-2.5">
               Automatic expiry and emergency revocation must be enforced at the authorization layer, not only reflected in the interface.
             </p>
           </Panel>

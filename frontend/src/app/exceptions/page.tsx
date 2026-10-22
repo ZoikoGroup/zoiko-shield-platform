@@ -139,10 +139,10 @@ export default function ExceptionsPage() {
   const missingCompensating = records.filter(r => parseControls(r.compensating_controls).length === 0).length;
 
   return (
-    <div className="min-h-screen bg-[#060911] text-slate-100 p-6 space-y-6">
-      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-[#162238] pb-6">
+    <div className="min-h-screen bg-canvas text-slate-100 p-6 space-y-6">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-line pb-6">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" onClick={() => router.push("/risk")} className="border border-[#162238] bg-[#0c111e] hover:bg-[#111a2e] text-slate-300">
+          <Button variant="ghost" onClick={() => router.push("/risk")} className="border border-line bg-raised hover:bg-overlay text-slate-300">
             <ArrowLeft className="w-4 h-4 text-cyan-400" />
             <span>Risk register</span>
           </Button>
@@ -158,7 +158,7 @@ export default function ExceptionsPage() {
             </p>
           </div>
         </div>
-        <Button variant="ghost" onClick={() => void load()} className="border border-[#162238] bg-[#0c111e] hover:bg-[#111a2e] text-slate-300">
+        <Button variant="ghost" onClick={() => void load()} className="border border-line bg-raised hover:bg-overlay text-slate-300">
           <RefreshCw className="w-4 h-4 text-cyan-400" />
           <span>Refresh</span>
         </Button>
@@ -172,22 +172,22 @@ export default function ExceptionsPage() {
 
       {/* KPI Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-emerald-500/40 transition-all">
+        <Card className="surface-card p-4 border border-line rounded-xl hover:border-emerald-500/40 transition-all">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 font-mono">Active Approved</span>
           <div className="text-2xl font-bold text-emerald-400 mt-1 font-mono">{activeCount}</div>
           <span className="text-[10px] text-emerald-400/80 mt-1 inline-block font-mono">Operative exceptions</span>
         </Card>
-        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-amber-500/40 transition-all">
+        <Card className="surface-card p-4 border border-line rounded-xl hover:border-amber-500/40 transition-all">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 font-mono">Pending Approval</span>
           <div className="text-2xl font-bold text-amber-300 mt-1 font-mono">{requestedCount}</div>
           <span className="text-[10px] text-amber-400/80 mt-1 inline-block font-mono">Awaiting risk review</span>
         </Card>
-        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-rose-500/40 transition-all">
+        <Card className="surface-card p-4 border border-line rounded-xl hover:border-rose-500/40 transition-all">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 font-mono">Expired / Overdue</span>
           <div className="text-2xl font-bold text-rose-400 mt-1 font-mono">{overdueCount}</div>
           <span className="text-[10px] text-rose-400/80 mt-1 inline-block font-mono">Lapsed approvals</span>
         </Card>
-        <Card className="surface-card p-4 border border-[#162238] rounded-xl hover:border-cyan-500/40 transition-all">
+        <Card className="surface-card p-4 border border-line rounded-xl hover:border-cyan-500/40 transition-all">
           <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 font-mono">Missing Compensating</span>
           <div className="text-2xl font-bold text-slate-200 mt-1 font-mono">{missingCompensating}</div>
           <span className="text-[10px] text-slate-500 mt-1 inline-block font-mono">Require mitigation review</span>
@@ -195,7 +195,7 @@ export default function ExceptionsPage() {
       </div>
 
       {records.length === 0 ? (
-        <Card className="surface-card border border-[#162238] p-8 text-center rounded-xl">
+        <Card className="surface-card border border-line p-8 text-center rounded-xl">
           <p className="text-sm font-semibold text-slate-200">No exceptions are recorded for this tenant.</p>
           <p className="text-xs font-mono text-slate-500 mt-1.5 max-w-md mx-auto">
             Nothing is currently excepted from a control.
@@ -213,7 +213,7 @@ export default function ExceptionsPage() {
               record.risk_id ||
               "no scope recorded";
             return (
-              <Card key={record.id} className="surface-card p-5 border border-[#162238] rounded-xl hover:border-cyan-500/30 transition-all shadow-md">
+              <Card key={record.id} className="surface-card p-5 border border-line rounded-xl hover:border-cyan-500/30 transition-all shadow-md">
                 <div className="flex items-start justify-between gap-4 mb-3">
                   <div>
                     <h2 className="text-sm font-semibold text-white tracking-wide">{record.reason}</h2>
@@ -228,7 +228,7 @@ export default function ExceptionsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs font-mono mb-4 bg-[#060911] p-3 rounded-lg border border-[#162238]">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-xs font-mono mb-4 bg-canvas p-3 rounded-lg border border-line">
                   <span className="text-slate-400"><span className="text-slate-500 uppercase text-[10px]">requested by:</span> {record.requested_by}</span>
                   <span className="text-slate-400">
                     <span className="text-slate-500 uppercase text-[10px]">approved by:</span> {record.approved_by || "nobody yet"}
@@ -248,7 +248,7 @@ export default function ExceptionsPage() {
                   {controls.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
                       {controls.map((control) => (
-                        <span key={control} className="px-2.5 py-1 rounded bg-[#060911] border border-[#162238] text-slate-300 text-xs">
+                        <span key={control} className="px-2.5 py-1 rounded bg-canvas border border-line text-slate-300 text-xs">
                           {control}
                         </span>
                       ))}
@@ -260,7 +260,7 @@ export default function ExceptionsPage() {
                   )}
                 </div>
 
-                <div className="flex gap-2 pt-2 border-t border-[#162238]">
+                <div className="flex gap-2 pt-2 border-t border-line">
                   {record.status === "REQUESTED" && (
                     <Button
                       variant="primary"

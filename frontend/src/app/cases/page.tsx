@@ -123,7 +123,7 @@ export default function CasesListPage() {
   return (
     <div className="space-y-6">
       {/* Top Header matching Reference: WORKSPACE 03 / Case Workspace */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between pb-3 border-b border-[#141d2e] gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between pb-3 border-b border-line gap-4">
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[10px] font-mono text-cyan-400 font-bold tracking-wider uppercase">
@@ -148,7 +148,7 @@ export default function CasesListPage() {
         </div>
 
         {/* Right Reference Pill */}
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0a0e18] border border-[#162238] text-xs font-mono text-slate-400">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-line text-xs font-mono text-slate-400">
           <span className="w-2 h-2 rounded-full bg-amber-400" />
           <span>Simulation only · Not connected to live telemetry</span>
         </div>
@@ -223,9 +223,9 @@ export default function CasesListPage() {
         {/* Left Column: Case Queue (3 cols) */}
         <div className="lg:col-span-3 space-y-3">
           <Card className="p-4 space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-[#141d2e]">
+            <div className="flex items-center justify-between pb-2 border-b border-line">
               <h3 className="font-bold text-slate-100 text-xs">Case queue</h3>
-              <span className="px-1.5 py-0.2 rounded bg-[#141f33] text-[10px] font-mono text-cyan-300">
+              <span className="px-1.5 py-0.2 rounded bg-line text-[10px] font-mono text-cyan-300">
                 {displayCases.length} open
               </span>
             </div>
@@ -238,7 +238,7 @@ export default function CasesListPage() {
                 placeholder="Search cases..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-[#080c16] border border-[#141f33] rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/50"
+                className="w-full bg-surface border border-line rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-cyan-500/50"
               />
             </div>
 
@@ -248,7 +248,7 @@ export default function CasesListPage() {
                 onClick={() => setFilterMode("all")}
                 className={cn(
                   "px-2 py-0.5 rounded transition-all",
-                  filterMode === "all" ? "bg-cyan-500 text-slate-950 font-bold" : "bg-[#080c16] text-slate-400"
+                  filterMode === "all" ? "bg-cyan-500 text-slate-950 font-bold" : "bg-surface text-slate-400"
                 )}
               >
                 All {displayCases.length}
@@ -257,7 +257,7 @@ export default function CasesListPage() {
                 onClick={() => setFilterMode("mine")}
                 className={cn(
                   "px-2 py-0.5 rounded transition-all",
-                  filterMode === "mine" ? "bg-cyan-500 text-slate-950 font-bold" : "bg-[#080c16] text-slate-400"
+                  filterMode === "mine" ? "bg-cyan-500 text-slate-950 font-bold" : "bg-surface text-slate-400"
                 )}
               >
                 Mine 6
@@ -266,7 +266,7 @@ export default function CasesListPage() {
                 onClick={() => setFilterMode("critical")}
                 className={cn(
                   "px-2 py-0.5 rounded transition-all",
-                  filterMode === "critical" ? "bg-cyan-500 text-slate-950 font-bold" : "bg-[#080c16] text-slate-400"
+                  filterMode === "critical" ? "bg-cyan-500 text-slate-950 font-bold" : "bg-surface text-slate-400"
                 )}
               >
                 Critical 4
@@ -285,7 +285,7 @@ export default function CasesListPage() {
                       "p-3 rounded-lg border cursor-pointer transition-all space-y-1",
                       isSelected
                         ? "bg-cyan-950/30 border-cyan-500/40 shadow-[0_0_15px_rgba(6,182,212,0.1)]"
-                        : "bg-[#080c16] border-[#141f33] hover:border-slate-700"
+                        : "bg-surface border-line hover:border-slate-700"
                     )}
                   >
                     <div className="flex items-center justify-between text-xs font-mono">
@@ -329,10 +329,10 @@ export default function CasesListPage() {
           {activeCase ? (
             <Card className="p-5 space-y-4">
               {/* Active Case Header */}
-              <div className="space-y-2 pb-3 border-b border-[#141d2e]">
+              <div className="space-y-2 pb-3 border-b border-line">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
-                    <span className="px-2 py-0.5 rounded bg-[#141f33] text-cyan-300 font-mono font-bold text-xs">
+                    <span className="px-2 py-0.5 rounded bg-line text-cyan-300 font-mono font-bold text-xs">
                       {activeCase.id.slice(0, 10).toUpperCase()}
                     </span>
                     <Badge variant={activeCase.severity === "CRITICAL" ? "critical" : "high"}>
@@ -356,7 +356,7 @@ export default function CasesListPage() {
               </div>
 
               {/* Navigation Tabs */}
-              <div className="flex items-center gap-2 border-b border-[#141d2e] pb-1 text-xs font-mono">
+              <div className="flex items-center gap-2 border-b border-line pb-1 text-xs font-mono">
                 {(["overview", "evidence", "timeline", "response", "notes"] as const).map((tab) => (
                   <button
                     key={tab}
@@ -364,7 +364,7 @@ export default function CasesListPage() {
                     className={cn(
                       "px-3 py-1.5 rounded-t-lg transition-colors capitalize",
                       activeTab === tab
-                        ? "text-cyan-300 border-b-2 border-cyan-400 font-bold bg-[#080c16]"
+                        ? "text-cyan-300 border-b-2 border-cyan-400 font-bold bg-surface"
                         : "text-slate-400 hover:text-slate-200"
                     )}
                   >
@@ -374,7 +374,7 @@ export default function CasesListPage() {
               </div>
 
               {/* Metadata Grid */}
-              <div className="grid grid-cols-3 gap-3 p-3 rounded-xl bg-[#080c16] border border-[#141f33] text-xs">
+              <div className="grid grid-cols-3 gap-3 p-3 rounded-xl bg-surface border border-line text-xs">
                 <div>
                   <div className="text-[10px] font-mono text-slate-500 uppercase">Assigned analyst</div>
                   <div className="font-semibold text-slate-200 mt-0.5">{activeCase.assignee || "Sarah Chen"}</div>
@@ -400,7 +400,7 @@ export default function CasesListPage() {
                     View full case &gt;
                   </Link>
                 </div>
-                <div className="p-3 rounded-lg bg-[#080c16] border border-[#141f33] text-xs text-slate-300 leading-relaxed">
+                <div className="p-3 rounded-lg bg-surface border border-line text-xs text-slate-300 leading-relaxed">
                   Sign-in failures originated from several network sources within a short period. The pattern warrants investigation for credential attacks; findings remain provisional until source logs and account activity are reviewed.
                 </div>
               </div>
@@ -409,19 +409,19 @@ export default function CasesListPage() {
               <div className="space-y-2 pt-1">
                 <h4 className="font-bold text-slate-200 text-xs">Investigation timeline</h4>
                 <div className="grid grid-cols-4 gap-2 text-center text-xs font-mono">
-                  <div className="p-2 rounded bg-[#080c16] border border-[#141f33]">
+                  <div className="p-2 rounded bg-surface border border-line">
                     <div className="text-cyan-400 font-bold">13:28</div>
                     <div className="text-[10px] text-slate-400 mt-0.5">Failed sign-ins</div>
                   </div>
-                  <div className="p-2 rounded bg-[#080c16] border border-[#141f33]">
+                  <div className="p-2 rounded bg-surface border border-line">
                     <div className="text-cyan-400 font-bold">13:31</div>
                     <div className="text-[10px] text-slate-400 mt-0.5">Alerts correlated</div>
                   </div>
-                  <div className="p-2 rounded bg-[#080c16] border border-[#141f33]">
+                  <div className="p-2 rounded bg-surface border border-line">
                     <div className="text-cyan-400 font-bold">13:34</div>
                     <div className="text-[10px] text-slate-400 mt-0.5">Case opened</div>
                   </div>
-                  <div className="p-2 rounded bg-[#080c16] border border-[#141f33]">
+                  <div className="p-2 rounded bg-surface border border-line">
                     <div className="text-emerald-400 font-bold">13:45</div>
                     <div className="text-[10px] text-slate-400 mt-0.5">Assigned to S. Chen</div>
                   </div>
@@ -439,13 +439,13 @@ export default function CasesListPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs font-mono">
                     <thead>
-                      <tr className="border-b border-[#162238] text-[10px] text-slate-400 uppercase">
+                      <tr className="border-b border-line text-[10px] text-slate-400 uppercase">
                         <th className="py-2 px-2">RECORD</th>
                         <th className="py-2 px-2">EVIDENCE SOURCE</th>
                         <th className="py-2 px-2 text-right">INTEGRITY</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-[#141d2e]">
+                    <tbody className="divide-y divide-line">
                       <tr>
                         <td className="py-2 px-2 text-cyan-300">EV-301</td>
                         <td className="py-2 px-2 text-slate-300">Identity provider sign-in events</td>
@@ -475,7 +475,7 @@ export default function CasesListPage() {
         <div className="lg:col-span-3 space-y-4">
           {/* Case Actions Card */}
           <Card className="p-5 space-y-3">
-            <div className="pb-2 border-b border-[#141d2e]">
+            <div className="pb-2 border-b border-line">
               <h3 className="font-bold text-slate-100 text-sm">Case actions</h3>
               <p className="text-[11px] text-slate-400">Analyst-authorized workflows</p>
             </div>
@@ -522,22 +522,22 @@ export default function CasesListPage() {
               </Button>
             </div>
 
-            <div className="p-2.5 rounded-lg bg-[#080c16] border border-[#141f33] text-[10px] text-slate-400 leading-snug">
+            <div className="p-2.5 rounded-lg bg-surface border border-line text-[10px] text-slate-400 leading-snug">
               Human approval is mandatory. No direct AI execution. High-risk R2-R4 actions require two authorized signers.
             </div>
           </Card>
 
           {/* Related Alerts Card */}
           <Card className="p-5 space-y-3">
-            <div className="flex items-center justify-between pb-2 border-b border-[#141d2e]">
+            <div className="flex items-center justify-between pb-2 border-b border-line">
               <h3 className="font-bold text-slate-100 text-xs">Related alerts</h3>
-              <span className="px-1.5 py-0.2 rounded bg-[#141f33] text-[10px] font-mono text-cyan-300">
+              <span className="px-1.5 py-0.2 rounded bg-line text-[10px] font-mono text-cyan-300">
                 3 linked
               </span>
             </div>
 
             <div className="space-y-2 text-xs">
-              <div className="p-2 rounded bg-[#080c16] border border-[#141f33] space-y-1">
+              <div className="p-2 rounded bg-surface border border-line space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="px-1.5 py-0.2 rounded bg-rose-500/20 text-rose-300 text-[9px] font-mono font-bold">CRIT</span>
                   <span className="text-[10px] font-mono text-slate-500">13:28 · Microsoft Entra</span>
@@ -545,7 +545,7 @@ export default function CasesListPage() {
                 <div className="font-semibold text-slate-200 text-[11px]">Unusual authentication volume</div>
               </div>
 
-              <div className="p-2 rounded bg-[#080c16] border border-[#141f33] space-y-1">
+              <div className="p-2 rounded bg-surface border border-line space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[9px] font-mono font-bold">HIGH</span>
                   <span className="text-[10px] font-mono text-slate-500">13:31 · Identity detection</span>
@@ -553,7 +553,7 @@ export default function CasesListPage() {
                 <div className="font-semibold text-slate-200 text-[11px]">Privileged account targeted</div>
               </div>
 
-              <div className="p-2 rounded bg-[#080c16] border border-[#141f33] space-y-1">
+              <div className="p-2 rounded bg-surface border border-line space-y-1">
                 <div className="flex items-center justify-between">
                   <span className="px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 text-[9px] font-mono font-bold">HIGH</span>
                   <span className="text-[10px] font-mono text-slate-500">13:33 · Correlation engine</span>

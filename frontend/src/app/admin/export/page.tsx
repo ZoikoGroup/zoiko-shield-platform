@@ -154,8 +154,8 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <Card variant="cyber" className="p-4 border-[#162238] bg-[#0a0f1d]">
-      <div className="mb-3 flex items-baseline justify-between border-b border-[#162238] pb-2">
+    <Card variant="cyber" className="p-4 border-line bg-surface">
+      <div className="mb-3 flex items-baseline justify-between border-b border-line pb-2">
         <div>
           <h2 className="text-sm font-semibold text-white flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
@@ -247,7 +247,7 @@ export default function ExportOffboardingPage() {
                 return (
                   <div
                     key={job.id}
-                    className="rounded-lg border border-[#162238] bg-[#0c1322] p-3 shadow-sm hover:border-[#1e293b] transition-colors"
+                    className="rounded-lg border border-line bg-raised p-3 shadow-sm hover:border-line-strong transition-colors"
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <Badge variant={exportStatusVariant(job.status)}>{job.status}</Badge>

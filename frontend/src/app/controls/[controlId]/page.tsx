@@ -137,7 +137,7 @@ export default function ControlDetailPage() {
   return (
     <div className="space-y-6 pb-12">
       {/* Header Banner */}
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-b from-[#0c111e] to-[#070b14] shadow-xl">
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-b from-raised to-canvas shadow-xl">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <Button
@@ -171,7 +171,7 @@ export default function ControlDetailPage() {
       </div>
 
       {control.description && (
-        <Card variant="cyber" className="p-5 bg-gradient-to-b from-[#0c111e] to-[#070b14]">
+        <Card variant="cyber" className="p-5 bg-gradient-to-b from-raised to-canvas">
           <h2 className="text-xs font-mono text-cyan-400 font-bold uppercase tracking-wider mb-1.5">
             Objective Specification &amp; Governance Scope
           </h2>
@@ -179,7 +179,7 @@ export default function ControlDetailPage() {
         </Card>
       )}
 
-      <Card variant="cyber" className="p-6 bg-gradient-to-b from-[#0c111e] to-[#070b14] space-y-4">
+      <Card variant="cyber" className="p-6 bg-gradient-to-b from-raised to-canvas space-y-4">
         <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
           <h2 className="text-sm font-bold text-white uppercase tracking-wider font-mono flex items-center gap-2">
             <span>Implementation &amp; Cryptographic Evidence</span>
@@ -200,7 +200,7 @@ export default function ControlDetailPage() {
         ) : (
           <div className="space-y-4">
             {implementations.map((impl) => (
-              <div key={impl.id} className="border border-slate-800/80 hover:border-cyan-500/30 transition-all rounded-xl p-4 bg-[#060a12] space-y-3">
+              <div key={impl.id} className="border border-slate-800/80 hover:border-cyan-500/30 transition-all rounded-xl p-4 bg-canvas space-y-3">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span className="text-xs font-mono text-cyan-400 font-bold break-all">
                     {impl.id}

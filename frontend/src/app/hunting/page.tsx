@@ -72,7 +72,7 @@ export default function ThreatHuntingPage() {
           <ol className="grid grid-cols-1 md:grid-cols-4 gap-2">
             {PATH.map((p, i) => (
               <li key={p.label} className="flex items-center gap-2">
-                <div className="flex-1 rounded-lg border border-[#1e2b44] bg-[#080c16] p-3">
+                <div className="flex-1 rounded-lg border border-line-strong bg-surface p-3">
                   <div className="flex items-center justify-between"><span className="text-xs font-bold text-slate-100">{p.label}</span><Pill tone={p.tone}>{i + 1}</Pill></div>
                   <div className="text-[10px] text-slate-500 mt-1">{p.sub}</div>
                 </div>
@@ -116,7 +116,7 @@ export default function ThreatHuntingPage() {
         {show("workbench") && (
           <Panel title="Hunt workbench" meta="Query draft" className="xl:col-span-2">
             <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1" htmlFor="hunt-query">Hunt query</label>
-            <textarea id="hunt-query" value={query} onChange={(e) => setQuery(e.target.value)} rows={3} className="w-full rounded-lg border border-[#1e2b44] bg-[#080c16] p-2.5 font-mono text-xs text-slate-200 focus:border-cyan-500 outline-none" />
+            <textarea id="hunt-query" value={query} onChange={(e) => setQuery(e.target.value)} rows={3} className="w-full rounded-lg border border-line-strong bg-surface p-2.5 font-mono text-xs text-slate-200 focus:border-cyan-500 outline-none" />
             <div className="flex items-center justify-between mt-2">
               <span className="text-[10px] text-slate-500">Scope: this tenant · last 7 days</span>
               <ActionButton primary disabled={!query.trim()} onClick={() => setTab(CONSOLE_TAB)}><Play className="w-3.5 h-3.5" /> Run in live hunting</ActionButton>

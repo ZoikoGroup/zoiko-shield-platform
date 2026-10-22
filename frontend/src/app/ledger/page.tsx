@@ -91,7 +91,7 @@ export default function EvidenceCompliancePage() {
         <Panel title="Evidence coverage & freshness" meta="Last ledger sync 13:42 UTC">
           <div className="grid grid-cols-3 gap-2 mb-4">
             {[["1,210", "Current", "text-emerald-300"], ["7", "Stale", "text-amber-300"], ["5", "Missing", "text-rose-300"]].map(([n, l, c]) => (
-              <div key={l} className="rounded-lg border border-[#162238] bg-[#080c16] p-3 text-center"><div className={`text-xl font-bold font-mono ${c}`}>{n}</div><div className="text-[10px] text-slate-500">{l}</div></div>
+              <div key={l} className="rounded-lg border border-line bg-surface p-3 text-center"><div className={`text-xl font-bold font-mono ${c}`}>{n}</div><div className="text-[10px] text-slate-500">{l}</div></div>
             ))}
           </div>
           <CheckRow label="Source collection" status="Running · Active" tone="emerald" />
@@ -105,7 +105,7 @@ export default function EvidenceCompliancePage() {
             <li className="flex gap-2.5"><Check className="w-4 h-4 text-emerald-400 shrink-0" /><div><div className="text-xs font-semibold text-slate-200">Inclusion proof available</div><div className="text-[11px] text-slate-500">Inclusion proof linked to Merkle checkpoint</div></div></li>
             <li className="flex gap-2.5"><Check className="w-4 h-4 text-emerald-400 shrink-0" /><div><div className="text-xs font-semibold text-slate-200">Verification chain active</div><div className="text-[11px] text-slate-500">Continuous background inclusion validation</div></div></li>
           </ul>
-          <div className="flex justify-between text-[10px] mt-4 pt-3 border-t border-[#162238]"><span className="text-slate-500">Profile: ZS-MERKLE-V1</span><span className="text-emerald-400 font-semibold">Ledger Verified</span></div>
+          <div className="flex justify-between text-[10px] mt-4 pt-3 border-t border-line"><span className="text-slate-500">Profile: ZS-MERKLE-V1</span><span className="text-emerald-400 font-semibold">Ledger Verified</span></div>
         </Panel>
       </div>
 
@@ -113,7 +113,7 @@ export default function EvidenceCompliancePage() {
         <Panel title="Priority evidence review queue" meta={`${rows.length} records require attention`} className="xl:col-span-2">
           <div className="flex flex-wrap gap-2 mb-3">
             <SearchInput value={query} onChange={setQuery} placeholder="Search evidence, source, control or owner" />
-            <select aria-label="Status filter" value={status} onChange={(e) => setStatus(e.target.value as "needs" | "all")} className="px-3 py-2 rounded-lg bg-[#080c16] border border-[#162238] text-xs text-slate-300">
+            <select aria-label="Status filter" value={status} onChange={(e) => setStatus(e.target.value as "needs" | "all")} className="px-3 py-2 rounded-lg bg-surface border border-line text-xs text-slate-300">
               <option value="needs">Status: Needs review</option>
               <option value="all">Status: All</option>
             </select>
@@ -148,7 +148,7 @@ export default function EvidenceCompliancePage() {
               { k: "Ledger reference", v: "Merkle checkpoint #1043" },
             ]}
           />
-          <div className="mt-3 rounded-lg border border-[#162238] bg-[#080c16] p-2.5">
+          <div className="mt-3 rounded-lg border border-line bg-surface p-2.5">
             <div className="text-[10px] font-mono uppercase text-slate-500">Cryptographic SHA-256 identifier</div>
             <div className="flex items-center justify-between mt-1 font-mono text-xs text-slate-200">{sampleId}<button type="button" aria-label="Copy identifier" onClick={copy} className="text-slate-500 hover:text-sky-300">{copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}</button></div>
           </div>

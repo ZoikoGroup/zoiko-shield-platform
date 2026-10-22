@@ -98,7 +98,7 @@ export default function AuditPage() {
   return (
     <div className="space-y-6 pb-16">
       {/* Header Banner */}
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-b from-[#0c111e] to-[#070b14] shadow-xl">
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-b from-raised to-canvas shadow-xl">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5">
           <div className="space-y-2">
             <div className="flex items-center gap-2">
@@ -170,7 +170,7 @@ export default function AuditPage() {
 
       {/* Package Details Card */}
       {latestPackage ? (
-        <Card variant="cyber" className="p-6 bg-gradient-to-b from-[#0c111e] to-[#070b14] space-y-5">
+        <Card variant="cyber" className="p-6 bg-gradient-to-b from-raised to-canvas space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-800/80">
             <div className="flex items-center gap-3.5">
               <div className="w-11 h-11 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-300 shadow-[0_0_12px_rgba(0,240,255,0.15)]">
@@ -199,7 +199,7 @@ export default function AuditPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 font-mono text-xs text-slate-300">
-            <div className="p-4 rounded-xl bg-[#060a12] border border-slate-800/80 space-y-2.5">
+            <div className="p-4 rounded-xl bg-canvas border border-slate-800/80 space-y-2.5">
               <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider">
                 Hybrid Cryptographic Seals:
               </span>
@@ -229,7 +229,7 @@ export default function AuditPage() {
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-[#060a12] border border-slate-800/80 space-y-2.5">
+            <div className="p-4 rounded-xl bg-canvas border border-slate-800/80 space-y-2.5">
               <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider">
                 Manifest Contents &amp; Proofs:
               </span>
@@ -261,7 +261,7 @@ export default function AuditPage() {
           </div>
         </Card>
       ) : (
-        <Card variant="cyber" className="py-12 text-center text-slate-400 space-y-3 font-mono text-xs bg-gradient-to-b from-[#0c111e] to-[#070b14]">
+        <Card variant="cyber" className="py-12 text-center text-slate-400 space-y-3 font-mono text-xs bg-gradient-to-b from-raised to-canvas">
           <p>No audit package generated yet.</p>
           <Button variant="primary" onClick={() => handleGenerate()} isLoading={isGenerating}>
             Generate Sealed Audit Package
@@ -273,7 +273,7 @@ export default function AuditPage() {
       <VerifierTerminal auditPackage={latestPackage} />
 
       {/* Evidence Freshness & Honest Governance Disclosures Panel */}
-      <Card variant="cyber" className="p-6 bg-gradient-to-b from-[#0c111e] to-[#070b14] space-y-4">
+      <Card variant="cyber" className="p-6 bg-gradient-to-b from-raised to-canvas space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-800/80">
           <div className="flex items-center gap-2">
             <Shield className="w-4 h-4 text-cyan-400" />
@@ -286,7 +286,7 @@ export default function AuditPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Freshness breakdown */}
-          <div className="p-4 rounded-xl bg-[#060a12] border border-slate-800/80 space-y-2.5 font-mono text-xs">
+          <div className="p-4 rounded-xl bg-canvas border border-slate-800/80 space-y-2.5 font-mono text-xs">
             <span className="text-[11px] font-bold text-cyan-400 uppercase tracking-wider">
               Evidence Telemetry Cadence SLA:
             </span>
@@ -316,7 +316,7 @@ export default function AuditPage() {
           </div>
 
           {/* Honest disclosures */}
-          <div className="p-4 rounded-xl bg-[#060a12] border border-slate-800/80 space-y-2.5 font-mono text-xs">
+          <div className="p-4 rounded-xl bg-canvas border border-slate-800/80 space-y-2.5 font-mono text-xs">
             <span className="text-[11px] font-bold text-amber-400 uppercase tracking-wider">
               Statutory Disclaimers &amp; Framework Posture:
             </span>

@@ -92,7 +92,7 @@ export default function DataSourcesPage() {
               selectedKey={sel.name}
               onSelect={(r) => setSelectedName(r.name)}
               columns={[
-                { key: "s", header: "Source", render: (r) => <span className="flex items-center gap-2"><span className="w-7 h-7 rounded-md bg-[#13203a] text-[10px] font-bold text-sky-200 flex items-center justify-center">{r.code}</span><span className="font-semibold text-slate-100">{r.name}</span></span> },
+                { key: "s", header: "Source", render: (r) => <span className="flex items-center gap-2"><span className="w-7 h-7 rounded-md bg-line text-[10px] font-bold text-sky-200 flex items-center justify-center">{r.code}</span><span className="font-semibold text-slate-100">{r.name}</span></span> },
                 { key: "c", header: "Category", render: (r) => r.category },
                 { key: "h", header: "Health", render: (r) => <Pill tone={HEALTH_TONE[r.health]}>● {r.health}</Pill> },
                 { key: "l", header: "Last seen", render: (r) => r.seen },
@@ -107,7 +107,7 @@ export default function DataSourcesPage() {
           <Panel title="Source Health & Diagnostics" meta="Selected source · read-only analyst view" metaTone="slate">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
-                <span className="w-10 h-10 rounded-lg bg-[#2a1f4a] text-sm font-bold text-purple-200 flex items-center justify-center">{sel.code}</span>
+                <span className="w-10 h-10 rounded-lg bg-purple-900/40 text-sm font-bold text-purple-200 flex items-center justify-center">{sel.code}</span>
                 <div><div className="text-base font-bold text-slate-100">{sel.name}</div><div className="text-[11px] text-slate-500">{sel.category} telemetry</div></div>
               </div>
               <Pill tone={HEALTH_TONE[sel.health]}>● {sel.health}</Pill>

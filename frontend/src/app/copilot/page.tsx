@@ -59,7 +59,7 @@ export default function CopilotPage() {
           const Icon = m.icon;
           const active = m.id === mode;
           return (
-            <button key={m.id} type="button" aria-pressed={active} onClick={() => setMode(m.id)} className={`text-left rounded-lg border p-3 ${active ? "border-cyan-500 bg-cyan-950/30" : "border-[#162238] bg-[#0c111e] hover:border-slate-600"}`}>
+            <button key={m.id} type="button" aria-pressed={active} onClick={() => setMode(m.id)} className={`text-left rounded-lg border p-3 ${active ? "border-cyan-500 bg-cyan-950/30" : "border-line bg-raised hover:border-slate-600"}`}>
               <div className={`flex items-center gap-1.5 text-xs font-bold ${active ? "text-cyan-200" : "text-slate-200"}`}><Icon className="w-3.5 h-3.5" /> {m.label}</div>
               <div className="text-[10px] text-slate-500 mt-1">{m.hint}</div>
             </button>
@@ -82,7 +82,7 @@ export default function CopilotPage() {
         <Panel title="Investigation conversation" meta={`Mode · ${MODES.find((m) => m.id === mode)?.label}`} className="xl:col-span-2">
           <ul className="space-y-3">
             {CONVERSATION.map((c, i) => (
-              <li key={i} className={`rounded-lg border p-3 text-xs ${c.who === "analyst" ? "border-[#1e2b44] bg-[#080c16] text-slate-300" : "border-cyan-900/60 bg-cyan-950/20 text-slate-200"}`}>
+              <li key={i} className={`rounded-lg border p-3 text-xs ${c.who === "analyst" ? "border-line-strong bg-surface text-slate-300" : "border-cyan-900/60 bg-cyan-950/20 text-slate-200"}`}>
                 <div className="text-[10px] font-bold uppercase mb-1 text-slate-500">{c.who === "analyst" ? "Analyst" : "Copilot"}</div>
                 {c.text}
                 {c.cites && <div className="flex gap-1 mt-2">{c.cites.map((e) => <Pill key={e} tone="blue">{e}</Pill>)}</div>}

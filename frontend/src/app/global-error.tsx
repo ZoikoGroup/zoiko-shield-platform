@@ -53,8 +53,8 @@ export default function GlobalError({
 
   return (
     <html lang="en" className="dark">
-      <body className="min-h-screen bg-[#060911] text-slate-100 flex items-center justify-center p-4 antialiased font-sans">
-        <div className="max-w-lg w-full bg-[#0a0f1d] border border-cyan-500/30 rounded-2xl p-6 md:p-8 shadow-[0_0_60px_rgba(0,0,0,0.9)] text-center space-y-6">
+      <body className="min-h-screen bg-canvas text-slate-100 flex items-center justify-center p-4 antialiased font-sans">
+        <div className="max-w-lg w-full bg-surface border border-cyan-500/30 rounded-2xl p-6 md:p-8 shadow-[0_0_60px_rgba(0,0,0,0.9)] text-center space-y-6">
           <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-cyan-500 to-indigo-600 flex items-center justify-center mx-auto text-slate-950 font-black text-xl shadow-[0_0_30px_rgba(6,182,212,0.4)]">
             ZS
           </div>

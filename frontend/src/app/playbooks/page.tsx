@@ -59,7 +59,7 @@ export default function PlaybookRunsPage() {
           actions={
             <>
               <Pill tone="amber"><Shield className="w-3 h-3" /> High-risk actions guarded</Pill>
-              <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-[#1e2b44] text-xs text-slate-300"><Clock className="w-3.5 h-3.5" /> Last 7 days</span>
+              <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg border border-line-strong text-xs text-slate-300"><Clock className="w-3.5 h-3.5" /> Last 7 days</span>
               <ActionButton primary onClick={() => setTab("library")}><BookOpen className="w-3.5 h-3.5" /> Playbook Library</ActionButton>
             </>
           }

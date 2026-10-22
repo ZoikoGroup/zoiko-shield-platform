@@ -211,7 +211,7 @@ export default function IngestionPage() {
   return (
     <div className="space-y-6">
       {/* Header Banner */}
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-[#0e1424] via-[#0b101d] to-[#070b14] shadow-xl">
+      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-raised via-surface to-canvas shadow-xl">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="space-y-1">
             <div className="flex items-center gap-2.5">
@@ -243,22 +243,22 @@ export default function IngestionPage() {
 
       {/* 4 Summary KPI Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Backbone Buffer State</div>
           <div className="text-2xl font-bold font-mono text-emerald-400 mt-1">100% NOMINAL</div>
           <div className="text-[11px] text-slate-400 mt-0.5">AIMD backpressure controlled</div>
         </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Events Stream Backbone</div>
           <div className="text-2xl font-bold font-mono text-cyan-400 mt-1">{liveEvents.length} Events</div>
           <div className="text-[11px] text-slate-400 mt-0.5">Live streaming in memory</div>
         </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">OCSF Normalization Efficacy</div>
           <div className="text-2xl font-bold font-mono text-purple-400 mt-1">100.0%</div>
           <div className="text-[11px] text-slate-400 mt-0.5">Strict schema compliance</div>
         </div>
-        <div className="surface-card rounded-xl p-4 bg-[#0c111e]/90 border border-slate-800/80">
+        <div className="surface-card rounded-xl p-4 bg-raised/90 border border-slate-800/80">
           <div className="text-[10px] font-mono uppercase tracking-wider text-slate-400">Connectors Configured</div>
           <div className="text-2xl font-bold font-mono text-white mt-1">{state?.connectors?.length ?? 0} Connectors</div>
           <div className="text-[11px] text-cyan-400 mt-0.5">Multi-vendor telemetry</div>
@@ -271,7 +271,7 @@ export default function IngestionPage() {
           <button
             key={idx}
             onClick={() => setRawJson(JSON.stringify(preset.payload, null, 2))}
-            className="p-3 rounded-xl bg-[#0c111e]/90 border border-slate-800/80 hover:border-cyan-500/50 text-left transition-all group cursor-pointer space-y-1 shadow-md hover:bg-[#0f1628]"
+            className="p-3 rounded-xl bg-raised/90 border border-slate-800/80 hover:border-cyan-500/50 text-left transition-all group cursor-pointer space-y-1 shadow-md hover:bg-overlay"
           >
             <span className="text-[11px] font-bold text-slate-200 group-hover:text-cyan-300 transition-colors block truncate font-mono">
               {preset.title}

@@ -99,7 +99,7 @@ function Section({
 }) {
   return (
     <Card variant="cyber" className="p-5 space-y-4">
-      <div className="flex items-baseline justify-between border-b border-[#162238] pb-3">
+      <div className="flex items-baseline justify-between border-b border-line pb-3">
         <div>
           <h2 className="text-sm font-bold text-slate-100 flex items-center gap-2">{title}</h2>
           <p className="text-[11px] font-mono text-slate-400 mt-0.5">{requirement}</p>
@@ -194,7 +194,7 @@ export default function TrustCenterPage() {
         >
           <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
             {componentStatuses.map((component) => (
-              <div key={component.label} className="rounded-xl border border-[#162238] bg-[#060911]/80 p-3 shadow-inner">
+              <div key={component.label} className="rounded-xl border border-line bg-canvas/80 p-3 shadow-inner">
                 <p className="text-[11px] font-mono uppercase text-slate-500">
                   {component.label}
                 </p>
@@ -249,7 +249,7 @@ export default function TrustCenterPage() {
               {services.map((service, index) => (
                 <div
                   key={service.id ?? service.serviceId ?? index}
-                  className="rounded-xl border border-[#162238] bg-[#060911]/60 p-3 hover:border-cyan-500/30 transition-colors"
+                  className="rounded-xl border border-line bg-canvas/60 p-3 hover:border-cyan-500/30 transition-colors"
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="text-xs font-semibold text-slate-100">
@@ -280,7 +280,7 @@ export default function TrustCenterPage() {
                 {domains.map((domain, index) => (
                   <span
                     key={domain.domain ?? index}
-                    className="rounded-lg border border-[#162238] bg-[#060911] px-2.5 py-1 font-mono text-[11px] text-slate-300"
+                    className="rounded-lg border border-line bg-canvas px-2.5 py-1 font-mono text-[11px] text-slate-300"
                   >
                     {domain.name ?? domain.domain}
                     {domain.total !== undefined && (
@@ -343,19 +343,19 @@ export default function TrustCenterPage() {
                 an auditor could be handed.
               </p>
             ) : (
-              <div className="overflow-x-auto rounded-xl border border-[#162238]">
+              <div className="overflow-x-auto rounded-xl border border-line">
                 <table className="w-full text-xs">
                   <thead>
-                    <tr className="border-b border-[#162238] text-left font-mono text-slate-400 bg-[#060911]/80">
+                    <tr className="border-b border-line text-left font-mono text-slate-400 bg-canvas/80">
                       <th className="py-2.5 px-3">Package</th>
                       <th className="py-2.5 px-3">Framework</th>
                       <th className="py-2.5 px-3">Status</th>
                       <th className="py-2.5 px-3">Frozen</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[#162238]/60">
+                  <tbody className="divide-y divide-line/60">
                     {(trust?.availableAuditPackages || []).map((pkg) => (
-                      <tr key={pkg.id} className="hover:bg-[#0c1424] transition-colors">
+                      <tr key={pkg.id} className="hover:bg-raised transition-colors">
                         <td className="py-2 px-3 text-slate-200 font-medium">{pkg.packageName}</td>
                         <td className="py-2 px-3 font-mono text-slate-400">
                           {pkg.frameworkScope} {pkg.frameworkVersion}
@@ -389,7 +389,7 @@ export default function TrustCenterPage() {
                 {(trust?.publishedArtifacts || []).map((artifact) => (
                   <div
                     key={artifact.id}
-                    className="flex items-center justify-between rounded-xl border border-[#162238] bg-[#060911]/60 px-3 py-2 hover:border-cyan-500/30 transition-colors"
+                    className="flex items-center justify-between rounded-xl border border-line bg-canvas/60 px-3 py-2 hover:border-cyan-500/30 transition-colors"
                   >
                     <span className="text-xs text-slate-200">
                       {artifact.title ?? artifact.artifactType ?? artifact.id}
@@ -417,7 +417,7 @@ export default function TrustCenterPage() {
           ) : (
             <div className="space-y-2">
               {(trust?.claims || []).map((claim) => (
-                <div key={claim.claimKey} className="rounded-xl border border-[#162238] bg-[#060911]/60 p-3 hover:border-cyan-500/30 transition-colors">
+                <div key={claim.claimKey} className="rounded-xl border border-line bg-canvas/60 p-3 hover:border-cyan-500/30 transition-colors">
                   <p className="text-xs text-slate-200 font-medium">{claim.claimWording}</p>
                   <p className="mt-1 font-mono text-[11px] text-slate-500">
                     {claim.claimKey} · scope {claim.scope} · evidence required:{" "}

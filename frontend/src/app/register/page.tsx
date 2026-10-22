@@ -155,7 +155,7 @@ export default function RegisterPage() {
       </div>
 
       {/* Mode Selector Tabs */}
-      <div className="grid grid-cols-2 p-1.5 rounded-xl bg-[#080c16] border border-[#162238]">
+      <div className="grid grid-cols-2 p-1.5 rounded-xl bg-surface border border-line">
         <button
           type="button"
           onClick={() => {
@@ -202,16 +202,16 @@ export default function RegisterPage() {
             </p>
           </div>
 
-          <div className="p-4 rounded-xl bg-[#060911] border border-[#162238] text-left text-xs font-mono space-y-2.5">
-            <div className="flex items-center justify-between pb-2 border-b border-[#141f33]">
+          <div className="p-4 rounded-xl bg-canvas border border-line text-left text-xs font-mono space-y-2.5">
+            <div className="flex items-center justify-between pb-2 border-b border-line">
               <span className="text-slate-400">Tenant Name:</span>
               <span className="text-slate-200 font-bold">{successReceipt.organizationName}</span>
             </div>
-            <div className="flex items-center justify-between pb-2 border-b border-[#141f33]">
+            <div className="flex items-center justify-between pb-2 border-b border-line">
               <span className="text-slate-400">Tenant ID:</span>
               <span className="text-cyan-400 font-bold">{successReceipt.tenantId}</span>
             </div>
-            <div className="flex items-center justify-between pb-2 border-b border-[#141f33]">
+            <div className="flex items-center justify-between pb-2 border-b border-line">
               <span className="text-slate-400">Administrator:</span>
               <span className="text-slate-200 font-bold">{successReceipt.adminEmail}</span>
             </div>
@@ -241,7 +241,7 @@ export default function RegisterPage() {
       ) : activeTab === "new-org" ? (
         /* Tab 1: Register New Organization */
         <Card variant="cyber" className="p-6 md:p-8 space-y-6 shadow-[0_0_40px_rgba(6,182,212,0.12)]">
-          <div className="space-y-1 pb-3 border-b border-[#162238]">
+          <div className="space-y-1 pb-3 border-b border-line">
             <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
               <Building2 className="w-4 h-4 text-cyan-400" />
               <span>Register Dedicated Evaluation Tenant</span>
@@ -264,7 +264,7 @@ export default function RegisterPage() {
                   value={orgName}
                   onChange={handleOrgNameChange}
                   placeholder="e.g. Apex Cyber Defense"
-                  className="w-full bg-[#060911] border border-[#162238] rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
+                  className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
                 />
               </div>
 
@@ -279,7 +279,7 @@ export default function RegisterPage() {
                   value={slug}
                   onChange={(e) => setSlug(e.target.value.toLowerCase().trim())}
                   placeholder="apex-cyber-defense"
-                  className="w-full bg-[#060911] border border-[#162238] rounded-xl px-4 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-cyan-400 font-mono text-xs"
+                  className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-cyan-400 font-mono text-xs"
                 />
               </div>
             </div>
@@ -296,7 +296,7 @@ export default function RegisterPage() {
                   value={adminName}
                   onChange={(e) => setAdminName(e.target.value)}
                   placeholder="e.g. Jordan Blake"
-                  className="w-full bg-[#060911] border border-[#162238] rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
+                  className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
                 />
               </div>
 
@@ -310,7 +310,7 @@ export default function RegisterPage() {
                   value={adminEmail}
                   onChange={(e) => setAdminEmail(e.target.value)}
                   placeholder="jordan.blake@apexdefense.com"
-                  className="w-full bg-[#060911] border border-[#162238] rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
+                  className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
                 />
               </div>
             </div>
@@ -328,7 +328,7 @@ export default function RegisterPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Min 8 characters (e.g. Secure@Demo2026!)"
-                  className="w-full bg-[#060911] border border-[#162238] rounded-xl pl-4 pr-11 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
+                  className="w-full bg-canvas border border-line rounded-xl pl-4 pr-11 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
                 />
                 <button
                   type="button"
@@ -349,7 +349,7 @@ export default function RegisterPage() {
               <select
                 value={region}
                 onChange={(e) => setRegion(e.target.value)}
-                className="w-full bg-[#060911] border border-[#162238] rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono cursor-pointer"
+                className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono cursor-pointer"
               >
                 <option value="us-east-1">US East (N. Virginia) — FedRAMP High Cell &amp; Dual-Region Partition</option>
                 <option value="eu-west-1">EU West (Dublin) — GDPR, DORA &amp; EU AI Act Boundary</option>
@@ -377,7 +377,7 @@ export default function RegisterPage() {
                       className={`p-2.5 rounded-lg border text-left cursor-pointer transition-all ${
                         isChecked
                           ? "bg-cyan-950/30 border-cyan-500/50 text-slate-100"
-                          : "bg-[#060911] border-[#162238] text-slate-400 hover:border-slate-700"
+                          : "bg-canvas border-line text-slate-400 hover:border-slate-700"
                       }`}
                     >
                       <div className="flex items-center justify-between">
@@ -417,7 +417,7 @@ export default function RegisterPage() {
       ) : (
         /* Tab 2: Join via Invitation Token */
         <Card variant="cyber" className="p-6 md:p-8 space-y-6 shadow-[0_0_40px_rgba(6,182,212,0.12)]">
-          <div className="space-y-1 pb-3 border-b border-[#162238]">
+          <div className="space-y-1 pb-3 border-b border-line">
             <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
               <Mail className="w-4 h-4 text-cyan-400" />
               <span>Join an Existing Organization</span>
@@ -439,7 +439,7 @@ export default function RegisterPage() {
                 value={inviteToken}
                 onChange={(e) => setInviteToken(e.target.value)}
                 placeholder="e.g. inv-tok-99214-f89a or full invite URL"
-                className="w-full bg-[#060911] border border-[#162238] rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-400 font-mono"
+                className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-400 font-mono"
               />
             </div>
 
@@ -460,7 +460,7 @@ export default function RegisterPage() {
             </Button>
           </form>
 
-          <div className="p-4 rounded-xl bg-[#080c16] border border-[#141f33] space-y-2 text-xs text-slate-400">
+          <div className="p-4 rounded-xl bg-surface border border-line space-y-2 text-xs text-slate-400">
             <div className="font-semibold text-slate-200 flex items-center gap-1.5">
               <FileCheck2 className="w-4 h-4 text-cyan-400" />
               <span>Invitation-Based Security Guarantees</span>
