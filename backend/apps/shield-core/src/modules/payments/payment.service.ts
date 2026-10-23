@@ -601,33 +601,24 @@ export class PaymentService {
 
             if (this.prisma && tenantId && tenantId !== 'unknown-tenant') {
               try {
-                await (this.prisma as any).$transaction(async (tx: any) => {
-                  for (const offer of includedOffers) {
-                    const existing = await tx.entitlement.findFirst({
-                      where: { tenant_id: tenantId, offer_type: offer },
-                    });
-                    if (existing) {
-                      await tx.entitlement.update({
-                        where: { id: existing.id },
-                        data: { status: 'ACTIVE' },
-                      });
-                    } else {
-                      await tx.entitlement.create({
-                        data: {
-                          commercial_account_id: tenantId,
-                          tenant_id: tenantId,
-                          offer_type: offer,
-                          source_type: 'ACCEPTED_ORDER',
-                          source_id: session.id,
-                          status: 'ACTIVE',
-                        },
-                      });
-                    }
-                  }
+                await this.prisma.commercialEvent.create({
+                  data: {
+                    event_type: 'subscription.activated',
+                    tenant_id: tenantId,
+                    actor: 'stripe-webhook',
+                    payload: JSON.stringify({
+                      sessionId: session.id,
+                      planTier,
+                      amount,
+                      currency,
+                      includedOffers,
+                    }),
+                    idempotency_key: `sub-act-${session.id}`,
+                  },
                 });
-              } catch (entErr: any) {
+              } catch (eventErr: any) {
                 this.logger.warn(
-                  `Entitlement grant fallback during checkout: ${entErr.message}`,
+                  `Commercial event recording fallback during checkout: ${eventErr.message}`,
                 );
               }
             }
