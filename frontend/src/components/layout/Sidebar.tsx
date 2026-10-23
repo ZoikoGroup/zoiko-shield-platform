@@ -27,8 +27,18 @@ const badgeClass = (variant?: NavBadgeVariant) =>
     : "bg-line text-slate-300 border border-slate-700/60";
 
 const signOut = async () => {
-  await ZoikoShieldApiClient.logout();
-  window.location.href = "/login?logout=true";
+  if (typeof window !== "undefined") {
+    (window as any).__zoiko_logging_out = true;
+  }
+  try {
+    await ZoikoShieldApiClient.logout();
+  } catch (err) {
+    console.error("Sign out error:", err);
+  } finally {
+    if (typeof window !== "undefined") {
+      window.location.href = "/login?logout=true";
+    }
+  }
 };
 
 export const Sidebar: React.FC = () => {

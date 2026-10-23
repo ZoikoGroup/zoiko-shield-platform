@@ -14,6 +14,11 @@ import { Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
+import {
+  VerifyEmailDto,
+  ResendVerificationDto,
+} from './dto/verify-email.dto';
 import { PasswordRecoveryRequestDto } from './dto/password-recovery-request.dto';
 import { PasswordRecoveryVerifyDto } from './dto/password-recovery-verify.dto';
 import { PasswordRecoveryResetDto } from './dto/password-recovery-reset.dto';
@@ -71,6 +76,66 @@ export class AuthController {
     private readonly authService: AuthService,
     private readonly webauthnService: WebauthnService,
   ) {}
+
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @PublicEndpoint()
+  @Post(['register', 'register-org'])
+  async register(
+    @Body() dto: RegisterDto,
+    @Req() req: Request,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.register(
+      dto,
+      sessionMetadataFrom(req),
+    );
+    res.cookie('zoiko_shield_access_token', result.token, {
+      path: '/',
+      httpOnly: false,
+      sameSite: 'lax',
+    });
+    res.cookie('zoiko_shield_tenant_id', result.tenant.id, {
+      path: '/',
+      httpOnly: false,
+      sameSite: 'lax',
+    });
+    res.cookie('zoiko_shield_user_email', result.session.email, {
+      path: '/',
+      httpOnly: false,
+      sameSite: 'lax',
+    });
+    res.cookie('shield_access_token', result.token, {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+    });
+    res.cookie('zoiko_auth', 'true', {
+      path: '/',
+      httpOnly: false,
+      sameSite: 'lax',
+    });
+    return result;
+  }
+
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @PublicEndpoint()
+  @Post(['verify-email', 'email-verification/verify'])
+  async verifyEmail(@Body() dto: VerifyEmailDto) {
+    return this.authService.verifyEmail(dto.email, dto.code);
+  }
+
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  @PublicEndpoint()
+  @Post(['resend-verification', 'email-verification/resend'])
+  async resendVerification(
+    @Body() dto: ResendVerificationDto,
+    @Req() req: Request,
+  ) {
+    return this.authService.resendVerification(
+      dto.email,
+      sessionMetadataFrom(req),
+    );
+  }
 
   @Throttle({ default: { limit: 3, ttl: 60_000 } })
   @PublicEndpoint()

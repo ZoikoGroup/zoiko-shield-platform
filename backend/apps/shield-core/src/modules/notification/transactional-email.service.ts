@@ -6,6 +6,7 @@ import {
   Inject,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
+import { createTransport, Transporter } from 'nodemailer';
 import {
   ProductionEmailTemplateEngine,
   EmailRenderInput,
@@ -13,6 +14,10 @@ import {
 import { TenantIsolationValidator } from './policies/tenant-isolation-validator.service';
 import type { RecipientMembershipResolver } from './policies/recipient-membership-resolver';
 import { RECIPIENT_MEMBERSHIP_RESOLVER } from './policies/recipient-membership-resolver';
+import {
+  SenderClassRouterService,
+  SenderClassProfile,
+} from './channels/sender-class-router.service';
 
 export type NotificationTemplateCategory =
   | 'USG/UsageThreshold75Percent'
@@ -36,18 +41,11 @@ export interface SendTransactionalEmailInput {
   recipients: EmailRecipient[];
   variables: Record<string, any>;
   priority?: 'HIGH' | 'NORMAL' | 'LOW';
+  /** Optional custom idempotency key to prevent duplicate email dispatches */
+  idempotencyKey?: string;
   /**
    * Opt-in Gate 3 recipient-membership check: reject dispatch if a recipient
    * resolves to a principal who is not an active member of `tenantId`.
-   *
-   * Left off by default because the only two callers in this codebase today
-   * (owner invitation, password-recovery OTP) are legitimately sending to a
-   * recipient who is either not yet a member of the tenant (that is the
-   * point of an invitation) or to a pseudo-tenant with no real membership
-   * concept (`identity-service` for OTP). Forcing the check on unconditionally
-   * would reject both of them. A future caller that emails existing
-   * tenant-scoped content (case details, billing records, security alerts)
-   * to a fixed audience should set this to true.
    */
   requireRecipientMembership?: boolean;
 }
@@ -60,10 +58,18 @@ export interface DispatchedEmailReceipt {
   subject: string;
   htmlBody: string;
   textBody: string;
-  deliveryStatus: 'QUEUED' | 'SENT' | 'DELIVERED';
+  deliveryStatus: 'QUEUED' | 'SENT' | 'DELIVERED' | 'FAILED';
   contentDigest: string;
   dispatchedAt: string;
   renderHash?: string;
+  providerMessageId?: string;
+  senderProfile?: {
+    fromAddress: string;
+    fromDisplayName: string;
+    replyTo: string;
+  };
+  deliveryError?: string;
+  retryCount?: number;
 }
 
 @Injectable()
@@ -72,6 +78,9 @@ export class TransactionalEmailService {
   private readonly templateEngine: ProductionEmailTemplateEngine;
   private readonly tenantIsolationValidator: TenantIsolationValidator;
   private readonly recipientMembershipResolver?: RecipientMembershipResolver;
+  private readonly senderClassRouter: SenderClassRouterService;
+  private transporter: Transporter | null = null;
+  private readonly idempotencyLedger = new Map<string, DispatchedEmailReceipt>();
 
   constructor(
     @Optional() templateEngine?: ProductionEmailTemplateEngine,
@@ -79,11 +88,52 @@ export class TransactionalEmailService {
     @Optional()
     @Inject(RECIPIENT_MEMBERSHIP_RESOLVER)
     recipientMembershipResolver?: RecipientMembershipResolver,
+    @Optional() senderClassRouter?: SenderClassRouterService,
   ) {
     this.templateEngine = templateEngine || new ProductionEmailTemplateEngine();
     this.tenantIsolationValidator =
       tenantIsolationValidator || new TenantIsolationValidator();
     this.recipientMembershipResolver = recipientMembershipResolver;
+    this.senderClassRouter =
+      senderClassRouter || new SenderClassRouterService();
+
+    this.initializeTransport();
+  }
+
+  private initializeTransport(): void {
+    const smtpHost = process.env.SMTP_HOST;
+    const emailUser = process.env.EMAIL_USER;
+    const emailPass = process.env.EMAIL_APP_PASSWORD || process.env.SMTP_PASS;
+
+    if (smtpHost && emailUser && emailPass) {
+      this.transporter = createTransport({
+        host: smtpHost,
+        port: Number(process.env.SMTP_PORT || 587),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: emailUser,
+          pass: emailPass,
+        },
+      });
+      this.logger.log(
+        `TransactionalEmailService initialized with active SMTP transport (${smtpHost}).`,
+      );
+    } else if (emailUser && emailPass) {
+      this.transporter = createTransport({
+        service: 'gmail',
+        auth: {
+          user: emailUser,
+          pass: emailPass,
+        },
+      });
+      this.logger.log(
+        `TransactionalEmailService initialized with active Gmail transport (${emailUser}).`,
+      );
+    } else {
+      this.logger.log(
+        'TransactionalEmailService: No SMTP credentials configured — operating in structured dev/ledger mode.',
+      );
+    }
   }
 
   /**
@@ -145,6 +195,7 @@ export class TransactionalEmailService {
     let htmlBody: string;
     let textBody: string;
     let renderHash: string | undefined;
+    let senderClass: string = 'account_sender';
 
     // Check if the template key is one of the 226 ZS-EML-* production templates
     if (
@@ -218,6 +269,7 @@ export class TransactionalEmailService {
       htmlBody = rendered.htmlBody;
       textBody = rendered.plainTextBody;
       renderHash = rendered.renderHash;
+      senderClass = rendered.senderClass;
     } else {
       // Legacy fallback template renderer
       const renderedLegacy = this.renderLegacyTemplate(
@@ -227,6 +279,23 @@ export class TransactionalEmailService {
       subject = renderedLegacy.subject;
       htmlBody = renderedLegacy.htmlBody;
       textBody = renderedLegacy.textBody;
+      senderClass = 'account_sender';
+    }
+
+    const senderProfile = this.senderClassRouter.resolveSenderProfile(
+      senderClass as any,
+    );
+
+    const idempotencyKey =
+      input.idempotencyKey ||
+      `${input.tenantId}:${input.templateKey}:${input.variables.referenceId || ''}:${firstRecipient.email}`;
+
+    if (this.idempotencyLedger.has(idempotencyKey)) {
+      const cached = this.idempotencyLedger.get(idempotencyKey)!;
+      this.logger.log(
+        `[IDEMPOTENT DISPATCH] Returning cached receipt ${cached.receiptId} for key: ${idempotencyKey}`,
+      );
+      return cached;
     }
 
     const receiptId = `ntf-rcpt-${crypto.randomUUID()}`;
@@ -243,11 +312,57 @@ export class TransactionalEmailService {
       )
       .digest('hex');
 
+    let providerMessageId: string | undefined;
+    let deliveryStatus: 'QUEUED' | 'SENT' | 'DELIVERED' | 'FAILED' =
+      'DELIVERED';
+    let deliveryError: string | undefined;
+    let retryCount = 0;
+
+    if (this.transporter) {
+      const maxRetries = 2;
+      for (let attempt = 0; attempt <= maxRetries; attempt++) {
+        try {
+          const info = await this.transporter.sendMail({
+            from: `"${senderProfile.fromDisplayName}" <${senderProfile.fromAddress}>`,
+            to: input.recipients.map((r) => r.email).join(', '),
+            replyTo: senderProfile.replyTo,
+            subject,
+            html: htmlBody,
+            text: textBody,
+            headers: {
+              'X-ZoikoShield-Tenant': input.tenantId,
+              'X-ZoikoShield-Template': input.templateKey,
+              'X-ZoikoShield-SenderClass': senderProfile.reputationPool,
+            },
+          });
+          providerMessageId = info.messageId;
+          deliveryStatus = 'DELIVERED';
+          break;
+        } catch (err: any) {
+          retryCount = attempt + 1;
+          if (attempt < maxRetries) {
+            await new Promise((resolve) =>
+              setTimeout(resolve, 100 * (attempt + 1)),
+            );
+          } else {
+            this.logger.error(
+              `Transactional email delivery failed [${input.templateKey}] to ${input.recipients.map((r) => r.email).join(', ')}: ${err.message}`,
+            );
+            deliveryStatus = 'FAILED';
+            deliveryError = err.message;
+          }
+        }
+      }
+    } else {
+      providerMessageId = `dev-msg-${crypto.randomUUID()}`;
+      deliveryStatus = 'DELIVERED';
+    }
+
     this.logger.log(
-      `Dispatched transactional email [${input.templateKey}] to ${input.recipients.length} recipients for tenant ${input.tenantId}`,
+      `Dispatched transactional email [${input.templateKey}] (${deliveryStatus}) to ${input.recipients.length} recipients for tenant ${input.tenantId}`,
     );
 
-    return {
+    const receipt: DispatchedEmailReceipt = {
       receiptId,
       tenantId: input.tenantId,
       templateKey: input.templateKey,
@@ -255,11 +370,22 @@ export class TransactionalEmailService {
       subject,
       htmlBody,
       textBody,
-      deliveryStatus: 'DELIVERED',
+      deliveryStatus,
       contentDigest,
       dispatchedAt: new Date().toISOString(),
       renderHash,
+      providerMessageId,
+      senderProfile: {
+        fromAddress: senderProfile.fromAddress,
+        fromDisplayName: senderProfile.fromDisplayName,
+        replyTo: senderProfile.replyTo,
+      },
+      deliveryError,
+      retryCount,
     };
+
+    this.idempotencyLedger.set(idempotencyKey, receipt);
+    return receipt;
   }
 
   private renderLegacyTemplate(

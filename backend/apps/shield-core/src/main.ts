@@ -9,7 +9,7 @@ import { TraceIdMiddleware } from './observability/trace-id.middleware';
 import { HttpLoggingInterceptor } from './observability/http-logging.interceptor';
 
 async function bootstrap() {
-  const app = await NestFactory.create(ShieldCoreModule);
+  const app = await NestFactory.create(ShieldCoreModule, { rawBody: true });
 
   app.use(cookieParser());
   app.use(new TraceIdMiddleware().use.bind(new TraceIdMiddleware()));

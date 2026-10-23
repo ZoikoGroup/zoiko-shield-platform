@@ -168,6 +168,16 @@ const approvedPublicOperations = new Set([
   'post:/api/v1/auth/passkeys/authentication',
   'get:/api/v1/identity/verifiable-credentials/issuer',
   'post:/api/v1/identity/verifiable-credentials/verify',
+  'post:/api/v1/auth/register',
+  'post:/api/v1/auth/register-org',
+  'post:/api/v1/auth/verify-email',
+  'post:/api/v1/auth/email-verification/verify',
+  'post:/api/v1/auth/resend-verification',
+  'post:/api/v1/auth/email-verification/resend',
+  'post:/api/v1/payments/stripe/webhook',
+  'post:/api/v1/payments/checkout-session',
+  'get:/api/v1/payments/session/{sessionId}/status',
+  'get:/api/v1/payments/checkout-session/{sessionId}/status',
 ]);
 const undocumentedSecurity = [];
 for (const [route, definition] of Object.entries(specification.paths ?? {})) {

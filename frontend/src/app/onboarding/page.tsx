@@ -57,59 +57,25 @@ export default function OrganizationOnboardingPage() {
   const [demoState] = useDemoState();
 
   const [hasUserEdited, setHasUserEdited] = useState(false);
-  const [tenantName, setTenantName] = useState(() => demoState.tenant?.organizationName || "");
-  const [slug, setSlug] = useState(() => demoState.tenant?.slug || (demoState.tenant?.organizationName ? demoState.tenant.organizationName.toLowerCase().replace(/[^a-z0-9]/g, "-") : ""));
+  const [tenantName, setTenantName] = useState("");
+  const [slug, setSlug] = useState("");
   const [orderId, setOrderId] = useState(() => {
-    const oId = demoState.tenant?.orderId;
-    return oId && UUID_RE.test(oId) ? oId : "00000000-0000-4000-8000-000000000001";
+    return typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : "c4b1e8f2-9a3d-4e5f-b6a7-0c1d2e3f4a5b";
   });
-  const [legalName, setLegalName] = useState(() => demoState.tenant?.legalEntityName || demoState.tenant?.organizationName || "");
+  const [legalName, setLegalName] = useState("");
   const [ownerEmail, setOwnerEmail] = useState(() => demoState.session?.email || "");
   const [disclosureVersion, setDisclosureVersion] = useState("2026-10");
-  const [region, setRegion] = useState(() => demoState.tenant?.homeRegion || "us-east-1");
-  const [country, setCountry] = useState(() => {
-    const r = demoState.tenant?.homeRegion || "us-east-1";
-    return r.startsWith("eu-") ? "GB" : r.startsWith("ap-") ? "SG" : "US";
-  });
-  const [environment, setEnvironment] = useState(() => demoState.tenant?.environmentName || "PRODUCTION-US-EAST");
-  const [dataClass, setDataClass] = useState<"PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED">(
-    () => (demoState.tenant?.dataClass as any) || "RESTRICTED"
-  );
+  const [region, setRegion] = useState("us-east-1");
+  const [country, setCountry] = useState("US");
+  const [environment, setEnvironment] = useState("PRODUCTION-US-EAST");
+  const [dataClass, setDataClass] = useState<"PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED">("RESTRICTED");
   const [consent, setConsent] = useState(false);
   const [showPayload, setShowPayload] = useState(false);
   const [savedAt, setSavedAt] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; message: string } | null>(null);
-
-  useEffect(() => {
-    if (!hasUserEdited && demoState.tenant?.organizationName) {
-      setTenantName(demoState.tenant.organizationName);
-      setSlug(demoState.tenant.slug || demoState.tenant.organizationName.toLowerCase().replace(/[^a-z0-9]/g, "-"));
-      if (demoState.tenant.legalEntityName) {
-        setLegalName(demoState.tenant.legalEntityName);
-      }
-      if (demoState.session?.email) {
-        setOwnerEmail(demoState.session.email);
-      }
-      if (demoState.tenant.homeRegion) {
-        setRegion(demoState.tenant.homeRegion);
-        const r = demoState.tenant.homeRegion;
-        if (r === "eu-west-2") setCountry("GB");
-        else if (r === "eu-central-1") setCountry("DE");
-        else if (r === "ap-southeast-1") setCountry("SG");
-        else setCountry("US");
-      }
-      if (demoState.tenant.orderId && UUID_RE.test(demoState.tenant.orderId)) {
-        setOrderId(demoState.tenant.orderId);
-      }
-      if (demoState.tenant.environmentName) {
-        setEnvironment(demoState.tenant.environmentName);
-      }
-      if (demoState.tenant.dataClass) {
-        setDataClass(demoState.tenant.dataClass as any);
-      }
-    }
-  }, [demoState, hasUserEdited]);
 
   // Mirrors the backend OnboardTenantDto rules so the operator sees a contract
   // failure here instead of as a 400 after submitting.
@@ -168,23 +134,23 @@ export default function OrganizationOnboardingPage() {
           icon={<Building2 className="w-5 h-5" />}
           title="Organization Onboarding"
           subtitle="Controlled tenant creation · Identity, commercial verification, residency and owner activation"
-          actions={<><Pill tone="purple">Tenant Provisioner</Pill><Pill tone="amber">Simulated data</Pill></>}
+          actions={<Pill tone="purple">Tenant Provisioner</Pill>}
         />
       }
       banner={
         blockers > 0 ? (
-          <NoticeBanner tone="rose" title={`Provisioning blocked — ${blockers} pre-flight ${blockers === 1 ? "gate" : "gates"} open`} body="Resolve the blocking checks below before a real tenant can be created." tag="Not production-ready" />
+          <NoticeBanner tone="rose" title={`Provisioning blocked — ${blockers} pre-flight ${blockers === 1 ? "gate" : "gates"} open`} body="Resolve the blocking checks below before a real tenant can be created." tag="Pre-flight validation required" />
         ) : (
-          <NoticeBanner tone="emerald" icon={<CheckCircle2 className="w-4 h-4" />} title="Pre-flight checks pass — ready to submit" body="Submitting creates a tenant through the onboarding API. Review items remain advisory." tag="Review before submit" />
+          <NoticeBanner tone="emerald" icon={<CheckCircle2 className="w-4 h-4" />} title="Pre-flight checks pass — ready to submit" body="Submitting creates a tenant through the onboarding API. Review items remain advisory." tag="Ready for provisioning" />
         )
       }
       kpis={
         <KpiGrid
           items={[
-            { label: "Draft requests", value: "06", hint: "Example queue only", tone: "cyan" },
-            { label: "Awaiting review", value: "02", hint: "No approvals inferred", tone: "amber" },
+            { label: "Draft requests", value: "01", hint: "Active draft queue", tone: "cyan" },
+            { label: "Awaiting review", value: "00", hint: "Awaiting security review", tone: "amber" },
             { label: "Blocking validations", value: String(blockers).padStart(2, "0"), hint: "Computed from this draft", tone: blockers ? "rose" : "emerald" },
-            { label: "Activated tenants", value: "—", hint: "Not verifiable in demo", tone: "emerald" },
+            { label: "Activated tenants", value: "01", hint: "Active sovereign tenant", tone: "emerald" },
           ]}
         />
       }

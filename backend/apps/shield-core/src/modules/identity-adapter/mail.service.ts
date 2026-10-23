@@ -6,11 +6,13 @@ import { TransactionalEmailService } from '../notification/transactional-email.s
 
 const OTP_SUBJECT: Record<ChallengePurpose, string> = {
   PASSWORD_RECOVERY: 'Reset your ZoikoShield password',
+  EMAIL_VERIFICATION: 'Verify your ZoikoShield account email',
 };
 
 /**
  * Enterprise Identity & Access Mail Service (ZS-EML-TPL-001 v2.0)
- * Uses TransactionalEmailService with ZS-EML-IAM-005 & ZS-EML-ORG-002 production templates.
+ * Uses TransactionalEmailService with ZS-EML-IAM-001, ZS-EML-IAM-005, ZS-EML-IAM-006,
+ * ZS-EML-ORG-001 & ZS-EML-ORG-002 production templates.
  * Falls back to SMTP or console logging for local/air-gapped development.
  */
 @Injectable()
@@ -48,17 +50,36 @@ export class MailService implements OnModuleInit {
     code: string,
     purpose: ChallengePurpose,
   ): Promise<void> {
+    const isVerification = purpose === 'EMAIL_VERIFICATION';
+    const templateKey = isVerification ? 'ZS-EML-IAM-001' : 'ZS-EML-IAM-005';
+    const appBaseUrl = this.configService
+      .get<string>('APP_BASE_URL', 'http://localhost:3000')
+      .replace(/\/$/, '');
+    const isProd = process.env.NODE_ENV === 'production';
+    const safeBase =
+      isProd && !appBaseUrl.startsWith('https://')
+        ? 'https://app.zoikoshield.com'
+        : appBaseUrl;
+
+    const actionUrl = isVerification
+      ? `${safeBase}/verify-email?code=${encodeURIComponent(code)}&email=${encodeURIComponent(email)}`
+      : `${safeBase}/reset-password?code=${encodeURIComponent(code)}&email=${encodeURIComponent(email)}`;
+
     if (this.transactionalEmailService) {
       try {
         await this.transactionalEmailService.dispatchTransactionalEmail({
           tenantId: 'identity-service',
-          templateKey: 'ZS-EML-IAM-005',
+          templateKey,
           recipients: [{ email, name: email.split('@')[0] }],
           variables: {
             referenceId: `otp-${Date.now().toString(36)}`,
-            statusLabel: 'PASSWORD_RESET_REQUESTED',
+            statusLabel: isVerification
+              ? 'EMAIL_VERIFICATION_PENDING'
+              : 'PASSWORD_RESET_REQUESTED',
             token_expires_at_local: '10 minutes',
-            password_reset_url: `https://app.zoikoshield.com/login?otp=${encodeURIComponent(code)}`,
+            verificationUrl: isVerification ? actionUrl : undefined,
+            passwordResetUrl: !isVerification ? actionUrl : undefined,
+            actionUrl,
           },
         });
       } catch (err: any) {
@@ -74,7 +95,7 @@ export class MailService implements OnModuleInit {
           from: this.fromAddress,
           to: email,
           subject: OTP_SUBJECT[purpose],
-          text: `Your verification code is ${code}. It expires in 10 minutes.`,
+          text: `Your ${isVerification ? 'email verification' : 'password reset'} code is ${code}. It expires in 10 minutes.\nAction Link: ${actionUrl}`,
         });
         return;
       } catch (transportErr: any) {
@@ -85,8 +106,61 @@ export class MailService implements OnModuleInit {
     }
 
     this.logger.log(
-      `OTP for ${email} [${purpose}]: ${code} (valid 10 minutes)`,
+      `OTP for ${email} [${purpose}]: ${code} (valid 10 minutes) -> ${actionUrl}`,
     );
+  }
+
+  async sendPasswordChangedNotification(email: string): Promise<void> {
+    if (this.transactionalEmailService) {
+      try {
+        await this.transactionalEmailService.dispatchTransactionalEmail({
+          tenantId: 'identity-service',
+          templateKey: 'ZS-EML-IAM-006',
+          recipients: [{ email, name: email.split('@')[0] }],
+          variables: {
+            referenceId: `pwd-chg-${Date.now().toString(36)}`,
+            statusLabel: 'PASSWORD_CHANGED',
+            occurredAtLocal: new Date().toISOString(),
+          },
+        });
+      } catch (err: any) {
+        this.logger.debug(`Password changed email fallback: ${err.message}`);
+      }
+    }
+  }
+
+  async sendTenantProvisionedConfirmation(input: {
+    email: string;
+    tenantName: string;
+    tenantId: string;
+  }): Promise<void> {
+    const appBaseUrl = this.configService
+      .get<string>('APP_BASE_URL', 'http://localhost:3000')
+      .replace(/\/$/, '');
+    const isProd = process.env.NODE_ENV === 'production';
+    const safeBase =
+      isProd && !appBaseUrl.startsWith('https://')
+        ? 'https://app.zoikoshield.com'
+        : appBaseUrl;
+    const actionUrl = `${safeBase}/dashboard`;
+
+    if (this.transactionalEmailService) {
+      try {
+        await this.transactionalEmailService.dispatchTransactionalEmail({
+          tenantId: input.tenantId,
+          templateKey: 'ZS-EML-ORG-001',
+          recipients: [{ email: input.email, name: input.email.split('@')[0] }],
+          variables: {
+            organizationName: input.tenantName,
+            referenceId: `org-${input.tenantId.substring(0, 8)}`,
+            statusLabel: 'PROVISIONED',
+            actionUrl,
+          },
+        });
+      } catch (err: any) {
+        this.logger.debug(`Tenant provisioned email fallback: ${err.message}`);
+      }
+    }
   }
 
   async sendOwnerInvitation(input: {

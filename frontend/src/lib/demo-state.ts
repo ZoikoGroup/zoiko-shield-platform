@@ -27,7 +27,7 @@ import {
   IncidentLegalSensitiveRecord,
   IncidentLegalAccessEvent,
 } from "./types";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 export interface DemoG1Approver {
   roleId: string;
@@ -864,7 +864,12 @@ export function getInitialDemoState(): DemoState {
 export function saveDemoState(state: DemoState) {
   if (typeof window !== "undefined") {
     try {
-      localStorage.setItem("zoikoshield_demo_state", JSON.stringify(state));
+      const serialized = JSON.stringify(state);
+      const existing = localStorage.getItem("zoikoshield_demo_state");
+      if (existing === serialized) {
+        return; // State unchanged; prevent render loop
+      }
+      localStorage.setItem("zoikoshield_demo_state", serialized);
       // Dispatch custom event asynchronously to prevent synchronous re-entrant render loops
       setTimeout(() => {
         try {
@@ -989,20 +994,47 @@ export function useDemoState(): [
   (state: DemoState | ((prev: DemoState) => DemoState)) => void,
   boolean,
 ] {
-  const [state, setState] = useState<DemoState>(getDefaultStaticState);
-  const [isHydrated, setIsHydrated] = useState(true);
+  const isTest = typeof process !== "undefined" && process.env.NODE_ENV === "test";
+  const [state, setState] = useState<DemoState>(() => {
+    if (isTest) {
+      try {
+        return getInitialDemoState();
+      } catch {
+        return getDefaultStaticState();
+      }
+    }
+    return getDefaultStaticState();
+  });
+  const [isHydrated, setIsHydrated] = useState(isTest);
 
   useEffect(() => {
-    try {
-      setState(getInitialDemoState());
-    } catch {
-      // Keep static state
-    }
     setIsHydrated(true);
 
-    const handleUpdate = () => {
+    try {
+      const fresh = getInitialDemoState();
+      setState((prev) => {
+        if (JSON.stringify(prev) === JSON.stringify(fresh)) return prev;
+        return fresh;
+      });
+    } catch {
+      // Safe fallback
+    }
+
+    const handleUpdate = (e?: Event) => {
       try {
-        setState(getInitialDemoState());
+        const customEvent = e as CustomEvent<DemoState> | undefined;
+        if (customEvent?.detail) {
+          setState((prev) => {
+            if (prev === customEvent.detail) return prev;
+            return customEvent.detail;
+          });
+        } else {
+          const fresh = getInitialDemoState();
+          setState((prev) => {
+            if (JSON.stringify(prev) === JSON.stringify(fresh)) return prev;
+            return fresh;
+          });
+        }
       } catch {
         // Safe fallback
       }
@@ -1016,15 +1048,19 @@ export function useDemoState(): [
     };
   }, []);
 
-  const setDemoState = (
-    newState: DemoState | ((prev: DemoState) => DemoState)
-  ) => {
-    setState((prev) => {
-      const resolved = typeof newState === "function" ? newState(prev) : newState;
-      saveDemoState(resolved);
-      return resolved;
-    });
-  };
+  const setDemoState = useCallback(
+    (newState: DemoState | ((prev: DemoState) => DemoState)) => {
+      setState((prev) => {
+        const resolved = typeof newState === "function" ? newState(prev) : newState;
+        if (prev === resolved) {
+          return prev;
+        }
+        saveDemoState(resolved);
+        return resolved;
+      });
+    },
+    []
+  );
 
   return [state, setDemoState, isHydrated];
 }

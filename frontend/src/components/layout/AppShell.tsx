@@ -39,21 +39,26 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`) || pathname.startsWith(`${prefix}?`)
   );
 
-  // Check auth cookies and state
+  // Check auth cookies and state only after mounting on client, or in test environment
   const isTest = typeof process !== "undefined" && process.env.NODE_ENV === "test";
   const hasAuthCookie =
+    Boolean(isClient || isTest) &&
     typeof document !== "undefined" &&
     (document.cookie.includes("zoiko_auth=true") ||
       document.cookie.includes("zoiko_shield_access_token=") ||
       document.cookie.includes("shield_access_token="));
 
-  const isAuthenticated = isTest || Boolean(state.session?.isAuthenticated && hasAuthCookie);
+  const isAuthenticated = isTest || Boolean(isClient && state.session?.isAuthenticated && hasAuthCookie);
 
   useEffect(() => {
     // If attempting to access a protected deep URL while unauthenticated, redirect cleanly to login
     if (isClient && !isPublicRoute && pathname !== "/" && !isAuthenticated && !isTest) {
-      if (typeof window !== "undefined" && !window.location.pathname.startsWith("/login")) {
-        window.location.replace("/login");
+      if (
+        typeof window !== "undefined" &&
+        !window.location.pathname.startsWith("/login") &&
+        !(window as any).__zoiko_logging_out
+      ) {
+        window.location.href = "/login";
       }
     }
   }, [isClient, isPublicRoute, isAuthenticated, pathname, isTest]);

@@ -869,14 +869,21 @@ function AuthenticatedDashboardView({
 
 export default function DashboardPage() {
   const [state, setDemoState] = useDemoState();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   const isTest = typeof process !== "undefined" && process.env.NODE_ENV === "test";
   const hasAuthCookie =
+    Boolean(isClient || isTest) &&
     typeof document !== "undefined" &&
     (document.cookie.includes("zoiko_auth=true") ||
       document.cookie.includes("zoiko_shield_access_token=") ||
       document.cookie.includes("shield_access_token="));
 
-  const isAuthenticated = isTest || Boolean(state.session?.isAuthenticated && hasAuthCookie);
+  const isAuthenticated = isTest || Boolean(isClient && state.session?.isAuthenticated && hasAuthCookie);
 
   if (!isAuthenticated && !isTest) {
     return <LoginPage />;

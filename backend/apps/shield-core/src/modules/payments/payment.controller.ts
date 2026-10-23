@@ -8,6 +8,7 @@ import {
   Param,
   Patch,
   Post,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import {
@@ -25,7 +26,11 @@ import {
   PaymentService,
   ProviderWebhookDto,
 } from './payment.service';
-import { ExternallyAuthenticatedEndpoint } from '../../security/endpoint-access.decorator';
+import { CreateCheckoutSessionDto } from './dto/checkout-session.dto';
+import {
+  ExternallyAuthenticatedEndpoint,
+  PublicEndpoint,
+} from '../../security/endpoint-access.decorator';
 import { RequirePermissions } from '../authorization/decorators/require-permissions.decorator';
 import { RequireAssurance } from '../authorization/decorators/require-assurance.decorator';
 import { PERMISSION_CODES } from '../authorization/constants';
@@ -105,6 +110,47 @@ export class PaymentController {
 }
 
 /**
+ * Public checkout endpoints allowing users (guests or authenticated members)
+ * to initiate Stripe Checkout sessions and query authoritative checkout session status.
+ */
+@PublicEndpoint()
+@Controller('api/v1/payments')
+export class PaymentCheckoutController {
+  constructor(private readonly paymentService: PaymentService) {}
+
+  @Post('checkout-session')
+  async createCheckoutSession(
+    @Body() dto: CreateCheckoutSessionDto,
+    @Headers('x-tenant-id') tenantIdHeader?: string,
+    @Req() req?: any,
+  ) {
+    const tenantId = dto.tenantId || tenantIdHeader || req?.user?.tenantId;
+    const userId = req?.user?.id || req?.user?.sub;
+    const userEmail = dto.userEmail || req?.user?.email;
+
+    const result = await this.paymentService.createCheckoutSession(
+      dto,
+      tenantId,
+      userId,
+      userEmail,
+    );
+    return { statusCode: HttpStatus.CREATED, data: result };
+  }
+
+  @Get('session/:sessionId/status')
+  async getSessionStatus(@Param('sessionId') sessionId: string) {
+    const status = await this.paymentService.getCheckoutSessionStatus(sessionId);
+    return { statusCode: HttpStatus.OK, data: status };
+  }
+
+  @Get('checkout-session/:sessionId/status')
+  async getCheckoutSessionStatus(@Param('sessionId') sessionId: string) {
+    const status = await this.paymentService.getCheckoutSessionStatus(sessionId);
+    return { statusCode: HttpStatus.OK, data: status };
+  }
+}
+
+/**
  * Provider-authenticated (signature-verified in PaymentService, not a user
  * JWT) — deliberately excluded from JwtAuthGuard, same reasoning a
  * payment processor webhook always needs: the caller is the processor,
@@ -116,8 +162,31 @@ export class PaymentWebhookController {
   constructor(private readonly paymentService: PaymentService) {}
 
   @Post('webhook')
-  async webhook(@Body() dto: ProviderWebhookDto) {
-    const payment = await this.paymentService.handleProviderWebhook(dto);
+  async webhook(
+    @Req() req: any,
+    @Headers('stripe-signature') stripeSignature?: string,
+    @Body() dto?: ProviderWebhookDto,
+  ) {
+    if (stripeSignature) {
+      const rawPayload = req.rawBody || req.body;
+      const result = await this.paymentService.handleStripeWebhook(
+        rawPayload,
+        stripeSignature,
+      );
+      return result;
+    }
+    const payment = await this.paymentService.handleProviderWebhook(
+      dto as ProviderWebhookDto,
+    );
     return { statusCode: HttpStatus.OK, data: payment };
+  }
+
+  @Post('stripe/webhook')
+  async stripeWebhook(
+    @Req() req: any,
+    @Headers('stripe-signature') signature?: string,
+  ) {
+    const rawPayload = req.rawBody || req.body;
+    return this.paymentService.handleStripeWebhook(rawPayload, signature || '');
   }
 }

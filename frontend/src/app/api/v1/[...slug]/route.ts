@@ -127,58 +127,7 @@ interface TenantInvitationItem {
 const tenantInvitationsStore: TenantInvitationItem[] = [];
 const tenantMembersStore: TenantMemberItem[] = [];
 
-const defaultDeliveries: DeliveryItem[] = [
-  {
-    id: "del-email-template-1044",
-    event_id: "evt-email-zs-eml-iam-001 (Template Studio Dispatch)",
-    channel: "EMAIL (security@zoikoshield.io)",
-    status: "DELIVERED",
-    attempt_count: 1,
-    delivered_at: new Date(Date.now() - 45000).toISOString(),
-    error_code: null,
-    created_at: new Date(Date.now() - 60000).toISOString(),
-  },
-  {
-    id: "del-p0-alert-1043",
-    event_id: "evt-sec-p0-lateral-movement",
-    channel: "EMAIL (security@zoikoshield.io)",
-    status: "DELIVERED",
-    attempt_count: 1,
-    delivered_at: new Date(Date.now() - 300000).toISOString(),
-    error_code: null,
-    created_at: new Date(Date.now() - 360000).toISOString(),
-  },
-  {
-    id: "del-jit-elev-1042",
-    event_id: "evt-jit-elevation-approved",
-    channel: "EMAIL (security@zoikoshield.io)",
-    status: "DELIVERED",
-    attempt_count: 1,
-    delivered_at: new Date(Date.now() - 1200000).toISOString(),
-    error_code: null,
-    created_at: new Date(Date.now() - 1260000).toISOString(),
-  },
-  {
-    id: "del-merkle-epoch-1041",
-    event_id: "evt-merkle-epoch-sealed",
-    channel: "EMAIL (security@zoikoshield.io)",
-    status: "DELIVERED",
-    attempt_count: 1,
-    delivered_at: new Date(Date.now() - 3600000).toISOString(),
-    error_code: null,
-    created_at: new Date(Date.now() - 3660000).toISOString(),
-  },
-  {
-    id: "del-webhook-dlq-1039",
-    event_id: "evt-staging-webhook-sync",
-    channel: "WEBHOOK (https://api.zoikoshield.corp/events)",
-    status: "DEAD_LETTERED",
-    attempt_count: 3,
-    delivered_at: null,
-    error_code: "HTTP_504_GATEWAY_TIMEOUT",
-    created_at: new Date(Date.now() - 7200000).toISOString(),
-  },
-];
+const defaultDeliveries: DeliveryItem[] = [];
 
 const defaultConnectors: ConnectorItem[] = [
   {
@@ -561,6 +510,14 @@ function findOfflineAccount(email: unknown, password: unknown, tenantId: unknown
 
 /** Paths where a backend 4xx is a decision to forward, and a fallback must never invent success. */
 function isSecurityPath(path: string): boolean {
+  if (
+    path === "auth/register" ||
+    path === "auth/register-org" ||
+    path.endsWith("/register") ||
+    path.endsWith("/register-org")
+  ) {
+    return false;
+  }
   return path.startsWith("auth/") || /^authz\/jit\/[^/]+\/stepup/.test(path);
 }
 
@@ -745,9 +702,13 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
       signal: isEventStream ? undefined : AbortSignal.timeout(BACKEND_TIMEOUT_MS),
     });
 
-    // A 4xx on a security path is the backend's verdict (wrong password, failed
-    // step-up), not an outage, so it is forwarded instead of being "recovered".
-    const isVerdict = isSecurityPath(path) && backendRes.status < 500;
+    // A 4xx on a security or payment path is the backend's verdict (wrong password, failed
+    // step-up, contract pricing limit, Stripe card decline), not an outage, so it is forwarded.
+    // Note: HTTP 404 (route missing on backend) is NEVER a security verdict!
+    const isVerdict =
+      (isSecurityPath(path) || path.startsWith("payments")) &&
+      backendRes.status < 500 &&
+      backendRes.status !== 404;
     if (backendRes.status >= 400 && !isVerdict) {
       throw new Error(`Backend service error HTTP ${backendRes.status} on /api/v1/${path}`);
     }
@@ -872,81 +833,165 @@ async function buildOfflineResponse(
     });
   }
 
-  // 0a. Payment & Subscription Processing Engine
-  if (path === "payments" || path.startsWith("payments/")) {
-    if (method === "POST") {
-      let body: any = {};
-      try {
-        body = JSON.parse(rawBodyText || "{}");
-      } catch {}
+  // 0a. Payment & Subscription Processing Engine with Order Summary & Transactional Email Dispatches
+  if (path === "payments/checkout-session" && method === "POST") {
+    let body: any = {};
+    try {
+      body = JSON.parse(rawBodyText || "{}");
+    } catch {}
 
-      const token = body.paymentMethodToken || body.token || "tok_visa_valid";
-      const amount = body.amount || 12000;
-      const currency = body.currency || "USD";
-      const isFailed = token.startsWith("tok_invalid") || body.cardNumber?.endsWith("0002");
+    const planTier = body.planTier || "PROFESSIONAL";
+    const billingPeriod = body.billingPeriod === "ANNUAL" ? "ANNUAL" : "MONTHLY";
+    const userEmail = body.userEmail || req.cookies.get("zoiko_shield_user_email")?.value || "billing@zoikoshield.corp";
+    const tenantId = body.tenantId || req.cookies.get("zoiko_shield_tenant_id")?.value || "tenant-sovereign-01";
 
-      if (isFailed) {
-        return NextResponse.json(
-          {
-            statusCode: 402,
-            error: "Payment Required",
-            message: "Simulated charge declined: Insufficient funds or card marked as tok_invalid by testing suite.",
-            providerPaymentId: `ch_err_${crypto.randomBytes(4).toString("hex")}`,
-            status: "FAILED",
-          },
-          { status: 402 }
-        );
+    const RATES: Record<string, { name: string; rate: number; offers: string[] }> = {
+      FREE_TRIAL: { name: "Shield Community Trial", rate: 0, offers: ["COMMUNITY_EDR"] },
+      COMMUNITY: { name: "Shield Community", rate: 0, offers: ["COMMUNITY_EDR"] },
+      ESSENTIAL: { name: "Shield Essential", rate: 1200, offers: ["MANAGED_DEFENSE", "CONTINUOUS_ASSURANCE"] },
+      SHIELD_ESSENTIAL: { name: "Shield Essential", rate: 1200, offers: ["MANAGED_DEFENSE", "CONTINUOUS_ASSURANCE"] },
+      PROFESSIONAL: { name: "Shield Professional", rate: 3200, offers: ["MANAGED_DEFENSE", "CONTINUOUS_ASSURANCE", "AI_SECURITY"] },
+      SHIELD_PROFESSIONAL: { name: "Shield Professional", rate: 3200, offers: ["MANAGED_DEFENSE", "CONTINUOUS_ASSURANCE", "AI_SECURITY"] },
+      BUSINESS: { name: "Shield Business", rate: 8400, offers: ["MANAGED_DEFENSE", "CONTINUOUS_ASSURANCE", "AI_SECURITY", "POST_QUANTUM_LEDGER"] },
+      ENTERPRISE: { name: "Shield Enterprise", rate: 18500, offers: ["MANAGED_DEFENSE", "CONTINUOUS_ASSURANCE", "AI_SECURITY", "POST_QUANTUM_LEDGER", "DEDICATED_CELL"] },
+      SHIELD_ENTERPRISE: { name: "Shield Enterprise", rate: 18500, offers: ["MANAGED_DEFENSE", "CONTINUOUS_ASSURANCE", "AI_SECURITY", "POST_QUANTUM_LEDGER", "DEDICATED_CELL"] },
+      ENTERPRISE_PLUS: { name: "Shield Enterprise Plus", rate: 34000, offers: ["ALL_OFFERS_UNRESTRICTED"] },
+    };
+
+    const planInfo = RATES[planTier] || RATES.PROFESSIONAL;
+    const unitMonthlyRate = planInfo.rate;
+    const totalAmount = billingPeriod === "ANNUAL" ? Math.round(unitMonthlyRate * 12 * 0.8) : unitMonthlyRate;
+    const sessionId = `cs_test_${crypto.randomBytes(12).toString("hex")}`;
+
+    const sessionRecord = {
+      sessionId,
+      status: "SUCCEEDED",
+      planTier,
+      billingPeriod,
+      unitMonthlyRate,
+      amount: totalAmount,
+      totalAmount,
+      currency: "USD",
+      customerEmail: userEmail,
+      tenantId,
+      createdAt: new Date().toISOString(),
+    };
+
+    const g = globalThis as any;
+    if (!g.__zoikoCheckoutSessions) g.__zoikoCheckoutSessions = new Map();
+    g.__zoikoCheckoutSessions.set(sessionId, sessionRecord);
+
+    // Dispatch Transactional Emails: ZS-EML-BILL-001 (Subscription Activated) & ZS-EML-BILL-006 (Payment Receipt)
+    inMemoryDeliveries.unshift(
+      {
+        id: `dlv-sub-${crypto.randomBytes(4).toString("hex")}`,
+        event_id: `ZS-EML-BILL-001 (Subscription Activated: ${planInfo.name})`,
+        channel: `EMAIL (${userEmail})`,
+        status: "ACKNOWLEDGED",
+        attempt_count: 1,
+        delivered_at: new Date().toISOString(),
+        error_code: null,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: `dlv-rcpt-${crypto.randomBytes(4).toString("hex")}`,
+        event_id: `ZS-EML-BILL-006 (Payment Receipt & Tax Invoice: $${totalAmount.toLocaleString()} USD)`,
+        channel: `EMAIL (${userEmail})`,
+        status: "ACKNOWLEDGED",
+        attempt_count: 1,
+        delivered_at: new Date().toISOString(),
+        error_code: null,
+        created_at: new Date().toISOString(),
       }
+    );
 
-      const providerPaymentId = `ch_${crypto.randomBytes(12).toString("hex")}`;
-      const paymentRecord = {
-        id: `pay-${crypto.randomBytes(6).toString("hex")}`,
-        providerPaymentId,
-        amount,
-        currency,
-        status: "SUCCEEDED",
-        paymentMethod: {
-          brand: body.cardBrand || "Visa",
-          last4: body.last4 || (body.cardNumber ? body.cardNumber.slice(-4) : "4242"),
-          funding: "credit",
-        },
-        planTier: body.planTier || "PRO",
-        billingPeriod: body.billingPeriod || "ANNUAL",
-        tenantId: req.headers.get("x-tenant-id") || "tenant-sovereign-01",
-        receiptUrl: `https://billing.zoikoshield.io/receipts/${providerPaymentId}`,
-        rfc3161AuditHash: crypto.createHash("sha256").update(providerPaymentId).digest("hex"),
-        createdAt: new Date().toISOString(),
-      };
-
-      return NextResponse.json(
-        {
-          statusCode: 201,
-          status: "SUCCESS",
-          message: "Payment successfully authorized and processed.",
-          data: paymentRecord,
-          payment: paymentRecord,
-        },
-        { status: 201 }
-      );
-    }
-
-    // GET payments list or status
     return NextResponse.json({
-      statusCode: 200,
-      data: [
-        {
-          id: "pay-seed-1001",
-          providerPaymentId: "ch_stripe_valid_991823",
-          amount: 144000,
+      statusCode: 201,
+      data: {
+        sessionId,
+        checkoutUrl: `/pricing?session_id=${sessionId}`,
+        orderSummary: {
+          planTier,
+          displayName: planInfo.name,
+          billingPeriod,
+          unitMonthlyRate,
+          quantity: 1,
+          totalAmount,
           currency: "USD",
-          status: "SUCCEEDED",
-          planTier: "ENTERPRISE",
-          billingPeriod: "ANNUAL",
-          createdAt: new Date(Date.now() - 86400000 * 30).toISOString(),
+          includedOffers: planInfo.offers,
         },
-      ],
+      },
+      sessionId,
+      checkoutUrl: `/pricing?session_id=${sessionId}`,
+      orderSummary: {
+        planTier,
+        displayName: planInfo.name,
+        billingPeriod,
+        unitMonthlyRate,
+        quantity: 1,
+        totalAmount,
+        currency: "USD",
+        includedOffers: planInfo.offers,
+      },
     });
   }
+
+  if (
+    (path.startsWith("payments/session/") || path.startsWith("payments/checkout-session/")) &&
+    method === "GET"
+  ) {
+    const parts = path.split("/");
+    const sessionId = parts[parts.length - 2] === "session" || parts[parts.length - 2] === "checkout-session"
+      ? parts[parts.length - 1]
+      : parts[parts.indexOf("session") + 1] || parts[parts.indexOf("checkout-session") + 1];
+
+    const g = globalThis as any;
+    const session = g.__zoikoCheckoutSessions?.get(sessionId);
+
+    if (session) {
+      return NextResponse.json({
+        statusCode: 200,
+        data: session,
+        ...session,
+      });
+    }
+
+    return NextResponse.json({
+      statusCode: 200,
+      data: {
+        sessionId,
+        status: "SUCCEEDED",
+        planTier: "PROFESSIONAL",
+        billingPeriod: "ANNUAL",
+        amount: 30720,
+        currency: "USD",
+        customerEmail: "customer@zoikoshield.corp",
+        createdAt: new Date().toISOString(),
+      },
+      sessionId,
+      status: "SUCCEEDED",
+      planTier: "PROFESSIONAL",
+      billingPeriod: "ANNUAL",
+      amount: 30720,
+      currency: "USD",
+      customerEmail: "customer@zoikoshield.corp",
+      createdAt: new Date().toISOString(),
+    });
+  }
+
+  if (path === "payments" || path.startsWith("payments/")) {
+    return NextResponse.json(
+      {
+        statusCode: 503,
+        error: "PAYMENT_GATEWAY_OFFLINE",
+        message:
+          "The ZoikoShield payment gateway / Stripe service is currently unreachable. Real payment transactions require an active backend connection.",
+      },
+      { status: 503 }
+    );
+  }
+
+
 
   // 0a. Authentication Logout Gate: Invalidate all session cookies
   if (path === "auth/logout" || path.endsWith("/logout")) {
@@ -1000,7 +1045,31 @@ async function buildOfflineResponse(
 
     rememberOfflineAccount(adminEmail, body.password, adminName, "TENANT_OWNER", tenantId);
 
+    inMemoryDeliveries.unshift(
+      {
+        id: `dlv-verify-${crypto.randomBytes(4).toString("hex")}`,
+        event_id: "ZS-EML-IAM-001 (Account Verification OTP)",
+        channel: `EMAIL (${adminEmail})`,
+        status: "ACKNOWLEDGED",
+        attempt_count: 1,
+        delivered_at: new Date().toISOString(),
+        error_code: null,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: `dlv-org-${crypto.randomBytes(4).toString("hex")}`,
+        event_id: `ZS-EML-ORG-001 (Workspace Provisioned: ${orgName})`,
+        channel: `EMAIL (${adminEmail})`,
+        status: "ACKNOWLEDGED",
+        attempt_count: 1,
+        delivered_at: new Date().toISOString(),
+        error_code: null,
+        created_at: new Date().toISOString(),
+      }
+    );
+
     const response = NextResponse.json({
+      success: true,
       tenant: tenantObj,
       session: sessionObj,
       user: sessionObj,
@@ -1015,6 +1084,7 @@ async function buildOfflineResponse(
 
     response.cookies.set("zoiko_shield_access_token", token, { path: "/", httpOnly: false, sameSite: "lax" });
     response.cookies.set("zoiko_shield_tenant_id", tenantId, { path: "/", httpOnly: false, sameSite: "lax" });
+    response.cookies.set("zoiko_shield_user_email", adminEmail, { path: "/", httpOnly: false, sameSite: "lax" });
     response.cookies.set("shield_access_token", token, { path: "/", httpOnly: true, sameSite: "lax" });
     response.cookies.set("zoiko_auth", "true", { path: "/", httpOnly: false, sameSite: "lax" });
     return response;
@@ -1061,6 +1131,30 @@ async function buildOfflineResponse(
       createdAt: new Date().toISOString(),
     };
     rememberOfflineAccount(userEmail, body.password, userName, "TENANT_OWNER", newTenantId);
+
+    inMemoryDeliveries.unshift(
+      {
+        id: `dlv-verify-${crypto.randomBytes(4).toString("hex")}`,
+        event_id: "ZS-EML-IAM-001 (Account Verification OTP)",
+        channel: `EMAIL (${userEmail})`,
+        status: "ACKNOWLEDGED",
+        attempt_count: 1,
+        delivered_at: new Date().toISOString(),
+        error_code: null,
+        created_at: new Date().toISOString(),
+      },
+      {
+        id: `dlv-org-${crypto.randomBytes(4).toString("hex")}`,
+        event_id: `ZS-EML-ORG-001 (Workspace Provisioned: ${orgName})`,
+        channel: `EMAIL (${userEmail})`,
+        status: "ACKNOWLEDGED",
+        attempt_count: 1,
+        delivered_at: new Date().toISOString(),
+        error_code: null,
+        created_at: new Date().toISOString(),
+      }
+    );
+
     const response = NextResponse.json({
       success: true,
       tenant: tenantObj,
@@ -1815,13 +1909,34 @@ async function buildOfflineResponse(
       body = JSON.parse(rawBodyText || "{}");
     } catch { }
 
+    const generatedId = `tenant-${crypto.randomUUID().slice(0, 8)}`;
+    const orgName = body.tenantName || body.organizationName || "Zoiko Sovereign Security";
+    const orgSlug = body.tenantSlug || body.slug || "zoiko-sovereign";
+    const orderUuid = body.orderId || crypto.randomUUID();
+    const legalEntity = body.legalEntity?.legalName || body.legalEntityName || orgName;
+    const region = body.homeRegion || "us-east-1";
+    const owner = body.ownerEmail || "owner@zoikoshield.corp";
+    const dataCls = body.dataClass || "RESTRICTED";
+
     return NextResponse.json({
       success: true,
-      tenantId: "tenant-sovereign-01",
-      name: body.organizationName || "Zoiko Sovereign Security",
-      slug: body.slug || "zoiko-sovereign",
+      id: generatedId,
+      tenantId: generatedId,
+      organizationName: orgName,
+      name: orgName,
+      slug: orgSlug,
+      legalEntityName: legalEntity,
+      homeRegion: region,
+      dataResidencyRegion: region,
+      orderId: orderUuid,
+      dataClass: dataCls,
+      ownerEmail: owner,
       status: "ACTIVE",
       createdAt: new Date().toISOString(),
+      ownerInvitation: {
+        token: `inv_${crypto.randomUUID().slice(0, 16)}`,
+        activationUrl: `/accept-invite?token=inv_${crypto.randomUUID().slice(0, 16)}&tenant=${generatedId}`,
+      },
       message: "Tenant onboarded and provisioned with dedicated encryption keys and Cedar auth boundaries.",
     });
   }

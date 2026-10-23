@@ -1,11 +1,11 @@
 "use client";
 
-import React, { Suspense, useState } from "react";
+import React, { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
 import { useDemoState } from "@/lib/demo-state";
-import { isWebauthnSupported, requestPasskeyAssertion } from "@/lib/webauthn";
+import { isWebauthnSupported, requestPasskeyAssertion, describeCeremonyError } from "@/lib/webauthn";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
@@ -200,6 +200,34 @@ function LoginForm() {
   const [isRoleMatrixOpen, setIsRoleMatrixOpen] = useState(false);
   const [activeRoleTab, setActiveRoleTab] = useState<"SUPER_ADMIN" | "TENANT_OWNER" | "SECURITY_ANALYST" | "AUDITOR">("SUPER_ADMIN");
 
+  useEffect(() => {
+    if (wasLoggedOut) {
+      if (typeof window !== "undefined") {
+        (window as any).__zoiko_logging_out = false;
+      }
+      ZoikoShieldApiClient.logout().catch(() => {});
+      setDemoState((prev) => {
+        if (!prev.session?.isAuthenticated && !prev.session?.token) {
+          return prev;
+        }
+        return {
+          ...prev,
+          session: {
+            ...prev.session,
+            userId: "",
+            email: "",
+            fullName: "",
+            role: "SECURITY_ANALYST",
+            tenantId: "",
+            environment: "",
+            token: "",
+            isAuthenticated: false,
+          },
+        };
+      });
+    }
+  }, [wasLoggedOut, setDemoState]);
+
   const handleLogin = async (
     targetEmail = email,
     targetPassword = password,
@@ -251,13 +279,42 @@ function LoginForm() {
     setIsPasskeyLoading(true);
     setError(null);
     try {
-      const options = await ZoikoShieldApiClient.getPasskeyLoginOptions(email);
+      const targetEmail = email.trim();
+      const targetTenant = tenantId.trim();
+      if (!targetEmail) {
+        setError("Please enter your account email address above before initiating FIDO2 passkey authentication.");
+        setIsPasskeyLoading(false);
+        return;
+      }
+      const options = await ZoikoShieldApiClient.getPasskeyLoginOptions(targetEmail);
       const assertion = await requestPasskeyAssertion(options);
-      await ZoikoShieldApiClient.loginWithPasskey(assertion, tenantId);
+      const authResult = await ZoikoShieldApiClient.loginWithPasskey(assertion, targetTenant);
+
+      setDemoState((prev) => ({
+        ...prev,
+        session: {
+          ...prev.session,
+          email: authResult.email || targetEmail,
+          fullName: authResult.fullName || targetEmail.split("@")[0].replace(/[._]/g, " ").toUpperCase(),
+          role: (authResult.role || "TENANT_OWNER") as any,
+          token: authResult.token || `passkey-${Date.now()}`,
+          isAuthenticated: true,
+        },
+        tenant: {
+          ...prev.tenant,
+          id: authResult.tenantId || targetTenant || prev.tenant.id,
+        },
+      }));
+
       const target = redirectTarget.startsWith("/") ? redirectTarget : "/";
       window.location.href = target;
     } catch (err: any) {
-      setError(err?.message || "Passkey sign-in failed.");
+      console.warn("Passkey sign-in error:", err);
+      if (err?.status === 503 || err?.message?.includes("identity service")) {
+        setError("WebAuthn Service Unavailable: The ZoikoShield identity service is currently not reachable. Please sign in with email and password or verify service reachability.");
+      } else {
+        setError(describeCeremonyError(err, "sign in"));
+      }
     } finally {
       setIsPasskeyLoading(false);
     }
@@ -356,6 +413,9 @@ function LoginForm() {
             </label>
             <input
               type="email"
+              id="login-email"
+              name="login-email"
+              autoComplete="off"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -385,6 +445,9 @@ function LoginForm() {
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
+                id="login-password"
+                name="login-password"
+                autoComplete="new-password"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -417,6 +480,9 @@ function LoginForm() {
             </label>
             <input
               type="text"
+              id="login-tenant-id"
+              name="login-tenant-id"
+              autoComplete="off"
               required
               value={tenantId}
               onChange={(e) => setTenantId(e.target.value.trim())}
@@ -468,6 +534,17 @@ function LoginForm() {
         </div>
 
 
+
+        {/* Role Permissions & Functionality (tester reference) */}
+        <button
+          type="button"
+          id="btn-view-role-matrix"
+          onClick={() => setIsRoleMatrixOpen(true)}
+          className="w-full flex items-center justify-center gap-2 py-2 rounded-xl border border-line bg-canvas text-xs font-mono text-slate-300 hover:border-cyan-500/50 hover:text-cyan-300 transition-colors"
+        >
+          <ListChecks className="w-4 h-4 text-cyan-400" />
+          <span>View Role Permissions &amp; Functionality</span>
+        </button>
 
         {/* Account Creation & Invitation Notice */}
         <div className="pt-4 border-t border-line flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-400">
