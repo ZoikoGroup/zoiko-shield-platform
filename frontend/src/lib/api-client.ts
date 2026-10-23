@@ -269,13 +269,31 @@ export class ZoikoShieldApiClient {
   static async logout(): Promise<void> {
     if (typeof window !== "undefined") {
       try {
-        document.cookie = "zoiko_auth=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-        document.cookie = "zoiko_shield_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-        document.cookie = "shield_access_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
-        document.cookie = "zoiko_shield_tenant_id=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        (window as any).__zoiko_logging_out = true;
+        const cookieNames = [
+          "zoiko_auth",
+          "zoiko_shield_access_token",
+          "shield_access_token",
+          "zoiko_shield_tenant_id",
+          "zoiko_shield_user_email",
+        ];
+        const host = window.location.hostname;
+        const domains = [host, `.${host}`, ""];
+        for (const name of cookieNames) {
+          for (const d of domains) {
+            const domainClause = d ? `; domain=${d}` : "";
+            document.cookie = `${name}=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT${domainClause}`;
+            document.cookie = `${name}=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT; Secure; SameSite=Lax${domainClause}`;
+          }
+        }
 
         try {
           await fetch("/api/v1/auth/logout", { method: "POST", keepalive: true });
+        } catch {}
+
+        try {
+          localStorage.removeItem("zoikoshield_demo_state");
+          sessionStorage.clear();
         } catch {}
 
         const state = getState();
@@ -453,7 +471,7 @@ export class ZoikoShieldApiClient {
     legalCountry?: string;
   }): Promise<Tenant> {
     const payload = {
-      orderId: data.orderId || "00000000-0000-4000-8000-000000000001",
+      orderId: data.orderId || generateUUID(),
       tenantName: data.organizationName,
       tenantSlug: data.slug,
       homeRegion: data.homeRegion,
@@ -3037,7 +3055,57 @@ export class ZoikoShieldApiClient {
     );
   }
 
-  // --- Payment & Subscription Processing ---
+  // --- Payment & Subscription Processing (Stripe Checkout) ---
+  static async createCheckoutSession(payload: {
+    planTier: string;
+    billingPeriod: "MONTHLY" | "ANNUAL";
+    quantity?: number;
+    currency?: string;
+    successUrl?: string;
+    cancelUrl?: string;
+    tenantId?: string;
+    userEmail?: string;
+  }): Promise<{
+    sessionId: string;
+    checkoutUrl?: string;
+    orderSummary: {
+      planTier: string;
+      displayName: string;
+      billingPeriod: string;
+      unitMonthlyRate: number;
+      quantity: number;
+      totalAmount: number;
+      currency: string;
+      includedOffers?: string[];
+    };
+  }> {
+    return this.safeFetch(
+      "/api/v1/payments/checkout-session",
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      },
+      null
+    );
+  }
+
+  static async getCheckoutSessionStatus(sessionId: string): Promise<{
+    sessionId: string;
+    status: "SUCCEEDED" | "PENDING" | "FAILED" | "CANCELLED";
+    planTier?: string;
+    billingPeriod?: string;
+    amount?: number;
+    currency?: string;
+    paymentIntentId?: string;
+    createdAt?: string;
+  }> {
+    return this.safeFetch(
+      `/api/v1/payments/session/${sessionId}/status`,
+      { method: "GET" },
+      null
+    );
+  }
+
   static async processPayment(payload: {
     amount: number;
     currency?: string;
@@ -3058,40 +3126,7 @@ export class ZoikoShieldApiClient {
         method: "POST",
         body: JSON.stringify(payload),
       },
-      () => {
-        const isFailed = payload.paymentMethodToken?.startsWith("tok_invalid") || payload.cardNumber?.endsWith("0002");
-        if (isFailed) {
-          throw new ZoikoShieldApiError(
-            "Simulated charge declined: Insufficient funds or card marked as tok_invalid by testing suite.",
-            402,
-            "/api/v1/payments"
-          );
-        }
-        const providerPaymentId = `ch_${generateUUID().replace(/-/g, "").substring(0, 24)}`;
-        return {
-          statusCode: 201,
-          status: "SUCCESS",
-          message: "Payment successfully authorized and processed.",
-          data: {
-            id: `pay-${generateUUID().substring(0, 8)}`,
-            providerPaymentId,
-            amount: payload.amount,
-            currency: payload.currency || "USD",
-            status: "SUCCEEDED",
-            paymentMethod: {
-              brand: "Visa",
-              last4: payload.cardNumber ? payload.cardNumber.slice(-4) : "4242",
-              funding: "credit",
-            },
-            planTier: payload.planTier,
-            billingPeriod: payload.billingPeriod,
-            tenantId: getState().tenant.id,
-            receiptUrl: `https://billing.zoikoshield.io/receipts/${providerPaymentId}`,
-            rfc3161AuditHash: sha256Mock(providerPaymentId),
-            createdAt: new Date().toISOString(),
-          },
-        };
-      }
+      null
     );
   }
 

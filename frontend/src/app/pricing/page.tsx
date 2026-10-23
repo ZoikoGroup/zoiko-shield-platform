@@ -43,17 +43,36 @@ export default function PricingPage() {
   const [recommendation, setRecommendation] = useState<PlanRecommendation | null>(null);
   const [calculating, setCalculating] = useState(false);
 
-  // Simulated Payment & Checkout State
+  // Stripe Payment & Checkout State
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [selectedPlanForCheckout, setSelectedPlanForCheckout] = useState<PlanTier | null>(null);
-  const [cardholderName, setCardholderName] = useState("Acme Corp Security Operations");
-  const [cardNumber, setCardNumber] = useState("4242 4242 4242 4242");
-  const [cardExpiry, setCardExpiry] = useState("12/28");
-  const [cardCvc, setCardCvc] = useState("123");
-  const [paymentToken, setPaymentToken] = useState("tok_visa_valid");
+  const [organizationName, setOrganizationName] = useState("Acme Corp Security Operations");
+  const [billingEmail, setBillingEmail] = useState("admin@acme.com");
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState<string | null>(null);
-  const [paymentReceipt, setPaymentReceipt] = useState<any | null>(null);
+  const [checkoutSession, setCheckoutSession] = useState<any | null>(null);
+  const [verifiedSession, setVerifiedSession] = useState<any | null>(null);
+  const [isVerifyingSession, setIsVerifyingSession] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const sessionId = params.get("session_id");
+      if (sessionId) {
+        setIsVerifyingSession(true);
+        ZoikoShieldApiClient.getCheckoutSessionStatus(sessionId)
+          .then((status) => {
+            setVerifiedSession(status);
+          })
+          .catch((err) => {
+            console.error("Failed to verify checkout session:", err);
+          })
+          .finally(() => {
+            setIsVerifyingSession(false);
+          });
+      }
+    }
+  }, []);
 
   useEffect(() => {
     async function loadPlans() {
@@ -93,62 +112,33 @@ export default function PricingPage() {
   const openCheckoutForPlan = (plan: PlanTier) => {
     setSelectedPlanForCheckout(plan);
     setPaymentError(null);
-    setPaymentReceipt(null);
+    setCheckoutSession(null);
     setIsCheckoutOpen(true);
   };
 
-  const setTestCardPreset = (presetType: "VISA_VALID" | "MC_VALID" | "DECLINED" | "WIRE") => {
-    setPaymentError(null);
-    if (presetType === "VISA_VALID") {
-      setCardNumber("4242 4242 4242 4242");
-      setCardExpiry("12/28");
-      setCardCvc("123");
-      setPaymentToken("tok_visa_valid");
-    } else if (presetType === "MC_VALID") {
-      setCardNumber("5555 5555 5555 4444");
-      setCardExpiry("08/29");
-      setCardCvc("456");
-      setPaymentToken("tok_mastercard");
-    } else if (presetType === "DECLINED") {
-      setCardNumber("4000 0000 0000 0002");
-      setCardExpiry("10/27");
-      setCardCvc("999");
-      setPaymentToken("tok_invalid_charge");
-    } else if (presetType === "WIRE") {
-      setCardNumber("WIRE-ACH-ESCROW-2026");
-      setCardExpiry("12/30");
-      setCardCvc("000");
-      setPaymentToken("wire_escrow_sovereign");
-    }
-  };
-
-  const handleProcessPayment = async (e: React.FormEvent) => {
+  const handleInitiateCheckout = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedPlanForCheckout) return;
 
     setIsProcessingPayment(true);
     setPaymentError(null);
-    setPaymentReceipt(null);
-
-    const monthlyCost = isAnnual
-      ? (selectedPlanForCheckout.pricing?.annualBilledMonthlyUsd || 10000)
-      : (selectedPlanForCheckout.pricing?.monthlyUsd || 12000);
-    const totalAmount = isAnnual ? monthlyCost * 12 : monthlyCost;
+    setCheckoutSession(null);
 
     try {
-      const res = await ZoikoShieldApiClient.processPayment({
-        amount: totalAmount,
-        currency: "USD",
-        paymentMethodToken: paymentToken,
+      const res = await ZoikoShieldApiClient.createCheckoutSession({
         planTier: selectedPlanForCheckout.key,
         billingPeriod: isAnnual ? "ANNUAL" : "MONTHLY",
-        cardNumber,
-        cardholderName,
+        userEmail: billingEmail,
+        tenantId: organizationName.toLowerCase().replace(/[^a-z0-9]/g, "-"),
       });
 
-      setPaymentReceipt(res.data);
+      setCheckoutSession(res);
+
+      if (res.checkoutUrl && res.checkoutUrl.startsWith("http")) {
+        window.location.href = res.checkoutUrl;
+      }
     } catch (err: any) {
-      setPaymentError(err.message || "Payment authorization failed. Simulated card was declined.");
+      setPaymentError(err.message || "Failed to create Stripe checkout session.");
     } finally {
       setIsProcessingPayment(false);
     }
@@ -197,10 +187,37 @@ export default function PricingPage() {
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 text-xs font-mono font-bold hover:bg-cyan-500/25 transition-all shadow-[0_0_15px_rgba(6,182,212,0.2)] ml-2"
           >
             <CreditCard className="w-3.5 h-3.5 text-cyan-400" />
-            <span>💳 Test Payment Flow</span>
+            <span>💳 Stripe Checkout</span>
           </button>
         </div>
       </div>
+
+      {/* Verified Stripe Checkout Banner */}
+      {verifiedSession && (
+        <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+            <div>
+              <div className="font-bold text-slate-100 flex items-center gap-2">
+                <span>Stripe Checkout Verified — Subscription {verifiedSession.status}</span>
+                <span className="px-2 py-0.5 rounded bg-emerald-900 border border-emerald-400/40 text-[10px] font-mono text-emerald-300">
+                  {verifiedSession.sessionId}
+                </span>
+              </div>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Your subscription has been verified by the backend. Entitlements have been granted and confirmation emails dispatched.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setVerifiedSession(null)}
+            className="p-1 rounded-lg hover:bg-emerald-900/50 text-slate-400 hover:text-white"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Mandatory Source of Truth & Commercial Sizing Disclaimer Banner */}
       <div className="surface-card p-5 rounded-xl border border-cyan-500/30 shadow-[0_0_20px_rgba(6,182,212,0.1)] flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 text-xs text-slate-300 bg-raised">
@@ -357,7 +374,7 @@ export default function PricingPage() {
                   }`}
                 >
                   <CreditCard className="w-3.5 h-3.5" />
-                  <span>💳 Subscribe &amp; Pay (Test Checkout)</span>
+                  <span>💳 Subscribe via Stripe</span>
                 </button>
                 <Link
                   href={plan.pricing?.isContractOnly ? "/team" : "/onboarding"}
@@ -566,82 +583,134 @@ export default function PricingPage() {
               </button>
             </div>
 
-            {paymentReceipt ? (
-              /* Success Receipt View */
+            {checkoutSession ? (
+              /* Success / Active Stripe Checkout Session View */
               <div className="space-y-5 animate-in fade-in duration-200">
-                <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-500/50 text-emerald-300 space-y-2">
+                <div className="p-4 rounded-xl bg-cyan-950/40 border border-cyan-500/50 text-cyan-300 space-y-2">
                   <div className="flex items-center gap-2 text-sm font-bold">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                    <span>Payment Successfully Authorized &amp; Plan Provisioned!</span>
+                    <CheckCircle2 className="w-5 h-5 text-cyan-400" />
+                    <span>Stripe Checkout Session Initiated</span>
                   </div>
                   <p className="text-xs text-slate-300">
-                    Your sovereign commercial tier has been upgraded to <strong>{selectedPlanForCheckout.displayName}</strong>.
-                    Billing adheres strictly to Rule PR-02: zero surcharges for security alert storms.
+                    Your Stripe checkout session has been generated. Complete payment through Stripe&apos;s secure infrastructure to activate subscription entitlements.
                   </p>
                 </div>
 
-                {/* Cryptographic Transaction Details */}
+                {/* Session & Order Summary */}
                 <div className="p-4 rounded-xl bg-canvas border border-line space-y-2.5 font-mono text-xs">
                   <div className="text-[11px] text-cyan-400 font-bold uppercase tracking-wider flex items-center justify-between border-b border-slate-800/80 pb-2">
-                    <span>Audit Evidence &amp; Receipt Proof</span>
-                    <span className="text-emerald-400">STATUS: {paymentReceipt.status}</span>
+                    <span>Order Summary</span>
+                    <span className="text-cyan-300 font-mono">STATUS: PENDING PAYMENT</span>
                   </div>
                   <div className="flex justify-between text-slate-300">
-                    <span className="text-slate-500">Transaction ID:</span>
-                    <span className="text-slate-200">{paymentReceipt.providerPaymentId}</span>
-                  </div>
-                  <div className="flex justify-between text-slate-300">
-                    <span className="text-slate-500">Amount Charged:</span>
-                    <span className="text-emerald-300 font-bold">
-                      ${paymentReceipt.amount?.toLocaleString()} {paymentReceipt.currency}
-                    </span>
+                    <span className="text-slate-500">Session ID:</span>
+                    <span className="text-slate-200 text-[11px] font-mono">{checkoutSession.sessionId}</span>
                   </div>
                   <div className="flex justify-between text-slate-300">
                     <span className="text-slate-500">Plan Tier:</span>
-                    <span className="text-cyan-300">{paymentReceipt.planTier} ({paymentReceipt.billingPeriod})</span>
+                    <span className="text-cyan-300 font-bold">{checkoutSession.orderSummary?.displayName || selectedPlanForCheckout.displayName}</span>
                   </div>
                   <div className="flex justify-between text-slate-300">
-                    <span className="text-slate-500">Payment Instrument:</span>
-                    <span className="text-slate-200">
-                      {paymentReceipt.paymentMethod?.brand} •••• {paymentReceipt.paymentMethod?.last4}
-                    </span>
+                    <span className="text-slate-500">Billing Period:</span>
+                    <span className="text-slate-200">{checkoutSession.orderSummary?.billingPeriod || (isAnnual ? "ANNUAL" : "MONTHLY")}</span>
                   </div>
                   <div className="flex justify-between text-slate-300">
-                    <span className="text-slate-500">Target Tenant:</span>
-                    <span className="text-slate-200">{paymentReceipt.tenantId}</span>
-                  </div>
-                  <div className="pt-2 border-t border-slate-800/80 space-y-1">
-                    <span className="text-slate-500 text-[10px] block">RFC 3161 Merkle Hash:</span>
-                    <span className="text-cyan-400 text-[10px] break-all block">
-                      {paymentReceipt.rfc3161AuditHash}
+                    <span className="text-slate-500">Total Amount:</span>
+                    <span className="text-emerald-300 font-bold">
+                      {checkoutSession.orderSummary?.currency || "USD"} {checkoutSession.orderSummary?.totalAmount?.toLocaleString()}
                     </span>
                   </div>
+                  {checkoutSession.orderSummary?.includedOffers && (
+                    <div className="flex justify-between text-slate-300">
+                      <span className="text-slate-500">Included Offers:</span>
+                      <span className="text-slate-200 text-[10px]">{checkoutSession.orderSummary.includedOffers.join(", ")}</span>
+                    </div>
+                  )}
                 </div>
 
-                {/* Receipt Actions */}
+                {/* Actions */}
                 <div className="flex flex-col sm:flex-row items-center justify-end gap-3 pt-2">
+                  {checkoutSession.checkoutUrl && (
+                    <a
+                      href={checkoutSession.checkoutUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold font-mono flex items-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all"
+                    >
+                      <span>Proceed to Stripe Hosted Checkout</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </a>
+                  )}
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => {
-                      setPaymentReceipt(null);
+                      setCheckoutSession(null);
                       setPaymentError(null);
                     }}
                   >
-                    Test Another Card / Payment
+                    Back to Plans
                   </Button>
                   <Button
                     type="button"
                     variant="primary"
                     onClick={() => setIsCheckoutOpen(false)}
                   >
-                    Done &amp; Return to Platform
+                    Done
                   </Button>
                 </div>
               </div>
+            ) : selectedPlanForCheckout.pricing?.isContractOnly && !selectedPlanForCheckout.pricing?.monthlyUsd ? (
+              /* ADR-06 Contract-Only Tier Notice */
+              <div className="space-y-5">
+                <div className="p-4 rounded-xl bg-amber-950/40 border border-amber-500/50 text-amber-300 space-y-2">
+                  <div className="flex items-center gap-2 text-sm font-bold">
+                    <Lock className="w-5 h-5 text-amber-400" />
+                    <span>Enterprise SOW / Contract Required (ADR-06)</span>
+                  </div>
+                  <p className="text-xs text-slate-300 leading-relaxed">
+                    Per Zoiko Shield commercial assurance policy ADR-06 / ZS-COM-BILL-001 §161, <strong>{selectedPlanForCheckout.displayName}</strong> is quoted bespoke. Direct self-serve credit card billing is restricted for sovereign and custom SLA deployments.
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-canvas border border-line space-y-2 font-mono text-xs">
+                  <div className="text-slate-400 text-xs font-semibold">Contract Includes:</div>
+                  <ul className="space-y-1.5 text-slate-300">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Dedicated regional sovereign cell placement</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Order-form bound SLA &amp; IR retainer allocation</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle2 className="w-3.5 h-3.5 text-cyan-400" />
+                      <span>Multi-year commitment discounts &amp; custom invoicing</span>
+                    </li>
+                  </ul>
+                </div>
+
+                <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsCheckoutOpen(false)}
+                  >
+                    Close
+                  </Button>
+                  <Link
+                    href="/team"
+                    className="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold font-mono flex items-center gap-2 shadow-[0_0_20px_rgba(6,182,212,0.4)] transition-all"
+                  >
+                    <span>Contact Enterprise Sales</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
+                </div>
+              </div>
             ) : (
-              /* Checkout Form View */
-              <form onSubmit={handleProcessPayment} className="space-y-5">
+              /* Stripe Checkout Session Form */
+              <form onSubmit={handleInitiateCheckout} className="space-y-5">
                 {/* Plan Selection Summary Card */}
                 <div className="p-4 rounded-xl bg-canvas border border-line flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div>
@@ -657,10 +726,12 @@ export default function PricingPage() {
                   </div>
                   <div className="text-right">
                     <div className="text-2xl font-black text-cyan-400">
-                      ${(isAnnual
-                        ? (selectedPlanForCheckout.pricing?.annualBilledMonthlyUsd || 10000) * 12
-                        : (selectedPlanForCheckout.pricing?.monthlyUsd || 12000)
-                      ).toLocaleString()}
+                      {selectedPlanForCheckout.pricing?.monthlyUsd
+                        ? `$${(isAnnual
+                            ? (selectedPlanForCheckout.pricing.annualBilledMonthlyUsd || selectedPlanForCheckout.pricing.monthlyUsd * 0.8) * 12
+                            : selectedPlanForCheckout.pricing.monthlyUsd
+                          ).toLocaleString()}`
+                        : "Custom Pricing"}
                     </div>
                     <div className="text-[10px] font-mono text-slate-500">
                       {isAnnual ? "/ year total" : "/ month"}
@@ -691,128 +762,41 @@ export default function PricingPage() {
                   </div>
                 </div>
 
-                {/* 1-Click Tester Card Presets */}
-                <div className="space-y-2 pt-2 border-t border-slate-800">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider">
-                      QA TEST CARDS (1-CLICK FILL):
-                    </span>
-                    <span className="text-[10px] font-mono text-cyan-400">Simulated Stripe Tokens</span>
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setTestCardPreset("VISA_VALID")}
-                      className={`p-2 rounded-lg border text-left text-xs transition-all ${
-                        paymentToken === "tok_visa_valid"
-                          ? "bg-emerald-950/40 border-emerald-400 text-emerald-300 font-bold"
-                          : "bg-canvas border-line text-slate-400 hover:border-slate-700"
-                      }`}
-                    >
-                      <div className="text-[10px] text-emerald-400 font-mono">SUCCESS</div>
-                      <div>Visa (4242)</div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTestCardPreset("MC_VALID")}
-                      className={`p-2 rounded-lg border text-left text-xs transition-all ${
-                        paymentToken === "tok_mastercard"
-                          ? "bg-emerald-950/40 border-emerald-400 text-emerald-300 font-bold"
-                          : "bg-canvas border-line text-slate-400 hover:border-slate-700"
-                      }`}
-                    >
-                      <div className="text-[10px] text-emerald-400 font-mono">SUCCESS</div>
-                      <div>Mastercard</div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTestCardPreset("DECLINED")}
-                      className={`p-2 rounded-lg border text-left text-xs transition-all ${
-                        paymentToken === "tok_invalid_charge"
-                          ? "bg-rose-950/40 border-rose-400 text-rose-300 font-bold"
-                          : "bg-canvas border-line text-slate-400 hover:border-slate-700"
-                      }`}
-                    >
-                      <div className="text-[10px] text-rose-400 font-mono">TEST ERROR</div>
-                      <div>Declined (0002)</div>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setTestCardPreset("WIRE")}
-                      className={`p-2 rounded-lg border text-left text-xs transition-all ${
-                        paymentToken === "wire_escrow_sovereign"
-                          ? "bg-cyan-950/40 border-cyan-400 text-cyan-300 font-bold"
-                          : "bg-canvas border-line text-slate-400 hover:border-slate-700"
-                      }`}
-                    >
-                      <div className="text-[10px] text-cyan-400 font-mono">ENTERPRISE</div>
-                      <div>Corporate Wire</div>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Payment Fields */}
+                {/* Organization & Billing Contact */}
                 <div className="space-y-3 pt-2">
                   <div className="space-y-1">
-                    <label className="text-xs font-mono text-slate-300">Billing Organization / Cardholder Name:</label>
+                    <label className="text-xs font-mono text-slate-300">Billing Organization Name:</label>
                     <input
                       type="text"
                       required
-                      value={cardholderName}
-                      onChange={(e) => setCardholderName(e.target.value)}
+                      value={organizationName}
+                      onChange={(e) => setOrganizationName(e.target.value)}
                       className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
                     />
                   </div>
 
                   <div className="space-y-1">
-                    <label className="text-xs font-mono text-slate-300 flex items-center justify-between">
-                      <span>Card Number / Payment Token:</span>
-                      <span className="text-[10px] text-cyan-400 font-normal">Token: {paymentToken}</span>
-                    </label>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        required
-                        value={cardNumber}
-                        onChange={(e) => setCardNumber(e.target.value)}
-                        className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
-                      />
-                      <CreditCard className="w-4 h-4 text-slate-500 absolute right-3 top-3" />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <label className="text-xs font-mono text-slate-300">Expiration (MM/YY):</label>
-                      <input
-                        type="text"
-                        required
-                        value={cardExpiry}
-                        onChange={(e) => setCardExpiry(e.target.value)}
-                        placeholder="MM/YY"
-                        className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-mono text-slate-300">Security CVC:</label>
-                      <input
-                        type="text"
-                        required
-                        value={cardCvc}
-                        onChange={(e) => setCardCvc(e.target.value)}
-                        placeholder="123"
-                        className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
-                      />
-                    </div>
+                    <label className="text-xs font-mono text-slate-300">Billing Notification Work Email:</label>
+                    <input
+                      type="email"
+                      required
+                      value={billingEmail}
+                      onChange={(e) => setBillingEmail(e.target.value)}
+                      placeholder="finance@acme.com"
+                      className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-xs text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
+                    />
+                    <span className="text-[10px] text-slate-500 font-mono">
+                      Invoices, receipts (ZS-EML-BILL-006) and payment notices will be routed to this email.
+                    </span>
                   </div>
                 </div>
 
-                {/* Decline Error Banner */}
+                {/* Error Banner */}
                 {paymentError && (
                   <div className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-500/50 text-rose-300 text-xs font-mono space-y-1">
                     <div className="flex items-center gap-1.5 font-bold">
                       <ShieldAlert className="w-4 h-4 text-rose-400 shrink-0" />
-                      <span>Payment Declined (Testing Failure Verification)</span>
+                      <span>Checkout Error</span>
                     </div>
                     <p className="text-[11px] text-slate-300">
                       {paymentError}
@@ -824,7 +808,7 @@ export default function PricingPage() {
                 <div className="flex items-center justify-between border-t border-slate-800 pt-4">
                   <div className="text-[11px] font-mono text-slate-500 flex items-center gap-1.5">
                     <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                    <span>256-Bit TLS &amp; Tokenized Card Escrow</span>
+                    <span>Official Stripe Checkout • TLS 1.3 Encryption</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Button
@@ -840,7 +824,7 @@ export default function PricingPage() {
                       isLoading={isProcessingPayment}
                       className="font-bold shadow-[0_0_20px_rgba(6,182,212,0.3)]"
                     >
-                      <span>Authorize &amp; Complete Payment</span>
+                      <span>Proceed to Stripe Checkout</span>
                     </Button>
                   </div>
                 </div>

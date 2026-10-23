@@ -66,15 +66,15 @@ function ReasonList({ reasons }: { reasons: string[] }) {
 function ProvenanceTable({ evidence }: { evidence: ContractEvidence }) {
   if (evidence.sources.length === 0) return null;
   return (
-    <details className="mt-6 rounded-lg border border-slate-800 bg-slate-950/40">
-      <summary className="cursor-pointer px-4 py-2 text-xs font-mono text-slate-400 hover:text-slate-200">
+    <details className="mt-6 rounded-lg border border-line bg-surface/60">
+      <summary className="cursor-pointer px-4 py-2 text-xs font-mono text-slate-400 hover:text-slate-100">
         provenance — {evidence.sources.filter((s) => s.ok).length}/{evidence.sources.length} sources
         answered · correlation {evidence.correlationId.slice(0, 8) || "—"}
       </summary>
       <div className="overflow-x-auto px-4 pb-3">
         <table className="w-full text-xs font-mono">
           <thead>
-            <tr className="text-left text-slate-500 border-b border-slate-800">
+            <tr className="text-left text-slate-400 border-b border-line">
               <th className="py-1 pr-3">Source</th>
               <th className="py-1 pr-3">Endpoint</th>
               <th className="py-1 pr-3">Result</th>
@@ -84,21 +84,21 @@ function ProvenanceTable({ evidence }: { evidence: ContractEvidence }) {
           </thead>
           <tbody>
             {evidence.sources.map((source) => (
-              <tr key={source.key} className="border-b border-slate-900 last:border-0">
-                <td className="py-1 pr-3 text-slate-300">
+              <tr key={source.key} className="border-b border-line/50 last:border-0">
+                <td className="py-1 pr-3 text-slate-200">
                   {source.label}
-                  {source.optional && <span className="text-slate-600"> (optional)</span>}
+                  {source.optional && <span className="text-slate-500"> (optional)</span>}
                 </td>
-                <td className="py-1 pr-3 text-slate-500 break-all">{source.path}</td>
+                <td className="py-1 pr-3 text-slate-400 break-all">{source.path}</td>
                 <td
-                  className={`py-1 pr-3 ${source.ok ? "text-emerald-300" : "text-rose-300"}`}
+                  className={`py-1 pr-3 ${source.ok ? "text-emerald-400" : "text-rose-400"}`}
                 >
                   {source.ok ? `ok ${source.httpStatus}` : source.error}
                 </td>
-                <td className="py-1 pr-3 text-slate-500">
+                <td className="py-1 pr-3 text-slate-400">
                   {source.fetchedAt ? formatTimestamp(source.fetchedAt) : "—"}
                 </td>
-                <td className="py-1 text-slate-500">
+                <td className="py-1 text-slate-400">
                   {source.reportedAt ? formatTimestamp(source.reportedAt) : "not stated"}
                 </td>
               </tr>
@@ -122,19 +122,19 @@ export function ContractSurface({
 
   return (
     <div className="space-y-6">
-      <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-b from-raised to-surface shadow-xl">
+      <div className="surface-card rounded-2xl p-6 border border-line bg-gradient-to-b from-raised to-surface shadow-xl">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="flex items-center gap-2.5">
-              <h1 className="text-xl font-bold tracking-tight text-white">{title}</h1>
-              <Badge variant="neutral" className="font-mono text-[11px] bg-slate-900 border-slate-700 text-slate-300">{contractId}</Badge>
+              <h1 className="text-xl font-bold tracking-tight text-slate-100">{title}</h1>
+              <Badge variant="neutral" className="font-mono text-[11px] bg-surface border-line text-slate-200">{contractId}</Badge>
               <Badge variant={STATUS_BADGE[status]} className="font-mono text-[11px] uppercase tracking-wider">{status}</Badge>
             </div>
             <p className="mt-1.5 text-xs font-mono text-slate-400 max-w-3xl leading-relaxed">{purpose}</p>
           </div>
           <div className="flex items-center gap-2.5">
             {actions}
-            <Button variant="ghost" onClick={evidence.reload} className="border border-slate-800 hover:border-slate-700 text-slate-300">
+            <Button variant="ghost" onClick={evidence.reload} className="border border-line hover:border-line-strong text-slate-200">
               <RefreshCw className="h-4 w-4 text-cyan-400" />
               <span>Refresh</span>
             </Button>

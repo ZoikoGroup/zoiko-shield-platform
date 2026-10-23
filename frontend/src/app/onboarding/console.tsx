@@ -15,6 +15,16 @@ import {
 
 import { useDemoState } from "@/lib/demo-state";
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+const generateUUID = () => {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  const hex = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
+  return `${hex()}${hex()}-${hex()}-4${hex().substring(1)}-8${hex().substring(1)}-${hex()}${hex()}${hex()}`;
+};
+
 export interface OnboardingConsoleProps {
   orderId?: string;
   setOrderId?: (v: string) => void;
@@ -36,15 +46,17 @@ export interface OnboardingConsoleProps {
 
 export default function OnboardingPage(props: OnboardingConsoleProps = {}) {
   const router = useRouter();
-  const [demoState] = useDemoState();
-  const [internalOrderId, setInternalOrderId] = useState(() => props.orderId || demoState.tenant?.orderId || "00000000-0000-4000-8000-000000000001");
-  const [internalOrgName, setInternalOrgName] = useState(() => props.orgName || demoState.tenant?.organizationName || "");
-  const [internalSlug, setInternalSlug] = useState(() => props.slug || demoState.tenant?.slug || "");
-  const [internalLegalEntity, setInternalLegalEntity] = useState(() => props.legalEntity || demoState.tenant?.legalEntityName || demoState.tenant?.organizationName || "");
+  const [demoState, setDemoState] = useDemoState();
+  const [internalOrderId, setInternalOrderId] = useState(
+    () => props.orderId || generateUUID()
+  );
+  const [internalOrgName, setInternalOrgName] = useState(() => props.orgName || "");
+  const [internalSlug, setInternalSlug] = useState(() => props.slug || "");
+  const [internalLegalEntity, setInternalLegalEntity] = useState(() => props.legalEntity || "");
   const [internalOwnerEmail, setInternalOwnerEmail] = useState(() => props.ownerEmail || demoState.session?.email || "");
-  const [internalEnvironment, setInternalEnvironment] = useState(() => props.environment || demoState.tenant?.environmentName || "PRODUCTION-US-EAST");
-  const [internalRegion, setInternalRegion] = useState(() => props.region || demoState.tenant?.homeRegion || "us-east-1");
-  const [internalDataClass, setInternalDataClass] = useState<"PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED">(() => props.dataClass || (demoState.tenant?.dataClass as any) || "RESTRICTED");
+  const [internalEnvironment, setInternalEnvironment] = useState(() => props.environment || "PRODUCTION-US-EAST");
+  const [internalRegion, setInternalRegion] = useState(() => props.region || "us-east-1");
+  const [internalDataClass, setInternalDataClass] = useState<"PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED">(() => props.dataClass || "RESTRICTED");
 
   // Keep internal state synchronized with props when they update
   React.useEffect(() => {
@@ -81,8 +93,8 @@ export default function OnboardingPage(props: OnboardingConsoleProps = {}) {
   const [errorReason, setErrorReason] = useState<string>("");
 
   const handleSeedOrder = () => {
-    const hex = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).substring(1);
-    setOrderId(`${hex()}${hex()}-${hex()}-4${hex().substring(1)}-8${hex().substring(1)}-${hex()}${hex()}${hex()}`);
+    const newId = generateUUID();
+    setOrderId(newId);
   };
 
   const handleOnboard = async (e: React.FormEvent) => {
@@ -103,6 +115,23 @@ export default function OnboardingPage(props: OnboardingConsoleProps = {}) {
         accessDisclosureVersion: "1",
       });
       setProvisionedTenant(tenant);
+      if (setDemoState) {
+        setDemoState((prev) => ({
+          ...prev,
+          tenant: {
+            ...prev.tenant,
+            ...tenant,
+            id: tenant.id || (tenant as any).tenantId || "tenant-001",
+            organizationName: tenant.organizationName || orgName,
+            slug: tenant.slug || slug,
+            legalEntityName: tenant.legalEntityName || legalEntity,
+            environmentName: tenant.environmentName || environment,
+            homeRegion: tenant.homeRegion || region,
+            orderId: orderId,
+            dataClass: dataClass,
+          },
+        }));
+      }
     } catch (err: any) {
       console.error("Onboarding Error:", err);
       if (err?.status === 401 || err?.status === 403) {

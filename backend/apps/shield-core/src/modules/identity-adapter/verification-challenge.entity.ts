@@ -1,6 +1,6 @@
 import type { VerificationChallenge as VerificationChallengeRow } from '@prisma/client';
 
-export type ChallengePurpose = 'PASSWORD_RECOVERY';
+export type ChallengePurpose = 'PASSWORD_RECOVERY' | 'EMAIL_VERIFICATION';
 export type ChallengeStatus = 'PENDING' | 'CONSUMED' | 'EXPIRED' | 'LOCKED';
 
 /** Row of identity.verification_challenges, persisted through Prisma. */

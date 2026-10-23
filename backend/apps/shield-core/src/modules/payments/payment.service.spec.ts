@@ -326,4 +326,57 @@ describe('PaymentService (ZS-COM-BILL-001 Part 9)', () => {
       }),
     ).rejects.toThrow(NotFoundException);
   });
+
+  describe('Stripe Checkout & Transactional Email Lifecycle (ZS-COM-BILL-001)', () => {
+    it('fails closed when attempting checkout on contract-only tier without price', async () => {
+      delete process.env.STRIPE_ALLOW_TEST_PRICING;
+
+      await expect(
+        service.createCheckoutSession({
+          planTier: 'SHIELD_ESSENTIAL',
+          billingPeriod: 'MONTHLY',
+        }),
+      ).rejects.toThrow(ConflictException);
+    });
+
+    it('rejects an invalid or unrecognised plan tier', async () => {
+      await expect(
+        service.createCheckoutSession({
+          planTier: 'INVALID_NONEXISTENT_TIER',
+          billingPeriod: 'MONTHLY',
+        }),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('successfully creates checkout session when test pricing is enabled', async () => {
+      process.env.STRIPE_ALLOW_TEST_PRICING = 'true';
+
+      const result = await service.createCheckoutSession(
+        {
+          planTier: 'SHIELD_PROFESSIONAL',
+          billingPeriod: 'ANNUAL',
+          quantity: 2,
+        },
+        'tenant-acme',
+        'usr-1',
+        'billing@acme.com',
+      );
+
+      expect(result).toHaveProperty('sessionId');
+      expect(result.orderSummary.planTier).toBe('SHIELD_PROFESSIONAL');
+      expect(result.orderSummary.billingPeriod).toBe('ANNUAL');
+      expect(result.orderSummary.quantity).toBe(2);
+
+      const status = await service.getCheckoutSessionStatus(result.sessionId);
+      expect(status.status).toBe('PENDING');
+
+      delete process.env.STRIPE_ALLOW_TEST_PRICING;
+    });
+
+    it('rejects a Stripe webhook with an invalid cryptographic signature', async () => {
+      await expect(
+        service.handleStripeWebhook('{"id":"evt_1"}', 'invalid_signature'),
+      ).rejects.toThrow(ConflictException);
+    });
+  });
 });
