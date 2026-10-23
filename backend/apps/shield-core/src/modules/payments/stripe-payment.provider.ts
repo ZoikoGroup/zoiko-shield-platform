@@ -8,7 +8,7 @@ import {
 } from './payment-provider.interface';
 
 export interface CreateCheckoutSessionInput {
-  tenantId: string;
+  tenantId?: string;
   userId?: string;
   userEmail?: string;
   planTier: string;
@@ -58,7 +58,6 @@ export class StripePaymentProvider implements PaymentProvider {
     if (this.stripe) {
       try {
         const session = await this.stripe.checkout.sessions.create({
-          payment_method_types: ['card'],
           mode: 'payment',
           customer_email: input.userEmail,
           client_reference_id: input.tenantId,
@@ -71,7 +70,7 @@ export class StripePaymentProvider implements PaymentProvider {
                   description: `Zoiko Shield Enterprise Security Platform Subscription — Tier: ${input.planTier}`,
                   metadata: {
                     planTier: input.planTier,
-                    tenantId: input.tenantId,
+                    tenantId: input.tenantId || '',
                   },
                 },
                 unit_amount: amountInCents,
@@ -80,7 +79,7 @@ export class StripePaymentProvider implements PaymentProvider {
             },
           ],
           metadata: {
-            tenantId: input.tenantId,
+            tenantId: input.tenantId || '',
             planTier: input.planTier,
             billingPeriod: input.billingPeriod,
             userId: input.userId || '',

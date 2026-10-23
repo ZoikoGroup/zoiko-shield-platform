@@ -477,7 +477,7 @@ export class PaymentService {
       successUrl,
       cancelUrl,
       metadata: {
-        organizationName: tenantId,
+        organizationName: tenantId || 'default-tenant',
       },
     });
 
@@ -550,7 +550,7 @@ export class PaymentService {
     }
 
     const key = `stripe-evt-${event.id}`;
-    return this.idempotencyService.run(
+    return this.idempotencyService.run<{ received: boolean; event?: string; ignored?: boolean }>(
       {
         key,
         operation: 'payments.stripe_webhook',
@@ -601,24 +601,28 @@ export class PaymentService {
 
             if (this.prisma && tenantId && tenantId !== 'unknown-tenant') {
               try {
-                await this.prisma.$transaction(async (tx) => {
+                await (this.prisma as any).$transaction(async (tx: any) => {
                   for (const offer of includedOffers) {
-                    await tx.entitlement.upsert({
-                      where: {
-                        tenant_id_offer_type: {
+                    const existing = await tx.entitlement.findFirst({
+                      where: { tenant_id: tenantId, offer_type: offer },
+                    });
+                    if (existing) {
+                      await tx.entitlement.update({
+                        where: { id: existing.id },
+                        data: { status: 'ACTIVE' },
+                      });
+                    } else {
+                      await tx.entitlement.create({
+                        data: {
+                          commercial_account_id: tenantId,
                           tenant_id: tenantId,
                           offer_type: offer,
+                          source_type: 'ACCEPTED_ORDER',
+                          source_id: session.id,
+                          status: 'ACTIVE',
                         },
-                      },
-                      update: { status: 'ACTIVE' },
-                      create: {
-                        tenant_id: tenantId,
-                        offer_type: offer,
-                        source_type: 'ACCEPTED_ORDER',
-                        source_id: session.id,
-                        status: 'ACTIVE',
-                      },
-                    });
+                      });
+                    }
                   }
                 });
               } catch (entErr: any) {

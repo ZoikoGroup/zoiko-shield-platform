@@ -592,7 +592,7 @@ export default function PricingPage() {
                     <span>Stripe Checkout Session Initiated</span>
                   </div>
                   <p className="text-xs text-slate-300">
-                    Your Stripe checkout session has been generated. Complete payment through Stripe's secure infrastructure to activate subscription entitlements.
+                    Your Stripe checkout session has been generated. Complete payment through Stripe&apos;s secure infrastructure to activate subscription entitlements.
                   </p>
                 </div>
 
