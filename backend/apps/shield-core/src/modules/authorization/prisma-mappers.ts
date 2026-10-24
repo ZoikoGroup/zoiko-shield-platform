@@ -30,6 +30,19 @@ export const MEMBERSHIP_WITH_PERMISSIONS_INCLUDE = {
   roles: { include: { role: { include: ROLE_WITH_PERMISSIONS_INCLUDE } } },
 } satisfies Prisma.TenantMembershipInclude;
 
+/**
+ * A membership that is in force right now: ACTIVE and, if time-boxed (JIT
+ * elevation), not yet past expiresAt. Status alone is not enough - it stays
+ * ACTIVE until the expiry sweep runs. Spread it into the where clause of
+ * every lookup that grants access.
+ */
+export function inForceMembershipWhere() {
+  return {
+    status: 'ACTIVE',
+    OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+  } satisfies Prisma.TenantMembershipWhereInput;
+}
+
 export type RoleRowWithPermissions = Prisma.RoleGetPayload<{
   include: typeof ROLE_WITH_PERMISSIONS_INCLUDE;
 }>;

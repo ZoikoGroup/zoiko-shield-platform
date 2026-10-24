@@ -20,6 +20,7 @@ import type {
 } from './entities/tenant-membership.entity';
 import type { Invitation } from './entities/invitation.entity';
 import {
+  inForceMembershipWhere,
   MEMBERSHIP_WITH_PERMISSIONS_INCLUDE,
   MEMBERSHIP_WITH_ROLES_INCLUDE,
   ROLE_WITH_PERMISSIONS_INCLUDE,
@@ -154,7 +155,7 @@ export class AuthorizationService {
     principalId: string,
   ): Promise<boolean> {
     const membership = await this.prisma.tenantMembership.findFirst({
-      where: { tenantId, principalId, status: 'ACTIVE' },
+      where: { tenantId, principalId, ...inForceMembershipWhere() },
       select: { id: true },
     });
     return Boolean(membership);
@@ -162,7 +163,7 @@ export class AuthorizationService {
 
   async getAccessibleTenantIds(principalId: string): Promise<string[]> {
     const memberships = await this.prisma.tenantMembership.findMany({
-      where: { principalId, status: 'ACTIVE' },
+      where: { principalId, ...inForceMembershipWhere() },
       select: { tenantId: true },
     });
     return memberships
@@ -177,7 +178,7 @@ export class AuthorizationService {
     principalId: string,
   ): Promise<TenantMembershipWithPermissions[]> {
     const memberships = await this.prisma.tenantMembership.findMany({
-      where: { principalId, status: 'ACTIVE' },
+      where: { principalId, ...inForceMembershipWhere() },
       include: MEMBERSHIP_WITH_PERMISSIONS_INCLUDE,
     });
     return memberships.map(toMembershipWithPermissions);
@@ -188,7 +189,7 @@ export class AuthorizationService {
     principalId: string,
   ): Promise<TenantMembershipWithPermissions | null> {
     const membership = await this.prisma.tenantMembership.findFirst({
-      where: { tenantId, principalId, status: 'ACTIVE' },
+      where: { tenantId, principalId, ...inForceMembershipWhere() },
       include: MEMBERSHIP_WITH_PERMISSIONS_INCLUDE,
     });
     return membership ? toMembershipWithPermissions(membership) : null;

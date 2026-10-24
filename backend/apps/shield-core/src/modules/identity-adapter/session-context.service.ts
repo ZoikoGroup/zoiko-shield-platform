@@ -7,6 +7,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PLATFORM_SCOPE } from '../authorization/constants';
+import { inForceMembershipWhere } from '../authorization/prisma-mappers';
 import type { Environment } from '../environment/environment.entity';
 import type { Session, SessionBinding } from './session.entity';
 import { runWithTenantScope } from '../../../../../libs/database/src';
@@ -132,7 +133,9 @@ export class SessionContextService {
         id: session.membershipId,
         tenantId: session.tenantId,
         principalId: session.principalId,
-        status: 'ACTIVE',
+        // Re-checked every request and refresh: a JIT membership that expired
+        // mid-session ends the session, not just the next sign-in.
+        ...inForceMembershipWhere(),
       },
       include: { roles: { include: { role: true } } },
     });
