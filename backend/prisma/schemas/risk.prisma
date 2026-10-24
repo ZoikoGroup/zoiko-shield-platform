@@ -125,6 +125,7 @@ model Exception {
   created_at                DateTime @default(now())
 
   @@index([tenant_id])
+  @@index([status, expires_at])
 
   @@schema("risk")
 }

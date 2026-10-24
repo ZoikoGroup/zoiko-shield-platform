@@ -41,8 +41,15 @@ export class NotificationController {
   async list(
     @Headers('x-tenant-id') tenantId: string,
     @CurrentUser() user?: AuthenticatedUser,
+    @Query('limit') limit?: string,
   ) {
     const tid = tenantId || 'tnt-default-demo';
+    // Bounded: the header polls this every 30s, and delivery history only grows.
+    const requested = Number(limit);
+    const take =
+      Number.isInteger(requested) && requested > 0
+        ? Math.min(requested, 500)
+        : 100;
     try {
       return await this.prisma.notificationDelivery.findMany({
         where: {
@@ -54,6 +61,7 @@ export class NotificationController {
           ],
         },
         orderBy: { created_at: 'desc' },
+        take,
       });
     } catch {
       return [];

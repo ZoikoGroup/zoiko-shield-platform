@@ -1720,7 +1720,7 @@ async function buildOfflineResponse(
     return createMockEventStream();
   }
 
-  // 2. Observability & Readiness Status (Polled by TrustBar)
+  // 2. Observability & Readiness Status (Polled by TopHeader)
   if (path.startsWith("observability/disaster-recovery/restore-drill") || path.includes("restore-drill")) {
     return NextResponse.json({
       receiptId: `drill-${Date.now().toString(36)}`,

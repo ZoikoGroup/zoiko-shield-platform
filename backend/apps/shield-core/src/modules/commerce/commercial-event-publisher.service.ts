@@ -39,6 +39,9 @@ export class CommercialEventPublisherService {
         take: 100,
       });
 
+      // Publish one at a time (one bad event cannot block the rest), then mark
+      // every successful one in a single UPDATE.
+      const publishedIds: string[] = [];
       for (const event of pending) {
         try {
           await this.kafkaProducer.publishEvent(
@@ -51,15 +54,18 @@ export class CommercialEventPublisherService {
             },
             { correlationId: event.idempotency_key },
           );
-          await this.prisma.commercialEvent.update({
-            where: { id: event.id },
-            data: { published_at: new Date() },
-          });
+          publishedIds.push(event.id);
         } catch (err) {
           this.logger.error(
             `Failed to publish commercial event ${event.id}: ${(err as Error).message}`,
           );
         }
+      }
+      if (publishedIds.length > 0) {
+        await this.prisma.commercialEvent.updateMany({
+          where: { id: { in: publishedIds } },
+          data: { published_at: new Date() },
+        });
       }
     } finally {
       this.running = false;

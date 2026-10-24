@@ -34,7 +34,7 @@ model Alert {
   assignments AlertAssignment[]
 
   @@unique([tenant_id, detection_match_id])
-  @@index([tenant_id])
+  @@index([tenant_id, status, severity])
   @@index([status])
   @@index([severity])
 
