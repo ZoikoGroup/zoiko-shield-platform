@@ -218,7 +218,7 @@ describe('AI Decision Evidence Anchoring & Merkle Verification (3-Service Integr
   });
 
   it('Step 2 & 3: Human decision records in shield-ai -> auto-consumed into shield-core EvidenceRecord', async () => {
-    const envelopes = decisionRightsService.listEnvelopes(tenantId);
+    const envelopes = await decisionRightsService.listEnvelopes(tenantId);
     expect(envelopes.length).toBeGreaterThan(0);
     const targetEnvelope = envelopes[0];
 

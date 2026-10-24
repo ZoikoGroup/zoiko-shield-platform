@@ -54,6 +54,7 @@ model EvidenceRecord {
   ledgerEntries EvidenceLedgerEntry[]
 
   @@index([tenant_id])
+  @@index([freshness_state, created_at])
   @@index([source_system_id])
 
   @@schema("evidence")

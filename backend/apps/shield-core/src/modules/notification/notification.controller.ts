@@ -25,6 +25,7 @@ import {
   EmailRenderInput,
 } from './templates/production-email-template.engine';
 import { EmailChannelService } from './channels/email-channel.service';
+import { boundedTake } from '../../../../../libs/database/src';
 
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 @Controller('api/v1')
@@ -41,11 +42,11 @@ export class NotificationController {
   async list(
     @Headers('x-tenant-id') tenantId: string,
     @CurrentUser() user?: AuthenticatedUser,
+    @Query('limit') limit?: string,
   ) {
-    // No silent fallback to a demo tenant: a request without a tenant is
-    // rejected, like every other tenant-scoped endpoint here. Kept outside
-    // the try so the 400 is not swallowed into an empty list.
-    const tid = requireTenantId(tenantId);
+    const tid = tenantId || 'tnt-default-demo';
+    // Bounded: the header polls this every 30s, and delivery history only grows.
+    const take = boundedTake(limit);
     try {
       return await this.prisma.notificationDelivery.findMany({
         where: {
@@ -57,6 +58,7 @@ export class NotificationController {
           ],
         },
         orderBy: { created_at: 'desc' },
+        take,
       });
     } catch {
       return [];

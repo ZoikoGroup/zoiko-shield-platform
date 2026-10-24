@@ -29,6 +29,7 @@ import {
   MeterGovernanceService,
 } from './meter-governance.service';
 import { MeteringService } from './metering.service';
+import { boundedTake } from '../../../../../libs/database/src';
 
 /** Customer-visible meter authority, evidence, forecasts and billing exports. */
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -157,6 +158,7 @@ export class MeterGovernanceController {
   async listEvents(
     @Headers('x-tenant-id') headerTenantId: string,
     @CurrentUser() user: AuthenticatedUser,
+    @Query('limit') limit?: string,
   ) {
     const boundary = this.boundary(headerTenantId, user);
     return {
@@ -164,6 +166,7 @@ export class MeterGovernanceController {
       data: await this.metering.listEvents(
         boundary.tenantId,
         boundary.environmentId,
+        boundedTake(limit),
       ),
     };
   }

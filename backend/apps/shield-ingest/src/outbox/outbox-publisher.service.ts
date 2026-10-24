@@ -53,6 +53,9 @@ export class OutboxPublisherService {
         take: 100,
       });
 
+      // Publish one at a time (keeps per-tenant ordering; one bad event cannot
+      // block the rest), then mark every successful one in a single UPDATE.
+      const publishedIds: string[] = [];
       for (const event of pending) {
         try {
           await this.kafkaProducer.publishEvent(
@@ -61,15 +64,18 @@ export class OutboxPublisherService {
             { tenantId: event.tenant_id, ...JSON.parse(event.payload) },
             { correlationId: event.correlation_id ?? undefined },
           );
-          await this.prisma.outboxEvent.update({
-            where: { id: event.id },
-            data: { published_at: new Date() },
-          });
+          publishedIds.push(event.id);
         } catch (err) {
           this.logger.error(
             `Failed to publish outbox event ${event.id}: ${(err as Error).message}`,
           );
         }
+      }
+      if (publishedIds.length > 0) {
+        await this.prisma.outboxEvent.updateMany({
+          where: { id: { in: publishedIds } },
+          data: { published_at: new Date() },
+        });
       }
     } finally {
       this.running = false;

@@ -7,10 +7,12 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { InternalAuthGuard } from '../../internal-client/internal-auth.guard';
 import { requireEnvironmentId, requireTenantId } from '../../tenant-context';
+import { boundedTake } from '../../../../../libs/database/src';
 import { PERMISSION_CODES } from '../authorization/constants';
 import { RequireAssurance } from '../authorization/decorators/require-assurance.decorator';
 import { RequirePermissions } from '../authorization/decorators/require-permissions.decorator';
@@ -119,12 +121,14 @@ export class InternalAiProviderCostController {
   async list(
     @Headers('x-tenant-id') headerTenantId: string,
     @Headers('x-environment-id') headerEnvironmentId: string,
+    @Query('limit') limit?: string,
   ) {
     return {
       statusCode: HttpStatus.OK,
       data: await this.costs.list(
         requireTenantId(headerTenantId),
         requireEnvironmentId(headerEnvironmentId),
+        boundedTake(limit),
       ),
     };
   }

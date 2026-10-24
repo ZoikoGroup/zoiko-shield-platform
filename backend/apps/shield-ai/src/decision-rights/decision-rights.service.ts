@@ -5,7 +5,6 @@ import {
   ForbiddenException,
   BadRequestException,
   PreconditionFailedException,
-  OnModuleInit,
   Optional,
 } from '@nestjs/common';
 import * as crypto from 'crypto';
@@ -28,7 +27,6 @@ import {
   KafkaProducerService,
   CANONICAL_TOPICS,
 } from '../kafka/kafka-producer.service';
-import { PlatformScope } from '../../../../libs/database/src';
 
 export interface CreateEnvelopeInput<T = any> {
   tenantId: string;
@@ -76,7 +74,7 @@ const AUTHORITY_TIER_WEIGHTS: Record<ResponseAuthorityTier, number> = {
  * 4. Gating rule: Downstream execution (shield-action) blocked unless state is ACCEPTED or MODIFIED.
  */
 @Injectable()
-export class DecisionRightsService implements OnModuleInit {
+export class DecisionRightsService {
   private readonly logger = new Logger(DecisionRightsService.name);
   private readonly envelopes = new Map<string, AiReviewEnvelope>();
 
@@ -86,30 +84,20 @@ export class DecisionRightsService implements OnModuleInit {
   ) {}
 
   /**
-   * Rehydrates the in-memory map from Postgres on startup, so a restart
-   * doesn't lose envelopes declared before it. A no-op in contexts that
-   * construct this service directly without DI (tests, scripts) since
-   * Nest lifecycle hooks only fire for DI-managed instances - those keep
-   * their existing pure in-memory behavior unchanged.
+   * Envelopes are read from Postgres on demand rather than preloaded: loading
+   * every tenant's envelopes at boot held them all in memory on every
+   * replica, and still missed envelopes another replica created later.
    */
-  @PlatformScope('startup rehydration of AI review envelopes for every tenant')
-  async onModuleInit(): Promise<void> {
-    if (!this.prisma) return;
-    try {
-      const rows = await this.prisma.aiReviewEnvelope.findMany();
-      for (const row of rows) {
-        this.envelopes.set(row.id, JSON.parse(row.envelope_json));
-      }
-      if (rows.length > 0) {
-        this.logger.log(
-          `Rehydrated ${rows.length} AI review envelope(s) from Postgres`,
-        );
-      }
-    } catch (err) {
-      this.logger.error(
-        `Failed to rehydrate AI review envelopes from Postgres: ${(err as Error).message}`,
-      );
-    }
+  private async loadEnvelope(
+    envelopeId: string,
+  ): Promise<AiReviewEnvelope | undefined> {
+    if (!this.prisma) return undefined;
+    const row = await this.prisma.aiReviewEnvelope.findUnique({
+      where: { id: envelopeId },
+    });
+    return row
+      ? (JSON.parse(row.envelope_json) as AiReviewEnvelope)
+      : undefined;
   }
 
   /**
@@ -130,7 +118,13 @@ export class DecisionRightsService implements OnModuleInit {
         },
         update: { envelope_json: JSON.stringify(envelope) },
       })
-      .then(() => undefined)
+      .then(() => {
+        // Postgres is now the copy reads use; keep the map to in-flight
+        // envelopes only, unless a newer version replaced this one meanwhile.
+        if (this.envelopes.get(envelope.envelopeId) === envelope) {
+          this.envelopes.delete(envelope.envelopeId);
+        }
+      })
       .catch((err) => {
         this.logger.warn(
           `Failed to persist AI review envelope '${envelope.envelopeId}': ${(err as Error).message}`,
@@ -271,8 +265,12 @@ export class DecisionRightsService implements OnModuleInit {
   /**
    * Retrieves an envelope by ID with tenant isolation verification.
    */
-  getEnvelope(tenantId: string, envelopeId: string): AiReviewEnvelope {
-    const envelope = this.envelopes.get(envelopeId);
+  async getEnvelope(
+    tenantId: string,
+    envelopeId: string,
+  ): Promise<AiReviewEnvelope> {
+    const envelope =
+      this.envelopes.get(envelopeId) ?? (await this.loadEnvelope(envelopeId));
     if (!envelope) {
       throw new NotFoundException(`AiReviewEnvelope '${envelopeId}' not found`);
     }
@@ -292,7 +290,7 @@ export class DecisionRightsService implements OnModuleInit {
     envelopeId: string,
     input: RecordDecisionInput,
   ): Promise<AiReviewEnvelope> {
-    const envelope = this.getEnvelope(tenantId, envelopeId);
+    const envelope = await this.getEnvelope(tenantId, envelopeId);
 
     // Validate Transition Existence
     if (!input.decision) {
@@ -429,12 +427,12 @@ export class DecisionRightsService implements OnModuleInit {
    * Gatekeeping Assertion: Blocks downstream execution unless envelope is in ACCEPTED or MODIFIED state,
    * and the requesting actor possesses sufficient role and response tier authority.
    */
-  assertActionPermitted(
+  async assertActionPermitted(
     tenantId: string,
     envelopeId: string,
     actor: ActorAuthorizationContext,
-  ): AiReviewEnvelope {
-    const envelope = this.getEnvelope(tenantId, envelopeId);
+  ): Promise<AiReviewEnvelope> {
+    const envelope = await this.getEnvelope(tenantId, envelopeId);
 
     // 1. Check Review State
     if (envelope.controls.state === 'UNREVIEWED') {
@@ -477,13 +475,27 @@ export class DecisionRightsService implements OnModuleInit {
   /**
    * List envelopes with optional state filter.
    */
-  listEnvelopes(
+  async listEnvelopes(
     tenantId: string,
     filter?: { state?: DecisionState; useCase?: string },
-  ): AiReviewEnvelope[] {
-    const results: AiReviewEnvelope[] = [];
+  ): Promise<AiReviewEnvelope[]> {
+    const byId = new Map<string, AiReviewEnvelope>();
+    if (this.prisma) {
+      const rows = await this.prisma.aiReviewEnvelope.findMany({
+        where: { tenant_id: tenantId },
+        orderBy: { created_at: 'asc' },
+      });
+      for (const row of rows) {
+        byId.set(row.id, JSON.parse(row.envelope_json) as AiReviewEnvelope);
+      }
+    }
+    // In-memory entries are newer than (or not yet in) Postgres.
     for (const env of this.envelopes.values()) {
-      if (env.tenantId !== tenantId) continue;
+      if (env.tenantId === tenantId) byId.set(env.envelopeId, env);
+    }
+
+    const results: AiReviewEnvelope[] = [];
+    for (const env of byId.values()) {
       if (filter?.state && env.controls.state !== filter.state) continue;
       if (
         filter?.useCase &&

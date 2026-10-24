@@ -949,6 +949,7 @@ export class ManagedDefenseService {
     profileId: string,
     tenantId: string,
     environmentId: string,
+    take = 100,
   ) {
     return this.prisma.managedDefenseDeliveryEvent.findMany({
       where: {
@@ -957,6 +958,7 @@ export class ManagedDefenseService {
         environment_id: environmentId,
       },
       orderBy: { occurred_at: 'desc' },
+      take,
     });
   }
 

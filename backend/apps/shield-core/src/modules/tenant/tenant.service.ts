@@ -26,10 +26,6 @@ export class TenantService {
     private readonly eventService: IdentityEventService,
   ) {}
 
-  async findAll(): Promise<Tenant[]> {
-    return (await this.prisma.tenant.findMany()) as Tenant[];
-  }
-
   async findAccessible(ids: string[]): Promise<Tenant[]> {
     if (ids.length === 0) return [];
     return (await this.prisma.tenant.findMany({

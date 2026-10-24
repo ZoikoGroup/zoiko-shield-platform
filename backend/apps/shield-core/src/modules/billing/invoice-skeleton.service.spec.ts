@@ -26,10 +26,10 @@ describe('InvoiceSkeletonService (FIN-02 Immutability)', () => {
       contract: { findUnique: jest.fn() },
       priceBook: { findUnique: jest.fn() },
       commercialSubscription: { findFirst: jest.fn() },
-      entitlement: { findFirst: jest.fn() },
-      serviceObligation: { findFirst: jest.fn() },
-      meterAuthorizationPolicy: { findFirst: jest.fn() },
-      meterBillingExport: { findFirst: jest.fn() },
+      entitlement: { findMany: jest.fn().mockResolvedValue([]) },
+      serviceObligation: { findMany: jest.fn().mockResolvedValue([]) },
+      meterAuthorizationPolicy: { findMany: jest.fn().mockResolvedValue([]) },
+      meterBillingExport: { findMany: jest.fn().mockResolvedValue([]) },
       commercialCreditNote: { create: jest.fn() },
       commercialDebitNote: { create: jest.fn() },
     };
@@ -96,17 +96,19 @@ describe('InvoiceSkeletonService (FIN-02 Immutability)', () => {
       currency: 'USD',
       unit_price: 100,
     });
-    prismaMock.entitlement.findFirst.mockResolvedValue({
-      id: 'entitlement-1',
-      commercial_account_id: 'comm-1',
-      tenant_id: 'tenant-1',
-      offer_type: 'MANAGED_DEFENSE',
-      source_type: 'ACCEPTED_ORDER',
-      source_id: 'order-1',
-      status: 'ACTIVE',
-      effective_from: new Date('2026-01-01T00:00:00.000Z'),
-      effective_to: new Date('2027-01-01T00:00:00.000Z'),
-    });
+    prismaMock.entitlement.findMany.mockResolvedValue([
+      {
+        id: 'entitlement-1',
+        commercial_account_id: 'comm-1',
+        tenant_id: 'tenant-1',
+        offer_type: 'MANAGED_DEFENSE',
+        source_type: 'ACCEPTED_ORDER',
+        source_id: 'order-1',
+        status: 'ACTIVE',
+        effective_from: new Date('2026-01-01T00:00:00.000Z'),
+        effective_to: new Date('2027-01-01T00:00:00.000Z'),
+      },
+    ]);
   });
 
   it('should create draft invoice with calculated line items total', async () => {
@@ -181,6 +183,50 @@ describe('InvoiceSkeletonService (FIN-02 Immutability)', () => {
         basisSources: [{ basisType: 'ENTITLEMENT', sourceId: 'entitlement-1' }],
       }),
     ).rejects.toThrow(ConflictException);
+    expect(prismaMock.commercialInvoiceLine.create).not.toHaveBeenCalled();
+  });
+
+  it('loads every entitlement basis in one query and still rejects any that is not ACTIVE', async () => {
+    prismaMock.commercialInvoice.findUnique.mockResolvedValue({
+      id: 'inv-1',
+      status: 'DRAFT',
+      currency: 'USD',
+      contract_id: 'cnt-1',
+      commercial_account_id: 'comm-1',
+    });
+
+    await expect(
+      service.addInvoiceLine('inv-1', {
+        sku: 'DEFENSE',
+        contractId: 'cnt-1',
+        orderLineId: 'order-line-1',
+        servicePeriodStart: new Date('2026-08-01T00:00:00.000Z'),
+        servicePeriodEnd: new Date('2026-09-01T00:00:00.000Z'),
+        quantity: 1,
+        unitPrice: 100,
+        jurisdiction: 'US-CA',
+        productTaxClass: 'SAAS',
+        basisSources: [
+          { basisType: 'ENTITLEMENT', sourceId: 'entitlement-1' },
+          { basisType: 'ENTITLEMENT', sourceId: 'entitlement-2' },
+        ],
+      }),
+    ).rejects.toMatchObject({
+      response: expect.objectContaining({
+        error: 'INVOICE_ENTITLEMENT_BASIS_INVALID',
+        message: expect.stringContaining("'entitlement-2'"),
+      }),
+    });
+    expect(prismaMock.entitlement.findMany).toHaveBeenCalledTimes(1);
+    expect(prismaMock.entitlement.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          id: { in: ['entitlement-1', 'entitlement-2'] },
+          status: 'ACTIVE',
+        }),
+      }),
+    );
+    expect(prismaMock.serviceObligation.findMany).not.toHaveBeenCalled();
     expect(prismaMock.commercialInvoiceLine.create).not.toHaveBeenCalled();
   });
 
@@ -372,25 +418,27 @@ describe('InvoiceSkeletonService (FIN-02 Immutability)', () => {
       contract_id: 'cnt-1',
       commercial_account_id: 'comm-1',
     });
-    prismaMock.serviceObligation.findFirst.mockResolvedValue({
-      id: 'obligation-1',
-      contract_id: 'cnt-1',
-      tenant_id: 'tenant-1',
-      environment_id: 'env-1',
-      obligation_key: 'monthly-review',
-      obligation_type: 'SECURITY_REVIEW',
-      obligation_scope: '{}',
-      coverage_window: 'BUSINESS_HOURS',
-      response_authority: 'R0',
-      customer_dependencies: '[]',
-      exclusions: '[]',
-      claim_eligibility: true,
-      claim_eligibility_reason: null,
-      status: 'BREACHED',
-      due_at: new Date('2026-08-20T00:00:00.000Z'),
-      delivered_at: null,
-      evidence_ref: 'sla:breach-1',
-    });
+    prismaMock.serviceObligation.findMany.mockResolvedValue([
+      {
+        id: 'obligation-1',
+        contract_id: 'cnt-1',
+        tenant_id: 'tenant-1',
+        environment_id: 'env-1',
+        obligation_key: 'monthly-review',
+        obligation_type: 'SECURITY_REVIEW',
+        obligation_scope: '{}',
+        coverage_window: 'BUSINESS_HOURS',
+        response_authority: 'R0',
+        customer_dependencies: '[]',
+        exclusions: '[]',
+        claim_eligibility: true,
+        claim_eligibility_reason: null,
+        status: 'BREACHED',
+        due_at: new Date('2026-08-20T00:00:00.000Z'),
+        delivered_at: null,
+        evidence_ref: 'sla:breach-1',
+      },
+    ]);
     taxRuleMock.resolveTax.mockResolvedValue({
       ruleId: 'rule-1',
       taxAmount: 8.5,
@@ -440,15 +488,17 @@ describe('InvoiceSkeletonService (FIN-02 Immutability)', () => {
       contract_id: 'cnt-1',
       commercial_account_id: 'comm-1',
     });
-    prismaMock.meterBillingExport.findFirst.mockResolvedValue({
-      id: 'meter-export-1',
-      tenant_id: 'tenant-1',
-      status: 'APPROVED',
-      meter_version: 3,
-      billable_quantity: 4,
-      immutable_snapshot: immutableSnapshot,
-      checksum: createHash('sha256').update(immutableSnapshot).digest('hex'),
-    });
+    prismaMock.meterBillingExport.findMany.mockResolvedValue([
+      {
+        id: 'meter-export-1',
+        tenant_id: 'tenant-1',
+        status: 'APPROVED',
+        meter_version: 3,
+        billable_quantity: 4,
+        immutable_snapshot: immutableSnapshot,
+        checksum: createHash('sha256').update(immutableSnapshot).digest('hex'),
+      },
+    ]);
     taxRuleMock.resolveTax.mockResolvedValue({
       ruleId: 'rule-1',
       taxAmount: 34,
@@ -499,23 +549,25 @@ describe('InvoiceSkeletonService (FIN-02 Immutability)', () => {
       contract_id: 'cnt-1',
       commercial_account_id: 'comm-1',
     });
-    prismaMock.meterAuthorizationPolicy.findFirst.mockResolvedValue({
-      id: 'commitment-1',
-      commercial_account_id: 'comm-1',
-      contract_id: 'cnt-1',
-      tenant_id: 'tenant-1',
-      environment_id: 'env-1',
-      policy_key: 'committed-events',
-      version: 2,
-      pricing_model: 'COMMITTED_CAPACITY',
-      price_book_id: 'price-book-1',
-      meter_definition_id: 'meter-def-1',
-      committed_quantity: 100000,
-      status: 'APPROVED',
-      effective_from: new Date('2026-01-01T00:00:00.000Z'),
-      effective_to: new Date('2027-01-01T00:00:00.000Z'),
-      meterDefinition: { version: 4, unit: 'EVENTS_MONTH' },
-    });
+    prismaMock.meterAuthorizationPolicy.findMany.mockResolvedValue([
+      {
+        id: 'commitment-1',
+        commercial_account_id: 'comm-1',
+        contract_id: 'cnt-1',
+        tenant_id: 'tenant-1',
+        environment_id: 'env-1',
+        policy_key: 'committed-events',
+        version: 2,
+        pricing_model: 'COMMITTED_CAPACITY',
+        price_book_id: 'price-book-1',
+        meter_definition_id: 'meter-def-1',
+        committed_quantity: 100000,
+        status: 'APPROVED',
+        effective_from: new Date('2026-01-01T00:00:00.000Z'),
+        effective_to: new Date('2027-01-01T00:00:00.000Z'),
+        meterDefinition: { version: 4, unit: 'EVENTS_MONTH' },
+      },
+    ]);
     taxRuleMock.resolveTax.mockResolvedValue({
       ruleId: 'rule-1',
       taxAmount: 8.5,
@@ -566,15 +618,17 @@ describe('InvoiceSkeletonService (FIN-02 Immutability)', () => {
       contract_id: 'cnt-1',
       commercial_account_id: 'comm-1',
     });
-    prismaMock.meterBillingExport.findFirst.mockResolvedValue({
-      id: 'meter-export-1',
-      tenant_id: 'tenant-1',
-      status: 'APPROVED',
-      meter_version: 3,
-      billable_quantity: 4,
-      immutable_snapshot: '{"unit":"GB_MONTH"}',
-      checksum: 'tampered',
-    });
+    prismaMock.meterBillingExport.findMany.mockResolvedValue([
+      {
+        id: 'meter-export-1',
+        tenant_id: 'tenant-1',
+        status: 'APPROVED',
+        meter_version: 3,
+        billable_quantity: 4,
+        immutable_snapshot: '{"unit":"GB_MONTH"}',
+        checksum: 'tampered',
+      },
+    ]);
 
     await expect(
       service.addInvoiceLine('inv-1', {

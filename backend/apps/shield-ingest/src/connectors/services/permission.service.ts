@@ -22,20 +22,19 @@ export class PermissionService {
     permissions: string[],
     permissionType = 'READ',
   ) {
-    for (const permission of permissions) {
-      await this.prisma.connectorPermission.upsert({
-        where: { instanceId_permission: { instanceId, permission } },
-        update: {},
-        create: {
-          tenant_id: tenantId,
-          instanceId,
-          provider,
-          permission,
-          permissionType,
-          granted: false,
-        },
-      });
-    }
+    // One INSERT ... ON CONFLICT DO NOTHING: rows that already exist (and
+    // may already be verified as granted) are left untouched.
+    await this.prisma.connectorPermission.createMany({
+      data: permissions.map((permission) => ({
+        tenant_id: tenantId,
+        instanceId,
+        provider,
+        permission,
+        permissionType,
+        granted: false,
+      })),
+      skipDuplicates: true,
+    });
   }
 
   /** Marks the given set as currently granted; anything previously granted but absent from `grantedNow` is flagged missing (permission drift). */
@@ -47,17 +46,31 @@ export class PermissionService {
       where: { instanceId },
     });
     const newlyMissing: string[] = [];
+    const grantedIds: string[] = [];
+    const notGrantedIds: string[] = [];
 
     for (const perm of existing) {
       const isGrantedNow = grantedNow.includes(perm.permission);
       if (perm.granted && !isGrantedNow) {
         newlyMissing.push(perm.permission);
       }
-      await this.prisma.connectorPermission.update({
-        where: { id: perm.id },
-        data: { granted: isGrantedNow, verifiedAt: new Date() },
-      });
+      (isGrantedNow ? grantedIds : notGrantedIds).push(perm.id);
     }
+
+    // Two set-based updates (granted / not granted) instead of one per row.
+    const verifiedAt = new Date();
+    const updates = [
+      { ids: grantedIds, granted: true },
+      { ids: notGrantedIds, granted: false },
+    ]
+      .filter(({ ids }) => ids.length > 0)
+      .map(({ ids, granted }) =>
+        this.prisma.connectorPermission.updateMany({
+          where: { id: { in: ids } },
+          data: { granted, verifiedAt },
+        }),
+      );
+    if (updates.length > 0) await this.prisma.$transaction(updates);
 
     if (newlyMissing.length > 0) {
       this.logger.warn(

@@ -31,40 +31,47 @@ export class ExceptionExpiryService {
           status: { in: ['REQUESTED', 'APPROVED'] },
           expires_at: { lte: new Date() },
         },
+        // Bounded per tick; any remainder is picked up a minute later.
+        take: 500,
       });
 
       for (const exception of due) {
         try {
-          await this.prisma.$transaction([
-            this.prisma.exception.update({
-              where: { id: exception.id },
-              data: { status: 'EXPIRED' },
+          // The risk re-open is part of the same transaction: an exception
+          // must never end up EXPIRED while its risk stays mitigated.
+          const expire = this.prisma.exception.update({
+            where: { id: exception.id },
+            data: { status: 'EXPIRED' },
+          });
+          const publish = this.prisma.outboxEvent.create({
+            data: this.outbox.build({
+              tenantId: exception.tenant_id,
+              topic: CANONICAL_TOPICS.EXCEPTION_EXPIRED,
+              eventType: 'exception.expired',
+              payload: {
+                exceptionId: exception.id,
+                riskId: exception.risk_id,
+              },
             }),
-            this.prisma.outboxEvent.create({
-              data: this.outbox.build({
-                tenantId: exception.tenant_id,
-                topic: CANONICAL_TOPICS.EXCEPTION_EXPIRED,
-                eventType: 'exception.expired',
-                payload: {
-                  exceptionId: exception.id,
-                  riskId: exception.risk_id,
-                },
-              }),
+          });
+          // No risk_id: nothing to re-open. (Never pass it as undefined to
+          // updateMany below - that drops the filter and matches every risk.)
+          if (!exception.risk_id) {
+            await this.prisma.$transaction([expire, publish]);
+            continue;
+          }
+          const [, , reopened] = await this.prisma.$transaction([
+            expire,
+            publish,
+            this.prisma.risk.updateMany({
+              where: { id: exception.risk_id, status: { not: 'OPEN' } },
+              data: { status: 'OPEN' },
             }),
           ]);
-          if (exception.risk_id) {
-            const risk = await this.prisma.risk.findUnique({
-              where: { id: exception.risk_id },
-            });
-            if (risk && risk.status !== 'OPEN') {
-              await this.prisma.risk.update({
-                where: { id: risk.id },
-                data: { status: 'OPEN' },
-              });
-              this.logger.warn(
-                `Risk ${risk.id} re-opened — its exception ${exception.id} expired`,
-              );
-            }
+          if (reopened.count > 0) {
+            this.logger.warn(
+              `Risk ${exception.risk_id} re-opened — its exception ${exception.id} expired`,
+            );
           }
         } catch (err) {
           this.logger.error(

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
+import { useVisibleInterval } from "@/lib/use-visible-interval";
 import { findActiveNav } from "@/components/layout/nav-config";
 import {
   Search,
@@ -121,7 +122,7 @@ export const TopHeader: React.FC = () => {
       if (state.tenant?.id) headers["x-tenant-id"] = state.tenant.id;
       const [alertsRes, notifsRes] = await Promise.allSettled([
         fetch("/api/v1/alerts?limit=10", { headers }),
-        fetch("/api/v1/notifications", { headers }),
+        fetch("/api/v1/notifications?limit=10", { headers }),
       ]);
 
       const items: HeaderNotification[] = [];
@@ -183,11 +184,7 @@ export const TopHeader: React.FC = () => {
     }
   }, [state.session?.token, state.tenant?.id]);
 
-  useEffect(() => {
-    fetchLiveNotifications();
-    const interval = setInterval(fetchLiveNotifications, 30000);
-    return () => clearInterval(interval);
-  }, [fetchLiveNotifications]);
+  useVisibleInterval(fetchLiveNotifications, 30000);
 
   useEffect(() => {
     if (activeMenu === "notifications") {
@@ -228,31 +225,23 @@ export const TopHeader: React.FC = () => {
   }, []);
 
   // 2. Fetch Real Health Readiness
-  useEffect(() => {
-    let mounted = true;
-    const fetchHealth = async () => {
-      try {
-        const snap = await ZoikoShieldApiClient.getPlatformReadiness();
-        if (mounted && snap) {
-          const healthy = snap.healthyServicesCount ?? 5;
-          const total = snap.totalServicesCount ?? 5;
-          const isDegraded = (snap.degradedServicesCount ?? 0) > 0;
-          setHealthStatus({
-            healthyCount: healthy,
-            totalCount: total,
-            state: isDegraded ? "DEGRADED" : "OK",
-          });
-        }
-      } catch {}
-    };
-
-    fetchHealth();
-    const interval = setInterval(fetchHealth, 30000);
-    return () => {
-      mounted = false;
-      clearInterval(interval);
-    };
+  const fetchHealth = useCallback(async () => {
+    try {
+      const snap = await ZoikoShieldApiClient.getPlatformReadiness();
+      if (snap) {
+        const healthy = snap.healthyServicesCount ?? 5;
+        const total = snap.totalServicesCount ?? 5;
+        const isDegraded = (snap.degradedServicesCount ?? 0) > 0;
+        setHealthStatus({
+          healthyCount: healthy,
+          totalCount: total,
+          state: isDegraded ? "DEGRADED" : "OK",
+        });
+      }
+    } catch {}
   }, []);
+
+  useVisibleInterval(fetchHealth, 30000);
 
   // 3. Global Keyboard Shortcuts: ⌘K / Ctrl+K & Escape
   useEffect(() => {
