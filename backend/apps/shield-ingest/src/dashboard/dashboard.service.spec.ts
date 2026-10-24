@@ -137,4 +137,21 @@ describe('DashboardService (Step 20)', () => {
     expect(health.recentRecords).toHaveLength(1);
     expect(health.recentRecords[0].producing_service).toBe('AUTOMATED');
   });
+
+  it('tallies alert and case metrics in one grouped query each', async () => {
+    prismaMock.alert.groupBy = jest.fn().mockResolvedValue([
+      { severity: 'CRITICAL', status: 'NEW', _count: { _all: 2 } },
+      { severity: 'HIGH', status: 'NEW', _count: { _all: 1 } },
+      { severity: 'HIGH', status: 'CLOSED', _count: { _all: 4 } },
+    ]);
+
+    const metrics = await service.getAlertMetrics('tenant-1');
+
+    expect(metrics).toEqual({
+      total: 7,
+      bySeverity: { CRITICAL: 2, HIGH: 5 },
+      byStatus: { NEW: 3, CLOSED: 4 },
+    });
+    expect(prismaMock.alert.findMany).not.toHaveBeenCalled();
+  });
 });

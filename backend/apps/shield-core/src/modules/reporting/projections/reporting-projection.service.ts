@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import type { ReportingProjection } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { HealthState } from '../source-health/report-health-propagation.service';
@@ -27,14 +28,25 @@ export interface UpsertProjectionInput {
 export class ReportingProjectionService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async upsert(input: UpsertProjectionInput) {
-    const existing = await this.prisma.reportingProjection.findFirst({
-      where: {
-        tenant_id: input.tenantId,
-        projection_type: input.projectionType,
-        source_object_id: input.sourceObjectId,
-      },
-    });
+  /**
+   * `known` is the current row (or null for none) when the caller has already
+   * loaded it, e.g. a rebuild that fetched a tenant's projections in one query;
+   * omit it to look the row up here.
+   */
+  async upsert(
+    input: UpsertProjectionInput,
+    known?: ReportingProjection | null,
+  ) {
+    const existing =
+      known !== undefined
+        ? known
+        : await this.prisma.reportingProjection.findFirst({
+            where: {
+              tenant_id: input.tenantId,
+              projection_type: input.projectionType,
+              source_object_id: input.sourceObjectId,
+            },
+          });
 
     const data = {
       tenant_id: input.tenantId,

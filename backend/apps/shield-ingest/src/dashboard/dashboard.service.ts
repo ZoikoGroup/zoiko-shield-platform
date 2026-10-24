@@ -184,20 +184,17 @@ export class DashboardService {
    * GET /api/v1/dashboard/alerts
    */
   async getAlertMetrics(tenantId: string) {
-    const alerts = await this.prisma.alert.findMany({
+    // Counted in Postgres: loading every row just to tally it grew with history.
+    const groups = await this.prisma.alert.groupBy({
+      by: ['severity', 'status'],
       where: { tenant_id: tenantId },
+      _count: { _all: true },
     });
-
-    const bySeverity: Record<string, number> = {};
-    const byStatus: Record<string, number> = {};
-
-    alerts.forEach((a) => {
-      bySeverity[a.severity] = (bySeverity[a.severity] || 0) + 1;
-      byStatus[a.status] = (byStatus[a.status] || 0) + 1;
-    });
+    const bySeverity = countsBy(groups, (row) => row.severity);
+    const byStatus = countsBy(groups, (row) => row.status);
 
     return {
-      total: alerts.length,
+      total: total(byStatus),
       bySeverity,
       byStatus,
     };
@@ -207,20 +204,17 @@ export class DashboardService {
    * GET /api/v1/dashboard/cases
    */
   async getCaseMetrics(tenantId: string) {
-    const cases = await this.prisma.case.findMany({
+    // Counted in Postgres: loading every row just to tally it grew with history.
+    const groups = await this.prisma.case.groupBy({
+      by: ['severity', 'status'],
       where: { tenant_id: tenantId },
+      _count: { _all: true },
     });
-
-    const bySeverity: Record<string, number> = {};
-    const byStatus: Record<string, number> = {};
-
-    cases.forEach((c) => {
-      bySeverity[c.severity] = (bySeverity[c.severity] || 0) + 1;
-      byStatus[c.status] = (byStatus[c.status] || 0) + 1;
-    });
+    const bySeverity = countsBy(groups, (row) => row.severity);
+    const byStatus = countsBy(groups, (row) => row.status);
 
     return {
-      total: cases.length,
+      total: total(byStatus),
       bySeverity,
       byStatus,
     };

@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import type { ReportingProjection } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ReportingProjectionService } from './reporting-projection.service';
 
@@ -28,14 +29,19 @@ export class ReportingProjectionRebuildService {
     });
     let mismatches = 0;
 
+    // Every existing CASE_POSTURE projection for the tenant in one query,
+    // instead of two lookups per case (here and again inside upsert).
+    const existingBySource = new Map<string, ReportingProjection>();
+    for (const projection of await this.prisma.reportingProjection.findMany({
+      where: { tenant_id: tenantId, projection_type: 'CASE_POSTURE' },
+    })) {
+      if (!existingBySource.has(projection.source_object_id)) {
+        existingBySource.set(projection.source_object_id, projection);
+      }
+    }
+
     for (const c of cases) {
-      const before = await this.prisma.reportingProjection.findFirst({
-        where: {
-          tenant_id: tenantId,
-          projection_type: 'CASE_POSTURE',
-          source_object_id: c.id,
-        },
-      });
+      const before = existingBySource.get(c.id) ?? null;
       const expectedPayload = JSON.stringify({
         status: c.status,
         severity: c.severity,
@@ -47,25 +53,28 @@ export class ReportingProjectionRebuildService {
           `Reconciliation mismatch for CASE_POSTURE/${c.id}: projection was stale relative to authoritative Case row`,
         );
       }
-      await this.projectionService.upsert({
-        tenantId,
-        projectionType: 'CASE_POSTURE',
-        sourceDomain: 'case-management',
-        sourceObjectId: c.id,
-        sourceVersion: c.status,
-        sourceOccurredAt: c.updated_at,
-        freshnessState: 'CURRENT',
-        completenessState: 'COMPLETE',
-        healthState:
-          c.status === 'CLOSED' || c.status === 'RESOLVED'
-            ? 'HEALTHY'
-            : 'PARTIAL',
-        payload: {
-          status: c.status,
-          severity: c.severity,
-          priority: c.priority,
+      await this.projectionService.upsert(
+        {
+          tenantId,
+          projectionType: 'CASE_POSTURE',
+          sourceDomain: 'case-management',
+          sourceObjectId: c.id,
+          sourceVersion: c.status,
+          sourceOccurredAt: c.updated_at,
+          freshnessState: 'CURRENT',
+          completenessState: 'COMPLETE',
+          healthState:
+            c.status === 'CLOSED' || c.status === 'RESOLVED'
+              ? 'HEALTHY'
+              : 'PARTIAL',
+          payload: {
+            status: c.status,
+            severity: c.severity,
+            priority: c.priority,
+          },
         },
-      });
+        before,
+      );
     }
 
     return { rebuilt: cases.length, mismatches };

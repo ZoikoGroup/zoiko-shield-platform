@@ -108,10 +108,11 @@ export class AiProviderCostService {
     });
   }
 
-  async list(tenantId: string, environmentId: string) {
+  async list(tenantId: string, environmentId: string, take = 100) {
     return this.prisma.aiProviderCostEvent.findMany({
       where: { tenant_id: tenantId, environment_id: environmentId },
       orderBy: { effective_at: 'desc' },
+      take,
     });
   }
 }

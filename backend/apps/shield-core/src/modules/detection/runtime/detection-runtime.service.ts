@@ -6,7 +6,7 @@ import {
   CANONICAL_TOPICS,
 } from '../../../kafka/kafka-producer.service';
 import { DetectionRegistryService } from '../registry/detection-registry.service';
-import { DetectionInput } from './detection-rule.interface';
+import { DetectionInput, DetectionResult } from './detection-rule.interface';
 import { AlertCreationService } from '../../alert/services/alert-creation.service';
 import {
   NormalizedEventContract,
@@ -54,6 +54,11 @@ export class DetectionRuntimeService {
     );
     const correlationId = payload.correlationId ?? randomUUID();
 
+    const evaluated: Array<{
+      version: (typeof applicableVersions)[number];
+      outcome: DetectionResult;
+      evaluationId: string;
+    }> = [];
     for (const version of applicableVersions) {
       const rule = this.registry.getRuleImplementation(
         version.detectionDefinition.key,
@@ -96,30 +101,38 @@ export class DetectionRuntimeService {
       };
 
       const outcome = await rule.evaluate(input);
+      evaluated.push({ version, outcome, evaluationId: randomUUID() });
+    }
+    if (evaluated.length === 0) return;
 
-      const evaluation = await this.prisma.detectionEvaluation.create({
-        data: {
-          tenant_id: payload.tenantId,
-          environment_id: payload.environmentId,
-          detection_version_id: version.id,
-          event_id: payload.normalizedEventId,
-          context_snapshot_id: resolved.contextSnapshotId,
-          result: outcome.result,
-          factor_snapshot: JSON.stringify(outcome.factors),
-          confidence: outcome.confidence,
-          incomplete_data: outcome.incompleteData,
-          reason_code: outcome.reasons[0],
-          correlation_id: correlationId,
-          event_payload_snapshot: JSON.stringify(payload),
-        },
-      });
+    // Every rule's evaluation for this event in one INSERT (this runs once per
+    // normalized event), with ids assigned here so matches can reference them.
+    const eventPayloadSnapshot = JSON.stringify(payload);
+    await this.prisma.detectionEvaluation.createMany({
+      data: evaluated.map(({ version, outcome, evaluationId }) => ({
+        id: evaluationId,
+        tenant_id: payload.tenantId,
+        environment_id: payload.environmentId,
+        detection_version_id: version.id,
+        event_id: payload.normalizedEventId,
+        context_snapshot_id: resolved.contextSnapshotId,
+        result: outcome.result,
+        factor_snapshot: JSON.stringify(outcome.factors),
+        confidence: outcome.confidence,
+        incomplete_data: outcome.incompleteData,
+        reason_code: outcome.reasons[0],
+        correlation_id: correlationId,
+        event_payload_snapshot: eventPayloadSnapshot,
+      })),
+    });
 
+    for (const { version, outcome, evaluationId } of evaluated) {
       if (outcome.result === 'MATCH') {
         await this.persistMatch(
           payload,
           resolved,
           version,
-          evaluation.id,
+          evaluationId,
           outcome,
           correlationId,
         );

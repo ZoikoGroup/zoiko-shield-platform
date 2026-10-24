@@ -403,10 +403,11 @@ export class MeteringService {
     };
   }
 
-  listEvents(tenantId: string, environmentId: string) {
+  listEvents(tenantId: string, environmentId: string, take = 100) {
     return this.prisma.meterEvent.findMany({
       where: { tenant_id: tenantId, environment_id: environmentId },
       orderBy: { occurred_at: 'desc' },
+      take,
     });
   }
 

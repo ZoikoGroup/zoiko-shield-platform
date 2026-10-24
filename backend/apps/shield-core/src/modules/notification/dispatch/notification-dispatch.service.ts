@@ -48,19 +48,20 @@ export class NotificationDispatchService {
     const policies = await this.policyService.getByEventType(input.eventType);
     for (const policy of policies) {
       const allowedChannels: string[] = JSON.parse(policy.allowed_channels);
+      // The preference is per policy and recipient, not per channel: resolve
+      // it once rather than once for every channel.
+      const decision = await this.preferenceService.resolveDeliveryDecision({
+        tenantId: input.tenantId,
+        principalId: input.recipientPrincipalId,
+        policy: { id: policy.id, mandatory: policy.mandatory },
+      });
+      if (!decision.shouldDeliver) {
+        this.logger.debug(
+          `Skipping delivery for policy ${policy.key} channels ${allowedChannels.join(', ')}: ${decision.reason}`,
+        );
+        continue;
+      }
       for (const channelType of allowedChannels) {
-        const decision = await this.preferenceService.resolveDeliveryDecision({
-          tenantId: input.tenantId,
-          principalId: input.recipientPrincipalId,
-          policy: { id: policy.id, mandatory: policy.mandatory },
-        });
-        if (!decision.shouldDeliver) {
-          this.logger.debug(
-            `Skipping delivery for policy ${policy.key} channel ${channelType}: ${decision.reason}`,
-          );
-          continue;
-        }
-
         let delivery;
         try {
           delivery = await this.prisma.notificationDelivery.create({

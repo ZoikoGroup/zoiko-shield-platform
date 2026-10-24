@@ -36,6 +36,7 @@ import { Type } from 'class-transformer';
 import { HumanAuthorityAttestationDto } from '../human-authority/human-authority.dto';
 import { RequireHumanAuthority } from '../human-authority/human-authority.decorator';
 import { HumanAuthorityGuard } from '../human-authority/human-authority.guard';
+import { boundedTake } from '../../../../../libs/database/src';
 
 export class DecideManagedDefenseAuthorityDto extends DecideManagedDefenseDto {
   @IsDefined()
@@ -142,6 +143,7 @@ export class ManagedDefenseController {
     @Headers('x-tenant-id') headerTenantId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Param('id') id: string,
+    @Query('limit') limit?: string,
   ) {
     const boundary = this.boundary(headerTenantId, user);
     return {
@@ -150,6 +152,7 @@ export class ManagedDefenseController {
         id,
         boundary.tenantId,
         boundary.environmentId,
+        boundedTake(limit),
       ),
     };
   }

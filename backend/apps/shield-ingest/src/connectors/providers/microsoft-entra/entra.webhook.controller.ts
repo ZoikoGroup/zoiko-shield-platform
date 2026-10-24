@@ -83,6 +83,9 @@ export class EntraWebhookController {
       );
     }
     const validated: Array<{ notification: any; subscription: any }> = [];
+    // A Graph batch usually repeats a handful of subscriptions: look each
+    // (clientState, subscriptionId) pair up once, not once per notification.
+    const subscriptions = new Map<string, any>();
     for (const notification of notifications) {
       if (!notification?.id || !notification?.clientState) {
         throw new HttpException(
@@ -92,24 +95,34 @@ export class EntraWebhookController {
       }
       // The clientState secret identifies the subscription, and with it the
       // tenant, so this lookup necessarily spans tenants.
-      const subscription = await runWithPlatformScope(
-        'graph change notification clientState lookup',
-        () =>
-          this.prisma.webhookSubscription.findFirst({
-            where: {
-              clientState: notification.clientState,
-              subscriptionId: notification.subscriptionId,
-            },
-            include: {
-              instance: {
-                select: {
-                  environment_id: true,
-                  source_region: true,
+      const key = JSON.stringify([
+        notification.clientState,
+        notification.subscriptionId,
+      ]);
+      if (!subscriptions.has(key)) {
+        subscriptions.set(
+          key,
+          await runWithPlatformScope(
+            'graph change notification clientState lookup',
+            () =>
+              this.prisma.webhookSubscription.findFirst({
+                where: {
+                  clientState: notification.clientState,
+                  subscriptionId: notification.subscriptionId,
                 },
-              },
-            },
-          }),
-      );
+                include: {
+                  instance: {
+                    select: {
+                      environment_id: true,
+                      source_region: true,
+                    },
+                  },
+                },
+              }),
+          ),
+        );
+      }
+      const subscription = subscriptions.get(key);
       if (!subscription)
         throw new HttpException(
           'Unknown Microsoft Graph subscription',

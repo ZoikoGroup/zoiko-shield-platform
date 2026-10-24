@@ -46,17 +46,31 @@ export class PermissionService {
       where: { instanceId },
     });
     const newlyMissing: string[] = [];
+    const grantedIds: string[] = [];
+    const notGrantedIds: string[] = [];
 
     for (const perm of existing) {
       const isGrantedNow = grantedNow.includes(perm.permission);
       if (perm.granted && !isGrantedNow) {
         newlyMissing.push(perm.permission);
       }
-      await this.prisma.connectorPermission.update({
-        where: { id: perm.id },
-        data: { granted: isGrantedNow, verifiedAt: new Date() },
-      });
+      (isGrantedNow ? grantedIds : notGrantedIds).push(perm.id);
     }
+
+    // Two set-based updates (granted / not granted) instead of one per row.
+    const verifiedAt = new Date();
+    const updates = [
+      { ids: grantedIds, granted: true },
+      { ids: notGrantedIds, granted: false },
+    ]
+      .filter(({ ids }) => ids.length > 0)
+      .map(({ ids, granted }) =>
+        this.prisma.connectorPermission.updateMany({
+          where: { id: { in: ids } },
+          data: { granted, verifiedAt },
+        }),
+      );
+    if (updates.length > 0) await this.prisma.$transaction(updates);
 
     if (newlyMissing.length > 0) {
       this.logger.warn(

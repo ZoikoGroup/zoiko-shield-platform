@@ -1,9 +1,14 @@
 import { Injectable, Logger, ConflictException } from '@nestjs/common';
+import type { Prisma } from '@prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { DetectionRule } from '../runtime/detection-rule.interface';
 import { SuspiciousLoginRule } from '../rules/suspicious-login/suspicious-login.rule';
 import { SuspiciousProcessRule } from '../rules/suspicious-process/suspicious-process.rule';
 import { CloudPrivilegeEscalationRule } from '../rules/cloud-privilege-escalation/cloud-privilege-escalation.rule';
+
+type PublishedVersion = Prisma.DetectionVersionGetPayload<{
+  include: { detectionDefinition: true };
+}>;
 
 /**
  * Loads active DetectionVersions and resolves the DetectionRule
@@ -15,6 +20,19 @@ import { CloudPrivilegeEscalationRule } from '../rules/cloud-privilege-escalatio
 export class DetectionRegistryService {
   private readonly logger = new Logger(DetectionRegistryService.name);
   private readonly ruleImplementations = new Map<string, DetectionRule>();
+  /**
+   * PUBLISHED versions with an implementation, loaded at most every
+   * PUBLISHED_CACHE_TTL_MS instead of once per normalized event. Published
+   * versions are immutable; publish() clears it here, and other replicas
+   * pick a newly published version up within the TTL.
+   */
+  private published: {
+    loadedAt: number;
+    versions: Promise<
+      Array<{ version: PublishedVersion; eventTypes: string[] }>
+    >;
+  } | null = null;
+  private static readonly PUBLISHED_CACHE_TTL_MS = 30_000;
 
   constructor(
     private readonly prisma: PrismaService,
@@ -43,22 +61,49 @@ export class DetectionRegistryService {
 
   /** Applicable = PUBLISHED versions whose definition key has a registered rule implementation and whose required_event_types includes the event's class. */
   async findApplicable(tenantId: string, eventClass: string) {
-    const versions = await this.prisma.detectionVersion.findMany({
-      where: { status: 'PUBLISHED' },
-      include: { detectionDefinition: true },
-    });
+    const published = await this.loadPublished();
+    return published
+      .filter(
+        ({ eventTypes }) =>
+          eventTypes.length === 0 || eventTypes.includes(eventClass),
+      )
+      .map(({ version }) => version);
+  }
 
-    return versions.filter((v) => {
-      if (!this.ruleImplementations.has(v.detectionDefinition.key))
-        return false;
-      const requiredEventTypes: string[] = JSON.parse(
-        v.required_event_types || '[]',
+  private loadPublished() {
+    const cached = this.published;
+    if (
+      cached &&
+      Date.now() - cached.loadedAt <
+        DetectionRegistryService.PUBLISHED_CACHE_TTL_MS
+    ) {
+      return cached.versions;
+    }
+    // Cache the promise, so concurrent events share one query.
+    const versions = this.prisma.detectionVersion
+      .findMany({
+        where: { status: 'PUBLISHED' },
+        include: { detectionDefinition: true },
+      })
+      .then((rows) =>
+        rows
+          .filter((v) =>
+            this.ruleImplementations.has(v.detectionDefinition.key),
+          )
+          .map((version) => ({
+            version,
+            eventTypes: JSON.parse(
+              version.required_event_types || '[]',
+            ) as string[],
+          })),
       );
-      return (
-        requiredEventTypes.length === 0 ||
-        requiredEventTypes.includes(eventClass)
-      );
+    const entry = { loadedAt: Date.now(), versions };
+    this.published = entry;
+    // A failed load is not cached: the next event retries.
+    versions.catch(() => {
+      if (this.published === entry) this.published = null;
     });
+    return versions;
   }
 
   /** Publishes a DRAFT version — PUBLISHED versions are immutable from then on (spec §19), enforced here rather than left to callers. */
@@ -84,9 +129,11 @@ export class DetectionRegistryService {
       );
     }
 
-    return this.prisma.detectionVersion.update({
+    const published = await this.prisma.detectionVersion.update({
       where: { id: detectionVersionId },
       data: { status: 'PUBLISHED', published_at: new Date() },
     });
+    this.published = null;
+    return published;
   }
 }

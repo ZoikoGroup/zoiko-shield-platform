@@ -324,10 +324,10 @@ describe('DecisionRightsService (§16 Human Oversight & Decision-Rights Engine)'
   });
 
   describe('3. Downstream Action Gatekeeping (Blocking unverified actions)', () => {
-    it('should BLOCK downstream execution when envelope is UNREVIEWED', () => {
+    it('should BLOCK downstream execution when envelope is UNREVIEWED', async () => {
       const envelope = service.wrapInEnvelope(validEnvelopeInput);
 
-      expect(() =>
+      await expect(
         service.assertActionPermitted(
           validEnvelopeInput.tenantId,
           envelope.envelopeId,
@@ -336,7 +336,7 @@ describe('DecisionRightsService (§16 Human Oversight & Decision-Rights Engine)'
             responseAuthorityTier: 'R2',
           },
         ),
-      ).toThrow(PreconditionFailedException);
+      ).rejects.toThrow(PreconditionFailedException);
     });
 
     it('should BLOCK downstream execution when envelope is REJECTED', async () => {
@@ -352,7 +352,7 @@ describe('DecisionRightsService (§16 Human Oversight & Decision-Rights Engine)'
         },
       );
 
-      expect(() =>
+      await expect(
         service.assertActionPermitted(
           validEnvelopeInput.tenantId,
           envelope.envelopeId,
@@ -361,7 +361,7 @@ describe('DecisionRightsService (§16 Human Oversight & Decision-Rights Engine)'
             responseAuthorityTier: 'R2',
           },
         ),
-      ).toThrow(ForbiddenException);
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('should BLOCK downstream execution if actor response authority tier is insufficient', async () => {
@@ -378,7 +378,7 @@ describe('DecisionRightsService (§16 Human Oversight & Decision-Rights Engine)'
       );
 
       // Required is R2; requesting actor is R1
-      expect(() =>
+      await expect(
         service.assertActionPermitted(
           validEnvelopeInput.tenantId,
           envelope.envelopeId,
@@ -387,7 +387,7 @@ describe('DecisionRightsService (§16 Human Oversight & Decision-Rights Engine)'
             responseAuthorityTier: 'R1',
           },
         ),
-      ).toThrow(ForbiddenException);
+      ).rejects.toThrow(ForbiddenException);
     });
 
     it('should PERMIT downstream execution when envelope is ACCEPTED and actor authority satisfies requirements', async () => {
@@ -403,7 +403,7 @@ describe('DecisionRightsService (§16 Human Oversight & Decision-Rights Engine)'
         },
       );
 
-      const permitted = service.assertActionPermitted(
+      const permitted = await service.assertActionPermitted(
         validEnvelopeInput.tenantId,
         envelope.envelopeId,
         {
@@ -418,21 +418,21 @@ describe('DecisionRightsService (§16 Human Oversight & Decision-Rights Engine)'
   });
 
   describe('4. Tenant Isolation & Querying', () => {
-    it('should reject access from a different tenant with ForbiddenException', () => {
+    it('should reject access from a different tenant with ForbiddenException', async () => {
       const envelope = service.wrapInEnvelope(validEnvelopeInput);
 
-      expect(() =>
+      await expect(
         service.getEnvelope('tenant-different-corp', envelope.envelopeId),
-      ).toThrow(ForbiddenException);
+      ).rejects.toThrow(ForbiddenException);
     });
 
-    it('should throw NotFoundException for non-existent envelope ID', () => {
-      expect(() =>
+    it('should throw NotFoundException for non-existent envelope ID', async () => {
+      await expect(
         service.getEnvelope(
           validEnvelopeInput.tenantId,
           'env-non-existent-999',
         ),
-      ).toThrow(NotFoundException);
+      ).rejects.toThrow(NotFoundException);
     });
 
     it('should list envelopes filtered by tenant and state', async () => {
@@ -451,10 +451,10 @@ describe('DecisionRightsService (§16 Human Oversight & Decision-Rights Engine)'
         rationale: 'Accepted',
       });
 
-      const unreviewed = service.listEnvelopes('tenant-list-test', {
+      const unreviewed = await service.listEnvelopes('tenant-list-test', {
         state: 'UNREVIEWED',
       });
-      const accepted = service.listEnvelopes('tenant-list-test', {
+      const accepted = await service.listEnvelopes('tenant-list-test', {
         state: 'ACCEPTED',
       });
 
@@ -462,6 +462,94 @@ describe('DecisionRightsService (§16 Human Oversight & Decision-Rights Engine)'
       expect(unreviewed[0].envelopeId).toBe(env2.envelopeId);
       expect(accepted.length).toBe(1);
       expect(accepted[0].envelopeId).toBe(env1.envelopeId);
+    });
+  });
+
+  describe('5. Postgres-backed reads', () => {
+    // Stands in for ai.ai_review_envelopes, shared by every service instance
+    // the way the table is shared by every replica.
+    function fakePrisma() {
+      const rows = new Map<
+        string,
+        { id: string; tenant_id: string; envelope_json: string }
+      >();
+      return {
+        rows,
+        aiReviewEnvelope: {
+          upsert: jest.fn(async ({ create, update }: any) => {
+            const existing = rows.get(create.id);
+            rows.set(
+              create.id,
+              existing ? { ...existing, ...update } : { ...create },
+            );
+          }),
+          findUnique: jest.fn(
+            async ({ where }: any) => rows.get(where.id) ?? null,
+          ),
+          findMany: jest.fn(async ({ where }: any) =>
+            [...rows.values()].filter((r) => r.tenant_id === where.tenant_id),
+          ),
+        },
+      };
+    }
+    const flush = () => new Promise((resolve) => setImmediate(resolve));
+
+    it('reads an envelope created by another instance (replica) from Postgres', async () => {
+      const prisma = fakePrisma();
+      const replicaA = new DecisionRightsService(undefined, prisma as any);
+      const replicaB = new DecisionRightsService(undefined, prisma as any);
+
+      const envelope = replicaA.wrapInEnvelope(validEnvelopeInput);
+      await flush();
+
+      const found = await replicaB.getEnvelope(
+        validEnvelopeInput.tenantId,
+        envelope.envelopeId,
+      );
+      expect(found.envelopeId).toBe(envelope.envelopeId);
+      await expect(
+        replicaB.getEnvelope('tenant-different-corp', envelope.envelopeId),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('drops the in-memory copy once persisted, and the gate still reads the decision', async () => {
+      const prisma = fakePrisma();
+      const svc = new DecisionRightsService(undefined, prisma as any);
+      const envelope = svc.wrapInEnvelope(validEnvelopeInput);
+      await flush();
+      expect((svc as any).envelopes.size).toBe(0);
+
+      await svc.recordHumanDecision(
+        validEnvelopeInput.tenantId,
+        envelope.envelopeId,
+        { decision: 'ACCEPT', decidedBy: 'lead@zoiko.com', rationale: 'ok' },
+      );
+      expect((svc as any).envelopes.size).toBe(0);
+
+      const permitted = await svc.assertActionPermitted(
+        validEnvelopeInput.tenantId,
+        envelope.envelopeId,
+        { role: 'SECURITY_OPERATIONS_LEAD', responseAuthorityTier: 'R2' },
+      );
+      expect(permitted.controls.state).toBe('ACCEPTED');
+    });
+
+    it('lists persisted envelopes plus ones still waiting to be written', async () => {
+      const prisma = fakePrisma();
+      const svc = new DecisionRightsService(undefined, prisma as any);
+      const persisted = svc.wrapInEnvelope(validEnvelopeInput);
+      await flush();
+      // Never reaches Postgres: stays in memory only.
+      prisma.aiReviewEnvelope.upsert.mockReturnValueOnce(
+        new Promise(() => undefined),
+      );
+      const inFlight = svc.wrapInEnvelope(validEnvelopeInput);
+
+      const listed = await svc.listEnvelopes(validEnvelopeInput.tenantId);
+
+      expect(listed.map((e) => e.envelopeId).sort()).toEqual(
+        [persisted.envelopeId, inFlight.envelopeId].sort(),
+      );
     });
   });
 });

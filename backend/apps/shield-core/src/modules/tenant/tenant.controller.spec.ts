@@ -11,7 +11,6 @@ describe('TenantController', () => {
 
   beforeEach(async () => {
     tenantServiceMock = {
-      findAll: jest.fn(),
       findOne: jest.fn(),
       transitionStatus: jest.fn(),
     };
