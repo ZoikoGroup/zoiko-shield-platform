@@ -71,6 +71,64 @@ describe('DetectionRegistryService', () => {
     expect(applicable.map((v) => v.id)).toEqual(['v1']);
   });
 
+  describe('published-version cache', () => {
+    const v1 = {
+      id: 'v1',
+      required_event_types: JSON.stringify(['AUTHENTICATION']),
+      detectionDefinition: { key: SUSPICIOUS_LOGIN_KEY },
+    };
+
+    afterEach(() => jest.useRealTimers());
+
+    it('serves many events from one query, and reloads after the TTL', async () => {
+      jest.useFakeTimers({ now: 1_000_000 });
+      prismaMock.detectionVersion.findMany.mockResolvedValue([v1]);
+
+      await Promise.all([
+        service.findApplicable('tenant-a', 'AUTHENTICATION'),
+        service.findApplicable('tenant-b', 'NETWORK'),
+      ]);
+      await service.findApplicable('tenant-a', 'AUTHENTICATION');
+      expect(prismaMock.detectionVersion.findMany).toHaveBeenCalledTimes(1);
+
+      jest.setSystemTime(1_000_000 + 30_001);
+      await service.findApplicable('tenant-a', 'AUTHENTICATION');
+      expect(prismaMock.detectionVersion.findMany).toHaveBeenCalledTimes(2);
+    });
+
+    it('publishing a version clears the cache on this instance', async () => {
+      prismaMock.detectionVersion.findMany.mockResolvedValue([v1]);
+      await service.findApplicable('tenant-a', 'AUTHENTICATION');
+
+      prismaMock.detectionVersion.findUniqueOrThrow.mockResolvedValue({
+        id: 'v9',
+        status: 'DRAFT',
+        detection_definition_id: 'def-9',
+      });
+      prismaMock.detectionVersion.findFirst.mockResolvedValue(null);
+      prismaMock.detectionVersion.update.mockResolvedValue({ id: 'v9' });
+      await service.publish('v9');
+
+      await service.findApplicable('tenant-a', 'AUTHENTICATION');
+      expect(prismaMock.detectionVersion.findMany).toHaveBeenCalledTimes(2);
+    });
+
+    it('does not cache a failed load', async () => {
+      prismaMock.detectionVersion.findMany
+        .mockRejectedValueOnce(new Error('db down'))
+        .mockResolvedValueOnce([v1]);
+
+      await expect(
+        service.findApplicable('tenant-a', 'AUTHENTICATION'),
+      ).rejects.toThrow('db down');
+      const applicable = await service.findApplicable(
+        'tenant-a',
+        'AUTHENTICATION',
+      );
+      expect(applicable.map((v) => v.id)).toEqual(['v1']);
+    });
+  });
+
   it('rejects publishing a version whose definition already has an active PUBLISHED version', async () => {
     prismaMock.detectionVersion.findUniqueOrThrow.mockResolvedValue({
       id: 'v2',

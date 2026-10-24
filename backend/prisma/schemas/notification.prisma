@@ -89,7 +89,7 @@ model NotificationDelivery {
   acknowledgements NotificationAcknowledgement[]
 
   @@unique([event_id, recipient_principal_id, channel, policy_version])
-  @@index([tenant_id])
+  @@index([tenant_id, recipient_principal_id, created_at])
 
   @@schema("notification")
 }

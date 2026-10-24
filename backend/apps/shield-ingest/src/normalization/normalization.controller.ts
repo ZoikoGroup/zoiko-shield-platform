@@ -10,6 +10,7 @@ import {
 } from '@nestjs/common';
 import { NormalizationService } from './normalization.service';
 import { requireTenantId } from '../security/tenant-context';
+import { boundedTake } from '../../../../libs/database/src';
 
 export class ReplayQueryDto {
   tenantId?: string;
@@ -68,10 +69,13 @@ export class NormalizationController {
   async getQuarantinedEvents(
     @Headers('x-tenant-id') headerTenantId: string,
     @Query('tenantId') queryTenantId?: string,
+    @Query('limit') limit?: string,
   ) {
     const tenantId = requireTenantId(headerTenantId, queryTenantId);
-    const quarantined =
-      await this.normalizationService.getQuarantinedEvents(tenantId);
+    const quarantined = await this.normalizationService.getQuarantinedEvents(
+      tenantId,
+      boundedTake(limit),
+    );
     return {
       statusCode: HttpStatus.OK,
       data: quarantined,

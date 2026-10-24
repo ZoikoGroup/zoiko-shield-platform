@@ -4,7 +4,7 @@ import { EntraGraphClient } from './entra.client';
 import { ConnectorCheckpointService } from '../../services/checkpoint.service';
 import { RawIngestService } from '../../../ingestion/raw-ingest.service';
 import { PrismaService } from '../../../prisma/prisma.service';
-import { OutboxService } from '../../../outbox/outbox.service';
+import { OutboxEventData, OutboxService } from '../../../outbox/outbox.service';
 import { CANONICAL_TOPICS } from '../../../kafka/kafka.producer.service';
 
 @Injectable()
@@ -47,6 +47,7 @@ export class EntraUserSyncService {
       const users = data.value || [];
       totalProcessed += users.length;
 
+      const outboxEvents: OutboxEventData[] = [];
       for (const user of users) {
         // Raw-store for provenance. This is a directory sync, not a
         // security event, so it does not go through the NormalizationService
@@ -60,8 +61,8 @@ export class EntraUserSyncService {
           payload: user,
         });
 
-        await this.prisma.outboxEvent.create({
-          data: this.outbox.build({
+        outboxEvents.push(
+          this.outbox.build({
             tenantId,
             topic: CANONICAL_TOPICS.IDENTITY_DIRECTORY_SYNC,
             eventType: 'identity.directory-sync',
@@ -75,13 +76,18 @@ export class EntraUserSyncService {
               removed: !!user['@removed'],
             },
           }),
-        });
+        );
 
         if (user['@removed']) {
           this.logger.debug(
             `User removed (directory-sync published): ${user.id}`,
           );
         }
+      }
+      // One INSERT per Graph page rather than one per user. The checkpoint
+      // only advances after the last page, so a failed page is re-synced.
+      if (outboxEvents.length > 0) {
+        await this.prisma.outboxEvent.createMany({ data: outboxEvents });
       }
 
       // If we got a nextLink, keep paging. If we got a deltaLink, we are done.

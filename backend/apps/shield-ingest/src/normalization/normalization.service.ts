@@ -397,10 +397,11 @@ export class NormalizationService {
   /**
    * Get quarantined events for tenant
    */
-  async getQuarantinedEvents(tenantId: string) {
+  async getQuarantinedEvents(tenantId: string, take = 100) {
     return this.prisma.quarantinedEvent.findMany({
       where: { tenant_id: tenantId },
       orderBy: { createdAt: 'desc' },
+      take,
     });
   }
 

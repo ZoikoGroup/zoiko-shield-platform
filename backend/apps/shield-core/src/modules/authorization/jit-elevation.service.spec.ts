@@ -37,6 +37,11 @@ describe('JitElevationService (Dual-Authorized Scoped & Time-Bound Tenant Access
         if (!row) throw new Error(`No JIT request ${where.id}`);
         return Object.assign(row, data, { updatedAt: new Date() });
       }),
+      updateMany: jest.fn(async ({ where, data }: any) => {
+        const rows = jitRequests.filter((r) => where.id.in.includes(r.id));
+        rows.forEach((r) => Object.assign(r, data, { updatedAt: new Date() }));
+        return { count: rows.length };
+      }),
       findUnique: jest.fn(
         async ({ where }: any) =>
           jitRequests.find((r) => r.id === where.id) || null,
@@ -91,6 +96,13 @@ describe('JitElevationService (Dual-Authorized Scoped & Time-Bound Tenant Access
           row.roles = [...row.roles, ...joinRoles(row.id, roleData)];
         return row;
       }),
+      updateMany: jest.fn(async ({ where, data }: any) => {
+        const rows = memberships.filter(
+          (m) => where.id.in.includes(m.id) && m.status === where.status,
+        );
+        rows.forEach((m) => Object.assign(m, data));
+        return { count: rows.length };
+      }),
       findUnique: jest.fn(async ({ where }: any) => {
         if (where.id) return memberships.find((m) => m.id === where.id) || null;
         const key = where.tenantId_principalId;
@@ -126,6 +138,16 @@ describe('JitElevationService (Dual-Authorized Scoped & Time-Bound Tenant Access
         };
         events.push(row);
         return row;
+      }),
+      createMany: jest.fn(async ({ data }: any) => {
+        for (const item of data) {
+          events.push({
+            id: `evt-${Math.random()}`,
+            ...item,
+            occurredAt: new Date(),
+          });
+        }
+        return { count: data.length };
       }),
     },
   } as any;

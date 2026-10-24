@@ -172,6 +172,7 @@ model Entitlement {
   invoiceBases CommercialInvoiceLineBasis[]
 
   @@index([tenant_id])
+  @@index([commercial_account_id, status])
   @@index([offer_type])
   @@index([status])
   @@index([source_type, source_id])
@@ -300,8 +301,9 @@ model CommercialEvent {
   created_at      DateTime  @default(now())
   published_at    DateTime?
 
-  @@index([idempotency_key])
   @@index([event_type])
+  // Publisher poll: unpublished rows oldest-first. Partial, so it only holds the backlog.
+  @@index([created_at], map: "CommercialEvent_unpublished_created_at_idx", where: raw("(published_at IS NULL)"))
 
   @@schema("commercial")
 }

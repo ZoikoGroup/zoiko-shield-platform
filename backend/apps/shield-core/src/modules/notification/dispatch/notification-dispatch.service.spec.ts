@@ -136,4 +136,33 @@ describe('NotificationDispatchService', () => {
       }),
     );
   });
+
+  it('resolves the recipient preference once per policy, not once per channel', async () => {
+    policyServiceMock.getByEventType.mockResolvedValue([
+      {
+        id: 'pol-1',
+        key: 'ALERT_CRITICAL',
+        allowed_channels: JSON.stringify(['SLACK', 'EMAIL', 'IN_APP']),
+        mandatory: false,
+        version: 1,
+      },
+    ]);
+    preferenceServiceMock.resolveDeliveryDecision.mockResolvedValue({
+      shouldDeliver: false,
+      reason: 'Preference disabled by recipient',
+    });
+
+    await service.dispatch({
+      tenantId: 'tenant-1',
+      eventId: 'evt-102',
+      eventType: 'ALERT_CRITICAL',
+      recipientPrincipalId: 'principal-1',
+      templateContext: {},
+    });
+
+    expect(preferenceServiceMock.resolveDeliveryDecision).toHaveBeenCalledTimes(
+      1,
+    );
+    expect(prismaMock.notificationDelivery.create).not.toHaveBeenCalled();
+  });
 });

@@ -56,7 +56,7 @@ describe('DetectionRuntimeService', () => {
       },
       asset: { findUnique: jest.fn().mockResolvedValue(null) },
       detectionEvaluation: {
-        create: jest.fn().mockResolvedValue({ id: 'eval-1' }),
+        createMany: jest.fn().mockResolvedValue({ count: 1 }),
       },
       detectionMatch: {
         upsert: jest.fn().mockResolvedValue({ id: 'match-1' }),
@@ -125,13 +125,14 @@ describe('DetectionRuntimeService', () => {
 
     await service.evaluateFromEvent(payload, resolved);
 
-    expect(prismaMock.detectionEvaluation.create).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
+    expect(prismaMock.detectionEvaluation.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          id: expect.any(String),
           event_payload_snapshot: JSON.stringify(payload),
         }),
-      }),
-    );
+      ],
+    });
   });
 
   it('on MATCH: creates a DetectionMatch, publishes detection.matched.v1, and calls AlertCreationService in-process', async () => {
@@ -176,5 +177,46 @@ describe('DetectionRuntimeService', () => {
 
     expect(prismaMock.detectionMatch.upsert).not.toHaveBeenCalled();
     expect(alertCreationMock.createFromMatch).not.toHaveBeenCalled();
+  });
+
+  it('writes every applicable rule evaluation for an event in one insert', async () => {
+    const version = (id: string) => ({
+      id,
+      detection_definition_id: `def-${id}`,
+      severity: 'HIGH',
+      configuration: '{}',
+      detectionDefinition: {
+        key: 'SUSPICIOUS_LOGIN_NEW_LOCATION',
+        name: 'Suspicious Login',
+      },
+    });
+    registryMock.findApplicable.mockResolvedValue([
+      version('v1'),
+      version('v2'),
+    ]);
+    ruleMock.evaluate.mockReturnValue({
+      result: 'NO_MATCH',
+      factors: [],
+      incompleteData: false,
+      reasons: [],
+    });
+
+    await service.evaluateFromEvent(payload, resolved);
+
+    expect(prismaMock.detectionEvaluation.createMany).toHaveBeenCalledTimes(1);
+    const { data } = prismaMock.detectionEvaluation.createMany.mock.calls[0][0];
+    expect(data.map((row: any) => row.detection_version_id)).toEqual([
+      'v1',
+      'v2',
+    ]);
+    expect(new Set(data.map((row: any) => row.id)).size).toBe(2);
+  });
+
+  it('writes nothing when no rule applies to the event', async () => {
+    registryMock.findApplicable.mockResolvedValue([]);
+
+    await service.evaluateFromEvent(payload, resolved);
+
+    expect(prismaMock.detectionEvaluation.createMany).not.toHaveBeenCalled();
   });
 });

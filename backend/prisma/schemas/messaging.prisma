@@ -12,7 +12,8 @@ model OutboxEvent {
   published_at   DateTime?
 
   @@index([tenant_id])
-  @@index([published_at])
+  // Publisher poll: unpublished rows oldest-first. Partial, so it only holds the backlog.
+  @@index([created_at], map: "OutboxEvent_unpublished_created_at_idx", where: raw("(published_at IS NULL)"))
 
   @@schema("messaging")
 }

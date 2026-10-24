@@ -7,7 +7,7 @@ describe('CostRecordService (Part 26: internal economics, never customer-facing)
   let prismaMock: any;
 
   beforeEach(async () => {
-    prismaMock = { costRecord: { create: jest.fn(), findMany: jest.fn() } };
+    prismaMock = { costRecord: { create: jest.fn(), aggregate: jest.fn() } };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -39,10 +39,9 @@ describe('CostRecordService (Part 26: internal economics, never customer-facing)
   });
 
   it('sums total cost across records for a usage class', async () => {
-    prismaMock.costRecord.findMany.mockResolvedValue([
-      { total_cost: 10 },
-      { total_cost: 25 },
-    ]);
+    prismaMock.costRecord.aggregate.mockResolvedValue({
+      _sum: { total_cost: 35 },
+    });
 
     const total = await service.getTotalCostByUsageClass(
       'AI',

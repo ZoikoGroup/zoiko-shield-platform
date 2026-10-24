@@ -84,13 +84,14 @@ export class CostRecordService {
     periodStart: Date,
     periodEnd: Date,
   ) {
-    const records = await this.prisma.costRecord.findMany({
+    const { _sum } = await this.prisma.costRecord.aggregate({
       where: {
         usage_class: usageClass,
         period_start: { gte: periodStart },
         period_end: { lte: periodEnd },
       },
+      _sum: { total_cost: true },
     });
-    return records.reduce((sum, r) => sum + Number(r.total_cost), 0);
+    return Number(_sum.total_cost ?? 0);
   }
 }

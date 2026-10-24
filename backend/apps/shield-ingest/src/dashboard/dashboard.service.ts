@@ -15,76 +15,56 @@ export class DashboardService {
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
 
+    const openAlertStatuses = ['NEW', 'ACKNOWLEDGED', 'INVESTIGATING'];
+    const closedCaseStatuses = [
+      'RESOLVED',
+      'CLOSED',
+      'DUPLICATE',
+      'FALSE_POSITIVE',
+    ];
+
+    // One grouped query per table instead of one count per figure: 8 queries
+    // rather than 15, so a single dashboard load no longer drains the pool.
     const [
-      totalConnectors,
-      healthyConnectors,
-      degradedConnectors,
-      received24h,
-      quarantined24h,
-      openAlerts,
-      criticalAlerts,
-      openCases,
-      investigatingCases,
-      effectiveControls,
-      partialControls,
-      unknownControls,
+      connectorsByState,
+      eventsByStatus,
+      openAlertsBySeverity,
+      casesByStatus,
+      controlsByStatus,
       currentEvidence,
       staleEvidence,
       missingEvidence,
     ] = await Promise.all([
-      this.prisma.connectorInstance.count({ where: { tenant_id: tenantId } }),
-      this.prisma.connectorInstance.count({
-        where: { tenant_id: tenantId, state: 'HEALTHY' },
+      this.prisma.connectorInstance.groupBy({
+        by: ['state'],
+        where: { tenant_id: tenantId },
+        _count: { _all: true },
       }),
-      this.prisma.connectorInstance.count({
-        where: { tenant_id: tenantId, state: 'DEGRADED' },
-      }),
-      this.prisma.rawEvent.count({
+      this.prisma.rawEvent.groupBy({
+        by: ['processing_status'],
         where: {
           tenant_id: tenantId,
           received_at: { gte: twentyFourHoursAgo },
         },
+        _count: { _all: true },
       }),
-      this.prisma.rawEvent.count({
+      this.prisma.alert.groupBy({
+        by: ['severity'],
+        where: { tenant_id: tenantId, status: { in: openAlertStatuses } },
+        _count: { _all: true },
+      }),
+      this.prisma.case.groupBy({
+        by: ['status'],
+        where: { tenant_id: tenantId },
+        _count: { _all: true },
+      }),
+      this.prisma.controlImplementation.groupBy({
+        by: ['status'],
         where: {
           tenant_id: tenantId,
-          processing_status: 'QUARANTINED',
-          received_at: { gte: twentyFourHoursAgo },
+          status: { in: ['IMPLEMENTED', 'PARTIAL', 'PLANNED'] },
         },
-      }),
-      this.prisma.alert.count({
-        where: {
-          tenant_id: tenantId,
-          status: { in: ['NEW', 'ACKNOWLEDGED', 'INVESTIGATING'] },
-        },
-      }),
-      this.prisma.alert.count({
-        where: {
-          tenant_id: tenantId,
-          severity: 'CRITICAL',
-          status: { in: ['NEW', 'ACKNOWLEDGED', 'INVESTIGATING'] },
-        },
-      }),
-      this.prisma.case.count({
-        where: {
-          tenant_id: tenantId,
-          status: {
-            notIn: ['RESOLVED', 'CLOSED', 'DUPLICATE', 'FALSE_POSITIVE'],
-          },
-        },
-      }),
-      this.prisma.case.count({
-        where: { tenant_id: tenantId, status: 'INVESTIGATING' },
-      }),
-      // Control health counts
-      this.prisma.controlImplementation.count({
-        where: { tenant_id: tenantId, status: 'IMPLEMENTED' },
-      }),
-      this.prisma.controlImplementation.count({
-        where: { tenant_id: tenantId, status: 'PARTIAL' },
-      }),
-      this.prisma.controlImplementation.count({
-        where: { tenant_id: tenantId, status: 'PLANNED' },
+        _count: { _all: true },
       }),
       // Evidence health counts
       this.prisma.evidenceRecord.count({
@@ -98,6 +78,26 @@ export class DashboardService {
       }),
     ]);
 
+    const connectors = countsBy(connectorsByState, (row) => row.state);
+    const events = countsBy(eventsByStatus, (row) => row.processing_status);
+    const openAlerts = countsBy(openAlertsBySeverity, (row) => row.severity);
+    const cases = countsBy(casesByStatus, (row) => row.status);
+    const controls = countsBy(controlsByStatus, (row) => row.status);
+
+    const totalConnectors = total(connectors);
+    const healthyConnectors = connectors['HEALTHY'] ?? 0;
+    const degradedConnectors = connectors['DEGRADED'] ?? 0;
+    const received24h = total(events);
+    const quarantined24h = events['QUARANTINED'] ?? 0;
+    const criticalAlerts = openAlerts['CRITICAL'] ?? 0;
+    const openCases = Object.entries(cases)
+      .filter(([status]) => !closedCaseStatuses.includes(status))
+      .reduce((sum, [, count]) => sum + count, 0);
+    const investigatingCases = cases['INVESTIGATING'] ?? 0;
+    const effectiveControls = controls['IMPLEMENTED'] ?? 0;
+    const partialControls = controls['PARTIAL'] ?? 0;
+    const unknownControls = controls['PLANNED'] ?? 0;
+
     return {
       connectors: {
         total: totalConnectors,
@@ -109,7 +109,7 @@ export class DashboardService {
         quarantined24h,
       },
       alerts: {
-        open: openAlerts,
+        open: total(openAlerts),
         critical: criticalAlerts,
       },
       cases: {
@@ -184,20 +184,17 @@ export class DashboardService {
    * GET /api/v1/dashboard/alerts
    */
   async getAlertMetrics(tenantId: string) {
-    const alerts = await this.prisma.alert.findMany({
+    // Counted in Postgres: loading every row just to tally it grew with history.
+    const groups = await this.prisma.alert.groupBy({
+      by: ['severity', 'status'],
       where: { tenant_id: tenantId },
+      _count: { _all: true },
     });
-
-    const bySeverity: Record<string, number> = {};
-    const byStatus: Record<string, number> = {};
-
-    alerts.forEach((a) => {
-      bySeverity[a.severity] = (bySeverity[a.severity] || 0) + 1;
-      byStatus[a.status] = (byStatus[a.status] || 0) + 1;
-    });
+    const bySeverity = countsBy(groups, (row) => row.severity);
+    const byStatus = countsBy(groups, (row) => row.status);
 
     return {
-      total: alerts.length,
+      total: total(byStatus),
       bySeverity,
       byStatus,
     };
@@ -207,20 +204,17 @@ export class DashboardService {
    * GET /api/v1/dashboard/cases
    */
   async getCaseMetrics(tenantId: string) {
-    const cases = await this.prisma.case.findMany({
+    // Counted in Postgres: loading every row just to tally it grew with history.
+    const groups = await this.prisma.case.groupBy({
+      by: ['severity', 'status'],
       where: { tenant_id: tenantId },
+      _count: { _all: true },
     });
-
-    const bySeverity: Record<string, number> = {};
-    const byStatus: Record<string, number> = {};
-
-    cases.forEach((c) => {
-      bySeverity[c.severity] = (bySeverity[c.severity] || 0) + 1;
-      byStatus[c.status] = (byStatus[c.status] || 0) + 1;
-    });
+    const bySeverity = countsBy(groups, (row) => row.severity);
+    const byStatus = countsBy(groups, (row) => row.status);
 
     return {
-      total: cases.length,
+      total: total(byStatus),
       bySeverity,
       byStatus,
     };
@@ -303,4 +297,20 @@ export class DashboardService {
       recentRecords,
     };
   }
+}
+
+/** Folds a Prisma groupBy result into { key: count }. */
+function countsBy<T extends { _count: { _all: number } }>(
+  rows: T[],
+  key: (row: T) => string,
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const row of rows) {
+    counts[key(row)] = (counts[key(row)] ?? 0) + row._count._all;
+  }
+  return counts;
+}
+
+function total(counts: Record<string, number>): number {
+  return Object.values(counts).reduce((sum, count) => sum + count, 0);
 }

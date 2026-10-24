@@ -337,17 +337,82 @@ export class InvoiceSkeletonService {
       [];
     let meterQuantity = 0;
     let hasMeterBasis = false;
+
+    // Load every referenced source up front: one query per basis type, run in
+    // parallel, with the same filters the per-source checks below apply.
+    const sourceIds = (match: (basisType: string) => boolean) =>
+      dto.basisSources
+        .filter((source) => match(source.basisType))
+        .map((source) => source.sourceId);
+    const entitlementIds = sourceIds((type) => type === 'ENTITLEMENT');
+    const obligationIds = sourceIds((type) => type === 'SERVICE_OBLIGATION');
+    const commitmentIds = sourceIds((type) => type === 'CONTRACT_COMMITMENT');
+    const meterExportIds = sourceIds(
+      (type) =>
+        !['ENTITLEMENT', 'SERVICE_OBLIGATION', 'CONTRACT_COMMITMENT'].includes(
+          type,
+        ),
+    );
+    const [entitlements, obligations, commitments, meterExports] =
+      await Promise.all([
+        entitlementIds.length
+          ? this.prisma.entitlement.findMany({
+              where: {
+                id: { in: entitlementIds },
+                commercial_account_id: invoice.commercial_account_id,
+                status: 'ACTIVE',
+                effective_from: { lte: periodStart },
+                OR: [
+                  { effective_to: null },
+                  { effective_to: { gte: periodEnd } },
+                ],
+              },
+            })
+          : [],
+        obligationIds.length
+          ? this.prisma.serviceObligation.findMany({
+              where: { id: { in: obligationIds }, contract_id: dto.contractId },
+            })
+          : [],
+        commitmentIds.length
+          ? this.prisma.meterAuthorizationPolicy.findMany({
+              where: {
+                id: { in: commitmentIds },
+                commercial_account_id: invoice.commercial_account_id,
+                contract_id: dto.contractId,
+                price_book_id: priceBook.id,
+                status: 'APPROVED',
+                pricing_model: 'COMMITTED_CAPACITY',
+                committed_quantity: { gt: 0 },
+                effective_from: { lte: periodStart },
+                OR: [
+                  { effective_to: null },
+                  { effective_to: { gte: periodEnd } },
+                ],
+              },
+              include: { meterDefinition: true },
+            })
+          : [],
+        meterExportIds.length
+          ? this.prisma.meterBillingExport.findMany({
+              where: {
+                id: { in: meterExportIds },
+                contract_id: dto.contractId,
+                status: 'APPROVED',
+                period_start: periodStart,
+                period_end: periodEnd,
+              },
+            })
+          : [],
+      ]);
+    const entitlementById = new Map(entitlements.map((row) => [row.id, row]));
+    const obligationById = new Map(obligations.map((row) => [row.id, row]));
+    const commitmentById = new Map(commitments.map((row) => [row.id, row]));
+    const meterExportById = new Map(meterExports.map((row) => [row.id, row]));
+
     for (const source of dto.basisSources) {
       if (source.basisType === 'ENTITLEMENT') {
-        const entitlement = await this.prisma.entitlement.findFirst({
-          where: {
-            id: source.sourceId,
-            commercial_account_id: invoice.commercial_account_id,
-            status: 'ACTIVE',
-            effective_from: { lte: periodStart },
-            OR: [{ effective_to: null }, { effective_to: { gte: periodEnd } }],
-          },
-        });
+        const entitlement = entitlementById.get(source.sourceId);
         if (!entitlement) {
           throw new ConflictException({
             statusCode: 409,
@@ -383,9 +448,7 @@ export class InvoiceSkeletonService {
       }
 
       if (source.basisType === 'SERVICE_OBLIGATION') {
-        const obligation = await this.prisma.serviceObligation.findFirst({
-          where: { id: source.sourceId, contract_id: dto.contractId },
-        });
+        const obligation = obligationById.get(source.sourceId);
         if (
           !obligation ||
           ['CANCELLED', 'WAIVED'].includes(obligation.status)
@@ -432,25 +495,7 @@ export class InvoiceSkeletonService {
       }
 
       if (source.basisType === 'CONTRACT_COMMITMENT') {
-        const commitment = await this.prisma.meterAuthorizationPolicy.findFirst(
-          {
-            where: {
-              id: source.sourceId,
-              commercial_account_id: invoice.commercial_account_id,
-              contract_id: dto.contractId,
-              price_book_id: priceBook.id,
-              status: 'APPROVED',
-              pricing_model: 'COMMITTED_CAPACITY',
-              committed_quantity: { gt: 0 },
-              effective_from: { lte: periodStart },
-              OR: [
-                { effective_to: null },
-                { effective_to: { gte: periodEnd } },
-              ],
-            },
-            include: { meterDefinition: true },
-          },
-        );
+        const commitment = commitmentById.get(source.sourceId);
         if (!commitment || !commitment.committed_quantity) {
           throw new ConflictException({
             statusCode: 409,
@@ -494,15 +539,7 @@ export class InvoiceSkeletonService {
         continue;
       }
 
-      const meterExport = await this.prisma.meterBillingExport.findFirst({
-        where: {
-          id: source.sourceId,
-          contract_id: dto.contractId,
-          status: 'APPROVED',
-          period_start: periodStart,
-          period_end: periodEnd,
-        },
-      });
+      const meterExport = meterExportById.get(source.sourceId);
       if (
         !meterExport ||
         (orderLine.order.tenant_id &&

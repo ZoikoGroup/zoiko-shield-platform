@@ -10,7 +10,7 @@ describe('CommercialEventPublisherService (ZS-COM-BILL-001 Part 31 transactional
 
   beforeEach(async () => {
     prismaMock = {
-      commercialEvent: { findMany: jest.fn(), update: jest.fn() },
+      commercialEvent: { findMany: jest.fn(), updateMany: jest.fn() },
     };
     kafkaMock = { publishEvent: jest.fn() };
 
@@ -57,9 +57,9 @@ describe('CommercialEventPublisherService (ZS-COM-BILL-001 Part 31 transactional
       expect.objectContaining({ tenantId: 'acct-1', contractId: 'c-1' }),
       expect.objectContaining({ correlationId: 'key-1' }),
     );
-    expect(prismaMock.commercialEvent.update).toHaveBeenCalledWith(
+    expect(prismaMock.commercialEvent.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'evt-1' },
+        where: { id: { in: ['evt-1'] } },
         data: { published_at: expect.any(Date) },
       }),
     );
@@ -79,6 +79,30 @@ describe('CommercialEventPublisherService (ZS-COM-BILL-001 Part 31 transactional
     kafkaMock.publishEvent.mockRejectedValue(new Error('broker unreachable'));
 
     await expect(service.publishPending()).resolves.not.toThrow();
-    expect(prismaMock.commercialEvent.update).not.toHaveBeenCalled();
+    expect(prismaMock.commercialEvent.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('marks only the events that published, in one UPDATE, when some in the batch fail', async () => {
+    prismaMock.commercialEvent.findMany.mockResolvedValue(
+      ['evt-1', 'evt-2', 'evt-3'].map((id) => ({
+        id,
+        event_type: 'payment.created',
+        tenant_id: 'acct-1',
+        actor: 'system',
+        payload: '{}',
+        idempotency_key: `key-${id}`,
+      })),
+    );
+    kafkaMock.publishEvent
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(new Error('broker unreachable'))
+      .mockResolvedValueOnce(undefined);
+
+    await service.publishPending();
+
+    expect(prismaMock.commercialEvent.updateMany).toHaveBeenCalledTimes(1);
+    expect(prismaMock.commercialEvent.updateMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: { in: ['evt-1', 'evt-3'] } } }),
+    );
   });
 });

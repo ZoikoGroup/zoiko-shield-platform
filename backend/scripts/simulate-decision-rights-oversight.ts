@@ -69,7 +69,7 @@ async function main() {
 
   console.log('\n[Step 2] Testing Downstream Action Gatekeeping (Blocking unverified actions)...');
   try {
-    decisionRightsService.assertActionPermitted(tenantId, envelope.envelopeId, {
+    await decisionRightsService.assertActionPermitted(tenantId, envelope.envelopeId, {
       role: 'INCIDENT_COMMANDER',
       responseAuthorityTier: 'R3',
     });
@@ -98,7 +98,7 @@ async function main() {
   console.log(`  ✔ Envelope State: ${humanDecision.controls.state}`);
 
   console.log('\n[Step 4] Re-Evaluating Downstream Action Authorization Post-Approval...');
-  const authorizedEnvelope = decisionRightsService.assertActionPermitted(
+  const authorizedEnvelope = await decisionRightsService.assertActionPermitted(
     tenantId,
     envelope.envelopeId,
     {
