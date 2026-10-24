@@ -113,4 +113,50 @@ describe('SessionContextService', () => {
       } as any),
     ).rejects.toBeInstanceOf(UnauthorizedException);
   });
+
+  it('ends an existing session once its JIT membership has expired, even while status is still ACTIVE', async () => {
+    // Status stays ACTIVE until the sweep runs; only expiresAt has passed.
+    const expiredJit = {
+      ...membership,
+      source: 'JIT_ELEVATION',
+      expiresAt: new Date(Date.now() - 60_000),
+    };
+    // Applies the expiresAt clause the way the database would.
+    const findFirst = jest.fn(async ({ where }: any) => {
+      const inForce = where.OR.some((clause: any) =>
+        clause.expiresAt === null
+          ? expiredJit.expiresAt === null
+          : expiredJit.expiresAt > clause.expiresAt.gt,
+      );
+      return where.status === expiredJit.status && inForce ? expiredJit : null;
+    });
+    const prisma = {
+      tenantMembership: { findFirst },
+      tenant: { findUnique: jest.fn().mockResolvedValue(tenant) },
+      environment: { findFirst: jest.fn().mockResolvedValue(environment) },
+    };
+    const sessionContext = new SessionContextService(
+      prisma as any,
+      new ConfigService({ IAM_POLICY_VERSION: 'iam-policy-2.0.0' }),
+    );
+
+    await expect(
+      sessionContext.assertSessionStillAuthorized({
+        principalId: 'principal-1',
+        tenantId: 'tenant-1',
+        membershipId: 'membership-1',
+        environmentId: 'environment-1',
+        policyVersion: 'iam-policy-2.0.0',
+        state: 'ACTIVE',
+      } as any),
+    ).rejects.toBeInstanceOf(UnauthorizedException);
+    expect(findFirst).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          status: 'ACTIVE',
+          OR: [{ expiresAt: null }, { expiresAt: { gt: expect.any(Date) } }],
+        }),
+      }),
+    );
+  });
 });

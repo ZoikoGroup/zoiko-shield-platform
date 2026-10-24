@@ -8,9 +8,11 @@ import {
   Logger,
   NotFoundException,
 } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import type { Prisma } from '@prisma/client';
 import * as crypto from 'crypto';
 import { PrismaService } from '../../prisma/prisma.service';
+import { PlatformScope } from '../../../../../libs/database/src';
 import { WebauthnService } from '../identity-adapter/webauthn.service';
 import type { JitElevationRequest } from './entities/jit-elevation-request.entity';
 import type { Role } from './entities/role.entity';
@@ -443,8 +445,12 @@ export class JitElevationService {
   }
 
   /**
-   * 5. Sweeps and marks expired JIT memberships and requests.
+   * 5. Sweeps and marks expired JIT memberships and requests. Runs every
+   * minute; access checks also refuse an expired membership on their own
+   * (inForceMembershipWhere), so this is cleanup and audit, not the gate.
    */
+  @PlatformScope('scheduled job JitElevationService.sweepExpiredMemberships')
+  @Cron(CronExpression.EVERY_MINUTE)
   async sweepExpiredMemberships(): Promise<{ expiredCount: number }> {
     const now = new Date();
 
