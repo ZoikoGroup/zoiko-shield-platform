@@ -11,7 +11,7 @@ describe('PermissionService', () => {
   beforeEach(async () => {
     prismaMock = {
       connectorPermission: {
-        upsert: jest.fn(),
+        createMany: jest.fn(),
         findMany: jest.fn(),
         update: jest.fn(),
       },
@@ -35,15 +35,20 @@ describe('PermissionService', () => {
       'AuditLog.Read.All',
     ]);
 
-    expect(prismaMock.connectorPermission.upsert).toHaveBeenCalledTimes(2);
-    expect(prismaMock.connectorPermission.upsert).toHaveBeenCalledWith(
-      expect.objectContaining({
-        create: expect.objectContaining({
+    expect(prismaMock.connectorPermission.createMany).toHaveBeenCalledTimes(1);
+    expect(prismaMock.connectorPermission.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
           permission: 'User.Read.All',
           granted: false,
         }),
-      }),
-    );
+        expect.objectContaining({
+          permission: 'AuditLog.Read.All',
+          granted: false,
+        }),
+      ],
+      skipDuplicates: true,
+    });
   });
 
   it('flags previously-granted permissions absent from the fresh grant set as drift and publishes connector.permission.changed.v1', async () => {

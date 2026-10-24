@@ -22,20 +22,19 @@ export class PermissionService {
     permissions: string[],
     permissionType = 'READ',
   ) {
-    for (const permission of permissions) {
-      await this.prisma.connectorPermission.upsert({
-        where: { instanceId_permission: { instanceId, permission } },
-        update: {},
-        create: {
-          tenant_id: tenantId,
-          instanceId,
-          provider,
-          permission,
-          permissionType,
-          granted: false,
-        },
-      });
-    }
+    // One INSERT ... ON CONFLICT DO NOTHING: rows that already exist (and
+    // may already be verified as granted) are left untouched.
+    await this.prisma.connectorPermission.createMany({
+      data: permissions.map((permission) => ({
+        tenant_id: tenantId,
+        instanceId,
+        provider,
+        permission,
+        permissionType,
+        granted: false,
+      })),
+      skipDuplicates: true,
+    });
   }
 
   /** Marks the given set as currently granted; anything previously granted but absent from `grantedNow` is flagged missing (permission drift). */

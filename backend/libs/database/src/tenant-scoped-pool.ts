@@ -33,7 +33,9 @@ export class TenantScopedPool extends Pool {
   private readonly debugUnscoped = process.env.DB_SCOPE_DEBUG === 'true';
 
   constructor(config?: PoolConfig) {
-    super(config);
+    // DB_POOL_MAX sizes each app's pool (unset: pg's default of 10). Every app
+    // and replica has its own pool, so their sum must fit max_connections.
+    super({ max: Number(process.env.DB_POOL_MAX) || undefined, ...config });
   }
 
   connect(): Promise<PoolClient>;

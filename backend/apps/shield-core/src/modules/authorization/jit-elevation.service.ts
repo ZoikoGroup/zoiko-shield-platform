@@ -455,38 +455,44 @@ export class JitElevationService {
       },
     });
 
-    for (const req of expiredRequests) {
-      await this.updateRequest(req.id, { status: 'EXPIRED' });
+    if (expiredRequests.length === 0) return { expiredCount: 0 };
 
-      if (req.membershipId) {
-        const mem = await this.prisma.tenantMembership.findUnique({
-          where: { id: req.membershipId },
-        });
-        if (mem && mem.status === 'ACTIVE') {
-          await this.prisma.tenantMembership.update({
-            where: { id: mem.id },
-            data: { status: 'REMOVED' },
-          });
-        }
-      }
-
-      await this.recordCustomerAuditEvent({
-        eventType: 'JIT_ELEVATION_EXPIRED',
-        tenantId: req.targetTenantId,
-        actorId: req.superAdminPrincipalId,
-        data: {
-          requestId: req.id,
-          expiredAt: now.toISOString(),
-          auditRef: req.customerVisibleAuditLogRef,
-        },
+    // Set-based, and memberships go first: if marking the requests fails,
+    // they stay APPROVED and the next sweep retries both steps.
+    const membershipIds = expiredRequests
+      .map((req) => req.membershipId)
+      .filter((id): id is string => !!id);
+    if (membershipIds.length > 0) {
+      await this.prisma.tenantMembership.updateMany({
+        where: { id: { in: membershipIds }, status: 'ACTIVE' },
+        data: { status: 'REMOVED' },
       });
     }
+    await this.prisma.jitElevationRequest.updateMany({
+      where: { id: { in: expiredRequests.map((req) => req.id) } },
+      data: { status: 'EXPIRED' },
+    });
 
-    if (expiredRequests.length > 0) {
-      this.logger.log(
-        `✔ [JIT SWEEPER] Auto-expired ${expiredRequests.length} JIT elevation memberships.`,
-      );
+    try {
+      await this.prisma.identityEvent.createMany({
+        data: expiredRequests.map((req) => ({
+          eventType: 'JIT_ELEVATION_EXPIRED',
+          tenantId: req.targetTenantId,
+          actorId: req.superAdminPrincipalId,
+          data: {
+            requestId: req.id,
+            expiredAt: now.toISOString(),
+            auditRef: req.customerVisibleAuditLogRef,
+          },
+        })),
+      });
+    } catch (err) {
+      this.logger.warn(`Could not persist customer audit event: ${err}`);
     }
+
+    this.logger.log(
+      `✔ [JIT SWEEPER] Auto-expired ${expiredRequests.length} JIT elevation memberships.`,
+    );
 
     return { expiredCount: expiredRequests.length };
   }

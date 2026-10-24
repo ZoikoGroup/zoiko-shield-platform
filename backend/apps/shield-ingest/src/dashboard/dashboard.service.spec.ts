@@ -10,21 +10,42 @@ describe('DashboardService (Step 20)', () => {
     prismaMock = {
       connectorInstance: {
         count: jest.fn().mockResolvedValue(5),
+        groupBy: jest.fn().mockResolvedValue([
+          { state: 'HEALTHY', _count: { _all: 4 } },
+          { state: 'DEGRADED', _count: { _all: 1 } },
+        ]),
         findMany: jest.fn().mockResolvedValue([]),
       },
       rawEvent: {
         count: jest.fn().mockResolvedValue(100),
+        groupBy: jest.fn().mockResolvedValue([
+          { processing_status: 'NORMALIZED', _count: { _all: 98 } },
+          { processing_status: 'QUARANTINED', _count: { _all: 2 } },
+        ]),
       },
       alert: {
         count: jest.fn().mockResolvedValue(3),
+        groupBy: jest.fn().mockResolvedValue([
+          { severity: 'CRITICAL', _count: { _all: 1 } },
+          { severity: 'HIGH', _count: { _all: 2 } },
+        ]),
         findMany: jest.fn().mockResolvedValue([]),
       },
       case: {
         count: jest.fn().mockResolvedValue(2),
+        groupBy: jest.fn().mockResolvedValue([
+          { status: 'NEW', _count: { _all: 1 } },
+          { status: 'INVESTIGATING', _count: { _all: 1 } },
+          { status: 'CLOSED', _count: { _all: 5 } },
+        ]),
         findMany: jest.fn().mockResolvedValue([]),
       },
       controlImplementation: {
         count: jest.fn().mockResolvedValue(8),
+        groupBy: jest.fn().mockResolvedValue([
+          { status: 'IMPLEMENTED', _count: { _all: 8 } },
+          { status: 'PARTIAL', _count: { _all: 2 } },
+        ]),
         findMany: jest.fn().mockResolvedValue([
           { effectiveness: 'EFFECTIVE', status: 'ACTIVE' },
           { effectiveness: 'PARTIAL', status: 'ACTIVE' },
@@ -79,6 +100,19 @@ describe('DashboardService (Step 20)', () => {
     expect(overview.evidence).toBeDefined();
     expect(overview.evidence.current).toBe(20);
     expect(overview.evidence.missing).toBe(3);
+  });
+
+  it('derives every overview figure from grouped queries rather than one count each', async () => {
+    const overview = await service.getOverview('tenant-1');
+
+    expect(overview.connectors).toEqual({ total: 5, healthy: 4, degraded: 1 });
+    expect(overview.events).toEqual({ received24h: 100, quarantined24h: 2 });
+    expect(overview.alerts).toEqual({ open: 3, critical: 1 });
+    // CLOSED cases are excluded from "open".
+    expect(overview.cases).toEqual({ open: 2, investigating: 1 });
+    expect(overview.controls).toEqual({ effective: 8, partial: 2, unknown: 0 });
+    expect(prismaMock.connectorInstance.count).not.toHaveBeenCalled();
+    expect(prismaMock.alert.count).not.toHaveBeenCalled();
   });
 
   it('should return control health breakdown', async () => {

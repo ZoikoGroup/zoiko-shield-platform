@@ -26,7 +26,7 @@ describe('ReconciliationService (ZS-COM-BILL-001 REC-01: unknown never silently 
       serviceObligation: { findMany: jest.fn() },
       slaMeasurement: { findMany: jest.fn() },
       partnerSettlement: { findMany: jest.fn() },
-      partnerAgreement: { findFirst: jest.fn() },
+      partnerAgreement: { findMany: jest.fn() },
       meterBillingExport: { findMany: jest.fn() },
       usageRecord: { findMany: jest.fn() },
       meterEvent: { findMany: jest.fn() },
@@ -46,7 +46,7 @@ describe('ReconciliationService (ZS-COM-BILL-001 REC-01: unknown never silently 
     prismaMock.contract.findMany.mockResolvedValue([
       { id: 'c-1', commercial_account_id: 'acct-1', status: 'ACTIVE' },
     ]);
-    prismaMock.entitlement.findFirst.mockResolvedValue(null);
+    prismaMock.entitlement.findMany.mockResolvedValue([]);
     prismaMock.reconciliationIssue.create.mockResolvedValue({ id: 'issue-1' });
 
     const result = await service.reconcileContractEntitlement('run-1');
@@ -63,7 +63,9 @@ describe('ReconciliationService (ZS-COM-BILL-001 REC-01: unknown never silently 
     prismaMock.contract.findMany.mockResolvedValue([
       { id: 'c-1', commercial_account_id: 'acct-1', status: 'ACTIVE' },
     ]);
-    prismaMock.entitlement.findFirst.mockResolvedValue({ id: 'ent-1' });
+    prismaMock.entitlement.findMany.mockResolvedValue([
+      { commercial_account_id: 'acct-1' },
+    ]);
 
     const result = await service.reconcileContractEntitlement('run-1');
 
@@ -203,9 +205,9 @@ describe('ReconciliationService (ZS-COM-BILL-001 REC-01: unknown never silently 
         commission_amount: 999,
       },
     ]);
-    prismaMock.partnerAgreement.findFirst.mockResolvedValue({
-      commission_percent: 10,
-    });
+    prismaMock.partnerAgreement.findMany.mockResolvedValue([
+      { partner_id: 'p-1', commission_percent: 10 },
+    ]);
     prismaMock.reconciliationIssue.create.mockResolvedValue({ id: 'issue-1' });
 
     const result = await service.reconcilePartnerCosts('run-1');
@@ -230,9 +232,9 @@ describe('ReconciliationService (ZS-COM-BILL-001 REC-01: unknown never silently 
         commission_amount: 100,
       },
     ]);
-    prismaMock.partnerAgreement.findFirst.mockResolvedValue({
-      commission_percent: 10,
-    });
+    prismaMock.partnerAgreement.findMany.mockResolvedValue([
+      { partner_id: 'p-1', commission_percent: 10 },
+    ]);
 
     const result = await service.reconcilePartnerCosts('run-1');
 
@@ -263,5 +265,63 @@ describe('ReconciliationService (ZS-COM-BILL-001 REC-01: unknown never silently 
     const result = await service.reconcileClaimEligibility('run-1');
 
     expect(result.issuesFound).toBe(0);
+  });
+
+  it('checks every contract against one entitlement query and flags only the uncovered accounts', async () => {
+    prismaMock.contract.findMany.mockResolvedValue([
+      { id: 'c-1', commercial_account_id: 'acct-1', status: 'ACTIVE' },
+      { id: 'c-2', commercial_account_id: 'acct-2', status: 'ACTIVE' },
+      { id: 'c-3', commercial_account_id: 'acct-1', status: 'ACTIVE' },
+    ]);
+    prismaMock.entitlement.findMany.mockResolvedValue([
+      { commercial_account_id: 'acct-1' },
+    ]);
+    prismaMock.reconciliationIssue.create.mockResolvedValue({ id: 'issue-1' });
+
+    const result = await service.reconcileContractEntitlement('run-1');
+
+    expect(prismaMock.entitlement.findMany).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ checked: 3, issuesFound: 1 });
+    expect(prismaMock.reconciliationIssue.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ object_id: 'c-2' }),
+      }),
+    );
+  });
+
+  it("uses each partner's most recent APPROVED agreement and flags settlements with none", async () => {
+    prismaMock.partnerSettlement.findMany.mockResolvedValue([
+      {
+        id: 's-1',
+        partner_id: 'p-1',
+        gross_amount: 1000,
+        commission_amount: 200,
+      },
+      {
+        id: 's-2',
+        partner_id: 'p-2',
+        gross_amount: 1000,
+        commission_amount: 100,
+      },
+    ]);
+    // Ordered created_at desc, as the query requests: the 20% agreement is newest.
+    prismaMock.partnerAgreement.findMany.mockResolvedValue([
+      { partner_id: 'p-1', commission_percent: 20 },
+      { partner_id: 'p-1', commission_percent: 10 },
+    ]);
+    prismaMock.reconciliationIssue.create.mockResolvedValue({ id: 'issue-1' });
+
+    const result = await service.reconcilePartnerCosts('run-1');
+
+    expect(prismaMock.partnerAgreement.findMany).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ checked: 2, issuesFound: 1 });
+    expect(prismaMock.reconciliationIssue.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          object_id: 's-2',
+          actual_value: 'none',
+        }),
+      }),
+    );
   });
 });

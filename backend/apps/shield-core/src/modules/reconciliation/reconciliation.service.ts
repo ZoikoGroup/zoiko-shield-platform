@@ -69,14 +69,27 @@ export class ReconciliationService {
     });
     let issues = 0;
 
+    // One query for every account's ACTIVE entitlements, not one per contract.
+    const accountIds = [
+      ...new Set(activeContracts.map((c) => c.commercial_account_id)),
+    ];
+    const entitledAccounts = new Set(
+      accountIds.length === 0
+        ? []
+        : (
+            await this.prisma.entitlement.findMany({
+              where: {
+                commercial_account_id: { in: accountIds },
+                status: 'ACTIVE',
+              },
+              select: { commercial_account_id: true },
+              distinct: ['commercial_account_id'],
+            })
+          ).map((e) => e.commercial_account_id),
+    );
+
     for (const contract of activeContracts) {
-      const matchingEntitlement = await this.prisma.entitlement.findFirst({
-        where: {
-          commercial_account_id: contract.commercial_account_id,
-          status: 'ACTIVE',
-        },
-      });
-      if (!matchingEntitlement) {
+      if (!entitledAccounts.has(contract.commercial_account_id)) {
         await this.recordIssue(
           runId,
           'CONTRACT_ENTITLEMENT',
@@ -198,11 +211,24 @@ export class ReconciliationService {
     });
     let issues = 0;
 
+    // Latest APPROVED agreement per partner, loaded once for all settlements.
+    const partnerIds = [...new Set(settlements.map((s) => s.partner_id))];
+    const agreements =
+      partnerIds.length === 0
+        ? []
+        : await this.prisma.partnerAgreement.findMany({
+            where: { partner_id: { in: partnerIds }, status: 'APPROVED' },
+            orderBy: { created_at: 'desc' },
+          });
+    const latestAgreement = new Map<string, (typeof agreements)[number]>();
+    for (const agreement of agreements) {
+      if (!latestAgreement.has(agreement.partner_id)) {
+        latestAgreement.set(agreement.partner_id, agreement);
+      }
+    }
+
     for (const settlement of settlements) {
-      const agreement = await this.prisma.partnerAgreement.findFirst({
-        where: { partner_id: settlement.partner_id, status: 'APPROVED' },
-        orderBy: { created_at: 'desc' },
-      });
+      const agreement = latestAgreement.get(settlement.partner_id);
       if (!agreement) {
         await this.recordIssue(
           runId,
@@ -304,12 +330,14 @@ export class ReconciliationService {
         usageIds = [];
         eventIds = [];
       }
-      const usage = await this.prisma.usageRecord.findMany({
-        where: { id: { in: usageIds } },
-      });
-      const events = await this.prisma.meterEvent.findMany({
-        where: { id: { in: eventIds } },
-      });
+      const [usage, events] = await Promise.all([
+        this.prisma.usageRecord.findMany({
+          where: { id: { in: usageIds } },
+        }),
+        this.prisma.meterEvent.findMany({
+          where: { id: { in: eventIds } },
+        }),
+      ]);
       const totals = usage.reduce(
         (sum, record) => ({
           accepted: sum.accepted + record.accepted_quantity,
