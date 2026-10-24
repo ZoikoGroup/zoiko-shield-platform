@@ -42,7 +42,10 @@ export class NotificationController {
     @Headers('x-tenant-id') tenantId: string,
     @CurrentUser() user?: AuthenticatedUser,
   ) {
-    const tid = tenantId || 'tnt-default-demo';
+    // No silent fallback to a demo tenant: a request without a tenant is
+    // rejected, like every other tenant-scoped endpoint here. Kept outside
+    // the try so the 400 is not swallowed into an empty list.
+    const tid = requireTenantId(tenantId);
     try {
       return await this.prisma.notificationDelivery.findMany({
         where: {
