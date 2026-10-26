@@ -745,6 +745,13 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
     outboundHeaders["x-webhook-nonce"] = nonce;
   }
 
+  // The timeout bounds reaching the backend and receiving its headers. It is
+  // cleared before the body is read, so a large response (an export, a long
+  // list) streams to completion instead of being aborted part-way through.
+  const timeout = new AbortController();
+  const timer = isEventStream
+    ? undefined
+    : setTimeout(() => timeout.abort(), BACKEND_TIMEOUT_MS);
   let backendRes: Response;
   try {
     backendRes = await fetch(targetUrl, {
@@ -752,7 +759,7 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
       headers: outboundHeaders,
       body: hasBody ? rawBodyText : undefined,
       redirect: "manual",
-      signal: isEventStream ? undefined : AbortSignal.timeout(BACKEND_TIMEOUT_MS),
+      signal: isEventStream ? undefined : timeout.signal,
     });
 
     // A 4xx on a security or payment path is the backend's verdict (wrong password, failed
@@ -771,6 +778,8 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
     // Lets the UI tell fabricated demo data apart from real backend records.
     offline.headers.set("x-zoiko-fallback", "true");
     return offline;
+  } finally {
+    clearTimeout(timer);
   }
 
   const responseHeaders = new Headers();
@@ -797,16 +806,10 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
     });
   }
 
-  if (isEventStream && backendRes.body) {
-    return new NextResponse(backendRes.body, {
-      status: backendRes.status,
-      statusText: backendRes.statusText,
-      headers: responseHeaders,
-    });
-  }
-
-  const payload = await backendRes.arrayBuffer();
-  return new NextResponse(payload, {
+  // Stream every body through (SSE and JSON alike) rather than buffering it
+  // whole first: the browser gets the first bytes as soon as the backend
+  // sends them, and a large response is never held in memory here.
+  return new NextResponse(backendRes.body, {
     status: backendRes.status,
     statusText: backendRes.statusText,
     headers: responseHeaders,
