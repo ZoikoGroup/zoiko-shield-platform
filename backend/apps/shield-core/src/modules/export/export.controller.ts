@@ -207,18 +207,28 @@ export class ExportController {
 
     if (format === 'csv') {
       res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
+      res.setHeader(
+        'Content-Disposition',
+        `attachment; filename="${filename}.csv"`,
+      );
       if (records.length === 0) {
         return res.status(200).send('id,status,createdAt\n');
       }
-      const keys = Object.keys(records[0]).filter(k => typeof records[0][k] !== 'object');
+      const keys = Object.keys(records[0]).filter(
+        (k) => typeof records[0][k] !== 'object',
+      );
       const csvHeader = keys.join(',');
-      const csvRows = records.map(r => keys.map(k => JSON.stringify(r[k] ?? '')).join(','));
+      const csvRows = records.map((r) =>
+        keys.map((k) => JSON.stringify(r[k] ?? '')).join(','),
+      );
       return res.status(200).send([csvHeader, ...csvRows].join('\n'));
     }
 
     res.setHeader('Content-Type', 'application/json');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}.json"`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${filename}.json"`,
+    );
     return res.status(200).send(JSON.stringify(records, null, 2));
   }
 }

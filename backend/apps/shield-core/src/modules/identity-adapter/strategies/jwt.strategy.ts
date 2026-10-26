@@ -73,7 +73,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       try {
         const principal = await this.principalService.findById(payload.sub);
         if (principal && principal.status === 'ACTIVE') {
-          const authMethod = (payload.assurance === 'PASSKEY' ? 'PASSKEY' : 'PASSWORD') as 'PASSWORD' | 'PASSKEY';
+          const authMethod = (
+            payload.assurance === 'PASSKEY' ? 'PASSKEY' : 'PASSWORD'
+          ) as 'PASSWORD' | 'PASSKEY';
           const binding = await this.sessionContext.resolveBinding({
             principalId: principal.id,
             tenantId: payload.tid,
@@ -87,7 +89,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
           );
           session = created.session;
         }
-      } catch {}
+      } catch {
+        // Ignore self-heal session creation failures
+      }
     }
 
     if (

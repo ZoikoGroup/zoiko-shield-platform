@@ -33,6 +33,8 @@ import { createHash, randomBytes } from 'crypto';
 import { RegisterDto } from './dto/register.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 
+import { EnvironmentService } from '../environment/environment.service';
+
 const SALT_ROUNDS = 12;
 const LOCKOUT_THRESHOLD = 10;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
@@ -58,6 +60,7 @@ export class AuthService {
     private readonly configService: ConfigService,
     private readonly sessionContext: SessionContextService,
     private readonly prisma: PrismaService,
+    private readonly environmentService: EnvironmentService,
   ) {}
 
   async register(
@@ -88,7 +91,9 @@ export class AuthService {
     ).trim();
     const adminEmail = (dto.email || '').trim().toLowerCase();
     if (!adminEmail) {
-      throw new BadRequestException('Email address is required for registration');
+      throw new BadRequestException(
+        'Email address is required for registration',
+      );
     }
     const adminName = dto.fullName?.trim() || 'Administrator';
     const region = dto.region?.trim() || 'us-east-1';
@@ -165,19 +170,21 @@ export class AuthService {
             principalId,
             status: 'ACTIVE',
             source: 'BOOTSTRAP',
-            ...(ownerRole ? { roles: { create: [{ role_id: ownerRole.id }] } } : {}),
+            ...(ownerRole
+              ? { roles: { create: [{ role_id: ownerRole.id }] } }
+              : {}),
           },
         });
 
-        await this.prisma.environment.create({
-          data: {
-            tenantId,
+        await this.environmentService.create(
+          tenantId,
+          {
             name: 'production',
             environmentType: 'PRODUCTION',
             region,
-            status: 'ACTIVE',
           },
-        });
+          region,
+        );
 
         // Generate email verification challenge and send transactional notifications
         try {
@@ -255,15 +262,17 @@ export class AuthService {
         authenticationMethod: 'PASSWORD',
         riskState: 'NORMAL',
       });
-      const principalRecord = (await this.principalService.findById(principalId)) || ({
-        id: principalId,
-        email: adminEmail,
-        fullName: adminName,
-        principalType: 'HUMAN',
-        status: 'ACTIVE',
-        emailVerified: true,
-        riskState: 'NORMAL',
-      } as any);
+      const principalRecord =
+        (await this.principalService.findById(principalId)) ||
+        ({
+          id: principalId,
+          email: adminEmail,
+          fullName: adminName,
+          principalType: 'HUMAN',
+          status: 'ACTIVE',
+          emailVerified: true,
+          riskState: 'NORMAL',
+        } as any);
       tokens = await this.issueTokenPair(
         principalRecord,
         'PASSWORD',
@@ -394,7 +403,11 @@ export class AuthService {
         principal.email!,
         metadata,
       );
-      await this.mailService.sendOtp(principal.email!, code, 'EMAIL_VERIFICATION');
+      await this.mailService.sendOtp(
+        principal.email!,
+        code,
+        'EMAIL_VERIFICATION',
+      );
     }
 
     return {

@@ -89,7 +89,8 @@ export class WebauthnService {
       this.expectedOrigin,
     ]);
     if (process.env.APP_URL) this.allowedOrigins.add(process.env.APP_URL);
-    if (process.env.FRONTEND_URL) this.allowedOrigins.add(process.env.FRONTEND_URL);
+    if (process.env.FRONTEND_URL)
+      this.allowedOrigins.add(process.env.FRONTEND_URL);
     if (process.env.WEBAUTHN_ALLOWED_ORIGINS) {
       process.env.WEBAUTHN_ALLOWED_ORIGINS.split(',').forEach((o) => {
         const trimmed = o.trim();
@@ -449,11 +450,14 @@ export class WebauthnService {
         originUrl.hostname === this.rpId ||
         originUrl.hostname === 'localhost' ||
         originUrl.hostname === '127.0.0.1' ||
-        (this.rpId !== 'localhost' && originUrl.hostname.endsWith(`.${this.rpId}`))
+        (this.rpId !== 'localhost' &&
+          originUrl.hostname.endsWith(`.${this.rpId}`))
       ) {
         return;
       }
-    } catch {}
+    } catch {
+      // Invalid origin URL format, fall through to ForbiddenException
+    }
     throw new ForbiddenException(`WebAuthn origin mismatch: ${origin}`);
   }
 

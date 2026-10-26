@@ -545,31 +545,6 @@ function findOfflineAccount(req: NextRequest, email: unknown, password: unknown,
     }
   }
 
-  // 4. In demo fallback mode, if a user enters a valid email and non-trivial password,
-  // self-provision an offline account so testers and prospective clients are never locked out!
-  if (normalized.includes("@") && password.length >= 4) {
-    const derivedRole: OfflineRole = normalized.includes("analyst")
-      ? "SECURITY_ANALYST"
-      : normalized.includes("auditor")
-      ? "AUDITOR"
-      : normalized.includes("admin")
-      ? "SUPER_ADMIN"
-      : "TENANT_OWNER";
-    const derivedName = normalized.split("@")[0].replace(/[._-]/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-    const derivedTenant = (typeof tenantId === "string" && tenantId.trim())
-      ? tenantId.trim()
-      : "00000000-0000-4000-8000-000000000001";
-    const autoAccount: OfflineAccount = {
-      email: normalized,
-      passwordSha256: sha256Hex(password),
-      fullName: derivedName,
-      role: derivedRole,
-      tenantId: derivedTenant,
-    };
-    rememberOfflineAccount(normalized, password, derivedName, derivedRole, derivedTenant);
-    return autoAccount;
-  }
-
   return null;
 }
 

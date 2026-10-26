@@ -32,7 +32,10 @@ export class SessionContextService {
   }): Promise<SessionBinding> {
     let targetTenantId = input.tenantId?.trim();
     if (targetTenantId) {
-      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(targetTenantId);
+      const isUuid =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          targetTenantId,
+        );
       if (!isUuid && targetTenantId !== PLATFORM_SCOPE) {
         const found = await this.prisma.tenant.findUnique({
           where: { slug: targetTenantId },
@@ -96,45 +99,9 @@ export class SessionContextService {
     }
 
     if (!membership) {
-      let defaultTenant = await this.prisma.tenant.findFirst({
-        where: { status: 'ACTIVE' },
-        orderBy: { createdAt: 'asc' },
-      });
-      if (!defaultTenant) {
-        defaultTenant = await this.prisma.tenant.create({
-          data: {
-            name: 'Default Organization',
-            slug: `org-${input.principalId.slice(0, 8)}`,
-            homeRegion: 'us-east-1',
-            dataResidencyRegion: 'us-east-1',
-            timezone: 'UTC',
-            createdByPrincipalId: input.principalId,
-            status: 'ACTIVE',
-          },
-        });
-      }
-      targetTenantId = defaultTenant.id;
-      const ownerRole = await this.prisma.role.findFirst({
-        where: { code: 'TENANT_OWNER' },
-      });
-      membership = await this.prisma.tenantMembership.create({
-        data: {
-          tenantId: targetTenantId,
-          principalId: input.principalId,
-          status: 'ACTIVE',
-          source: 'SELF_HEAL',
-          ...(ownerRole ? { roles: { create: [{ role_id: ownerRole.id }] } } : {}),
-        },
-        include: {
-          roles: {
-            include: {
-              role: {
-                include: { permissions: { include: { permission: true } } },
-              },
-            },
-          },
-        },
-      });
+      throw new ForbiddenException(
+        'ACTIVE_TENANT_MEMBERSHIP_REQUIRED: No active membership exists for this tenant',
+      );
     }
 
     if (membership.expiresAt && new Date(membership.expiresAt) <= new Date()) {
@@ -311,20 +278,6 @@ export class SessionContextService {
       throw new BadRequestException(
         'environmentId is required when a tenant has multiple active environments',
       );
-    }
-    if (environments.length === 0) {
-      // Auto-provision primary production environment if none exists for the tenant
-      return (await runWithTenantScope(tenantId, () =>
-        this.prisma.environment.create({
-          data: {
-            tenantId,
-            name: 'production',
-            environmentType: 'PRODUCTION',
-            region: 'us-east-1',
-            status: 'ACTIVE',
-          },
-        }),
-      )) as Environment;
     }
     return environments[0] ?? null;
   }

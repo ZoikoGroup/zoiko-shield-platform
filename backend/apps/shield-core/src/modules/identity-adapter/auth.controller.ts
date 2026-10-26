@@ -15,10 +15,7 @@ import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
-import {
-  VerifyEmailDto,
-  ResendVerificationDto,
-} from './dto/verify-email.dto';
+import { VerifyEmailDto, ResendVerificationDto } from './dto/verify-email.dto';
 import { PasswordRecoveryRequestDto } from './dto/password-recovery-request.dto';
 import { PasswordRecoveryVerifyDto } from './dto/password-recovery-verify.dto';
 import { PasswordRecoveryResetDto } from './dto/password-recovery-reset.dto';

@@ -66,7 +66,9 @@ describe('AutomatedSlaCreditSettlementService (Master Commercial Estate v2.0 §1
 
   it('P0-20: stale SLA sensor cannot issue automatic credits and must be held for review', () => {
     // Sensor timestamp 48 hours old (> 24h threshold)
-    const staleTimestamp = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
+    const staleTimestamp = new Date(
+      Date.now() - 48 * 60 * 60 * 1000,
+    ).toISOString();
 
     const res = settlementService.evaluateAndSettleSlaCredits({
       tenantId: 'tenant-acme',
@@ -81,7 +83,9 @@ describe('AutomatedSlaCreditSettlementService (Master Commercial Estate v2.0 §1
 
     expect(res.isBreached).toBe(true);
     expect(res.invoiceAdjustmentStatus).toBe('STALE_SENSOR_HELD_FOR_REVIEW');
-    expect(res.breachReasons.some((r) => r.includes('P0-20 ENFORCED'))).toBe(true);
+    expect(res.breachReasons.some((r) => r.includes('P0-20 ENFORCED'))).toBe(
+      true,
+    );
     expect(res.autoNettingForbidden).toBe(true);
   });
 });
