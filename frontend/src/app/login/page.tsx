@@ -189,6 +189,8 @@ function LoginForm() {
   const [isPasskeyLoading, setIsPasskeyLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isUnauthorized, setIsUnauthorized] = useState(false);
+  const [resendStatus, setResendStatus] = useState<string | null>(null);
+  const [isResending, setIsResending] = useState(false);
 
   // Forgot Password Modal State
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
@@ -262,16 +264,37 @@ function LoginForm() {
     } catch (err: any) {
       const msg = err.message || "Authentication failed";
       setError(msg);
-      if (
-        msg.includes("Cedar") ||
-        msg.includes("FIDO2") ||
-        msg.includes("step-up") ||
-        err?.status === 403
-      ) {
+      // Only render Cedar step-up state when Cedar policy explicitly requires step-up,
+      // never for unverified emails, wrong credentials, or tenant membership issues.
+      const isUnverified = msg.toLowerCase().includes("not verified");
+      const isCedarStepUp = !isUnverified && (
+        msg.includes("CEDAR_POLICY_DENY") ||
+        msg.includes("Authentication Step-Up Required") ||
+        msg.includes("Authentication step-up required")
+      );
+      if (isCedarStepUp) {
         setIsUnauthorized(true);
       }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    const targetEmail = email.trim();
+    if (!targetEmail) {
+      setError("Please enter your account email address first.");
+      return;
+    }
+    setIsResending(true);
+    setResendStatus(null);
+    try {
+      const res = await ZoikoShieldApiClient.resendVerificationEmail(targetEmail);
+      setResendStatus(res.message || "Verification email sent. Please check your inbox.");
+    } catch (err: any) {
+      setResendStatus(err.message || "Failed to resend verification email.");
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -474,30 +497,47 @@ function LoginForm() {
             <label className="text-xs font-mono text-slate-300 flex items-center justify-between font-semibold">
               <span className="flex items-center gap-1.5">
                 <Building2 className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Target Tenant ID</span>
+                <span>Target Tenant ID <span className="text-slate-500 font-normal">(Optional)</span></span>
               </span>
-              <span className="text-[10px] text-slate-500 font-normal">Multi-Tenant Isolation Key</span>
+              <span className="text-[10px] text-slate-500 font-normal">Auto-resolved if omitted</span>
             </label>
             <input
               type="text"
               id="login-tenant-id"
               name="login-tenant-id"
               autoComplete="off"
-              required
               value={tenantId}
               onChange={(e) => setTenantId(e.target.value.trim())}
-              placeholder="e.g. tenant-sovereign-01"
+              placeholder="e.g. acme-corp or tenant UUID (optional)"
               className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-400 font-mono transition-colors shadow-inner"
             />
           </div>
 
           {/* Error Message Banner */}
           {error && (
-            <div className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-500/50 text-rose-300 text-xs font-mono space-y-1 shadow-[0_0_15px_rgba(244,63,94,0.15)]">
+            <div className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-500/50 text-rose-300 text-xs font-mono space-y-2 shadow-[0_0_15px_rgba(244,63,94,0.15)]">
               <div className="font-bold flex items-center gap-1.5">
                 <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
                 <span>{error}</span>
               </div>
+              {error.toLowerCase().includes("not verified") && (
+                <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 border-t border-rose-500/30">
+                  <span className="text-[11px] text-slate-300">Need a new verification link?</span>
+                  <button
+                    type="button"
+                    onClick={handleResendVerification}
+                    disabled={isResending}
+                    className="text-cyan-400 hover:text-cyan-300 underline font-semibold text-xs disabled:opacity-50"
+                  >
+                    {isResending ? "Sending..." : "Resend Verification Email"}
+                  </button>
+                </div>
+              )}
+              {resendStatus && (
+                <div className="text-[11px] text-emerald-400 font-semibold pt-1">
+                  {resendStatus}
+                </div>
+              )}
             </div>
           )}
 

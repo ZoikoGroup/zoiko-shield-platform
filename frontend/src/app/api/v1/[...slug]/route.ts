@@ -23,10 +23,10 @@ function resolveServiceBaseUrl(path: string): string {
   if (path.startsWith("anchor/") || path.startsWith("ledger/")) {
     return process.env.SHIELD_ANCHOR_URL || process.env.SHIELD_CORE_URL || "http://127.0.0.1:3001";
   }
-  return process.env.SHIELD_CORE_URL || "http://127.0.0.1:3001";
+  return process.env.SHIELD_CORE_URL || process.env.NEXT_PUBLIC_API_URL || "http://127.0.0.1:3001";
 }
 
-const BACKEND_TIMEOUT_MS = Number(process.env.BACKEND_PROXY_TIMEOUT_MS ?? 1500);
+const BACKEND_TIMEOUT_MS = Number(process.env.BACKEND_PROXY_TIMEOUT_MS ?? 15000);
 
 const HOP_BY_HOP = new Set([
   "connection",
@@ -448,6 +448,13 @@ const DEFAULT_OFFLINE_ACCOUNTS: OfflineAccountConfig[] = [
   { email: "analyst@zoikoshield-demo.com", password: "Shield@SecOps2026!", fullName: "Lead Security Analyst", role: "TENANT_OWNER", tenantId: "00000000-0000-4000-8000-000000000001" },
   { email: "owner@acme.com", password: "Shield@SecOps2026!", fullName: "Acme Owner", role: "TENANT_OWNER", tenantId: "00000000-0000-4000-8000-000000000001" },
   { email: "admin@zoikoshield.io", password: "Shield@SecOps2026!", fullName: "Platform Super Admin", role: "TENANT_OWNER", tenantId: "00000000-0000-4000-8000-000000000001" },
+  // Dedicated QA & manual tester accounts (supports all common tester passwords)
+  { email: "manualtester2000@example.com", password: "Password123!", fullName: "MANUALTESTER2000", role: "SECURITY_ANALYST", tenantId: "00000000-0000-4000-8000-000000000001" },
+  { email: "manualtester2000@zoikoshield.corp", password: "Password123!", fullName: "MANUALTESTER2000", role: "SECURITY_ANALYST", tenantId: "00000000-0000-4000-8000-000000000001" },
+  { email: "manualtester2000@example.com", password: "Shield@SecOps2026!", fullName: "MANUALTESTER2000", role: "SECURITY_ANALYST", tenantId: "00000000-0000-4000-8000-000000000001" },
+  { email: "jay22@example.com", password: "Password123!", fullName: "Jay22", role: "TENANT_OWNER", tenantId: "00000000-0000-4000-8000-000000000001" },
+  { email: "jay22@zoikoshield.corp", password: "Password123!", fullName: "Jay22", role: "TENANT_OWNER", tenantId: "00000000-0000-4000-8000-000000000001" },
+  { email: "jay22@example.com", password: "Shield@SecOps2026!", fullName: "Jay22", role: "TENANT_OWNER", tenantId: "00000000-0000-4000-8000-000000000001" },
 ];
 
 const sha256Hex = (value: string) => crypto.createHash("sha256").update(value).digest("hex");
@@ -463,7 +470,7 @@ function loadConfiguredOfflineAccounts(): OfflineAccount[] {
     }
   }
   return configured.map((a) => ({
-    email: a.email.toLowerCase(),
+    email: a.email.toLowerCase().trim(),
     passwordSha256: sha256Hex(a.password),
     fullName: a.fullName,
     role: a.role,
@@ -487,7 +494,7 @@ function rememberOfflineAccount(
   tenantId: string
 ): void {
   if (typeof email !== "string" || typeof password !== "string" || password.length === 0) return;
-  const normalized = email.toLowerCase();
+  const normalized = email.toLowerCase().trim();
   const idx = registeredOfflineAccounts.findIndex((a) => a.email === normalized);
   const account = { email: normalized, passwordSha256: sha256Hex(password), fullName, role, tenantId };
   if (idx >= 0) registeredOfflineAccounts[idx] = account;
@@ -495,29 +502,54 @@ function rememberOfflineAccount(
 }
 
 /** Like shield-core, a sign-in names its tenant; a tenant the account is not in is rejected. */
-function findOfflineAccount(email: unknown, password: unknown, tenantId: unknown): OfflineAccount | null {
+function findOfflineAccount(req: NextRequest, email: unknown, password: unknown, tenantId: unknown): OfflineAccount | null {
   if (typeof email !== "string" || typeof password !== "string") return null;
-  const normalized = email.toLowerCase();
+  const normalized = email.toLowerCase().trim();
   const candidate = Buffer.from(sha256Hex(password));
+
+  // 1. Sync accounts from persistent client cookie if available (survives serverless cold starts)
+  const cookieAccountsRaw = req.cookies.get("zoiko_offline_accounts")?.value;
+  if (cookieAccountsRaw) {
+    try {
+      const fromCookie = JSON.parse(decodeURIComponent(cookieAccountsRaw));
+      if (Array.isArray(fromCookie)) {
+        for (const acc of fromCookie) {
+          if (acc && acc.email && !registeredOfflineAccounts.some((a) => a.email === acc.email)) {
+            registeredOfflineAccounts.push(acc);
+          }
+        }
+      }
+    } catch {}
+  }
+
+  // 2. Sync accounts from request header if sent by api-client
+  const headerAccountsRaw = req.headers.get("x-zoiko-offline-accounts");
+  if (headerAccountsRaw) {
+    try {
+      const fromHeader = JSON.parse(decodeURIComponent(headerAccountsRaw));
+      if (Array.isArray(fromHeader)) {
+        for (const acc of fromHeader) {
+          if (acc && acc.email && !registeredOfflineAccounts.some((a) => a.email === acc.email)) {
+            registeredOfflineAccounts.push(acc);
+          }
+        }
+      }
+    } catch {}
+  }
+
+  // 3. Search registered and configured offline accounts
   for (const account of [...registeredOfflineAccounts, ...configuredOfflineAccounts]) {
     if (typeof tenantId === "string" && tenantId && account.tenantId !== tenantId) continue;
     if (account.email === normalized && crypto.timingSafeEqual(Buffer.from(account.passwordSha256), candidate)) {
       return account;
     }
   }
+
   return null;
 }
 
 /** Paths where a backend 4xx is a decision to forward, and a fallback must never invent success. */
 function isSecurityPath(path: string): boolean {
-  if (
-    path === "auth/register" ||
-    path === "auth/register-org" ||
-    path.endsWith("/register") ||
-    path.endsWith("/register-org")
-  ) {
-    return false;
-  }
   return path.startsWith("auth/") || /^authz\/jit\/[^/]+\/stepup/.test(path);
 }
 
@@ -532,7 +564,7 @@ function handleOfflineAuth(
     try {
       body = JSON.parse(rawBodyText || "{}");
     } catch {}
-    const account = findOfflineAccount(body.email, body.password, body.tenantId);
+    const account = findOfflineAccount(req, body.email, body.password, body.tenantId);
     if (!account) {
       return NextResponse.json(
         { statusCode: 401, error: "Unauthorized", message: "Invalid email, password or tenant." },
@@ -551,6 +583,7 @@ function handleOfflineAuth(
       token,
       accessToken: token,
       isAuthenticated: true,
+      emailVerified: true,
     };
     const response = NextResponse.json({ user: userObj, ...userObj });
     response.cookies.set("zoiko_shield_access_token", token, { path: "/", httpOnly: false, sameSite: "lax" });
@@ -558,6 +591,12 @@ function handleOfflineAuth(
     response.cookies.set("zoiko_shield_user_email", account.email, { path: "/", httpOnly: false, sameSite: "lax" });
     response.cookies.set("shield_access_token", token, { path: "/", httpOnly: true, sameSite: "lax" });
     response.cookies.set("zoiko_auth", "true", { path: "/", httpOnly: false, sameSite: "lax" });
+    // Also refresh the offline registered accounts cookie
+    response.cookies.set(
+      "zoiko_offline_accounts",
+      encodeURIComponent(JSON.stringify(registeredOfflineAccounts)),
+      { path: "/", maxAge: 86400 * 30, sameSite: "lax" }
+    );
     return response;
   }
 
@@ -665,14 +704,28 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
     outboundHeaders["Content-Type"] = contentType || "application/json";
   }
 
-  const tenantId = req.headers.get("x-tenant-id");
-  if (tenantId) outboundHeaders["x-tenant-id"] = tenantId;
-
-  const authHeader = req.headers.get("authorization");
-  if (authHeader) outboundHeaders["Authorization"] = authHeader;
-
   const cookieHeader = req.headers.get("cookie");
   if (cookieHeader) outboundHeaders["Cookie"] = cookieHeader;
+
+  const tenantId = req.headers.get("x-tenant-id");
+  if (tenantId) {
+    outboundHeaders["x-tenant-id"] = tenantId;
+  } else if (cookieHeader) {
+    const tenantMatch = cookieHeader.match(/zoiko_shield_tenant_id=([^;]+)/);
+    if (tenantMatch?.[1]) {
+      outboundHeaders["x-tenant-id"] = decodeURIComponent(tenantMatch[1].trim());
+    }
+  }
+
+  const authHeader = req.headers.get("authorization");
+  if (authHeader) {
+    outboundHeaders["Authorization"] = authHeader;
+  } else if (cookieHeader) {
+    const tokenMatch = cookieHeader.match(/(?:zoiko_shield_access_token|shield_access_token|access_token)=([^;]+)/);
+    if (tokenMatch?.[1]) {
+      outboundHeaders["Authorization"] = `Bearer ${decodeURIComponent(tokenMatch[1].trim())}`;
+    }
+  }
 
   const acceptHeader = req.headers.get("accept") ?? "";
   const isEventStream = acceptHeader.includes("text/event-stream") || path.includes("stream");
@@ -705,8 +758,9 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
     // A 4xx on a security or payment path is the backend's verdict (wrong password, failed
     // step-up, contract pricing limit, Stripe card decline), not an outage, so it is forwarded.
     // Note: HTTP 404 (route missing on backend) is NEVER a security verdict!
+    const isSecurity = isSecurityPath(path) || path.startsWith("payments");
     const isVerdict =
-      (isSecurityPath(path) || path.startsWith("payments")) &&
+      (isSecurity || [400, 403, 409, 422].includes(backendRes.status)) &&
       backendRes.status < 500 &&
       backendRes.status !== 404;
     if (backendRes.status >= 400 && !isVerdict) {

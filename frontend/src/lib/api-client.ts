@@ -78,6 +78,33 @@ async function extractErrorMessage(res: Response, fallback: string): Promise<str
 }
 
 function getState(): DemoState {
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem("zoikoshield_demo_state");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.session?.token) {
+          return parsed;
+        }
+      }
+    } catch {}
+
+    try {
+      const tokenMatch = document.cookie.match(
+        /(?:zoiko_shield_access_token|shield_access_token|access_token)=([^;]+)/,
+      );
+      const tenantMatch = document.cookie.match(/zoiko_shield_tenant_id=([^;]+)/);
+      if (tokenMatch?.[1]) {
+        const base = getInitialDemoState();
+        base.session.token = decodeURIComponent(tokenMatch[1].trim());
+        base.session.isAuthenticated = true;
+        if (tenantMatch?.[1]) {
+          base.tenant.id = decodeURIComponent(tenantMatch[1].trim());
+        }
+        return base;
+      }
+    } catch {}
+  }
   return getInitialDemoState();
 }
 
@@ -222,7 +249,7 @@ export class ZoikoShieldApiClient {
     password?: string,
     tenantId?: string
   ): Promise<UserSession> {
-    const resolvedTenantId = tenantId || getState().tenant?.id;
+    const resolvedTenantId = tenantId?.trim() ? tenantId.trim() : undefined;
     const session = await this.safeFetch<UserSession>(
       "/api/v1/auth/login",
       {
@@ -243,7 +270,7 @@ export class ZoikoShieldApiClient {
     };
     // Carry the tenant the user actually signed in to, so every later request
     // sends an x-tenant-id the backend will accept.
-    const signedInTenantId = session.tenantId || resolvedTenantId;
+    const signedInTenantId = session.tenantId || resolvedTenantId || state.tenant?.id;
     if (signedInTenantId && state.tenant) {
       state.tenant.id = signedInTenantId;
     }
@@ -254,7 +281,12 @@ export class ZoikoShieldApiClient {
         const maxAge = 86400 * 7; // 7 days
         document.cookie = `zoiko_auth=true; path=/; max-age=${maxAge}; SameSite=Lax`;
         document.cookie = `zoiko_shield_access_token=${session.token}; path=/; max-age=${maxAge}; SameSite=Lax`;
-        document.cookie = `zoiko_shield_tenant_id=${signedInTenantId}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        document.cookie = `shield_access_token=${session.token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        document.cookie = `access_token=${session.token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        if (signedInTenantId) {
+          document.cookie = `zoiko_shield_tenant_id=${signedInTenantId}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        }
+        document.cookie = `zoiko_shield_user_email=${encodeURIComponent(session.email || email)}; path=/; max-age=${maxAge}; SameSite=Lax`;
       } catch {}
     }
 
@@ -353,6 +385,28 @@ export class ZoikoShieldApiClient {
 
     saveDemoState(state);
     return res;
+  }
+
+  static async verifyEmail(email: string, code: string): Promise<{ success: boolean; message: string }> {
+    return this.safeFetch<{ success: boolean; message: string }>(
+      "/api/v1/auth/verify-email",
+      {
+        method: "POST",
+        body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim() }),
+      },
+      null
+    );
+  }
+
+  static async resendVerificationEmail(email: string): Promise<{ message: string }> {
+    return this.safeFetch<{ message: string }>(
+      "/api/v1/auth/resend-verification",
+      {
+        method: "POST",
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      },
+      null
+    );
   }
 
   // --- WebAuthn / Passkey login ---

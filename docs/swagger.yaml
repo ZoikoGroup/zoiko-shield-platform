@@ -37250,6 +37250,108 @@ paths:
         Issue a short-lived signed download token (object storage is never exposed directly). Applies the documented
         path, query, and tenant filters and returns the current persisted or computed result using the response model
         below.
+  /api/v1/exports/{exportId}/download/file:
+    get:
+      tags:
+        - Exports
+      summary: Download complete structured export package file directly
+      parameters:
+        - name: exportId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique export ID identifying the target resource.
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Direct export bundle download successful.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobId:
+                    type: string
+                  tenantId:
+                    type: string
+                  exportType:
+                    type: string
+                  purpose:
+                    type: string
+                  status:
+                    type: string
+                  completedAt:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  manifest:
+                    type: object
+                    nullable: true
+                  artifacts:
+                    type: array
+                    items:
+                      type: object
+                  generatedAt:
+                    type: string
+                    format: date-time
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Export job not found
+      operationId: getExportsByExportIdDownloadFile
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      description: >-
+        Download full structured JSON export bundle directly for the specified export job ID.
+  /api/v1/exports/data/{dataType}:
+    get:
+      tags:
+        - Exports
+      summary: Export domain dataset in CSV or JSON format
+      parameters:
+        - name: dataType
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Dataset domain type (team, audit, evidence, risk, controls, cases, alerts).
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - json
+              - csv
+            default: json
+          description: Export serialization format.
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Domain dataset export successful.
+          content:
+            text/csv:
+              schema:
+                type: string
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+      operationId: getExportsDataByDataType
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      description: >-
+        Export live domain dataset (team, audit, evidence, risk, controls, cases, alerts) in CSV or JSON format with tenant isolation.
   /api/v1/context/assets/{assetId}:
     get:
       tags:

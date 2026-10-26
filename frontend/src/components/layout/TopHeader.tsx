@@ -118,8 +118,30 @@ export const TopHeader: React.FC = () => {
     setIsLoadingNotifs(true);
     try {
       const headers: Record<string, string> = {};
-      if (state.session?.token) headers["Authorization"] = `Bearer ${state.session.token}`;
-      if (state.tenant?.id) headers["x-tenant-id"] = state.tenant.id;
+      let activeToken = state.session?.token;
+      let activeTenant = state.tenant?.id;
+      if (typeof window !== "undefined") {
+        if (!activeToken) {
+          try {
+            const stored = localStorage.getItem("zoikoshield_demo_state");
+            if (stored) {
+              const p = JSON.parse(stored);
+              if (p?.session?.token) activeToken = p.session.token;
+              if (p?.tenant?.id && !activeTenant) activeTenant = p.tenant.id;
+            }
+          } catch {}
+        }
+        if (!activeToken) {
+          const match = document.cookie.match(/(?:zoiko_shield_access_token|shield_access_token|access_token)=([^;]+)/);
+          if (match?.[1]) activeToken = decodeURIComponent(match[1].trim());
+        }
+        if (!activeTenant) {
+          const match = document.cookie.match(/zoiko_shield_tenant_id=([^;]+)/);
+          if (match?.[1]) activeTenant = decodeURIComponent(match[1].trim());
+        }
+      }
+      if (activeToken) headers["Authorization"] = `Bearer ${activeToken}`;
+      if (activeTenant) headers["x-tenant-id"] = activeTenant;
       const [alertsRes, notifsRes] = await Promise.allSettled([
         fetch("/api/v1/alerts?limit=10", { headers }),
         fetch("/api/v1/notifications?limit=10", { headers }),

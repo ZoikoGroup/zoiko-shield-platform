@@ -415,7 +415,9 @@ export class PaymentService {
 
     const plan = DRAFT_PLAN_TIERS.find((p) => p.key === dto.planTier);
     if (!plan) {
-      throw new NotFoundException(`Plan tier '${dto.planTier}' not found in catalogue`);
+      throw new NotFoundException(
+        `Plan tier '${dto.planTier}' not found in catalogue`,
+      );
     }
 
     const envMonthly = process.env[`PLAN_PRICE_${dto.planTier}_MONTHLY`];
@@ -431,7 +433,11 @@ export class PaymentService {
         : (envMonthly ? Number(envMonthly) : null) || plan.pricing.monthlyUsd;
 
     // Check if contract-only with no approved pricing
-    if (!monthlyRate && plan.pricing.isContractOnly && !process.env.STRIPE_ALLOW_TEST_PRICING) {
+    if (
+      !monthlyRate &&
+      plan.pricing.isContractOnly &&
+      !process.env.STRIPE_ALLOW_TEST_PRICING
+    ) {
       throw new ConflictException({
         statusCode: 409,
         error: 'PLAN_IS_CONTRACT_ONLY',
@@ -450,9 +456,14 @@ export class PaymentService {
 
     const quantity = dto.quantity && dto.quantity > 0 ? dto.quantity : 1;
     const totalAmount =
-      (dto.billingPeriod === 'ANNUAL' ? finalMonthlyRate * 12 : finalMonthlyRate) *
-      quantity;
-    const currency = (dto.currency || plan.pricing.currency || 'USD').toUpperCase();
+      (dto.billingPeriod === 'ANNUAL'
+        ? finalMonthlyRate * 12
+        : finalMonthlyRate) * quantity;
+    const currency = (
+      dto.currency ||
+      plan.pricing.currency ||
+      'USD'
+    ).toUpperCase();
 
     const appBaseUrl =
       process.env.APP_BASE_URL ||
@@ -466,20 +477,21 @@ export class PaymentService {
       dto.cancelUrl ||
       `${appBaseUrl}/pricing/cancelled?session_id={CHECKOUT_SESSION_ID}`;
 
-    const sessionResult = await this.stripePaymentProvider.createCheckoutSession({
-      tenantId,
-      userId,
-      userEmail,
-      planTier: dto.planTier,
-      billingPeriod: dto.billingPeriod,
-      amount: totalAmount,
-      currency,
-      successUrl,
-      cancelUrl,
-      metadata: {
-        organizationName: tenantId || 'default-tenant',
-      },
-    });
+    const sessionResult =
+      await this.stripePaymentProvider.createCheckoutSession({
+        tenantId,
+        userId,
+        userEmail,
+        planTier: dto.planTier,
+        billingPeriod: dto.billingPeriod,
+        amount: totalAmount,
+        currency,
+        successUrl,
+        cancelUrl,
+        metadata: {
+          organizationName: tenantId || 'default-tenant',
+        },
+      });
 
     const sessionRecord = {
       sessionId: sessionResult.sessionId,
@@ -536,7 +548,9 @@ export class PaymentService {
           ? payload.toString('utf-8')
           : JSON.stringify(payload);
 
-    if (!this.stripePaymentProvider.verifyWebhookSignature(rawString, signature)) {
+    if (
+      !this.stripePaymentProvider.verifyWebhookSignature(rawString, signature)
+    ) {
       throw new ConflictException({
         statusCode: 409,
         error: 'INVALID_STRIPE_WEBHOOK_SIGNATURE',
@@ -550,7 +564,11 @@ export class PaymentService {
     }
 
     const key = `stripe-evt-${event.id}`;
-    return this.idempotencyService.run<{ received: boolean; event?: string; ignored?: boolean }>(
+    return this.idempotencyService.run<{
+      received: boolean;
+      event?: string;
+      ignored?: boolean;
+    }>(
       {
         key,
         operation: 'payments.stripe_webhook',
@@ -631,7 +649,8 @@ export class PaymentService {
                   templateKey: 'ZS-EML-BILL-001',
                   recipients: [{ email: customerEmail, name: customerName }],
                   variables: {
-                    organizationName: session.metadata?.organizationName || 'Enterprise Tenant',
+                    organizationName:
+                      session.metadata?.organizationName || 'Enterprise Tenant',
                     referenceId: `sub-${session.id.substring(0, 8)}`,
                     statusLabel: 'SUBSCRIPTION_ACTIVATED',
                     plan_tier: planTier,
@@ -647,7 +666,8 @@ export class PaymentService {
                   templateKey: 'ZS-EML-BILL-006',
                   recipients: [{ email: customerEmail, name: customerName }],
                   variables: {
-                    organizationName: session.metadata?.organizationName || 'Enterprise Tenant',
+                    organizationName:
+                      session.metadata?.organizationName || 'Enterprise Tenant',
                     referenceId: `rcpt-${String(session.payment_intent || session.id).substring(0, 10)}`,
                     statusLabel: 'PAYMENT_RECEIVED',
                     amount: `${currency} ${amount.toFixed(2)}`,
@@ -708,8 +728,7 @@ export class PaymentService {
 
           case 'charge.refunded': {
             const charge = event.data.object as any;
-            const customerEmail =
-              charge.receipt_email || 'billing@example.com';
+            const customerEmail = charge.receipt_email || 'billing@example.com';
             const amount = (charge.amount_refunded || 0) / 100;
             const currency = (charge.currency || 'usd').toUpperCase();
             const tenantId = charge.metadata?.tenantId || 'platform';
@@ -744,8 +763,7 @@ export class PaymentService {
           case 'customer.subscription.deleted': {
             const sub = event.data.object as any;
             const tenantId = sub.metadata?.tenantId || 'platform';
-            const customerEmail =
-              sub.customer_email || 'billing@example.com';
+            const customerEmail = sub.customer_email || 'billing@example.com';
 
             if (this.emailService) {
               try {

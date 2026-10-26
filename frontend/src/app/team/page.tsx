@@ -5,6 +5,7 @@ import { Users, FileText, UserPlus, Lock, Mail, KeyRound, Clock, Eye, AlertTrian
 import TeamConsole from "./console";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
+import { downloadFromApi } from "@/lib/export-utils";
 import {
   WorkspacePage, PageHeader, NoticeBanner, KpiGrid, Panel, Pill, DataTable, SearchInput,
   KeyValues, EventList, ActionButton, CONSOLE_TAB, useTabFilter, type Tone,
@@ -30,7 +31,19 @@ export default function TeamAccessPage() {
   const [query, setQuery] = useState("");
   const [dynamicMembers, setDynamicMembers] = useState<Member[]>([]);
   const [selectedRef, setSelectedRef] = useState<string>("");
+  const [isExporting, setIsExporting] = useState(false);
   const show = useTabFilter(tab, "members");
+
+  const handleExportAccessReport = async () => {
+    setIsExporting(true);
+    try {
+      await downloadFromApi("/api/v1/exports/data/team?format=csv", "team-access-report.csv", demoState.tenant?.id);
+    } catch (err) {
+      console.error("Failed to export access report:", err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const orgName = demoState.tenant?.organizationName || "Sovereign Enterprise";
   const tenantSlug = demoState.tenant?.slug || "zoikoshield";
@@ -221,7 +234,7 @@ export default function TeamAccessPage() {
           subtitle="Manage tenant membership, invitations, roles, passkeys and evidence-backed access reviews"
           actions={
             <>
-              <ActionButton onClick={() => setTab("audit")}><FileText className="w-3.5 h-3.5" /> Export access report</ActionButton>
+              <ActionButton onClick={handleExportAccessReport}><FileText className="w-3.5 h-3.5" /> {isExporting ? "Exporting..." : "Export access report"}</ActionButton>
               <ActionButton primary onClick={() => setTab(CONSOLE_TAB)}><UserPlus className="w-3.5 h-3.5" /> Invite member</ActionButton>
             </>
           }

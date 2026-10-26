@@ -38,7 +38,9 @@ export class StripePaymentProvider implements PaymentProvider {
       this.stripe = new Stripe(apiKey, {
         apiVersion: '2025-02-24.acacia' as any,
       });
-      this.logger.log('StripePaymentProvider initialized with active Stripe secret key.');
+      this.logger.log(
+        'StripePaymentProvider initialized with active Stripe secret key.',
+      );
     } else {
       this.logger.log(
         'StripePaymentProvider: STRIPE_SECRET_KEY not set — operating in test/verification mode.',
@@ -94,7 +96,9 @@ export class StripePaymentProvider implements PaymentProvider {
           checkoutUrl: session.url || input.successUrl,
         };
       } catch (err: any) {
-        this.logger.error(`Stripe checkout session creation failed: ${err.message}`);
+        this.logger.error(
+          `Stripe checkout session creation failed: ${err.message}`,
+        );
         throw err;
       }
     }
@@ -127,7 +131,8 @@ export class StripePaymentProvider implements PaymentProvider {
         });
         return {
           providerPaymentId: paymentIntent.id,
-          status: paymentIntent.status === 'succeeded' ? 'AUTHORIZED' : 'FAILED',
+          status:
+            paymentIntent.status === 'succeeded' ? 'AUTHORIZED' : 'FAILED',
         };
       } catch (err: any) {
         this.logger.error(`Stripe paymentIntent failed: ${err.message}`);
@@ -197,12 +202,22 @@ export class StripePaymentProvider implements PaymentProvider {
     }
 
     // If active Stripe client with real webhook secret, use official cryptographic verification
-    if (this.stripe && this.webhookSecret && !this.webhookSecret.startsWith('whsec_demo')) {
+    if (
+      this.stripe &&
+      this.webhookSecret &&
+      !this.webhookSecret.startsWith('whsec_demo')
+    ) {
       try {
-        this.stripe.webhooks.constructEvent(payload, signature, this.webhookSecret);
+        this.stripe.webhooks.constructEvent(
+          payload,
+          signature,
+          this.webhookSecret,
+        );
         return true;
       } catch (err: any) {
-        this.logger.warn(`Stripe webhook signature validation failed: ${err.message}`);
+        this.logger.warn(
+          `Stripe webhook signature validation failed: ${err.message}`,
+        );
         return false;
       }
     }
@@ -229,12 +244,26 @@ export class StripePaymentProvider implements PaymentProvider {
     }
   }
 
-  constructEvent(payload: string | Buffer, signature: string): Stripe.Event | null {
-    if (this.stripe && this.webhookSecret && !this.webhookSecret.startsWith('whsec_demo')) {
-      return this.stripe.webhooks.constructEvent(payload, signature, this.webhookSecret);
+  constructEvent(
+    payload: string | Buffer,
+    signature: string,
+  ): Stripe.Event | null {
+    if (
+      this.stripe &&
+      this.webhookSecret &&
+      !this.webhookSecret.startsWith('whsec_demo')
+    ) {
+      return this.stripe.webhooks.constructEvent(
+        payload,
+        signature,
+        this.webhookSecret,
+      );
     }
     try {
-      const parsed = typeof payload === 'string' ? JSON.parse(payload) : JSON.parse(payload.toString());
+      const parsed =
+        typeof payload === 'string'
+          ? JSON.parse(payload)
+          : JSON.parse(payload.toString());
       return parsed as Stripe.Event;
     } catch {
       return null;

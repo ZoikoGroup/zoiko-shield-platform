@@ -139,13 +139,15 @@ export class PaymentCheckoutController {
 
   @Get('session/:sessionId/status')
   async getSessionStatus(@Param('sessionId') sessionId: string) {
-    const status = await this.paymentService.getCheckoutSessionStatus(sessionId);
+    const status =
+      await this.paymentService.getCheckoutSessionStatus(sessionId);
     return { statusCode: HttpStatus.OK, data: status };
   }
 
   @Get('checkout-session/:sessionId/status')
   async getCheckoutSessionStatus(@Param('sessionId') sessionId: string) {
-    const status = await this.paymentService.getCheckoutSessionStatus(sessionId);
+    const status =
+      await this.paymentService.getCheckoutSessionStatus(sessionId);
     return { statusCode: HttpStatus.OK, data: status };
   }
 }

@@ -19,6 +19,15 @@ const DUNNING_CASE_TRANSITIONS: Record<string, string[]> = {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
+export interface SafeContinuityHold {
+  contractId: string;
+  incidentId: string;
+  reason: string;
+  expiresAt: Date;
+  authorizedBy: string;
+  grantedAt: Date;
+}
+
 export class TriggerDunningDto {
   @IsUUID()
   contractId!: string;
@@ -32,22 +41,71 @@ export class TriggerDunningDto {
 }
 
 /**
- * ZS-COM-BILL-001 Part 18. Deliberately does not import anything from
- * evidence/case/export/offboarding modules — payment failure escalates a
- * *contract's* commercial status only. Reaching TERMINATION_WORKFLOW here
- * does not, by itself, touch a single security-plane record; a human still
- * has to explicitly authorize tenant offboarding via its own API (Part 19,
- * already implemented) to actually revoke access or start deletion.
+ * ZS-COM-BILL-001 Part 18 & Master Commercial Estate v2.0 §09.4.
+ *
+ * Invariant C01 / P0-10 / P0-18:
+ * "Customer safety precedes monetization. Security-alert intake, access to
+ *  incident evidence, authorized containment, legal hold and emergency contacts
+ *  survive commercial disputes."
+ *
+ * Deliberately does not import anything from evidence/case/export/offboarding
+ * modules — payment failure escalates a *contract's* commercial status only.
+ * Reaching TERMINATION_WORKFLOW here does not touch a single security-plane
+ * record or disable incident contacts.
  */
 @Injectable()
 export class DunningService {
   private readonly logger = new Logger(DunningService.name);
+  private readonly safeContinuityHolds = new Map<string, SafeContinuityHold>();
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly contractService: ContractStateService,
     private readonly dunningPolicyService: DunningPolicyService,
   ) {}
+
+  /**
+   * Grant an emergency safe-continuity hold during a declared security incident,
+   * active legal hold, or emergency containment event (v2.0 §09.4 / C01).
+   */
+  grantSafeContinuity(
+    contractId: string,
+    options: {
+      incidentId: string;
+      reason: string;
+      ttlHours?: number;
+      authorizedBy: string;
+    },
+  ): SafeContinuityHold {
+    const ttlHours = options.ttlHours || 72;
+    const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000);
+
+    const hold: SafeContinuityHold = {
+      contractId,
+      incidentId: options.incidentId,
+      reason: options.reason,
+      expiresAt,
+      authorizedBy: options.authorizedBy,
+      grantedAt: new Date(),
+    };
+
+    this.safeContinuityHolds.set(contractId, hold);
+    this.logger.warn(
+      `🛡️ [SAFE-CONTINUITY GRANTED] Contract ${contractId} under emergency hold for incident ${options.incidentId}. Expires at ${expiresAt.toISOString()}.`,
+    );
+
+    return hold;
+  }
+
+  isSafeContinuityActive(contractId: string): boolean {
+    const hold = this.safeContinuityHolds.get(contractId);
+    if (!hold) return false;
+    if (new Date() > hold.expiresAt) {
+      this.safeContinuityHolds.delete(contractId);
+      return false;
+    }
+    return true;
+  }
 
   async getCaseById(id: string) {
     const dunningCase = await this.prisma.dunningCase.findUnique({
@@ -114,6 +172,21 @@ export class DunningService {
     const contract = await this.contractService.getContractById(
       dunningCase.contract_id,
     );
+
+    // Invariant C01 & P0-10: Delinquency cannot advance to restrictive/destructive
+    // state while under an active safe-continuity incident or legal hold.
+    if (this.isSafeContinuityActive(dunningCase.contract_id)) {
+      this.logger.log(
+        `🛡️ [SAFE-CONTINUITY ENFORCED] Dunning advance held for contract ${dunningCase.contract_id} (active security incident / legal hold). Invariant C01 / P0-10 preserved.`,
+      );
+      return {
+        dunningCase,
+        contract,
+        advanced: false,
+        reason: 'SAFE_CONTINUITY_HOLD_ACTIVE',
+      };
+    }
+
     const elapsedDays =
       (Date.now() - dunningCase.triggered_at.getTime()) / MS_PER_DAY;
 

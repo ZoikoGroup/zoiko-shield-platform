@@ -23,12 +23,45 @@ export class BackendError extends Error {
 }
 
 function tenantHeaders(): Record<string, string> {
-  const state = getInitialDemoState();
   const headers: Record<string, string> = {};
-  // Only a tenant the client actually has. Inventing one makes an unscoped
-  // request look scoped to the backend.
-  if (state.tenant?.id) headers["x-tenant-id"] = state.tenant.id;
-  if (state.session?.token) headers["Authorization"] = `Bearer ${state.session.token}`;
+
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem("zoikoshield_demo_state");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.tenant?.id) headers["x-tenant-id"] = parsed.tenant.id;
+        if (parsed?.session?.token) headers["Authorization"] = `Bearer ${parsed.session.token}`;
+      }
+    } catch {}
+
+    if (!headers["Authorization"]) {
+      const tokenMatch = document.cookie.match(
+        /(?:zoiko_shield_access_token|shield_access_token|access_token)=([^;]+)/,
+      );
+      if (tokenMatch?.[1]) {
+        headers["Authorization"] = `Bearer ${decodeURIComponent(tokenMatch[1].trim())}`;
+      }
+    }
+
+    if (!headers["x-tenant-id"]) {
+      const tenantMatch = document.cookie.match(/zoiko_shield_tenant_id=([^;]+)/);
+      if (tenantMatch?.[1]) {
+        headers["x-tenant-id"] = decodeURIComponent(tenantMatch[1].trim());
+      }
+    }
+  }
+
+  if (!headers["Authorization"] || !headers["x-tenant-id"]) {
+    const fallback = getInitialDemoState();
+    if (!headers["x-tenant-id"] && fallback.tenant?.id) {
+      headers["x-tenant-id"] = fallback.tenant.id;
+    }
+    if (!headers["Authorization"] && fallback.session?.token) {
+      headers["Authorization"] = `Bearer ${fallback.session.token}`;
+    }
+  }
+
   return headers;
 }
 

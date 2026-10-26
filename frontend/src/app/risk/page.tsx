@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
-import { Scale, Plus, Check, Circle } from "lucide-react";
+import { Scale, Plus, Check, Circle, Download } from "lucide-react";
 import RiskConsole from "./console";
+import { downloadFromApi } from "@/lib/export-utils";
 import {
   WorkspacePage, PageHeader, NoticeBanner, KpiGrid, Panel, Pill, DataTable, SearchInput,
   KeyValues, EventList, ActionButton, CONSOLE_TAB, useTabFilter, type Tone,
@@ -57,7 +58,20 @@ export default function RiskExceptionsPage() {
   const [tab, setTab] = useState("overview");
   const [query, setQuery] = useState("");
   const [selectedRisk, setSelectedRisk] = useState("RSK-026");
+  const [isExporting, setIsExporting] = useState(false);
   const show = useTabFilter(tab, "overview");
+
+  const handleExportRegister = async () => {
+    setIsExporting(true);
+    try {
+      await downloadFromApi("/api/v1/exports/data/risk?format=csv", "risk-register.csv");
+    } catch (err) {
+      console.error("Failed to export risk register:", err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     return q ? RISKS.filter((r) => `${r.id} ${r.title} ${r.owner} ${r.control}`.toLowerCase().includes(q)) : RISKS;
@@ -72,7 +86,7 @@ export default function RiskExceptionsPage() {
           subtitle="Prioritize exposures, track mitigation, request time-bound policy exceptions."
           actions={
             <>
-              <ActionButton onClick={() => setTab(CONSOLE_TAB)}>Export register</ActionButton>
+              <ActionButton onClick={handleExportRegister}><Download className="w-3.5 h-3.5" /> {isExporting ? "Exporting..." : "Export register"}</ActionButton>
               <ActionButton primary onClick={() => setTab(CONSOLE_TAB)}><Plus className="w-3.5 h-3.5" /> Request exception</ActionButton>
             </>
           }

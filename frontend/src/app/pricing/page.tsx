@@ -225,14 +225,14 @@ export default function PricingPage() {
           <ShieldCheck className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
           <div className="space-y-1.5 max-w-3xl">
             <p className="font-semibold text-white flex items-center gap-2">
-              <span>Commercial Sizing & Anti-Perverse Incentive Notice</span>
-              <span className="px-2 py-0.5 rounded bg-cyan-950 border border-cyan-500/40 text-[10px] font-mono text-cyan-300">RULE PR-02</span>
+              <span>Commercial Sizing &amp; Anti-Perverse Incentive Notice</span>
+              <span className="px-2 py-0.5 rounded bg-cyan-950 border border-cyan-500/40 text-[10px] font-mono text-cyan-300">MASTER COMMERCIAL ESTATE V2.0</span>
+            </p>
+            <p className="text-slate-300 leading-relaxed font-medium">
+              &ldquo;Plans are sized to your environment and contracted telemetry. Managed monitoring and response are separately scoped. We will show approved usage limits, service responsibilities and taxes before you sign.&rdquo;
             </p>
             <p className="text-slate-400 leading-relaxed">
-              <strong className="text-slate-200">No public prices or SLAs yet:</strong> The price book (ADR-06) and contractual SLAs (ADR-07) are not yet approved, so every plan is quoted per customer and any response commitment is set in the order form. The asset and telemetry bands shown are sizing guidance for a quote, not included quotas.
-            </p>
-            <p className="text-slate-400 leading-relaxed">
-              In accordance with Rule PR-02, invoices strictly reflect contracted band capacity. SOC alert volumes, incident surge frequency, forensic triaging depth, and AI Security Copilot query complexity carry zero surcharge or metered penalty.
+              <strong className="text-slate-200">Contractual Source of Truth (C02):</strong> The legally operative Order Form plus applicable exhibits determine what can be charged, not marketing copy, UI slider suggestions or internal cost counters. In accordance with Invariant C07, invoices strictly reflect contracted capacity. Security alerts, incident surges, forensic triaging, and AI Copilot queries carry zero surcharge or metered penalty.
             </p>
           </div>
         </div>
@@ -492,6 +492,9 @@ export default function PricingPage() {
               <span className="text-cyan-400 font-bold">
                 {calculating ? "SOLVING..." : "ENGINE VERIFIED"}
               </span>
+            </div>
+            <div className="text-[10px] font-mono text-slate-400 bg-slate-900/80 px-2.5 py-1.5 rounded border border-slate-800 leading-normal">
+              ℹ️ <span className="text-slate-300 font-semibold">Invariant C02:</span> Sizing guidance estimate only. Binding terms and service scopes require an approved Order Form.
             </div>
 
             {(() => {

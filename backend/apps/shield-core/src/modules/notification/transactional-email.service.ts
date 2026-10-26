@@ -80,7 +80,10 @@ export class TransactionalEmailService {
   private readonly recipientMembershipResolver?: RecipientMembershipResolver;
   private readonly senderClassRouter: SenderClassRouterService;
   private transporter: Transporter | null = null;
-  private readonly idempotencyLedger = new Map<string, DispatchedEmailReceipt>();
+  private readonly idempotencyLedger = new Map<
+    string,
+    DispatchedEmailReceipt
+  >();
 
   constructor(
     @Optional() templateEngine?: ProductionEmailTemplateEngine,

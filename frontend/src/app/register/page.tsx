@@ -397,9 +397,28 @@ export default function RegisterPage() {
             </div>
 
             {error && (
-              <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/50 text-rose-300 text-xs font-mono flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{error}</span>
+              <div className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-500/50 text-rose-300 text-xs font-mono space-y-2 shadow-[0_0_15px_rgba(244,63,94,0.15)]">
+                <div className="flex items-center gap-2 font-semibold">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+                  <span>{error}</span>
+                </div>
+                {error.toLowerCase().includes("already exists") && (
+                  <div className="pt-2 flex items-center gap-3 border-t border-rose-500/30 text-xs">
+                    <Link
+                      href="/login"
+                      className="px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30 transition-colors font-bold inline-flex items-center gap-1.5"
+                    >
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>Sign In Now</span>
+                    </Link>
+                    <Link
+                      href="/login"
+                      className="text-slate-300 hover:text-white underline"
+                    >
+                      Forgot Password?
+                    </Link>
+                  </div>
+                )}
               </div>
             )}
 
