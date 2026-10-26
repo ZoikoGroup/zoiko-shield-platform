@@ -75,12 +75,27 @@ export class WebauthnService {
   private readonly rpId: string;
   private readonly rpName: string;
   private readonly expectedOrigin: string;
+  private readonly allowedOrigins: Set<string>;
 
   constructor(private readonly prisma: PrismaService) {
     this.rpId = process.env.WEBAUTHN_RP_ID || 'localhost';
     this.rpName = 'ZoikoShield';
     this.expectedOrigin =
       process.env.WEBAUTHN_ORIGIN || 'http://localhost:3000';
+
+    this.allowedOrigins = new Set([
+      'http://localhost:3000',
+      'http://127.0.0.1:3000',
+      this.expectedOrigin,
+    ]);
+    if (process.env.APP_URL) this.allowedOrigins.add(process.env.APP_URL);
+    if (process.env.FRONTEND_URL) this.allowedOrigins.add(process.env.FRONTEND_URL);
+    if (process.env.WEBAUTHN_ALLOWED_ORIGINS) {
+      process.env.WEBAUTHN_ALLOWED_ORIGINS.split(',').forEach((o) => {
+        const trimmed = o.trim();
+        if (trimmed) this.allowedOrigins.add(trimmed);
+      });
+    }
   }
 
   async createRegistrationOptions(
@@ -421,9 +436,25 @@ export class WebauthnService {
     if (clientData.type !== expectedType) {
       throw new ForbiddenException('Unexpected WebAuthn ceremony type');
     }
-    if (clientData.origin !== this.expectedOrigin) {
-      throw new ForbiddenException('WebAuthn origin mismatch');
+    const origin = clientData.origin?.trim();
+    if (!origin) {
+      throw new ForbiddenException('WebAuthn origin is missing');
     }
+    if (this.allowedOrigins.has(origin)) {
+      return;
+    }
+    try {
+      const originUrl = new URL(origin);
+      if (
+        originUrl.hostname === this.rpId ||
+        originUrl.hostname === 'localhost' ||
+        originUrl.hostname === '127.0.0.1' ||
+        (this.rpId !== 'localhost' && originUrl.hostname.endsWith(`.${this.rpId}`))
+      ) {
+        return;
+      }
+    } catch {}
+    throw new ForbiddenException(`WebAuthn origin mismatch: ${origin}`);
   }
 
   private spkiToPem(publicKeySpkiBase64: string): string {

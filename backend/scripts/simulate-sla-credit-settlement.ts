@@ -46,7 +46,7 @@ async function main() {
   });
   console.log(`  🚨 Status: ${s2.invoiceAdjustmentStatus} | Breached: ${s2.isBreached}`);
   console.log(`  ✔ Breach Reason: ${s2.breachReasons[0]}`);
-  console.log(`  ✔ Automatic Service Credit Applied: $${s2.creditAmountUsd.toLocaleString()} (${s2.creditPercentage}% Credit)`);
+  console.log(`  ✔ Candidate Service Credit Logged: $${s2.creditAmountUsd.toLocaleString()} (${s2.creditPercentage}% Credit) - Auto-netting blocked per §11`);
   console.log(`  🔒 Settlement Digest: ${s2.settlementDigest.slice(0, 32)}...`);
 
   console.log(`\n[3/3] Simulating Severe Incident MTTR Breach (75-Minute Average P1 Resolution)...`);
@@ -60,7 +60,7 @@ async function main() {
   });
   console.log(`  🚨 Status: ${s3.invoiceAdjustmentStatus}`);
   console.log(`  ✔ Breach Reason: ${s3.breachReasons[0]}`);
-  console.log(`  ✔ Automatic Service Credit Applied: $${s3.creditAmountUsd.toLocaleString()} (${s3.creditPercentage}% Credit)`);
+  console.log(`  ✔ Candidate Service Credit Logged: $${s3.creditAmountUsd.toLocaleString()} (${s3.creditPercentage}% Credit) - Requires Maker-Checker Review`);
 
   console.log('\n========================================================================');
   console.log(' 🎉 COMMERCIAL SLA SERVICE CREDIT SETTLEMENT SIMULATION COMPLETED!');

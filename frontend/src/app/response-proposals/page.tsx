@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { FileText, Plus, Clock, CheckCircle2, XCircle, Download, MessageSquare, PencilLine, Monitor, ShieldCheck } from "lucide-react";
 import ResponseProposalsConsole from "./console";
+import { downloadFromApi } from "@/lib/export-utils";
 import {
   WorkspacePage, PageHeader, KpiGrid, Panel, Pill, DataTable, SearchInput, EventList,
   ActionButton, CONSOLE_TAB, type Tone,
@@ -43,6 +44,18 @@ export default function ResponseProposalsPage() {
   const [risk, setRisk] = useState("All");
   const [detailTab, setDetailTab] = useState(DETAIL_TABS[0]);
   const [selectedId, setSelectedId] = useState(PROPOSALS[0].id);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportProposals = async () => {
+    setIsExporting(true);
+    try {
+      await downloadFromApi("/api/v1/exports/data/cases?format=csv", "response-proposals.csv");
+    } catch (err) {
+      console.error("Failed to export response proposals:", err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -62,7 +75,7 @@ export default function ResponseProposalsPage() {
           subtitle="Review, refine and approve security response actions with governance and audit"
           actions={
             <>
-              <ActionButton onClick={() => setTab(CONSOLE_TAB)}><Download className="w-3.5 h-3.5" /> Export</ActionButton>
+              <ActionButton onClick={handleExportProposals}><Download className="w-3.5 h-3.5" /> {isExporting ? "Exporting..." : "Export"}</ActionButton>
               <ActionButton primary onClick={() => setTab(CONSOLE_TAB)}><Plus className="w-3.5 h-3.5" /> New Proposal</ActionButton>
             </>
           }

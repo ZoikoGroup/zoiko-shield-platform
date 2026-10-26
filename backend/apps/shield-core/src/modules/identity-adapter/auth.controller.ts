@@ -190,7 +190,42 @@ export class AuthController {
       sessionMetadataFrom(req),
     );
     setAuthCookies(res, tokens);
-    return { user };
+
+    res.cookie('zoiko_shield_access_token', tokens.accessToken, {
+      path: '/',
+      httpOnly: false,
+      sameSite: 'lax',
+    });
+    res.cookie('zoiko_shield_tenant_id', user.tenantId, {
+      path: '/',
+      httpOnly: false,
+      sameSite: 'lax',
+    });
+    res.cookie('zoiko_shield_user_email', user.email, {
+      path: '/',
+      httpOnly: false,
+      sameSite: 'lax',
+    });
+    res.cookie('shield_access_token', tokens.accessToken, {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+    });
+    res.cookie('zoiko_auth', 'true', {
+      path: '/',
+      httpOnly: false,
+      sameSite: 'lax',
+    });
+
+    return {
+      user,
+      accessToken: tokens.accessToken,
+      token: tokens.accessToken,
+      tenantId: user.tenantId,
+      email: user.email,
+      fullName: user.fullName,
+      role: (user as any).role || 'TENANT_OWNER',
+    };
   }
 
   // --- WebAuthn / passkey ---------------------------------------------------
@@ -255,7 +290,42 @@ export class AuthController {
       sessionMetadataFrom(req),
     );
     setAuthCookies(res, tokens);
-    return { user };
+
+    res.cookie('zoiko_shield_access_token', tokens.accessToken, {
+      path: '/',
+      httpOnly: false,
+      sameSite: 'lax',
+    });
+    res.cookie('zoiko_shield_tenant_id', user.tenantId, {
+      path: '/',
+      httpOnly: false,
+      sameSite: 'lax',
+    });
+    res.cookie('zoiko_shield_user_email', user.email, {
+      path: '/',
+      httpOnly: false,
+      sameSite: 'lax',
+    });
+    res.cookie('shield_access_token', tokens.accessToken, {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+    });
+    res.cookie('zoiko_auth', 'true', {
+      path: '/',
+      httpOnly: false,
+      sameSite: 'lax',
+    });
+
+    return {
+      user,
+      accessToken: tokens.accessToken,
+      token: tokens.accessToken,
+      tenantId: user.tenantId,
+      email: user.email,
+      fullName: user.fullName,
+      role: (user as any).role || 'TENANT_OWNER',
+    };
   }
 
   /**
@@ -311,10 +381,10 @@ export class AuthController {
   async logout(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const token = req.cookies?.[REFRESH_TOKEN_COOKIE];
     if (token) {
-      await this.authService.logout(token);
+      await this.authService.logout(token).catch(() => null);
     }
     clearAuthCookies(res);
-    return { success: true };
+    return { success: true, message: 'Session terminated successfully' };
   }
 
   @UseGuards(JwtAuthGuard)

@@ -187,4 +187,35 @@ describe('DunningService (ZS-COM-BILL-001 Part 18, policy-driven, fail closed)',
       ConflictException,
     );
   });
+
+  describe('Invariant C01 & P0-10: Safe Continuity Protection', () => {
+    it('holds dunning escalation in suspense when an emergency safe-continuity hold is active', async () => {
+      const fifteenDaysAgo = new Date(Date.now() - 15 * 24 * 60 * 60 * 1000);
+      prismaMock.dunningCase.findUnique.mockResolvedValue({
+        id: 'case-sec-01',
+        status: 'ACTIVE',
+        dunning_policy_id: 'policy-1',
+        contract_id: 'contract-critical-01',
+        triggered_at: fifteenDaysAgo,
+      });
+      contractMock.getContractById.mockResolvedValue({ status: 'PAST_DUE' });
+
+      // Grant emergency safe-continuity hold during active incident
+      service.grantSafeContinuity('contract-critical-01', {
+        incidentId: 'INC-2026-999',
+        reason: 'Active critical containment event in progress',
+        ttlHours: 72,
+        authorizedBy: 'ciso-officer-1',
+      });
+
+      expect(service.isSafeContinuityActive('contract-critical-01')).toBe(true);
+
+      // Attempt to advance dunning — must be held in suspense without restricting service
+      const result = await service.advanceDunning('case-sec-01');
+
+      expect(result.advanced).toBe(false);
+      expect((result as any).reason).toBe('SAFE_CONTINUITY_HOLD_ACTIVE');
+      expect(contractMock.transitionState).not.toHaveBeenCalled();
+    });
+  });
 });

@@ -5,8 +5,11 @@ import {
   Headers,
   Param,
   Post,
+  Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import type { Response } from 'express';
 import { ExportJobService } from './jobs/export-job.service';
 import { ExportDownloadService } from './download/export-download.service';
 import { PrismaService } from '../../prisma/prisma.service';
@@ -98,5 +101,124 @@ export class ExportController {
       requireTenantId(tenantId),
       id,
     );
+  }
+
+  @Get(':exportId/download/file')
+  async downloadFile(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('exportId') id: string,
+    @Res() res: Response,
+  ) {
+    const validTenantId = requireTenantId(tenantId);
+    const job = await this.exportJobService.assertTenantOwnership(
+      validTenantId,
+      id,
+    );
+    const artifacts = await this.prisma.exportArtifact.findMany({
+      where: { export_job_id: id, tenant_id: validTenantId },
+    });
+    const manifest = await this.prisma.exportManifest.findUnique({
+      where: { export_job_id: id },
+    });
+
+    const exportPayload = {
+      jobId: job.id,
+      tenantId: validTenantId,
+      exportType: job.export_type,
+      purpose: job.purpose,
+      status: job.status,
+      completedAt: job.completed_at,
+      manifest: manifest || null,
+      artifacts: artifacts || [],
+      generatedAt: new Date().toISOString(),
+    };
+
+    const filename = `zoikoshield-export-${id}.json`;
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    return res.status(200).send(JSON.stringify(exportPayload, null, 2));
+  }
+
+  @Get('data/:dataType')
+  async exportData(
+    @Headers('x-tenant-id') tenantId: string,
+    @Param('dataType') dataType: string,
+    @Query('format') format = 'json',
+    @Res() res: Response,
+  ) {
+    const validTenantId = requireTenantId(tenantId);
+    let records: any[] = [];
+    const filename = `zoikoshield-${dataType}-${Date.now()}`;
+
+    switch (dataType) {
+      case 'team':
+      case 'access':
+        records = await this.prisma.tenantMembership.findMany({
+          where: { tenantId: validTenantId },
+          include: {
+            roles: {
+              include: {
+                role: {
+                  include: {
+                    permissions: { include: { permission: true } },
+                  },
+                },
+              },
+            },
+          },
+        });
+        break;
+      case 'audit':
+      case 'audit-logs':
+        records = await this.prisma.auditPackage.findMany({
+          where: { tenant_id: validTenantId },
+        });
+        break;
+      case 'evidence':
+        records = await this.prisma.evidenceRecord.findMany({
+          where: { tenant_id: validTenantId },
+        });
+        break;
+      case 'risk':
+      case 'risks':
+        records = await this.prisma.risk.findMany({
+          where: { tenant_id: validTenantId },
+        });
+        break;
+      case 'controls':
+        records = await this.prisma.controlImplementation.findMany({
+          where: { tenant_id: validTenantId },
+        });
+        break;
+      case 'cases':
+      case 'incidents':
+        records = await this.prisma.case.findMany({
+          where: { tenant_id: validTenantId },
+        });
+        break;
+      case 'alerts':
+        records = await this.prisma.alert.findMany({
+          where: { tenant_id: validTenantId },
+        });
+        break;
+      default:
+        records = [];
+    }
+
+    if (format === 'csv') {
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename="${filename}.csv"`);
+      if (records.length === 0) {
+        return res.status(200).send('id,status,createdAt\n');
+      }
+      const keys = Object.keys(records[0]).filter(k => typeof records[0][k] !== 'object');
+      const csvHeader = keys.join(',');
+      const csvRows = records.map(r => keys.map(k => JSON.stringify(r[k] ?? '')).join(','));
+      return res.status(200).send([csvHeader, ...csvRows].join('\n'));
+    }
+
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}.json"`);
+    return res.status(200).send(JSON.stringify(records, null, 2));
   }
 }

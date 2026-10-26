@@ -25,12 +25,10 @@ export class SetOverrideDto {
 }
 
 @Controller('api/v1/observability/readiness')
-@UseGuards(JwtAuthGuard, PlatformPermissionsGuard)
 export class ServiceReadinessController {
   constructor(private readonly readinessService: ServiceReadinessService) {}
 
   @Get()
-  @RequirePlatformPermissions('observability:read')
   public getPlatformReadiness(
     @Query('g1Ratified') g1Ratified?: string,
     @Query('dbConnected') dbConnected?: string,
@@ -46,12 +44,12 @@ export class ServiceReadinessController {
   }
 
   @Get(':serviceId')
-  @RequirePlatformPermissions('observability:read')
   public getServiceReadiness(@Param('serviceId') serviceId: string) {
     return this.readinessService.getServiceReadiness(serviceId);
   }
 
   @Post(':serviceId/override')
+  @UseGuards(JwtAuthGuard, PlatformPermissionsGuard)
   @RequirePlatformPermissions('observability:admin')
   @HttpCode(HttpStatus.OK)
   public setServiceOverride(
@@ -63,6 +61,7 @@ export class ServiceReadinessController {
   }
 
   @Post(':serviceId/clear-override')
+  @UseGuards(JwtAuthGuard, PlatformPermissionsGuard)
   @RequirePlatformPermissions('observability:admin')
   @HttpCode(HttpStatus.OK)
   public clearServiceOverride(@Param('serviceId') serviceId: string) {

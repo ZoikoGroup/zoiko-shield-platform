@@ -33,6 +33,11 @@ export function setAuthCookies(res: Response, tokens: TokenPair): void {
 export function clearAuthCookies(res: Response): void {
   res.clearCookie(ACCESS_TOKEN_COOKIE, { ...baseOptions(), path: '/' });
   res.clearCookie(REFRESH_TOKEN_COOKIE, { ...baseOptions(), path: '/auth' });
+  res.clearCookie('shield_access_token', { ...baseOptions(), path: '/' });
+  res.clearCookie('zoiko_shield_access_token', { path: '/' });
+  res.clearCookie('zoiko_shield_tenant_id', { path: '/' });
+  res.clearCookie('zoiko_shield_user_email', { path: '/' });
+  res.clearCookie('zoiko_auth', { path: '/' });
 }
 
 // Scoped to the password-recovery path only — it must never be sent to, or

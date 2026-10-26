@@ -3,10 +3,12 @@
 import React, { useMemo } from "react";
 import { Card } from "@/ui/Card";
 import { Badge } from "@/ui/Badge";
+import { Download } from "lucide-react";
 import { formatTimestamp, truncateHash } from "@/lib/utils";
 import { useDemoState } from "@/lib/demo-state";
 import { useContractSources, sourceData, sourceList } from "@/lib/contract-state";
 import { ContractSurface } from "@/components/contracts/ContractSurface";
+import { downloadFromApi } from "@/lib/export-utils";
 
 /**
  * W36 — Export and offboarding flow.
@@ -257,6 +259,13 @@ export default function ExportOffboardingPage() {
                       <span className="font-mono text-[11px] text-slate-500">
                         {job.purpose}
                       </span>
+                      <button
+                        type="button"
+                        onClick={() => void downloadFromApi(`/api/v1/exports/${job.id}/download/file`, `zoikoshield-export-${job.id}.json`, tenantId)}
+                        className="ml-auto inline-flex items-center gap-1 rounded bg-cyan-600 hover:bg-cyan-500 px-2 py-0.5 text-[11px] font-medium text-white transition-colors"
+                      >
+                        <Download className="w-3 h-3" /> Download Package
+                      </button>
                     </div>
 
                     <div className="mt-2 h-1.5 w-full overflow-hidden rounded bg-slate-900">

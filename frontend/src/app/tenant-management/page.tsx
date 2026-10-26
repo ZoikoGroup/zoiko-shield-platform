@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { Building2, FileText, KeyRound, ShieldCheck, Users, Globe, Clock, Lock, Eye, FileCheck2 } from "lucide-react";
 import { useDemoState } from "@/lib/demo-state";
+import { downloadFromApi } from "@/lib/export-utils";
 import {
   WorkspacePage, PageHeader, NoticeBanner, KpiGrid, Panel, Pill, DataTable, SearchInput,
   KeyValues, EventList, CheckRow, ActionButton, useTabFilter, type Tone,
@@ -32,11 +33,24 @@ export default function TenantManagementPage() {
   const [state] = useDemoState();
   const [tab, setTab] = useState("overview");
   const [query, setQuery] = useState("");
+  const [isExporting, setIsExporting] = useState(false);
   const show = useTabFilter(tab, "overview");
   // Tenant name/slug come from the session's tenant context where present; the
   // rest of this screen is illustrative and labelled as such.
   const tenantName = state?.tenant?.organizationName || "Acme Corporation";
   const tenantRef = state?.tenant?.slug ? `DEMO-${state.tenant.slug.toUpperCase()}` : "DEMO-ACME-001";
+
+  const handleExportTenantAudit = async () => {
+    setIsExporting(true);
+    try {
+      await downloadFromApi("/api/v1/exports/data/audit?format=csv", "tenant-audit-history.csv", state?.tenant?.id);
+    } catch (err) {
+      console.error("Failed to export tenant audit:", err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     return q ? MEMBERS.filter((m) => `${m.name} ${m.role} ${m.boundary}`.toLowerCase().includes(q)) : MEMBERS;
@@ -51,7 +65,7 @@ export default function TenantManagementPage() {
           subtitle="Manage your organization's settings, data boundaries, entitlements and access governance."
           actions={
             <>
-              <ActionButton onClick={() => setTab("audit")}><FileText className="w-3.5 h-3.5" /> Export tenant audit</ActionButton>
+              <ActionButton onClick={handleExportTenantAudit}><FileText className="w-3.5 h-3.5" /> {isExporting ? "Exporting..." : "Export tenant audit"}</ActionButton>
               <Link href="/team" className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border bg-sky-600 hover:bg-sky-500 border-sky-500 text-white">
                 <KeyRound className="w-3.5 h-3.5" /> Review access requests
               </Link>

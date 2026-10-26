@@ -4,6 +4,7 @@ import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { FileText, Download, ScanLine, ShieldCheck, Clock, AlertTriangle, Lock, CheckCircle2, Info } from "lucide-react";
 import AuditConsole from "./console";
+import { downloadFromApi } from "@/lib/export-utils";
 import {
   WorkspacePage, PageHeader, NoticeBanner, KpiGrid, Panel, Pill, DataTable, SearchInput,
   KeyValues, EventList, ActionButton, CONSOLE_TAB, useTabFilter, type Tone,
@@ -33,7 +34,19 @@ export default function AuditVerifierPage() {
   const [tab, setTab] = useState("overview");
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState(PACKAGES[0].id);
+  const [isExporting, setIsExporting] = useState(false);
   const show = useTabFilter(tab, "overview");
+
+  const handleExportProof = async () => {
+    setIsExporting(true);
+    try {
+      await downloadFromApi("/api/v1/exports/data/audit?format=csv", "audit-proof-package.csv");
+    } catch (err) {
+      console.error("Failed to export audit package:", err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     return q ? PACKAGES.filter((p) => `${p.id} ${p.contents} ${p.case}`.toLowerCase().includes(q)) : PACKAGES;
@@ -122,7 +135,7 @@ export default function AuditVerifierPage() {
             <p className="text-[11px] text-slate-500 mt-3">Integrity confirms that the submitted bytes match the recorded proof. Review provenance, completeness, and access scope separately.</p>
             <div className="grid grid-cols-2 gap-2 mt-3">
               <ActionButton primary onClick={() => setTab(CONSOLE_TAB)}><ScanLine className="w-3.5 h-3.5" /> Run verification</ActionButton>
-              <ActionButton onClick={() => setTab(CONSOLE_TAB)}><Download className="w-3.5 h-3.5" /> Export proof package</ActionButton>
+              <ActionButton onClick={handleExportProof}><Download className="w-3.5 h-3.5" /> {isExporting ? "Exporting..." : "Export proof package"}</ActionButton>
             </div>
           </Panel>
         )}

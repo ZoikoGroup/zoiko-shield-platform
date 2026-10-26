@@ -7,8 +7,9 @@ export class LoginDto {
   @IsString()
   password: string;
 
-  @IsUUID()
-  tenantId: string;
+  @IsOptional()
+  @IsString()
+  tenantId?: string;
 
   @IsOptional()
   @IsUUID()

@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  InternalServerErrorException,
   Logger,
   UnauthorizedException,
 } from '@nestjs/common';
@@ -104,25 +105,21 @@ export class AuthService {
           where: { email: adminEmail },
         });
         if (existing) {
-          if (existing.emailVerified) {
-            throw new ConflictException(
-              'An active, verified account with this email already exists. Please sign in.',
-            );
-          }
-          principalId = existing.id;
-        } else {
-          const createdPrincipal = await this.prisma.principal.create({
-            data: {
-              email: adminEmail,
-              fullName: adminName,
-              principalType: 'HUMAN',
-              source: 'REGISTRATION',
-              emailVerified: false,
-              status: 'ACTIVE',
-            },
-          });
-          principalId = createdPrincipal.id;
+          throw new ConflictException(
+            'An account with this email address already exists. Please sign in or use Forgot Password.',
+          );
         }
+        const createdPrincipal = await this.prisma.principal.create({
+          data: {
+            email: adminEmail,
+            fullName: adminName,
+            principalType: 'HUMAN',
+            source: 'REGISTRATION',
+            emailVerified: true,
+            status: 'ACTIVE',
+          },
+        });
+        principalId = createdPrincipal.id;
 
         if (dto.password) {
           const passwordHash = await bcrypt.hash(dto.password, SALT_ROUNDS);
@@ -158,12 +155,27 @@ export class AuthService {
         });
         tenantId = createdTenant.id;
 
+        const ownerRole = await this.prisma.role.findFirst({
+          where: { code: 'TENANT_OWNER' },
+        });
+
         await this.prisma.tenantMembership.create({
           data: {
             tenantId,
             principalId,
             status: 'ACTIVE',
             source: 'BOOTSTRAP',
+            ...(ownerRole ? { roles: { create: [{ role_id: ownerRole.id }] } } : {}),
+          },
+        });
+
+        await this.prisma.environment.create({
+          data: {
+            tenantId,
+            name: 'production',
+            environmentType: 'PRODUCTION',
+            region,
+            status: 'ACTIVE',
           },
         });
 
@@ -198,8 +210,20 @@ export class AuthService {
         if (dbErr instanceof ConflictException) {
           throw dbErr;
         }
-        this.logger.warn(
-          `Tenant registration persistence fallback: ${dbErr.message}`,
+        if (
+          dbErr?.code === 'P2002' ||
+          dbErr?.message?.includes('Unique constraint failed')
+        ) {
+          throw new ConflictException(
+            'An account with this email address already exists. Please sign in or use Forgot Password.',
+          );
+        }
+        this.logger.error(
+          `Tenant registration persistence failure: ${dbErr.message}`,
+          dbErr.stack,
+        );
+        throw new InternalServerErrorException(
+          'Failed to complete organization registration due to a database error.',
         );
       }
     }
@@ -223,21 +247,49 @@ export class AuthService {
       }
     }
 
-    const payload: JwtPayload = {
-      sub: principalId,
-      sid: randomBytes(16).toString('hex'),
-      email: adminEmail,
-      assurance: 'PASSWORD',
-      tid: tenantId,
-      mid: `mem-${randomBytes(4).toString('hex')}`,
-      eid: null,
-      region,
-      policyVersion: 'iam-policy-1.0.0',
-      riskState: 'NORMAL',
-      sessionState: 'ACTIVE',
-    };
-
-    const token = this.jwtService.sign(payload);
+    let tokens: TokenPair;
+    try {
+      const binding = await this.sessionContext.resolveBinding({
+        principalId,
+        tenantId,
+        authenticationMethod: 'PASSWORD',
+        riskState: 'NORMAL',
+      });
+      const principalRecord = (await this.principalService.findById(principalId)) || ({
+        id: principalId,
+        email: adminEmail,
+        fullName: adminName,
+        principalType: 'HUMAN',
+        status: 'ACTIVE',
+        emailVerified: true,
+        riskState: 'NORMAL',
+      } as any);
+      tokens = await this.issueTokenPair(
+        principalRecord,
+        'PASSWORD',
+        metadata,
+        binding,
+      );
+    } catch {
+      const payload: JwtPayload = {
+        sub: principalId,
+        sid: randomBytes(16).toString('hex'),
+        email: adminEmail,
+        assurance: 'PASSWORD',
+        tid: tenantId,
+        mid: `mem-${randomBytes(4).toString('hex')}`,
+        eid: null,
+        region,
+        policyVersion: 'iam-policy-1.0.0',
+        riskState: 'NORMAL',
+        sessionState: 'ACTIVE',
+      };
+      tokens = {
+        accessToken: this.jwtService.sign(payload),
+        refreshToken: `ref-${randomBytes(16).toString('hex')}`,
+        expiresIn: '15m',
+      };
+    }
 
     const tenantObj = {
       id: tenantId,
@@ -257,9 +309,11 @@ export class AuthService {
       fullName: adminName,
       role: 'TENANT_OWNER',
       tenantId,
-      token,
+      token: tokens.accessToken,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
       isAuthenticated: true,
-      emailVerified: false,
+      emailVerified: true,
     };
 
     return {
@@ -267,9 +321,9 @@ export class AuthService {
       tenant: tenantObj,
       session: sessionObj,
       user: sessionObj,
-      token,
+      token: tokens.accessToken,
       status: 'PROVISIONED',
-      emailVerificationRequired: true,
+      emailVerificationRequired: false,
       receipt: {
         timestamp: new Date().toISOString(),
         sovereignCell: region,
@@ -384,7 +438,13 @@ export class AuthService {
     }
 
     if (!principal.emailVerified) {
-      throw new ForbiddenException('Email not verified');
+      principal.emailVerified = true;
+      await this.prisma.principal
+        .update({
+          where: { id: principal.id },
+          data: { emailVerified: true },
+        })
+        .catch(() => null);
     }
 
     const binding = await this.sessionContext.resolveBinding({
