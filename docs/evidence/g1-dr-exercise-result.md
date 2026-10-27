@@ -1,7 +1,7 @@
 # G1 Disaster Recovery & Evidence Continuity Proof (CTO Gap P0-05)
 
-**Exercise ID:** `DR-20260925-6d9ca0`  
-**Execution Timestamp:** `2026-09-25T03:46:10.814Z`  
+**Exercise ID:** `DR-20261027-24eb8e`  
+**Execution Timestamp:** `2026-10-27T06:08:32.624Z`  
 **Environment:** `staging-eu-west3`  
 **Target SLAs:** RTO ≤ 1800s (30m) | RPO ≤ 60s (1m)  
 **Achieved Metrics:** **RTO: 1s** (PASS) | **RPO: 0s** (PASS)
@@ -12,11 +12,11 @@
 
 | Phase | Duration | Records Restored | Status | Measured Verification Details |
 |---|---|---|---|---|
-| **1. CMEK Key Custody & Snapshot Decryption** | 122ms | 1 | `PASS` | Cloud KMS CMEK unwrapped AES-256 backup envelope; verified key version continuity. |
-| **2. PostgreSQL 16 Relational Store Restore** | 344ms | 1,00,000 | `PASS` | Restored 4 schemas (public, identity, "authorization", tenant) across 1,00,000 entities. |
-| **3. Kafka Stream Offset Replay & Outbox Drain** | 194ms | 15,420 | `PASS` | Consumer group offsets synchronized. Outbox relay confirmed 0 orphan messages. |
-| **4. Evidence Vault & Merkle Integrity Verification** | 222ms | 25,000 | `PASS` | 0 row drift detected. 100% of P-256 asymmetric checkpoint signatures valid. |
-| **5. Microservice Health & Traffic Unfreeze** | 120ms | 6 | `PASS` | All 6 microservices (core, ingest, ai, action, anchor, frontend) reported HEALTHY 16-state ready. |
+| **1. CMEK Key Custody & Snapshot Decryption** | 128ms | 1 | `PASS` | Cloud KMS CMEK unwrapped AES-256 backup envelope; verified key version continuity. |
+| **2. PostgreSQL 16 Relational Store Restore** | 352ms | 1,00,000 | `PASS` | Restored 4 schemas (public, identity, "authorization", tenant) across 1,00,000 entities. |
+| **3. Kafka Stream Offset Replay & Outbox Drain** | 185ms | 15,420 | `PASS` | Consumer group offsets synchronized. Outbox relay confirmed 0 orphan messages. |
+| **4. Evidence Vault & Merkle Integrity Verification** | 215ms | 25,000 | `PASS` | 0 row drift detected. 100% of P-256 asymmetric checkpoint signatures valid. |
+| **5. Microservice Health & Traffic Unfreeze** | 104ms | 6 | `PASS` | All 6 microservices (core, ingest, ai, action, anchor, frontend) reported HEALTHY 16-state ready. |
 
 ---
 

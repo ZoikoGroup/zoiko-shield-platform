@@ -110,7 +110,7 @@ export class PlanTierService {
     ) {
       if (requiresManagedDefense)
         rationale.push(
-          '24/7 Managed Detection & Threat Triage (MDR) required.',
+          'Managed Defense & Threat Triage required (contracted under separate service SOW per ZS-COM-MASTER-002 §04/§10).',
         );
       if (protectedAssetCount > 250)
         rationale.push(
@@ -133,7 +133,7 @@ export class PlanTierService {
     }
 
     rationale.push(
-      'Standard Continuous Compliance & Assurance (SOC 2, ISO 27001) with 4-hour SLA retainer fits within Essential baseline.',
+      'Standard Continuous Assurance (control monitoring & Merkle evidence ledger) fits within Essential baseline.',
     );
     const essential = this.getPlanTierByKey('SHIELD_ESSENTIAL');
     return {
