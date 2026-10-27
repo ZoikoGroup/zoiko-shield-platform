@@ -123,9 +123,14 @@ export class ContractStateService {
           data: { status: targetStatus },
         });
 
+        const eventType =
+          targetStatus === 'ACTIVE'
+            ? 'CommercialContractActivated.v1'
+            : 'contract.state_changed';
+
         await tx.commercialEvent.create({
           data: {
-            event_type: 'contract.state_changed',
+            event_type: eventType,
             tenant_id: contract.commercial_account_id,
             actor,
             payload: JSON.stringify({

@@ -489,7 +489,7 @@ export class PaymentService {
         successUrl,
         cancelUrl,
         metadata: {
-          organizationName: tenantId || 'default-tenant',
+          organizationName: dto.organizationName || tenantId || 'default-tenant',
         },
       });
 

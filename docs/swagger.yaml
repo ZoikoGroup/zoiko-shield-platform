@@ -4586,6 +4586,17 @@ components:
           nullable: true
       required:
         - targetStatus
+    PostCommerceContractsActivateRequest:
+      type: object
+      properties:
+        contractId:
+          type: string
+          format: uuid
+        actor:
+          type: string
+          nullable: true
+      required:
+        - contractId
     PostBillingInvoicesRequest:
       type: object
       properties:
@@ -33009,6 +33020,63 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: patchCommerceContractsByIdTransition
+  /api/v1/commerce/contracts/activate:
+    post:
+      tags:
+        - CommerceContracts
+      summary: Activate contract and emit CommercialContractActivated.v1
+      description: >-
+        Validates the executed agreement and performs an idempotent contract-to-grant activation per ZS-COM-MASTER-002 v2.0 Section 17.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: >-
+            Same key + same request replays the prior response; same key + a different request returns 409 rather than double-applying
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostCommerceContractsActivateRequest'
+      responses:
+        '200':
+          description: Activation successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContractResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Contract not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Illegal contract transition or conflicting idempotency key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postCommerceContractsActivate
   /api/v1/billing/invoices:
     post:
       tags:

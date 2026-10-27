@@ -111,7 +111,7 @@ export class AuthService {
         });
         if (existing) {
           throw new ConflictException(
-            'An account with this email address already exists. Please sign in or use Forgot Password.',
+            'An account with this email address already exists. Please log in or use the password recovery option.',
           );
         }
         const createdPrincipal = await this.prisma.principal.create({
@@ -222,7 +222,7 @@ export class AuthService {
           dbErr?.message?.includes('Unique constraint failed')
         ) {
           throw new ConflictException(
-            'An account with this email address already exists. Please sign in or use Forgot Password.',
+            'An account with this email address already exists. Please log in or use the password recovery option.',
           );
         }
         this.logger.error(

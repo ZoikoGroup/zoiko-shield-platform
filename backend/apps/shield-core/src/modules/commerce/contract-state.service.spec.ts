@@ -71,4 +71,26 @@ describe('ContractStateService (Section 28 State Machine)', () => {
       ConflictException,
     );
   });
+
+  it('should transition ORDERED -> ACTIVE and record CommercialContractActivated.v1 outbox event (ZS-COM-MASTER-002 §17)', async () => {
+    prismaMock.contract.findUnique.mockResolvedValue({
+      id: 'cnt-1',
+      status: 'ORDERED',
+      commercial_account_id: 'comm-1',
+    });
+    prismaMock.contract.update.mockResolvedValue({
+      id: 'cnt-1',
+      status: 'ACTIVE',
+    });
+
+    const updated = await service.transitionState('cnt-1', 'ACTIVE');
+
+    expect(updated.status).toBe('ACTIVE');
+    expect(prismaMock.commercialEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        event_type: 'CommercialContractActivated.v1',
+        tenant_id: 'comm-1',
+      }),
+    });
+  });
 });
