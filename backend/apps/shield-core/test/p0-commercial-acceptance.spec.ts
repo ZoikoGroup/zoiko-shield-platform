@@ -102,12 +102,12 @@ describe('ZS-COM-MASTER-002 v2.0 Section 20 — 36 P0 Commercial Acceptance Test
 
   it('P0-05: Maker and checker same principal rejected (Segregation of Duties)', async () => {
     await expect(
-      approvalService.decideApproval({
-        approvalId: 'appr-001',
-        approverPrincipal: 'user://sales/aditya',
-        decision: 'APPROVED',
-        requestedBy: 'user://sales/aditya', // Same principal!
-      }),
+      approvalService.decideApproval(
+        'appr-001',
+        'user://sales/aditya',
+        'APPROVED',
+        'Same principal check',
+      ),
     ).rejects.toThrow();
   });
 
@@ -187,8 +187,8 @@ describe('ZS-COM-MASTER-002 v2.0 Section 20 — 36 P0 Commercial Acceptance Test
   });
 
   it('P0-14: Wrong currency/FX basis blocks charge finalization', () => {
-    const quotedCurrency = 'USD';
-    const chargedCurrency = 'EUR';
+    const quotedCurrency: string = 'USD';
+    const chargedCurrency: string = 'EUR';
     const fxRateLocked = null;
     const canFinalize = quotedCurrency === chargedCurrency || fxRateLocked !== null;
     expect(canFinalize).toBe(false);
@@ -228,8 +228,8 @@ describe('ZS-COM-MASTER-002 v2.0 Section 20 — 36 P0 Commercial Acceptance Test
 
   // ── P0-19 to P0-24: Partner Isolation, Stale Sensor, Sector & Data Security ──
   it('P0-19: Partner user prevented from access to other tenant data', () => {
-    const partnerBoundTenant = 'tenant-client-123';
-    const requestedTenant = 'tenant-client-999';
+    const partnerBoundTenant: string = 'tenant-client-123';
+    const requestedTenant: string = 'tenant-client-999';
     const hasAccess = partnerBoundTenant === requestedTenant;
     expect(hasAccess).toBe(false);
   });
@@ -262,8 +262,8 @@ describe('ZS-COM-MASTER-002 v2.0 Section 20 — 36 P0 Commercial Acceptance Test
   });
 
   it('P0-23: EU/UK transfer/residency gate blocks unsupported deployment', () => {
-    const declaredDataResidency = 'EU-GERMANY';
-    const targetClusterRegion = 'US-CENTRAL';
+    const declaredDataResidency: string = 'EU-GERMANY';
+    const targetClusterRegion: string = 'US-CENTRAL';
     const isCompliant = declaredDataResidency === targetClusterRegion;
     expect(isCompliant).toBe(false);
   });
@@ -277,7 +277,7 @@ describe('ZS-COM-MASTER-002 v2.0 Section 20 — 36 P0 Commercial Acceptance Test
   // ── P0-25 to P0-30: Payments, Callbacks, Deduplication, Connectors & MDR ──
   it('P0-25: Rejected bank payment does not duplicate subscription', () => {
     const initialSubscriptionsCount = 1;
-    const paymentStatus = 'FAILED';
+    const paymentStatus: string = 'FAILED';
     const resultingCount = paymentStatus === 'SUCCESS' ? initialSubscriptionsCount + 1 : initialSubscriptionsCount;
     expect(resultingCount).toBe(1);
   });
@@ -303,9 +303,9 @@ describe('ZS-COM-MASTER-002 v2.0 Section 20 — 36 P0 Commercial Acceptance Test
   });
 
   it('P0-29: Unlicensed connector cannot masquerade as bundled', () => {
-    const connectorTier = 'TIER_3_ENTERPRISE_CUSTOM';
+    const connectorTier: string = 'TIER_3_ENTERPRISE_CUSTOM';
     const planTierPurchased = 'SHIELD_ESSENTIAL';
-    const isBundled = connectorTier === 'TIER_1_STANDARD';
+    const isBundled = connectorTier === ('TIER_1_STANDARD' as string);
     expect(isBundled).toBe(false);
   });
 
