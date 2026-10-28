@@ -409,6 +409,43 @@ export class ZoikoShieldApiClient {
     );
   }
 
+  static async requestPasswordReset(email: string): Promise<{ message?: string }> {
+    return this.safeFetch<{ message?: string }>(
+      "/api/v1/auth/forgot-password",
+      {
+        method: "POST",
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      },
+      null
+    );
+  }
+
+  // --- Company SSO (OIDC / SAML federation) ---
+  // Identity providers are configured per tenant, so sign-in starts by
+  // discovering what the workspace has enabled.
+  static async discoverSsoProviders(tenantSlug: string): Promise<SsoDiscovery> {
+    return this.safeFetch<SsoDiscovery>(
+      `/api/v1/auth/sso/discovery/${encodeURIComponent(tenantSlug.trim().toLowerCase())}`,
+      { method: "GET" },
+      null
+    );
+  }
+
+  static async startSso(input: {
+    tenantSlug: string;
+    identityProviderId: string;
+    returnTo?: string;
+  }): Promise<{ authorizationUrl: string; protocol: string }> {
+    return this.safeFetch<{ authorizationUrl: string; protocol: string }>(
+      "/api/v1/auth/sso/start",
+      {
+        method: "POST",
+        body: JSON.stringify(input),
+      },
+      null
+    );
+  }
+
   // --- WebAuthn / Passkey login ---
   // The challenge must come from the backend that will verify the assertion;
   // a locally invented one can only produce a ceremony nobody can check.
@@ -6073,6 +6110,11 @@ export interface KmsHealthSummary {
     AZURE_KEYVAULT?: KmsProviderHealthInfo;
   };
   timestamp: string;
+}
+
+export interface SsoDiscovery {
+  tenant: { id: string; name: string; slug: string };
+  identityProviders: Array<{ id: string; name: string; protocol: string }>;
 }
 
 export const api = ZoikoShieldApiClient;

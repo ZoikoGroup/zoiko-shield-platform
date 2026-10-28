@@ -4,27 +4,23 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
-import { Card } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
+import { ArrowRight, CheckCircle2, Eye, EyeOff } from "lucide-react";
 import {
-  ShieldCheck,
-  Building2,
-  Mail,
-  User,
-  Key,
-  Globe,
-  ArrowRight,
-  Sparkles,
-  CheckCircle2,
-  AlertCircle,
-  Eye,
-  EyeOff,
-  Lock,
-  Layers,
-  FileCheck2,
-  ExternalLink,
-} from "lucide-react";
+  AuthShell,
+  AuthCardHeader,
+  AuthLabel,
+  AuthPrimaryButton,
+  AuthAlert,
+  authInputClass,
+} from "@/components/auth/AuthShell";
+import { cn } from "@/lib/utils";
+
+const COMPLIANCE_PACKS = [
+  { id: "SOC2_ISO27001", label: "SOC 2 & ISO 27001" },
+  { id: "EU_AI_ACT", label: "EU AI Act & NIST AI RMF" },
+  { id: "DORA_FINANCIAL", label: "DORA Financial" },
+  { id: "HIPAA_HEALTH", label: "HIPAA / PHI" },
+];
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -133,376 +129,243 @@ export default function RegisterPage() {
     router.push(`/accept-invite?token=${encodeURIComponent(inviteToken.trim())}`);
   };
 
-  return (
-    <div className="w-full max-w-2xl mx-auto py-10 px-4 space-y-6">
-      {/* Header Branding */}
-      <div className="text-center space-y-3">
-        <Link href="/login" className="inline-block group">
-          <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-gradient-to-br from-cyan-500/20 via-blue-600/20 to-purple-600/20 border border-cyan-500/40 shadow-[0_0_35px_rgba(6,182,212,0.3)] group-hover:scale-105 transition-transform">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-400 via-cyan-500 to-blue-600 flex items-center justify-center text-slate-950 font-black text-xl shadow-[0_0_20px_rgba(6,182,212,0.5)]">
-              ZS
-            </div>
-          </div>
-        </Link>
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black text-slate-100 tracking-tight">
-            Create ZoikoShield Account
-          </h1>
-          <p className="text-xs md:text-sm text-slate-400 mt-1">
-            Enterprise Multi-Tenant Sovereign Defense &amp; Governance Platform
+  if (successReceipt) {
+    return (
+      <AuthShell activeTab="register">
+        <div className="flex flex-col items-center text-center">
+          <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#f0fdf4] text-[#16a34a]">
+            <CheckCircle2 className="h-7 w-7" />
+          </span>
+          <h1 className="mt-4 text-[24px] font-bold tracking-tight text-[#0f172a]">Your workspace is ready</h1>
+          <p className="mt-1.5 text-sm text-[#475569]">
+            Your organization and administrator account have been created.
           </p>
         </div>
+
+        <dl className="mt-6 divide-y divide-[#e2e8f0] rounded-xl border border-[#e2e8f0] bg-[#f8fafc] text-[13px]">
+          {[
+            ["Organization", successReceipt.organizationName],
+            ["Tenant ID", successReceipt.tenantId],
+            ["Administrator", successReceipt.adminEmail],
+          ].map(([label, value]) => (
+            <div key={label} className="flex items-center justify-between gap-4 px-4 py-3">
+              <dt className="text-[#64748b]">{label}</dt>
+              <dd className="truncate font-semibold text-[#0f172a]">{value}</dd>
+            </div>
+          ))}
+        </dl>
+
+        <div className="mt-6 space-y-3">
+          <AuthPrimaryButton type="button" onClick={() => { window.location.href = "/"; }}>
+            Go to dashboard
+            <ArrowRight className="h-4 w-4" />
+          </AuthPrimaryButton>
+          <Link href="/onboarding" className="block text-center text-[13px] font-semibold text-[#e31e24] hover:underline">
+            Continue to onboarding
+          </Link>
+        </div>
+      </AuthShell>
+    );
+  }
+
+  return (
+    <AuthShell activeTab="register">
+      <AuthCardHeader title="Create your account" subtitle="Get started with Zoiko Shield in minutes." />
+
+      {/* Mode selector */}
+      <div className="mb-5 grid grid-cols-2 rounded-xl bg-[#f1f5f9] p-1 text-[13px]">
+        {([
+          ["new-org", "New organization"],
+          ["invitation", "I have an invite"],
+        ] as const).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            onClick={() => {
+              setActiveTab(id);
+              setError(null);
+            }}
+            className={cn(
+              "rounded-lg px-3 py-2 font-semibold transition",
+              activeTab === id ? "bg-[#ffffff] text-[#0f172a] shadow-sm" : "text-[#64748b] hover:text-[#0f172a]"
+            )}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
-      {/* Mode Selector Tabs */}
-      <div className="grid grid-cols-2 p-1.5 rounded-xl bg-surface border border-line">
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab("new-org");
-            setError(null);
-          }}
-          className={`py-2 px-3 rounded-lg text-xs font-mono font-bold transition-all ${
-            activeTab === "new-org"
-              ? "bg-cyan-500 text-slate-950 shadow-[0_0_15px_rgba(6,182,212,0.4)]"
-              : "text-slate-400 hover:text-slate-200"
-          }`}
-        >
-          New Evaluation Tenant
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab("invitation");
-            setError(null);
-          }}
-          className={`py-2 px-3 rounded-lg text-xs font-mono font-bold transition-all ${
-            activeTab === "invitation"
-              ? "bg-cyan-500 text-slate-950 shadow-[0_0_15px_rgba(6,182,212,0.4)]"
-              : "text-slate-400 hover:text-slate-200"
-          }`}
-        >
-          Join with Invitation Token
-        </button>
-      </div>
-
-      {/* Success Receipt State */}
-      {successReceipt ? (
-        <Card variant="cyber" className="p-8 space-y-6 shadow-[0_0_40px_rgba(6,182,212,0.15)] text-center">
-          <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 mx-auto shadow-[0_0_25px_rgba(16,185,129,0.3)]">
-            <CheckCircle2 className="w-8 h-8" />
-          </div>
-
-          <div className="space-y-1">
-            <h2 className="text-xl font-bold text-slate-100">
-              Evaluation Organization Provisioned!
-            </h2>
-            <p className="text-xs text-slate-400">
-              Your sovereign tenant boundary and initial administrator credential have been recorded.
-            </p>
-          </div>
-
-          <div className="p-4 rounded-xl bg-canvas border border-line text-left text-xs font-mono space-y-2.5">
-            <div className="flex items-center justify-between pb-2 border-b border-line">
-              <span className="text-slate-400">Tenant Name:</span>
-              <span className="text-slate-200 font-bold">{successReceipt.organizationName}</span>
-            </div>
-            <div className="flex items-center justify-between pb-2 border-b border-line">
-              <span className="text-slate-400">Tenant ID:</span>
-              <span className="text-cyan-400 font-bold">{successReceipt.tenantId}</span>
-            </div>
-            <div className="flex items-center justify-between pb-2 border-b border-line">
-              <span className="text-slate-400">Administrator:</span>
-              <span className="text-slate-200 font-bold">{successReceipt.adminEmail}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400">Cryptographic Seal:</span>
-              <span className="text-emerald-400 font-bold">FIPS-204-SEALED ✓</span>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <Button
-              variant="primary"
-              className="w-full py-3 font-bold"
-              onClick={() => { window.location.href = "/"; }}
-            >
-              <span>Enter Security Operations Dashboard</span>
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-            <Link
-              href="/onboarding"
-              className="block text-xs font-mono text-cyan-400 hover:underline"
-            >
-              Continue to Step-by-Step Onboarding Wizard →
-            </Link>
-          </div>
-        </Card>
-      ) : activeTab === "new-org" ? (
-        /* Tab 1: Register New Organization */
-        <Card variant="cyber" className="p-6 md:p-8 space-y-6 shadow-[0_0_40px_rgba(6,182,212,0.12)]">
-          <div className="space-y-1 pb-3 border-b border-line">
-            <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
-              <Building2 className="w-4 h-4 text-cyan-400" />
-              <span>Register Dedicated Evaluation Tenant</span>
-            </h2>
-            <p className="text-xs text-slate-400">
-              Provisions a dedicated cryptographic tenant. You will be assigned as <strong>Tenant Administrator</strong>. All subsequent analysts must be invited via secure tokens.
-            </p>
-          </div>
-
-          <form onSubmit={handleRegister} className="space-y-4">
-            {/* Organization Name & Slug */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-mono text-slate-300 font-semibold">
-                  Organization Name:
-                </label>
+      {activeTab === "new-org" ? (
+        <form onSubmit={handleRegister} className="space-y-4">
+          <div>
+            <AuthLabel htmlFor="reg-org-name">Organization name</AuthLabel>
+            <input
+              id="reg-org-name"
+              type="text"
+              autoComplete="organization"
+              required
+              value={orgName}
+              onChange={handleOrgNameChange}
+              placeholder="Apex Cyber Defense"
+              className={authInputClass}
+            />
+            {orgName.trim() && (
+              <p className="mt-1.5 text-xs text-[#64748b]">
+                Workspace:{" "}
                 <input
-                  type="text"
-                  required
-                  value={orgName}
-                  onChange={handleOrgNameChange}
-                  placeholder="e.g. Apex Cyber Defense"
-                  className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-mono text-slate-300 font-semibold flex items-center justify-between">
-                  <span>Tenant Slug:</span>
-                  <span className="text-[10px] text-slate-500">Auto-derived</span>
-                </label>
-                <input
-                  type="text"
-                  required
+                  aria-label="Workspace slug"
                   value={slug}
                   onChange={(e) => setSlug(e.target.value.toLowerCase().trim())}
-                  placeholder="apex-cyber-defense"
-                  className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-sm text-slate-300 focus:outline-none focus:border-cyan-400 font-mono text-xs"
+                  className="rounded border border-transparent bg-transparent px-1 font-mono text-[#0f172a] hover:border-[#e2e8f0] focus:border-[#e31e24] focus:outline-none"
                 />
-              </div>
-            </div>
-
-            {/* Admin Full Name & Email */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-mono text-slate-300 font-semibold">
-                  Primary Administrator Name:
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={adminName}
-                  onChange={(e) => setAdminName(e.target.value)}
-                  placeholder="e.g. Jordan Blake"
-                  className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="text-xs font-mono text-slate-300 font-semibold">
-                  Corporate Email:
-                </label>
-                <input
-                  type="email"
-                  required
-                  value={adminEmail}
-                  onChange={(e) => setAdminEmail(e.target.value)}
-                  placeholder="jordan.blake@apexdefense.com"
-                  className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
-                />
-              </div>
-            </div>
-
-            {/* Password with Show/Hide */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-mono text-slate-300 font-semibold">
-                Administrator Password:
-              </label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  required
-                  minLength={8}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Min 8 characters (e.g. Secure@Demo2026!)"
-                  className="w-full bg-canvas border border-line rounded-xl pl-4 pr-11 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 p-1 text-slate-500 hover:text-cyan-400"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
-              </div>
-            </div>
-
-            {/* Sovereign Region Selection */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-mono text-slate-300 font-semibold flex items-center justify-between">
-                <span>Sovereign Cloud Data Residency Region:</span>
-                <span className="text-[10px] text-cyan-400 font-bold">Fenced Cell</span>
-              </label>
-              <select
-                value={region}
-                onChange={(e) => setRegion(e.target.value)}
-                className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-cyan-400 font-mono cursor-pointer"
-              >
-                <option value="us-east-1">US East (N. Virginia) — FedRAMP High Cell &amp; Dual-Region Partition</option>
-                <option value="eu-west-1">EU West (Dublin) — GDPR, DORA &amp; EU AI Act Boundary</option>
-                <option value="ap-southeast-1">AP Southeast (Singapore) — Asia-Pacific Sovereign Partition</option>
-              </select>
-            </div>
-
-            {/* Compliance & Governance Starter Packs */}
-            <div className="space-y-2 pt-2">
-              <label className="text-xs font-mono text-slate-300 font-semibold block">
-                Pre-Activated Compliance &amp; Policy Packs:
-              </label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {[
-                  { id: "SOC2_ISO27001", label: "SOC 2 Type II & ISO 27001", desc: "Continuous automated controls" },
-                  { id: "EU_AI_ACT", label: "EU AI Act & NIST AI RMF", desc: "Model safety & drift monitoring" },
-                  { id: "DORA_FINANCIAL", label: "DORA Financial Cloud", desc: "ICT risk & resilience rules" },
-                  { id: "HIPAA_HEALTH", label: "HIPAA / PHI Guardian", desc: "Healthcare privacy fences" },
-                ].map((pack) => {
-                  const isChecked = selectedPacks.includes(pack.id);
-                  return (
-                    <div
-                      key={pack.id}
-                      onClick={() => togglePack(pack.id)}
-                      className={`p-2.5 rounded-lg border text-left cursor-pointer transition-all ${
-                        isChecked
-                          ? "bg-cyan-950/30 border-cyan-500/50 text-slate-100"
-                          : "bg-canvas border-line text-slate-400 hover:border-slate-700"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold">{pack.label}</span>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => {}}
-                          className="accent-cyan-400 rounded"
-                        />
-                      </div>
-                      <p className="text-[10px] text-slate-500 mt-0.5">{pack.desc}</p>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {error && (
-              <div className="p-3.5 rounded-xl bg-rose-950/40 border border-rose-500/50 text-rose-300 text-xs font-mono space-y-2 shadow-[0_0_15px_rgba(244,63,94,0.15)]">
-                <div className="flex items-center gap-2 font-semibold">
-                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
-                  <span>{error}</span>
-                </div>
-                {error.toLowerCase().includes("already exists") && (
-                  <div className="pt-2 flex items-center gap-3 border-t border-rose-500/30 text-xs">
-                    <Link
-                      href="/login"
-                      className="px-3 py-1.5 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 hover:bg-cyan-500/30 transition-colors font-bold inline-flex items-center gap-1.5"
-                    >
-                      <Lock className="w-3.5 h-3.5" />
-                      <span>Sign In Now</span>
-                    </Link>
-                    <Link
-                      href="/login"
-                      className="text-slate-300 hover:text-white underline"
-                    >
-                      Forgot Password?
-                    </Link>
-                  </div>
-                )}
-              </div>
+              </p>
             )}
-
-            <Button
-              type="submit"
-              variant="primary"
-              className="w-full py-3 font-bold shadow-[0_0_20px_rgba(6,182,212,0.3)] mt-2"
-              isLoading={isLoading}
-            >
-              <ShieldCheck className="w-4 h-4" />
-              <span>Provision Evaluation Tenant &amp; Issue Session</span>
-            </Button>
-          </form>
-        </Card>
-      ) : (
-        /* Tab 2: Join via Invitation Token */
-        <Card variant="cyber" className="p-6 md:p-8 space-y-6 shadow-[0_0_40px_rgba(6,182,212,0.12)]">
-          <div className="space-y-1 pb-3 border-b border-line">
-            <h2 className="text-base font-bold text-slate-100 flex items-center gap-2">
-              <Mail className="w-4 h-4 text-cyan-400" />
-              <span>Join an Existing Organization</span>
-            </h2>
-            <p className="text-xs text-slate-400 leading-relaxed">
-              In accordance with Zero-Trust principles, analysts and operators cannot self-register into an existing tenant. Your organization&apos;s CISO or Tenant Owner must issue an invitation token.
-            </p>
           </div>
 
-          <form onSubmit={handleInviteJoin} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-mono text-slate-300 font-semibold flex items-center justify-between">
-                <span>Invitation Token:</span>
-                <span className="text-[10px] text-cyan-400 font-bold">From Onboarding Email</span>
-              </label>
+          <div>
+            <AuthLabel htmlFor="reg-admin-name">Full name</AuthLabel>
+            <input
+              id="reg-admin-name"
+              type="text"
+              autoComplete="name"
+              required
+              value={adminName}
+              onChange={(e) => setAdminName(e.target.value)}
+              placeholder="Jordan Blake"
+              className={authInputClass}
+            />
+          </div>
+
+          <div>
+            <AuthLabel htmlFor="reg-admin-email">Work email address</AuthLabel>
+            <input
+              id="reg-admin-email"
+              type="email"
+              autoComplete="email"
+              required
+              value={adminEmail}
+              onChange={(e) => setAdminEmail(e.target.value)}
+              placeholder="name@company.com"
+              className={authInputClass}
+            />
+          </div>
+
+          <div>
+            <AuthLabel htmlFor="reg-password">Password</AuthLabel>
+            <div className="relative">
               <input
-                type="text"
+                id="reg-password"
+                type={showPassword ? "text" : "password"}
+                autoComplete="new-password"
                 required
-                value={inviteToken}
-                onChange={(e) => setInviteToken(e.target.value)}
-                placeholder="e.g. inv-tok-99214-f89a or full invite URL"
-                className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-600 focus:outline-none focus:border-cyan-400 font-mono"
+                minLength={8}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="At least 8 characters"
+                className={`${authInputClass} pr-12`}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[#94a3b8] hover:text-[#475569]"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
             </div>
-
-            {error && (
-              <div className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/50 text-rose-300 text-xs font-mono flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <Button
-              type="submit"
-              variant="primary"
-              className="w-full py-2.5 font-bold"
-            >
-              <span>Verify &amp; Accept Invitation</span>
-              <ArrowRight className="w-4 h-4" />
-            </Button>
-          </form>
-
-          <div className="p-4 rounded-xl bg-surface border border-line space-y-2 text-xs text-slate-400">
-            <div className="font-semibold text-slate-200 flex items-center gap-1.5">
-              <FileCheck2 className="w-4 h-4 text-cyan-400" />
-              <span>Invitation-Based Security Guarantees</span>
-            </div>
-            <ul className="space-y-1 text-[11px] list-disc list-inside text-slate-400">
-              <li>Role privileges are pre-assigned by server policy; users cannot self-elevate.</li>
-              <li>Tokens are single-use, cryptographically signed, and expire in 48 hours.</li>
-              <li>FIDO2 WebAuthn enrollment is enforced on first sign-in.</li>
-            </ul>
           </div>
-        </Card>
+
+          <div>
+            <AuthLabel htmlFor="reg-region">Data residency region</AuthLabel>
+            <select
+              id="reg-region"
+              value={region}
+              onChange={(e) => setRegion(e.target.value)}
+              className={`${authInputClass} cursor-pointer`}
+            >
+              <option value="us-east-1">US East (N. Virginia)</option>
+              <option value="eu-west-1">EU West (Dublin)</option>
+              <option value="ap-southeast-1">Asia Pacific (Singapore)</option>
+            </select>
+          </div>
+
+          <fieldset>
+            <legend className="mb-1.5 block text-[13px] font-semibold text-[#0f172a]">Compliance packs</legend>
+            <div className="flex flex-wrap gap-2">
+              {COMPLIANCE_PACKS.map((pack) => {
+                const isChecked = selectedPacks.includes(pack.id);
+                return (
+                  <button
+                    key={pack.id}
+                    type="button"
+                    role="checkbox"
+                    aria-checked={isChecked}
+                    onClick={() => togglePack(pack.id)}
+                    className={cn(
+                      "rounded-full border px-3 py-1.5 text-xs font-medium transition",
+                      isChecked
+                        ? "border-[#e31e24] bg-[#fef2f2] text-[#b91c1c]"
+                        : "border-[#e2e8f0] bg-[#ffffff] text-[#475569] hover:border-[#cbd5e1]"
+                    )}
+                  >
+                    {pack.label}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+
+          {error && (
+            <AuthAlert tone="error">
+              <p>{error}</p>
+              {error.toLowerCase().includes("already exists") && (
+                <p className="mt-1.5">
+                  <Link href="/login" className="font-semibold underline">Log in</Link>
+                  {" or "}
+                  <Link href="/login?view=reset" className="font-semibold underline">reset your password</Link>.
+                </p>
+              )}
+            </AuthAlert>
+          )}
+
+          <AuthPrimaryButton type="submit" isLoading={isLoading}>
+            Create account
+            {!isLoading && <ArrowRight className="h-4 w-4" />}
+          </AuthPrimaryButton>
+        </form>
+      ) : (
+        <form onSubmit={handleInviteJoin} className="space-y-4">
+          <p className="text-[13px] leading-relaxed text-[#475569]">
+            Team members join an existing organization by invitation. Paste the token or link from your invitation email.
+          </p>
+          <div>
+            <AuthLabel htmlFor="reg-invite-token">Invitation token</AuthLabel>
+            <input
+              id="reg-invite-token"
+              type="text"
+              required
+              value={inviteToken}
+              onChange={(e) => setInviteToken(e.target.value)}
+              placeholder="inv-tok-… or full invite link"
+              className={authInputClass}
+            />
+          </div>
+
+          {error && <AuthAlert tone="error">{error}</AuthAlert>}
+
+          <AuthPrimaryButton type="submit">
+            Accept invitation
+            <ArrowRight className="h-4 w-4" />
+          </AuthPrimaryButton>
+        </form>
       )}
 
-      {/* Return to Login Link */}
-      <div className="text-center pt-2">
-        <Link
-          href="/login"
-          className="text-xs font-mono text-slate-400 hover:text-cyan-400 transition-colors inline-flex items-center gap-1.5"
-        >
-          <span>Already registered? Return to Sign In</span>
-          <ArrowRight className="w-3.5 h-3.5" />
+      <p className="mt-6 text-center text-[13px] text-[#334155]">
+        Already have an account?{" "}
+        <Link href="/login" className="font-semibold text-[#e31e24] hover:underline">
+          Log in
         </Link>
-      </div>
-    </div>
+      </p>
+    </AuthShell>
   );
 }
