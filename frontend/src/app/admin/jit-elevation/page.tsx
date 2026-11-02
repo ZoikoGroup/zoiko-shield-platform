@@ -253,7 +253,7 @@ export default function JitElevationQuorumPage() {
                 { k: "Protected resource", v: sel.resource },
                 { k: "Scope", v: sel.scope },
                 { k: "Maximum duration", v: `${sel.ttl} minutes` },
-                { k: "Environment", v: "Production Enclave" },
+                { k: "Environment", v: "Isolated DEMO lab" },
                 { k: "Justification", v: sel.justification },
                 { k: "Request binding", v: "Tenant + principal + role" },
               ]}
@@ -301,19 +301,19 @@ export default function JitElevationQuorumPage() {
             </div>
             <div
               className={`mt-4 flex items-center justify-between gap-3 rounded-lg border px-3 py-2.5 ${sel.state === "GRANTED"
-                  ? "border-emerald-500/40 bg-emerald-950/30"
-                  : isAuthorized
-                    ? "border-cyan-500/40 bg-cyan-950/30"
-                    : "border-rose-500/40 bg-rose-950/30"
+                ? "border-emerald-500/40 bg-emerald-950/30"
+                : isAuthorized
+                  ? "border-cyan-500/40 bg-cyan-950/30"
+                  : "border-rose-500/40 bg-rose-950/30"
                 }`}
             >
               <div>
                 <div
                   className={`text-xs font-semibold ${sel.state === "GRANTED"
-                      ? "text-emerald-200"
-                      : isAuthorized
-                        ? "text-cyan-200"
-                        : "text-rose-200"
+                    ? "text-emerald-200"
+                    : isAuthorized
+                      ? "text-cyan-200"
+                      : "text-rose-200"
                     }`}
                 >
                   {sel.state === "GRANTED"
