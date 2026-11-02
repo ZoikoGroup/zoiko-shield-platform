@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Bot, MessageSquare, FileText, Search, Crosshair, Lightbulb, ClipboardList, ShieldCheck, Lock, Quote } from "lucide-react";
+import { Bot, MessageSquare, FileText, Search, Crosshair, Lightbulb, ClipboardList, ShieldCheck, Lock, Quote, ShieldAlert } from "lucide-react";
 import CopilotConsole from "./console";
 import {
   WorkspacePage, PageHeader, NoticeBanner, Panel, Pill, CheckRow, KeyValues, ActionButton,
@@ -25,11 +25,11 @@ const CONVERSATION: { who: "analyst" | "copilot"; text: string; cites?: string[]
   { who: "copilot", text: "Revoke active sessions for svc-backup-admin (R2) and rotate its credential. Endpoint isolation of FIN-WS-0412 (R3) is not supported by current evidence. I have drafted the R2 proposal below; it requires human approval and is not executed.", cites: ["E2", "E4"] },
 ];
 
-const EVIDENCE: { id: string; title: string; source: string; tone: Tone }[] = [
-  { id: "E1", title: "Sign-in from new ASN", source: "Identity provider · 11:38", tone: "blue" },
-  { id: "E2", title: "Share enumeration burst", source: "File server audit · 11:40", tone: "blue" },
-  { id: "E3", title: "Backup schedule baseline", source: "Asset context · 90 days", tone: "slate" },
-  { id: "E4", title: "No LSASS access events", source: "EDR telemetry · 11:30–12:30", tone: "slate" },
+const EVIDENCE: { id: string; title: string; source: string; sha256: string; tone: Tone }[] = [
+  { id: "E1", title: "Sign-in from new ASN", source: "Identity provider · 11:38", sha256: "sha256:7f83b165…902a", tone: "blue" },
+  { id: "E2", title: "Share enumeration burst", source: "File server audit · 11:40", sha256: "sha256:4b227777…d104", tone: "blue" },
+  { id: "E3", title: "Backup schedule baseline", source: "Asset context · 90 days", sha256: "sha256:e3b0c442…b855", tone: "slate" },
+  { id: "E4", title: "No LSASS access events", source: "EDR telemetry · 11:30–12:30", sha256: "sha256:9f86d081…001b", tone: "slate" },
 ];
 
 export default function CopilotPage() {
@@ -42,7 +42,7 @@ export default function CopilotPage() {
         <PageHeader
           icon={<Bot className="w-5 h-5" />}
           title="AI Security Copilot"
-          subtitle="Evidence-grounded assistance. Advice and citations only: every action needs a human decision"
+          subtitle="Evidence-grounded assistance. Advice and citations only: every action needs a human decision · G10"
           actions={<ActionButton primary onClick={() => setTab(CONSOLE_TAB)}><MessageSquare className="w-3.5 h-3.5" /> Ask the live copilot</ActionButton>}
         />
       }
@@ -54,6 +54,18 @@ export default function CopilotPage() {
       consoleLabel="Live copilot"
       footer={<div className="flex justify-between text-[10px] text-slate-500"><span>ZoikoShield · AI Security Copilot</span><span>AI output is advisory · no autonomous execution</span></div>}
     >
+      {/* WF-G10-01: Untrusted Telemetry Sanitization & Prompt-Injection Quarantine Banner */}
+      <div className="rounded-xl border border-amber-500/40 bg-amber-950/20 px-4 py-3 flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex items-start gap-2.5">
+          <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+          <div className="text-xs text-slate-200">
+            <span className="font-bold text-amber-300 font-mono">WF-G10-01 · UNTRUSTED_TELEMETRY DATA-ONLY DELIMITER ENFORCED: </span>
+            Attacker-controlled strings in log payloads (User-Agent, command lines, e-mail subjects) are isolated inside data-only XML/JSON envelopes and stripped of tool-invocation authority.
+          </div>
+        </div>
+        <Pill tone="emerald">1 Injection Attempt Quarantined (EV-INJ-09)</Pill>
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-2">
         {MODES.map((m) => {
           const Icon = m.icon;
@@ -74,6 +86,7 @@ export default function CopilotPage() {
             { k: "Alert", v: "ALT-2026-0112" },
             { k: "Entity", v: "svc-backup-admin" },
             { k: "Data scope", v: "This tenant only", tone: "emerald" },
+            { k: "Release bundle", v: "arb-2026.10.31-prod" },
             { k: "Time window", v: "11:30 – 12:30 UTC" },
           ]} />
           <div className="mt-3"><Link href="/cases" className="text-[11px] text-cyan-300 hover:underline">Open case workspace →</Link></div>
@@ -97,6 +110,7 @@ export default function CopilotPage() {
           <CheckRow label="Tenant data isolation" status="Enforced" tone="emerald" />
           <CheckRow label="Citations required" status="On" tone="emerald" />
           <CheckRow label="Autonomous actions" status="Disabled" tone="amber" />
+          <CheckRow label="Zero provider retention" status="Enforced" tone="emerald" />
           <CheckRow label="Prompt & response logging" status="Audited" tone="blue" />
         </Panel>
       </div>
@@ -108,12 +122,15 @@ export default function CopilotPage() {
           <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mb-3"><Lock className="w-3 h-3" /> Requires analyst approval with step-up authentication.</div>
           <Link href="/response-proposals" className="text-[11px] text-cyan-300 hover:underline">Open response proposals →</Link>
         </Panel>
-        <Panel title="Cited evidence & provenance" meta={`${EVIDENCE.length} sources`}>
+        <Panel title="Cited evidence & provenance" meta={`${EVIDENCE.length} sources · SHA-256 bound`}>
           <ul className="space-y-2">
             {EVIDENCE.map((e) => (
               <li key={e.id} className="flex items-start gap-2 text-xs">
                 <Pill tone={e.tone}>{e.id}</Pill>
-                <span><span className="block text-slate-200">{e.title}</span><span className="block text-[10px] text-slate-500">{e.source}</span></span>
+                <span>
+                  <span className="block text-slate-200">{e.title}</span>
+                  <span className="block text-[10px] text-slate-500">{e.source} · <span className="font-mono text-cyan-400">{e.sha256}</span></span>
+                </span>
               </li>
             ))}
           </ul>
@@ -121,6 +138,7 @@ export default function CopilotPage() {
         <Panel title="Decision review record" meta="Written to audit log">
           <KeyValues cols={1} items={[
             { k: "Model output", v: "Recommendation + 4 citations" },
+            { k: "10-Field §16.1 Envelope", v: "env-copilot-2026-0112", tone: "blue" },
             { k: "Analyst decision", v: "Pending", tone: "amber" },
             { k: "Reviewer", v: "Not yet assigned" },
             { k: "Record", v: "Created when the analyst decides" },

@@ -2,12 +2,13 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { Crosshair, Search, Link2, Gauge, Play, ArrowRight, Check, AlertTriangle } from "lucide-react";
+import { Crosshair, Search, Link2, Gauge, Play, ArrowRight, Check, AlertTriangle, Database, Sparkles } from "lucide-react";
 import HuntingConsole from "./console";
 import {
   WorkspacePage, PageHeader, NoticeBanner, KpiGrid, Panel, Pill, DataTable, EventList,
   NumberedList, ActionButton, CONSOLE_TAB, useTabFilter, type Tone,
 } from "@/components/mockup/kit";
+import type { StorageTier } from "@/lib/assurance-primitives";
 
 const PATH = [
   { label: "Phishing link click", sub: "user j.wong · T1566", tone: "blue" as Tone },
@@ -37,6 +38,7 @@ const TABS = [
 export default function ThreatHuntingPage() {
   const [tab, setTab] = useState("overview");
   const [query, setQuery] = useState('mail_rule.action = "forward" AND recipient.domain NOT IN tenant.domains');
+  const [storageTier, setStorageTier] = useState<StorageTier>("HOT");
   const show = useTabFilter(tab, "overview");
 
   return (
@@ -45,7 +47,7 @@ export default function ThreatHuntingPage() {
         <PageHeader
           icon={<Crosshair className="w-5 h-5" />}
           title="Threat Hunting"
-          subtitle="Hypothesis-driven hunts over normalized telemetry, with evidence-linked findings"
+          subtitle="Hypothesis-driven hunts over normalized telemetry, with evidence-linked findings · G08 / G10"
           actions={<ActionButton primary onClick={() => setTab(CONSOLE_TAB)}><Play className="w-3.5 h-3.5" /> Start a hunt</ActionButton>}
         />
       }
@@ -67,6 +69,60 @@ export default function ThreatHuntingPage() {
       consoleLabel="Live hunting"
       footer={<div className="flex justify-between text-[10px] text-slate-500"><span>ZoikoShield · Threat Hunting</span><span className="text-emerald-400 font-semibold">Cryptographically anchored threat hypotheses &amp; evidence linkages active</span></div>}
     >
+      {/* WF-G08-01 & WF-G10-03: Tiered Search Preflight & Read-Only AI Query AST Trace */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Panel title="Tiered Search Execution & Completeness Preflight (WF-G08-01)" meta="HOT | ARCHIVE | BOTH">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <div className="flex items-center gap-1.5">
+              {(["HOT", "ARCHIVE", "BOTH"] as StorageTier[]).map((tier) => (
+                <button
+                  key={tier}
+                  type="button"
+                  onClick={() => setStorageTier(tier)}
+                  className={`px-2.5 py-1 rounded text-xs font-mono font-bold transition-colors ${
+                    storageTier === tier
+                      ? "bg-cyan-500 text-slate-950"
+                      : "bg-slate-900 border border-slate-800 text-slate-400 hover:text-white"
+                  }`}
+                >
+                  {tier} TIER
+                </button>
+              ))}
+            </div>
+            <Pill tone="emerald">Scan Est: {storageTier === "HOT" ? "1.42 GB (p95 <= 2.5s)" : "18.6 GB (Async Rehydrate)"}</Pill>
+          </div>
+          <div className="grid grid-cols-3 gap-2 text-[11px] font-mono">
+            <div className="p-2 rounded bg-slate-950 border border-slate-800">
+              <div className="text-[10px] text-slate-500">Entra ID (OCSF 3002)</div>
+              <div className="text-emerald-300 font-bold mt-0.5">COMPLETE (100%)</div>
+            </div>
+            <div className="p-2 rounded bg-slate-950 border border-slate-800">
+              <div className="text-[10px] text-slate-500">M365 Audit (OCSF 6003)</div>
+              <div className="text-emerald-300 font-bold mt-0.5">COMPLETE (100%)</div>
+            </div>
+            <div className="p-2 rounded bg-slate-950 border border-slate-800">
+              <div className="text-[10px] text-slate-500">EDR Endpoint (OCSF 1007)</div>
+              <div className="text-amber-300 font-bold mt-0.5">PARTIAL (2 hosts offline)</div>
+            </div>
+          </div>
+        </Panel>
+
+        <Panel title="Capability-Bound AI Query Assistant & AST Trace (WF-G10-03)" meta="Read-Only Tool Capability">
+          <div className="flex items-center justify-between text-xs font-mono mb-2">
+            <span className="flex items-center gap-1.5 text-cyan-300">
+              <Sparkles className="w-3.5 h-3.5" /> NL-to-OCSF AST Compiler (Zero Write / Zero Admin Tools)
+            </span>
+            <Pill tone="blue">AST VERIFIED</Pill>
+          </div>
+          <div className="p-2.5 rounded bg-slate-950 border border-slate-800 font-mono text-[11px] text-slate-300">
+            <div><span className="text-slate-500">AST Predicate:</span> (class_uid == 6003) AND (activity_id == &quot;ForwardRuleCreate&quot;) AND (tenant_id == &quot;tenant_acme_01&quot;)</div>
+            <div className="text-[10px] text-emerald-400 mt-1 flex items-center gap-1">
+              <Database className="w-3 h-3" /> Tenant partition predicate automatically injected at AST root; cross-tenant joins rejected.
+            </div>
+          </div>
+        </Panel>
+      </div>
+
       {show() && (
         <Panel title="Active investigation · OAuth mailbox exfiltration" meta="HUNT-2026-019 · evidence-linked attack path">
           <ol className="grid grid-cols-1 md:grid-cols-4 gap-2">
@@ -118,7 +174,7 @@ export default function ThreatHuntingPage() {
             <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1" htmlFor="hunt-query">Hunt query</label>
             <textarea id="hunt-query" value={query} onChange={(e) => setQuery(e.target.value)} rows={3} className="w-full rounded-lg border border-line-strong bg-surface p-2.5 font-mono text-xs text-slate-200 focus:border-cyan-500 outline-none" />
             <div className="flex items-center justify-between mt-2">
-              <span className="text-[10px] text-slate-500">Scope: this tenant · last 7 days</span>
+              <span className="text-[10px] text-slate-500">Scope: this tenant · {storageTier} tier · last 7 days</span>
               <ActionButton primary disabled={!query.trim()} onClick={() => setTab(CONSOLE_TAB)}><Play className="w-3.5 h-3.5" /> Run in live hunting</ActionButton>
             </div>
           </Panel>

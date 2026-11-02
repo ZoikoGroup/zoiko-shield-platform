@@ -6,6 +6,7 @@ import { Badge } from "@/ui/Badge";
 import { formatTimestamp } from "@/lib/utils";
 import { useContractSources, sourceData, sourceList } from "@/lib/contract-state";
 import { ContractSurface, UnbackedField } from "@/components/contracts/ContractSurface";
+import { G01_CLAIM_REGISTRY } from "@/lib/assurance-primitives";
 
 /**
  * W38 — Service status, trust and support center.
@@ -322,6 +323,42 @@ export default function TrustCenterPage() {
               below, and would read the same if all of it were absent. They are shown here
               for transparency about what the API says, not as a posture rating.
             </p>
+          </div>
+        </Section>
+
+        {/* G01: Public Assurance & Claim Registry (C01-C23) */}
+        <Section
+          title="G01 Public Assurance & Claim Governance Registry"
+          requirement="Fail-closed verification status of public security, compliance, cryptographic, and legal entity claims (Contracting Entity: Zoiko Shield Inc.)."
+          count={G01_CLAIM_REGISTRY.length}
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+            {G01_CLAIM_REGISTRY.map((claim) => (
+              <div key={claim.claim_id} className="rounded-xl border border-line bg-canvas/70 p-3 space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-xs font-bold text-cyan-300">
+                    {claim.claim_id} · {claim.scope}
+                  </span>
+                  <Badge
+                    variant={
+                      claim.claim_state === "VERIFIED"
+                        ? "pass"
+                        : claim.claim_state === "UNDER_REVIEW"
+                        ? "info"
+                        : "medium"
+                    }
+                  >
+                    {claim.claim_state}
+                  </Badge>
+                </div>
+                <p className="text-xs text-slate-200 font-medium leading-relaxed">
+                  {claim.remediated_copy}
+                </p>
+                <p className="text-[10px] font-mono text-slate-500">
+                  Assertion: {claim.assertion} · Ref: {claim.evidence_artifact_ref ?? "pending"}
+                </p>
+              </div>
+            ))}
           </div>
         </Section>
 

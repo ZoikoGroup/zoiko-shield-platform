@@ -127,7 +127,48 @@ interface TenantInvitationItem {
 const tenantInvitationsStore: TenantInvitationItem[] = [];
 const tenantMembersStore: TenantMemberItem[] = [];
 
-const defaultDeliveries: DeliveryItem[] = [];
+const defaultDeliveries: DeliveryItem[] = [
+  {
+    id: "del-2026-sec-001",
+    event_id: "ZS-EML-SEC-001 (Critical Credential Compromise Alert — Case #4287)",
+    channel: "EMAIL (jane.doe@acmeglobal.com)",
+    status: "DELIVERED",
+    attempt_count: 1,
+    delivered_at: new Date(Date.now() - 480000).toISOString(),
+    error_code: null,
+    created_at: new Date(Date.now() - 480000).toISOString(),
+  },
+  {
+    id: "del-2026-act-002",
+    event_id: "ZS-EML-ACT-001 (SOAR 4-Eyes Quorum Approval Request — Case #4287)",
+    channel: "EMAIL (marcus.vance@acmeglobal.com)",
+    status: "DELIVERED",
+    attempt_count: 1,
+    delivered_at: new Date(Date.now() - 1200000).toISOString(),
+    error_code: null,
+    created_at: new Date(Date.now() - 1200000).toISOString(),
+  },
+  {
+    id: "del-2026-dlq-003",
+    event_id: "ZS-WHK-SIEM-003 (Outbound SIEM Webhook Delivery Retry Exhausted)",
+    channel: "WEBHOOK (https://siem.internal.acmeglobal.com/webhooks/zoiko)",
+    status: "DEAD_LETTERED",
+    attempt_count: 3,
+    delivered_at: null,
+    error_code: "UPSTREAM_TLS_TIMEOUT_504",
+    created_at: new Date(Date.now() - 2400000).toISOString(),
+  },
+  {
+    id: "del-2026-gov-004",
+    event_id: "ZS-EML-GOV-001 (Merkle Evidence Ledger Epoch #1043 Sealed)",
+    channel: "EMAIL (elena.rostova@auditor.compliance)",
+    status: "ACKNOWLEDGED",
+    attempt_count: 1,
+    delivered_at: new Date(Date.now() - 3600000).toISOString(),
+    error_code: null,
+    created_at: new Date(Date.now() - 3600000).toISOString(),
+  },
+];
 
 const defaultConnectors: ConnectorItem[] = [
   {
@@ -1271,6 +1312,19 @@ async function buildOfflineResponse(
         plainTextBody: "ZoikoShield Security Notification\nLive preview rendered.",
       });
     }
+    if (path.includes("/acknowledge")) {
+      const parts = path.split("/");
+      const notifId = parts[1];
+      const found = inMemoryDeliveries.find((d) => d.id === notifId);
+      if (found) {
+        found.status = "ACKNOWLEDGED";
+      }
+      return NextResponse.json({
+        id: notifId,
+        status: "ACKNOWLEDGED",
+        acknowledgedAt: new Date().toISOString(),
+      });
+    }
     return NextResponse.json(inMemoryDeliveries);
   }
 
@@ -2001,7 +2055,20 @@ async function buildOfflineResponse(
   // 6. Notifications & Email Dispatch Studio
   if (path.startsWith("notifications")) {
     if (path === "notifications" && method === "GET") {
-      return NextResponse.json(inMemoryDeliveries);
+      if (path.includes("/acknowledge")) {
+      const parts = path.split("/");
+      const notifId = parts[1];
+      const found = inMemoryDeliveries.find((d) => d.id === notifId);
+      if (found) {
+        found.status = "ACKNOWLEDGED";
+      }
+      return NextResponse.json({
+        id: notifId,
+        status: "ACKNOWLEDGED",
+        acknowledgedAt: new Date().toISOString(),
+      });
+    }
+    return NextResponse.json(inMemoryDeliveries);
     }
 
     if (path.endsWith("/send-test") && method === "POST") {

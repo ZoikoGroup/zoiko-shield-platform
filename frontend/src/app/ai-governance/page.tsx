@@ -168,7 +168,7 @@ const INITIAL_REVIEW_ENVELOPES: AiReviewEnvelope[] = [
         sourceId: "EV-002",
         sourceType: "MERKLE_PROOF_LEAF",
         version: 1,
-        exactSpan: "ML-DSA-65 post-quantum signature verified under Epoch #1043",
+        exactSpan: "Ed25519 / ECDSA P-256 + RFC 3161 signature verified under Epoch #1043",
         confidence: 0.995,
       },
     ],
@@ -310,7 +310,7 @@ export default function AiGovernancePage() {
     "Adversary compromised analyst credentials (usr-analyst-lead-01) from unauthorized IP 198.51.100.99 and executed lateral SMB movement to srv-db-prod-01."
   );
   const [gateEvidenceSpans, setGateEvidenceSpans] = useState(
-    "EV-001: Authentication event for usr-analyst-lead-01 observed from non-corporate IP 198.51.100.99 at 10:42:15 UTC.\nEV-002: Lateral SMB connection established from jump-host ec2-jump-01 to srv-db-prod-01 over port 445.\nEV-003: Merkle inclusion proof verified in Epoch #1043 with Dual PQC signature."
+    "EV-001: Authentication event for usr-analyst-lead-01 observed from non-corporate IP 198.51.100.99 at 10:42:15 UTC.\nEV-002: Lateral SMB connection established from jump-host ec2-jump-01 to srv-db-prod-01 over port 445.\nEV-003: Merkle inclusion proof verified in Epoch #1043 with Ed25519 + RFC 3161 signature."
   );
   const [gateThreshold, setGateThreshold] = useState<number>(0.95);
   const [isEvaluatingGate, setIsEvaluatingGate] = useState<boolean>(false);
@@ -361,7 +361,7 @@ export default function AiGovernancePage() {
         supportedTokens: matched,
         totalTokens: hypTokens.length,
         hallucinatedSpans: ungrounded,
-        verifiedCitations: ["EV-001 (SHA-256 Verified)", "EV-002 (OCSF SMB Network)", "EV-003 (PQC-BFT Epoch #1043)"],
+        verifiedCitations: ["EV-001 (SHA-256 Verified)", "EV-002 (OCSF SMB Network)", "EV-003 (RFC3161-Merkle Epoch #1043)"],
       });
       setIsEvaluatingGate(false);
     }, 400);
@@ -822,7 +822,33 @@ export default function AiGovernancePage() {
         </div>
       </div>
 
-      {/* Non-Destructive Invariant Alert Banner */}
+      {/* Non-Destructive Invariant Alert Banner + G10 Release Bundle & Zero-Retention Proof */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="p-3.5 rounded-xl bg-slate-900/90 border border-cyan-500/30 text-xs font-mono text-slate-300 space-y-1">
+          <div className="flex items-center justify-between text-cyan-300 font-bold">
+            <span>WF-G10-02 · PINNED AI RELEASE BUNDLE</span>
+            <Badge variant="pass">24/24 ADVERSARIAL EVAL PASS</Badge>
+          </div>
+          <div className="text-[11px] text-slate-400">
+            Bundle ID: <span className="text-slate-200">arb-2026.10.31-prod</span> · Digest: <span className="text-emerald-300">sha256:8c14e92a…71f0</span>
+          </div>
+          <div className="text-[10px] text-slate-500">
+            Prompt template, tool allow-list (read-only), and retrieval index snapshot immutable.
+          </div>
+        </div>
+        <div className="p-3.5 rounded-xl bg-slate-900/90 border border-emerald-500/30 text-xs font-mono text-slate-300 space-y-1">
+          <div className="flex items-center justify-between text-emerald-300 font-bold">
+            <span>WF-G10-04 · PROVIDER ZERO-RETENTION &amp; CIRCUIT BREAKER</span>
+            <Badge variant="pass">ZERO-RETENTION VERIFIED</Badge>
+          </div>
+          <div className="text-[11px] text-slate-400">
+            No customer prompts or telemetry used for model training · <span className="text-slate-200">ISO/IEC 42001 Alignment Mode (C21)</span>
+          </div>
+          <div className="text-[10px] text-slate-500">
+            Emergency circuit breaker routes immediately to deterministic non-LLM fallback engine.
+          </div>
+        </div>
+      </div>
       <div className="p-3.5 rounded-xl bg-slate-900/90 border border-slate-800 flex items-center gap-3 text-xs font-mono text-slate-300">
         <Lock className="w-4 h-4 text-cyan-400 shrink-0" />
         <div>

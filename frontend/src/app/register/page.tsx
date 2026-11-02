@@ -14,6 +14,11 @@ import {
   authInputClass,
 } from "@/components/auth/AuthShell";
 import { cn } from "@/lib/utils";
+import {
+  CANONICAL_REGIONS,
+  resolvePolicyPackForRegion,
+} from "@/lib/assurance-primitives";
+import { useDemoState } from "@/lib/demo-state";
 
 const COMPLIANCE_PACKS = [
   { id: "SOC2_ISO27001", label: "SOC 2 & ISO 27001" },
@@ -24,6 +29,7 @@ const COMPLIANCE_PACKS = [
 
 export default function RegisterPage() {
   const router = useRouter();
+  const [, setDemoState] = useDemoState();
 
   // Active Tab: "new-org" | "invitation"
   const [activeTab, setActiveTab] = useState<"new-org" | "invitation">("new-org");
@@ -35,7 +41,7 @@ export default function RegisterPage() {
   const [adminEmail, setAdminEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const [region, setRegion] = useState("us-east-1");
+  const [region, setRegion] = useState("eu-west-1");
   const [selectedPacks, setSelectedPacks] = useState<string[]>([
     "SOC2_ISO27001",
     "EU_AI_ACT",
@@ -50,8 +56,12 @@ export default function RegisterPage() {
     tenantId: string;
     organizationName: string;
     adminEmail: string;
+    region: string;
+    policyPackKey: string;
     timestamp: string;
   } | null>(null);
+
+  const selectedPolicyPack = resolvePolicyPackForRegion(region);
 
   // Auto-generate slug from organization name
   const handleOrgNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,10 +117,30 @@ export default function RegisterPage() {
         compliancePacks: selectedPacks,
       });
 
+      setDemoState((prev) => ({
+        ...prev,
+        session: {
+          ...prev.session,
+          email: res.session.email || adminEmail.trim(),
+          fullName: adminName.trim(),
+          role: "TENANT_OWNER",
+          isAuthenticated: true,
+        },
+        tenant: {
+          ...prev.tenant,
+          id: res.tenant.id,
+          organizationName: res.tenant.name || orgName.trim(),
+          homeRegion: region,
+          dataResidencyRegion: region,
+        },
+      }));
+
       setSuccessReceipt({
         tenantId: res.tenant.id,
-        organizationName: res.tenant.name || orgName,
-        adminEmail: res.session.email || adminEmail,
+        organizationName: res.tenant.name || orgName.trim(),
+        adminEmail: res.session.email || adminEmail.trim(),
+        region,
+        policyPackKey: selectedPolicyPack.policy_key,
         timestamp: new Date().toISOString(),
       });
     } catch (err: any) {
@@ -136,7 +166,9 @@ export default function RegisterPage() {
           <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-[#f0fdf4] text-[#16a34a]">
             <CheckCircle2 className="h-7 w-7" />
           </span>
-          <h1 className="mt-4 text-[24px] font-bold tracking-tight text-[#0f172a]">Your workspace is ready</h1>
+          <h1 className="mt-4 text-[24px] font-bold tracking-tight text-[#0f172a]">
+            Your workspace is ready
+          </h1>
           <p className="mt-1.5 text-sm text-[#475569]">
             Your organization and administrator account have been created.
           </p>
@@ -147,22 +179,40 @@ export default function RegisterPage() {
             ["Organization", successReceipt.organizationName],
             ["Tenant ID", successReceipt.tenantId],
             ["Administrator", successReceipt.adminEmail],
+            ["Residency Region", successReceipt.region],
+            ["Bound Policy Pack", successReceipt.policyPackKey],
           ].map(([label, value]) => (
             <div key={label} className="flex items-center justify-between gap-4 px-4 py-3">
               <dt className="text-[#64748b]">{label}</dt>
-              <dd className="truncate font-semibold text-[#0f172a]">{value}</dd>
+              <dd className="truncate font-semibold text-[#0f172a] font-mono">{value}</dd>
             </div>
           ))}
         </dl>
 
-        <div className="mt-6 space-y-3">
-          <AuthPrimaryButton type="button" onClick={() => { window.location.href = "/"; }}>
-            Go to dashboard
+        <div className="mt-6 space-y-2.5">
+          <AuthPrimaryButton
+            type="button"
+            onClick={() => {
+              window.location.href = "/customer/dashboard";
+            }}
+          >
+            Go to Customer Dashboard
             <ArrowRight className="h-4 w-4" />
           </AuthPrimaryButton>
-          <Link href="/onboarding" className="block text-center text-[13px] font-semibold text-[#e31e24] hover:underline">
-            Continue to onboarding
-          </Link>
+          <div className="grid grid-cols-2 gap-2 pt-1">
+            <Link
+              href="/onboarding"
+              className="flex items-center justify-center rounded-xl border border-[#e2e8f0] bg-[#ffffff] hover:bg-[#f8fafc] px-3 py-2.5 text-[12px] font-semibold text-[#0f172a] transition-colors"
+            >
+              Continue to Onboarding
+            </Link>
+            <Link
+              href="/admin/tenant"
+              className="flex items-center justify-center rounded-xl border border-[#bae6fd] bg-[#f0f9ff] hover:bg-[#e0f2fe] px-3 py-2.5 text-[12px] font-semibold text-[#075985] transition-colors"
+            >
+              Tenant Admin Portal
+            </Link>
+          </div>
         </div>
       </AuthShell>
     );
@@ -170,7 +220,10 @@ export default function RegisterPage() {
 
   return (
     <AuthShell activeTab="register">
-      <AuthCardHeader title="Create your account" subtitle="Get started with Zoiko Shield in minutes." />
+      <AuthCardHeader
+        title="Create your account"
+        subtitle="Get started with Zoiko Shield in minutes."
+      />
 
       {/* Mode selector */}
       <div className="mb-5 grid grid-cols-2 rounded-xl bg-[#f1f5f9] p-1 text-[13px]">
@@ -187,7 +240,9 @@ export default function RegisterPage() {
             }}
             className={cn(
               "rounded-lg px-3 py-2 font-semibold transition",
-              activeTab === id ? "bg-[#ffffff] text-[#0f172a] shadow-sm" : "text-[#64748b] hover:text-[#0f172a]"
+              activeTab === id
+                ? "bg-[#ffffff] text-[#0f172a] shadow-sm"
+                : "text-[#64748b] hover:text-[#0f172a]"
             )}
           >
             {label}
@@ -283,14 +338,22 @@ export default function RegisterPage() {
               onChange={(e) => setRegion(e.target.value)}
               className={`${authInputClass} cursor-pointer`}
             >
-              <option value="us-east-1">US East (N. Virginia)</option>
-              <option value="eu-west-1">EU West (Dublin)</option>
-              <option value="ap-southeast-1">Asia Pacific (Singapore)</option>
+              {Object.values(CANONICAL_REGIONS).map((reg) => (
+                <option key={reg.code} value={reg.code}>
+                  {reg.displayName} — {reg.code}
+                </option>
+              ))}
             </select>
+            <p className="mt-1.5 text-[11px] font-mono text-[#475569]">
+              Bound Policy Pack: <strong className="text-[#0f172a]">{selectedPolicyPack.policy_key}</strong>{" "}
+              (v{selectedPolicyPack.version} • {selectedPolicyPack.retention_limits.min_statutory_days}d–{selectedPolicyPack.retention_limits.max_retention_days}d)
+            </p>
           </div>
 
           <fieldset>
-            <legend className="mb-1.5 block text-[13px] font-semibold text-[#0f172a]">Compliance packs</legend>
+            <legend className="mb-1.5 block text-[13px] font-semibold text-[#0f172a]">
+              Compliance packs
+            </legend>
             <div className="flex flex-wrap gap-2">
               {COMPLIANCE_PACKS.map((pack) => {
                 const isChecked = selectedPacks.includes(pack.id);
@@ -320,9 +383,14 @@ export default function RegisterPage() {
               <p>{error}</p>
               {error.toLowerCase().includes("already exists") && (
                 <p className="mt-1.5">
-                  <Link href="/login" className="font-semibold underline">Log in</Link>
+                  <Link href="/login" className="font-semibold underline">
+                    Log in
+                  </Link>
                   {" or "}
-                  <Link href="/login?view=reset" className="font-semibold underline">reset your password</Link>.
+                  <Link href="/login?view=reset" className="font-semibold underline">
+                    reset your password
+                  </Link>
+                  .
                 </p>
               )}
             </AuthAlert>
