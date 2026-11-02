@@ -6,7 +6,7 @@ import { formatTimestamp } from "@/lib/utils";
 import { Card } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
-import { FileWarning, RefreshCw, ShieldCheck } from "lucide-react";
+import { FileWarning, RefreshCw, ShieldCheck, PackageCheck, Scale, Lock } from "lucide-react";
 import { LoadingState } from "@/components/states/mandatory-ui-states";
 
 /**
@@ -140,7 +140,7 @@ export default function EvidenceOperationsPage() {
         <div>
           <div className="flex items-center gap-2 mb-1.5">
             <Badge variant="info" className="font-mono text-[10px] tracking-wider border-amber-500/30 bg-amber-500/10 text-amber-400">
-              SPEC §W24 / ASSURANCE QUEUE
+              SPEC §W24 / ASSURANCE QUEUE · G06 / G08
             </Badge>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-3">
@@ -185,6 +185,68 @@ export default function EvidenceOperationsPage() {
             {needsAttention.length}
           </div>
           <span className="text-[10px] text-amber-400/80 mt-1 inline-block font-mono">Pending, degraded or unverified</span>
+        </Card>
+      </div>
+
+      {/* WF-G06-01 & WF-G08-03: Scoped Package Builder + Legal Hold & Erasure Conflict Preflight */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="surface-card p-5 border border-line rounded-xl space-y-3">
+          <div className="flex items-center justify-between border-b border-line pb-2.5">
+            <div className="flex items-center gap-2">
+              <PackageCheck className="w-4 h-4 text-cyan-400" />
+              <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">
+                WF-G06-01 · Scoped Evidence Package Builder
+              </span>
+            </div>
+            <Badge variant="info">Deterministic Watermarks</Badge>
+          </div>
+          <p className="text-xs text-slate-400">
+            Packages declare exact per-source ingestion cutoffs, watermarks, and explicit exclusions so auditors can verify completeness (`EVD-COMP-*`).
+          </p>
+          <div className="grid grid-cols-2 gap-2.5 text-xs font-mono">
+            <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+              <div className="text-[10px] text-slate-500">WINDOW CUTOFF (UTC)</div>
+              <div className="text-slate-200 font-semibold mt-0.5">2026-10-31T14:30:00Z</div>
+            </div>
+            <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+              <div className="text-[10px] text-slate-500">SOURCE WATERMARK</div>
+              <div className="text-emerald-300 font-semibold mt-0.5">seq_wm_884210 (COMPLETE)</div>
+            </div>
+            <div className="p-2.5 rounded-lg bg-slate-950 border border-slate-800 col-span-2">
+              <div className="text-[10px] text-slate-500">EXPLICIT EXCLUSIONS MANIFEST</div>
+              <div className="text-amber-300 font-semibold mt-0.5">1 Quarantined Batch (DLQ-2026-1031-04 · Schema Mismatch)</div>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="surface-card p-5 border border-line rounded-xl space-y-3">
+          <div className="flex items-center justify-between border-b border-line pb-2.5">
+            <div className="flex items-center gap-2">
+              <Scale className="w-4 h-4 text-amber-400" />
+              <span className="text-xs font-bold text-white uppercase tracking-wider font-mono">
+                WF-G08-03 · Version-Pinned Legal Hold &amp; Erasure Conflict Preflight
+              </span>
+            </div>
+            <Badge variant="high">1 Hold Active</Badge>
+          </div>
+          <p className="text-xs text-slate-400">
+            Legal holds pin a deterministic snapshot version (`LH-2026-009 · v1`) and block conflicting GDPR/privacy erasure or TTL purge jobs on covered records.
+          </p>
+          <div className="space-y-2 text-xs font-mono">
+            <div className="flex items-center justify-between p-2.5 rounded-lg bg-amber-950/20 border border-amber-500/30">
+              <div>
+                <div className="text-amber-200 font-bold">LH-2026-009 · Case C-1028 Identity Preservation</div>
+                <div className="text-[10px] text-slate-400">Classes: CASE_EVIDENCE, AUDIT_LEDGER, NORMALIZED_TELEMETRY</div>
+              </div>
+              <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 text-[10px] font-bold flex items-center gap-1">
+                <Lock className="w-3 h-3" /> WORM LOCKED
+              </span>
+            </div>
+            <div className="flex items-center justify-between p-2 rounded-lg bg-slate-950 border border-slate-800 text-[11px]">
+              <span className="text-slate-400">Conflicting Erasure Request #DSR-402</span>
+              <span className="text-rose-300 font-semibold">DEFERRED BY LEGAL HOLD PRECEDENCE</span>
+            </div>
+          </div>
         </Card>
       </div>
 

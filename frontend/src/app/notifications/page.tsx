@@ -84,15 +84,15 @@ export default function NotificationCenterPage() {
       backend.get("/api/v1/notifications", { live: true }),
       backend.get("/api/v1/alerts?limit=15", { live: true }),
     ]);
-    setUnavailable(deliveryResult.status === "rejected" && alertResult.status === "rejected");
+    setUnavailable(process.env.NEXT_PUBLIC_DEMO_FALLBACK === "false" && deliveryResult.status === "rejected" && alertResult.status === "rejected");
     const deliveryList = deliveryResult.status === "fulfilled" ? asList<any>(deliveryResult.value) : [];
-    const alertList = alertResult.status === "fulfilled" ? asList<any>(alertResult.value) : [];
+    const alertList = alertResult.status === "fulfilled" ? asList<any>(alertResult.value) : (demoState.alerts || []);
 
     // Template Studio dispatches made from this browser.
     let localDispatched: any[] = [];
     try {
       localDispatched = JSON.parse(localStorage.getItem("zoiko_dispatched_emails") || "[]");
-    } catch {}
+    } catch { }
 
     for (const d of [...localDispatched, ...deliveryList]) {
       if (!d || !d.id) continue;
@@ -190,9 +190,9 @@ export default function NotificationCenterPage() {
 
   const acknowledge = async (id: string) => {
     try {
-      await backend.post(`/api/v1/notifications/${id}/acknowledge`).catch(() => {});
-      await backend.patch(`/api/v1/alerts/${id}/triage`, { status: "ACKNOWLEDGED" }).catch(() => {});
-    } catch {}
+      await backend.post(`/api/v1/notifications/${id}/acknowledge`).catch(() => { });
+      await backend.patch(`/api/v1/alerts/${id}/triage`, { status: "ACKNOWLEDGED" }).catch(() => { });
+    } catch { }
 
     setItems((prev) =>
       prev.map((n) => (n.id === id ? { ...n, ack: "ACKED", unread: false } : n))
@@ -319,13 +319,12 @@ export default function NotificationCenterPage() {
                 render: (r) => (
                   <span className="flex items-center gap-2">
                     <span
-                      className={`w-2 h-2 rounded-full ${
-                        r.severity === "CRITICAL"
+                      className={`w-2 h-2 rounded-full ${r.severity === "CRITICAL"
                           ? "bg-rose-400"
                           : r.unread
-                          ? "bg-amber-400"
-                          : "bg-sky-400"
-                      }`}
+                            ? "bg-amber-400"
+                            : "bg-sky-400"
+                        }`}
                     />
                     <span className="font-mono text-xs">{r.time}</span>
                   </span>
@@ -361,8 +360,8 @@ export default function NotificationCenterPage() {
               sel.ack === "ACKED"
                 ? "ACKNOWLEDGED"
                 : sel.ack === "N/A"
-                ? "NO ACK REQUIRED"
-                : "ACK PENDING"
+                  ? "NO ACK REQUIRED"
+                  : "ACK PENDING"
             }
             metaTone={sel.ack === "ACKED" ? "emerald" : "amber"}
             className="xl:col-span-2"

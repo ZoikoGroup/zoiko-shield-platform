@@ -48,6 +48,41 @@ export class RetentionPolicyService {
       };
     }
 
+    // Consolidate onto the winning spec-driven policy_pack (SectorPack) when bound to the tenant
+    if ((this.prisma as any).tenantSectorPack?.findFirst) {
+      const boundPack = await (this.prisma as any).tenantSectorPack.findFirst({
+        where: { tenant_id: tenantId, status: 'ACTIVE' },
+        include: { sectorPack: true },
+        orderBy: { activated_at: 'desc' },
+      });
+      if (
+        boundPack?.sectorPack &&
+        boundPack.sectorPack.release_status === 'RELEASED'
+      ) {
+        try {
+          const controls = JSON.parse(
+            boundPack.sectorPack.controls_mapping || '{}',
+          );
+          const packRetentionDays = Number(
+            controls?.retention_limits?.min_statutory_days ??
+              controls?.retentionDays,
+          );
+          if (Number.isInteger(packRetentionDays) && packRetentionDays > 0) {
+            return {
+              policyId: boundPack.sectorPack.id,
+              basis: 'STATUTORY',
+              authority:
+                boundPack.sectorPack.source_reference ||
+                `${boundPack.sectorPack.name} (${boundPack.sectorPack.jurisdiction})`,
+              periodDays: packRetentionDays,
+            };
+          }
+        } catch {
+          // Fall through if controls_mapping JSON does not specify retention_limits
+        }
+      }
+    }
+
     const configured = process.env.TENANT_RETENTION_DEFAULT_DAYS;
     const days = Number(configured);
     if (
