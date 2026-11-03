@@ -1,62 +1,321 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { NotFoundException } from '@nestjs/common';
 import { DlqReplayQuarantineService } from './dlq-replay-quarantine.service';
 
-describe('DlqReplayQuarantineService', () => {
-  let service: DlqReplayQuarantineService;
-  const tenantId = 'tenant-dlq-test-103';
+/**
+ * Fake ingest.DlqMessage table, shared by reference so two service instances
+ * behave like two processes on one database. updateMany applies its where
+ * clause atomically, as a conditional UPDATE does.
+ */
+function createFakeDb() {
+  const rows: any[] = [];
+  const tick = () => new Promise((resolve) => setImmediate(resolve));
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [DlqReplayQuarantineService],
-    }).compile();
-
-    service = module.get<DlqReplayQuarantineService>(
-      DlqReplayQuarantineService,
+  const fieldMatches = (value: any, cond: any): boolean => {
+    if (cond && typeof cond === 'object' && !(cond instanceof Date)) {
+      if ('in' in cond) return cond.in.includes(value);
+      if ('lt' in cond) return value != null && value < cond.lt;
+      if ('gt' in cond) return value != null && value > cond.gt;
+    }
+    return value === cond;
+  };
+  const matches = (row: any, where: any = {}): boolean =>
+    Object.entries(where).every(([field, cond]: [string, any]) =>
+      field === 'OR'
+        ? cond.some((alt: any) => matches(row, alt))
+        : fieldMatches(row[field], cond),
     );
+  const apply = (row: any, data: any) => {
+    for (const [field, value] of Object.entries<any>(data)) {
+      row[field] =
+        value && typeof value === 'object' && 'increment' in value
+          ? row[field] + value.increment
+          : value;
+    }
+  };
+
+  return {
+    rows,
+    dlqMessage: {
+      create: jest.fn(async ({ data }: any) => {
+        await tick();
+        const row = {
+          id: `row-${rows.length + 1}`,
+          attempt_count: 0,
+          max_attempts: 3,
+          last_error: null,
+          last_attempt_at: null,
+          replayed_at: null,
+          quarantined_at: new Date(),
+          connector_id: null,
+          environment_id: null,
+          source_region: null,
+          kafka_topic: null,
+          kafka_partition: null,
+          kafka_offset: null,
+          ...data,
+        };
+        rows.push(row);
+        return { ...row };
+      }),
+      findFirst: jest.fn(async ({ where }: any) => {
+        await tick();
+        const row = rows.find((r) => matches(r, where));
+        return row ? { ...row } : null;
+      }),
+      findMany: jest.fn(async ({ where }: any) => {
+        await tick();
+        return rows.filter((r) => matches(r, where)).map((r) => ({ ...r }));
+      }),
+      updateMany: jest.fn(async ({ where, data }: any) => {
+        await tick();
+        let count = 0;
+        for (const row of rows) {
+          if (matches(row, where)) {
+            apply(row, data);
+            count++;
+          }
+        }
+        return { count };
+      }),
+      count: jest.fn(
+        async ({ where }: any) => rows.filter((r) => matches(r, where)).length,
+      ),
+    },
+  };
+}
+
+describe('DlqReplayQuarantineService', () => {
+  const tenantId = 'tenant-dlq-test-103';
+  let db: ReturnType<typeof createFakeDb>;
+  let republish: jest.Mock;
+  let service: DlqReplayQuarantineService;
+
+  const kafkaOrigin = {
+    kind: 'KAFKA' as const,
+    kafka: { topic: 'telemetry.edr.events', partition: 2, offset: '1042' },
+  };
+
+  beforeEach(() => {
+    db = createFakeDb();
+    republish = jest.fn().mockResolvedValue(undefined);
+    service = new DlqReplayQuarantineService(db as any, { republish } as any);
   });
 
-  it('should quarantine a malformed event and track metrics', () => {
-    const quarantined = service.quarantineMessage(
+  it('persists a quarantined message with its Kafka origin', async () => {
+    const quarantined = await service.quarantineMessage(
       tenantId,
       'telemetry.edr.events',
-      { rawString: 'CORRUPTED_HEX_BUFFER', isCorrupt: true },
+      { rawString: 'CORRUPTED_HEX_BUFFER' },
       'Malformed UTF-8 payload',
       'CORRUPT_BUFFER',
+      3,
+      kafkaOrigin,
     );
 
-    expect(quarantined.messageId).toContain('dlq-');
     expect(quarantined.status).toBe('QUARANTINED');
+    expect(db.rows).toHaveLength(1);
+    expect(db.rows[0]).toMatchObject({
+      tenant_id: tenantId,
+      kafka_topic: 'telemetry.edr.events',
+      kafka_partition: 2,
+      kafka_offset: '1042',
+    });
 
-    const list = service.listQuarantined(tenantId);
-    expect(list.length).toBe(1);
-    expect(list[0].errorCode).toBe('CORRUPT_BUFFER');
+    const list = await service.listQuarantined(tenantId);
+    expect(list.map((m) => m.errorCode)).toEqual(['CORRUPT_BUFFER']);
   });
 
-  it('should replay a quarantined event after transformation hook fix', async () => {
-    const quarantined = service.quarantineMessage(
+  it('survives a restart: a fresh instance on the same database still sees the message', async () => {
+    const quarantined = await service.quarantineMessage(
       tenantId,
-      'telemetry.syslog.events',
-      { host: 'srv-01', missingTimestamp: true },
-      'Missing ISO8601 timestamp',
-      'SCHEMA_INVALID',
+      't',
+      { a: 1 },
+      'bad',
+      'E',
+      3,
+      kafkaOrigin,
+    );
+    const restarted = new DlqReplayQuarantineService(
+      db as any,
+      { republish } as any,
     );
 
-    // Replay with transformation hook to inject valid timestamp
-    const replayResult = await service.replayMessage(
+    const list = await restarted.listQuarantined(tenantId);
+    expect(list.map((m) => m.messageId)).toEqual([quarantined.messageId]);
+  });
+
+  it('does not duplicate an identical active message', async () => {
+    await service.quarantineMessage(
+      tenantId,
+      't',
+      { a: 1 },
+      'bad',
+      'E',
+      3,
+      kafkaOrigin,
+    );
+    await service.quarantineMessage(
+      tenantId,
+      't',
+      { a: 1 },
+      'bad',
+      'E',
+      3,
+      kafkaOrigin,
+    );
+    expect(db.rows).toHaveLength(1);
+  });
+
+  it('re-publishes the transformed payload to the original topic and marks success only afterwards', async () => {
+    const quarantined = await service.quarantineMessage(
+      tenantId,
+      'telemetry.edr.events',
+      { host: 'srv-01', missingTimestamp: true },
+      'Missing timestamp',
+      'SCHEMA_VALIDATION_ERROR',
+      3,
+      kafkaOrigin,
+    );
+    republish.mockImplementation(async () => {
+      expect(db.rows[0].status).toBe('REPLAYING');
+    });
+
+    const result = await service.replayMessage(
       tenantId,
       quarantined.messageId,
-      (payload) => ({
-        ...payload,
-        timestamp: new Date().toISOString(),
-        isCorrupt: false,
+      (p) => ({
+        ...p,
+        timestamp: '2026-11-03T00:00:00.000Z',
       }),
     );
 
-    expect(replayResult.success).toBe(true);
-    expect(replayResult.status).toBe('REPLAY_SUCCESS');
+    expect(result).toMatchObject({ success: true, status: 'REPLAY_SUCCESS' });
+    expect(republish).toHaveBeenCalledWith('telemetry.edr.events', tenantId, {
+      host: 'srv-01',
+      missingTimestamp: true,
+      timestamp: '2026-11-03T00:00:00.000Z',
+    });
+    expect(db.rows[0].status).toBe('REPLAY_SUCCESS');
+  });
 
-    const metrics = service.getMetrics();
-    expect(metrics.replayedSuccess).toBe(1);
-    expect(metrics.activeQuarantined).toBe(0);
+  it('publishes once when two replays of one message race', async () => {
+    const quarantined = await service.quarantineMessage(
+      tenantId,
+      't',
+      { a: 1 },
+      'bad',
+      'E',
+      3,
+      kafkaOrigin,
+    );
+    const other = new DlqReplayQuarantineService(
+      db as any,
+      { republish } as any,
+    );
+
+    const results = await Promise.all([
+      service.replayMessage(tenantId, quarantined.messageId),
+      other.replayMessage(tenantId, quarantined.messageId),
+    ]);
+
+    expect(republish).toHaveBeenCalledTimes(1);
+    expect(results.filter((r) => r.success)).toHaveLength(1);
+  });
+
+  it('does not re-send a message that already replayed successfully', async () => {
+    const quarantined = await service.quarantineMessage(
+      tenantId,
+      't',
+      { a: 1 },
+      'bad',
+      'E',
+      3,
+      kafkaOrigin,
+    );
+    await service.replayMessage(tenantId, quarantined.messageId);
+    const again = await service.replayMessage(tenantId, quarantined.messageId);
+
+    expect(again.success).toBe(true);
+    expect(republish).toHaveBeenCalledTimes(1);
+  });
+
+  it('leaves a message replayable after a publish failure, then fails it at max attempts', async () => {
+    const quarantined = await service.quarantineMessage(
+      tenantId,
+      't',
+      { a: 1 },
+      'bad',
+      'E',
+      2,
+      kafkaOrigin,
+    );
+    republish.mockRejectedValue(new Error('broker unavailable'));
+
+    const first = await service.replayMessage(tenantId, quarantined.messageId);
+    expect(first).toMatchObject({
+      success: false,
+      status: 'QUARANTINED',
+      error: 'broker unavailable',
+    });
+    expect(db.rows[0].status).toBe('QUARANTINED');
+
+    const second = await service.replayMessage(tenantId, quarantined.messageId);
+    expect(second.status).toBe('REPLAY_FAILED');
+    expect(db.rows[0].attempt_count).toBe(2);
+  });
+
+  it('treats a webhook re-ingest that is not ACCEPTED as a failure', async () => {
+    const quarantined = await service.quarantineMessage(
+      tenantId,
+      'webhook',
+      { a: 1 },
+      'bad',
+      'E',
+      3,
+      {
+        kind: 'WEBHOOK',
+        connectorId: 'conn-1',
+      },
+    );
+    service.setReingestHandler(async () => ({
+      processingStatus: 'DUPLICATE_IGNORED',
+    }));
+
+    const result = await service.replayMessage(tenantId, quarantined.messageId);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('DUPLICATE_IGNORED');
+  });
+
+  it('keeps a purged message as an auditable PURGED row', async () => {
+    const quarantined = await service.quarantineMessage(
+      tenantId,
+      't',
+      { a: 1 },
+      'bad',
+      'E',
+      3,
+      kafkaOrigin,
+    );
+    expect(
+      await service.purgeQuarantined(tenantId, quarantined.messageId),
+    ).toBe(true);
+    expect(db.rows[0].status).toBe('PURGED');
+    expect(await service.listQuarantined(tenantId)).toHaveLength(0);
+  });
+
+  it('isolates tenants and rejects unknown messages', async () => {
+    const quarantined = await service.quarantineMessage(
+      tenantId,
+      't',
+      { a: 1 },
+      'bad',
+      'E',
+      3,
+      kafkaOrigin,
+    );
+    await expect(
+      service.replayMessage('tenant-other', quarantined.messageId),
+    ).rejects.toThrow(NotFoundException);
+    expect(await service.listQuarantined('tenant-other')).toHaveLength(0);
   });
 });

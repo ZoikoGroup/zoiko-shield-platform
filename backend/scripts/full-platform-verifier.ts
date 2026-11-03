@@ -44,6 +44,8 @@ import { StreamDeduplicationService } from '../apps/shield-ingest/src/deduplicat
 import { DynamicTokenizationProxyService } from '../apps/shield-core/src/modules/privacy/dynamic-tokenization-proxy.service';
 import { PlaybookSandboxEngineService } from '../apps/shield-action/src/simulation/playbook-sandbox-engine.service';
 import { DlqReplayQuarantineService } from '../apps/shield-ingest/src/dlq/dlq-replay-quarantine.service';
+import { PrismaService as IngestPrismaService } from '../apps/shield-ingest/src/prisma/prisma.service';
+import { KafkaProducerService as IngestKafkaProducerService } from '../apps/shield-ingest/src/kafka/kafka.producer.service';
 import { TimeSeriesAnomalyDetectorService } from '../apps/shield-ai/src/analytics/time-series-anomaly-detector.service';
 import { DistributedLeaseCoordinatorService } from '../apps/shield-anchor/src/consensus/distributed-lease-coordinator.service';
 import { AdaptiveTraceSamplerService } from '../apps/shield-ingest/src/sampling/adaptive-trace-sampler.service';
@@ -971,23 +973,39 @@ async function runFullPlatformVerifier() {
     `  ✔ Playbook Sandbox: Status '${sandboxReport.status}' (Blast Radius: ${sandboxReport.simulatedBlastRadiusScore}, Transitions: ${sandboxReport.stateDiffs.length})`,
   );
 
-  // 3. DLQ Replay & Poison Message Quarantine
-  const dlq = new DlqReplayQuarantineService();
-  const qMsg = dlq.quarantineMessage(
-    tenantA.id,
-    'telemetry.edr',
-    { corrupt: true },
-    'Corrupt byte sequence',
-    'PARSE_ERR',
-  );
-  const replayRes = await dlq.replayMessage(
-    tenantA.id,
-    qMsg.messageId,
-    (p) => ({ ...p, corrupt: false, timestamp: new Date().toISOString() }),
-  );
-  logger.log(
-    `  ✔ DLQ Replay: Quarantined '${qMsg.messageId}' ➔ In-Flight Replay Status: '${replayRes.status}'`,
-  );
+  // 3. DLQ Replay & Poison Message Quarantine — persisted in ingest.DlqMessage
+  // and replayed to Kafka, so this check needs the real database and broker.
+  if (process.env.DATABASE_URL) {
+    const dlqPrisma = new IngestPrismaService();
+    const dlqKafka = new IngestKafkaProducerService();
+    await dlqPrisma.$connect();
+    await dlqKafka.onModuleInit();
+    try {
+      const dlq = new DlqReplayQuarantineService(dlqPrisma, dlqKafka);
+      const qMsg = await dlq.quarantineMessage(
+        tenantA.id,
+        'telemetry.edr',
+        { corrupt: true },
+        'Corrupt byte sequence',
+        'PARSE_ERR',
+        3,
+        { kind: 'KAFKA', kafka: { topic: 'telemetry.edr' } },
+      );
+      const replayRes = await dlq.replayMessage(
+        tenantA.id,
+        qMsg.messageId,
+        (p) => ({ ...p, corrupt: false, timestamp: new Date().toISOString() }),
+      );
+      logger.log(
+        `  ✔ DLQ Replay: Quarantined '${qMsg.messageId}' ➔ Replay Status: '${replayRes.status}'`,
+      );
+    } finally {
+      await dlqKafka.onModuleDestroy();
+      await dlqPrisma.$disconnect();
+    }
+  } else {
+    logger.warn('  ⚠ DLQ Replay: SKIPPED — requires DATABASE_URL and a Kafka broker');
+  }
 
   // 4. In-Memory Time-Series Statistical Anomaly Detector
   const anomalyDetector = new TimeSeriesAnomalyDetectorService();

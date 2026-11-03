@@ -64,7 +64,11 @@ export class RawIngestService {
     private readonly deduplicationService?: StreamDeduplicationService,
     @Optional() private readonly dlqService?: DlqReplayQuarantineService,
     @Optional() private readonly connectorCache?: ConnectorCacheService,
-  ) {}
+  ) {
+    this.dlqService?.setReingestHandler((connectorId, headers, payload) =>
+      this.processWebhookPayload(connectorId, headers, payload),
+    );
+  }
 
   /**
    * Process generic webhook payloads, record raw events, handle deduplication, and publish events.
@@ -215,8 +219,10 @@ export class RawIngestService {
       processingStatus = 'QUARANTINED';
 
       // Record in Dead-Letter Queue Quarantine Service if available
+      // Awaited: if the quarantine record cannot be written the request
+      // fails rather than reporting a quarantine that was never kept.
       if (this.dlqService) {
-        this.dlqService.quarantineMessage(
+        await this.dlqService.quarantineMessage(
           tenantId,
           'telemetry.ingested',
           payload,
@@ -224,6 +230,13 @@ export class RawIngestService {
             ? 'ROUTE_AUTHORIZATION_MISMATCH'
             : 'MALFORMED_OR_EMPTY_PAYLOAD',
           routeMismatch ? 'ROUTE_MISMATCH' : 'SCHEMA_VALIDATION_ERROR',
+          3,
+          {
+            kind: 'WEBHOOK',
+            connectorId,
+            environmentId,
+            sourceRegion: sourceRegion ?? undefined,
+          },
         );
       }
     }

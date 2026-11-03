@@ -1,7 +1,10 @@
 import { Injectable, Logger, OnModuleDestroy, Optional } from '@nestjs/common';
 import { RawIngestService } from '../../ingestion/raw-ingest.service';
 import { TokenBucketRateLimiterService } from '../../ingestion/rate-limiter/token-bucket-limiter.service';
-import { DlqReplayQuarantineService } from '../../dlq/dlq-replay-quarantine.service';
+import {
+  DlqOrigin,
+  DlqReplayQuarantineService,
+} from '../../dlq/dlq-replay-quarantine.service';
 
 export interface SqsMessagePayload {
   messageId: string;
@@ -86,15 +89,23 @@ export class AwsSqsIngestListener implements OnModuleDestroy {
         this.logger.error(
           `Failed to parse SQS message ${msg.messageId} body: ${err.message}`,
         );
-        if (this.dlqService) {
-          this.dlqService.quarantineMessage(
+        // The message stays in SQS either way, so a failed quarantine write
+        // is logged rather than allowed to stop the batch.
+        await this.dlqService
+          ?.quarantineMessage(
             options.tenantId,
             `sqs:${options.queueUrl}`,
             { rawBody: msg.body, messageId: msg.messageId },
             `Failed to parse SQS message body: ${err.message}`,
             'JSON_PARSE_ERROR',
+            3,
+            this.sqsOrigin(options),
+          )
+          .catch((dlqErr: Error) =>
+            this.logger.error(
+              `Could not quarantine SQS message ${msg.messageId}: ${dlqErr.message}`,
+            ),
           );
-        }
         // Treat as poisoned message or forward to DLQ
         continue;
       }
@@ -127,18 +138,33 @@ export class AwsSqsIngestListener implements OnModuleDestroy {
         this.logger.error(
           `Error ingesting SQS message ${msg.messageId}: ${err.message}`,
         );
-        if (this.dlqService) {
-          this.dlqService.quarantineMessage(
+        await this.dlqService
+          ?.quarantineMessage(
             options.tenantId,
             `sqs:${options.queueUrl}`,
             parsedPayload,
             `Error ingesting SQS message: ${err.message}`,
             'INGEST_PROCESSING_ERROR',
+            3,
+            this.sqsOrigin(options),
+          )
+          .catch((dlqErr: Error) =>
+            this.logger.error(
+              `Could not quarantine SQS message ${msg.messageId}: ${dlqErr.message}`,
+            ),
           );
-        }
       }
     }
 
     return result;
+  }
+
+  private sqsOrigin(options: SqsPollOptions): DlqOrigin {
+    return {
+      kind: 'SQS',
+      connectorId: options.connectorId,
+      environmentId: options.environmentId,
+      sourceRegion: options.region || 'us-east-1',
+    };
   }
 }
