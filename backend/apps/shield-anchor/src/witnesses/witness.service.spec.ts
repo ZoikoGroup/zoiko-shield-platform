@@ -99,11 +99,43 @@ describe('WitnessService', () => {
       expect(mockHttpWitnessProvider.attestAll).toHaveBeenCalledWith(
         'merkle-root-xyz',
       );
+      expect(mockMockWitnessProvider.attest).not.toHaveBeenCalled();
       expect(mockPrismaService.witnessReceipt.create).toHaveBeenCalledTimes(2);
       expect(result.witnessAssuranceState).toBe('WITNESS_FULL');
       expect(result.receipts.length).toBe(2);
     } finally {
       process.env.NODE_ENV = originalEnv;
+    }
+  });
+
+  it('fails closed in production when no real witnesses are configured, never falling back to the mock', async () => {
+    const originalEnv = process.env.NODE_ENV;
+    const originalUrls = process.env.ANCHOR_WITNESS_URLS;
+    process.env.NODE_ENV = 'production';
+    delete process.env.ANCHOR_WITNESS_URLS;
+
+    const realHttpModule = await Test.createTestingModule({
+      providers: [
+        WitnessService,
+        { provide: PrismaService, useValue: mockPrismaService },
+        { provide: MockWitnessProvider, useValue: mockMockWitnessProvider },
+        HttpWitnessProvider,
+      ],
+    }).compile();
+    const realHttpService = realHttpModule.get<WitnessService>(WitnessService);
+
+    try {
+      await expect(
+        realHttpService.collectReceipts('chk-003', 'merkle-root-none'),
+      ).rejects.toThrow(
+        /At least two independently operated ANCHOR_WITNESS_URLS/,
+      );
+      expect(mockMockWitnessProvider.attest).not.toHaveBeenCalled();
+      expect(mockPrismaService.witnessReceipt.create).not.toHaveBeenCalled();
+    } finally {
+      process.env.NODE_ENV = originalEnv;
+      if (originalUrls === undefined) delete process.env.ANCHOR_WITNESS_URLS;
+      else process.env.ANCHOR_WITNESS_URLS = originalUrls;
     }
   });
 });
