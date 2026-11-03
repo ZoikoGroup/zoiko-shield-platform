@@ -8,6 +8,7 @@ import {
   UseGuards,
   Header,
   Optional,
+  ForbiddenException,
 } from '@nestjs/common';
 import { SimulationService } from './simulation/simulation.service';
 import { ActionRollbackBrokerService } from './rollback/action-rollback-broker.service';
@@ -179,6 +180,7 @@ export class ApplyHostNetworkRuleDto {
 export class QuarantinePodDto {
   tenantId!: string;
   podSelector!: string;
+  approval?: { quorumId: string; proposalId: string };
 }
 
 import { SafetyCriticalActuatorBlockService } from './safety-interlock/safety-critical-actuator-block.service';
@@ -206,6 +208,7 @@ export class DispatchEdrActionDto {
   incidentReference!: string;
   operatorId!: string;
   simulateOnly?: boolean;
+  approval?: { quorumId: string; proposalId: string };
 }
 
 export class RollbackEdrActionDto {
@@ -394,13 +397,24 @@ export class ShieldActionController {
 
   @UseGuards(InternalAuthGuard)
   @Post('api/v1/action/network/quarantine')
-  quarantinePod(@Body() body: QuarantinePodDto) {
+  async quarantinePod(@Body() body: QuarantinePodDto) {
     if (!this.hostNetworkEnforcer) {
       return {
         status: 'UNAVAILABLE',
         message: 'Host Network Enforcer is not configured in this environment',
       };
     }
+    if (!this.dualCustodyQuorumService) {
+      throw new ForbiddenException(
+        'Dual-custody approval cannot be verified: DualCustodyQuorumService not configured.',
+      );
+    }
+    await this.dualCustodyQuorumService.consumeForExecution(
+      body.tenantId,
+      body.approval,
+      'QUARANTINE_POD_NETWORK',
+      body.podSelector,
+    );
     return this.hostNetworkEnforcer.quarantinePodNetwork(
       body.tenantId,
       body.podSelector,
@@ -725,6 +739,7 @@ export class ShieldActionController {
         targetFilePath: body.targetFilePath,
         incidentReference: body.incidentReference,
         operatorId: body.operatorId,
+        approval: body.approval,
       },
       body.simulateOnly,
     );

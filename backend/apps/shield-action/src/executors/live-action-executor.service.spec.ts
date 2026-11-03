@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { LiveActionExecutorService } from './live-action-executor.service';
-import { DualCustodyApprovalsService } from '../approvals/dual-custody-approvals.service';
+import { DualCustodyQuorumService } from '../dual-custody/dual-custody-quorum.service';
 import { AutomatedRollbackOrchestratorService } from './automated-rollback-orchestrator.service';
 import { ForbiddenException } from '@nestjs/common';
 
@@ -10,16 +10,100 @@ import { LiveGoogleWorkspaceExecutor } from './live/live-google-workspace.execut
 import { LiveCrowdstrikeExecutor } from './live/live-crowdstrike.executor';
 import { LiveOktaExecutor } from './live/live-okta.executor';
 
+/** Minimal conditional-update fake for action.DualCustodyQuorum. */
+function createFakeQuorumDb() {
+  const rows = new Map<string, any>();
+  const key = (t: string, q: string) => `${t}:${q}`;
+  const matches = (row: any, where: any) =>
+    Object.entries(where).every(([field, cond]: [string, any]) =>
+      cond &&
+      typeof cond === 'object' &&
+      !(cond instanceof Date) &&
+      'gt' in cond
+        ? row[field] > cond.gt
+        : cond && typeof cond === 'object' && 'in' in cond
+          ? cond.in.includes(row[field])
+          : row[field] === cond,
+    );
+  return {
+    dualCustodyQuorum: {
+      create: jest.fn(async ({ data }: any) => {
+        const row = {
+          id: 'dcq',
+          secondary_approver: null,
+          quorum_signature: null,
+          finalized_at: null,
+          consumed_at: null,
+          ...data,
+        };
+        rows.set(key(data.tenant_id, data.quorum_id), row);
+        return { ...row };
+      }),
+      findUnique: jest.fn(async ({ where }: any) => {
+        const { tenant_id, quorum_id } = where.tenant_id_quorum_id;
+        const row = rows.get(key(tenant_id, quorum_id));
+        return row ? { ...row } : null;
+      }),
+      updateMany: jest.fn(async ({ where, data }: any) => {
+        let count = 0;
+        for (const row of rows.values()) {
+          if (matches(row, where)) {
+            Object.assign(row, data);
+            count++;
+          }
+        }
+        return { count };
+      }),
+    },
+  };
+}
+
+const approver = (userId: string) => ({
+  userId,
+  fullName: userId,
+  role: 'SECURITY_OPERATIONS_LEAD' as const,
+  fido2WebAuthnSignature: `fido2-${userId}`,
+  signedAt: new Date().toISOString(),
+});
+
 describe('LiveActionExecutor & DualCustody & Rollback (Spec §15 & LAB 15)', () => {
   let actionExecutor: LiveActionExecutorService;
-  let dualCustodyService: DualCustodyApprovalsService;
+  let quorumService: DualCustodyQuorumService;
   let rollbackService: AutomatedRollbackOrchestratorService;
+
+  const approve = async (
+    actionType: 'BLOCK_PERIMETER_IP' | 'INVALIDATE_USER_SESSIONS',
+    targetResource: string,
+  ) => {
+    const quorum = await quorumService.initiateQuorum({
+      tenantId: 'tenant-action-test',
+      environmentId: 'prod',
+      caseId: 'case-1',
+      proposalId: `prop-${targetResource}`,
+      actionType,
+      targetResource,
+      authorityLevel: 'R2',
+      blastRadiusScore: 0.2,
+      reversibilityTier: 'R1',
+      compensatingCommand: 'ROLLBACK',
+      initiator: approver('analyst-alice'),
+    });
+    await quorumService.signSecondApproval(
+      'tenant-action-test',
+      quorum.quorumId,
+      approver('officer-bob'),
+    );
+    return { quorumId: quorum.quorumId, proposalId: `prop-${targetResource}` };
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         LiveActionExecutorService,
-        DualCustodyApprovalsService,
+        {
+          provide: DualCustodyQuorumService,
+          useValue: new DualCustodyQuorumService(createFakeQuorumDb() as any),
+        },
         AutomatedRollbackOrchestratorService,
         LiveGcpCloudArmorExecutor,
         LiveGcpIamExecutor,
@@ -29,90 +113,74 @@ describe('LiveActionExecutor & DualCustody & Rollback (Spec §15 & LAB 15)', () 
       ],
     }).compile();
 
-    actionExecutor = module.get<LiveActionExecutorService>(
-      LiveActionExecutorService,
-    );
-    dualCustodyService = module.get<DualCustodyApprovalsService>(
-      DualCustodyApprovalsService,
-    );
-    rollbackService = module.get<AutomatedRollbackOrchestratorService>(
-      AutomatedRollbackOrchestratorService,
-    );
+    actionExecutor = module.get(LiveActionExecutorService);
+    quorumService = module.get(DualCustodyQuorumService);
+    rollbackService = module.get(AutomatedRollbackOrchestratorService);
   });
 
-  it('should allow single-analyst execution for R1 recommendation actions', async () => {
+  it('rejects a live destructive action whose caller declares R1 to skip dual custody', async () => {
+    await expect(
+      actionExecutor.executeAction({
+        tenantId: 'tenant-action-test',
+        actionType: 'BLOCK_PERIMETER_IP',
+        targetRef: '198.51.100.42',
+        authorityLevel: 'R1',
+        isSimulation: false,
+      }),
+    ).rejects.toThrow(ForbiddenException);
+  });
+
+  it('simulates without approval', async () => {
     const receipt = await actionExecutor.executeAction({
       tenantId: 'tenant-action-test',
       actionType: 'BLOCK_PERIMETER_IP',
       targetRef: '198.51.100.42',
       authorityLevel: 'R1',
-      isSimulation: false,
+      isSimulation: true,
     });
+    expect(receipt.status).toBe('SIMULATED');
+  });
 
+  it('executes once with a matching persisted quorum and refuses to reuse it', async () => {
+    const approval = await approve(
+      'INVALIDATE_USER_SESSIONS',
+      'compromised.admin@acme.com',
+    );
+    const input = {
+      tenantId: 'tenant-action-test',
+      actionType: 'INVALIDATE_USER_SESSIONS' as const,
+      targetRef: 'compromised.admin@acme.com',
+      authorityLevel: 'R2' as const,
+      approval,
+      isSimulation: false,
+    };
+
+    const receipt = await actionExecutor.executeAction(input);
     expect(receipt.status).toBe('EXECUTED');
-    expect(receipt.actionType).toBe('BLOCK_PERIMETER_IP');
-    expect(receipt.observedEffect.ipBlocked).toBe('198.51.100.42');
-    expect(receipt.rollbackCapability.supported).toBe(true);
-    expect(receipt.rollbackCapability.rollbackAction).toBe(
-      'REMOVE_CLOUD_ARMOR_IP_RULE',
+    expect(receipt.observedEffect.userPrincipal).toBe(
+      'compromised.admin@acme.com',
+    );
+
+    await expect(actionExecutor.executeAction(input)).rejects.toThrow(
+      ForbiddenException,
     );
   });
 
-  it('should enforce Dual-Custody Two-Man Rule for R2+ live actions', async () => {
-    // 1. Without approval -> throws ForbiddenException
+  it('refuses a quorum approved for a different target', async () => {
+    const approval = await approve(
+      'INVALIDATE_USER_SESSIONS',
+      'someone.else@acme.com',
+    );
     await expect(
       actionExecutor.executeAction({
         tenantId: 'tenant-action-test',
         actionType: 'INVALIDATE_USER_SESSIONS',
         targetRef: 'compromised.admin@acme.com',
         authorityLevel: 'R2',
+        approval,
         isSimulation: false,
       }),
     ).rejects.toThrow(ForbiddenException);
-
-    // 2. Initiated by Analyst Alice -> PENDING_APPROVAL
-    const approval = dualCustodyService.initiateApproval(
-      'tenant-action-test',
-      'cmd-revoke-99',
-      'INVALIDATE_USER_SESSIONS',
-      'compromised.admin@acme.com',
-      'R2',
-      'analyst-alice',
-      'SECURITY_ANALYST',
-    );
-    expect(approval.status).toBe('PENDING_APPROVAL');
-
-    // 3. Analyst Alice cannot self-approve (segregation of duties)
-    expect(() =>
-      dualCustodyService.approveRequest(
-        approval.approvalId,
-        'analyst-alice',
-        'SECURITY_ANALYST',
-      ),
-    ).toThrow(ForbiddenException);
-
-    // 4. Security Officer Bob approves -> APPROVED
-    const approvedReq = dualCustodyService.approveRequest(
-      approval.approvalId,
-      'officer-bob',
-      'SECURITY_OFFICER',
-    );
-    expect(approvedReq.status).toBe('APPROVED');
-
-    // 5. Execution now succeeds
-    const receipt = await actionExecutor.executeAction({
-      tenantId: 'tenant-action-test',
-      actionType: 'INVALIDATE_USER_SESSIONS',
-      targetRef: 'compromised.admin@acme.com',
-      authorityLevel: 'R2',
-      approvalRef: approval.approvalId,
-      isSimulation: false,
-    });
-
-    expect(receipt.status).toBe('EXECUTED');
-    expect(receipt.observedEffect.userPrincipal).toBe(
-      'compromised.admin@acme.com',
-    );
   });
 
   it('should execute automated compensation rollback for executed action', async () => {
@@ -120,7 +188,8 @@ describe('LiveActionExecutor & DualCustody & Rollback (Spec §15 & LAB 15)', () 
       tenantId: 'tenant-action-test',
       actionType: 'BLOCK_PERIMETER_IP',
       targetRef: '198.51.100.99',
-      authorityLevel: 'R1',
+      authorityLevel: 'R2',
+      approval: await approve('BLOCK_PERIMETER_IP', '198.51.100.99'),
       isSimulation: false,
     });
 

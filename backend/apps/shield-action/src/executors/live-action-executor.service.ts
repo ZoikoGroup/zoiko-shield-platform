@@ -1,10 +1,13 @@
-import { Injectable, Logger, ForbiddenException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
 import {
   ActionExecutionContext,
   ExecutionReceipt,
 } from '../execution-adapters/action-execution.interface';
-import { DualCustodyApprovalsService } from '../approvals/dual-custody-approvals.service';
+import {
+  DualCustodyApprovalRef,
+  DualCustodyQuorumService,
+} from '../dual-custody/dual-custody-quorum.service';
 import { LiveGcpCloudArmorExecutor } from './live/live-gcp-cloud-armor.executor';
 import { LiveGcpIamExecutor } from './live/live-gcp-iam.executor';
 import { LiveGoogleWorkspaceExecutor } from './live/live-google-workspace.executor';
@@ -24,7 +27,7 @@ export interface LiveActionInput {
     | 'SUSPEND_USER';
   targetRef: string;
   authorityLevel: 'R0' | 'R1' | 'R2' | 'R3' | 'R4';
-  approvalRef?: string;
+  approval?: DualCustodyApprovalRef;
   parameters?: Record<string, any>;
   isSimulation?: boolean;
 }
@@ -43,7 +46,7 @@ export class LiveActionExecutorService {
   private readonly logger = new Logger(LiveActionExecutorService.name);
 
   constructor(
-    private readonly dualCustodyService: DualCustodyApprovalsService,
+    private readonly dualCustody: DualCustodyQuorumService,
     private readonly gcpCloudArmor: LiveGcpCloudArmorExecutor,
     private readonly gcpIam: LiveGcpIamExecutor,
     private readonly googleWorkspace: LiveGoogleWorkspaceExecutor,
@@ -60,21 +63,15 @@ export class LiveActionExecutorService {
     const receiptId = `rcpt-${crypto.randomUUID().slice(0, 8)}`;
     const now = new Date().toISOString();
 
-    // Enforce Dual-Custody for live R2+ actions
-    if (
-      !isSim &&
-      (input.authorityLevel === 'R2' ||
-        input.authorityLevel === 'R3' ||
-        input.authorityLevel === 'R4')
-    ) {
-      if (
-        !input.approvalRef ||
-        !this.dualCustodyService.validateExecutionAuthority(input.approvalRef)
-      ) {
-        throw new ForbiddenException(
-          `Dual-custody approval required: Action ${input.actionType} at authority level ${input.authorityLevel} requires verified two-man quorum.`,
-        );
-      }
+    // Every supported action is destructive (firewall block, session/identity
+    // revocation, isolation), so a caller-declared R0/R1 cannot skip custody.
+    if (!isSim) {
+      await this.dualCustody.consumeForExecution(
+        input.tenantId,
+        input.approval,
+        input.actionType,
+        input.targetRef,
+      );
     }
 
     let observedEffect: Record<string, any> = {};
