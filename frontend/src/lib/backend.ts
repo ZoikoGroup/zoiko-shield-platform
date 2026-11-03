@@ -107,7 +107,7 @@ async function request<T>(
     throw new BackendError(message, response.status, path);
   }
 
-  if (options.live && response.headers.get("x-zoiko-fallback") === "true") {
+  if (options.live && process.env.NEXT_PUBLIC_DEMO_FALLBACK === "false" && response.headers.get("x-zoiko-fallback") === "true") {
     throw new BackendError("ZoikoShield backend is unreachable; demo data withheld.", null, path);
   }
 

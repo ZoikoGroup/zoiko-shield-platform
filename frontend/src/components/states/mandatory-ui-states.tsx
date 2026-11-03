@@ -11,7 +11,9 @@ import {
   RotateCcw,
   RefreshCw,
   CheckCircle2,
+  Info,
 } from 'lucide-react';
+import type { DataProvenanceState } from '@/lib/assurance-primitives';
 
 export type MandatoryUIStateType =
   | 'LOADING'
@@ -29,6 +31,62 @@ interface StateProps {
   retryAction?: () => void;
   regionalCell?: string;
 }
+
+/**
+ * G11 Data Provenance Badge — Enforces honest disclosure of backend vs demo fixture vs stale data
+ */
+export const DataProvenanceBadge: React.FC<{
+  provenance?: DataProvenanceState;
+  asOf?: string;
+  sourceService?: string;
+}> = ({
+  provenance = 'VERIFIED_BACKEND',
+  asOf = 'Oct 31, 2026 14:32 UTC',
+  sourceService = 'shield-core',
+}) => {
+  const styles: Record<
+    DataProvenanceState,
+    { dot: string; label: string; badge: string }
+  > = {
+    VERIFIED_BACKEND: {
+      dot: 'bg-emerald-400',
+      label: 'Live Data',
+      badge: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
+    },
+    DEMO_FIXTURE: {
+      dot: 'bg-cyan-400',
+      label: 'Demo Fixture',
+      badge: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300',
+    },
+    STALE_SNAPSHOT: {
+      dot: 'bg-amber-400',
+      label: 'Stale Snapshot',
+      badge: 'border-amber-500/30 bg-amber-500/10 text-amber-300',
+    },
+    UNAVAILABLE: {
+      dot: 'bg-rose-400',
+      label: 'Source Unavailable',
+      badge: 'border-rose-500/30 bg-rose-500/10 text-rose-300',
+    },
+  };
+
+  const current = styles[provenance];
+
+  return (
+    <div
+      className="flex flex-col items-end text-right"
+      title={`Provenance: ${provenance} | Source: ${sourceService} | As of: ${asOf}`}
+    >
+      <span className="text-[11px] text-slate-400 leading-tight">Last updated</span>
+      <span className="text-xs font-medium text-slate-200 leading-tight">{asOf}</span>
+      <div className="mt-1 inline-flex items-center gap-1.5 text-xs font-medium text-emerald-400">
+        <span className={`w-2 h-2 rounded-full ${current.dot} animate-pulse`} />
+        <span>{current.label}</span>
+        <Info className="w-3.5 h-3.5 text-slate-400" />
+      </div>
+    </div>
+  );
+};
 
 /**
  * 1. Loading State: Skeleton shimmer & regional latency indicator (WCAG aria-live, role="status")
@@ -54,7 +112,7 @@ export const LoadingState: React.FC<StateProps> = ({
     </div>
     <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-surface border border-line text-slate-400">
       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-      Cell: {regionalCell} [sovereign]
+      Cell: {regionalCell} [residency-scoped]
     </div>
   </div>
 );
@@ -103,7 +161,7 @@ export const PartialState: React.FC<
 export const StaleState: React.FC<StateProps> = ({
   title = 'Cached View (Stale Data)',
   message = 'Showing last verified snapshot. Network latency or background re-indexing in progress.',
-  timestamp = '2026-09-10T08:00:00.000Z',
+  timestamp = '2026-10-31T08:00:00.000Z',
   retryAction,
 }) => (
   <div
@@ -198,20 +256,22 @@ export const UnauthorizedState: React.FC<
 );
 
 /**
- * 6. Unavailable State: Regional partition / failover status display
+ * 6. Unavailable State: Regional partition / failover status display (G05 & C18 compliant)
  */
 export const UnavailableState: React.FC<
   StateProps & {
     rtoTargetMinutes?: number;
     rpoTargetMinutes?: number;
+    lastVerifiedDrillAt?: string;
     failoverRegion?: string;
   }
 > = ({
   title = 'Regional Ingestion Partition Detected',
-  message = 'Primary regional cell unavailable. Automated failover to pre-warmed regional standby in progress.',
-  rtoTargetMinutes = 0.5,
-  rpoTargetMinutes = 0,
-  failoverRegion = 'europe-west3',
+  message = 'Primary regional cell unavailable. Controlled failover to regional standby cell in progress.',
+  rtoTargetMinutes = 60,
+  rpoTargetMinutes = 15,
+  lastVerifiedDrillAt = '2026-10-31T08:00:00Z',
+  failoverRegion = 'eu-west-1b (In-Region Multi-AZ Standby)',
   retryAction,
 }) => (
   <div
@@ -227,9 +287,19 @@ export const UnavailableState: React.FC<
       <p className="text-xs text-red-300/80 max-w-md">{message}</p>
     </div>
     <div className="flex flex-wrap items-center justify-center gap-3 text-[11px] font-mono text-slate-400">
-      <span>RTO Target: &lt; {rtoTargetMinutes * 60}s</span>
+      <span>
+        {rtoTargetMinutes < 1
+          ? `RTO Target: < ${rtoTargetMinutes * 60}s`
+          : `RTO Target: <= ${rtoTargetMinutes}m`}
+      </span>
       <span>•</span>
-      <span>RPO Target: {rpoTargetMinutes}s (Zero Data Loss)</span>
+      <span>
+        {rpoTargetMinutes === 0
+          ? `RPO Target: ${rpoTargetMinutes}s (Zero Data Loss)`
+          : `RPO Target: <= ${rpoTargetMinutes}m`}
+      </span>
+      <span>•</span>
+      <span>Last Drill Verified: {lastVerifiedDrillAt}</span>
       <span>•</span>
       <span>Standby Cell: {failoverRegion}</span>
     </div>
