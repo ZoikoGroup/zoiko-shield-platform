@@ -9,7 +9,7 @@ import { verifyWitnessReceipt, computeWitnessAssuranceState } from './witnesses/
 import { validateManifestSchema, ExportedManifest } from './manifest/manifest';
 import { VerificationResult, computeOverallResult } from './report/report';
 
-const VERIFIER_VERSION = '1.0.0';
+const VERIFIER_VERSION = '1.1.0';
 
 export function verifyPackageDirectory(dirPath: string): VerificationResult {
   const manifestPath = join(dirPath, 'manifest.json');

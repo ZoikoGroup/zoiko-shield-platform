@@ -20,9 +20,10 @@ function toIso(date: Date | null | undefined): string | null {
 }
 
 const VERIFIER_PROFILE = {
-  minVerifierVersion: '1.0.0',
-  verifierSourceVersion: '1.0.0',
-  treeProfile: 'ZS-MERKLE-V1',
+  // 1.0.0 verifiers only understand ZS-MERKLE-V1 and reject V2 checkpoints.
+  minVerifierVersion: '1.1.0',
+  verifierSourceVersion: '1.1.0',
+  treeProfile: 'ZS-MERKLE-V2',
   hashAlgorithm: 'SHA-256',
   canonicalizationProfile: 'zs-manifest-v1',
 };
