@@ -239,6 +239,14 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "./coverage",
+    "coverageThreshold": {
+      "global": {
+        "lines": 59,
+        "statements": 59,
+        "functions": 50,
+        "branches": 49
+      }
+    },
     "testEnvironment": "node",
     "roots": [
       "<rootDir>/apps/",
