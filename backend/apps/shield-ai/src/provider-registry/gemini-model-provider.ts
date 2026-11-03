@@ -4,11 +4,13 @@ import {
   ModelInvocationInput,
   ModelInvocationResult,
 } from './model-provider.interface';
+import { assertSyntheticOutputAllowed } from './synthetic-output-guard';
 
 /**
  * Enterprise Google Gemini / Vertex AI Provider Adapter
  * Supports Google Gemini 2.0 Flash / 1.5 Pro via REST / GenAI with structured JSON output.
- * Seamlessly falls back to deterministic high-fidelity responses when running in offline/development mode.
+ * Outside production, falls back to deterministic responses when the API key
+ * is absent or the call fails; in production it fails closed instead.
  */
 @Injectable()
 export class GeminiModelProvider implements ModelProvider {
@@ -92,7 +94,11 @@ export class GeminiModelProvider implements ModelProvider {
       }
     }
 
-    // Safe offline fallback (zero crashes)
+    assertSyntheticOutputAllowed(
+      apiKey
+        ? 'Gemini provider call failed'
+        : 'Gemini provider has no GEMINI_API_KEY or VERTEX_AI_API_KEY',
+    );
     let content: string;
     if (
       input.userInput.includes('candidate detection rule') ||
