@@ -71,6 +71,11 @@ interface RequestOptions {
    * (marked with x-zoiko-fallback), instead of returning it as if it were real.
    */
   live?: boolean;
+  /**
+   * Security actions: only the real backend may confirm them. The proxy's
+   * offline demo response is rejected whatever NEXT_PUBLIC_DEMO_FALLBACK says.
+   */
+  confirmed?: boolean;
 }
 
 async function request<T>(
@@ -107,7 +112,15 @@ async function request<T>(
     throw new BackendError(message, response.status, path);
   }
 
-  if (options.live && process.env.NEXT_PUBLIC_DEMO_FALLBACK === "false" && response.headers.get("x-zoiko-fallback") === "true") {
+  const isFallback = response.headers.get("x-zoiko-fallback") === "true";
+  if (options.confirmed && isFallback) {
+    throw new BackendError(
+      "ZoikoShield backend did not confirm this action; nothing was changed.",
+      null,
+      path,
+    );
+  }
+  if (options.live && process.env.NEXT_PUBLIC_DEMO_FALLBACK === "false" && isFallback) {
     throw new BackendError("ZoikoShield backend is unreachable; demo data withheld.", null, path);
   }
 
@@ -124,11 +137,15 @@ async function request<T>(
 
 export const backend = {
   get: <T>(path: string, options?: RequestOptions) => request<T>(path, {}, options),
-  post: <T>(path: string, body?: unknown) =>
-    request<T>(path, {
-      method: "POST",
-      body: body === undefined ? undefined : JSON.stringify(body),
-    }),
+  post: <T>(path: string, body?: unknown, options?: RequestOptions) =>
+    request<T>(
+      path,
+      {
+        method: "POST",
+        body: body === undefined ? undefined : JSON.stringify(body),
+      },
+      options,
+    ),
   patch: <T>(path: string, body?: unknown) =>
     request<T>(path, {
       method: "PATCH",

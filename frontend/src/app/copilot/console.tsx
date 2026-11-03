@@ -408,9 +408,10 @@ const PRESETS: Record<CopilotMode, CopilotPreset> = {
           "Drafted R3 Containment Action: (1) Attach inline deny policy `AWSRevokeOlderSessions` to DeployBot, (2) Invalidate active STS session tokens, (3) Rotate KMS data keys accessed in past 4 hours. Automated rollback script prepared.",
         artifactTitle: "containment_proposal_act_iam_freeze.sh",
         artifactType: "GOVERNED_SOAR_ACTION",
-        testBaseline: "Zero-Downtime Reversibility Receipt: ZS-RB-TOKEN-9941",
+        testBaseline: "Illustrative draft only — not executed, no execution receipt exists",
         targetEnvironment: "SOAR Sandboxed Execution Gateway",
         artifactContent: `#!/usr/bin/env bash
+# ILLUSTRATIVE DRAFT — not executed. A real run returns a signed receipt from shield-action.
 # ZoikoShield Governed Response Execution — Action ID: ACT-IAM-FREEZE-R3
 # Reversibility Tier: R3 (Dual-Operator Quorum Required)
 # Rollback Compensation Token: ZS-RB-TOKEN-9941
@@ -420,16 +421,13 @@ set -euo pipefail
 TARGET_ROLE="arn:aws:iam::123456789012:role/DeployBot"
 REVOKE_TIME="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 
-echo "[1/3] Attaching inline session revocation policy AWSRevokeOlderSessions..."
+echo "[1/2] Attaching inline session revocation policy AWSRevokeOlderSessions..."
 aws iam put-role-policy --role-name "DeployBot" \\
   --policy-name "AWSRevokeOlderSessions" \\
   --policy-document '{"Version":"2012-10-17","Statement":[{"Effect":"Deny","Action":["*"],"Resource":["*"],"Condition":{"DateLessThan":{"aws:TokenIssueTime":"'\${REVOKE_TIME}'"}}}]}'
 
-echo "[2/3] Invalidating active AWS STS session tokens for DeployBot..."
-aws iam update-role --role-name "DeployBot" --description "LOCKED_BY_ZOIKOSHIELD_INCIDENT_0941"
-
-echo "[3/3] Emitting cryptographically anchored SOAR execution receipt..."
-# Audit digest sha256:7b66e8983b13042126dd93ef... anchored to Merkle ledger`,
+echo "[2/2] Invalidating active AWS STS session tokens for DeployBot..."
+aws iam update-role --role-name "DeployBot" --description "LOCKED_BY_ZOIKOSHIELD_INCIDENT_0941"`,
       },
     },
   },

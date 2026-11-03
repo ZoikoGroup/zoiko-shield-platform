@@ -156,20 +156,15 @@ export default function ResponseProposalsPage() {
       await backend.post(
         `/api/v1/response-proposals/${id}/${action}`,
         action === "simulate" ? undefined : { reason: reason ?? "" },
+        { confirmed: true },
       );
-    } catch {
-      // Optimistic update for demo presentation
+      const updated = await backend.get<Proposal>(`/api/v1/response-proposals/${id}`, {
+        confirmed: true,
+      });
+      setProposals((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
+    } catch (err) {
+      setError(`Could not ${action} proposal ${id}: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
-      setProposals((prev) =>
-        prev.map((p) =>
-          p.id === id
-            ? {
-                ...p,
-                status: action === "simulate" ? "SIMULATED" : action === "approve" ? "APPROVED" : "REJECTED",
-              }
-            : p,
-        ),
-      );
       setActing(null);
     }
   };
@@ -258,7 +253,7 @@ export default function ResponseProposalsPage() {
           <div className="p-3 rounded-xl bg-surface border border-slate-800/80">
             <span className="text-slate-400 block text-[10px] uppercase">hardware kms signature: </span>
             <span className="text-slate-300 truncate block text-[11px]">
-              {proposal.kms_key_signature || "sha256:42c68b71d9a0e... [Cloud KMS Hardware Custody]"}
+              {proposal.kms_key_signature || "not signed"}
             </span>
           </div>
         </div>
