@@ -3,6 +3,8 @@ import { ModelProvider } from './model-provider.interface';
 import { MockModelProvider } from './mock-model-provider';
 import { GeminiModelProvider } from './gemini-model-provider';
 import { OpenAiModelProvider } from './openai-model-provider';
+import { isProductionRuntime } from './synthetic-output-guard';
+import { AiUnavailableException } from '../gateway/fallback/fallback.exceptions';
 
 /**
  * Maps ModelProfile.provider -> ModelProvider implementation.
@@ -27,10 +29,14 @@ export class ProviderRegistryService {
 
   get(providerKey: string): ModelProvider {
     const provider = this.providers.get(providerKey);
-    if (!provider) {
-      // Graceful fallback to mock if unknown provider requested
-      return this.providers.get('mock')!;
+    if (isProductionRuntime()) {
+      if (!provider || provider.providerKey === 'mock') {
+        throw new AiUnavailableException(
+          `Model provider '${providerKey}' has no real adapter configured for production`,
+        );
+      }
+      return provider;
     }
-    return provider;
+    return provider ?? this.providers.get('mock')!;
   }
 }

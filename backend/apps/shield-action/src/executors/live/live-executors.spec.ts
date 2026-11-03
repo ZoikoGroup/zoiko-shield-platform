@@ -4,7 +4,7 @@ import { LiveGoogleWorkspaceExecutor } from './live-google-workspace.executor';
 import { LiveCrowdstrikeExecutor } from './live-crowdstrike.executor';
 import { LiveOktaExecutor } from './live-okta.executor';
 import { LiveActionExecutorService } from '../live-action-executor.service';
-import { DualCustodyApprovalsService } from '../../approvals/dual-custody-approvals.service';
+import { DualCustodyQuorumService } from '../../dual-custody/dual-custody-quorum.service';
 
 describe('Live GCP Native SOAR Action Executors', () => {
   let gcpIam: LiveGcpIamExecutor;
@@ -12,7 +12,7 @@ describe('Live GCP Native SOAR Action Executors', () => {
   let googleWorkspace: LiveGoogleWorkspaceExecutor;
   let crowdstrike: LiveCrowdstrikeExecutor;
   let okta: LiveOktaExecutor;
-  let dualCustodyService: DualCustodyApprovalsService;
+  let consumeForExecution: jest.Mock;
   let liveActionExecutor: LiveActionExecutorService;
 
   beforeEach(() => {
@@ -21,9 +21,9 @@ describe('Live GCP Native SOAR Action Executors', () => {
     googleWorkspace = new LiveGoogleWorkspaceExecutor();
     crowdstrike = new LiveCrowdstrikeExecutor();
     okta = new LiveOktaExecutor();
-    dualCustodyService = new DualCustodyApprovalsService();
+    consumeForExecution = jest.fn().mockResolvedValue({});
     liveActionExecutor = new LiveActionExecutorService(
-      dualCustodyService,
+      { consumeForExecution } as unknown as DualCustodyQuorumService,
       gcpArmor,
       gcpIam,
       googleWorkspace,
@@ -132,7 +132,8 @@ describe('Live GCP Native SOAR Action Executors', () => {
       tenantId: 'tenant-soar-corp',
       actionType: 'BLOCK_PERIMETER_IP',
       targetRef: '203.0.113.88',
-      authorityLevel: 'R1',
+      authorityLevel: 'R2',
+      approval: { quorumId: 'quorum-1', proposalId: 'prop-1' },
       parameters: {
         securityPolicy: 'soar-perimeter-armor',
         projectId: 'zoiko-shield-prod',
@@ -147,9 +148,18 @@ describe('Live GCP Native SOAR Action Executors', () => {
       'REMOVE_CLOUD_ARMOR_IP_RULE',
     );
     expect(receipt.signature).toBeDefined();
+    expect(consumeForExecution).toHaveBeenCalledWith(
+      'tenant-soar-corp',
+      { quorumId: 'quorum-1', proposalId: 'prop-1' },
+      'BLOCK_PERIMETER_IP',
+      '203.0.113.88',
+    );
   });
 
   it('should enforce Dual-Custody quorum for live R2+ actions', async () => {
+    consumeForExecution.mockImplementation(
+      new DualCustodyQuorumService({} as any).consumeForExecution,
+    );
     await expect(
       liveActionExecutor.executeAction({
         tenantId: 'tenant-soar-corp',

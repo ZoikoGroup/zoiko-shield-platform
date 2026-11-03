@@ -4,6 +4,7 @@ import {
   ModelInvocationInput,
   ModelInvocationResult,
 } from './model-provider.interface';
+import { assertSyntheticOutputAllowed } from './synthetic-output-guard';
 
 /**
  * Deterministic, no-network provider — the only provider wired this pass
@@ -17,6 +18,7 @@ export class MockModelProvider implements ModelProvider {
   readonly providerKey = 'mock';
 
   async invoke(input: ModelInvocationInput): Promise<ModelInvocationResult> {
+    assertSyntheticOutputAllowed('Mock model provider');
     let sourceRefs: string[] = [];
     try {
       const parsed = JSON.parse(input.retrievalContext);

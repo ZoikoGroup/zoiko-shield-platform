@@ -23,25 +23,26 @@ export function hashMerkleBranch(left: Buffer, right: Buffer): Buffer {
   return sha256(Buffer.concat([Buffer.from([0x01]), left, right]));
 }
 
+function splitPoint(n: number): number {
+  let k = 1;
+  while (k * 2 < n) k *= 2;
+  return k;
+}
+
 /**
- * Computes the ZS-MERKLE-V1 Merkle root for an array of leaf string digests.
+ * Computes the ZS-MERKLE-V2 (RFC 6962 §2.1) Merkle root for an array of leaf
+ * string digests. Empty input yields SHA-256 of the empty string, as RFC 6962 defines MTH({}).
  */
 export function computeDomainSeparatedMerkleRoot(leaves: string[]): string {
   if (!leaves || leaves.length === 0) {
-    return 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855'; // sha256 of empty
+    return 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855';
   }
 
-  let level: Buffer[] = leaves.map((l) => hashMerkleLeaf(l));
-
-  while (level.length > 1) {
-    const nextLevel: Buffer[] = [];
-    for (let i = 0; i < level.length; i += 2) {
-      const left = level[i];
-      const right = i + 1 < level.length ? level[i + 1] : level[i];
-      nextLevel.push(hashMerkleBranch(left, right));
-    }
-    level = nextLevel;
-  }
-
-  return level[0].toString('hex');
+  const hashes = leaves.map((l) => hashMerkleLeaf(l));
+  const mth = (lo: number, hi: number): Buffer => {
+    if (hi - lo === 1) return hashes[lo];
+    const mid = lo + splitPoint(hi - lo);
+    return hashMerkleBranch(mth(lo, mid), mth(mid, hi));
+  };
+  return mth(0, hashes.length).toString('hex');
 }

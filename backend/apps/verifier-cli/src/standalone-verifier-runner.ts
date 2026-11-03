@@ -1,7 +1,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { StandaloneMerkleVerifier } from './merkle/standalone-merkle-verifier';
+import {
+  StandaloneMerkleVerifier,
+  TreeProfile,
+  resolveDeclaredTreeProfile,
+} from './merkle/standalone-merkle-verifier';
 import { AuditVerificationCertificate } from './main';
 
 export interface StandalonePackageVerificationOptions {
@@ -102,14 +106,27 @@ export class StandaloneVerifierRunner {
     }
 
     // 3. Merkle Root Integrity
-    const recomputedRoot = this.merkleVerifier.build(
-      evidenceLeaves.length > 0
-        ? evidenceLeaves
-        : [crypto.createHash('sha256').update('empty').digest('hex')],
-    ).root;
+    let treeProfile: TreeProfile | null = null;
+    try {
+      treeProfile = resolveDeclaredTreeProfile(
+        manifest.verifierProfile?.treeProfile ?? manifest.treeProfile,
+      );
+    } catch {
+      treeProfile = null;
+    }
+    const recomputedRoot = treeProfile
+      ? this.merkleVerifier.build(
+          evidenceLeaves.length > 0
+            ? evidenceLeaves
+            : [crypto.createHash('sha256').update('empty').digest('hex')],
+          treeProfile,
+        ).root
+      : 'UNSUPPORTED_TREE_PROFILE';
     const declaredRoot = manifest.merkleRoot || envelope.merkleRoot || '';
     const merkleRootIntegrity =
-      corruptedFiles === 0 && recomputedRoot === declaredRoot;
+      treeProfile !== null &&
+      corruptedFiles === 0 &&
+      recomputedRoot === declaredRoot;
 
     // 4. Witness Attestation and Human Approval Checks
     const witnessAttestationValid =

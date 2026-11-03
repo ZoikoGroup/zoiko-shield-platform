@@ -142,7 +142,7 @@ describe('AwsSqsIngestListener', () => {
 
   it('routes poison and failed messages to DlqReplayQuarantineService when available', async () => {
     const mockDlqService = {
-      quarantineMessage: jest.fn(),
+      quarantineMessage: jest.fn().mockResolvedValue({}),
     };
 
     const moduleWithDlq: TestingModule = await Test.createTestingModule({
@@ -181,6 +181,8 @@ describe('AwsSqsIngestListener', () => {
       expect.objectContaining({ messageId: 'msg-dlq-01' }),
       expect.stringContaining('Failed to parse SQS message body'),
       'JSON_PARSE_ERROR',
+      3,
+      expect.objectContaining({ kind: 'SQS' }),
     );
 
     // 2. Test ingest processing failure
@@ -204,6 +206,8 @@ describe('AwsSqsIngestListener', () => {
         'Error ingesting SQS message: Kafka pipeline timeout',
       ),
       'INGEST_PROCESSING_ERROR',
+      3,
+      expect.objectContaining({ kind: 'SQS' }),
     );
   });
 });

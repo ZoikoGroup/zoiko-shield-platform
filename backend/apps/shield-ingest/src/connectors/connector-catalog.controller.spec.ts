@@ -251,7 +251,7 @@ describe('ConnectorCatalogController — OPS-INV-13 Heartbeat & DLQ', () => {
 
   describe('GET /dlq/metrics', () => {
     it('returns DLQ quarantine metrics from DlqReplayQuarantineService', async () => {
-      const result = await controller.getDlqMetrics();
+      const result = await controller.getDlqMetrics('tenant-001');
 
       expect(result.statusCode).toBe(200);
       expect(result.data?.totalQuarantined).toBe(10);
@@ -271,10 +271,14 @@ describe('ConnectorCatalogController — OPS-INV-13 Heartbeat & DLQ', () => {
         ConnectorCatalogController,
       );
 
-      const result = await bareController.getDlqMetrics();
+      const result = await bareController.getDlqMetrics('tenant-001');
 
       expect(result.data?.totalQuarantined).toBe(0);
       expect(result.data?.activeQuarantined).toBe(0);
+    });
+
+    it('rejects a request without tenant context instead of aggregating across tenants', async () => {
+      await expect(controller.getDlqMetrics(undefined as any)).rejects.toThrow();
     });
   });
 });

@@ -44,6 +44,7 @@ export const ResponseSimulator: React.FC<ResponseSimulatorProps> = ({
   const [isOrgFrozen, setIsOrgFrozen] = useState(false);
   const [activeFreezeId, setActiveFreezeId] = useState<string | null>(null);
   const [isFreezing, setIsFreezing] = useState(false);
+  const [freezeError, setFreezeError] = useState<string | null>(null);
 
   // Dual-Custody Quorum & FIDO2 Attestation State
   const [quorumStep, setQuorumStep] = useState<
@@ -121,6 +122,7 @@ export const ResponseSimulator: React.FC<ResponseSimulatorProps> = ({
 
   const handleToggleFreeze = async () => {
     setIsFreezing(true);
+    setFreezeError(null);
     try {
       if (isOrgFrozen && activeFreezeId) {
         await ZoikoShieldApiClient.releaseFreezeSOAR(activeFreezeId);
@@ -135,7 +137,9 @@ export const ResponseSimulator: React.FC<ResponseSimulatorProps> = ({
         setActiveFreezeId(result.freezeId);
       }
     } catch (err) {
-      console.error("Freeze toggle error:", err);
+      setFreezeError(
+        `${isOrgFrozen ? "Release" : "Freeze"} was not confirmed by the backend; state is unchanged: ${err instanceof Error ? err.message : String(err)}`
+      );
     } finally {
       setIsFreezing(false);
     }
@@ -173,6 +177,12 @@ export const ResponseSimulator: React.FC<ResponseSimulatorProps> = ({
             </Button>
           </div>
         </div>
+
+        {freezeError && (
+          <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/40 text-rose-300 text-xs font-mono">
+            {freezeError}
+          </div>
+        )}
 
         <div className="space-y-3">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">

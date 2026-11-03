@@ -4,6 +4,16 @@ import { PrismaService } from '../../../prisma/prisma.service';
 import { AuthorizationDecisionService } from '../../authorization-decision/authorization-decision.service';
 import { LegalHoldService } from '../legal-hold/legal-hold.service';
 import { RetentionPolicyService } from '../retention/retention-policy.service';
+import { OutboxService } from '../../../outbox/outbox.service';
+
+const criticalHoldEvent = (stage: string, holdId: string) =>
+  expect.objectContaining({
+    data: expect.objectContaining({
+      tenant_id: 'tenant-1',
+      topic: 'legal_hold.deletion_blocked.v1',
+      payload: expect.stringContaining(`"stage":"${stage}"`),
+    }),
+  });
 
 describe('DeletionRequestService', () => {
   let prisma: any;
@@ -28,6 +38,9 @@ describe('DeletionRequestService', () => {
         })),
       },
       deletionTask: { createMany: jest.fn().mockResolvedValue({ count: 9 }) },
+      outboxEvent: {
+        create: jest.fn().mockImplementation(({ data }: any) => data),
+      },
       $transaction: jest
         .fn()
         .mockImplementation((operations: any[]) => Promise.all(operations)),
@@ -66,6 +79,7 @@ describe('DeletionRequestService', () => {
       authorization as AuthorizationDecisionService,
       legalHolds as LegalHoldService,
       retention as unknown as RetentionPolicyService,
+      new OutboxService(),
     );
   });
 
@@ -108,6 +122,56 @@ describe('DeletionRequestService', () => {
         legal_hold_state: 'BLOCKED',
         conflicting_legal_hold_ids: '["hold-1"]',
       }),
+    );
+    expect(prisma.outboxEvent.create).toHaveBeenCalledWith(
+      criticalHoldEvent('REQUEST', 'hold-1'),
+    );
+    const payload = JSON.parse(
+      prisma.outboxEvent.create.mock.calls[0][0].data.payload,
+    );
+    expect(payload).toMatchObject({
+      severity: 'CRITICAL',
+      category: 'SECURITY_AUDIT',
+      conflictingLegalHoldIds: ['hold-1'],
+    });
+    expect(prisma.$transaction).toHaveBeenCalled();
+  });
+
+  it('writes no legal-hold audit event for an unblocked request', async () => {
+    await service.request({
+      tenantId: 'tenant-1',
+      requestedBy: 'requester-1',
+      requestAuthority: 'DATA_SUBJECT',
+      reason: 'Erasure',
+      scope: { subjectIds: ['subject-42'] },
+    });
+    expect(prisma.outboxEvent.create).not.toHaveBeenCalled();
+  });
+
+  it('audits an approval attempt blocked by a legal hold and creates no tasks', async () => {
+    prisma.deletionRequest.findFirst.mockResolvedValue({
+      id: 'request-1',
+      tenant_id: 'tenant-1',
+      requested_by: 'requester-1',
+      status: 'VALIDATING',
+      identity_verification_status: 'NOT_APPLICABLE',
+      scope: '{"all":true}',
+    });
+    legalHolds.getActiveForTenant.mockResolvedValue([
+      { id: 'hold-2', scope: '{"all":true}' },
+    ]);
+
+    const result = await service.approve({
+      tenantId: 'tenant-1',
+      deletionRequestId: 'request-1',
+      approvedBy: 'approver-1',
+      decisionReason: 'Reviewed',
+    });
+
+    expect(result.status).toBe('BLOCKED_BY_HOLD');
+    expect(prisma.deletionTask.createMany).not.toHaveBeenCalled();
+    expect(prisma.outboxEvent.create).toHaveBeenCalledWith(
+      criticalHoldEvent('APPROVAL', 'hold-2'),
     );
   });
 
@@ -228,6 +292,9 @@ describe('DeletionRequestService', () => {
       expect.objectContaining({
         data: expect.objectContaining({ status: 'BLOCKED_BY_HOLD' }),
       }),
+    );
+    expect(prisma.outboxEvent.create).toHaveBeenCalledWith(
+      criticalHoldEvent('EXECUTION', 'hold-late'),
     );
   });
 

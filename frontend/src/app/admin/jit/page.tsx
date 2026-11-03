@@ -37,6 +37,7 @@ export default function JitElevationPage() {
   const [durationMinutes, setDurationMinutes] = useState(60);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [elevationError, setElevationError] = useState<string | null>(null);
+  const [revokeError, setRevokeError] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   // Per-second tick for live JIT countdown timers
@@ -125,6 +126,7 @@ export default function JitElevationPage() {
   };
 
   const handleRevoke = async (sessionId: string) => {
+    setRevokeError(null);
     try {
       await ZoikoShieldApiClient.revokeJitElevation(sessionId);
       // Reflect revocation in state
@@ -136,7 +138,11 @@ export default function JitElevationPage() {
       };
       saveDemoState(updated);
     } catch (err) {
-      console.error("JIT revoke error:", err);
+      setRevokeError(
+        `Revocation of ${sessionId} was not confirmed by the backend — the session may still be active: ${
+          err instanceof Error ? err.message : String(err)
+        }`
+      );
     }
   };
 
@@ -155,6 +161,11 @@ export default function JitElevationPage() {
 
   return (
     <div className="space-y-6">
+      {revokeError && (
+        <div className="p-3 rounded-lg bg-rose-950/50 border border-rose-500/50 text-rose-300 text-xs font-mono">
+          {revokeError}
+        </div>
+      )}
       <div className="surface-card rounded-2xl p-6 border border-slate-800/80 bg-gradient-to-r from-raised via-surface to-canvas shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">

@@ -4,11 +4,13 @@ import {
   ModelInvocationInput,
   ModelInvocationResult,
 } from './model-provider.interface';
+import { assertSyntheticOutputAllowed } from './synthetic-output-guard';
 
 /**
  * Enterprise OpenAI Provider Adapter
  * Supports OpenAI GPT-4o / GPT-4o-mini with JSON response format.
- * Falls back seamlessly to deterministic responses when API keys are absent.
+ * Outside production, falls back to deterministic responses when the API key
+ * is absent or the call fails; in production it fails closed instead.
  */
 @Injectable()
 export class OpenAiModelProvider implements ModelProvider {
@@ -90,7 +92,11 @@ export class OpenAiModelProvider implements ModelProvider {
       }
     }
 
-    // Safe offline fallback
+    assertSyntheticOutputAllowed(
+      apiKey
+        ? 'OpenAI provider call failed'
+        : 'OpenAI provider has no OPENAI_API_KEY',
+    );
     const content =
       sourceRefs.length > 0
         ? `OpenAI analysis completed against ${sourceRefs.length} cited security artifact(s).`

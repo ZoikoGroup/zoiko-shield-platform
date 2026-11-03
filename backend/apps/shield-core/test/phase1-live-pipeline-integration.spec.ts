@@ -206,7 +206,7 @@ describe('Phase 1 Live Pipeline Integration & Multi-Tenant Ingestion-to-Verifica
     });
   });
 
-  describe('7. Merkle Tree Checkpoint Proof (ZS-MERKLE-V1)', () => {
+  describe('7. Merkle Tree Checkpoint Proof (ZS-MERKLE-V2)', () => {
     it('should construct cryptographic Merkle tree and emit verifiable root', () => {
       const leaves = [
         'evidence-leaf-sha256-1111111111111111111111111111111111111111111111111111111111111111',
@@ -224,7 +224,7 @@ describe('Phase 1 Live Pipeline Integration & Multi-Tenant Ingestion-to-Verifica
 
       const buildResult = merkleTreeService.build(leaves);
       expect(buildResult.root).toBe(root);
-      expect(buildResult.treeProfile).toBe('ZS-MERKLE-V1');
+      expect(buildResult.treeProfile).toBe('ZS-MERKLE-V2');
     });
   });
 });

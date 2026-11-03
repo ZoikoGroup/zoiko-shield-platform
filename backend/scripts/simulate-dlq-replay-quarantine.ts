@@ -1,79 +1,75 @@
 import { Logger } from '@nestjs/common';
 import { DlqReplayQuarantineService } from '../apps/shield-ingest/src/dlq/dlq-replay-quarantine.service';
+import { PrismaService } from '../apps/shield-ingest/src/prisma/prisma.service';
+import { KafkaProducerService } from '../apps/shield-ingest/src/kafka/kafka.producer.service';
 
 /**
- * Track 64 Simulation: Automated Dead-Letter Queue (DLQ) Replay & Poison Message Quarantine
+ * Track 64: Dead-Letter Queue replay & poison message quarantine against the
+ * real stack. Requires DATABASE_URL (ingest.DlqMessage migrated) and a
+ * reachable Kafka broker.
  */
 async function runDlqReplaySimulation() {
   const logger = new Logger('DlqReplaySimulation');
-  logger.log('========================================================================');
-  logger.log(' [Track 64] Simulating Stream DLQ Replay & Poison Message Quarantine    ');
-  logger.log('========================================================================\n');
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL is required: DLQ state is persisted in ingest.DlqMessage.');
+  }
 
-  const dlqService = new DlqReplayQuarantineService();
+  const prisma = new PrismaService();
+  const kafka = new KafkaProducerService();
+  await prisma.$connect();
+  await kafka.onModuleInit();
+  const dlqService = new DlqReplayQuarantineService(prisma, kafka);
   const tenantId = 'tenant-enterprise-financial-group';
 
-  // Step 1: Ingest Poison Stream Messages into DLQ
-  logger.log('[Step 1/4] Simulating Poison Ingestion Events routing to DLQ...');
-  const poisonEvent1 = dlqService.quarantineMessage(
-    tenantId,
-    'telemetry.edr.events',
-    { processName: 'mimikatz.exe', badEncoding: '\x00\xFF\xFE', isCorrupt: true },
-    'Corrupt binary payload in string field',
-    'PARSER_CORRUPT_BYTES',
-  );
+  try {
+    logger.log('[Step 1/4] Quarantining poison messages...');
+    const corrupt = await dlqService.quarantineMessage(
+      tenantId,
+      'telemetry.edr.events',
+      { processName: 'mimikatz.exe', isCorrupt: true },
+      'Corrupt binary payload in string field',
+      'PARSER_CORRUPT_BYTES',
+      3,
+      { kind: 'KAFKA', kafka: { topic: 'telemetry.edr.events' } },
+    );
+    const missingTs = await dlqService.quarantineMessage(
+      tenantId,
+      'telemetry.syslog.events',
+      { host: 'srv-finance-gateway-01', event: 'AUTH_FAIL', missingTimestamp: true },
+      'Missing mandatory RFC 3339 timestamp',
+      'SCHEMA_VALIDATION_ERROR',
+      3,
+      { kind: 'KAFKA', kafka: { topic: 'telemetry.syslog.events' } },
+    );
+    logger.log(`  ✔ Quarantined ${corrupt.messageId} and ${missingTs.messageId}`);
 
-  const poisonEvent2 = dlqService.quarantineMessage(
-    tenantId,
-    'telemetry.syslog.events',
-    { host: 'srv-finance-gateway-01', event: 'AUTH_FAIL', missingTimestamp: true },
-    'Missing mandatory RFC 3339 timestamp',
-    'SCHEMA_VALIDATION_ERROR',
-  );
+    logger.log('[Step 2/4] Listing quarantined messages...');
+    const active = await dlqService.listQuarantined(tenantId);
+    active.forEach((msg) =>
+      logger.log(`  ✔ ${msg.messageId} | ${msg.topic} | ${msg.errorCode}`),
+    );
 
-  logger.log(`  ✔ Poison Event 1 Quarantined: ${poisonEvent1.messageId} (Reason: ${poisonEvent1.errorReason})`);
-  logger.log(`  ✔ Poison Event 2 Quarantined: ${poisonEvent2.messageId} (Reason: ${poisonEvent2.errorReason})\n`);
-
-  // Step 2: Inspect Active Quarantined Messages
-  logger.log('[Step 2/4] Querying Quarantined Message Inventory for Tenant...');
-  const activeQuarantined = dlqService.listQuarantined(tenantId);
-  logger.log(`  ✔ Active Quarantined Messages: ${activeQuarantined.length} item(s)`);
-  activeQuarantined.forEach((msg, idx) => {
-    logger.log(`     [#${idx + 1}] ID: ${msg.messageId} | Topic: ${msg.topic} | Code: ${msg.errorCode}`);
-  });
-  logger.log('');
-
-  // Step 3: Replay Unrecoverable Poison Message (Should Fail Safely)
-  logger.log('[Step 3/4] Attempting Raw Replay of Unrepaired Poison Event 1...');
-  const failReplay = await dlqService.replayMessage(tenantId, poisonEvent1.messageId);
-  logger.log(`  ✔ Replay Attempt: Status=${failReplay.status} (Success=${failReplay.success})`);
-  logger.log(`  ✔ Expected Rejection: ${failReplay.error}\n`);
-
-  // Step 4: Replay Event 2 with In-Flight Transformation Schema Fix
-  logger.log('[Step 4/4] Replaying Event 2 with In-Flight Patch Transformation Hook...');
-  const successReplay = await dlqService.replayMessage(
-    tenantId,
-    poisonEvent2.messageId,
-    (payload) => ({
+    logger.log('[Step 3/4] Replaying the repairable message back to Kafka...');
+    const replay = await dlqService.replayMessage(tenantId, missingTs.messageId, (payload) => ({
       ...payload,
       timestamp: new Date().toISOString(),
-      isCorrupt: false,
-    }),
-  );
-  logger.log(`  ✔ Transformation Replay: Status=${successReplay.status} (Success=${successReplay.success})`);
-  logger.log(`  ✔ Replayed At: ${successReplay.replayedAt}\n`);
+      missingTimestamp: false,
+    }));
+    logger.log(`  ✔ Replay status=${replay.status} success=${replay.success}${replay.error ? ` error=${replay.error}` : ''}`);
 
-  // Metrics summary
-  const metrics = dlqService.getMetrics();
-  logger.log('--- Final DLQ Quarantine Engine Metrics ---');
-  logger.log(`  ✔ Total Quarantined: ${metrics.totalQuarantined}`);
-  logger.log(`  ✔ Active in Quarantine: ${metrics.activeQuarantined}`);
-  logger.log(`  ✔ Replay Recoveries: ${metrics.replayedSuccess}`);
-  logger.log(`  ✔ Permanent Failures: ${metrics.replayedFailed}\n`);
+    logger.log('[Step 4/4] Purging the unrecoverable message (kept as an auditable PURGED row)...');
+    const purged = await dlqService.purgeQuarantined(tenantId, corrupt.messageId);
+    logger.log(`  ✔ Purged=${purged}`);
 
-  logger.log('========================================================================');
-  logger.log(' 🎉 TRACK 64: STREAM DLQ REPLAY & QUARANTINE ENGINE VERIFIED!           ');
-  logger.log('========================================================================\n');
+    const metrics = await dlqService.getMetrics(tenantId);
+    logger.log(
+      `  ✔ Metrics total=${metrics.totalQuarantined} active=${metrics.activeQuarantined} recovered=${metrics.replayedSuccess} failed=${metrics.replayedFailed}`,
+    );
+    if (!replay.success) process.exitCode = 1;
+  } finally {
+    await kafka.onModuleDestroy();
+    await prisma.$disconnect();
+  }
 }
 
 runDlqReplaySimulation().catch((err) => {

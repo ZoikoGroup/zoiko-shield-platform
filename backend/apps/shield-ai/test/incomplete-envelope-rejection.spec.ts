@@ -4,7 +4,7 @@ import * as crypto from 'crypto';
 import { DecisionRightsService } from '../src/decision-rights/decision-rights.service';
 import { KafkaProducerService } from '../src/kafka/kafka-producer.service';
 import { LiveActionExecutorService } from '../../shield-action/src/executors/live-action-executor.service';
-import { DualCustodyApprovalsService } from '../../shield-action/src/approvals/dual-custody-approvals.service';
+import { DualCustodyQuorumService } from '../../shield-action/src/dual-custody/dual-custody-quorum.service';
 import { LiveGcpCloudArmorExecutor } from '../../shield-action/src/executors/live/live-gcp-cloud-armor.executor';
 import { LiveGcpIamExecutor } from '../../shield-action/src/executors/live/live-gcp-iam.executor';
 import { LiveGoogleWorkspaceExecutor } from '../../shield-action/src/executors/live/live-google-workspace.executor';
@@ -13,7 +13,7 @@ import { LiveOktaExecutor } from '../../shield-action/src/executors/live/live-ok
 
 describe('Incomplete AI Review Envelope Policy Rejection (Spec §16 & LAB 16)', () => {
   let decisionRightsService: DecisionRightsService;
-  let dualCustodyService: DualCustodyApprovalsService;
+  let dualCustodyService: DualCustodyQuorumService;
   let liveActionExecutor: LiveActionExecutorService;
 
   const tenantId = 'tenant-safety-audit-99';
@@ -24,7 +24,7 @@ describe('Incomplete AI Review Envelope Policy Rejection (Spec §16 & LAB 16)', 
   };
 
   beforeAll(async () => {
-    dualCustodyService = new DualCustodyApprovalsService();
+    dualCustodyService = new DualCustodyQuorumService({} as any);
     liveActionExecutor = new LiveActionExecutorService(
       dualCustodyService,
       new LiveGcpCloudArmorExecutor(),
@@ -205,7 +205,7 @@ describe('Incomplete AI Review Envelope Policy Rejection (Spec §16 & LAB 16)', 
         actionType: 'BLOCK_PERIMETER_IP',
         targetRef: '198.51.100.99',
         authorityLevel: 'R2',
-        approvalRef: undefined, // Missing approval reference
+        approval: undefined, // Missing approval reference
         isSimulation: false,
       }),
     ).rejects.toThrow(ForbiddenException);

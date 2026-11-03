@@ -128,3 +128,34 @@ model DurableWorkflowTransition {
 
   @@schema("action")
 }
+
+// Dual-custody (ADR-04) quorums, persisted so a pending second signature
+// survives restarts and is visible to every shield-action instance. The
+// second signature is a conditional update on status, so two concurrent
+// approvers cannot both finalize the same quorum.
+model DualCustodyQuorum {
+  id                        String    @id @default(uuid())
+  tenant_id                 String
+  quorum_id                 String
+  environment_id            String
+  case_id                   String
+  proposal_id               String
+  action_type               String
+  target_resource           String
+  authority_level           String
+  status                    String // PENDING_SECOND_SIGNATURE | QUORUM_REACHED | CONSUMED | REJECTED | EXPIRED
+  initiator                 String
+  secondary_approver        String?
+  quorum_signature          String?
+  single_use_rollback_token String    @unique
+  compensating_plan         String
+  created_at                DateTime  @default(now())
+  expires_at                DateTime
+  finalized_at              DateTime?
+  consumed_at               DateTime?
+
+  @@unique([tenant_id, quorum_id])
+  @@index([tenant_id, proposal_id])
+
+  @@schema("action")
+}

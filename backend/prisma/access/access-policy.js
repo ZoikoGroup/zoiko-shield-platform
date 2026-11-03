@@ -291,6 +291,8 @@ const TABLES = {
   'idempotency.IdempotencyRecord': { kind: 'tenant' },
   'ai_governance.AiProviderCostEvent': { kind: 'tenant' },
   'cost_records.CostRecord': { kind: 'tenant' },
+  'action.DualCustodyQuorum': { kind: 'tenant' },
+  'ingest.DlqMessage': { kind: 'tenant' },
 };
 
 /**

@@ -413,3 +413,37 @@ model ClaimEvaluation {
 
   @@schema("ingest")
 }
+
+// Dead-letter queue for poison/failed ingestion messages, persisted so a
+// restart cannot drop quarantined telemetry. source_kind says how a replay
+// re-enters the pipeline: WEBHOOK/SQS re-ingest through RawIngestService on
+// the stored connector route, KAFKA re-publishes to kafka_topic.
+model DlqMessage {
+  id               String    @id @default(uuid())
+  tenant_id        String
+  message_id       String    @unique
+  source_kind      String // WEBHOOK | SQS | KAFKA | UNKNOWN
+  source           String
+  connector_id     String?
+  environment_id   String?
+  source_region    String?
+  kafka_topic      String?
+  kafka_partition  Int?
+  kafka_offset     String?
+  original_payload String
+  payload_digest   String
+  error_code       String
+  error_reason     String
+  attempt_count    Int       @default(0)
+  max_attempts     Int       @default(3)
+  status           String // QUARANTINED | REPLAYING | REPLAY_SUCCESS | REPLAY_FAILED | PURGED
+  last_error       String?
+  quarantined_at   DateTime  @default(now())
+  last_attempt_at  DateTime?
+  replayed_at      DateTime?
+
+  @@index([tenant_id, status])
+  @@index([tenant_id, payload_digest])
+
+  @@schema("ingest")
+}

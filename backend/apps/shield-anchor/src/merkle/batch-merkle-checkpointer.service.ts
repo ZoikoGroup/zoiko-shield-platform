@@ -1,6 +1,7 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import * as crypto from 'crypto';
 import { PqcDualSignerService } from '../signing/pqc-dual-signer.service';
+import { MerkleTreeService } from './merkle-tree.service';
 
 export interface EvidenceLeaf {
   evidenceId: string;
@@ -42,6 +43,7 @@ export class BatchMerkleCheckpointerService {
   private readonly logger = new Logger(BatchMerkleCheckpointerService.name);
   private epochCounter = 0;
   private readonly epochHistory = new Map<number, EpochMerkleCheckpoint>();
+  private readonly tree = new MerkleTreeService();
 
   constructor(@Optional() private readonly pqcSigner?: PqcDualSignerService) {}
 
@@ -71,22 +73,7 @@ export class BatchMerkleCheckpointerService {
     );
 
     // 2. Reduce to Merkle root
-    let currentLevel = [...leafHashes];
-    while (currentLevel.length > 1) {
-      const nextLevel: string[] = [];
-      for (let i = 0; i < currentLevel.length; i += 2) {
-        const left = currentLevel[i];
-        const right = i + 1 < currentLevel.length ? currentLevel[i + 1] : left;
-        const parent = crypto
-          .createHash('sha256')
-          .update(left + right)
-          .digest('hex');
-        nextLevel.push(parent);
-      }
-      currentLevel = nextLevel;
-    }
-
-    const merkleRoot = currentLevel[0];
+    const merkleRoot = this.tree.build(leafHashes).root;
 
     // 3. Cryptographic witness signature
     const witnessAttestationId = `witness-rekor-${epochNumber}`;
@@ -156,41 +143,13 @@ export class BatchMerkleCheckpointerService {
     }
 
     const leafHash = checkpoint.leaves[leafIndex];
-    const auditPath: Array<{ position: 'left' | 'right'; hash: string }> = [];
-
-    let currentLevel = [...checkpoint.leaves];
-    let currentIndex = leafIndex;
-
-    while (currentLevel.length > 1) {
-      const nextLevel: string[] = [];
-      const isEven = currentIndex % 2 === 0;
-      const siblingIndex = isEven ? currentIndex + 1 : currentIndex - 1;
-
-      if (isEven) {
-        const sibling =
-          siblingIndex < currentLevel.length
-            ? currentLevel[siblingIndex]
-            : currentLevel[currentIndex];
-        auditPath.push({ position: 'right', hash: sibling });
-      } else {
-        const sibling = currentLevel[siblingIndex];
-        auditPath.push({ position: 'left', hash: sibling });
-      }
-
-      for (let i = 0; i < currentLevel.length; i += 2) {
-        const left = currentLevel[i];
-        const right = i + 1 < currentLevel.length ? currentLevel[i + 1] : left;
-        nextLevel.push(
-          crypto
-            .createHash('sha256')
-            .update(left + right)
-            .digest('hex'),
-        );
-      }
-
-      currentLevel = nextLevel;
-      currentIndex = Math.floor(currentIndex / 2);
-    }
+    const auditPath = this.tree
+      .build(checkpoint.leaves)
+      .proofs[leafIndex].map((step) => ({
+        position:
+          step.position === 'LEFT' ? ('left' as const) : ('right' as const),
+        hash: step.siblingHash,
+      }));
 
     return {
       leafHash,
@@ -205,23 +164,15 @@ export class BatchMerkleCheckpointerService {
    * Verifies an inclusion proof independently without needing the full dataset.
    */
   verifyInclusionProof(proof: MerkleInclusionProof): boolean {
-    let currentHash = proof.leafHash;
-
-    for (const step of proof.auditPath) {
-      if (step.position === 'right') {
-        currentHash = crypto
-          .createHash('sha256')
-          .update(currentHash + step.hash)
-          .digest('hex');
-      } else {
-        currentHash = crypto
-          .createHash('sha256')
-          .update(step.hash + currentHash)
-          .digest('hex');
-      }
-    }
-
-    const isValid = currentHash === proof.merkleRoot;
+    const isValid = this.tree.verifyInclusion(
+      proof.leafHash,
+      proof.auditPath.map((step) => ({
+        siblingHash: step.hash,
+        position:
+          step.position === 'left' ? ('LEFT' as const) : ('RIGHT' as const),
+      })),
+      proof.merkleRoot,
+    );
     this.logger.log(
       `✔ [INCLUSION PROOF VERIFIED] Leaf ${proof.leafHash.substring(0, 10)}... in Epoch #${proof.epochNumber} -> Valid: ${isValid}`,
     );
