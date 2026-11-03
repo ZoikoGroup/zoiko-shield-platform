@@ -311,9 +311,10 @@ export class ConnectorCatalogController {
    * Query DLQ quarantine metrics
    */
   @Get('dlq/metrics')
-  async getDlqMetrics(@Headers('x-tenant-id') tenantId?: string) {
+  async getDlqMetrics(@Headers('x-tenant-id') headerTenantId: string) {
+    const tenantId = requireTenantId(headerTenantId);
     const metrics = this.dlqService
-      ? await this.dlqService.getMetrics(tenantId || undefined)
+      ? await this.dlqService.getMetrics(tenantId)
       : {
           totalQuarantined: 0,
           activeQuarantined: 0,

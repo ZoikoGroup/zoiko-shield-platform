@@ -52783,9 +52783,11 @@ paths:
       tags:
         - ConnectorCatalog
       summary: Get DLQ metrics
-      description: Returns current DLQ quarantine and replay metrics.
+      description: Returns DLQ quarantine and replay metrics for the tenant in x-tenant-id.
       security:
         - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
       responses:
         '200':
           description: DLQ quarantine metrics
