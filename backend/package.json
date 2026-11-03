@@ -176,7 +176,7 @@
     "js-yaml": "^5.2.3",
     "jsonwebtoken": "^9.0.3",
     "kafkajs": "^2.2.4",
-    "nodemailer": "^9.0.5",
+    "nodemailer": "^10.3.1",
     "openid-client": "^6.8.5",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
@@ -252,5 +252,8 @@
       "<rootDir>/apps/",
       "<rootDir>/libs/"
     ]
+  },
+  "overrides": {
+    "multer": "^2.5.0"
   }
 }
