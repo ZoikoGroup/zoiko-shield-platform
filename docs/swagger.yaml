@@ -57626,6 +57626,9 @@ paths:
   /api/v1/jit/sessions/{id}/step-up:
     post:
       summary: Complete FIDO2/WebAuthn hardware step-up attestation for JIT elevation
+      description: >-
+        Requires a session already raised to PASSKEY assurance by POST /api/v1/auth/passkeys/step-up, and only
+        the operator who requested the elevation may complete it. No client-supplied proof is accepted.
       operationId: postJitSessionStepUp
       tags:
         - RBAC
@@ -57639,22 +57642,6 @@ paths:
           required: true
           schema:
             type: string
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required:
-                - hardwareProofDigest
-              properties:
-                hardwareProofDigest:
-                  type: string
-                authenticatorAttachment:
-                  type: string
-                  enum:
-                    - PLATFORM
-                    - CROSS_PLATFORM
       responses:
         '200':
           description: Hardware step-up verified

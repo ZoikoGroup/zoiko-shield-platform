@@ -41,18 +41,12 @@ export class CreateJitElevationDto {
   statedPurpose!: string;
   durationMinutes?: number;
   clientIp?: string;
-  initialHardwareProof?: string;
 }
 
 export class PeerApproveDto {
   approverId!: string;
   approverRole!: string;
   approvalNotes?: string;
-}
-
-export class HardwareStepUpDto {
-  hardwareProofDigest!: string;
-  authenticatorAttachment?: 'PLATFORM' | 'CROSS_PLATFORM';
 }
 
 export class RevokeJitSessionDto {
@@ -143,7 +137,6 @@ export class JitElevationService {
     ).toISOString();
     const sessionId = `jit-sess-${crypto.randomUUID().slice(0, 8)}`;
 
-    const hardwareVerified = !!dto.initialHardwareProof;
     const initialStatus: JitSessionStatus = 'PENDING';
 
     const session: JitElevationSession = {
@@ -158,13 +151,8 @@ export class JitElevationService {
       durationMinutes: duration,
       issuedAt: now.toISOString(),
       expiresAt,
-      hardwareStepUpVerified: hardwareVerified,
-      hardwareProofDigest: dto.initialHardwareProof
-        ? crypto
-            .createHash('sha256')
-            .update(dto.initialHardwareProof)
-            .digest('hex')
-        : undefined,
+      // Only the server-verified step-up endpoint can set this.
+      hardwareStepUpVerified: false,
       auditAttestationHash: '',
     };
 
@@ -218,10 +206,8 @@ export class JitElevationService {
     return session;
   }
 
-  stepUpHardware(
-    sessionId: string,
-    dto: HardwareStepUpDto,
-  ): JitElevationSession {
+  /** `actorId` has already passed a server-verified passkey step-up. */
+  stepUpHardware(sessionId: string, actorId: string): JitElevationSession {
     const session = this.findSessionOrThrow(sessionId);
     this.reconcileSessionExpiry(session);
 
@@ -231,14 +217,14 @@ export class JitElevationService {
       );
     }
 
-    if (!dto.hardwareProofDigest) {
-      throw new BadRequestException(
-        'Hardware proof digest is required for FIDO2/WebAuthn step-up',
+    if (actorId !== session.operatorId) {
+      throw new ForbiddenException(
+        'Only the operator who requested the elevation can complete its hardware step-up',
       );
     }
 
     session.hardwareStepUpVerified = true;
-    session.hardwareProofDigest = dto.hardwareProofDigest;
+    session.hardwareProofDigest = `PASSKEY_SESSION_ASSURANCE:${actorId}:${new Date().toISOString()}`;
 
     // If already peer-approved, transition to ACTIVE
     if (session.status === 'APPROVED' || session.peerApprover) {

@@ -163,19 +163,28 @@ describe('ZS-ENG-AUTH-001 §13: JIT Privileged Access Elevation & Hardware Step-
       expect(afterApproval.status).toBe('APPROVED');
 
       // Step 2: FIDO2 / WebAuthn Hardware Step-Up
-      const activated = service.stepUpHardware(session.sessionId, {
-        hardwareProofDigest: 'fido2-attestation-p256-proof-digest-abc123456',
-        authenticatorAttachment: 'CROSS_PLATFORM',
-      });
+      const activated = service.stepUpHardware(session.sessionId, 'usr-sec-10');
 
       expect(activated.status).toBe('ACTIVE');
       expect(activated.hardwareStepUpVerified).toBe(true);
-      expect(activated.hardwareProofDigest).toBe(
-        'fido2-attestation-p256-proof-digest-abc123456',
+      expect(activated.hardwareProofDigest).toMatch(
+        /^PASSKEY_SESSION_ASSURANCE:usr-sec-10:/,
       );
     });
 
-    it('transitions immediately to ACTIVE if initial hardware proof was provided during creation and peer approves', () => {
+    it('rejects a step-up performed by anyone other than the requesting operator', () => {
+      const session = service.createElevationRequest({
+        operatorId: 'usr-sec-10',
+        targetTenantId: 'tenant-sovereign',
+        elevatedRole: 'INCIDENT_COMMANDER',
+        statedPurpose: 'Hardware key activation for sovereign cell inspection',
+      });
+      expect(() =>
+        service.stepUpHardware(session.sessionId, 'usr-someone-else'),
+      ).toThrow(ForbiddenException);
+    });
+
+    it('never treats a client-supplied hardware proof at creation as a verified step-up', () => {
       const session = service.createElevationRequest({
         operatorId: 'usr-sec-10',
         targetTenantId: 'tenant-sovereign',
@@ -183,17 +192,14 @@ describe('ZS-ENG-AUTH-001 §13: JIT Privileged Access Elevation & Hardware Step-
         statedPurpose:
           'Hardware key activation for sovereign cell infrastructure inspection',
         initialHardwareProof: 'hardware-dongle-fido2-signature-raw-token',
-      });
+      } as any);
 
-      expect(session.hardwareStepUpVerified).toBe(true);
-      expect(session.status).toBe('PENDING');
-
-      const activated = service.peerApprove(session.sessionId, {
+      expect(session.hardwareStepUpVerified).toBe(false);
+      const approved = service.peerApprove(session.sessionId, {
         approverId: 'usr-ciso-01',
         approverRole: 'CISO',
       });
-
-      expect(activated.status).toBe('ACTIVE');
+      expect(approved.status).toBe('APPROVED');
     });
   });
 
