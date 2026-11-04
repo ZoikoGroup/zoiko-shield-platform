@@ -5,6 +5,10 @@ import {
   ModelInvocationResult,
 } from './model-provider.interface';
 import { assertSyntheticOutputAllowed } from './synthetic-output-guard';
+import {
+  CITATION_INSTRUCTION,
+  extractCitedSourceRefs,
+} from './cited-source-refs';
 
 /**
  * Enterprise Google Gemini / Vertex AI Provider Adapter
@@ -28,21 +32,16 @@ export class GeminiModelProvider implements ModelProvider {
       sourceRefs = [];
     }
 
-    const citedSourceRefs = sourceRefs.slice(
-      0,
-      Math.max(1, Math.min(4, sourceRefs.length)),
-    );
-
     if (apiKey) {
       try {
         const model = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
         const payload = {
           system_instruction: {
             parts: [
               {
-                text: `${input.systemPrompt}\n\nSecurity Retrieval Context:\n${input.retrievalContext}`,
+                text: `${input.systemPrompt}\n\n${CITATION_INSTRUCTION}\n\nSecurity Retrieval Context:\n${input.retrievalContext}`,
               },
             ],
           },
@@ -60,7 +59,11 @@ export class GeminiModelProvider implements ModelProvider {
 
         const response = await fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          // Header, not ?key=, so the key never lands in URL logs or proxies.
+          headers: {
+            'Content-Type': 'application/json',
+            'x-goog-api-key': apiKey,
+          },
           body: JSON.stringify(payload),
         });
 
@@ -72,7 +75,7 @@ export class GeminiModelProvider implements ModelProvider {
 
           return {
             content: generatedText,
-            citedSourceRefs,
+            citedSourceRefs: extractCitedSourceRefs(generatedText, sourceRefs),
             confidence: 0.94,
             usage: {
               inputTokens: usageMetadata.promptTokenCount || 500,
@@ -148,7 +151,7 @@ export class GeminiModelProvider implements ModelProvider {
 
     return {
       content,
-      citedSourceRefs,
+      citedSourceRefs: sourceRefs.slice(0, 4),
       confidence: sourceRefs.length > 0 ? 0.9 : 0.1,
       usage: {
         inputTokens: 350,

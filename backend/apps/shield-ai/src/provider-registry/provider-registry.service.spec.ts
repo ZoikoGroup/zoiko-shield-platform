@@ -109,3 +109,96 @@ describe('Model providers — synthetic output is never served in production', (
     });
   });
 });
+
+describe('Real providers — citations reflect the model output, keys stay out of URLs', () => {
+  const realFetch = global.fetch;
+  const savedEnv = { ...process.env };
+  const retrieval = JSON.stringify({ sourceRefs: ['evt-1', 'evt-2', 'evt-3'] });
+  const fetchMock = jest.fn();
+
+  const geminiReply = (text: string) => ({
+    ok: true,
+    json: async () => ({ candidates: [{ content: { parts: [{ text }] } }] }),
+  });
+  const openAiReply = (text: string) => ({
+    ok: true,
+    json: async () => ({ choices: [{ message: { content: text } }] }),
+  });
+
+  beforeEach(() => {
+    fetchMock.mockReset();
+    global.fetch = fetchMock as unknown as typeof fetch;
+  });
+
+  afterEach(() => {
+    global.fetch = realFetch;
+    process.env = { ...savedEnv };
+  });
+
+  it('sends the Gemini key in x-goog-api-key and never in the URL', async () => {
+    process.env.GEMINI_API_KEY = 'secret-gemini-key';
+    fetchMock.mockResolvedValue(geminiReply('{"citedSourceRefs":["evt-2"]}'));
+
+    await new GeminiModelProvider().invoke({
+      ...input,
+      retrievalContext: retrieval,
+    });
+
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).not.toContain('secret-gemini-key');
+    expect(String(url)).not.toContain('key=');
+    expect(init.headers['x-goog-api-key']).toBe('secret-gemini-key');
+  });
+
+  it('Gemini cites only the refs the model returned, not the first N retrieved', async () => {
+    process.env.GEMINI_API_KEY = 'k';
+    fetchMock.mockResolvedValue(
+      geminiReply('{"answer":"x","citedSourceRefs":["evt-3"]}'),
+    );
+
+    const result = await new GeminiModelProvider().invoke({
+      ...input,
+      retrievalContext: retrieval,
+    });
+    expect(result.citedSourceRefs).toEqual(['evt-3']);
+  });
+
+  it('OpenAI cites nothing when the model output references no source', async () => {
+    process.env.OPENAI_API_KEY = 'k';
+    fetchMock.mockResolvedValue(
+      openAiReply('An answer that names no evidence.'),
+    );
+
+    const result = await new OpenAiModelProvider().invoke({
+      ...input,
+      retrievalContext: retrieval,
+    });
+    expect(result.citedSourceRefs).toEqual([]);
+  });
+
+  it('passes invented refs through so the citation validator can degrade the answer', async () => {
+    process.env.OPENAI_API_KEY = 'k';
+    fetchMock.mockResolvedValue(
+      openAiReply('{"citedSourceRefs":["evt-1","evt-made-up"]}'),
+    );
+
+    const result = await new OpenAiModelProvider().invoke({
+      ...input,
+      retrievalContext: retrieval,
+    });
+    expect(result.citedSourceRefs).toEqual(['evt-1', 'evt-made-up']);
+  });
+
+  it('falls back to retrieved refs named verbatim in non-JSON text', async () => {
+    process.env.OPENAI_API_KEY = 'k';
+    fetchMock.mockResolvedValue(
+      openAiReply('Based on evt-2, the login was anomalous.'),
+    );
+
+    const result = await new OpenAiModelProvider().invoke({
+      ...input,
+      retrievalContext: retrieval,
+    });
+    expect(result.citedSourceRefs).toEqual(['evt-2']);
+  });
+});

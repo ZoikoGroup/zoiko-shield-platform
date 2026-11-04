@@ -2,6 +2,7 @@ import {
   AiSafetyCircuitBreakerService,
   ThreatInvestigationInput,
 } from './ai-safety-circuit-breaker.service';
+import { AiUnavailableException } from './fallback/fallback.exceptions';
 
 describe('AiSafetyCircuitBreakerService (Multi-Model Resilient Fallback)', () => {
   let service: AiSafetyCircuitBreakerService;
@@ -58,5 +59,22 @@ describe('AiSafetyCircuitBreakerService (Multi-Model Resilient Fallback)', () =>
 
     const circuitStatus = service.getCircuitState();
     expect(circuitStatus.state).toBe('OPEN');
+  });
+
+  it('labels every investigation as synthetic outside production', async () => {
+    const result = await service.investigateThreat(mockInput);
+    expect(result.outputProvenance).toBe('SYNTHETIC_NON_PRODUCTION');
+  });
+
+  it('refuses to run in production, where it would present canned text as analysis', async () => {
+    const savedEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+    try {
+      await expect(service.investigateThreat(mockInput)).rejects.toThrow(
+        AiUnavailableException,
+      );
+    } finally {
+      process.env.NODE_ENV = savedEnv;
+    }
   });
 });

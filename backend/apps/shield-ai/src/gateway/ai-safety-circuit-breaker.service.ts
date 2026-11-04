@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
+import { assertSyntheticOutputAllowed } from '../provider-registry/synthetic-output-guard';
 
 export type AiProvider =
   'VERTEX_AI_GEMINI' | 'AZURE_OPENAI' | 'DETERMINISTIC_FALLBACK';
@@ -21,11 +22,15 @@ export interface ThreatInvestigationOutput {
   groundedEvidenceIds: string[];
   circuitState: 'CLOSED' | 'OPEN' | 'HALF_OPEN';
   latencyMs: number;
+  /** No branch here calls a model: every analysis is canned text. */
+  outputProvenance: 'SYNTHETIC_NON_PRODUCTION';
 }
 
 /**
  * AI Multi-Model Safety Circuit Breaker & Fallback Router
  * Resilient multi-provider gateway preventing LLM outages or safety blocks from halting SOC investigation pipelines.
+ * None of its provider branches makes a real model call, so it refuses to
+ * run in production rather than presenting canned investigations as analysis.
  */
 @Injectable()
 export class AiSafetyCircuitBreakerService {
@@ -44,6 +49,7 @@ export class AiSafetyCircuitBreakerService {
   async investigateThreat(
     input: ThreatInvestigationInput,
   ): Promise<ThreatInvestigationOutput> {
+    assertSyntheticOutputAllowed('AiSafetyCircuitBreakerService');
     const startTime = Date.now();
     this.evaluateCircuitState();
 
@@ -109,6 +115,7 @@ export class AiSafetyCircuitBreakerService {
       groundedEvidenceIds: groundedEvidence,
       circuitState: this.circuitState,
       latencyMs: Date.now() - startTime,
+      outputProvenance: 'SYNTHETIC_NON_PRODUCTION',
     };
   }
 
@@ -128,6 +135,7 @@ export class AiSafetyCircuitBreakerService {
       groundedEvidenceIds: groundedEvidence,
       circuitState: this.circuitState,
       latencyMs: Date.now() - startTime,
+      outputProvenance: 'SYNTHETIC_NON_PRODUCTION',
     };
   }
 
@@ -149,6 +157,7 @@ export class AiSafetyCircuitBreakerService {
       groundedEvidenceIds: input.evidenceIds,
       circuitState: this.circuitState,
       latencyMs: Date.now() - startTime,
+      outputProvenance: 'SYNTHETIC_NON_PRODUCTION',
     };
   }
 

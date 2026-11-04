@@ -5,6 +5,10 @@ import {
   ModelInvocationResult,
 } from './model-provider.interface';
 import { assertSyntheticOutputAllowed } from './synthetic-output-guard';
+import {
+  CITATION_INSTRUCTION,
+  extractCitedSourceRefs,
+} from './cited-source-refs';
 
 /**
  * Enterprise OpenAI Provider Adapter
@@ -28,11 +32,6 @@ export class OpenAiModelProvider implements ModelProvider {
       sourceRefs = [];
     }
 
-    const citedSourceRefs = sourceRefs.slice(
-      0,
-      Math.max(1, Math.min(4, sourceRefs.length)),
-    );
-
     if (apiKey) {
       try {
         const model = process.env.OPENAI_MODEL || 'gpt-4o';
@@ -43,7 +42,7 @@ export class OpenAiModelProvider implements ModelProvider {
           messages: [
             {
               role: 'system',
-              content: `${input.systemPrompt}\n\nSecurity Retrieval Context:\n${input.retrievalContext}`,
+              content: `${input.systemPrompt}\n\n${CITATION_INSTRUCTION}\n\nSecurity Retrieval Context:\n${input.retrievalContext}`,
             },
             {
               role: 'user',
@@ -70,7 +69,7 @@ export class OpenAiModelProvider implements ModelProvider {
 
           return {
             content: generatedText,
-            citedSourceRefs,
+            citedSourceRefs: extractCitedSourceRefs(generatedText, sourceRefs),
             confidence: 0.92,
             usage: {
               inputTokens: usage.prompt_tokens || 400,
@@ -104,7 +103,7 @@ export class OpenAiModelProvider implements ModelProvider {
 
     return {
       content,
-      citedSourceRefs,
+      citedSourceRefs: sourceRefs.slice(0, 4),
       confidence: sourceRefs.length > 0 ? 0.88 : 0.1,
       usage: {
         inputTokens: 300,
