@@ -176,6 +176,24 @@ describe('Verifier CLI Adversarial Tamper Detection Suite (ADR-01 & Spec §9)', 
     expect(exitCode).toBe(1);
   });
 
+  it('Scenario 4b: Deleting an indexed evidence file triggers TAMPER_DETECTED with exit code 1', () => {
+    createPackageFixture(baseFixtureDir);
+    fs.rmSync(path.join(baseFixtureDir, 'evidence', 'SOC2_CC6_1_MFA.json'));
+
+    const exitCode = runVerifier(['verify', baseFixtureDir]);
+    expect(exitCode).toBe(1);
+
+    const cert = JSON.parse(
+      fs.readFileSync(
+        path.join(baseFixtureDir, 'audit_certificate.json'),
+        'utf8',
+      ),
+    );
+    expect(cert.verificationStatus).toBe('TAMPER_DETECTED');
+    expect(cert.checks.evidenceFilesIntegrity.corruptedFiles).toBe(1);
+    expect(cert.checks.evidenceFilesIntegrity.validFiles).toBe(0);
+  });
+
   it('Scenario 5: Invalid CLI parameters triggers usage failure with exit code 2', () => {
     expect(runVerifier([])).toBe(2);
     expect(runVerifier(['invalid-subcommand'])).toBe(2);

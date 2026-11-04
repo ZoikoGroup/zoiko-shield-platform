@@ -9,17 +9,35 @@ function sha256(buf: Buffer): Buffer {
   return createHash('sha256').update(buf).digest();
 }
 function hashLeaf(bytes: string): Buffer {
-  return sha256(Buffer.concat([Buffer.from([0x00]), Buffer.from(bytes, 'utf-8')]));
+  return sha256(
+    Buffer.concat([Buffer.from([0x00]), Buffer.from(bytes, 'utf-8')]),
+  );
 }
 function hashBranch(l: Buffer, r: Buffer): Buffer {
   return sha256(Buffer.concat([Buffer.from([0x01]), l, r]));
 }
 
-function buildValidFixture(dir: string, tamper: (fixture: { manifestFile: any; envelopeFile: any }) => void = () => {}) {
+function buildValidFixture(
+  dir: string,
+  tamper: (fixture: {
+    manifestFile: any;
+    envelopeFile: any;
+  }) => void = () => {},
+) {
   const { privateKey, publicKey } = generateKeyPairSync('ed25519');
-  const publicKeyPem = publicKey.export({ type: 'spki', format: 'pem' }).toString();
+  const publicKeyPem = publicKey
+    .export({ type: 'spki', format: 'pem' })
+    .toString();
 
-  const ledgerHeadHash = 'a'.repeat(64);
+  // Same canonical material EvidenceLedgerService hashes and the verifier recomputes.
+  const ledgerEntry = {
+    tenantId: 't1',
+    sequence: 1,
+    evidenceId: 'e1',
+    previousEntryHash: null,
+    evidenceMetadata: { source: 'fixture' },
+  };
+  const { contentHash: ledgerHeadHash } = hashCanonicalJson(ledgerEntry);
   const manifestCoreOnly = {
     tenantId: 't1',
     scope: {},
@@ -27,15 +45,27 @@ function buildValidFixture(dir: string, tamper: (fixture: { manifestFile: any; e
     schemaBundle: { id: 'zs-audit-package-manifest-v1', hash: 'x' },
     frameworkVersions: [],
     mappingVersions: [],
-    evidenceIndex: [{ evidenceId: 'e1', contentHash: 'b'.repeat(64), integrityState: 'VERIFIED' }],
-    ledgerEntries: [{ sequence: 1, evidenceId: 'e1', previousEntryHash: null, entryHash: ledgerHeadHash }],
+    evidenceIndex: [
+      {
+        evidenceId: 'e1',
+        contentHash: 'b'.repeat(64),
+        integrityState: 'VERIFIED',
+      },
+    ],
+    ledgerEntries: [{ ...ledgerEntry, entryHash: ledgerHeadHash }],
     evaluationIndex: [],
     assessmentIndex: [],
     riskIndex: [],
     exceptionIndex: [],
     knownGaps: [],
     limitations: [],
-    verifierProfile: { minVerifierVersion: '1.0.0', verifierSourceVersion: '1.0.0', treeProfile: 'ZS-MERKLE-V1', hashAlgorithm: 'SHA-256', canonicalizationProfile: 'zs-manifest-v1' },
+    verifierProfile: {
+      minVerifierVersion: '1.0.0',
+      verifierSourceVersion: '1.0.0',
+      treeProfile: 'ZS-MERKLE-V1',
+      hashAlgorithm: 'SHA-256',
+      canonicalizationProfile: 'zs-manifest-v1',
+    },
     exportMetadata: {},
   };
   const { contentHash: manifestCoreHash } = hashCanonicalJson(manifestCoreOnly);
@@ -48,38 +78,80 @@ function buildValidFixture(dir: string, tamper: (fixture: { manifestFile: any; e
     '1': [{ siblingHash: leafHashes[0].toString('hex'), position: 'LEFT' }],
   };
 
-  const signature = edSign(null, Buffer.from(merkleRoot, 'utf-8'), privateKey).toString('hex');
+  const signature = edSign(
+    null,
+    Buffer.from(merkleRoot, 'utf-8'),
+    privateKey,
+  ).toString('hex');
 
   const witnessId = 'mock-witness-1';
-  const receiptHash = createHash('sha256').update(`${merkleRoot}${witnessId}zoiko-mock-witness-v1`).digest('hex');
+  const receiptHash = createHash('sha256')
+    .update(`${merkleRoot}${witnessId}zoiko-mock-witness-v1`)
+    .digest('hex');
 
   const proofEnvelope = {
     checkpoint: {
-      id: 'cp1', anchorSequence: 1, ledgerSequence: 1, ledgerHeadHash, manifestCoreHash,
-      merkleRoot, treeProfile: 'ZS-MERKLE-V1', hashAlgorithm: 'SHA-256', canonicalizationProfile: 'zs-checkpoint-v1',
-      signingKeyId: 'key1', signature, witnessAssuranceState: 'TEST_ONLY', status: 'PUBLISHED',
+      id: 'cp1',
+      anchorSequence: 1,
+      ledgerSequence: 1,
+      ledgerHeadHash,
+      manifestCoreHash,
+      merkleRoot,
+      treeProfile: 'ZS-MERKLE-V1',
+      hashAlgorithm: 'SHA-256',
+      canonicalizationProfile: 'zs-checkpoint-v1',
+      signingKeyId: 'key1',
+      signature,
+      witnessAssuranceState: 'TEST_ONLY',
+      status: 'PUBLISHED',
     },
     merkleRoot,
     proofsByLeafIndex,
     signature,
-    signingKey: { keyId: 'key1', publicKey: publicKeyPem, algorithm: 'Ed25519', status: 'ACTIVE' },
-    witnessReceipts: [{ witnessId, witnessType: 'MOCK', receiptHash, status: 'RECEIVED' }],
+    signingKey: {
+      keyId: 'key1',
+      publicKey: publicKeyPem,
+      algorithm: 'Ed25519',
+      status: 'ACTIVE',
+    },
+    witnessReceipts: [
+      { witnessId, witnessType: 'MOCK', receiptHash, status: 'RECEIVED' },
+    ],
     witnessAssuranceState: 'TEST_ONLY',
   };
 
-  const auditPackageApproval = { approverId: 'approver1', manifestCoreHash, authorizationDecisionId: 'ad1', approvedAt: new Date().toISOString() };
+  const auditPackageApproval = {
+    approverId: 'approver1',
+    manifestCoreHash,
+    authorizationDecisionId: 'ad1',
+    approvedAt: new Date().toISOString(),
+  };
 
-  const finalManifest = { ...manifestCoreOnly, proofEnvelope, auditPackageApproval };
+  const finalManifest = {
+    ...manifestCoreOnly,
+    proofEnvelope,
+    auditPackageApproval,
+  };
   const { contentHash: packageEnvelopeHash } = hashCanonicalJson(finalManifest);
 
   const manifestFile = finalManifest;
-  const envelopeFile = { packageId: 'pkg1', packageVersion: 1, packageEnvelopeHash };
+  const envelopeFile = {
+    packageId: 'pkg1',
+    packageVersion: 1,
+    packageEnvelopeHash,
+  };
 
   const fixture = { manifestFile, envelopeFile };
   tamper(fixture);
 
-  writeFileSync(join(dir, 'manifest.json'), JSON.stringify(fixture.manifestFile));
-  writeFileSync(join(dir, 'envelope.json'), JSON.stringify(fixture.envelopeFile));
+  writeFileSync(
+    join(dir, 'manifest.json'),
+    JSON.stringify(fixture.manifestFile),
+  );
+  writeFileSync(
+    join(dir, 'envelope.json'),
+    JSON.stringify(fixture.envelopeFile),
+  );
 }
 
 describe('verifyPackageDirectory', () => {
@@ -94,7 +166,9 @@ describe('verifyPackageDirectory', () => {
   it('produces CRYPTOGRAPHICALLY_VERIFIED_NOT_EXTERNALLY_WITNESSED for a valid, self-consistent, mock-witnessed package', () => {
     buildValidFixture(dir);
     const result = verifyPackageDirectory(dir);
-    expect(result.overallResult).toBe('CRYPTOGRAPHICALLY_VERIFIED_NOT_EXTERNALLY_WITNESSED');
+    expect(result.overallResult).toBe(
+      'CRYPTOGRAPHICALLY_VERIFIED_NOT_EXTERNALLY_WITNESSED',
+    );
     expect(result.manifestValid).toBe(true);
     expect(result.signatureValid).toBe(true);
     expect(result.merkleProofValid).toBe(true);
@@ -120,7 +194,12 @@ describe('verifyPackageDirectory', () => {
 
   it('detects a broken ledger chain link', () => {
     buildValidFixture(dir, (f) => {
-      f.manifestFile.ledgerEntries.push({ sequence: 2, evidenceId: 'e2', previousEntryHash: 'wrong-hash', entryHash: 'c'.repeat(64) });
+      f.manifestFile.ledgerEntries.push({
+        sequence: 2,
+        evidenceId: 'e2',
+        previousEntryHash: 'wrong-hash',
+        entryHash: 'c'.repeat(64),
+      });
     });
     const result = verifyPackageDirectory(dir);
     expect(result.ledgerValid).toBe(false);
@@ -130,7 +209,8 @@ describe('verifyPackageDirectory', () => {
   it('detects a flipped signature byte', () => {
     buildValidFixture(dir, (f) => {
       const sig = f.manifestFile.proofEnvelope.signature;
-      f.manifestFile.proofEnvelope.signature = (sig[0] === '0' ? '1' : '0') + sig.slice(1);
+      f.manifestFile.proofEnvelope.signature =
+        (sig[0] === '0' ? '1' : '0') + sig.slice(1);
       // Recompute envelope hash so manifestValid still passes and isolates the signature failure.
     });
     const result = verifyPackageDirectory(dir);
@@ -139,7 +219,8 @@ describe('verifyPackageDirectory', () => {
 
   it('rejects an unsupported/unknown tree profile rather than guessing', () => {
     buildValidFixture(dir, (f) => {
-      f.manifestFile.proofEnvelope.checkpoint.treeProfile = 'SOME-FUTURE-PROFILE-V2';
+      f.manifestFile.proofEnvelope.checkpoint.treeProfile =
+        'SOME-FUTURE-PROFILE-V2';
     });
     const result = verifyPackageDirectory(dir);
     expect(result.treeProfileSupported).toBe(false);

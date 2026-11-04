@@ -53,4 +53,30 @@ describe('EpochAggregatorService', () => {
     expect(seal.tenantInclusionProofs['tenant-acme-bank']).toBeDefined();
     expect(seal.tenantInclusionProofs['tenant-cyber-defense']).toBeDefined();
   });
+
+  it('refuses to seal when the TSA returns no signature, instead of inventing one', async () => {
+    jest.spyOn(rfc3161Service, 'attest').mockResolvedValue({
+      witnessId: 'tsa-1',
+      witnessType: 'RFC3161_TSA',
+    } as any);
+
+    await expect(
+      aggregator.sealEpoch([
+        {
+          tenantId: 'tenant-a',
+          tenantMerkleRoot: 'a'.repeat(64),
+          evidenceRecordsCount: 1,
+        },
+      ]),
+    ).rejects.toThrow(/TSA_ATTESTATION_MISSING/);
+    await expect(aggregator.sealEpoch([])).rejects.toThrow(
+      /TSA_ATTESTATION_MISSING/,
+    );
+  });
+
+  it('records the real TSA signature, never a placeholder', async () => {
+    const seal = await aggregator.sealEpoch([]);
+    expect(seal.tsaWitness.signature).not.toBe('SIMULATED_TSA_SIG');
+    expect(seal.tsaWitness.serialNumber).toMatch(/^tsa-/);
+  });
 });

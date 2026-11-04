@@ -47,7 +47,10 @@ describe('BatchMerkleCheckpointerService (High-Throughput Evidence Anchoring)', 
     expect(checkpoint.epochNumber).toBe(1);
     expect(checkpoint.leafCount).toBe(4);
     expect(checkpoint.merkleRoot).toBeDefined();
-    expect(checkpoint.witnessSignature).toBeDefined();
+    expect(checkpoint.localSealDigest).toMatch(/^[0-9a-f]{64}$/);
+    // No external witness is contacted, so the checkpoint must not claim one.
+    expect(checkpoint.witnessState).toBe('NOT_WITNESSED');
+    expect(checkpoint).not.toHaveProperty('witnessSignature');
   });
 
   it('2. should generate and independently verify cryptographic inclusion proofs', () => {

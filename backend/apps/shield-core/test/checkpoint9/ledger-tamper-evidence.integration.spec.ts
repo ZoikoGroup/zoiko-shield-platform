@@ -55,7 +55,8 @@ describe('Checkpoint 9 - Ledger Tamper-Evidence Integration Suite (§08)', () =>
 
       expect(checkpoint1.merkleRoot).toBe(checkpoint2.merkleRoot);
       expect(checkpoint1.leafCount).toBe(4);
-      expect(checkpoint1.witnessSignature).toBeDefined();
+      expect(checkpoint1.localSealDigest).toMatch(/^[0-9a-f]{64}$/);
+      expect(checkpoint1.witnessState).toBe('NOT_WITNESSED');
     });
 
     it('should generate valid dual signatures using ML-DSA-65 and ECDSA P-256', async () => {

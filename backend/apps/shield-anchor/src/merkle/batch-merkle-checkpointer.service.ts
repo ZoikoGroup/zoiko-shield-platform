@@ -26,8 +26,9 @@ export interface EpochMerkleCheckpoint {
   leafCount: number;
   leaves: string[];
   sealedAt: string;
-  witnessAttestationId: string;
-  witnessSignature: string;
+  /** Unsigned SHA-256 over root, epoch and seal time — integrity of this record only, not a witness. */
+  localSealDigest: string;
+  witnessState: 'NOT_WITNESSED';
   pqcAlgorithm?: 'HYBRID_ECDSA_P256_ML_DSA_65';
   pqcSignatureHex?: string;
   classicalSignatureHex?: string;
@@ -75,11 +76,10 @@ export class BatchMerkleCheckpointerService {
     // 2. Reduce to Merkle root
     const merkleRoot = this.tree.build(leafHashes).root;
 
-    // 3. Cryptographic witness signature
-    const witnessAttestationId = `witness-rekor-${epochNumber}`;
-    const witnessSignature = crypto
+    // No external witness is contacted here; the digest only binds root, epoch and time.
+    const localSealDigest = crypto
       .createHash('sha256')
-      .update(merkleRoot + witnessAttestationId + sealedAt)
+      .update(`${merkleRoot}:${epochId}:${sealedAt}`)
       .digest('hex');
 
     const checkpoint: EpochMerkleCheckpoint = {
@@ -89,8 +89,8 @@ export class BatchMerkleCheckpointerService {
       leafCount: evidenceItems.length,
       leaves: leafHashes,
       sealedAt,
-      witnessAttestationId,
-      witnessSignature,
+      localSealDigest,
+      witnessState: 'NOT_WITNESSED',
     };
 
     this.epochHistory.set(epochNumber, checkpoint);

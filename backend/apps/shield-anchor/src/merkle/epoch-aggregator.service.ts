@@ -52,7 +52,7 @@ export class EpochAggregatorService {
         .createHash('sha256')
         .update('EMPTY_EPOCH')
         .digest('hex');
-      const tsaReceipt = await this.rfc3161WitnessService.attest(emptyRoot);
+      const tsaReceipt = await this.attestOrFail(emptyRoot, epochNumber);
       return {
         epochNumber,
         epochId,
@@ -61,9 +61,9 @@ export class EpochAggregatorService {
         totalEvidenceCount: 0,
         tsaWitness: {
           witnessType: tsaReceipt.witnessType,
-          serialNumber: tsaReceipt.witnessId || 'SN-000',
+          serialNumber: tsaReceipt.witnessId,
           genTime: new Date().toISOString(),
-          signature: tsaReceipt.signature || 'SIMULATED_TSA_SIG',
+          signature: tsaReceipt.signature,
         },
         tenantInclusionProofs: {},
         sealedAt: new Date().toISOString(),
@@ -86,7 +86,7 @@ export class EpochAggregatorService {
     const globalEpochRoot = merkleBuild.root;
 
     // Attest against RFC 3161 TSA
-    const tsaReceipt = await this.rfc3161WitnessService.attest(globalEpochRoot);
+    const tsaReceipt = await this.attestOrFail(globalEpochRoot, epochNumber);
 
     // Extract Inclusion Proofs for each tenant
     const tenantInclusionProofs: Record<string, MerkleProofStep[]> = {};
@@ -118,14 +118,25 @@ export class EpochAggregatorService {
       totalEvidenceCount,
       tsaWitness: {
         witnessType: tsaReceipt.witnessType,
-        serialNumber:
-          tsaReceipt.witnessId || `SN-${crypto.randomBytes(4).toString('hex')}`,
+        serialNumber: tsaReceipt.witnessId,
         genTime: new Date().toISOString(),
-        signature: tsaReceipt.signature || 'SIMULATED_TSA_SIG',
+        signature: tsaReceipt.signature,
       },
       tenantInclusionProofs,
       sealedAt: new Date().toISOString(),
       epochSealDigest,
     };
+  }
+
+  /** A seal never claims a TSA witness it did not receive. */
+  private async attestOrFail(root: string, epochNumber: number) {
+    const receipt = await this.rfc3161WitnessService.attest(root);
+    const { signature, witnessId } = receipt;
+    if (!signature || !witnessId) {
+      throw new Error(
+        `TSA_ATTESTATION_MISSING: Epoch #${epochNumber} cannot be sealed without a signed RFC 3161 timestamp`,
+      );
+    }
+    return { ...receipt, signature, witnessId };
   }
 }

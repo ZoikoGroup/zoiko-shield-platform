@@ -212,7 +212,11 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
             );
           }
         } else {
-          validFiles++; // Raw payload verified via entryHash
+          // A listed record whose file is gone is a deletion, not a pass.
+          corruptedFiles++;
+          logError(
+            `  ❌ Evidence missing for ${entry.type}: listed in the index but not present in the package`,
+          );
         }
       }
       log(`  ✔ Evidence Index: ${validFiles}/${totalFiles} Records Verified`);
