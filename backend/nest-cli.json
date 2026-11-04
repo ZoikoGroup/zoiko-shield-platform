@@ -63,6 +63,15 @@
       "compilerOptions": {
         "tsConfigPath": "apps/verifier-cli/tsconfig.app.json"
       }
+    },
+    "shield-public-assistant": {
+      "type": "application",
+      "root": "apps/shield-public-assistant",
+      "entryFile": "main",
+      "sourceRoot": "apps/shield-public-assistant/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/shield-public-assistant/tsconfig.app.json"
+      }
     }
   }
 }

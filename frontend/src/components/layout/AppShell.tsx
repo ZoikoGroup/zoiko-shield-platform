@@ -38,6 +38,7 @@ const PUBLIC_PREFIXES = [
   "/register",
   "/accept-invite",
   "/verify-certificate",
+  "/assistant",
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

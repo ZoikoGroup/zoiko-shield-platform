@@ -20,6 +20,8 @@ servers:
   - url: http://localhost:3005
     description: Anchor Microservice
 tags:
+  - name: Public Assistant
+    description: Anonymous public website assistant (master chatbot spec ZS-CHAT-MASTER-013). Separate service and database role; no tenant data.
   - name: Auth
     description: Identity adapter – company SSO, approved password fallback, tenant-bound sessions, and invitations
   - name: Identity Providers
@@ -237,6 +239,36 @@ components:
         type: string
         minLength: 1
   schemas:
+    PublicAssistantEnvelope:
+      type: object
+      description: Every public assistant response carries api_version; the remaining fields are operation-specific.
+      properties:
+        api_version:
+          type: string
+          example: v1
+      additionalProperties: true
+    PublicAssistantError:
+      type: object
+      description: Master chatbot spec 6.1 error envelope. Never contains stack traces, internal paths, model names or submitted values.
+      required:
+        - error_code
+        - user_safe_message
+        - correlation_id
+      properties:
+        error_code:
+          type: string
+          enum: [INVALID_REQUEST, SENSITIVE_CONTENT, INCIDENT_ROUTE, SESSION_REQUIRED, PROHIBITED, NOT_FOUND, CONFLICT, THROTTLED, UNAVAILABLE]
+        user_safe_message:
+          type: string
+        correlation_id:
+          type: string
+        field_errors:
+          type: array
+          items:
+            type: string
+          description: Keys of fields that failed validation; never their values.
+        retry_after:
+          type: integer
     VerifiableCredentialIssuerMetadata:
       type: object
       required:
@@ -29474,6 +29506,810 @@ components:
         cancelUrl:
           type: string
 paths:
+  /api/public/chat/v1/config:
+    get:
+      tags:
+        - Public Assistant
+      summary: "Widget configuration: display name, verified routes, flags, journeys, intake availability"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      responses:
+        '200':
+          description: "Widget configuration: display name, verified routes, flags, journeys, intake availability"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/status:
+    get:
+      tags:
+        - Public Assistant
+      summary: "Assistant mode (enabled or disabled) and static fallback routes"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      responses:
+        '200':
+          description: "Assistant mode (enabled or disabled) and static fallback routes"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/sessions:
+    post:
+      tags:
+        - Public Assistant
+      summary: "Open an anonymous guest session (first question only); sets the zs_pa_sid cookie"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      responses:
+        '201':
+          description: "Open an anonymous guest session (first question only); sets the zs_pa_sid cookie"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/sessions/clear:
+    post:
+      tags:
+        - Public Assistant
+      summary: "Start a new conversation epoch (not data erasure)"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      responses:
+        '200':
+          description: "Start a new conversation epoch (not data erasure)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/help/home:
+    get:
+      tags:
+        - Public Assistant
+      summary: "Published help topic tiles"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      responses:
+        '200':
+          description: "Published help topic tiles"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/help/search:
+    post:
+      tags:
+        - Public Assistant
+      summary: "Search approved help articles and guides"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Search approved help articles and guides"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/help/articles/{id}:
+    get:
+      tags:
+        - Public Assistant
+      summary: "An eligible help article or guide as structured blocks"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "An eligible help article or guide as structured blocks"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/help/guides/{id}/steps:
+    post:
+      tags:
+        - Public Assistant
+      summary: "Deterministic guide step interpreter"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Deterministic guide step interpreter"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/sources/{id}:
+    get:
+      tags:
+        - Public Assistant
+      summary: "Citation metadata for an eligible public source"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Citation metadata for an eligible public source"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/feedback:
+    post:
+      tags:
+        - Public Assistant
+      summary: "Enumerated helpful / not helpful feedback; no free text"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '202':
+          description: "Enumerated helpful / not helpful feedback; no free text"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/discovery/catalog:
+    get:
+      tags:
+        - Public Assistant
+      summary: "WF05 guided discovery choices for the approved ruleset"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      responses:
+        '200':
+          description: "WF05 guided discovery choices for the approved ruleset"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/discovery/matches:
+    post:
+      tags:
+        - Public Assistant
+      summary: "WF05 deterministic match: at most three approved capability areas"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "WF05 deterministic match: at most three approved capability areas"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/commercial/plans:
+    get:
+      tags:
+        - Public Assistant
+      summary: "WF06 published plans; prices only for an explicit market with public pricing on"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      responses:
+        '200':
+          description: "WF06 published plans; prices only for an explicit market with public pricing on"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/commercial/fit:
+    post:
+      tags:
+        - Public Assistant
+      summary: "WF06 optional sizing summary; never a price"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "WF06 optional sizing summary; never a price"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/trust/topics:
+    get:
+      tags:
+        - Public Assistant
+      summary: "WF07 published trust topics"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      responses:
+        '200':
+          description: "WF07 published trust topics"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/trust/sources/{id}:
+    get:
+      tags:
+        - Public Assistant
+      summary: "WF07 trust source with in-date approved claims"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "WF07 trust source with in-date approved claims"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/integrations/catalog:
+    get:
+      tags:
+        - Public Assistant
+      summary: "WF08 published connectors with computed availability status"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      responses:
+        '200':
+          description: "WF08 published connectors with computed availability status"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/integrations/deployment-guide:
+    post:
+      tags:
+        - Public Assistant
+      summary: "WF08 \"topics to confirm with a solutions specialist\" summary"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "WF08 \"topics to confirm with a solutions specialist\" summary"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/onboarding/questions:
+    get:
+      tags:
+        - Public Assistant
+      summary: "WF09 visitor routes and preparation topics"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      responses:
+        '200':
+          description: "WF09 visitor routes and preparation topics"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/onboarding/checklists:
+    post:
+      tags:
+        - Public Assistant
+      summary: "WF09 deterministic preparation checklist"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "WF09 deterministic preparation checklist"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/messages:
+    post:
+      tags:
+        - Public Assistant
+      summary: "Phase C: submit a question (flag assistant_ai_answers); idempotent on client_message_id"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '202':
+          description: "Phase C: submit a question (flag assistant_ai_answers); idempotent on client_message_id"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/messages/{id}/events:
+    get:
+      tags:
+        - Public Assistant
+      summary: "Phase C: SSE stream of one turn (acknowledged, delta, then one of final, safety_limited, error)"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Phase C: SSE stream of one turn (acknowledged, delta, then one of final, safety_limited, error)"
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/messages/{id}/cancel:
+    post:
+      tags:
+        - Public Assistant
+      summary: "Phase C: best-effort stop of a running turn"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: "Phase C: best-effort stop of a running turn"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/submissions/keys:
+    post:
+      tags:
+        - Public Assistant
+      summary: "Phase D: issue an idempotency key for one submission attempt"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Phase D: issue an idempotency key for one submission attempt"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/support/summary-preview:
+    post:
+      tags:
+        - Public Assistant
+      summary: "Phase D: server-built summary of the session’s own turns (no visitor text)"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Phase D: server-built summary of the session’s own turns (no visitor text)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/demo-requests:
+    post:
+      tags:
+        - Public Assistant
+      summary: "Phase D WF03: demo request (flag assistant_lead_submit)"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Phase D WF03: demo request (flag assistant_lead_submit)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/submissions/status:
+    post:
+      tags:
+        - Public Assistant
+      summary: "Phase D: look up an intake receipt by public reference and status token"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: "Phase D: look up an intake receipt by public reference and status token"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/privacy/requests:
+    post:
+      tags:
+        - Public Assistant
+      summary: "Phase D WF11: privacy request intake (flag assistant_privacy_write)"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Phase D WF11: privacy request intake (flag assistant_privacy_write)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/support/requests:
+    post:
+      tags:
+        - Public Assistant
+      summary: "Phase D WF04: non-incident support request (flag assistant_support_submit)"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Phase D WF04: non-incident support request (flag assistant_support_submit)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/commercial/inquiries:
+    post:
+      tags:
+        - Public Assistant
+      summary: "Phase D WF06: non-binding quote inquiry (flag assistant_lead_submit)"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Phase D WF06: non-binding quote inquiry (flag assistant_lead_submit)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/trust/access-requests:
+    post:
+      tags:
+        - Public Assistant
+      summary: "Phase D WF07: restricted material request for human review (flag assistant_trust_gated)"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Phase D WF07: restricted material request for human review (flag assistant_trust_gated)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/technical-reviews:
+    post:
+      tags:
+        - Public Assistant
+      summary: "Phase D WF08: technical review request (flag assistant_lead_submit)"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Phase D WF08: technical review request (flag assistant_lead_submit)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
+  /api/public/chat/v1/onboarding/requests:
+    post:
+      tags:
+        - Public Assistant
+      summary: "Phase D WF09: getting-started contact (flag assistant_lead_submit)"
+      description: Anonymous public website assistant (shield-public-assistant, reached through the frontend same-origin proxy). No tenant, SOC or account access.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '201':
+          description: "Phase D WF09: getting-started contact (flag assistant_lead_submit)"
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantEnvelope'
+        default:
+          description: Public error envelope (no internal detail).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicAssistantError'
   /api/v1/platform/assurance/frameworks:
     get:
       tags:

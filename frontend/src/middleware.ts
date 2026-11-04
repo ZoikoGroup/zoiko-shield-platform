@@ -8,6 +8,7 @@ const PUBLIC_EXACT_PATHS = new Set([
   '/verify-certificate',
   '/trust',
   '/help',
+  '/assistant',
 ]);
 
 export function middleware(request: NextRequest) {
