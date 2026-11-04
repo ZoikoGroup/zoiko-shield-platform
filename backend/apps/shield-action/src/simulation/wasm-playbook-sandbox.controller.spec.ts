@@ -7,7 +7,6 @@ import { FreezeControllerService } from '../freeze-controller/freeze-controller.
 import { EmergencyFreezeLockdownService } from '../freeze-controller/emergency-freeze-lockdown.service';
 import { BlastRadiusEvaluatorService } from '../rate-control/blast-radius-evaluator.service';
 import { CompensatingActionService } from '../rollback/compensating-action.service';
-import { TwoManRuleService } from '../approval/two-man-rule.service';
 import { DistributedActionLockService } from '../orchestration/distributed-action-lock.service';
 import {
   SimulateWasmPlaybookDto,
@@ -31,7 +30,6 @@ describe('ShieldActionController - WASM Playbook Sandbox Endpoints', () => {
         { provide: EmergencyFreezeLockdownService, useValue: {} },
         { provide: BlastRadiusEvaluatorService, useValue: {} },
         { provide: CompensatingActionService, useValue: {} },
-        { provide: TwoManRuleService, useValue: {} },
         { provide: DistributedActionLockService, useValue: {} },
       ],
     }).compile();

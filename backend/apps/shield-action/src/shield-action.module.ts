@@ -24,7 +24,6 @@ import { governedCommandSignerProvider } from './command-signing/governed-comman
 import { DispatcherService } from './dispatcher/dispatcher.service';
 import { PolicyReauthorizationService } from './policy/policy-reauthorization.service';
 import { ApprovalReauthorizationService } from './approval/approval-reauthorization.service';
-import { TwoManRuleService } from './approval/two-man-rule.service';
 import { ReceiptVerificationService } from './receipt-verification/receipt-verification.service';
 import { ReconciliationService } from './reconciliation/reconciliation.service';
 import { RollbackService } from './rollback/rollback.service';
@@ -54,7 +53,6 @@ import { DistributedActionLockService } from './orchestration/distributed-action
 import { PlaybookSandboxEngineService } from './simulation/playbook-sandbox-engine.service';
 
 import { LiveActionExecutorService } from './executors/live-action-executor.service';
-import { DualCustodyApprovalsService } from './approvals/dual-custody-approvals.service';
 import { AutomatedRollbackOrchestratorService } from './executors/automated-rollback-orchestrator.service';
 import { CompensatingActionService } from './rollback/compensating-action.service';
 import { SafetyCriticalActuatorBlockService } from './safety-interlock/safety-critical-actuator-block.service';
@@ -100,7 +98,6 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     PlaybookSandboxEngineService,
     WasmPlaybookSandboxService,
     ApprovalReauthorizationService,
-    TwoManRuleService,
     ReceiptVerificationService,
     ReconciliationService,
     RollbackService,
@@ -116,7 +113,6 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     AwsIamActionAdapter,
     WafIpActionAdapter,
     LiveActionExecutorService,
-    DualCustodyApprovalsService,
     AutomatedRollbackOrchestratorService,
     DualCustodyQuorumService,
     CompensatingActionService,
@@ -144,14 +140,12 @@ import { dbScopeMiddleware } from '../../../libs/database/src';
     DistributedActionLockService,
     PlaybookSandboxEngineService,
     WasmPlaybookSandboxService,
-    TwoManRuleService,
     ActionRollbackBrokerService,
     ActionRollbackOrchestratorService,
     ResponsePlaybookService,
     ActionExecutionRegistryService,
     WafIpActionAdapter,
     LiveActionExecutorService,
-    DualCustodyApprovalsService,
     AutomatedRollbackOrchestratorService,
     DualCustodyQuorumService,
     CompensatingActionService,

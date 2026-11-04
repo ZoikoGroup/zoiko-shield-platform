@@ -22,7 +22,6 @@ import {
   BlastRadiusEvaluationInput,
 } from './rate-control/blast-radius-evaluator.service';
 import { CompensatingActionService } from './rollback/compensating-action.service';
-import { TwoManRuleService } from './approval/two-man-rule.service';
 import { DistributedActionLockService } from './orchestration/distributed-action-lock.service';
 import { HostNetworkEnforcerService } from './microsegmentation/host-network-enforcer.service';
 import { DualCustodyQuorumService } from './dual-custody/dual-custody-quorum.service';
@@ -124,33 +123,6 @@ export class CreateFreezeDto {
   durationMinutes?: number;
 }
 
-export class SubmitTwoManTicketDto {
-  tenantId!: string;
-  initiatorId!: string;
-  proposalId!: string;
-  actionType!: string;
-  targetResource!: string;
-  authorityLevel!: 'R0' | 'R1' | 'R2' | 'R3' | 'R4';
-  rationale!: string;
-  ttlMinutes?: number;
-  environmentId?: string;
-}
-
-export class ApproveTwoManTicketDto {
-  tenantId!: string;
-  ticketId!: string;
-  approverId!: string;
-  approvalNotes?: string;
-  fido2MfaToken?: string;
-}
-
-export class RejectTwoManTicketDto {
-  tenantId!: string;
-  ticketId!: string;
-  rejectorId!: string;
-  rejectionReason!: string;
-}
-
 export class AcquireLockDto {
   tenantId!: string;
   actionType!: string;
@@ -227,7 +199,6 @@ export class ShieldActionController {
     private readonly emergencyFreezeService: EmergencyFreezeLockdownService,
     private readonly blastRadiusEvaluator: BlastRadiusEvaluatorService,
     private readonly compensatingActionService: CompensatingActionService,
-    private readonly twoManRuleService: TwoManRuleService,
     private readonly distributedLockService: DistributedActionLockService,
     @Optional()
     private readonly hostNetworkEnforcer?: HostNetworkEnforcerService,
@@ -325,40 +296,6 @@ export class ShieldActionController {
     @Query('tenantId') tenantId: string,
   ) {
     return this.rollbackBroker.getReceipt(tenantId, receiptId);
-  }
-
-  // --- Two-Man Rule Dual-Authorization Endpoints ---
-
-  @UseGuards(InternalAuthGuard)
-  @Post('api/v1/action/approvals/two-man/submit')
-  submitTwoManTicket(@Body() body: SubmitTwoManTicketDto) {
-    return this.twoManRuleService.submitTicket(body);
-  }
-
-  @UseGuards(InternalAuthGuard)
-  @Post('api/v1/action/approvals/two-man/approve')
-  approveTwoManTicket(@Body() body: ApproveTwoManTicketDto) {
-    return this.twoManRuleService.approveTicket(body);
-  }
-
-  @UseGuards(InternalAuthGuard)
-  @Post('api/v1/action/approvals/two-man/reject')
-  rejectTwoManTicket(@Body() body: RejectTwoManTicketDto) {
-    return this.twoManRuleService.rejectTicket(
-      body.tenantId,
-      body.ticketId,
-      body.rejectorId,
-      body.rejectionReason,
-    );
-  }
-
-  @UseGuards(InternalAuthGuard)
-  @Get('api/v1/action/approvals/two-man/:ticketId')
-  getTwoManTicket(
-    @Param('ticketId') ticketId: string,
-    @Query('tenantId') tenantId: string,
-  ) {
-    return this.twoManRuleService.getTicket(tenantId, ticketId);
   }
 
   // --- Distributed Action Lock & Idempotency Endpoints ---

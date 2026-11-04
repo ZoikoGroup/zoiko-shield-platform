@@ -60,6 +60,47 @@ describe('ShieldAction Application Endpoints (e2e)', () => {
           status: 'COMPLETED',
         }),
       },
+      dualCustodyQuorum: (() => {
+        const rows = new Map<string, any>();
+        const key = (t: string, q: string) => `${t}:${q}`;
+        const matches = (row: any, where: any) =>
+          Object.entries(where).every(([field, cond]: [string, any]) =>
+            cond && typeof cond === 'object' && !(cond instanceof Date)
+              ? 'gt' in cond
+                ? row[field] > cond.gt
+                : cond.in.includes(row[field])
+              : row[field] === cond,
+          );
+        return {
+          create: jest.fn(async ({ data }: any) => {
+            const row = {
+              id: 'dcq',
+              secondary_approver: null,
+              quorum_signature: null,
+              finalized_at: null,
+              consumed_at: null,
+              ...data,
+            };
+            rows.set(key(data.tenant_id, data.quorum_id), row);
+            return { ...row };
+          }),
+          findUnique: jest.fn(async ({ where }: any) => {
+            const { tenant_id, quorum_id } = where.tenant_id_quorum_id;
+            const row = rows.get(key(tenant_id, quorum_id));
+            return row ? { ...row } : null;
+          }),
+          updateMany: jest.fn(async ({ where, data }: any) => {
+            let count = 0;
+            for (const row of rows.values()) {
+              if (matches(row, where)) {
+                Object.assign(row, data);
+                count++;
+              }
+            }
+            return { count };
+          }),
+        };
+      })(),
       freeze: {
         create: jest.fn().mockResolvedValue({
           id: 'frz-1',
@@ -189,36 +230,55 @@ describe('ShieldAction Application Endpoints (e2e)', () => {
     expect(res.body).toBeDefined();
   });
 
-  it('6. POST /api/v1/action/approvals/two-man/submit & approve (Dual custody quorum)', async () => {
-    const submitRes = await request(app.getHttpServer())
-      .post('/api/v1/action/approvals/two-man/submit')
+  it('6. POST /api/v1/action/dual-custody/initiate & approve (persisted dual custody quorum)', async () => {
+    const initiator = {
+      userId: 'analyst-alpha',
+      fullName: 'Analyst Alpha',
+      role: 'SECURITY_OPERATIONS_LEAD',
+      fido2WebAuthnSignature: 'webauthn-proof-alpha',
+      signedAt: new Date().toISOString(),
+    };
+    const initRes = await request(app.getHttpServer())
+      .post('/api/v1/action/dual-custody/initiate')
       .set(getHeaders())
       .send({
         tenantId,
-        initiatorId: 'analyst-alpha',
+        environmentId: 'prod',
+        caseId: 'case-two-man-1',
         proposalId: 'prop-two-man-1',
         actionType: 'REVOKE_IAM_SESSION',
         targetResource: 'arn:aws:iam::123456789012:role/Admin',
         authorityLevel: 'R2',
-        rationale: 'Privileged identity compromise containment',
-        ttlMinutes: 30,
+        blastRadiusScore: 0.2,
+        reversibilityTier: 'R1',
+        compensatingCommand: 'RESTORE_IAM_SESSION',
+        initiator,
       })
       .expect(201);
+    expect(initRes.body.status).toBe('PENDING_SECOND_SIGNATURE');
 
-    const ticketId =
-      submitRes.body.ticketId || submitRes.body.id || 'ticket-123';
-
-    await request(app.getHttpServer())
-      .post('/api/v1/action/approvals/two-man/approve')
+    const approveRes = await request(app.getHttpServer())
+      .post('/api/v1/action/dual-custody/approve')
       .set(getHeaders())
       .send({
         tenantId,
-        ticketId,
-        approverId: 'senior-lead-beta',
-        approvalNotes: 'Validated with incident commander',
-        fido2MfaToken: 'webauthn-proof-pass',
+        quorumId: initRes.body.quorumId,
+        approver: {
+          ...initiator,
+          userId: 'senior-lead-beta',
+          fullName: 'Senior Lead Beta',
+        },
       })
       .expect(201);
+    expect(approveRes.body.status).toBe('QUORUM_REACHED');
+  });
+
+  it('6b. the retired in-memory two-man endpoints are gone', async () => {
+    await request(app.getHttpServer())
+      .post('/api/v1/action/approvals/two-man/submit')
+      .set(getHeaders())
+      .send({ tenantId })
+      .expect(404);
   });
 
   it('7. POST /api/v1/action/locks/acquire & release (Distributed action concurrency lock)', async () => {
