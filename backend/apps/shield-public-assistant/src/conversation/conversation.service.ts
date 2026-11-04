@@ -491,7 +491,7 @@ export class ConversationService {
     if (/\b(trust|compliance|certif|soc 2|iso|gdpr|security programme)\b/.test(text)) {
       return { type: 'link', href: routes.WEB_TRUST.href, label: routes.WEB_TRUST.label };
     }
-    if (/\b(integration|connector|siem|telemetry source)\b/.test(text)) {
+    if (/\b(integrations?|connectors?|siem|telemetry sources?)\b/.test(text)) {
       return { type: 'link', href: routes.WEB_INTEGRATIONS.href, label: routes.WEB_INTEGRATIONS.label };
     }
     return undefined;
