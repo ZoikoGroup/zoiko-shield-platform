@@ -137,6 +137,17 @@ function LoginForm() {
     setIsLoading(true);
     setError(null);
     setNeedsStepUp(false);
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail)) {
+      setError("Please enter a valid work email address.");
+      setIsLoading(false);
+      return;
+    }
+    if (!password) {
+      setError("Please enter your password.");
+      setIsLoading(false);
+      return;
+    }
     try {
       const authResult = await ZoikoShieldApiClient.login(email, password);
       writeRememberedEmail(rememberMe ? email.trim() : null);
@@ -163,13 +174,11 @@ function LoginForm() {
           ? redirectTarget
           : authResult.role === "SUPER_ADMIN"
             ? "/admin"
-            : email.toLowerCase().startsWith("admin@")
-              ? "/admin/tenant"
-              : email.toLowerCase().startsWith("ciso@") ||
-                  email.toLowerCase().startsWith("customer@") ||
-                  email.toLowerCase().startsWith("owner@")
-                ? "/customer/dashboard"
-                : redirectTarget;
+            : authResult.role === "AUDITOR"
+              ? "/auditor"
+              : email.toLowerCase().startsWith("admin@")
+                ? "/admin/tenant"
+                : "/customer/dashboard";
       window.location.href = resolvedTarget;
     } catch (err: any) {
       const msg = err.message || "Authentication failed";
@@ -238,13 +247,11 @@ function LoginForm() {
           ? redirectTarget
           : authResult.role === "SUPER_ADMIN"
             ? "/admin"
-            : targetEmail.toLowerCase().startsWith("admin@")
-              ? "/admin/tenant"
-              : targetEmail.toLowerCase().startsWith("ciso@") ||
-                  targetEmail.toLowerCase().startsWith("customer@") ||
-                  targetEmail.toLowerCase().startsWith("owner@")
-                ? "/customer/dashboard"
-                : redirectTarget;
+            : authResult.role === "AUDITOR"
+              ? "/auditor"
+              : targetEmail.toLowerCase().startsWith("admin@")
+                ? "/admin/tenant"
+                : "/customer/dashboard";
       window.location.href = resolvedTarget;
     } catch (err: any) {
       console.warn("Passkey sign-in error:", err);
@@ -590,85 +597,6 @@ function LoginForm() {
         </button>
       </form>
 
-      <div className="mt-5 pt-4 border-t border-[#e2e8f0] space-y-2.5">
-        <div className="text-[11px] font-semibold uppercase tracking-wider text-[#64748b] text-center">
-          Separated Role Dashboards (Quick Launch)
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-          <button
-            type="button"
-            onClick={() => {
-              document.cookie = "zoiko_auth=true; path=/";
-              setDemoState((prev) => ({
-                ...prev,
-                session: {
-                  ...prev.session,
-                  email: "jane.doe@acmeglobal.com",
-                  fullName: "Jane Doe",
-                  role: "TENANT_OWNER",
-                  isAuthenticated: true,
-                },
-                tenant: {
-                  ...prev.tenant,
-                  organizationName: "Acme Global Ltd",
-                  homeRegion: "eu-west-1",
-                  dataResidencyRegion: "eu-west-1",
-                },
-              }));
-              window.location.href = "/customer/dashboard";
-            }}
-            className="px-2.5 py-2 rounded-xl border border-[#fecaca] bg-[#fef2f2] hover:bg-[#fee2e2] text-[11px] font-semibold text-[#991b1b] text-center transition-colors"
-          >
-            Customer Dashboard
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              document.cookie = "zoiko_auth=true; path=/";
-              setDemoState((prev) => ({
-                ...prev,
-                session: {
-                  ...prev.session,
-                  email: "admin@acmeglobal.com",
-                  fullName: "Tenant Administrator",
-                  role: "TENANT_OWNER",
-                  isAuthenticated: true,
-                },
-                tenant: {
-                  ...prev.tenant,
-                  organizationName: "Acme Global Ltd",
-                  homeRegion: "eu-west-1",
-                  dataResidencyRegion: "eu-west-1",
-                },
-              }));
-              window.location.href = "/admin/tenant";
-            }}
-            className="px-2.5 py-2 rounded-xl border border-[#bae6fd] bg-[#f0f9ff] hover:bg-[#e0f2fe] text-[11px] font-semibold text-[#075985] text-center transition-colors"
-          >
-            Admin Dashboard
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              document.cookie = "zoiko_auth=true; path=/";
-              setDemoState((prev) => ({
-                ...prev,
-                session: {
-                  ...prev.session,
-                  email: "superadmin@zoikoshield.com",
-                  fullName: "Platform Super Admin",
-                  role: "SUPER_ADMIN",
-                  isAuthenticated: true,
-                },
-              }));
-              window.location.href = "/admin";
-            }}
-            className="px-2.5 py-2 rounded-xl border border-[#fde68a] bg-[#fffbeb] hover:bg-[#fef3c7] text-[11px] font-semibold text-[#92400e] text-center transition-colors"
-          >
-            Super Admin
-          </button>
-        </div>
-      </div>
 
       <p className="mt-4 text-center text-[13px] text-[#334155]">
         New to Zoiko Shield?{" "}

@@ -32,88 +32,95 @@ export const CUSTOMER_PRIMARY_NAV: CustomerNavItem[] = [
     label: "Command Center",
     href: "/customer/dashboard",
     icon: LayoutGrid,
-    matchPaths: ["/customer/dashboard", "/"],
+    matchPaths: ["/customer/dashboard", "/customer", "/"],
   },
   {
     label: "Security Overview",
-    href: "/risk/executive",
+    href: "/customer/security-overview",
     icon: ShieldAlert,
-    matchPaths: ["/risk/executive"],
+    matchPaths: ["/customer/security-overview", "/risk/executive"],
   },
   {
     label: "Threats & Incidents",
-    href: "/alerts",
+    href: "/customer/threats-incidents",
     icon: BellRing,
-    matchPaths: ["/alerts", "/incident-command"],
+    matchPaths: ["/customer/threats-incidents", "/alerts", "/incident-command"],
   },
   {
     label: "Exposure Management",
-    href: "/risk",
+    href: "/customer/exposure-management",
     icon: Shield,
-    matchPaths: ["/risk"],
+    matchPaths: ["/customer/exposure-management", "/risk"],
   },
   {
     label: "Assets & Inventory",
-    href: "/assets",
+    href: "/customer/assets-inventory",
     icon: Server,
-    matchPaths: ["/assets"],
+    matchPaths: ["/customer/assets-inventory", "/assets"],
   },
   {
     label: "Vulnerabilities",
-    href: "/assessments",
+    href: "/customer/vulnerabilities",
     icon: ShieldCheck,
-    matchPaths: ["/assessments", "/red-team"],
+    matchPaths: ["/customer/vulnerabilities", "/assessments", "/red-team"],
   },
   {
     label: "Detection & Response",
-    href: "/cases",
+    href: "/customer/detection-response",
     icon: Crosshair,
-    matchPaths: ["/cases", "/hunting", "/response-proposals", "/actions", "/copilot"],
+    matchPaths: [
+      "/customer/detection-response",
+      "/cases",
+      "/hunting",
+      "/response-proposals",
+      "/actions",
+      "/copilot",
+    ],
   },
   {
     label: "Identity & Access",
-    href: "/team",
+    href: "/customer/identity-access",
     icon: UserCheck,
-    matchPaths: ["/team"],
+    matchPaths: ["/customer/identity-access", "/team"],
   },
   {
     label: "Data Security",
-    href: "/evidence-operations",
+    href: "/customer/data-security",
     icon: FileLock2,
-    matchPaths: ["/evidence-operations", "/ledger"],
+    matchPaths: ["/customer/data-security", "/evidence-operations", "/ledger"],
   },
   {
     label: "Cloud Security",
-    href: "/ingestion",
+    href: "/customer/cloud-security",
     icon: Cloud,
-    matchPaths: ["/ingestion"],
+    matchPaths: ["/customer/cloud-security", "/ingestion"],
   },
   {
     label: "Compliance & Risk",
-    href: "/compliance",
+    href: "/customer/compliance-risk",
     icon: ClipboardCheck,
-    matchPaths: ["/compliance", "/controls", "/trust"],
+    matchPaths: ["/customer/compliance-risk", "/compliance", "/controls", "/trust"],
   },
   {
     label: "Reports & Analytics",
-    href: "/audit",
+    href: "/customer/reports-analytics",
     icon: PieChart,
-    matchPaths: ["/audit"],
+    matchPaths: ["/customer/reports-analytics", "/audit"],
   },
 ];
 
 export const CUSTOMER_FOOTER_NAV: CustomerNavItem[] = [
   {
     label: "Integrations",
-    href: "/connectors",
+    href: "/customer/integrations",
     icon: Share2,
-    matchPaths: ["/connectors"],
+    matchPaths: ["/customer/integrations", "/connectors"],
   },
   {
     label: "Settings",
-    href: "/settings",
+    href: "/customer/settings",
     icon: Settings,
-    matchPaths: ["/settings"],
+    matchPaths: ["/customer/settings", "/settings"],
   },
 ];
 
@@ -191,11 +198,15 @@ export function CustomerSidebar() {
                 href={item.href}
                 className={`flex items-center gap-3 px-3.5 py-2 rounded-lg text-[13px] font-medium transition-all ${
                   active
-                    ? "bg-slate-800 text-white border border-slate-700"
-                    : "text-slate-300/85 hover:text-white hover:bg-slate-800/50"
+                    ? "bg-gradient-to-r from-[#b91c1c] via-[#991b1b] to-[#7f1d1d]/80 text-white shadow-[0_0_18px_rgba(220,38,38,0.35)] border border-red-500/40"
+                    : "text-slate-300/85 hover:text-white hover:bg-slate-800/50 border border-transparent"
                 }`}
               >
-                <Icon className="w-4 h-4 text-slate-400 shrink-0" />
+                <Icon
+                  className={`w-4 h-4 shrink-0 ${
+                    active ? "text-white" : "text-slate-400"
+                  }`}
+                />
                 <span>{item.label}</span>
               </Link>
             );

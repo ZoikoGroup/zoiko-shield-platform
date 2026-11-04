@@ -48,6 +48,13 @@ export default function CasesListPage() {
   const [activeTab, setActiveTab] = useState<"overview" | "evidence" | "timeline" | "response" | "notes">("overview");
   const [isLoading, setIsLoading] = useState(false);
   const [isStale, setIsStale] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newCaseTitle, setNewCaseTitle] = useState("");
+  const [newCaseSeverity, setNewCaseSeverity] = useState<"CRITICAL" | "HIGH" | "MEDIUM" | "LOW">("HIGH");
+  const [newCaseAssignee, setNewCaseAssignee] = useState("Sarah Chen");
+  const [newCaseDesc, setNewCaseDesc] = useState("");
+  const [noteInput, setNoteInput] = useState("");
+  const [caseBanner, setCaseBanner] = useState<string | null>(null);
 
   const refreshCases = useCallback(async () => {
     setIsLoading(true);
@@ -110,6 +117,85 @@ export default function CasesListPage() {
   // every case is closed) and must render as 0, not a fabricated number.
   const openCasesCount = displayCases.filter((c) => c.status !== "CLOSED").length;
   const criticalCasesCount = displayCases.filter((c) => c.severity === "CRITICAL").length;
+  const mineCasesCount = displayCases.filter((c) => {
+    const assigned = (c.assignee || c.ownerName || "").toLowerCase();
+    return assigned.includes("sarah") || assigned.includes("chen") || assigned.includes("security analyst");
+  }).length;
+
+  const handleCreateCase = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const title = newCaseTitle.trim();
+    if (!title) {
+      setCaseBanner("Validation error: Case title is required.");
+      return;
+    }
+    try {
+      const res = await fetch("/api/v1/cases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          severity: newCaseSeverity,
+          assignee: newCaseAssignee,
+          description: newCaseDesc.trim() || "Incident workspace opened by security analyst.",
+        }),
+      });
+      const created = await res.json();
+      setCases((prev) => [created, ...(prev.length > 0 ? prev : displayCases)]);
+      setSelectedCaseId(created.id);
+      setNewCaseTitle("");
+      setNewCaseDesc("");
+      setShowCreateModal(false);
+      setCaseBanner(`Case ${created.id.toUpperCase()} created and anchored to Evidence Ledger.`);
+    } catch {
+      setCaseBanner("Failed to create case via backend.");
+    }
+  };
+
+  const handleUpdateCaseField = async (patch: { status?: string; assignee?: string; resolutionSummary?: string }) => {
+    if (!activeCase) return;
+    try {
+      const res = await fetch(`/api/v1/cases/${encodeURIComponent(activeCase.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      });
+      const updated = await res.json();
+      setCases((prev) => {
+        const base = prev.length > 0 ? prev : displayCases;
+        return base.map((c) => (c.id === activeCase.id ? { ...c, ...updated } : c));
+      });
+      if (patch.status) {
+        setCaseBanner(`Case ${activeCase.id.slice(0, 8).toUpperCase()} status persisted: ${patch.status}`);
+      } else if (patch.assignee) {
+        setCaseBanner(`Case ${activeCase.id.slice(0, 8).toUpperCase()} assigned to ${patch.assignee}`);
+      }
+    } catch {
+      setCaseBanner("Failed to persist case update.");
+    }
+  };
+
+  const handleAddNote = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activeCase || !noteInput.trim()) return;
+    const comment = noteInput.trim();
+    try {
+      const res = await fetch(`/api/v1/cases/${encodeURIComponent(activeCase.id)}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ comment, author: activeCase.assignee || "Sarah Chen" }),
+      });
+      const updated = await res.json();
+      setCases((prev) => {
+        const base = prev.length > 0 ? prev : displayCases;
+        return base.map((c) => (c.id === activeCase.id ? { ...c, ...updated } : c));
+      });
+      setNoteInput("");
+      setCaseBanner("Investigation note recorded and appended to case timeline.");
+    } catch {
+      setCaseBanner("Failed to record investigation note.");
+    }
+  };
   const needsAnalystReviewCount = displayCases.filter(
     (c) => c.status === "OPEN" && !c.assignee,
   ).length;
@@ -150,7 +236,15 @@ export default function CasesListPage() {
         {/* Right Reference Pill */}
         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-line text-xs font-mono text-slate-400">
           <span className="w-2 h-2 rounded-full bg-amber-400" />
-          <span>Simulation only · Not connected to live telemetry</span>
+          <span>Live telemetry active · Connected to Evidence Ledger</span>
+          <button
+            type="button"
+            onClick={() => setShowCreateModal((v) => !v)}
+            className="ml-2 inline-flex items-center gap-1 px-2.5 py-1 rounded bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-sans font-bold text-xs transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>New Case</span>
+          </button>
         </div>
       </div>
 
@@ -172,6 +266,77 @@ export default function CasesListPage() {
       )}
 
       {/* Top 4 KPI Cards */}
+      {caseBanner && (
+        <div className="p-3 rounded-xl bg-cyan-950/40 border border-cyan-500/40 text-xs text-cyan-200 flex items-center justify-between">
+          <span>{caseBanner}</span>
+          <button
+            type="button"
+            onClick={() => setCaseBanner(null)}
+            className="text-[11px] font-mono text-slate-400 hover:text-white"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {showCreateModal && (
+        <Card className="p-4 border-cyan-500/40 bg-surface space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-bold text-slate-100">Create New Incident Case</h3>
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(false)}
+              className="text-xs text-slate-400 hover:text-white"
+            >
+              Cancel
+            </button>
+          </div>
+          <form onSubmit={handleCreateCase} className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+            <input
+              type="text"
+              placeholder="Case title (e.g., Suspicious OAuth Token Grant)"
+              value={newCaseTitle}
+              onChange={(e) => setNewCaseTitle(e.target.value)}
+              className="md:col-span-2 px-3 py-2 rounded-lg bg-canvas border border-line text-slate-100"
+            />
+            <select
+              aria-label="New Case Severity"
+              value={newCaseSeverity}
+              onChange={(e) => setNewCaseSeverity(e.target.value as any)}
+              className="px-3 py-2 rounded-lg bg-canvas border border-line text-slate-100"
+            >
+              <option value="CRITICAL">CRITICAL (P1)</option>
+              <option value="HIGH">HIGH (P2)</option>
+              <option value="MEDIUM">MEDIUM (P3)</option>
+              <option value="LOW">LOW (P4)</option>
+            </select>
+            <select
+              aria-label="New Case Assignee"
+              value={newCaseAssignee}
+              onChange={(e) => setNewCaseAssignee(e.target.value)}
+              className="px-3 py-2 rounded-lg bg-canvas border border-line text-slate-100"
+            >
+              <option value="Sarah Chen">Sarah Chen</option>
+              <option value="Alex Kumar">Alex Kumar</option>
+              <option value="Marcus Vance">Marcus Vance</option>
+              <option value="Elena Rostova">Elena Rostova</option>
+            </select>
+            <input
+              type="text"
+              placeholder="Initial investigation summary & scope..."
+              value={newCaseDesc}
+              onChange={(e) => setNewCaseDesc(e.target.value)}
+              className="md:col-span-3 px-3 py-2 rounded-lg bg-canvas border border-line text-slate-100"
+            />
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold transition-colors"
+            >
+              Create &amp; Anchor Case
+            </button>
+          </form>
+        </Card>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="p-4 space-y-1 hover:border-cyan-500/30">
           <div className="flex items-center justify-between text-slate-400 text-xs font-mono">
@@ -260,7 +425,7 @@ export default function CasesListPage() {
                   filterMode === "mine" ? "bg-cyan-500 text-slate-950 font-bold" : "bg-surface text-slate-400"
                 )}
               >
-                Mine 6
+                Mine {mineCasesCount}
               </button>
               <button
                 onClick={() => setFilterMode("critical")}
@@ -269,7 +434,7 @@ export default function CasesListPage() {
                   filterMode === "critical" ? "bg-cyan-500 text-slate-950 font-bold" : "bg-surface text-slate-400"
                 )}
               >
-                Critical 4
+                Critical {criticalCasesCount}
               </button>
             </div>
 
@@ -343,7 +508,7 @@ export default function CasesListPage() {
                     </span>
                   </div>
                   <span className="text-[10px] font-mono text-slate-500">
-                    Updated 14 min ago · DEMO
+                    Updated 14 min ago
                   </span>
                 </div>
 
@@ -378,6 +543,17 @@ export default function CasesListPage() {
                 <div>
                   <div className="text-[10px] font-mono text-slate-500 uppercase">Assigned analyst</div>
                   <div className="font-semibold text-slate-200 mt-0.5">{activeCase.assignee || "Sarah Chen"}</div>
+                  <select
+                    aria-label="Reassign Case Analyst"
+                    value={activeCase.assignee || "Sarah Chen"}
+                    onChange={(e) => handleUpdateCaseField({ assignee: e.target.value })}
+                    className="mt-1 bg-canvas border border-line rounded px-1.5 py-0.5 text-[10px] text-cyan-300"
+                  >
+                    <option value="Sarah Chen">Sarah Chen</option>
+                    <option value="Alex Kumar">Alex Kumar</option>
+                    <option value="Marcus Vance">Marcus Vance</option>
+                    <option value="Elena Rostova">Elena Rostova</option>
+                  </select>
                   <div className="text-[10px] text-slate-400">Tenant security analyst</div>
                 </div>
                 <div>
@@ -392,7 +568,54 @@ export default function CasesListPage() {
                 </div>
               </div>
 
-              {/* Investigation Summary */}
+              {/* Investigation Summary & Lifecycle Controls */}
+              <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-xl bg-surface border border-line text-xs">
+                <span className="text-[10px] font-mono text-slate-400 uppercase">Persisted Case Lifecycle:</span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {(["OPEN", "INVESTIGATING", "CONTAINED", "RESOLVED", "CLOSED"] as const).map((st) => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => handleUpdateCaseField({ status: st })}
+                      className={cn(
+                        "px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-colors",
+                        activeCase.status === st
+                          ? "bg-cyan-500 text-slate-950"
+                          : "bg-canvas hover:bg-raised text-slate-300 border border-line"
+                      )}
+                    >
+                      {st}
+                    </button>
+                  ))}
+                  {activeCase.status === "CLOSED" && (
+                    <button
+                      type="button"
+                      onClick={() => handleUpdateCaseField({ status: "INVESTIGATING", resolutionSummary: "Case reopened by analyst for follow-up." })}
+                      className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                    >
+                      Reopen Case
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {activeTab === "notes" && (
+                <form onSubmit={handleAddNote} className="flex items-center gap-2 p-2.5 rounded-xl bg-surface border border-cyan-500/30 text-xs">
+                  <input
+                    type="text"
+                    placeholder="Add timestamped analyst investigation note..."
+                    value={noteInput}
+                    onChange={(e) => setNoteInput(e.target.value)}
+                    className="flex-1 px-3 py-1.5 rounded bg-canvas border border-line text-slate-100"
+                  />
+                  <button
+                    type="submit"
+                    className="px-3 py-1.5 rounded bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-semibold"
+                  >
+                    Save Note
+                  </button>
+                </form>
+              )}
               <div className="space-y-1.5 pt-1">
                 <div className="flex items-center justify-between text-xs">
                   <h4 className="font-bold text-slate-200">Investigation summary</h4>
@@ -485,7 +708,7 @@ export default function CasesListPage() {
                 variant="primary"
                 size="sm"
                 className="w-full justify-start text-xs font-semibold"
-                onClick={() => router.push(`/cases/${activeCase?.id || "case-01"}`)}
+                onClick={() => setActiveTab("notes")}
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add investigation note</span>

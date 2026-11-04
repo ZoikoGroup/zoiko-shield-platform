@@ -1075,7 +1075,7 @@ export default function CopilotPage() {
             href="/ai-governance"
             className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600/30 to-cyan-600/30 border border-purple-500/40 text-purple-300 hover:text-white hover:border-purple-400 text-xs font-mono font-bold transition-all shadow-[0_0_12px_rgba(168,85,247,0.2)] shrink-0"
           >
-            <span>AI Governance (Step 7)</span>
+            <span>AI Governance</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>

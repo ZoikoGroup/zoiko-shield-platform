@@ -209,6 +209,27 @@ export default function NotificationsPage() {
 
   if (isLoading) return <LoadingState message="Loading notifications…" />;
 
+  const acknowledgeAll = async () => {
+    setError(null);
+    try {
+      await backend.post("/api/v1/notifications/mark-all-read", {});
+      setItems((prev) => prev.map((item) => ({ ...item, status: "ACKNOWLEDGED" })));
+      try {
+        const localDispatched = JSON.parse(localStorage.getItem("zoiko_dispatched_emails") || "[]");
+        if (Array.isArray(localDispatched)) {
+          localStorage.setItem(
+            "zoiko_dispatched_emails",
+            JSON.stringify(localDispatched.map((d: any) => ({ ...d, status: "ACKNOWLEDGED" })))
+          );
+        }
+      } catch {}
+    } catch (err) {
+      setError(
+        `Mark all as read failed: ${err instanceof BackendError ? err.message : String(err)}`
+      );
+    }
+  };
+
   const undelivered = items.filter(
     (i) => i.status === "FAILED" || i.status === "DEAD_LETTERED",
   );
@@ -241,9 +262,13 @@ export default function NotificationsPage() {
           <Link href="/admin/email-templates">
             <Button variant="outline" className="text-xs flex items-center gap-1.5 border-cyan-500/40 text-cyan-400 hover:bg-cyan-500/10 font-mono font-bold">
               <Mail className="w-4 h-4 text-cyan-400" />
-              <span>Template Studio (Step 16 Finale) →</span>
+              <span>Email Template Studio →</span>
             </Button>
           </Link>
+          <Button variant="secondary" onClick={() => void acknowledgeAll()}>
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <span>Mark All Read</span>
+          </Button>
           <Button variant="ghost" onClick={() => void load()}>
             <RefreshCw className="w-4 h-4" />
             <span>Refresh</span>

@@ -1312,6 +1312,18 @@ async function buildOfflineResponse(
         plainTextBody: "ZoikoShield Security Notification\nLive preview rendered.",
       });
     }
+    if (path.includes("/mark-all-read") || path.includes("/acknowledge-all")) {
+      const now = new Date().toISOString();
+      inMemoryDeliveries.forEach((d) => {
+        d.status = "ACKNOWLEDGED";
+      });
+      return NextResponse.json({
+        success: true,
+        status: "ACKNOWLEDGED",
+        acknowledgedCount: inMemoryDeliveries.length,
+        acknowledgedAt: now,
+      });
+    }
     if (path.includes("/acknowledge")) {
       const parts = path.split("/");
       const notifId = parts[1];
@@ -2055,7 +2067,19 @@ async function buildOfflineResponse(
   // 6. Notifications & Email Dispatch Studio
   if (path.startsWith("notifications")) {
     if (path === "notifications" && method === "GET") {
-      if (path.includes("/acknowledge")) {
+      if (path.includes("/mark-all-read") || path.includes("/acknowledge-all")) {
+      const now = new Date().toISOString();
+      inMemoryDeliveries.forEach((d) => {
+        d.status = "ACKNOWLEDGED";
+      });
+      return NextResponse.json({
+        success: true,
+        status: "ACKNOWLEDGED",
+        acknowledgedCount: inMemoryDeliveries.length,
+        acknowledgedAt: now,
+      });
+    }
+    if (path.includes("/acknowledge")) {
       const parts = path.split("/");
       const notifId = parts[1];
       const found = inMemoryDeliveries.find((d) => d.id === notifId);
@@ -2293,6 +2317,21 @@ async function buildOfflineResponse(
       });
     }
 
+    if (path.endsWith("/status") || path.endsWith("/triage")) {
+      let body: any = {};
+      try { body = JSON.parse(rawBodyText || "{}"); } catch {}
+      const parts = path.split("/");
+      const alertId = parts[1] || "alt-lateral-movement-01";
+      const nextStatus = body.status || "TRIAGED";
+      return NextResponse.json({
+        success: true,
+        id: alertId,
+        alertId,
+        status: nextStatus,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
     if (path.includes("/create-case") || path.includes("/promote")) {
       const alertId = path.split("/")[1] || "alt-lateral-movement-01";
       return NextResponse.json({
@@ -2520,7 +2559,111 @@ async function buildOfflineResponse(
       },
     };
 
+    const g = globalThis as any;
+    if (!g.__zoikoInMemoryCases) {
+      g.__zoikoInMemoryCases = [caseItem];
+    }
+    const casesStore: any[] = g.__zoikoInMemoryCases;
+
+    if (method === "POST" && (path === "cases" || path === "cases/")) {
+      let body: any = {};
+      try { body = JSON.parse(rawBodyText || "{}"); } catch {}
+      const newCaseId = `case-2026-${crypto.randomBytes(3).toString("hex")}`;
+      const nowIso = new Date().toISOString();
+      const createdCase = {
+        ...caseItem,
+        id: newCaseId,
+        title: body.title || "Investigation: Escalated Security Incident",
+        severity: body.severity || "HIGH",
+        status: "OPEN",
+        ownerName: body.assignee || body.ownerName || "Sarah Chen",
+        assignee: body.assignee || body.ownerName || "Sarah Chen",
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        timeline: [
+          {
+            id: `tl-${Date.now().toString(36)}`,
+            timestamp: nowIso,
+            title: "Case Created & Anchored",
+            description: body.description || "Incident workspace opened by security analyst.",
+            actor: body.assignee || "Sarah Chen",
+            type: "CASE_OPENED",
+          },
+        ],
+      };
+      casesStore.unshift(createdCase);
+      return NextResponse.json(createdCase);
+    }
+
+    if (method === "PATCH" || (method === "POST" && path.split("/").length > 1)) {
+      let body: any = {};
+      try { body = JSON.parse(rawBodyText || "{}"); } catch {}
+      const targetId = path.split("/")[1];
+      const match = casesStore.find((c) => c.id === targetId) || casesStore[0] || caseItem;
+      const nowIso = new Date().toISOString();
+      if (path.endsWith("/comments") || path.endsWith("/notes")) {
+        const noteText = body.comment || body.note || body.content || "Analyst investigation note recorded.";
+        const actor = body.author || body.actor || match.ownerName || "Sarah Chen";
+        match.timeline = [
+          {
+            id: `tl-note-${Date.now().toString(36)}`,
+            timestamp: nowIso,
+            title: "Analyst Investigation Note Added",
+            description: noteText,
+            actor,
+            type: "EVIDENCE_RECORDED",
+          },
+          ...(match.timeline || []),
+        ];
+        match.updatedAt = nowIso;
+        return NextResponse.json(match);
+      }
+      if (body.status) {
+        const prevStatus = match.status;
+        match.status = body.status;
+        match.timeline = [
+          {
+            id: `tl-st-${Date.now().toString(36)}`,
+            timestamp: nowIso,
+            title: body.status === "REOPENED" || (prevStatus === "CLOSED" && body.status === "INVESTIGATING")
+              ? `Case Reopened (${prevStatus} → ${body.status})`
+              : `Case Status Transition (${prevStatus} → ${body.status})`,
+            description: body.resolutionSummary || `Status updated to ${body.status} with cryptographic audit trail.`,
+            actor: body.actor || match.ownerName || "Sarah Chen",
+            type: "CASE_OPENED",
+          },
+          ...(match.timeline || []),
+        ];
+      }
+      if (body.assignee || body.ownerName) {
+        const nextOwner = body.assignee || body.ownerName;
+        match.assignee = nextOwner;
+        match.ownerName = nextOwner;
+        match.timeline = [
+          {
+            id: `tl-asg-${Date.now().toString(36)}`,
+            timestamp: nowIso,
+            title: `Case Assigned to ${nextOwner}`,
+            description: `Incident ownership transferred to ${nextOwner}.`,
+            actor: nextOwner,
+            type: "CASE_OPENED",
+          },
+          ...(match.timeline || []),
+        ];
+      }
+      if (body.severity) {
+        match.severity = body.severity;
+      }
+      match.updatedAt = nowIso;
+      return NextResponse.json(match);
+    }
+
     if (path.split("/").length > 1 && path.split("/")[1] !== "") {
+      const targetId = path.split("/")[1];
+      return NextResponse.json(casesStore.find((c) => c.id === targetId) || casesStore[0] || caseItem);
+    }
+    return NextResponse.json(casesStore);
+    if (false && path.split("/").length > 1 && path.split("/")[1] !== "") {
       return NextResponse.json(caseItem);
     }
     return NextResponse.json([caseItem]);
@@ -3584,6 +3727,193 @@ async function buildOfflineResponse(
         },
       ],
     });
+  }
+
+  // 24B. Customer Workspace & Asset Inventory Stateful APIs (/api/v1/customer/*)
+  const slug = path.split("/");
+  let body: Record<string, any> = {};
+  try {
+    body = rawBodyText ? JSON.parse(rawBodyText) : {};
+  } catch {}
+  const gCustomer = globalThis as any;
+  if (!gCustomer.__zoiko_customer_state) {
+    gCustomer.__zoiko_customer_state = {
+      remediations: [
+        { id: "rem-1", action: "Patch exposed services", owner: "Infrastructure", due: "Today", status: "Open" },
+        { id: "rem-2", action: "Restore critical-system monitoring", owner: "Platform team", due: "Today", status: "In progress" },
+        { id: "rem-3", action: "Enforce privileged MFA", owner: "Identity team", due: "Nov 6", status: "Open" },
+      ],
+      exposures: [
+        {
+          id: "EXP-104",
+          title: "Exposed remote access",
+          severity: "Critical",
+          assets: 5,
+          owner: "Infrastructure",
+          due: "Overdue 1d",
+          status: "In progress",
+          reasons: ["Internet reachable", "5 production servers affected", "Privileged access is exposed"],
+          recommendation: "Restrict remote access to approved networks and require MFA.",
+        },
+        {
+          id: "EXP-108",
+          title: "Public data access",
+          severity: "Critical",
+          assets: 4,
+          owner: "Cloud team",
+          due: "Today",
+          status: "Open",
+          reasons: ["Public read ACL detected on 4 cloud storage buckets", "Contains confidential classification tags"],
+          recommendation: "Disable public bucket access policies and enforce organization-level block public access.",
+        },
+        {
+          id: "EXP-112",
+          title: "Exposed admin interface",
+          severity: "Critical",
+          assets: 3,
+          owner: "Platform team",
+          due: "Nov 5",
+          status: "Open",
+          reasons: ["Management plane reachable without zero-trust proxy", "3 production workloads affected"],
+          recommendation: "Place administrative interfaces behind private network ingress and identity-aware proxy.",
+        },
+      ],
+      assets: [
+        { name: "PAY-DB-01", code: "AST-0042", type: "Server", owner: "Infrastructure", criticality: "Critical", protection: "Gap", lastSeen: "2 min ago" },
+        { name: "FIN-LT-204", code: "AST-0204", type: "Endpoint", owner: "Finance IT", criticality: "High", protection: "Protected", lastSeen: "1 min ago" },
+        { name: "API-PROD-07", code: "AST-0707", type: "Cloud workload", owner: "Platform team", criticality: "Critical", protection: "Protected", lastSeen: "3 min ago" },
+        { name: "EDGE-FW-02", code: "AST-0902", type: "Network device", owner: "Network team", criticality: "High", protection: "Protected", lastSeen: "1 min ago" },
+        { name: "ENG-LT-118", code: "AST-0118", type: "Endpoint", owner: "Unassigned", criticality: "Standard", protection: "Gap", lastSeen: "8 min ago" },
+      ],
+      vulnerabilities: [
+        { cve: "CVE-2026-21480", title: "Remote Code Execution in Edge VPN Gateway", severity: "Critical", cvss: "9.8", affectedAssets: 3, patchSla: "Due Today", status: "Patching" },
+        { cve: "CVE-2026-19842", title: "Privilege Escalation in Linux Kernel Netfilter", severity: "High", cvss: "8.4", affectedAssets: 14, patchSla: "Due Nov 7", status: "Open" },
+        { cve: "CVE-2026-17205", title: "TLS Session Ticket Memory Disclosure", severity: "High", cvss: "7.8", affectedAssets: 8, patchSla: "Due Nov 10", status: "Open" },
+      ],
+      settings: {
+        organization: "Acme Global Ltd",
+        workspaceId: "acme-global-prod",
+        primaryRegion: "EU (Ireland)",
+        timeZone: "Europe/Dublin",
+        language: "English (US)",
+        tier: "Enterprise",
+        pendingApprovals: 2,
+        lastConfigurationChange: "Nov 3, 2026",
+        notifications: {
+          criticalIncidentAlerts: true,
+          integrationHealthAlerts: true,
+          dailySecurityDigest: true,
+        },
+      },
+      changeRequests: [
+        { id: "CR-2047", title: "Update session timeout policy to 8 hours", status: "PENDING", requestedBy: "Jane Doe", createdAt: new Date().toISOString() },
+        { id: "CR-2048", title: "Enable strict EU (Ireland) residency lock", status: "PENDING", requestedBy: "Jane Doe", createdAt: new Date().toISOString() },
+      ],
+    };
+  }
+  const cState = gCustomer.__zoiko_customer_state;
+
+  if (path === "customer/security-overview") {
+    return NextResponse.json({
+      postureScore: 78,
+      protectedAssetsPct: 92,
+      protectedAssetsCount: 1840,
+      totalAssetsInScope: 2000,
+      coverageGapsCount: 160,
+      criticalExposuresCount: 3,
+      controlsPassingPct: 85,
+      remediations: cState.remediations,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  if (path.startsWith("customer/remediations/") && (method === "PATCH" || method === "POST")) {
+    const remId = slug[2];
+    const target = cState.remediations.find((r: any) => r.id === remId);
+    if (target) {
+      target.status = body.status || (target.status === "Open" ? "In progress" : target.status === "In progress" ? "Completed" : "Open");
+    }
+    return NextResponse.json({ success: true, remediation: target, remediations: cState.remediations });
+  }
+
+  if (path === "customer/exposures") {
+    return NextResponse.json({
+      openExposures: 24,
+      criticalExposures: 3,
+      overdueRemediation: 2,
+      awaitingVerification: 4,
+      exposures: cState.exposures,
+    });
+  }
+
+  if (path.startsWith("customer/exposures/") && (method === "POST" || method === "PATCH")) {
+    const expId = slug[2];
+    const target = cState.exposures.find((e: any) => e.id === expId);
+    if (target) {
+      target.status = body.status || "In progress";
+    }
+    return NextResponse.json({ success: true, exposure: target, exposures: cState.exposures });
+  }
+
+  if (path === "customer/assets") {
+    if (method === "POST") {
+      const created = {
+        name: (body.name || "CORE-SRV-09").toUpperCase(),
+        code: `AST-09${cState.assets.length + 10}`,
+        type: body.type || "Server",
+        owner: body.owner || "Infrastructure",
+        criticality: body.criticality || "High",
+        protection: "Protected",
+        lastSeen: "Just now",
+      };
+      cState.assets.unshift(created);
+      return NextResponse.json({ success: true, asset: created, assets: cState.assets }, { status: 201 });
+    }
+    return NextResponse.json({ assets: cState.assets, totalInScope: 2000, protectedCount: 1840, gapsCount: 160, missingOwnersCount: 28 });
+  }
+
+  if (path.startsWith("customer/assets/") && (method === "PATCH" || method === "POST")) {
+    const code = slug[2];
+    const target = cState.assets.find((a: any) => a.code === code || a.name === code);
+    if (target) {
+      if (body.owner) target.owner = body.owner;
+      if (body.protection) target.protection = body.protection;
+    }
+    return NextResponse.json({ success: true, asset: target, assets: cState.assets });
+  }
+
+  if (path === "customer/vulnerabilities") {
+    return NextResponse.json({ vulnerabilities: cState.vulnerabilities });
+  }
+
+  if (path.startsWith("customer/vulnerabilities/") && (method === "PATCH" || method === "POST")) {
+    const cve = slug[2];
+    const target = cState.vulnerabilities.find((v: any) => v.cve === cve);
+    if (target) {
+      target.status = body.status || (target.status === "Open" ? "Patching" : "Patched");
+    }
+    return NextResponse.json({ success: true, vulnerability: target, vulnerabilities: cState.vulnerabilities });
+  }
+
+  if (path === "customer/settings") {
+    if (method === "PATCH") {
+      cState.settings = { ...cState.settings, ...body };
+      return NextResponse.json({ success: true, settings: cState.settings });
+    }
+    return NextResponse.json({ settings: cState.settings, changeRequests: cState.changeRequests });
+  }
+
+  if (path === "customer/settings/change-requests" && method === "POST") {
+    const nextCr = {
+      id: `CR-${2047 + cState.changeRequests.length}`,
+      title: body.title || "Workspace security policy update",
+      status: "PENDING",
+      requestedBy: body.requestedBy || "Jane Doe",
+      createdAt: new Date().toISOString(),
+    };
+    cState.changeRequests.unshift(nextCr);
+    cState.settings.pendingApprovals = cState.changeRequests.filter((c: any) => c.status === "PENDING").length;
+    return NextResponse.json({ success: true, changeRequest: nextCr, settings: cState.settings, changeRequests: cState.changeRequests }, { status: 201 });
   }
 
   // 25. Blanket Autonomous Failover for Any Unmatched Path: Always 200 OK!

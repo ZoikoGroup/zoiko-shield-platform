@@ -324,7 +324,7 @@ export default function MerkleLedgerExplorerPage() {
                 size="sm"
                 className="bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold shadow-[0_0_15px_rgba(6,182,212,0.25)] flex items-center gap-1.5"
               >
-                <span>Continuous Controls (Step 13)</span>
+                <span>Continuous Controls</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </Button>
             </Link>

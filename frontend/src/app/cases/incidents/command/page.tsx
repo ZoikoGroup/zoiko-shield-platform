@@ -265,7 +265,7 @@ export default function IncidentCommandPage() {
           href={`/copilot?mode=INVESTIGATION&caseId=${encodeURIComponent(activeId)}`}
           className="inline-flex items-center gap-1.5 rounded border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-300 hover:bg-cyan-500/20 transition-colors"
         >
-          <span>🤖 AI Copilot Investigation (Step 6) →</span>
+          <span>🤖 AI Copilot Investigation →</span>
         </Link>
       )}
       {activeId && (

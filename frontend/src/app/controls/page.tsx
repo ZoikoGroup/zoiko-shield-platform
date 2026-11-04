@@ -125,7 +125,7 @@ export default function ControlsPage() {
               onClick={() => router.push("/pricing")}
               className="border-slate-800 hover:border-cyan-500/40 text-slate-300"
             >
-              <span>Commercial Sizing (Step 14)</span>
+              <span>Commercial Sizing</span>
               <ArrowRight className="w-4 h-4 text-cyan-400" />
             </Button>
           </div>
