@@ -167,7 +167,7 @@ export default function CaseWorkspacePage() {
               <span>🚨 Incident Command (W19)</span>
             </Button>
             <Button variant="secondary" onClick={() => router.push(`/copilot?mode=INVESTIGATION&caseId=${encodeURIComponent(currentCase.id)}`)}>
-              <span>🤖 AI Copilot (Step 6) →</span>
+              <span>🤖 AI Copilot →</span>
             </Button>
             <Button variant="cyan" onClick={() => router.push("/controls")}>
               <span>Proceed to Controls</span>

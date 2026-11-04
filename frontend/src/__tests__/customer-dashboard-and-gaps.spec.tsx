@@ -16,6 +16,11 @@ import {
   DataProvenanceBadge,
   UnavailableState,
 } from '@/components/states/mandatory-ui-states';
+import {
+  CUSTOMER_PRIMARY_NAV,
+  CUSTOMER_FOOTER_NAV,
+} from '@/components/customer/CustomerSidebar';
+import { CustomerWorkspaceSectionRouter } from '@/components/customer/CustomerWorkspaceViews';
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/customer/dashboard',
@@ -192,5 +197,42 @@ describe('G01–G12 Engineering Gap Closure Primitives', () => {
     expect(rawEventClass?.hotDays).toBe(60);
     expect(rawEventClass?.coldArchiveDays).toBe(180);
     expect(rawEventClass?.policyPackKey).toBe('in_dpdp_certin_rbi_aps1');
+  });
+
+  it('connects all 14 Customer Sidebar navigation items to /customer/* routes and renders the Customer Workspace views without mock/sample banners', () => {
+    const allNav = [...CUSTOMER_PRIMARY_NAV, ...CUSTOMER_FOOTER_NAV];
+    expect(allNav.length).toBe(14);
+    for (const item of allNav) {
+      expect(item.href.startsWith('/customer/')).toBe(true);
+    }
+
+    const sectionsToVerify: Array<{ slug: string; heading: string }> = [
+      { slug: 'security-overview', heading: 'Security Overview' },
+      { slug: 'threats-incidents', heading: 'Threats & Incidents' },
+      { slug: 'exposure-management', heading: 'Exposure Management' },
+      { slug: 'assets-inventory', heading: 'Assets & Inventory' },
+      { slug: 'vulnerabilities', heading: 'Vulnerabilities' },
+      { slug: 'detection-response', heading: 'Detection & Response' },
+      { slug: 'identity-access', heading: 'Identity & Access' },
+      { slug: 'data-security', heading: 'Data Security' },
+      { slug: 'cloud-security', heading: 'Cloud Security' },
+      { slug: 'compliance-risk', heading: 'Compliance & Risk' },
+      { slug: 'reports-analytics', heading: 'Reports & Analytics' },
+      { slug: 'integrations', heading: 'Integrations' },
+      { slug: 'settings', heading: 'Settings' },
+    ];
+
+    for (const sec of sectionsToVerify) {
+      const { unmount } = render(
+        <CustomerWorkspaceSectionRouter section={sec.slug} />
+      );
+      expect(screen.getByText(sec.heading)).toBeInTheDocument();
+      expect(screen.queryByText(/Sample data/i)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Demo workspace/i)).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/Illustrative customer workspace/i)
+      ).not.toBeInTheDocument();
+      unmount();
+    }
   });
 });

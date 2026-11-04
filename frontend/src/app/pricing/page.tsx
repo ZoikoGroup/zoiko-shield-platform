@@ -245,7 +245,7 @@ export default function PricingPage() {
             href="/notifications"
             className="px-3.5 py-2 rounded-lg bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold flex items-center gap-1.5 transition-colors"
           >
-            <span>Notification Center (Step 15)</span>
+            <span>Notification Center</span>
             <ArrowRight className="w-3.5 h-3.5 text-cyan-400" />
           </Link>
         </div>

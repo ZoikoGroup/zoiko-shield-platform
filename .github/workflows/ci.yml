@@ -2,9 +2,9 @@ name: ZoikoShield CI — ERB-01
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main, develop, Aditya]
   pull_request:
-    branches: [main, develop]
+    branches: [main, develop, Aditya]
 
 permissions:
   contents: read

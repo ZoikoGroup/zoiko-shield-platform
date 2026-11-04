@@ -329,7 +329,7 @@ export default function ResponseProposalsPage() {
               onClick={() => router.push("/admin")}
               className="border border-rose-500/40 text-rose-300 hover:bg-rose-500/10 text-xs font-mono"
             >
-              <span>🛑 Emergency Kill-Switch (Step 11) →</span>
+              <span>🛑 Emergency Kill-Switch →</span>
             </Button>
             <Button variant="ghost" onClick={() => void load()} className="border border-slate-800 hover:border-slate-700 text-slate-300">
               <RefreshCw className="w-4 h-4 text-cyan-400" />

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Shield,
@@ -33,8 +33,28 @@ export function CustomerTopHeader({
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
   const [regionMenuOpen, setRegionMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(3);
   const [profileOpen, setProfileOpen] = useState(false);
   const [localSearch, setLocalSearch] = useState(searchQuery);
+
+  useEffect(() => {
+    fetch("/api/v1/notifications/deliveries")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        const list = Array.isArray(data)
+          ? data
+          : Array.isArray(data?.deliveries)
+          ? data.deliveries
+          : [];
+        if (list.length > 0) {
+          const unread = list.filter(
+            (d: any) => d.status !== "ACKNOWLEDGED" && d.status !== "READ"
+          ).length;
+          setUnreadCount(unread);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const currentRegionCode =
     state.tenant?.dataResidencyRegion || state.tenant?.homeRegion || "eu-west-1";
@@ -49,6 +69,11 @@ export function CustomerTopHeader({
         dataResidencyRegion: regionCode,
       },
     }));
+    fetch("/api/v1/customer/settings", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ primaryRegion: regionCode }),
+    }).catch(() => {});
     setRegionMenuOpen(false);
   };
 
@@ -294,9 +319,11 @@ export function CustomerTopHeader({
             className="relative p-2 rounded-xl bg-[#0c1829] hover:bg-[#102036] border border-slate-700/70 text-slate-200 transition-colors"
           >
             <Bell className="w-4 h-4" />
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-600 text-[10px] font-bold text-white flex items-center justify-center shadow">
-              3
-            </span>
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-red-600 text-[10px] font-bold text-white flex items-center justify-center shadow">
+                {unreadCount}
+              </span>
+            )}
           </button>
 
           {notifOpen && (
@@ -314,7 +341,7 @@ export function CustomerTopHeader({
                   type="button"
                   onClick={() => {
                     setNotifOpen(false);
-                    router.push("/alerts");
+                    router.push("/customer/threats-incidents");
                   }}
                   className="w-full text-left p-2 rounded-lg bg-red-950/30 border border-red-500/30 hover:bg-red-950/50"
                 >
@@ -330,7 +357,7 @@ export function CustomerTopHeader({
                   type="button"
                   onClick={() => {
                     setNotifOpen(false);
-                    router.push("/cases");
+                    router.push("/customer/detection-response");
                   }}
                   className="w-full text-left p-2 rounded-lg bg-amber-950/20 border border-amber-500/30 hover:bg-amber-950/40"
                 >
@@ -345,7 +372,7 @@ export function CustomerTopHeader({
                   type="button"
                   onClick={() => {
                     setNotifOpen(false);
-                    router.push("/connectors");
+                    router.push("/customer/integrations");
                   }}
                   className="w-full text-left p-2 rounded-lg bg-slate-800/50 border border-slate-700/60 hover:bg-slate-800"
                 >
@@ -355,6 +382,28 @@ export function CustomerTopHeader({
                   <p className="text-[11px] text-slate-400 mt-0.5">
                     3 unmonitored systems require connector activation
                   </p>
+                </button>
+              </div>
+              <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUnreadCount(0);
+                    fetch("/api/v1/notifications/mark-all-read", { method: "POST" }).catch(() => {});
+                  }}
+                  className="text-slate-400 hover:text-emerald-400 font-medium"
+                >
+                  Mark all as read
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setNotifOpen(false);
+                    router.push("/notifications");
+                  }}
+                  className="text-cyan-400 hover:text-cyan-300 font-semibold"
+                >
+                  Open Notification Ledger →
                 </button>
               </div>
             </div>

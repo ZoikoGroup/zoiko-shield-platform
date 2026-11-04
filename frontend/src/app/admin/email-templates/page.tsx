@@ -742,7 +742,7 @@ Zoiko Shield Cryptographic Attestation • Dispatched via ${tpl.senderClass}`;
               className="text-xs flex items-center gap-1.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-bold shadow-[0_0_15px_rgba(6,182,212,0.25)]"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              <span>Restart Walkthrough (Step 1) →</span>
+              <span>Return to Command Center →</span>
             </Button>
           </Link>
           <Button

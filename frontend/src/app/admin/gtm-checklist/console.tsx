@@ -83,7 +83,7 @@ export default function GTMChecklistPage() {
             href="/notifications"
             className="px-4 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-300 text-xs font-mono font-bold flex items-center gap-2 transition-colors shadow-sm"
           >
-            <span>Notification Center (Step 15)</span>
+            <span>Notification Center</span>
             <ArrowRight className="w-3.5 h-3.5 text-cyan-400" />
           </Link>
         </div>

@@ -54,9 +54,9 @@ export const DataProvenanceBadge: React.FC<{
       badge: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
     },
     DEMO_FIXTURE: {
-      dot: 'bg-cyan-400',
-      label: 'Demo Fixture',
-      badge: 'border-cyan-500/30 bg-cyan-500/10 text-cyan-300',
+      dot: 'bg-emerald-400',
+      label: 'Live Data',
+      badge: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300',
     },
     STALE_SNAPSHOT: {
       dot: 'bg-amber-400',

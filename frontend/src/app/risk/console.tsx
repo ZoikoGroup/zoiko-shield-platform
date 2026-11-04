@@ -140,7 +140,7 @@ export default function RiskRegisterPage() {
             <span>Exceptions</span>
           </Button>
           <Button variant="primary" onClick={() => router.push("/alerts")} className="shadow-[0_0_15px_rgba(6,182,212,0.25)] bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold">
-            <span>Live Alerts Queue (Step 4)</span>
+            <span>Live Alerts Queue</span>
             <ArrowRight className="w-4 h-4" />
           </Button>
         </div>

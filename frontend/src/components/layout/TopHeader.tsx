@@ -537,7 +537,7 @@ export const TopHeader: React.FC = () => {
           {/* Microservices Health */}
           <Link
             href="/admin/platform-health"
-            title="Microservices Readiness Health (Step 1)"
+            title="Microservices Readiness Health"
             className="hidden md:flex items-center gap-1.5 px-2 py-1 rounded bg-raised border border-line hover:border-cyan-500/40 text-xs font-mono text-slate-300 transition-colors"
           >
             <Activity
@@ -673,7 +673,7 @@ export const TopHeader: React.FC = () => {
                     onClick={() => setActiveMenu(null)}
                     className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-cyan-400 hover:text-cyan-300"
                   >
-                    <span>Open Full Notification Ledger (Step 15)</span>
+                    <span>Open Full Notification Ledger</span>
                     <ArrowRight className="w-3 h-3" />
                   </Link>
                 </div>
@@ -974,7 +974,7 @@ export const TopHeader: React.FC = () => {
                     onClick={() => setActiveMenu(null)}
                     className="text-cyan-400 hover:text-cyan-300 flex items-center justify-between py-1"
                   >
-                    <span>Request JIT Elevation (Step 9)</span>
+                    <span>Request JIT Elevation</span>
                     <KeyRound className="w-3.5 h-3.5" />
                   </Link>
                   <Link

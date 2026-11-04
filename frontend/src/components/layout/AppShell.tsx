@@ -89,8 +89,36 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       ) {
         window.location.href = "/login";
       }
+      return;
     }
-  }, [isClient, isPublicRoute, isAuthenticated, pathname, isTest]);
+
+    // Role-based route isolation: prevent non-admin customer roles from accessing admin routes
+    if (isClient && isAuthenticated && !isTest) {
+      const role = state.session?.role || "SECURITY_ANALYST";
+      const isPlatformAdminRoute =
+        pathname === "/admin" ||
+        pathname.startsWith("/admin/platform-health") ||
+        pathname.startsWith("/admin/jit") ||
+        pathname.startsWith("/admin/g1-gate") ||
+        pathname.startsWith("/admin/gtm-checklist") ||
+        pathname.startsWith("/admin/email-templates");
+      const isTenantAdminRoute =
+        pathname === "/admin/tenant" ||
+        pathname.startsWith("/admin/export") ||
+        pathname.startsWith("/tenant-management");
+
+      if (isPlatformAdminRoute && role !== "SUPER_ADMIN") {
+        window.location.href =
+          role === "TENANT_OWNER" ? "/admin/tenant" : "/customer/dashboard";
+      } else if (
+        isTenantAdminRoute &&
+        role !== "TENANT_OWNER" &&
+        role !== "SUPER_ADMIN"
+      ) {
+        window.location.href = "/customer/dashboard";
+      }
+    }
+  }, [isClient, isPublicRoute, isAuthenticated, pathname, isTest, state.session?.role]);
 
   // 1. Public Routes: Login, Register, Accept Invite, Certificate Verifier
   if (isPublicRoute) {

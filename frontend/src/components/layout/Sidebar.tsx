@@ -164,8 +164,8 @@ export const Sidebar: React.FC = () => {
                 </div>
               </div>
 
-              {/* Separated Portal Switcher Pills */}
-              <div className="grid grid-cols-2 gap-1.5">
+              {/* Separated Portal Switcher Pills (Role-Scoped) */}
+              <div className={cn("grid gap-1.5", currentRole === "TENANT_OWNER" || currentRole === "SUPER_ADMIN" ? "grid-cols-2" : "grid-cols-1")}>
                 <Link
                   href="/customer/dashboard"
                   className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-950/40 hover:bg-red-950/70 border border-red-500/30 text-[11px] font-semibold text-red-200 transition-colors"
@@ -173,18 +173,20 @@ export const Sidebar: React.FC = () => {
                   <Shield className="w-3.5 h-3.5 text-red-400 shrink-0" />
                   <span className="truncate">Customer View</span>
                 </Link>
-                <Link
-                  href="/admin/tenant"
-                  className={cn(
-                    "flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold transition-colors",
-                    pathname === "/admin/tenant"
-                      ? "bg-cyan-950/60 border-cyan-500/50 text-cyan-200"
-                      : "bg-raised hover:bg-overlay border-line text-slate-300"
-                  )}
-                >
-                  <Sliders className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                  <span className="truncate">Tenant Admin</span>
-                </Link>
+                {(currentRole === "TENANT_OWNER" || currentRole === "SUPER_ADMIN") && (
+                  <Link
+                    href="/admin/tenant"
+                    className={cn(
+                      "flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold transition-colors",
+                      pathname === "/admin/tenant"
+                        ? "bg-cyan-950/60 border-cyan-500/50 text-cyan-200"
+                        : "bg-raised hover:bg-overlay border-line text-slate-300"
+                    )}
+                  >
+                    <Sliders className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                    <span className="truncate">Tenant Admin</span>
+                  </Link>
+                )}
               </div>
 
               {/* Navigation Search */}

@@ -183,7 +183,7 @@ export default function PolicyManagementPage() {
                 className="border-cyan-500/40 text-cyan-300 hover:bg-cyan-500/10 font-bold"
               >
                 <KeyRound className="h-3.5 w-3.5 mr-2 text-cyan-400" />
-                <span>JIT Elevation (Step 9)</span>
+                <span>JIT Elevation</span>
                 <ArrowRight className="h-3.5 w-3.5 ml-1.5 text-cyan-400" />
               </Button>
             </Link>
