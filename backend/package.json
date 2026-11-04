@@ -148,7 +148,10 @@
     "simulate:adversarial-redteam": "ts-node -r tsconfig-paths/register ./scripts/simulate-adversarial-redteam-replay.ts",
     "simulate:standby-failover": "ts-node -r tsconfig-paths/register ./scripts/simulate-regional-standby-failover.ts",
     "simulate:reference-load": "ts-node -r tsconfig-paths/register ./scripts/simulate-reference-scale-load.ts",
-    "package:monorepo": "ts-node -r tsconfig-paths/register ./scripts/package-monorepo-archive.ts"
+    "package:monorepo": "ts-node -r tsconfig-paths/register ./scripts/package-monorepo-archive.ts",
+    "build:public-assistant": "nest build shield-public-assistant",
+    "start:public-assistant": "nest start shield-public-assistant --watch",
+    "start:public-assistant:prod": "node dist/apps/shield-public-assistant/main"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1106.0",

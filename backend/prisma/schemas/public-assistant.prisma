@@ -1,0 +1,62 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model GuestSession {
+  id          String   @id
+  token_hash  String
+  epoch       Int
+  created_at  DateTime
+  expires_at  DateTime
+  ip_hash     String
+  ua_class    String
+  // soft delete/revocation can be added later if needed
+}
+
+model MessageRecord {
+  id              String   @id
+  session_id      String
+  epoch           Int
+  client_message_id String
+  content_redacted String
+  outcome         String
+  payload         Json
+  events          Json
+  created_at      DateTime
+  cancelled       Boolean
+}
+
+model PublicSource {
+  id                String @id
+  kind              String
+  title             String
+  canonical_url     String?
+  status            String
+  classification    String
+  claim_type        String
+  market            String[]
+  locale            String
+  audience          String
+  owner             String
+  reviewer          String
+  summary           String
+  body              String
+  effective_from    String
+  expires_at        String?
+  review_at         String
+  revision          Int
+  answer            String?
+}
+
+model SourceChunk {
+  id        String @id
+  source_id String
+  ordinal   Int
+  text      String
+  // optional: tsv for full-text search in Postgres; omitted in initial MVP
+}

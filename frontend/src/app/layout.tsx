@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AppShell } from "@/components/layout/AppShell";
+import { PublicAssistantMount } from "@/components/public-assistant/PublicAssistantMount";
 
 export const metadata: Metadata = {
   title: "ZoikoShield — Autonomous SecOps & Defense Platform",
@@ -53,6 +54,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-canvas text-slate-100 flex flex-col antialiased">
         <AppShell>{children}</AppShell>
+        <PublicAssistantMount />
       </body>
     </html>
   );

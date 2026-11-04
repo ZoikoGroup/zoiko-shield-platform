@@ -1,0 +1,118 @@
+openapi: 3.0.3
+info:
+  title: ZoikoShield Public Assistant API
+  version: 1.0.0
+  description: Public surface for ZoikoShield Assistant. Phase A skeleton API surface.
+servers:
+  - url: http://localhost:3006
+paths:
+  /config:
+    get:
+      summary: Get public assistant configuration snapshot
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /status:
+    get:
+      summary: Get status/health of the public assistant surface
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+  /sessions:
+    post:
+      summary: Create a guest session
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Session created
+          content:
+            application/json:
+              schema:
+                type: object
+  /sessions/clear:
+    post:
+      summary: Clear current session
+      responses:
+        '200':
+          description: Cleared
+          content:
+            application/json:
+              schema:
+                type: object
+  /messages:
+    post:
+      summary: Submit a user message
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                type: object
+  /messages/{id}/events:
+    get:
+      summary: Stream events for a message (SSE)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Event stream
+          content:
+            text/event-stream:
+              schema:
+                type: object
+  /messages/{id}/cancel:
+    post:
+      summary: Cancel a message
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cancel acknowledged
+          content:
+            application/json:
+              schema:
+                type: object
+  /sources/{id}:
+    get:
+      summary: Get public source metadata
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object

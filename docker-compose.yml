@@ -367,6 +367,31 @@ services:
     ports:
       - "${SHIELD_ANCHOR_PORT:-3005}:3005"
 
+  # Public, anonymous assistant BFF. Deliberately has no internal service URLs,
+  # no tenant DB role and no credentials for shield-core/ingest/ai/action/anchor.
+  shield-public-assistant:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      SERVICE_NAME: shield-public-assistant
+      PUBLIC_ASSISTANT_PORT: 3006
+      PUBLIC_ASSISTANT_ALLOWED_ORIGINS: ${PUBLIC_ASSISTANT_ALLOWED_ORIGINS:-http://localhost:3000}
+      PUBLIC_ASSISTANT_DISPLAY_NAME: ${PUBLIC_ASSISTANT_DISPLAY_NAME:-ZoikoShield Assistant}
+      PUBLIC_ASSISTANT_DISPLAY_CLEARANCE: ${PUBLIC_ASSISTANT_DISPLAY_CLEARANCE:-PENDING}
+      PUBLIC_ASSISTANT_NOTICE_VERSION: ${PUBLIC_ASSISTANT_NOTICE_VERSION:-2026.10-review}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
+      PUBLIC_ASSISTANT_PAYLOAD_KEY: ${PUBLIC_ASSISTANT_PAYLOAD_KEY:-local-public-assistant-payload-key-change-me}
+      PUBLIC_ASSISTANT_FLAG_ASSISTANT_AI_ANSWERS: ${PUBLIC_ASSISTANT_FLAG_ASSISTANT_AI_ANSWERS:-ON}
+      PUBLIC_ASSISTANT_FLAG_ASSISTANT_LEAD_SUBMIT: ${PUBLIC_ASSISTANT_FLAG_ASSISTANT_LEAD_SUBMIT:-ON}
+      PUBLIC_ASSISTANT_FLAG_ASSISTANT_SUPPORT_SUBMIT: ${PUBLIC_ASSISTANT_FLAG_ASSISTANT_SUPPORT_SUBMIT:-ON}
+      PUBLIC_ASSISTANT_FLAG_ASSISTANT_PRIVACY_WRITE: ${PUBLIC_ASSISTANT_FLAG_ASSISTANT_PRIVACY_WRITE:-OFF}
+    ports:
+      - "${PUBLIC_ASSISTANT_PORT:-3006}:3006"
+
 volumes:
   postgres_data:
   redpanda_data:
