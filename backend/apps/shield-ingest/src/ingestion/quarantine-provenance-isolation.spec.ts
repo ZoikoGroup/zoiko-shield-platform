@@ -1,21 +1,23 @@
-import { Test, TestingModule } from '@nestjs/testing';
 import { QuarantineService } from './quarantine.service';
+import { DlqReplayQuarantineService } from '../dlq/dlq-replay-quarantine.service';
+import { createFakeDlqDb } from '../../test/fakes/fake-dlq-db';
 
 describe('LAB 07 — OCSF Ingestion Normalization & Quarantine Provenance', () => {
   let quarantineService: QuarantineService;
 
-  beforeEach(async () => {
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [QuarantineService],
-    }).compile();
-
-    quarantineService = module.get<QuarantineService>(QuarantineService);
+  beforeEach(() => {
+    quarantineService = new QuarantineService(
+      new DlqReplayQuarantineService(
+        createFakeDlqDb() as any,
+        { republish: jest.fn() } as any,
+      ),
+    );
   });
 
   describe('Quarantine Screening & Lineage Preservation', () => {
-    it('should isolate malformed payloads into quarantine with explicit failure reasons', () => {
+    it('should isolate malformed payloads into quarantine with explicit failure reasons', async () => {
       const malformedPayload = '{"unclosed_json: true, "event_id": 123';
-      const record = quarantineService.quarantine({
+      const record = await quarantineService.quarantine({
         tenantId: 'tenant-alpha',
         environmentId: 'prod',
         connectorId: 'conn-aws-cloudtrail-01',
@@ -26,7 +28,7 @@ describe('LAB 07 — OCSF Ingestion Normalization & Quarantine Provenance', () =
       });
 
       expect(record.quarantineId).toBeDefined();
-      expect(record.quarantineId.startsWith('quar-')).toBe(true);
+      expect(record.quarantineId.startsWith('dlq-')).toBe(true);
       expect(record.tenantId).toBe('tenant-alpha');
       expect(record.failureReason).toBe('PARSER_EXCEPTION');
       expect(record.status).toBe('PENDING_REVIEW');
@@ -34,8 +36,8 @@ describe('LAB 07 — OCSF Ingestion Normalization & Quarantine Provenance', () =
       expect(record.rawPayload).toBe(malformedPayload);
     });
 
-    it('should retain quarantined items per tenant and prevent cross-tenant leakage', () => {
-      quarantineService.quarantine({
+    it('should retain quarantined items per tenant and prevent cross-tenant leakage', async () => {
+      await quarantineService.quarantine({
         tenantId: 'tenant-alpha',
         environmentId: 'prod',
         connectorId: 'conn-aws-01',
@@ -44,7 +46,7 @@ describe('LAB 07 — OCSF Ingestion Normalization & Quarantine Provenance', () =
         errorMessage: 'Missing mandatory field observed_at',
       });
 
-      quarantineService.quarantine({
+      await quarantineService.quarantine({
         tenantId: 'tenant-beta',
         environmentId: 'prod',
         connectorId: 'conn-azure-01',
@@ -54,9 +56,9 @@ describe('LAB 07 — OCSF Ingestion Normalization & Quarantine Provenance', () =
       });
 
       const alphaRecords =
-        quarantineService.listQuarantinedEvents('tenant-alpha');
+        await quarantineService.listQuarantinedEvents('tenant-alpha');
       const betaRecords =
-        quarantineService.listQuarantinedEvents('tenant-beta');
+        await quarantineService.listQuarantinedEvents('tenant-beta');
 
       expect(alphaRecords.length).toBeGreaterThanOrEqual(1);
       expect(betaRecords.length).toBeGreaterThanOrEqual(1);

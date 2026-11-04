@@ -8,7 +8,9 @@ import {
   runWithTenantScope,
 } from '../../../../libs/database/src';
 
-export type DlqSourceKind = 'WEBHOOK' | 'SQS' | 'KAFKA' | 'UNKNOWN';
+/** NORMALIZATION: a provider normalizer rejected the record; no automated replay route exists. */
+export type DlqSourceKind =
+  'WEBHOOK' | 'SQS' | 'KAFKA' | 'NORMALIZATION' | 'UNKNOWN';
 
 export type DlqStatus =
   'QUARANTINED' | 'REPLAYING' | 'REPLAY_SUCCESS' | 'REPLAY_FAILED' | 'PURGED';
@@ -27,6 +29,8 @@ export interface QuarantinedMessage {
   tenantId: string;
   topic: string;
   sourceKind: DlqSourceKind;
+  connectorId?: string;
+  environmentId?: string;
   originalPayload: Record<string, any>;
   errorCode: string;
   errorReason: string;
@@ -45,6 +49,8 @@ export interface ReplayResult {
   status: 'REPLAY_SUCCESS' | 'REPLAY_FAILED' | 'QUARANTINED';
   replayedAt: string;
   error?: string;
+  /** Another replay holds the claim, or the message is no longer replayable. */
+  skipped?: boolean;
 }
 
 export interface DlqMetrics {
@@ -149,7 +155,11 @@ export class DlqReplayQuarantineService {
    */
   async listQuarantined(
     tenantId: string,
-    filter?: { errorCode?: string; topic?: string },
+    filter?: {
+      errorCode?: string;
+      topic?: string;
+      sourceKinds?: DlqSourceKind[];
+    },
   ): Promise<QuarantinedMessage[]> {
     const rows = await runWithTenantScope(tenantId, () =>
       this.prisma.dlqMessage.findMany({
@@ -158,11 +168,47 @@ export class DlqReplayQuarantineService {
           status: 'QUARANTINED',
           ...(filter?.errorCode ? { error_code: filter.errorCode } : {}),
           ...(filter?.topic ? { source: filter.topic } : {}),
+          ...(filter?.sourceKinds
+            ? { source_kind: { in: filter.sourceKinds } }
+            : {}),
         },
         orderBy: { quarantined_at: 'asc' },
       }),
     );
     return rows.map((row) => this.toMessage(row));
+  }
+
+  async getMessage(
+    tenantId: string,
+    messageId: string,
+  ): Promise<QuarantinedMessage> {
+    const row = await runWithTenantScope(tenantId, () =>
+      this.prisma.dlqMessage.findFirst({
+        where: { tenant_id: tenantId, message_id: messageId },
+      }),
+    );
+    if (!row) {
+      throw new NotFoundException(
+        `Quarantined message '${messageId}' not found for tenant '${tenantId}'`,
+      );
+    }
+    return this.toMessage(row);
+  }
+
+  /** Tenants holding quarantined messages of the given kinds, for scheduled sweeps. */
+  async listTenantsWithQuarantine(
+    sourceKinds: DlqSourceKind[],
+  ): Promise<string[]> {
+    const rows = await runWithPlatformScope(
+      'DLQ sweep: tenants with quarantined messages',
+      () =>
+        this.prisma.dlqMessage.findMany({
+          where: { status: 'QUARANTINED', source_kind: { in: sourceKinds } },
+          distinct: ['tenant_id'],
+          select: { tenant_id: true },
+        }),
+    );
+    return rows.map((row) => row.tenant_id);
   }
 
   /**
@@ -223,11 +269,14 @@ export class DlqReplayQuarantineService {
         },
       });
       if (claim.count !== 1) {
-        return this.failure(
-          messageId,
-          msg.status === 'REPLAYING' ? 'QUARANTINED' : 'REPLAY_FAILED',
-          `Message is ${msg.status}; it is not available for replay`,
-        );
+        return {
+          ...this.failure(
+            messageId,
+            msg.status === 'REPLAYING' ? 'QUARANTINED' : 'REPLAY_FAILED',
+            `Message is ${msg.status}; it is not available for replay`,
+          ),
+          skipped: true,
+        };
       }
 
       const attempt = msg.attempt_count + 1;
@@ -368,6 +417,8 @@ export class DlqReplayQuarantineService {
           ? undefined
           : `Re-ingest returned ${result.processingStatus}`;
       }
+      case 'NORMALIZATION':
+        return 'Normalizer rejected this record; it needs a normalizer fix, not a replay';
       default:
         return `No replay route for source kind '${msg.source_kind}'`;
     }
@@ -393,6 +444,8 @@ export class DlqReplayQuarantineService {
       tenantId: row.tenant_id,
       topic: row.source,
       sourceKind: row.source_kind as DlqSourceKind,
+      connectorId: row.connector_id ?? undefined,
+      environmentId: row.environment_id ?? undefined,
       originalPayload: JSON.parse(row.original_payload),
       errorCode: row.error_code,
       errorReason: row.error_reason,

@@ -1,5 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import crypto from 'crypto';
+import {
+  DlqReplayQuarantineService,
+  QuarantinedMessage,
+} from '../dlq/dlq-replay-quarantine.service';
 
 export type QuarantineFailureReason =
   | 'SCHEMA_MISMATCH'
@@ -20,18 +24,23 @@ export interface QuarantinedEventRecord {
   errorMessage: string;
   quarantinedAt: Date;
   status: 'PENDING_REVIEW' | 'REPROCESSED' | 'DISCARDED';
-  reprocessedAt?: Date;
 }
 
+const SOURCE_PREFIX = 'normalization:';
+
+/**
+ * Normalizer rejections, stored in ingest.DlqMessage as NORMALIZATION rows.
+ * connectorId here is a provider slug, not a connector instance, so it is kept
+ * in `source` and never used as a re-ingest route: these need a normalizer
+ * fix, not an automated replay.
+ */
 @Injectable()
 export class QuarantineService {
   private readonly logger = new Logger(QuarantineService.name);
-  private readonly quarantinedEvents = new Map<
-    string,
-    QuarantinedEventRecord
-  >();
 
-  quarantine(params: {
+  constructor(private readonly dlq: DlqReplayQuarantineService) {}
+
+  async quarantine(params: {
     tenantId: string;
     environmentId: string;
     connectorId: string;
@@ -39,38 +48,22 @@ export class QuarantineService {
     rawPayload: string;
     failureReason: QuarantineFailureReason;
     errorMessage: string;
-  }): QuarantinedEventRecord {
-    const quarantineId = `quar-${crypto.randomUUID()}`;
-    const payloadHash = crypto
-      .createHash('sha256')
-      .update(params.rawPayload || '')
-      .digest('hex');
-
-    const record: QuarantinedEventRecord = {
-      quarantineId,
-      tenantId: params.tenantId,
-      environmentId: params.environmentId,
-      connectorId: params.connectorId,
-      sourceEventId: params.sourceEventId,
-      rawPayload: params.rawPayload,
-      payloadHash,
-      failureReason: params.failureReason,
-      errorMessage: params.errorMessage,
-      quarantinedAt: new Date(),
-      status: 'PENDING_REVIEW',
-    };
-
-    this.quarantinedEvents.set(quarantineId, record);
-    this.logger.warn(
-      `⚠️ Ingestion Event Quarantined [ID: ${quarantineId}, Reason: ${params.failureReason}] for tenant ${params.tenantId}: ${params.errorMessage}`,
+  }): Promise<QuarantinedEventRecord> {
+    const message = await this.dlq.quarantineMessage(
+      params.tenantId,
+      `${SOURCE_PREFIX}${params.connectorId}`,
+      { rawPayload: params.rawPayload, sourceEventId: params.sourceEventId },
+      params.errorMessage,
+      params.failureReason,
+      1,
+      { kind: 'NORMALIZATION', environmentId: params.environmentId },
     );
-
-    return record;
+    this.logger.warn(
+      `⚠️ Ingestion Event Quarantined [ID: ${message.messageId}, Reason: ${params.failureReason}] for tenant ${params.tenantId}: ${params.errorMessage}`,
+    );
+    return this.toRecord(message);
   }
 
-  /**
-   * Positional parameters alias for quarantine method.
-   */
   quarantinePayload(
     tenantId: string,
     environmentId: string,
@@ -78,7 +71,7 @@ export class QuarantineService {
     rawPayload: string,
     failureReason: QuarantineFailureReason | string,
     errorMessage: string,
-  ): QuarantinedEventRecord {
+  ): Promise<QuarantinedEventRecord> {
     return this.quarantine({
       tenantId,
       environmentId,
@@ -90,55 +83,54 @@ export class QuarantineService {
     });
   }
 
-  getQuarantinedEvent(
+  async getQuarantinedEvent(
     tenantId: string,
     quarantineId: string,
-  ): QuarantinedEventRecord {
-    const record = this.quarantinedEvents.get(quarantineId);
-    if (!record || record.tenantId !== tenantId) {
-      throw new NotFoundException(
-        `Quarantined event '${quarantineId}' not found for tenant '${tenantId}'`,
-      );
-    }
-    return record;
+  ): Promise<QuarantinedEventRecord> {
+    return this.toRecord(await this.dlq.getMessage(tenantId, quarantineId));
   }
 
-  listQuarantinedEvents(tenantId: string): QuarantinedEventRecord[] {
-    return Array.from(this.quarantinedEvents.values()).filter(
-      (r) => r.tenantId === tenantId,
-    );
-  }
-
-  getTenantsWithQuarantine(): string[] {
-    const tenants = new Set<string>();
-    for (const record of this.quarantinedEvents.values()) {
-      if (record.status === 'PENDING_REVIEW') {
-        tenants.add(record.tenantId);
-      }
-    }
-    return Array.from(tenants);
-  }
-
-  markReprocessed(
+  async listQuarantinedEvents(
     tenantId: string,
-    quarantineId: string,
-  ): QuarantinedEventRecord {
-    const record = this.getQuarantinedEvent(tenantId, quarantineId);
-    record.status = 'REPROCESSED';
-    record.reprocessedAt = new Date();
-    this.quarantinedEvents.set(quarantineId, record);
-    this.logger.log(
-      `✔ Quarantined event '${quarantineId}' marked as REPROCESSED for tenant '${tenantId}'`,
-    );
-    return record;
+  ): Promise<QuarantinedEventRecord[]> {
+    const messages = await this.dlq.listQuarantined(tenantId, {
+      sourceKinds: ['NORMALIZATION'],
+    });
+    return messages.map((m) => this.toRecord(m));
   }
 
-  discard(tenantId: string, quarantineId: string): void {
-    const record = this.getQuarantinedEvent(tenantId, quarantineId);
-    record.status = 'DISCARDED';
-    this.quarantinedEvents.set(quarantineId, record);
+  async discard(tenantId: string, quarantineId: string): Promise<void> {
+    await this.dlq.purgeQuarantined(tenantId, quarantineId);
     this.logger.log(
       `Quarantined event '${quarantineId}' discarded for tenant '${tenantId}'`,
     );
+  }
+
+  private toRecord(message: QuarantinedMessage): QuarantinedEventRecord {
+    const payload = message.originalPayload as {
+      rawPayload?: string;
+      sourceEventId?: string;
+    };
+    const rawPayload = payload?.rawPayload ?? '';
+    return {
+      quarantineId: message.messageId,
+      tenantId: message.tenantId,
+      environmentId: message.environmentId ?? '',
+      connectorId: message.topic.startsWith(SOURCE_PREFIX)
+        ? message.topic.slice(SOURCE_PREFIX.length)
+        : message.topic,
+      sourceEventId: payload?.sourceEventId,
+      rawPayload,
+      payloadHash: crypto.createHash('sha256').update(rawPayload).digest('hex'),
+      failureReason: message.errorCode as QuarantineFailureReason,
+      errorMessage: message.errorReason,
+      quarantinedAt: new Date(message.quarantinedAt),
+      status:
+        message.status === 'PURGED'
+          ? 'DISCARDED'
+          : message.status === 'REPLAY_SUCCESS'
+            ? 'REPROCESSED'
+            : 'PENDING_REVIEW',
+    };
   }
 }

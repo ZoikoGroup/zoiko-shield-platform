@@ -7,6 +7,9 @@ import crypto from 'crypto';
 import { AwsCloudTrailNormalizerService } from '../apps/shield-ingest/src/connectors/providers/aws-cloudtrail/aws-cloudtrail.normalizer';
 import { SyslogTlsNormalizerService } from '../apps/shield-ingest/src/connectors/providers/syslog-tls/syslog-tls.normalizer';
 import { QuarantineService } from '../apps/shield-ingest/src/ingestion/quarantine.service';
+import { DlqReplayQuarantineService } from '../apps/shield-ingest/src/dlq/dlq-replay-quarantine.service';
+import { PrismaService as IngestPrismaService } from '../apps/shield-ingest/src/prisma/prisma.service';
+import { KafkaProducerService as IngestKafkaProducerService } from '../apps/shield-ingest/src/kafka/kafka.producer.service';
 import { CloudTrailRawRecord } from '../apps/shield-ingest/src/connectors/providers/aws-cloudtrail/aws-cloudtrail.types';
 
 // AI Governance & Security
@@ -30,20 +33,27 @@ import { Rfc3161WitnessService } from '../apps/shield-anchor/src/witnesses/rfc31
  */
 async function runSocLifecycleSimulation() {
   const logger = new Logger('SOCSimulationRunner');
-  logger.log('======================================================================');
-  logger.log(' 🛡️  ZoikoShield End-to-End SOC Incident Simulation & Assurance Run  ');
-  logger.log('======================================================================\n');
+  logger.log(
+    '======================================================================',
+  );
+  logger.log(
+    ' 🛡️  ZoikoShield End-to-End SOC Incident Simulation & Assurance Run  ',
+  );
+  logger.log(
+    '======================================================================\n',
+  );
 
   const tenantId = `tenant-${crypto.randomUUID()}`;
   const environmentId = 'env-prod-01';
   const region = 'us-east-1';
-  logger.log(`[Phase 1] Initializing Security Operations for Tenant: ${tenantId}`);
+  logger.log(
+    `[Phase 1] Initializing Security Operations for Tenant: ${tenantId}`,
+  );
 
   // 1. Ingestion Pipeline: Ingest CloudTrail & Syslog Telemetry
   logger.log('\n[Phase 2] Multi-Source Ingestion & OCSF Normalization');
   const cloudTrailNormalizer = new AwsCloudTrailNormalizerService();
   const syslogNormalizer = new SyslogTlsNormalizerService();
-  const quarantineService = new QuarantineService();
 
   const mockCloudTrailRecord: CloudTrailRawRecord = {
     eventVersion: '1.08',
@@ -77,7 +87,9 @@ async function runSocLifecycleSimulation() {
     environmentId,
     region,
   );
-  logger.log(`  ✔ Ingested & Normalized AWS CloudTrail API Call: ${normalizedCloudTrail.event_type} (${normalizedCloudTrail.source_event_id})`);
+  logger.log(
+    `  ✔ Ingested & Normalized AWS CloudTrail API Call: ${normalizedCloudTrail.event_type} (${normalizedCloudTrail.source_event_id})`,
+  );
 
   const mockSyslogMsg = `<34>1 ${new Date().toISOString()} bastion-srv-01 sshd 4312 ID47 [exampleSDID@32473 iut="3"] Failed password for invalid user root from 198.51.100.77 port 54122 ssh2`;
   const parsedSyslog = syslogNormalizer.parseRfc5424(mockSyslogMsg);
@@ -87,31 +99,56 @@ async function runSocLifecycleSimulation() {
     environmentId,
     region,
   );
-  logger.log(`  ✔ Ingested & Normalized Syslog TLS Stream: ${normalizedSyslog.action_type} from ${normalizedSyslog.source_ip}`);
+  logger.log(
+    `  ✔ Ingested & Normalized Syslog TLS Stream: ${normalizedSyslog.action_type} from ${normalizedSyslog.source_ip}`,
+  );
 
-  // Test Quarantine DLQ with malformed payload
-  const badPayload = 'CORRUPTED_NON_PARSABLE_BINARY_DATA';
-  const quarantined = quarantineService.quarantine({
-    tenantId,
-    environmentId,
-    connectorId: 'conn-generic-syslog',
-    rawPayload: badPayload,
-    failureReason: 'PARSER_EXCEPTION',
-    errorMessage: 'Header format does not conform to RFC 5424 / RFC 3164',
-  });
-  logger.log(`  ✔ Quarantined malformed telemetry in Ingestion DLQ (Record ID: ${quarantined.quarantineId})`);
+  // Test Quarantine DLQ with malformed payload — persisted in ingest.DlqMessage
+  if (process.env.DATABASE_URL) {
+    const dlqPrisma = new IngestPrismaService();
+    const dlqKafka = new IngestKafkaProducerService();
+    await dlqPrisma.$connect();
+    try {
+      const quarantineService = new QuarantineService(
+        new DlqReplayQuarantineService(dlqPrisma, dlqKafka),
+      );
+      const quarantined = await quarantineService.quarantine({
+        tenantId,
+        environmentId,
+        connectorId: 'conn-generic-syslog',
+        rawPayload: 'CORRUPTED_NON_PARSABLE_BINARY_DATA',
+        failureReason: 'PARSER_EXCEPTION',
+        errorMessage: 'Header format does not conform to RFC 5424 / RFC 3164',
+      });
+      logger.log(
+        `  ✔ Quarantined malformed telemetry in Ingestion DLQ (Record ID: ${quarantined.quarantineId})`,
+      );
+    } finally {
+      await dlqPrisma.$disconnect();
+    }
+  } else {
+    logger.warn(
+      '  ⚠ Ingestion DLQ quarantine: SKIPPED — requires DATABASE_URL',
+    );
+  }
 
   // 2. AI Security & Threat Adversarial Testing
-  logger.log('\n[Phase 3] AI Threat Modeling, Injection Detection & FinOps Budgeting');
+  logger.log(
+    '\n[Phase 3] AI Threat Modeling, Injection Detection & FinOps Budgeting',
+  );
   const redTeamService = new AiRedTeamService();
   const finOpsService = new AiFinOpsBudgetService();
 
   const telemetryText = `Suspicious privilege escalation by user ${mockCloudTrailRecord.userIdentity.userName}`;
   const threatCheck = redTeamService.evaluatePayload(telemetryText);
-  logger.log(`  ✔ Evaluated payload safety (Vulnerable: ${threatCheck.isVulnerable}, Risk Score: ${threatCheck.riskScore})`);
+  logger.log(
+    `  ✔ Evaluated payload safety (Vulnerable: ${threatCheck.isVulnerable}, Risk Score: ${threatCheck.riskScore})`,
+  );
 
   const budgetCheck = finOpsService.checkBudget(tenantId, 0.02, 1500);
-  logger.log(`  ✔ FinOps Budget Check Passed (Remaining: $${budgetCheck.remainingBudgetUsd.toFixed(2)})`);
+  logger.log(
+    `  ✔ FinOps Budget Check Passed (Remaining: $${budgetCheck.remainingBudgetUsd.toFixed(2)})`,
+  );
 
   // 3. Bounded Agentic Reasoning & Tool Capability Grants
   logger.log('\n[Phase 4] Bounded Agentic Investigation Loop & Tool Grants');
@@ -125,7 +162,9 @@ async function runSocLifecycleSimulation() {
     toolName: 'telemetry.query',
     resourceScope: 'aws-cloudtrail-logs',
   });
-  logger.log(`  ✔ Tool Capability Issued: 'telemetry.query' (Grant ID: ${readToolGrant.grantId}, Class: ${readToolGrant.sideEffectClass})`);
+  logger.log(
+    `  ✔ Tool Capability Issued: 'telemetry.query' (Grant ID: ${readToolGrant.grantId}, Class: ${readToolGrant.sideEffectClass})`,
+  );
 
   // Assert T5 tool rejection
   let t5Blocked = false;
@@ -139,7 +178,9 @@ async function runSocLifecycleSimulation() {
   } catch (err: any) {
     t5Blocked = true;
   }
-  logger.log(`  ✔ Side-Effect Safety Enforced: 'evidence.delete' (Class: T5 Prohibited, Blocked: ${t5Blocked})`);
+  logger.log(
+    `  ✔ Side-Effect Safety Enforced: 'evidence.delete' (Class: T5 Prohibited, Blocked: ${t5Blocked})`,
+  );
 
   // Emit AI Decision Record linked to Evidence Ledger
   const decisionRecord = decisionLedger.createDecisionRecord({
@@ -160,20 +201,35 @@ async function runSocLifecycleSimulation() {
       compromisedUser: 'compromised-admin',
     }),
     sources: [
-      { id: normalizedCloudTrail.source_event_id, version: 1, span: 'AttachUserPolicy:AdministratorAccess' },
-      { id: normalizedSyslog.source_event_id, version: 1, span: 'sshd:Failed password' },
+      {
+        id: normalizedCloudTrail.source_event_id,
+        version: 1,
+        span: 'AttachUserPolicy:AdministratorAccess',
+      },
+      {
+        id: normalizedSyslog.source_event_id,
+        version: 1,
+        span: 'sshd:Failed password',
+      },
     ],
     modelRoute: 'zoiko-agent-v1',
     validation: { schema: 'pass', grounding: 'pass', citations: 'pass' },
     cost: { tokensIn: 420, tokensOut: 180, amountUsd: 0.012 },
   });
-  logger.log(`  ✔ Recorded Cryptographic AI Decision Trace: ${decisionRecord.requestId} (Evidence ID: ${decisionRecord.evidenceId})`);
+  logger.log(
+    `  ✔ Recorded Cryptographic AI Decision Trace: ${decisionRecord.requestId} (Evidence ID: ${decisionRecord.evidenceId})`,
+  );
 
   // 4. Automated Response Playbook & Rollback Broker
-  logger.log('\n[Phase 5] Automated Response Playbook Execution & 1-Click Rollback');
+  logger.log(
+    '\n[Phase 5] Automated Response Playbook Execution & 1-Click Rollback',
+  );
   const authorityService = new ActionAuthorityService();
   const rollbackBroker = new ActionRollbackBrokerService();
-  const playbookService = new ResponsePlaybookService(authorityService, rollbackBroker);
+  const playbookService = new ResponsePlaybookService(
+    authorityService,
+    rollbackBroker,
+  );
 
   const playbook = {
     playbookId: 'PB-CRITICAL-CONTAINMENT',
@@ -214,16 +270,25 @@ async function runSocLifecycleSimulation() {
     approverIds: ['soc-lead-analyst-1'],
     stepExecutor: async () => ({ success: true }),
   });
-  logger.log(`  ✔ Playbook Executed Successfully: ${playbookReport.completedSteps}/${playbookReport.totalSteps} steps completed`);
+  logger.log(
+    `  ✔ Playbook Executed Successfully: ${playbookReport.completedSteps}/${playbookReport.totalSteps} steps completed`,
+  );
 
   // Test 1-Click Rollback of an action receipt
   const firstReceiptId = playbookReport.executedReceiptIds[0];
   const receipt = rollbackBroker.getReceipt(tenantId, firstReceiptId);
-  const rollbackResult = await rollbackBroker.executeRollback(tenantId, receipt.rollbackToken);
-  logger.log(`  ✔ 1-Click Rollback Verified: Action '${rollbackResult.actionType}' status transitioned to ${rollbackResult.status}`);
+  const rollbackResult = await rollbackBroker.executeRollback(
+    tenantId,
+    receipt.rollbackToken,
+  );
+  logger.log(
+    `  ✔ 1-Click Rollback Verified: Action '${rollbackResult.actionType}' status transitioned to ${rollbackResult.status}`,
+  );
 
   // 5. Cryptographic Anchoring & RFC 3161 Public Witness
-  logger.log('\n[Phase 6] Merkle Tree Anchoring & RFC 3161 Public Witness Attestation');
+  logger.log(
+    '\n[Phase 6] Merkle Tree Anchoring & RFC 3161 Public Witness Attestation',
+  );
   const merkleService = new MerkleTreeService();
   const rfc3161Witness = new Rfc3161WitnessService();
 
@@ -235,15 +300,25 @@ async function runSocLifecycleSimulation() {
   ];
 
   const merkleResult = merkleService.build(evidenceLeaves);
-  logger.log(`  ✔ Computed Incident Evidence Merkle Root: ${merkleResult.root}`);
+  logger.log(
+    `  ✔ Computed Incident Evidence Merkle Root: ${merkleResult.root}`,
+  );
 
   const witnessReceipt = await rfc3161Witness.attest(merkleResult.root);
-  logger.log(`  ✔ Public Witness Attestation Issued: [Type: ${witnessReceipt.witnessType}, Serial: ${witnessReceipt.witnessId}]`);
+  logger.log(
+    `  ✔ Public Witness Attestation Issued: [Type: ${witnessReceipt.witnessType}, Serial: ${witnessReceipt.witnessId}]`,
+  );
   logger.log(`  ✔ Cryptographic Receipt Hash: ${witnessReceipt.receiptHash}`);
 
-  logger.log('\n======================================================================');
-  logger.log(' 🎉 End-to-End SOC Incident Simulation & Platform Assurance PASSED!  ');
-  logger.log('======================================================================\n');
+  logger.log(
+    '\n======================================================================',
+  );
+  logger.log(
+    ' 🎉 End-to-End SOC Incident Simulation & Platform Assurance PASSED!  ',
+  );
+  logger.log(
+    '======================================================================\n',
+  );
 }
 
 if (require.main === module) {

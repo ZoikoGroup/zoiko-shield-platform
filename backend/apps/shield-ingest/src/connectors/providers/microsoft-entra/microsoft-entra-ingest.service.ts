@@ -86,7 +86,7 @@ export class MicrosoftEntraIngestService {
         );
 
         if (this.quarantineService) {
-          this.quarantineService.quarantine({
+          await this.quarantineService.quarantine({
             tenantId,
             environmentId,
             connectorId: 'microsoft-entra',

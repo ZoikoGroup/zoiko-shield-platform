@@ -1,15 +1,15 @@
 import { createHash, createHmac } from 'crypto';
 import { DLQReplayWorker } from '../../shield-ingest/src/ingestion/dlq-replay.worker';
-import { QuarantineService } from '../../shield-ingest/src/ingestion/quarantine.service';
-import { RawIngestService } from '../../shield-ingest/src/ingestion/raw-ingest.service';
+import { DlqReplayQuarantineService } from '../../shield-ingest/src/dlq/dlq-replay-quarantine.service';
+import { createFakeDlqDb } from '../../shield-ingest/test/fakes/fake-dlq-db';
 import { AiOutputGroundingService } from '../src/modules/ai-governance/ai-output-grounding.service';
 import { EventStreamService } from '../src/modules/events/event-stream.service';
 import { MerkleTreeService } from '../../shield-anchor/src/merkle/merkle-tree.service';
 
 describe('Phase 1 Live Pipeline Integration & Multi-Tenant Ingestion-to-Verification Test Harness', () => {
   let dlqWorker: DLQReplayWorker;
-  let quarantineService: QuarantineService;
-  let rawIngestService: jest.Mocked<RawIngestService>;
+  let dlq: DlqReplayQuarantineService;
+  let republish: jest.Mock;
   let groundingService: AiOutputGroundingService;
   let eventStreamService: EventStreamService;
   let merkleTreeService: MerkleTreeService;
@@ -19,19 +19,12 @@ describe('Phase 1 Live Pipeline Integration & Multi-Tenant Ingestion-to-Verifica
   const webhookSecret = 'zs-webhook-hmac-secret-key-32bytes';
 
   beforeAll(() => {
-    quarantineService = new QuarantineService();
-    rawIngestService = {
-      processWebhookPayload: jest.fn().mockResolvedValue({
-        id: 'evt-replayed-001',
-        tenantId: tenantA,
-        environmentId: 'env-prod',
-        connectorId: 'conn-webhook-01',
-        payloadHash: 'hash-replayed-123',
-        processingStatus: 'ACCEPTED',
-      }),
-    } as unknown as jest.Mocked<RawIngestService>;
-
-    dlqWorker = new DLQReplayWorker(quarantineService, rawIngestService);
+    republish = jest.fn().mockResolvedValue(undefined);
+    dlq = new DlqReplayQuarantineService(
+      createFakeDlqDb() as any,
+      { republish } as any,
+    );
+    dlqWorker = new DLQReplayWorker(dlq);
     groundingService = new AiOutputGroundingService();
     eventStreamService = new EventStreamService();
     merkleTreeService = new MerkleTreeService();
@@ -81,24 +74,34 @@ describe('Phase 1 Live Pipeline Integration & Multi-Tenant Ingestion-to-Verifica
         user: 'dev@acme.com',
       });
 
-      // Quarantine record
-      const quarantined = quarantineService.quarantinePayload(
+      // A consumer rejected this message; it is persisted with its Kafka origin
+      const quarantined = await dlq.quarantineMessage(
         tenantA,
-        'env-prod',
-        'conn-webhook-01',
-        validPayload,
-        'SCHEMA_VALIDATION_ERROR',
+        'telemetry.raw',
+        JSON.parse(validPayload),
         'Payload validation failed',
+        'SCHEMA_VALIDATION_ERROR',
+        3,
+        {
+          kind: 'KAFKA',
+          kafka: { topic: 'telemetry.raw', partition: 0, offset: '42' },
+        },
       );
 
-      expect(quarantined.quarantineId).toBeDefined();
-      expect(quarantined.status).toBe('PENDING_REVIEW');
+      expect(quarantined.messageId).toBeDefined();
+      expect(quarantined.status).toBe('QUARANTINED');
 
       // Replay batch
       const batchResult = await dlqWorker.replayQuarantineBatch(tenantA, 10);
       expect(batchResult.totalProcessed).toBeGreaterThanOrEqual(1);
       expect(batchResult.replayedCount).toBeGreaterThanOrEqual(1);
       expect(batchResult.failedCount).toBe(0);
+      expect(republish).toHaveBeenCalledWith(
+        'telemetry.raw',
+        tenantA,
+        JSON.parse(validPayload),
+      );
+      expect(await dlq.listQuarantined(tenantB)).toHaveLength(0);
     });
   });
 

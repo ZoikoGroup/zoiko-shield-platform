@@ -122,7 +122,7 @@ export class AwsCloudTrailIngestService {
         );
 
         if (this.quarantineService) {
-          this.quarantineService.quarantine({
+          await this.quarantineService.quarantine({
             tenantId,
             environmentId,
             connectorId: 'aws-cloudtrail',
