@@ -15,7 +15,7 @@ import {
   SummaryPreviewDto,
 } from './intake.dto';
 import { IntakeService } from './intake.service';
-@Controller()
+@Controller('api/public/chat/v1')
 @PublicEndpoint()
 @UseGuards(OriginCsrfGuard, RateLimitGuard)
 export class IntakeController {

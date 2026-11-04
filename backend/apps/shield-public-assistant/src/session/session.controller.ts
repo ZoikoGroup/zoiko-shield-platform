@@ -6,7 +6,7 @@ import { RateLimitGuard } from '../common/rate-limit.guard';
 import { AssistantConfigService } from '../config/assistant-config.service';
 import { SESSION_COOKIE, SESSION_TTL_MS, SessionService } from './session.service';
 
-@Controller('sessions')
+@Controller('api/public/chat/v1/sessions')
 @PublicEndpoint()
 @UseGuards(OriginCsrfGuard, RateLimitGuard)
 export class SessionController {

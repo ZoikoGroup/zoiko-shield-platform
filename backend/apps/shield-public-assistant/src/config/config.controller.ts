@@ -2,7 +2,7 @@ import { Controller, Get } from '@nestjs/common';
 import { PublicEndpoint } from '../common/public-endpoint.decorator';
 import { AssistantConfigService } from './assistant-config.service';
 
-@Controller()
+@Controller('api/public/chat/v1')
 @PublicEndpoint()
 export class ConfigController {
   constructor(private readonly config: AssistantConfigService) {}

@@ -17,7 +17,7 @@ const SECRET_PATTERNS: RegExp[] = [
   /\bghp_[A-Za-z0-9]{20,}\b/,
   /-----BEGIN [A-Z ]*PRIVATE KEY-----/,
   /\b(?:\d[ -]*?){13,19}\b/,
-  /\bbearer\s+[A-Za-z0-9._\-]{20,}/i,
+  /\bbearer\s+[A-Za-z0-9._-]{20,}/i,
   /\b(?:password|passwd|pwd|passcode|pin)\s+(?:is|was)\s+\S{3,}/i,
 ];
 

@@ -38,7 +38,7 @@ class GuideStepDto {
   choice?: string;
 }
 
-@Controller()
+@Controller('api/public/chat/v1')
 @PublicEndpoint()
 export class HelpController {
   constructor(private readonly content: ContentService) {}

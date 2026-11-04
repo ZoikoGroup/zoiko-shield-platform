@@ -25,7 +25,7 @@ class FeedbackDto {
  * Unified feedback (WF05/WF10/WF11). No free text in v1: the reason code is a
  * closed vocabulary, so nothing a visitor types can leak into analytics.
  */
-@Controller('feedback')
+@Controller('api/public/chat/v1/feedback')
 @PublicEndpoint()
 @UseGuards(OriginCsrfGuard, RateLimitGuard)
 export class FeedbackController {

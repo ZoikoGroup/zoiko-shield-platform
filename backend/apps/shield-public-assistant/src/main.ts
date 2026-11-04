@@ -16,7 +16,6 @@ const DEFAULT_ORIGINS = [
 async function bootstrap() {
   const app = await NestFactory.create(ShieldPublicAssistantModule);
 
-  app.setGlobalPrefix('api/public/chat/v1');
   app.use(cookieParser());
   app.useGlobalPipes(
     new ValidationPipe({

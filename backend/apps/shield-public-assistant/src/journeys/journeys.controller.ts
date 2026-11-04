@@ -71,7 +71,7 @@ class OnboardingChecklistDto {
   topic_ids?: string[];
 }
 
-@Controller()
+@Controller('api/public/chat/v1')
 @PublicEndpoint()
 export class JourneysController {
   constructor(private readonly content: ContentService) {}

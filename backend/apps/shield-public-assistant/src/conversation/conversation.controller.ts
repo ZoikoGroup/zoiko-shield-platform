@@ -19,7 +19,7 @@ import { SESSION_COOKIE, SessionService, type GuestSession } from '../session/se
 import { ConversationService } from './conversation.service';
 import { CreateMessageDto } from './create-message.dto';
 
-@Controller('messages')
+@Controller('api/public/chat/v1/messages')
 @PublicEndpoint()
 export class ConversationController {
   constructor(
