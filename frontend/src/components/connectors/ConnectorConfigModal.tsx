@@ -85,30 +85,9 @@ export const ConnectorConfigModal: React.FC<ConnectorConfigModalProps> = ({
     processTelemetry: provider.includes("edr"),
   });
 
-  const [isTesting, setIsTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{
-    status: "SUCCESS" | "FAILED";
-    message: string;
-    latencyMs: number;
-    receiptId: string;
-    schemaVersion: string;
-  } | null>(null);
+  // A connection can only be tested by the backend once the connector exists.
+  const [showTestNotice, setShowTestNotice] = useState(false);
 
-  const handleTestConnection = () => {
-    setIsTesting(true);
-    setTestResult(null);
-
-    setTimeout(() => {
-      setIsTesting(false);
-      setTestResult({
-        status: "SUCCESS",
-        message: `TLS 1.3 mutual handshake verified with ${provider}. OCSF v1.1.0 schema certified.`,
-        latencyMs: Math.floor(Math.random() * 35) + 18,
-        receiptId: `TEST-RECEIPT-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
-        schemaVersion: "OCSF v1.1.0 Certified",
-      });
-    }, 850);
-  };
 
   const handleSave = () => {
     const authConfig: Record<string, string> = {
@@ -527,21 +506,9 @@ export const ConnectorConfigModal: React.FC<ConnectorConfigModalProps> = ({
             </div>
           </div>
 
-          {/* Test connection output */}
-          {testResult && (
-            <div className="p-3 rounded-lg bg-emerald-950/40 border border-emerald-500/40 space-y-1 font-mono text-[11px]">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2 text-emerald-400 font-bold">
-                  <CheckCircle2 className="w-4 h-4" />
-                  Connection Live & Authenticated ({testResult.latencyMs}ms)
-                </div>
-                <Badge variant="pass" className="text-[9px] font-mono">{testResult.schemaVersion}</Badge>
-              </div>
-              <div className="text-slate-300 text-[11px]">{testResult.message}</div>
-              <div className="text-[10px] text-slate-400 pt-1 border-t border-emerald-900/40 flex items-center justify-between">
-                <span>Receipt: {testResult.receiptId}</span>
-                <span className="text-emerald-400">Zero-Loss Quarantine Ready</span>
-              </div>
+          {showTestNotice && (
+            <div className="p-3 rounded-lg bg-slate-900/60 border border-slate-700 text-[11px] text-slate-300">
+              Not tested yet. Connection tests run on the backend against a saved connector — save it, then use Test on its row.
             </div>
           )}
         </div>
@@ -551,12 +518,11 @@ export const ConnectorConfigModal: React.FC<ConnectorConfigModalProps> = ({
           <Button
             variant="outline"
             size="sm"
-            onClick={handleTestConnection}
-            disabled={isTesting}
+            onClick={() => setShowTestNotice(true)}
             className="flex items-center gap-2 text-xs border-slate-700 hover:border-cyan-500/50"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isTesting ? "animate-spin text-cyan-400" : ""}`} />
-            {isTesting ? "Validating TLS 1.3 Ping..." : "Test Connection & Validate Schema"}
+            <RefreshCw className="w-3.5 h-3.5" />
+            Test Connection
           </Button>
 
           <div className="flex items-center gap-2">
@@ -564,7 +530,7 @@ export const ConnectorConfigModal: React.FC<ConnectorConfigModalProps> = ({
               Cancel
             </Button>
             <Button variant="primary" size="sm" onClick={handleSave} className="bg-cyan-600 hover:bg-cyan-500 font-semibold shadow-[0_0_12px_rgba(0,240,255,0.25)]">
-              Save & Activate Feed
+              Save Connector
             </Button>
           </div>
         </div>

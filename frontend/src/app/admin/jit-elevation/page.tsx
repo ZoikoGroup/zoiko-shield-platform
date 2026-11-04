@@ -50,9 +50,9 @@ const TABS = [
 export default function JitElevationQuorumPage() {
   const [tab, setTab] = useState("requests");
   const [query, setQuery] = useState("");
-  const [requests, setRequests] = useState<Req[]>(INITIAL_REQUESTS);
+  const [requests] = useState<Req[]>(INITIAL_REQUESTS);
   const [selectedId, setSelectedId] = useState(INITIAL_REQUESTS[0].id);
-  const [auditEvents, setAuditEvents] = useState<
+  const [auditEvents] = useState<
     Array<{ time: string; title: string; tag: string; tone: Tone }>
   >([
     { time: "14:21", title: "JIT-0261 created", tag: "Requested", tone: "slate" },
@@ -76,77 +76,15 @@ export default function JitElevationQuorumPage() {
   const nowTime = () =>
     new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
 
-  const handleApproverSignOff = (slot: 1 | 2) => {
-    setRequests((prev) =>
-      prev.map((r) => {
-        if (r.id !== sel.id) return r;
-        const nextApprovals = Math.max(r.approvals, slot) as 0 | 1 | 2;
-        return {
-          ...r,
-          approvals: nextApprovals,
-          state: r.state === "GRANTED" ? "GRANTED" : nextApprovals >= 1 ? "PENDING" : "BLOCKED",
-        };
-      }),
-    );
-    setAuditEvents((prev) => [
-      {
-        time: nowTime(),
-        title: `${sel.id} Approver ${slot === 1 ? "A" : "B"} signed off`,
-        tag: slot === 2 ? "Quorum Met" : "1/2 Signed",
-        tone: slot === 2 ? "emerald" : "amber",
-      },
-      ...prev,
-    ]);
-  };
+  // Sample rows can't be approved, stepped up or granted here: those are
+  // server-verified actions, so every control opens the live console.
+  const openLiveConsole = () => setTab(CONSOLE_TAB);
+  const handleApproverSignOff = (_slot: 1 | 2) => openLiveConsole();
+  const handleVerifyStepUp = openLiveConsole;
+  const handleGrantAccess = openLiveConsole;
+  const handleRevokeAccess = (_id: string) => openLiveConsole();
 
-  const handleVerifyStepUp = () => {
-    if (sel.approvals < 2) return;
-    setRequests((prev) =>
-      prev.map((r) => (r.id === sel.id ? { ...r, stepUp: "Verified" } : r)),
-    );
-    setAuditEvents((prev) => [
-      {
-        time: nowTime(),
-        title: `${sel.id} FIDO2 / WebAuthn passkey step-up verified`,
-        tag: "Step-Up OK",
-        tone: "cyan",
-      },
-      ...prev,
-    ]);
-  };
-
-  const handleGrantAccess = () => {
-    if (sel.approvals < 2 || sel.stepUp !== "Verified") return;
-    setRequests((prev) =>
-      prev.map((r) => (r.id === sel.id ? { ...r, state: "GRANTED" } : r)),
-    );
-    setAuditEvents((prev) => [
-      {
-        time: nowTime(),
-        title: `${sel.id} privilege elevation granted (${sel.ttl}m TTL)`,
-        tag: "Granted",
-        tone: "emerald",
-      },
-      ...prev,
-    ]);
-  };
-
-  const handleRevokeAccess = (id: string) => {
-    setRequests((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, state: "REVOKED" } : r)),
-    );
-    setAuditEvents((prev) => [
-      {
-        time: nowTime(),
-        title: `${id} privilege elevation emergency revoked`,
-        tag: "Revoked",
-        tone: "rose",
-      },
-      ...prev,
-    ]);
-  };
-
-  const isAuthorized = sel.approvals === 2 && sel.stepUp === "Verified";
+  const isAuthorized = sel.approvals === 2 && sel.stepUp === "Verified" && sel.state === "PENDING";
 
   return (
     <WorkspacePage

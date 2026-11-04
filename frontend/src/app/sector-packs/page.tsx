@@ -274,7 +274,7 @@ export default function SectorPacksPage() {
         } else {
           result = "PASS";
           complianceScore = 100;
-          rationale = "Audit records anchored in RFC 6962 Merkle tree with dual-signer post-quantum signatures (ML-DSA-65).";
+          rationale = "Audit records marked as sealed in this what-if input; no Merkle proof was checked.";
         }
       }
 
@@ -292,11 +292,11 @@ export default function SectorPacksPage() {
           incidentReportingHours: reportingHoursInput,
           merkleEpochAnchored: merkleSealed,
         },
-        evidenceDigests: ["sha256:7b66e8983b13042126dd93ef2b89012a44bb01c8"],
+        evidenceDigests: [],
         rationale,
         evaluatedAt: new Date().toISOString(),
-        attestationDigest: "sha256:e04d5c01d3f30f169d455842cb27f59a03a031f19e9a817ae45cf4c45d2d850b",
-        disclaimer: "Automated control evaluation is continuous evidence telemetry and does not constitute statutory certification or legal advice.",
+        attestationDigest: "",
+        disclaimer: "Local what-if calculation from the inputs above; it reads no evidence and is not attested. Not statutory certification or legal advice.",
       });
       setEvaluating(false);
     }, 350);
@@ -750,16 +750,18 @@ export default function SectorPacksPage() {
                 <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 space-y-1 text-[10px] font-mono">
                   <div className="flex justify-between items-center text-slate-400">
                     <span className="text-slate-500 uppercase">Cryptographic Attestation Digest:</span>
-                    <button
-                      onClick={() => handleCopyDigest(evaluationResult.attestationDigest)}
-                      className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
-                    >
-                      <Copy className="w-3 h-3" />
-                      <span>{copiedDigest ? "Copied" : "Copy Digest"}</span>
-                    </button>
+                    {evaluationResult.attestationDigest && (
+                      <button
+                        onClick={() => handleCopyDigest(evaluationResult.attestationDigest)}
+                        className="text-cyan-400 hover:text-cyan-300 flex items-center gap-1"
+                      >
+                        <Copy className="w-3 h-3" />
+                        <span>{copiedDigest ? "Copied" : "Copy Digest"}</span>
+                      </button>
+                    )}
                   </div>
-                  <div className="text-emerald-400 truncate select-all">
-                    {evaluationResult.attestationDigest}
+                  <div className={evaluationResult.attestationDigest ? "text-emerald-400 truncate select-all" : "text-slate-500"}>
+                    {evaluationResult.attestationDigest || "Not attested"}
                   </div>
                 </div>
 

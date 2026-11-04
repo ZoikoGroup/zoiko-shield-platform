@@ -38,7 +38,6 @@ export default function JitElevationPage() {
   const [elevatedRole, setElevatedRole] = useState("INCIDENT_COMMANDER");
   const [statedPurpose, setStatedPurpose] = useState("");
   const [durationMinutes, setDurationMinutes] = useState(60);
-  const [initialHardware, setInitialHardware] = useState(false);
 
   // Peer Approval / Revocation Modal State
   const [approvingSessionId, setApprovingSessionId] = useState<string | null>(null);
@@ -83,7 +82,6 @@ export default function JitElevationPage() {
         elevatedRole,
         statedPurpose,
         durationMinutes,
-        initialHardwareProof: initialHardware ? `fido2-attestation-${Date.now()}` : undefined,
       });
       setSessions((prev) => [created, ...prev]);
       setStatedPurpose("");
@@ -122,22 +120,13 @@ export default function JitElevationPage() {
     }
   };
 
-  const handleStepUp = async (sessionId: string) => {
-    setBusy(sessionId);
-    try {
-      setError(null);
-      setActionSuccess(null);
-      const updated = await ZoikoShieldApiClient.stepUpHardwareJitSession(
-        sessionId,
-        `fido2-yubikey-p256-digest-${Date.now()}`
-      );
-      replaceSession(updated);
-      setActionSuccess(`Hardware step-up recorded for session ${sessionId}.`);
-    } catch (err) {
-      setError(`Hardware step-up for ${sessionId} was not recorded: ${errorMessage(err)}`);
-    } finally {
-      setBusy(null);
-    }
+  // This endpoint takes an opaque digest it cannot verify, so no proof is
+  // sent from here; the verified passkey ceremony lives on /admin/jit.
+  const handleStepUp = (sessionId: string) => {
+    setActionSuccess(null);
+    setError(
+      `Hardware key verification is not available on this console, so session ${sessionId} was not stepped up. Use the passkey step-up on the JIT access page.`,
+    );
   };
 
   const handleRevoke = async () => {
@@ -323,7 +312,7 @@ export default function JitElevationPage() {
                     {getStatusBadge(sess.status)}
                     {sess.hardwareStepUpVerified ? (
                       <span className="px-2 py-0.5 rounded bg-indigo-950/40 text-indigo-300 border border-indigo-500/30 font-mono text-[9px] flex items-center gap-1">
-                        <Fingerprint className="w-3 h-3 text-indigo-400" /> FIDO2 VERIFIED
+                        <Fingerprint className="w-3 h-3 text-indigo-400" /> STEP-UP RECORDED
                       </span>
                     ) : (
                       <span className="px-2 py-0.5 rounded bg-amber-950/40 text-amber-300 border border-amber-500/30 font-mono text-[9px]">
@@ -344,8 +333,7 @@ export default function JitElevationPage() {
                     {sess.status === "APPROVED" && !sess.hardwareStepUpVerified && (
                       <button
                         onClick={() => handleStepUp(sess.sessionId)}
-                        disabled={busy === sess.sessionId}
-                        className="disabled:opacity-50 disabled:cursor-wait px-3 py-1 rounded bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 text-xs font-mono transition-colors"
+                        className="px-3 py-1 rounded bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 text-xs font-mono transition-colors"
                       >
                         Verify Hardware
                       </button>
@@ -487,18 +475,10 @@ export default function JitElevationPage() {
                 />
               </div>
 
-              <div className="flex items-center gap-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="initHw"
-                  checked={initialHardware}
-                  onChange={(e) => setInitialHardware(e.target.checked)}
-                  className="rounded border-slate-700 bg-slate-950 accent-cyan-500"
-                />
-                <label htmlFor="initHw" className="text-slate-300">
-                  Pre-attest with FIDO2 / WebAuthn Hardware Token
-                </label>
-              </div>
+              <p className="pt-2 text-[11px] text-slate-400">
+                Hardware pre-attestation is not available here; step up with a passkey on the{" "}
+                <Link href="/admin/jit" className="text-cyan-400 underline">JIT access page</Link>.
+              </p>
 
               <div className="pt-4 flex justify-end gap-3 border-t border-slate-800">
                 <button

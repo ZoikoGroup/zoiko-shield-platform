@@ -726,16 +726,19 @@ export class ZoikoShieldApiClient {
   }
 
   // --- Step 4: Connectors Setup ---
-  static async createConnector(data: {
-    tenantId: string;
-    name: string;
-    provider: any;
-    sourceRegion: string;
-  }): Promise<Connector> {
+  static async createConnector(
+    data: {
+      tenantId: string;
+      name: string;
+      provider: any;
+      sourceRegion: string;
+    },
+    { confirmed = false }: { confirmed?: boolean } = {},
+  ): Promise<Connector> {
     const conn = await this.safeFetch<Connector>(
       "/api/v1/connectors",
       { method: "POST", body: JSON.stringify(data) },
-      () => {
+      confirmed ? null : () => {
         const id = `conn-${data.provider}-${generateUUID().slice(0, 6)}`;
         return {
           id,
@@ -750,7 +753,8 @@ export class ZoikoShieldApiClient {
           eventsIngestedCount: 0,
           lastEventAt: new Date().toISOString(),
         };
-      }
+      },
+      { confirmed },
     );
 
     const state = getState();
@@ -812,35 +816,23 @@ export class ZoikoShieldApiClient {
     return conn;
   }
 
-  static async testConnector(connectorId: string): Promise<{ success: boolean; latencyMs: number; provider: string; message: string }> {
-    return this.safeFetch(
-      `/api/v1/connectors/${connectorId}/test`,
-      { method: "POST" },
-      () => ({
-        success: true,
-        latencyMs: Math.floor(Math.random() * 40) + 10,
-        provider: "generic-webhook",
-        message: `Connection test passed for ${connectorId}`,
-      })
-    );
+  static async testConnector(connectorId: string): Promise<{ success: boolean; latencyMs?: number; provider: string; message: string }> {
+    return this.safeFetch(`/api/v1/connectors/${connectorId}/test`, { method: "POST" }, null, { confirmed: true });
   }
 
   static async syncConnector(connectorId: string): Promise<{ status: string; syncedCount: number; lastSyncAt: string }> {
     const res = await this.safeFetch<{ status: string; syncedCount: number; lastSyncAt: string }>(
       `/api/v1/connectors/${connectorId}/sync`,
       { method: "POST" },
-      () => ({
-        status: "SUCCESS",
-        syncedCount: Math.floor(Math.random() * 50) + 10,
-        lastSyncAt: new Date().toISOString(),
-      })
+      null,
+      { confirmed: true },
     );
 
     const state = getState();
     const conn = state.connectors.find((c) => c.id === connectorId);
     if (conn) {
-      conn.eventsIngestedCount += res.syncedCount || 15;
-      conn.lastEventAt = new Date().toISOString();
+      conn.eventsIngestedCount += res.syncedCount ?? 0;
+      conn.lastEventAt = res.lastSyncAt ?? conn.lastEventAt;
       saveDemoState(state);
     }
     return res;
@@ -3432,26 +3424,8 @@ export class ZoikoShieldApiClient {
         method: "POST",
         body: JSON.stringify(params),
       },
-      () => {
-        const quorumId = `quorum-${generateUUID().slice(0, 8)}`;
-        return {
-          quorumId,
-          tenantId: params.tenantId || "00000000-0000-4000-8000-000000000001",
-          proposalId: params.proposalId,
-          actionType: params.actionType,
-          targetResource: params.targetResource,
-          authorityLevel: params.authorityLevel || "R2",
-          status: "PENDING_SECOND_SIGNATURE",
-          singleUseRollbackToken: `ZS-ROLLBACK-TOKEN-${generateUUID().slice(0, 8).toUpperCase()}`,
-          compensatingPlan: {
-            rollbackCommand: params.compensatingCommand || "UNISOLATE_ENDPOINT",
-            targetResource: params.targetResource,
-            reversibilityTier: params.reversibilityTier || "R1",
-          },
-          createdAt: new Date().toISOString(),
-          expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-        };
-      }
+      null,
+      { confirmed: true }
     );
   }
 
@@ -3641,91 +3615,8 @@ export class ZoikoShieldApiClient {
         method: "POST",
         body: JSON.stringify(params),
       },
-      () => {
-        const decidedAt = new Date().toISOString();
-        const receiptSignature = sha256Mock(
-          `ZS-DECISION-RECEIPT-V1:${params.envelopeId}:${params.decision}:${params.decidedBy}:${decidedAt}:${params.rationale}`
-        );
-
-        let newState: DecisionState = "PENDING_REVIEW";
-        if (params.decision === "ACCEPT") newState = "ACCEPTED";
-        else if (params.decision === "MODIFY") newState = "MODIFIED";
-        else if (params.decision === "REJECT") newState = "REJECTED";
-        else if (params.decision === "ESCALATE") newState = "ESCALATED";
-
-        const envelope: AiReviewEnvelope = {
-          envelopeId: params.envelopeId,
-          tenantId: "00000000-0000-4000-8000-000000000001",
-          environmentId: "PRODUCTION",
-          createdAt: new Date(Date.now() - 60000).toISOString(),
-          aiLabelAndUseCaseName: {
-            useCaseName: "COPILOT_INTERACTIVE_DECISION",
-            modelIdentifier: "claude-3-5-sonnet-20241022",
-            providerProfile: "anthropic-bedrock-us-east-1",
-            riskTier: "HIGH",
-          },
-          sourcesAndSpans: [
-            {
-              sourceId: "src-ocsf-3002",
-              sourceType: "OCSF_EVENT_CORRELATION",
-              name: "aws.guardduty.iam-exfiltration",
-              type: "TELEMETRY_LOG",
-              span: "Principal: AROAEXAMPLE:usr-analyst-lead-01 from non-corporate IP 198.51.100.99",
-              confidenceScore: 0.98,
-            },
-          ],
-          knownMissingStaleOrConflictingEvidence: {
-            missingEvidenceCount: 0,
-            staleEvidenceCount: 0,
-            conflictingEvidenceCount: 0,
-            freshnessSeconds: 10,
-            completenessRatio: 1.0,
-          },
-          calibratedConfidenceAndUncertainty: {
-            confidenceTier: "HIGH",
-            score: 0.95,
-            calibrationBasis: "Human operator reviewed and confirmed.",
-            uncertaintyFactors: ["None recorded by operator."],
-          },
-          alternativeHypothesesOrActions: [],
-          expectedImpactAndReversibility: {
-            blastRadius: "Production scope approved by operator.",
-            downtimeExpected: false,
-            reversibility: "Fully Reversible",
-            compensationMechanism: "Rollback Token: ZS-RB-TOKEN-9941",
-          },
-          requiredAuthorityAndApprovals: {
-            requiredAuthorityTier: "R2",
-            dualCustodyRequired: true,
-            approverRoles: ["LEAD_SECURITY_ANALYST"],
-          },
-          controls: {
-            currentState: newState,
-            availableTransitions: [],
-          },
-          humanDecisionAndRationale: {
-            decision: params.decision,
-            decidedBy: params.decidedBy,
-            decidedAt,
-            rationale: params.rationale,
-            signature: receiptSignature,
-            modifiedContent: params.modifiedContent,
-            escalatedToRole: params.escalatedToRole,
-          },
-          appealOrFeedbackRoute: {
-            appealUrl: "https://shield.zoikogroup.com/appeals/v1",
-            feedbackChannel: "secops-human-review@zoikogroup.com",
-            customerAffecting: false,
-          },
-        };
-
-        return {
-          status: newState,
-          envelope,
-          receiptSignature,
-          decidedAt,
-        };
-      }
+      null,
+      { confirmed: true },
     );
   }
 
@@ -3825,21 +3716,6 @@ export class ZoikoShieldApiClient {
       {
         method: 'POST',
         body: JSON.stringify({ approverId, approverRole, approvalNotes }),
-      },
-      null,
-      { confirmed: true }
-    );
-  }
-
-  static async stepUpHardwareJitSession(
-    id: string,
-    hardwareProofDigest: string
-  ): Promise<JitElevationSession> {
-    return this.safeFetch<JitElevationSession>(
-      `/api/v1/jit/sessions/${id}/step-up`,
-      {
-        method: 'POST',
-        body: JSON.stringify({ hardwareProofDigest }),
       },
       null,
       { confirmed: true }

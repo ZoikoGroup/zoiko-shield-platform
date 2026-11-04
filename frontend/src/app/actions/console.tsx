@@ -134,7 +134,8 @@ export default function ActionsAndFreezePage() {
   
   // Dual-Custody State
   const [isDualCustodyOpen, setIsDualCustodyOpen] = useState(false);
-  const [quorumReceipt, setQuorumReceipt] = useState<{
+  // Only a backend-confirmed quorum may populate this; this console cannot collect one.
+  const [quorumReceipt] = useState<{
     quorumId: string;
     approver1: string;
     approver2: string;
@@ -728,10 +729,6 @@ export default function ActionsAndFreezePage() {
         blastRadiusScore={selectedScenario.blastRadiusScore}
         reversibilityTier={selectedScenario.reversibilityTier}
         rollbackCommand={selectedScenario.compensatingCommand}
-        onQuorumApproved={(receipt) => {
-          setQuorumReceipt(receipt);
-          setRollbackToken(receipt.rollbackToken);
-        }}
       />
     </div>
   );

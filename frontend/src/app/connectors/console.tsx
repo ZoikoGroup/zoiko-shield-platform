@@ -98,28 +98,33 @@ export default function ConnectorsPage() {
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  const handleSaveConfiguredConnector = (config: {
+  // Credentials typed into the wizard are not sent: the create API accepts
+  // only a credential reference, and none is registered from this form.
+  const handleSaveConfiguredConnector = async (config: {
     name: string;
     provider: ConnectorProviderType;
     region: string;
     authConfig: Record<string, string>;
   }) => {
-    const tier = getProviderTier(config.provider);
-    const newConn: Connector = {
-      id: `conn-${Date.now().toString(36)}`,
-      tenantId: state?.tenant?.id || "demo-tenant",
-      name: config.name,
-      provider: config.provider,
-      sourceRegion: config.region,
-      tier,
-      status: "ACTIVE",
-      healthStatus: "HEALTHY",
-      hmacSecret: "hmac_sec_" + Math.random().toString(36).substring(2, 10),
-      webhookUrl: `https://ingest.zoikoshield.corp/api/v1/telemetry/webhook/${config.provider}`,
-      eventsIngestedCount: 142,
-    };
-    setConnectors((prev) => [newConn, ...prev]);
-    setActionMessage(`Successfully activated ${config.name} (${tier}) with verified TLS 1.3 mutual handshake.`);
+    setActionMessage(null);
+    try {
+      const created = await ZoikoShieldApiClient.createConnector(
+        {
+          tenantId: state?.tenant?.id || "demo-tenant",
+          name: config.name,
+          provider: config.provider,
+          sourceRegion: config.region,
+        },
+        { confirmed: true },
+      );
+      const tier = getProviderTier(config.provider);
+      setConnectors((prev) => [{ ...created, tier }, ...prev.filter((c) => c.id !== created.id)]);
+      setActionMessage(
+        `Created ${created.name} (${tier}, ${created.status}). Provider credentials are not stored from this form; run Test once credentials are registered.`,
+      );
+    } catch (err) {
+      setActionMessage(`❌ Could not create ${config.name}: ${err instanceof Error ? err.message : String(err)}`);
+    }
   };
 
   // Subscribe to real-time SSE stream for instant connector health updates
@@ -192,12 +197,15 @@ export default function ConnectorsPage() {
     setIsLoading(true);
     try {
       const calculatedTier = getProviderTier(provider);
-      const created = await ZoikoShieldApiClient.createConnector({
-        tenantId: state?.tenant?.id || "demo-tenant",
-        name,
-        provider,
-        sourceRegion: region,
-      });
+      const created = await ZoikoShieldApiClient.createConnector(
+        {
+          tenantId: state?.tenant?.id || "demo-tenant",
+          name,
+          provider,
+          sourceRegion: region,
+        },
+        { confirmed: true },
+      );
 
       // Add the newly created connector (with certification metadata) to the
       // real list on top — previously this relied on the connector already
@@ -207,14 +215,13 @@ export default function ConnectorsPage() {
         ...created,
         tier: calculatedTier,
         ocsfStatus: calculatedTier === "EXPERIMENTAL_UNCERTIFIED" ? "SCHEMA_CUSTOM" : "MAPPED_OCSF_V1",
-        eventsPerMinute: calculatedTier === "P0_CERTIFIED" ? 120 : calculatedTier === "P1_PREVIEW" ? 45 : 10,
       };
       setConnectors((prev) => [withTier, ...prev.filter((c) => c.id !== withTier.id)]);
 
       setIsAddModalOpen(false);
       setActionMessage(`✅ Connector created successfully with tier ${calculatedTier}`);
     } catch (err) {
-      console.error("Connector Creation Error:", err);
+      setActionMessage(`❌ Connector creation failed: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setIsLoading(false);
       setTimeout(() => setActionMessage(null), 4000);
@@ -226,7 +233,11 @@ export default function ConnectorsPage() {
     setActionMessage(null);
     try {
       const res = await ZoikoShieldApiClient.testConnector(connectorId);
-      setActionMessage(`✅ Test passed (${res.latencyMs || 24}ms latency, HMAC signature verified)`);
+      setActionMessage(
+        res.success
+          ? `✅ ${res.message}${res.latencyMs != null ? ` (${res.latencyMs}ms)` : ""}`
+          : `❌ Test failed: ${res.message}`,
+      );
     } catch (err: any) {
       setActionMessage(`❌ Test failed: ${err.message}`);
     } finally {
@@ -245,13 +256,13 @@ export default function ConnectorsPage() {
           c.id === connectorId
             ? {
                 ...c,
-                eventsIngestedCount: (c.eventsIngestedCount || 0) + (res.syncedCount || 0),
-                lastEventAt: res.lastSyncAt || new Date().toISOString(),
+                eventsIngestedCount: (c.eventsIngestedCount || 0) + (res.syncedCount ?? 0),
+                lastEventAt: res.lastSyncAt ?? c.lastEventAt,
               }
             : c
         )
       );
-      setActionMessage(`🔄 Synced ${res.syncedCount || 12} new OCSF-normalized events!`);
+      setActionMessage(`🔄 Sync ${res.status}: ${res.syncedCount ?? 0} event(s)`);
     } catch (err: any) {
       setActionMessage(`❌ Sync failed: ${err.message}`);
     } finally {

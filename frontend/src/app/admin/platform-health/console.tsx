@@ -561,8 +561,10 @@ export default function PlatformHealthPage() {
                       </div>
                       <div className="flex justify-between text-slate-400 text-[11px]">
                         <span>Restore Drill:</span>
-                        <span className="text-emerald-400 font-bold">
-                          {store.lastRestoreDrillStatus || "VERIFIED"} ({store.restoreDrillAgeDays ?? 1}d ago)
+                        <span className={store.lastRestoreDrillStatus ? "text-emerald-400 font-bold" : "text-slate-500"}>
+                          {store.lastRestoreDrillStatus
+                            ? `${store.lastRestoreDrillStatus}${store.restoreDrillAgeDays != null ? ` (${store.restoreDrillAgeDays}d ago)` : ""}`
+                            : "NOT REPORTED"}
                         </span>
                       </div>
                     </div>
@@ -823,11 +825,11 @@ export default function PlatformHealthPage() {
                     </div>
                     <div className="p-2 rounded bg-slate-900/60 border border-slate-800">
                       <span className="text-[10px] text-slate-500">Invariants Passed:</span>
-                      <div className="text-emerald-400 font-bold">{offlineReport.invariantsPassed ?? 6}/{offlineReport.totalInvariants ?? 6}</div>
+                      <div className="text-emerald-400 font-bold">{offlineReport.invariantsPassed ?? "?"}/{offlineReport.totalInvariants ?? "?"}</div>
                     </div>
                     <div className="p-2 rounded bg-slate-900/60 border border-slate-800">
                       <span className="text-[10px] text-slate-500">Certificate Signature:</span>
-                      <div className="text-slate-300 font-mono text-[10px] truncate">{offlineReport.verificationCertificate?.signatureSha256 ? offlineReport.verificationCertificate.signatureSha256.slice(0, 16) : "VERIFIED"}...</div>
+                      <div className="text-slate-300 font-mono text-[10px] truncate">{offlineReport.verificationCertificate?.signatureSha256 ? `${offlineReport.verificationCertificate.signatureSha256.slice(0, 16)}...` : "NOT SIGNED"}</div>
                     </div>
                   </div>
                 </div>

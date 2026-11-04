@@ -164,7 +164,7 @@ const PRESETS: Record<CopilotMode, CopilotPreset> = {
           "Correlated 14 OCSF v1.1.0 authentication events spanning 22 minutes. Identity 'marcus.vance' established SMB session on bastion host (T1021.002) followed by attempted privilege escalation toward crown-jewel RDS instance 'srv-db-prod-01'.",
         artifactTitle: "forensic_lateral_movement_trajectory.json",
         artifactType: "FORENSIC_CORRELATION",
-        testBaseline: "Grounded on 14 OCSF v1.1 Events (100% Deterministic)",
+        testBaseline: "Illustrative example — not grounded on live events",
         targetEnvironment: "Case Workspace / Incident Command",
         artifactContent: `{
   "incident_id": "INC-2026-0921",
@@ -205,12 +205,12 @@ const PRESETS: Record<CopilotMode, CopilotPreset> = {
       sourcesAndSpans: [
         {
           sourceId: "src-merkle-epoch-1043",
-          sourceType: "DILITHIUM3_PROOF",
+          sourceType: "CHECKPOINT_PROOF",
           name: "merkle-tree-epoch-1043",
-          type: "DILITHIUM3_PROOF",
+          type: "CHECKPOINT_PROOF",
           documentRef: "ref-epoch-1043",
-          exactSpan: "MerkleRoot: 0x9f88c... | Checkpoint signature: ECDSA P-256 + ML-DSA-65 verified",
-          span: "MerkleRoot: 0x9f88c... | Checkpoint signature: ECDSA P-256 + ML-DSA-65 verified",
+          exactSpan: "Illustrative example — no checkpoint signature was verified",
+          span: "Illustrative example — no checkpoint signature was verified",
           confidence: 0.99,
           confidenceScore: 0.99,
         },
@@ -220,8 +220,8 @@ const PRESETS: Record<CopilotMode, CopilotPreset> = {
           name: "jit-session-ledger",
           type: "AUDIT_PACKAGE",
           documentRef: "ref-jit-48-sessions",
-          exactSpan: "48 Sessions logged with unalterable timestamps and dual-approver quorum",
-          span: "48 Sessions logged with unalterable timestamps and dual-approver quorum",
+          exactSpan: "Illustrative example — not read from a live JIT session ledger",
+          span: "Illustrative example — not read from a live JIT session ledger",
           confidence: 1.0,
           confidenceScore: 1.0,
         },
@@ -240,9 +240,9 @@ const PRESETS: Record<CopilotMode, CopilotPreset> = {
         score: 0.99,
         qualitativeBand: "HIGH",
         confidenceTier: "HIGH",
-        calibrationBasis: "Mathematical inclusion proof in Merkle Tree Epoch #1043.",
+        calibrationBasis: "Illustrative example — no inclusion proof was evaluated.",
         uncertaintyFactors: [
-          "Deterministic cryptographic verification complete; zero heuristic uncertainty.",
+          "Illustrative example: no cryptographic verification was performed.",
         ],
       },
       alternativeHypothesesOrActions: [
@@ -284,10 +284,10 @@ const PRESETS: Record<CopilotMode, CopilotPreset> = {
       },
       payload: {
         summary:
-          "Evaluated 48 JIT elevation requests against SOC 2 CC6.1 and ISO/IEC 27001:2022 A.5.18 controls. All 48 sessions satisfied dual-approver quorum and terminated within maximum 60-minute duration. Merkle epoch roots verified against the dual-signed (ECDSA P-256 + ML-DSA-65) checkpoint.",
+          "Evaluated 48 JIT elevation requests against SOC 2 CC6.1 and ISO/IEC 27001:2022 A.5.18 controls. Illustrative example only — not computed from live JIT records, and no checkpoint was verified.",
         artifactTitle: "soc2_cc61_iso27001_jit_attestation.json",
         artifactType: "CRYPTOGRAPHIC_EVIDENCE",
-        testBaseline: "Merkle Epoch #1043 Inclusion Proof Verified (PQC ML-DSA-65)",
+        testBaseline: "Illustrative draft only — no inclusion proof was verified",
         targetEnvironment: "Continuous Assurance Matrix / Audit Package Studio",
         artifactContent: `{
   "evaluation_id": "eval-cc61-epoch1043",
@@ -299,8 +299,8 @@ const PRESETS: Record<CopilotMode, CopilotPreset> = {
   "max_session_duration_minutes": 60,
   "actual_max_duration_minutes": 45,
   "merkle_epoch_root": "0xe04d5c01d3f30f169d455842cb27f59a03a031f19e9a817ae45cf4c45d2d850b",
-  "attestation_status": "CRYPTOGRAPHICALLY_VERIFIED",
-  "post_quantum_signature": "ML-DSA-65 / FIPS 204 Validated"
+  "attestation_status": "ILLUSTRATIVE_NOT_VERIFIED",
+  "post_quantum_signature": "NOT_SIGNED"
 }`,
       },
     },
@@ -523,7 +523,7 @@ aws iam update-role --role-name "DeployBot" --description "LOCKED_BY_ZOIKOSHIELD
           "Generated statutory timeline for Case CAS-1082: Initial breach detection at 08:14 UTC, containment achieved at 08:32 UTC (18 min). Zero customer PII exfiltration detected across S3 access logs. Draft marked 'Privileged & Confidential - Counsel Controlled'.",
         artifactTitle: "executive_incident_disclosure_inc_1082.md",
         artifactType: "LEGAL_COUNSEL_BRIEFING",
-        testBaseline: "Marked Privileged & Confidential • 18-Minute Containment SLA Satisfied",
+        testBaseline: "Marked Privileged & Confidential • Illustrative example, SLA not measured",
         targetEnvironment: "Legal & Executive Reporting Portal",
         artifactContent: `# PRIVILEGED & CONFIDENTIAL // ATTORNEY-CLIENT COMMUNICATION
 ## Executive Incident Briefing: Incident INC-2026-1082
@@ -535,7 +535,7 @@ aws iam update-role --role-name "DeployBot" --description "LOCKED_BY_ZOIKOSHIELD
 - **Regulatory Notification Requirements:**
   - EU GDPR Art 33: Non-reportable (no breach of personal data confirmed)
   - SEC Item 1.05: Non-material (zero operational disruption or financial loss)
-- **Forensic Chain-of-Custody:** Merkle Epoch #1043 digest \`0xe04d5c01d3f...\` verified.`,
+- **Forensic Chain-of-Custody:** Illustrative draft — no anchored digest was verified for this briefing.`,
       },
     },
   },
@@ -631,7 +631,7 @@ aws iam update-role --role-name "DeployBot" --description "LOCKED_BY_ZOIKOSHIELD
           "Generated Sigma rule `win_security_kerberos_asrep_roasting.yml` mapped to MITRE T1558.004 with high-fidelity filter on EventID 4768 and Ticket Encryption Type 0x17 (RC4-HMAC). Tested against past 90-day event baseline with 0 false positives.",
         artifactTitle: "win_security_kerberos_asrep_roasting.yml",
         artifactType: "SIGMA_RULE_YAML",
-        testBaseline: "90-Day Baseline: 0 False Positives (1.2M events backtested)",
+        testBaseline: "Illustrative example — not backtested",
         targetEnvironment: "Detection Engine (ClickHouse + Sigma Parser)",
         artifactContent: `title: AS-REP Roasting Vulnerable Kerberos Pre-Authentication
 id: 5a8a1cb9-8e79-4d69-b1d3-356a59914751
@@ -752,7 +752,7 @@ tags:
           "Shield Professional ($4,000/mo) includes 1,000 assets, 100 GB/day telemetry, AI Copilot, attack graphs, and 1-hour response SLA. Shield Advanced ($8,000/mo) expands to 5,000 assets, 500 GB/day, Rule SVC-01 certified 24/7/365 continuous MDR with 15-minute containment SLAs, and continuous security validation.",
         artifactTitle: "plan_tier_operational_comparison.json",
         artifactType: "COMMERCIAL_SPEC_MATRIX",
-        testBaseline: "Audited against Price Book ADR-06 & Contractual SLAs ADR-07",
+        testBaseline: "Illustrative example — not audited against a live price book",
         targetEnvironment: "Commercial Sizing Calculator & Entitlements Engine",
         artifactContent: `{
   "tiers": {
@@ -993,14 +993,14 @@ export default function CopilotPage() {
               rationale: rationale.trim(),
               modifiedContent: pendingTransition === "MODIFY" ? modifiedContent.trim() : undefined,
               escalatedToRole: pendingTransition === "ESCALATE" ? escalatedToRole : undefined,
-              signature: res?.receiptSignature || `SIG-${Date.now().toString(16)}`,
+              signature: res?.receiptSignature,
             },
           };
         });
       }
 
       setLastReceipt({
-        signature: res?.receiptSignature || `SIG-${Date.now().toString(16)}`,
+        signature: res?.receiptSignature ?? "UNSIGNED — backend returned no receipt signature",
         decidedAt: res?.decidedAt || new Date().toISOString(),
         status: res?.status || "RECORDED",
       });
@@ -1010,7 +1010,7 @@ export default function CopilotPage() {
         ...prev,
         {
           sender: "system",
-          text: `[AUDIT RECEIPT] Operator ${operatorId} recorded ${pendingTransition} on ${res?.envelope?.envelopeId || activeEnvelope.envelopeId}. Receipt Signature: ${(res?.receiptSignature || "verified").slice(0, 18)}...`,
+          text: `[AUDIT RECEIPT] Operator ${operatorId} recorded ${pendingTransition} on ${res?.envelope?.envelopeId || activeEnvelope.envelopeId}. ${res?.receiptSignature ? `Receipt Signature: ${res.receiptSignature.slice(0, 18)}...` : "No receipt signature was returned."}`,
           envelope: res?.envelope || activeEnvelope,
         },
       ]);
@@ -1515,12 +1515,12 @@ export default function CopilotPage() {
                   <div className="flex items-center gap-2">
                     {activeMode === "DEVELOP" && (
                       <span className="text-emerald-400 font-bold text-[9px] flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" /> Ready for Rule Engine Deployment
+                        <CheckCircle2 className="w-3 h-3" /> Draft — review before deploying
                       </span>
                     )}
                     {activeMode === "RESPOND" && (
                       <span className="text-amber-400 font-bold text-[9px] flex items-center gap-1">
-                        <Lock className="w-3 h-3" /> WASM Reversibility Token Verified
+                        <Lock className="w-3 h-3" /> Reversibility not verified (draft)
                       </span>
                     )}
                   </div>
