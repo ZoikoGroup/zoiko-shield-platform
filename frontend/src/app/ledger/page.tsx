@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from "react";
 import { ShieldCheck, Download, Search, Check, AlertTriangle, Copy } from "lucide-react";
 import LedgerConsole from "./console";
+import { downloadFromApi } from "@/lib/export-utils";
 import {
   WorkspacePage, PageHeader, NoticeBanner, KpiGrid, Panel, Pill, DataTable, SearchInput,
   KeyValues, EventList, CheckRow, ProgressRow, ActionButton, CONSOLE_TAB, type Tone,
@@ -31,6 +32,18 @@ export default function EvidenceCompliancePage() {
   const [status, setStatus] = useState<"needs" | "all">("needs");
   const [selectedId, setSelectedId] = useState("EV-1842");
   const [copied, setCopied] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportEvidenceIndex = async () => {
+    setIsExporting(true);
+    try {
+      await downloadFromApi("/api/v1/exports/data/evidence?format=csv", "evidence-index.csv");
+    } catch (err) {
+      console.error("Failed to export evidence index:", err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -53,7 +66,7 @@ export default function EvidenceCompliancePage() {
           subtitle="Assess control tests, investigate missing evidence, verify provenance, and prepare independently checkable audit records."
           actions={
             <>
-              <ActionButton onClick={() => setTab(CONSOLE_TAB)}><Download className="w-3.5 h-3.5" /> Export evidence index</ActionButton>
+              <ActionButton onClick={handleExportEvidenceIndex}><Download className="w-3.5 h-3.5" /> {isExporting ? "Exporting..." : "Export evidence index"}</ActionButton>
               <ActionButton primary onClick={() => setTab(CONSOLE_TAB)}><Search className="w-3.5 h-3.5" /> Verify evidence proof</ActionButton>
             </>
           }

@@ -1,5 +1,14 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { createHash, randomUUID } from 'crypto';
+import {
+  DualCustodyApprovalRef,
+  DualCustodyQuorumService,
+} from '../dual-custody/dual-custody-quorum.service';
 
 export type EdrProviderType =
   | 'CROWDSTRIKE_FALCON'
@@ -23,6 +32,27 @@ export interface EdrActionCommand {
   targetFilePath?: string;
   incidentReference: string;
   operatorId: string;
+  approval?: DualCustodyApprovalRef;
+}
+
+type DestructiveEdrAction = Extract<
+  EdrActionType,
+  | 'ISOLATE_HOST_NETWORK'
+  | 'TERMINATE_MALICIOUS_PROCESS'
+  | 'QUARANTINE_FILE_PAYLOAD'
+>;
+
+const DESTRUCTIVE_EDR_ACTIONS: ReadonlySet<EdrActionType> =
+  new Set<DestructiveEdrAction>([
+    'ISOLATE_HOST_NETWORK',
+    'TERMINATE_MALICIOUS_PROCESS',
+    'QUARANTINE_FILE_PAYLOAD',
+  ]);
+
+function isDestructiveEdrAction(
+  action: EdrActionType,
+): action is DestructiveEdrAction {
+  return DESTRUCTIVE_EDR_ACTIONS.has(action);
 }
 
 export interface EdrActionReceipt {
@@ -43,16 +73,33 @@ export interface EdrActionReceipt {
 export class CertifiedEdrBrokerService {
   private readonly logger = new Logger(CertifiedEdrBrokerService.name);
 
+  constructor(private readonly dualCustody: DualCustodyQuorumService) {}
+
   /**
    * Dispatches a certified response action to an enterprise EDR provider.
    */
-  dispatchEdrAction(
+  async dispatchEdrAction(
     command: EdrActionCommand,
     simulateOnly = false,
-  ): EdrActionReceipt {
+  ): Promise<EdrActionReceipt> {
     if (!command.tenantId || !command.targetHostId || !command.actionType) {
       throw new BadRequestException(
         'Missing mandatory EDR dispatch parameters.',
+      );
+    }
+
+    if (!simulateOnly) {
+      if (isDestructiveEdrAction(command.actionType)) {
+        await this.dualCustody.consumeForExecution(
+          command.tenantId,
+          command.approval,
+          command.actionType,
+          command.targetHostId,
+        );
+      }
+      // No provider SDK is wired in, so a live dispatch cannot be confirmed.
+      throw new ServiceUnavailableException(
+        `No certified ${command.provider} integration is configured; live EDR dispatch is unavailable.`,
       );
     }
 
@@ -71,10 +118,8 @@ export class CertifiedEdrBrokerService {
       )
       .digest('hex');
 
-    const status = simulateOnly ? 'SIMULATED_REVERSIBLE' : 'EXECUTED_CONFIRMED';
-
     this.logger.log(
-      `[EDR_ACTION_DISPATCHED] Tenant '${command.tenantId}' dispatched '${command.actionType}' on Host '${command.targetHostId}' via '${command.provider}'. Status: ${status}`,
+      `[EDR_ACTION_SIMULATED] Tenant '${command.tenantId}' simulated '${command.actionType}' on Host '${command.targetHostId}' via '${command.provider}'.`,
     );
 
     return {
@@ -84,7 +129,7 @@ export class CertifiedEdrBrokerService {
       provider: command.provider,
       actionType: command.actionType,
       targetHostId: command.targetHostId,
-      executionStatus: status,
+      executionStatus: 'SIMULATED_REVERSIBLE',
       compensationRollbackToken: rollbackToken,
       cryptographicSignature: signature,
       executedAt: timestamp,

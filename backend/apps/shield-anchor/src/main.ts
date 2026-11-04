@@ -8,7 +8,7 @@ async function bootstrap() {
   const app = await NestFactory.create(ShieldAnchorModule);
   app.use(new TraceIdMiddleware().use.bind(new TraceIdMiddleware()));
   app.useGlobalInterceptors(new HttpLoggingInterceptor('shield-anchor'));
-  await app.listen(process.env.SHIELD_ANCHOR_PORT ?? 3005);
+  await app.listen(process.env.SHIELD_ANCHOR_PORT ?? 3005, '0.0.0.0');
 }
 bootstrap().catch((err) => {
   console.error('Error starting shield-anchor:', err);

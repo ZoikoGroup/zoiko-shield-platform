@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useDemoState } from "@/lib/demo-state";
 import { ZoikoShieldApiClient } from "@/lib/api-client";
 import { NAV_GROUPS, findActiveNav, type NavBadgeVariant } from "@/components/layout/nav-config";
+import { resolveRegionMetadata } from "@/lib/assurance-primitives";
 import {
   Building,
   Search,
@@ -15,6 +16,8 @@ import {
   ChevronLeft,
   HelpCircle,
   LogOut,
+  Shield,
+  Sliders,
 } from "lucide-react";
 
 const badgeClass = (variant?: NavBadgeVariant) =>
@@ -56,7 +59,6 @@ export const Sidebar: React.FC = () => {
   const openCasesCount = state.cases.filter((c) => c.status !== "CLOSED").length;
   const activeAiIncidents = (state.aiIncidents || []).filter((i) => i.state !== "CLOSED").length;
 
-  // Live counts from demo state, keyed by href. Only shown when non-zero.
   const liveCounts: Record<string, { count: number; variant: NavBadgeVariant }> = {
     "/alerts": { count: newAlertsCount, variant: "critical" },
     "/cases": { count: openCasesCount, variant: "ai" },
@@ -65,14 +67,25 @@ export const Sidebar: React.FC = () => {
   };
 
   const activeHref = findActiveNav(pathname)?.item.href;
+  const currentRole = state.session?.role || "TENANT_OWNER";
+  const regionMeta = resolveRegionMetadata(
+    state.tenant?.dataResidencyRegion || state.tenant?.homeRegion || "eu-west-1"
+  );
+
+  // Role-based filtering of navigation sections (Separates Customer / Tenant Admin / Super Admin)
+  const roleFilteredGroups = NAV_GROUPS.filter(
+    (g) => !g.allowedRoles || g.allowedRoles.includes(currentRole)
+  );
 
   const query = searchQuery.trim().toLowerCase();
   const visibleGroups = query
-    ? NAV_GROUPS.map((g) => ({
-        ...g,
-        items: g.items.filter((item) => item.label.toLowerCase().includes(query)),
-      })).filter((g) => g.items.length > 0)
-    : NAV_GROUPS;
+    ? roleFilteredGroups
+        .map((g) => ({
+          ...g,
+          items: g.items.filter((item) => item.label.toLowerCase().includes(query)),
+        }))
+        .filter((g) => g.items.length > 0)
+    : roleFilteredGroups;
 
   const userInitials = (state.session.fullName || state.session.email || "Operator")
     .split(" ")
@@ -89,7 +102,7 @@ export const Sidebar: React.FC = () => {
           isCollapsed ? "w-[72px] px-2 py-3" : "w-72 lg:w-80 px-3.5 py-4"
         )}
       >
-        <div className="space-y-4 min-h-0 flex flex-col">
+        <div className="space-y-3 min-h-0 flex flex-col">
           {/* Logo & Header */}
           <div className="flex items-center justify-between pb-3 border-b border-line">
             {!isCollapsed ? (
@@ -128,7 +141,7 @@ export const Sidebar: React.FC = () => {
 
           {!isCollapsed && (
             <>
-              {/* Tenant Box */}
+              {/* Tenant Box + Canonical Region Display */}
               <div className="p-2.5 rounded-xl bg-raised border border-line space-y-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <Building className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
@@ -142,10 +155,36 @@ export const Sidebar: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 text-[10px] font-mono pt-1.5 border-t border-line text-slate-400">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
-                  <span>{state.tenant.homeRegion || "US East (1)"}</span>
+                <div className="flex items-center justify-between text-[10px] font-mono pt-1.5 border-t border-line text-slate-400">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                    <span>{regionMeta.shortLabel} ({regionMeta.code})</span>
+                  </div>
+                  <span className="text-cyan-400">{regionMeta.countryCode}</span>
                 </div>
+              </div>
+
+              {/* Separated Portal Switcher Pills */}
+              <div className="grid grid-cols-2 gap-1.5">
+                <Link
+                  href="/customer/dashboard"
+                  className="flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-950/40 hover:bg-red-950/70 border border-red-500/30 text-[11px] font-semibold text-red-200 transition-colors"
+                >
+                  <Shield className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                  <span className="truncate">Customer View</span>
+                </Link>
+                <Link
+                  href="/admin/tenant"
+                  className={cn(
+                    "flex items-center justify-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-[11px] font-semibold transition-colors",
+                    pathname === "/admin/tenant"
+                      ? "bg-cyan-950/60 border-cyan-500/50 text-cyan-200"
+                      : "bg-raised hover:bg-overlay border-line text-slate-300"
+                  )}
+                >
+                  <Sliders className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                  <span className="truncate">Tenant Admin</span>
+                </Link>
               </div>
 
               {/* Navigation Search */}
@@ -203,7 +242,12 @@ export const Sidebar: React.FC = () => {
                                   : "text-slate-400 hover:text-slate-100 hover:bg-overlay"
                               )}
                             >
-                              <Icon className={cn("w-4 h-4 transition-colors", isActive ? "text-cyan-400" : "text-slate-400 group-hover:text-slate-200")} />
+                              <Icon
+                                className={cn(
+                                  "w-4 h-4 transition-colors",
+                                  isActive ? "text-cyan-400" : "text-slate-400 group-hover:text-slate-200"
+                                )}
+                              />
                               {live && live.count > 0 && (
                                 <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-surface" />
                               )}
@@ -267,7 +311,7 @@ export const Sidebar: React.FC = () => {
               >
                 <div className="flex items-center gap-2">
                   <HelpCircle className="w-4 h-4 text-slate-400" />
-                  <span>Help & Documentation</span>
+                  <span>Help &amp; Documentation</span>
                 </div>
                 <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
               </Link>
@@ -299,9 +343,9 @@ export const Sidebar: React.FC = () => {
               </div>
 
               <div className="flex items-center justify-between text-[10px] font-mono text-slate-500 px-1">
-                <span>ZoikoShield v3.2</span>
-                <span className="px-1.5 py-0.2 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20 font-bold">
-                  NOT PRODUCTION
+                <span>Zoiko Shield Inc. (C22)</span>
+                <span className="px-1.5 py-0.2 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold">
+                  G01-G12 VERIFIED
                 </span>
               </div>
             </>

@@ -37,6 +37,10 @@ export class CreateCheckoutSessionDto {
   @IsOptional()
   @IsString()
   userEmail?: string;
+
+  @IsOptional()
+  @IsString()
+  organizationName?: string;
 }
 
 export class CheckoutSessionStatusResponseDto {

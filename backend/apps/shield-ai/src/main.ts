@@ -8,7 +8,7 @@ async function bootstrap() {
   const app = await NestFactory.create(ShieldAiModule);
   app.use(new TraceIdMiddleware().use.bind(new TraceIdMiddleware()));
   app.useGlobalInterceptors(new HttpLoggingInterceptor('shield-ai'));
-  await app.listen(process.env.SHIELD_AI_PORT ?? 3003);
+  await app.listen(process.env.SHIELD_AI_PORT ?? 3003, '0.0.0.0');
 }
 bootstrap().catch((err) => {
   console.error('Error starting shield-ai:', err);

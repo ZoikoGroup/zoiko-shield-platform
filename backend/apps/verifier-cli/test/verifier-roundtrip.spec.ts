@@ -1,5 +1,10 @@
 import { MerkleTreeService } from '../../shield-anchor/src/merkle/merkle-tree.service';
-import { StandaloneMerkleVerifier } from '../src/merkle/standalone-merkle-verifier';
+import {
+  StandaloneMerkleVerifier,
+  resolveDeclaredTreeProfile,
+} from '../src/merkle/standalone-merkle-verifier';
+import { recomputeRootFromLeaves } from '../../../tools/independent-verifier/src/merkle/merkle';
+import { computeDomainSeparatedMerkleRoot } from '../../shield-core/src/common/merkle.util';
 
 describe('Verifier CLI <-> Shield Anchor Cryptographic Round-Trip Test (TUT-05)', () => {
   let anchorMerkle: MerkleTreeService;
@@ -126,6 +131,72 @@ describe('Verifier CLI <-> Shield Anchor Cryptographic Round-Trip Test (TUT-05)'
       );
 
       expect(isValid).toBe(false);
+    });
+  });
+
+  describe('Profile agreement across every Merkle implementation', () => {
+    const leavesOf = (n: number) =>
+      Array.from({ length: n }, (_, i) => `leaf-${i}`);
+
+    it('anchor, verifier-cli, independent verifier and shield-core agree on V2 roots', () => {
+      for (let n = 1; n <= 40; n++) {
+        const leaves = leavesOf(n);
+        const anchorRoot = anchorMerkle.computeRoot(leaves);
+        expect(standaloneVerifier.build(leaves).root).toBe(anchorRoot);
+        expect(recomputeRootFromLeaves(leaves, 'ZS-MERKLE-V2')).toBe(
+          anchorRoot,
+        );
+        expect(computeDomainSeparatedMerkleRoot(leaves)).toBe(anchorRoot);
+      }
+    });
+
+    it('anchor and both verifiers agree on legacy V1 roots', () => {
+      for (let n = 1; n <= 20; n++) {
+        const leaves = leavesOf(n);
+        const anchorRoot = anchorMerkle.computeRoot(leaves, 'ZS-MERKLE-V1');
+        expect(standaloneVerifier.build(leaves, 'ZS-MERKLE-V1').root).toBe(
+          anchorRoot,
+        );
+        expect(recomputeRootFromLeaves(leaves, 'ZS-MERKLE-V1')).toBe(
+          anchorRoot,
+        );
+      }
+    });
+
+    it('verifier-cli verifies anchor consistency proofs offline and rejects a forked log', () => {
+      const leaves = leavesOf(23);
+      const newRoot = anchorMerkle.computeRoot(leaves);
+      for (let m = 1; m <= leaves.length; m++) {
+        const oldRoot = anchorMerkle.computeRoot(leaves.slice(0, m));
+        const proof = anchorMerkle.consistencyProof(m, leaves);
+        expect(
+          standaloneVerifier.verifyConsistency(m, 23, oldRoot, newRoot, proof),
+        ).toBe(true);
+      }
+      const forkedOld = anchorMerkle.computeRoot([
+        'leaf-0',
+        'leaf-1',
+        'leaf-X',
+        'leaf-3',
+        'leaf-4',
+      ]);
+      expect(
+        standaloneVerifier.verifyConsistency(
+          5,
+          23,
+          forkedOld,
+          newRoot,
+          anchorMerkle.consistencyProof(5, leaves),
+        ),
+      ).toBe(false);
+    });
+
+    it('rejects an unknown declared profile and defaults undeclared packages to V1', () => {
+      expect(() => resolveDeclaredTreeProfile('ZS-MERKLE-V9')).toThrow(
+        /Unsupported/,
+      );
+      expect(resolveDeclaredTreeProfile(undefined)).toBe('ZS-MERKLE-V1');
+      expect(resolveDeclaredTreeProfile('ZS-MERKLE-V2')).toBe('ZS-MERKLE-V2');
     });
   });
 });

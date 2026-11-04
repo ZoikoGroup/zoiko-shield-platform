@@ -78,6 +78,33 @@ async function extractErrorMessage(res: Response, fallback: string): Promise<str
 }
 
 function getState(): DemoState {
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem("zoikoshield_demo_state");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.session?.token) {
+          return parsed;
+        }
+      }
+    } catch {}
+
+    try {
+      const tokenMatch = document.cookie.match(
+        /(?:zoiko_shield_access_token|shield_access_token|access_token)=([^;]+)/,
+      );
+      const tenantMatch = document.cookie.match(/zoiko_shield_tenant_id=([^;]+)/);
+      if (tokenMatch?.[1]) {
+        const base = getInitialDemoState();
+        base.session.token = decodeURIComponent(tokenMatch[1].trim());
+        base.session.isAuthenticated = true;
+        if (tenantMatch?.[1]) {
+          base.tenant.id = decodeURIComponent(tenantMatch[1].trim());
+        }
+        return base;
+      }
+    } catch {}
+  }
   return getInitialDemoState();
 }
 
@@ -136,8 +163,11 @@ export class ZoikoShieldApiClient {
   private static async safeFetch<T>(
     endpoint: string,
     options: RequestInit = {},
-    fallbackFn: (() => T) | null
+    fallbackFn: (() => T) | null,
+    { confirmed = false }: { confirmed?: boolean } = {}
   ): Promise<T> {
+    // A security action is only done when the real backend says so.
+    if (confirmed) fallbackFn = null;
     try {
       const state = getState();
       const headers: Record<string, string> = {
@@ -168,6 +198,13 @@ export class ZoikoShieldApiClient {
         },
       });
       if (res.ok) {
+        if (confirmed && res.headers.get("x-zoiko-fallback") === "true") {
+          throw new ZoikoShieldApiError(
+            "ZoikoShield backend did not confirm this action; nothing was changed.",
+            null,
+            endpoint
+          );
+        }
         const json = await res.json();
         if (json && typeof json === "object" && "data" in json && json.data !== undefined) {
           return json.data as T;
@@ -222,7 +259,7 @@ export class ZoikoShieldApiClient {
     password?: string,
     tenantId?: string
   ): Promise<UserSession> {
-    const resolvedTenantId = tenantId || getState().tenant?.id;
+    const resolvedTenantId = tenantId?.trim() ? tenantId.trim() : undefined;
     const session = await this.safeFetch<UserSession>(
       "/api/v1/auth/login",
       {
@@ -243,7 +280,7 @@ export class ZoikoShieldApiClient {
     };
     // Carry the tenant the user actually signed in to, so every later request
     // sends an x-tenant-id the backend will accept.
-    const signedInTenantId = session.tenantId || resolvedTenantId;
+    const signedInTenantId = session.tenantId || resolvedTenantId || state.tenant?.id;
     if (signedInTenantId && state.tenant) {
       state.tenant.id = signedInTenantId;
     }
@@ -254,7 +291,12 @@ export class ZoikoShieldApiClient {
         const maxAge = 86400 * 7; // 7 days
         document.cookie = `zoiko_auth=true; path=/; max-age=${maxAge}; SameSite=Lax`;
         document.cookie = `zoiko_shield_access_token=${session.token}; path=/; max-age=${maxAge}; SameSite=Lax`;
-        document.cookie = `zoiko_shield_tenant_id=${signedInTenantId}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        document.cookie = `shield_access_token=${session.token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        document.cookie = `access_token=${session.token}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        if (signedInTenantId) {
+          document.cookie = `zoiko_shield_tenant_id=${signedInTenantId}; path=/; max-age=${maxAge}; SameSite=Lax`;
+        }
+        document.cookie = `zoiko_shield_user_email=${encodeURIComponent(session.email || email)}; path=/; max-age=${maxAge}; SameSite=Lax`;
       } catch {}
     }
 
@@ -353,6 +395,65 @@ export class ZoikoShieldApiClient {
 
     saveDemoState(state);
     return res;
+  }
+
+  static async verifyEmail(email: string, code: string): Promise<{ success: boolean; message: string }> {
+    return this.safeFetch<{ success: boolean; message: string }>(
+      "/api/v1/auth/verify-email",
+      {
+        method: "POST",
+        body: JSON.stringify({ email: email.trim().toLowerCase(), code: code.trim() }),
+      },
+      null
+    );
+  }
+
+  static async resendVerificationEmail(email: string): Promise<{ message: string }> {
+    return this.safeFetch<{ message: string }>(
+      "/api/v1/auth/resend-verification",
+      {
+        method: "POST",
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      },
+      null
+    );
+  }
+
+  static async requestPasswordReset(email: string): Promise<{ message?: string }> {
+    return this.safeFetch<{ message?: string }>(
+      "/api/v1/auth/forgot-password",
+      {
+        method: "POST",
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      },
+      null
+    );
+  }
+
+  // --- Company SSO (OIDC / SAML federation) ---
+  // Identity providers are configured per tenant, so sign-in starts by
+  // discovering what the workspace has enabled.
+  static async discoverSsoProviders(tenantSlug: string): Promise<SsoDiscovery> {
+    return this.safeFetch<SsoDiscovery>(
+      `/api/v1/auth/sso/discovery/${encodeURIComponent(tenantSlug.trim().toLowerCase())}`,
+      { method: "GET" },
+      null
+    );
+  }
+
+  static async startSso(input: {
+    tenantSlug: string;
+    identityProviderId: string;
+    returnTo?: string;
+  }): Promise<{ authorizationUrl: string; protocol: string }> {
+    return this.safeFetch<{ authorizationUrl: string; protocol: string }>(
+      "/api/v1/auth/sso/start",
+      {
+        method: "POST",
+        body: JSON.stringify(input),
+      },
+      null
+    );
   }
 
   // --- WebAuthn / Passkey login ---
@@ -1567,13 +1668,8 @@ export class ZoikoShieldApiClient {
     return this.safeFetch(
       "/api/v1/response/freeze",
       { method: "POST", body: JSON.stringify({ scope, reason }) },
-      () => ({
-        frozen: true,
-        mode: "EMERGENCY_FREEZE",
-        freezeId: `frz-${generateUUID().slice(0, 8)}`,
-        initiatedBy: getState().session.email,
-        timestamp: new Date().toISOString(),
-      })
+      null,
+      { confirmed: true }
     );
   }
 
@@ -1584,10 +1680,8 @@ export class ZoikoShieldApiClient {
     return this.safeFetch(
       "/api/v1/response/unfreeze",
       { method: "POST" },
-      () => ({
-        frozen: false,
-        releasedAt: new Date().toISOString(),
-      })
+      null,
+      { confirmed: true }
     );
   }
 
@@ -1638,10 +1732,8 @@ export class ZoikoShieldApiClient {
     return this.safeFetch(
       `/api/v1/authz/jit/${sessionId}/revoke`,
       { method: "POST", body: JSON.stringify({ revocationReason }) },
-      () => ({
-        revoked: true,
-        revokedAt: new Date().toISOString(),
-      })
+      null,
+      { confirmed: true }
     );
   }
 
@@ -3374,17 +3466,8 @@ export class ZoikoShieldApiClient {
         method: "POST",
         body: JSON.stringify(params),
       },
-      () => {
-        const signature = sha256Mock(`ZS-QUORUM-RECEIPT-V1:${params.quorumId}:${params.approver?.userId}:${Date.now()}`);
-        return {
-          quorumId: params.quorumId,
-          status: "QUORUM_REACHED",
-          secondaryApprover: params.approver,
-          quorumSignature: signature,
-          singleUseRollbackToken: `ZS-ROLLBACK-TOKEN-${generateUUID().slice(0, 8).toUpperCase()}`,
-          finalizedAt: new Date().toISOString(),
-        };
-      }
+      null,
+      { confirmed: true }
     );
   }
 
@@ -3726,18 +3809,8 @@ export class ZoikoShieldApiClient {
         method: 'POST',
         body: JSON.stringify(dto),
       },
-      () => ({
-        sessionId: `jit-sess-${generateUUID().slice(0, 8)}`,
-        operatorId: dto.operatorId,
-        targetTenantId: dto.targetTenantId,
-        elevatedRole: dto.elevatedRole,
-        status: 'PENDING',
-        clientIp: '127.0.0.1',
-        statedPurpose: dto.statedPurpose,
-        issuedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + (dto.durationMinutes || 60) * 60000).toISOString(),
-        hardwareStepUpVerified: !!dto.initialHardwareProof,
-      })
+      null,
+      { confirmed: true }
     );
   }
 
@@ -3753,19 +3826,8 @@ export class ZoikoShieldApiClient {
         method: 'POST',
         body: JSON.stringify({ approverId, approverRole, approvalNotes }),
       },
-      () => ({
-        sessionId: id,
-        operatorId: 'usr-operator-demo',
-        targetTenantId: 'tenant-demo',
-        elevatedRole: 'SUPER_ADMIN',
-        status: 'ACTIVE',
-        clientIp: '127.0.0.1',
-        statedPurpose: 'Approved Demo Session',
-        issuedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 3600000).toISOString(),
-        hardwareStepUpVerified: true,
-        peerApprover: approverId,
-      })
+      null,
+      { confirmed: true }
     );
   }
 
@@ -3779,19 +3841,8 @@ export class ZoikoShieldApiClient {
         method: 'POST',
         body: JSON.stringify({ hardwareProofDigest }),
       },
-      () => ({
-        sessionId: id,
-        operatorId: 'usr-operator-demo',
-        targetTenantId: 'tenant-demo',
-        elevatedRole: 'SUPER_ADMIN',
-        status: 'ACTIVE',
-        clientIp: '127.0.0.1',
-        statedPurpose: 'Hardware Step-up Demo',
-        issuedAt: new Date().toISOString(),
-        expiresAt: new Date(Date.now() + 3600000).toISOString(),
-        hardwareStepUpVerified: true,
-        hardwareProofDigest,
-      })
+      null,
+      { confirmed: true }
     );
   }
 
@@ -3806,19 +3857,8 @@ export class ZoikoShieldApiClient {
         method: 'POST',
         body: JSON.stringify({ revokedBy, reason }),
       },
-      () => ({
-        sessionId: id,
-        operatorId: 'usr-operator-demo',
-        targetTenantId: 'tenant-demo',
-        elevatedRole: 'SUPER_ADMIN',
-        status: 'REVOKED',
-        clientIp: '127.0.0.1',
-        statedPurpose: 'Revoked Session Demo',
-        issuedAt: new Date().toISOString(),
-        expiresAt: new Date().toISOString(),
-        hardwareStepUpVerified: false,
-        revocationReason: reason,
-      })
+      null,
+      { confirmed: true }
     );
   }
 
@@ -5517,14 +5557,8 @@ export class ZoikoShieldApiClient {
         method: 'POST',
         body: JSON.stringify(dto),
       },
-      () => ({
-        statusCode: 200,
-        data: {
-          sessionId: dto.sessionId,
-          status: 'PENDING_PLATFORM_AUTHORIZATION',
-          customerAdminApprovedAt: new Date().toISOString(),
-        },
-      })
+      null,
+      { confirmed: true }
     );
     return res?.data ?? res;
   }
@@ -5563,14 +5597,8 @@ export class ZoikoShieldApiClient {
         method: 'POST',
         body: JSON.stringify(dto),
       },
-      () => ({
-        statusCode: 200,
-        data: {
-          sessionId: dto.sessionId,
-          status: 'REVOKED',
-          revokedAt: new Date().toISOString(),
-        },
-      })
+      null,
+      { confirmed: true }
     );
     return res?.data ?? res;
   }
@@ -5897,23 +5925,8 @@ resource "aws_iam_policy" "least_privilege" {
         method: 'POST',
         body: JSON.stringify({ notes }),
       },
-      () => ({
-        id: policyId,
-        tenantId: 'global',
-        policyName: 'Approved Policy',
-        domain: 'IAM',
-        version: 'v1.0.0',
-        status: 'ACTIVE',
-        stagedEnvironment: 'production-global',
-        canaryPercentage: 100,
-        author: 'admin@zoikoshield.corp',
-        approvers: ['ciso-approver@zoikoshield.corp'],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        commitHash: 'abcdef12345',
-        diffSummary: 'Dual-custody approval',
-        diffContent: { previous: '', proposed: '' },
-      })
+      null,
+      { confirmed: true }
     );
     return res;
   }
@@ -6019,6 +6032,11 @@ export interface KmsHealthSummary {
     AZURE_KEYVAULT?: KmsProviderHealthInfo;
   };
   timestamp: string;
+}
+
+export interface SsoDiscovery {
+  tenant: { id: string; name: string; slug: string };
+  identityProviders: Array<{ id: string; name: string; protocol: string }>;
 }
 
 export const api = ZoikoShieldApiClient;

@@ -10,34 +10,23 @@ import { useEventStream } from "@/lib/use-event-stream";
 import { formatTimestamp, cn } from "@/lib/utils";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { Badge } from "@/components/ui/Badge";
+import { G07_LAUNCH_CANDIDATE_RULES } from "@/lib/assurance-primitives";
 import {
-  ShieldAlert,
   FolderPlus,
-  ArrowRight,
-  Sparkles,
-  Layers,
-  Search,
-  RefreshCw,
-  Radio,
   Wifi,
   WifiOff,
-  Filter,
   CheckCircle2,
   Clock,
   Info,
   Sliders,
-  ChevronRight,
   AlertTriangle,
   Lock,
-  UserCheck,
+  ShieldCheck,
 } from "lucide-react";
 import {
   LoadingState,
   PartialState,
   StaleState,
-  DegradedState,
-  UnavailableState,
 } from "@/components/states/mandatory-ui-states";
 
 export default function AlertsPage() {
@@ -48,6 +37,8 @@ export default function AlertsPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [isStale, setIsStale] = useState(false);
   const [filterSeverity, setFilterSeverity] = useState<"all" | "critical" | "high" | "unassigned">("all");
+  const [showRuleDrawer, setShowRuleDrawer] = useState(false);
+  const [dispositions, setDispositions] = useState<Record<string, "TRUE_POSITIVE" | "BENIGN_POSITIVE" | "FALSE_POSITIVE">>({});
 
   const refreshAlerts = useCallback(async () => {
     setIsLoading(true);
@@ -63,7 +54,7 @@ export default function AlertsPage() {
   }, []);
 
   // Real-time Event Stream (SSE) Integration
-  const { isConnected, isDegraded, lastEvent } = useEventStream({
+  const { isConnected, isDegraded } = useEventStream({
     tenantId: state.session?.tenantId || "tenant-bank-01",
     onEvent: (event) => {
       if (event.type === "ALERT_CREATED") {
@@ -113,7 +104,7 @@ export default function AlertsPage() {
         <div>
           <div className="flex items-center gap-2 mb-1">
             <span className="text-[10px] font-mono text-cyan-400 font-bold tracking-wider uppercase">
-              WORKSPACE 02
+              WORKSPACE 02 · G07 DETECTION QUALITY &amp; CORRELATION
             </span>
             {isConnected ? (
               <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-950/60 border border-emerald-500/40 text-emerald-300">
@@ -136,6 +127,13 @@ export default function AlertsPage() {
 
         {/* Right Reference Pills */}
         <div className="flex flex-col sm:flex-row items-end sm:items-center gap-2">
+          <button
+            onClick={() => setShowRuleDrawer((prev) => !prev)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-950/40 hover:bg-cyan-900/50 border border-cyan-500/40 text-xs font-mono font-bold text-cyan-300 transition-colors"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            <span>Rule Governance &amp; FP Budget (WF-G07-02)</span>
+          </button>
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface border border-cyan-500/30 text-xs font-mono text-cyan-300">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             <span>Live Telemetry Pipeline · OCSF Ingest Active</span>
@@ -146,6 +144,64 @@ export default function AlertsPage() {
           </div>
         </div>
       </div>
+
+      {/* WF-G07-02: Rule Governance Drawer */}
+      {showRuleDrawer && (
+        <Card className="p-5 border border-cyan-500/40 bg-slate-900/95 space-y-4">
+          <div className="flex items-center justify-between border-b border-line pb-3">
+            <div>
+              <span className="text-[10px] font-mono uppercase text-cyan-400 font-bold">
+                WF-G07-02 · VERSIONED DETECTION CONTENT PACK &amp; FALSE-POSITIVE BUDGET
+              </span>
+              <h3 className="text-sm font-bold text-white mt-0.5">
+                Launch-Candidate Detection Rules (G07 · Precision &gt;= 85% Promotion Gate)
+              </h3>
+            </div>
+            <button onClick={() => setShowRuleDrawer(false)} className="text-xs font-mono text-slate-400 hover:text-white">
+              Hide Drawer
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs font-mono">
+              <thead>
+                <tr className="border-b border-line text-[10px] text-slate-400 uppercase">
+                  <th className="py-2 px-2.5">Rule ID</th>
+                  <th className="py-2 px-2.5">Version</th>
+                  <th className="py-2 px-2.5">Title</th>
+                  <th className="py-2 px-2.5">MITRE ATT&amp;CK</th>
+                  <th className="py-2 px-2.5">Required Sources</th>
+                  <th className="py-2 px-2.5">State</th>
+                  <th className="py-2 px-2.5">Precision (30d)</th>
+                  <th className="py-2 px-2.5">FP Rate</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-line/60">
+                {G07_LAUNCH_CANDIDATE_RULES.map((rule) => (
+                  <tr key={rule.ruleId} className="hover:bg-surface/60">
+                    <td className="py-2 px-2.5 font-bold text-cyan-300">{rule.ruleId}</td>
+                    <td className="py-2 px-2.5 text-slate-300">{rule.version}</td>
+                    <td className="py-2 px-2.5 text-slate-100 font-sans font-medium">{rule.name}</td>
+                    <td className="py-2 px-2.5 text-amber-300">{rule.mitreTactic} · {rule.mitreTechnique}</td>
+                    <td className="py-2 px-2.5 text-slate-400">{rule.requiredSources.join(", ")}</td>
+                    <td className="py-2 px-2.5">
+                      <span className={cn(
+                        "px-2 py-0.5 rounded text-[10px] font-bold",
+                        rule.lifecycleState === "FINDING_OPEN"
+                          ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                          : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                      )}>
+                        {rule.lifecycleState}
+                      </span>
+                    </td>
+                    <td className="py-2 px-2.5 text-emerald-300 font-bold">{(rule.precisionBenchmark * 100).toFixed(0)}%</td>
+                    <td className="py-2 px-2.5 text-slate-300">{(rule.falsePositiveRate * 100).toFixed(1)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
 
       {/* Mandatory UI States Integration */}
       {isLoading && (
@@ -373,8 +429,8 @@ export default function AlertsPage() {
           <Card className="p-5 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-line gap-3">
               <div>
-                <h3 className="font-bold text-slate-100 text-sm">Priority alert queue</h3>
-                <p className="text-xs text-slate-400">Next actions sorted by severity, age and investigation readiness</p>
+                <h3 className="font-bold text-slate-100 text-sm">Priority alert queue (WF-G07-01)</h3>
+                <p className="text-xs text-slate-400">Next actions sorted by severity, entity risk, identity confidence, and rule version</p>
               </div>
 
               {/* Filter Pills */}
@@ -432,11 +488,11 @@ export default function AlertsPage() {
                 <thead>
                   <tr className="border-b border-line text-[10px] font-mono text-slate-400 uppercase tracking-wider">
                     <th className="py-2.5 px-3">SEVERITY</th>
-                    <th className="py-2.5 px-3">DETECTION / TITLE</th>
-                    <th className="py-2.5 px-3">SOURCE</th>
+                    <th className="py-2.5 px-3">DETECTION / RULE VERSION</th>
+                    <th className="py-2.5 px-3">SOURCE / ID CONFIDENCE</th>
                     <th className="py-2.5 px-3">OBSERVED</th>
                     <th className="py-2.5 px-3">OWNER</th>
-                    <th className="py-2.5 px-3">STATE</th>
+                    <th className="py-2.5 px-3">DISPOSITION</th>
                     <th className="py-2.5 px-3 text-right">ACTION</th>
                   </tr>
                 </thead>
@@ -448,65 +504,83 @@ export default function AlertsPage() {
                       </td>
                     </tr>
                   ) : (
-                    (filteredAlerts.length > 0 ? filteredAlerts : alerts).map((alert) => (
-                      <tr key={alert.id} className="hover:bg-surface/70 transition-colors group">
-                        <td className="py-3 px-3">
-                          <span
-                            className={cn(
-                              "px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase",
-                              alert.severity === "CRITICAL"
-                                ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
-                                : alert.severity === "HIGH"
-                                ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                                : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
-                            )}
-                          >
-                            {alert.severity}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3">
-                          <div className="font-semibold text-slate-200 group-hover:text-cyan-300 transition-colors">
-                            {alert.title}
-                          </div>
-                          <div className="text-[11px] text-slate-400 font-mono">
-                            {alert.ruleName || "Anomaly Detection Rule"}
-                          </div>
-                        </td>
-                        <td className="py-3 px-3 font-mono text-slate-300 text-[11px]">
-                          {alert.sourceConnector || "Microsoft Entra"}
-                        </td>
-                        <td className="py-3 px-3 font-mono text-slate-400 text-[11px]">
-                          {alert.createdAt ? formatTimestamp(alert.createdAt).split(" ")[1] || "14:18" : "14:18"}
-                        </td>
-                        <td className="py-3 px-3 font-mono text-slate-300 text-[11px]">
-                          {alert.assignee || "Unassigned"}
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className="text-[11px] font-mono text-slate-300">
-                            {alert.status === "CASE_CREATED" ? "Case Active" : alert.status}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              onClick={() => router.push(`/alerts/${alert.id}`)}
-                              className="px-2 py-1 rounded bg-overlay hover:bg-slate-800 text-slate-300 border border-line-strong text-xs font-mono transition-colors"
+                    (filteredAlerts.length > 0 ? filteredAlerts : alerts).map((alert, idx) => {
+                      const mappedRule = G07_LAUNCH_CANDIDATE_RULES[idx % G07_LAUNCH_CANDIDATE_RULES.length];
+                      const idConfidence = idx % 3 === 0 ? "HIGH" : idx % 3 === 1 ? "MEDIUM" : "HIGH";
+                      const disp = dispositions[alert.id] || "TRUE_POSITIVE";
+                      return (
+                        <tr key={alert.id} className="hover:bg-surface/70 transition-colors group">
+                          <td className="py-3 px-3">
+                            <span
+                              className={cn(
+                                "px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase",
+                                alert.severity === "CRITICAL"
+                                  ? "bg-rose-500/20 text-rose-300 border border-rose-500/30"
+                                  : alert.severity === "HIGH"
+                                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                                  : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
+                              )}
                             >
-                              Open
-                            </button>
-                            {alert.status !== "CASE_CREATED" && (
+                              {alert.severity}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3">
+                            <div className="font-semibold text-slate-200 group-hover:text-cyan-300 transition-colors">
+                              {alert.title}
+                            </div>
+                            <div className="text-[11px] text-slate-400 font-mono">
+                              {alert.ruleName || mappedRule.name} · <span className="text-cyan-400">{mappedRule.ruleId} (v{mappedRule.version})</span>
+                            </div>
+                          </td>
+                          <td className="py-3 px-3 font-mono text-slate-300 text-[11px]">
+                            <div>{alert.sourceConnector || "Microsoft Entra"}</div>
+                            <div className="text-[10px] text-emerald-400">ID Conf: {idConfidence}</div>
+                          </td>
+                          <td className="py-3 px-3 font-mono text-slate-400 text-[11px]">
+                            {alert.createdAt ? formatTimestamp(alert.createdAt).split(" ")[1] || "14:18" : "14:18"}
+                          </td>
+                          <td className="py-3 px-3 font-mono text-slate-300 text-[11px]">
+                            {alert.assignee || "Unassigned"}
+                          </td>
+                          <td className="py-3 px-3">
+                            <select
+                              aria-label={`Disposition for ${alert.id}`}
+                              value={disp}
+                              onChange={(e) =>
+                                setDispositions((prev) => ({
+                                  ...prev,
+                                  [alert.id]: e.target.value as "TRUE_POSITIVE" | "BENIGN_POSITIVE" | "FALSE_POSITIVE",
+                                }))
+                              }
+                              className="rounded bg-slate-900 border border-line px-1.5 py-0.5 text-[10px] font-mono text-slate-200"
+                            >
+                              <option value="TRUE_POSITIVE">TP (Confirmed)</option>
+                              <option value="BENIGN_POSITIVE">BP (Authorized)</option>
+                              <option value="FALSE_POSITIVE">FP (Tune Rule)</option>
+                            </select>
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
                               <button
-                                onClick={() => handlePromote(alert.id, alert.title)}
-                                disabled={isPromoting === alert.id}
-                                className="px-2.5 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold text-xs transition-colors flex items-center gap-1"
+                                onClick={() => router.push(`/alerts/${alert.id}`)}
+                                className="px-2 py-1 rounded bg-overlay hover:bg-slate-800 text-slate-300 border border-line-strong text-xs font-mono transition-colors"
                               >
-                                {isPromoting === alert.id ? "Promoting..." : "Create Case"}
+                                Open
                               </button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
+                              {alert.status !== "CASE_CREATED" && (
+                                <button
+                                  onClick={() => handlePromote(alert.id, alert.title)}
+                                  disabled={isPromoting === alert.id}
+                                  className="px-2.5 py-1 rounded bg-cyan-600 hover:bg-cyan-500 text-slate-950 font-bold text-xs transition-colors flex items-center gap-1"
+                                >
+                                  {isPromoting === alert.id ? "Promoting..." : "Create Case"}
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>

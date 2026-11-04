@@ -190,7 +190,14 @@ function AuthenticatedDashboardView({
           </div>
         </div>
 
-        {/* Time Filter Dropdown */}
+        {/* Separated Dashboard Portals & Time Filter */}
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/customer/dashboard" className="px-3 py-1.5 rounded-lg bg-red-950/60 hover:bg-red-950 border border-red-500/40 text-xs font-semibold text-red-200 transition-colors">Customer Dashboard (Executive View)</Link>
+          <Link href="/admin/tenant" className="px-3 py-1.5 rounded-lg bg-cyan-950/60 hover:bg-cyan-950 border border-cyan-500/40 text-xs font-semibold text-cyan-200 transition-colors">Tenant Admin Dashboard</Link>
+          {state.session?.role === "SUPER_ADMIN" && (
+            <Link href="/admin" className="px-3 py-1.5 rounded-lg bg-amber-950/60 hover:bg-amber-950 border border-amber-500/40 text-xs font-semibold text-amber-200 transition-colors">Super Admin Console</Link>
+          )}
+        </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-raised border border-line text-xs font-mono text-slate-300">
             <Clock className="w-3.5 h-3.5 text-cyan-400" />
@@ -851,13 +858,13 @@ function AuthenticatedDashboardView({
             <div className="p-3 rounded-lg bg-surface border border-line hover:border-cyan-500/40 transition-all space-y-1">
               <div className="flex items-center justify-between">
                 <span className="text-xs font-mono font-bold text-cyan-400">STAGE 4</span>
-                <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-cyan-500/20 text-cyan-300">MERKLE PQC</span>
+                <span className="px-1.5 py-0.2 rounded text-[10px] font-mono bg-cyan-500/20 text-cyan-300">MERKLE + TSA</span>
               </div>
               <h4 className="text-xs font-semibold text-slate-200 group-hover:text-cyan-300 transition-colors">
                 Evidence Ledger &amp; Audit Seal
               </h4>
               <p className="text-[11px] text-slate-400">
-                Post-quantum cryptographic audit packages and offline verifier CLI.
+                Ed25519 + RFC 3161 cryptographic audit packages and offline verifier CLI.
               </p>
             </div>
           </Link>

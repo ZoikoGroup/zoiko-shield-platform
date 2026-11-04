@@ -193,7 +193,7 @@ export class OnboardingService implements OnModuleInit {
               principalType: 'HUMAN',
               status: 'ACTIVE',
               source: 'ONBOARDING',
-              emailVerified: false,
+              emailVerified: true,
             },
           })
         ).id;

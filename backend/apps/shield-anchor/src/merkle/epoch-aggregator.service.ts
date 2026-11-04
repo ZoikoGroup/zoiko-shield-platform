@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
-import { MerkleTreeService } from './merkle-tree.service';
+import { MerkleProofStep, MerkleTreeService } from './merkle-tree.service';
 import { Rfc3161WitnessService } from '../witnesses/rfc3161/rfc3161-witness.service';
 
 export interface TenantEpochInput {
@@ -21,7 +21,7 @@ export interface EpochSealReceipt {
     genTime: string;
     signature: string;
   };
-  tenantInclusionProofs: Record<string, string[]>; // tenantId -> Merkle audit path
+  tenantInclusionProofs: Record<string, MerkleProofStep[]>;
   sealedAt: string;
   epochSealDigest: string;
 }
@@ -89,12 +89,9 @@ export class EpochAggregatorService {
     const tsaReceipt = await this.rfc3161WitnessService.attest(globalEpochRoot);
 
     // Extract Inclusion Proofs for each tenant
-    const tenantInclusionProofs: Record<string, string[]> = {};
+    const tenantInclusionProofs: Record<string, MerkleProofStep[]> = {};
     for (let i = 0; i < tenants.length; i++) {
-      const steps = merkleBuild.proofs[i] || [];
-      tenantInclusionProofs[tenants[i].tenantId] = steps.map(
-        (s) => s.siblingHash,
-      );
+      tenantInclusionProofs[tenants[i].tenantId] = merkleBuild.proofs[i] || [];
     }
 
     const totalEvidenceCount = tenants.reduce(

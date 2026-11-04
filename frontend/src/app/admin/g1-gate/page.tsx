@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { Lock, FileText, Download, FileSearch } from "lucide-react";
 import G1GateConsole from "./console";
+import { downloadCsvFile } from "@/lib/export-utils";
 import {
   WorkspacePage, PageHeader, NoticeBanner, KpiGrid, Panel, Pill, DataTable, NumberedList,
   ProgressRow, CheckRow, KeyValues, ActionButton, FooterStrip, CONSOLE_TAB, useTabFilter,
@@ -34,6 +35,14 @@ export default function G1LaunchGatePage() {
   // the governance roster in the live console, never inferred here.
   const signed = 0;
 
+  const handleExportDemonstrationReport = () => {
+    downloadCsvFile(
+      ["Signer Number", "Executive Role", "Remit Area", "Ratification Status"],
+      ROSTER.map((signer) => [signer.n, signer.role, signer.remit, "PENDING_RATIFICATION"]),
+      "g1-launch-gate-protocol-report.csv"
+    );
+  };
+
   return (
     <WorkspacePage
       header={
@@ -45,7 +54,7 @@ export default function G1LaunchGatePage() {
           actions={
             <>
               <ActionButton onClick={() => setTab("preconditions")}><FileText className="w-3.5 h-3.5" /> Review protocol</ActionButton>
-              <ActionButton primary onClick={() => setTab(CONSOLE_TAB)}><Download className="w-3.5 h-3.5" /> Export demonstration report</ActionButton>
+              <ActionButton primary onClick={handleExportDemonstrationReport}><Download className="w-3.5 h-3.5" /> Export demonstration report</ActionButton>
             </>
           }
         />

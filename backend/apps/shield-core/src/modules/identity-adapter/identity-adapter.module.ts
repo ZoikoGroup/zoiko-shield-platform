@@ -28,6 +28,7 @@ import { IdentityProviderConfigurationController } from './identity-provider-con
 import { ZoikoIdProviderBootstrapService } from './zoikoid-provider-bootstrap.service';
 import { OwnerFederatedActivationService } from './owner-federated-activation.service';
 import { EvidenceModule } from '../evidence/evidence.module';
+import { EnvironmentModule } from '../environment/environment.module';
 import { PrismaModule } from '../../prisma/prisma.module';
 
 import { ScimService } from './scim/scim.service';
@@ -38,6 +39,7 @@ import { ScimController } from './scim/scim.controller';
     PrismaModule,
     AuthorizationModule,
     EvidenceModule,
+    EnvironmentModule,
     PassportModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

@@ -94,6 +94,16 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /** Re-sends a dead-lettered message unchanged; throws if the broker rejects it. */
+  async republish(topic: string, tenantId: string, payload: unknown) {
+    await this.producer.send({
+      topic,
+      messages: [
+        { key: requireTenantId(tenantId), value: JSON.stringify(payload) },
+      ],
+    });
+  }
+
   async publishEvent<T extends { tenantId: string }>(
     topic: string,
     eventType: string,

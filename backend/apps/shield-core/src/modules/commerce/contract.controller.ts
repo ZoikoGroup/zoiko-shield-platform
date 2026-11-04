@@ -9,7 +9,7 @@ import {
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
-import { IsOptional, IsString } from 'class-validator';
+import { IsOptional, IsString, IsUUID } from 'class-validator';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
 import {
@@ -20,6 +20,15 @@ import {
 export class TransitionContractDto {
   @IsString()
   targetStatus!: string;
+
+  @IsOptional()
+  @IsString()
+  actor?: string;
+}
+
+export class ActivateContractDto {
+  @IsUUID()
+  contractId!: string;
 
   @IsOptional()
   @IsString()
@@ -76,6 +85,30 @@ export class ContractController {
     return {
       statusCode: HttpStatus.OK,
       message: `Contract status updated to '${dto.targetStatus}'`,
+      data: contract,
+    };
+  }
+
+  /**
+   * POST /api/v1/commerce/contracts/activate
+   * Execute agreement validation and idempotent contract-to-grant transaction
+   * per ZS-COM-MASTER-002 v2.0 Section 17.
+   */
+  @Post('activate')
+  async activateContract(
+    @Headers('idempotency-key') idempotencyKey: string,
+    @Body() dto: ActivateContractDto,
+  ) {
+    const contract = await this.contractService.transitionState(
+      dto.contractId,
+      'ACTIVE',
+      dto.actor || 'system',
+      idempotencyKey,
+    );
+    return {
+      statusCode: HttpStatus.OK,
+      message:
+        'Contract successfully activated and CommercialContractActivated.v1 published',
       data: contract,
     };
   }

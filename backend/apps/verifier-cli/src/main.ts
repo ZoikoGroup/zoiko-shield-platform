@@ -2,7 +2,11 @@
 import { existsSync, readFileSync, writeFileSync } from 'fs';
 import { resolve, join } from 'path';
 import * as crypto from 'crypto';
-import { StandaloneMerkleVerifier } from './merkle/standalone-merkle-verifier';
+import {
+  StandaloneMerkleVerifier,
+  TreeProfile,
+  resolveDeclaredTreeProfile,
+} from './merkle/standalone-merkle-verifier';
 
 export interface AuditVerificationCertificate {
   certificateId: string;
@@ -218,15 +222,25 @@ export function runVerifier(args: string[] = process.argv.slice(2)): number {
     }
 
     // 4. Merkle Tree & Proof Recomputation
+    const declaredTreeProfile =
+      manifest.proofEnvelope?.checkpoint?.treeProfile ??
+      manifest.manifestCore?.verifierProfile?.treeProfile ??
+      manifest.verifierProfile?.treeProfile;
+    let treeProfile: TreeProfile | null = null;
+    try {
+      treeProfile = resolveDeclaredTreeProfile(declaredTreeProfile);
+    } catch (err) {
+      logError(`  ❌ ${(err as Error).message}`);
+    }
     log(
-      '\n[5/5] Reconstructing Domain-Separated Merkle Tree (ZS-MERKLE-V1)...',
+      `\n[5/5] Reconstructing Domain-Separated Merkle Tree (${treeProfile ?? 'UNSUPPORTED'})...`,
     );
     const merkleService = new StandaloneMerkleVerifier();
     let recomputedMerkleRoot = declaredMerkleRoot;
-    let merkleRootIntegrity = true;
+    let merkleRootIntegrity = treeProfile !== null;
 
-    if (leafHashes.length > 0) {
-      const recomputedTree = merkleService.build(leafHashes);
+    if (treeProfile && leafHashes.length > 0) {
+      const recomputedTree = merkleService.build(leafHashes, treeProfile);
       recomputedMerkleRoot = recomputedTree.root;
       merkleRootIntegrity = recomputedTree.root === declaredMerkleRoot;
       log(`  ✔ Declared Merkle Root:   ${declaredMerkleRoot}`);

@@ -116,6 +116,7 @@ export default function ActionsAndFreezePage() {
   const [isFrozen, setIsFrozen] = useState(false);
   const [activeFreezeId, setActiveFreezeId] = useState<string | null>(null);
   const [freezeLoading, setFreezeLoading] = useState(false);
+  const [freezeError, setFreezeError] = useState<string | null>(null);
 
   // Simulation State
   const [isSimulating, setIsSimulating] = useState(false);
@@ -142,6 +143,7 @@ export default function ActionsAndFreezePage() {
 
   const handleToggleFreeze = async () => {
     setFreezeLoading(true);
+    setFreezeError(null);
     try {
       if (isFrozen && activeFreezeId) {
         await ZoikoShieldApiClient.releaseFreezeSOAR(activeFreezeId);
@@ -153,7 +155,9 @@ export default function ActionsAndFreezePage() {
         setActiveFreezeId(result.freezeId);
       }
     } catch (err: any) {
-      console.error("Freeze toggle error:", err);
+      setFreezeError(
+        `${isFrozen ? "Release" : "Freeze"} was not confirmed by the backend; state is unchanged: ${err?.message || String(err)}`
+      );
     } finally {
       setFreezeLoading(false);
     }
@@ -399,6 +403,12 @@ export default function ActionsAndFreezePage() {
                   className="w-full px-3 py-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 focus:outline-none focus:border-amber-500 resize-none"
                 />
               </div>
+
+              {freezeError && (
+                <div className="p-2.5 rounded-lg bg-rose-950/40 border border-rose-500/40 text-rose-300 text-xs font-mono">
+                  {freezeError}
+                </div>
+              )}
 
               <Button
                 variant="primary"

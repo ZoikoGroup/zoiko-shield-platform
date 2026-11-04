@@ -3,6 +3,7 @@
 import React, { useMemo, useState } from "react";
 import { ClipboardCheck, ListChecks, Download, Lock, UserX } from "lucide-react";
 import GtmChecklistConsole from "./console";
+import { downloadCsvFile } from "@/lib/export-utils";
 import {
   WorkspacePage, PageHeader, NoticeBanner, KpiGrid, Panel, Pill, DataTable, SearchInput,
   NumberedList, ProgressRow, EventList, FooterStrip, ActionButton, CheckRow, CONSOLE_TAB, useTabFilter,
@@ -43,6 +44,15 @@ export default function GtmPreFlightPage() {
 
   const linked = ITEMS.filter((i) => i.evidence === "LINKED").length;
   const missing = ITEMS.length - linked;
+
+  const handleExportDemoReview = () => {
+    downloadCsvFile(
+      ["Item Number", "Checklist Item", "Owner", "Evidence Status"],
+      ITEMS.map((item) => [item.n, item.title, item.owner, item.evidence]),
+      "gtm-preflight-checklist.csv"
+    );
+  };
+
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
     return ITEMS.filter(
@@ -63,7 +73,7 @@ export default function GtmPreFlightPage() {
           actions={
             <>
               <ActionButton onClick={() => setTab(CONSOLE_TAB)}><ListChecks className="w-3.5 h-3.5" /> Review checklist</ActionButton>
-              <ActionButton primary onClick={() => setTab(CONSOLE_TAB)}><Download className="w-3.5 h-3.5" /> Export demo review</ActionButton>
+              <ActionButton primary onClick={handleExportDemoReview}><Download className="w-3.5 h-3.5" /> Export demo review</ActionButton>
             </>
           }
         />

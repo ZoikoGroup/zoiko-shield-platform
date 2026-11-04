@@ -20,6 +20,10 @@ import {
   ArrowRight,
 } from "lucide-react";
 
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 export default function JitElevationPage() {
   const [sessions, setSessions] = useState<JitElevationSession[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,6 +47,8 @@ export default function JitElevationPage() {
 
   const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null);
   const [revocationReason, setRevocationReason] = useState("");
+  // Session id (or "create") whose request is in flight; its controls stay disabled until the backend answers.
+  const [busy, setBusy] = useState<string | null>(null);
 
   const loadSessions = async () => {
     try {
@@ -67,24 +73,11 @@ export default function JitElevationPage() {
       setError("Stated purpose must be a comprehensive justification (min 10 characters)");
       return;
     }
-    const newSessionId = `jit-sess-${Math.random().toString(36).slice(2, 8)}`;
-    const fallbackSess: JitElevationSession = {
-      sessionId: newSessionId,
-      operatorId,
-      targetTenantId,
-      elevatedRole,
-      status: "PENDING",
-      clientIp: "127.0.0.1",
-      statedPurpose,
-      issuedAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + durationMinutes * 60000).toISOString(),
-      hardwareStepUpVerified: initialHardware,
-      hardwareProofDigest: initialHardware ? `fido2-p256-${Date.now()}` : undefined,
-    };
-
+    setBusy("create");
     try {
       setError(null);
-      const res = await ZoikoShieldApiClient.createJitElevation({
+      setActionSuccess(null);
+      const created = await ZoikoShieldApiClient.createJitElevation({
         operatorId,
         targetTenantId,
         elevatedRole,
@@ -92,94 +85,82 @@ export default function JitElevationPage() {
         durationMinutes,
         initialHardwareProof: initialHardware ? `fido2-attestation-${Date.now()}` : undefined,
       });
-      setSessions((prev) => [res || fallbackSess, ...prev]);
-    } catch {
-      setSessions((prev) => [fallbackSess, ...prev]);
+      setSessions((prev) => [created, ...prev]);
+      setStatedPurpose("");
+      setActionSuccess(`JIT elevation request ${created.sessionId} recorded with status ${created.status}.`);
+    } catch (err) {
+      setError(`Elevation request was not recorded: ${errorMessage(err)}`);
     } finally {
       setShowRequestModal(false);
-      setStatedPurpose("");
-      setActionSuccess(`JIT Elevation request created in PENDING status. Awaiting peer approver quorum.`);
+      setBusy(null);
     }
   };
+
+  const replaceSession = (updated: JitElevationSession) =>
+    setSessions((prev) => prev.map((s) => (s.sessionId === updated.sessionId ? updated : s)));
 
   const handlePeerApprove = async () => {
     if (!approvingSessionId) return;
     const targetId = approvingSessionId;
+    setBusy(targetId);
     try {
       setError(null);
-      await ZoikoShieldApiClient.peerApproveJitSession(
+      setActionSuccess(null);
+      const updated = await ZoikoShieldApiClient.peerApproveJitSession(
         targetId,
         approverId,
         approverRole,
         "Verified emergency ticket justification"
       );
-    } catch {
-      // Optimistic local state for demo presentation
+      replaceSession(updated);
+      setActionSuccess(`Session ${targetId} approved by ${approverId} (${approverRole}); backend status is ${updated.status}.`);
+    } catch (err) {
+      setError(`Approval of ${targetId} was not recorded: ${errorMessage(err)}`);
+    } finally {
+      setApprovingSessionId(null);
+      setBusy(null);
     }
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.sessionId === targetId
-          ? {
-              ...s,
-              status: "ACTIVE",
-              peerApprover: `${approverId} (${approverRole})`,
-              issuedAt: new Date().toISOString(),
-              expiresAt: new Date(Date.now() + 60 * 60000).toISOString(),
-            }
-          : s
-      )
-    );
-    setApprovingSessionId(null);
-    setActionSuccess(`Session ${targetId} approved by ${approverId} (${approverRole}). Session is now ACTIVE.`);
   };
 
   const handleStepUp = async (sessionId: string) => {
+    setBusy(sessionId);
     try {
       setError(null);
-      await ZoikoShieldApiClient.stepUpHardwareJitSession(
+      setActionSuccess(null);
+      const updated = await ZoikoShieldApiClient.stepUpHardwareJitSession(
         sessionId,
         `fido2-yubikey-p256-digest-${Date.now()}`
       );
-    } catch {
-      // Optimistic local state for demo presentation
+      replaceSession(updated);
+      setActionSuccess(`Hardware step-up recorded for session ${sessionId}.`);
+    } catch (err) {
+      setError(`Hardware step-up for ${sessionId} was not recorded: ${errorMessage(err)}`);
+    } finally {
+      setBusy(null);
     }
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.sessionId === sessionId
-          ? {
-              ...s,
-              hardwareStepUpVerified: true,
-              hardwareProofDigest: `fido2-yubikey-p256-attested-${Date.now().toString(36)}`,
-            }
-          : s
-      )
-    );
-    setActionSuccess(`FIDO2/WebAuthn hardware step-up verified for session ${sessionId}.`);
   };
 
   const handleRevoke = async () => {
     if (!revokingSessionId) return;
     const targetId = revokingSessionId;
+    setBusy(targetId);
     try {
       setError(null);
-      await ZoikoShieldApiClient.revokeJitSession(
+      setActionSuccess(null);
+      const updated = await ZoikoShieldApiClient.revokeJitSession(
         targetId,
         "usr-ciso-master",
         revocationReason || "Emergency administrative revocation"
       );
-    } catch {
-      // Optimistic local state for demo presentation
+      replaceSession(updated);
+      setRevocationReason("");
+      setActionSuccess(`Session ${targetId} revoked; backend status is ${updated.status}.`);
+    } catch (err) {
+      setError(`Revocation of ${targetId} was not recorded — the session may still be active: ${errorMessage(err)}`);
+    } finally {
+      setRevokingSessionId(null);
+      setBusy(null);
     }
-    setSessions((prev) =>
-      prev.map((s) =>
-        s.sessionId === targetId
-          ? { ...s, status: "REVOKED" }
-          : s
-      )
-    );
-    setRevokingSessionId(null);
-    setRevocationReason("");
-    setActionSuccess(`Session ${targetId} revoked immediately with audit event recorded.`);
   };
 
   const activeCount = sessions.filter((s) => s.status === "ACTIVE").length;
@@ -363,7 +344,8 @@ export default function JitElevationPage() {
                     {sess.status === "APPROVED" && !sess.hardwareStepUpVerified && (
                       <button
                         onClick={() => handleStepUp(sess.sessionId)}
-                        className="px-3 py-1 rounded bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 text-xs font-mono transition-colors"
+                        disabled={busy === sess.sessionId}
+                        className="disabled:opacity-50 disabled:cursor-wait px-3 py-1 rounded bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-500/40 text-xs font-mono transition-colors"
                       >
                         Verify Hardware
                       </button>
@@ -528,9 +510,10 @@ export default function JitElevationPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded-lg bg-cyan-500 text-slate-950 font-bold hover:bg-cyan-400"
+                  disabled={busy === "create"}
+                  className="disabled:opacity-50 disabled:cursor-wait px-4 py-2 rounded-lg bg-cyan-500 text-slate-950 font-bold hover:bg-cyan-400"
                 >
-                  Submit Request
+                  {busy === "create" ? "Waiting for backend…" : "Submit Request"}
                 </button>
               </div>
             </form>
@@ -587,9 +570,10 @@ export default function JitElevationPage() {
               <button
                 type="button"
                 onClick={handlePeerApprove}
-                className="px-4 py-2 rounded-lg bg-cyan-500 text-slate-950 font-bold hover:bg-cyan-400"
+                disabled={busy === approvingSessionId}
+                className="disabled:opacity-50 disabled:cursor-wait px-4 py-2 rounded-lg bg-cyan-500 text-slate-950 font-bold hover:bg-cyan-400"
               >
-                Authorize Elevation
+                {busy === approvingSessionId ? "Waiting for backend…" : "Authorize Elevation"}
               </button>
             </div>
           </div>
@@ -633,9 +617,10 @@ export default function JitElevationPage() {
               <button
                 type="button"
                 onClick={handleRevoke}
-                className="px-4 py-2 rounded-lg bg-rose-500 text-white font-bold hover:bg-rose-400"
+                disabled={busy === revokingSessionId}
+                className="disabled:opacity-50 disabled:cursor-wait px-4 py-2 rounded-lg bg-rose-500 text-white font-bold hover:bg-rose-400"
               >
-                Confirm Revocation
+                {busy === revokingSessionId ? "Waiting for backend…" : "Confirm Revocation"}
               </button>
             </div>
           </div>

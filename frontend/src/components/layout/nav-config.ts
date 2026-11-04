@@ -39,6 +39,7 @@ import {
   Code2,
   Rocket,
   ClipboardCheck,
+  Shield,
   type LucideIcon,
 } from "lucide-react";
 
@@ -56,16 +57,18 @@ export interface NavItem {
 export interface NavGroup {
   id: string;
   label: string;
+  allowedRoles?: Array<"TENANT_OWNER" | "SECURITY_ANALYST" | "SUPER_ADMIN" | "AUDITOR">;
   items: NavItem[];
 }
 
-// Single source of truth for the app's navigation. Every route appears exactly once;
-// the Sidebar renders it and the TopHeader derives its breadcrumbs from it.
+// Single source of truth for the app's navigation. Every route appears once;
+// the Sidebar renders it (filtered by role) and the TopHeader derives its breadcrumbs from it.
 export const NAV_GROUPS: NavGroup[] = [
   {
     id: "overview",
     label: "Overview",
     items: [
+      { label: "Customer Dashboard", href: "/customer/dashboard", icon: Shield, tag: "CISO", tagVariant: "critical" },
       { label: "Command Center", href: "/", icon: LayoutDashboard },
       { label: "Executive Risk", href: "/risk/executive", icon: TrendingUp },
       { label: "AI Security Copilot", href: "/copilot", icon: Bot, tagVariant: "ai" },
@@ -131,8 +134,10 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     id: "admin",
-    label: "Administration",
+    label: "Tenant Administration",
+    allowedRoles: ["TENANT_OWNER", "SUPER_ADMIN"],
     items: [
+      { label: "Tenant Admin Dashboard", href: "/admin/tenant", icon: Building, tag: "ADMIN", tagVariant: "anchored" },
       { label: "Tenant Management", href: "/tenant-management", icon: Building },
       { label: "Team & Access", href: "/team", icon: Users },
       { label: "Organization Onboarding", href: "/onboarding", icon: UserPlus },
@@ -143,9 +148,10 @@ export const NAV_GROUPS: NavGroup[] = [
   },
   {
     id: "platform",
-    label: "Platform Operator",
+    label: "Super Admin (Platform Operator)",
+    allowedRoles: ["SUPER_ADMIN"],
     items: [
-      { label: "Operations & Entitlements", href: "/admin", icon: Sliders },
+      { label: "Super Admin Dashboard", href: "/admin", icon: Sliders, tag: "SUPER", tagVariant: "critical" },
       { label: "Platform Service Health", href: "/admin/platform-health", icon: Activity },
       { label: "JIT Elevation Quorum", href: "/admin/jit-elevation", icon: KeyRound, tag: "4-EYES", tagVariant: "anchored" },
       { label: "Support Access JIT", href: "/admin/jit", icon: Lock },

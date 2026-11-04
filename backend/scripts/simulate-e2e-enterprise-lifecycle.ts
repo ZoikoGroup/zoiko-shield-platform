@@ -21,6 +21,7 @@ import { P0_CONNECTOR_BASELINES } from '../apps/shield-ingest/src/drift/connecto
 import { GroundingGateGuard } from '../apps/shield-ai/src/security/grounding-gate.guard';
 import { AiUseCaseRegistryService } from '../apps/shield-ai/src/inventory/ai-use-case-registry.service';
 import { DualCustodyQuorumService, ApproverIdentity } from '../apps/shield-action/src/dual-custody/dual-custody-quorum.service';
+import { PrismaService as ActionPrismaService } from '../apps/shield-action/src/prisma/prisma.service';
 import { CryptographicShreddingService } from '../apps/shield-core/src/modules/privacy/cryptographic-shredding.service';
 import { ZeroKnowledgeComplianceProofService } from '../apps/shield-anchor/src/zk/zero-knowledge-compliance-proof.service';
 import { ComplianceDriftDetectorService } from '../apps/shield-core/src/modules/controls/compliance-drift-detector.service';
@@ -153,7 +154,8 @@ async function runE2ELifecycleSimulation() {
   // STAGE 7: Dual-Custody Approval Quorum (2/2 FIDO2 Signatures)
   // --------------------------------------------------------------------------
   console.log(`[STAGE 7/12] Dual-Custody Approval Quorum & Containment Proposal (shield-action)...`);
-  const quorumService = new DualCustodyQuorumService();
+  // Quorums are persisted, so this stage needs DATABASE_URL.
+  const quorumService = new DualCustodyQuorumService(new ActionPrismaService());
 
   const initiator: ApproverIdentity = {
     userId: 'usr-analyst-lead-01',
@@ -172,7 +174,7 @@ async function runE2ELifecycleSimulation() {
   };
 
   const proposalId = `prop-containment-${crypto.randomUUID().slice(0, 8)}`;
-  const quorum = quorumService.initiateQuorum({
+  const quorum = await quorumService.initiateQuorum({
     tenantId,
     environmentId,
     caseId: `case-${alertId}`,
@@ -187,7 +189,7 @@ async function runE2ELifecycleSimulation() {
     ttlMinutes: 15,
   });
 
-  const finalizedQuorum = quorumService.signSecondApproval(tenantId, quorum.quorumId, secondaryApprover);
+  const finalizedQuorum = await quorumService.signSecondApproval(tenantId, quorum.quorumId, secondaryApprover);
   console.log(`  ✔ Initiated & Finalized Dual-Custody Quorum: ${finalizedQuorum.quorumId}`);
   console.log(`  ✔ Status: ${finalizedQuorum.status} (2/2 FIDO2 Signatures Attested)\n`);
 

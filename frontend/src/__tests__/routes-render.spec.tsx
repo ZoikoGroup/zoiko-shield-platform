@@ -180,9 +180,13 @@ describe('ZoikoShield Route Pages Smoke Tests', () => {
   });
 
   describe('15. Authentication & Passkey Step-Up Page (/login)', () => {
-    it('renders sign-in form with tenant selection and passkey option', () => {
+    it('renders sign-in form with SSO providers and passkey option', () => {
       render(<LoginPage />);
-      expect(screen.getByText(/ZoikoShield Authentication Gate/i)).toBeInTheDocument();
+      expect(screen.getByText(/Welcome back!/i)).toBeInTheDocument();
+      expect(screen.getByText(/Continue with Microsoft/i)).toBeInTheDocument();
+      expect(screen.getByText(/Continue with Google/i)).toBeInTheDocument();
+      expect(screen.getByText(/Continue with Apple/i)).toBeInTheDocument();
+      expect(screen.getByText(/Continue with Company SSO/i)).toBeInTheDocument();
       expect(screen.getAllByText(/Passkey/i)[0]).toBeInTheDocument();
     });
   });
@@ -254,25 +258,28 @@ describe('ZoikoShield Route Pages Smoke Tests', () => {
   describe('24. Redesigned Authentication Gate (/login)', () => {
     it('renders login gate with branding, password toggle, and register option without demo role cards', () => {
       render(<LoginPage />);
-      expect(screen.getByText(/ZoikoShield Authentication Gate/i)).toBeInTheDocument();
-      expect(screen.getByText(/Sign In to Platform/i)).toBeInTheDocument();
+      expect(screen.getByText(/Stronger/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Log in/i })).toBeInTheDocument();
+      expect(screen.getByLabelText(/Show password/i)).toBeInTheDocument();
       expect(screen.queryByText(/Platform Super Admin/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/Tenant Administrator \/ CISO/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/Senior Security Analyst/i)).not.toBeInTheDocument();
       expect(screen.queryByText(/Read-Only Compliance Auditor/i)).not.toBeInTheDocument();
       expect(screen.getByText(/Forgot password\?/i)).toBeInTheDocument();
-      expect(screen.getByText(/Create New Account/i)).toBeInTheDocument();
+      const registerLinks = screen.getAllByRole('link', { name: /^Register$/ });
+      expect(registerLinks.length).toBeGreaterThan(0);
+      registerLinks.forEach((link) => expect(link).toHaveAttribute('href', '/register'));
     });
   });
 
   describe('25. New Account Creation & Evaluation Registration (/register)', () => {
-    it('renders evaluation tenant self-service registration and invitation tabs', () => {
+    it('renders organization self-service registration and invitation tabs', () => {
       render(<RegisterPage />);
-      expect(screen.getByText(/Create ZoikoShield Account/i)).toBeInTheDocument();
-      expect(screen.getByText(/New Evaluation Tenant/i)).toBeInTheDocument();
-      expect(screen.getByText(/Join with Invitation Token/i)).toBeInTheDocument();
-      expect(screen.getByText(/Register Dedicated Evaluation Tenant/i)).toBeInTheDocument();
-      expect(screen.getByText(/Provision Evaluation Tenant & Issue Session/i)).toBeInTheDocument();
+      expect(screen.getByText(/Create your account/i)).toBeInTheDocument();
+      expect(screen.getByText(/New organization/i)).toBeInTheDocument();
+      expect(screen.getByText(/I have an invite/i)).toBeInTheDocument();
+      expect(screen.getByLabelText(/Organization name/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /Create account/i })).toBeInTheDocument();
     });
   });
 });

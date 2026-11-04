@@ -4618,6 +4618,17 @@ components:
           nullable: true
       required:
         - targetStatus
+    PostCommerceContractsActivateRequest:
+      type: object
+      properties:
+        contractId:
+          type: string
+          format: uuid
+        actor:
+          type: string
+          nullable: true
+      required:
+        - contractId
     PostBillingInvoicesRequest:
       type: object
       properties:
@@ -33845,6 +33856,63 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
       operationId: patchCommerceContractsByIdTransition
+  /api/v1/commerce/contracts/activate:
+    post:
+      tags:
+        - CommerceContracts
+      summary: Activate contract and emit CommercialContractActivated.v1
+      description: >-
+        Validates the executed agreement and performs an idempotent contract-to-grant activation per ZS-COM-MASTER-002 v2.0 Section 17.
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKeyHeader'
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: >-
+            Same key + same request replays the prior response; same key + a different request returns 409 rather than double-applying
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostCommerceContractsActivateRequest'
+      responses:
+        '200':
+          description: Activation successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContractResponse'
+        '400':
+          description: Request validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Contract not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Illegal contract transition or conflicting idempotency key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+      operationId: postCommerceContractsActivate
   /api/v1/billing/invoices:
     post:
       tags:
@@ -38086,6 +38154,108 @@ paths:
         Issue a short-lived signed download token (object storage is never exposed directly). Applies the documented
         path, query, and tenant filters and returns the current persisted or computed result using the response model
         below.
+  /api/v1/exports/{exportId}/download/file:
+    get:
+      tags:
+        - Exports
+      summary: Download complete structured export package file directly
+      parameters:
+        - name: exportId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Unique export ID identifying the target resource.
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Direct export bundle download successful.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  jobId:
+                    type: string
+                  tenantId:
+                    type: string
+                  exportType:
+                    type: string
+                  purpose:
+                    type: string
+                  status:
+                    type: string
+                  completedAt:
+                    type: string
+                    format: date-time
+                    nullable: true
+                  manifest:
+                    type: object
+                    nullable: true
+                  artifacts:
+                    type: array
+                    items:
+                      type: object
+                  generatedAt:
+                    type: string
+                    format: date-time
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+        '404':
+          description: Export job not found
+      operationId: getExportsByExportIdDownloadFile
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      description: >-
+        Download full structured JSON export bundle directly for the specified export job ID.
+  /api/v1/exports/data/{dataType}:
+    get:
+      tags:
+        - Exports
+      summary: Export domain dataset in CSV or JSON format
+      parameters:
+        - name: dataType
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Dataset domain type (team, audit, evidence, risk, controls, cases, alerts).
+        - name: format
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - json
+              - csv
+            default: json
+          description: Export serialization format.
+        - $ref: '#/components/parameters/TenantIdHeader'
+      responses:
+        '200':
+          description: Domain dataset export successful.
+          content:
+            text/csv:
+              schema:
+                type: string
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+        '401':
+          description: Unauthorized
+        '403':
+          description: Forbidden
+      operationId: getExportsDataByDataType
+      security:
+        - CookieAuth: []
+        - BearerAuth: []
+      description: >-
+        Export live domain dataset (team, audit, evidence, risk, controls, cases, alerts) in CSV or JSON format with tenant isolation.
   /api/v1/context/assets/{assetId}:
     get:
       tags:
@@ -53449,9 +53619,11 @@ paths:
       tags:
         - ConnectorCatalog
       summary: Get DLQ metrics
-      description: Returns current DLQ quarantine and replay metrics.
+      description: Returns DLQ quarantine and replay metrics for the tenant in x-tenant-id.
       security:
         - InternalServiceAuth: []
+      parameters:
+        - $ref: '#/components/parameters/TenantIdHeader'
       responses:
         '200':
           description: DLQ quarantine metrics

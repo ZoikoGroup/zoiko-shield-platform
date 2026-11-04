@@ -41,6 +41,21 @@ export type ClaimChannel = (typeof CLAIM_CHANNELS)[number];
 const CLAIM_REVIEWER_ROLES = ['LEGAL', 'COMPLIANCE'] as const;
 export type ClaimReviewerRole = (typeof CLAIM_REVIEWER_ROLES)[number];
 
+/**
+ * Statutory and governance prohibited claim terms per ZS-COM-MASTER-002 v2.0 §11 & §19.
+ * Claims containing these variants fail closed and cannot be registered across any channel.
+ */
+export const STATUTORY_PROHIBITED_CLAIM_PATTERNS = [
+  'unhackable',
+  'fully autonomous',
+  'zero incidents',
+  'guaranteed regulatory compliance',
+  'unlimited remediation',
+  'zero hallucinations',
+  '100% secure',
+  'breach prevention warranty',
+] as const;
+
 const OFFER_TYPES = [
   'MANAGED_DEFENSE',
   'CONTINUOUS_ASSURANCE',
@@ -238,6 +253,15 @@ export class ClaimRegisterService {
     if (conflictingVariant) {
       throw new BadRequestException(
         `Approved wording contains prohibited variant '${conflictingVariant}'`,
+      );
+    }
+
+    const statutoryViolation = STATUTORY_PROHIBITED_CLAIM_PATTERNS.find((pattern) =>
+      normalizedWording.includes(pattern),
+    );
+    if (statutoryViolation) {
+      throw new BadRequestException(
+        `Approved wording contains statutory prohibited claim '${statutoryViolation}' (ZS-COM-MASTER-002 §11, §19)`,
       );
     }
 

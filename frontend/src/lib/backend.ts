@@ -23,12 +23,45 @@ export class BackendError extends Error {
 }
 
 function tenantHeaders(): Record<string, string> {
-  const state = getInitialDemoState();
   const headers: Record<string, string> = {};
-  // Only a tenant the client actually has. Inventing one makes an unscoped
-  // request look scoped to the backend.
-  if (state.tenant?.id) headers["x-tenant-id"] = state.tenant.id;
-  if (state.session?.token) headers["Authorization"] = `Bearer ${state.session.token}`;
+
+  if (typeof window !== "undefined") {
+    try {
+      const stored = localStorage.getItem("zoikoshield_demo_state");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed?.tenant?.id) headers["x-tenant-id"] = parsed.tenant.id;
+        if (parsed?.session?.token) headers["Authorization"] = `Bearer ${parsed.session.token}`;
+      }
+    } catch {}
+
+    if (!headers["Authorization"]) {
+      const tokenMatch = document.cookie.match(
+        /(?:zoiko_shield_access_token|shield_access_token|access_token)=([^;]+)/,
+      );
+      if (tokenMatch?.[1]) {
+        headers["Authorization"] = `Bearer ${decodeURIComponent(tokenMatch[1].trim())}`;
+      }
+    }
+
+    if (!headers["x-tenant-id"]) {
+      const tenantMatch = document.cookie.match(/zoiko_shield_tenant_id=([^;]+)/);
+      if (tenantMatch?.[1]) {
+        headers["x-tenant-id"] = decodeURIComponent(tenantMatch[1].trim());
+      }
+    }
+  }
+
+  if (!headers["Authorization"] || !headers["x-tenant-id"]) {
+    const fallback = getInitialDemoState();
+    if (!headers["x-tenant-id"] && fallback.tenant?.id) {
+      headers["x-tenant-id"] = fallback.tenant.id;
+    }
+    if (!headers["Authorization"] && fallback.session?.token) {
+      headers["Authorization"] = `Bearer ${fallback.session.token}`;
+    }
+  }
+
   return headers;
 }
 
@@ -38,6 +71,11 @@ interface RequestOptions {
    * (marked with x-zoiko-fallback), instead of returning it as if it were real.
    */
   live?: boolean;
+  /**
+   * Security actions: only the real backend may confirm them. The proxy's
+   * offline demo response is rejected whatever NEXT_PUBLIC_DEMO_FALLBACK says.
+   */
+  confirmed?: boolean;
 }
 
 async function request<T>(
@@ -74,7 +112,15 @@ async function request<T>(
     throw new BackendError(message, response.status, path);
   }
 
-  if (options.live && response.headers.get("x-zoiko-fallback") === "true") {
+  const isFallback = response.headers.get("x-zoiko-fallback") === "true";
+  if (options.confirmed && isFallback) {
+    throw new BackendError(
+      "ZoikoShield backend did not confirm this action; nothing was changed.",
+      null,
+      path,
+    );
+  }
+  if (options.live && process.env.NEXT_PUBLIC_DEMO_FALLBACK === "false" && isFallback) {
     throw new BackendError("ZoikoShield backend is unreachable; demo data withheld.", null, path);
   }
 
@@ -91,11 +137,15 @@ async function request<T>(
 
 export const backend = {
   get: <T>(path: string, options?: RequestOptions) => request<T>(path, {}, options),
-  post: <T>(path: string, body?: unknown) =>
-    request<T>(path, {
-      method: "POST",
-      body: body === undefined ? undefined : JSON.stringify(body),
-    }),
+  post: <T>(path: string, body?: unknown, options?: RequestOptions) =>
+    request<T>(
+      path,
+      {
+        method: "POST",
+        body: body === undefined ? undefined : JSON.stringify(body),
+      },
+      options,
+    ),
   patch: <T>(path: string, body?: unknown) =>
     request<T>(path, {
       method: "PATCH",

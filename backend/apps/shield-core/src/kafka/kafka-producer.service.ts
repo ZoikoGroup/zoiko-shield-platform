@@ -95,6 +95,7 @@ export const CANONICAL_TOPICS = {
   TENANT_ACCESS_FROZEN: 'tenant.access.frozen.v1',
   TENANT_CONNECTORS_REVOKED: 'tenant.connectors.revoked.v1',
   TENANT_DELETION_STARTED: 'tenant.deletion.started.v1',
+  LEGAL_HOLD_DELETION_BLOCKED: 'legal_hold.deletion_blocked.v1',
   TENANT_DELETION_RECONCILED: 'tenant.deletion.reconciled.v1',
   TENANT_BACKUP_EXPIRY_PENDING: 'tenant.backup_expiry.pending.v1',
   TENANT_DELETION_ATTESTED: 'tenant.deletion.attested.v1',

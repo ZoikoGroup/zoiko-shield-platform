@@ -177,18 +177,15 @@ export default function PricingPage() {
             />
           </button>
           <span className={`text-xs font-medium flex items-center gap-1.5 ${isAnnual ? "text-cyan-400 font-semibold" : "text-slate-400"}`}>
-            Annual Commitment (20% Savings)
+            Annual Commitment (Target Band)
           </span>
-          <button
-            type="button"
-            onClick={() => {
-              if (plans.length > 0) openCheckoutForPlan(plans[1] || plans[0]);
-            }}
+          <Link
+            href="/services"
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 text-xs font-mono font-bold hover:bg-cyan-500/25 transition-all shadow-[0_0_15px_rgba(6,182,212,0.2)] ml-2"
           >
-            <CreditCard className="w-3.5 h-3.5 text-cyan-400" />
-            <span>💳 Stripe Checkout</span>
-          </button>
+            <FileText className="w-3.5 h-3.5 text-cyan-400" />
+            <span>Compare Capabilities</span>
+          </Link>
         </div>
       </div>
 
@@ -225,14 +222,14 @@ export default function PricingPage() {
           <ShieldCheck className="w-5 h-5 text-cyan-400 shrink-0 mt-0.5" />
           <div className="space-y-1.5 max-w-3xl">
             <p className="font-semibold text-white flex items-center gap-2">
-              <span>Commercial Sizing & Anti-Perverse Incentive Notice</span>
-              <span className="px-2 py-0.5 rounded bg-cyan-950 border border-cyan-500/40 text-[10px] font-mono text-cyan-300">RULE PR-02</span>
+              <span>Commercial Sizing &amp; Anti-Perverse Incentive Notice</span>
+              <span className="px-2 py-0.5 rounded bg-cyan-950 border border-cyan-500/40 text-[10px] font-mono text-cyan-300">MASTER COMMERCIAL ESTATE V2.0</span>
+            </p>
+            <p className="text-slate-300 leading-relaxed font-medium">
+              &ldquo;Plans are sized to your environment and contracted telemetry. Managed monitoring and response are separately scoped. We will show approved usage limits, service responsibilities and taxes before you sign.&rdquo;
             </p>
             <p className="text-slate-400 leading-relaxed">
-              <strong className="text-slate-200">No public prices or SLAs yet:</strong> The price book (ADR-06) and contractual SLAs (ADR-07) are not yet approved, so every plan is quoted per customer and any response commitment is set in the order form. The asset and telemetry bands shown are sizing guidance for a quote, not included quotas.
-            </p>
-            <p className="text-slate-400 leading-relaxed">
-              In accordance with Rule PR-02, invoices strictly reflect contracted band capacity. SOC alert volumes, incident surge frequency, forensic triaging depth, and AI Security Copilot query complexity carry zero surcharge or metered penalty.
+              <strong className="text-slate-200">Contractual Source of Truth (C02):</strong> The legally operative Order Form plus applicable exhibits determine what can be charged, not marketing copy, UI slider suggestions or internal cost counters. In accordance with Invariant C07, invoices strictly reflect contracted capacity. Security alerts, incident surges, forensic triaging, and AI Copilot queries carry zero surcharge or metered penalty.
             </p>
           </div>
         </div>
@@ -364,23 +361,22 @@ export default function PricingPage() {
 
               {/* Action Button */}
               <div className="pt-6 space-y-2">
-                <button
-                  type="button"
-                  onClick={() => openCheckoutForPlan(plan)}
+                <Link
+                  href="/team"
                   className={`w-full py-2.5 px-4 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
                     isPop
                       ? "bg-cyan-500 hover:bg-cyan-400 text-slate-950 shadow-[0_0_20px_rgba(6,182,212,0.4)]"
                       : "bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-400 border border-cyan-500/40"
                   }`}
                 >
-                  <CreditCard className="w-3.5 h-3.5" />
-                  <span>💳 Subscribe via Stripe</span>
-                </button>
+                  <Receipt className="w-3.5 h-3.5" />
+                  <span>Request a Governed Quote</span>
+                </Link>
                 <Link
-                  href={plan.pricing?.isContractOnly ? "/team" : "/onboarding"}
+                  href="/services"
                   className="w-full py-1 text-center text-[11px] text-slate-500 hover:text-slate-300 flex items-center justify-center gap-1 transition-colors"
                 >
-                  <span>{plan.pricing?.isContractOnly ? "Contact Enterprise Sales" : "Deploy via Onboarding"}</span>
+                  <span>View Service Specifications &amp; SOWs</span>
                   <ArrowRight className="w-3 h-3" />
                 </Link>
               </div>
@@ -493,6 +489,9 @@ export default function PricingPage() {
                 {calculating ? "SOLVING..." : "ENGINE VERIFIED"}
               </span>
             </div>
+            <div className="text-[10px] font-mono text-slate-400 bg-slate-900/80 px-2.5 py-1.5 rounded border border-slate-800 leading-normal">
+              ℹ️ <span className="text-slate-300 font-semibold">Invariant C02:</span> Sizing guidance estimate only. Binding terms and service scopes require an approved Order Form.
+            </div>
 
             {(() => {
               const rec = (recommendation as any)?.data || recommendation;
@@ -529,21 +528,23 @@ export default function PricingPage() {
                   </div>
 
                   <div className="pt-3 border-t border-slate-800 space-y-2">
-                    <button
-                      type="button"
-                      onClick={() => openCheckoutForPlan(plan)}
+                    <Link
+                      href="/team"
                       className="w-full py-2.5 px-4 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-md cursor-pointer"
                     >
-                      <CreditCard className="w-3.5 h-3.5" />
-                      <span>💳 Authorize &amp; Pay for {plan.displayName || "Selected Plan"}</span>
-                    </button>
+                      <Receipt className="w-3.5 h-3.5" />
+                      <span>Request a Governed Quote for {plan.displayName || "Selected Plan"}</span>
+                    </Link>
                     <Link
-                      href={plan.pricing?.isContractOnly ? "/team" : "/onboarding"}
+                      href="/services"
                       className="w-full py-1 text-center text-[11px] text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1"
                     >
-                      <span>Or complete manual enterprise onboarding</span>
+                      <span>View Service Specifications &amp; SOWs</span>
                       <ArrowRight className="w-3 h-3" />
                     </Link>
+                    <div className="text-[10px] font-mono text-slate-500 text-center pt-1">
+                      Indicative sizing estimate only (Invariant C02). Charges require an approved Order Form.
+                    </div>
                   </div>
                 </div>
               );
@@ -669,7 +670,7 @@ export default function PricingPage() {
                     <span>Enterprise SOW / Contract Required (ADR-06)</span>
                   </div>
                   <p className="text-xs text-slate-300 leading-relaxed">
-                    Per Zoiko Shield commercial assurance policy ADR-06 / ZS-COM-BILL-001 §161, <strong>{selectedPlanForCheckout.displayName}</strong> is quoted bespoke. Direct self-serve credit card billing is restricted for sovereign and custom SLA deployments.
+                    Per Zoiko Shield commercial assurance policy ZS-COM-MASTER-002 v2.0 §05 / ADR-06, <strong>{selectedPlanForCheckout.displayName}</strong> is quoted bespoke. Direct self-serve billing is restricted; charges require an approved Order Form.
                   </p>
                 </div>
 
@@ -721,7 +722,7 @@ export default function PricingPage() {
                       {selectedPlanForCheckout.displayName}
                     </div>
                     <div className="text-xs text-slate-400">
-                      {isAnnual ? "Billed annually with 20% commitment discount" : "Billed monthly"}
+                      {isAnnual ? "Annual commitment (indicative target band; subject to approved order form)" : "Billed monthly"}
                     </div>
                   </div>
                   <div className="text-right">

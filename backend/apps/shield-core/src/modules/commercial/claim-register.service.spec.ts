@@ -302,4 +302,15 @@ describe('ClaimRegisterService (R17 claim governance)', () => {
       service.registerClaim(registration, 'author-2'),
     ).rejects.toThrow(ConflictException);
   });
+
+  it('rejects statutory prohibited claims like "unhackable" and "zero incidents" (ZS-COM-MASTER-002 §11, §19)', async () => {
+    const prohibitedClaim = {
+      ...registration,
+      approvedWording: 'ZoikoShield is 100% unhackable and delivers zero incidents',
+    };
+
+    await expect(
+      service.registerClaim(prohibitedClaim, 'author-1'),
+    ).rejects.toThrow(/Approved wording contains statutory prohibited claim/);
+  });
 });

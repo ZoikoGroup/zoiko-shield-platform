@@ -2,6 +2,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { randomUUID } from 'crypto';
@@ -13,6 +14,8 @@ import {
 } from '../../authorization-decision/authorization-decision.service';
 import { LegalHoldService } from '../legal-hold/legal-hold.service';
 import { RetentionPolicyService } from '../retention/retention-policy.service';
+import { OutboxService } from '../../../outbox/outbox.service';
+import { CANONICAL_TOPICS } from '../../../kafka/kafka-producer.service';
 
 export interface CreateDeletionRequestInput {
   tenantId: string;
@@ -76,11 +79,14 @@ const EXECUTABLE_STATUSES = [
  */
 @Injectable()
 export class DeletionRequestService {
+  private readonly logger = new Logger(DeletionRequestService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly authorizationDecisionService: AuthorizationDecisionService,
     private readonly legalHoldService: LegalHoldService,
     private readonly retentionPolicyService: RetentionPolicyService,
+    private readonly outbox: OutboxService,
   ) {}
 
   async request(input: CreateDeletionRequestInput) {
@@ -116,9 +122,10 @@ export class DeletionRequestService {
       retention.periodDays,
     );
 
-    return this.prisma.deletionRequest.create({
+    const deletionRequestId = randomUUID();
+    const create = this.prisma.deletionRequest.create({
       data: {
-        id: randomUUID(),
+        id: deletionRequestId,
         tenant_id: input.tenantId,
         requested_by: input.requestedBy,
         request_authority: input.requestAuthority,
@@ -141,6 +148,19 @@ export class DeletionRequestService {
         authorization_decision_id: authorization.authorizationDecisionId,
       },
     });
+    if (!blocked) return create;
+
+    const [created] = await this.prisma.$transaction([
+      create,
+      this.legalHoldBlockedEvent({
+        tenantId: input.tenantId,
+        deletionRequestId,
+        actorId: input.requestedBy,
+        stage: 'REQUEST',
+        holdIds: conflictingHolds.map((hold) => hold.id),
+      }),
+    ]);
+    return created;
   }
 
   async listForTenant(tenantId: string) {
@@ -207,20 +227,30 @@ export class DeletionRequestService {
       scope,
     );
     if (conflictingHolds.length > 0) {
-      return this.prisma.deletionRequest.update({
-        where: { id: request.id },
-        data: {
-          status: 'BLOCKED_BY_HOLD',
-          legal_hold_state: 'BLOCKED',
-          conflicting_legal_hold_ids: JSON.stringify(
-            conflictingHolds.map((hold) => hold.id),
-          ),
-          reviewed_by: input.approvedBy,
-          reviewed_at: new Date(),
-          decision_reason: input.decisionReason,
-          outcome: 'LEGAL_REVIEW_REQUIRED',
-        },
-      });
+      const [blockedRequest] = await this.prisma.$transaction([
+        this.prisma.deletionRequest.update({
+          where: { id: request.id },
+          data: {
+            status: 'BLOCKED_BY_HOLD',
+            legal_hold_state: 'BLOCKED',
+            conflicting_legal_hold_ids: JSON.stringify(
+              conflictingHolds.map((hold) => hold.id),
+            ),
+            reviewed_by: input.approvedBy,
+            reviewed_at: new Date(),
+            decision_reason: input.decisionReason,
+            outcome: 'LEGAL_REVIEW_REQUIRED',
+          },
+        }),
+        this.legalHoldBlockedEvent({
+          tenantId: input.tenantId,
+          deletionRequestId: request.id,
+          actorId: input.approvedBy,
+          stage: 'APPROVAL',
+          holdIds: conflictingHolds.map((hold) => hold.id),
+        }),
+      ]);
+      return blockedRequest;
     }
 
     await this.prisma.$transaction([
@@ -366,17 +396,26 @@ export class DeletionRequestService {
       this.parseScope(request.scope),
     );
     if (conflictingHolds.length > 0) {
-      await this.prisma.deletionRequest.update({
-        where: { id: request.id },
-        data: {
-          status: 'BLOCKED_BY_HOLD',
-          legal_hold_state: 'BLOCKED',
-          conflicting_legal_hold_ids: JSON.stringify(
-            conflictingHolds.map((hold) => hold.id),
-          ),
-          outcome: 'LEGAL_REVIEW_REQUIRED',
-        },
-      });
+      await this.prisma.$transaction([
+        this.prisma.deletionRequest.update({
+          where: { id: request.id },
+          data: {
+            status: 'BLOCKED_BY_HOLD',
+            legal_hold_state: 'BLOCKED',
+            conflicting_legal_hold_ids: JSON.stringify(
+              conflictingHolds.map((hold) => hold.id),
+            ),
+            outcome: 'LEGAL_REVIEW_REQUIRED',
+          },
+        }),
+        this.legalHoldBlockedEvent({
+          tenantId,
+          deletionRequestId: request.id,
+          actorId: request.reviewed_by ?? request.requested_by,
+          stage: 'EXECUTION',
+          holdIds: conflictingHolds.map((hold) => hold.id),
+        }),
+      ]);
       throw new ConflictException(
         `DeletionRequest '${deletionRequestId}' is blocked by an active legal hold`,
       );
@@ -386,6 +425,36 @@ export class DeletionRequestService {
 
   async assertNotBlocked(tenantId: string, deletionRequestId: string) {
     return this.assertExecutable(tenantId, deletionRequestId);
+  }
+
+  /** Critical security audit record, written atomically with the block itself. */
+  private legalHoldBlockedEvent(params: {
+    tenantId: string;
+    deletionRequestId: string;
+    actorId: string;
+    stage: 'REQUEST' | 'APPROVAL' | 'EXECUTION';
+    holdIds: string[];
+  }) {
+    this.logger.error(
+      `🚨 [LEGAL HOLD] Deletion '${params.deletionRequestId}' for tenant '${params.tenantId}' blocked at ${params.stage} by hold(s) ${params.holdIds.join(', ')} (actor ${params.actorId})`,
+    );
+    return this.prisma.outboxEvent.create({
+      data: this.outbox.build({
+        tenantId: params.tenantId,
+        topic: CANONICAL_TOPICS.LEGAL_HOLD_DELETION_BLOCKED,
+        eventType: 'legal_hold.deletion_blocked',
+        correlationId: params.deletionRequestId,
+        payload: {
+          severity: 'CRITICAL',
+          category: 'SECURITY_AUDIT',
+          deletionRequestId: params.deletionRequestId,
+          actorId: params.actorId,
+          stage: params.stage,
+          conflictingLegalHoldIds: params.holdIds,
+          blockedAt: new Date().toISOString(),
+        },
+      }),
+    });
   }
 
   private async findConflictingHolds(

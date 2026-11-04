@@ -140,7 +140,8 @@ describe('RawIngestService', () => {
 
   it('should route invalid payload to DLQ quarantine service', async () => {
     const dlqMock = {
-      quarantineMessage: jest.fn(),
+      quarantineMessage: jest.fn().mockResolvedValue({}),
+      setReingestHandler: jest.fn(),
     };
 
     const moduleWithDlq: TestingModule = await Test.createTestingModule({
@@ -175,6 +176,15 @@ describe('RawIngestService', () => {
     );
 
     expect(result.processingStatus).toBe('QUARANTINED');
-    expect(dlqMock.quarantineMessage).toHaveBeenCalled();
+    expect(dlqMock.quarantineMessage).toHaveBeenCalledWith(
+      'tenant-001',
+      'telemetry.ingested',
+      { sourceEventId: 'evt-bad' },
+      expect.any(String),
+      expect.any(String),
+      3,
+      expect.objectContaining({ kind: 'WEBHOOK', connectorId: 'conn-123' }),
+    );
+    expect(dlqMock.setReingestHandler).toHaveBeenCalledWith(expect.any(Function));
   });
 });

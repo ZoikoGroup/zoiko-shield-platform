@@ -5,6 +5,7 @@ import { ZoikoShieldApiClient } from "@/lib/api-client";
 import { Card } from "@/ui/Card";
 import { Button } from "@/ui/Button";
 import { Badge } from "@/ui/Badge";
+import { downloadJsonFile } from "@/lib/export-utils";
 
 const api = ZoikoShieldApiClient;
 import {
@@ -601,13 +602,17 @@ export default function AuditorWorkspacePage() {
             <Button
               variant="primary"
               onClick={async () => {
-                const bundle = await api.exportAirgapPackage(selectedPackageId);
-                alert(`Airgap Package exported successfully! Bundle ID: ${bundle.bundleId}`);
+                try {
+                  const bundle = await api.exportAirgapPackage(selectedPackageId);
+                  downloadJsonFile(bundle, `zoikoshield-airgap-bundle-${selectedPackageId}.json`);
+                } catch (err: any) {
+                  console.error("Airgap export failed:", err);
+                }
               }}
               className="px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 rounded-lg text-xs font-semibold text-white transition-all flex items-center gap-2 border border-cyan-400/30 shadow-md shadow-cyan-950/40"
             >
               <Download className="w-4 h-4" />
-              Export Airgap ZIP Bundle
+              Export Airgap Bundle
             </Button>
           </div>
         </Card>
