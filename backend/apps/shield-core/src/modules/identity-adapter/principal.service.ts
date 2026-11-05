@@ -10,9 +10,17 @@ export class PrincipalService {
   constructor(private readonly prisma: PrismaService) {}
 
   async findByEmail(email: string): Promise<Principal | null> {
-    return (await this.prisma.principal.findUnique({
-      where: { email },
-    })) as Principal | null;
+    const normalized = (email || '').trim().toLowerCase();
+    const found = await this.prisma.principal.findUnique({
+      where: { email: normalized },
+    });
+    if (found) return found as Principal;
+    if (email && email.trim() !== normalized) {
+      return (await this.prisma.principal.findUnique({
+        where: { email: email.trim() },
+      })) as Principal | null;
+    }
+    return null;
   }
 
   async findById(id: string): Promise<Principal | null> {

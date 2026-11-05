@@ -38,7 +38,7 @@ function readRememberedEmail(): string | null {
     const { email, expiresAt } = JSON.parse(raw);
     if (typeof email === "string" && Date.now() < expiresAt) return email;
     localStorage.removeItem(REMEMBER_KEY);
-  } catch {}
+  } catch { }
   return null;
 }
 
@@ -49,7 +49,7 @@ function writeRememberedEmail(email: string | null) {
     } else {
       localStorage.removeItem(REMEMBER_KEY);
     }
-  } catch {}
+  } catch { }
 }
 
 function LoginForm() {
@@ -92,7 +92,7 @@ function LoginForm() {
     }
     try {
       setWorkspace(localStorage.getItem(SSO_WORKSPACE_KEY) || "");
-    } catch {}
+    } catch { }
   }, []);
 
   useEffect(() => {
@@ -110,7 +110,7 @@ function LoginForm() {
       if (typeof window !== "undefined") {
         (window as any).__zoiko_logging_out = false;
       }
-      ZoikoShieldApiClient.logout().catch(() => {});
+      ZoikoShieldApiClient.logout().catch(() => { });
       setDemoState((prev) => {
         if (!prev.session?.isAuthenticated && !prev.session?.token) {
           return prev;
@@ -149,8 +149,9 @@ function LoginForm() {
       return;
     }
     try {
-      const authResult = await ZoikoShieldApiClient.login(email, password);
-      writeRememberedEmail(rememberMe ? email.trim() : null);
+      const normalizedEmail = trimmedEmail.toLowerCase();
+      const authResult = await ZoikoShieldApiClient.login(normalizedEmail, password);
+      writeRememberedEmail(rememberMe ? normalizedEmail : null);
 
       setDemoState((prev) => ({
         ...prev,
@@ -188,7 +189,7 @@ function LoginForm() {
       const isUnverified = msg.toLowerCase().includes("not verified");
       setNeedsStepUp(
         !isUnverified &&
-          (msg.includes("CEDAR_POLICY_DENY") || /authentication step-up required/i.test(msg))
+        (msg.includes("CEDAR_POLICY_DENY") || /authentication step-up required/i.test(msg))
       );
     } finally {
       setIsLoading(false);
@@ -287,7 +288,7 @@ function LoginForm() {
       const discovery = await ZoikoShieldApiClient.discoverSsoProviders(slug);
       try {
         localStorage.setItem(SSO_WORKSPACE_KEY, slug);
-      } catch {}
+      } catch { }
 
       const candidates = option.match
         ? discovery.identityProviders.filter((p) => option.match!.test(p.name))
@@ -426,9 +427,8 @@ function LoginForm() {
               setSsoError(null);
               setSsoChoices(null);
             }}
-            className={`flex w-full items-center gap-3 rounded-xl border bg-[#ffffff] px-4 py-2.5 text-left text-[15px] font-medium text-[#0f172a] transition hover:border-[#cbd5e1] hover:bg-[#f8fafc] ${
-              ssoRequested === option.id ? "border-[#e31e24]" : "border-[#e2e8f0]"
-            }`}
+            className={`flex w-full items-center gap-3 rounded-xl border bg-[#ffffff] px-4 py-2.5 text-left text-[15px] font-medium text-[#0f172a] transition hover:border-[#cbd5e1] hover:bg-[#f8fafc] ${ssoRequested === option.id ? "border-[#e31e24]" : "border-[#e2e8f0]"
+              }`}
           >
             <Image src={option.icon} alt="" width={22} height={22} className="h-[22px] w-[22px]" />
             <span className="flex-1">Continue with {option.label}</span>

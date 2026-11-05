@@ -107,11 +107,12 @@ export default function RegisterPage() {
 
     setIsLoading(true);
     try {
+      const normalizedAdminEmail = adminEmail.trim().toLowerCase();
       const res = await ZoikoShieldApiClient.registerOrganization({
         organizationName: orgName.trim(),
         slug: slug || "org-eval",
         fullName: adminName.trim(),
-        email: adminEmail.trim(),
+        email: normalizedAdminEmail,
         password,
         region,
         compliancePacks: selectedPacks,
@@ -121,9 +122,11 @@ export default function RegisterPage() {
         ...prev,
         session: {
           ...prev.session,
-          email: res.session.email || adminEmail.trim(),
+          email: res.session?.email || normalizedAdminEmail,
           fullName: adminName.trim(),
           role: "TENANT_OWNER",
+          tenantId: res.tenant?.id || prev.tenant.id,
+          token: res.session?.token || (res as any).token || prev.session.token,
           isAuthenticated: true,
         },
         tenant: {

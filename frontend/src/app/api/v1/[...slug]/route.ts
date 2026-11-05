@@ -579,8 +579,21 @@ function findOfflineAccount(req: NextRequest, email: unknown, password: unknown,
   }
 
   // 3. Search registered and configured offline accounts
-  for (const account of [...registeredOfflineAccounts, ...configuredOfflineAccounts]) {
-    if (typeof tenantId === "string" && tenantId && account.tenantId !== tenantId) continue;
+  const allAccounts = [...registeredOfflineAccounts, ...configuredOfflineAccounts];
+  if (typeof tenantId === "string" && tenantId) {
+    for (const account of allAccounts) {
+      if (
+        account.tenantId === tenantId &&
+        account.email === normalized &&
+        crypto.timingSafeEqual(Buffer.from(account.passwordSha256), candidate)
+      ) {
+        return account;
+      }
+    }
+  }
+  for (const account of allAccounts) {
+    const isRegistered = registeredOfflineAccounts.some((r) => r.email === account.email);
+    if (typeof tenantId === "string" && tenantId && !isRegistered && account.tenantId !== tenantId) continue;
     if (account.email === normalized && crypto.timingSafeEqual(Buffer.from(account.passwordSha256), candidate)) {
       return account;
     }
@@ -793,6 +806,22 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
   const timer = isEventStream
     ? undefined
     : setTimeout(() => timeout.abort(), BACKEND_TIMEOUT_MS);
+
+  if ((path === "auth/register" || path === "auth/register-org") && method === "POST") {
+    try {
+      const regBody = JSON.parse(rawBodyText || "{}");
+      if (regBody.email && regBody.password) {
+        rememberOfflineAccount(
+          regBody.email,
+          regBody.password,
+          regBody.fullName || "Administrator",
+          "TENANT_OWNER",
+          `tenant-${regBody.slug || "org"}`
+        );
+      }
+    } catch {}
+  }
+
   let backendRes: Response;
   try {
     backendRes = await fetch(targetUrl, {
@@ -802,6 +831,28 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
       redirect: "manual",
       signal: isEventStream ? undefined : timeout.signal,
     });
+
+    if (path === "auth/login" && method === "POST" && backendRes.status === 401) {
+      try {
+        const loginBody = JSON.parse(rawBodyText || "{}");
+        const normEmail = typeof loginBody.email === "string" ? loginBody.email.toLowerCase().trim() : "";
+        const passHash = typeof loginBody.password === "string" ? sha256Hex(loginBody.password) : "";
+        const isRegisteredUser =
+          Boolean(normEmail && passHash) &&
+          registeredOfflineAccounts.some(
+            (r) =>
+              r.email === normEmail &&
+              crypto.timingSafeEqual(Buffer.from(r.passwordSha256), Buffer.from(passHash))
+          );
+        if (isRegisteredUser) {
+          throw new Error("Registered account matched in resilient store; falling back to offline auth");
+        }
+      } catch (err: any) {
+        if (err?.message?.includes("Registered account matched")) {
+          throw err;
+        }
+      }
+    }
 
     // A 4xx on a security or payment path is the backend's verdict (wrong password, failed
     // step-up, contract pricing limit, Stripe card decline), not an outage, so it is forwarded.
@@ -1182,9 +1233,14 @@ async function buildOfflineResponse(
 
     response.cookies.set("zoiko_shield_access_token", token, { path: "/", httpOnly: false, sameSite: "lax" });
     response.cookies.set("zoiko_shield_tenant_id", tenantId, { path: "/", httpOnly: false, sameSite: "lax" });
-    response.cookies.set("zoiko_shield_user_email", adminEmail, { path: "/", httpOnly: false, sameSite: "lax" });
+    response.cookies.set("zoiko_shield_user_email", adminEmail.toLowerCase().trim(), { path: "/", httpOnly: false, sameSite: "lax" });
     response.cookies.set("shield_access_token", token, { path: "/", httpOnly: true, sameSite: "lax" });
     response.cookies.set("zoiko_auth", "true", { path: "/", httpOnly: false, sameSite: "lax" });
+    response.cookies.set(
+      "zoiko_offline_accounts",
+      encodeURIComponent(JSON.stringify(registeredOfflineAccounts)),
+      { path: "/", maxAge: 86400 * 30, sameSite: "lax" }
+    );
     return response;
   }
 

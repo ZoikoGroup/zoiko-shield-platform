@@ -34,6 +34,7 @@ import { RegisterDto } from './dto/register.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 
 import { EnvironmentService } from '../environment/environment.service';
+import { runWithTenantScope } from '../../../../../libs/database/src';
 
 const SALT_ROUNDS = 12;
 const LOCKOUT_THRESHOLD = 10;
@@ -176,14 +177,16 @@ export class AuthService {
           },
         });
 
-        await this.environmentService.create(
-          tenantId,
-          {
-            name: 'production',
-            environmentType: 'PRODUCTION',
+        await runWithTenantScope(tenantId, () =>
+          this.environmentService.create(
+            tenantId,
+            {
+              name: 'production',
+              environmentType: 'PRODUCTION',
+              region,
+            },
             region,
-          },
-          region,
+          ),
         );
 
         // Generate email verification challenge and send transactional notifications
@@ -420,7 +423,8 @@ export class AuthService {
     dto: LoginDto,
     metadata: SessionMetadata,
   ): Promise<{ user: AuthenticatedUser } & TokenPair> {
-    const principal = await this.principalService.findByEmail(dto.email);
+    const normalizedEmail = (dto.email || '').trim().toLowerCase();
+    const principal = await this.principalService.findByEmail(normalizedEmail);
     const credential = principal
       ? await this.principalService.getLocalCredential(principal.id)
       : null;

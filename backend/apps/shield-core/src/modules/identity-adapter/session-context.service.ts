@@ -17,7 +17,7 @@ export class SessionContextService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
-  ) {}
+  ) { }
 
   // Session binding runs before any request tenant is bound (login, refresh,
   // switch-tenant and every authenticated request's session check), so the
@@ -59,21 +59,21 @@ export class SessionContextService {
 
     let membership = targetTenantId
       ? await this.prisma.tenantMembership.findFirst({
-          where: {
-            tenantId: targetTenantId,
-            principalId: input.principalId,
-            status: 'ACTIVE',
-          },
-          include: {
-            roles: {
-              include: {
-                role: {
-                  include: { permissions: { include: { permission: true } } },
-                },
+        where: {
+          tenantId: targetTenantId,
+          principalId: input.principalId,
+          status: 'ACTIVE',
+        },
+        include: {
+          roles: {
+            include: {
+              role: {
+                include: { permissions: { include: { permission: true } } },
               },
             },
           },
-        })
+        },
+      })
       : null;
 
     if (!membership) {
@@ -170,15 +170,18 @@ export class SessionContextService {
     const safeTenantId: string = tenant.id;
     const environment = input.environmentId
       ? await runWithTenantScope(safeTenantId, () =>
-          this.prisma.environment.findFirst({
-            where: {
-              id: input.environmentId,
-              tenantId: safeTenantId,
-              status: 'ACTIVE',
-            },
-          }),
-        )
-      : await this.resolveOnlyEnvironment(safeTenantId);
+        this.prisma.environment.findFirst({
+          where: {
+            id: input.environmentId,
+            tenantId: safeTenantId,
+            status: 'ACTIVE',
+          },
+        }),
+      )
+      : await this.resolveOnlyEnvironment(
+        safeTenantId,
+        (tenant as any).homeRegion || 'us-east-1',
+      );
     if (!environment) {
       throw new BadRequestException(
         'An active environment belonging to the tenant is required',
@@ -247,14 +250,14 @@ export class SessionContextService {
       const sessionTenantId = session.tenantId;
       const environment = sessionTenantId
         ? await runWithTenantScope(sessionTenantId, () =>
-            this.prisma.environment.findFirst({
-              where: {
-                id: session.environmentId!,
-                tenantId: sessionTenantId,
-                status: 'ACTIVE',
-              },
-            }),
-          )
+          this.prisma.environment.findFirst({
+            where: {
+              id: session.environmentId!,
+              tenantId: sessionTenantId,
+              status: 'ACTIVE',
+            },
+          }),
+        )
         : null;
       if (!environment) {
         throw new UnauthorizedException(
@@ -266,6 +269,7 @@ export class SessionContextService {
 
   private async resolveOnlyEnvironment(
     tenantId: string,
+    defaultRegion = 'us-east-1',
   ): Promise<Environment | null> {
     const environments = (await runWithTenantScope(tenantId, () =>
       this.prisma.environment.findMany({
@@ -278,6 +282,27 @@ export class SessionContextService {
       throw new BadRequestException(
         'environmentId is required when a tenant has multiple active environments',
       );
+    }
+    if (
+      environments.length === 0 &&
+      typeof (this.prisma.environment as any)?.create === 'function'
+    ) {
+      try {
+        const created = await runWithTenantScope(tenantId, () =>
+          this.prisma.environment.create({
+            data: {
+              tenantId,
+              name: 'production',
+              environmentType: 'PRODUCTION',
+              region: defaultRegion,
+              status: 'ACTIVE',
+            },
+          }),
+        );
+        return created as Environment;
+      } catch {
+        return null;
+      }
     }
     return environments[0] ?? null;
   }

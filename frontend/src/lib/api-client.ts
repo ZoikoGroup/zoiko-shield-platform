@@ -259,13 +259,14 @@ export class ZoikoShieldApiClient {
     password?: string,
     tenantId?: string
   ): Promise<UserSession> {
+    const normalizedEmail = (email || "").trim().toLowerCase();
     const resolvedTenantId = tenantId?.trim() ? tenantId.trim() : undefined;
     const session = await this.safeFetch<UserSession>(
       "/api/v1/auth/login",
       {
         method: "POST",
         body: JSON.stringify({
-          email,
+          email: normalizedEmail,
           password,
           tenantId: resolvedTenantId,
         }),
@@ -366,11 +367,15 @@ export class ZoikoShieldApiClient {
     region?: string;
     compliancePacks?: string[];
   }): Promise<{ tenant: any; session: UserSession }> {
+    const normalizedPayload = {
+      ...payload,
+      email: (payload.email || "").trim().toLowerCase(),
+    };
     const res = await this.safeFetch<any>(
       "/api/v1/auth/register",
       {
         method: "POST",
-        body: JSON.stringify(payload),
+        body: JSON.stringify(normalizedPayload),
       },
       null
     );
