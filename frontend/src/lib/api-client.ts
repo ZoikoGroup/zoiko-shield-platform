@@ -154,15 +154,19 @@ function toAuthenticationOptions(res: any): PasskeyAuthenticationOptions {
   };
 }
 
-async function hashSha256Browser(val: string): Promise<string> {
-  if (typeof crypto !== "undefined" && crypto.subtle) {
-    const data = new TextEncoder().encode(val);
-    const hash = await crypto.subtle.digest("SHA-256", data);
-    return Array.from(new Uint8Array(hash))
-      .map((b) => b.toString(16).padStart(2, "0"))
-      .join("");
-  }
-  return "";
+/**
+ * Earlier builds kept every signed-in account's unsalted password hash in
+ * localStorage and a cookie, and the proxy accepted them as sign-in records.
+ * Remove whatever a browser still holds.
+ */
+function purgeStoredOfflineAccounts(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem("zoiko_offline_accounts");
+  } catch {}
+  try {
+    document.cookie = "zoiko_offline_accounts=; path=/; max-age=0; SameSite=Lax";
+  } catch {}
 }
 
 export class ZoikoShieldApiClient {
@@ -195,14 +199,6 @@ export class ZoikoShieldApiClient {
       if (state.session?.token) {
         headers["Authorization"] = `Bearer ${state.session.token}`;
       }
-      if (typeof window !== "undefined") {
-        try {
-          const offlineAccountsRaw = localStorage.getItem("zoiko_offline_accounts");
-          if (offlineAccountsRaw) {
-            headers["x-zoiko-offline-accounts"] = offlineAccountsRaw;
-          }
-        } catch {}
-      }
       const url =
         endpoint.startsWith("http://") || endpoint.startsWith("https://")
           ? endpoint
@@ -217,6 +213,13 @@ export class ZoikoShieldApiClient {
         },
       });
       if (res.ok) {
+        if (!DEMO_FALLBACK_ENABLED && res.headers.get("x-zoiko-fallback") === "true") {
+          throw new ZoikoShieldApiError(
+            "This answer was demo data, not from the ZoikoShield backend; it was not shown.",
+            null,
+            endpoint
+          );
+        }
         if (confirmed && res.headers.get("x-zoiko-fallback") === "true") {
           throw new ZoikoShieldApiError(
             "ZoikoShield backend did not confirm this action; nothing was changed.",
@@ -368,36 +371,7 @@ export class ZoikoShieldApiClient {
           document.cookie = `zoiko_shield_org_name=${encodeURIComponent(state.tenant.organizationName)}; path=/; max-age=${maxAge}; SameSite=Lax`;
         }
 
-        if (password) {
-          hashSha256Browser(password).then((passHash) => {
-            if (passHash) {
-              const storedRaw = localStorage.getItem("zoiko_offline_accounts");
-              let accountsList: any[] = [];
-              if (storedRaw) {
-                try {
-                  accountsList = JSON.parse(decodeURIComponent(storedRaw));
-                } catch {}
-              }
-              if (!Array.isArray(accountsList)) accountsList = [];
-              const newAcc = {
-                email: normalizedEmail,
-                passwordSha256: passHash,
-                fullName: resolvedFullName || "User",
-                role: (resolvedRole || "TENANT_OWNER") as any,
-                tenantId: signedInTenantId || state.tenant?.id || "00000000-0000-4000-8000-000000000001",
-              };
-              const existingIdx = accountsList.findIndex(
-                (a) => a.email === normalizedEmail
-              );
-              if (existingIdx >= 0) accountsList[existingIdx] = newAcc;
-              else accountsList.push(newAcc);
-
-              const encoded = encodeURIComponent(JSON.stringify(accountsList));
-              localStorage.setItem("zoiko_offline_accounts", encoded);
-              document.cookie = `zoiko_offline_accounts=${encoded}; path=/; max-age=${86400 * 30}; SameSite=Lax`;
-            }
-          }).catch(() => {});
-        }
+        purgeStoredOfflineAccounts();
       } catch {}
     }
 
@@ -517,36 +491,7 @@ export class ZoikoShieldApiClient {
           document.cookie = `zoiko_shield_org_name=${encodeURIComponent(state.tenant.organizationName)}; path=/; max-age=${maxAge}; SameSite=Lax`;
         }
 
-        if (payload.password) {
-          hashSha256Browser(payload.password).then((passHash) => {
-            if (passHash) {
-              const storedRaw = localStorage.getItem("zoiko_offline_accounts");
-              let accountsList: any[] = [];
-              if (storedRaw) {
-                try {
-                  accountsList = JSON.parse(decodeURIComponent(storedRaw));
-                } catch {}
-              }
-              if (!Array.isArray(accountsList)) accountsList = [];
-              const newAcc = {
-                email: normalizedPayload.email,
-                passwordSha256: passHash,
-                fullName: payload.fullName || "Administrator",
-                role: "TENANT_OWNER" as const,
-                tenantId: state.tenant?.id || `tenant-${payload.slug || "eval"}`,
-              };
-              const existingIdx = accountsList.findIndex(
-                (a) => a.email === normalizedPayload.email
-              );
-              if (existingIdx >= 0) accountsList[existingIdx] = newAcc;
-              else accountsList.push(newAcc);
-
-              const encoded = encodeURIComponent(JSON.stringify(accountsList));
-              localStorage.setItem("zoiko_offline_accounts", encoded);
-              document.cookie = `zoiko_offline_accounts=${encoded}; path=/; max-age=${86400 * 30}; SameSite=Lax`;
-            }
-          }).catch(() => {});
-        }
+        purgeStoredOfflineAccounts();
       } catch {}
     }
 

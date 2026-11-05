@@ -84,7 +84,7 @@ export default function NotificationCenterPage() {
       backend.get("/api/v1/notifications", { live: true }),
       backend.get("/api/v1/alerts?limit=15", { live: true }),
     ]);
-    setUnavailable(process.env.NEXT_PUBLIC_DEMO_FALLBACK === "false" && deliveryResult.status === "rejected" && alertResult.status === "rejected");
+    setUnavailable(process.env.NEXT_PUBLIC_DEMO_FALLBACK !== "true" && deliveryResult.status === "rejected" && alertResult.status === "rejected");
     const deliveryList = deliveryResult.status === "fulfilled" ? asList<any>(deliveryResult.value) : [];
     const alertList = alertResult.status === "fulfilled" ? asList<any>(alertResult.value) : (demoState.alerts || []);
 

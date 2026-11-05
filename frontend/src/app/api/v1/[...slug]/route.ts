@@ -4,10 +4,12 @@ import crypto from "crypto";
 /**
  * ZoikoShield Resilient Multi-Service Browser -> Backend API Proxy & Autonomous Fallback Engine.
  *
- * Forwards requests to backend microservices when available, and provides comprehensive,
- * high-fidelity 200 OK simulation responses for all endpoints (including EventSource SSE
- * streams, telemetry readiness, connectors, onboarding, policies, JIT elevation, and auth)
- * when backend services are offline. Eliminates all 502 Bad Gateway and 500 errors during presentations.
+ * Forwards requests to backend microservices. By default a backend error is passed through
+ * unchanged and an unreachable backend is a 503/504.
+ *
+ * Only when NEXT_PUBLIC_DEMO_FALLBACK=true (a disconnected demo, never a test or customer
+ * environment) does it answer failed calls with fabricated 200 OK demo data, marked with
+ * the x-zoiko-fallback: true header.
  */
 
 function resolveServiceBaseUrl(path: string): string {
@@ -458,13 +460,23 @@ const inMemoryG1Roster = globalStore.__zoikoG1Roster!;
 const inMemoryFreezeStatus = globalStore.__zoikoFreezeStatus!;
 const inMemoryProposalsState = globalStore.__zoikoProposalsState!;
 
-// --- Offline Authentication (backend unreachable) ---
-// Sign-in is accepted only for the documented demo accounts (override with the
-// OFFLINE_DEMO_ACCOUNTS env var, "[]" disables them) and for accounts created
-// through /register on this server. Anything else is rejected, so a wrong
-// password never becomes a session. Passkey ceremonies and step-up need the
-// backend's signature verification, so they are reported as unavailable
-// instead of being simulated.
+// --- Demo fallback switch ---
+// The fabricated responses below exist only for a disconnected demo. They are
+// off unless NEXT_PUBLIC_DEMO_FALLBACK=true (the same switch api-client.ts
+// uses). With it off, a backend error is forwarded as-is and an unreachable
+// backend is a 503, so testers and customers see what the backend really said.
+function demoFallbackEnabled(): boolean {
+  return process.env.NEXT_PUBLIC_DEMO_FALLBACK === "true";
+}
+
+// --- Offline Authentication (demo fallback only) ---
+// Sign-in while the backend is unreachable is accepted only for accounts listed
+// in the OFFLINE_DEMO_ACCOUNTS env var and for accounts registered through this
+// server's own fallback /register. No credentials live in source, and accounts
+// are never taken from a request: a cookie or header naming an account and its
+// password hash would let anyone sign in as anyone. Passkey ceremonies and
+// step-up need the backend's signature verification, so they are reported as
+// unavailable instead of being simulated.
 
 type OfflineRole = "SUPER_ADMIN" | "TENANT_OWNER" | "SECURITY_ANALYST" | "AUDITOR";
 
@@ -484,40 +496,19 @@ interface OfflineAccountConfig {
   tenantId: string;
 }
 
-// Credentials already published in the QA and demo guides at the repo root.
-const DEFAULT_OFFLINE_ACCOUNTS: OfflineAccountConfig[] = [
-  { email: "super.admin@zoikoshield.local", password: "Admin2026!Platform", fullName: "Platform Super Admin", role: "SUPER_ADMIN", tenantId: "tenant-zoiko-platform" },
-  { email: "sarah.chen@acme.com", password: "Demo2026!Secure", fullName: "Sarah Chen", role: "TENANT_OWNER", tenantId: "tenant-acme-corp" },
-  { email: "marcus.vance@acme.com", password: "Analyst2026!SecOps", fullName: "Marcus Vance", role: "SECURITY_ANALYST", tenantId: "tenant-acme-corp" },
-  { email: "elena.rostova@auditor.compliance", password: "Auditor2026!Verify", fullName: "Elena Rostova", role: "AUDITOR", tenantId: "tenant-acme-corp" },
-  // Same users as backend/scripts/seed-cloud-demo-users.ts (all TENANT_OWNER there).
-  { email: "sarah.chen@acme.com", password: "Shield@SecOps2026!", fullName: "Sarah Chen", role: "TENANT_OWNER", tenantId: "00000000-0000-4000-8000-000000000001" },
-  { email: "analyst@zoikoshield-demo.com", password: "Shield@SecOps2026!", fullName: "Lead Security Analyst", role: "TENANT_OWNER", tenantId: "00000000-0000-4000-8000-000000000001" },
-  { email: "owner@acme.com", password: "Shield@SecOps2026!", fullName: "Acme Owner", role: "TENANT_OWNER", tenantId: "00000000-0000-4000-8000-000000000001" },
-  { email: "admin@zoikoshield.io", password: "Shield@SecOps2026!", fullName: "Platform Super Admin", role: "TENANT_OWNER", tenantId: "00000000-0000-4000-8000-000000000001" },
-  // Dedicated QA & manual tester accounts (supports all common tester passwords)
-  { email: "manualtester2000@example.com", password: "Password123!", fullName: "MANUALTESTER2000", role: "SECURITY_ANALYST", tenantId: "00000000-0000-4000-8000-000000000001" },
-  { email: "manualtester2000@zoikoshield.corp", password: "Password123!", fullName: "MANUALTESTER2000", role: "SECURITY_ANALYST", tenantId: "00000000-0000-4000-8000-000000000001" },
-  { email: "manualtester2000@example.com", password: "Shield@SecOps2026!", fullName: "MANUALTESTER2000", role: "SECURITY_ANALYST", tenantId: "00000000-0000-4000-8000-000000000001" },
-  { email: "jay22@example.com", password: "Password123!", fullName: "Jay22", role: "TENANT_OWNER", tenantId: "00000000-0000-4000-8000-000000000001" },
-  { email: "jay22@zoikoshield.corp", password: "Password123!", fullName: "Jay22", role: "TENANT_OWNER", tenantId: "00000000-0000-4000-8000-000000000001" },
-  { email: "jay22@example.com", password: "Shield@SecOps2026!", fullName: "Jay22", role: "TENANT_OWNER", tenantId: "00000000-0000-4000-8000-000000000001" },
-  { email: "aditya@zoiko.com", password: "Aditya@20045678", fullName: "Aditya", role: "TENANT_OWNER", tenantId: "00000000-0000-4000-8000-000000000001" },
-  { email: "aditya@zoiko.com", password: "Shield@SecOps2026!", fullName: "Aditya", role: "TENANT_OWNER", tenantId: "00000000-0000-4000-8000-000000000001" },
-];
-
 const sha256Hex = (value: string) => crypto.createHash("sha256").update(value).digest("hex");
 
 function loadConfiguredOfflineAccounts(): OfflineAccount[] {
-  let configured = DEFAULT_OFFLINE_ACCOUNTS;
-  if (process.env.OFFLINE_DEMO_ACCOUNTS) {
-    try {
-      configured = JSON.parse(process.env.OFFLINE_DEMO_ACCOUNTS) as OfflineAccountConfig[];
-    } catch {
-      console.warn("[offline auth] OFFLINE_DEMO_ACCOUNTS is not valid JSON; no demo accounts enabled");
-      configured = [];
-    }
+  const raw = process.env.OFFLINE_DEMO_ACCOUNTS;
+  if (!raw) return [];
+  let configured: OfflineAccountConfig[];
+  try {
+    configured = JSON.parse(raw) as OfflineAccountConfig[];
+  } catch {
+    console.warn("[offline auth] OFFLINE_DEMO_ACCOUNTS is not valid JSON; no demo accounts enabled");
+    return [];
   }
+  if (!Array.isArray(configured)) return [];
   return configured.map((a) => ({
     email: a.email.toLowerCase().trim(),
     passwordSha256: sha256Hex(a.password),
@@ -527,14 +518,13 @@ function loadConfiguredOfflineAccounts(): OfflineAccount[] {
   }));
 }
 
-const configuredOfflineAccounts = loadConfiguredOfflineAccounts();
-
 const offlineAuthStore = globalThis as unknown as { __zoikoOfflineAccounts?: OfflineAccount[] };
 if (!offlineAuthStore.__zoikoOfflineAccounts) {
   offlineAuthStore.__zoikoOfflineAccounts = [];
 }
 const registeredOfflineAccounts = offlineAuthStore.__zoikoOfflineAccounts!;
 
+/** Records an account created by the fallback /register. An existing email is never overwritten. */
 function rememberOfflineAccount(
   email: unknown,
   password: unknown,
@@ -544,69 +534,23 @@ function rememberOfflineAccount(
 ): void {
   if (typeof email !== "string" || typeof password !== "string" || password.length === 0) return;
   const normalized = email.toLowerCase().trim();
-  const idx = registeredOfflineAccounts.findIndex((a) => a.email === normalized);
-  const account = { email: normalized, passwordSha256: sha256Hex(password), fullName, role, tenantId };
-  if (idx >= 0) registeredOfflineAccounts[idx] = account;
-  else registeredOfflineAccounts.push(account);
+  const taken = [...registeredOfflineAccounts, ...loadConfiguredOfflineAccounts()].some(
+    (a) => a.email === normalized
+  );
+  if (taken) return;
+  registeredOfflineAccounts.push({ email: normalized, passwordSha256: sha256Hex(password), fullName, role, tenantId });
 }
 
 /** Like shield-core, a sign-in names its tenant; a tenant the account is not in is rejected. */
-function findOfflineAccount(req: NextRequest, email: unknown, password: unknown, tenantId: unknown): OfflineAccount | null {
+function findOfflineAccount(email: unknown, password: unknown, tenantId: unknown): OfflineAccount | null {
   if (typeof email !== "string" || typeof password !== "string") return null;
   const normalized = email.toLowerCase().trim();
   const candidate = Buffer.from(sha256Hex(password));
-
-  // 1. Sync accounts from persistent client cookie if available (survives serverless cold starts)
-  const cookieAccountsRaw = req.cookies.get("zoiko_offline_accounts")?.value;
-  if (cookieAccountsRaw) {
-    try {
-      const fromCookie = JSON.parse(decodeURIComponent(cookieAccountsRaw));
-      if (Array.isArray(fromCookie)) {
-        for (const acc of fromCookie) {
-          if (acc && acc.email && !registeredOfflineAccounts.some((a) => a.email === acc.email)) {
-            registeredOfflineAccounts.push(acc);
-          }
-        }
-      }
-    } catch {}
+  for (const account of [...registeredOfflineAccounts, ...loadConfiguredOfflineAccounts()]) {
+    if (account.email !== normalized) continue;
+    if (typeof tenantId === "string" && tenantId && account.tenantId !== tenantId) continue;
+    if (crypto.timingSafeEqual(Buffer.from(account.passwordSha256), candidate)) return account;
   }
-
-  // 2. Sync accounts from request header if sent by api-client
-  const headerAccountsRaw = req.headers.get("x-zoiko-offline-accounts");
-  if (headerAccountsRaw) {
-    try {
-      const fromHeader = JSON.parse(decodeURIComponent(headerAccountsRaw));
-      if (Array.isArray(fromHeader)) {
-        for (const acc of fromHeader) {
-          if (acc && acc.email && !registeredOfflineAccounts.some((a) => a.email === acc.email)) {
-            registeredOfflineAccounts.push(acc);
-          }
-        }
-      }
-    } catch {}
-  }
-
-  // 3. Search registered and configured offline accounts
-  const allAccounts = [...registeredOfflineAccounts, ...configuredOfflineAccounts];
-  if (typeof tenantId === "string" && tenantId) {
-    for (const account of allAccounts) {
-      if (
-        account.tenantId === tenantId &&
-        account.email === normalized &&
-        crypto.timingSafeEqual(Buffer.from(account.passwordSha256), candidate)
-      ) {
-        return account;
-      }
-    }
-  }
-  for (const account of allAccounts) {
-    const isRegistered = registeredOfflineAccounts.some((r) => r.email === account.email);
-    if (typeof tenantId === "string" && tenantId && !isRegistered && account.tenantId !== tenantId) continue;
-    if (account.email === normalized && crypto.timingSafeEqual(Buffer.from(account.passwordSha256), candidate)) {
-      return account;
-    }
-  }
-
   return null;
 }
 
@@ -626,7 +570,7 @@ function handleOfflineAuth(
     try {
       body = JSON.parse(rawBodyText || "{}");
     } catch {}
-    const account = findOfflineAccount(req, body.email, body.password, body.tenantId);
+    const account = findOfflineAccount(body.email, body.password, body.tenantId);
     if (!account) {
       return NextResponse.json(
         { statusCode: 401, error: "Unauthorized", message: "Invalid email, password or tenant." },
@@ -653,12 +597,6 @@ function handleOfflineAuth(
     response.cookies.set("zoiko_shield_user_email", account.email, { path: "/", httpOnly: false, sameSite: "lax" });
     response.cookies.set("shield_access_token", token, { path: "/", httpOnly: true, sameSite: "lax" });
     response.cookies.set("zoiko_auth", "true", { path: "/", httpOnly: false, sameSite: "lax" });
-    // Also refresh the offline registered accounts cookie
-    response.cookies.set(
-      "zoiko_offline_accounts",
-      encodeURIComponent(JSON.stringify(registeredOfflineAccounts)),
-      { path: "/", maxAge: 86400 * 30, sameSite: "lax" }
-    );
     return response;
   }
 
@@ -676,7 +614,7 @@ function handleOfflineAuth(
   if (path === "auth/me" || path === "auth/session") {
     const email = req.cookies.get("zoiko_shield_user_email")?.value?.toLowerCase();
     const account = email
-      ? [...registeredOfflineAccounts, ...configuredOfflineAccounts].find((a) => a.email === email)
+      ? [...registeredOfflineAccounts, ...loadConfiguredOfflineAccounts()].find((a) => a.email === email)
       : undefined;
     if (!account || !req.cookies.has("shield_access_token")) {
       return NextResponse.json(
@@ -815,21 +753,6 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
     ? undefined
     : setTimeout(() => timeout.abort(), BACKEND_TIMEOUT_MS);
 
-  if ((path === "auth/register" || path === "auth/register-org") && method === "POST") {
-    try {
-      const regBody = JSON.parse(rawBodyText || "{}");
-      if (regBody.email && regBody.password) {
-        rememberOfflineAccount(
-          regBody.email,
-          regBody.password,
-          regBody.fullName || "Administrator",
-          "TENANT_OWNER",
-          `tenant-${regBody.slug || "org"}`
-        );
-      }
-    } catch {}
-  }
-
   let backendRes: Response;
   try {
     backendRes = await fetch(targetUrl, {
@@ -840,69 +763,32 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
       signal: isEventStream ? undefined : timeout.signal,
     });
 
-    if (path === "auth/login" && method === "POST" && backendRes.status === 401) {
-      try {
-        const loginBody = JSON.parse(rawBodyText || "{}");
-        const normEmail = typeof loginBody.email === "string" ? loginBody.email.toLowerCase().trim() : "";
-        const passHash = typeof loginBody.password === "string" ? sha256Hex(loginBody.password) : "";
-
-        // Sync registered accounts from cookie and header
-        const cookieAccountsRaw = req.cookies.get("zoiko_offline_accounts")?.value;
-        if (cookieAccountsRaw) {
-          try {
-            const fromCookie = JSON.parse(decodeURIComponent(cookieAccountsRaw));
-            if (Array.isArray(fromCookie)) {
-              for (const acc of fromCookie) {
-                if (acc && acc.email && !registeredOfflineAccounts.some((a) => a.email === acc.email)) {
-                  registeredOfflineAccounts.push(acc);
-                }
-              }
-            }
-          } catch {}
-        }
-        const headerAccountsRaw = req.headers.get("x-zoiko-offline-accounts");
-        if (headerAccountsRaw) {
-          try {
-            const fromHeader = JSON.parse(decodeURIComponent(headerAccountsRaw));
-            if (Array.isArray(fromHeader)) {
-              for (const acc of fromHeader) {
-                if (acc && acc.email && !registeredOfflineAccounts.some((a) => a.email === acc.email)) {
-                  registeredOfflineAccounts.push(acc);
-                }
-              }
-            }
-          } catch {}
-        }
-
-        const isRegisteredUser =
-          Boolean(normEmail && passHash) &&
-          registeredOfflineAccounts.some(
-            (r) =>
-              r.email === normEmail &&
-              crypto.timingSafeEqual(Buffer.from(r.passwordSha256), Buffer.from(passHash))
-          );
-        if (isRegisteredUser) {
-          throw new Error("Registered account matched in resilient store; falling back to offline auth");
-        }
-      } catch (err: any) {
-        if (err?.message?.includes("Registered account matched")) {
-          throw err;
-        }
+    if (demoFallbackEnabled()) {
+      // Demo mode only: a 4xx on a security or payment path is the backend's verdict (wrong
+      // password, failed step-up, contract pricing limit, Stripe card decline), not an outage,
+      // so it is forwarded; other errors are papered over with demo data.
+      const isSecurity = isSecurityPath(path) || path.startsWith("payments");
+      const isVerdict =
+        (isSecurity || [400, 403, 409, 422].includes(backendRes.status)) &&
+        backendRes.status < 500 &&
+        backendRes.status !== 404;
+      if (backendRes.status >= 400 && !isVerdict) {
+        throw new Error(`Backend service error HTTP ${backendRes.status} on /api/v1/${path}`);
       }
     }
-
-    // A 4xx on a security or payment path is the backend's verdict (wrong password, failed
-    // step-up, contract pricing limit, Stripe card decline), not an outage, so it is forwarded.
-    // Note: HTTP 404 (route missing on backend) is NEVER a security verdict!
-    const isSecurity = isSecurityPath(path) || path.startsWith("payments");
-    const isVerdict =
-      (isSecurity || [400, 403, 409, 422].includes(backendRes.status)) &&
-      backendRes.status < 500 &&
-      backendRes.status !== 404;
-    if (backendRes.status >= 400 && !isVerdict) {
-      throw new Error(`Backend service error HTTP ${backendRes.status} on /api/v1/${path}`);
-    }
   } catch {
+    if (!demoFallbackEnabled()) {
+      // The backend never answered. Say so instead of inventing an answer.
+      const timedOut = timeout.signal.aborted;
+      return NextResponse.json(
+        {
+          statusCode: timedOut ? 504 : 503,
+          error: timedOut ? "Gateway Timeout" : "Service Unavailable",
+          message: `The ZoikoShield backend did not answer /api/v1/${path}. Nothing was changed.`,
+        },
+        { status: timedOut ? 504 : 503, headers: { "x-zoiko-backend-unreachable": "true" } }
+      );
+    }
     const offline = await buildOfflineResponse(req, path, method, rawBodyText, isEventStream);
     // Lets the UI tell fabricated demo data apart from real backend records.
     offline.headers.set("x-zoiko-fallback", "true");
@@ -926,14 +812,9 @@ async function handleApiProxy(req: NextRequest, slugArray: string[]) {
     }
   }
 
-  if (
-    (path === "auth/register" || path === "auth/register-org") &&
-    registeredOfflineAccounts.length > 0
-  ) {
-    responseHeaders.append(
-      "set-cookie",
-      `zoiko_offline_accounts=${encodeURIComponent(JSON.stringify(registeredOfflineAccounts))}; Path=/; Max-Age=2592000; SameSite=Lax`
-    );
+  if (path === "auth/login" || path === "auth/register" || path === "auth/register-org") {
+    // Earlier builds stored every account's password hash in this cookie. Expire it.
+    responseHeaders.append("set-cookie", "zoiko_offline_accounts=; Path=/; Max-Age=0; SameSite=Lax");
   }
 
   const bodylessStatus = new Set([204, 205, 304]);
@@ -1283,11 +1164,6 @@ async function buildOfflineResponse(
     response.cookies.set("zoiko_shield_user_email", adminEmail.toLowerCase().trim(), { path: "/", httpOnly: false, sameSite: "lax" });
     response.cookies.set("shield_access_token", token, { path: "/", httpOnly: true, sameSite: "lax" });
     response.cookies.set("zoiko_auth", "true", { path: "/", httpOnly: false, sameSite: "lax" });
-    response.cookies.set(
-      "zoiko_offline_accounts",
-      encodeURIComponent(JSON.stringify(registeredOfflineAccounts)),
-      { path: "/", maxAge: 86400 * 30, sameSite: "lax" }
-    );
     return response;
   }
 

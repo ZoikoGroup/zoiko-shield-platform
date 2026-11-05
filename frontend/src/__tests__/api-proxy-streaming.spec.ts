@@ -51,7 +51,25 @@ describe('API proxy streaming', () => {
     expect(res.headers.get('x-zoiko-fallback')).toBeNull();
   });
 
-  it('still falls back when the backend does not answer within the timeout', async () => {
+  it('answers 504 when the backend does not answer within the timeout', async () => {
+    const { GET } = await loadRoute('50');
+    vi.spyOn(globalThis, 'fetch').mockImplementation(
+      (_url, init) =>
+        new Promise((_resolve, reject) =>
+          init?.signal?.addEventListener('abort', () =>
+            reject(new DOMException('aborted', 'AbortError')),
+          ),
+        ),
+    );
+
+    const res = await get(GET, 'alerts');
+
+    expect(res.status).toBe(504);
+    expect(res.headers.get('x-zoiko-fallback')).toBeNull();
+  });
+
+  it('falls back to marked demo data on timeout only when the demo switch is on', async () => {
+    vi.stubEnv('NEXT_PUBLIC_DEMO_FALLBACK', 'true');
     const { GET } = await loadRoute('50');
     vi.spyOn(globalThis, 'fetch').mockImplementation(
       (_url, init) =>

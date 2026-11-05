@@ -177,7 +177,7 @@ export const TopHeader: React.FC = () => {
 
       const items: HeaderNotification[] = [];
       const isLive = (r: PromiseSettledResult<Response>): r is PromiseFulfilledResult<Response> =>
-        r.status === "fulfilled" && r.value.ok && (process.env.NEXT_PUBLIC_DEMO_FALLBACK !== "false" || r.value.headers.get("x-zoiko-fallback") !== "true");
+        r.status === "fulfilled" && r.value.ok && (process.env.NEXT_PUBLIC_DEMO_FALLBACK === "true" || r.value.headers.get("x-zoiko-fallback") !== "true");
       setNotifsUnavailable(!isLive(alertsRes) && !isLive(notifsRes));
 
       if (isLive(alertsRes)) {
@@ -227,7 +227,7 @@ export const TopHeader: React.FC = () => {
       }
 
       const IS_TEST_ENV = process.env.NODE_ENV === "test";
-      if (IS_TEST_ENV && items.length === 0 && process.env.NEXT_PUBLIC_DEMO_FALLBACK !== "false") {
+      if (IS_TEST_ENV && items.length === 0 && process.env.NEXT_PUBLIC_DEMO_FALLBACK === "true") {
         setNotifsUnavailable(false);
         (state.alerts || []).slice(0, 4).forEach((a: any) => {
           items.push({
