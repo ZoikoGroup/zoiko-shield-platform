@@ -28,6 +28,44 @@ const TENANT_OWNER_ROLE_CODE = 'TENANT_OWNER';
 const PRIVACY_LEGAL_REVIEWER_ROLE_CODE = 'PRIVACY_LEGAL_REVIEWER';
 const OWNER_INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
+/**
+ * The tenant template roles, reset to exactly these permissions at startup.
+ * Every action shield-core authorizes must be held by some role, or its
+ * endpoint refuses everyone; onboarding-role-grants.spec.ts checks this.
+ */
+export const TENANT_OWNER_PERMISSION_CODES: readonly string[] = [
+  PERMISSION_CODES.TENANT_MEMBER_INVITE,
+  PERMISSION_CODES.TENANT_MANAGE,
+  PERMISSION_CODES.TENANT_RESOURCE_READ,
+  PERMISSION_CODES.TENANT_RESOURCE_WRITE,
+  PERMISSION_CODES.TENANT_COMMERCIAL_ACCOUNT_READ,
+  PERMISSION_CODES.TENANT_IDENTITY_PROVIDER_MANAGE,
+  PERMISSION_CODES.TENANT_OFFBOARDING_START,
+  PERMISSION_CODES.DELETION_REQUEST,
+  PERMISSION_CODES.EXPORT_CREATE,
+  PERMISSION_CODES.CASE_READ,
+  PERMISSION_CODES.RESPONSE_PROPOSAL_CREATE,
+  // Approval is four-eyes: ResponseProposalService refuses the proposer.
+  PERMISSION_CODES.RESPONSE_PROPOSAL_APPROVE,
+  PERMISSION_CODES.RESPONSE_ACTION_EXECUTE,
+  PERMISSION_CODES.CONTROL_IMPLEMENTATION_CREATE,
+  PERMISSION_CODES.CONTROL_IMPLEMENTATION_MARK_NOT_APPLICABLE,
+  // Segregation of duties is enforced by AuditPackageApprovalService.
+  PERMISSION_CODES.AUDIT_PACKAGE_APPROVE,
+  PERMISSION_CODES.AI_INVOKE_USE_CASE,
+  PERMISSION_CODES.AI_REVIEW_OUTPUT,
+  PERMISSION_CODES.API_SCOPE_GRANT,
+  PERMISSION_CODES.WEBHOOK_REPLAY,
+];
+
+export const PRIVACY_LEGAL_REVIEWER_PERMISSION_CODES: readonly string[] = [
+  PERMISSION_CODES.TENANT_RESOURCE_READ,
+  PERMISSION_CODES.TENANT_RESOURCE_WRITE,
+  PERMISSION_CODES.DELETION_APPROVE,
+  PERMISSION_CODES.LEGAL_HOLD_CREATE,
+  PERMISSION_CODES.LEGAL_HOLD_RELEASE,
+];
+
 @Injectable()
 export class OnboardingService implements OnModuleInit {
   constructor(
@@ -40,22 +78,8 @@ export class OnboardingService implements OnModuleInit {
 
   /** Self-seeds a shared TENANT_OWNER role (tenantId: null template, per-tenant authority via TenantMembership), same pattern as PolicyService's policy seeding. */
   async onModuleInit(): Promise<void> {
-    const ownerCodes = [
-      PERMISSION_CODES.TENANT_MEMBER_INVITE,
-      PERMISSION_CODES.TENANT_MANAGE,
-      PERMISSION_CODES.TENANT_RESOURCE_READ,
-      PERMISSION_CODES.TENANT_RESOURCE_WRITE,
-      PERMISSION_CODES.TENANT_COMMERCIAL_ACCOUNT_READ,
-      PERMISSION_CODES.TENANT_IDENTITY_PROVIDER_MANAGE,
-      PERMISSION_CODES.TENANT_OFFBOARDING_START,
-      PERMISSION_CODES.DELETION_REQUEST,
-    ];
-    const reviewerCodes = [
-      PERMISSION_CODES.TENANT_RESOURCE_READ,
-      PERMISSION_CODES.TENANT_RESOURCE_WRITE,
-      PERMISSION_CODES.DELETION_APPROVE,
-      PERMISSION_CODES.LEGAL_HOLD_CREATE,
-    ];
+    const ownerCodes = TENANT_OWNER_PERMISSION_CODES;
+    const reviewerCodes = PRIVACY_LEGAL_REVIEWER_PERMISSION_CODES;
     const permissionsByCode = new Map<string, Permission>();
     for (const code of [...new Set([...ownerCodes, ...reviewerCodes])]) {
       let permission = await this.prisma.permission.findUnique({
