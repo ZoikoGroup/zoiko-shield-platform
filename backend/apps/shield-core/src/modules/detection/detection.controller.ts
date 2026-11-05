@@ -19,23 +19,86 @@ import { PlatformPermissionsGuard } from '../authorization/guards/platform-permi
 import { RequirePlatformPermissions } from '../authorization/decorators/require-platform-permissions.decorator';
 import { PERMISSION_CODES } from '../authorization/constants';
 import { requireTenantId } from '../../tenant-context';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsInt,
+  IsNotEmpty,
+  IsObject,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
+// The global ValidationPipe runs with whitelist: true, which strips every
+// property that carries no class-validator decorator.
 export class CreateDetectionDefinitionDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(128)
   key!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
   name!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(4000)
   description?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
   owner?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
   category?: string;
 }
 
 export class CreateDetectionVersionDto {
+  @IsInt()
   version!: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
   severity?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
   ruleType?: string;
+
+  // Rule configuration is rule-type specific; it is stored as JSON as-is.
+  @IsOptional()
+  @IsObject()
   configuration?: Record<string, any>;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(200)
+  @IsString({ each: true })
   requiredEventTypes?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(200)
+  @IsString({ each: true })
   requiredFields?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(200)
+  @IsString({ each: true })
   requiredContext?: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
   allowedMissingDataBehavior?: string;
 }
 

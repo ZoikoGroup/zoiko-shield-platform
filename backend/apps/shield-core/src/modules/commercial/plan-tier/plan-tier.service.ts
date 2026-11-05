@@ -6,11 +6,25 @@ import {
 } from '@nestjs/common';
 import { DRAFT_PLAN_TIERS, PlanTier, PlanTierKey } from './plan-tier.entity';
 import { OfferEntitlementService } from '../offer-entitlement.service';
+import { IsBoolean, IsInt, IsNumber, IsOptional, Min } from 'class-validator';
 
+// Also the POST /commercial/plans/recommend body: the global ValidationPipe
+// (whitelist: true) strips any property without a class-validator decorator.
 export class PlanRecommendationRequest {
+  @IsInt()
+  @Min(0)
   protectedAssetCount!: number;
+
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(0)
   estimatedDailyTelemetryGb!: number;
+
+  @IsOptional()
+  @IsBoolean()
   requiresAiSecurity?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
   requiresManagedDefense?: boolean;
 }
 

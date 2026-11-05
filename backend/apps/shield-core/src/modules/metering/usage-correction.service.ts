@@ -4,23 +4,77 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import {
+  IsIn,
+  IsISO8601,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
+// These are also the request bodies of UsageCorrectionController: the global
+// ValidationPipe (whitelist: true) strips any undecorated property.
 export class SubmitUsageDisputeDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
   meterDefinitionId!: string;
+
+  @IsISO8601()
   disputedPeriodStart!: string;
+
+  @IsISO8601()
   disputedPeriodEnd!: string;
+
+  // A claimed usage quantity cannot be negative.
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(0)
   claimedQuantity!: number;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(4000)
   reason!: string;
+
+  @IsString()
+  @MaxLength(1024)
   evidenceReference!: string;
 }
 
 export class PostUsageCorrectionDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
   disputeId?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
   meterDefinitionId!: string;
+
+  @IsIn(['REVERSAL', 'REPLACEMENT', 'ADJUSTMENT'])
   correctionType!: 'REVERSAL' | 'REPLACEMENT' | 'ADJUSTMENT';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
   originalRecordId?: string;
+
+  // Signed: reversals and downward adjustments are negative.
+  @IsNumber({ allowNaN: false, allowInfinity: false })
   adjustedQuantity!: number;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(4000)
   reason!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
   approvedBy!: string;
 }
 

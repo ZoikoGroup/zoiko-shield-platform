@@ -4,14 +4,56 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsIn,
+  IsISO8601,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
+// Also the POST /commercial/zoiko-one/bundle-orders body: the global ValidationPipe
+// (whitelist: true) strips any undecorated property.
 export class CreateZoikoOneBundleOrderDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(128)
   bundleReference!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
   commercialAccountId!: string;
+
+  @IsArray()
+  @ArrayMaxSize(100)
+  @IsString({ each: true })
+  @MaxLength(128, { each: true })
   includedProductKeys!: string[];
+
+  @IsArray()
+  @ArrayMaxSize(100)
+  @IsString({ each: true })
+  @MaxLength(128, { each: true })
   incrementalProductKeys!: string[];
+
+  @IsOptional()
+  @IsISO8601()
   coTerminationDate?: string;
+
+  @IsOptional()
+  @IsNumber({ allowNaN: false, allowInfinity: false })
+  @Min(0)
+  @Max(100)
   discountPercentage?: number;
+
+  @IsIn(['PRO_RATA', 'PRIMARY_FIRST', 'EQUAL_SPLIT'])
   creditAllocationMethod!: 'PRO_RATA' | 'PRIMARY_FIRST' | 'EQUAL_SPLIT';
 }
 

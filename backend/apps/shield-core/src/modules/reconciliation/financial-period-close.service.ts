@@ -4,20 +4,60 @@ import {
   Injectable,
 } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import {
+  IsIn,
+  IsISO8601,
+  IsNotEmpty,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
+// These are also the request bodies of FinancialPeriodCloseController: the
+// global ValidationPipe (whitelist: true) strips any undecorated property.
 export class CloseFinancialPeriodDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(32)
   periodKey!: string; // e.g. '2026-07'
+
+  @IsISO8601()
   periodStart!: string;
+
+  @IsISO8601()
   periodEnd!: string;
+
+  @IsString()
+  @MaxLength(4000)
   closingNotes!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
   approverId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
   dualControlSignoffId!: string;
 }
 
 export class RequestEmergencyOverrideDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(32)
   periodKey!: string;
+
+  @IsIn(['INVOICE', 'PAYMENT', 'METER_EXPORT', 'PARTNER_SETTLEMENT'])
   targetDomain!: 'INVOICE' | 'PAYMENT' | 'METER_EXPORT' | 'PARTNER_SETTLEMENT';
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(4000)
   reason!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(1024)
   justificationRef!: string;
 }
 

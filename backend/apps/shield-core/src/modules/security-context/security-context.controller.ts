@@ -17,23 +17,85 @@ import { IdentityResolutionService } from './identities/identity-resolution.serv
 import { PrismaService } from '../../prisma/prisma.service';
 import { JwtAuthGuard } from '../identity-adapter/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../authorization/guards/permissions.guard';
-import { requireTenantId } from '../../tenant-context';
+import { requireEnvironmentId, requireTenantId } from '../../tenant-context';
+import { CurrentUser } from '../identity-adapter/decorators/current-user.decorator';
+import type { AuthenticatedUser } from '../identity-adapter/interfaces/jwt-payload.interface';
+import { IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { BadRequestException } from '@nestjs/common';
 
+const MANUAL_SOURCE_ACCOUNT = 'manual';
+
+// The global ValidationPipe runs with whitelist: true, which strips every
+// property that carries no class-validator decorator. Without these the
+// handlers received an empty body.
 export class ResolveAssetRequestDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
+  sourceAccountId?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
   externalId!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(64)
   assetType!: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
   sourceSystem?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
   externalType?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
   hostname?: string;
+
+  @IsOptional()
+  @IsIn(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW'])
   criticality?: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 }
 
 export class ResolveIdentityRequestDto {
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
+  sourceAccountId?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
   externalId?: string;
+
+  @IsOptional()
+  @IsEmail()
   email?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
   displayName?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
   sourceSystem?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
   externalType?: string;
+
+  @IsOptional()
+  @IsIn(['HUMAN', 'SERVICE_ACCOUNT', 'WORKLOAD', 'APPLICATION', 'MANAGED_IDENTITY'])
   identityType?:
     | 'HUMAN'
     | 'SERVICE_ACCOUNT'
@@ -120,11 +182,16 @@ export class SecurityContextController {
   async resolveAsset(
     @Headers('x-tenant-id') headerTenantId: string,
     @Body() dto: ResolveAssetRequestDto,
+    @CurrentUser() user: AuthenticatedUser,
   ) {
     const tenantId = requireTenantId(headerTenantId);
     const resolved = await this.assetResolution.resolve({
       tenantId,
+      environmentId: requireEnvironmentId(user.environmentId),
       sourceSystem: dto.sourceSystem || 'MANUAL',
+      // Part of the alias key; a compound unique lookup cannot match on null.
+      // Connector-fed assets carry their connector id; manual entries share one.
+      sourceAccountId: dto.sourceAccountId || MANUAL_SOURCE_ACCOUNT,
       externalType: dto.externalType || 'EXTERNAL_ID',
       externalId: dto.externalId,
       assetType: dto.assetType,
@@ -140,9 +207,13 @@ export class SecurityContextController {
     @Body() dto: ResolveIdentityRequestDto,
   ) {
     const tenantId = requireTenantId(headerTenantId);
+    if (!dto.externalId && !dto.email) {
+      throw new BadRequestException('Either externalId or email is required');
+    }
     const resolved = await this.identityResolution.resolve({
       tenantId,
       sourceSystem: dto.sourceSystem || 'MANUAL',
+      sourceAccountId: dto.sourceAccountId || MANUAL_SOURCE_ACCOUNT,
       externalType:
         dto.externalType || (dto.externalId ? 'EXTERNAL_ID' : 'EMAIL'),
       externalId: dto.externalId || dto.email!,

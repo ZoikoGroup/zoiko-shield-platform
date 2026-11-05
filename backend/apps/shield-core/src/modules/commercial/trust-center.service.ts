@@ -1,8 +1,31 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import {
+  IsIn,
+  IsISO8601,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MaxLength,
+} from 'class-validator';
 
+// Also the POST /commercial/trust-center/publish body: the global
+// ValidationPipe (whitelist: true) strips any undecorated property.
 export class PublishTrustCenterArtifactDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(256)
   title!: string;
+
+  @IsIn([
+    'SOC2',
+    'ISO27001',
+    'PCI_DSS',
+    'HIPAA',
+    'GDPR',
+    'SECURITY_WHITEPAPER',
+    'PEN_TEST_SUMMARY',
+  ])
   category!:
     | 'SOC2'
     | 'ISO27001'
@@ -11,11 +34,29 @@ export class PublishTrustCenterArtifactDto {
     | 'GDPR'
     | 'SECURITY_WHITEPAPER'
     | 'PEN_TEST_SUMMARY';
+
+  @IsString()
+  @MaxLength(4000)
   description!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(64)
   version!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(1024)
   documentRef!: string;
+
+  @IsISO8601()
   effectiveFrom!: string;
+
+  @IsOptional()
+  @IsISO8601()
   effectiveTo?: string;
+
+  @IsIn(['PUBLIC', 'CUSTOMER_RESTRICTED', 'NDA_REQUIRED'])
   classification!: 'PUBLIC' | 'CUSTOMER_RESTRICTED' | 'NDA_REQUIRED';
 }
 
